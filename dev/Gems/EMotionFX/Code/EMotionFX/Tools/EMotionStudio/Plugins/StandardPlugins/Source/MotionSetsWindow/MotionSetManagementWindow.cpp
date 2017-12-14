@@ -946,9 +946,9 @@ namespace EMStudio
             {
                 selectedRootMotionSets.push_back(motionSet);
             }
-        }
+        } 
 
-        // Areate the command group.
+        // create the command group.
         MCore::CommandGroup commandGroup("Save selected motion sets");
         commandGroup.SetReturnFalseAfterError(true);
 

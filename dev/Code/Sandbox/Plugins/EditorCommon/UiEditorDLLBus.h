@@ -34,6 +34,9 @@ public: // member functions
     //! Get the active undo stack for the UI Editor
     virtual UndoStack* GetActiveUndoStack() = 0;
 
+    //! Soft-switch to the given file.  Note that this should prompt for unsaved changes, etc.
+    virtual void OpenSourceCanvasFile(QString absolutePathToFile) = 0;
+
 public: // static member functions
 
     static const char* GetUniqueName() { return "UiEditorDLLInterface"; }

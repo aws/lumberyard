@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_RotationNodeHasProperties = true;
-
             class Rotation
-                : public NativeDatumNode<Rotation, Data::RotationType, k_RotationNodeHasProperties>
+                : public NativeDatumNode<Rotation, Data::RotationType>
             {
             public:
-                using ParentType = NativeDatumNode<Rotation, Data::RotationType, k_RotationNodeHasProperties>;
+                using ParentType = NativeDatumNode<Rotation, Data::RotationType>;
                 AZ_COMPONENT(Rotation, "{E17FE11D-69F2-4746-B582-778B48D0BF47}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -43,19 +41,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Rotation.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    // \todo these will be in radians, but we will want to present them in degrees
-                    AddProperty(&Data::RotationType::GetX, &Data::RotationType::SetX, "x");
-                    AddProperty(&Data::RotationType::GetY, &Data::RotationType::SetY, "y");
-                    AddProperty(&Data::RotationType::GetZ, &Data::RotationType::SetZ, "z");
-                    AddProperty(&Data::RotationType::GetW, &Data::RotationType::SetW, "w");
                 }
 
                 void Visit(NodeVisitor& visitor) const override

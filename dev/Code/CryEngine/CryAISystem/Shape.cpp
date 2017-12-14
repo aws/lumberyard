@@ -22,6 +22,7 @@
 #include "Shape.h"
 #include "DebugDrawContext.h"
 
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 static const float BIN_WIDTH = 3.0f;
 
@@ -963,7 +964,7 @@ float CAIShape::GetDrawZ(float x, float y)
     I3DEngine* pEngine = gEnv->p3DEngine;
     float terrainZ = pEngine->GetTerrainElevation(x, y);
     Vec3 pt(x, y, 0);
-    float waterZ = pEngine->GetWaterLevel(&pt);
+    float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pt) : pEngine->GetWaterLevel(&pt);
     return max(terrainZ, waterZ);
 }
 

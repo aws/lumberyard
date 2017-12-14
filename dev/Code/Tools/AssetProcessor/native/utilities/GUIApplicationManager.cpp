@@ -33,6 +33,7 @@
 #include <QAction>
 #include <QMenu>
 #include <QMessageBox>
+#include <AzQtComponents/Utilities/QtPluginPaths.h>
 #include <AzQtComponents/Components/StylesheetPreprocessor.h>
 #include <AzCore/base.h>
 #include <AzCore/debug/trace.h>
@@ -41,7 +42,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #if defined(EXTERNAL_CRASH_REPORTING)
-#include <CrashHandler.h>
+#include <ToolsCrashHandler.h>
 #endif
 
 #define STYLE_SHEET_VARIABLES_PATH_DARK "Editor/Styles/EditorStylesheetVariables_Dark.json"
@@ -105,7 +106,7 @@ namespace
 }
 
 
-GUIApplicationManager::GUIApplicationManager(int argc, char** argv, QObject* parent)
+GUIApplicationManager::GUIApplicationManager(int* argc, char*** argv, QObject* parent)
     : BatchApplicationManager(argc, argv, parent)
 {
 }
@@ -132,10 +133,9 @@ ApplicationManager::BeforeRunStatus GUIApplicationManager::BeforeRun()
     QDir devRoot;
     AssetUtilities::ComputeAssetRoot(devRoot);
 #if defined(EXTERNAL_CRASH_REPORTING)
-    InitCrashHandler("AssetProcessor", devRoot.absolutePath().toStdString());
+    CrashHandler::ToolsCrashHandler::InitCrashHandler("AssetProcessor", devRoot.absolutePath().toStdString());
 #endif
     AssetProcessor::MessageInfoBus::Handler::BusConnect();
-    AssetUtilities::UpdateBranchToken();
 
     QString bootstrapPath = devRoot.filePath("bootstrap.cfg");
     m_fileWatcher.addPath(bootstrapPath);
@@ -250,7 +250,15 @@ bool GUIApplicationManager::Run()
         trayIconMenu->addAction(showAction);
         trayIconMenu->addAction(hideAction);
         trayIconMenu->addSeparator();
+
+#if defined(AZ_PLATFORM_APPLE)
+        QAction* systemTrayQuitAction = new QAction(QObject::tr("Quit"), m_mainWindow);
+        systemTrayQuitAction->setMenuRole(QAction::NoRole);
+        m_mainWindow->connect(systemTrayQuitAction, SIGNAL(triggered()), this, SLOT(QuitRequested()));
+        trayIconMenu->addAction(systemTrayQuitAction);
+#else
         trayIconMenu->addAction(quitAction);
+#endif
 
         m_trayIcon = new QSystemTrayIcon(m_mainWindow);
         m_trayIcon->setContextMenu(trayIconMenu);
@@ -355,12 +363,6 @@ void GUIApplicationManager::NegotiationFailed()
     QMetaObject::invokeMethod(this, "ShowMessageBox", Qt::QueuedConnection, Q_ARG(QString, QString("Negotiation Failed")), Q_ARG(QString, message), Q_ARG(bool, false));
 }
 
-void GUIApplicationManager::ProxyConnectFailed()
-{
-    QString message = QCoreApplication::translate("error", "Proxy Connect Disabled!\n\rPlease make sure that the Proxy IP does not loop back to this same Asset Processor.");
-    QMetaObject::invokeMethod(this, "ShowMessageBox", Qt::QueuedConnection, Q_ARG(QString, QString("Proxy Connection Failed")), Q_ARG(QString, message), Q_ARG(bool, false));
-}
-
 void GUIApplicationManager::ShowMessageBox(QString title,  QString msg, bool isCritical)
 {
     if (!m_messageBoxIsVisible)
@@ -420,6 +422,25 @@ bool GUIApplicationManager::OnError(const char* window, const char* message)
     return true;
 }
 
+bool GUIApplicationManager::OnAssert(const char* message)
+{
+    if (!OnError(nullptr, message))
+    {
+        return false;
+    }
+
+    // Asserts should be severe enough for data corruption,
+    // so the process should quit to avoid that happening for users.
+    if (!AZ::Debug::Trace::IsDebuggerPresent())
+    {
+        QuitRequested();
+        return true;
+    }
+
+    AZ::Debug::Trace::Break();
+    return true;
+}
+
 bool GUIApplicationManager::Activate()
 {
     AZ::SerializeContext* context;
@@ -452,17 +473,14 @@ bool GUIApplicationManager::PostActivate()
         return false;
     }
 
-#if !defined(FORCE_PROXY_MODE)
     GetAssetScanner()->StartScan();
-#endif
     return true;
 }
 
 void GUIApplicationManager::CreateQtApplication()
 {
     // Qt actually modifies the argc and argv, you must pass the real ones in as ref so it can.
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    m_qApp = new QApplication(m_argc, m_argv);
+    m_qApp = new QApplication(*m_frameworkApp.GetArgC(), *m_frameworkApp.GetArgV());
 }
 
 void GUIApplicationManager::DirectoryChanged(QString path)
@@ -547,8 +565,6 @@ void GUIApplicationManager::InitConnectionManager()
     using namespace AzFramework::AssetSystem;
     using namespace AzToolsFramework::AssetSystem;
 
-    m_connectionManager->ReadProxyServerInformation();
-
     //File Server related
     m_connectionManager->RegisterService(FileOpenRequest::MessageType(), std::bind(&FileServer::ProcessOpenRequest, m_fileServer, _1, _2, _3, _4));
     m_connectionManager->RegisterService(FileCloseRequest::MessageType(), std::bind(&FileServer::ProcessCloseRequest, m_fileServer, _1, _2, _3, _4));
@@ -571,7 +587,6 @@ void GUIApplicationManager::InitConnectionManager()
 
     QObject::connect(m_connectionManager, SIGNAL(connectionAdded(uint, Connection*)), m_fileServer, SLOT(ConnectionAdded(unsigned int, Connection*)));
     QObject::connect(m_connectionManager, SIGNAL(ConnectionDisconnected(unsigned int)), m_fileServer, SLOT(ConnectionRemoved(unsigned int)));
-    QObject::connect(m_iniConfiguration, &IniConfiguration::ProxyInfoChanged, m_connectionManager, &ConnectionManager::SetProxyInformation);
 
     QObject::connect(m_fileServer, SIGNAL(AddBytesReceived(unsigned int, qint64, bool)), m_connectionManager, SLOT(AddBytesReceived(unsigned int, qint64, bool)));
     QObject::connect(m_fileServer, SIGNAL(AddBytesSent(unsigned int, qint64, bool)), m_connectionManager, SLOT(AddBytesSent(unsigned int, qint64, bool)));

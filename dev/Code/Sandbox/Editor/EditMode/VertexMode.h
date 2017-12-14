@@ -107,6 +107,7 @@ protected:
 
     virtual void DeleteThis() { delete this; };
 
+    using CEditTool::HitTest;
     bool HitTest(CViewport* view, const QPoint& point, const QRect& rc, int nFlags);
     void SetSelectType(ESubObjElementType type);
 

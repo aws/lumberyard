@@ -309,6 +309,128 @@ namespace AzFramework
         }
 
         //---------------------------------------------------------------------
+        SourceAssetInfoRequest::SourceAssetInfoRequest(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType)
+            : m_assetId(assetId),
+            m_assetType(assetType)
+        {
+        }
+
+        SourceAssetInfoRequest::SourceAssetInfoRequest(const char* assetPath)
+            : m_assetPath(assetPath)
+        {
+        }
+
+
+        unsigned int SourceAssetInfoRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessor::SourceAssetInfoRequest", 0x350a86f3);
+            return messageType;
+        }
+
+        unsigned int SourceAssetInfoRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void SourceAssetInfoRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SourceAssetInfoRequest, BaseAssetProcessorMessage>()
+                    ->Version(2)
+                    ->Field("AssetId", &SourceAssetInfoRequest::m_assetId)
+                    ->Field("AssetType", &SourceAssetInfoRequest::m_assetType)
+                    ->Field("AssetPath", &SourceAssetInfoRequest::m_assetPath);
+            }
+        }
+
+        //---------------------------------------------------------------------
+        SourceAssetInfoResponse::SourceAssetInfoResponse(const AZ::Data::AssetInfo& assetInfo, const char* rootFolder)
+            : m_assetInfo(assetInfo)
+            , m_rootFolder(rootFolder)
+        {
+        }
+
+        unsigned int SourceAssetInfoResponse::GetMessageType() const
+        {
+            return SourceAssetInfoRequest::MessageType();
+        }
+
+        void SourceAssetInfoResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SourceAssetInfoResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("Found", &SourceAssetInfoResponse::m_found)
+                    ->Field("WatchFolder", &SourceAssetInfoResponse::m_rootFolder)
+                    ->Field("AssetInfo", &SourceAssetInfoResponse::m_assetInfo);
+            }
+        }
+
+        //---------------------------------------------------------------------
+        RegisterSourceAssetRequest::RegisterSourceAssetRequest(const AZ::Data::AssetType& assetType, const char* assetFileFilter)
+            : m_assetType(assetType),
+            m_assetFileFilter(assetFileFilter)
+        {
+        }
+
+        unsigned int RegisterSourceAssetRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessor::RegisterSourceAssetRequest", 0x5f414e59);
+            return messageType;
+        }
+
+        unsigned int RegisterSourceAssetRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void RegisterSourceAssetRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<RegisterSourceAssetRequest, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("AssetType", &RegisterSourceAssetRequest::m_assetType)
+                    ->Field("AssetFileFilter", &RegisterSourceAssetRequest::m_assetFileFilter);
+            }
+        }
+
+        //---------------------------------------------------------------------
+
+        UnregisterSourceAssetRequest::UnregisterSourceAssetRequest(const AZ::Data::AssetType& assetType)
+            : m_assetType(assetType)
+        {
+        }
+
+        unsigned int UnregisterSourceAssetRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessor::UnregisterSourceAssetRequest", 0xfbe53ee1);
+            return messageType;
+        }
+
+        unsigned int UnregisterSourceAssetRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void UnregisterSourceAssetRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<UnregisterSourceAssetRequest, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("AssetType", &UnregisterSourceAssetRequest::m_assetType);
+            }
+        }
+
+        //---------------------------------------------------------------------
+
         unsigned int ShowAssetProcessorRequest::MessageType()
         {
             static unsigned int messageType = AZ_CRC("AssetSystem::ShowWindow", 0x33a6cd1f);
@@ -1294,13 +1416,14 @@ namespace AzFramework
             if (serialize)
             {
                 serialize->Class<AssetNotificationMessage, BaseAssetProcessorMessage>()
-                    ->Version(4)
+                    ->Version(5)
                     ->Field("StringData", &AssetNotificationMessage::m_data)
                     ->Field("NotificationType", &AssetNotificationMessage::m_type)
                     ->Field("size", &AssetNotificationMessage::m_sizeBytes)
                     ->Field("assetId", &AssetNotificationMessage::m_assetId)
                     ->Field("assetType", &AssetNotificationMessage::m_assetType)
-                    ->Field("legacyAssetIds", &AssetNotificationMessage::m_legacyAssetIds);
+                    ->Field("legacyAssetIds", &AssetNotificationMessage::m_legacyAssetIds)
+                    ->Field("dependencies", &AssetNotificationMessage::m_dependencies);
             }
         }
 

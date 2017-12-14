@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include "IShader.h"
 #include "MaterialHelpers.h"
 
 /* -----------------------------------------------------------------------
@@ -79,6 +80,7 @@ namespace
 #endif
 }
 
+// This should be done per shader (hence, semantics lookup map should be constructed per shader type)
 EEfResTextures MaterialHelpers::FindTexSlot(const char* texName) const
 {
     for (int i = 0; s_TexSlotSemantics[i].name; i++)
@@ -136,6 +138,7 @@ bool MaterialHelpers::IsAdjustableTexSlot(EEfResTextures texSlot) const
 }
 
 //////////////////////////////////////////////////////////////////////////
+// [Shader System TO DO] - automate these lookups to be data driven!
 bool MaterialHelpers::SetGetMaterialParamFloat(IRenderShaderResources& pShaderResources, const char* sParamName, float& v, bool bGet) const
 {
     EEfResTextures texSlot = EFTT_UNKNOWN;
@@ -219,99 +222,95 @@ bool MaterialHelpers::SetGetMaterialParamVec3(IRenderShaderResources& pShaderRes
 }
 
 //////////////////////////////////////////////////////////////////////////
-void MaterialHelpers::SetTexModFromXml(SEfTexModificator& pTextureModifier, const XmlNodeRef& node) const
+void MaterialHelpers::SetTexModFromXml(SEfTexModificator& pTextureModifier, const XmlNodeRef& modNode) const
 {
-    XmlNodeRef modNode = node->findChild("TexMod");
-    if (modNode)
+    // Modificators
+    float f;
+    uint8 c;
+
+    modNode->getAttr("TexMod_RotateType", pTextureModifier.m_eRotType);
+    modNode->getAttr("TexMod_TexGenType", pTextureModifier.m_eTGType);
+    modNode->getAttr("TexMod_bTexGenProjected", pTextureModifier.m_bTexGenProjected);
+
+    for (int baseu = 'U', u = baseu; u <= 'W'; u++)
     {
-        // Modificators
-        float f;
-        uint8 c;
+        char RT[] = "Rotate?";
+        RT[6] = u;
 
-        modNode->getAttr("TexMod_RotateType", pTextureModifier.m_eRotType);
-        modNode->getAttr("TexMod_TexGenType", pTextureModifier.m_eTGType);
-        modNode->getAttr("TexMod_bTexGenProjected", pTextureModifier.m_bTexGenProjected);
-
-        for (int baseu = 'U', u = baseu; u <= 'W'; u++)
+        if (modNode->getAttr(RT, f))
         {
-            char RT[] = "Rotate?";
-            RT[6] = u;
+            pTextureModifier.m_Rot            [u - baseu] = Degr2Word(f);
+        }
 
-            if (modNode->getAttr(RT, f))
-            {
-                pTextureModifier.m_Rot            [u - baseu] = Degr2Word(f);
-            }
+        char RR[] = "TexMod_?RotateRate";
+        RR[7] = u;
+        char RP[] = "TexMod_?RotatePhase";
+        RP[7] = u;
+        char RA[] = "TexMod_?RotateAmplitude";
+        RA[7] = u;
+        char RC[] = "TexMod_?RotateCenter";
+        RC[7] = u;
 
-            char RR[] = "TexMod_?RotateRate";
-            RR[7] = u;
-            char RP[] = "TexMod_?RotatePhase";
-            RP[7] = u;
-            char RA[] = "TexMod_?RotateAmplitude";
-            RA[7] = u;
-            char RC[] = "TexMod_?RotateCenter";
-            RC[7] = u;
+        if (modNode->getAttr(RR, f))
+        {
+            pTextureModifier.m_RotOscRate     [u - baseu] = Degr2Word(f);
+        }
+        if (modNode->getAttr(RP, f))
+        {
+            pTextureModifier.m_RotOscPhase    [u - baseu] = Degr2Word(f);
+        }
+        if (modNode->getAttr(RA, f))
+        {
+            pTextureModifier.m_RotOscAmplitude[u - baseu] = Degr2Word(f);
+        }
+        if (modNode->getAttr(RC, f))
+        {
+            pTextureModifier.m_RotOscCenter   [u - baseu] =           f;
+        }
 
-            if (modNode->getAttr(RR, f))
-            {
-                pTextureModifier.m_RotOscRate     [u - baseu] = Degr2Word(f);
-            }
-            if (modNode->getAttr(RP, f))
-            {
-                pTextureModifier.m_RotOscPhase    [u - baseu] = Degr2Word(f);
-            }
-            if (modNode->getAttr(RA, f))
-            {
-                pTextureModifier.m_RotOscAmplitude[u - baseu] = Degr2Word(f);
-            }
-            if (modNode->getAttr(RC, f))
-            {
-                pTextureModifier.m_RotOscCenter   [u - baseu] =           f;
-            }
+        if (u > 'V')
+        {
+            continue;
+        }
 
-            if (u > 'V')
-            {
-                continue;
-            }
+        char TL[] = "Tile?";
+        TL[4] = u;
+        char OF[] = "Offset?";
+        OF[6] = u;
 
-            char TL[] = "Tile?";
-            TL[4] = u;
-            char OF[] = "Offset?";
-            OF[6] = u;
+        if (modNode->getAttr(TL, f))
+        {
+            pTextureModifier.m_Tiling         [u - baseu] = f;
+        }
+        if (modNode->getAttr(OF, f))
+        {
+            pTextureModifier.m_Offs           [u - baseu] = f;
+        }
 
-            if (modNode->getAttr(TL, f))
-            {
-                pTextureModifier.m_Tiling         [u - baseu] = f;
-            }
-            if (modNode->getAttr(OF, f))
-            {
-                pTextureModifier.m_Offs           [u - baseu] = f;
-            }
+        char OT[] = "TexMod_?OscillatorType";
+        OT[7] = u;
+        char OR[] = "TexMod_?OscillatorRate";
+        OR[7] = u;
+        char OP[] = "TexMod_?OscillatorPhase";
+        OP[7] = u;
+        char OA[] = "TexMod_?OscillatorAmplitude";
+        OA[7] = u;
 
-            char OT[] = "TexMod_?OscillatorType";
-            OT[7] = u;
-            char OR[] = "TexMod_?OscillatorRate";
-            OR[7] = u;
-            char OP[] = "TexMod_?OscillatorPhase";
-            OP[7] = u;
-            char OA[] = "TexMod_?OscillatorAmplitude";
-            OA[7] = u;
-
-            if (modNode->getAttr(OT, c))
-            {
-                pTextureModifier.m_eMoveType      [u - baseu] = c;
-            }
-            if (modNode->getAttr(OR, f))
-            {
-                pTextureModifier.m_OscRate        [u - baseu] = f;
-            }
-            if (modNode->getAttr(OP, f))
-            {
-                pTextureModifier.m_OscPhase       [u - baseu] = f;
-            }
-            if (modNode->getAttr(OA, f))
-            {
-                pTextureModifier.m_OscAmplitude   [u - baseu] = f;
-            }
+        if (modNode->getAttr(OT, c))
+        {
+            pTextureModifier.m_eMoveType      [u - baseu] = c;
+        }
+        if (modNode->getAttr(OR, f))
+        {
+            pTextureModifier.m_OscRate        [u - baseu] = f;
+        }
+        if (modNode->getAttr(OP, f))
+        {
+            pTextureModifier.m_OscPhase       [u - baseu] = f;
+        }
+        if (modNode->getAttr(OA, f))
+        {
+            pTextureModifier.m_OscAmplitude   [u - baseu] = f;
         }
     }
 }
@@ -435,7 +434,7 @@ void MaterialHelpers::SetXmlFromTexMod(const SEfTexModificator& pTextureModifier
 void MaterialHelpers::SetTexturesFromXml(SInputShaderResources& pShaderResources, const XmlNodeRef& node) const
 {
     const char* texmap = "";
-    const char* file = "";
+    const char* fileName = "";
 
     XmlNodeRef texturesNode = node->findChild("Textures");
     if (texturesNode)
@@ -445,90 +444,108 @@ void MaterialHelpers::SetTexturesFromXml(SInputShaderResources& pShaderResources
             XmlNodeRef texNode = texturesNode->getChild(c);
             texmap = texNode->getAttr("Map");
 
-            EEfResTextures texId = MaterialHelpers::FindTexSlot(texmap);
-            if (texId == EFTT_UNKNOWN)
+            // [Shader System TO DO] - this must become per shader (and not global) according to the parser
+            uint8   texSlot = MaterialHelpers::FindTexSlot(texmap);
+
+            // [Shader System TO DO] - in the new system simply gather texture slot names, then identify name usage 
+            // and accordingly match the slot (dynamically associated per shader by the parser).
+            if (texSlot == EFTT_UNKNOWN)
             {
                 continue;
             }
 
-            file = texNode->getAttr("File");
+            fileName = texNode->getAttr("File");
 
             // legacy.  Some textures used to be referenced using "engine\\" or "engine/" - this is no longer valid
             if (
-                (strlen(file) > 7) &&
-                (strnicmp(file, "engine", 6) == 0) &&
-                ((file[6] == '\\') || (file[6] == '/'))
+                (strlen(fileName) > 7) &&
+                (strnicmp(fileName, "engine", 6) == 0) &&
+                ((fileName[6] == '\\') || (fileName[6] == '/'))
                 )
             {
-                file = file + 7;
+                fileName = fileName + 7;
             }
 
             // legacy:  Files were saved into a mtl with many leading forward or back slashes, we eat them all here.  We want it to start with a rel path.
-            const char* actualFileName = file;
+            const char* actualFileName = fileName;
             while ((actualFileName[0]) && ((actualFileName[0] == '\\') || (actualFileName[0] == '/')))
             {
                 ++actualFileName;
             }
-            file = actualFileName;
+            fileName = actualFileName;
 
+            // Next insert the texture resource if did not exist
+            TexturesResourcesMap*       pTextureReourcesMap = pShaderResources.GetTexturesResourceMap();
+            SEfResTexture*              pTextureRes = &(*pTextureReourcesMap)[texSlot];
 
-            // Correct texid found.
-            pShaderResources.m_Textures[texId].m_Name = file;
+            pTextureRes->m_Name = fileName;
+            texNode->getAttr("IsTileU", pTextureRes->m_bUTile);
+            texNode->getAttr("IsTileV", pTextureRes->m_bVTile);
+            texNode->getAttr("TexType", pTextureRes->m_Sampler.m_eTexType);
 
-            texNode->getAttr("IsTileU", pShaderResources.m_Textures[texId].m_bUTile);
-            texNode->getAttr("IsTileV", pShaderResources.m_Textures[texId].m_bVTile);
-            texNode->getAttr("TexType", pShaderResources.m_Textures[texId].m_Sampler.m_eTexType);
-
-            int filter = pShaderResources.m_Textures[texId].m_Filter;
+            int     filter = pTextureRes->m_Filter;
             if (texNode->getAttr("Filter", filter))
             {
-                pShaderResources.m_Textures[texId].m_Filter = filter;
+                pTextureRes->m_Filter = filter;
             }
 
-            SetTexModFromXml(*pShaderResources.m_Textures[texId].AddModificator(), texNode);
+            // Next look for modulation node - add it only if exist
+            XmlNodeRef  modNode = texNode->findChild("TexMod");
+            if (modNode)
+                SetTexModFromXml( *(pTextureRes->AddModificator()), modNode);
         }
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
-static SInputShaderResources defaultShaderResource;
+static SInputShaderResources    defaultShaderResource;      // for comparison with the default values
+static SEfResTexture            defaultTextureResource;     // for comparison with the default values
 
-void MaterialHelpers::SetXmlFromTextures(const SInputShaderResources& pShaderResources, XmlNodeRef& node) const
+void MaterialHelpers::SetXmlFromTextures( SInputShaderResources& pShaderResources, XmlNodeRef& node) const
 {
     // Save texturing data.
     XmlNodeRef texturesNode = node->newChild("Textures");
-    for (EEfResTextures texId = EEfResTextures(0); texId < EFTT_MAX; texId = EEfResTextures(texId + 1))
+
+    for (auto& iter : *(pShaderResources.GetTexturesResourceMap()) )
     {
-        if (!pShaderResources.m_Textures[texId].m_Name.empty())
+        uint16                  texId = iter.first;
+        const SEfResTexture*    pTextureRes = &(iter.second);
+        if (!pTextureRes->m_Name.empty())
         {
             XmlNodeRef texNode = texturesNode->newChild("Texture");
 
             //    texNode->setAttr("TexID",texId);
-            texNode->setAttr("Map", MaterialHelpers::LookupTexName(texId));
-            texNode->setAttr("File", pShaderResources.m_Textures[texId].m_Name.c_str());
+            texNode->setAttr("Map", MaterialHelpers::LookupTexName( (EEfResTextures) texId));
+            texNode->setAttr("File", pTextureRes->m_Name.c_str());
 
-            if (pShaderResources.m_Textures[texId].m_Filter != defaultShaderResource.m_Textures[texId].m_Filter)
+            if (pTextureRes->m_Filter != defaultTextureResource.m_Filter)
             {
-                texNode->setAttr("Filter", pShaderResources.m_Textures[texId].m_Filter);
+                texNode->setAttr("Filter", pTextureRes->m_Filter);
             }
-            if (pShaderResources.m_Textures[texId].m_bUTile != defaultShaderResource.m_Textures[texId].m_bUTile)
+            if (pTextureRes->m_bUTile != defaultTextureResource.m_bUTile)
             {
-                texNode->setAttr("IsTileU", pShaderResources.m_Textures[texId].m_bUTile);
+                texNode->setAttr("IsTileU", pTextureRes->m_bUTile);
             }
-            if (pShaderResources.m_Textures[texId].m_bVTile != defaultShaderResource.m_Textures[texId].m_bVTile)
+            if (pTextureRes->m_bVTile != defaultTextureResource.m_bVTile)
             {
-                texNode->setAttr("IsTileV", pShaderResources.m_Textures[texId].m_bVTile);
+                texNode->setAttr("IsTileV", pTextureRes->m_bVTile);
             }
-            if (pShaderResources.m_Textures[texId].m_Sampler.m_eTexType != defaultShaderResource.m_Textures[texId].m_Sampler.m_eTexType)
+            if (pTextureRes->m_Sampler.m_eTexType != defaultTextureResource.m_Sampler.m_eTexType)
             {
-                texNode->setAttr("TexType", pShaderResources.m_Textures[texId].m_Sampler.m_eTexType);
+                texNode->setAttr("TexType", pTextureRes->m_Sampler.m_eTexType);
             }
 
             //////////////////////////////////////////////////////////////////////////
             // Save texture modificators Modificators
             //////////////////////////////////////////////////////////////////////////
-            SetXmlFromTexMod(*pShaderResources.m_Textures[texId].GetModificator(), texNode);
+            SetXmlFromTexMod( *pTextureRes->GetModificator(), texNode);
         }
+        /* [Shader System] - TO DO: test to see if slots can be removed
+        else
+        {
+            AZ_Assert(!pTextureRes->m_Name.empty(), "Shader resource texture error - Texture exists without a name");
+        }
+        */
     }
 }
 
@@ -850,7 +867,11 @@ void MaterialHelpers::SetXmlFromShaderParams(const SInputShaderResources& pShade
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------------------------------
+// [Shader System TO DO] - the following function supports older version of data 
+// and converts them.
+// This needs to go away soon!
+//------------------------------------------------------------------------------
 void MaterialHelpers::MigrateXmlLegacyData(SInputShaderResources& pShaderResources, const XmlNodeRef& node) const
 {
     float glowAmount;
@@ -858,11 +879,12 @@ void MaterialHelpers::MigrateXmlLegacyData(SInputShaderResources& pShaderResourc
     // Migrate glow from 3.8.3 to emittance
     if (node->getAttr("GlowAmount", glowAmount) && glowAmount > 0)
     {
-        if (pShaderResources.m_Textures[EFTT_DIFFUSE].m_Sampler.m_eTexType == eTT_2D)
+        SEfResTexture*     pTextureRes = pShaderResources.GetTextureResource(EFTT_DIFFUSE);
+        if (pTextureRes && (pTextureRes->m_Sampler.m_eTexType == eTT_2D))
         {
-            pShaderResources.m_Textures[EFTT_EMITTANCE].m_Name = pShaderResources.m_Textures[EFTT_DIFFUSE].m_Name;
+            // The following line will create and insert a new texture data slot if did not exist.
+            pShaderResources.m_TexturesResourcesMap[EFTT_EMITTANCE].m_Name = pTextureRes->m_Name;
         }
-
         const float legacyHDRDynMult = 2.0f;
         const float legacyIntensityScale = 10.0f;  // Legacy scale factor 10000 divided by 1000 for kilonits
 

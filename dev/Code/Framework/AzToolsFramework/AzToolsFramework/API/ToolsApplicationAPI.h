@@ -23,9 +23,8 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/ComponentBus.h>
-#include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/std/containers/vector.h>
-
+#include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
@@ -39,6 +38,7 @@ namespace AZ
 class QMenu;
 class QWidget;
 class QApplication;
+class QDockWidget;
 struct IEditor;
 
 namespace AzToolsFramework
@@ -56,14 +56,6 @@ namespace AzToolsFramework
     {
         class AssetSelectionModel;
     }
-
-    struct LinearManipulationData;
-    class LinearManipulator;
-    struct PlanarManipulationData;
-    class PlanarManipulator;
-    struct AngularManipulationData;
-    class AngularManipulator;
-    class BasisLinearManipulator;
 
     using EntityIdList = AZStd::vector<AZ::EntityId>;
     using EntityList = AZStd::vector<AZ::Entity*>;
@@ -149,8 +141,9 @@ namespace AzToolsFramework
         /*!
          * Fired when an undo batch has been ended..
          * \param label - description of the batch.
+         * \param changed - did anything change during the batch
          */
-        virtual void OnEndUndo(const char* /*label*/) {}
+        virtual void OnEndUndo(const char* /*label*/, bool /*changed*/) {}
 
         /*!
          * Notify property UI to refresh the property tree.
@@ -351,7 +344,7 @@ namespace AzToolsFramework
         /*!
          * Given a list of input entity Ids, gather their children and all descendants as well.
          * \param inputEntities list of entities whose children should be gathered.
-         * \return set of entity Ids including input entities and their immediate children.
+         * \return set of entity Ids including input entities and their descendants.
          */
         virtual EntityIdSet GatherEntitiesAndAllDescendents(const EntityIdList& inputEntities) = 0;
 
@@ -416,6 +409,14 @@ namespace AzToolsFramework
         virtual bool FindCommonRootInactive(const AzToolsFramework::EntityList& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, AzToolsFramework::EntityList* topLevelEntities = nullptr) = 0;
 
         /**
+         * Find all top level entities in the transform hierarchy of a list of entities, whether they are active or not.
+         * Different from the function FindCommonRootInactive, this function returns all top level entities even if \ref entityIdsToCheck contains gaps in its transform hierarchy, at the cost of performance.
+         * @param entityIdsToCheck A list of entity ids.
+         * @param[out] A list of entity ids of top level entities.
+         */
+        virtual void FindTopLevelEntityIdsInactive(const EntityIdList& entityIdsToCheck, EntityIdList& topLevelEntityIds) = 0;
+
+        /**
         * Prepares a file for editability. Interacts with source-control if the asset is not already writable, in a blocking fashion.
         * \param path full path of the asset to be made editable.
         * \param progressMessage progress message to display during checkout operation.
@@ -433,7 +434,7 @@ namespace AzToolsFramework
         */
         using RequestEditResultCallback = AZStd::function<void(bool success)>;
         virtual void RequestEditForFile(const char* assetPath, RequestEditResultCallback resultCallback) = 0;
-        
+
         /*!
          * Enter the Isolation Mode and hide entities that are not selected.
          */
@@ -449,6 +450,26 @@ namespace AzToolsFramework
          * /return boolean indicating if the editor is currently in Isolation Mode
          */
         virtual bool IsEditorInIsolationMode() = 0;
+
+        /*!
+        * Get the engine root path that the current tool is running under.  
+        */
+        virtual const char* GetEngineRootPath() const = 0;
+
+        /**
+        * Get the version of the engine the current tools application is running under
+        */
+        virtual const char* GetEngineVersion() const = 0;
+
+        /**
+        * Check if the engine root path is different from the current root folder
+        */
+        virtual bool IsEngineRootExternal() const = 0;
+
+        /**
+        * TEMP
+        */
+        virtual AZ::Outcome<AZStd::string, AZStd::string> ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const = 0;
     };
 
     using ToolsApplicationRequestBus = AZ::EBus<ToolsApplicationRequests>;
@@ -552,6 +573,9 @@ namespace AzToolsFramework
         /// Opens an Editor window by name. Shows it if it was previously hidden, and activates it even if it's already visible.
         virtual void OpenViewPane(const char* /*paneName*/) {}
 
+        /// Opens a new instance of an Editor window by name and returns the dock widget container
+        virtual QDockWidget* InstanceViewPane(const char* /*paneName*/) { return nullptr; }
+
         /// Closes an Editor window by name.
         /// If the view pane was registered with the ViewPaneOptions.isDeletable set to true (the default), this will delete the view pane, if it was open.
         /// If the view pane was not registered with the ViewPaneOptions.isDeletable set to true, the view pane will be hidden instead.
@@ -607,6 +631,8 @@ namespace AzToolsFramework
         /// Retrieve main editor interface.
         virtual IEditor* GetEditor() { return nullptr; }
 
+        virtual void SetEditTool(const char* /*tool*/) {}
+
         /// Launches the Lua editor and opens the specified (space separated) files.
         virtual void LaunchLuaEditor(const char* /*files*/) {}
 
@@ -624,7 +650,7 @@ namespace AzToolsFramework
 
         /// Return path to icon for component.
         /// Path will be empty if component should have no icon.
-        virtual AZStd::string GetComponentEditorIcon(const AZ::Uuid& /*componentType*/) { return AZStd::string(); }
+        virtual AZStd::string GetComponentEditorIcon(const AZ::Uuid& /*componentType*/, AZ::Component* /*component*/) { return AZStd::string(); }
 
         /**
          * Return the icon image path based on the component type and where it is used.
@@ -688,35 +714,32 @@ namespace AzToolsFramework
     class ScopedUndoBatch
     {
     public:
-        ScopedUndoBatch(const char* batchName)
+        explicit ScopedUndoBatch(const char* batchName)
         {
-            EBUS_EVENT(ToolsApplicationRequests::Bus, BeginUndoBatch, batchName);
-            EBUS_EVENT_RESULT(m_undoBatch, ToolsApplicationRequests::Bus, GetCurrentUndoBatch);
+            ToolsApplicationRequests::Bus::BroadcastResult(
+                m_undoBatch, &ToolsApplicationRequests::Bus::Events::BeginUndoBatch, batchName);
         }
 
         ~ScopedUndoBatch()
         {
-            EBUS_EVENT(ToolsApplicationRequests::Bus, EndUndoBatch);
+            ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::Bus::Events::EndUndoBatch);
         }
 
         // utility/convenience function for adding dirty entity
         static void MarkEntityDirty(const AZ::EntityId& id)
         {
-            EBUS_EVENT(ToolsApplicationRequests::Bus, AddDirtyEntity, id);
+            ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::Bus::Events::AddDirtyEntity, id);
         }
 
-        UndoSystem::URSequencePoint* GetUndoBatch()
+        UndoSystem::URSequencePoint* GetUndoBatch() const
         {
             return m_undoBatch;
         }
 
     private:
-        UndoSystem::URSequencePoint* m_undoBatch;
+        AZ_DISABLE_COPY_MOVE(ScopedUndoBatch);
 
-        // No moves or copies.
-        ScopedUndoBatch(const ScopedUndoBatch&) = delete;
-        ScopedUndoBatch(ScopedUndoBatch&&) = delete;
-        ScopedUndoBatch& operator=(const ScopedUndoBatch&) = delete;
+        UndoSystem::URSequencePoint* m_undoBatch;
     };
 
     /// Registers a view pane with the main editor. It will be listed under the "Tools" menu on the main window's menubar.
@@ -771,6 +794,17 @@ namespace AzToolsFramework
     inline void OpenViewPane(const char* viewPaneName)
     {
         EditorRequests::Bus::Broadcast(&EditorRequests::OpenViewPane, viewPaneName);
+    }
+
+    /// Opens a view pane if not already open, and activating the view pane if it was already opened.
+    ///
+    /// \param viewPaneName - name of the pane to open/activate. Must be the same as the name previously registered with RegisterViewPane.
+    inline QDockWidget* InstanceViewPane(const char* viewPaneName)
+    {
+        QDockWidget* ret = nullptr;
+        EditorRequests::Bus::BroadcastResult(ret, &EditorRequests::InstanceViewPane, viewPaneName);
+
+        return ret;
     }
 
     /// Closes a view pane if it is currently open.

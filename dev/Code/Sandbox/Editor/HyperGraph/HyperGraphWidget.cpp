@@ -4332,7 +4332,6 @@ void QHyperGraphWidget::OnSelectionChange()
             if (pVarBlock)
             {
                 m_pPropertiesCtrl->AddVarBlock(pVarBlock);
-                m_pPropertiesCtrl->SetDisplayOnlyModified(false);
                 //force rebuild now because we will resize ourself based on height just after this call
                 m_pPropertiesCtrl->RebuildCtrl(false);
             }
@@ -4368,8 +4367,6 @@ void QHyperGraphWidget::OnSelectionChange()
                         m_pMultiEditVars->Wire(nodes[i]->GetInputsVarBlock());
                     }
                 }
-
-                m_pPropertiesCtrl->SetDisplayOnlyModified(true);
             }
         }
     }
@@ -5021,12 +5018,6 @@ void QHyperGraphWidget::ShowEditPort(CHyperNode* pNode, CHyperNodePort* pPort)
         {
             m_editParamCtrl.SelectItem(pItem);
         }
-
-        if (rect.width() < SMALLNODE_WIDTH)
-        {
-            m_editParamCtrl.SetSplitter(m_zoom > MIN_ZOOM_CHANGE_HEIGHT ? SMALLNODE_SPLITTER * m_zoom : SMALLNODE_SPLITTER);
-        }
-
 
         m_isEditPort = true;
     }

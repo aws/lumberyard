@@ -87,14 +87,14 @@ void PlatformConfigurationTests::StartTest()
         config.AddScanFolder(ScanFolderInfo(tempPath.filePath("GameNameButWithExtra"), "gnbwe", "", "WithExtra", false, true), true);
 
 
-        config.EnablePlatform("pc", true);
-        config.EnablePlatform("es3", true);
-        config.EnablePlatform("durango", false); // ACCEPTED_USE
+        config.EnablePlatform({ "pc", { "desktop", "host" } }, true);
+        config.EnablePlatform({ "es3", { "mobile", "android" } }, true);
+        config.EnablePlatform({ "fandago", { "console" } }, false);
 
         AssetRecognizer rec;
         AssetPlatformSpec specpc;
         AssetPlatformSpec speces3;
-        AssetPlatformSpec specxbone; // ACCEPTED_USE
+        AssetPlatformSpec specfandago; 
         specpc.m_extraRCParams = ""; // blank must work
         speces3.m_extraRCParams = "testextraparams";
 
@@ -102,7 +102,7 @@ void PlatformConfigurationTests::StartTest()
         rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         rec.m_platformSpecs.insert("es3", speces3);
-        rec.m_platformSpecs.insert("durango", specxbone); // ACCEPTED_USE
+        rec.m_platformSpecs.insert("fandago", specfandago); 
         config.AddRecognizer(rec);
 
         // test dual-recognisers - two recognisers for the same pattern.
@@ -114,9 +114,9 @@ void PlatformConfigurationTests::StartTest()
 
         // --------------------------- SCAN FOLDER TEST ------------------------
 
-        UNIT_TEST_EXPECT_TRUE(config.PlatformCount() == 2);
-        UNIT_TEST_EXPECT_TRUE(config.PlatformAt(0) == "pc");
-        UNIT_TEST_EXPECT_TRUE(config.PlatformAt(1) == "es3");
+        UNIT_TEST_EXPECT_TRUE(config.GetEnabledPlatforms().size() == 2);
+        UNIT_TEST_EXPECT_TRUE(config.GetEnabledPlatforms()[0].m_identifier == "pc");
+        UNIT_TEST_EXPECT_TRUE(config.GetEnabledPlatforms()[1].m_identifier == "es3");
 
         UNIT_TEST_EXPECT_TRUE(config.GetScanFolderCount() == 11);
         UNIT_TEST_EXPECT_FALSE(config.GetScanFolderAt(0).IsRoot());
@@ -247,112 +247,6 @@ void PlatformConfigurationTests::StartTest()
         UNIT_TEST_EXPECT_TRUE(config.ConvertToRelativePath(tempPath.absoluteFilePath("subfolder1/whatever.txt"), fileName, scanFolderPath));
         UNIT_TEST_EXPECT_TRUE(fileName == "subfolder1/whatever.txt");
         UNIT_TEST_EXPECT_TRUE(scanFolderPath == tempPath.filePath("subfolder1"));
-    }
-
-    {
-        QTemporaryDir tempEngineRoot;
-        QDir tempPath(tempEngineRoot.path());
-        // ---- test the Gems file reading ----
-        PlatformConfiguration config;
-        QString badGemString = "agfhakdjahdksahjda";
-        QString emptyGemString = "";
-        QString nonexistantGemFileName = tempPath.filePath("blah.txt");
-
-        // note - missing guid and version on at least one
-        // note - more than one gem
-        QString realString =
-            "{                                                                  \n"
-            "   \"GemListFormatVersion\" : 2,                                   \n"
-            "   \"Gems\" :                                                      \n"
-            "   [                                                               \n"
-            "       {                                                           \n"
-            "           \"Path\" : \"Gems/LyShine\",                            \n"
-            "           \"Uuid\" : \"0fefab3f13364722b2eab3b96ce2bf20\",        \n"
-            "           \"Version\" : \"0.1.0\",                                \n"
-            "           \"_comment\": \"LyShine\"                               \n"
-            "       },                                                          \n"
-            "       {                                                           \n"
-            "           \"Path\" : \"Gems/LmbrCentral\",                        \n"
-            "           \"Uuid\" : \"ff06785f7145416b9d46fde39098cb0c\",        \n"
-            "           \"Version\" : \"0.1.0\",                                \n"
-            "           \"_comment\": \"LmbrCentral\"                           \n"
-            "       }                                                           \n"
-            "   ]                                                               \n"
-            "}                                                                  \n";
-
-        QString malformedJSON =
-            "{\n"
-            "   \"GemListFormatVersion\" : \"1.0.0\"\n"      // note, missing comma here.
-            "   \"Gems\" : \n"
-            "   [\n"
-            "       {\n"
-            "           \"Path\" : \"Gems/AAAA\",                               \n"
-            "           \"Uuid\" : \"e5f049ad7f534847a89c27b7339cf6a6\",\n"
-            "           \"Version\" : \"1.0.0\"\n"
-            "       },\n"
-            "       {\n"
-            "           \"Uuid\" : \"d48ca459d0644521aad37f08466ef83a\",\n"
-            "           \"Version\" : \"2.0.0\"\n"
-            "       },\n"
-            "   ]\n"
-            "}\n";
-        QStringList dummyPlatformFiles;
-        UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_empty.json"), emptyGemString));
-        UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_ok.json"), realString));
-        UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_badjson.json"), malformedJSON));
-        UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_badstring.json"), badGemString));
-
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath(nonexistantGemFileName), dummyPlatformFiles) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_empty.json"), dummyPlatformFiles) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_badjson.json"), dummyPlatformFiles) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_badstring.json"), dummyPlatformFiles) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_ok.json"), dummyPlatformFiles) == 2); // 2 gems expected
-        UNIT_TEST_EXPECT_TRUE(dummyPlatformFiles.empty());
-
-        QDir realEngineRoot;
-        AssetUtilities::ResetAssetRoot();
-        UNIT_TEST_EXPECT_TRUE(AssetUtilities::ComputeAssetRoot(realEngineRoot));
-        UNIT_TEST_EXPECT_TRUE(!realEngineRoot.absolutePath().isEmpty());
-
-        QString expectedGemFolder = realEngineRoot.absolutePath() + "/Gems/LyShine/Assets";
-
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderCount() == 4);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(0).IsRoot() == false);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(0).GetOutputPrefix().isEmpty());
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(0).RecurseSubFolders());
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(0).GetOrder() >= 100);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(0).ScanPath().compare(expectedGemFolder, Qt::CaseInsensitive) == 0);
-
-        expectedGemFolder = realEngineRoot.absolutePath() + "/Gems/LyShine";
-        QString expectedGemJSONFolder("Gems/LyShine");
-
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(1).IsRoot() == true);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(1).GetOutputPrefix() == expectedGemJSONFolder);
-        UNIT_TEST_EXPECT_TRUE(!config.GetScanFolderAt(1).RecurseSubFolders());
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(1).GetOrder() >= 100);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(1).ScanPath().compare(expectedGemFolder, Qt::CaseInsensitive) == 0);
-
-        expectedGemFolder = realEngineRoot.absolutePath() + "/Gems/LmbrCentral/Assets";
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(2).IsRoot() == false);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(2).GetOutputPrefix().isEmpty());
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(2).RecurseSubFolders());
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(2).GetOrder() > config.GetScanFolderAt(0).GetOrder());
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(2).ScanPath().compare(expectedGemFolder, Qt::CaseInsensitive) == 0);
-
-        expectedGemFolder = realEngineRoot.absolutePath() + "/Gems/LmbrCentral";
-        expectedGemJSONFolder = QString("Gems/LmbrCentral");
-
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(3).IsRoot() == true);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(3).GetOutputPrefix() == expectedGemJSONFolder);
-        UNIT_TEST_EXPECT_TRUE(!config.GetScanFolderAt(3).RecurseSubFolders());
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(3).GetOrder() >= 100);
-        UNIT_TEST_EXPECT_TRUE(config.GetScanFolderAt(3).ScanPath().compare(expectedGemFolder, Qt::CaseInsensitive) == 0);
-
-        config.AddMetaDataType("xxxx", "");
-        config.AddMetaDataType("yyyy", "zzzz");
-        UNIT_TEST_EXPECT_TRUE(config.MetaDataFileTypesCount() == 2);
-        UNIT_TEST_EXPECT_TRUE(QString::compare(config.GetMetaDataFileTypeAt(1).first, "yyyy", Qt::CaseInsensitive) == 0);
-        UNIT_TEST_EXPECT_TRUE(QString::compare(config.GetMetaDataFileTypeAt(1).second, "zzzz", Qt::CaseInsensitive) == 0);
     }
 
     Q_EMIT UnitTestPassed();

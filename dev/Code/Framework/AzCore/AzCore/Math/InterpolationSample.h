@@ -24,6 +24,8 @@ namespace AZ
         LinearInterpolation,
     };
 
+    AZ_TYPE_INFO_SPECIALIZE(InterpolationMode, "{3095F41E-C2C6-474A-BB05-68B228097626}");
+
     template<typename Value>
     class Sample
     {

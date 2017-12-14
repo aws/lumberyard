@@ -1434,11 +1434,11 @@ static void TestCanvasCreate (IConsoleCmdArgs* Cmd)
     // create some text items that the textInputItem will edit,
     AZ::Color colGreen(0.000f, 0.502f, 0.000f, 1.0f);
     AZ::Entity* changedTextElem = CreateText("ChangedText", true, canvasEntityId, UiTransform2dInterface::Anchors(0.8f, 0.30f, 0.93f, 0.30f), UiTransform2dInterface::Offsets(0.0f, 0.0f, 0.0f, 50.0f),
-        "Changed Text", colGreen, IDraw2d::HAlign::Center, IDraw2d::VAlign::Top);
+            "Changed Text", colGreen, IDraw2d::HAlign::Center, IDraw2d::VAlign::Top);
     AZ::Entity* editedTextElem = CreateText("EditedText", true, canvasEntityId, UiTransform2dInterface::Anchors(0.8f, 0.40f, 0.93f, 0.40f), UiTransform2dInterface::Offsets(0.0f, 0.0f, 0.0f, 50.0f),
-        "Edited Text", colGreen, IDraw2d::HAlign::Center, IDraw2d::VAlign::Top);
+            "Edited Text", colGreen, IDraw2d::HAlign::Center, IDraw2d::VAlign::Top);
     AZ::Entity* enteredTextElem = CreateText("EnteredText", true, canvasEntityId, UiTransform2dInterface::Anchors(0.8f, 0.50f, 0.93f, 0.50f), UiTransform2dInterface::Offsets(0.0f, 0.0f, 0.0f, 50.0f),
-        "Entered Text", colGreen, IDraw2d::HAlign::Center, IDraw2d::VAlign::Top);
+            "Entered Text", colGreen, IDraw2d::HAlign::Center, IDraw2d::VAlign::Top);
 
     // now setup on-click callbacks to hide and show the menus, use the various ways of doing it
 

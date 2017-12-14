@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef _ENVIRONMENT_LIGHTNINGARC_H_
-#define _ENVIRONMENT_LIGHTNINGARC_H_
 #pragma once
 
 #include <IGameObject.h>
@@ -50,6 +48,11 @@ public:
     void Enable(bool enable);
     void ReadLuaParameters();
 
+    inline const char* GetLightningPreset() { return m_lightningPreset; }
+    inline float GetDelay() { return m_delay; }
+    inline float GetDelayVariation() { return m_delayVariation; }
+    inline bool IsEnabled() { return m_enabled; }
+
 private:
     void Reset(bool jumpingIntoGame);
 
@@ -75,5 +78,3 @@ struct CLightningArcCreator
         CLightningArc::GetGameObjectExtensionRMIData(ppRMI, nCount);
     }
 };
-
-#endif//_ENVIRONMENT_LIGHTNINGARC_H_

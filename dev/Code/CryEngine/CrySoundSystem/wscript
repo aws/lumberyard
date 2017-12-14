@@ -25,7 +25,7 @@ def build(bld):
         platforms          = ['all'],
         configurations     = ['all'],
         pch                = 'StdAfx.cpp',
-        use                = ['AzCore'],
+        use                = ['AzCore', 'AzFramework'],
         includes           = ['Common'],
         export_includes    = ['.'],
 
@@ -34,8 +34,6 @@ def build(bld):
         win_defines        = ['CRYSOUND_EXPORTS'],
 
        
-
-        android_use        = ['SDL2_Android'],
 
         # Testing
         test_all_file_list = ['crysoundsystem_test.waf_files'],

@@ -525,7 +525,7 @@ void CObjectLayerManager::Serialize(CObjectArchive& ar)
         //! Store currently selected layer.
         if (m_pCurrentLayer)
         {
-            layersNode->setAttr("Current", m_pCurrentLayer->GetName().toLatin1().data());
+            layersNode->setAttr("Current", m_pCurrentLayer->GetName().toUtf8().data());
             layersNode->setAttr("CurrentGUID", m_pCurrentLayer->GetGUID());
         }
 
@@ -551,7 +551,7 @@ void CObjectLayerManager::Serialize(CObjectArchive& ar)
                     // Save external level additionally to file.
                     SaveExternalLayer(&ar, pLayer);
                 }
-                externalLayers.insert(CryStringUtils::ToLower((layerPath + pLayer->GetFullName() + LAYER_FILE_EXTENSION).toLatin1().data()));
+                externalLayers.insert(CryStringUtils::ToLower((layerPath + pLayer->GetFullName() + LAYER_FILE_EXTENSION).toUtf8().data()));
             }
             else
             {
@@ -573,7 +573,10 @@ void CObjectLayerManager::Serialize(CObjectArchive& ar)
             if (externalLayers.find(CryStringUtils::ToLower(filepath.toUtf8().data())) == externalLayers.end())
             {
                 using namespace AzToolsFramework;
-                SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestDelete, filepath.toUtf8().data(), [](bool, const AzToolsFramework::SourceControlFileInfo&) {});
+
+                char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
+                AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(filepath.toUtf8().data(), resolvedPath, AZ_MAX_PATH_LEN);
+                SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestDelete, resolvedPath, [](bool, const AzToolsFramework::SourceControlFileInfo&) {});
             }
         }, true);
     }
@@ -680,7 +683,7 @@ void CObjectLayerManager::LoadExternalLayer(CObjectArchive& ar, CObjectLayer* pL
     XmlNodeRef root;
     if (CFileUtil::FileExists(file))
     {
-        root = XmlHelpers::LoadXmlFromFile(file.toLatin1().data());
+        root = XmlHelpers::LoadXmlFromFile(file.toUtf8().data());
         if (!root)
         {
             CErrorRecord err;
@@ -696,7 +699,7 @@ void CObjectLayerManager::LoadExternalLayer(CObjectArchive& ar, CObjectLayer* pL
         // Backwards compatibility for old structure with all layers in root layer folder
         QString oldFile = Path::AddPathSlash(GetIEditor()->GetGameEngine()->GetLevelPath());
         oldFile += m_layersPath + pLayer->GetName() + LAYER_FILE_EXTENSION;
-        root = XmlHelpers::LoadXmlFromFile(oldFile.toLatin1().data());
+        root = XmlHelpers::LoadXmlFromFile(oldFile.toUtf8().data());
         if (!root)
         {
             CErrorRecord err;
@@ -718,8 +721,8 @@ void CObjectLayerManager::LoadExternalLayer(CObjectArchive& ar, CObjectLayer* pL
         m_bOverwriteDuplicates = false;
         ar.node = prevRoot;
 
-        uint32 attr = CFileUtil::GetAttributes(file.toLatin1().data());
-        if (gSettings.freezeReadOnly && attr != SCC_FILE_ATTRIBUTE_INVALID && (attr & SCC_FILE_ATTRIBUTE_READONLY))
+        uint32 attr = CFileUtil::GetAttributes(file.toUtf8().data());
+        if (gSettings.freezeReadOnly && (attr & SCC_FILE_ATTRIBUTE_READONLY))
         {
             pLayer->SetFrozen(true);
         }
@@ -978,7 +981,7 @@ bool CObjectLayerManager::InitLayerSwitches(bool isOnlyClear)
 
             if (gEnv->pEntitySystem)
             {
-                gEnv->pEntitySystem->EnableLayer(pLayer->GetName().toLatin1().data(), true);
+                gEnv->pEntitySystem->EnableLayer(pLayer->GetName().toUtf8().data(), true);
             }
 
             for (int k = 0; k < objects.size(); k++)
@@ -1044,8 +1047,8 @@ void CObjectLayerManager::ExportLayerSwitches(XmlNodeRef& node)
         CObjectLayer* pLayer = *it;
 
         XmlNodeRef layerNode = layersNode->newChild("Layer");
-        layerNode->setAttr("Name", pLayer->GetName().toLatin1().data());
-        layerNode->setAttr("Parent", pLayer->GetParent() ? pLayer->GetParent()->GetName().toLatin1().data() : "");
+        layerNode->setAttr("Name", pLayer->GetName().toUtf8().data());
+        layerNode->setAttr("Parent", pLayer->GetParent() ? pLayer->GetParent()->GetName().toUtf8().data() : "");
         layerNode->setAttr("Id", pLayer->GetLayerID());
         layerNode->setAttr("Specs", pLayer->GetSpecs());
         if (!pLayer->IsPhysics())
@@ -1163,7 +1166,7 @@ void CObjectLayerManager::SetupLayerSwitches(bool isOnlyClear, bool isOnlyRender
 
         if (!isOnlyRenderNodes)
         {
-            gEnv->pEntitySystem->AddLayer(pLayer->GetName().toLatin1().data(), pLayer->GetParent() ? pLayer->GetParent()->GetName().toLatin1().data() : "", pLayer->GetLayerID(), pLayer->IsPhysics(), pLayer->GetSpecs(), pLayer->IsDefaultLoaded());
+            gEnv->pEntitySystem->AddLayer(pLayer->GetName().toUtf8().data(), pLayer->GetParent() ? pLayer->GetParent()->GetName().toUtf8().data() : "", pLayer->GetLayerID(), pLayer->IsPhysics(), pLayer->GetSpecs(), pLayer->IsDefaultLoaded());
 
             for (int k = 0; k < objects.size(); k++)
             {
@@ -1177,7 +1180,7 @@ void CObjectLayerManager::SetupLayerSwitches(bool isOnlyClear, bool isOnlyRender
                             node->SetLayerId(pLayer->GetLayerID());
                         }
 
-                        gEnv->pEntitySystem->AddEntityToLayer(pLayer->GetName().toLatin1().data(), ((CEntityObject*)pObj)->GetEntityId());
+                        gEnv->pEntitySystem->AddEntityToLayer(pLayer->GetName().toUtf8().data(), ((CEntityObject*)pObj)->GetEntityId());
                     }
                 }
             }
@@ -1212,8 +1215,8 @@ void CObjectLayerManager::FreezeROnly()
         if (pLayer->IsExternal() && !pLayer->IsFrozen())
         {
             QString file = pLayer->GetExternalLayerPath();
-            uint32 attr = CFileUtil::GetAttributes(file.toLatin1().data());
-            if (attr != SCC_FILE_ATTRIBUTE_INVALID && (attr & SCC_FILE_ATTRIBUTE_READONLY))
+            uint32 attr = CFileUtil::GetAttributes(file.toUtf8().data());
+            if (attr & SCC_FILE_ATTRIBUTE_READONLY)
             {
                 pLayer->SetFrozen(true);
             }
@@ -1297,7 +1300,7 @@ bool CObjectLayerManager::ReloadLayer(CObjectLayer* pLayer)
 
     DeleteLayer(pLayer);
 
-    CObjectLayer* pNewLayer = ImportLayerFromFile(path.toLatin1().data());
+    CObjectLayer* pNewLayer = ImportLayerFromFile(path.toUtf8().data());
     if (!pNewLayer)
     {
         return false;
@@ -1321,7 +1324,8 @@ namespace
         CObjectLayerManager* pLayerManager = GetIEditor()->GetObjectManager()->GetLayersManager();
         if (!pLayerManager)
         {
-            throw std::logic_error("Layers manager corrupted.");
+            AZ_Error("LayerManager", false, "The Layer Manager is invalid.\nIt could be corrupted, or you may be attempting to gather layer information before it has been initialzied.");
+            return false;
         }
 
         CObjectLayer* pLayer = pLayerManager->FindLayerByName(pName);
@@ -1353,7 +1357,8 @@ namespace
 
         if (!pLayer)
         {
-            throw std::logic_error("Invalid layer.");
+            AZ_Error("LayerManager", false, "Could not resolve layer name \"%s\" to a layer.\nMake sure it exists before attempting to freeze the layer.", pName);
+            return;
         }
 
         CUndo undo("Freeze Layer");
@@ -1367,7 +1372,8 @@ namespace
 
         if (!pLayer)
         {
-            throw std::logic_error("Invalid layer.");
+            AZ_Error("LayerManager", false, "Could not resolve layer name \"%s\" to a layer.\nMake sure it exists before attempting to unfreeze the layer.", pName);
+            return;
         }
 
         CUndo undo("Unfreeze Layer");
@@ -1380,7 +1386,8 @@ namespace
         CObjectLayer* pLayer = pLayerManager->FindLayerByName(pName);
         if (!pLayer)
         {
-            throw std::logic_error("Invalid layer.");
+            AZ_Error("LayerManager", false, "Could not resolve layer name \"%s\" to a layer.\nMake sure it exists before attempting to hide the layer.", pName);
+            return;
         }
 
         CUndo undo("Hide Layer");
@@ -1393,7 +1400,8 @@ namespace
         CObjectLayer* pLayer = pLayerManager->FindLayerByName(pName);
         if (!pLayer)
         {
-            throw std::logic_error("Invalid layer.");
+            AZ_Error("LayerManager", false, "Could not resolve layer name \"%s\" to a layer.\nMake sure it exists before attempting to show the layer.", pName);
+            return;
         }
 
         CUndo undo("Unhide Layer");
@@ -1406,7 +1414,8 @@ namespace
         CObjectLayer* pLayer = pLayerManager->FindLayerByName(pNameOld);
         if (!pLayer)
         {
-            throw std::logic_error("Invalid layer.");
+            AZ_Error("LayerManager", false, "Could not resolve layer name \"%s\" to a layer.\nMake sure it exists before attempting to rename the layer.", pNameOld);
+            return;
         }
 
         CUndo undo("Rename Layer");
@@ -1420,7 +1429,8 @@ namespace
         CObjectLayer* pLayer = pLayerManager->GetCurrentLayer();
         if (!pLayer)
         {
-            throw std::logic_error("Invalid layer.");
+            AZ_Error("LayerManager", false, "Could not get the layer name of the selected layer.\nMake sure you have a layer selected.");
+            return QString();
         }
         return pLayer->GetName();
     }
@@ -1431,7 +1441,8 @@ namespace
         CObjectLayer* pLayer = pLayerManager->FindLayerByName(pName);
         if (!pLayer)
         {
-            throw std::logic_error((QString("\"") + pName + "is an invalid layer.").toLatin1().data());
+            AZ_Error("LayerManager", false, "Could not resolve layer name \"%s\" to a layer.\nMake sure it exists before attempting to select the layer by name.", pName);
+            return;
         }
         pLayerManager->SetCurrentLayer(pLayer);
         pLayerManager->NotifyLayerChange(pLayer);
@@ -1442,7 +1453,8 @@ namespace
         CObjectLayerManager* pLayerMgr = GetIEditor()->GetObjectManager()->GetLayersManager();
         if (!pLayerMgr)
         {
-            throw std::logic_error("Layer manager corrupted.");
+            AZ_Error("LayerManager", false, "The Layer Manager is invalid.\nIt could be corrupted, or you may be attempting to gather layer information before it has been initialzied.");
+            return std::vector<std::string>();
         }
 
         std::vector<std::string> result;
@@ -1450,7 +1462,7 @@ namespace
         pLayerMgr->GetLayers(layers);
         for (size_t i = 0; i < layers.size(); ++i)
         {
-            result.push_back(layers[i]->GetName().toLatin1().data());
+            result.push_back(layers[i]->GetName().toUtf8().data());
         }
         return result;
     }

@@ -13,7 +13,7 @@ from waflib import Context
 from waflib.TaskGen import feature, after_method
 from waflib.Configure import conf, Logs
 
-from cry_utils import get_configuration
+from cry_utils import get_configuration, append_unique_kw_entry
 from collections import OrderedDict
 from gems import GemManager
 
@@ -33,6 +33,7 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     'win_x64_vs2015'     : 'win_x64/vc140',
                                     'android_armv7_gcc'  : 'win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9',
                                     'android_armv7_clang': 'win_x64/android_ndk_r12/android-19/armeabi-v7a/clang-3.8',
+                                    'android_armv8_clang': 'win_x64/android_ndk_r12/android-21/arm64-v8a/clang-3.8',
 
                                     # osx host platform
                                     'darwin_x64' : 'osx/darwin-clang-703.0.31',
@@ -40,7 +41,7 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     'appletv'    : 'osx/appletv-clang-703.0.31',
 
                                     # linux host platform
-                                    'linux_x64'  : 'linux/clang-3.4'}
+                                    'linux_x64'  : 'linux/clang-3.7'}
 
 CONFIGURATION_TO_3RD_PARTY_NAME = {'debug'  : 'debug',
                                    'profile': 'release',
@@ -176,11 +177,14 @@ def read_and_mark_3rd_party_libs(ctx):
         for uselib_name in uselib_names:
             CONFIGURED_3RD_PARTY_USELIBS[uselib_name] = (lib_config_file, path_alias_map)
 
-    config_3rdparty_folder = ctx.root.make_node(Context.launch_dir).make_node('_WAF_/3rdParty')
+    config_3rdparty_folder = ctx.engine_node.make_node('_WAF_/3rdParty')
     config_3rdparty_folder_path = config_3rdparty_folder.abspath()
     config_files = glob.glob(os.path.join(config_3rdparty_folder_path, '*.json'))
 
-    root_alias_map = {'ROOT' : ctx.srcnode.abspath()}
+    if ctx.is_engine_local():
+        root_alias_map = {'ROOT' : ctx.srcnode.abspath()}
+    else:
+        root_alias_map = {'ROOT': ctx.engine_path}
 
     for config_file in config_files:
         _process(config_3rdparty_folder, config_file, root_alias_map)
@@ -330,6 +334,19 @@ class ThirdPartyLibReader:
 
     def raise_config_error(self, message):
         raise RuntimeError("{} {}".format(message, self.error_ref_message))
+
+    def get_platform_version_options(self):
+        """
+        Gets the possible version options for the given platform target
+        e.g. 
+            Android => the possible APIs the pre-builds were built against
+        """
+        if self.ctx.is_android_platform(self.processed_platform_key):
+            possible_android_apis = self.ctx.get_android_api_lib_list()
+            possible_android_apis.sort()
+            return possible_android_apis
+
+        return None
 
     def detect_3rd_party_lib(self):
         """
@@ -576,35 +593,41 @@ class ThirdPartyLibReader:
         configuration_specific_entry_key = "{}_{}".format(key_base_name, lib_configuration)
         uselib_name_and_configuration_specific_entry_key = "{}/{}_{}".format(uselib_name, key_base_name, lib_configuration)
 
-        # Check against the value at the root level
+        entry_keys = [
+            key_base_name,
+            uselib_name_specific_entry_key,
+            configuration_specific_entry_key,
+            uselib_name_and_configuration_specific_entry_key,
+        ]
 
-        # Check the generic case
-        if key_base_name in self.lib_root:
-            entry = self.lib_root[key_base_name]
-        # Check the uselib_name specific case
-        if uselib_name_specific_entry_key in self.lib_root:
-            entry = self.lib_root[uselib_name_specific_entry_key]
-        # Check the configuration-specific case
-        if configuration_specific_entry_key in self.lib_root:
-            entry = self.lib_root[configuration_specific_entry_key]
-        # Check the uselib_name+configuration-specific case
-        if uselib_name_and_configuration_specific_entry_key in self.lib_root:
-            entry = self.lib_root[uselib_name_and_configuration_specific_entry_key]
+        version_options = self.get_platform_version_options()
+        if version_options:
+
+            entry_keys_master = entry_keys[:]
+            entry_keys = []
+
+            for key in entry_keys_master:
+                entry_keys.append(key)
+
+                for version in version_options:
+                    version_key = "{}/{}".format(key, version)
+                    entry_keys.append(version_key)
+
+        # reverse the key order so the most specific is found first
+        entry_keys.reverse()
+
+        # Check against the value at the root level
+        for key in entry_keys:
+            if key in self.lib_root:
+                entry = self.lib_root[key]
+                break
 
         # Check against the value at the platform level
         if platform_node is not None:
-            # Check the generic case
-            if key_base_name in platform_node:
-                entry = platform_node[key_base_name]
-            # Check the uselib_name specific case
-            if uselib_name_specific_entry_key in platform_node:
-                entry = platform_node[uselib_name_specific_entry_key]
-            # Check the platform-specific case
-            if configuration_specific_entry_key in platform_node:
-                entry = platform_node[configuration_specific_entry_key]
-            # Check the uselib_name+configuration-specific case
-            if uselib_name_and_configuration_specific_entry_key in platform_node:
-                entry = platform_node[uselib_name_and_configuration_specific_entry_key]
+            for key in entry_keys:
+                if key in platform_node:
+                    entry = platform_node[key]
+                    break
 
         # Fix up the entry if its not in a list
         if entry is not None and not isinstance(entry, list):
@@ -998,6 +1021,32 @@ def is_third_party_uselib_configured(ctx, use_name):
 
     return False
 
+# Attempt to retrieve configuration_settings for the uselib from either our cached tables in memory during
+# configuration or our context environment.
+@conf
+def get_configuration_settings(ctx, use_name):
+    configdict = {}
+
+# During the configuration step the uselib .json file is parsed and cached in memory
+    lib_config_file, _ = CONFIGURED_3RD_PARTY_USELIBS.get(use_name, (None, None))
+    if lib_config_file:
+        config, uselib_names, alias_map = get_3rd_party_config_record(ctx, lib_config_file)
+        configdict = config.get('configuration_settings', {})
+# During the build step check for configuration_settings which were saved to the context environment
+    else:
+        third_party_uselib_additional_settings = getattr(ctx.all_envs[''], 'THIRD_PARTY_USELIB_SETTINGS', {})
+        configdict = third_party_uselib_additional_settings.get(use_name, {})
+    return configdict
+
+# A uselib can declare a 'configuration_settings' section which will be added to the kw dictionary
+# for modules consuming the uselib
+@conf
+def append_dependency_configuration_settings(ctx, use_name, kw):
+    configdict = ctx.get_configuration_settings(use_name)
+
+    for _key, _val in configdict.iteritems():
+        append_unique_kw_entry(kw, _key, _val)
+
 
 # Weight table for our custom ordering of the json config file
 THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE = {
@@ -1037,7 +1086,8 @@ THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE = {
     'appletv': 107,
     'android_armv7_gcc': 108,
     'android_armv7_clang': 109,
-    'linux_x64': 110
+    'android_armv8_clang': 110,
+    'linux_x64': 111,
 }
 
 

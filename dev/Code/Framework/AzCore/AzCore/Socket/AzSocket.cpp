@@ -17,7 +17,13 @@
 #   define closesocket(_s)                          close(_s)
 #   define GetInternalSocketError                   errno
 typedef int SOCKET;
+
+#if defined(AZ_PLATFORM_ANDROID_X64)
+typedef AZ::u32 AZSOCKLEN;
+#else
+// it was an accident that socklen_t is signed on 32-bit architectures
 typedef AZ::s32 AZSOCKLEN;
+#endif
 
 #elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
 #   define INVALID_SOCKET (-1)

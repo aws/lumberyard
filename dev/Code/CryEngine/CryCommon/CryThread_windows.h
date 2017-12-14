@@ -74,9 +74,6 @@ public:
     void Lock();
     void Unlock();
     bool TryLock();
-#if defined(_DEBUG) || defined(FORCE_ASSERTS_IN_PROFILE)
-    bool IsLocked() { return true; }
-#endif
 
     void* _get_win32_handle() { return m_hdl; }
 

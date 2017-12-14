@@ -21,18 +21,18 @@ namespace LmbrCentral
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<EditorStaticPhysicsConfig, StaticPhysicsConfig>()
+            serializeContext->Class<EditorStaticPhysicsConfig, AzFramework::StaticPhysicsConfig>()
                 ->Version(2)
             ;
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
             {
-                editContext->Class<StaticPhysicsConfig>(
+                editContext->Class<AzFramework::StaticPhysicsConfig>(
                     "Static Physics Configuration", "Configuration for Static physics object")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
 
-                    ->DataElement(0, &StaticPhysicsConfig::m_enabledInitially, "Enabled initially", "Whether the entity is initially enabled in the physics simulation.")
+                    ->DataElement(0, &AzFramework::StaticPhysicsConfig::m_enabledInitially, "Enabled initially", "Whether the entity is initially enabled in the physics simulation.")
                 ;
             }
         }
@@ -54,7 +54,7 @@ namespace LmbrCentral
             if (editContext)
             {
                 editContext->Class<EditorStaticPhysicsComponent>(
-                    "Static Physics", "The Static Mesh component is the primary method of adding static visual geometry to entities")
+                    "Static Physics", "The Static Physics component is the primary method of adding static visual geometry to entities")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/StaticPhysics.png")
@@ -72,9 +72,9 @@ namespace LmbrCentral
 
     bool EditorStaticPhysicsComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        if (auto config = azrtti_cast<const StaticPhysicsConfig*>(baseConfig))
+        if (auto config = azrtti_cast<const AzFramework::StaticPhysicsConfig*>(baseConfig))
         {
-            static_cast<StaticPhysicsConfig&>(m_configuration) = *config;
+            static_cast<AzFramework::StaticPhysicsConfig&>(m_configuration) = *config;
             return true;
         }
         return false;
@@ -82,7 +82,7 @@ namespace LmbrCentral
 
     bool EditorStaticPhysicsComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
     {
-        if (auto outConfig = azrtti_cast<StaticPhysicsConfig*>(outBaseConfig))
+        if (auto outConfig = azrtti_cast<AzFramework::StaticPhysicsConfig*>(outBaseConfig))
         {
             *outConfig = m_configuration;
             return true;

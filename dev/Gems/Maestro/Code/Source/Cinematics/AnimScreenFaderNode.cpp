@@ -17,6 +17,10 @@
 #include "AnimScreenFaderNode.h"
 #include "ScreenFaderTrack.h"
 #include <IRenderer.h>
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
+
 
 //-----------------------------------------------------------------------------
 namespace
@@ -24,7 +28,7 @@ namespace
     bool s_screenFaderNodeParamsInitialized = false;
     std::vector<CAnimNode::SParamInfo> s_screenFaderNodeParams;
 
-    void AddSupportedParams(const char* sName, int paramId, EAnimValue valueType)
+    void AddSupportedParams(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -76,7 +80,7 @@ bool CalculateIsolatedKeyColor(const IScreenFaderKey& key, float fTime, Vec4& co
 
 //-----------------------------------------------------------------------------
 CAnimScreenFaderNode::CAnimScreenFaderNode(const int id)
-    : CAnimNode(id, eAnimNodeType_ScreenFader)
+    : CAnimNode(id, AnimNodeType::ScreenFader)
     , m_bActive(false)
     , m_screenWidth(800.f)
     , m_screenHeight(600.f)
@@ -104,7 +108,7 @@ void CAnimScreenFaderNode::Initialize()
     {
         s_screenFaderNodeParamsInitialized = true;
         s_screenFaderNodeParams.reserve(1);
-        AddSupportedParams("Fader", eAnimParamType_ScreenFader, eAnimValue_Unknown);
+        AddSupportedParams("Fader", AnimParamType::ScreenFader, AnimValueType::Unknown);
     }
 }
 
@@ -115,7 +119,7 @@ void CAnimScreenFaderNode::Animate(SAnimContext& ac)
 
     for (size_t nFaderTrackNo = 0; nFaderTrackNo < nScreenFaderTracksNumber; ++nFaderTrackNo)
     {
-        CScreenFaderTrack* pTrack = static_cast<CScreenFaderTrack*>(GetTrackForParameter(eAnimParamType_ScreenFader, nFaderTrackNo));
+        CScreenFaderTrack* pTrack = static_cast<CScreenFaderTrack*>(GetTrackForParameter(AnimParamType::ScreenFader, nFaderTrackNo));
 
         if (!pTrack)
         {
@@ -249,7 +253,7 @@ void CAnimScreenFaderNode::Animate(SAnimContext& ac)
 //-----------------------------------------------------------------------------
 void CAnimScreenFaderNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_ScreenFader);
+    CreateTrack(AnimParamType::ScreenFader);
 }
 
 //-----------------------------------------------------------------------------
@@ -306,7 +310,7 @@ CAnimParamType CAnimScreenFaderNode::GetParamType(unsigned int nIndex) const
     {
         return s_screenFaderNodeParams[nIndex].paramType;
     }
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //-----------------------------------------------------------------------------
@@ -351,7 +355,7 @@ void CAnimScreenFaderNode::Render()
         size_t const paramCount = m_tracks.size();
         for (size_t paramIndex = 0; paramIndex < paramCount; ++paramIndex)
         {
-            CScreenFaderTrack* pTrack = static_cast<CScreenFaderTrack*>(GetTrackForParameter(eAnimParamType_ScreenFader, paramIndex));
+            CScreenFaderTrack* pTrack = static_cast<CScreenFaderTrack*>(GetTrackForParameter(AnimParamType::ScreenFader, paramIndex));
 
             if (!pTrack)
             {
@@ -376,7 +380,7 @@ bool CAnimScreenFaderNode::IsAnyTextureVisible() const
     size_t const paramCount = m_tracks.size();
     for (size_t paramIndex = 0; paramIndex < paramCount; ++paramIndex)
     {
-        CScreenFaderTrack* pTrack = static_cast<CScreenFaderTrack*>(GetTrackForParameter(eAnimParamType_ScreenFader, paramIndex));
+        CScreenFaderTrack* pTrack = static_cast<CScreenFaderTrack*>(GetTrackForParameter(AnimParamType::ScreenFader, paramIndex));
 
         if (!pTrack)
         {
@@ -406,7 +410,7 @@ void CAnimScreenFaderNode::PrecacheTexData()
 
         switch (m_tracks[paramIndex]->GetParameterType().GetType())
         {
-        case eAnimParamType_ScreenFader:
+        case AnimParamType::ScreenFader:
         {
             CScreenFaderTrack* pFaderTrack = static_cast<CScreenFaderTrack*>(pTrack);
             pFaderTrack->PreloadTextures();

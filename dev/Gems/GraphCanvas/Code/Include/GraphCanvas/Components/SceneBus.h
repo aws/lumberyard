@@ -21,7 +21,6 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/document.h>
-#include <AzFramework/Entity/EntityReference.h>
 
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Types/SceneData.h>
@@ -152,6 +151,9 @@ namespace GraphCanvas
         //! Whether or not there are selected items in the scene.
         virtual bool HasSelectedItems() const = 0;
 
+        //! Returns whether or not there are entities at the specified point.
+        virtual bool HasEntitiesAt(const AZ::Vector2&) const = 0;
+
         //! Get the selected items in the scene.
         virtual AZStd::vector<AZ::EntityId> GetSelectedItems() const = 0;
 
@@ -159,7 +161,7 @@ namespace GraphCanvas
         virtual AZStd::vector<AZ::EntityId> GetEntitiesAt(const AZ::Vector2&) const = 0;
 
         //! Get the entities known to the scene in the given rectangle.
-        virtual AZStd::vector<AZ::EntityId> GetEntitiesInRect(const QRectF&) const = 0;
+        virtual AZStd::vector<AZ::EntityId> GetEntitiesInRect(const QRectF&, Qt::ItemSelectionMode) const = 0;
 
         //! Get the endpoints known to the scene in the given rectangle.
         virtual AZStd::vector<Endpoint> GetEndpointsInRect(const QRectF& rect) const = 0;
@@ -216,9 +218,6 @@ namespace GraphCanvas
         //! Delete nodes from supplied set that exist within the scene
         //! \param itemIds Set of ids to delete
         virtual void Delete(const AZStd::unordered_set<AZ::EntityId>&) = 0;
-
-        virtual void FilterItems(const AZStd::unordered_set<AzFramework::EntityReference>&, AZStd::unordered_set<AzFramework::EntityReference>&,
-            AZStd::unordered_set<AzFramework::EntityReference>&) const = 0;
 
         //! Stops the scene from allowing the next context menu's from being created.
         //! \param suppressed Whether or not context menu's should be allowed.
@@ -296,8 +295,20 @@ namespace GraphCanvas
         //! A node in the scene has been moved
         virtual void OnNodePositionChanged(const AZ::EntityId& /*nodeId*/, const AZ::Vector2& /*position*/) {}
 
-        //! A node in the scene has received a mouse release event
-        virtual void OnItemMouseMoveComplete(const AZ::EntityId& /*itemId*/, const QGraphicsSceneMouseEvent* /*event*/) {}
+        //! A node in the scene is being edited
+        virtual void OnNodeIsBeingEdited(bool isEditing){}
+
+        //! Signals out that a SceneMember position was chagned.
+        virtual void OnSceneMemberPositionChanged(const AZ::EntityId& /*sceneMemberId*/, const AZ::Vector2& /*position*/) {}
+
+        //! Signals out that a SceneMember was added.
+        virtual void OnSceneMemberAdded(const AZ::EntityId& /*sceneMemberId*/) {}
+
+        //! A Scene Member in the scene has started being dragged.
+        virtual void OnSceneMemberDragBegin(const AZ::EntityId& /*sceneMemberId*/) {}
+
+        //! A Scene Member in the scene is finished being dragged.
+        virtual void OnSceneMemberDragComplete(const AZ::EntityId& /*sceneMemberId*/) {}
 
         //! A node in the scene has been deleted
         virtual void OnPreNodeDeleted(const AZ::EntityId& /*nodeId*/) {}
@@ -351,13 +362,16 @@ namespace GraphCanvas
         //! The selection in the scene has changed.
         virtual void OnSelectionChanged() {}
 
-        //! Position of an item in the scene
-        virtual void OnPositionChanged(const AZ::EntityId& /*itemId*/, const AZ::Vector2& /*position*/) {}
-
         //! A key was pressed in the scene
         virtual void OnKeyPressed(QKeyEvent*) {}
         //! A key was released in the scene
         virtual void OnKeyReleased(QKeyEvent*) {}
+
+        //! Signals that a drag selection began
+        virtual void OnDragSelectStart() {}
+
+        //! Signals that a drag selection has ended
+        virtual void OnDragSelectEnd() {}
     };
 
     using SceneNotificationBus = AZ::EBus<SceneNotifications>;
@@ -421,14 +435,23 @@ namespace GraphCanvas
 
         //! Set the scene an entity is in.
         virtual void SetScene(const AZ::EntityId&) = 0;
+
         //! Remove this entity from any scene it's in.
         virtual void ClearScene(const AZ::EntityId&) = 0;
+
+        //! Signals to the SceneMember that all of the Scene configuration done by the scene is complete
+        virtual void SignalMemberSetupComplete() = 0;
 
         //! When the entity is being copied. Provides a hook for copying extra information.
         virtual void PrepareExtraCopyData(AZStd::unordered_set< AZ::EntityId >& /*contextualCopies*/) { };
 
         //! Get the scene that the entity belongs to (directly or indirectly), if any.
         virtual AZ::EntityId GetScene() const = 0;
+
+        //! Locks the node to be moved by an external source. The SceneMemberId is the Id of the SceneMember
+        //! that is locking this element in order to move it.
+        virtual bool LockForExternalMovement(const AZ::EntityId& /*sceneMemberId*/) = 0;
+        virtual void UnlockForExternalMovement(const AZ::EntityId& /*sceneMemberId*/) = 0;
     };
 
     using SceneMemberRequestBus = AZ::EBus<SceneMemberRequests>;
@@ -449,7 +472,10 @@ namespace GraphCanvas
         virtual void OnSceneCleared(const AZ::EntityId&) {}
 
         //! Signal sent once the scene is fully configured and ready to be displayed.
-        virtual void OnSceneReady() {}        
+        virtual void OnSceneReady() {}
+
+        //! Signals that a SceneMember is fully and handled by the SceneComponent.
+        virtual void OnMemberSetupComplete() {}
     };
 
     using SceneMemberNotificationBus = AZ::EBus<SceneMemberNotifications>;

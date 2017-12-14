@@ -26,8 +26,8 @@ def build(bld):
 
     bld.DefineGem(
         # Add custom build options here
+        use         = ['AWSNativeSDKInit'],
         uselib      = ['AWS_CPP_SDK_CORE'],
         file_list   = file_list,
 
-        shared_settings = ['awsgem.json']
     )

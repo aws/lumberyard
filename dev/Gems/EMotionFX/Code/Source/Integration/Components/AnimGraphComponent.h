@@ -144,6 +144,11 @@ namespace EMotionFX
                 provided.push_back(AZ_CRC("EMotionFXAnimGraphService", 0x9ec3c819));
             }
 
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+            {
+                incompatible.push_back(AZ_CRC("EMotionFXAnimGraphService", 0x9ec3c819));
+            }
+
             static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& /*dependent*/)
             {
             }

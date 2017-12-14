@@ -31,6 +31,9 @@
 
 #include <LyShine/Bus/UiCursorBus.h>
 
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
+#include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
+
 #include <AzCore/Casting/lossy_cast.h>
 
 #define PERFHUD_CONFIG_FILE "Config/PerfHud_PC.xml"
@@ -132,10 +135,7 @@ void CPerfHUD::Init()
         SET_WIDGET_COMMAND("stats_PakFile", PakFile);
     }
 
-    if (gEnv->pInput)
-    {
-        gEnv->pInput->AddEventListener(this);
-    }
+    AzFramework::InputChannelEventListener::Connect();
 
     IMiniGUIPtr pGUI;
     if (CryCreateClassInstanceForInterface(cryiidof<IMiniGUI>(), pGUI))
@@ -224,10 +224,7 @@ void CPerfHUD::RemoveWidget(ICryPerfHUDWidget* pWidget)
 //////////////////////////////////////////////////////////////////////////
 void CPerfHUD::Done()
 {
-    if (gEnv->pInput)
-    {
-        gEnv->pInput->RemoveEventListener(this);
-    }
+    AzFramework::InputChannelEventListener::Disconnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -652,72 +649,56 @@ void CPerfHUD::OnCommand(SCommand& cmd)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CPerfHUD::OnInputEvent(const SInputEvent& rInputEvent)
+bool CPerfHUD::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
-    const EKeyId L1 = eKI_XI_ShoulderL;
-    //const EKeyId L2 = eKI_XI_TriggerLBtn;
-    const EKeyId R1 = eKI_XI_ShoulderR;
-    //const EKeyId R2 = eKI_XI_TriggerRBtn;
-    const EKeyId X = eKI_XI_X;
-
-    //keyboard shortcuts
-    if (rInputEvent.deviceType == eIDT_Keyboard && rInputEvent.state == eIS_Pressed)
+    const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+    const AzFramework::InputDeviceId& deviceId = inputChannel.GetInputDevice().GetInputDeviceId();
+    if (AzFramework::InputDeviceKeyboard::IsKeyboardDevice(deviceId) && inputChannel.IsStateBegan())
     {
-        switch (rInputEvent.keyId)
+        if (channelId == AzFramework::InputDeviceKeyboard::Key::WindowsSystemPrint)
         {
-        //Cycle modes
-        case eKI_Print:
-            if (rInputEvent.modifiers & (eMM_LAlt | eMM_LCtrl))
+            //Cycle modes
+            const AzFramework::ModifierKeyStates* customData = inputChannel.GetCustomData<AzFramework::ModifierKeyStates>();
+            const AzFramework::ModifierKeyStates modifierKeyStates = customData ? *customData : AzFramework::ModifierKeyStates();
+            const bool isAltModifierActive = modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::AltAny);
+            const bool isCtrlModifierActive = modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::CtrlAny);
+            if (isAltModifierActive || isCtrlModifierActive)
             {
                 SetNextState();
             }
-            break;
-
-        //toggle pause
-        case eKI_ScrollLock:
+        }
+        else if (channelId == AzFramework::InputDeviceKeyboard::Key::WindowsSystemScrollLock)
+        {
+            //toggle pause
             m_sys_perfhud_pause ^= 1;
-            break;
         }
     }
 
 
-    if (rInputEvent.deviceType == eIDT_Gamepad &&
-        rInputEvent.deviceIndex == 0)
+    if (deviceId == AzFramework::InputDeviceGamepad::IdForIndex0)
     {
         int frameNum = gEnv->pRenderer->GetFrameID(false);
 
-        if (rInputEvent.state == eIS_Pressed)
+        if (inputChannel.IsStateBegan())
         {
             bool checkState = false;
 
-            switch (rInputEvent.keyId)
+            if (channelId == AzFramework::InputDeviceGamepad::Button::L1)
             {
-            case L1:
                 m_L1Pressed = true;
                 checkState = true;
-                break;
-
-            /*case L2:
-                m_L2Pressed = true;
-                checkState = true;
-                break;*/
-
-            case R1:
+            }
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::R1)
+            {
                 m_R1Pressed = true;
                 checkState = true;
-                break;
-
-            /*case R2:
-                m_R2Pressed = true;
-                checkState = true;
-                break;*/
-
-            case X:
+            }
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::X)
+            {
                 if (m_changingState)
                 {
                     SetNextState();
                 }
-                break;
             }
 
             //if(checkState&&m_L1Pressed&&m_L2Pressed&&m_R1Pressed&&m_R2Pressed)
@@ -726,7 +707,7 @@ bool CPerfHUD::OnInputEvent(const SInputEvent& rInputEvent)
                 m_triggersDownStartTime = gEnv->pTimer->GetAsyncCurTime();
             }
         }
-        else if (rInputEvent.state == eIS_Down)
+        else if (inputChannel.IsStateUpdated())
         {
             float activateTime = (m_hudState == eHudOff) ? ACTIVATE_TIME_FROM_GAME : ACTIVATE_TIME_FROM_HUD;
 
@@ -760,31 +741,19 @@ bool CPerfHUD::OnInputEvent(const SInputEvent& rInputEvent)
                 gEnv->pRenderer->Draw2dLabel(450.f, 220.f, 2.f, col, false, "Press X to change Mode");
             }
         }
-        else if (rInputEvent.state == eIS_Released)
+        else if (inputChannel.IsStateEnded())
         {
             bool triggerReleased = false;
 
-            switch (rInputEvent.keyId)
+            if (channelId == AzFramework::InputDeviceGamepad::Button::L1)
             {
-            case L1:
                 m_L1Pressed = false;
                 triggerReleased = true;
-                break;
-
-            /*case L2:
-                m_L2Pressed = false;
-                triggerReleased=true;
-                break;*/
-
-            case R1:
+            }
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::R1)
+            {
                 m_R1Pressed = false;
                 triggerReleased = true;
-                break;
-
-                /*case R2:
-                    m_R2Pressed = false;
-                    triggerReleased=true;
-                    break;*/
             }
 
             if (triggerReleased)

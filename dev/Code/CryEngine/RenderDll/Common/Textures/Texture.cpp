@@ -22,6 +22,7 @@
 #include <IResourceManager.h>
 #include "I3DEngine.h"
 #include "StringUtils.h"                                // stristr()
+#include "TextureManager.h"
 #include "TextureStreamPool.h"
 #include "TextureHelpers.h"
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
@@ -56,53 +57,8 @@ CTexture::LowResSystemCopyType CTexture::s_LowResSystemCopy;
 
 bool CTexture::m_bLoadedSystem;
 
-// ==============================================================================
-CTexture* CTexture::s_ptexNoTexture;
-CTexture* CTexture::s_ptexNoTextureCM;
-CTexture* CTexture::s_ptexWhite;
-CTexture* CTexture::s_ptexGray;
-CTexture* CTexture::s_ptexBlack;
-CTexture* CTexture::s_ptexBlackAlpha;
-CTexture* CTexture::s_ptexBlackCM;
-CTexture* CTexture::s_ptexDefaultProbeCM;
-CTexture* CTexture::s_ptexFlatBump;
-#if !defined(_RELEASE)
-CTexture* CTexture::s_ptexDefaultMergedDetail;
-CTexture* CTexture::s_ptexMipMapDebug;
-CTexture* CTexture::s_ptexColorBlue;
-CTexture* CTexture::s_ptexColorCyan;
-CTexture* CTexture::s_ptexColorGreen;
-CTexture* CTexture::s_ptexColorPurple;
-CTexture* CTexture::s_ptexColorRed;
-CTexture* CTexture::s_ptexColorWhite;
-CTexture* CTexture::s_ptexColorYellow;
-CTexture* CTexture::s_ptexColorOrange;
-CTexture* CTexture::s_ptexColorMagenta;
-CTexture* CTexture::s_ptexIconTextureCompiling;
-CTexture* CTexture::s_ptexIconTextureCompiling_a;
-CTexture* CTexture::s_ptexIconTextureCompiling_cm;
-CTexture* CTexture::s_ptexIconTextureCompiling_ddn;
-CTexture* CTexture::s_ptexIconTextureCompiling_ddna;
-#endif
-CTexture* CTexture::s_ptexPaletteDebug;
-CTexture* CTexture::s_ptexPaletteTexelsPerMeter;
-CTexture* CTexture::s_ptexIconShaderCompiling;
-CTexture* CTexture::s_ptexIconStreaming;
-CTexture* CTexture::s_ptexIconStreamingTerrainTexture;
-CTexture* CTexture::s_ptexIconNullSoundSystem;
-CTexture* CTexture::s_ptexIconNullMusicSystem;
-CTexture* CTexture::s_ptexIconNavigationProcessing;
 CTexture* CTexture::s_ptexMipColors_Diffuse;
 CTexture* CTexture::s_ptexMipColors_Bump;
-CTexture* CTexture::s_ptexShadowJitterMap;
-CTexture* CTexture::s_ptexEnvironmentBRDF;
-CTexture* CTexture::s_ptexScreenNoiseMap;
-CTexture* CTexture::s_ptexDissolveNoiseMap;
-CTexture* CTexture::s_ptexGrainFilterMap;
-CTexture* CTexture::s_ptexFilmGrainMap;
-CTexture* CTexture::s_ptexVignettingMap;
-CTexture* CTexture::s_ptexAOJitter;
-CTexture* CTexture::s_ptexAOVOJitter;
 CTexture* CTexture::s_ptexFromRE[8];
 CTexture* CTexture::s_ptexShadowID[8];
 CTexture* CTexture::s_ptexShadowMask;
@@ -120,7 +76,6 @@ CTexture* CTexture::s_ptexSvoNorm;
 CTexture* CTexture::s_ptexSvoOpac;
 CTexture* CTexture::s_ptexFromObjCM;
 CTexture* CTexture::s_ptexRT_2D;
-CTexture* CTexture::s_ptexNormalsFitting;
 CTexture* CTexture::s_ptexSceneNormalsMap;
 CTexture* CTexture::s_ptexSceneNormalsMapMS;
 CTexture* CTexture::s_ptexSceneNormalsBent;
@@ -179,6 +134,11 @@ CTexture* CTexture::s_ptexHDRTarget;
 CTexture* CTexture::s_ptexVelocity;
 CTexture* CTexture::s_ptexVelocityTiles[3] = {NULL};
 CTexture* CTexture::s_ptexVelocityObjects[2] = {NULL};
+
+CTexture* CTexture::s_ptexFurZTarget;
+CTexture* CTexture::s_ptexFurLightAcc;
+CTexture* CTexture::s_ptexFurPrepass;
+
 // Confetti Begin: David Srour
 CTexture* CTexture::s_ptexGmemStenLinDepth = NULL;
 // Confetti End
@@ -240,7 +200,6 @@ CTexture* CTexture::s_ptexVolFogShadowBuf[2] = {0};
 #endif
 
 CTexture* CTexture::s_defaultEnvironmentProbeDummy = nullptr;
-CTexture* CTexture::s_defaultEnvironmentProbe = nullptr;
 
 ETEX_Format CTexture::s_eTFZ = eTF_R32F;
 
@@ -403,7 +362,7 @@ CTexture* CTexture::GetByID(int nID)
     CBaseResource* pBR = CBaseResource::GetResource(className, nID, false);
     if (!pBR)
     {
-        return s_ptexNoTexture;
+        return CTextureManager::Instance()->GetNoTexture();
     }
     pTex = (CTexture*)pBR;
     return pTex;
@@ -445,7 +404,8 @@ CTexture* CTexture::NewTexture(const char* name, uint32 nFlags, ETEX_Format eTFD
     AzFramework::StringFunc::Path::GetExtension(name, fileExtension);
     if (name[0] == '$' || fileExtension.empty())
     {
-        //If the name starts with $ or it does not have any extension then it is one of the special texture that the engine requires and we would not be modifying the name
+        //If the name starts with $ or it does not have any extension then it is one of the special texture 
+        // that the engine requires and we would not be modifying the name
         normalizedFile = name;
     }
     else
@@ -782,7 +742,7 @@ bool CTexture::Reload()
         bOK = LoadFromImage(m_SrcName.c_str()); // true=reloading
         if (!bOK)
         {
-            SetNoTexture(m_eTT == eTT_Cube ? s_ptexNoTextureCM : s_ptexNoTexture);
+            SetNoTexture(m_eTT == eTT_Cube ? CTextureManager::Instance()->GetNoTextureCM() : CTextureManager::Instance()->GetNoTexture() );
         }
     }
     else
@@ -1071,7 +1031,7 @@ bool CTexture::Load(ETEX_Format eTFDst)
 
     if (!bFound)
     {
-        SetNoTexture(m_eTT == eTT_Cube ? s_ptexNoTextureCM : s_ptexNoTexture);
+        SetNoTexture(m_eTT == eTT_Cube ? CTextureManager::Instance()->GetNoTextureCM() : CTextureManager::Instance()->GetNoTexture());
     }
 
     m_nFlags |= FT_FROMIMAGE;
@@ -1121,7 +1081,7 @@ bool CTexture::LoadFromImage(const char* name, ETEX_Format eTFDst)
 
     if (CRenderer::CV_r_texnoload)
     {
-        if (SetNoTexture())
+        if (SetNoTexture(CTextureManager::Instance()->GetNoTexture() ))
         {
             return true;
         }
@@ -1178,15 +1138,31 @@ bool CTexture::LoadFromImage(const char* name, ETEX_Format eTFDst)
         {
             STextureLoadData loadData;
             loadData.m_pTexture = this;
+            loadData.m_nFlags = m_nFlags;
             if (pTextureHandler->LoadTextureData(sFileName.c_str(), loadData))
             {
-                m_nFlags |= loadData.m_nFlags;
+                bool bHasAlphaFlag = false;
+
+                //we must clear this or else our texture won't load properly
+                if ((m_nFlags & FT_ALPHA) == FT_ALPHA)
+                {
+                    m_nFlags &= ~FT_ALPHA;
+                    bHasAlphaFlag = true;
+                }
+
                 _smart_ptr<CImageFile> pImage = CImageFile::mfLoad_mem(sFileName, loadData.m_pData, loadData.m_Width, loadData.m_Height, loadData.m_Format, loadData.m_NumMips, loadData.m_nFlags);
                 m_bisTextureMissing = !pImage || pImage->mfGet_IsImageMissing();
                 loadData.m_pData = nullptr;
-                return Load(&*pImage);
+                bool bLoadResult = Load(&*pImage);
+
+                if (bHasAlphaFlag)
+                {
+                    m_nFlags |= FT_ALPHA;
+                }
+
+                return bLoadResult;
             }
-            SetNoTexture();
+            SetNoTexture(CTextureManager::Instance()->GetNoTexture() );
             return true;
         }
     }
@@ -1210,7 +1186,7 @@ bool CTexture::Load(CImageFile* pImage)
     m_nFlags &= ~FT_FAILED;
     if ((m_nFlags & FT_ALPHA) && !pImage->mfIs_image(0))
     {
-        SetNoTexture(s_ptexWhite);
+        SetNoTexture( CTextureManager::Instance()->GetWhiteTexture() );
         return true;
     }
     const char* name = pImage->mfGet_filename().c_str();
@@ -1301,7 +1277,7 @@ bool CTexture::Load(CImageFile* pImage)
 
     return bRes;
 #else
-    SetNoTexture(s_ptexWhite);
+    SetNoTexture(CTextureManager::Instance()->GetWhiteTexture() );
     return true;
 #endif
 }
@@ -2688,7 +2664,7 @@ void CTexture::ReloadTextures()
     }
 }
 
-bool CTexture::SetNoTexture(CTexture* pDefaultTexture /* = s_ptexNoTexture*/)
+bool CTexture::SetNoTexture( const CTexture* pDefaultTexture /* = "NoTexture" entry */)
 {
     if (pDefaultTexture)
     {
@@ -2727,11 +2703,6 @@ bool CTexture::SetNoTexture(CTexture* pDefaultTexture /* = s_ptexNoTexture*/)
 
 void CTexture::ReleaseSystemTextures()
 {
-    if (gRenDev->m_pTextureManager)
-    {
-        gRenDev->m_pTextureManager->ReleaseDefaultTextures();
-    }
-
     if (s_pStatsTexWantedLists)
     {
         for (int i = 0; i < 2; ++i)
@@ -2792,7 +2763,6 @@ void CTexture::ReleaseSystemTextures()
     SAFE_RELEASE_FORCE(s_ptexSceneSpecularAccMapMS);
 
     SAFE_RELEASE_FORCE(s_defaultEnvironmentProbeDummy);
-    SAFE_RELEASE_FORCE(s_defaultEnvironmentProbe);
 
     s_CustomRT_2D.Free();
 
@@ -2821,71 +2791,6 @@ void CTexture::LoadDefaultSystemTextures()
         ScopedSwitchToGlobalHeap useGlobalHeap;
 
         m_bLoadedSystem = true;
-
-        struct
-        {
-            CTexture*& pTexture;
-            const char* szFileName;
-            uint32 flags;
-        }
-        texturesFromFile[] =
-        {
-            { s_ptexNoTextureCM,                 "EngineAssets/TextureMsg/ReplaceMeCM.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexWhite,                       "EngineAssets/Textures/White.dds",                         FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexGray,                        "EngineAssets/Textures/Grey.dds",                          FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexBlack,                       "EngineAssets/Textures/Black.dds",                         FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexBlackAlpha,                  "EngineAssets/Textures/BlackAlpha.dds",                    FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexBlackCM,                     "EngineAssets/Textures/BlackCM.dds",                       FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexDefaultProbeCM,              "EngineAssets/Shading/defaultProbe_cm.dds",                FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexFlatBump,                    "EngineAssets/Textures/White_ddn.dds",                     FT_DONT_RELEASE | FT_DONT_STREAM | FT_TEX_NORMAL_MAP },
-            { s_ptexPaletteDebug,                "EngineAssets/Textures/palletteInst.dds",                  FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexPaletteTexelsPerMeter,       "EngineAssets/Textures/TexelsPerMeterGrad.dds",            FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconShaderCompiling,         "EngineAssets/Icons/ShaderCompiling.dds",                  FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconStreaming,               "EngineAssets/Icons/Streaming.dds",                        FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconStreamingTerrainTexture, "EngineAssets/Icons/StreamingTerrain.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconNullSoundSystem,         "EngineAssets/Icons/NullSoundSystem.dds",                  FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconNullMusicSystem,         "EngineAssets/Icons/NullMusicSystem.dds",                  FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconNavigationProcessing,    "EngineAssets/Icons/NavigationProcessing.dds",             FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexShadowJitterMap,             "EngineAssets/Textures/rotrandom.dds",                     FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexEnvironmentBRDF,             "EngineAssets/Shading/environmentBRDF.dds",                FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexScreenNoiseMap,              "EngineAssets/Textures/JumpNoiseHighFrequency_x27y19.dds", FT_DONT_RELEASE | FT_DONT_STREAM | FT_NOMIPS },
-            { s_ptexDissolveNoiseMap,            "EngineAssets/Textures/noise.dds",                         FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexGrainFilterMap,              "EngineAssets/ScreenSpace/grain_bayer_mul.dds",            FT_DONT_RELEASE | FT_DONT_STREAM | FT_NOMIPS },
-            { s_ptexFilmGrainMap,                "EngineAssets/ScreenSpace/film_grain.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM | FT_NOMIPS },
-            { s_ptexVignettingMap,               "EngineAssets/Shading/vignetting.dds",                     FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexAOJitter,                    "EngineAssets/ScreenSpace/PointsOnSphere4x4.dds",          FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexAOVOJitter,                  "EngineAssets/ScreenSpace/PointsOnSphereVO4x4.dds",        FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexNormalsFitting,              "EngineAssets/ScreenSpace/NormalsFitting.dds",             FT_DONT_RELEASE | FT_DONT_STREAM },
-#if !defined(_RELEASE)
-            { s_ptexNoTexture,                   "EngineAssets/TextureMsg/ReplaceMe.dds",                   FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconTextureCompiling,        "EngineAssets/TextureMsg/TextureCompiling.dds",            FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconTextureCompiling_a,      "EngineAssets/TextureMsg/TextureCompiling_a.dds",          FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconTextureCompiling_cm,     "EngineAssets/TextureMsg/TextureCompiling_cm.dds",         FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconTextureCompiling_ddn,    "EngineAssets/TextureMsg/TextureCompiling_ddn.dds",        FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexIconTextureCompiling_ddna,   "EngineAssets/TextureMsg/TextureCompiling_ddna.dds",       FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexDefaultMergedDetail,         "EngineAssets/Textures/GreyAlpha.dds",                     FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexMipMapDebug,                 "EngineAssets/TextureMsg/MipMapDebug.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorBlue,                   "EngineAssets/TextureMsg/color_Blue.dds",                  FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorCyan,                   "EngineAssets/TextureMsg/color_Cyan.dds",                  FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorGreen,                  "EngineAssets/TextureMsg/color_Green.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorPurple,                 "EngineAssets/TextureMsg/color_Purple.dds",                FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorRed,                    "EngineAssets/TextureMsg/color_Red.dds",                   FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorWhite,                  "EngineAssets/TextureMsg/color_White.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorYellow,                 "EngineAssets/TextureMsg/color_Yellow.dds",                FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorOrange,                 "EngineAssets/TextureMsg/color_Orange.dds",                FT_DONT_RELEASE | FT_DONT_STREAM },
-            { s_ptexColorMagenta,                "EngineAssets/TextureMsg/color_Magenta.dds",               FT_DONT_RELEASE | FT_DONT_STREAM },
-#else
-            { s_ptexNoTexture,                   "EngineAssets/TextureMsg/ReplaceMeRelease.dds",            FT_DONT_RELEASE | FT_DONT_STREAM },
-#endif
-        };
-
-        for (int t = 0; t < AZ_ARRAY_SIZE(texturesFromFile); ++t)
-        {
-            if (!texturesFromFile[t].pTexture)
-            {
-                texturesFromFile[t].pTexture = CTexture::ForName(texturesFromFile[t].szFileName, texturesFromFile[t].flags, eTF_Unknown);
-            }
-        }
 
         // Default Template textures
         int nRTFlags =  FT_DONT_RELEASE | FT_DONT_STREAM | FT_STATE_CLAMP | FT_USAGE_RENDERTARGET;
@@ -2929,11 +2834,7 @@ void CTexture::LoadDefaultSystemTextures()
         s_ptexRT_ShadowStub = CTexture::CreateTextureObject("$RT_ShadowStub", 0, 0, 1, eTT_2D, FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
         //  Confetti End: Igor Lobanchikov
 
-#if defined(WIN32) || defined(WIN64) || defined(APPLE) || (defined(LINUX) && !defined(ANDROID))
         s_ptexDepthBufferQuarter = CTexture::CreateTextureObject("$DepthBufferQuarter", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
-#else
-        s_ptexDepthBufferQuarter = NULL;
-#endif
 
         if (!s_ptexModelHudBuffer)
         {
@@ -3035,6 +2936,8 @@ void CTexture::LoadDefaultSystemTextures()
                 }
             }
 
+            s_ptexFurZTarget = CTexture::CreateTextureObject("$FurZTarget", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown);
+
             s_ptexZTargetScaled = CTexture::CreateTextureObject("$ZTargetScaled", 0, 0, 1, eTT_2D,
                     FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_DOWNSCALED_ZTARGET_FOR_AO);
 
@@ -3109,17 +3012,6 @@ void CTexture::LoadDefaultSystemTextures()
             s_defaultEnvironmentProbeDummy = CTexture::CreateTextureObject("$DefaultEnvironmentProbe", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown, TO_DEFAULT_ENVIRONMENT_PROBE);
         }
 
-        // Load the engine default environment probe texture.  This texture will be bound when $DefaultEnvironmentProbe is used on a sampler slot.
-        if (!s_defaultEnvironmentProbe)
-        {
-            s_defaultEnvironmentProbe = CTexture::ForName("EngineAssets/Shading/defaultProbe_cm.tif", FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown);
-        }
-
-
-        if (gRenDev->m_pTextureManager)
-        {
-            gRenDev->m_pTextureManager->PreloadDefaultTextures();
-        }
     }
 #endif
 }
@@ -3299,6 +3191,16 @@ const ETEX_Type CTexture::GetTextureType() const
     return m_eTT;
 }
 
+void CTexture::SetTextureType(ETEX_Type type)
+{
+    // Only set the type if we have not loaded the file and created the device
+    // texture
+    if (!m_pDevTexture)
+    {
+        m_eTT = type;
+    }
+}
+
 const int CTexture::GetTextureID() const
 {
     return GetID();
@@ -3415,4 +3317,23 @@ void CTexture::RemoveInvalidateCallbacks(void* listener)
             ++it;
         }
     }
+}
+
+void CTexture::ApplyDepthTextureState(int unit, int nFilter, bool clamp)
+{
+    if (s_ptexZTarget != nullptr)
+    {
+        STexState depthTextState(nFilter, clamp);
+        s_ptexZTarget->Apply(unit, GetTexState(depthTextState));
+    }
+}
+
+CTexture* CTexture::GetZTargetTexture()
+{
+    return s_ptexZTarget;
+}
+
+int CTexture::GetTextureState(const STexState& TS)
+{
+    return GetTexState(TS);
 }

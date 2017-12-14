@@ -15,7 +15,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <Components/IComponentPhysics.h>
 #include <AzCore/Component/TransformBus.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -29,6 +29,9 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::RagdollPhysicsRequestBus;
+    using AzFramework::PhysicsComponentRequestBus;
+
     void RagdollComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -262,7 +265,7 @@ namespace LmbrCentral
         {
             character->GetISkeletonPose()->DestroyCharacterPhysics();
         }
-		
+        
         if (m_physicalEntity)
         {
             gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_physicalEntity);

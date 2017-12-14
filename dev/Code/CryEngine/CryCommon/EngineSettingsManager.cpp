@@ -11,36 +11,28 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include <StdAfx.h>
 
 #include "EngineSettingsManager.h"
 
 #if defined(CRY_ENABLE_RC_HELPER)
 
 #include <assert.h>                                     // assert()
+#include "EngineSettingsBackend.h"
+
+#include "AzCore/PlatformDef.h"
+#include "platform.h"
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#define KDAB_MAC_PORT 1
+#include "EngineSettingsBackendWin32.h"
+#include <Windows.h>
+#elif defined(AZ_PLATFORM_APPLE)
+#include "EngineSettingsBackendApple.h"
 #endif
 
-#ifdef KDAB_MAC_PORT
-#pragma comment(lib, "Ole32.lib")
-#include <windows.h>
-#endif // KDAB_MAC_PORT
 
-#include <stdio.h>
-
-#define REG_SOFTWARE            L"Software\\"
-#define REG_COMPANY_NAME        L"Amazon\\"
-#define REG_PRODUCT_NAME        L"Lumberyard\\"
-#define REG_SETTING             L"Settings\\"
-#define REG_BASE_SETTING_KEY  REG_SOFTWARE REG_COMPANY_NAME REG_PRODUCT_NAME REG_SETTING
-
-// pseudo-variable that represents the DOS header of the module
-#ifdef KDAB_MAC_PORT
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-#endif // KDAB_MAC_PORT
-
+#include <climits>
+#include <cstdio>
 
 #define INFOTEXT L"Please specify the directory of your CryENGINE installation (RootPath):"
 
@@ -48,57 +40,20 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 using namespace SettingsManagerHelpers;
 
 
-static bool g_bWindowQuit;
-static CEngineSettingsManager* g_pThis = 0;
-static const unsigned int IDC_hEditRootPath = 100;
-static const unsigned int IDC_hBtnBrowse = 101;
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-namespace
-{
-    class RegKey
-    {
-    public:
-        RegKey(const wchar_t* key, bool writeable);
-        ~RegKey();
-        void* pKey;
-    };
-}
-
-//////////////////////////////////////////////////////////////////////////
-RegKey::RegKey(const wchar_t* key, bool writeable)
-{
-#ifdef KDAB_MAC_PORT
-    HKEY  hKey;
-    LONG result;
-    if (writeable)
-    {
-        result = RegCreateKeyExW(HKEY_CURRENT_USER, key, 0, 0, 0, KEY_WRITE, 0, &hKey, 0);
-    }
-    else
-    {
-        result = RegOpenKeyExW(HKEY_CURRENT_USER, key, 0, KEY_READ, &hKey);
-    }
-    pKey = hKey;
-#endif // KDAB_MAC_PORT
-}
-
-//////////////////////////////////////////////////////////////////////////
-RegKey::~RegKey()
-{
-#ifdef KDAB_MAC_PORT
-    RegCloseKey((HKEY)pKey);
-#endif // KDAB_MAC_PORT
-}
-
-
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 CEngineSettingsManager::CEngineSettingsManager(const wchar_t* moduleName, const wchar_t* iniFileName)
     : m_hWndParent(0)
+    , m_backend(NULL)
 {
     m_sModuleName.clear();
+
+#if defined(AZ_PLATFORM_WINDOWS)
+    m_backend = new CEngineSettingsBackendWin32(this, moduleName);
+#elif defined(AZ_PLATFORM_APPLE)
+    m_backend = new CEngineSettingsBackendApple(this, moduleName);
+#endif
+    assert(m_backend);
 
     // std initialization
     RestoreDefaults();
@@ -111,18 +66,7 @@ CEngineSettingsManager::CEngineSettingsManager(const wchar_t* moduleName, const 
         if (iniFileName == NULL)
         {
             // find INI filename located in module path
-#ifdef KDAB_MAC_PORT
-            HMODULE hInstance = GetModuleHandleW(moduleName);
-            wchar_t szFilename[_MAX_PATH];
-            GetModuleFileNameW((HINSTANCE)&__ImageBase, szFilename, _MAX_PATH);
-            wchar_t drive[_MAX_DRIVE];
-            wchar_t dir[_MAX_DIR];
-            wchar_t fname[_MAX_FNAME];
-            wchar_t ext[1] = L"";
-            _wsplitpath_s(szFilename, drive, dir, fname, ext);
-            _wmakepath_s(szFilename, drive, dir, fname, L"ini");
-            m_sModuleFileName = szFilename;
-#endif // KDAB_MAC_PORT
+            m_sModuleFileName = m_backend->GetModuleFilePath().c_str();
         }
         else
         {
@@ -131,15 +75,21 @@ CEngineSettingsManager::CEngineSettingsManager(const wchar_t* moduleName, const 
 
         if (LoadValuesFromConfigFile(m_sModuleFileName.c_str()))
         {
-            m_bGetDataFromRegistry = false;
+            m_bGetDataFromBackend = false;
             return;
         }
     }
 
-    m_bGetDataFromRegistry = true;
+    m_bGetDataFromBackend = true;
 
     // load basic content from registry
     LoadEngineSettingsFromRegistry();
+}
+
+//////////////////////////////////////////////////////////////////////////
+CEngineSettingsManager::~CEngineSettingsManager()
+{
+    delete m_backend, m_backend = NULL;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -165,7 +115,7 @@ bool CEngineSettingsManager::GetModuleSpecificStringEntryUtf16(const char* key, 
         return false;
     }
 
-    if (!m_bGetDataFromRegistry)
+    if (!m_bGetDataFromBackend)
     {
         if (!HasKey(key))
         {
@@ -180,19 +130,8 @@ bool CEngineSettingsManager::GetModuleSpecificStringEntryUtf16(const char* key, 
     }
     else
     {
-        CFixedString<wchar_t, 256> s = REG_BASE_SETTING_KEY;
-        s.append(m_sModuleName.c_str());
-        RegKey superKey(s.c_str(), false);
-        if (!superKey.pKey)
-        {
-            wbuffer[0] = 0;
-            return false;
-        }
-        if (!GetRegValue(superKey.pKey, key, wbuffer))
-        {
-            wbuffer[0] = 0;
-            return false;
-        }
+        assert(m_backend);
+        return m_backend->GetModuleSpecificStringEntryUtf16(key, wbuffer);
     }
 
     return true;
@@ -225,7 +164,7 @@ bool CEngineSettingsManager::GetModuleSpecificIntEntry(const char* key, int& val
 {
     value = 0;
 
-    if (!m_bGetDataFromRegistry)
+    if (!m_bGetDataFromBackend)
     {
         if (!HasKey(key))
         {
@@ -238,18 +177,8 @@ bool CEngineSettingsManager::GetModuleSpecificIntEntry(const char* key, int& val
     }
     else
     {
-        CFixedString<wchar_t, 256> s = REG_BASE_SETTING_KEY;
-        s.append(m_sModuleName.c_str());
-        RegKey superKey(s.c_str(), false);
-        if (!superKey.pKey)
-        {
-            return false;
-        }
-        if (!GetRegValue(superKey.pKey, key, value))
-        {
-            value = 0;
-            return false;
-        }
+        assert(m_backend);
+        return m_backend->GetModuleSpecificIntEntry(key, value);
     }
 
     return true;
@@ -260,7 +189,7 @@ bool CEngineSettingsManager::GetModuleSpecificBoolEntry(const char* key, bool& v
 {
     value = false;
 
-    if (!m_bGetDataFromRegistry)
+    if (!m_bGetDataFromBackend)
     {
         if (!HasKey(key))
         {
@@ -273,18 +202,8 @@ bool CEngineSettingsManager::GetModuleSpecificBoolEntry(const char* key, bool& v
     }
     else
     {
-        CFixedString<wchar_t, 256> s = REG_BASE_SETTING_KEY;
-        s.append(m_sModuleName.c_str());
-        RegKey superKey(s.c_str(), false);
-        if (!superKey.pKey)
-        {
-            return false;
-        }
-        if (!GetRegValue(superKey.pKey, key, value))
-        {
-            value = false;
-            return false;
-        }
+        assert(m_backend);
+        return m_backend->GetModuleSpecificBoolEntry(key, value);
     }
 
     return true;
@@ -294,19 +213,39 @@ bool CEngineSettingsManager::GetModuleSpecificBoolEntry(const char* key, bool& v
 bool CEngineSettingsManager::SetModuleSpecificStringEntryUtf16(const char* key, const wchar_t* str)
 {
     SetKey(key, str);
-    if (!m_bGetDataFromRegistry)
+    if (!m_bGetDataFromBackend)
     {
         return StoreData();
     }
 
-    CFixedString<wchar_t, 256> s = REG_BASE_SETTING_KEY;
-    s.append(m_sModuleName.c_str());
-    RegKey superKey(s.c_str(), true);
-    if (superKey.pKey)
+    assert(m_backend);
+    return m_backend->SetModuleSpecificStringEntryUtf16(key, str);
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CEngineSettingsManager::SetModuleSpecificIntEntry(const char* key, const int& value)
+{
+    SetKey(key, value);
+    if (!m_bGetDataFromBackend)
     {
-        return SetRegValue(superKey.pKey, key, str);
+        return StoreData();
     }
-    return false;
+
+    assert(m_backend);
+    return m_backend->SetModuleSpecificIntEntry(key, value);
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CEngineSettingsManager::SetModuleSpecificBoolEntry(const char* key, const bool& value)
+{
+    SetKey(key, value);
+    if (!m_bGetDataFromBackend)
+    {
+        return StoreData();
+    }
+
+    assert(m_backend);
+    return m_backend->SetModuleSpecificBoolEntry(key, value);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -316,44 +255,6 @@ bool CEngineSettingsManager::SetModuleSpecificStringEntryUtf8(const char* key, c
     SettingsManagerHelpers::ConvertUtf8ToUtf16(str, SettingsManagerHelpers::CWCharBuffer(wbuffer, sizeof(wbuffer)));
 
     return SetModuleSpecificStringEntryUtf16(key, wbuffer);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::SetModuleSpecificIntEntry(const char* key, const int& value)
-{
-    SetKey(key, value);
-    if (!m_bGetDataFromRegistry)
-    {
-        return StoreData();
-    }
-
-    CFixedString<wchar_t, 256> s = REG_BASE_SETTING_KEY;
-    s.append(m_sModuleName.c_str());
-    RegKey superKey(s.c_str(), true);
-    if (superKey.pKey)
-    {
-        return SetRegValue(superKey.pKey, key, value);
-    }
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::SetModuleSpecificBoolEntry(const char* key, const bool& value)
-{
-    SetKey(key, value);
-    if (!m_bGetDataFromRegistry)
-    {
-        return StoreData();
-    }
-
-    CFixedString<wchar_t, 256> s = REG_BASE_SETTING_KEY;
-    s.append(m_sModuleName.c_str());
-    RegKey superKey(s.c_str(), true);
-    if (superKey.pKey)
-    {
-        return SetRegValue(superKey.pKey, key, value);
-    }
-    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -391,15 +292,11 @@ void CEngineSettingsManager::SetKey(const char* key, bool value)
 //////////////////////////////////////////////////////////////////////////
 void CEngineSettingsManager::SetKey(const char* key, int value)
 {
-#ifdef KDAB_MAC_PORT
-    wchar_t buf[40];
-    swprintf_s(buf, L"%d", value);
-    m_keyValueArray.set(key, buf);
-#endif // KDAB_MAC_PORT
+    m_keyValueArray.set(key, std::to_wstring(value).c_str());
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CEngineSettingsManager::GetRootPathUtf16(SettingsManagerHelpers::CWCharBuffer wbuffer)
+void CEngineSettingsManager::GetRootPathUtf16(CWCharBuffer wbuffer)
 {
     LoadEngineSettingsFromRegistry();
     GetValueByRef("ENG_RootPath", wbuffer);
@@ -437,21 +334,8 @@ void CEngineSettingsManager::GetBinFolderAscii(SettingsManagerHelpers::CCharBuff
 
 bool CEngineSettingsManager::GetInstalledBuildRootPathUtf16(const int index, SettingsManagerHelpers::CWCharBuffer name, SettingsManagerHelpers::CWCharBuffer path)
 {
-    RegKey key(REG_BASE_SETTING_KEY L"LumberyardExport\\ProjectBuilds", false);
-    if (key.pKey)
-    {
-        DWORD type;
-        DWORD nameSizeInBytes = DWORD(name.getSizeInBytes());
-        DWORD pathSizeInBytes = DWORD(path.getSizeInBytes());
-#ifdef KDAB_MAC_PORT
-        LONG result = RegEnumValueW((HKEY)key.pKey, index, name.getPtr(), &nameSizeInBytes, NULL, &type, (BYTE*)path.getPtr(), &pathSizeInBytes);
-        if (result == ERROR_SUCCESS)
-        {
-            return true;
-        }
-#endif // KDAB_MAC_PORT
-    }
-    return false;
+    assert(m_backend);
+    return m_backend->GetInstalledBuildRootPathUtf16(index, name, path);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -464,15 +348,15 @@ void CEngineSettingsManager::SetParentDialog(unsigned long window)
 //////////////////////////////////////////////////////////////////////////
 bool CEngineSettingsManager::StoreData()
 {
-    if (m_bGetDataFromRegistry)
+    if (m_bGetDataFromBackend)
     {
         bool res = StoreEngineSettingsToRegistry();
 
         if (!res)
         {
-#ifdef KDAB_MAC_PORT
+#ifdef AZ_PLATFORM_WINDOWS
             MessageBoxA((HWND)m_hWndParent, "Could not store data to registry.", "Error", MB_OK | MB_ICONERROR);
-#endif // KDAB_MAC_PORT
+#endif
         }
         return res;
     }
@@ -480,10 +364,15 @@ bool CEngineSettingsManager::StoreData()
     // store data to INI file
 
     FILE* file;
-#ifdef KDAB_MAC_PORT
+#ifdef AZ_PLATFORM_WINDOWS
     _wfopen_s(&file, m_sModuleFileName.c_str(), L"wb");
+#else
+    char fname[MAX_PATH];
+    memset(fname, 0, MAX_PATH);
+    wcstombs(fname, m_sModuleFileName.c_str(), MAX_PATH);
+    file = fopen(fname, "wb");
+#endif
     if (file == NULL)
-#endif // KDAB_MAC_PORT
     {
         return false;
     }
@@ -515,16 +404,20 @@ bool CEngineSettingsManager::StoreData()
 //////////////////////////////////////////////////////////////////////////
 bool CEngineSettingsManager::LoadValuesFromConfigFile(const wchar_t* szFileName)
 {
-#ifdef KDAB_MAC_PORT
     m_keyValueArray.clear();
 
     // read file to memory
 
     FILE* file;
-#ifdef KDAB_MAC_PORT
+#ifdef AZ_PLATFORM_WINDOWS
     _wfopen_s(&file, szFileName, L"rb");
+#else
+    char fname[MAX_PATH];
+    memset(fname, 0, MAX_PATH);
+    wcstombs(fname, szFileName, MAX_PATH);
+    file = fopen(fname, "rb");
+#endif
     if (file == NULL)
-#endif // KDAB_MAC_PORT
     {
         return false;
     }
@@ -589,308 +482,20 @@ bool CEngineSettingsManager::LoadValuesFromConfigFile(const wchar_t* szFileName)
     delete[] data;
 
     return true;
-#else
-    return false;
-#endif // KDAB_MAC_PORT
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::SetRegValue(void* key, const char* valueName, const wchar_t* value)
-{
-    SettingsManagerHelpers::CFixedString<wchar_t, 256> name;
-    name.appendAscii(valueName);
-
-    size_t const sizeInBytes = (wcslen(value) + 1) * sizeof(value[0]);
-#ifdef KDAB_MAC_PORT
-    return (ERROR_SUCCESS == RegSetValueExW((HKEY)key, name.c_str(), 0, REG_SZ, (BYTE*)value, DWORD(sizeInBytes)));
-#else
-    return false;
-#endif // KDAB_MAC_PORT
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::SetRegValue(void* key, const char* valueName, bool value)
-{
-    SettingsManagerHelpers::CFixedString<wchar_t, 256> name;
-    name.appendAscii(valueName);
-
-    DWORD dwVal = value;
-#ifdef KDAB_MAC_PORT
-    return (ERROR_SUCCESS == RegSetValueExW((HKEY)key, name.c_str(), 0, REG_DWORD, (BYTE*)&dwVal, sizeof(dwVal)));
-#else
-    return false;
-#endif // KDAB_MAC_PORT
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::SetRegValue(void* key, const char* valueName, int value)
-{
-    SettingsManagerHelpers::CFixedString<wchar_t, 256> name;
-    name.appendAscii(valueName);
-
-    DWORD dwVal = value;
-#ifdef KDAB_MAC_PORT
-    return (ERROR_SUCCESS == RegSetValueExW((HKEY)key, name.c_str(), 0, REG_DWORD, (BYTE*)&dwVal, sizeof(dwVal)));
-#else
-    return false;
-#endif // KDAB_MAC_PORT
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::GetRegValue(void* key, const char* valueName, SettingsManagerHelpers::CWCharBuffer wbuffer)
-{
-    if (wbuffer.getSizeInElements() <= 0)
-    {
-        return false;
-    }
-
-    SettingsManagerHelpers::CFixedString<wchar_t, 256> name;
-    name.appendAscii(valueName);
-
-    DWORD type;
-    DWORD sizeInBytes = DWORD(wbuffer.getSizeInBytes());
-#ifdef KDAB_MAC_PORT
-    if (ERROR_SUCCESS != RegQueryValueExW((HKEY)key, name.c_str(), NULL, &type, (BYTE*)wbuffer.getPtr(), &sizeInBytes))
-#endif // KDAB_MAC_PORT
-    {
-        wbuffer[0] = 0;
-        return false;
-    }
-
-    const size_t sizeInElements = sizeInBytes / sizeof(wbuffer[0]);
-    if (sizeInElements > wbuffer.getSizeInElements()) // paranoid check
-    {
-        wbuffer[0] = 0;
-        return false;
-    }
-
-    // According to MSDN documentation for RegQueryValueEx(), strings returned by the function
-    // are not zero-terminated sometimes, so we need to terminate them by ourselves.
-    if (wbuffer[sizeInElements - 1] != 0)
-    {
-        if (sizeInElements >= wbuffer.getSizeInElements())
-        {
-            // No space left to put terminating zero character
-            wbuffer[0] = 0;
-            return false;
-        }
-        wbuffer[sizeInElements] = 0;
-    }
-
-    return true;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::GetRegValue(void* key, const char* valueName, bool& value)
-{
-    SettingsManagerHelpers::CFixedString<wchar_t, 256> name;
-    name.appendAscii(valueName);
-
-    // Open the appropriate registry key
-    DWORD type, dwVal = 0, size = sizeof(dwVal);
-#ifdef KDAB_MAC_PORT
-    bool res = (ERROR_SUCCESS == RegQueryValueExW((HKEY)key, name.c_str(), NULL, &type, (BYTE*)&dwVal, &size));
-#else
-    bool res = false;
-#endif // KDAB_MAC_PORT
-    if (res)
-    {
-        value = (dwVal != 0);
-    }
-    else
-    {
-        wchar_t buffer[100];
-        res = GetRegValue(key, valueName, SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer)));
-        if (res)
-        {
-            value = (wcscmp(buffer, L"true") == 0);
-        }
-    }
-    return res;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CEngineSettingsManager::GetRegValue(void* key, const char* valueName, int& value)
-{
-    SettingsManagerHelpers::CFixedString<wchar_t, 256> name;
-    name.appendAscii(valueName);
-
-    // Open the appropriate registry key
-    DWORD type, dwVal = 0, size = sizeof(dwVal);
-
-#ifdef KDAB_MAC_PORT
-    bool res = (ERROR_SUCCESS == RegQueryValueExW((HKEY)key, name.c_str(), NULL, &type, (BYTE*)&dwVal, &size));
-#else
-    bool res = false;
-#endif // KDAB_MAC_PORT
-    if (res)
-    {
-        value = dwVal;
-    }
-
-    return res;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CEngineSettingsManager::StoreEngineSettingsToRegistry()
 {
-    if (!m_bGetDataFromRegistry)
-    {
-        return true;
-    }
-
-    // make sure the path in registry exists
-    {
-        RegKey key0(REG_SOFTWARE REG_COMPANY_NAME, true);
-        if (!key0.pKey)
-        {
-            RegKey software(REG_SOFTWARE, true);
-            HKEY hKey;
-#ifdef KDAB_MAC_PORT
-            RegCreateKeyW((HKEY)software.pKey, REG_COMPANY_NAME, &hKey);
-            if (!hKey)
-#endif // KDAB_MAC_PORT
-            {
-                return false;
-            }
-        }
-
-        RegKey key1(REG_SOFTWARE REG_COMPANY_NAME REG_PRODUCT_NAME, true);
-        if (!key1.pKey)
-        {
-            RegKey softwareCompany(REG_SOFTWARE REG_COMPANY_NAME, true);
-            HKEY hKey;
-#ifdef KDAB_MAC_PORT
-            RegCreateKeyW((HKEY)softwareCompany.pKey, REG_COMPANY_NAME, &hKey);
-            if (!hKey)
-#endif // KDAB_MAC_PORT
-            {
-                return false;
-            }
-        }
-
-        RegKey key2(REG_BASE_SETTING_KEY, true);
-        if (!key2.pKey)
-        {
-            RegKey softwareCompanyProduct(REG_SOFTWARE REG_COMPANY_NAME REG_PRODUCT_NAME, true);
-            HKEY hKey;
-#ifdef KDAB_MAC_PORT
-            RegCreateKeyW((HKEY)key2.pKey, REG_SETTING, &hKey);
-            if (!hKey)
-#endif // KDAB_MAC_PORT
-            {
-                return false;
-            }
-        }
-    }
-
-    bool bRet = true;
-
-    RegKey key(REG_BASE_SETTING_KEY, true);
-    if (!key.pKey)
-    {
-        bRet = false;
-    }
-    else
-    {
-        wchar_t buffer[1024];
-
-        // Engine Specific
-        if (GetValueByRef("ENG_RootPath", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            bRet &= SetRegValue(key.pKey, "ENG_RootPath", buffer);
-        }
-        else
-        {
-            bRet = false;
-        }
-
-        if (GetValueByRef("ENG_BinFolder", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            bRet &= SetRegValue(key.pKey, "ENG_BinFolder", buffer);
-        }
-        else
-        {
-            bRet = false;
-        }
-        // ResourceCompiler Specific
-
-        if (GetValueByRef("RC_ShowWindow", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            const bool b = wcscmp(buffer, L"true") == 0;
-            SetRegValue(key.pKey, "RC_ShowWindow", b);
-        }
-
-        if (GetValueByRef("RC_HideCustom", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            const bool b = wcscmp(buffer, L"true") == 0;
-            SetRegValue(key.pKey, "RC_HideCustom", b);
-        }
-
-        if (GetValueByRef("RC_Parameters", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            SetRegValue(key.pKey, "RC_Parameters", buffer);
-        }
-
-        if (GetValueByRef("RC_EnableSourceControl", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            const bool b = wcscmp(buffer, L"true") == 0;
-            SetRegValue(key.pKey, "RC_EnableSourceControl", b);
-        }
-    }
-
-    return bRet;
+    assert(m_backend);
+    return m_backend->StoreEngineSettingsToRegistry();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CEngineSettingsManager::LoadEngineSettingsFromRegistry()
 {
-    if (!m_bGetDataFromRegistry)
-    {
-        return;
-    }
-
-    wchar_t buffer[1024];
-
-    bool bResult;
-
-    // Engine Specific (Deprecated value)
-    RegKey key(REG_BASE_SETTING_KEY, false);
-    if (key.pKey)
-    {
-        if (GetRegValue(key.pKey, "RootPath", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            SetKey("ENG_RootPath", buffer);
-        }
-
-        // Engine Specific
-        if (GetRegValue(key.pKey, "ENG_RootPath", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            SetKey("ENG_RootPath", buffer);
-        }
-        if (GetRegValue(key.pKey, "ENG_BinFolder", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            SetKey("ENG_BinFolder", buffer);
-        }
-
-        // ResourceCompiler Specific
-        if (GetRegValue(key.pKey, "RC_ShowWindow", bResult))
-        {
-            SetKey("RC_ShowWindow", bResult);
-        }
-        if (GetRegValue(key.pKey, "RC_HideCustom", bResult))
-        {
-            SetKey("RC_HideCustom", bResult);
-        }
-        if (GetRegValue(key.pKey, "RC_Parameters", SettingsManagerHelpers::CWCharBuffer(buffer, sizeof(buffer))))
-        {
-            SetKey("RC_Parameters", buffer);
-        }
-        if (GetRegValue(key.pKey, "RC_EnableSourceControl", bResult))
-        {
-            SetKey("RC_EnableSourceControl", bResult);
-        }
-    }
+    assert(m_backend);
+    m_backend->LoadEngineSettingsFromRegistry();
 }
 
 //////////////////////////////////////////////////////////////////////////

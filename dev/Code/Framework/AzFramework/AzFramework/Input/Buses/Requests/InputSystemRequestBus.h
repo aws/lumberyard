@@ -35,8 +35,8 @@ namespace AzFramework
         virtual void RecreateEnabledInputDevices() = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Tick/update the input system. At some point this should be removed in favor of using the
-        //! TickBus, but for now we must update input independently to maintain existing frame order.
+        //! Tick/update the input system. This is called during the AZ::ComponentTickBus::TICK_INPUT
+        //! priority update of the AZ::TickBus, but can be called independently any time when needed.
         virtual void TickInput() = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////

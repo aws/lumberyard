@@ -9,10 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #include "StdAfx.h"
 #include "AudioMultiListenerComponent.h"
+
 #include "StarterGameUtility.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>

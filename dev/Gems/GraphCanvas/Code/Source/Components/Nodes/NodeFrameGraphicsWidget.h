@@ -27,7 +27,7 @@ namespace GraphCanvas
     //! Will not paint anything.
     class NodeFrameGraphicsWidget
         : public RootVisualNotificationsHelper<QGraphicsWidget>
-        , public RootVisualRequestBus::Handler
+        , public SceneMemberUIRequestBus::Handler
         , public GeometryNotificationBus::Handler
         , public VisualRequestBus::Handler
         , public NodeNotificationBus::Handler
@@ -47,22 +47,20 @@ namespace GraphCanvas
         void Activate();
         void Deactivate();
 
-        // RootVisualRequestBus
+        // SceneMemberUIRequestBus
         QGraphicsItem* GetRootGraphicsItem() override;
         QGraphicsLayoutItem* GetRootGraphicsLayoutItem() override;
+
+        void SetSelected(bool selected) override;
+        bool IsSelected() const override;
         ////
 
         // GeometryNotificationBus
-        using NodeNotifications::OnPositionChanged;
         void OnPositionChanged(const AZ::EntityId& entityId, const AZ::Vector2& position) override;
         ////
 
         // StyleNotificationBus
         void OnStyleChanged() override;
-        ////
-
-        // QGraphicsWidget
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         ////
 
         // QGraphicsItem
@@ -83,20 +81,22 @@ namespace GraphCanvas
         ////
 
         // NodeUIRequestBus
-        void SetSelected(bool selected) override;
-        bool IsSelected() const;
-
-        void StartItemMove(const QPointF& initialPosition, const QPointF& currentPosition) override;
+        void AdjustSize() override;
 
         void SetSnapToGrid(bool snapToGrid) override;
+        void SetResizeToGrid(bool resizeToGrid) override;
         void SetGrid(AZ::EntityId gridId) override;
 
         qreal GetCornerRadius() const override;
 
         bool IsWrapped() const override;
         ////
-		
-	protected:
+
+    protected:
+
+        int GrowToNextStep(int value, int step) const;
+        int RoundToClosestStep(int value, int step) const;
+        int ShrinkToPreviousStep(int value, int step) const;
 
         virtual void OnActivated();
         virtual void OnDeactivated();

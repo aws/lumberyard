@@ -35,6 +35,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 - (id)initWithFrame: (CGRect)frame
               scale: (CGFloat)scale
+             device: (id<MTLDevice>)device
 {
     if ((self = [super initWithFrame: frame]))
     {
@@ -51,7 +52,7 @@
             self.contentScaleFactor = scale;
         }
 #endif
-        _metalLayer.device = MTLCreateSystemDefaultDevice();
+        _metalLayer.device = device;
         _metalLayer.framebufferOnly = TRUE;
         _metalLayer.drawsAsynchronously = TRUE;
         _metalLayer.presentsWithTransaction = FALSE;
@@ -70,12 +71,16 @@
 
     return self;
 }
-@end // MetalView Implementation
 
-////////////////////////////////////////////////////////////////////////////////
-@interface MetalViewController : NativeViewControllerType {}
-- (BOOL)prefersStatusBarHidden;
-@end    // MetalViewController Interface
+- (void)setFrameSize: (CGSize) size
+{
+#if defined(AZ_PLATFORM_APPLE_OSX)
+    // iOS UiView may not respond to this message according to the compile error...
+    [super setFrameSize: size];
+#endif
+    [_metalLayer setDrawableSize: size];
+}
+@end // MetalView Implementation
 
 ////////////////////////////////////////////////////////////////////////////////
 @implementation MetalViewController
@@ -169,7 +174,6 @@ namespace NCryMetal
 #endif
     
         *handle = nativeWindow;
-
         return true;
     }
 
@@ -201,59 +205,65 @@ namespace NCryMetal
 
     ////////////////////////////////////////////////////////////////////////////
     bool CDevice::Initialize(const TWindowContext& defaultNativeDisplay)
-    {       
-        NativeScreenType* nativeScreen = [NativeScreenType mainScreen];
-        NativeWindowType* nativeWindow = reinterpret_cast<NativeWindowType*>(defaultNativeDisplay);
-        assert(nativeWindow != nullptr);
-
-        // Create the MetalView
-#if defined(AZ_PLATFORM_APPLE_OSX)
-        bool isFullScreen = (([nativeWindow styleMask] & NSFullScreenWindowMask) == NSFullScreenWindowMask);
-        CGRect screenBounds = [nativeScreen visibleFrame];
-        if(isFullScreen)
-        {
-            [nativeWindow setFrame:screenBounds display: true animate: true];
-        }
-        else
-        {
-            CGRect screenFrame = [[nativeWindow screen] frame];
-            CGRect windowFrame = [nativeWindow frame];
-            
-            CGFloat xPos = NSWidth(screenFrame)/2 - NSWidth(windowFrame)/2;
-            CGFloat yPos = NSHeight(screenFrame)/2 - NSHeight(windowFrame)/2;
-            
-            //Put the window in the centre of the screen
-            [nativeWindow setFrame:NSMakeRect(xPos, yPos, NSWidth(windowFrame), NSHeight(windowFrame)) display:true];
-            screenBounds = [nativeWindow frame];
-        }
-        
-        CGFloat screenScale = 1.0f;
-#else
-        CGRect screenBounds = [nativeScreen bounds];
-        CGFloat screenScale = [nativeScreen scale];
-#endif
-        m_currentView = [[MetalView alloc] initWithFrame: screenBounds
-                         scale: screenScale];
-
-        // Create the MetalViewController
-        MetalViewController* metalViewController = [MetalViewController alloc];
-        m_viewController = [metalViewController init];
-        [m_viewController setView : m_currentView];
-        [m_viewController retain];
-
-        // Add the MetalView and assign the MetalViewController to the UIWindow        
-#if defined(AZ_PLATFORM_APPLE_OSX)
-        // Setting the contentViewController implicitly sets the contentView
-        nativeWindow.contentViewController = m_viewController;
-        [nativeWindow makeFirstResponder: m_currentView];
-#else
-        [nativeWindow addSubview : m_currentView];
-        nativeWindow.rootViewController = m_viewController;
-#endif
-        // Cache the metal device and command queue
-        CAMetalLayer* metalLayer = static_cast<MetalView*>(m_currentView).metalLayer;
-        m_metalDevice = metalLayer.device;
+    {
+        m_metalDevice = MTLCreateSystemDefaultDevice();
         m_commandQueue = [m_metalDevice newCommandQueue];
+
+        const bool isDisplayAWindow = ([(id)defaultNativeDisplay isKindOfClass:[NativeWindowType class]]) == YES;
+        if (isDisplayAWindow)
+        {
+            NativeScreenType* nativeScreen = [NativeScreenType mainScreen];
+            NativeWindowType* nativeWindow = reinterpret_cast<NativeWindowType*>(defaultNativeDisplay);
+            assert(nativeWindow != nullptr);
+            
+            // Create the MetalView
+#if defined(AZ_PLATFORM_APPLE_OSX)
+            bool isFullScreen = (([nativeWindow styleMask] & NSFullScreenWindowMask) == NSFullScreenWindowMask);
+            CGRect screenBounds = [nativeScreen visibleFrame];
+            if(isFullScreen)
+            {
+                [nativeWindow setFrame:screenBounds display: true animate: true];
+            }
+            else
+            {
+                CGRect screenFrame = [[nativeWindow screen] frame];
+                CGRect windowFrame = [nativeWindow frame];
+                
+                CGFloat xPos = NSWidth(screenFrame)/2 - NSWidth(windowFrame)/2;
+                CGFloat yPos = NSHeight(screenFrame)/2 - NSHeight(windowFrame)/2;
+                
+                //Put the window in the centre of the screen
+                [nativeWindow setFrame:NSMakeRect(xPos, yPos, NSWidth(windowFrame), NSHeight(windowFrame)) display:true];
+                screenBounds = [nativeWindow frame];
+            }
+            
+            CGFloat screenScale = 1.0f;
+#else
+            CGRect screenBounds = [nativeScreen bounds];
+            CGFloat screenScale = [nativeScreen scale];
+#endif
+            m_currentView = [[MetalView alloc] initWithFrame: screenBounds
+                                                       scale: screenScale
+                                                      device: m_metalDevice];
+
+            [m_currentView retain];
+            
+            // Create the MetalViewController
+            MetalViewController* metalViewController = [MetalViewController alloc];
+            m_viewController = [metalViewController init];
+            [m_viewController setView : m_currentView];
+            [m_viewController retain];
+            
+            // Add the MetalView and assign the MetalViewController to the UIWindow        
+#if defined(AZ_PLATFORM_APPLE_OSX)
+            // Setting the contentViewController implicitly sets the contentView
+            nativeWindow.contentViewController = m_viewController;
+            [nativeWindow makeFirstResponder: m_currentView];
+#else
+            [nativeWindow addSubview : m_currentView];
+            nativeWindow.rootViewController = m_viewController;
+#endif
+        }
 
         return true;
     }
@@ -294,14 +304,6 @@ namespace NCryMetal
     ////////////////////////////////////////////////////////////////////////////
     bool CDevice::Present()
     {
-        // For some reason the metal view will not actually present without this.
-        SInt32 result;
-        do
-        {
-            result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, TRUE);
-        }
-        while (result == kCFRunLoopRunHandledSource);
-
         return true;
     }
 

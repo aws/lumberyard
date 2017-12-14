@@ -16,7 +16,7 @@
 #pragma once
 
 #include "FrameProfiler.h"
-#include <IInput.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 
 #ifdef USE_FRAME_PROFILER
 
@@ -27,7 +27,7 @@
 // a unified way [mm]
 class CFrameProfileSystem
     : public IFrameProfileSystem
-    , public IInputEventListener
+    , public AzFramework::InputChannelEventListener
 {
 public:
     int m_nCurSample;
@@ -571,9 +571,12 @@ public:
     //////////////////////////////////////////////////////////////////////////
 
 protected:
-    //inherited from IInputEventListener
-    virtual bool OnInputEvent(const SInputEvent& event);
+    // AzFramework::InputChannelEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+    AZ::s32 GetPriority() const override { return m_currentInputPriority; }
     void UpdateInputSystemStatus();
+
+    AZ::s32 m_currentInputPriority = AzFramework::InputChannelEventListener::GetPriorityUI();
 };
 
 #else
@@ -650,11 +653,6 @@ struct CFrameProfileSystem
 
     virtual const char* GetModuleName(CFrameProfiler* pProfiler) { return 0; }
     const char* GetModuleName(int num) const { return 0; }
-
-protected:
-    //inherited from IInputEventListener
-    virtual bool OnInputEvent(const SInputEvent& event){ return false; }
-    void UpdateInputSystemStatus() {}
 };
 
 #endif // USE_FRAME_PROFILER

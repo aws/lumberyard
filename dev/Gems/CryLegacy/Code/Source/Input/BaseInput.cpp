@@ -542,7 +542,8 @@ bool CBaseInput::SendEventToListeners(const SInputEvent& event)
     if (!bInputBlocked)
     {
         // Send this event to all listeners until the first one returns true.
-        for (TInputEventListeners::const_iterator it = m_listeners.begin(); it != m_listeners.end(); ++it)
+        auto listenersCopy = m_listeners; // Make a copy to guard against listeners being removed in response to a call to IInputEventListener::OnInputEvent
+        for (TInputEventListeners::const_iterator it = listenersCopy.begin(); it != listenersCopy.end(); ++it)
         {
             assert(*it);
             if (*it == NULL)

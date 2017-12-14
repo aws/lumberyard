@@ -39,6 +39,9 @@ namespace AZ
 
             const static AZ::Crc32 ValueText = AZ_CRC("ValueText", 0x251534d1);
 
+            const static AZ::Crc32 TrueText = AZ_CRC("TrueText", 0x263d9d95);
+            const static AZ::Crc32 FalseText = AZ_CRC("FalseText", 0x5f8c95bd);
+
             const static AZ::Crc32 EnumValues = AZ_CRC("EnumValues", 0xc551a2e0);
 
             //! Used to bind either a callback or a refresh mode to the changing of a particular property.
@@ -58,6 +61,7 @@ namespace AZ
             const static AZ::Crc32 ViewportIcon = AZ_CRC("ViewportIcon", 0xe7f19a70);
             const static AZ::Crc32 HideIcon = AZ_CRC("HideIcon", 0xfe652ee7);
             const static AZ::Crc32 PreferNoViewportIcon = AZ_CRC("PreferNoViewportIcon", 0x04ae9cb2);
+            const static AZ::Crc32 DynamicIconOverride = AZ_CRC("DynamicIconOverride", 0xcc4cea6b);
 
             //! Data attributes
             const static AZ::Crc32 Min = AZ_CRC("Min", 0xa17b1dd0);
@@ -115,6 +119,9 @@ namespace AZ
 
             // Attribute for storing a Id Generator function used by GenerateNewIdsAndFixRefs to remapping old id's to new id's
             const static AZ::Crc32 IdGeneratorFunction = AZ_CRC("IdGeneratorFunction", 0x4269a3fd);
+
+            // Attribute for tagging a System Component for use in certain contexts
+            const static AZ::Crc32 SystemComponentTags = AZ_CRC("SystemComponentTags", 0x2d8bebc9);
         }
 
 
@@ -130,6 +137,7 @@ namespace AZ
             const static AZ::Crc32 CheckBox = AZ_CRC("CheckBox", 0x1e7b08ed);
             const static AZ::Crc32 Color = AZ_CRC("Color", 0x665648e9);
             const static AZ::Crc32 ComboBox = AZ_CRC("ComboBox", 0x858d0ae9);
+            const static AZ::Crc32 RadioButton = AZ_CRC("RadioButton", 0xcbfd6f3a);
             const static AZ::Crc32 EntityId = AZ_CRC("EntityId", 0x63ac0d5e);
             const static AZ::Crc32 LayoutPadding = AZ_CRC("LayoutPadding", 0x87ffd04b);
             const static AZ::Crc32 LineEdit = AZ_CRC("LineEdit", 0x3f15f4ba);

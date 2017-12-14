@@ -24,6 +24,6 @@ def build(bld):
                             'TOMCRYPT',
                             'TOMMATH'],
         includes         = [bld.Path('Code/CryEngine/CrySystem'),
-                            bld.Path('Code/Launcher/AppleLaunchersCommon')],
+                            bld.Path('Code/Launcher')],
         cxxflags         = ['-x', 'objective-c++'],
     )

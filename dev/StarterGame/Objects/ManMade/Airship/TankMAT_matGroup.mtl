@@ -19,7 +19,7 @@
   <Material Name="Collision9" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
    <Textures />
   </Material>
-  <Material Name="TankGlass" MtlFlags="524416" Shader="Illum" GenMask="4000010020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_glass" Diffuse="0,0,0,1" Specular="0,0,0,1" Emittance="0.40197781,0.71569365,1,5" Opacity="0.99000001" vertModifType="0" LayerAct="1">
+  <Material Name="TankGlass" MtlFlags="524448" Shader="Illum" GenMask="4000010020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_glass" Diffuse="0,0,0,1" Specular="0,0,0,1" Emittance="0.40197781,0.71569365,1,5" Opacity="0.99000001" vertModifType="0" LayerAct="1">
    <Textures>
     <Texture Map="Diffuse" File="objects/manmade/airship/airship_tank_01_diff.dds"/>
     <Texture Map="Bumpmap" File="objects/manmade/airship/airship_tank_01_ddna.dds"/>

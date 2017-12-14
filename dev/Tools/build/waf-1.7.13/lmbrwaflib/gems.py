@@ -188,7 +188,7 @@ def apply_gems_to_kw(ctx, kw, gems, game_name):
         if os.path.exists(gem_include_path):
             append_unique_kw_entry(kw,'includes',gem_include_path)
 
-        if (gem.export_uselibs or ctx.is_monolithic_build()) and len(gem.local_uselibs)>0:
+        if (gem.export_uselibs or ctx.is_monolithic_build()) and len(gem.local_uselibs)>0 and not isinstance(ctx, ConfigurationContext):
             configuration = ctx.env['CONFIGURATION']
             if not (gem.local_uselib_non_release and configuration.lower() in ["release", "release_dedicated", "performance", "performance_dedicated"]):
                 append_unique_kw_entry(kw, 'uselib', gem.local_uselibs)
@@ -339,7 +339,7 @@ def DefineGem(ctx, *k, **kw):
                     if gem_for_project.name != gem.name and not gem_for_project.is_game_gem:
                         append_to_unique_list(unique_gems, gem_for_project)
 
-            is_android = ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang')
+            is_android = ctx.is_android_platform(ctx.env['PLATFORM'])
 
             for unique_gem in unique_gems:
                 if unique_gem.id in gem.dependencies or unique_gem.is_required or is_android:
@@ -361,8 +361,14 @@ def DefineGem(ctx, *k, **kw):
                     break
 
             source_contents = os.listdir(os.path.join(working_path, source_dir))
+            # see if they have a legacy stdafx precompiled header
             for entry in source_contents:
                 if entry.lower() == 'stdafx.cpp':
+                    pch_file = entry
+                    break
+            # if they have a precompiled file then we will prefer that
+            for entry in source_contents:
+                if entry.lower().endswith('precompiled.cpp'):
                     pch_file = entry
                     break
 
@@ -423,7 +429,9 @@ def DefineGem(ctx, *k, **kw):
         # Save the build settings so we can access them later
         module.kw = module_kw
 
-        if gem.is_game_gem and ctx.is_monolithic_build() and ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang') and module.type == Gem.Module.Type.GameModule:
+        append_unique_kw_entry(module_kw, 'is_gem', True)
+
+        if gem.is_game_gem and ctx.is_monolithic_build() and ctx.is_android_platform(ctx.env['PLATFORM']) and module.type == Gem.Module.Type.GameModule:
 
             # Special case for android & monolithic builds.  If this is the game gem for the project, it needs to apply the
             # enabled gems here instead of the launcher where its normally applied.  (see cryengine_modules.CryLauncher_Impl
@@ -595,7 +603,10 @@ class Gem(object):
 
         # If this gem has its own 3rd party configs, then read the 3rd party config records
         # to get the uselib names of the libraries being defined
-        gem_3p_base_node = self.ctx.path.make_node(self.path).find_node('3rdParty')
+        if len(self.abspath) > 0 and self.abspath.startswith(self.ctx.engine_path):
+            gem_3p_base_node = self.ctx.engine_node.make_node(self.path).find_node('3rdParty')
+        else:
+            gem_3p_base_node = self.ctx.path.make_node(self.path).find_node('3rdParty')
         if gem_3p_base_node:
             gem_3p_base_search_pattern = os.path.join(gem_3p_base_node.abspath(), '*.json')
             gem_3p_config_files = glob.glob(gem_3p_base_search_pattern)
@@ -735,12 +746,10 @@ class GemManager(object):
         self.dirs = []
         self.gems = []
         self.required_gems = []
-        self.search_paths = set()
+        self.search_paths = []
         # Keeps track of Gem currently being defined to avoid recursive 'use's
         self.current_gem = None
         self.ctx = ctx
-        if not ctx.is_engine_local():
-            self.search_paths.add(os.path.normpath(os.path.realpath(ctx.engine_path)))
 
     def get_gem_by_path(self, path):
         """
@@ -792,7 +801,8 @@ class GemManager(object):
 
         this_path = self.ctx.path
 
-        self.search_paths.add(os.path.normpath(this_path.abspath()))
+        append_to_unique_list(self.search_paths, os.path.normpath(this_path.abspath()))
+
         # Parse Gems search path
         config = RawConfigParser()
         if config.read(this_path.make_node('SetupAssistantUserPreferences.ini').abspath()):
@@ -803,7 +813,10 @@ class GemManager(object):
                     new_path = config.get(GEMS_FOLDER, 'SearchPaths\\{}\\Path'.format(i + 1))
                     new_path = os.path.normpath(new_path)
                     Logs.debug('gems: Adding search path {}'.format(new_path))
-                    self.search_paths.add(os.path.normpath(new_path))
+                    append_to_unique_list(self.search_paths, os.path.normpath(new_path))
+
+        if not self.ctx.is_engine_local():
+            append_to_unique_list(self.search_paths,os.path.realpath(self.ctx.engine_path))
 
         # Load all the gems under the Gems folder to search for required gems
         self.required_gems = self.ctx.load_required_gems()
@@ -846,6 +859,8 @@ class GemManager(object):
                 if not gem:
                     Logs.debug('gems: Gem not found in cache, attempting to load from disk: ({}, {}, {})'.format(gem_id, version, path))
 
+                    detected_gem_versions = {}
+
                     for search_path in self.search_paths:
                         def_file = os.path.join(search_path, path, GEMS_DEFINITION_FILE)
                         if not os.path.isfile(def_file):
@@ -855,6 +870,14 @@ class GemManager(object):
                         gem.path = path
                         gem.abspath = os.path.join(search_path, path)
                         gem.load_from_json(self.ctx.parse_json_file(self.ctx.root.make_node(def_file)))
+
+                        # Protect against loading duplicate gems from different locations, showing a warning if detected
+                        dup_gem = detected_gem_versions.get(gem.version.__str__(),None)
+                        if dup_gem is not None:
+                            Logs.warn('[WARN] Duplicate gem {} (version {}) found in multiple paths.  Accepting the one at {}'.format(gem.name,gem.version,dup_gem.abspath))
+                            gem = dup_gem
+                            break
+                        detected_gem_versions[gem.version.__str__()] = gem
 
                         # Validate that the Gem loaded from the path specified actually matches the id and version.
                         if gem.id != gem_id:
@@ -916,8 +939,6 @@ class GemManager(object):
         # Create Gems spec
         if not 'gems' in self.ctx.loaded_specs_dict:
             self.ctx.loaded_specs_dict['gems'] = dict(description="Configuration to build all Gems.",
-                                                      valid_configuration=['debug', 'profile', 'release'],
-                                                      valid_platforms=['win_x64', 'win_x64_vs2015', 'win_x64_vs2013'],
                                                       visual_studio_name='Gems',
                                                       modules=['CryAction', 'CryAction_AutoFlowNode'])
 
@@ -967,9 +988,8 @@ class GemManager(object):
 def editor_gems_enabled(ctx):
     if ctx.is_monolithic_build():
         return False
-
     capabilities = ctx.get_enabled_capabilities()
-    
+
     return (("compileengine" in capabilities) or ("compilesandbox" in capabilities))
 
 @conf
@@ -1008,7 +1028,7 @@ def apply_gems_to_context(ctx, game_name, k, kw):
 @conf
 def apply_required_gems_to_context(ctx, target, kw):
 
-    required_gems = ctx.get_required_gems()
+    required_gems = [required_gem for required_gem in ctx.get_required_gems() if required_gem.name != target]
 
     Logs.debug('gems: adding required gems to target {} : {}'.format(target, ','.join([gem.name for gem in required_gems])))
 
@@ -1039,6 +1059,7 @@ def scan_required_gems_paths(ctx):
             # Use the standard gem config loader to determine if the gem is required or not
             gem = Gem(ctx)
             gem.path = os.path.join(str(base_path), folder)
+            gem.abspath = os.path.join(base_path.abspath(),folder)
             gems_config_file = content_path.make_node(GEMS_DEFINITION_FILE)
             gem.load_from_json(ctx.parse_json_file(gems_config_file))
             gem.abspath = content_path.abspath()
@@ -1057,7 +1078,14 @@ def scan_required_gems_paths(ctx):
     def _search_for_gem_folders(base_path):
         gem_folders = base_path.listdir()
         for gem_folder in gem_folders:
-            if os.path.isdir(base_path.make_node(gem_folder).abspath()):
+            gem_folder_abs = base_path.make_node(gem_folder).abspath()
+            if os.path.isdir(gem_folder_abs):
+
+                # Make sure we dont recurse into an asset cache folder by using the
+                # 'assetdb.sqlite' file marker
+                if os.path.exists(os.path.join(gem_folder_abs,'assetdb.sqlite')):
+                    continue
+
                 if not _search_for_gem(base_path, gem_folder):
                     _search_for_gem_folders(base_path.make_node(gem_folder))
 

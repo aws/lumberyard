@@ -32,6 +32,7 @@ namespace Maestro
         using AnimatablePropertyAddress = Maestro::SequenceComponentRequests::AnimatablePropertyAddress;
         using AnimatedValue = Maestro::SequenceComponentRequests::AnimatedValue;
 
+        EditorSequenceComponent();
         ~EditorSequenceComponent();
 
         //////////////////////////////////////////////////////////////////////////
@@ -52,7 +53,7 @@ namespace Maestro
 
         bool MarkEntityLayerAsDirty() const override;
 
-        EAnimValue GetValueType(const AZStd::string& animatableAddress) override;
+        AnimValueType GetValueType(const AZStd::string& animatableAddress) override;
         // ~EditorSequenceComponentRequestBus::Handler Interface
 
         //////////////////////////////////////////////////////////////////////////

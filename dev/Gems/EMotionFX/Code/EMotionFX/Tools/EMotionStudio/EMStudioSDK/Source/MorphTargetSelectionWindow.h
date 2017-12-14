@@ -10,14 +10,12 @@
 *
 */
 
-#ifndef __EMSTUDIO_MORPHTARGETSELECTIONWINDOW_H
-#define __EMSTUDIO_MORPHTARGETSELECTIONWINDOW_H
+#pragma once
 
-// include MCore
-#include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
-#include <EMotionFX/Source/MorphSetup.h>
 #include "EMStudioConfig.h"
+#include <AzCore/std/containers/vector.h>
+#include <MCore/Source/StandardHeaders.h>
+#include <EMotionFX/Source/MorphSetup.h>
 #include <QListWidget>
 #include <QDialog>
 
@@ -29,24 +27,22 @@ namespace EMStudio
         : public QDialog
     {
         Q_OBJECT
-                       MCORE_MEMORYOBJECTCATEGORY(MorphTargetSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
+        MCORE_MEMORYOBJECTCATEGORY(MorphTargetSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
         MorphTargetSelectionWindow(QWidget* parent);
         virtual ~MorphTargetSelectionWindow();
 
-        void Update(EMotionFX::MorphSetup* morphSetup, const MCore::Array<uint32>& selection);
-        const MCore::Array<uint32>& GetMorphTargetIDs() const                                               { return mSelection; }
+        void Update(EMotionFX::MorphSetup* morphSetup, const AZStd::vector<uint32>& selection);
+        const AZStd::vector<uint32>& GetMorphTargetIDs() const                                               { return mSelection; }
 
     public slots:
         void OnSelectionChanged();
 
     private:
-        QListWidget*        mListWidget;
-        QPushButton*        mOKButton;
-        QPushButton*        mCancelButton;
-        MCore::Array<uint32> mSelection;
+        QListWidget*            mListWidget;
+        QPushButton*            mOKButton;
+        QPushButton*            mCancelButton;
+        AZStd::vector<uint32>   mSelection;
     };
 } // namespace EMStudio
-
-#endif

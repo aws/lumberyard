@@ -54,24 +54,15 @@ namespace LuaBuilder
             response.m_result = CreateJobsResultCode::ShuttingDown;
             return;
         }
-
-        // Create a job for all platforms being built
-        for (int platform : {
-            Platform_PC
-                , Platform_ES3
-                , Platform_IOS
-                , Platform_OSX
-        })
+        
+        for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
         {
-            if (request.m_platformFlags & platform)
-            {
-                JobDescriptor descriptor;
-                descriptor.m_jobKey = "Lua Compile";
-                descriptor.m_platform = platform;
-                descriptor.m_critical = true;
-                descriptor.m_jobParameters[s_BuildTypeKey] = platform == Platform_ES3 ? s_BuildTypeText : s_BuildTypeCompiled;
-                response.m_createJobOutputs.push_back(descriptor);
-            }
+            JobDescriptor descriptor;
+            descriptor.m_jobKey = "Lua Compile";
+            descriptor.SetPlatformIdentifier(info.m_identifier.c_str());
+            descriptor.m_critical = true;
+            descriptor.m_jobParameters[s_BuildTypeKey] = info.HasTag("android") ? s_BuildTypeText : s_BuildTypeCompiled;
+            response.m_createJobOutputs.push_back(descriptor);
         }
 
         response.m_result = CreateJobsResultCode::Success;
@@ -81,7 +72,7 @@ namespace LuaBuilder
     // ProcessJob
     void LuaBuilderWorker::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
     {
-        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting Job.");
+        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting Job.\n");
 
         // We succeed unless I say otherwise.
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
@@ -89,7 +80,7 @@ namespace LuaBuilder
         // Check for shutdown
         if (m_isShuttingDown)
         {
-            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Cancelled job %s because shutdown was requested", request.m_sourceFile.c_str());
+            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Cancelled job %s because shutdown was requested.\n", request.m_sourceFile.c_str());
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             return;
         }
@@ -141,7 +132,7 @@ namespace LuaBuilder
     // RunCompileJob
     LuaBuilderWorker::JobStepOutcome LuaBuilderWorker::RunCompileJob(const AssetBuilderSDK::ProcessJobRequest& request)
     {
-        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting script compile.");
+        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting script compile.\n");
 
         // Setup lua state
         AZ::ScriptContext scriptContext(AZ::DefaultScriptContextId);
@@ -178,7 +169,7 @@ namespace LuaBuilder
             FileIOStream outputStream;
             LB_VERIFY(outputStream.Open(destPath.c_str(), OpenMode::ModeWrite | OpenMode::ModeBinary), "Failed to open output file %s", destPath.c_str());
 
-            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of metadata.");
+            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of metadata.\n");
 
             // Write asset version
             AZ::ScriptAsset::LuaScriptInfo currentField = AZ::ScriptAsset::AssetVersion;
@@ -187,7 +178,7 @@ namespace LuaBuilder
             currentField = AZ::ScriptAsset::AssetTypeCompiled;
             LB_VERIFY(WriteToStream(outputStream, &currentField), "Failed to write asset type to stream.");
 
-            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of script data.");
+            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of script data.\n");
 
             // Write script
             LB_VERIFY(LuaDumpToStream(outputStream, scriptContext.NativeContext()), "Failed to write lua script to stream.");
@@ -200,7 +191,7 @@ namespace LuaBuilder
     // RunCompileJob
     LuaBuilderWorker::JobStepOutcome LuaBuilderWorker::RunCopyJob(const AssetBuilderSDK::ProcessJobRequest& request)
     {
-        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting script compile.");
+        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting script compile.\n");
 
         // Setup lua state
         AZ::ScriptContext scriptContext(AZ::DefaultScriptContextId);
@@ -250,7 +241,7 @@ namespace LuaBuilder
             FileIOStream outputStream;
             LB_VERIFY(outputStream.Open(destPath.c_str(), OpenMode::ModeWrite | OpenMode::ModeBinary), "Failed to open output file %s", destPath.c_str());
 
-            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of metadata.");
+            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of metadata.\n");
 
             // Write asset version
             AZ::ScriptAsset::LuaScriptInfo currentField = AZ::ScriptAsset::AssetVersion;
@@ -266,7 +257,7 @@ namespace LuaBuilder
             // Write the debug name
             LB_VERIFY(outputStream.Write(debugName.size(), debugName.data()) == debugNameLength, "Failed to write debug name to stream.");
 
-            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of script data.");
+            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Beginning writing of script data.\n");
 
             LB_VERIFY(outputStream.Write(sourceContents.size(), sourceContents.data()) == sourceContents.size(), "Failed to write lua script");
         }

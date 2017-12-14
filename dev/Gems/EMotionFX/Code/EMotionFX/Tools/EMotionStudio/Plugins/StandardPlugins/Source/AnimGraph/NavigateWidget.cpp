@@ -622,7 +622,7 @@ namespace EMStudio
             return;
         }
 
-        QList<QTreeWidgetItem*> selectedItems = mTreeWidget->selectedItems();
+        const QList<QTreeWidgetItem*>& selectedItems = mTreeWidget->selectedItems();
         const uint32 numSelected = selectedItems.count();
         if (numSelected == 0)
         {
@@ -671,11 +671,11 @@ namespace EMStudio
 
         // change the graph
         QTreeWidgetItem* selectedItem = selectedItems[0];
-        ShowGraph(FromQtString(selectedItem->text(COLUMN_NAME)).AsChar(), true);
+        ShowGraphByNodeName(selectedItem->text(COLUMN_NAME).toUtf8().data(), true);
     }
 
 
-    void NavigateWidget::ShowGraph(const char* nodeName, bool updateInterface)
+    void NavigateWidget::ShowGraphByNodeName(const AZStd::string& nodeName, bool updateInterface)
     {
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         if (animGraph == nullptr)
@@ -683,8 +683,12 @@ namespace EMStudio
             return;
         }
 
-        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(nodeName);
-        if (node->GetNumChildNodes() > 0)
+        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(nodeName.c_str());
+        if (!node)
+        {
+            ShowGraph(nullptr, updateInterface);
+        }
+        else if (node->GetNumChildNodes() > 0)
         {
             ShowGraph(node, updateInterface);
         }

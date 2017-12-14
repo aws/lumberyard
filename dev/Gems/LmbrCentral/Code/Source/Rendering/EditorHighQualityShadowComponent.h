@@ -38,6 +38,7 @@ namespace LmbrCentral
     class EditorHighQualityShadowComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public EditorHighQualityShadowComponentRequestBus::Handler
+        , public MeshComponentNotificationBus::Handler
     {
     public:
 
@@ -50,6 +51,12 @@ namespace LmbrCentral
         void Activate() override;
         void Deactivate() override;
         //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentNotificationBus interface implementation
+        void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
+        void OnMeshDestroyed() override;
+        ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
         // EditorHighQualityShadowComponentRequestBus interface implementation

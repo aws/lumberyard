@@ -54,15 +54,38 @@ namespace Overlap {
 
     // Description:
     //      Checks if the point is inside an AABB
+    //      The min value of the AABB is inclusive
+    //      The max value of the AABB is exclusive
     ILINE bool  Point_AABB(const Vec3& p, const AABB& aabb)
     {
         return ((p.x >= aabb.min.x && p.x < aabb.max.x) && (p.y >= aabb.min.y && p.y < aabb.max.y) && (p.z >= aabb.min.z && p.z < aabb.max.z));
     }
 
+    // Description:
+    //      Checks if the point is inside a 2D AABB
+    //      The min value of the AABB is inclusive
+    //      The max value of the AABB is exclusive
     template<typename PtType>
     ILINE bool  Point_AABB2D(const PtType& p, const AABB& aabb)
     {
         return ((p.x >= aabb.min.x && p.x < aabb.max.x) && (p.y >= aabb.min.y && p.y < aabb.max.y));
+    }
+
+    // Description:
+    //      Checks if the point is inside an AABB
+    //      The min and max value of the AABB is inclusive
+    ILINE bool  Point_AABB_MaxInclusive(const Vec3& p, const AABB& aabb)
+    {
+        return ((p.x >= aabb.min.x && p.x <= aabb.max.x) && (p.y >= aabb.min.y && p.y <= aabb.max.y) && (p.z >= aabb.min.z && p.z <= aabb.max.z));
+    }
+
+    // Description:
+    //      Checks if the point is inside a 2D AABB
+    //      The min and max value of the AABB is inclusive
+    template<typename PtType>
+    ILINE bool  Point_AABB2D_MaxInclusive(const PtType& p, const AABB& aabb)
+    {
+        return ((p.x >= aabb.min.x && p.x <= aabb.max.x) && (p.y >= aabb.min.y && p.y <= aabb.max.y));
     }
 
     // Description:

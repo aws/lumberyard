@@ -8,11 +8,12 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #3 $
+# $Revision: #1 $
 
 from errors import HandledError
 
 import os
+import json
 import util
 import constant
 import glob
@@ -31,64 +32,84 @@ def list(context, args):
 
     context.view.mapping_list(context.config.default_deployment, list, protected)
 
+def force_update(context, args):
+    update(context, args, True)
 
-def update(context, args):
-
+def update(context, args, force=False):
     # Has the project been initialized?
     if not context.config.project_initialized:
         raise HandledError('The project has not been initialized.')
 
-    __remove_old_mapping_files(context)
     context.view.mapping_update(context.config.default_deployment, args)
 
     if args.release:
-        __update_release(context, args)
-    elif args.deployment:
-        __update_launcher_with_deployment(context, args)
-    else:
-        __update_default(context, args)
+        args.deployment = context.config.release_deployment
+    
+    if not args.deployment:
+        args.deployment = context.config.default_deployment
 
-def __update_default(context, args):
-    default_mappings = {}
-    if context.config.default_deployment is not None:
-        __update_logical_mappings_files(context, context.config.default_deployment, args)
+    if not args.deployment:
+        raise HandledError('Could not find deployment to update mappings for.')
+    
+    player_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(args.deployment, 'player', constant.MAPPING_FILE_SUFFIX))
+    server_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(args.deployment, 'server', constant.MAPPING_FILE_SUFFIX))
+    if force or not (os.path.exists(player_mappings_file) and os.path.exists(server_mappings_file)):
+        # __update_with_deployment will update the user settings if it is the default deployment
+        __update_with_deployment(context, args)
+    elif args.deployment == context.config.default_deployment:
+        # we didn't need to get the mappings from the backend, update the user settings ourselves from local mappings
+        __update_user_mappings_from_file(context, player_mappings_file)
+    
+    if context.config.release_deployment is None and context.config.default_deployment:
+        set_launcher_deployment(context, context.config.default_deployment)
 
-    if context.config.default_deployment is not None:
-        exclusions = set(context.config.local_project_settings.get('ExcludedMappings', []))
-        exclusions.update(set(context.config.local_project_settings.get('EditorExcludedMappings', [])))
-        default_mappings = __get_mappings(context, context.config.default_deployment, exclusions, "Player", args)
 
-    context.config.set_user_mappings(default_mappings)
+def set_launcher_deployment(context, deployment_name):
+    player_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(deployment_name, 'player', constant.MAPPING_FILE_SUFFIX))
+    server_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(deployment_name, 'server', constant.MAPPING_FILE_SUFFIX))
+    if not (os.path.exists(player_mappings_file) and os.path.exists(server_mappings_file)):
+        __update_logical_mappings_files(context, deployment_name)
+    launcher_deployment_file = os.path.join(__logical_mapping_file_path(context), "launcher.deployment.json")
+    if not deployment_name:
+        os.remove(launcher_deployment_file)
+        return
 
-def __update_release(context, args):
-    if context.config.release_deployment is not None:
-        __update_logical_mappings_files(context, context.config.release_deployment, args)
-    else:
-        print 'Release deployment is not currently set.'
+    with open(launcher_deployment_file, 'w') as out_file:
+        json.dump({"LauncherDeployment" : deployment_name}, out_file)
 
-def __update_launcher_with_deployment(context, args):
+def __update_with_deployment(context, args):
     deployment_name = args.deployment
     if not deployment_name in context.config.deployment_names:
         raise HandledError('The project has no {} deployment.'.format(deployment_name))
     __update_logical_mappings_files(context, deployment_name, args)
 
+
+def __update_user_mappings_from_file(context, player_mappings_file):
+    mappings = {}
+    with open(player_mappings_file) as mappings_file:
+        mappings = json.load(mappings_file)
+    context.config.set_user_mappings(mappings.get("LogicalMappings", {}))
+
 def __update_logical_mappings_files(context, deployment_name, args=None):
-    __update_launcher(context, deployment_name, 'Player', args)
-    __update_launcher(context, deployment_name, 'Server', args)
+    exclusions = __get_mapping_exclusions(context)
+    player_mappings = __get_mappings(context, deployment_name, exclusions, 'Player')
 
-def __update_launcher(context, deployment_name, role, args=None):
+    if context.config.default_deployment == deployment_name:
+        context.config.set_user_mappings(player_mappings)
+
+    __update_launcher(context, deployment_name, 'Player', player_mappings)
+    __update_launcher(context, deployment_name, 'Server')
+
+def __update_launcher(context, deployment_name, role, mappings=None):
+    if mappings is None:
+        mappings = __get_mappings(context, deployment_name, __get_mapping_exclusions(context), role)
+
     kLogicalMappingsObjectName = 'LogicalMappings'
-
-    logicalMappingsFileName = '{}.{}.{}'.format(deployment_name, role.lower(), constant.MAPPING_FILE_SUFFIX)
-
-    exclusions = set(context.config.local_project_settings.get('ExcludedMappings', []))
-    exclusions.update(set(context.config.local_project_settings.get('LauncherExcludedMappings', [])))
-    mappings = __get_mappings(context, deployment_name, exclusions, role, args)
-
     outData = {}
     outData[kLogicalMappingsObjectName] = mappings
     outData['Protected'] = deployment_name in context.config.get_protected_depolyment_names()
 
+    logicalMappingsFileName = '{}.{}.{}'.format(deployment_name, role.lower(), constant.MAPPING_FILE_SUFFIX)
     logicalMappingsPath = __logical_mapping_file_path(context)
     logicalMappingsPath = os.path.join(logicalMappingsPath, logicalMappingsFileName)
 
@@ -101,8 +122,19 @@ def __logical_mapping_file_path(context):
 
     return logicalMappingsPath
 
-def __remove_old_mapping_files(context):
+
+def __remove_old_mapping_files(context, deployment_name = None):
+    if deployment_name is None:
+        __remove_all_old_mapping_files(context)
     logicalMappingsPath = __logical_mapping_file_path(context)
+    server_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'server', constant.MAPPING_FILE_SUFFIX))
+    player_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'player', constant.MAPPING_FILE_SUFFIX))
+    if os.path.exists(player_mappings_file) and context.config.validate_writable(player_mappings_file):
+        os.remove(player_mappings_file)
+    if os.path.exists(server_mappings_file) and context.config.validate_writable(server_mappings_file):
+        os.remove(server_mappings_file)
+
+def __remove_all_old_mapping_files(context):
     if not os.path.exists(logicalMappingsPath):
         return
     cwd = os.getcwd()
@@ -116,6 +148,13 @@ def __remove_old_mapping_files(context):
         except:
             pass
     os.chdir(cwd)
+
+
+def __get_mapping_exclusions(context):
+    exclusions = set(context.config.local_project_settings.get('ExcludedMappings', []))
+    exclusions.update(set(context.config.local_project_settings.get('LauncherExcludedMappings', [])))
+    return exclusions
+
 
 def __get_mappings(context, deployment_name, exclusions, role, args=None):
 

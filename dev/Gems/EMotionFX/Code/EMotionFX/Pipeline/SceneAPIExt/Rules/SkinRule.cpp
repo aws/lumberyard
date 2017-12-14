@@ -60,7 +60,7 @@ namespace EMotionFX
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute("AutoExpand", true)
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &SkinRule::m_maxWeightsPerVertex, "Max weights per vertex", "")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &SkinRule::m_maxWeightsPerVertex, "Max weights per vertex", "The maximum number of bones that can influence a single vertex.")
                         ->Attribute(AZ::Edit::Attributes::Min, 1)
                         ->Attribute(AZ::Edit::Attributes::Max, 4)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &SkinRule::m_weightThreshold, "Weight threshold", "Weight value less than this will be ignored during import.")

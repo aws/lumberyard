@@ -31,7 +31,7 @@
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxUvMapImporter.h>
 
 static AZ::SceneAPI::FbxSceneImporter::FbxImportRequestHandler* g_fbxImporter = nullptr;
-static bool g_hasBeenReflected = false;
+static AZStd::vector<AZ::ComponentDescriptor*> g_componentDescriptors;
 
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
@@ -51,34 +51,47 @@ extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 
 extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* /*context*/)
 {
+    // Descriptor registration is done in Reflect instead of Initialize because the ResourceCompilerScene initializes the libraries before
+    // there's an application.
     using namespace AZ::SceneAPI;
     using namespace AZ::SceneAPI::FbxSceneBuilder;
-    using AZ::ComponentApplicationBus;
-    
-    if (!g_hasBeenReflected)
+
+    if (g_componentDescriptors.empty())
     {
         // Global importer and behavior
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxSceneBuilder::FbxImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxSceneBuilder::FbxImporter::CreateDescriptor());
 
         // Node and attribute importers
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxAnimationImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxBlendShapeImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxBoneImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxColorStreamImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxMaterialImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxMeshImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxSkinImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxSkinWeightsImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxTransformImporter::CreateDescriptor());
-        ComponentApplicationBus::Broadcast(&ComponentApplicationBus::Handler::RegisterComponentDescriptor, FbxUvMapImporter::CreateDescriptor());
-        // There's no need to keep track of the component descriptor pointers. The descriptors register themselves with the ComponentDescriptorBus
-        //      which calls them to unregister and delete themselves upon application termination.
-        g_hasBeenReflected = true;
+        g_componentDescriptors.push_back(FbxAnimationImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxBlendShapeImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxBoneImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxColorStreamImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxMaterialImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxMeshImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxSkinImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxSkinWeightsImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxTransformImporter::CreateDescriptor());
+        g_componentDescriptors.push_back(FbxUvMapImporter::CreateDescriptor());
+        
+        for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Handler::RegisterComponentDescriptor, descriptor);
+        }
     }
 }
 
 extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
 {
+    if (!g_componentDescriptors.empty())
+    {
+        for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
+        {
+            descriptor->ReleaseDescriptor();
+        }
+        g_componentDescriptors.clear();
+        g_componentDescriptors.shrink_to_fit();
+    }
+
     if (g_fbxImporter)
     {
         g_fbxImporter->Deactivate();

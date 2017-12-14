@@ -13,6 +13,7 @@
 
 #include <AzGameFramework/Application/GameApplication.h>
 #include <IGameStartup.h>
+#include <IEditorGame.h>
 #include <platform_impl.h>
 #include <ParseEngineConfig.h>
 
@@ -34,7 +35,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 
 //! Bootstrapping globals and forward declarations
 AzGameFramework::GameApplication gameApp;
-IGameStartup* m_gameStartup;
+IGameStartup* m_gameStartup = nullptr;
 HMODULE m_gameDLL = 0;
 
 extern "C" __declspec(dllexport) int Initialize();
@@ -69,19 +70,29 @@ int Initialize()
 
     engineCfg.CopyToStartupParams(startupParams);
 
-    // Only debug and profile use dynamic module loading, all other configurations are statically linked
-#ifndef AZ_MONOLITHIC_BUILD
-    char fullLibraryName[AZ_MAX_PATH_LEN] = { 0 };
-    azsnprintf(fullLibraryName, AZ_MAX_PATH_LEN, "%s%s%s", CrySharedLibraryPrefix, engineCfg.m_gameDLL.c_str(), CrySharedLibraryExtension);
-    m_gameDLL = CryLoadLibrary(fullLibraryName);
-    if (!m_gameDLL)
-    {
-        return 1;
-    }
+    // If there are no handlers for the editor game bus, attempt to load the legacy gamedll instead
+    bool legacyGameDllStartup = (EditorGameRequestBus::GetTotalNumOfEventHandlers() == 0);
 
-    IGameStartup::TEntryFunction CreateGameStartup = (IGameStartup::TEntryFunction) GetProcAddress(m_gameDLL, "CreateGameStartup");
+    if (legacyGameDllStartup)
+    {
+        // Only debug and profile use dynamic module loading, all other configurations are statically linked
+#ifndef AZ_MONOLITHIC_BUILD
+        char fullLibraryName[AZ_MAX_PATH_LEN] = { 0 };
+        azsnprintf(fullLibraryName, AZ_MAX_PATH_LEN, "%s%s%s", CrySharedLibraryPrefix, engineCfg.m_gameDLL.c_str(), CrySharedLibraryExtension);
+        m_gameDLL = CryLoadLibrary(fullLibraryName);
+        if (!m_gameDLL)
+        {
+            return 1;
+        }
+
+        IGameStartup::TEntryFunction CreateGameStartup = (IGameStartup::TEntryFunction) GetProcAddress(m_gameDLL, "CreateGameStartup");
 #endif
-    m_gameStartup = CreateGameStartup();
+        m_gameStartup = CreateGameStartup();
+    } 
+    else
+    {
+        EditorGameRequestBus::BroadcastResult(m_gameStartup, &EditorGameRequestBus::Events::CreateGameStartup);
+    }
 
     if (m_gameStartup)
     {
@@ -95,12 +106,17 @@ int Initialize()
 //! Shutdown the engine
 int Shutdown()
 {
+    // This will just kill the app which is the way the Editor "shuts down" right now
+    gEnv->pSystem->Quit();
+
     if (m_gameStartup)
     {
         m_gameStartup->Shutdown();
         m_gameStartup = nullptr;
-
-        FreeLibrary(m_gameDLL);
+         
+        if (m_gameDLL) {
+            FreeLibrary(m_gameDLL);
+        }
     }
 
     gameApp.Stop();

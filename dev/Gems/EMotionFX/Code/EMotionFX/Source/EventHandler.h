@@ -228,8 +228,8 @@ namespace EMotionFX
         virtual void OnSimulatePhysics(float timeDelta)                                                                                     { MCORE_UNUSED(timeDelta); }
         virtual void OnCustomEvent(uint32 eventType, void* data)                                                                            { MCORE_UNUSED(eventType); MCORE_UNUSED(data); }
 
-        virtual void OnDrawLine(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)                                       { MCORE_UNUSED(posA); MCORE_UNUSED(posB); MCORE_UNUSED(color); }
-        virtual void OnDrawTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color) { MCORE_UNUSED(posA); MCORE_UNUSED(posB); MCORE_UNUSED(posC); MCORE_UNUSED(normalA); MCORE_UNUSED(normalB); MCORE_UNUSED(normalC); MCORE_UNUSED(color); }
+        virtual void OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)                                       { MCORE_UNUSED(posA); MCORE_UNUSED(posB); MCORE_UNUSED(color); }
+        virtual void OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color) { MCORE_UNUSED(posA); MCORE_UNUSED(posB); MCORE_UNUSED(posC); MCORE_UNUSED(normalA); MCORE_UNUSED(normalB); MCORE_UNUSED(normalC); MCORE_UNUSED(color); }
         virtual void OnDrawTriangles() {}
 
         // creation callbacks
@@ -257,7 +257,7 @@ namespace EMotionFX
          * @param outIntersectInfo The resulting intersection info.
          * @result Returns true when an intersection occurred and false when no intersection occurred.
          */
-        virtual bool OnRayIntersectionTest(const MCore::Vector3& start, const MCore::Vector3& end, IntersectionInfo* outIntersectInfo)      { MCORE_UNUSED(start); MCORE_UNUSED(end); MCORE_UNUSED(outIntersectInfo); return false; }
+        virtual bool OnRayIntersectionTest(const AZ::Vector3& start, const AZ::Vector3& end, IntersectionInfo* outIntersectInfo)      { MCORE_UNUSED(start); MCORE_UNUSED(end); MCORE_UNUSED(outIntersectInfo); return false; }
 
         virtual void OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)                                                 { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(state); }
         virtual void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)                                              { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(state); }
@@ -266,7 +266,7 @@ namespace EMotionFX
         virtual void OnStartTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)                            { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(transition); }
         virtual void OnEndTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)                              { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(transition); }
         virtual void Sync(AnimGraphInstance* animGraphInstance, AnimGraphNode* animGraphNode)                                                { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(animGraphNode); }
-        virtual void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const MCore::Vector3& offset)       { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(paramIndex); MCORE_UNUSED(offset); }
+        virtual void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset)       { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(paramIndex); MCORE_UNUSED(offset); }
         virtual void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode)                                                      { MCORE_UNUSED(parameterNode); }
         virtual void OnConditionTriggered(AnimGraphInstance* animGraphInstance, AnimGraphTransitionCondition* condition)                      { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(condition); }
 

@@ -47,6 +47,7 @@ signals:
     void findNext(const QString& target);
 
 private:
+    using QDialog::done;
     void done();
 
     QScopedPointer<Ui::AIDebuggerViewFindDialog> m_ui;

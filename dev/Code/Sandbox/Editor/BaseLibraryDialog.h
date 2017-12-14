@@ -18,13 +18,13 @@
 
 
 #include "DataBaseDialog.h"
+#include "IDataBaseManager.h"
+#include "BaseLibraryManager.h"
 #include "Util/AbstractGroupProxyModel.h"
 
 #include <QTreeView>
 
 class CBaseLibrary;
-class CBaseLibraryItem;
-class CBaseLibraryManager;
 class IToolbar;
 class QComboBox;
 
@@ -112,6 +112,7 @@ class BaseLibraryDialogProxyModel
 public:
     BaseLibraryDialogProxyModel(QObject* parent, QAbstractItemModel* model, BaseLibraryDialogModel* libraryModel);
 
+    using AbstractGroupProxyModel::index;
     QModelIndex index(CBaseLibraryItem* item) const;
 
     QVariant data(const QModelIndex& index, int role = Qt::UserRole) const override;

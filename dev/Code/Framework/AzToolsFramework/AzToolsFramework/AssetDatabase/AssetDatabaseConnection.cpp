@@ -64,12 +64,17 @@ namespace AzToolsFramework
                 "ON Products.JobPK = Jobs.JobID WHERE "
                 "Jobs.Platform = :platform;";
 
-
             static const char* QUERY_LEGACYSUBIDSBYPRODUCTID = "AzToolsFramework::AssetDatabase::QueryLegacySubIDsByProductID";
             static const char* QUERY_LEGACYSUBIDSBYPRODUCTID_STATEMENT =
                 "SELECT * from LegacySubIDs "
                 " WHERE "
                 "   LegacySubIDs.ProductPK = :productId;";
+            static const char* QUERY_PRODUCTDEPENDENCIES_TABLE = "AzToolsFramework::AssetDatabase::QueryProductDependencies";
+            static const char* QUERY_PRODUCTDEPENDENCIES_TABLE_STATEMENT =
+                "SELECT ProductDependencies.*, SourceGUID, SubID FROM ProductDependencies "
+                "INNER JOIN Products ON ProductPK = ProductID "
+                "INNER JOIN Jobs ON JobPK = JobID "
+                "INNER JOIN Sources ON SourcePK = SourceID;";
 
             //////////////////////////////////////////////////////////////////////////
             //projection and combination queries
@@ -381,23 +386,23 @@ namespace AzToolsFramework
             static const char* QUERY_COMBINED_BY_PRODUCTNAME_STATEMENT =
                 "SELECT * "
                 "FROM Products "
-                    "LEFT OUTER JOIN Jobs ON Jobs.JobID = Products.JobPK "
-                    "LEFT OUTER JOIN Sources ON Sources.SourceID = Jobs.SourcePK "
-                    "LEFT OUTER JOIN ScanFolders ON ScanFolders.ScanFolderID = Sources.SourceID "
+                "LEFT OUTER JOIN Jobs ON Jobs.JobID = Products.JobPK "
+                "LEFT OUTER JOIN Sources ON Sources.SourceID = Jobs.SourcePK "
+                "LEFT OUTER JOIN ScanFolders ON ScanFolders.ScanFolderID = Sources.SourceID "
                 "WHERE "
-                    "Products.ProductName = :productname;";
+                "Products.ProductName = :productname;";
 
             //add sql statement for querying everything by product name and platform
             static const char* QUERY_COMBINED_BY_PRODUCTNAME_PLATFORM = "AzToolsFramework::AssetDatabase::QueryCombinedByProductNamePlatorm";
             static const char* QUERY_COMBINED_BY_PRODUCTNAME_PLATFORM_STATEMENT =
                 "SELECT * "
                 "FROM Products "
-                    "LEFT OUTER JOIN Jobs ON Jobs.JobID = Products.JobPK "
-                    "LEFT OUTER JOIN Sources ON Sources.SourceID = Jobs.SourcePK "
-                    "LEFT OUTER JOIN ScanFolders ON ScanFolders.ScanFolderID = Sources.SourceID "
+                "LEFT OUTER JOIN Jobs ON Jobs.JobID = Products.JobPK "
+                "LEFT OUTER JOIN Sources ON Sources.SourceID = Jobs.SourcePK "
+                "LEFT OUTER JOIN ScanFolders ON ScanFolders.ScanFolderID = Sources.SourceID "
                 "WHERE "
-                    "Products.ProductName = :productname AND"
-                    "Jobs.Platform = :platform; ";
+                "Products.ProductName = :productname AND"
+                "Jobs.Platform = :platform; ";
 
             //add sql statement for querying everything by product name
             static const char* QUERY_COMBINED_LIKE_PRODUCTNAME = "AzToolsFramework::AssetDatabase::QueryCombinedLikeProductName";
@@ -433,18 +438,57 @@ namespace AzToolsFramework
             static const char* QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE = "AzToolsFramework::AssetDatabase::QuerySourceDependencyByDependsOnSource";
             static const char* QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE_STATEMENT =
                 "SELECT * from SourceDependency WHERE "
-                "DependsOnSource = :dependsOnSource;";
-
+                "DependsOnSource = :dependsOnSource AND "
+                "Source LIKE :dependentFilter;";
             static const char* QUERY_DEPENDSONSOURCE_BY_SOURCE = "AzToolsFramework::AssetDatabase::QueryDependsOnSourceBySource";
             static const char* QUERY_DEPENDSONSOURCE_BY_SOURCE_STATEMENT =
                 "SELECT * from SourceDependency WHERE "
-                "Source = :source;";
+                "Source = :source AND "
+                "DependsOnSource LIKE :dependencyFilter;";
 
             static const char* QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE = "AzToolsFramework::AssetDatabase::QuerySourceDependencyByBuilderGUIDAndSource";
             static const char* QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE_STATEMENT =
                 "SELECT * from SourceDependency WHERE "
                 "Source = :source AND "
                 "BuilderGuid = :builderGuid;";
+
+            static const char* QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID = "AzToolsFramework::AssetDatabase::QueryProductDependencyByProductDependencyID";
+            static const char* QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID_STATEMENT =
+                "SELECT * FROM ProductDependencies WHERE "
+                "ProductDependencyID = :productdependencyid;";
+
+            static const char* QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID = "AzToolsFramework::AssetDatabase::QueryProductDependencyByProductID";
+            static const char* QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID_STATEMENT =
+                "SELECT * FROM ProductDependencies WHERE "
+                "ProductPK = :productid;";
+
+            static const char* QUERY_DIRECT_PRODUCTDEPENDENCIES = "AzToolsFramework::AssetDatabase::QueryDirectProductDependencies";
+            static const char* QUERY_DIRECT_PRODUCTDEPENDENCIES_STATEMENT =
+                "SELECT * FROM Products "
+                "LEFT OUTER JOIN Jobs ON Jobs.JobID = Products.JobPK "
+                "LEFT OUTER JOIN Sources ON Sources.SourceID = Jobs.SourcePK "
+                "LEFT OUTER JOIN ProductDependencies "
+                "  ON Sources.SourceGuid = ProductDependencies.DependencySourceGuid "
+                "  AND Products.SubID = ProductDependencies.DependencySubID "
+                "WHERE ProductDependencies.ProductPK = :productid;";
+
+            static const char* QUERY_ALL_PRODUCTDEPENDENCIES = "AzToolsFramework::AssetDatabase::QueryAllProductDependencies";
+            static const char* QUERY_ALL_PRODUCTDEPENDENCIES_STATEMENT =
+                "WITH RECURSIVE "
+                "  allProductDeps(ProductID, JobPK, ProductName, SubID, AssetType, LegacyGuid) AS (  "
+                "    SELECT * FROM Products "
+                "    WHERE ProductID = :productid "
+                "    UNION "
+                "    SELECT P.ProductID, P.JobPK, P.ProductName, P.SubID, P.AssetType, P.LegacyGuid FROM Products P, allProductDeps"
+                "    LEFT OUTER JOIN Jobs ON Jobs.JobID = P.JobPK "
+                "    LEFT OUTER JOIN Sources ON Sources.SourceID = Jobs.SourcePK "
+                "    LEFT OUTER JOIN ProductDependencies"
+                "    ON Sources.SourceGuid = ProductDependencies.DependencySourceGuid "
+                "    AND P.SubID = ProductDependencies.DependencySubID "
+                "    WHERE ProductDependencies.ProductPK = allProductDeps.ProductID "
+                "    LIMIT -1 OFFSET 1 " // This will ignore the first Product selected which is not a dependency but the root of the tree
+                "  ) "
+                "SELECT * FROM allProductDeps;";
 
             void PopulateJobInfo(AzToolsFramework::AssetSystem::JobInfo &jobinfo, JobDatabaseEntry &jobDatabaseEntry)
             {
@@ -512,12 +556,12 @@ namespace AzToolsFramework
             {
                 m_scanFolder = scanFolder;
             }
-            
+
             if (displayName)
             {
                 m_displayName = displayName;
             }
-            
+
             if (portableKey)
             {
                 m_portableKey = portableKey;
@@ -567,13 +611,13 @@ namespace AzToolsFramework
         bool ScanFolderDatabaseEntry::operator==(const ScanFolderDatabaseEntry& other) const
         {
             // its the same database entry when the portable key is the same.
-            return m_portableKey == other.m_portableKey; 
+            return m_portableKey == other.m_portableKey;
         }
 
         AZStd::string ScanFolderDatabaseEntry::ToString() const
         {
             return AZStd::string::format("ScanFolderDatabaseEntry id:%i path: %s, displayname: %s, portable key: %s",
-                m_scanFolderID, 
+                m_scanFolderID,
                 m_scanFolder.c_str(),
                 m_displayName.c_str(),
                 m_portableKey.c_str());
@@ -828,18 +872,18 @@ namespace AzToolsFramework
         {
             //equivalence is when everything but the id is the same
             return m_sourcePK == other.m_sourcePK &&
-                   m_fingerprint == other.m_fingerprint &&
-                   AzFramework::StringFunc::Equal(m_jobKey.c_str(), other.m_jobKey.c_str()) &&
-                   AzFramework::StringFunc::Equal(m_platform.c_str(), other.m_platform.c_str()) &&
-                   m_builderGuid == other.m_builderGuid &&
-                   m_status == other.m_status &&
-                   m_jobRunKey == other.m_jobRunKey &&
-                   m_firstFailLogTime == other.m_firstFailLogTime &&
-                   AzFramework::StringFunc::Equal(m_firstFailLogFile.c_str(), other.m_firstFailLogFile.c_str()) &&
-                   m_lastFailLogTime == other.m_lastFailLogTime &&
-                   AzFramework::StringFunc::Equal(m_lastFailLogFile.c_str(), other.m_lastFailLogFile.c_str()) &&
-                   m_lastLogTime == other.m_lastLogTime &&
-                   AzFramework::StringFunc::Equal(m_lastLogFile.c_str(), other.m_lastLogFile.c_str());
+                m_fingerprint == other.m_fingerprint &&
+                AzFramework::StringFunc::Equal(m_jobKey.c_str(), other.m_jobKey.c_str()) &&
+                AzFramework::StringFunc::Equal(m_platform.c_str(), other.m_platform.c_str()) &&
+                m_builderGuid == other.m_builderGuid &&
+                m_status == other.m_status &&
+                m_jobRunKey == other.m_jobRunKey &&
+                m_firstFailLogTime == other.m_firstFailLogTime &&
+                AzFramework::StringFunc::Equal(m_firstFailLogFile.c_str(), other.m_firstFailLogFile.c_str()) &&
+                m_lastFailLogTime == other.m_lastFailLogTime &&
+                AzFramework::StringFunc::Equal(m_lastFailLogFile.c_str(), other.m_lastFailLogFile.c_str()) &&
+                m_lastLogTime == other.m_lastLogTime &&
+                AzFramework::StringFunc::Equal(m_lastLogFile.c_str(), other.m_lastLogFile.c_str());
         }
 
         AZStd::string JobDatabaseEntry::ToString() const
@@ -921,9 +965,9 @@ namespace AzToolsFramework
         {
             //equivalence is when everything but the id is the same
             return m_jobPK == other.m_jobPK &&
-                   m_subID == other.m_subID &&
-                   m_assetType == other.m_assetType &&
-                   AzFramework::StringFunc::Equal(m_productName.c_str(), other.m_productName.c_str());//don't compare legacy guid
+                m_subID == other.m_subID &&
+                m_assetType == other.m_assetType &&
+                AzFramework::StringFunc::Equal(m_productName.c_str(), other.m_productName.c_str());//don't compare legacy guid
         }
 
         AZStd::string ProductDatabaseEntry::ToString() const
@@ -945,6 +989,55 @@ namespace AzToolsFramework
             : m_productPK(productPK)
             , m_subID(subId)
         {
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        //ProductDepdendencyDatabaseEntry
+        ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productDependencyID, AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags)
+            : m_productDependencyID(productDependencyID)
+            , m_productPK(productPK)
+            , m_dependencySourceGuid(dependencySourceGuid)
+            , m_dependencySubID(dependencySubID)
+            , m_dependencyFlags(dependencyFlags)
+        {
+        }
+
+        ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags)
+            : m_productDependencyID(-1)
+            , m_productPK(productPK)
+            , m_dependencySourceGuid(dependencySourceGuid)
+            , m_dependencySubID(dependencySubID)
+            , m_dependencyFlags(dependencyFlags)
+        {
+        }
+
+        ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(ProductDependencyDatabaseEntry&& other)
+        {
+            *this = AZStd::move(other);
+        }
+
+        ProductDependencyDatabaseEntry& ProductDependencyDatabaseEntry::operator=(ProductDependencyDatabaseEntry&& other)
+        {
+            m_productDependencyID = AZStd::move(other.m_productDependencyID);
+            m_productPK = AZStd::move(other.m_productPK);
+            m_dependencySourceGuid = AZStd::move(other.m_dependencySourceGuid);
+            m_dependencySubID = AZStd::move(other.m_dependencySubID);
+            m_dependencyFlags = AZStd::move(other.m_dependencyFlags);
+            return *this;
+        }
+
+        bool ProductDependencyDatabaseEntry::operator==(const ProductDependencyDatabaseEntry& other) const
+        {
+            //equivalence is when everything but the id is the same
+            return m_productPK == other.m_productPK &&
+                m_dependencySourceGuid == other.m_dependencySourceGuid &&
+                m_dependencySubID == other.m_dependencySubID &&
+                m_dependencyFlags == other.m_dependencyFlags;
+        }
+
+        AZStd::string ProductDependencyDatabaseEntry::ToString() const
+        { 
+            return AZStd::string::format("ProductDependencyDatabaseEntry id: %i productpk: %i dependencysourceguid: %s dependencysubid: %i dependencyflags: %i", m_productDependencyID, m_productPK, m_dependencySourceGuid.ToString<AZStd::string>().c_str(), m_dependencySubID, m_dependencyFlags);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1046,6 +1139,7 @@ namespace AzToolsFramework
             m_databaseConnection->AddStatement(QUERY_PRODUCTS_TABLE_PLATFORM, QUERY_PRODUCTS_TABLE_PLATFORM_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_SCANFOLDERS_TABLE, QUERY_SCANFOLDERS_TABLE_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_LEGACYSUBIDSBYPRODUCTID, QUERY_LEGACYSUBIDSBYPRODUCTID_STATEMENT);
+            m_databaseConnection->AddStatement(QUERY_PRODUCTDEPENDENCIES_TABLE, QUERY_PRODUCTDEPENDENCIES_TABLE_STATEMENT);
 
             //////////////////////////////////////////////////////////////////////////
             //projection and combination queries
@@ -1119,6 +1213,11 @@ namespace AzToolsFramework
             m_databaseConnection->AddStatement(QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE, QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_DEPENDSONSOURCE_BY_SOURCE, QUERY_DEPENDSONSOURCE_BY_SOURCE_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE, QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE_STATEMENT);
+
+            m_databaseConnection->AddStatement(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID, QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID_STATEMENT);
+            m_databaseConnection->AddStatement(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID, QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID_STATEMENT);
+            m_databaseConnection->AddStatement(QUERY_DIRECT_PRODUCTDEPENDENCIES, QUERY_DIRECT_PRODUCTDEPENDENCIES_STATEMENT);
+            m_databaseConnection->AddStatement(QUERY_ALL_PRODUCTDEPENDENCIES, QUERY_ALL_PRODUCTDEPENDENCIES_STATEMENT);
         }
         //////////////////////////////////////////////////////////////////////////
         //Like
@@ -1333,6 +1432,25 @@ namespace AzToolsFramework
             }
 
             return GetProductResult(name, statement, handler, builderGuid, jobKey, status);
+        }
+
+        bool AssetDatabaseConnection::QueryProductDependenciesTable(combinedProductDependencyHandler handler)
+        {
+            const char* name = QUERY_PRODUCTDEPENDENCIES_TABLE;
+            if (!ValidateDatabaseTable(name, "ProductDependencies"))
+            {
+                return false;
+            }
+
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, name);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", name);
+                return false;
+            }
+
+            return GetCombinedDependencyResult(name, statement, handler);
         }
 
         bool AssetDatabaseConnection::QueryScanFolderByScanFolderID(AZ::s64 scanfolderid, scanFolderHandler handler)
@@ -2762,7 +2880,7 @@ namespace AzToolsFramework
             return GetSourceDependencyResult(QUERY_SOURCEDEPENDENCY_BY_SOURCEDEPENDENCYID, statement, handler);
         }
 
-        bool AssetDatabaseConnection::QuerySourceDependencyByDependsOnSource(const char* dependsOnSource, sourceFileDependencyHandler handler)
+        bool AssetDatabaseConnection::QuerySourceDependencyByDependsOnSource(const char* dependsOnSource, const char* dependentFilter, sourceFileDependencyHandler handler)
         {
             if (!ValidateDatabaseTable(QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE, "SourceDependency"))
             {
@@ -2786,10 +2904,20 @@ namespace AzToolsFramework
 
             statement->BindValueText(dependsOnSourceIdx, dependsOnSource);
 
+
+            int dependentFilterIdx = statement->GetNamedParamIdx(":dependentFilter");
+            if (!dependentFilterIdx)
+            {
+                AZ_Error(LOG_NAME, false, "Could not find :dependentFilter parameter in %s", QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE);
+                return false;
+            }
+
+            statement->BindValueText(dependentFilterIdx, dependentFilter == nullptr ? "%" : dependentFilter);
+
             return GetSourceDependencyResult(QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE, statement, handler);
         }
 
-        bool AssetDatabaseConnection::QueryDependsOnSourceBySourceDependency(const char* sourceDependency, sourceFileDependencyHandler handler)
+        bool AssetDatabaseConnection::QueryDependsOnSourceBySourceDependency(const char* sourceDependency, const char* dependencyFilter, sourceFileDependencyHandler handler)
         {
             if (!ValidateDatabaseTable(QUERY_DEPENDSONSOURCE_BY_SOURCE, "SourceDependency"))
             {
@@ -2812,6 +2940,15 @@ namespace AzToolsFramework
             }
 
             statement->BindValueText(sourceIdx, sourceDependency);
+
+            int dependencyFilterIdx = statement->GetNamedParamIdx(":dependencyFilter");
+            if (!dependencyFilterIdx)
+            {
+                AZ_Error(LOG_NAME, false, "Could not find :dependencyFilter parameter in %s", QUERY_DEPENDSONSOURCE_BY_SOURCE);
+                return false;
+            }
+
+            statement->BindValueText(dependencyFilterIdx, dependencyFilter == nullptr ? "%" : dependencyFilter);
 
             return GetSourceDependencyResult(QUERY_DEPENDSONSOURCE_BY_SOURCE, statement, handler);
         }
@@ -2851,6 +2988,104 @@ namespace AzToolsFramework
 
         }
 
+        // Product Dependencies
+        bool AssetDatabaseConnection::QueryProductDependencyByProductDependencyId(AZ::s64 productDependencyID, productDependencyHandler handler)
+        {
+            if (!ValidateDatabaseTable(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID, "ProductDependencies"))
+            {
+                return false;
+            }
+
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID);
+                return false;
+            }
+
+            if (!statement->BindNamedInt64(":productdependencyid", productDependencyID))
+            {
+                return false;
+            }
+
+            return GetProductDependencyResult(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTDEPENDENCYID, statement, handler);
+        }
+
+        bool AssetDatabaseConnection::QueryProductDependencyByProductId(AZ::s64 productID, productDependencyHandler handler)
+        {
+            if (!ValidateDatabaseTable(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID, "ProductDependencies"))
+            {
+                return false;
+            }
+
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID);
+                return false;
+            }
+
+            if (!statement->BindNamedInt64(":productid", productID))
+            {
+                return false;
+            }
+
+            return GetProductDependencyResult(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID, statement, handler);
+        }
+
+        bool AssetDatabaseConnection::QueryDirectProductDependencies(AZ::s64 productID, productHandler handler)
+        {
+            if (!ValidateDatabaseTable(QUERY_DIRECT_PRODUCTDEPENDENCIES, "ProductDependencies") ||
+                !ValidateDatabaseTable(QUERY_DIRECT_PRODUCTDEPENDENCIES, "Products") ||
+                !ValidateDatabaseTable(QUERY_DIRECT_PRODUCTDEPENDENCIES, "Jobs") ||
+                !ValidateDatabaseTable(QUERY_DIRECT_PRODUCTDEPENDENCIES, "Sources"))
+            {
+                return false;
+            }
+
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, QUERY_DIRECT_PRODUCTDEPENDENCIES);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", QUERY_DIRECT_PRODUCTDEPENDENCIES);
+                return false;
+            }
+
+            if (!statement->BindNamedInt64(":productid", productID))
+            {
+                return false;
+            }
+
+            return GetProductResult(QUERY_DIRECT_PRODUCTDEPENDENCIES, statement, handler);
+        }
+
+        bool AssetDatabaseConnection::QueryAllProductDependencies(AZ::s64 productID, productHandler handler)
+        {
+            if (!ValidateDatabaseTable(QUERY_ALL_PRODUCTDEPENDENCIES, "ProductDependencies") ||
+                !ValidateDatabaseTable(QUERY_ALL_PRODUCTDEPENDENCIES, "Products") ||
+                !ValidateDatabaseTable(QUERY_ALL_PRODUCTDEPENDENCIES, "Jobs") ||
+                !ValidateDatabaseTable(QUERY_ALL_PRODUCTDEPENDENCIES, "Sources"))
+            {
+                return false;
+            }
+
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, QUERY_ALL_PRODUCTDEPENDENCIES);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", QUERY_ALL_PRODUCTDEPENDENCIES);
+                return false;
+            }
+
+            if (!statement->BindNamedInt64(":productid", productID))
+            {
+                return false;
+            }
+
+            return GetProductResult(QUERY_ALL_PRODUCTDEPENDENCIES, statement, handler);
+        }
 
         bool AssetDatabaseConnection::ValidateDatabaseTable(const char* callName, const char* tableName)
         {
@@ -3367,9 +3602,79 @@ namespace AzToolsFramework
             return validResult;
         }
 
-        bool AssetDatabaseConnection::GetLegacySubIDsResult(const char* callName, SQLite::Statement* statement, legacySubIDsHandler handler)
+        bool AssetDatabaseConnection::GetProductDependencyResult(const char* callName, Statement* statement, productDependencyHandler handler)
         {
             (void)callName; // AZ_Error may be compiled out entirely in release builds.
+            Statement::SqlStatus result = statement->Step();
+
+            int productDependencyIDColumnIdx = statement->FindColumn("ProductDependencyID");
+            if (productDependencyIDColumnIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "ProductDependencyID");
+                return false;
+            }
+
+            int productPKColumnIdx = statement->FindColumn("ProductPK");
+            if (productPKColumnIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "ProductPK");
+                return false;
+            }
+
+            int dependencySourceGuidIdx = statement->FindColumn("DependencySourceGuid");
+            if (dependencySourceGuidIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "DependencySourceGuid");
+                return false;
+            }
+
+            int dependencySubIDIdx = statement->FindColumn("DependencySubID");
+            if (dependencySubIDIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "DependencySubID");
+                return false;
+            }
+
+            int dependencyFlagsIdx = statement->FindColumn("DependencyFlags");
+            if (dependencyFlagsIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "DependencyFlags");
+                return false;
+            }
+
+            bool validResult = result == Statement::SqlDone;
+            while (result == Statement::SqlOK)
+            {
+                ProductDependencyDatabaseEntry productDependency;
+                productDependency.m_productDependencyID = statement->GetColumnInt64(productDependencyIDColumnIdx);
+                productDependency.m_productPK = statement->GetColumnInt64(productPKColumnIdx);
+                productDependency.m_dependencySourceGuid = statement->GetColumnUuid(dependencySourceGuidIdx);
+                productDependency.m_dependencySubID = statement->GetColumnInt(dependencySubIDIdx);
+                productDependency.m_dependencyFlags = statement->GetColumnInt64(dependencyFlagsIdx);
+
+                if (handler(productDependency))
+                {
+                    result = statement->Step();
+                }
+                else
+                {
+                    result = Statement::SqlDone;
+                }
+                validResult = true;
+            }
+
+            if (result == Statement::SqlError)
+            {
+                AZ_Warning(LOG_NAME, false, "Error occurred while stepping %s", callName);
+                return false;
+            }
+
+            return validResult;
+        }
+
+        bool AssetDatabaseConnection::GetLegacySubIDsResult(const char* callName, SQLite::Statement* statement, legacySubIDsHandler handler)
+        {
+            AZ_UNUSED(callName); // AZ_Error may be compiled out entirely in release builds.
 
             Statement::SqlStatus result = statement->Step();
 
@@ -3424,7 +3729,7 @@ namespace AzToolsFramework
 
         bool AssetDatabaseConnection::GetCombinedResult(const char* callName, Statement* statement, combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, AssetSystem::JobStatus status, bool includeLegacySubIDs)
         {
-            (void)callName; // AZ_Error may be compiled out entirely in release builds.
+            AZ_UNUSED(callName); // AZ_Error may be compiled out entirely in release builds.
             Statement::SqlStatus result = statement->Step();
 
             //////////////////////////////////////////////////////////////////////////
@@ -3713,6 +4018,73 @@ namespace AzToolsFramework
                 return false;
             }
             return validResult;
+        }
+
+        bool AzToolsFramework::AssetDatabase::AssetDatabaseConnection::GetCombinedDependencyResult(const char* callName, SQLite::Statement* statement, combinedProductDependencyHandler handler)
+        {
+            (void)callName; // AZ_Error may be compiled out entirely in release builds.
+
+            Statement::SqlStatus result = statement->Step();
+
+            AZStd::vector<int> columns;
+            if (!GetStatementColumns(statement, callName, { "ProductDependencyID", "ProductPK", "DependencySourceGuid", "DependencySubID", "DependencyFlags", "SourceGuid", "SubID" }, columns))
+            {
+                return false;
+            }
+
+            bool validResult = result == Statement::SqlDone;
+            while (result == Statement::SqlOK)
+            {
+                ProductDependencyDatabaseEntry entry;
+
+                entry.m_productDependencyID = statement->GetColumnInt64(columns[0]);
+                entry.m_productPK = statement->GetColumnInt64(columns[1]);
+                entry.m_dependencySourceGuid = statement->GetColumnUuid(columns[2]);
+                entry.m_dependencySubID = statement->GetColumnInt(columns[3]);
+                entry.m_dependencyFlags = statement->GetColumnInt64(columns[4]);
+
+                AZ::Data::AssetId assetId(statement->GetColumnUuid(columns[5]), statement->GetColumnInt(columns[6]));
+
+                if (handler(assetId, entry))
+                {
+                    result = statement->Step();
+                }
+                else
+                {
+                    result = Statement::SqlDone;
+                }
+                validResult = true;
+            }
+
+            if (result == Statement::SqlError)
+            {
+                AZ_Warning(LOG_NAME, false, "Error occurred while stepping %s", callName);
+                return false;
+            }
+
+            return validResult;
+        }
+
+        bool AssetDatabaseConnection::GetStatementColumns(Statement* statement, const char* callName, AZStd::initializer_list<const char*> columnNames, AZStd::vector<int>& columnIndices)
+        {
+            (void)callName; // AZ_Error may be compiled out entirely in release builds.
+
+            columnIndices.reserve(columnNames.size());
+
+            for (const char* column : columnNames)
+            {
+                int index = statement->FindColumn(column);
+
+                if (index == -1)
+                {
+                    AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, column);
+                    return false;
+                }
+
+                columnIndices.push_back(index);
+            }
+
+            return true;
         }
     } // namespace AssetDatabase
 } // namespace AZToolsFramework

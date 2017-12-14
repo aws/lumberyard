@@ -751,6 +751,12 @@ AZ::Uuid AZ::ScriptSystemComponent::GetComponentTypeId() const
     return AZ::Uuid("{b5fc8679-fa2a-4c7c-ac42-dcc279ea613a}");
 }
 
+bool AZ::ScriptSystemComponent::CanCreateComponent(const AZ::Data::AssetId& assetId) const
+{
+    //LUA source files output a compiled as well as an uncompiled asset, both with the same typeID.  We only want to create components with the compiled asset
+    return assetId.m_subId == ScriptAsset::CompiledAssetSubId;
+}
+
 /**
  * Behavior Context forwarder
  */
@@ -819,6 +825,7 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
             ->Enum<PLATFORM_WII>("Wii") // ACCEPTED_USE
             ->Enum<PLATFORM_LINUX_64>("Linux")
             ->Enum<PLATFORM_ANDROID>("Android")
+            ->Enum<PLATFORM_ANDROID_64>("Android64")
             ->Enum<PLATFORM_APPLE_IOS>("iOS")
             ->Enum<PLATFORM_APPLE_OSX>("OSX")
             ->Enum<PLATFORM_APPLE_TV>("tvOS")

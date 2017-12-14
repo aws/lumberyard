@@ -390,7 +390,11 @@ void UiLayoutColumnComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetSpacing", &UiLayoutColumnBus::Events::GetSpacing)
             ->Event("SetSpacing", &UiLayoutColumnBus::Events::SetSpacing)
             ->Event("GetOrder", &UiLayoutColumnBus::Events::GetOrder)
-            ->Event("SetOrder", &UiLayoutColumnBus::Events::SetOrder);
+            ->Event("SetOrder", &UiLayoutColumnBus::Events::SetOrder)
+            ->VirtualProperty("Padding", "GetPadding", "SetPadding")
+            ->VirtualProperty("Spacing", "GetSpacing", "SetSpacing");
+
+        behaviorContext->Class<UiLayoutColumnComponent>()->RequestBus("UiLayoutColumnBus");
     }
 }
 
@@ -446,7 +450,7 @@ void UiLayoutColumnComponent::ApplyLayoutWidth(float availableWidth)
     UiLayoutHelpers::GetLayoutCellWidths(GetEntityId(), m_ignoreDefaultLayoutCells, layoutCells);
     int numChildren = layoutCells.size();
     if (numChildren > 0)
-    {        
+    {
         // Set the child elements' transform properties based on the calculated child widths
         UiTransform2dInterface::Anchors anchors(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -563,7 +567,7 @@ bool UiLayoutColumnComponent::VersionConverter(AZ::SerializeContext& context,
     if (classElement.GetVersion() < 2)
     {
         // Add a flag and set it to a value that's different from the default value for new components
-        const char *subElementName = "IgnoreDefaultLayoutCells";
+        const char* subElementName = "IgnoreDefaultLayoutCells";
         int newElementIndex = classElement.AddElement<bool>(context, subElementName);
         if (newElementIndex == -1)
         {

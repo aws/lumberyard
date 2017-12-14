@@ -23,6 +23,9 @@
 #include <AzToolsFramework/AssetBrowser/Thumbnails/FolderThumbnail.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/SourceThumbnail.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/ProductThumbnail.h>
+#include <AzToolsFramework/Thumbnails/SourceControlThumbnail.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntryCache.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <QVariant>
 #include <QMimeData>
@@ -45,8 +48,6 @@ namespace AzToolsFramework
 #endif
         const char* GEMS_FOLDER_NAME = "Gems";
 
-        static AZStd::unordered_map<AZ::Data::AssetId, ProductAssetBrowserEntry*> g_assetIdMap;
-        static AZStd::unordered_map<AZ::Uuid, SourceAssetBrowserEntry*> g_sourceIdMap;
 
         QString AssetBrowserEntry::AssetEntryTypeToString(AssetEntryType assetEntryType)
         {
@@ -90,14 +91,18 @@ namespace AzToolsFramework
         {}
 
         AssetBrowserEntry::AssetBrowserEntry(const char* name)
-            : m_name(name)
+            : QObject()
+            , m_name(name)
             , m_displayName(name)
-            , m_thumbnailDirty(false)
         {
         }
 
         AssetBrowserEntry::~AssetBrowserEntry()
         {
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                cache->m_dirtyThumbnailsSet.erase(this);
+            }
             RemoveChildren();
         }
 
@@ -109,7 +114,7 @@ namespace AzToolsFramework
 
             AssetBrowserModelRequestsBus::Broadcast(&AssetBrowserModelRequests::BeginAddEntry, this);
             m_children.push_back(child);
-            AssetBrowserModelRequestsBus::Broadcast(&AssetBrowserModelRequests::EndAddEntry);
+            AssetBrowserModelRequestsBus::Broadcast(&AssetBrowserModelRequests::EndAddEntry, this);
             AssetBrowserModelNotificationsBus::Broadcast(&AssetBrowserModelNotifications::EntryAdded, child);
         }
 
@@ -269,30 +274,25 @@ namespace AzToolsFramework
 
         SharedThumbnailKey AssetBrowserEntry::GetThumbnailKey() const
         {
-            if (!m_thumbnailKey)
-            {
-                auto* entry = const_cast<AssetBrowserEntry*>(this);
-                entry->SetThumbnailKey(entry->CreateThumbnailKey());
-            }
             return m_thumbnailKey;
         }
 
-        void AssetBrowserEntry::GetDirty(AZStd::vector<AssetBrowserEntry*>& entries)
+        void AssetBrowserEntry::UpdateChildPaths(AssetBrowserEntry* child) const
         {
-            if (m_thumbnailDirty)
-            {
-                entries.push_back(this);
-                m_thumbnailDirty = false;
-            }
-            for (auto child : m_children)
-            {
-                child->GetDirty(entries);
-            }
+            child->PathsUpdated();
+        }
+
+        void AssetBrowserEntry::PathsUpdated()
+        {
+            SetThumbnailKey(CreateThumbnailKey());
         }
 
         void AssetBrowserEntry::ThumbnailUpdated()
         {
-            m_thumbnailDirty = true;
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                cache->m_dirtyThumbnailsSet.insert(this);
+            }
         }
         //////////////////////////////////////////////////////////////////////////
         // RootAssetBrowserEntry
@@ -340,11 +340,18 @@ namespace AzToolsFramework
 
         void RootAssetBrowserEntry::RemoveSource(const AZ::Uuid& sourceUuid)
         {
-            auto source = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUuid);
+            AssetBrowserEntry* source = nullptr;
+            // avoid having to const-cast here, look it up directly in the (internal/private) cache
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                source = cache->m_sourceIdMap[sourceUuid];
+            }
+
             if (!source || source->GetChildCount()) // if child count above 0, source file is being moved
             {
                 return;
             }
+
             RemoveEntry(source);
         }
 
@@ -352,6 +359,7 @@ namespace AzToolsFramework
         {
             child->m_relativePath = child->m_name;
             child->m_fullPath = child->m_name;
+            AssetBrowserEntry::UpdateChildPaths(child);
         }
 
         SharedThumbnailKey RootAssetBrowserEntry::CreateThumbnailKey()
@@ -371,7 +379,6 @@ namespace AzToolsFramework
             }
             AssetBrowserEntry* folder = aznew FolderAssetBrowserEntry(folderName, isScanFolder, isGemsFolder);
             parent->AddChild(folder);
-            folder->SetThumbnailKey(folder->CreateThumbnailKey());
             return folder;
         }
 
@@ -401,6 +408,7 @@ namespace AzToolsFramework
                         {
                             parent = child;
                             relativePath += n; // advance relative path n characters since the parent has changed
+                            n = 0; // Once the relative path pointer is advanced, reset n
                         }
                     }
                 }
@@ -517,7 +525,6 @@ namespace AzToolsFramework
                         combinedDatabaseEntry.m_sourceGuid
                         );
                 parent->AddChild(source);
-                source->SetThumbnailKey(source->CreateThumbnailKey());
             }
             else
             {
@@ -555,7 +562,6 @@ namespace AzToolsFramework
                         combinedDatabaseEntry.m_assetType,
                         combinedDatabaseEntry.m_platform.c_str());
                 source->AddChild(product);
-                product->SetThumbnailKey(product->CreateThumbnailKey());
             }
         }
 
@@ -624,6 +630,7 @@ namespace AzToolsFramework
         {
             child->m_relativePath = m_relativePath + AZ_CORRECT_DATABASE_SEPARATOR + child->m_name;
             child->m_fullPath = m_fullPath + AZ_CORRECT_DATABASE_SEPARATOR + child->m_name;
+            AssetBrowserEntry::UpdateChildPaths(child);
         }
 
         SharedThumbnailKey FolderAssetBrowserEntry::CreateThumbnailKey()
@@ -651,12 +658,18 @@ namespace AzToolsFramework
             , m_scanFolderID(scanFolderID)
             , m_sourceUuid(sourceUuid)
         {
-            g_sourceIdMap[sourceUuid] = this;
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                cache->m_sourceIdMap[sourceUuid] = this;
+            }
         }
 
         SourceAssetBrowserEntry::~SourceAssetBrowserEntry()
         {
-            g_sourceIdMap.erase(m_sourceUuid);
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                cache->m_sourceIdMap.erase(m_sourceUuid);
+            }
         }
 
         QVariant SourceAssetBrowserEntry::data(int column) const
@@ -689,7 +702,6 @@ namespace AzToolsFramework
                     ->Field("m_scanFolderID", &SourceAssetBrowserEntry::m_scanFolderID)
                     ->Field("m_sourceUuid", &SourceAssetBrowserEntry::m_sourceUuid)
                     ->Field("m_extension", &SourceAssetBrowserEntry::m_extension);
-                    
             }
         }
 
@@ -700,6 +712,11 @@ namespace AzToolsFramework
         const AZStd::string& SourceAssetBrowserEntry::GetExtension() const
         {
             return m_extension;
+        }
+
+        const AZ::Uuid& SourceAssetBrowserEntry::GetSourceUuid() const
+        {
+            return m_sourceUuid;
         }
 
         AZ::s64 SourceAssetBrowserEntry::GetSourceID() const
@@ -716,21 +733,62 @@ namespace AzToolsFramework
         {
             AZStd::vector<const ProductAssetBrowserEntry*> products;
             GetChildren<ProductAssetBrowserEntry>(products);
-            if (!products.empty())
+            for (const ProductAssetBrowserEntry* product : products)
             {
-                return products.front()->GetAssetType();
+                AZ::Data::AssetType productType = product->GetAssetType();
+                if (productType != AZ::Data::s_invalidAssetType)
+                {
+                    return productType;
+                }
             }
-            return AZ::Data::AssetType::CreateNull();
+
+            return AZ::Data::s_invalidAssetType;
         }
 
-        SourceAssetBrowserEntry* SourceAssetBrowserEntry::GetSourceByAssetId(const AZ::Uuid& sourceId)
+        bool SourceAssetBrowserEntry::HasProductType(const AZ::Data::AssetType& assetType) const
         {
-            return g_sourceIdMap[sourceId];
+            AZStd::vector<const ProductAssetBrowserEntry*> products;
+            GetChildren<ProductAssetBrowserEntry>(products);
+            for (const ProductAssetBrowserEntry* product : products)
+            {
+                AZ::Data::AssetType productType = product->GetAssetType();
+                if (productType  == assetType)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        const SourceAssetBrowserEntry* SourceAssetBrowserEntry::GetSourceByAssetId(const AZ::Uuid& sourceId)
+        {
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                return cache->m_sourceIdMap[sourceId];
+            }
+            return nullptr;
         }
 
         void SourceAssetBrowserEntry::UpdateChildPaths(AssetBrowserEntry* child) const
         {
             child->m_fullPath = m_fullPath;
+            AssetBrowserEntry::UpdateChildPaths(child);
+        }
+
+        void SourceAssetBrowserEntry::PathsUpdated()
+        {
+            AssetBrowserEntry::PathsUpdated();
+            UpdateSourceControlThumbnail();
+        }
+
+        void SourceAssetBrowserEntry::UpdateSourceControlThumbnail()
+        {
+            if (m_sourceControlThumbnailKey)
+            {
+                disconnect(m_sourceControlThumbnailKey.data(), &ThumbnailKey::Updated, this, &AssetBrowserEntry::ThumbnailUpdated);
+            }
+            m_sourceControlThumbnailKey = MAKE_TKEY(SourceControlThumbnailKey, m_fullPath.c_str());
+            connect(m_sourceControlThumbnailKey.data(), &ThumbnailKey::Updated, this, &AssetBrowserEntry::ThumbnailUpdated);
         }
 
         SharedThumbnailKey SourceAssetBrowserEntry::GetThumbnailKey() const
@@ -746,6 +804,11 @@ namespace AzToolsFramework
         SharedThumbnailKey SourceAssetBrowserEntry::CreateThumbnailKey()
         {
             return MAKE_TKEY(SourceThumbnailKey, m_fullPath.c_str());
+        }
+
+        SharedThumbnailKey SourceAssetBrowserEntry::GetSourceControlThumbnailKey() const
+        {
+            return m_sourceControlThumbnailKey;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -776,14 +839,34 @@ namespace AzToolsFramework
             , m_platform(platform)
         {
             m_assetType.ToString(m_assetTypeString);
-            g_assetIdMap[assetId] = this;
+
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                cache->m_assetIdMap[assetId] = this;
+            }
 
             AZ::Data::AssetCatalogRequestBus::BroadcastResult(m_relativePath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, m_assetId);
+
+            AZStd::string productName;
+            StringFunc::Path::Split(name, nullptr, nullptr, &productName, nullptr);
+            AZStd::string assetTypeName;
+            AZ::AssetTypeInfoBus::EventResult(assetTypeName, m_assetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
+            if (!assetTypeName.empty())
+            {
+                m_displayName = AZStd::string::format("%s (%s)", productName.c_str(), assetTypeName.c_str());
+            }
+            else
+            {
+                m_displayName = productName;
+            }
         }
 
         ProductAssetBrowserEntry::~ProductAssetBrowserEntry()
         {
-            g_assetIdMap.erase(m_assetId);
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                cache->m_assetIdMap.erase(m_assetId);
+            }
         }
 
         QVariant ProductAssetBrowserEntry::data(int column) const
@@ -885,13 +968,24 @@ namespace AzToolsFramework
 
         ProductAssetBrowserEntry* ProductAssetBrowserEntry::GetProductByAssetId(const AZ::Data::AssetId& assetId)
         {
-            return g_assetIdMap[assetId];
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                return cache->m_assetIdMap[assetId];
+            }
+            return nullptr;
         }
 
-        void ProductAssetBrowserEntry::ThumbnailUpdated() 
+        void ProductAssetBrowserEntry::ThumbnailUpdated()
         {
             // if source is displaying product's thumbnail, then it needs to also listen to its ThumbnailUpdated
-            m_parentAssetEntry->m_thumbnailDirty = true;
+            if (m_parentAssetEntry)
+            {
+                if (EntryCache* cache = EntryCache::GetInstance())
+                {
+                    cache->m_dirtyThumbnailsSet.insert(m_parentAssetEntry);
+                }
+            }
+            
         }
 
         SharedThumbnailKey AssetBrowser::ProductAssetBrowserEntry::GetThumbnailKey() const
@@ -907,7 +1001,7 @@ namespace AzToolsFramework
 
         SharedThumbnailKey ProductAssetBrowserEntry::CreateThumbnailKey()
         {
-            return MAKE_TKEY(ProductThumbnailKey, m_assetId, m_assetType);
+            return MAKE_TKEY(Thumbnailer::ProductThumbnailKey, m_assetId);
         }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

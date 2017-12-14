@@ -52,7 +52,6 @@
 #include <IAISystem.h>
 #include <IEntitySystem.h>
 #include <IMovieSystem.h>
-#include <IInput.h>
 #include <IScriptSystem.h>
 #include <ICryPak.h>
 #include <IPhysics.h>
@@ -69,7 +68,6 @@
 #include "Prefabs/PrefabManager.h"
 #include "Prefabs/PrefabEvents.h"
 #include <ITimeOfDay.h>
-#include <IMusicSystem.h>
 #include <LyShine/ILyShine.h>
 #include <ParseEngineConfig.h>
 #include <Core/EditorFilePathManager.h>
@@ -79,8 +77,13 @@
 #include <LmbrCentral/Animation/SimpleAnimationComponentBus.h>
 
 #include <AzCore/base.h>
+#include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/std/string/conversions.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
+#include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
+#include <AzFramework/FileFunc/FileFunc.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
@@ -88,6 +91,7 @@
 #include "MainWindow.h"
 
 #include <QMessageBox>
+#include <QThread>
 
 static const char defaultFileExtension[] = ".ly";
 static const char oldFileExtension[] = ".cry";
@@ -96,7 +100,7 @@ static const char oldFileExtension[] = ".cry";
 struct SSystemUserCallback
     : public ISystemUserCallback
 {
-    SSystemUserCallback(IInitializeUIInfo* logo) { m_pLogo = logo; };
+    SSystemUserCallback(IInitializeUIInfo* logo) : m_threadErrorHandler(this) { m_pLogo = logo; };
     virtual void OnSystemConnect(ISystem* pSystem)
     {
         ModuleInitISystem(pSystem, "Editor");
@@ -104,6 +108,14 @@ struct SSystemUserCallback
 
     virtual bool OnError(const char* szErrorString)
     {
+        // since we show a message box, we have to use the GUI thread
+        if (QThread::currentThread() != qApp->thread())
+        {
+            bool result = false;
+            QMetaObject::invokeMethod(&m_threadErrorHandler, "OnError", Qt::BlockingQueuedConnection, Q_RETURN_ARG(bool, result), Q_ARG(const char*, szErrorString));
+            return result;
+        }
+
         if (szErrorString)
         {
             Log(szErrorString);
@@ -215,7 +227,23 @@ struct SSystemUserCallback
 
 private:
     IInitializeUIInfo* m_pLogo;
+    ThreadedOnErrorHandler m_threadErrorHandler;
 };
+
+ThreadedOnErrorHandler::ThreadedOnErrorHandler(ISystemUserCallback* callback)
+    : m_userCallback(callback)
+{
+    moveToThread(qApp->thread());
+}
+
+ThreadedOnErrorHandler::~ThreadedOnErrorHandler()
+{
+}
+
+bool ThreadedOnErrorHandler::OnError(const char* error)
+{
+    return m_userCallback->OnError(error);
+}
 
 //! This class will be used by CSystem to find out whether the negotiation with the assetprocessor failed
 class AssetProcessConnectionStatus
@@ -237,12 +265,23 @@ public:
         m_connectionFailed = true;
     }
 
+    void NegotiationFailed() override
+    {
+        m_negotiationFailed = true;
+    }
+
     bool CheckConnectionFailed()
     {
         return m_connectionFailed;
     }
+
+    bool CheckNegotiationFailed()
+    {
+        return m_negotiationFailed;
+    }
 private:
     bool m_connectionFailed = false;
+    bool m_negotiationFailed = false;
 };
 
 
@@ -472,7 +511,16 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
         (PFNCREATESYSTEMINTERFACE)CryGetProcAddress(m_hSystemHandle, "CreateSystemInterface");
 
 
-    CEngineConfig engineConfig; // read the engine config also to see what game is running, and what folder(s) there are.
+    // Locate the root path
+    const char* calcRootPath = nullptr;
+    EBUS_EVENT_RESULT(calcRootPath, AZ::ComponentApplicationBus, GetAppRoot);
+    if (calcRootPath == nullptr)
+    {
+        // If the app root isnt available, default to the engine root
+        EBUS_EVENT_RESULT(calcRootPath, AzToolsFramework::ToolsApplicationRequestBus, GetEngineRootPath);
+    }
+    const char* searchPath[] = { calcRootPath };
+    CEngineConfig engineConfig(searchPath,AZ_ARRAY_SIZE(searchPath)); // read the engine config also to see what game is running, and what folder(s) there are.
 
     SSystemInitParams sip;
     engineConfig.CopyToStartupParams(sip);
@@ -497,15 +545,13 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
     sip.pUserCallback = m_pSystemUserCallback;
     sip.pValidator = GetIEditor()->GetErrorReport(); // Assign validator from Editor.
 
-    char root[AZ_MAX_PATH_LEN];
-    // Override the branch token to be the actual running branch instead of the one in the file:
-    if (_fullpath(root, engineConfig.m_rootFolder.c_str(), AZ_MAX_PATH_LEN))
+    // Calculate the branch token first based on the app root path if possible
+    if (calcRootPath!=nullptr)
     {
-        string devRoot(root);
-        devRoot.MakeLower();
-        devRoot.replace('/', '_').replace('\\', '_');
-        const AZ::Crc32 branchTokenCrc(devRoot.c_str(), devRoot.size(), false);
-        azsnprintf(sip.branchToken, 12, "0x%08X", static_cast<AZ::u32>(branchTokenCrc));
+        AZStd::string appRoot(calcRootPath);
+        AZStd::string branchToken;
+        AzFramework::StringFunc::AssetPath::CalculateBranchToken(appRoot, branchToken);
+        azstrncpy(sip.branchToken, AZ_ARRAY_SIZE(sip.branchToken), branchToken.c_str(), branchToken.length());
     }
 
     if (sInCmdLine)
@@ -522,29 +568,51 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
         sip.bSkipFont = true;
     }
     AssetProcessConnectionStatus    apConnectionStatus;
+
     m_pISystem = pfnCreateSystemInterface(sip);
+
+    if (!m_pISystem)
+    {
+        AZStd::string errorMessage = "Could not initialize CSystem.  View the logs for more details.";
+
+        gEnv = nullptr;
+        Error("CreateSystemInterface Failed");
+        return AZ::Failure(errorMessage);
+    }
+
+    if (apConnectionStatus.CheckNegotiationFailed())
+    {
+        auto errorMessage = AZStd::string::format("Negotiation with Asset Processor failed.\n"
+            "Please ensure the Asset Processor is running on the same branch and try again.");
+        gEnv = nullptr;
+        return AZ::Failure(errorMessage);
+    }
 
     if (apConnectionStatus.CheckConnectionFailed())
     {
         auto errorMessage = AZStd::string::format("Unable to connect to the local Asset Processor.\n\n"
                                                   "The Asset Processor is either not running locally or not accepting connections on port %d. "
-                                                  "Check your remote_port settings in bootstrap.cfg or view the Asset Processor log (ap_gui.log) "
-                                                  "in the log folder for any errors.", sip.remotePort);
+                                                  "Check your remote_port settings in bootstrap.cfg or view the Asset Processor's \"Logs\" tab "
+                                                  "for any errors.", sip.remotePort);
         gEnv = nullptr;
         return AZ::Failure(errorMessage);
-    }
-
-    if (!m_pISystem)
-    {
-        gEnv = nullptr;
-        Error("CreateSystemInterface Failed");
-        return AZ::Failure(AZStd::string("CreateSystemInterface failed. View the Editor log (editor.log) in the log folder for more details."));
     }
 
     // because we're the editor here, we also give tool aliases to the original, unaltered roots:
     string devAssetsFolder = engineConfig.m_rootFolder + "/" + engineConfig.m_gameFolder;
     if (gEnv && gEnv->pFileIO)
     {
+        const char* engineRoot = nullptr;
+        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+        if (engineRoot != nullptr)
+        {
+            gEnv->pFileIO->SetAlias("@engroot@", engineRoot);
+        }
+        else
+        {
+            gEnv->pFileIO->SetAlias("@engroot@", engineConfig.m_rootFolder.c_str());
+        }
+
         gEnv->pFileIO->SetAlias("@devroot@", engineConfig.m_rootFolder.c_str());
         gEnv->pFileIO->SetAlias("@devassets@", devAssetsFolder.c_str());
     }
@@ -724,7 +792,10 @@ bool CGameEngine::InitGame(const char* sGameDLL)
 
 void CGameEngine::SetLevelPath(const QString& path)
 {
-    m_levelPath = Path::ToUnixPath(Path::RemoveBackslash(path));
+    QByteArray levelPath = Path::ToUnixPath(Path::RemoveBackslash(path)).toUtf8().data();
+    AZ::IO::FileIOBase::GetInstance()->ConvertToAlias(levelPath.data(), levelPath.capacity());
+    m_levelPath = levelPath;
+
     m_levelName = m_levelPath.mid(m_levelPath.lastIndexOf('/') + 1);
 
     // Store off if 
@@ -737,16 +808,15 @@ void CGameEngine::SetLevelPath(const QString& path)
         m_levelExtension = defaultFileExtension;
     }
 
-    QString relativeLevelPath = Path::GetRelativePath(m_levelPath, true);
-
+    QString relativeLevelPath = Path::GetRelativePath(path);
     if (gEnv->p3DEngine)
     {
-        gEnv->p3DEngine->SetLevelPath(relativeLevelPath.toLatin1().data());
+        gEnv->p3DEngine->SetLevelPath(relativeLevelPath.toUtf8().data());
     }
 
     if (gEnv->pAISystem)
     {
-        gEnv->pAISystem->SetLevelPath(relativeLevelPath.toLatin1().data());
+        gEnv->pAISystem->SetLevelPath(relativeLevelPath.toUtf8().data());
     }
 }
 
@@ -756,7 +826,6 @@ void CGameEngine::SetMissionName(const QString& mission)
 }
 
 bool CGameEngine::LoadLevel(
-    const QString& levelPath,
     const QString& mission,
     bool bDeleteAIGraph,
     bool bReleaseResources)
@@ -764,7 +833,7 @@ bool CGameEngine::LoadLevel(
     LOADING_TIME_PROFILE_SECTION(GetIEditor()->GetSystem());
     m_bLevelLoaded = false;
     m_missionName = mission;
-    CLogFile::FormatLine("Loading map '%s' into engine...", m_levelPath.toLatin1().data());
+    CLogFile::FormatLine("Loading map '%s' into engine...", m_levelPath.toUtf8().data());
     // Switch the current directory back to the Master CD folder first.
     // The engine might have trouble to find some files when the current
     // directory is wrong
@@ -773,9 +842,9 @@ bool CGameEngine::LoadLevel(
     QString pakFile = m_levelPath + "/level.pak";
 
     // Open Pak file for this level.
-    if (!m_pISystem->GetIPak()->OpenPack(("@assets@/" + Path::GetRelativePath(m_levelPath, true)).toLatin1().data(), pakFile.toLatin1().data()))
+    if (!m_pISystem->GetIPak()->OpenPack(m_levelPath.toUtf8().data(), pakFile.toUtf8().data()))
     {
-        CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Level Pack File %s Not Found", pakFile.toLatin1().data());
+        CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Level Pack File %s Not Found", pakFile.toUtf8().data());
     }
 
     // Initialize physics grid.
@@ -820,7 +889,7 @@ bool CGameEngine::LoadLevel(
     }
 
     // Load level in 3d engine.
-    if (!gEnv->p3DEngine->InitLevelForEditor(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data()))
+    if (!gEnv->p3DEngine->InitLevelForEditor(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data()))
     {
         CLogFile::WriteLine("ERROR: Can't load level !");
         QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("ERROR: Can't load level !"));
@@ -852,7 +921,7 @@ bool CGameEngine::LoadLevel(
 
 bool CGameEngine::ReloadLevel()
 {
-    if (!LoadLevel(GetLevelPath(), GetMissionName(), false, false))
+    if (!LoadLevel(GetMissionName(), false, false))
     {
         return false;
     }
@@ -935,6 +1004,7 @@ void CGameEngine::SwitchToInGame()
 {
     if (gEnv->p3DEngine)
     {
+        gEnv->p3DEngine->DisablePostEffects();
         gEnv->p3DEngine->ResetPostEffects();
     }
 
@@ -1026,15 +1096,6 @@ void CGameEngine::SwitchToInGame()
         m_pISystem->GetAISystem()->Reset(IAISystem::RESET_ENTER_GAME);
     }
 
-    // Reset Music Logic
-    if (Audio::IMusicSystem* const pMusicSystem = gEnv->pMusicSystem)
-    {
-        if (Audio::IMusicLogic* const pMusicLogic = pMusicSystem->GetMusicLogic())
-        {
-            pMusicLogic->Reset();
-        }
-    }
-
     // When the player starts the game inside an area trigger, it will get
     // triggered.
     gEnv->pEntitySystem->ResetAreas();
@@ -1055,13 +1116,23 @@ void CGameEngine::SwitchToInGame()
 
     // Transition to runtime entity context.
     EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, StartPlayInEditor);
+
+    // Constrain and hide the system cursor (important to do this last)
+    AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                    &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                    AzFramework::SystemCursorState::ConstrainedAndHidden);
 }
 
 void CGameEngine::SwitchToInEditor()
 {
     // Transition to editor entity context.
     EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, StopPlayInEditor);
-
+    
+    // Reset movie system
+    for (int i = m_pISystem->GetIMovieSystem()->GetNumPlayingSequences(); --i >= 0;)
+    {
+        m_pISystem->GetIMovieSystem()->GetPlayingSequence(i)->Deactivate();
+    }
     m_pISystem->GetIMovieSystem()->Reset(false, false);
 
     m_pISystem->SetThreadState(ESubsys_Physics, false);
@@ -1069,6 +1140,7 @@ void CGameEngine::SwitchToInEditor()
     if (gEnv->p3DEngine)
     {
         // Reset 3d engine effects
+        gEnv->p3DEngine->DisablePostEffects();
         gEnv->p3DEngine->ResetPostEffects();
         gEnv->p3DEngine->ResetParticlesAndDecals();
     }
@@ -1166,6 +1238,11 @@ void CGameEngine::SwitchToInEditor()
 
 
     GetIEditor()->Notify(eNotify_OnEndGameMode);
+
+    // Unconstrain the system cursor and make it visible (important to do this last)
+    AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                    &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                    AzFramework::SystemCursorState::UnconstrainedAndVisible);
 }
 
 
@@ -1227,25 +1304,7 @@ void CGameEngine::SetGameMode(bool bInGame)
     // Enables engine to know about that.
     if (MainWindow::instance()) // KDAB_TODO: We need to know if we want to support console-only mode, in which we don't have the mainwindow
     {
-#ifdef KDAB_MAC_PORT
-        HWND hWndForInputSystem = MainWindow::instance()->GetNativeHandle();
-
-        // marcok: setting exclusive mode based on whether we are inGame
-        // fixes mouse sometimes getting stuck in the editor. However, doing
-        // this for the keyboard disables editor keys when you go out of
-        // gamemode
-        // m_ISystem->GetIInput()->SetExclusiveMode( eDI_Mouse, inGame, hWndForInputSystem );
-        m_pISystem->GetIInput()->SetExclusiveMode(eIDT_Keyboard, false, hWndForInputSystem);
-#endif // KDAB_MAC_PORT
-        m_pISystem->GetIInput()->ClearKeyState();
-
-        const AzFramework::SystemCursorState desiredState = bInGame ?
-                                                            AzFramework::SystemCursorState::ConstrainedAndHidden :
-                                                            AzFramework::SystemCursorState::UnconstrainedAndVisible;
-        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
-                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
-                                                        desiredState);
-
+        AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
         MainWindow::instance()->setFocus();
     }
 
@@ -1415,7 +1474,7 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
         UnlockResources();
     }
 
-    m_pISystem->GetIInput()->ClearKeyState();
+    AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
 }
 
 CNavigation* CGameEngine::GetNavigation()
@@ -1917,6 +1976,9 @@ void CGameEngine::Update()
     }
     }
 
+    AZ::ComponentApplication* componentApplication = nullptr;
+    EBUS_EVENT_RESULT(componentApplication, AZ::ComponentApplicationBus, GetApplication);
+
     if (m_pEditorGame && m_bInGameMode)
     {
         CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
@@ -1931,7 +1993,9 @@ void CGameEngine::Update()
             cam.SetFrustum(width, height, pRenderViewport->GetFOV(), cam.GetNearPlane(), cam.GetFarPlane(), cam.GetPixelAspectRatio());
         }
 
-        m_pEditorGame->Update(true, 0);
+        gEnv->pGame->GetIGameFramework()->PreUpdate(true, 0);
+        componentApplication->Tick(gEnv->pTimer->GetFrameTime(ITimer::ETIMER_GAME));
+        gEnv->pGame->GetIGameFramework()->PostUpdate(true, 0);
 
         // TODO: still necessary after AVI recording removal?
         if (pRenderViewport)
@@ -1969,7 +2033,9 @@ void CGameEngine::Update()
         }
 
         GetIEditor()->GetAnimation()->Update();
-        GetIEditor()->GetSystem()->Update(updateFlags);
+        GetIEditor()->GetSystem()->UpdatePreTickBus(updateFlags);
+        componentApplication->Tick(gEnv->pTimer->GetFrameTime(ITimer::ETIMER_GAME));
+        GetIEditor()->GetSystem()->UpdatePostTickBus(updateFlags);
 
         // Update flow system in simulation mode.
         if (bUpdateAIPhysics)
@@ -1986,11 +2052,6 @@ void CGameEngine::Update()
             if (pDialogSystem)
             {
                 pDialogSystem->Update(gEnv->pTimer->GetFrameTime());
-            }
-
-            if (m_pEditorGame)
-            {
-                m_pEditorGame->Update(true, updateFlags);
             }
         }
         else if (GetIEditor()->GetAI()->GetNavigationContinuousUpdateState())
@@ -2175,3 +2236,5 @@ void CGameEngine::ExecuteQueuedEvents()
     AZ::TickBus::ExecuteQueuedEvents();
     AZ::MainThreadRenderRequestBus::ExecuteQueuedEvents();
 }
+
+#include <GameEngine.moc>

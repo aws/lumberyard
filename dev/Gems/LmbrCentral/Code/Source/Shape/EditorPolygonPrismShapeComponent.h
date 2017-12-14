@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include "EditorBaseShapeComponent.h"
@@ -16,6 +17,7 @@
 
 #include <AzCore/Math/VertexContainerInterface.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
 #include <AzToolsFramework/Manipulators/TranslationManipulator.h>
 #include <AzToolsFramework/Manipulators/LinearManipulator.h>
 #include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
@@ -29,9 +31,10 @@ namespace LmbrCentral
      */
     class EditorPolygonPrismShapeComponent
         : public EditorBaseShapeComponent
-        , PolygonPrismShapeComponentRequestsBus::Handler
-        , AzToolsFramework::EntitySelectionEvents::Bus::Handler
-        , ShapeComponentRequestsBus::Handler
+        , private PolygonPrismShapeComponentRequestBus::Handler
+        , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
+        , private ShapeComponentRequestsBus::Handler
+        , private AzToolsFramework::ToolsApplicationEvents::Bus::Handler
     {
     public:
 
@@ -39,63 +42,16 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         EditorPolygonPrismShapeComponent() = default;
-        ~EditorPolygonPrismShapeComponent() override = default;
 
-        ////////////////////////////////////////////////////////////////////////
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
-        ////////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////
-        // EditorComponentBase implementation
+        // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-        ////////////////////////////////////////////////////////////////////////
-
-        ////////////////////////////////////////////////////////////////////////
-        // EditorBaseShapeComponent
-        void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;
-        ////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////////////
-        // TransformNotificationBus
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        //////////////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // ShapePolygonPrismComponentRequestBus::Handler implementation
-        AZ::ConstPolygonPrismPtr GetPolygonPrism() override;
-        void SetHeight(float height) override;
-        
-        void AddVertex(const AZ::Vector2& vertex) override;
-        void UpdateVertex(size_t index, const AZ::Vector2& vertex) override;
-        void InsertVertex(size_t index, const AZ::Vector2& vertex) override;
-        void RemoveVertex(size_t index) override;
-        void SetVertices(const AZStd::vector<AZ::Vector2>& vertices) override;
-        void ClearVertices() override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // ShapeComponent::Handler implementation
-        AZ::Crc32 GetShapeType() override { return AZ_CRC("PolygonPrism", 0xd6b50036); }
-        AZ::Aabb GetEncompassingAabb() override;
-        bool IsPointInside(const AZ::Vector3& point) override;
-        float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
-        //////////////////////////////////////////////////////////////////////////
 
     private:
-        //////////////////////////////////////////////////////////////////////////
-        /// AzToolsFramework::EntitySelectionEvents::Bus::Handler
-        void OnSelected() override;
-        void OnDeselected() override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // Manipulator handling
-        void RegisterManipulators();
-        void UnregisterManipulators();
-        void RefreshManipulators();
-        //////////////////////////////////////////////////////////////////////////
+        AZ_DISABLE_COPY_MOVE(EditorPolygonPrismShapeComponent)
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
@@ -104,21 +60,50 @@ namespace LmbrCentral
             provided.push_back(AZ_CRC("VertexContainerService", 0x22cf8e10));
         }
 
-        //////////////////////////////////////////////////////////////////////////
+        // EditorBaseShapeComponent
+        void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;
+
+        // TransformNotificationBus
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        // ShapePolygonPrismComponentRequestBus::Handler implementation
+        AZ::ConstPolygonPrismPtr GetPolygonPrism() override;
+        void SetHeight(float height) override;
+        bool GetVertex(size_t index, AZ::Vector2& vertex) const override;
+        void AddVertex(const AZ::Vector2& vertex) override;
+        bool UpdateVertex(size_t index, const AZ::Vector2& vertex) override;
+        bool InsertVertex(size_t index, const AZ::Vector2& vertex) override;
+        bool RemoveVertex(size_t index) override;
+        void SetVertices(const AZStd::vector<AZ::Vector2>& vertices) override;
+        void ClearVertices() override;
+        size_t Size() const override;
+        bool Empty() const override;
+
+        // ShapeComponent::Handler implementation
+        AZ::Crc32 GetShapeType() override { return AZ_CRC("PolygonPrism", 0xd6b50036); }
+        AZ::Aabb GetEncompassingAabb() override;
+        bool IsPointInside(const AZ::Vector3& point) override;
+        float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
+
+        // AzToolsFramework::EntitySelectionEvents::Bus::Handler
+        void OnSelected() override;
+        void OnDeselected() override;
+
+        // Manipulator handling
+        void CreateManipulators();
+        void DestroyManipulators();
+        void RefreshManipulators();
+
         // EntityDebugDisplayEvents
         void DisplayEntity(bool& handled) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        /**
-         * Set the vertex and manipulator positions for a given index
-         */
-        void UpdateManipulatorAndVertexPositions(AzToolsFramework::TranslationManipulator* vertexManipulator, size_t vertexIndex, const AZ::Vector3& localOffset);
-
-        AZStd::vector<AZStd::shared_ptr<AzToolsFramework::TranslationManipulator>> m_vertexManipulators; ///< Manipulators for each vertex when entity is selected.
-        AZStd::shared_ptr<AzToolsFramework::LinearManipulator> m_heightManipulator; ///< Manipulator to control the height of the polygon prism.
+        // AzToolsFramework::ToolsApplicationEvents
+        void AfterUndoRedo() override;
 
         PolygonPrismCommon m_polygonPrismCommon; ///< Stores configuration data of a polygon prism for this component.
-        AZ::Vector3 m_initialManipulatorPositionLocal; ///< Position of vertex when first selected with a manipulator.
-        float m_initialHeight = 0.0f; ///< Height the polygon prism started at before being manipulated.
+
+        AzToolsFramework::EditorVertexSelectionVariable<AZ::Vector2> m_vertexSelection; ///< Handles all manipulator interactions with vertices (inserting and translating).
+
+        AZStd::unique_ptr<AzToolsFramework::LinearManipulator> m_heightManipulator; ///< Manipulator to control the height of the polygon prism.
     };
 } // namespace LmbrCentral

@@ -17,8 +17,10 @@
 #include <LyShine/Bus/UiCanvasBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiCanvasAssetRefNotificationBus Behavior context handler class 
-class UiCanvasAssetRefNotificationBusBehaviorHandler : public UiCanvasAssetRefNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiCanvasAssetRefNotificationBus Behavior context handler class
+class UiCanvasAssetRefNotificationBusBehaviorHandler
+    : public UiCanvasAssetRefNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiCanvasAssetRefNotificationBusBehaviorHandler, "{CA397C92-9C0B-436C-9C71-38A1918929EC}", AZ::SystemAllocator,
@@ -31,8 +33,10 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiCanvasRefNotificationBus Behavior context handler class 
-class UiCanvasRefNotificationBusBehaviorHandler : public UiCanvasRefNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiCanvasRefNotificationBus Behavior context handler class
+class UiCanvasRefNotificationBusBehaviorHandler
+    : public UiCanvasRefNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiCanvasRefNotificationBusBehaviorHandler, "{728D7B02-D5D1-493A-8DD1-3AE5EA595A79}", AZ::SystemAllocator,
@@ -50,8 +54,8 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiCanvasAssetRefComponent::UiCanvasAssetRefComponent()
-: m_isAutoLoad(false)
-, m_shouldLoadDisabled(false)
+    : m_isAutoLoad(false)
+    , m_shouldLoadDisabled(false)
 {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +87,7 @@ void UiCanvasAssetRefComponent::SetIsAutoLoad(bool isAutoLoad)
 {
     m_isAutoLoad = isAutoLoad;
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasAssetRefComponent::GetShouldLoadDisabled()
 {
@@ -95,7 +99,7 @@ void UiCanvasAssetRefComponent::SetShouldLoadDisabled(bool shouldLoadDisabled)
 {
     m_shouldLoadDisabled = shouldLoadDisabled;
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiCanvasAssetRefComponent::LoadCanvas()
 {
@@ -105,7 +109,7 @@ AZ::EntityId UiCanvasAssetRefComponent::LoadCanvas()
         // Check if we already have a referenced UI canvas, if so release it
         if (m_canvasEntityId.IsValid())
         {
-            gEnv->pLyShine->ReleaseCanvas(m_canvasEntityId);
+            gEnv->pLyShine->ReleaseCanvasDeferred(m_canvasEntityId);
             m_canvasEntityId.SetInvalid();
         }
 
@@ -123,9 +127,21 @@ void UiCanvasAssetRefComponent::UnloadCanvas()
 {
     if (m_canvasEntityId.IsValid())
     {
-        gEnv->pLyShine->ReleaseCanvas(m_canvasEntityId);
+        gEnv->pLyShine->ReleaseCanvasDeferred(m_canvasEntityId);
         m_canvasEntityId.SetInvalid();
 
+        EBUS_EVENT_ID(GetEntityId(), UiCanvasRefNotificationBus, OnCanvasRefChanged, GetEntityId(), m_canvasEntityId);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasAssetRefComponent::OnCanvasUnloaded(AZ::EntityId canvasEntityId)
+{
+    if (canvasEntityId == m_canvasEntityId)
+    {
+        // this canvas has been unloaded (e.g. from script), set our canvas entity ID to invalid
+        // and tell anyone watching this assert ref that it changed
+        m_canvasEntityId.SetInvalid();
         EBUS_EVENT_ID(GetEntityId(), UiCanvasRefNotificationBus, OnCanvasRefChanged, GetEntityId(), m_canvasEntityId);
     }
 }
@@ -201,6 +217,7 @@ void UiCanvasAssetRefComponent::Activate()
 {
     UiCanvasRefBus::Handler::BusConnect(GetEntityId());
     UiCanvasAssetRefBus::Handler::BusConnect(GetEntityId());
+    UiCanvasManagerNotificationBus::Handler::BusConnect();
 
     if (m_isAutoLoad)
     {
@@ -224,4 +241,5 @@ void UiCanvasAssetRefComponent::Deactivate()
 
     UiCanvasAssetRefBus::Handler::BusDisconnect();
     UiCanvasRefBus::Handler::BusDisconnect();
+    UiCanvasManagerNotificationBus::Handler::BusDisconnect();
 }

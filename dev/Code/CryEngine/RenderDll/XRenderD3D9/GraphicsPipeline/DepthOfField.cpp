@@ -15,6 +15,7 @@
 #include "DepthOfField.h"
 #include "DriverD3D.h"
 #include "D3DPostProcess.h"
+#include "../../Common/Textures/TextureManager.h"
 
 namespace
 {
@@ -385,7 +386,7 @@ void DepthOfFieldPass::Execute()
             GetUtils().SetTexture(CTexture::s_ptexZTarget, 0, FILTER_POINT);
             GetUtils().SetTexture(CTexture::s_ptexHDRDofLayers[0], 1, FILTER_LINEAR);
             GetUtils().SetTexture(CTexture::s_ptexHDRDofLayers[1], 2, FILTER_LINEAR);
-            GetUtils().SetTexture(CTexture::s_ptexNoTexture, 3, FILTER_LINEAR);
+            GetUtils().SetTexture(CTextureManager::Instance()->GetNoTexture(), 3, FILTER_LINEAR);
 
             if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
             {

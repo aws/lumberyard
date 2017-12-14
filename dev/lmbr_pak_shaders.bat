@@ -11,9 +11,34 @@ REM WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 REM
 
 SETLOCAL
-SET CMD_DIR=%~dp0
-SET CMD_DIR=%CMD_DIR:~0,-1%
-SET TOOLS_DIR=%CMD_DIR%\Tools
+
+REM search for the engine root from the engine.json if possible
+IF NOT EXIST engine.json GOTO noSetupConfig
+
+pushd %~dp0%
+
+FOR /F "tokens=1,2*" %%A in ('findstr /I /N "ExternalEnginePath" engine.json') do SET ENGINE_ROOT=%%C
+
+REM Clear the trailing comma if any
+SET ENGINE_ROOT=%ENGINE_ROOT:,=%
+
+REM Trim the double quotes
+SET ENGINE_ROOT=%ENGINE_ROOT:"=%
+
+IF "%ENGINE_ROOT%"=="" GOTO noSetupConfig
+
+IF NOT EXIST "%ENGINE_ROOT%" GOTO noSetupConfig
+
+REM Set the base path to the value
+SET BASE_PATH=%ENGINE_ROOT%\
+ECHO [WAF] Engine Root: %BASE_PATH%
+GOTO pythonPathSet
+
+:noSetupConfig
+SET BASE_PATH=%~dp0
+ECHO [WAF] Engine Root: %BASE_PATH%
+
+SET TOOLS_DIR=%BASE_PATH%\Tools
 
 SET PYTHON_DIR=%TOOLS_DIR%\Python
 IF EXIST "%PYTHON_DIR%" GOTO PYTHON_DIR_EXISTS
@@ -39,11 +64,13 @@ if [%PLATFORM%] == [] SET PLATFORM=pc
 SET SOURCE="Cache\%GAMENAME%\%PLATFORM%\user\cache\shaders\cache"
 SET OUTPUT="Build\%PLATFORM%\%GAMENAME%"
 
-"%PYTHON%" %TOOLS_DIR%\PakShaders\pak_shaders.py %OUTPUT% -r %SOURCE% -s %SHADERFLAVOR%
+call "%PYTHON%" %TOOLS_DIR%\PakShaders\pak_shaders.py %OUTPUT% -r %SOURCE% -s %SHADERFLAVOR%
 
 IF ERRORLEVEL 1 GOTO FAILED
+popd
 EXIT /b 0
 
 :FAILED
+popd
 EXIT /b 1
 

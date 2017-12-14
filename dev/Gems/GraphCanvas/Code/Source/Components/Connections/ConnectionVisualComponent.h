@@ -34,7 +34,7 @@ namespace GraphCanvas
     class ConnectionVisualComponent
         : public AZ::Component
         , public VisualRequestBus::Handler
-        , public RootVisualRequestBus::Handler        
+        , public SceneMemberUIRequestBus::Handler
     {
     public:
         AZ_COMPONENT(ConnectionVisualComponent, "{BF9691F8-7EF8-4A94-9321-2EB877634D22}");
@@ -67,27 +67,30 @@ namespace GraphCanvas
         {
             required.push_back(AZ_CRC("GraphCanvas_ConnectionService", 0x7ef98865));
         }
-		
-		void Init() override;
+
+        void Init() override;
         void Activate() override;
         void Deactivate() override;
         ////
-		
-		// VisualRequestBus
+        
+        // VisualRequestBus
         QGraphicsItem* AsGraphicsItem() override;
 
         bool Contains(const AZ::Vector2& point) const;
         ////
 
-        // RootVisualRequestBus
+        // SceneMemberUIRequestBus
         QGraphicsItem* GetRootGraphicsItem() override;
         QGraphicsLayoutItem* GetRootGraphicsLayoutItem() override;
+
+        void SetSelected(bool selected);
+        bool IsSelected() const;
         ////
 
     protected:
 
         virtual void CreateConnectionVisual();
-		
+        
         friend class ConnectionVisualGraphicsItem;
         AZStd::unique_ptr<ConnectionGraphicsItem> m_connectionGraphicsItem;
 
@@ -108,8 +111,8 @@ namespace GraphCanvas
     {
     public:
         AZ_CLASS_ALLOCATOR(ConnectionGraphicsItem, AZ::SystemAllocator, 0);
-		
-		// Helper function to return the length of a vector
+        
+        // Helper function to return the length of a vector
         // (Distance from provided point to the origin)
         static qreal VectorLength(QPointF vectorPoint);
 
@@ -134,7 +137,7 @@ namespace GraphCanvas
         // StyleNotificationBus
         void OnStyleChanged() override;
         ////
-		
+        
         // AZ::SystemTickBus
         void OnSystemTick() override;
         ////
@@ -179,7 +182,9 @@ namespace GraphCanvas
         void mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         void mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent) override;        
         ////
-		
+
+        void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
+
     private:
 
         void UpdateDisplayState(ConnectionDisplayState displayState, bool enabled);

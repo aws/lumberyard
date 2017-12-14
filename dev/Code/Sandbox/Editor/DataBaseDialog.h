@@ -17,6 +17,7 @@
 
 
 #include "IDataBaseItem.h"
+#include "Resource.h"
 #include <QMainWindow>
 
 #define DATABASE_VIEW_VER "1.00"
@@ -32,7 +33,7 @@ class CDataBaseDialogPage
 {
     Q_OBJECT
 public:
-    CDataBaseDialogPage(UINT nIDTemplate, QWidget* pParentWnd = 0)
+    CDataBaseDialogPage(unsigned int nIDTemplate, QWidget* pParentWnd = 0)
         : QMainWindow(pParentWnd) {};
     CDataBaseDialogPage(QWidget* pParentWnd = 0)
         : QMainWindow(pParentWnd) {};

@@ -38,6 +38,9 @@ namespace AzFramework
         void RegisterLegacyAssetMapping(const AZ::Data::AssetId& legacyId, const AZ::Data::AssetId& newId);
         void UnregisterLegacyAssetMapping(const AZ::Data::AssetId& legacyId);
 
+        void SetAssetDependencies(AZ::Data::AssetId id, const AZStd::vector<AZ::Data::ProductDependency>& dependencies);
+        void RegisterAssetDependency(AZ::Data::AssetId id, const AZ::Data::ProductDependency& dependency);
+
         //! LEGACY - do not use in new code unless interfacing with legacy systems.  
         //! All new systems should be referring to assets by ID/Type only and should not need to look up by path/
         AZ::Data::AssetId GetAssetIdByPath(const char* assetPath) const;
@@ -45,10 +48,12 @@ namespace AzFramework
         using AssetIdToInfoMap = AZStd::unordered_map < AZ::Data::AssetId, AZ::Data::AssetInfo >;
         AssetIdToInfoMap m_assetIdToInfo;
 
+        AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<AZ::Data::ProductDependency>> m_assetDependencies;
+
         void Clear();
 
         // see if the asset ID has been remapped to a new Id:
-        AZ::Data::AssetId GetAssetIdByLegacyAssetId(const AZ::Data::AssetId& legacyAssetId);
+        AZ::Data::AssetId GetAssetIdByLegacyAssetId(const AZ::Data::AssetId& legacyAssetId) const;
 
         static void ReflectSerialize(AZ::SerializeContext* serializeContext);
 

@@ -137,7 +137,7 @@ void CSimpleEntity::OnFileChange(QString filename)
 
 //////////////////////////////////////////////////////////////////////////
 //! Analyze errors for this object.
-void CSimpleEntity::Validate(CErrorReport* report)
+void CSimpleEntity::Validate(IErrorReport* report)
 {
     CEntityObject::Validate(report);
 

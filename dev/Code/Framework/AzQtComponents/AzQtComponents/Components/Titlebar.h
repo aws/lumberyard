@@ -68,7 +68,22 @@ namespace AzQtComponents
         int numButtons() const;
         void setForceInactive(bool);
 
-        static void enableNewContextMenus(bool dockSetting);
+        /**
+         * For left,right,bottom we use the native Windows border, but for top it's required we add
+         * the margin ourselves.
+         */
+        bool isTopResizeArea(const QPoint& globalPos) const;
+
+        /**
+         * The title rect width minus the buttons rect.
+         * In local coords.
+         */
+        QRect draggableRect() const;
+
+        /**
+        * Expose the title using a QT property so that test automation can read it
+        */
+        Q_PROPERTY(QString title READ title)
 
     Q_SIGNALS:
         void undockAction();
@@ -134,11 +149,7 @@ namespace AzQtComponents
 
         QWindow* topLevelWindow() const;
         void updateMouseCursor(const QPoint& globalPos);
-        bool isTopResizeArea(const QPoint& globalPos) const;
         bool canResizeTop() const;
-
-        // flag for checking if the Editor is using the new docking
-        static bool m_isUsingNewDocking;
 
         Qt::CursorShape m_originalCursor = Qt::ArrowCursor;
         QTimer m_enableMouseTrackingTimer;

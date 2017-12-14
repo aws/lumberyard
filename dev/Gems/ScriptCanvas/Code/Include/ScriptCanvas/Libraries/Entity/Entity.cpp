@@ -13,11 +13,25 @@
 #include "precompiled.h"
 
 #include <Libraries/Libraries.h>
+#include <Core/NodeFunctionGeneric.h>
 
 #include "Entity.h"
 
 namespace ScriptCanvas
 {
+    namespace EntityNodes
+    {
+        AZ_INLINE bool IsValid(AZ::EntityId id)
+        {
+            return id.IsValid();
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(IsValid, "Entity/Game Entity", "{7CEC53AE-E12B-4738-B542-4587B8B95DC2}", "returns true if the entity id is valid", "");
+
+        using EntityRegistrar = RegistrarGeneric<
+            IsValidNode
+        >;
+    }
+
     namespace Library
     {
         void Entity::Reflect(AZ::ReflectContext* reflection)
@@ -45,15 +59,23 @@ namespace ScriptCanvas
         {
             using namespace ScriptCanvas::Nodes::Entity;
             AddNodeToRegistry<Entity, Rotate>(nodeRegistry);
+            AddNodeToRegistry<Entity, EntityID>(nodeRegistry);
             AddNodeToRegistry<Entity, EntityRef>(nodeRegistry);
+
+            EntityNodes::EntityRegistrar::AddToRegistry<Entity>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Entity::GetComponentDescriptors()
         {
-            return AZStd::vector<AZ::ComponentDescriptor*>({
+            auto descriptors = AZStd::vector<AZ::ComponentDescriptor*>({
                 ScriptCanvas::Nodes::Entity::Rotate::CreateDescriptor(),
+                ScriptCanvas::Nodes::Entity::EntityID::CreateDescriptor(),
                 ScriptCanvas::Nodes::Entity::EntityRef::CreateDescriptor(),
             });
+
+            EntityNodes::EntityRegistrar::AddDescriptors(descriptors);
+
+            return descriptors;
         }
     }
 }

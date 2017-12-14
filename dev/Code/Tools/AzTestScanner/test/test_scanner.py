@@ -8,48 +8,14 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import datetime
 import os
 import mock
 import unittest
 import aztest.scanner as scanner
 from aztest.errors import InvalidUseError
 
-
-class GetOutputDirTests(unittest.TestCase):
-
-    @mock.patch('os.path.join')
-    def test_GetOutputDir_TimestampIsNoneDefaultPrefix_ReturnsNoTimestampDefaultPrefix(self, mock_join):
-        scanner.get_output_dir(None)
-
-        mock_join.assert_called_with("TestResults", "NO_TIMESTAMP")
-
-    @mock.patch('os.path.join')
-    def test_GetOutputDir_TimestampIsNoneCustomPrefix_ReturnsNoTimestampCustomPrefix(self, mock_join):
-        test_prefix = "CustomPrefix"
-
-        scanner.get_output_dir(None, test_prefix)
-
-        mock_join.assert_called_with(test_prefix, "NO_TIMESTAMP")
-
-    @mock.patch('os.path.join')
-    def test_GetOutputDir_TimestampGivenDefaultPrefix_ReturnsTimestampedDirDefaultPrefix(self, mock_join):
-        timestamp = datetime.datetime(2016, 1, 1, 12, 0, 0, 123456)
-
-        scanner.get_output_dir(timestamp)
-
-        expected_timestamp = "2016-01-01T12_00_00_123456"
-        mock_join.assert_called_with("TestResults", expected_timestamp)
-
-    @mock.patch('os.path.join')
-    def test_GetOutputDir_TimestampGivenCustomPrefix_ReturnsTimestampedDirCustomPrefix(self, mock_join):
-        timestamp = datetime.datetime(2016, 1, 1, 12, 0, 0, 123456)
-        test_prefix = "CustomPrefix"
-
-        scanner.get_output_dir(timestamp, test_prefix)
-
-        expected_timestamp = "2016-01-01T12_00_00_123456"
-        mock_join.assert_called_with(test_prefix, expected_timestamp)
+WHITELIST = "lmbr_test_whitelist.txt"
+BLACKLIST = "lmbr_test_blacklist.txt"
 
 
 class CreateXMLOutputFilenameTests(unittest.TestCase):
@@ -58,8 +24,8 @@ class CreateXMLOutputFilenameTests(unittest.TestCase):
         with self.assertRaises(InvalidUseError) as ex:
             scanner.create_xml_output_filename(None, "OutputDir")
 
-    def test_CreateXMLOutputFilename_OutputDirIsNone_ThrowsInvalidUseError(self):
-        with self.assertRaises(InvalidUseError) as ex:
+    def test_CreateXMLOutputFilename_OutputDirIsNone_ThrowsTypeError(self):
+        with self.assertRaises(TypeError) as ex:
             scanner.create_xml_output_filename("PathToFile", None)
 
     @mock.patch('os.path.abspath')
@@ -109,7 +75,7 @@ class GetDefaultWhitelistTests(unittest.TestCase):
 
         whitelist = scanner.get_default_whitelist()
 
-        mock_abspath.assert_called_with(scanner.__default_whitelist_file__)
+        mock_abspath.assert_called_with(WHITELIST)
         mock_exists.assert_called_with(self.test_path)
         self.assertEquals("", whitelist)
 
@@ -121,7 +87,7 @@ class GetDefaultWhitelistTests(unittest.TestCase):
 
         whitelist = scanner.get_default_whitelist()
 
-        mock_abspath.assert_called_with(scanner.__default_whitelist_file__)
+        mock_abspath.assert_called_with(WHITELIST)
         mock_exists.assert_called_with(self.test_path)
         self.assertEquals(self.test_path, whitelist)
 
@@ -138,7 +104,7 @@ class GetDefaultBlacklistTests(unittest.TestCase):
 
         blacklist = scanner.get_default_blacklist()
 
-        mock_abspath.assert_called_with(scanner.__default_blacklist_file__)
+        mock_abspath.assert_called_with(BLACKLIST)
         mock_exists.assert_called_with(self.test_path)
         self.assertEquals("", blacklist)
 
@@ -150,6 +116,6 @@ class GetDefaultBlacklistTests(unittest.TestCase):
 
         blacklist = scanner.get_default_blacklist()
 
-        mock_abspath.assert_called_with(scanner.__default_blacklist_file__)
+        mock_abspath.assert_called_with(BLACKLIST)
         mock_exists.assert_called_with(self.test_path)
         self.assertEquals(self.test_path, blacklist)

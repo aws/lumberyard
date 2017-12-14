@@ -38,7 +38,7 @@ namespace
             QByteArray str = input.toUtf8();
             const char* path = str.constData();
 
-            QDir gameRoot = Path::GetEditingGameDataFolder().c_str();
+            QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
             QString gameRootAbsPath = gameRoot.absolutePath();
 
             if (input.isEmpty() || input.isNull())
@@ -116,7 +116,7 @@ void SelectDestinationDialog::InitializeButtons()
 
 void SelectDestinationDialog::SetPreviousDestinationDirectory()
 {
-    QDir gameRoot = Path::GetEditingGameDataFolder().c_str();
+    QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
     QString gameRootAbsPath = gameRoot.absolutePath();
     QSettings settings;
     QString previousDestination = settings.value(g_selectDestinationFilesPath).toString();

@@ -2,6 +2,12 @@
 <ui version="4.0">
  <class>TerrainTextureDialog</class>
  <widget class="QDialog" name="TerrainTextureDialog">
+   <property name="minimumSize">
+     <size>
+       <width>0</width>
+       <height>550</height>
+     </size>
+   </property>
   <property name="geometry">
    <rect>
     <x>0</x>

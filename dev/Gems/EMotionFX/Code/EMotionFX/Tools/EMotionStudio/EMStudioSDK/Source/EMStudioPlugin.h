@@ -63,7 +63,10 @@ namespace EMStudio
 
         virtual void OnAfterLoadLayout() {}
         virtual void OnAfterLoadProject() {}
+        virtual void OnAfterLoadActors() {}
         virtual void OnBeforeRemovePlugin(uint32 classID) { MCORE_UNUSED(classID); }
+        virtual void OnMainWindowClosed() {}
+
         virtual void RegisterKeyboardShortcuts() {}
 
         struct RenderInfo

@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include "TrackViewCameraNode.h"
 #include "TrackViewSequence.h"
+#include "Maestro/Types/AnimParamType.h"
 
 void CTrackViewCameraNode::OnNodeAnimated(IAnimNode* pNode)
 {
@@ -29,19 +30,19 @@ void CTrackViewCameraNode::OnNodeAnimated(IAnimNode* pNode)
         // Get fov out of node at current time.
         float fov = RAD2DEG(pCameraObject->GetFOV());
 
-        if (GetParamValue(time, eAnimParamType_FOV, fov))
+        if (GetParamValue(time, AnimParamType::FOV, fov))
         {
             pCameraObject->SetFOV(DEG2RAD(fov));
         }
 
         float nearZ = pCameraObject->GetNearZ();
-        if (GetParamValue(time, eAnimParamType_NearZ, nearZ))
+        if (GetParamValue(time, AnimParamType::NearZ, nearZ))
         {
             pCameraObject->SetNearZ(nearZ);
         }
 
         Vec4 multipliers = Vec4(pCameraObject->GetAmplitudeAMult(), pCameraObject->GetAmplitudeBMult(), pCameraObject->GetFrequencyAMult(), pCameraObject->GetFrequencyBMult());
-        if (GetParamValue(time, eAnimParamType_ShakeMultiplier, multipliers))
+        if (GetParamValue(time, AnimParamType::ShakeMultiplier, multipliers))
         {
             pCameraObject->SetAmplitudeAMult(multipliers.x);
             pCameraObject->SetAmplitudeBMult(multipliers.y);
@@ -83,63 +84,63 @@ void CTrackViewCameraNode::GetShakeRotation(const float time, Quat& rotation)
 void CTrackViewCameraNode::OnFovChange(const float fov)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_FOV, fov);
+    SetParamValue(time, AnimParamType::FOV, fov);
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnNearZChange(const float nearZ)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_NearZ, nearZ);
+    SetParamValue(time, AnimParamType::NearZ, nearZ);
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnShakeAmpAChange(const Vec3 amplitude)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_ShakeAmplitudeA, amplitude);
+    SetParamValue(time, AnimParamType::ShakeAmplitudeA, amplitude);
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnShakeAmpBChange(const Vec3 amplitude)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_ShakeAmplitudeB, amplitude);
+    SetParamValue(time, AnimParamType::ShakeAmplitudeB, amplitude);
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnShakeFreqAChange(const Vec3 frequency)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_ShakeFrequencyA, frequency);
+    SetParamValue(time, AnimParamType::ShakeFrequencyA, frequency);
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnShakeFreqBChange(const Vec3 frequency)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_ShakeFrequencyB, frequency);
+    SetParamValue(time, AnimParamType::ShakeFrequencyB, frequency);
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnShakeMultChange(const float amplitudeAMult, const float amplitudeBMult, const float frequencyAMult, const float frequencyBMult)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_ShakeMultiplier, Vec4(amplitudeAMult, amplitudeBMult, frequencyAMult, frequencyBMult));
+    SetParamValue(time, AnimParamType::ShakeMultiplier, Vec4(amplitudeAMult, amplitudeBMult, frequencyAMult, frequencyBMult));
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnShakeNoiseChange(const float noiseAAmpMult, const float noiseBAmpMult, const float noiseAFreqMult, const float noiseBFreqMult)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_ShakeNoise, Vec4(noiseAAmpMult, noiseBAmpMult, noiseAFreqMult, noiseBFreqMult));
+    SetParamValue(time, AnimParamType::ShakeNoise, Vec4(noiseAAmpMult, noiseBAmpMult, noiseAFreqMult, noiseBFreqMult));
     GetSequence()->OnKeysChanged();
 }
 
 void CTrackViewCameraNode::OnShakeWorkingChange(const float timeOffsetA, const float timeOffsetB)
 {
     const float time = GetSequence()->GetTime();
-    SetParamValue(time, eAnimParamType_ShakeWorking, Vec4(timeOffsetA, timeOffsetB, 0.0f, 0.0f));
+    SetParamValue(time, AnimParamType::ShakeWorking, Vec4(timeOffsetA, timeOffsetB, 0.0f, 0.0f));
     GetSequence()->OnKeysChanged();
 }
 

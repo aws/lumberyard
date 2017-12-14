@@ -45,10 +45,71 @@ namespace RenderCapabilities
         return GetGLDevice()->IsFeatureSupported(NCryOpenGL::eF_DualSourceBlending);
     }
 
+    bool SupportsStructuredBuffer(EShaderStage stageMask)
+    {
+        AZStd::vector<NCryOpenGL::EShaderType> shaderStages;
+        if (stageMask & EShaderStage_Vertex)
+        {
+            shaderStages.push_back(NCryOpenGL::eST_Vertex);
+        }
+
+        if (stageMask & EShaderStage_Pixel)
+        {
+            shaderStages.push_back(NCryOpenGL::eST_Fragment);
+        }
+
+        if (stageMask & EShaderStage_Geometry)
+        {
+#if DXGL_SUPPORT_GEOMETRY_SHADERS
+            shaderStages.push_back(NCryOpenGL::eST_Geometry);
+#else
+            return false;
+#endif
+        }
+
+        if (stageMask & EShaderStage_Compute)
+        {
+#if DXGL_SUPPORT_COMPUTE
+            shaderStages.push_back(NCryOpenGL::eST_Compute);
+#else
+            return false;
+#endif
+        }
+
+        if (stageMask & EShaderStage_Domain)
+        {
+#if DXGL_SUPPORT_TESSELLATION
+            shaderStages.push_back(NCryOpenGL::eST_TessEvaluation);
+#else
+            return false;
+#endif
+        }
+
+        if (stageMask & EShaderStage_Hull)
+        {
+#if DXGL_SUPPORT_TESSELLATION
+            shaderStages.push_back(NCryOpenGL::eST_TessControl);
+#else
+            return false;
+#endif
+        }
+
+        const NCryOpenGL::SResourceUnitCapabilities& capabilities = GetGLDevice()->GetAdapter()->m_kCapabilities.m_akResourceUnits[NCryOpenGL::eRUT_StorageBuffer];
+        for (AZStd::vector<NCryOpenGL::EShaderType>::iterator it = shaderStages.begin(); it != shaderStages.end(); ++it)
+        {
+            if (capabilities.m_aiMaxPerStage[*it] == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 #if defined(OPENGL_ES)
     int GetAvailableMRTbpp()
     {
-        if (GLAD_GL_EXT_shader_pixel_local_storage)
+        if (DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage))
         {
             GLint availableTiledMem;
             glGetIntegerv(GL_MAX_SHADER_PIXEL_LOCAL_STORAGE_FAST_SIZE_EXT, &availableTiledMem);
@@ -70,17 +131,25 @@ namespace RenderCapabilities
 
     bool SupportsHalfFloatRendering()
     {
-        return GLAD_GL_EXT_color_buffer_half_float;
+        return DXGL_GL_EXTENSION_SUPPORTED(EXT_color_buffer_half_float);
     }
 
     bool SupportsPLSExtension()
     {
-        return GLAD_GL_EXT_shader_pixel_local_storage;
+        return DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage);
     }
 
     bool SupportsFrameBufferFetches()
     {
-        return GLAD_GL_EXT_shader_framebuffer_fetch;
+        return DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_framebuffer_fetch);
+    }
+
+    bool SupportsRenderTargets(int numRTs)
+    {
+        //static GLint val = 0;
+        //glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &val);
+        //return val >= numRTs;
+        return false; //todo: uncomment the above lines after testing on Gmem/PLS device.
     }
 #else
     bool SupportsPLSExtension()

@@ -134,6 +134,10 @@ static SParamDB sParams[] =
     SParamDB(PARAM(PB_WaterRipplesLookupParams, ECGP_PB_WaterRipplesLookupParams), 0),
     SParamDB(PARAM(PB_SkinningExtraWeights, ECGP_PB_SkinningExtraWeights), 0),
 
+    SParamDB(PARAM(PI_FurLODInfo, ECGP_PI_FurLODInfo), 0),
+    SParamDB(PARAM(PI_FurParams, ECGP_PI_FurParams), 0),
+    SParamDB(PARAM(PI_PrevObjWorldMatrix, ECGP_PI_PrevObjWorldMatrix), 0),
+
     SParamDB()
 };
 
@@ -372,7 +376,7 @@ bool CShaderMan::mfParseFXParameter(SShaderFXParams& FXParams, SFXParam* pr, con
     SCGParam CGpr;
     char scr[256];
 
-    uint32 nParamFlags = pr->GetParamFlags();
+    uint32 nParamFlags = pr->GetFlags();
 
     CryFixedStringT<512> Semantic = "Name=";
     Semantic += ParamName;
@@ -573,6 +577,7 @@ static STextureDB sTextures[] =
     STextureDB(PARAM(TS_ZTarget, ECGT_ZTarget), 0),
     STextureDB(PARAM(TS_ZTargetScaled, ECGT_ZTargetScaled), 0),
     STextureDB(PARAM(TS_ZTargetMS, ECGT_ZTargetMS), 0),
+    STextureDB(PARAM(TS_ShadowMaskZTarget, ECGT_ShadowMaskZTarget), 0),
     STextureDB(PARAM(TS_SceneNormalsBent, ECGT_SceneNormalsBent), 0),
     STextureDB(PARAM(TS_SceneNormals, ECGT_SceneNormals), 0),
     STextureDB(PARAM(TS_SceneDiffuse, ECGT_SceneDiffuse), 0),
@@ -590,18 +595,42 @@ static STextureDB sTextures[] =
     STextureDB()
 };
 
-bool CShaderMan::mfParseFXTexture(SShaderFXParams& FXParams, SFXTexture* pr, const char* ParamName, CShader* ef, int nParams, std::vector<SCGTexture>* pParams, EHWShaderClass eSHClass)
+
+//------------------------------------------------------------------------------
+// Starting point for texture data during shader parse stage.
+// Based on the texture name, this function will prepare the binding data (SCGTexture)
+// that will be held within the list of parameters to be bound to the shader.
+// 
+// Important - the resources are loaded according to the order of arrival.
+//
+// Texture Structures and Their Usage:
+// SCGTexture - texture binding structure used for the bind of the resource to the HW
+// SFXTexture - Any SFX structure will be the structure gathered from the shader during
+//      parsing and associated later on.   This structure contains a meta data regarding the 
+//      texture such as UI name and hints, usage, type and other flags.    
+//      It doesn't contain the actual texture data and doesn't apply to the binding directly 
+//      but used as the data associated with the SCGTexture binding structure.
+// SEfResTexture - the actual data representing a texture and its associated sampler.
+//------------------------------------------------------------------------------
+bool CShaderMan::mfParseFXTexture(
+    SShaderFXParams& FXParams, SFXTexture* pr, const char* ParamName, 
+    CShader* ef, int nParams, std::vector<SCGTexture>* pParams, EHWShaderClass eSHClass)
 {
     SCGTexture CGpr;
     if (pr->m_Semantic.empty())
-    {
+    {   // No texture semantic is assigned - assign textures according to usage ($, # or name)
+		// Semantic is the name text associated with the resource in the shader right after 
+		// the name of the resource.
+		// Example:   
+		//  Texture2D <uint> sceneDepthSampler : TS_ZTarget; - here TS_ZTarget is the semantic
         if (pr->m_szTexture.size())
         {
             const char* nameTex = pr->m_szTexture.c_str();
 
             // FT_DONT_STREAM = disable streaming for explicitly specified textures
             if (nameTex[0] == '$')
-            {
+            {   // Maps the name to the pointer in the static array it will be stored at.
+                // [Shaders System] - refactor to use map to store any dynamic name usage.
                 CGpr.m_pTexture = mfCheckTemplateTexName(nameTex, eTT_MaxTexType /*unused*/);
             }
             else if (strchr(nameTex, '#')) // test for " #" to skip max material names
@@ -609,6 +638,7 @@ bool CShaderMan::mfParseFXTexture(SShaderFXParams& FXParams, SFXTexture* pr, con
                 CGpr.m_pAnimInfo = mfReadTexSequence(nameTex, pr->GetTexFlags() | FT_DONT_STREAM, false);
             }
 
+            // load texture by name (no context)
             if (!CGpr.m_pTexture && !CGpr.m_pAnimInfo)
             {
                 CGpr.m_pTexture = (CTexture*)gRenDev->EF_LoadTexture(nameTex, pr->GetTexFlags() | FT_DONT_STREAM);
@@ -621,6 +651,7 @@ bool CShaderMan::mfParseFXTexture(SShaderFXParams& FXParams, SFXTexture* pr, con
 
             CGpr.m_bSRGBLookup = pr->m_bSRGBLookup;
             CGpr.m_bGlobal = false;
+
             pParams->push_back(CGpr);
             return true;
         }
@@ -631,11 +662,18 @@ bool CShaderMan::mfParseFXTexture(SShaderFXParams& FXParams, SFXTexture* pr, con
     const char* szSemantic = pr->m_Semantic.c_str();
     const char* szName;
     int n = 0;
+
+    // Texture semantic exists and will be used to compare to the semantic texture table
+    // Handling textures that are not material based textures, but parsed from the shader.
+    // An example of this will be:  Texture2D<float4> sceneGBufferA : TS_SceneNormals;
     while (szName = sTextures[n].szName)
-    {
+    {   // Run over all slots and try to associates the semantic name.
+        // The semantic enum will be used in 'mfSetTexture' for setting texture 
+        // loading and default properties.
         if (!stricmp(szName, szSemantic))
         {
-            static_assert(ECGT_COUNT <= 256, "ECGTexture  does not fit into 1 byte.");
+            static_assert(ECGT_COUNT <= 256, "ECGTexture does not fit into 1 byte.");
+            // Set the association with the texture enum as per above
             CGpr.m_eCGTextureType = sTextures[n].eTextureType;
             CGpr.m_bSRGBLookup = pr->m_bSRGBLookup;
             CGpr.m_bGlobal = false;
@@ -850,3 +888,4 @@ CTexture* SCGTexture::GetTexture() const
 
     return m_pTexture;
 }
+

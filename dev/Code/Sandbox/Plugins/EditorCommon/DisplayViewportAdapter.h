@@ -42,7 +42,7 @@ public:
     QPoint WorldToView(const Vec3& worldPoint) const override;
     QPoint WorldToViewParticleEditor(const Vec3& worldPoint, int width, int height) const override;
     Vec3 WorldToView3D(const Vec3& worldPoint, int flags = 0) const override;
-    Vec3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = 0, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false) const override;
+    Vec3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override;
     void ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const override;
     float GetGridStep() const override;
     float GetAspectRatio() const override;

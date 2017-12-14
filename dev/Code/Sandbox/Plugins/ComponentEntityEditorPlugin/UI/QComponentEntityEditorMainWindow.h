@@ -15,7 +15,6 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
-struct ISourceControl;
 class QObjectPropertyModel;
 class PropertyInfo;
 
@@ -60,8 +59,6 @@ public:
     }
 
 private:
-
-    ISourceControl* m_sourceControl;
 
     AzToolsFramework::EntityPropertyEditor* m_propertyEditor;
 };

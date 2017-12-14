@@ -59,10 +59,12 @@ namespace SerializeHelpers
     //! Save the given elements to an XML string
     //! \param elements               The top-level elements to save - all descendant elements will be saved also
     //! \param rootSlice              The root slice for the canvas
+    //! \param isCopyOperation        True if this is a copy or cut operation, false if it is part of undo/redo
     //! \param referencedSliceAssets  Out param, all prefab assets used by the saved elements
     AZStd::string SaveElementsToXmlString(
         const LyShine::EntityArray& elements,
         AZ::SliceComponent* rootSlice,
+        bool isCopyOperation,
         AZStd::unordered_set<AZ::Data::AssetId>& referencedSliceAssets);
 
     //! Load elements from an XML string that was created by SaveElementsToXmlString

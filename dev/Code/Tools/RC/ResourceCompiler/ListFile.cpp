@@ -38,14 +38,14 @@ bool CListFile::Process(
     StringHelpers::Split(wildcardList, ";", false, wildcards);
     for (size_t i = 0; i < wildcards.size(); ++i)
     {
-        wildcards[i].replace('/', '\\');
+        wildcards[i] = PathHelpers::ToPlatformPath(wildcards[i]);
     }
 
     std::vector<string> formats;
     StringHelpers::Split(formatList, ";", false, formats);
     for (size_t i = 0; i < formats.size(); ++i)
     {
-        formats[i].replace('/', '\\');
+        formats[i] = PathHelpers::ToPlatformPath(formats[i]);
     }
     if (formats.empty())
     {
@@ -195,8 +195,8 @@ bool CListFile::ProcessLine(
         return false;
     }
 
-    fileName.replace('/', '\\');
-    folderName.replace('/', '\\');
+    fileName = PathHelpers::ToPlatformPath(fileName);
+    folderName = PathHelpers::ToPlatformPath(folderName);
 
     std::vector<string> tokens;
 

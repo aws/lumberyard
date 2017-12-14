@@ -110,7 +110,7 @@ namespace GraphCanvas
     void StylingComponent::OnHoverLeave(QGraphicsItem* item)
     {
         QGraphicsItem* root = nullptr;
-        RootVisualRequestBus::EventResult(root, GetEntityId(), &RootVisualRequests::GetRootGraphicsItem);
+        SceneMemberUIRequestBus::EventResult(root, GetEntityId(), &SceneMemberUIRequests::GetRootGraphicsItem);
 
         if (!root || item == root)
         {
@@ -137,7 +137,12 @@ namespace GraphCanvas
         Styling::SelectorVector selectors = m_coreSelectors;
 
         QGraphicsItem* root = nullptr;
-        RootVisualRequestBus::EventResult(root, GetEntityId(), &RootVisualRequests::GetRootGraphicsItem);
+        SceneMemberUIRequestBus::EventResult(root, GetEntityId(), &SceneMemberUIRequests::GetRootGraphicsItem);
+
+        for (auto& mapPair : m_dynamicSelectors)
+        {
+            selectors.emplace_back(mapPair.second);
+        }
 
         if (!root)
         {
@@ -149,7 +154,10 @@ namespace GraphCanvas
             selectors.emplace_back(m_hoveredSelector);
         }
 
-        if (root->isSelected())
+        bool isSelected = false;
+        SceneMemberUIRequestBus::EventResult(isSelected, GetEntityId(), &SceneMemberUIRequests::IsSelected);
+
+        if (isSelected)
         {
             selectors.emplace_back(m_selectedSelector);
         }
@@ -160,11 +168,6 @@ namespace GraphCanvas
         }
 
         // TODO collapsed and highlighted
-
-        for (auto& mapPair : m_dynamicSelectors)
-        {
-            selectors.emplace_back(mapPair.second);
-        }
 
         return selectors;
     }
@@ -210,6 +213,7 @@ namespace GraphCanvas
 
     void StylingComponent::OnSceneSet(const AZ::EntityId& scene)
     {
+        SceneNotificationBus::Handler::BusDisconnect();
         SceneNotificationBus::Handler::BusConnect(scene);
         StyleNotificationBus::Event(GetEntityId(), &StyleNotificationBus::Events::OnStyleChanged);
     }

@@ -199,7 +199,7 @@ private:
     bool CreateColorKey(CTrackViewTrack* pTrack, float keyTime);
     void EditSelectedColorKey(CTrackViewTrack* pTrack);
 
-    void RecordTrackUndo(CTrackViewTrack* pTrack);
+    void RecordTrackUndoLegacy(CTrackViewTrack* pTrack);
     void AcceptUndo();
 
     // Returns the snapping mode modified active keys

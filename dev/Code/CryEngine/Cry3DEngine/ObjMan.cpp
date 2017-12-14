@@ -579,7 +579,10 @@ IStatObj* CObjManager::LoadNewCGF(IStatObj* pObject, int flagCloth, bool bUseStr
     }
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-    EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+    if (GetISystem() && GetISystem()->GetGlobalEnvironment() && GetISystem()->GetGlobalEnvironment()->mMainThreadId == CryGetCurrentThreadId())
+    {
+        EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+    }
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
     return pObject;
 }
@@ -758,9 +761,9 @@ void CObjManager::MakeUnitCube()
     //      6-------7
     //   /         /|
     //  2-------3   |
-    //  |               |   |
-    //  |   4           | 5
-    //  |               |/
+    //  |        |  |
+    //  |   4    | 5
+    //  |        |/
     //  0-------1
 
     static const vtx_idx arrIndices[] =
@@ -1358,78 +1361,4 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
             }
         }
     }
-}
-
-bool CObjManager::CheckCreateRenderObject(
-    CRenderObject** ppRenderObjectsLodsStorage,
-    int nRenderObjectsLodsStorageNum,
-    CRenderObject*& pRenderObject,
-    const CLodValue* pLodValue,
-    const SRenderingPassInfo& passInfo,
-    const SRendItemSorter& rendItemSorter,
-    CRenderObject::SInstanceData* pInstData /*= 0*/,
-    int nInstCount /*= 0*/) const
-{
-    static ICVar* r_GraphicsPipeline = gEnv->pConsole->GetCVar("r_GraphicsPipeline");
-
-    if (GetCVars()->e_PermanentRenderObjects && r_GraphicsPipeline->GetIVal() >= 4)
-    {
-        if (pLodValue && pLodValue->LodA() == -1 && pLodValue->LodB() == -1)
-        {
-            return true;
-        }
-
-        if (pLodValue && pLodValue->LodA() == -1 && pLodValue->DissolveRefB() == 255)
-        {
-            return true;
-        }
-
-        if (pLodValue && pLodValue->LodB() == -1 && pLodValue->DissolveRefA() == 255)
-        {
-            return true;
-        }
-
-        int nLod = pLodValue ? CLAMP(0, pLodValue->LodA(), nRenderObjectsLodsStorageNum - 1) : 0;
-
-        pRenderObject = ppRenderObjectsLodsStorage[nLod];
-
-        if (pRenderObject)
-        {
-            if (GetCVars()->e_PermanentRenderObjects != 2)
-            {
-                gEnv->pRenderer->EF_AddRenderObject(pRenderObject, passInfo, rendItemSorter);
-            }
-
-            return true;
-        }
-
-        pRenderObject = gEnv->pRenderer->EF_GetObject();
-
-        if (pInstData && nInstCount && GetCVars()->e_StaticInstancing)
-        {
-            pRenderObject->m_Instances.resize(nInstCount);
-
-            memcpy(&pRenderObject->m_Instances[0], pInstData, nInstCount * sizeof(pRenderObject->m_Instances[0]));
-        }
-
-        ppRenderObjectsLodsStorage[nLod] = pRenderObject;
-    }
-    else
-    {
-        pRenderObject = gEnv->pRenderer->EF_GetObject_Temp(passInfo.ThreadID());
-
-        if (ppRenderObjectsLodsStorage)
-        {
-            for (int i = 0; i < nRenderObjectsLodsStorageNum; i++)
-            {
-                if (ppRenderObjectsLodsStorage[i])
-                {
-                    GetRenderer()->EF_FreeObject(ppRenderObjectsLodsStorage[i]);
-                    ppRenderObjectsLodsStorage[i] = 0;
-                }
-            }
-        }
-    }
-
-    return false;
 }

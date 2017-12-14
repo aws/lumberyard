@@ -34,17 +34,17 @@ public:
 
     void Enter() override;
 
-    static void LoopSelection(CD::SMainContext& mc);
-    static bool SelectFaceLoop(CD::SMainContext& mc, CD::PolygonPtr pFirstPolygon, CD::PolygonPtr pSecondPolygon);
-    static bool GetLoopPolygons(CD::SMainContext& mc, CD::PolygonPtr pFirstPolygon, CD::PolygonPtr pSecondPolygon, std::vector<CD::PolygonPtr>& outPolygons);
-    static bool GetLoopPolygonsInBothWays(CD::SMainContext& mc, CD::PolygonPtr pFirstPolygon, CD::PolygonPtr pSecondPolygon, std::vector<CD::PolygonPtr>& outPolygons);
+    static void LoopSelection(const CD::SMainContext& mc);
+    static bool SelectFaceLoop(const CD::SMainContext& mc, CD::PolygonPtr pFirstPolygon, CD::PolygonPtr pSecondPolygon);
+    static bool GetLoopPolygons(const CD::SMainContext& mc, CD::PolygonPtr pFirstPolygon, CD::PolygonPtr pSecondPolygon, std::vector<CD::PolygonPtr>& outPolygons);
+    static bool GetLoopPolygonsInBothWays(const CD::SMainContext& mc, CD::PolygonPtr pFirstPolygon, CD::PolygonPtr pSecondPolygon, std::vector<CD::PolygonPtr>& outPolygons);
 
 private:
 
-    static CD::PolygonPtr FindAdjacentNextPolygon(CD::SMainContext& mc, CD::PolygonPtr pFristPolygon, CD::PolygonPtr pSecondPolygon);
-    static bool SelectLoop(CD::SMainContext& mc, const BrushEdge3D& initialEdge);
-    static bool SelectBorderInOnePolygon(CD::SMainContext& mc, const BrushEdge3D& edge);
-    static bool SelectBorder(CD::SMainContext& mc, const BrushEdge3D& edge, ElementManager& outElementInfos);
-    static int GetPolygonCountSharingEdge(CD::SMainContext& mc, const BrushEdge3D& edge, const BrushPlane* pPlane = NULL);
-    static int CountAllEdges(CD::SMainContext& mc);
+    static CD::PolygonPtr FindAdjacentNextPolygon(const CD::SMainContext& mc, CD::PolygonPtr pFristPolygon, CD::PolygonPtr pSecondPolygon);
+    static bool SelectLoop(const CD::SMainContext& mc, const BrushEdge3D& initialEdge);
+    static bool SelectBorderInOnePolygon(const CD::SMainContext& mc, const BrushEdge3D& edge);
+    static bool SelectBorder(const CD::SMainContext& mc, const BrushEdge3D& edge, ElementManager& outElementInfos);
+    static int GetPolygonCountSharingEdge(const CD::SMainContext& mc, const BrushEdge3D& edge, const BrushPlane* pPlane = NULL);
+    static int CountAllEdges(const CD::SMainContext& mc);
 };

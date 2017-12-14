@@ -15,6 +15,8 @@
 #include "IActorSystem.h"
 #include "FlowSystem/Nodes/FlowBaseNode.h"
 
+#include "RainComponentBus.h"
+
 namespace LYGame
 {
     DECLARE_DEFAULT_COMPONENT_FACTORY(CRain, CRain)
@@ -126,7 +128,9 @@ namespace LYGame
         if (pClient && Reset())
         {
             const Vec3 vCamPos = gEnv->pRenderer->GetCamera().GetPosition();
-            Vec3 vR = (GetEntity()->GetWorldPos() - vCamPos) / max(m_params.fRadius, 1e-3f);
+            const Vec3 worldPos = GetEntity()->GetWorldPos();
+            const Vec3 diff = worldPos - vCamPos;
+            Vec3 vR = (diff) / max(m_params.fRadius, 1e-3f);
             float fAttenAmount = max(0.f, 1.0f - vR.dot(vR));
             fAttenAmount *= m_params.fAmount;
 
@@ -176,6 +180,11 @@ namespace LYGame
                 rainParams.fAmount = 0.f;
                 rainParams.vWorldPos = vZero;
                 gEnv->p3DEngine->SetRainParams(rainParams);
+
+                //If any other rain components exist, broadcast to them that they should re-update the rain params
+                //This is useful if two rain components exist and one is deleted; some other component's rain params sould
+                //still be applied. This is just for preview in-editor. 
+                Rain::RainComponentRequestBus::Broadcast(&Rain::RainComponentRequestBus::Events::UpdateRain);
             }
             break;
         }
@@ -225,7 +234,7 @@ namespace LYGame
         props->GetValue("fSplashesAmount", m_params.fSplashesAmount);
 
         props->GetValue("bEnabled", m_bEnabled);
-        if (!m_bEnabled || gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
+        if (!m_bEnabled && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
         {
             m_params.fAmount = 0;
         }

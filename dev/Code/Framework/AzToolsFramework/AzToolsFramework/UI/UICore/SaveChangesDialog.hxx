@@ -13,12 +13,12 @@
 #ifndef SAVECHANGESDIALOG_HXX
 #define SAVECHANGESDIALOG_HXX
 
+#include <QDialog>
+#include <QObject>
+
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzToolsFramework/UI/LegacyFramework/UIFrameworkAPI.h>
-#include <QObject>
-
-#include <qdialog.h>
 
 namespace Ui
 {

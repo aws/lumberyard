@@ -21,11 +21,11 @@ namespace ExporterLib
         to.mY = from.GetY();
     }
 
-    void CopyVector(EMotionFX::FileFormat::FileVector3& to, const MCore::Vector3& from)
+    void CopyVector(EMotionFX::FileFormat::FileVector3& to, const AZ::PackedVector3f& from)
     {
-        to.mX = from.x;
-        to.mY = from.y;
-        to.mZ = from.z;
+        to.mX = from.GetX();
+        to.mY = from.GetY();
+        to.mZ = from.GetZ();
     }
 
 
@@ -199,10 +199,11 @@ namespace ExporterLib
     }
 
 
-    void ConvertVector3(MCore::Vector3* value, MCore::Endian::EEndianType targetEndianType)
+    void ConvertVector3(AZ::PackedVector3f* value, MCore::Endian::EEndianType targetEndianType)
     {
-        MCore::Endian::ConvertFloat(&value->x, EXPLIB_PLATFORM_ENDIAN, targetEndianType);
-        MCore::Endian::ConvertFloat(&value->y, EXPLIB_PLATFORM_ENDIAN, targetEndianType);
-        MCore::Endian::ConvertFloat(&value->z, EXPLIB_PLATFORM_ENDIAN, targetEndianType);
+        float* data = reinterpret_cast<float*>(value);
+        MCore::Endian::ConvertFloat(&data[0], EXPLIB_PLATFORM_ENDIAN, targetEndianType);
+        MCore::Endian::ConvertFloat(&data[1], EXPLIB_PLATFORM_ENDIAN, targetEndianType);
+        MCore::Endian::ConvertFloat(&data[2], EXPLIB_PLATFORM_ENDIAN, targetEndianType);
     }
 } // namespace ExporterLib

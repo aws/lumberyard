@@ -43,17 +43,40 @@ namespace Audio
     struct SAudioEventListener
     {
         SAudioEventListener()
-            : pObjectToListenTo(nullptr)
-            , OnEvent(nullptr)
-            , requestType(eART_AUDIO_ALL_REQUESTS)
-            , specificRequestMask(ALL_AUDIO_REQUEST_SPECIFIC_TYPE_FLAGS)
+            : m_callbackOwner(nullptr)
+            , m_fnOnEvent(nullptr)
+            , m_requestType(eART_AUDIO_ALL_REQUESTS)
+            , m_specificRequestMask(ALL_AUDIO_REQUEST_SPECIFIC_TYPE_FLAGS)
         {}
 
-        const void* pObjectToListenTo;
-        AudioRequestCallbackType OnEvent;
+        SAudioEventListener(const SAudioEventListener& other)
+            : m_callbackOwner(other.m_callbackOwner)
+            , m_fnOnEvent(other.m_fnOnEvent)
+            , m_requestType(other.m_requestType)
+            , m_specificRequestMask(other.m_specificRequestMask)
+        {}
 
-        EAudioRequestType requestType;
-        TATLEnumFlagsType specificRequestMask;
+        SAudioEventListener& operator=(const SAudioEventListener& other)
+        {
+            m_callbackOwner = other.m_callbackOwner;
+            m_fnOnEvent = other.m_fnOnEvent;
+            m_requestType = other.m_requestType;
+            m_specificRequestMask = other.m_specificRequestMask;
+            return *this;
+        }
+
+        bool operator==(const SAudioEventListener& rhs) const
+        {
+            return (m_callbackOwner == rhs.m_callbackOwner
+                && m_fnOnEvent == rhs.m_fnOnEvent
+                && m_requestType == rhs.m_requestType
+                && m_specificRequestMask == rhs.m_specificRequestMask);
+        }
+
+        const void* m_callbackOwner;
+        AudioRequestCallbackType m_fnOnEvent;
+        EAudioRequestType m_requestType;
+        TATLEnumFlagsType m_specificRequestMask;
     };
 
 
@@ -150,44 +173,6 @@ namespace Audio
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         CryFixedStringT<MAX_AUDIO_OBJECT_NAME_LENGTH> sObjectName;
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    template <>
-    struct SAudioManagerRequestDataInternal<eAMRT_ADD_REQUEST_LISTENER>
-        : public SAudioManagerRequestDataInternalBase
-    {
-        SAudioManagerRequestDataInternal(const SAudioManagerRequestData<eAMRT_ADD_REQUEST_LISTENER>* const pAMRData)
-            : SAudioManagerRequestDataInternalBase(pAMRData->eType)
-            , pObjectToListenTo(pAMRData->pObjectToListenTo)
-            , func(pAMRData->func)
-            , requestType(pAMRData->requestType)
-            , specificRequestMask(pAMRData->specificRequestMask)
-        {}
-
-        ~SAudioManagerRequestDataInternal<eAMRT_ADD_REQUEST_LISTENER>()override {}
-
-        const void* const pObjectToListenTo;
-        AudioRequestCallbackType func;
-        const EAudioRequestType requestType;
-        const TATLEnumFlagsType specificRequestMask;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    template <>
-    struct SAudioManagerRequestDataInternal<eAMRT_REMOVE_REQUEST_LISTENER>
-        : public SAudioManagerRequestDataInternalBase
-    {
-        SAudioManagerRequestDataInternal(const SAudioManagerRequestData<eAMRT_REMOVE_REQUEST_LISTENER>* const pAMRData)
-            : SAudioManagerRequestDataInternalBase(pAMRData->eType)
-            , pObjectToListenTo(pAMRData->pObjectToListenTo)
-            , func(pAMRData->func)
-        {}
-
-        ~SAudioManagerRequestDataInternal<eAMRT_REMOVE_REQUEST_LISTENER>()override {}
-
-        const void* const pObjectToListenTo;
-        AudioRequestCallbackType func;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -338,12 +323,16 @@ namespace Audio
     {
         SAudioManagerRequestDataInternal(const SAudioManagerRequestData<eAMRT_REFRESH_AUDIO_SYSTEM>* const pAMRData)
             : SAudioManagerRequestDataInternalBase(pAMRData->eType)
-            , sLevelName(pAMRData->sLevelName)
+            , m_controlsPath(pAMRData->m_controlsPath)
+            , m_levelName(pAMRData->m_levelName)
+            , m_levelPreloadId(pAMRData->m_levelPreloadId)
         {}
 
         ~SAudioManagerRequestDataInternal<eAMRT_REFRESH_AUDIO_SYSTEM>()override {}
 
-        const CryFixedStringT<MAX_AUDIO_FILE_NAME_LENGTH> sLevelName;
+        const CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_controlsPath;
+        const CryFixedStringT<MAX_AUDIO_FILE_NAME_LENGTH> m_levelName;
+        const TAudioPreloadRequestID m_levelPreloadId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -822,8 +811,6 @@ namespace Audio
                 { eAMRT_UNLOAD_SINGLE_REQUEST, "UNLOAD SINGLE" },
                 { eAMRT_UNLOAD_AFCM_DATA_BY_SCOPE, "UNLOAD SCOPE" },
                 { eAMRT_DRAW_DEBUG_INFO, "DRAW DEBUG" },
-                { eAMRT_ADD_REQUEST_LISTENER, "ADD REQUEST LISTENER" },
-                { eAMRT_REMOVE_REQUEST_LISTENER, "REMOVE REQUEST LISTENER" },
                 { eAMRT_CHANGE_LANGUAGE, "CHANGE LANGUAGE" },
                 { eAMRT_RETRIGGER_AUDIO_CONTROLS, "RETRIGGER CONTROLS" },
             };
@@ -948,4 +935,5 @@ namespace Audio
         eADDF_SHOW_FILECACHE_MANAGER_INFO   = BIT(29),// x
     };
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
 } // namespace Audio

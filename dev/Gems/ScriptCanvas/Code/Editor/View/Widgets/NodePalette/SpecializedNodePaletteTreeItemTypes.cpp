@@ -13,9 +13,10 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
+#include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
-#include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/GraphCanvasBus.h>
+
 
 #include "SpecializedNodePaletteTreeItemTypes.h"
 
@@ -101,7 +102,7 @@ namespace ScriptCanvasEditor
         {
             retVal.m_graphCanvasId = graphCanvasEntity->GetId();
             GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, graphCanvasEntity->GetId(), scenePosition);
-            GraphCanvas::NodeUIRequestBus::Event(graphCanvasEntity->GetId(), &GraphCanvas::NodeUIRequests::SetSelected, true);
+            GraphCanvas::SceneMemberUIRequestBus::Event(graphCanvasEntity->GetId(), &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
         }
 
         return retVal;
@@ -117,7 +118,13 @@ namespace ScriptCanvasEditor
 
         if (nodeId.m_graphCanvasId.IsValid())
         {
-            sceneDropPosition += AZ::Vector2(20, 20);
+            AZ::EntityId gridId;
+            GraphCanvas::SceneRequestBus::EventResult(gridId, sceneId, &GraphCanvas::SceneRequests::GetGrid);
+
+            AZ::Vector2 offset;
+            GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
+
+            sceneDropPosition += offset;
         }
 
         return nodeId.m_graphCanvasId.IsValid();
@@ -136,5 +143,74 @@ namespace ScriptCanvasEditor
     GraphCanvas::GraphCanvasMimeEvent* CommentNodePaletteTreeItem::CreateMimeEvent() const
     {
         return aznew CreateCommentNodeMimeEvent();
+    }
+
+    ////////////////////////////////////
+    // CreateBlockCommentNodeMimeEvent
+    ////////////////////////////////////
+
+    void CreateBlockCommentNodeMimeEvent::Reflect(AZ::ReflectContext* reflectContext)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<CreateBlockCommentNodeMimeEvent, GraphCanvas::GraphCanvasMimeEvent>()
+                ->Version(0)
+                ;
+        }
+    }
+
+    NodeIdPair CreateBlockCommentNodeMimeEvent::ConstructNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition)
+    {
+        NodeIdPair retVal;
+
+        AZ::Entity* graphCanvasEntity = nullptr;
+        GraphCanvas::GraphCanvasRequestBus::BroadcastResult(graphCanvasEntity, &GraphCanvas::GraphCanvasRequests::CreateBlockCommentNodeAndActivate);
+
+        if (graphCanvasEntity)
+        {
+            retVal.m_graphCanvasId = graphCanvasEntity->GetId();
+            GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, graphCanvasEntity->GetId(), scenePosition);
+            GraphCanvas::SceneMemberUIRequestBus::Event(graphCanvasEntity->GetId(), &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
+        }
+
+        return retVal;
+    }
+
+    bool CreateBlockCommentNodeMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId)
+    {
+        AZ::EntityId graphId;
+        GeneralRequestBus::BroadcastResult(graphId, &GeneralRequests::GetGraphId, sceneId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::Uuid("{CE31F6F6-1536-4C97-BB59-863408ABA736}"), graphId);
+
+        NodeIdPair nodeId = ConstructNode(sceneId, sceneDropPosition);
+
+        if (nodeId.m_graphCanvasId.IsValid())
+        {
+            AZ::EntityId gridId;
+            GraphCanvas::SceneRequestBus::EventResult(gridId, sceneId, &GraphCanvas::SceneRequests::GetGrid);
+
+            AZ::Vector2 offset;
+            GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
+
+            sceneDropPosition += offset;
+        }
+
+        return nodeId.m_graphCanvasId.IsValid();
+    }
+
+    ////////////////////////////////////
+    // BlockCommentNodePaletteTreeItem
+    ////////////////////////////////////
+
+    BlockCommentNodePaletteTreeItem::BlockCommentNodePaletteTreeItem(const QString& nodeName, const QString& iconPath)
+        : DraggableNodePaletteTreeItem(nodeName, iconPath)
+    {
+    }
+
+    GraphCanvas::GraphCanvasMimeEvent* BlockCommentNodePaletteTreeItem::CreateMimeEvent() const
+    {
+        return aznew CreateBlockCommentNodeMimeEvent();
     }
 }

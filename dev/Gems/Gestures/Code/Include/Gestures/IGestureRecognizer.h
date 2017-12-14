@@ -15,7 +15,7 @@
 #include <IRenderer.h>
 #include <Cry_Vector2.h>
 
-#include <AzFramework/Input/Buses/Notifications/InputChannelEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputChannelNotificationBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
 
@@ -23,7 +23,7 @@
 namespace Gestures
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    class IRecognizer : public AzFramework::InputChannelEventNotificationBus::Handler
+    class IRecognizer : public AzFramework::InputChannelNotificationBus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////

@@ -22,6 +22,9 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::ColliderComponentRequestBus;
+    using AzFramework::ColliderComponentEventBus;
+    
     void MeshColliderComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -36,7 +39,7 @@ namespace LmbrCentral
             if (editContext)
             {
                 editContext->Class<MeshColliderComponent>(
-                    "Mesh Collider", "The Mesh Collider component specifies that the collider geometry is provided by a Mesh component")
+                    "Mesh Collider", "The Mesh Collider component specifies that the collider geometry is provided by a mesh component")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/ColliderMesh.png")

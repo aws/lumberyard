@@ -13,7 +13,7 @@
 
 #include <AzCore/Component/Component.h>
 
-#include <LmbrCentral/Physics/ColliderComponentBus.h>
+#include <AzFramework/Physics/ColliderComponentBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 namespace LmbrCentral
@@ -23,7 +23,7 @@ namespace LmbrCentral
      */
     class MeshColliderComponent
         : public AZ::Component
-        , public ColliderComponentRequestBus::Handler
+        , public AzFramework::ColliderComponentRequestBus::Handler
         , public MeshComponentNotificationBus::Handler
     {
     public:

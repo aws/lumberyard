@@ -274,13 +274,19 @@ void ParticlePreviewModelView::LoadParticleEffect(IParticleEffect* pEffect, CPar
 
     if (pEffect && particle)
     {
-        ReleaseEmitter();
-        m_pEmitter = pEffect->Spawn(m_EmitterDefault, ePEF_Nowhere);
+        ReleaseEmitter();        
 
         if (lod)
         {
-            m_pEmitter->ForceShowLod(lod);
+            IParticleEffect* lodEffect = pEffect->GetLodParticle(lod);
+            if (lodEffect)
+            {
+                pEffect = lodEffect;
+            }
         }
+
+        m_pEmitter = pEffect->Spawn(m_EmitterDefault, ePEF_Nowhere| ePEF_DisableLOD);
+
         if (m_pEmitter)
         {
             m_pEmitter->AddRef();

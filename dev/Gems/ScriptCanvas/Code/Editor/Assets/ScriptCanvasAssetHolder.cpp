@@ -9,12 +9,13 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #include "precompiled.h"
+
+#include <LyViewPaneNames.h>
 
 #include <Editor/Assets/ScriptCanvasAssetHolder.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
+#include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
@@ -23,7 +24,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/IdUtils.h>
-#include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/Asset/AssetManager.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
@@ -35,9 +36,8 @@ namespace ScriptCanvasEditor
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<ScriptCanvasAssetHolder>()
-                ->Version(0)
+                ->Version(1)
                 ->Field("m_asset", &ScriptCanvasAssetHolder::m_scriptCanvasAsset)
-                ->Field("m_openEditorButton", &ScriptCanvasAssetHolder::m_openEditorButton)
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -59,8 +59,9 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasAssetHolder::ScriptCanvasAssetHolder(AZ::Data::Asset<ScriptCanvasAsset> asset)
+    ScriptCanvasAssetHolder::ScriptCanvasAssetHolder(AZ::Data::Asset<ScriptCanvasAsset> asset, const ScriptChangedCB& scriptChangedCB)
         : m_scriptCanvasAsset(asset)
+        , m_scriptNotifyCallback(scriptChangedCB)
     {
     }
 
@@ -69,19 +70,10 @@ namespace ScriptCanvasEditor
         AZ::Data::AssetBus::Handler::BusDisconnect();
     }
 
-    void ScriptCanvasAssetHolder::Init()
+    void ScriptCanvasAssetHolder::Init(AZ::EntityId ownerId)
     {
-        if (!m_scriptCanvasAsset.IsReady())
-        {
-            // Load the Asset if the Id is valid
-            AZ::Data::AssetInfo assetInfo;
-            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, m_scriptCanvasAsset.GetId());
-            if (assetInfo.m_assetId.IsValid())
-            {
-                DocumentContextRequestBus::BroadcastResult(m_scriptCanvasAsset, &DocumentContextRequests::LoadScriptCanvasAssetById, m_scriptCanvasAsset.GetId(), true);
-            }
-
-        }
+        m_ownerId = ownerId;
+        Load(true);
 
         if (m_scriptCanvasAsset.IsReady())
         {
@@ -97,11 +89,13 @@ namespace ScriptCanvasEditor
 
     void ScriptCanvasAssetHolder::OpenEditor() const
     {
-        AzToolsFramework::OpenViewPane(GetViewPaneName());
+        AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);
 
-        if (GetAsset().IsReady())
+        AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
+        GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, m_scriptCanvasAsset, -1, m_ownerId);
+        if (!openOutcome)
         {
-            GeneralRequestBus::Broadcast(&GeneralRequests::OpenScriptCanvasAsset, m_scriptCanvasAsset, -1);
+            AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());
         }
     }
 
@@ -115,27 +109,45 @@ namespace ScriptCanvasEditor
         return graphId;
     }
 
+    void ScriptCanvasAssetHolder::SetScriptChangedCB(const ScriptChangedCB& scriptChangedCB)
+    {
+        m_scriptNotifyCallback = scriptChangedCB;
+    }
+
+    void ScriptCanvasAssetHolder::Load(bool loadBlocking)
+    {
+        if (!m_scriptCanvasAsset.IsReady())
+        {
+            AZ::Data::AssetInfo assetInfo;
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, m_scriptCanvasAsset.GetId());
+            if (assetInfo.m_assetId.IsValid())
+            {
+                m_scriptCanvasAsset = AZ::Data::AssetManager::Instance().GetAsset(m_scriptCanvasAsset.GetId(), ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
+            }
+        }
+    }
+
     AZ::u32 ScriptCanvasAssetHolder::OnScriptChanged()
     {
         SetAsset(m_scriptCanvasAsset);
-        if (!m_scriptCanvasAsset.IsReady())
+        Load(false);
+
+        if (m_scriptNotifyCallback)
         {
-            DocumentContextRequestBus::Broadcast(&DocumentContextRequests::LoadScriptCanvasAssetById, m_scriptCanvasAsset.GetId(), false);
+            m_scriptNotifyCallback(m_scriptCanvasAsset);
         }
-        return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+        return AZ::Edit::PropertyRefreshLevels::None;
     }
 
     void ScriptCanvasAssetHolder::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         SetAsset(asset);
-        ActivateAssetData();
         EditorScriptCanvasAssetNotificationBus::Event(m_scriptCanvasAsset.GetId(), &EditorScriptCanvasAssetNotifications::OnScriptCanvasAssetReady, m_scriptCanvasAsset);
     }
 
     void ScriptCanvasAssetHolder::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         SetAsset(asset);
-        ActivateAssetData();
         EditorScriptCanvasAssetNotificationBus::Event(m_scriptCanvasAsset.GetId(), &EditorScriptCanvasAssetNotifications::OnScriptCanvasAssetReloaded, m_scriptCanvasAsset);
     }
 
@@ -147,7 +159,6 @@ namespace ScriptCanvasEditor
     void ScriptCanvasAssetHolder::OnAssetSaved(AZ::Data::Asset<AZ::Data::AssetData> asset, bool isSuccessful)
     {
         SetAsset(m_scriptCanvasAsset);
-        ActivateAssetData();
         auto currentBusId = AZ::Data::AssetBus::GetCurrentBusId();
         if (currentBusId)
         {
@@ -172,29 +183,5 @@ namespace ScriptCanvasEditor
     AZ::Data::Asset<ScriptCanvasAsset> ScriptCanvasAssetHolder::GetAsset() const
     {
         return m_scriptCanvasAsset;
-    }
-
-    void ScriptCanvasAssetHolder::ActivateAssetData()
-    {
-        if (m_scriptCanvasAsset.IsReady())
-        {
-            ScriptCanvasData& scriptCanvasData = m_scriptCanvasAsset.Get()->GetScriptCanvasData();
-            AZ::Entity* scriptCanvasEntity = m_scriptCanvasAsset.Get()->GetScriptCanvasEntity();
-            if (scriptCanvasEntity)
-            {
-                if (scriptCanvasEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-                {
-                    AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_entityIdMap;
-                    AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&scriptCanvasData, m_entityIdMap);
-                    scriptCanvasEntity->Init();
-                }
-
-                if (scriptCanvasEntity->GetState() == AZ::Entity::ES_INIT)
-                {
-                    scriptCanvasEntity->Activate();
-                    EditorScriptCanvasAssetNotificationBus::Event(m_scriptCanvasAsset.GetId(), &EditorScriptCanvasAssetNotifications::OnScriptCanvasAssetActivated, m_scriptCanvasAsset);
-                }
-            }
-        }
     }
 }

@@ -65,8 +65,12 @@ class uber_file_generator(BuildContext):
 @extension('.qml')
 @extension('.jpg')
 @extension('.ttf')
+@extension('.ini')
 @extension('.tpl')
 @extension('.py')
+@extension('.natvis')
+@extension('.natstepfilter')
+@extension('.natjmc')
 def header_dummy(tgen,node):
     pass
 
@@ -98,7 +102,7 @@ def map_uber_files(ctx, original_file_list, token, target_name=None):
         for (filter_name, file_list) in original_file_list['auto'].items():
             for file in file_list:
                 file_lower = file.lower()
-                if file_lower.endswith('.c') or file_lower.endswith('.cpp'):
+                if ctx.is_cxx_file(file_lower):
                     if os.path.isabs(file):
                         file_node = ctx.root.make_node(file)
                     else:
@@ -163,7 +167,7 @@ def gen_create_uber_file_task(tgen):
         files = []
         for (k_1,file_list) in project_filter.items():
             for file in file_list:
-                if file.endswith('.c') or file.endswith('.cpp') or file.endswith('.CPP'):
+                if tgen.bld.is_cxx_file(str(file)):
                     files.append(file)
 
         file_nodes = tgen.to_nodes(files)

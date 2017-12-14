@@ -31,6 +31,7 @@ namespace AZ
             const static AZ::Crc32 ToolTip = AZ_CRC("ToolTip", 0xa1b95fb0); ///< Add a tooltip for a method/event/property
             const static AZ::Crc32 Category = AZ_CRC("Category", 0x064c19c1); ///< Provide a category to allow for partitioning/sorting/ordering of the element
             const static AZ::Crc32 Deprecated = AZ_CRC("Deprecated", 0xfe49a138); ///< Marks a reflected class, method, EBus or property as deprecated. 
+            const static AZ::Crc32 DisallowBroadcast = AZ_CRC("DisallowBroadcast", 0x389b0ac7); ///< Marks a reflected EBus as not allowing Broadcasts, only Events.
             ///< This attribute can be attached to the EditContext Attribute of a reflected class, the BehaviorContext Attribute of a reflected class, method, ebus or property.
             ///< ExcludeFlags can be used to prevent elements from appearing in List, Documentation, etc...
             const static AZ::Crc32 ExcludeFrom = AZ_CRC("ExcludeFrom", 0xa98972fe);

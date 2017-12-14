@@ -26,8 +26,8 @@ local scanner =
 		},
 				
 		MessageOut = {
-			SuccessMessage = { default = "", description = "Message to send when i have successuly done my scan." },
-			FailMessage = { default = "", description = "Message to send when i have unsuccessuly done my scan." },
+			SuccessMessage = { default = "", description = "Message to send when i have successfuly done my scan." },
+			FailMessage = { default = "", description = "Message to send when i have unsuccessfuly done my scan." },
 		},		
 		MessageIn = {
 			EnableMessage = { default = "EnableScanner", description = "Set if i be used." },

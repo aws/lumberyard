@@ -33,7 +33,7 @@ public:
 
 private:
     void RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture);
-    void RenderFXAA(CTexture* sourceTexture);
+    void RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture);
     void RenderComposites(CTexture* sourceTexture);
 
 private:

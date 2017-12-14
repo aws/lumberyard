@@ -1,0 +1,35 @@
+{
+    "auto":
+    {
+        "Include/Config":
+        [
+            
+            "Include/Config/SceneProcessingConfigBus.h"
+        ],
+        "Source":
+        [
+            "Source/SceneProcessingModule.cpp"
+        ],
+        "Source/Config/Components":
+        [
+            "Source/Config/Components/SceneProcessingConfigSystemComponent.h",
+            "Source/Config/Components/SceneProcessingConfigSystemComponent.cpp",
+            "Source/Config/Components/SoftNameBehavior.h",
+            "Source/Config/Components/SoftNameBehavior.cpp"
+        ],
+        "Source/Config/SettingsObjects":
+        [
+            "Source/Config/SettingsObjects/SoftNameSetting.h",
+            "Source/Config/SettingsObjects/SoftNameSetting.cpp",
+            "Source/Config/SettingsObjects/NodeSoftNameSetting.h",
+            "Source/Config/SettingsObjects/NodeSoftNameSetting.cpp",
+            "Source/Config/SettingsObjects/FileSoftNameSetting.h",
+            "Source/Config/SettingsObjects/FileSoftNameSetting.cpp"
+        ],
+        "Source/Config/Widgets":
+        [
+            "Source/Config/Widgets/GraphTypeSelector.h",
+            "Source/Config/Widgets/GraphTypeSelector.cpp"
+        ]
+    }
+}

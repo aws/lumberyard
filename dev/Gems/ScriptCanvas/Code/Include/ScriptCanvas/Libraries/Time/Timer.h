@@ -49,7 +49,7 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("Stop", "Stops the timer."));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled every frame while the timer is running."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled every frame while the timer is running."));
 
                 ScriptCanvas_Property(float,
                     ScriptCanvas_Property::Name("Milliseconds", "The amount of time that has elapsed since the timer started in milliseconds.")
@@ -70,9 +70,7 @@ namespace ScriptCanvas
                 // Temps
                 float m_seconds;
                 float m_milliseconds;
-
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
+            
             protected:
 
                 AZ::ScriptTimePoint m_start;

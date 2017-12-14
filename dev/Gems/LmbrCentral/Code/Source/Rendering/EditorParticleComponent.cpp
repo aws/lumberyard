@@ -373,31 +373,64 @@ Negative values will be ignored.\n")->
         if (!m_emitterNames.empty())
         {
             //check if the selected emitter still exist
-            for (AZStd::string emitterName : m_emitterNames)
+            if (m_libName == libName)
             {
-                if (selEmitterName == emitterName)
+                for (AZStd::string emitterName : m_emitterNames)
                 {
-                    m_selectedEmitter = emitterName;
-                    m_libName = libName;
-                    OnEmitterSelected();
-                    return;
+                    if (selEmitterName == emitterName)
+                    {
+                        m_selectedEmitter = emitterName;
+                        OnEmitterSelected();
+                        return;
+                    }
                 }
             }
+
             m_selectedEmitter = m_emitterNames[0];
+            OnEmitterSelected();
+        }
+        else
+        {
+            m_selectedEmitter.clear();
             OnEmitterSelected();
         }
     }
 
     void EditorParticleComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
+        /*
+         *There are 2 scenarios when the asset will be reloaded
+         *1. The library is renamed/deleted
+         *2. There is an emitter being renamed/deleted
+         *Thus it's safer to clear the cache and rely on OnAssetReady to do all the assigning.
+         *If the library is deleted in particle editor/locally, the asset would be invalid, need to have check here.
+         */
+
+        m_emitterNames.clear();
+        m_emitter.Clear();
+        m_selectedEmitter.clear();
+        m_libName.clear();
+
         m_asset = asset;
-        OnAssetReady(asset);
+
+        if (m_asset.GetId().IsValid())
+        {
+            OnAssetReady(asset);
+        }
+        else
+        {
+            m_emitterFullNameToSelect.clear();
+            m_settings.m_selectedEmitter.clear();
+            SetDirty();
+        }
     }
 
     void EditorParticleComponent::OnAssetChanged()
     {
         m_emitterNames.clear();
         m_emitter.Clear();
+        m_selectedEmitter.clear();
+        m_libName.clear();
 
         if (AZ::Data::AssetBus::Handler::BusIsConnected())
         {
@@ -408,6 +441,12 @@ Negative values will be ignored.\n")->
         {
             AZ::Data::AssetBus::Handler::BusConnect(m_asset.GetId());
             m_asset.QueueLoad();
+        }
+        else
+        {
+            m_emitterFullNameToSelect.clear();
+            m_settings.m_selectedEmitter.clear();
+            SetDirty();
         }
 
         EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);

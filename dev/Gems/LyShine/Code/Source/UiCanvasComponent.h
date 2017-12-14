@@ -133,8 +133,8 @@ public: // member functions
     void SetIsNavigationSupported(bool isSupported) override;
 
     bool HandleInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,
-                          const AZ::Vector2* viewportPos = nullptr,
-                          AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None) override;
+        const AZ::Vector2* viewportPos = nullptr,
+        AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None) override;
     bool HandleTextEvent(const AZStd::string& textUTF8) override;
     bool HandleInputPositionalEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, AZ::Vector2 viewportPos) override;
 
@@ -154,6 +154,7 @@ public: // member functions
     AZ::EntityId GetHoverInteractable() override;
     void ForceHoverInteractable(AZ::EntityId interactableId) override;
 
+    void SetTransformsNeedRecomputeFlag() override;
     // ~UiCanvasInterface
 
     // EntityEvents
@@ -194,7 +195,13 @@ public: // member functions
     //! (used when it is loaded from in game or for preview mode etc)
     UiCanvasComponent* CloneAndInitializeCanvas(UiEntityContext* entityContext, const string& assetIdPathname, const AZ::Vector2* canvasSize = nullptr);
 
+    //! Deactivate all elements. Used when queuing a canvas up for deletion
+    void DeactivateElements();
+
     AZ::Vector2 GetTargetCanvasSize();
+
+    //! Get the mapping from editor EntityId to game EntityId. This will be empty for canvases loaded for editing
+    AZ::SliceComponent::EntityIdToEntityIdMap GetEditorToGameEntityIdMap() { return m_editorToGameEntityIdMap; }
 
 public: // static member functions
 
@@ -220,7 +227,8 @@ public: // static member functions
     static void Shutdown();
 
     static UiCanvasComponent* CreateCanvasInternal(UiEntityContext* entityContext, bool forEditor);
-    static UiCanvasComponent* LoadCanvasInternal(const string& pathToOpen, bool forEditor, const string& assetIdPathname, UiEntityContext* entityContext);
+    static UiCanvasComponent* LoadCanvasInternal(const string& pathToOpen, bool forEditor, const string& assetIdPathname, UiEntityContext* entityContext,
+        const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable = nullptr, AZ::EntityId previousCanvasId = AZ::EntityId());
     static UiCanvasComponent* FixupReloadedCanvasForEditorInternal(AZ::Entity* newCanvasEntity,
         AZ::Entity* rootSliceEntity, UiEntityContext* entityContext,
         LyShine::CanvasId existingId, const string& existingPathname);
@@ -282,12 +290,6 @@ private: // member functions
     //! Set the hover interactable on canvas load
     void SetFirstHoverInteractable();
 
-    //! Replace entity refs in an entity and all its components and child entities
-    //! used to replace entityRefs so that references internal to a set of pasted elements
-    //! or a prefab get updated
-    void ReplaceEntityRefs(AZ::Entity* entity, const UiElementComponent::EntityIdMap& entityIdMap,
-        AZ::SerializeContext* context);
-
     //! Due to differences in their serialization systems we need to do some work before save
     void PrepareAnimationSystemForCanvasSave();
 
@@ -332,7 +334,8 @@ private: // static member functions
 
     static AZ::u64 CreateUniqueId();
 
-    static UiCanvasComponent* FixupPostLoad(AZ::Entity* canvasEntity, AZ::Entity* rootSliceEntity, bool forEditor, UiEntityContext* entityContext, const AZ::Vector2* canvasSize = nullptr);
+    static UiCanvasComponent* FixupPostLoad(AZ::Entity* canvasEntity, AZ::Entity* rootSliceEntity, bool forEditor, UiEntityContext* entityContext,
+        const AZ::Vector2* canvasSize = nullptr, const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable = nullptr, AZ::EntityId previousCanvasId = AZ::EntityId());
 
     static bool VersionConverter(AZ::SerializeContext& context,
         AZ::SerializeContext::DataElementNode& classElement);
@@ -396,7 +399,7 @@ private: // data
     //! The authored canvas size, in pixels
     //
     //! While in the editor, this is the resolution that we display the canvas at. While in
-    //! game, the authored canvas size is used to calcualte m_uniformDeviceScale, which is
+    //! game, the authored canvas size is used to calculate m_uniformDeviceScale, which is
     //! used to apply the "scale to device" feature.
     AZ::Vector2 m_canvasSize;
 
@@ -440,13 +443,17 @@ private: // data
     SDepthTexture* m_renderTargetDepthSurface = nullptr;
 
     //! Each canvas has a layout manager to track and recompute layouts
-    UiLayoutManager *m_layoutManager = nullptr;
+    UiLayoutManager* m_layoutManager = nullptr;
 
     bool m_isSnapEnabled;
     float m_snapDistance;
     float m_snapRotationDegrees;
 
     UiEntityContext* m_entityContext;
+    AZ::SliceComponent::EntityIdToEntityIdMap m_editorToGameEntityIdMap;
+
+    //! This is an optimization to avoid visiting all elements multiple times every frame to see if any of them need recomputing
+    bool m_transformsNeedRecompute = true;
 
 private: // static data
 

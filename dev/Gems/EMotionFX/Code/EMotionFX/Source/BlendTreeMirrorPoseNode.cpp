@@ -203,8 +203,8 @@ namespace EMotionFX
                 const Actor::NodeMirrorInfo& mirrorInfo = actor->GetNodeMirrorInfo(nodeIndex);
 
                 // build the mirror plane normal, based on the mirror axis for this node
-                MCore::Vector3 mirrorPlaneNormal(0.0f, 0.0f, 0.0f);
-                mirrorPlaneNormal[mirrorInfo.mAxis] = 1.0f;
+                AZ::Vector3 mirrorPlaneNormal(0.0f, 0.0f, 0.0f);
+                mirrorPlaneNormal.SetElement(mirrorInfo.mAxis, 1.0f);
 
                 // apply the mirrored delta to the bind pose of the current node
                 outputTransform = bindPose->GetLocalTransform(nodeIndex);

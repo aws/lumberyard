@@ -17,6 +17,7 @@
 #include "D3DStereo.h"
 
 #include "D3DREBreakableGlassBuffer.h"
+#include "../Common/Textures/TextureManager.h"
 
 //=======================================================================
 
@@ -73,16 +74,19 @@ void CD3D9Renderer::RT_ClearTarget(CTexture* pTex, const ColorF& color)
 
 void CD3D9Renderer::RT_DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, uint32 nVerts, uint32 nInds, const PublicRenderPrimitiveType nPrimType)
 {
-    TempDynVB<SVF_P3F_C4B_T2F>::CreateFillAndBind(pBuf, nVerts, 0);
-    if (pInds)
-    {
-        TempDynIB16::CreateFillAndBind(pInds, nInds);
-    }
-
     FX_SetFPMode();
 
     if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
     {
+        // Create the temp buffer after we try to set the vertex declaration otherwise
+        // if that fails we won't call FX_DrawPrimitive that on a platform level
+        // cleans up some of the memory stuff that the TempDynVB creates
+        TempDynVB<SVF_P3F_C4B_T2F>::CreateFillAndBind(pBuf, nVerts, 0);
+        if (pInds)
+        {
+            TempDynIB16::CreateFillAndBind(pInds, nInds);
+        }
+
         if (pInds)
         {
             FX_DrawIndexedPrimitive(GetInternalPrimitiveType(nPrimType), 0, 0, nVerts, 0, nInds);
@@ -290,7 +294,7 @@ void CD3D9Renderer::RT_DrawLines(Vec3 v[], int nump, ColorF& col, int flags, flo
         st |= GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA;
     }
     FX_SetState(st);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
 
     DWORD c = D3DRGBA(col.r, col.g, col.b, col.a);
 

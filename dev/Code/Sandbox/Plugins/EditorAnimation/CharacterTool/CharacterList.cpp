@@ -168,19 +168,19 @@ namespace CharacterTool {
         switch (engineLoadState)
         {
         case CHARACTER_NOT_LOADED:
-            ar.Warning(this, "Selected character is different from the one in the viewport.");
+            ar.Warning(*this, "Selected character is different from the one in the viewport.");
             break;
         case CHARACTER_INCOMPLETE:
-            ar.Warning(this, "Incomplete character definition. Clear other warnings so that this character can be loaded by the engine.");
+            ar.Warning(*this, "Incomplete character definition. Clear other warnings so that this character can be loaded by the engine.");
             break;
         case CHARACTER_LOAD_FAILED:
             if (!hasDefinitionFile)
             {
-                ar.Error(this, "The engine failed to load the character.");
+                ar.Error(*this, "The engine failed to load the character.");
             }
             else
             {
-                ar.Error(this, "The engine failed to load the character. Check if specified skeleton is valid.");
+                ar.Error(*this, "The engine failed to load the character. Check if specified skeleton is valid.");
             }
             break;
         default:

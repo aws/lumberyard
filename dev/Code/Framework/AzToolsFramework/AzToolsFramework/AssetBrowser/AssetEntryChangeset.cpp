@@ -9,6 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetEntryChangeset.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
@@ -112,14 +115,36 @@ namespace AzToolsFramework
 
         void AssetEntryChangeset::QueryEntireDatabase()
         {
-            // query everything that has products
-            m_databaseConnection->QueryScanFolderByDisplayName(
-                "root",
-                [=](ScanFolderDatabaseEntry& scanFolderDatabaseEntry)
+            // If the current engine root folder is external to the current root folder, then we need to set the m_relativePath to the actual external engine
+            // root folder instead, since that is where the Gems, Editor, and Engine folders will reside
+            bool isEngineRootExternal = false;
+            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(isEngineRootExternal, &AzToolsFramework::ToolsApplicationRequests::IsEngineRootExternal);
+            if (isEngineRootExternal)
+            {
+                AZStd::string engineRoot;
+                AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+                AzFramework::StringFunc::AssetDatabasePath::Normalize(engineRoot);
+                m_relativePath = engineRoot;
+            }
+            else
+            {
+                // Fallback to querying the asset database for the root folder
+                m_databaseConnection->QueryScanFolderByDisplayName(
+                    "root",
+                    [=](ScanFolderDatabaseEntry& scanFolderDatabaseEntry)
                 {
                     m_relativePath = scanFolderDatabaseEntry.m_scanFolder.c_str();
                     return true;
                 });
+            }
+
+#if defined(AZ_PLATFORM_WINDOWS)
+            const char* hostPlatformName = "pc";
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+            const char* hostPlatformName = "osx_gl";
+#else
+# error Unsupported Platform
+#endif
 
             m_databaseConnection->QueryCombined(
                 [&](CombinedDatabaseEntry& combinedDatabaseEntry)
@@ -128,7 +153,7 @@ namespace AzToolsFramework
                     return true;
                 }, AZ::Uuid::CreateNull(),
                 nullptr,
-                "pc",
+                hostPlatformName,
                 AssetSystem::JobStatus::Any);
 
             // query all sources in case they didn't produce any products

@@ -50,6 +50,7 @@ namespace EMStudio
         MCORE_INLINE AnimGraphPlugin* GetPlugin()                                  { return mPlugin; }
 
         EMotionFX::AnimGraphStateTransition* FindTransitionForConnection(NodeConnection* connection);
+        EMotionFX::BlendTreeConnection* FindBlendTreeConnection(NodeConnection* connection) const;
         EMotionFX::AnimGraphNode* FindFirstSelectedAnimGraphNode();
 
         // overloaded

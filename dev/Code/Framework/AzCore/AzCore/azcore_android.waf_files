@@ -5,6 +5,8 @@
         [
             "Android/AndroidEnv.cpp",
             "Android/AndroidEnv.h",
+            "Android/APKFileHandler.cpp",
+            "Android/APKFileHandler.h",
             "Android/Utils.cpp",
             "Android/Utils.h"
         ],

@@ -4,6 +4,8 @@ av(codec|device|filter|format|resample|util).*
 boost_.*
 D3D.*
 dbghelp.*
+ffmpeg\.exe
+glut32\.dll
 fuel[\\/].*
 glew32.*
 icu.*
@@ -11,9 +13,18 @@ lib(eay32|EGL|fbxsdk|GLES|ogg|opus|vo).*
 libSce.*
 Microsoft.*
 msvc.*
+nvToolsExt64.*\.dll
 opengl.*
 openvr_api.*
 osvr.*
+PhysX3CharacterKinematic.*\.dll
+PhysX3Common.*\.dll
+PhysX3Cooking.*\.dll
+PhysX3.*\.dll
+PhysX3Gpu.*\.dll
+PhysXDevice.*\.dll
+PxFoundation.*\.dll
+PxPvdSDK.*\.dll
 (lib)?PVRTexLib.*
 python.*
 qt5.*
@@ -37,3 +48,4 @@ LyMetrics.*\.dll
 MaglevControlPanel\.dll
 UiCanvasEditor\.dll
 .*\.app.*
+AssetBuilder\.exe

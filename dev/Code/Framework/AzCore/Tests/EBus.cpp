@@ -16,6 +16,7 @@
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobCompletion.h>
@@ -305,7 +306,7 @@ namespace UnitTest
                 m_order = order; ///< Must be set before we connect, so we are inserted in the right place!
                 // We will bind at construction time to the bus. Disconnect is automatic when the object is
                 // destroyed or we can call BusDisconnect()
-                BusConnect();
+                MyEventGroupBus::Handler::BusConnect();
             }
             //////////////////////////////////////////////////////////////////////////
             // Implement some action on the events...
@@ -420,7 +421,6 @@ namespace UnitTest
         }
     }
 
-    
     /**
     * Tests multiple communication buses but only
     * one event handler per bus. A great example where to use this
@@ -440,6 +440,8 @@ namespace UnitTest
             //////////////////////////////////////////////////////////////////////////
             // EBus Settings
             static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
+            // #TODO: Without this line, the test is testing the wrong case. With this line, the test crashes.
+            //static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single;
             typedef unsigned int BusIdType;
             //////////////////////////////////////////////////////////////////////////
 
@@ -740,7 +742,7 @@ namespace UnitTest
             EXPECT_EQ(3, meh2.actionCalls);  // not connected
         }
     }
-    
+
     /**
     * Tests communication with multiple ordered buses with multiple ordered event handlers.
     * This allows us to fully define the order of event broadcasting even across buses.
@@ -1024,7 +1026,7 @@ namespace UnitTest
                 m_order = order; ///< Must be set before we connect, so we are inserted in the right place!
                 // We will bind at construction time to the bus. Disconnect is automatic when the object is
                 // destroyed or we can call BusDisconnect()
-                BusConnect();
+                MyEventGroupBus::Handler::BusConnect();
             }
             //////////////////////////////////////////////////////////////////////////
             // Implement some action on the events...
@@ -1038,8 +1040,6 @@ namespace UnitTest
                 float sum = x + y; AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) order %d called\n", sum, x, y, m_order); ++sumCalls; s_eventOrder[s_eventOrderIndex++] = this; return sum;
             }
             //////////////////////////////////////////////////////////////////////////
-
-            MyEventGroupBus::BusPtr& GetBusPtr() { return m_busPtr; }
 
             static MyEventHandler* s_eventOrder[2];
             static int  s_eventOrderIndex;
@@ -1195,7 +1195,7 @@ namespace UnitTest
             EXPECT_EQ(5, meh0.actionCalls);
         }
     }
-    
+
     /**
      *
      */
@@ -1245,7 +1245,6 @@ namespace UnitTest
         QueueTestMultiBus::Handler     m_multiHandler;
         QueueTestSingleBus::Handler    m_singleHandler;
         QueueTestMultiBus::BusPtr      m_multiPtr = nullptr;
-        QueueTestSingleBus::BusPtr     m_singlePtr = nullptr;
 
         void QueueMessage()
         {
@@ -1260,7 +1259,7 @@ namespace UnitTest
         }
     }
 
-    TEST_F(EBus, DISABLED_QueueMessage)
+    TEST_F(EBus, QueueMessage)
     {
         using namespace QueueMessageTest;
 
@@ -1277,8 +1276,7 @@ namespace UnitTest
         JobContext::SetGlobalContext(m_jobContext);
 
         const int NumCalls = 5000;
-        QueueTestMultiBus::Bind(m_multiPtr);
-        QueueTestSingleBus::Bind(m_singlePtr);
+        QueueTestMultiBus::Bind(m_multiPtr, 0);
         m_multiHandler.BusConnect(0);
         m_singleHandler.BusConnect();
         for (int i = 0; i < NumCalls; ++i)
@@ -1316,7 +1314,6 @@ namespace UnitTest
 
         // Cleanup
         m_multiPtr = nullptr;
-        m_singlePtr = nullptr;
         JobContext::SetGlobalContext(nullptr);
         delete m_jobContext;
         delete m_jobManager;
@@ -1583,7 +1580,7 @@ namespace UnitTest
         EBUS_EVENT_ID(13, MyEventBus, OnAction);
         EXPECT_EQ(3, ml.m_numCalls);
     }
-    
+
     // Non intrusive EBusTraits
     struct MyCustomTraits
         : public AZ::EBusTraits
@@ -1745,18 +1742,18 @@ namespace UnitTest
     }
 
     // Routers, Bridging and Versioning
-    
+
     /**
      * EBusInterfaceV1, since we want to keep binary compatibility (we don't need to recompile)
-     * when we are implementing the version messaging we should not change the V1 EBus, all code 
+     * when we are implementing the version messaging we should not change the V1 EBus, all code
      * should be triggered from the new version that is not compiled is customer's code yet.
      */
     class EBusInterfaceV1 : public AZ::EBusTraits
     {
     public:
-        virtual void OnEvent(int a) 
-        { 
-            (void)a; 
+        virtual void OnEvent(int a)
+        {
+            (void)a;
         }
     };
 
@@ -1769,7 +1766,7 @@ namespace UnitTest
     {
     public:
         /**
-         * Router policy implementation that bridges two EBuses by default. 
+         * Router policy implementation that bridges two EBuses by default.
          * It this case we use it to implement versioning between V1 and V2
          * of a specific EBus version.
          */
@@ -1825,12 +1822,12 @@ namespace UnitTest
             bool m_isOnEventRouting = false;
 
             // Possible optimization, When we are dealing with version we usually don't expect to have active use of the old version,
-            // it's just for compatibility. Having routers trying to route to old version busses that rarely 
-            // have listeners will have it's overhead. To reduct that we can add m_onDemandRouters list that 
+            // it's just for compatibility. Having routers trying to route to old version busses that rarely
+            // have listeners will have it's overhead. To reduct that we can add m_onDemandRouters list that
             // have a pointer to a router and oder, so we can automatically connect that router only when
             // listeners are attached to the old version of the bus. We are talking only about NewVersion->OldVersion
             // bridge (the opposite can be always connected as the overhead will be on the OldVersion bus which we don't expect to use much anyway).
-            V2toV1Router m_v2toV1Router; 
+            V2toV1Router m_v2toV1Router;
             V1toV2Router m_v1toV2Router;
         };
 
@@ -1975,6 +1972,7 @@ namespace UnitTest
     {
         MultBusMultHand::MyEventGroupBus::BusPtr busPtr;
         MultBusMultHand::MyEventGroupBus::Bind(busPtr, 1);
+        EXPECT_NE(nullptr, busPtr);
         EXPECT_FALSE(MultBusMultHand::MyEventGroupBus::HasHandlers());
     }
 
@@ -2011,384 +2009,601 @@ namespace UnitTest
         AZ_TEST_STOP_ASSERTTEST(1);
     }
 
-    //-------------------------------------------------------------------------
-    // PERF TESTS
-    //-------------------------------------------------------------------------
-
-    using EBusPerformance = EBus;
-
-    namespace PerformanceTest
+    namespace EBusEnvironmentTest
     {
-        class BlahBlah
+        class MyInterface
         {
         public:
-            virtual ~BlahBlah() = default;
-            virtual int  OnBlaBla() = 0;
+            virtual void EventX() = 0;
         };
 
-        class BlaEventGroup
+        using MyInterfaceBus = AZ::EBus<MyInterface, AZ::EBusTraits>;
+
+        class MyInterfaceListener : public MyInterfaceBus::Handler
+        {
+        public:
+            MyInterfaceListener(int environmentId = -1)
+                : m_environmentId(environmentId)
+                , m_numEventsX(0)
+            {
+            }
+
+            void EventX() override
+            {
+                ++m_numEventsX;
+            }
+
+            int m_environmentId; ///< EBus environment id. -1 is global, otherwise index in the environment array.
+            int m_numEventsX;
+        };
+
+        class ParallelSeparateEBusEnvironmentProcessor
+        {
+        public:
+
+            using JobaToProcessArray = AZStd::vector<ParallelSeparateEBusEnvironmentProcessor, AZ::OSStdAllocator>;
+
+            ParallelSeparateEBusEnvironmentProcessor()
+            {
+                m_busEvironment = AZ::EBusEnvironment::Create();
+            }
+
+            ~ParallelSeparateEBusEnvironmentProcessor()
+            {
+                AZ::EBusEnvironment::Destroy(m_busEvironment);
+            }
+
+            void ProcessSomethingInParallel(size_t jobId)
+            {
+                m_busEvironment->ActivateOnCurrentThread();
+
+                EXPECT_EQ(0, MyInterfaceBus::GetTotalNumOfEventHandlers()); // If environments are properly separated we should have no listeners!"
+
+                MyInterfaceListener uniqueListener((int)jobId);
+                uniqueListener.BusConnect();
+
+                const int numEventsToBroadcast = 100;
+
+                for (int i = 0; i < numEventsToBroadcast; ++i)
+                {
+                    // from now on all EBus calls happen in unique environment
+                    MyInterfaceBus::Broadcast(&MyInterfaceBus::Events::EventX);
+                }
+
+                uniqueListener.BusDisconnect();
+
+                // Test that we have only X num events 
+                EXPECT_EQ(uniqueListener.m_numEventsX, numEventsToBroadcast); // If environments are properly separated we should get only the events from our environment!
+
+                m_busEvironment->DeactivateOnCurrentThread();
+            }
+
+            static void ProcessJobsRange(JobaToProcessArray* jobs, size_t startIndex, size_t endIndex)
+            {
+                for (size_t i = startIndex; i <= endIndex; ++i)
+                {
+                    (*jobs)[i].ProcessSomethingInParallel(i);
+                }
+            }
+
+            AZ::EBusEnvironment* m_busEvironment;
+        };
+    } // EBusEnvironmentTest
+
+    TEST_F(EBus, EBusEnvironment)
+    {
+        using namespace EBusEnvironmentTest;
+        ParallelSeparateEBusEnvironmentProcessor::JobaToProcessArray jobsToProcess;
+        jobsToProcess.resize(10000);
+
+        MyInterfaceListener globalListener;
+        globalListener.BusConnect();
+
+        // broadcast on global bus
+        MyInterfaceBus::Broadcast(&MyInterfaceBus::Events::EventX);
+
+        // spawn a few threads to process those jobs
+        AZStd::thread thread1(AZStd::bind(&ParallelSeparateEBusEnvironmentProcessor::ProcessJobsRange, &jobsToProcess, 0, 1999));
+        AZStd::thread thread2(AZStd::bind(&ParallelSeparateEBusEnvironmentProcessor::ProcessJobsRange, &jobsToProcess, 2000, 3999));
+        AZStd::thread thread3(AZStd::bind(&ParallelSeparateEBusEnvironmentProcessor::ProcessJobsRange, &jobsToProcess, 4000, 5999));
+        AZStd::thread thread4(AZStd::bind(&ParallelSeparateEBusEnvironmentProcessor::ProcessJobsRange, &jobsToProcess, 6000, 7999));
+        AZStd::thread thread5(AZStd::bind(&ParallelSeparateEBusEnvironmentProcessor::ProcessJobsRange, &jobsToProcess, 8000, 9999));
+
+        thread5.join();
+        thread4.join();
+        thread3.join();
+        thread2.join();
+        thread1.join();
+
+        globalListener.BusDisconnect();
+
+        EXPECT_EQ(1, globalListener.m_numEventsX); // If environments are properly separated we should get only the events the global/default Environment!
+    }
+}
+
+#if defined(HAVE_BENCHMARK)
+//-------------------------------------------------------------------------
+// PERF TESTS
+//-------------------------------------------------------------------------
+namespace Benchmark
+{
+    // BenchmarkBus implementation details
+    namespace BusImplementation
+    {
+        // Interface for the benchmark bus
+        class Interface
+        {
+        public:
+            virtual int OnEvent() = 0;
+            virtual void OnWait() = 0;
+
+            bool Compare(const Interface* other) const
+            {
+                return this < other;
+            }
+        };
+
+        // Traits for the benchmark bus
+        template <AZ::EBusAddressPolicy addressPolicy, AZ::EBusHandlerPolicy handlerPolicy, bool locklessDispatch = false>
+        class Traits
             : public AZ::EBusTraits
-            , public BlahBlah
         {
         public:
+            static const AZ::EBusAddressPolicy AddressPolicy = addressPolicy;
+            static const AZ::EBusHandlerPolicy HandlerPolicy = handlerPolicy;
+            static const bool LocklessDispatch = locklessDispatch;
+
+            // Allow queuing
             static const bool EnableEventQueue = true;
+
+            // Force locking
+            using MutexType = AZStd::recursive_mutex;
+
+            // Only specialize BusIdType if not single address
+            using BusIdType = AZStd::conditional_t<AddressPolicy == AZ::EBusAddressPolicy::Single, AZ::NullBusId, int>;
+            // Only specialize BusIdOrderCompare if addresses are multiple and ordered
+            using BusIdOrderCompare = AZStd::conditional_t<AddressPolicy == EBusAddressPolicy::ByIdAndOrdered, AZStd::less<int>, AZ::NullBusIdCompare>;
         };
-
-        struct ById : public AZ::EBusTraits
-        {
-            using BusIdType = int;
-            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-            static const bool EnableEventQueue = true;
-        };
-
-        class BlaEventGroupById
-            : public ById
-            , public BlahBlah
-        {
-        };
-
-        typedef AZ::EBus<BlaEventGroup> BlaEventGroupBus;
-        typedef AZ::EBus<BlaEventGroupById> BlaEventGroupBusById;
-
-        class BlaEventHandler
-            : public BlaEventGroupBus::Handler
-        {
-            int x;
-        public:
-            BlaEventHandler()
-            {
-                BusConnect();
-                x = 0;
-            }
-            int OnBlaBla() override
-            {
-                x++;
-                return x;
-            }
-        };
-
-        class BlaEventHandler1
-            : public BlaEventGroupBusById::Handler
-        {
-            int x;
-        public:
-            BlaEventHandler1()
-            {
-                BusConnect(1);
-                x = 0;
-            }
-            int OnBlaBla() override
-            {
-                x++;
-                return x;
-            }
-        };
-
-        const int samples = 100000;
     }
 
-    class Benchmarker
+    // Definition of the benchmark bus, depending on supplied policies
+    template <AZ::EBusAddressPolicy addressPolicy, AZ::EBusHandlerPolicy handlerPolicy, bool locklessDispatch = false>
+    using BenchmarkBus = AZ::EBus<BusImplementation::Interface, BusImplementation::Traits<addressPolicy, handlerPolicy, locklessDispatch>>;
+
+    // Predefined benchmark bus instantiations
+    // Single
+    using OneToOne = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Single>;
+    using OneToMany = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple>;
+    using OneToManyOrdered = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::MultipleAndOrdered>;
+    // ById
+    using ManyToOne = BenchmarkBus<AZ::EBusAddressPolicy::ById, AZ::EBusHandlerPolicy::Single>;
+    using ManyToMany = BenchmarkBus<AZ::EBusAddressPolicy::ById, AZ::EBusHandlerPolicy::Multiple>;
+    using ManyToManyOrdered = BenchmarkBus<AZ::EBusAddressPolicy::ById, AZ::EBusHandlerPolicy::MultipleAndOrdered>;
+    // ByIdAndOrdered
+    using ManyOrderedToOne = BenchmarkBus<AZ::EBusAddressPolicy::ByIdAndOrdered, AZ::EBusHandlerPolicy::Single>;
+    using ManyOrderedToMany = BenchmarkBus<AZ::EBusAddressPolicy::ByIdAndOrdered, AZ::EBusHandlerPolicy::Multiple>;
+    using ManyOrderedToManyOrdered = BenchmarkBus<AZ::EBusAddressPolicy::ByIdAndOrdered, AZ::EBusHandlerPolicy::MultipleAndOrdered>;
+
+    // Handler for multi-address buses
+    template <typename Bus, AZ::EBusAddressPolicy addressPolicy = Bus::Traits::AddressPolicy>
+    class Handler
+        : public Bus::Handler
     {
     public:
-        Benchmarker(int numSamples, const char* eventName)
-            : m_numSamples(numSamples)
-            , m_eventName(eventName)
+        AZ_CLASS_ALLOCATOR(Handler, AZ::SystemAllocator, 0);
+
+        Handler(int id)
         {
-            m_timeStart = AZStd::chrono::system_clock::now();
+            Bus::Handler::BusConnect(id);
         }
 
-        // Disallow copying and moving
-        Benchmarker(const Benchmarker&) = delete;
-        Benchmarker(Benchmarker&&) = delete;
-        Benchmarker& operator=(const Benchmarker&) = delete;
-        Benchmarker& operator=(Benchmarker&&) = delete;
-
-        ~Benchmarker()
+        ~Handler()
         {
-            AZStd::chrono::system_clock::time_point timeEnd = AZStd::chrono::system_clock::now();
-            AZStd::chrono::microseconds elapsed = timeEnd - m_timeStart;
-
-            float timePerSample = elapsed.count() / float(m_numSamples);
-            printf("Time %s: %lld Ms, avg: %0.5f Ms/call\n", m_eventName, elapsed.count(), timePerSample);
+            Bus::Handler::BusDisconnect();
         }
 
-    private:
-        const int m_numSamples = 0;
-        const char* m_eventName = nullptr;
-        AZStd::chrono::microseconds* m_outElapsed = nullptr;
-        float* m_outTimePerSample = nullptr;
-        AZStd::chrono::system_clock::time_point m_timeStart;
+        int OnEvent() override
+        {
+            return 1;
+        }
+
+        void OnWait() override
+        {
+            AZ_Assert(false, "This shouldn't hit, only the single-address bus should receive OnWait.");
+        }
     };
 
-    TEST_F(EBusPerformance, SingleThread)
+    // Special handler for single address buses
+    template <typename Bus>
+    class Handler<Bus, AZ::EBusAddressPolicy::Single>
+        : public Bus::Handler
     {
-        using namespace PerformanceTest;
-        BlaEventHandler sdr;
-        BlaEventHandler1 handler1;
+    public:
+        AZ_CLASS_ALLOCATOR(Handler, AZ::SystemAllocator, 0);
+
+        Handler(int = 0)
         {
-            BlaEventGroup& ptr = sdr;
-            Benchmarker bench(samples, "raw call");
-            for (int i = 0; i < samples; ++i)
+            Bus::Handler::BusConnect();
+        }
+
+        ~Handler()
+        {
+            Bus::Handler::BusDisconnect();
+        }
+
+        int OnEvent() override
+        {
+            return 2;
+        }
+
+        void OnWait() override
+        {
+            AZStd::this_thread::yield();
+        }
+    };
+
+    // Fake fixture we use to connect to buses for us
+    template <typename Bus>
+    class Connector
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(Connector, AZ::SystemAllocator, 0);
+
+        using HandlerT = Handler<Bus>;
+
+        // Collection of handlers, will be cleared automagically at the end
+        AZStd::vector<AZStd::unique_ptr<HandlerT>> m_handlers;
+
+        explicit Connector(::benchmark::State& state)
+        {
+            int numAddresses = state.range(0);
+            int numHandlers = state.range(1);
+
+            // Connect handlers
+            for (int address = 0; address < numAddresses; ++address)
             {
-                ptr.OnBlaBla();
+                for (int handler = 0; handler < numHandlers; ++handler)
+                {
+                    m_handlers.emplace_back(AZStd::make_unique<HandlerT>(address));
+                }
             }
         }
+    };
+
+    namespace BenchmarkSettings
+    {
+        namespace
         {
-            Benchmarker bench(samples, "broadcast call");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBus::Broadcast(&BlaEventGroupBus::Events::OnBlaBla);
-            }
+            // How many addresses/handlers count as "many"
+            static const int Many = 1000;
         }
+
+        void Common(::benchmark::internal::Benchmark* benchmark)
         {
-            Benchmarker bench(samples, "broadcast result call");
-            for (int i = 0; i < samples; ++i)
-            {
-                int result = 0;
-                BlaEventGroupBus::BroadcastResult(result, &BlaEventGroupBus::Events::OnBlaBla);
-            }
+            benchmark
+                ->Unit(::benchmark::kNanosecond)
+                ->Iterations(1000)
+                ;
         }
+
+        void OneToOne(::benchmark::internal::Benchmark* benchmark)
         {
-            Benchmarker bench(samples, "event id call");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBusById::Event(1, &BlaEventGroupBusById::Events::OnBlaBla);
-            }
+            Common(benchmark);
+            benchmark
+                ->ArgNames({ { "Addresses" },{ "Handlers" } })
+                ->Args({ 0, 0 })
+                ->Args({ 1, 1 })
+                ;
         }
+
+        void OneToMany(::benchmark::internal::Benchmark* benchmark)
         {
-            Benchmarker bench(samples, "event id result call");
-            for (int i = 0; i < samples; ++i)
-            {
-                int result = 0;
-                BlaEventGroupBusById::EventResult(result, 1, &BlaEventGroupBusById::Events::OnBlaBla);
-            }
+            OneToOne(benchmark);
+            benchmark
+                ->Args({ 1, Many })
+                ;
         }
+
+        void ManyToOne(::benchmark::internal::Benchmark* benchmark)
         {
-            BlaEventGroupBusById::BusPtr cachedPtr;
-            BlaEventGroupBusById::Bind(cachedPtr, 1);
-            Benchmarker bench(samples, "cached event id call");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBusById::Event(cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
-            }
+            OneToOne(benchmark);
+            benchmark
+                ->Args({ Many, 1 })
+                ;
         }
+
+        void ManyToMany(::benchmark::internal::Benchmark* benchmark)
         {
-            BlaEventGroupBusById::BusPtr cachedPtr;
-            BlaEventGroupBusById::Bind(cachedPtr, 1);
-            Benchmarker bench(samples, "cached event id result call");
-            for (int i = 0; i < samples; ++i)
-            {
-                int result = 0;
-                BlaEventGroupBusById::EventResult(result, cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
-            }
+            OneToOne(benchmark);
+            benchmark
+                ->Args({    1, Many })
+                ->Args({ Many, 1 })
+                ->Args({ Many, Many })
+                ;
+        }
+
+        // Expected that this will be called after one of the above, so Common not called
+        void Multithreaded(::benchmark::internal::Benchmark* benchmark)
+        {
+            benchmark
+                ->Iterations(20)
+                ->ThreadRange(1, 8)
+                ->ThreadPerCpu();
+                ;
         }
     }
 
-    TEST_F(EBusPerformance, Queue)
+// Internal macro callback for listing all buses requiring ids
+#define BUS_BENCHMARK_PRIVATE_LIST_ID(cb, fn)    \
+    cb(fn, ManyToOne, ManyToOne)                 \
+    cb(fn, ManyToMany, ManyToMany)               \
+    cb(fn, ManyToManyOrdered, ManyToMany)        \
+    cb(fn, ManyOrderedToOne, ManyToOne)          \
+    cb(fn, ManyOrderedToMany, ManyToMany)        \
+    cb(fn, ManyOrderedToManyOrdered, ManyToMany)
+
+// Internal macro callback for listing all buses
+#define BUS_BENCHMARK_PRIVATE_LIST_ALL(cb, fn)  \
+    cb(fn, OneToOne, OneToOne)                  \
+    cb(fn, OneToMany, OneToMany)                \
+    cb(fn, OneToManyOrdered, OneToMany)         \
+    BUS_BENCHMARK_PRIVATE_LIST_ID(cb, fn)
+
+// Internal macro callback for registering a benchmark
+#define BUS_BENCHMARK_PRIVATE_REGISTER(fn, BusDef, SettingsFn) BENCHMARK_TEMPLATE(fn, BusDef)->Apply(&BenchmarkSettings::SettingsFn);
+
+// Register a benchmark for all bus permutations requiring ids
+#define BUS_BENCHMARK_REGISTER_ID(fn) BUS_BENCHMARK_PRIVATE_LIST_ID(BUS_BENCHMARK_PRIVATE_REGISTER, fn)
+
+// Register a benchmark for all bus permutations
+#define BUS_BENCHMARK_REGISTER_ALL(fn) BUS_BENCHMARK_PRIVATE_LIST_ALL(BUS_BENCHMARK_PRIVATE_REGISTER, fn)
+
+    //////////////////////////////////////////////////////////////////////////
+    // Single Threaded Events/Broadcasts
+    //////////////////////////////////////////////////////////////////////////
+
+    // Baseline benchmark for raw vtable call
+    static void BM_EBus_RawCall(::benchmark::State& state)
     {
-        using namespace PerformanceTest;
-        BlaEventHandler sdr;
-        BlaEventHandler1 handler1;
-        const int samples = 10000; // Must be lower than the others so that the message queues don't exceed the SystemAllocator's capacity.
+        AZStd::unique_ptr<Handler<OneToOne>> handler = AZStd::make_unique<Handler<OneToOne>>();
 
+        while (state.KeepRunning())
         {
-            Benchmarker bench(samples, "broadcast queue");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBus::QueueBroadcast(&BlaEventGroupBus::Events::OnBlaBla);
-            }
-        }
-        {
-            Benchmarker bench(samples, "broadcast execute");
-            BlaEventGroupBus::ExecuteQueuedEvents();
-        }
-
-        {
-            Benchmarker bench(samples, "event id queue");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBusById::QueueEvent(1, &BlaEventGroupBusById::Events::OnBlaBla);
-            }
-        }
-        {
-            Benchmarker bench(samples, "event id execute");
-            BlaEventGroupBusById::ExecuteQueuedEvents();
-        }
-
-        {
-            BlaEventGroupBusById::BusPtr cachedPtr;
-            BlaEventGroupBusById::Bind(cachedPtr, 1);
-            Benchmarker bench(samples, "cached event id queue");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBusById::QueueEvent(cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
-            }
-        }
-        {
-            Benchmarker bench(samples, "cached event id execute");
-            BlaEventGroupBusById::ExecuteQueuedEvents();
+            handler->OnEvent();
         }
     }
+    BENCHMARK(BM_EBus_RawCall)->Apply(&BenchmarkSettings::Common);
 
-    TEST_F(EBusPerformance, QueueExecute)
+    template <typename Bus>
+    static void BM_EBus_Broadcast(::benchmark::State& state)
     {
-        using namespace PerformanceTest;
-        BlaEventHandler sdr;
-        BlaEventHandler1 handler1;
+        Connector<Bus> f(state);
 
+        while (state.KeepRunning())
         {
-            Benchmarker bench(samples, "broadcast queue/execute");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBus::QueueBroadcast(&BlaEventGroupBus::Events::OnBlaBla);
-                BlaEventGroupBus::ExecuteQueuedEvents();
-            }
-        }
-        {
-            Benchmarker bench(samples, "event id queue/execute");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBusById::QueueEvent(1, &BlaEventGroupBusById::Events::OnBlaBla);
-                BlaEventGroupBusById::ExecuteQueuedEvents();
-            }
-        }
-        {
-            BlaEventGroupBusById::BusPtr cachedPtr;
-            BlaEventGroupBusById::Bind(cachedPtr, 1);
-            Benchmarker bench(samples, "cached event id queue/execute");
-            for (int i = 0; i < samples; ++i)
-            {
-                BlaEventGroupBusById::QueueEvent(cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
-                BlaEventGroupBusById::ExecuteQueuedEvents();
-            }
+            Bus::Broadcast(&Bus::Events::OnEvent);
         }
     }
+    BUS_BENCHMARK_REGISTER_ALL(BM_EBus_Broadcast);
 
-    namespace MultiThread
+    template <typename Bus>
+    static void BM_EBus_BroadcastResult(::benchmark::State& state)
     {
-        const int waitTimeMS = 100;
-        struct FakeJobInterface
+        Connector<Bus> f(state);
+
+        while (state.KeepRunning())
         {
-            virtual ~FakeJobInterface() = default;
-            virtual void DoTheThing() = 0;
-        };
-        
-        struct FakeJobEvents
-            : public AZ::EBusTraits
-            , public FakeJobInterface
-        {
-            using MutexType = AZStd::mutex;  
-        };
-
-        struct FakeJobEventsLockless
-            : public FakeJobEvents
-        {
-            static const bool LocklessDispatch = true;
-        };
-
-        using FakeJobBus = AZ::EBus<FakeJobEvents>;
-        using FakeJobBusLockless = AZ::EBus<FakeJobEventsLockless>;
-
-        template <class Bus>
-        struct FakeJobImpl
-            : public Bus::Handler
-        {
-            FakeJobImpl()
-            {
-                Bus::Handler::BusConnect();
-            }
-            ~FakeJobImpl()
-            {
-                Bus::Handler::BusDisconnect();
-            }
-            void DoTheThing() override
-            {
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(waitTimeMS));
-            }
-        };
-
-        using FakeJobImplLocks = FakeJobImpl<FakeJobBus>;
-        using FakeJobImplLockless = FakeJobImpl<FakeJobBusLockless>;
-    }
-
-    TEST_F(EBusPerformance, MultiThreadedWithLocks)
-    {
-        using namespace MultiThread;
-        const int numSamples = 20;
-        const int numThreads = 8;
-
-        FakeJobImplLocks job;
-
-        auto runJobs = [numSamples]()
-        {
-            for (int i = 0; i < numSamples; ++i)
-            {
-                FakeJobBus::Broadcast(&FakeJobBus::Events::DoTheThing);
-            }
-        };
-
-        {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
-            runJobs();
-            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time single-threaded broadcast: %lld ms, avg: %0.5f ms/call\n", elapsed.count(), elapsed.count() / float(numSamples));
-        }
-
-        {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
-            AZStd::thread threads[numThreads];
-            for (int t = 0; t < numThreads; ++t)
-            {
-                threads[t] = AZStd::thread(runJobs);
-            }
-            for (auto& thread : threads)
-            {
-                thread.join();
-            }
-            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            AZ::u64 ideal = numSamples * waitTimeMS;
-            printf("Time multi-threaded broadcast: actual: %lld ms, ideal: %lld ms\n", elapsed.count(), ideal);
+            int result = 0;
+            Bus::BroadcastResult(result, &Bus::Events::OnEvent);
+            ::benchmark::DoNotOptimize(result);
         }
     }
+    BUS_BENCHMARK_REGISTER_ALL(BM_EBus_BroadcastResult);
 
-    TEST_F(EBusPerformance, MultiThreadedLocklessDispatch)
+    template <typename Bus>
+    static void BM_EBus_Event(::benchmark::State& state)
     {
-        using namespace MultiThread;
-        const int numSamples = 20;
-        const int numThreads = 8;
+        Connector<Bus> f(state);
 
-        FakeJobImplLockless job;
-
-        auto runJobs = [numSamples]()
+        while (state.KeepRunning())
         {
-            for (int i = 0; i < numSamples; ++i)
-            {
-                FakeJobBusLockless::Broadcast(&FakeJobBusLockless::Events::DoTheThing);
-            }
-        };
-
-        {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
-            runJobs();
-            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time single-threaded broadcast: %lld ms, avg: %0.5f ms/call\n", elapsed.count(), elapsed.count() / float(numSamples));
-        }
-
-        {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
-            AZStd::thread threads[numThreads];
-            for (int t = 0; t < numThreads; ++t)
-            {
-                threads[t] = AZStd::thread(runJobs);
-            }
-            for (auto& thread : threads)
-            {
-                thread.join();
-            }
-            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            AZ::u64 ideal = numSamples * waitTimeMS;
-            printf("Time multi-threaded broadcast: actual: %lld ms, ideal: %lld ms\n", elapsed.count(), ideal);
+            Bus::Event(1, &Bus::Events::OnEvent);
         }
     }
-} // UnitTest
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_Event);
+
+    template <typename Bus>
+    static void BM_EBus_EventResult(::benchmark::State& state)
+    {
+        Connector<Bus> f(state);
+
+        while (state.KeepRunning())
+        {
+            int result = 0;
+            Bus::EventResult(result, 1, &Bus::Events::OnEvent);
+            ::benchmark::DoNotOptimize(result);
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_EventResult);
+
+    template <typename Bus>
+    static void BM_EBus_EventCached(::benchmark::State& state)
+    {
+        Connector<Bus> f(state);
+
+        typename Bus::BusPtr cachedPtr;
+        Bus::Bind(cachedPtr, 1);
+
+        while (state.KeepRunning())
+        {
+            Bus::Event(cachedPtr, &Bus::Events::OnEvent);
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_EventCached);
+
+    template <typename Bus>
+    static void BM_EBus_EventCachedResult(::benchmark::State& state)
+    {
+        Connector<Bus> f(state);
+
+        typename Bus::BusPtr cachedPtr;
+        Bus::Bind(cachedPtr, 1);
+
+        while (state.KeepRunning())
+        {
+            int result = 0;
+            Bus::EventResult(result, cachedPtr, &Bus::Events::OnEvent);
+            ::benchmark::DoNotOptimize(result);
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_EventCachedResult);
+
+    //////////////////////////////////////////////////////////////////////////
+    // Broadcast/Event Queuing
+    //////////////////////////////////////////////////////////////////////////
+
+    // Broadcast
+    template <typename Bus>
+    static void BM_EBus_QueueBroadcast(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            Bus::QueueBroadcast(&Bus::Events::OnEvent);
+
+            // Pause timing, and reset the queue
+            state.PauseTiming();
+            Bus::ClearQueuedEvents();
+            state.ResumeTiming();
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ALL(BM_EBus_QueueBroadcast);
+
+    template <typename Bus>
+    static void BM_EBus_ExecuteBroadcast(::benchmark::State& state)
+    {
+        Connector<Bus> f(state);
+
+        while (state.KeepRunning())
+        {
+            // Push an event to the queue to run
+            state.PauseTiming();
+            Bus::QueueBroadcast(&Bus::Events::OnEvent);
+            state.ResumeTiming();
+
+            Bus::ExecuteQueuedEvents();
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ALL(BM_EBus_ExecuteBroadcast);
+
+    // Event
+    template <typename Bus>
+    static void BM_EBus_QueueEvent(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            Bus::QueueEvent(1, &Bus::Events::OnEvent);
+
+            // Pause timing, and reset the queue
+            state.PauseTiming();
+            Bus::ClearQueuedEvents();
+            state.ResumeTiming();
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_QueueEvent);
+
+    template <typename Bus>
+    static void BM_EBus_ExecuteEvent(::benchmark::State& state)
+    {
+        Connector<Bus> f(state);
+
+        while (state.KeepRunning())
+        {
+            // Push an event to the queue to run
+            state.PauseTiming();
+            Bus::QueueEvent(1, &Bus::Events::OnEvent);
+            state.ResumeTiming();
+
+            Bus::ExecuteQueuedEvents();
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_ExecuteEvent);
+
+    // Event Cached
+    template <typename Bus>
+    static void BM_EBus_QueueEventCached(::benchmark::State& state)
+    {
+        typename Bus::BusPtr cachedPtr;
+        Bus::Bind(cachedPtr, 1);
+
+        while (state.KeepRunning())
+        {
+            Bus::QueueEvent(cachedPtr, &Bus::Events::OnEvent);
+
+            // Pause timing, and reset the queue
+            state.PauseTiming();
+            Bus::ClearQueuedEvents();
+            state.ResumeTiming();
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_QueueEventCached);
+
+    template <typename Bus>
+    static void BM_EBus_ExecuteQueueCached(::benchmark::State& state)
+    {
+        Connector<Bus> f(state);
+        typename Bus::BusPtr cachedPtr;
+        Bus::Bind(cachedPtr, 1);
+
+        while (state.KeepRunning())
+        {
+            // Push an event to the queue to run
+            state.PauseTiming();
+            Bus::QueueEvent(cachedPtr, &Bus::Events::OnEvent);
+            state.ResumeTiming();
+
+            Bus::ExecuteQueuedEvents();
+        }
+    }
+    BUS_BENCHMARK_REGISTER_ID(BM_EBus_ExecuteQueueCached);
+
+    //////////////////////////////////////////////////////////////////////////
+    // Multithreaded Broadcasts
+    //////////////////////////////////////////////////////////////////////////
+
+    static void BM_EBus_Multithreaded_Locks(::benchmark::State& state)
+    {
+        using Bus = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple, false>;
+
+        AZStd::unique_ptr<Connector<Bus>> job;
+        if (state.thread_index == 0)
+        {
+            job = AZStd::make_unique<Connector<Bus>>(state);
+        }
+
+        while (state.KeepRunning())
+        {
+            Bus::Broadcast(&Bus::Events::OnWait);
+        };
+    }
+    BENCHMARK(BM_EBus_Multithreaded_Locks)->Apply(&BenchmarkSettings::OneToMany)->Apply(&BenchmarkSettings::Multithreaded);
+
+    static void BM_EBus_Multithreaded_Lockless(::benchmark::State& state)
+    {
+        using Bus = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple, true>;
+
+        AZStd::unique_ptr<Connector<Bus>> job;
+        if (state.thread_index == 0)
+        {
+            job = AZStd::make_unique<Connector<Bus>>(state);
+        }
+
+        while (state.KeepRunning())
+        {
+            Bus::Broadcast(&Bus::Events::OnWait);
+        };
+    }
+    BENCHMARK(BM_EBus_Multithreaded_Lockless)->Apply(&BenchmarkSettings::OneToMany)->Apply(&BenchmarkSettings::Multithreaded);
+}
+
+#endif // HAVE_BENCHMARK
+

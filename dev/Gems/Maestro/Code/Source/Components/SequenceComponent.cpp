@@ -36,6 +36,7 @@
 
 #include "../Cinematics/AnimSequence.h"
 #include "../Cinematics/AnimNode.h"
+#include "../Cinematics/AnimNodeGroup.h"
 #include "../Cinematics/SceneNode.h"
 #include "../Cinematics/AnimAZEntityNode.h"
 #include "../Cinematics/AnimComponentNode.h"
@@ -100,7 +101,6 @@ namespace Maestro
     };
 
     SequenceComponent::SequenceComponent()
-        : m_sequence(nullptr)
     {
     }
 
@@ -111,7 +111,8 @@ namespace Maestro
         if (serializeContext)
         {
             serializeContext->Class<SequenceComponent>()
-                ->Version(1);
+                ->Version(2)
+                ->Field("Sequence", &SequenceComponent::m_sequence);
 
             // Reflect the Cinematics library
             ReflectCinematicsLib(serializeContext);
@@ -187,12 +188,39 @@ namespace Maestro
 
     void SequenceComponent::Init()
     {
-        // TODO: we create the IAnimSequence object and connect to it here in the Editor. How is this done in pure Game mode?
+        Component::Init();
+
+        if (gEnv && gEnv->pMovieSystem)
+        {
+            if (m_sequence)
+            {
+                // Fix up the internal pointers in the sequence to match the deserialized structure
+                m_sequence->InitPostLoad();
+
+                // Register our deserialized sequence with the MovieSystem
+                gEnv->pMovieSystem->AddSequence(m_sequence.get());
+            }
+        }
+        else
+        {
+            AZ_Warning("TrackView", false, "SequenceComponent::Init() called without gEnv->pMovieSystem initialized yet, skipping creation of %s sequence.", m_entity->GetName().c_str());
+        }
     }
 
     void SequenceComponent::Activate()
     {
         Maestro::SequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
+
+        // If the sequence is set to auto play, start it here. The Movie system starts all the loaded
+        // sequences on Reset, but that will not start a sequence spawned in a dynamic slice.
+        // If the sequence is already playing, no harm is done, PlaySequence() will just return.
+        if (m_sequence != nullptr && m_sequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset)
+        {
+            if (gEnv != nullptr && gEnv->pMovieSystem != nullptr)
+            {
+                gEnv->pMovieSystem->PlaySequence(m_sequence.get(), /* parentSeq */ nullptr, /* bResetFx */ true, /* bTrackedSequence */ false);
+            }
+        }
     }
 
     void SequenceComponent::Deactivate()
@@ -232,113 +260,93 @@ namespace Maestro
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    IAnimSequence* SequenceComponent::GetSequence(bool forceRefresh) const
-    {
-        if (!m_sequence || forceRefresh)
-        {
-            m_sequence = gEnv->pMovieSystem->FindSequence(GetEntityId());
-        }
-        return m_sequence;
-    }
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::Play()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            gEnv->pMovieSystem->PlaySequence(sequence, /*parentSeq =*/ nullptr, /*bResetFX =*/ true,/*bTrackedSequence =*/ false, /*float startTime =*/ -FLT_MAX, /*float endTime =*/ -FLT_MAX);
+            gEnv->pMovieSystem->PlaySequence(m_sequence.get(), /*parentSeq =*/ nullptr, /*bResetFX =*/ true,/*bTrackedSequence =*/ false, /*float startTime =*/ -FLT_MAX, /*float endTime =*/ -FLT_MAX);
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::PlayBetweenTimes(float startTime, float endTime)
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            gEnv->pMovieSystem->PlaySequence(sequence, /*parentSeq =*/ nullptr, /*bResetFX =*/ true,/*bTrackedSequence =*/ false, startTime, endTime);
+            gEnv->pMovieSystem->PlaySequence(m_sequence.get(), /*parentSeq =*/ nullptr, /*bResetFX =*/ true,/*bTrackedSequence =*/ false, startTime, endTime);
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::Stop()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            gEnv->pMovieSystem->StopSequence(sequence);
+            gEnv->pMovieSystem->StopSequence(m_sequence.get());
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::Pause()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            sequence->Pause();
+            m_sequence.get()->Pause();
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::Resume()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            sequence->Resume();
+            m_sequence.get()->Resume();
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::SetPlaySpeed(float newSpeed)
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            gEnv->pMovieSystem->SetPlayingSpeed(sequence, newSpeed);
+            gEnv->pMovieSystem->SetPlayingSpeed(m_sequence.get(), newSpeed);
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::JumpToTime(float newTime)
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            newTime = clamp_tpl(newTime, sequence->GetTimeRange().start, sequence->GetTimeRange().end);
-            gEnv->pMovieSystem->SetPlayingTime(sequence, newTime);
+            newTime = clamp_tpl(newTime, m_sequence.get()->GetTimeRange().start, m_sequence.get()->GetTimeRange().end);
+            gEnv->pMovieSystem->SetPlayingTime(m_sequence.get(), newTime);
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::JumpToEnd()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            gEnv->pMovieSystem->SetPlayingTime(sequence, sequence->GetTimeRange().end);
+            gEnv->pMovieSystem->SetPlayingTime(m_sequence.get(), m_sequence.get()->GetTimeRange().end);
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::JumpToBeginning()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            gEnv->pMovieSystem->SetPlayingTime(sequence, sequence->GetTimeRange().start);
+            gEnv->pMovieSystem->SetPlayingTime(m_sequence.get(), m_sequence.get()->GetTimeRange().start);
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     float SequenceComponent::GetCurrentPlayTime()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            return gEnv->pMovieSystem->GetPlayingTime(sequence);
+            return gEnv->pMovieSystem->GetPlayingTime(m_sequence.get());
         }
         return .0f;
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     float SequenceComponent::GetPlaySpeed()
     {
-        IAnimSequence* sequence = GetSequence();
-        if (sequence)
+        if (m_sequence)
         {
-            return gEnv->pMovieSystem->GetPlayingSpeed(sequence);
+            return gEnv->pMovieSystem->GetPlayingSpeed(m_sequence.get());
         }
         return 1.0f;
     }

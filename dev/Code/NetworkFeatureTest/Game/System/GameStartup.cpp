@@ -120,11 +120,6 @@ void GameStartup::Shutdown()
     ShutdownFramework();
 }
 
-int GameStartup::Update(bool haveFocus, unsigned int updateFlags)
-{
-    return (m_Game ? m_Game->Update(haveFocus, updateFlags) : 0);
-}
-
 bool GameStartup::InitFramework(SSystemInitParams& startupParams)
 {
 #if !defined(_LIB)
@@ -197,45 +192,6 @@ void GameStartup::ExecuteAutoExec()
         m_bExecutedAutoExec = true;
         gEnv->pConsole->ExecuteString("exec autoexec.cfg");
     }
-}
-
-int GameStartup::Run(const char* autoStartLevelName)
-{
-    ExecuteAutoExec();
-
-#ifdef WIN32
-    while (true)
-    {
-        ISystem* pSystem = gEnv ? gEnv->pSystem : nullptr;
-        if (!pSystem)
-        {
-            break;
-        }
-
-        if (pSystem->PumpWindowMessage(false) == -1)
-        {
-            break;
-        }
-
-        if (!Update(true, 0))
-        {
-            // need to clean the message loop (WM_QUIT might cause problems in the case of a restart)
-            // another message loop might have WM_QUIT already so we cannot rely only on this
-            pSystem->PumpWindowMessage(true);
-            break;
-        }
-    }
-#else
-    while (true)
-    {
-        if (!Update(true, 0))
-        {
-            break;
-        }
-    }
-#endif // WIN32
-
-    return 0;
 }
 
 void GameStartup::OnPlatformEvent(const IPlatformOS::SPlatformEvent& event)

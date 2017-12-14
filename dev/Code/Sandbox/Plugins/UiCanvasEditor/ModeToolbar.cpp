@@ -43,6 +43,18 @@ void ModeToolbar::SetCheckedItem(int index)
     }
 }
 
+void ModeToolbar::AddPixmapToIcon(QIcon& icon, QIcon::Mode iconMode, QColor color)
+{
+    for (QSize size : icon.availableSizes())
+    {
+        QImage img = icon.pixmap(size).toImage().convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        QPainter painter(&img);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+        painter.fillRect(0, 0, img.width(), img.height(), color);
+        icon.addPixmap(QPixmap::fromImage(img), iconMode);
+    }
+}
+
 void ModeToolbar::AddModes(EditorWindow* parent)
 {
     m_group = new QActionGroup(this);
@@ -54,7 +66,11 @@ void ModeToolbar::AddModes(EditorWindow* parent)
 
         QString iconUrl = QString(":/Icons/%1.png").arg(ViewportHelpers::InteractionModeToString((int)m));
 
-        QAction* action = new QAction(QIcon(iconUrl),
+        QIcon icon(iconUrl);
+        AddPixmapToIcon(icon, QIcon::Mode::Active, Qt::white);
+        AddPixmapToIcon(icon, QIcon::Mode::Disabled, Qt::gray);
+
+        QAction* action = new QAction(icon,
                 (QString("%1 (%2)").arg(ViewportHelpers::InteractionModeToString((int)m), QString((char)key))),
                 this);
 
@@ -72,10 +88,8 @@ void ModeToolbar::AddModes(EditorWindow* parent)
                     return;
                 }
 
-                CommandViewportInteractionMode::Push(parent->GetActiveStack(),
-                    parent->GetViewport()->GetViewportInteraction(),
-                    m_previousAction,
-                    action);
+                parent->GetViewport()->GetViewportInteraction()->SetMode((ViewportInteraction::InteractionMode)action->data().toInt());
+
                 m_previousAction = action;
             });
         m_group->addAction(action);
@@ -85,7 +99,7 @@ void ModeToolbar::AddModes(EditorWindow* parent)
     m_group->setExclusive(true);
 
     // Set the first action as the default.
-    m_previousAction = *m_group->actions().begin();
+    m_previousAction = m_group->actions().constFirst();
     m_previousAction->setChecked(true);
 
     addActions(m_group->actions());

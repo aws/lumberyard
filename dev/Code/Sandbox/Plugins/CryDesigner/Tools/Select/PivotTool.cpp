@@ -102,7 +102,7 @@ void PivotTool::Display(DisplayContext& dc)
     }
     if (m_nSelectedCandidate != -1)
     {
-        dc.SetColor(RGB(100, 100, 255));
+        dc.SetColor(QColor(100, 100, 255));
         BrushVec3 vWorldVertexPos = GetWorldTM().TransformPoint(m_CandidateVertices[m_nSelectedCandidate]);
         BrushVec3 vBoxSize = CD::GetElementBoxSize(dc.view, dc.flags & DISPLAY_2D, vWorldVertexPos);
         dc.DrawSolidBox(CD::ToVec3(vWorldVertexPos - vBoxSize), CD::ToVec3(vWorldVertexPos + vBoxSize));

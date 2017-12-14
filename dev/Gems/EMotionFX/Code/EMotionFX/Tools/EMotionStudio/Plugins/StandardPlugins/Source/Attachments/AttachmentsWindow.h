@@ -74,8 +74,6 @@ namespace EMStudio
     private slots:
         void OnNodeChanged();
         void OnSelectionChanged();
-        void OnAddAttachmentButtonClicked();
-        void OnAddDeformableAttachmentButtonClicked();
         void OnOpenAttachmentButtonClicked();
         void OnOpenDeformableAttachmentButtonClicked();
         void OnRemoveButtonClicked();
@@ -115,8 +113,6 @@ namespace EMStudio
         AZStd::vector<AZStd::string>            mAttachments;
         AZStd::string                           mNodeBeforeSelectionWindow;
 
-        QPushButton*                            mAddAttachmentButton;
-        QPushButton*                            mAddDeformableAttachmentButton;
         QPushButton*                            mOpenAttachmentButton;
         QPushButton*                            mOpenDeformableAttachmentButton;
         QPushButton*                            mRemoveButton;

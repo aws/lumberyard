@@ -14,6 +14,11 @@
 
 #include <QMenu>
 
+namespace AzToolsFramework
+{
+    class InstanceDataNode;
+}
+
 namespace ScriptCanvasEditor
 {
     namespace Widget

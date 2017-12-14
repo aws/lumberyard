@@ -21,7 +21,7 @@ public:
     ~AzToLyInputDeviceMouse() override;
 
 protected:
-    // InputChannelEventNotificationBus::Handler
+    // InputChannelNotificationBus::Handler
     void OnInputChannelEvent(const AzFramework::InputChannel& inputChannel,
                              bool& o_hasBeenConsumed) override;
 

@@ -12,6 +12,7 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "ViewportPivot.h"
 
 #include <LyShine/Bus/UiLayoutFitterBus.h>
 
@@ -247,7 +248,7 @@ namespace ViewportHelpers
 
     const char* InteractionModeToString(int mode)
     {
-        switch (mode)
+        switch (static_cast<ViewportInteraction::InteractionMode>(mode))
         {
         case ViewportInteraction::InteractionMode::SELECTION:
             return "Selection";
@@ -270,7 +271,7 @@ namespace ViewportHelpers
 
     const char* CoordinateSystemToString(int s)
     {
-        switch (s)
+        switch (static_cast<ViewportInteraction::CoordinateSystem>(s))
         {
         case ViewportInteraction::CoordinateSystem::LOCAL:
             return "Local";
@@ -287,7 +288,7 @@ namespace ViewportHelpers
 
     const char* InteractionTypeToString(int type)
     {
-        switch (type)
+        switch (static_cast<ViewportInteraction::InteractionType>(type))
         {
         case ViewportInteraction::InteractionType::DIRECT:
             return "DIRECT";

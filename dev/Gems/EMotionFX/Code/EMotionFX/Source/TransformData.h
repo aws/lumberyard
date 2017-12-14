@@ -119,7 +119,7 @@ namespace EMotionFX
          * @param nodeIndex The node number, which must be in range of [0..GetNumTransforms()-1].
          * @result The global space position.
          */
-        MCORE_INLINE MCore::Vector3 GetGlobalPosition(uint32 nodeIndex) const                           { return mGlobalMatrices[nodeIndex].GetTranslation(); }
+        MCORE_INLINE AZ::Vector3 GetGlobalPosition(uint32 nodeIndex) const                              { return mGlobalMatrices[nodeIndex].GetTranslation(); }
 
         /**
          * Get the global space transformation matrix for a given node.
@@ -137,8 +137,8 @@ namespace EMotionFX
 
         EMFX_SCALECODE
         (
-            void SetBindPoseLocalScaleInherit(uint32 nodeIndex, const MCore::Vector3 & scale);
-            void SetBindPoseLocalScale(uint32 nodeIndex, const MCore::Vector3 & scale);
+            void SetBindPoseLocalScaleInherit(uint32 nodeIndex, const AZ::Vector3 & scale);
+            void SetBindPoseLocalScale(uint32 nodeIndex, const AZ::Vector3 & scale);
         )
 
         MCORE_INLINE ActorInstance * GetActorInstance() const            {

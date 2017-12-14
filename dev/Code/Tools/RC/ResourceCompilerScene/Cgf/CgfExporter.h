@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,28 +10,37 @@
 *
 */
 
-#include <SceneAPI/SceneCore/Events/CallProcessorConnector.h>
-#include <SceneAPI/SceneCore/Events/ExportEventContext.h>
+#pragma once
+
+#include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
 
 struct IConvertContext;
 
 namespace AZ
 {
+    namespace SceneAPI
+    {
+        namespace Events
+        {
+            class ExportEventContext;
+        }
+    }
+
     namespace RC
     {
         namespace SceneEvents = AZ::SceneAPI::Events;
 
         class CgfExporter
-            : public AZ::SceneAPI::Events::CallProcessorConnector
+            : public SceneEvents::CallProcessorBinder
         {
         public:
-            explicit CgfExporter(IConvertContext* convertContext);
+            CgfExporter(IConvertContext* convertContext);
             ~CgfExporter() override = default;
 
-            SceneEvents::ProcessingResult Process(SceneEvents::ICallContext* context) override;
+            SceneEvents::ProcessingResult ProcessContext(SceneEvents::ExportEventContext& context);
 
         private:
             IConvertContext* m_convertContext;
         };
-    } // RC
-} // AZ
+    } // namespace RC
+} // namespace AZ

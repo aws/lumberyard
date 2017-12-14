@@ -172,8 +172,8 @@ namespace ExporterLib
             EMotionFX::FileFormat::Actor_MorphTargetTransform transformChunk;
 
             transformChunk.mNodeIndex = transform.mNodeIndex;
-            CopyVector(transformChunk.mPosition, transform.mPosition);
-            CopyVector(transformChunk.mScale, transform.mScale);
+            CopyVector(transformChunk.mPosition, AZ::PackedVector3f(transform.mPosition));
+            CopyVector(transformChunk.mScale, AZ::PackedVector3f(transform.mScale));
             CopyQuaternion(transformChunk.mRotation, transform.mRotation);
             CopyQuaternion(transformChunk.mScaleRotation, transform.mScaleRotation);
 

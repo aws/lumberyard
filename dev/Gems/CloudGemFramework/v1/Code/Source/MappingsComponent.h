@@ -130,6 +130,8 @@ namespace CloudGemFramework
 
         void InitializeGameMappings();
         AZStd::string GetLogicalMappingsPath() const;
+        AZStd::string GetCurrentDeploymentFromConfig() const;
+        AZStd::string GetMappingsFileName(const AZStd::string &dep, const AZStd::string &role) const;
 
         // Any special mapping handling (Such as for Configuration values)
         void HandleMappingType(const AZStd::string& resourceType, const AZStd::string& logicalName, const AZStd::string& physicalName);

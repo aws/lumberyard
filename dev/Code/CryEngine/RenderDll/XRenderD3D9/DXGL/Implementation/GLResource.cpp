@@ -1282,38 +1282,38 @@ namespace NCryOpenGL
             // with no size restrictions, ES/2.0 does not have the API but has the extensions)
             // we need to select the version we are going to use here and hide the details
             // from the calling code to keep it cleaner
-            CryGlCheckFramebufferStatus = glad_glCheckNamedFramebufferStatusEXT;
+            CryGlCheckFramebufferStatus = DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(CheckNamedFramebufferStatusEXT);
 
 #if !USE_NVIDIA_NISGHT
-            if (glad_glCheckNamedFramebufferStatus)
+            if (DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(CheckNamedFramebufferStatus))
             {
-                CryGlCheckFramebufferStatus = glad_glCheckNamedFramebufferStatus;
+                CryGlCheckFramebufferStatus = DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(CheckNamedFramebufferStatus);
             }
-            else if (glad_glCheckFramebufferStatus)
+            else if (DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(CheckFramebufferStatus))
 #endif
             {
                 CryGlCheckFramebufferStatus = (PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC)&CheckFrameBufferStatus;
             }
 
-            CryGlNamedFramebufferTexture = glad_glNamedFramebufferTextureEXT;
+            CryGlNamedFramebufferTexture = DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(NamedFramebufferTextureEXT);
 #if !USE_NVIDIA_NISGHT
-            if (glad_glNamedFramebufferTexture)
+            if (DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(NamedFramebufferTexture))
             {
-                CryGlNamedFramebufferTexture = glad_glNamedFramebufferTexture;
+                CryGlNamedFramebufferTexture = DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(NamedFramebufferTexture);
             }
-            else if (glad_glFramebufferTexture)
+            else if (DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(FramebufferTexture))
 #endif
             {
                 CryGlNamedFramebufferTexture = (PFNGLNAMEDFRAMEBUFFERTEXTUREPROC)&NamedFramebufferTexture;
             }
 
-            CryGlNamedFramebufferTextureLayer = glad_glNamedFramebufferTextureLayerEXT;
+            CryGlNamedFramebufferTextureLayer = DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(NamedFramebufferTextureLayerEXT);
 #if !USE_NVIDIA_NISGHT
-            if (glad_glNamedFramebufferTextureLayer)
+            if (DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(NamedFramebufferTextureLayer))
             {
-                CryGlNamedFramebufferTextureLayer = glad_glNamedFramebufferTextureLayer;
+                CryGlNamedFramebufferTextureLayer = DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(NamedFramebufferTextureLayer);
             }
-            else if (glad_glFramebufferTexture)
+            else if (DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(FramebufferTexture))
 #endif
             {
                 CryGlNamedFramebufferTextureLayer = (PFNGLNAMEDFRAMEBUFFERTEXTURELAYERPROC)&NamedFramebufferTextureLayer;
@@ -2375,16 +2375,6 @@ namespace NCryOpenGL
         m_pfPackData             = &PackData;
         m_pfLocatePackedDataFunc = &LocatePackedData;
 #endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
-#if defined(IOS) || defined(APPLETV)
-        // On IOS there is no system frame buffer, we need to extract the framebuffer
-        // from the currently bound framebuffer.
-#   if defined(DXGL_USE_SDL) && defined(DXGL_SINGLEWINDOW)
-        m_kDefaultFBO.m_uName = 1;
-        SDL_GetWindowSize(AZStd::static_pointer_cast<SDLWindowContext>(SMainWindow::ms_kInstance.m_pSDLWindow)->m_window, &m_iDefaultFBOWidth, &m_iDefaultFBOHeight);
-#   else
-#   error "Implement a method to extract iOS's default framebuffer size";
-#   endif
-#endif
     }
 
     SDefaultFrameBufferTexture::~SDefaultFrameBufferTexture()
@@ -2492,8 +2482,7 @@ namespace NCryOpenGL
                 m_eOutputColorBuffer = GL_BACK_LEFT; // This has to be one of GL_BACK_LEFT, GL_BACK_RIGHT, GL_FRONT_LEFT, GL_FRONT_RIGHT or glDrawBuffer will fail
 #else
 #if     defined(IOS) || defined(APPLETV)
-                // There is no default framebuffer on IOS. There is only one created by
-                // SDL or the UIKit API.
+                // There is no default framebuffer on IOS. There is only one created by the UIKit API.
                 m_eOutputColorBuffer = GL_COLOR_ATTACHMENT0;
 #       else
                 m_eOutputColorBuffer = GL_BACK;

@@ -13,6 +13,8 @@ local uimissionfailed =
 		
 		ShowScreenEvent = { default = "ShowMissionFailedEvent", description = "The event used to show this screen." },
 		
+		MissionFailSndEvent = "",
+		
 		--ShowScreenSndEvent = "",
 		--CloseScreenSndEvent = "",
 	},
@@ -23,6 +25,8 @@ function uimissionfailed:OnActivate()
 	self.ShowScreenEventId = GameplayNotificationId(EntityId(), self.Properties.ShowScreenEvent, "float");
 	self.ShowScreenHandler = GameplayNotificationBus.Connect(self, self.ShowScreenEventId);	
 	self.FirstUpdate = true;
+	-- AUDIO
+	varMissionFailSndEvent = self.Properties.MissionFailSndEvent;
 end
 
 function uimissionfailed:OnDeactivate()
@@ -50,9 +54,6 @@ end
 function uimissionfailed:ShowScreen()
 	--Debug.Log("uimissionfailed:ShowScreen");
 	
-	-- AUDIO
-	--varPressStartSndEvent = self.Properties.PressStartSndEvent;
-
 	-- IMPORTANT: The 'canvas ID' is different to 'self.entityId'.
 	self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("UI/Canvases/UIMissionFailed.uicanvas");
 
@@ -123,7 +124,7 @@ function uimissionfailed:OnTick(deltaTime, timePoint)
 		-- Hide the mouse cursor.
 		LyShineLua.ShowMouseCursor(false);
 	
-		StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.FaderID, 1.0, 0.25);
+		StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.FaderID, 1.0, 0.25);
 	
 		-- Disable the player controls so that they can be re-enabled once the player has started.
 		self:SetControls("PlayerCharacter", self.Properties.EnableControlsEvent, 0.0);
@@ -168,6 +169,8 @@ function uimissionfailed:OnEventBegin(value)
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.ShowScreenEventId) then
 		--Debug.Log("Show screen");
 		self:ShowScreen();
+		-- Audio
+		AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, varMissionFailSndEvent);			
 	end
 
 end

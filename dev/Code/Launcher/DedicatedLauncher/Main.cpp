@@ -16,6 +16,9 @@
 #include <CryLibrary.h>
 #include <IGameStartup.h>
 #include <IConsole.h>
+#include <IGameFramework.h>
+#include <ITimer.h>
+#include <LumberyardLauncher.h>
 #include "platform_impl.h"
 
 #define WIN32_LEAN_AND_MEAN
@@ -83,7 +86,7 @@ ILINE unsigned Hash(unsigned a)
 // encode size ignore last 3 bits of size in bytes. (encode by 8bytes min)
 #define TEA_GETSIZE(len) ((len) & (~7))
 
-ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg)
+ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFramework::GameApplication& gameApp)
 {
     //restart parameters
     static const char logFileName[] = "@log@/Server.log";
@@ -175,23 +178,7 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg)
 
 
     // run the game
-    if (pGameStartup->Init(startupParams))
-    {
-#if !defined(SYS_ENV_AS_STRUCT)
-        gEnv = startupParams.pSystem->GetGlobalEnvironment();
-#endif
-
-        pGameStartup->Run(NULL);
-
-        pGameStartup->Shutdown();
-        pGameStartup = 0;
-
-        if (legacyGameDllStartup)
-        {
-            CryFreeLibrary(gameDll);
-        }
-    }
-    else
+    if (!pGameStartup->Init(startupParams))
     {
         fprintf(stderr, "Failed to initialize the GameStartup Interface!");
 
@@ -205,6 +192,24 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg)
         }
 
         return 0;
+    }
+
+#if !defined(SYS_ENV_AS_STRUCT)
+    gEnv = startupParams.pSystem->GetGlobalEnvironment();
+#endif
+
+    // Execute autoexec.cfg to load the initial level
+    gEnv->pConsole->ExecuteString("exec autoexec.cfg");
+
+    // Run the main loop
+    LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
+
+    pGameStartup->Shutdown();
+    pGameStartup = 0;
+
+    if (legacyGameDllStartup)
+    {
+        CryFreeLibrary(gameDll);
     }
 
     return 0;
@@ -287,7 +292,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             hash[i] = Hash(((unsigned*)secret)[i]);
             */
 
-        result = RunGame(cmdLine, engineCfg);
+        result = RunGame(cmdLine, engineCfg, gameApp);
 
     }// intentionally scoped so that resources can be unloaded in the appropriate order.
     gameApp.Stop();

@@ -12,6 +12,7 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "CommandCanvasSize.h"
 
 namespace
 {
@@ -66,6 +67,7 @@ namespace
 
 CanvasSizeToolbarSection::CanvasSizeToolbarSection(QToolBar* parent)
     : m_comboIndex(-1)
+    , m_isChangeUndoable(false)
     , m_canvasSizePresets()
     , m_combobox(new QComboBox(parent))
     , m_lineEditCanvasWidth(new QLineEdit(parent))
@@ -87,7 +89,7 @@ CanvasSizeToolbarSection::~CanvasSizeToolbarSection()
 
 void CanvasSizeToolbarSection::InitWidgets(QToolBar* parent, bool addSeparator)
 {
-    EditorWindow* editorWindow = static_cast<EditorWindow*>(parent->parent());
+    m_editorWindow = static_cast<EditorWindow*>(parent->parent());
 
     m_combobox->setMinimumContentsLength(20);
 
@@ -104,9 +106,12 @@ void CanvasSizeToolbarSection::InitWidgets(QToolBar* parent, bool addSeparator)
             ++i;
         }
 
+        m_lineEditCanvasWidth->setValidator(new QIntValidator(0, INT_MAX, parent));
+        m_lineEditCanvasHeight->setValidator(new QIntValidator(0, INT_MAX, parent));
+
         QObject::connect(m_combobox,
             static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), // IMPORTANT: We HAVE to use static_cast<>() to specify which overload of QComboBox::currentIndexChanged() we want.
-            [this, editorWindow](int index)
+            [this](int index)
             {
                 //! Called only when the canvas preset ComboBox selection changes
                 //
@@ -118,7 +123,7 @@ void CanvasSizeToolbarSection::InitWidgets(QToolBar* parent, bool addSeparator)
                     return;
                 }
 
-                OnComboBoxIndexChanged(editorWindow, index);
+                OnComboBoxIndexChanged(index);
 
                 m_comboIndex = index;
             });
@@ -136,8 +141,8 @@ void CanvasSizeToolbarSection::InitWidgets(QToolBar* parent, bool addSeparator)
         m_canvasDelimiterAction->setVisible(false);
         m_canvasHeightAction->setVisible(false);
 
-        m_lineEditCanvasWidth->setMaximumWidth(30);
-        m_lineEditCanvasHeight->setMaximumWidth(30);
+        m_lineEditCanvasWidth->setMaximumWidth(35);
+        m_lineEditCanvasHeight->setMaximumWidth(35);
 
         // Delimit between width x height
         m_labelCustomSizeDelimiter->setText("x");
@@ -167,60 +172,92 @@ void CanvasSizeToolbarSection::InitWidgets(QToolBar* parent, bool addSeparator)
 const QString& CanvasSizeToolbarSection::IndexToString(int index)
 {
     AZ_Assert(index < m_canvasSizePresets.size(), "Invalid index");
+    if (index == GetCustomSizeIndex())
+    {
+        QString description(
+            QString("%1 x %2 (%3)")
+            .arg(QString::number(m_canvasSizePresets[index].width))
+            .arg(QString::number(m_canvasSizePresets[index].height))
+            .arg("other"));
+        m_canvasSizePresets[index].description = description;
+    }
     return m_canvasSizePresets[index].description;
 }
 
 void CanvasSizeToolbarSection::SetInitialResolution(const AZ::Vector2& canvasSize)
 {
-    ComboBoxOptions::iterator matchingResolution = AZStd::find_if(m_canvasSizePresets.begin(), m_canvasSizePresets.end(),
-            [canvasSize](const CanvasSizePresets& option)
-            {
-                return option.width == canvasSize.GetX() && option.height == canvasSize.GetY();
-            });
-
-    // Assume no match
-    int matchingIndex = m_canvasSizePresets.size() - 1;
-
-    if (matchingResolution != m_canvasSizePresets.end())
-    {
-        // Resolution matches one of our presets, so select it
-        matchingIndex = matchingResolution - m_canvasSizePresets.begin();
-    }
-    else
+    int matchingIndex = GetPresetIndexFromSize(canvasSize);
+    if (matchingIndex == GetCustomSizeIndex())
     {
         // We are selecting a resolution which doesn't match a preset so set the contents
-        // of the custom canvas width and height boxes accordingly
-        m_lineEditCanvasWidth->setText(QString::number(static_cast<int>(canvasSize.GetX())));
-        m_lineEditCanvasHeight->setText(QString::number(static_cast<int>(canvasSize.GetY())));
 
         // Store the canvas size within the presets array
         m_canvasSizePresets[matchingIndex].width = static_cast<int>(canvasSize.GetX());
         m_canvasSizePresets[matchingIndex].height = static_cast<int>(canvasSize.GetY());
     }
 
-    // Always check if we need to enable or disable the custom canvas size boxes
-    ToggleLineEditBoxes(matchingIndex);
-
-    // Only call setCurrentIndex() after the line edit fields have been configured
-    // properly, since it depends on those fields (if a custom resolution has been
-    // selected).
-    m_comboIndex = matchingIndex;
     AZ_Assert(matchingIndex < m_combobox->count(), "Invalid index.");
+    m_comboIndex = matchingIndex; // prevent callback of current index change
     m_combobox->setCurrentIndex(matchingIndex);
 
-    // We assume this function is only called programmatically, at startup, in which
-    // case we don't want the width field to automatically take focus (if it has focus)
-    m_lineEditCanvasWidth->clearFocus();
-    m_lineEditCanvasWidth->deselect();
+    // Always check if we need to enable or disable the custom canvas size boxes
+    ToggleLineEditBoxes();
 }
 
 void CanvasSizeToolbarSection::SetIndex(int index)
 {
+    // Called by undo/redo commands
+
     AZ_Assert(index < m_combobox->count(), "Invalid index.");
+    m_comboIndex = index; // prevent callback of current index change
     m_combobox->setCurrentIndex(index);
 
-    ToggleLineEditBoxes(index);
-    SetCanvasSizeByComboBoxIndex(index);
+    HandleIndexChanged();
+}
+
+void CanvasSizeToolbarSection::SetCustomCanvasSize(AZ::Vector2 canvasSize, bool findPreset)
+{
+    // Called by undo/redo commands
+
+    int customSizeIndex = GetCustomSizeIndex();
+
+    int matchingIndex;
+    if (findPreset)
+    {
+        matchingIndex = GetPresetIndexFromSize(canvasSize);
+    }
+    else
+    {
+        matchingIndex = customSizeIndex;
+    }
+
+    if (matchingIndex == customSizeIndex)
+    {
+        // Store the canvas size within the presets array
+        m_canvasSizePresets[matchingIndex].width = static_cast<int>(canvasSize.GetX());
+        m_canvasSizePresets[matchingIndex].height = static_cast<int>(canvasSize.GetY());
+    }
+
+    int prevIndex = m_comboIndex;
+
+    AZ_Assert(matchingIndex < m_combobox->count(), "Invalid index.");
+    m_comboIndex = matchingIndex; // prevent callback of current index change
+    m_combobox->setCurrentIndex(matchingIndex);
+
+    ToggleLineEditBoxes();
+
+    if (m_comboIndex == customSizeIndex && prevIndex != m_comboIndex)
+    {
+        if (m_canvasWidthAction->isVisible())
+        {
+            // As a convenience, set focus on the width and select all the text so the user can
+            // immediately enter their desired resolution.
+            m_lineEditCanvasWidth->setFocus();
+            m_lineEditCanvasWidth->selectAll();
+        }
+    }
+
+    SetCanvasSizeByComboBoxIndex();
 }
 
 void CanvasSizeToolbarSection::LineEditWidthEditingFinished()
@@ -228,19 +265,43 @@ void CanvasSizeToolbarSection::LineEditWidthEditingFinished()
     const QString newText(m_lineEditCanvasWidth->text());
 
     bool success = false;
-    int width = newText.toInt(&success);
-    const int customSizeIndex = m_canvasSizePresets.size() - 1;
+    int newWidth = newText.toInt(&success);
+    AZ_Assert(success, "Only integers should be allowed to be entered");
 
-    if (success)
+    const int customSizeIndex = m_combobox->currentIndex();
+
+    if (newWidth != m_canvasSizePresets[customSizeIndex].width)
     {
-        m_canvasSizePresets[customSizeIndex].width = width;
+        if (m_isChangeUndoable)
+        {
+            // Check if the size is now set to one of the presets
+            int presetIndex = GetPresetIndexFromSize(AZ::Vector2(newWidth, m_canvasSizePresets[customSizeIndex].height));
+            if (presetIndex != customSizeIndex)
+            {
+                // Change combo box index which will trigger an OnComboBoxIndexChanged event and add an undoable command
+                m_combobox->setCurrentIndex(presetIndex);
+            }
+            else
+            {
+                // Add an undoable command to update the custom canvas size
+                CommandCanvasSize::Push(m_editorWindow->GetActiveStack(),
+                    m_editorWindow->GetCanvasSizeToolbarSection(),
+                    AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, m_canvasSizePresets[customSizeIndex].height),
+                    AZ::Vector2(newWidth, m_canvasSizePresets[customSizeIndex].height), false);
+            }
+        }
+        else
+        {
+            m_canvasSizePresets[customSizeIndex].width = newWidth;
+            SetCanvasSizeByComboBoxIndex();
+        }
     }
 
-    // Note that we overwrite the user's current input if they gave us bad data
+    // Get rid of multiple 0s or leading 0s
     m_lineEditCanvasWidth->setText(QString::number(m_canvasSizePresets[customSizeIndex].width));
 
-    // Finally, set the canvas size to reflect the user's changes
-    SetCanvasSizeByComboBoxIndex(customSizeIndex);
+    m_lineEditCanvasWidth->deselect();
+    m_lineEditCanvasWidth->clearFocus();
 }
 
 void CanvasSizeToolbarSection::LineEditHeightEditingFinished()
@@ -248,24 +309,50 @@ void CanvasSizeToolbarSection::LineEditHeightEditingFinished()
     const QString newText(m_lineEditCanvasHeight->text());
 
     bool success = false;
-    int height = newText.toInt(&success);
-    const int customSizeIndex = m_canvasSizePresets.size() - 1;
+    int newHeight = newText.toInt(&success);
+    AZ_Assert(success, "Only integers should be allowed to be entered");
 
-    if (success)
+    const int customSizeIndex = m_combobox->currentIndex();
+
+    if (newHeight != m_canvasSizePresets[customSizeIndex].height)
     {
-        m_canvasSizePresets[customSizeIndex].height = height;
+        if (m_isChangeUndoable)
+        {
+            // Check if the size is now set to one of the presets
+            int presetIndex = GetPresetIndexFromSize(AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, newHeight));
+            if (presetIndex != customSizeIndex)
+            {
+                // Change combo box index which will trigger an OnComboBoxIndexChanged event and add an undoable command
+                m_combobox->setCurrentIndex(presetIndex);
+            }
+            else
+            {
+                // Add an undoable command to update the custom canvas size
+                CommandCanvasSize::Push(m_editorWindow->GetActiveStack(),
+                    m_editorWindow->GetCanvasSizeToolbarSection(),
+                    AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, m_canvasSizePresets[customSizeIndex].height),
+                    AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, newHeight), false);
+            }
+        }
+        else
+        {
+            m_canvasSizePresets[customSizeIndex].height = newHeight;
+            SetCanvasSizeByComboBoxIndex();
+        }
     }
 
-    // Note that we overwrite the user's current input if they gave us bad data
+    // Get rid of multiple 0s or leading 0s
     m_lineEditCanvasHeight->setText(QString::number(m_canvasSizePresets[customSizeIndex].height));
 
-    // Finally, set the canvas size to reflect the user's changes
-    SetCanvasSizeByComboBoxIndex(customSizeIndex);
+    m_lineEditCanvasHeight->deselect();
+    m_lineEditCanvasHeight->clearFocus();
 }
 
-void CanvasSizeToolbarSection::ToggleLineEditBoxes(int currentIndex)
+void CanvasSizeToolbarSection::ToggleLineEditBoxes()
 {
-    const int customSizeIndex = m_canvasSizePresets.size() - 1;
+    int currentIndex = m_combobox->currentIndex();
+
+    const int customSizeIndex = GetCustomSizeIndex();
     const bool enableLineEditBoxes = currentIndex == customSizeIndex;
     m_canvasWidthAction->setVisible(enableLineEditBoxes);
     m_canvasDelimiterAction->setVisible(enableLineEditBoxes);
@@ -275,11 +362,6 @@ void CanvasSizeToolbarSection::ToggleLineEditBoxes(int currentIndex)
     {
         m_lineEditCanvasWidth->setText(QString::number(m_canvasSizePresets[customSizeIndex].width));
         m_lineEditCanvasHeight->setText(QString::number(m_canvasSizePresets[customSizeIndex].height));
-
-        // As a convenience, set focus on the width and select all the text so the user can
-        // immediately enter their desired resolution.
-        m_lineEditCanvasWidth->setFocus();
-        m_lineEditCanvasWidth->selectAll();
     }
 }
 
@@ -372,6 +454,44 @@ void CanvasSizeToolbarSection::InitCanvasSizePresets()
     m_canvasSizePresets.push_back(CanvasSizePresets("Other...", m_canvasSizePresets[0].width, m_canvasSizePresets[0].height));
 }
 
+int CanvasSizeToolbarSection::GetPresetIndexFromSize(AZ::Vector2 size)
+{
+    ComboBoxOptions::iterator matchingResolution = AZStd::find_if(m_canvasSizePresets.begin(), m_canvasSizePresets.end(),
+        [size](const CanvasSizePresets& option)
+    {
+        return option.width == size.GetX() && option.height == size.GetY();
+    });
+
+    int matchingIndex = GetCustomSizeIndex();
+    if (matchingResolution != m_canvasSizePresets.end())
+    {
+        // Resolution matches one of our presets, so select it
+        matchingIndex = matchingResolution - m_canvasSizePresets.begin();
+    }
+
+    return matchingIndex;
+}
+
+void CanvasSizeToolbarSection::HandleIndexChanged()
+{
+    ToggleLineEditBoxes();
+
+    if (m_canvasWidthAction->isVisible())
+    {
+        // As a convenience, set focus on the width and select all the text so the user can
+        // immediately enter their desired resolution.
+        m_lineEditCanvasWidth->setFocus();
+        m_lineEditCanvasWidth->selectAll();
+    }
+
+    SetCanvasSizeByComboBoxIndex();
+}
+
+int CanvasSizeToolbarSection::GetCustomSizeIndex()
+{
+    return m_canvasSizePresets.size() - 1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // ReferenceCanvasSizeToolbarSection class
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -381,28 +501,43 @@ ReferenceCanvasSizeToolbarSection::ReferenceCanvasSizeToolbarSection(QToolBar* p
 {
     InitWidgets(parent, addSeparator);
 
+    m_isChangeUndoable = true;
+
     m_combobox->setToolTip(QString("Canvas size is used to determine scaling on larger (or smaller) screens if 'scale to device' is used"));
 }
 
-void ReferenceCanvasSizeToolbarSection::SetCanvasSizeByComboBoxIndex(int comboIndex)
+void ReferenceCanvasSizeToolbarSection::SetCanvasSizeByComboBoxIndex()
 {
+    int comboIndex = m_combobox->currentIndex();
+
     // This is the low level function called by the undoable command (via SetIndex etc)
     AZ::Vector2 canvasSize(m_canvasSizePresets[comboIndex].width, m_canvasSizePresets[comboIndex].height);
-    EditorWindow* pWindow = static_cast<EditorWindow*>(m_combobox->parent()->parent());
 
     // set the canvas size on the canvas entity being edited
-    EBUS_EVENT_ID(pWindow->GetCanvas(), UiCanvasBus, SetCanvasSize, canvasSize);
-    pWindow->GetViewport()->GetViewportInteraction()->CenterCanvasInViewport(&canvasSize);
-    pWindow->GetViewport()->Refresh();
+    EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, SetCanvasSize, canvasSize);
+    m_editorWindow->GetViewport()->GetViewportInteraction()->CenterCanvasInViewport(&canvasSize);
+    m_editorWindow->GetViewport()->Refresh();
 }
 
-void ReferenceCanvasSizeToolbarSection::OnComboBoxIndexChanged(EditorWindow* editorWindow, int index)
+void ReferenceCanvasSizeToolbarSection::OnComboBoxIndexChanged(int index)
 {
     // use an undoable command to set the canvas size
-    CommandCanvasSizeToolbarIndex::Push(editorWindow->GetActiveStack(),
-        editorWindow->GetCanvasSizeToolbarSection(),
-        m_comboIndex,
-        index);
+    if (index == GetCustomSizeIndex())
+    {
+        int prevIndex = m_comboIndex;
+
+        CommandCanvasSize::Push(m_editorWindow->GetActiveStack(),
+            m_editorWindow->GetCanvasSizeToolbarSection(),
+            AZ::Vector2(m_canvasSizePresets[prevIndex].width, m_canvasSizePresets[prevIndex].height),
+            AZ::Vector2(m_canvasSizePresets[index].width, m_canvasSizePresets[index].height), true);
+    }
+    else
+    {
+        CommandCanvasSizeToolbarIndex::Push(m_editorWindow->GetActiveStack(),
+            m_editorWindow->GetCanvasSizeToolbarSection(),
+            m_comboIndex,
+            index);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -417,19 +552,20 @@ PreviewCanvasSizeToolbarSection::PreviewCanvasSizeToolbarSection(QToolBar* paren
     m_combobox->setToolTip(QString("Preview what the canvas would look like on a screen/window/texture of this size."));
 }
 
-void PreviewCanvasSizeToolbarSection::SetCanvasSizeByComboBoxIndex(int comboIndex)
+void PreviewCanvasSizeToolbarSection::SetCanvasSizeByComboBoxIndex()
 {
+    int comboIndex = m_combobox->currentIndex();
+
     AZ::Vector2 canvasSize(m_canvasSizePresets[comboIndex].width, m_canvasSizePresets[comboIndex].height);
-    EditorWindow* pWindow = static_cast<EditorWindow*>(m_combobox->parent()->parent());
 
     // tell the EditorWindow what size we want to preview the canvas at
-    pWindow->SetPreviewCanvasSize(canvasSize);
+    m_editorWindow->SetPreviewCanvasSize(canvasSize);
 }
 
-void PreviewCanvasSizeToolbarSection::OnComboBoxIndexChanged(EditorWindow* editorWindow, int index)
+void PreviewCanvasSizeToolbarSection::OnComboBoxIndexChanged(int index)
 {
-    // no need to support undo when changing canvas size in preview mode, just set the index
-    SetIndex(index);
+    // no need to support undo when changing canvas size in preview mode, just update based on index
+    HandleIndexChanged();
 }
 
 void PreviewCanvasSizeToolbarSection::AddSpecialPresets()

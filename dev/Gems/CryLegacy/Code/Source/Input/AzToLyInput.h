@@ -13,9 +13,17 @@
 
 #include "BaseInput.h"
 
-#include <AzFramework/Input/Buses/Notifications/InputTextEventNotificationBus.h>
+#include <AzCore/Component/TickBus.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
+#include <AzFramework/Input/Buses/Notifications/InputTextNotificationBus.h>
 
 #include <unordered_map>
+
+namespace SynergyInput
+{
+    class SynergyClient;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // This class (along with other CryInput/AzToLyInput* classes) is just a temporary bridge that we must
@@ -24,7 +32,10 @@
 // not possible for two different systems to process the raw input obtained from the various system
 // APIs, so although we need to maintain the CryInput interface for a time we must make it depend
 // on AzFramework Input in the interim.
-class AzToLyInput : public CBaseInput, public AzFramework::InputTextEventNotificationBus::Handler
+class AzToLyInput
+    : public CBaseInput
+    , public AZ::TickBus::Handler
+    , public AzFramework::InputTextNotificationBus::Handler
 {
 public:
     AzToLyInput();
@@ -43,6 +54,8 @@ protected:
                               const AzFramework::InputDeviceId& azFrameworkInputDeviceId) override;
 
     // Update Related
+    int GetTickOrder() override;
+    void OnTick(float deltaTime, AZ::ScriptTimePoint scriptTimePoint) override;
     void Update(bool bFocus) override;
     void UpdateKeyboardModifiers();
     void UpdateMotionSensorInput();
@@ -68,10 +81,11 @@ protected:
     bool IsScreenKeyboardShowing() const override;
     bool IsScreenKeyboardSupported() const override;
 
-    // InputTextEventNotificationBus::Handler
+    // InputTextNotificationBus::Handler
     void OnInputTextEvent(const AZStd::string& textUTF8, bool& o_hasBeenConsumed) override;
 
 private:
+    AZStd::unique_ptr<SynergyInput::SynergyClient> m_synergyContext;
     std::unordered_map<IMotionSensorEventListener*, int> m_motionSensorListeners;
     SMotionSensorData m_mostRecentMotionSensorData;
     IMotionSensorFilter* m_motionSensorFilter;

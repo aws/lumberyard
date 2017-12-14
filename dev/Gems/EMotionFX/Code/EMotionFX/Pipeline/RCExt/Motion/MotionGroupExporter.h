@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -11,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#pragma once
 
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 #include <AzCore/std/string/string.h>
@@ -44,5 +44,5 @@ namespace EMotionFX
             MotionGroupExporter(const MotionGroupExporter&) = delete;
 #endif
         };
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

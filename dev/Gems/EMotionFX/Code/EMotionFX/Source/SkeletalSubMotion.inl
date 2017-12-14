@@ -10,7 +10,7 @@
 *
 */
 
-MCORE_INLINE KeyTrackLinear<MCore::Vector3, MCore::Vector3>* SkeletalSubMotion::GetPosTrack() const
+MCORE_INLINE KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* SkeletalSubMotion::GetPosTrack() const
 {
     return mPosTrack;
 }
@@ -23,7 +23,7 @@ MCORE_INLINE KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>
 
 
 #ifndef EMFX_SCALE_DISABLED
-MCORE_INLINE KeyTrackLinear<MCore::Vector3, MCore::Vector3>* SkeletalSubMotion::GetScaleTrack() const
+MCORE_INLINE KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* SkeletalSubMotion::GetScaleTrack() const
 {
     return mScaleTrack;
 }
@@ -41,7 +41,7 @@ MCORE_INLINE const MCore::String& SkeletalSubMotion::GetNameString() const
 }
 
 
-MCORE_INLINE const MCore::Vector3& SkeletalSubMotion::GetPosePos() const
+MCORE_INLINE const AZ::Vector3& SkeletalSubMotion::GetPosePos() const
 {
     return mPosePos;
 }
@@ -60,14 +60,14 @@ MCORE_INLINE const MCore::Compressed16BitQuaternion& SkeletalSubMotion::GetCompr
 
 
 #ifndef EMFX_SCALE_DISABLED
-MCORE_INLINE const MCore::Vector3& SkeletalSubMotion::GetPoseScale() const
+MCORE_INLINE const AZ::Vector3& SkeletalSubMotion::GetPoseScale() const
 {
     return mPoseScale;
 }
 #endif
 
 
-MCORE_INLINE void SkeletalSubMotion::SetPosePos(const MCore::Vector3& pos)
+MCORE_INLINE void SkeletalSubMotion::SetPosePos(const AZ::Vector3& pos)
 {
     mPosePos = pos;
 }
@@ -86,13 +86,13 @@ MCORE_INLINE void SkeletalSubMotion::SetCompressedPoseRot(const MCore::Compresse
 
 
 #ifndef EMFX_SCALE_DISABLED
-MCORE_INLINE void SkeletalSubMotion::SetPoseScale(const MCore::Vector3& scale)
+MCORE_INLINE void SkeletalSubMotion::SetPoseScale(const AZ::Vector3& scale)
 {
     mPoseScale = scale;
 }
 #endif
 
-MCORE_INLINE const MCore::Vector3& SkeletalSubMotion::GetBindPosePos() const
+MCORE_INLINE const AZ::Vector3& SkeletalSubMotion::GetBindPosePos() const
 {
     return mBindPosePos;
 }
@@ -111,13 +111,13 @@ MCORE_INLINE const MCore::Compressed16BitQuaternion& SkeletalSubMotion::GetCompr
 
 
 #ifndef EMFX_SCALE_DISABLED
-MCORE_INLINE const MCore::Vector3& SkeletalSubMotion::GetBindPoseScale() const
+MCORE_INLINE const AZ::Vector3& SkeletalSubMotion::GetBindPoseScale() const
 {
     return mBindPoseScale;
 }
 #endif
 
-MCORE_INLINE void SkeletalSubMotion::SetBindPosePos(const MCore::Vector3& pos)
+MCORE_INLINE void SkeletalSubMotion::SetBindPosePos(const AZ::Vector3& pos)
 {
     mBindPosePos = pos;
 }
@@ -136,7 +136,7 @@ MCORE_INLINE void SkeletalSubMotion::SetCompressedBindPoseRot(const MCore::Compr
 
 
 #ifndef EMFX_SCALE_DISABLED
-MCORE_INLINE void SkeletalSubMotion::SetBindPoseScale(const MCore::Vector3& scale)
+MCORE_INLINE void SkeletalSubMotion::SetBindPoseScale(const AZ::Vector3& scale)
 {
     mBindPoseScale = scale;
 }

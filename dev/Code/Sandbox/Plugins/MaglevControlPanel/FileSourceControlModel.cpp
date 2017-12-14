@@ -66,6 +66,7 @@ bool SourceControlStatusModel::IsReady() const
 bool SourceControlStatusModel::FileNeedsCheckout() const
 {
     AzToolsFramework::SourceControlStatus curStatus = GetStatus();
+    unsigned int curFlags = GetFlags();
 
-    return (curStatus == AzToolsFramework::SCS_Tracked);
+    return (curStatus == AzToolsFramework::SCS_OpSuccess && (curFlags & AzToolsFramework::SCF_OpenByUser) == 0);
 }

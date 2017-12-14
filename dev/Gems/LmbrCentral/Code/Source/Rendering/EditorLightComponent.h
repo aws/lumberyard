@@ -184,6 +184,9 @@ namespace LmbrCentral
         void SetProbeAttenuationFalloff(float newAttenuationFalloff) override;
         float GetProbeAttenuationFalloff() override;
 
+        void SetProbeFade(float fade) override;
+        float GetProbeFade() override;
+
         void SetIndoorOnly(bool indoorOnly) override;
         bool GetIndoorOnly() override;
 

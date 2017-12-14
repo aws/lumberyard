@@ -50,7 +50,7 @@ namespace LmbrCentral
     class PolygonPrismShapeComponent
         : public AZ::Component
         , private ShapeComponentRequestsBus::Handler
-        , private PolygonPrismShapeComponentRequestsBus::Handler
+        , private PolygonPrismShapeComponentRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
     {
     public:
@@ -62,38 +62,32 @@ namespace LmbrCentral
         PolygonPrismShapeComponent() = default;
         ~PolygonPrismShapeComponent() override = default;
 
-        //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // ShapeComponent::Handler implementation
         AZ::Crc32 GetShapeType() override { return AZ_CRC("PolygonPrism", 0xd6b50036); }
         AZ::Aabb GetEncompassingAabb() override;
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // PolygonShapeShapeComponentRequestBus::Handler implementation
         AZ::ConstPolygonPrismPtr GetPolygonPrism() override;
         void SetHeight(float height) override;
-        
+        bool GetVertex(size_t index, AZ::Vector2& vertex) const override;
         void AddVertex(const AZ::Vector2& vertex) override;
-        void UpdateVertex(size_t index, const AZ::Vector2& vertex) override;
-        void InsertVertex(size_t index, const AZ::Vector2& vertex) override;
-        void RemoveVertex(size_t index) override;
+        bool UpdateVertex(size_t index, const AZ::Vector2& vertex) override;
+        bool InsertVertex(size_t index, const AZ::Vector2& vertex) override;
+        bool RemoveVertex(size_t index) override;
         void SetVertices(const AZStd::vector<AZ::Vector2>& vertices) override;
         void ClearVertices() override;
-        //////////////////////////////////////////////////////////////////////////
+        size_t Size() const override;
+        bool Empty() const override;
 
-        //////////////////////////////////////////////////////////////////////////////////
         // Transform notification bus listener
         // Called when the local transform of the entity has changed. Local transform update always implies world transform change too.
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        //////////////////////////////////////////////////////////////////////////////////
 
     protected:
 

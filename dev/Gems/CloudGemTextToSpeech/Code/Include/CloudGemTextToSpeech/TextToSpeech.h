@@ -13,7 +13,7 @@
 # pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AZCore/Component/Entity.h>
+#include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -132,30 +132,22 @@ namespace CloudGemTextToSpeech
         Aws::Utils::Json::JsonValue LoadCharacterFromMappingsFile(const AZStd::string& character);
         bool HasFilesFromConversion(AZStd::string id);
 
-        class ConvertingUrlSet
+        class ConversionSet
         {
         public:
-            AZ_CLASS_ALLOCATOR(ConvertingUrlSet, AZ::SystemAllocator, 0);
-            AZStd::string voiceUrl;
-            AZStd::string marksUrl;
-            AZStd::string voiceFile;
-            AZStd::string marksFile;
-            int size();
-        };
-        
-        class ConvertedFileSet
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(ConvertedFileSet, AZ::SystemAllocator, 0);
+            AZ_CLASS_ALLOCATOR(ConversionSet, AZ::SystemAllocator, 0);
             AZStd::string voice;
             AZStd::string marks;
             int size();
         };
-        AZStd::string GenerateMD5FromPayload(const char* fileName);
-        bool GenerateMD5(const char* szName, unsigned char* md5);
-        AZStd::string ResolvePath(const char* path, bool isDir);
+        AZStd::string GenerateMD5FromPayload(const char* fileName) const;
+        bool GenerateMD5(const char* szName, unsigned char* md5) const;
+        AZStd::string ResolvePath(const char* path, bool isDir) const;
+
+        AZStd::string GetAliasedUserCachePath(const AZStd::string& hash) const;
 
         void ConvertTextToSpeech(const AZStd::string& voice, const AZStd::string& text, const AZStd::string& speechMarks);
+        AZStd::string FindCachedVoiceFileExtension(const AZStd::string& dir, const AZStd::string& hash) const;
 
         class TTSConversionJob : public AZ::Job
         {
@@ -176,8 +168,8 @@ namespace CloudGemTextToSpeech
         };
 
         AZStd::unordered_map<AZStd::string, AZStd::string> m_urlToConversionId;
-        AZStd::unordered_map<AZStd::string, ConvertingUrlSet> m_idToUrls;
-        AZStd::unordered_map<AZStd::string, ConvertedFileSet> m_idToFiles;
+        AZStd::unordered_map<AZStd::string, ConversionSet> m_idToUrls;
+        AZStd::unordered_map<AZStd::string, ConversionSet> m_idToFiles;
         AZStd::unordered_map<AZStd::string, int> m_conversionIdToNumPending;
         AZStd::unordered_map<AZStd::string, AZStd::string> m_idToSpeechMarksType;
     };

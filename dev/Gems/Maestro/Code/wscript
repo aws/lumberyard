@@ -28,7 +28,6 @@ def build(bld):
 
             defines     = ['MAESTRO_EDITOR',],
 
-            win_uselib  = ['XTP'],
             includes    = [ '.',
                             'Include',
                             'Source',

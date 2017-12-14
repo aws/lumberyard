@@ -108,10 +108,10 @@ namespace EMotionFX
             return;
         }
 
-        MCore::Vector3 value = GetInputVector3(animGraphInstance, INPUTPORT_VECTOR)->GetValue();
-        GetOutputFloat(animGraphInstance, OUTPUTPORT_X)->SetValue(value.x);
-        GetOutputFloat(animGraphInstance, OUTPUTPORT_Y)->SetValue(value.y);
-        GetOutputFloat(animGraphInstance, OUTPUTPORT_Z)->SetValue(value.z);
+        AZ::Vector3 value(GetInputVector3(animGraphInstance, INPUTPORT_VECTOR)->GetValue());
+        GetOutputFloat(animGraphInstance, OUTPUTPORT_X)->SetValue(value.GetX());
+        GetOutputFloat(animGraphInstance, OUTPUTPORT_Y)->SetValue(value.GetY());
+        GetOutputFloat(animGraphInstance, OUTPUTPORT_Z)->SetValue(value.GetZ());
     }
 
 

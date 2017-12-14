@@ -393,7 +393,7 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent* event)
             m_pKeyTimeSet->BeginEdittingKeyTimes();
         }
 
-        bool altClicked = ((GetAsyncKeyState(VK_MENU) & 0x8000) != 0);
+        bool altClicked = Qt::AltModifier & QApplication::queryKeyboardModifiers();
         float scale, offset;
         float startTime = ClientToTime(m_lastPoint.x());
         float endTime = ClientToTime(event->x());

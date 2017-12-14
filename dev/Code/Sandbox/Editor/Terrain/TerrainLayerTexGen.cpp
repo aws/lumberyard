@@ -158,7 +158,6 @@ bool CTerrainLayerTexGen::UpdateSectorLayers(const QPoint& sector)
 bool CTerrainLayerTexGen::GenerateSectorTexture(const QPoint& sector, const QRect& rect, int flags, CImageEx& surfaceTexture)
 {
     // set flags.
-    bool bShowWater = flags & ETTG_SHOW_WATER;
     bool bNoTexture = flags & ETTG_NOTEXTURE;
     bool bUseLightmap = flags & ETTG_USE_LIGHTMAPS;
     m_bLog = !(flags & ETTG_QUIET);
@@ -177,8 +176,6 @@ bool CTerrainLayerTexGen::GenerateSectorTexture(const QPoint& sector, const QRec
 
     assert(pDocument);
     assert(pHeightmap);
-
-    float waterLevel = pHeightmap->GetWaterLevel();
 
     if (bNoTexture)
     {

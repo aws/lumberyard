@@ -368,7 +368,7 @@ void CAttributeItem::CompareVisibility(bool& isVisible, const QString compareKey
     {
         return;
     }
-    foreach(QString str, listWithSupportedItems)
+    foreach(const QString &str, listWithSupportedItems)
     {
         // compare gives back 0 when we have a match, -n when we have less characters than visibilityKey and n when we have n more characters than visibilityKey
         int compareGroupKey = str.compare(compareKey, Qt::CaseSensitivity::CaseInsensitive);

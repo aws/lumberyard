@@ -126,8 +126,10 @@ namespace
 }   // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiTextInputNotificationBus Behavior context handler class 
-class BehaviorUiTextInputNotificationBusHandler : public UiTextInputNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiTextInputNotificationBus Behavior context handler class
+class BehaviorUiTextInputNotificationBusHandler
+    : public UiTextInputNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiTextInputNotificationBusHandler, "{5ED20B32-95E2-4EBB-8874-7E780306F7F0}", AZ::SystemAllocator,
@@ -538,7 +540,7 @@ bool UiTextInputComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
         EBUS_EVENT_ID_RESULT(fontSize, m_textEntity, UiTextBus, GetFontSize);
 
         // To get the position of the cursor on the line above or below the
-        // current cursor position, we add or subtract the font size, 
+        // current cursor position, we add or subtract the font size,
         // depending on whether arrow key up or down is provided.
         if (command == UiNavigationHelpers::Command::Up)
         {
@@ -651,9 +653,9 @@ void UiTextInputComponent::LostActiveStatus()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTextInputComponent::Update()
+void UiTextInputComponent::Update(float deltaTime)
 {
-    UiInteractableComponent::Update();
+    UiInteractableComponent::Update(deltaTime);
 
     // if we have not set the enable/disable status of the text and placeholder text since
     // our status changed then set it
@@ -870,6 +872,7 @@ AZ::EntityId UiTextInputComponent::GetTextEntity()
 void UiTextInputComponent::SetTextEntity(AZ::EntityId textEntity)
 {
     m_textEntity = textEntity;
+    m_childTextStateDirtyFlag = true;
     UpdateDisplayedTextFunction();
 }
 
@@ -885,6 +888,7 @@ AZStd::string UiTextInputComponent::GetText()
 void UiTextInputComponent::SetText(const AZStd::string& text)
 {
     EBUS_EVENT_ID(m_textEntity, UiTextBus, SetText, text);
+    m_childTextStateDirtyFlag = true;
 
     // Make sure cursor position and selection is in range
     if (m_textCursorPos >= 0)
@@ -892,7 +896,7 @@ void UiTextInputComponent::SetText(const AZStd::string& text)
         int maxPos = LyShine::GetUtf8StringLength(text);
         int newTextCursorPos = AZ::GetMin(m_textCursorPos, maxPos);
         int newTextSelectionStartPos = AZ::GetMin(m_textSelectionStartPos, maxPos);
-        
+
         if (newTextCursorPos != m_textCursorPos || newTextSelectionStartPos != m_textSelectionStartPos)
         {
             m_textCursorPos = newTextCursorPos;
@@ -918,6 +922,7 @@ AZ::EntityId UiTextInputComponent::GetPlaceHolderTextEntity()
 void UiTextInputComponent::SetPlaceHolderTextEntity(AZ::EntityId textEntity)
 {
     m_placeHolderTextEntity = textEntity;
+    m_childTextStateDirtyFlag = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1298,7 +1303,13 @@ void UiTextInputComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetIsPasswordField", &UiTextInputBus::Events::GetIsPasswordField)
             ->Event("SetIsPasswordField", &UiTextInputBus::Events::SetIsPasswordField)
             ->Event("GetReplacementCharacter", &UiTextInputBus::Events::GetReplacementCharacter)
-            ->Event("SetReplacementCharacter", &UiTextInputBus::Events::SetReplacementCharacter);
+            ->Event("SetReplacementCharacter", &UiTextInputBus::Events::SetReplacementCharacter)
+            ->VirtualProperty("TextSelectionColor", "GetTextSelectionColor", "SetTextSelectionColor")
+            ->VirtualProperty("TextCursorColor", "GetTextCursorColor", "SetTextCursorColor")
+            ->VirtualProperty("CursorBlinkInterval", "GetCursorBlinkInterval", "SetCursorBlinkInterval")
+            ->VirtualProperty("MaxStringLength", "GetMaxStringLength", "SetMaxStringLength");
+
+        behaviorContext->Class<UiTextInputComponent>()->RequestBus("UiTextInputBus");
 
         behaviorContext->EBus<UiTextInputNotificationBus>("UiTextInputNotificationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)

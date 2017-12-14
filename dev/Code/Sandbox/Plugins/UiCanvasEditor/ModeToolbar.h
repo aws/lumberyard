@@ -11,6 +11,12 @@
 */
 #pragma once
 
+#include <QToolBar>
+
+class EditorWindow;
+class QActionGroup;
+class QAction;
+
 class ModeToolbar
     : public QToolBar
 {
@@ -25,6 +31,8 @@ public:
 private:
 
     void AddModes(EditorWindow* parent);
+
+    void AddPixmapToIcon(QIcon& icon, QIcon::Mode iconMode, QColor color);
 
     QActionGroup* m_group;
     QAction* m_previousAction;

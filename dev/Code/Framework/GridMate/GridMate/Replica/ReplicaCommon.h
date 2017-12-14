@@ -14,9 +14,15 @@
 
 #include <GridMate/Types.h>
 #include <GridMate/Replica/ReplicaDefs.h>
+#include <GridMate/Serialize/Buffer.h>
 
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/Math/Crc.h>
+
+#include <AzCore/std/containers/unordered_map.h>
 
 #define GM_MAX_CHUNKS_PER_REPLICA   (64)
 #define GM_MAX_DATASETS_IN_CHUNK    (32)
@@ -46,9 +52,6 @@ namespace GridMate
     class RpcBase;
     struct RpcContext;
 
-    class ReadBuffer;
-    class WriteBuffer;
-
     typedef AZStd::intrusive_ptr<Replica> ReplicaPtr;
     typedef AZStd::intrusive_ptr<ReplicaChunkBase> ReplicaChunkPtr;
 
@@ -57,6 +60,12 @@ namespace GridMate
     */
     static const ReplicaId InvalidReplicaId = 0;
     static const PeerId InvalidReplicaPeerId = 0;
+
+    class TargetCallbackBase
+    {
+    public:
+        virtual void operator()() = 0;
+    };
 
     //-----------------------------------------------------------------------------
     //-----------------------------------------------------------------------------
@@ -99,18 +108,24 @@ namespace GridMate
         bool m_isUpstreamUnreliableDirty;
     };
     //-----------------------------------------------------------------------------
-
+    using CallbackBuffer = AZStd::vector< AZStd::weak_ptr<TargetCallbackBase> >;
+    class ReplicaTarget;
     //-----------------------------------------------------------------------------
     struct MarshalContext
         : public ReplicaContext
     {
         AZ::u32 m_marshalFlags;
         WriteBuffer* m_outBuffer;
-
-        explicit MarshalContext(AZ::u32 marshalFlags, WriteBuffer* writeBuffer, const ReplicaContext& rc)
+        AZ::u64 m_peerLatestVersionAckd;
+        CallbackBuffer*     m_callbackBuffer;
+        ReplicaTarget*      m_target;
+        explicit MarshalContext(AZ::u32 marshalFlags, WriteBuffer* writeBuffer, CallbackBuffer* callbackBuffer, const ReplicaContext& rc, AZ::u64 lastVersionAckd = 0, ReplicaTarget* target = nullptr)
             : ReplicaContext(rc)
             , m_marshalFlags(marshalFlags)
             , m_outBuffer(writeBuffer)
+            , m_peerLatestVersionAckd(lastVersionAckd)
+            , m_callbackBuffer(callbackBuffer)
+            , m_target(target)
         { }
     };
 

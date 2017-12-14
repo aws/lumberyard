@@ -42,7 +42,7 @@ public:
     //  aWidth - the width of the image in pixels
     //  aHeight - the height of the image in pixels
     //  aBitsPerPixel - the number of bits per pixel, currently supported: 8 (monochrome), 24 (RGB) and 32 (RGBA)
-    void ComputeHistogram(BYTE* pImageData, UINT aWidth, UINT aHeight, EImageFormat aFormat = eImageFormat_32BPP_RGBA);
+    void ComputeHistogram(BYTE* pImageData, unsigned int aWidth, unsigned int aHeight, EImageFormat aFormat = eImageFormat_32BPP_RGBA);
     void ClearHistogram();
     void CopyComputedDataFrom(CImageHistogram* histogram);
 
@@ -50,10 +50,10 @@ protected:
     void ComputeStatisticsForChannel(int aIndex);
 
 public:
-    UINT            m_count[kNumChannels][kNumColorLevels];
-    UINT            m_lumCount[kNumColorLevels];
-    UINT            m_maxCount[kNumChannels];
-    UINT            m_maxLumCount;
+    unsigned int    m_count[kNumChannels][kNumColorLevels];
+    unsigned int    m_lumCount[kNumColorLevels];
+    unsigned int    m_maxCount[kNumChannels];
+    unsigned int    m_maxLumCount;
     float           m_mean[kNumChannels], m_stdDev[kNumChannels], m_median[kNumChannels];
     float           m_meanAvg, m_stdDevAvg, m_medianAvg;
     EImageFormat    m_imageFormat;

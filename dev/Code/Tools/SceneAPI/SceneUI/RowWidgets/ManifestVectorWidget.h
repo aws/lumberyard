@@ -72,6 +72,14 @@ namespace AZ
                 ManifestVectorWidget(SerializeContext* serializeContext, QWidget* parent);
                 ~ManifestVectorWidget() override;
 
+                template<typename InputIterator>
+                void SetManifestVector(InputIterator first, InputIterator last, DataTypes::IManifestObject* ownerObject)
+                {
+                    AZ_Assert(ownerObject, "ManifestVectorWidgets must be initialized with a non-null owner object.");
+                    m_manifestVector.assign(first, last);
+                    m_ownerObject = ownerObject;
+                    UpdatePropertyGrid();
+                }
                 void SetManifestVector(const ManifestVectorType& manifestVector, DataTypes::IManifestObject* ownerObject);
                 ManifestVectorType GetManifestVector();
 

@@ -30,12 +30,14 @@ def apply_wwise_settings(self):
         return
 
     platform = self.env['PLATFORM']
-    if platform in ('android_armv7', 'android_armv7_gcc' ):
-        platform = 'android-armeabi-v7a'
-    if platform in ('win_x64_vs2015'):
-        platform = 'x64/vs14'
+    if platform.startswith('android_armv7'):
+        platform = 'android-9_armeabi-v7a'
+    elif platform.startswith('android_armv8'):
+        platform = 'android-21_arm64-v8a'
+    elif platform in ('win_x64_vs2015'):
+        platform = 'x64_vc140'
     else:
-        platform = 'x64/vs12'
+        platform = 'x64_vc120'
 
     configuration =  self.env['CONFIGURATION'].title()
 

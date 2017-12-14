@@ -82,7 +82,7 @@ namespace HierarchyHelpers
     //-------------------------------------------------------------------------------
 
     QAction* CreateAddElementAction(HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         bool addAtRoot,
         const QPoint* optionalPos)
     {
@@ -105,7 +105,7 @@ namespace HierarchyHelpers
     //-------------------------------------------------------------------------------
 
     void CreateItemsAndElements(HierarchyWidget* widget,
-        SerializeHelpers::SerializedEntryList& entryList)
+        const SerializeHelpers::SerializedEntryList& entryList)
     {
         LyShine::EntityArray completeListOfNewlyCreatedTopLevelElements;
 
@@ -142,7 +142,7 @@ namespace HierarchyHelpers
     //-------------------------------------------------------------------------------
 
     LyShine::EntityArray CreateItemsAndElements(HierarchyWidget* widget,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         bool createAsChildOfSelection,
         Creator creator)
     {

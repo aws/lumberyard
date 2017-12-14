@@ -15,8 +15,8 @@
 #include "PostAA.h"
 #include "DriverD3D.h"
 #include "D3DPostProcess.h"
-
 #include "DepthOfField.h"
+#include "../../Common/Textures/TextureManager.h"
 
 struct TemporalAAParameters
 {
@@ -139,10 +139,7 @@ static void BuildTemporalParameters(TemporalAAParameters& temporalAAParameters)
     temporalAAParameters.m_sharpeningFactor = max(CRenderer::CV_r_AntialiasingTAASharpening + 1.0f, 1.0f);
     temporalAAParameters.m_useAntiFlickerFilter = (float)CRenderer::CV_r_AntialiasingTAAUseAntiFlickerFilter;
     temporalAAParameters.m_clampingFactor = CRenderer::CV_r_AntialiasingTAAClampingFactor;
-
-    // Computes the frame weight using an exponential falloff function with respect to time. This is so that higher FPS gets more history and lower FPS gets more of the current frame.
-    const float FrameWeightMin = 0.1f; /// Use 10% of the current frame. Any more than this and jitter will start to dominate.
-    temporalAAParameters.m_newFrameWeight = AZStd::min(1.0f - expf(-CRenderer::GetElapsedTime() / AZStd::max(gRenDev->CV_r_AntialiasingTAANewFrameFalloff, FLT_EPSILON)), FrameWeightMin);
+    temporalAAParameters.m_newFrameWeight = AZStd::max(gRenDev->CV_r_AntialiasingTAANewFrameWeight, FLT_EPSILON);
 }
 
 void PostAAPass::RenderTemporalAA(
@@ -199,9 +196,6 @@ void PostAAPass::RenderTemporalAA(
 
         {
             const float sharpening = max(0.5f + CRenderer::CV_r_AntialiasingTAASharpening, 0.5f); // Catmull-rom sharpening baseline is 0.5.
-            const float motionDifferenceMaxInverse = (float)outputTarget->GetWidth() / max(CRenderer::CV_r_AntialiasingTAAMotionDifferenceMax, FLT_EPSILON);
-            const float motionDifferenceMaxWeight = clamp_tpl(CRenderer::CV_r_AntialiasingTAAMotionDifferenceMaxWeight, 0.0f, 1.0f);
-            const float luminanceMax = max(CRenderer::CV_r_AntialiasingTAALuminanceMax, 0.0f);
 
             static CCryNameR paramName("TemporalParams");
             Vec4 temporalParams[4];
@@ -212,9 +206,9 @@ void PostAAPass::RenderTemporalAA(
                 sharpening);
 
             temporalParams[1] = Vec4(
-                motionDifferenceMaxInverse,
-                motionDifferenceMaxWeight,
-                luminanceMax,
+                0.0f,
+                0.0f,
+                0.0f,
                 temporalAAParameters.m_beckmannHarrisFilter[0]);
 
             temporalParams[2] = Vec4(
@@ -259,6 +253,12 @@ void PostAAPass::RenderTemporalAA(
             GetUtils().SetTexture(CTexture::s_ptexHDRToneMaps[0], 2, FILTER_LINEAR);
         }
     }
+#if defined(CRY_USE_METAL) // Metal still expects a bound texture here!
+    else
+    {
+        GetUtils().SetTexture(CTextureManager::Instance()->GetWhiteTexture(), 2, FILTER_LINEAR);
+    }
+#endif
 
     GetUtils().SetTexture(GetUtils().GetVelocityObjectRT(), 3, FILTER_POINT);
     GetUtils().SetTexture(CTexture::s_ptexZTarget, 5, FILTER_POINT);
@@ -304,7 +304,7 @@ void PostAAPass::Execute()
         RenderSMAA(inOutBuffer, &inOutBuffer);
         break;
     case eAT_FXAA:
-        RenderFXAA(inOutBuffer);
+        RenderFXAA(inOutBuffer, &inOutBuffer);        
         break;
     case eAT_NOAA:
         break;
@@ -462,9 +462,11 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
     }
 }
 
-void PostAAPass::RenderFXAA(CTexture* sourceTexture)
+void PostAAPass::RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture)
 {
     PROFILE_LABEL_SCOPE("FXAA");
+    CTexture* currentTarget = CTexture::s_ptexSceneNormalsMap;
+    gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
 
     CShader* pShader = CShaderMan::s_shPostAA;
     const f32 fWidthRcp = 1.0f / (float)gcpRendD3D->GetWidth();
@@ -486,6 +488,8 @@ void PostAAPass::RenderFXAA(CTexture* sourceTexture)
     gcpRendD3D->FX_Commit();
 
     GetUtils().ShEndPass();
+    gcpRendD3D->FX_PopRenderTarget(0);
+    *outputTexture = currentTarget;
 }
 
 void PostAAPass::RenderComposites(CTexture* sourceTexture)
@@ -555,6 +559,14 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
 
     if (CRenderer::CV_r_MotionVectorsDebug)
     {
+        // This is necessary because the depth target is currently bound, and we are reading from it
+        // in this pass. Therefore, this pushes the same target without the depth buffer and then pops
+        // it at the end.
+        CTexture* texture = gcpRendD3D->FX_GetCurrentRenderTarget(0);
+        AZ_Assert(texture, "No render target is bound.");
+        gcpRendD3D->FX_PushRenderTarget(0, texture, nullptr);
+        gcpRendD3D->FX_SetActiveRenderTargets();
+
         TemporalAAParameters temporalAAParameters;
         BuildTemporalParameters(temporalAAParameters);
 
@@ -573,6 +585,9 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
         depthSRV[0] = nullptr;
         gcpRendD3D->m_DevMan.BindSRV(eHWSC_Pixel, depthSRV, 16, 1);
         gcpRendD3D->FX_Commit();
+
+        gcpRendD3D->FX_PopRenderTarget(0);
+        gcpRendD3D->FX_SetActiveRenderTargets();
     }
     else
     {
@@ -603,7 +618,8 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
             static CCryNameR szHDREyeAdaptationParam("HDREyeAdaptation");
             CShaderMan::s_shPostAA->FXSetPSFloat(szHDREyeAdaptationParam, &vHDRSetupParams[3], 1);
 
-            GetUtils().SetTexture(CTexture::s_ptexFilmGrainMap, 6, FILTER_POINT, 0);
+            GetUtils().SetTexture(CTextureManager::Instance()->GetDefaultTexture("FilmGrainMap"), 6, FILTER_POINT, 0);
+
             if (CTexture::s_ptexCurLumTexture)
             {
                 GetUtils().SetTexture(CTexture::s_ptexCurLumTexture, 7, FILTER_POINT);
@@ -611,7 +627,7 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
 #ifdef CRY_USE_METAL // Metal still expects a bound texture here!
             else
             {
-                CTexture::s_ptexWhite->Apply(7, FILTER_POINT);
+                CTextureManager::Instance()->GetWhiteTexture()->Apply(7, FILTER_POINT);
             }
 #endif
         }

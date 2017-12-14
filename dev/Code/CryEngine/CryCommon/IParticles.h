@@ -91,13 +91,11 @@ struct SpawnParams
     Vec3                    colorTint;                  // particle color tint
     Vec2                    particleSizeScale;          // Multiplier for particle size. For geom particle, it only uses y component for uniform scale
     float                   particleSizeScaleRandom;    // Random for particle size's scale.
-    bool                    useLOD;                     // use LOD or not if the emitter has lod
 
     inline SpawnParams(EGeomType eType = GeomType_None, EGeomForm eForm = GeomForm_Surface)
         : colorTint(1.0f, 1.0f, 1.0f)
         , particleSizeScale(1.0f, 1.0f)
         , particleSizeScaleRandom(0.0f)
-        , useLOD(true)
     {
         eAttachType = eType;
         eAttachForm = eForm;
@@ -255,10 +253,6 @@ struct IParticleEffect
     //      distance - distance of the level
     virtual void AddLevelOfDetail() = 0;
 
-    // Summary:
-    //      Adds this effect into the lods of its parents. This undoes RemoveLevelOfDetail(SLodInfo*)
-    //      when this is a child effect.
-    virtual void AddParentLodsToEffect() = 0;
 
     // Summary:
     //      Determines if the effect has level of detail.
@@ -390,6 +384,20 @@ struct IParticleEffect
     // Return Value:
     // A pointer representing the particles effect parent.
     virtual IParticleEffect* GetParent() const = 0;
+
+    // Summary:
+    //   Gets the root particle effect.
+    // Return Value:
+    // A pointer representing the root particles effect
+    IParticleEffect* GetRoot()
+    {
+        IParticleEffect* root = this;
+        while (root->GetParent())
+        {
+            root = root->GetParent();
+        }
+        return root;
+    }
 
     // Summary:
     //   Loads all resources needed for a particle effects.
@@ -565,15 +573,7 @@ struct IParticleEmitter
     virtual float GetRelativeAge(float fStartAge = 0.f) const = 0; //provides the relative age for the emitter based on 0-1.f (age/stopAge)
     virtual float GetAliveParticleCount() const = 0;             //Eric@conffx
     virtual QuatTS GetLocationQuat() const = 0;          //Eric@conffx
-
-    // Summary:
-    //      Forces the provides lod to rendered regardless of camera distance
-    virtual void ForceShowLod(SLodInfo* lod = nullptr) = 0;
-
-    // Summary:
-    //      Returns the lod that is forced to show
-    virtual SLodInfo* GetForcedLod() = 0;
-    
+        
     // Summary:
     //      Returns true when this emitter is in preview mode
     virtual bool GetPreviewMode() const = 0;

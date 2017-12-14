@@ -72,7 +72,7 @@ public:
 #endif
     }
 
-    CMaterialSender::~CMaterialSender()
+    ~CMaterialSender()
     {
 #if defined(AZ_PLATFORM_WINDOWS)
         if (hMapFile)
@@ -160,7 +160,9 @@ private:
     }
 
 public:
+#if defined(AZ_PLATFORM_WINDOWS)
     SMaterialMapFileHeader m_h;
+#endif
     XmlNodeRef m_node;
 private:
     bool m_bIsMatEditor;

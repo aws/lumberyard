@@ -20,6 +20,7 @@
 #include <QMetaObject>
 #include <Serialization/IArchive.h>
 #include "../EditorCommon/QPropertyTree/QPropertyTree.h"
+#include "Explorer.h"
 
 class QToolButton;
 class QLineEdit;
@@ -30,6 +31,9 @@ class QModelIndex;
 class QAbstractItemModel;
 class QMenu;
 class QDockWidget;
+class QMainWindow;
+
+struct ExplorerEntryModifyEvent;
 
 namespace Serialization {
     class IArchive;

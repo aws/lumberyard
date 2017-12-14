@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_NumberNodeHasProperties = false;
-
             class Number
-                : public NativeDatumNode<Number, Data::NumberType, k_NumberNodeHasProperties>
+                : public NativeDatumNode<Number, Data::NumberType>
             {
             public:
-                using ParentType = NativeDatumNode<Number, Data::NumberType, k_NumberNodeHasProperties>;
+                using ParentType = NativeDatumNode<Number, Data::NumberType>;
                 AZ_COMPONENT(Number, "{E1E746E9-2761-431E-9D06-717381F9822D}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

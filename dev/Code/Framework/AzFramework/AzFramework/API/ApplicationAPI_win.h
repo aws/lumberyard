@@ -29,7 +29,12 @@ namespace AzFramework
 
         using Bus = AZ::EBus<WindowsLifecycleEvents>;
 
-        virtual void OnMinimized() {}           // Constrain
-        virtual void OnMaximizedOrRestored() {} // Unconstrain
+        virtual void OnMinimized() {}
+        virtual void OnMaximized() {}
+
+        virtual void OnRestored() {}
+
+        virtual void OnKillFocus() {}
+        virtual void OnSetFocus() {}
     };
 } // namespace AzFramework

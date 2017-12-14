@@ -17,7 +17,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/Math/MathUtils.h>
 #include <IGameObjectSystem.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <MathConversion.h>
 
 #include "Components/PlayerControllerComponent.h"

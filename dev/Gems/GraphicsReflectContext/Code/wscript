@@ -31,6 +31,8 @@ def build(bld):
 
         features        = ['az_code_gen'],
         
+        win_features    = ['crcfix'],
+        
         az_code_gen = [
             {
                 'files'   : CODEGEN_FILE_LIST,

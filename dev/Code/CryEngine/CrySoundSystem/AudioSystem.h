@@ -112,8 +112,8 @@ namespace Audio
 
         void ExternalUpdate() override;
 
-        void AddRequestListener(AudioRequestCallbackType func, void* const pObjectToListenTo, EAudioRequestType const requestType = eART_AUDIO_ALL_REQUESTS, TATLEnumFlagsType const specificRequestMask = ALL_AUDIO_REQUEST_SPECIFIC_TYPE_FLAGS) override;
-        void RemoveRequestListener(AudioRequestCallbackType func, void* const pObjectToListenTo) override;
+        void AddRequestListener(AudioRequestCallbackType func, void* const callbackOwner, EAudioRequestType const requestType = eART_AUDIO_ALL_REQUESTS, TATLEnumFlagsType const specificRequestMask = ALL_AUDIO_REQUEST_SPECIFIC_TYPE_FLAGS) override;
+        void RemoveRequestListener(AudioRequestCallbackType func, void* const callbackOwner) override;
 
         TAudioControlID GetAudioTriggerID(const char* const sAudioTriggerName) const override;
         TAudioControlID GetAudioRtpcID(const char* const sAudioRtpcName) const override;
@@ -129,6 +129,7 @@ namespace Audio
         void GetInfo(SAudioSystemInfo& rAudioSystemInfo) override;
         const char* GetControlsPath() const override;
         void UpdateControlsPath() override;
+        void RefreshAudioSystem(const char* const levelName) override;
 
         IAudioProxy* GetFreeAudioProxy() override;
         void FreeAudioProxy(IAudioProxy* const pIAudioProxy) override;

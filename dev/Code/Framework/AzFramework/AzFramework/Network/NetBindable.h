@@ -447,9 +447,10 @@ namespace AZ
             : public GenericClassInfo
         {
         public:
+            AZ_TYPE_INFO(GenericClassNetBindableField, "{C1D4DD97-5DD7-42ED-969C-7435F27F5D8C}");
             GenericClassNetBindableField()
             {
-                m_classData = SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::Field", "{C1D4DD97-5DD7-42ED-969C-7435F27F5D8C}", Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage);
+                m_classData = SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::Field", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage);
             }
 
             SerializeContext::ClassData* GetClassData() override
@@ -467,9 +468,26 @@ namespace AZ
                 return SerializeGenericTypeInfo<DataType>::GetClassTypeId();
             }
 
-            const Uuid& GetSpecializedTypeId() override
+            const Uuid& GetSpecializedTypeId() const override
             {
                 return azrtti_typeid<ContainerType>();
+            }
+
+            const Uuid& GetGenericTypeId() const override
+            {
+                return TYPEINFO_Uuid();
+            }
+
+            void Reflect(SerializeContext* serializeContext)
+            {
+                if (serializeContext)
+                {
+                    serializeContext->RegisterGenericClassInfo(GetSpecializedTypeId(), this, &AnyTypeInfoConcept<ContainerType>::CreateAny);
+                    if (GenericClassInfo* containerGenericClassInfo = m_containerStorage.m_classElement.m_genericClassInfo)
+                    {
+                        containerGenericClassInfo->Reflect(serializeContext);
+                    }
+                }
             }
 
             static GenericClassNetBindableField* Instance()
@@ -503,9 +521,10 @@ namespace AZ
             : public GenericClassInfo
         {
         public:
+            AZ_TYPE_INFO(GenericClassNetBindableBoundField, "{EFD64FE7-9432-401A-B7A1-1767F4C5A7F0}");
             GenericClassNetBindableBoundField()
             {
-                m_classData = SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::BoundField", "{EFD64FE7-9432-401A-B7A1-1767F4C5A7F0}", Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage);
+                m_classData = SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::BoundField", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage);
             }
 
             SerializeContext::ClassData* GetClassData() override
@@ -523,9 +542,26 @@ namespace AZ
                 return SerializeGenericTypeInfo<DataType>::GetClassTypeId();
             }
 
-            const Uuid& GetSpecializedTypeId() override
+            const Uuid& GetSpecializedTypeId() const override
             {
                 return azrtti_typeid<ContainerType>();
+            }
+
+            const Uuid& GetGenericTypeId() const override
+            {
+                return TYPEINFO_Uuid();
+            }
+
+            void Reflect(SerializeContext* serializeContext)
+            {
+                if (serializeContext)
+                {
+                    serializeContext->RegisterGenericClassInfo(GetSpecializedTypeId(), this, &AnyTypeInfoConcept<ContainerType>::CreateAny);
+                    if (GenericClassInfo* containerGenericClassInfo = m_containerStorage.m_classElement.m_genericClassInfo)
+                    {
+                        containerGenericClassInfo->Reflect(serializeContext);
+                    }
+                }
             }
 
             static GenericClassNetBindableBoundField* Instance()

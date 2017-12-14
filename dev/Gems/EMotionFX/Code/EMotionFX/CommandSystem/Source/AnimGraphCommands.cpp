@@ -366,35 +366,33 @@ namespace CommandSystem
     {
         MCore::String resultString;
 
-        // find a unique anim graph name
-        int animGraphIndex = 0;
-        MCore::String animGraphIndexString;
-        MCore::String animGraphName = "AnimGraph0";
-        while (EMotionFX::GetAnimGraphManager().FindAnimGraphByName(animGraphName))
+        // Generate a unique anim graph name.
+        AZ::u32 animGraphIndex = 0;
+        AZStd::string animGraphName = "AnimGraph00";
+        while (EMotionFX::GetAnimGraphManager().FindAnimGraphByName(animGraphName.c_str()))
         {
-            animGraphIndexString.FromInt(++animGraphIndex);
-            animGraphName = "AnimGraph" + animGraphIndexString;
+            animGraphName = AZStd::string::format("AnimGraph%02d", ++animGraphIndex);
         }
 
         // get the new name of the anim graph to create
         if (parameters.CheckIfHasParameter("name"))
         {
-            parameters.GetValue("name", this, &animGraphName);
+            parameters.GetValue("name", this, animGraphName);
         }
         if (mOldName.GetIsEmpty() == false)
         {
             animGraphName = mOldName;
         }
-        mOldName = animGraphName;
+        mOldName = animGraphName.c_str();
 
         // create the anim graph
-        EMotionFX::AnimGraph* animGraph = EMotionFX::AnimGraph::Create(animGraphName.AsChar());
+        EMotionFX::AnimGraph* animGraph = EMotionFX::AnimGraph::Create(animGraphName.c_str());
 
         // create the root state machine object
         EMotionFX::AnimGraphObject* rootSMObject = EMotionFX::GetAnimGraphManager().GetObjectFactory()->CreateObjectByTypeID(animGraph, EMotionFX::AnimGraphStateMachine::TYPE_ID);
         if (rootSMObject == nullptr)
         {
-            MCore::LogWarning("Cannot instantiate root state machine for anim graph '%s'.", animGraphName.AsChar());
+            MCore::LogWarning("Cannot instantiate root state machine for anim graph '%s'.", animGraphName.c_str());
             return false;
         }
 

@@ -53,7 +53,8 @@ def build(bld):
         #win_cxxflags               = msvc_cxx_flags,
         includes                    = ['./Include', 
                                        './Source', 
-                                       './' 
+                                       './',
+                                       bld.Path('Gems/LmbrCentral/Code/include')        # Not the right way, use_required_gems should be used, but can't because of an issue (LY-51626).
                                       ],
         export_includes             = ['./Include', "./"],
         disable_pch                 = True,
@@ -79,7 +80,6 @@ def build(bld):
                                        './'
                                       ],
         export_includes             = ['./Include'],
-        export_defines              = ['EMOTIONFX_GEM_ENABLED'],        # To be removed when FbxScene can build emfx asset without axis swap, and the Editor gets a bus to add actions to toolbars
         disable_pch                 = True,
         pch                         = '',
 

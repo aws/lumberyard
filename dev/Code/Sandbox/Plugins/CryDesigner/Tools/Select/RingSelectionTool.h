@@ -33,10 +33,10 @@ public:
     }
 
     void Enter() override;
-    static void RingSelection(CD::SMainContext& mc);
+    static void RingSelection(const CD::SMainContext& mc);
 
 private:
 
-    static void SelectFaceRing(CD::SMainContext& mc);
-    static void SelectRing(CD::SMainContext& mc, const BrushEdge3D& inputEdge);
+    static void SelectFaceRing(const CD::SMainContext& mc);
+    static void SelectRing(const CD::SMainContext& mc, const BrushEdge3D& inputEdge);
 };

@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "StackWidget.h"
 
 #include <QVBoxLayout>

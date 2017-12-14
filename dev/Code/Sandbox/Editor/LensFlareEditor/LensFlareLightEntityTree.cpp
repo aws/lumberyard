@@ -15,7 +15,6 @@
 #include "LensFlareLightEntityTree.h"
 #include "LensFlareUtil.h"
 #include "LensFlareItem.h"
-#include "Objects/EntityObject.h"
 #include "LensFlareEditor.h"
 #include "Viewport.h"
 

@@ -1,3 +1,16 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+#include "stdafx.h"
+
 #include "ImportableResourcesWidget.h"
 #include "ResourceManagementView.h"
 #include "StackResourcesWidget.h"
@@ -394,7 +407,7 @@ void ImportableResourcesWidget::CheckResourceNameGiven(QModelIndex current, QMod
         }
 
         QStandardItem* resourceType = m_importerModel->item(m_selectedRowList[row], IAWSImporterModel::TypeColumn);
-        string jsonResourceType;
+        QString jsonResourceType;
 
         if (resourceType->text() == "AWS::DynamoDB::Table")
             jsonResourceType = "dynamodb";
@@ -407,16 +420,16 @@ void ImportableResourcesWidget::CheckResourceNameGiven(QModelIndex current, QMod
         else if (resourceType->text() == "AWS::S3::Bucket")
             jsonResourceType = "s3";
 
-        string regex;
-        string help;
+        QString regex;
+        QString help;
         int minLen;
         if (m_view->GetResourceValidationData(jsonResourceType, "name", regex, help, minLen))
         {
-            QRegExp re(regex.c_str());
+            QRegExp re(regex);
             if (!re.exactMatch(resource->text()))
             {
                 resource->setBackground(QBrush(QColor("#300000")));
-                resource->setToolTip(QString(help.c_str()));
+                resource->setToolTip(QString(help));
                 error = true;
             }
             else
@@ -477,7 +490,7 @@ void ImportableResourcesWidget::OnImporterOutput(const QVariant& output, const c
     }
 
     //If all the resources have been imported successfully, operation is canceled or error occurs, stop
-    if (m_listfinished && (m_progress->wasCanceled() || m_selectedRowList.length() <= 0 || outputType == "error"))
+    if (m_listfinished && (m_progress->wasCanceled() || m_selectedRowList.length() <= 0 || QString(outputType) == "error"))
     {
         disconnect(m_importerModel.data(), &IAWSImporterModel::ImporterOutput, this, &ImportableResourcesWidget::OnImporterOutput);
         //Reset the import and cancel button
@@ -486,7 +499,7 @@ void ImportableResourcesWidget::OnImporterOutput(const QVariant& output, const c
         GetCancelButton()->setEnabled(true);
 
         //If error occurs, show the error in a message box
-        if (outputType == "error")
+        if (QString(outputType) == "error")
         {
             m_progress->cancel();
             EnableConfigureButton(true);

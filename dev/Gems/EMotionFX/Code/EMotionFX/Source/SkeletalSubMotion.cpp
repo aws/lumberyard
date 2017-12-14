@@ -98,7 +98,7 @@ namespace EMotionFX
             return;
         }
 
-        mPosTrack = new KeyTrackLinear<MCore::Vector3, MCore::Vector3>();
+        mPosTrack = new KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>();
     }
 
 
@@ -123,7 +123,7 @@ namespace EMotionFX
             return;
         }
 
-        mScaleTrack = new KeyTrackLinear<MCore::Vector3, MCore::Vector3>();
+        mScaleTrack = new KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>();
     }
 #endif
 
@@ -159,7 +159,7 @@ namespace EMotionFX
     bool SkeletalSubMotion::CheckIfIsUniformScaled() const
     {
         // if the pose or bind pose scale values already aren't uniform we don't have to check the keyframes at all
-        if (mPoseScale.CheckIfIsUniform() == false || mBindPoseScale.CheckIfIsUniform() == false)
+        if (MCore::CheckIfIsUniform(mPoseScale) == false || MCore::CheckIfIsUniform(mBindPoseScale) == false)
         {
             return false;
         }
@@ -174,8 +174,8 @@ namespace EMotionFX
         const uint32 numKeys = mScaleTrack->GetNumKeys();
         for (uint32 i = 0; i < numKeys; ++i)
         {
-            const MCore::Vector3& value = mScaleTrack->GetKey(i)->GetValue();
-            if (value.CheckIfIsUniform() == false)
+            const AZ::Vector3& value = AZ::Vector3(mScaleTrack->GetKey(i)->GetValue());
+            if (MCore::CheckIfIsUniform(value) == false)
             {
                 return false;
             }

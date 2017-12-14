@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -11,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#pragma once
 
 #include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
 
@@ -42,5 +42,5 @@ namespace AZ
         private:
             IConvertContext* m_convertContext;
         };
-    }
-}
+    } // namespace RC
+} // namespace AZ

@@ -99,7 +99,6 @@ namespace AzToolsFramework
         BusConnect();
         m_queuedRefreshLevel = Refresh_None;
         m_ptrNotify = nullptr;
-        m_readOnly = false;
         m_hideRootProperties = false;
         m_queuedTabOrderRefresh = false;
         m_spacer = nullptr;
@@ -107,6 +106,8 @@ namespace AzToolsFramework
         m_selectedRow = nullptr;
         m_selectionEnabled = false;
         m_autoResizeLabels = false;
+
+        m_hasFilteredOutNodes = false;
     }
 
     ReflectedPropertyEditor::~ReflectedPropertyEditor()
@@ -142,21 +143,6 @@ namespace AzToolsFramework
             m_containerWidget->setParent(m_mainScrollArea);
             m_mainScrollArea->setWidget(m_containerWidget);
             qobject_cast<QVBoxLayout*>(layout())->insertWidget(0, m_mainScrollArea);
-        }
-    }
-
-    void ReflectedPropertyEditor::SetReadOnly(bool readOnly)
-    {
-        m_readOnly = readOnly;
-
-        for (auto widget : m_widgets)
-        {
-            widget.second->SetReadOnly(readOnly);
-        }
-
-        for (auto widget : m_groupWidgets)
-        {
-            widget.second->SetReadOnly(readOnly);
         }
     }
 
@@ -309,6 +295,11 @@ namespace AzToolsFramework
             return;
         }
 
+        if (IsFilteredOut(node))
+        {
+            return;
+        }
+
         // Evaluate editor reflection and visibility attributes for the node.
         const NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(*node);
         if (visibility == NodeDisplayVisibility::NotVisible)
@@ -361,6 +352,7 @@ namespace AzToolsFramework
             if (pParent)
             {
                 pParent->AddedChild(pWidget);
+                pParent->SetExpanded(pParent->IsExpanded()); // force child refresh
             }
 
             pParent = pWidget;
@@ -407,15 +399,13 @@ namespace AzToolsFramework
             {
                 pWidget->HideContent();
             }
-
-            pWidget->SetReadOnly(m_readOnly);
         }
 
         setUpdatesEnabled(true);
     }
 
     /// Must call after Add/Remove instance for the change to be applied
-    void ReflectedPropertyEditor::InvalidateAll()
+    void ReflectedPropertyEditor::InvalidateAll(const char* filter)
     {
         setUpdatesEnabled(false);
 
@@ -428,9 +418,13 @@ namespace AzToolsFramework
         ReturnAllToPool();
         ++m_expansionDepth;
 
+        m_nodeFilteredOutState.clear();
+        m_hasFilteredOutNodes = false;
+
         for (auto& instance : m_instances)
         {
             instance.Build(m_context, AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
+            FilterNode(instance.GetRootNode(), filter);
             AddProperty(instance.GetRootNode(), NULL, 0);
         }
 
@@ -487,6 +481,45 @@ namespace AzToolsFramework
         AdjustLabelWidth();
 
         setUpdatesEnabled(true);
+    }
+
+    bool ReflectedPropertyEditor::FilterNode(InstanceDataNode* node, const char* filter)
+    {
+        bool isFilterMatch = true;
+
+        if (node)
+        {
+            const NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(*node, false);
+
+            if (filter)
+            {
+                isFilterMatch = NodeMatchesFilter(*node, filter) && visibility == NodeDisplayVisibility::Visible;
+
+                if (!isFilterMatch)
+                {
+                    for (auto& childNode : node->GetChildren())
+                    {
+                        isFilterMatch |= FilterNode(&childNode, filter);
+                    }
+
+                    if (!isFilterMatch && visibility == NodeDisplayVisibility::Visible)
+                    {
+                        m_hasFilteredOutNodes = true;
+                    }
+
+                }
+            }
+
+            m_nodeFilteredOutState[node] = !isFilterMatch;
+        }
+
+        return isFilterMatch;
+    }
+
+    bool ReflectedPropertyEditor::IsFilteredOut(InstanceDataNode* node)
+    {
+        auto hiddenItr = m_nodeFilteredOutState.find(node);
+        return hiddenItr != m_nodeFilteredOutState.end() && hiddenItr->second;
     }
 
     void ReflectedPropertyEditor::AdjustLabelWidth()
@@ -687,8 +720,6 @@ namespace AzToolsFramework
                 // contract all children!
                 widgetForChild->hide();
             }
-
-            widgetForChild->SetReadOnly(m_readOnly);
         }
 
         --m_expansionDepth;
@@ -982,12 +1013,6 @@ namespace AzToolsFramework
             container->RemoveElement(pContainerNode->GetInstance(instanceIndex), elementPtr, pContainerNode->GetSerializeContext());
         }
 
-        // Fire general change notifications for the container widget.
-        if (widget)
-        {
-            widget->DoPropertyNotify();
-        }
-
         if (m_ptrNotify)
         {
             m_ptrNotify->AfterPropertyModified(pContainerNode);
@@ -1017,6 +1042,12 @@ namespace AzToolsFramework
                     }
                 }
             }
+        }
+
+        // Fire general change notifications for the container widget.
+        if (widget)
+        {
+            widget->DoPropertyNotify();
         }
 
         QueueInvalidation(Refresh_EntireTree);

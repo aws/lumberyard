@@ -67,13 +67,13 @@ namespace MCommon
          * Set the position of the camera.
          * @param position The new position of the camera.
          */
-        MCORE_INLINE void SetPosition(const MCore::Vector3& position);
+        MCORE_INLINE void SetPosition(const AZ::Vector3& position);
 
         /**
          * Get the position of the camera.
          * @return The current position of the camera.
          */
-        MCORE_INLINE const MCore::Vector3& GetPosition() const;
+        MCORE_INLINE const AZ::Vector3& GetPosition() const;
 
         /**
          * Set the projection type.
@@ -273,7 +273,7 @@ namespace MCommon
         MCore::Matrix           mViewMatrix;                /**< The view matrix. */
         MCore::Matrix           mViewProjMatrix;            /**< ViewMatrix * projectionMatrix. Will be recalculated every update call. */
         MCore::ViewFrustum      mFrustum;                   /**< The camera view frustum. */
-        MCore::Vector3          mPosition;                  /**< The camera position. */
+        AZ::Vector3             mPosition;                  /**< The camera position. */
         AZ::Vector2             mOrthoClipDimensions;       /**< A two component vector which defines the distance to the left (x component) and to the top (y component) from the view origin. */
         float                   mFOV;                       /**< The vertical field-of-view in degrees. */
         float                   mNearClipDistance;          /**< Distance to the near clipping plane. */

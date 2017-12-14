@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "NoResourceWidget.h"
 #include "ResourceManagementView.h"
 #include <IAWSResourceManager.h>

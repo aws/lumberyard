@@ -430,7 +430,6 @@ private:
 class CHWShader_D3D
     : public CHWShader
 {
-    friend class CCompiledRenderObject;
     friend class CD3D9Renderer;
     friend class CAsyncShaderTask;
     friend class CGParamManager;
@@ -471,10 +470,13 @@ class CHWShader_D3D
         EHWShaderClass m_eClass;
 
         int m_nParams[2]; // 0: Instance independent; 1: Instance depended
+
+        // Shader-specific data (unlike the static per frame which are shared)
         std::vector<STexSamplerRT> m_pSamplers;
         std::vector<SCGSampler> m_Samplers;
-        std::vector<SCGTexture> m_Textures;
+        std::vector<SCGTexture> m_Textures;     
         std::vector<SCGBind> m_pBindVars;
+
         int m_nParams_Inst;
         float m_fLastAccess;
         int m_nUsed;
@@ -916,7 +918,7 @@ public:
 
     void UpdatePerInstanceConstantBuffer();
     void UpdatePerBatchConstantBuffer();
-    static void UpdatePerFrameConstantBuffer();
+    static void UpdatePerFrameResourceGroup();
 
     inline void mfSetSamplers(const std::vector<STexSamplerRT>& Samplers, EHWShaderClass eHWClass)
     {
@@ -1037,11 +1039,19 @@ public:
     static bool mfAddFXSampler(SHWSInstance* pInst, SShaderFXParams& FXParams, SFXSampler* pr, const char* ParamName, SCGBind* pBind, CShader* ef, EHWShaderClass eSHClass);
     static bool mfAddFXTexture(SHWSInstance* pInst, SShaderFXParams& FXParams, SFXTexture* pr, const char* ParamName, SCGBind* pBind, CShader* ef, EHWShaderClass eSHClass);
 
+    /* 
+    Add shader parameters during the shader parsing.  A parameters can be Sampler, Texture or Constant 
+    */
     static void mfAddFXParameter(SHWSInstance* pInst, SParamsGroup& OutParams, SShaderFXParams& FXParams, SFXParam* pr, const char* ParamName, SCGBind* pBind, CShader* ef, bool bInstParam, EHWShaderClass eSHClass);
     static bool mfAddFXParameter(SHWSInstance* pInst, SParamsGroup& OutParams, SShaderFXParams& FXParams, const char* param, SCGBind* bn, bool bInstParam, EHWShaderClass eSHClass, CShader* pFXShader);
+
     static void mfGatherFXParameters(SHWSInstance* pInst, std::vector<SCGBind>* InstBindVars, CHWShader_D3D* pSH, int nFlags, CShader* pFXShader);
 
+    /*
+    Associates the final binding of all resources slots per shader instance.
+    */
     static void mfCreateBinds(SHWSInstance* pInst, void* pConstantTable, byte* pShader, int nSize);
+
     bool mfUpdateSamplers(CShader* shader);
     static void mfPostVertexFormat(SHWSInstance * pInst, CHWShader_D3D * pHWSH, bool bCol, byte bNormal, bool bTC0, bool bTC1, bool bPSize, bool bTangent[2], bool bBitangent[2], bool bHWSkin, bool bSH[2], bool bMorphTarget, bool bMorph);
     void mfUpdateFXVertexFormat(SHWSInstance* pInst, CShader* pSH);
@@ -1136,8 +1146,8 @@ public:
     static int s_nDevicePSDataSize;
     static int s_nDeviceVSDataSize;
 
-    static std::vector<SCGTexture> s_PF_Textures;
-    static std::vector<STexSamplerRT> s_PF_Samplers;   // Per-frame samplers
+    static std::vector<SCGTexture> s_PF_Textures;       // Per frame textures (shared between all)
+    static std::vector<STexSamplerRT> s_PF_Samplers;    // Per-frame samplers (shared between all)
 
     friend struct SShaderTechniqueStat;
 };

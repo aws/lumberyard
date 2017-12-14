@@ -49,11 +49,7 @@ namespace EMotionFX
 
                 // IMotionGroup overrides
                 const AZStd::string& GetSelectedRootBone() const override;
-                AZ::u32 GetStartFrame() const override;
-                AZ::u32 GetEndFrame() const override;
                 void SetSelectedRootBone(const AZStd::string& selectedRootBone)  override;
-                void SetStartFrame(AZ::u32 frame) override;
-                void SetEndFrame(AZ::u32 frame) override;
 
                 // IGroup overrides
                 const AZStd::string& GetName() const override;
@@ -66,8 +62,6 @@ namespace EMotionFX
                 AZStd::string                             m_name;
                 AZStd::string                             m_selectedRootBone;
                 AZ::Uuid                                  m_id;
-                AZ::u32                                   m_startFrame;
-                AZ::u32                                   m_endFrame;
             };
         }
     }

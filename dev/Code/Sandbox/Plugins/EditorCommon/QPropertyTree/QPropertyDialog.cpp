@@ -57,7 +57,7 @@ static string getFullStateFilename(const char* filename)
     // use current folder
     return filename;
 #else
-    string path = GetIEditor()->GetUserFolder().toLatin1().data();
+    string path = GetIEditor()->GetResolvedUserFolder().toUtf8().data();
     if (!path.empty() && path[path.size() - 1] != '\\' && path[path.size() - 1] != '/')
     {
         path.push_back('\\');

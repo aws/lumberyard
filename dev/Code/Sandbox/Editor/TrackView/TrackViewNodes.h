@@ -148,7 +148,7 @@ private:
     void CreateSetAnimationLayerPopupMenu(QMenu& menuSetLayer, CTrackViewTrack* pTrack) const;
 
     int GetIconIndexForTrack(const CTrackViewTrack* pTrack) const;
-    int GetIconIndexForNode(EAnimNodeType type) const;
+    int GetIconIndexForNode(AnimNodeType type) const;
 
     void AddNodeRecord(CRecord* pParentRecord, CTrackViewNode* pNode);
     CRecord* AddTrackRecord(CRecord* pParentRecord, CTrackViewTrack* pTrack);

@@ -583,7 +583,8 @@ namespace EMStudio
     {
         // show the menu if at least one selected
         const uint32 numSelectedNodes = mSelectedNodes.GetLength();
-        if (numSelectedNodes == 0)
+        if (numSelectedNodes == 0 ||
+            (numSelectedNodes == 1 && mSelectedNodes[0].GetNodeNameString().GetIsEmpty()))
         {
             return;
         }
@@ -591,17 +592,21 @@ namespace EMStudio
         // show the menu
         QMenu menu(this);
         menu.addAction("Add all towards root to selection");
+
         if (menu.exec(mHierarchy->mapToGlobal(pos)))
         {
             for (uint32 i = 0; i < numSelectedNodes; ++i)
             {
                 SelectionItem selectedItem = mSelectedNodes[i];
                 EMotionFX::Node* node = EMotionFX::GetActorManager().FindActorInstanceByID(selectedItem.mActorInstanceID)->GetActor()->GetSkeleton()->FindNodeByName(selectedItem.GetNodeName());
-                EMotionFX::Node* parentNode = node->GetParentNode();
-                while (parentNode)
+                if (node)
                 {
-                    AddNodeToSelectedNodes(parentNode->GetName(), selectedItem.mActorInstanceID);
-                    parentNode = parentNode->GetParentNode();
+                    EMotionFX::Node* parentNode = node->GetParentNode();
+                    while (parentNode)
+                    {
+                        AddNodeToSelectedNodes(parentNode->GetName(), selectedItem.mActorInstanceID);
+                        parentNode = parentNode->GetParentNode();
+                    }
                 }
             }
             Update();

@@ -15,6 +15,7 @@
 #include "EnvironmentPanel.h"
 #include <ui_EnvironmentPanel.h>
 #include "GameEngine.h"
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
 
 #include "CryEditDoc.h"
 
@@ -27,6 +28,15 @@ CEnvironmentPanel::CEnvironmentPanel(QWidget* pParent /*=nullptr*/)
 {
     XmlNodeRef node = GetIEditor()->GetDocument()->GetEnvironmentTemplate();
 
+    // is the feature toggle enabled?
+    bool bHasOceanFeature = false;
+    AZ::OceanFeatureToggleBus::BroadcastResult(bHasOceanFeature, &AZ::OceanFeatureToggleBus::Events::OceanComponentEnabled);
+    if (bHasOceanFeature)
+    {
+        node->findChild("Ocean")->setAttr("hidden", true);
+        node->findChild("OceanAnimation")->setAttr("hidden", true);        
+    }
+    
     ui->setupUi(this);
     ui->m_wndProps->Setup();
     ui->m_wndProps->CreateItems(node, m_varBlock, functor(*GetIEditor()->GetDocument(), &CCryEditDoc::OnEnvironmentPropertyChanged), true);

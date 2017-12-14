@@ -1,5 +1,6 @@
-<div class="gem-container">     
-    <facet-generator [context]="context"            
+<div class="gem-container">
+    <facet-generator [context]="context"
+        [tabs]="['Overview']"
         (tabClicked)="subNavActiveIndex = $event"
         [metricIdentifier]="context.identifier"></facet-generator>
     <div *ngIf="subNavActiveIndex == 0 || subNavActiveIndex === undefined" [ngSwitch]="isLoading">
@@ -109,29 +110,29 @@
                     What content in the PAK '{{currentDynamicContent.FileName}}' would you like to move?
                     <div class="modal-pak-children">
                         <div *ngFor="let pak1 of currentDynamicContent.children">
-                            <input type="checkbox" [id]="pak1.FileName" [(ngModel)]="pak1.checked" name="pak1.FileName" /> 
+                            <input type="checkbox" [id]="pak1.FileName" [(ngModel)]="pak1.checked" name="pak1.FileName" />
                             <label class="l-checkbox" [attr.for]="pak1.FileName" [id]="pak1.FileName">
                                 {{pak1.FileName}}
                             </label>
                              <div class="modal-pak-children-checkbox" *ngFor="let pak2 of pak1.children">
-                                <input type="checkbox" [id]="pak2.FileName" [(ngModel)]="pak2.checked" name="pak2.FileName" /> 
+                                <input type="checkbox" [id]="pak2.FileName" [(ngModel)]="pak2.checked" name="pak2.FileName" />
                                 <label class="l-checkbox" [attr.for]="pak2.FileName" [id]="pak2.FileName">
-                                    {{pak2.FileName}}	
+                                    {{pak2.FileName}}
                                 </label>
                                 <div class="modal-pak-children-checkbox" *ngFor="let pak3 of pak2.children">
-                                    <input type="checkbox" [id]="pak3.FileName" [(ngModel)]="pak3.checked" name="pak3.FileName" /> 
+                                    <input type="checkbox" [id]="pak3.FileName" [(ngModel)]="pak3.checked" name="pak3.FileName" />
                                     <label class="l-checkbox" [attr.for]="pak3.FileName" [id]="pak3.FileName">
-                                        {{pak3.FileName}}	
+                                        {{pak3.FileName}}
                                     </label>
                                      <div class="modal-pak-children-checkbox" *ngFor="let pak4 of pak3.children">
-                                        <input type="checkbox" [id]="pak4.FileName" [(ngModel)]="pak4.checked" name="pak4.FileName" /> 
+                                        <input type="checkbox" [id]="pak4.FileName" [(ngModel)]="pak4.checked" name="pak4.FileName" />
                                         <label class="l-checkbox" [attr.for]="pak4.FileName" [id]="pak4.FileName">
-                                            {{pak4.FileName}}	
+                                            {{pak4.FileName}}
                                         </label>
                                         <div class="modal-pak-children-checkbox" *ngFor="let pak5 of pak4.children">
-                                            <input type="checkbox" [id]="pak5.FileName" [(ngModel)]="pak5.checked" name="pak5.FileName" /> 
+                                            <input type="checkbox" [id]="pak5.FileName" [(ngModel)]="pak5.checked" name="pak5.FileName" />
                                             <label class="l-checkbox" [attr.for]="pak5.FileName" [id]="pak5.FileName">
-                                                {{pak5.FileName}}	
+                                                {{pak5.FileName}}
                                             </label>
                                         </div>
                                      </div>
@@ -143,7 +144,7 @@
             </div>
         </form>
         <!--<pre>{{currentDynamicContent | json | devonly}}</pre>-->
-    </div>    
+    </div>
 </modal>
 
 <modal *ngIf="mode == 2"

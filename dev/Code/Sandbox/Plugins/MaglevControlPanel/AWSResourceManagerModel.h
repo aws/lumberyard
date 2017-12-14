@@ -110,6 +110,11 @@ private:
     typedef AWSResourceManagerModel<ModelInterfaceType> Self;
     typedef ColumnEnumToNameMap<typename ModelInterfaceType::ColumnEnum> ColumnMap;
 
+    using ModelInterfaceType::invisibleRootItem;
+    using ModelInterfaceType::beginInsertRows;
+    using ModelInterfaceType::endInsertRows;
+    using ModelInterfaceType::beginRemoveRows;
+    using ModelInterfaceType::endRemoveRows;
 protected:
 
     // Constructors
@@ -143,7 +148,20 @@ protected:
     {
         auto aItem = a->child(aRow, 0);
         auto bItem = b->child(bRow, 0);
-        return aItem->data(Qt::DisplayRole).compare(bItem->data(Qt::DisplayRole));
+        auto aData = aItem->data(Qt::DisplayRole);
+        auto bData = bItem->data(Qt::DisplayRole);
+        if (aData == bData)
+        {
+            return 0;
+        }
+        else if (aData < bData)
+        {
+            return -1;
+        }
+        else
+        {
+            return 1;
+        }
     }
 
     virtual void UpdateChildItem(typename ModelInterfaceType::ColumnEnum column, QStandardItem* sourceChildItem, QStandardItem* targetChildItem)
@@ -220,7 +238,7 @@ protected:
                         if (targetChildItem != sourceChildItem)
                         {
                             //qDebug() << "update";
-                            UpdateChildItem(intToColumnEnum(column), sourceChildItem, targetChildItem);
+                            UpdateChildItem(ModelInterfaceType::intToColumnEnum(column), sourceChildItem, targetChildItem);
                         }
 
                         if (targetChildItem->hasChildren() || sourceChildItem->hasChildren())
@@ -295,7 +313,7 @@ protected:
     {
         for (int row = 0; row < parent->rowCount(); ++row)
         {
-            if (parent->child(row, columnEnumToInt(column))->data(role) == value)
+            if (parent->child(row, ModelInterfaceType::columnEnumToInt(column))->data(role) == value)
             {
                 return row;
             }

@@ -16,7 +16,6 @@
         "CryAnimation",
         "CryEntitySystem",
         "CryFont",
-        "CryInput",
         "CryNetwork",
         "CryPhysics",
         "CryRenderNULL",

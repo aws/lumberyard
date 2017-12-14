@@ -284,7 +284,7 @@ struct IObjManager
 #endif
 
     // time counters
-    virtual bool IsAfterWater(const Vec3& vPos, const Vec3& vCamPos, const SRenderingPassInfo& passInfo, float fUserWaterLevel = WATER_LEVEL_UNKNOWN) = 0;
+    virtual bool IsAfterWater(const Vec3& vPos, const SRenderingPassInfo& passInfo) = 0;
     virtual void GetObjectsStreamingStatus(I3DEngine::SObjectsStreamingStatus& outStatus) = 0;
     virtual void FreeNotUsedCGFs() = 0;
     virtual void MakeUnitCube() = 0;
@@ -328,8 +328,6 @@ struct IObjManager
     virtual void BeginOcclusionCulling(const SRenderingPassInfo& passInfo) = 0;
     virtual void EndOcclusionCulling() = 0;
     virtual void RenderBufferedRenderMeshes(const SRenderingPassInfo& passInfo) = 0;
-
-    virtual bool CheckCreateRenderObject(CRenderObject** ppRenderObjectsLodsStorage, int nRenderObjectsLodsStorageNum, CRenderObject*& pRenderObject, const CLodValue* pLodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, CRenderObject::SInstanceData* pInstData = 0, int nInstCount = 0) const = 0;
 
     virtual PodArray<PodArray<StatInstGroup> >& GetListStaticTypes() = 0;
     virtual int IncrementNextPrecachePointId() = 0;
@@ -625,7 +623,7 @@ public:
 
     // time counters
 
-    virtual bool IsAfterWater(const Vec3& vPos, const Vec3& vCamPos, const SRenderingPassInfo& passInfo, float fUserWaterLevel = WATER_LEVEL_UNKNOWN) override;
+    virtual bool IsAfterWater(const Vec3& vPos, const SRenderingPassInfo& passInfo) override;
 
     void GetObjectsStreamingStatus(I3DEngine::SObjectsStreamingStatus& outStatus);
 
@@ -683,16 +681,6 @@ public:
     void BeginOcclusionCulling(const SRenderingPassInfo& passInfo);
     void EndOcclusionCulling();
     void RenderBufferedRenderMeshes(const SRenderingPassInfo& passInfo);
-
-    bool CheckCreateRenderObject(
-        CRenderObject** ppRenderObjectsLodsStorage,
-        int nRenderObjectsLodsStorageNum,
-        CRenderObject*& pRenderObject,
-        const CLodValue* pLodValue,
-        const SRenderingPassInfo& passInfo,
-        const SRendItemSorter& rendItemSorter,
-        CRenderObject::SInstanceData* pInstData = 0,
-        int nInstCount = 0) const;
 
     virtual float GetGSMMaxDistance() const override { return m_fGSMMaxDistance; }
     virtual void SetGSMMaxDistance(float value) override { m_fGSMMaxDistance = value; }

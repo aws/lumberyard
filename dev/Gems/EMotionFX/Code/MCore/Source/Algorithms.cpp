@@ -21,10 +21,10 @@
 namespace MCore
 {
     // project a 3D point in global space to 2D screen coordinates
-    Vector3 Project(const Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight)
+    AZ::Vector3 Project(const AZ::Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight)
     {
         // 1. expand homogenous coordinate
-        AZ::Vector4 expandedPoint(point.x, point.y, point.z, 1.0f);
+        AZ::Vector4 expandedPoint(point.GetX(), point.GetY(), point.GetZ(), 1.0f);
 
         // 2. multiply by the view and the projection matrix (note that this is a four component matrix multiplication, so no affine one!)
         expandedPoint *= viewProjMatrix;
@@ -34,12 +34,11 @@ namespace MCore
         expandedPoint.SetY(expandedPoint.GetY() / expandedPoint.GetW());
 
         // 4. map them to the screen space
-        Vector3 result;
-        result.x = (1.0f + expandedPoint.GetX()) * (float)screenWidth  * 0.5f;
-        result.y = (1.0f - expandedPoint.GetY()) * (float)screenHeight * 0.5f;
-
-        // 5. get the distance to the camera lense plane
-        result.z = expandedPoint.GetZ(); //nearClipDistance + expandedPoint.z * (farClipDistance - nearClipDistance);
+        AZ::Vector3 result(
+            (1.0f + expandedPoint.GetX()) * (float)screenWidth  * 0.5f,
+            (1.0f - expandedPoint.GetY()) * (float)screenHeight * 0.5f,
+            // 5. get the distance to the camera lense plane
+            expandedPoint.GetZ());
 
         return result;
     }
@@ -47,7 +46,7 @@ namespace MCore
 
     // unproject into eye space, remember this means the resulting vector will be in camera space already
     // drawing lines that take global space coordinates with those returned coordinates will apply a camera tranform twice
-    MCore::Vector3 UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth)
+    AZ::Vector3 UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth)
     {
         // convert to normalized device coordinates in range of -1 to +1
         const float x = 2.0f * (screenX / windowWidth) - 1.0f;
@@ -58,12 +57,12 @@ namespace MCore
         vec *= invProjMat;
 
         // return the result at the given desired depth
-        return MCore::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).Normalized() * depth;
+        return AZ::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).GetNormalized() * depth;
     }
 
 
     // unproject screen coordinates to a 3D point in global space
-    Vector3 Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat)
+    AZ::Vector3 Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat)
     {
         // convert to normalized device coordinates in range of -1 to +1
         const float x = 2.0f * (screenX / screenWidth) - 1.0f;
@@ -74,11 +73,11 @@ namespace MCore
         vec *= invProjMat;
 
         // return the result at the given desired depth and transform from eyespace into global space
-        return (MCore::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).Normalized() * depth) * invViewMat;
+        return (AZ::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).GetNormalized() * depth) * invViewMat;
     }
 
 
-    Vector3 UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& projectionMatrix, const MCore::Matrix& viewMatrix)
+    AZ::Vector3 UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& projectionMatrix, const MCore::Matrix& viewMatrix)
     {
         // 1. normalize the screen coordinates so that it will be in range [-1.0, 1.0]
         const float normalizedX = 2.0f * (screenX / (float)screenWidth) - 1.0f;
@@ -119,25 +118,26 @@ namespace MCore
         //MCore::LogDebug("screenCoords: %i %i, unitCubeValues: (%.2f, %.2f, %.2f) result: (%.2f, %.2f, %.2f, %.2f)", screenX, screenY, normalizedX, normalizedY, normalizedDepth, expandedPoint.x, expandedPoint.y, expandedPoint.z, expandedPoint.w);
 
         // 6. project down to three components again
-        return Vector3(expandedPoint.GetX(), expandedPoint.GetY(), expandedPoint.GetZ());
+        return AZ::Vector3(expandedPoint.GetX(), expandedPoint.GetY(), expandedPoint.GetZ());
     }
 
 
     // convert from cartesian coordinates into spherical coordinates
     // this uses the y-axis (up) and x-axis (right) as basis
     // the vector needs to be normalized!
-    AZ::Vector2 ToSpherical(const Vector3& normalizedVector)
+    AZ::Vector2 ToSpherical(const AZ::Vector3& normalizedVector)
     {
-        return AZ::Vector2(Math::ATan2(normalizedVector.y, normalizedVector.x),
-            Math::ACos(normalizedVector.z));
+        return AZ::Vector2(Math::ATan2(normalizedVector.GetY(), normalizedVector.GetX()),
+            Math::ACos(normalizedVector.GetZ()));
     }
 
 
     // convert from spherical coordinates back into cartesian coordinates
     // this uses the y-axis (up) and x-axis (right) as basis
-    Vector3 FromSpherical(const AZ::Vector2& spherical)
+    AZ::Vector3 FromSpherical(const AZ::Vector2& spherical)
     {
-        return Vector3(Math::Cos(spherical.GetX()),
+        return AZ::Vector3(
+            Math::Cos(spherical.GetX()),
             Math::Sin(spherical.GetX()) * Math::Sin(spherical.GetY()),
             Math::Sin(spherical.GetX()) * Math::Cos(spherical.GetY()));
     }
@@ -174,22 +174,22 @@ namespace MCore
 
 
     // calculate the area of the triangles made of the given three points
-    double CalcTriangleAreaAccurate(const Vector3& v1, const Vector3& v2, const Vector3& v3)
+    double CalcTriangleAreaAccurate(const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3)
     {
         // first point
-        const double ax = v3.x - v2.x;
-        const double ay = v3.y - v2.y;
-        const double az = v3.z - v2.z;
+        const double ax = v3.GetX() - v2.GetX();
+        const double ay = v3.GetY() - v2.GetY();
+        const double az = v3.GetZ() - v2.GetZ();
 
         // second point
-        const double bx = v1.x - v3.x;
-        const double by = v1.y - v3.y;
-        const double bz = v1.z - v3.z;
+        const double bx = v1.GetX() - v3.GetX();
+        const double by = v1.GetY() - v3.GetY();
+        const double bz = v1.GetZ() - v3.GetZ();
 
         // third point
-        const double cx = v2.x - v1.x;
-        const double cy = v2.y - v1.y;
-        const double cz = v2.z - v1.z;
+        const double cx = v2.GetX() - v1.GetX();
+        const double cy = v2.GetY() - v1.GetY();
+        const double cz = v2.GetZ() - v1.GetZ();
 
         // squared lengths of the triangle sides
         const double squaredA = ax * ax + ay * ay + az * az;
@@ -218,12 +218,12 @@ namespace MCore
 
 
     // calculate the area of the triangles made of the given three points
-    float CalcTriangleArea(const Vector3& v1, const Vector3& v2, const Vector3& v3)
+    float CalcTriangleArea(const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3)
     {
         // calculate the lengths of the triangle
-        const float a = (v3 - v2).SafeLength();
-        const float b = (v1 - v3).SafeLength();
-        const float c = (v2 - v1).SafeLength();
+        const float a = SafeLength(v3 - v2);
+        const float b = SafeLength(v1 - v3);
+        const float c = SafeLength(v2 - v1);
 
         // heron's formula
         const float halfPerimeter   = (a + b + c) / 2.0f;
@@ -236,43 +236,42 @@ namespace MCore
 
 
     // orthogonal projection on the xz plane
-    AZ::Vector2 OrthogonalProject(const Vector3& pos)
+    AZ::Vector2 OrthogonalProject(const AZ::Vector3& pos)
     {
-        return AZ::Vector2(pos.x, pos.z);
+        return AZ::Vector2(pos.GetX(), pos.GetZ());
     }
 
 
     // orthogonal unproject from the xz plane back onto the sphere
-    Vector3 OrthogonalUnproject(const AZ::Vector2& uv)
+    AZ::Vector3 OrthogonalUnproject(const AZ::Vector2& uv)
     {
-        Vector3 outDirection;
-        outDirection.x = uv.GetX();
-        outDirection.z = uv.GetY();
-        outDirection.y = Math::SafeSqrt(-(outDirection.x * outDirection.x) - (outDirection.z * outDirection.z) + 1.0f); // find the right height on the sphere for this ortho xy coord
-        outDirection.SafeNormalize();
-        return outDirection;
+        AZ::Vector3 outDirection;
+        outDirection.SetX(uv.GetX());
+        outDirection.SetZ(uv.GetY());
+        outDirection.SetY(Math::SafeSqrt(-(outDirection.GetX() * outDirection.GetX()) - (outDirection.GetZ() * outDirection.GetZ()) + 1.0f)); // find the right height on the sphere for this ortho xy coord
+        return SafeNormalize(outDirection);
     }
 
 
     // stereographic project
-    AZ::Vector2 StereographicProject(const Vector3& pos)
+    AZ::Vector2 StereographicProject(const AZ::Vector3& pos)
     {
         AZ::Vector2 result;
-        const float div = (1.0f - pos.y) + Math::epsilon;
-        result.SetX(pos.x / div);
-        result.SetY(pos.z / div);
+        const float div = (1.0f - pos.GetY()) + Math::epsilon;
+        result.SetX(pos.GetX() / div);
+        result.SetY(pos.GetZ() / div);
         return result;
     }
 
 
     // stereographic unproject
-    Vector3 StereographicUnproject(const AZ::Vector2& uv)
+    AZ::Vector3 StereographicUnproject(const AZ::Vector2& uv)
     {
-        Vector3 result;
+        AZ::Vector3 result;
         const float s = 2.0f  / (uv.GetX() * uv.GetX() + uv.GetY() * uv.GetY() + 1.0f);
-        result.x = s * uv.GetX();
-        result.y = 1.0f - s;
-        result.z = s * uv.GetY();
+        result.SetX(s * uv.GetX());
+        result.SetY(1.0f - s);
+        result.SetZ(s * uv.GetY());
         return result;
     }
 

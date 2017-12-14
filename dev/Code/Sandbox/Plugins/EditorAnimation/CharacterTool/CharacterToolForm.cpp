@@ -49,7 +49,6 @@
 #include "SkeletonList.h"
 #include "CharacterList.h"
 #include "EditorCompressionPresetTable.h"
-#include <windows.h>
 #include <IEditor.h>
 #include <Util/PathUtil.h> // for getting game folder
 #include <ActionOutput.h>
@@ -123,7 +122,7 @@ namespace CharacterTool {
 
     static string GetStateFilename()
     {
-        string result = GetIEditor()->GetUserFolder().toLatin1().data();
+        string result = GetIEditor()->GetResolvedUserFolder().toUtf8().data();
         result += "\\CharacterTool\\State.json";
         return result;
     }
@@ -385,7 +384,7 @@ namespace CharacterTool {
     vector<string> CharacterToolForm::FindLayoutNames()
     {
         vector<string> result;
-        QDir dir(QString(GetIEditor()->GetUserFolder()) + "\\CharacterTool\\Layouts");
+        QDir dir(GetIEditor()->GetResolvedUserFolder() + "\\CharacterTool\\Layouts");
         QStringList layouts = dir.entryList(QDir::Files, QDir::Name);
         for (size_t i = 0; i < layouts.size(); ++i)
         {
@@ -898,7 +897,7 @@ namespace CharacterTool {
 
     void CharacterToolForm::SaveState(const char* filename, bool layoutOnly)
     {
-        QDir().mkdir(GetIEditor()->GetUserFolder() + "\\CharacterTool");
+        QDir().mkdir(GetIEditor()->GetResolvedUserFolder() + "\\CharacterTool");
 
         Serialization::JSONOArchive oa;
         Serialization::SContext<CharacterToolForm> formContext(oa, this);
@@ -938,7 +937,7 @@ namespace CharacterTool {
 
     static string GetLayoutFilename(const char* name)
     {
-        string filename = string(GetIEditor()->GetUserFolder().toLatin1().data());
+        string filename = string(GetIEditor()->GetResolvedUserFolder().toUtf8().data());
         filename += "\\CharacterTool\\Layouts\\";
         filename += name;
         filename += ".layout";
@@ -956,7 +955,7 @@ namespace CharacterTool {
 
     void CharacterToolForm::SaveLayout(const char* name)
     {
-        string filename = string(GetIEditor()->GetUserFolder().toLatin1().data());
+        string filename = string(GetIEditor()->GetResolvedUserFolder().toUtf8().data());
         filename += "\\CharacterTool\\Layouts\\";
         QDir().mkdir(filename.c_str());
 

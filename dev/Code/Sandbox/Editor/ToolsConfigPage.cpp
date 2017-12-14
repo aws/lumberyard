@@ -476,7 +476,25 @@ CToolsConfigPage::CToolsConfigPage(QWidget* parent)
     m_ui->setupUi(this);
 
     m_ui->m_macroCmd->setCompleter(new QCompleter(m_completionModel));
-    m_ui->m_macroShortcutKey->installEventFilter(this);
+
+    connect(m_ui->m_macroShortcutKey, &QKeySequenceEdit::keySequenceChanged, [&](const QKeySequence &keySequence) {
+        int numOfShortcuts = m_ui->m_macroShortcutKey->keySequence().count() - 1;
+        if (numOfShortcuts >= 1)
+        {
+            int value = m_ui->m_macroShortcutKey->keySequence()[numOfShortcuts];
+            QKeySequence shortcut(value);
+            m_ui->m_macroShortcutKey->setKeySequence(shortcut);
+        }
+        
+        if (m_ui->m_macroShortcutKey->keySequence().count() >= 1)
+        {
+            m_ui->m_assignShortcut->setEnabled(true);
+        }
+        else
+        {
+            m_ui->m_assignShortcut->setEnabled(false);
+        }
+    });
 
     OnInitDialog();
 }
@@ -484,40 +502,6 @@ CToolsConfigPage::CToolsConfigPage(QWidget* parent)
 CToolsConfigPage::~CToolsConfigPage()
 {
 }
-
-bool CToolsConfigPage::eventFilter(QObject* watched, QEvent* event)
-{
-    if (watched == m_ui->m_macroShortcutKey)
-    {
-        if (event->type() == QEvent::KeyPress)
-        {
-            QKeyEvent* e = static_cast<QKeyEvent*>(event);
-            int shortcut = e->modifiers();
-            switch (e->key())
-            {
-            case Qt::Key_Control:
-            case Qt::Key_Shift:
-            case Qt::Key_CapsLock:
-            case Qt::Key_Alt:
-            case Qt::Key_AltGr:
-            case Qt::Key_Meta:
-                break;
-            default:
-                shortcut |= e->key();
-            }
-            m_ui->m_macroShortcutKey->setText(QKeySequence(shortcut).toString());
-            return true;
-        }
-        else if (event->type() == QEvent::KeyRelease)
-        {
-            const QKeySequence seq(m_ui->m_macroShortcutKey->text());
-            m_ui->m_macroShortcutKey->setText(seq.toString());
-            return true;
-        }
-    }
-    return QWidget::eventFilter(watched, event);
-}
-
 
 // CToolsConfigPage message handlers
 void CToolsConfigPage::OnInitDialog()
@@ -551,7 +535,6 @@ void CToolsConfigPage::OnInitDialog()
     OnSelchangeMacroList();
     OnSelchangeCommandList();
 }
-
 //////////////////////////////////////////////////////////////////////////
 void CToolsConfigPage::OnOK()
 {
@@ -593,8 +576,7 @@ void CToolsConfigPage::OnSelchangeMacroList()
         m_ui->m_macroShortcutKey->clear();
         if (pShortcutMgr && macro)
         {
-            const QKeySequence accel(macro->GetShortcutName());
-            m_ui->m_macroShortcutKey->setText(accel.toString());
+            m_ui->m_macroShortcutKey->setKeySequence(macro->GetShortcutName());
         }
 
         /// Update the icon.
@@ -602,7 +584,6 @@ void CToolsConfigPage::OnSelchangeMacroList()
         m_ui->m_macroIcon->setPixmap(icon);
 
         m_ui->m_macroShortcutKey->setEnabled(true);
-        m_ui->m_assignShortcut->setEnabled(true);
         m_ui->m_selectIcon->setEnabled(true);
         m_ui->m_clearIcon->setEnabled(true);
     }
@@ -722,7 +703,7 @@ void CToolsConfigPage::OnAssignMacroShortcut()
         return;
     }
 
-    QKeySequence editorAccel(m_ui->m_macroShortcutKey->text());
+    QKeySequence editorAccel = m_ui->m_macroShortcutKey->keySequence();
     CToolBoxMacro* pMacro = macroIndex.data(Qt::UserRole).value<CToolBoxMacro*>();
 #ifdef KDAB_TEMPORARILY_REMOVED
     int id(macroIndex.row() + ID_TOOL_FIRST);
@@ -736,21 +717,16 @@ void CToolsConfigPage::OnAssignMacroShortcut()
     {
         if (!bReassign && QMessageBox::question(this, QString(), tr("This shortcut is currently assigned.\nDo you want to re - assign this shortcut ?")) != QMessageBox::Yes)
         {
-            QKeySequence oldAccel = pMacro->GetShortcutName();
-            const QString oldShortcutName = oldAccel.toString();
-            m_ui->m_macroShortcutKey->setText(oldShortcutName);
+            m_ui->m_macroShortcutKey->setKeySequence(pMacro->GetShortcutName());
             return;
         }
         bReassign = true;
         action->setShortcut(QKeySequence());
     }
 
-    m_ui->m_macroShortcutKey->clear();
     if (true)//CToolBoxManager::AddShortcut(editorAccel) )
     {
-        const QString keyText = editorAccel.toString();
-        m_ui->m_macroShortcutKey->setText(keyText);
-        pMacro->SetShortcutName(keyText.toLatin1().data());
+        pMacro->SetShortcutName(m_ui->m_macroShortcutKey->keySequence());
     }
     else
     {
@@ -867,8 +843,8 @@ void CToolsConfigPage::FillScriptCmds()
     CAutoRegisterPythonCommandHelper* pCurrent = CAutoRegisterPythonCommandHelper::s_pFirst;
     while (pCurrent)
     {
-        const QString command = pCurrent->m_name.c_str();
-        const QString fullCmd = QStringLiteral("%1.%2()").arg(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name.c_str()).arg(command);
+        const QString command = pCurrent->m_name;
+        const QString fullCmd = QString("%1.%2()").arg(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name.c_str()).arg(command);
 
         commands.push_back(fullCmd);
 

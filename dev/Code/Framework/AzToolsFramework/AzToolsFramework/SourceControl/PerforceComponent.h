@@ -24,7 +24,7 @@
 #include <AzCore/Component/Component.h>
 
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
-#include <AzToolsFramework/SourceControl/NullSCComponent.h>
+#include <AzToolsFramework/SourceControl/LocalFileSCComponent.h>
 
 namespace AzToolsFramework
 {
@@ -125,7 +125,6 @@ namespace AzToolsFramework
         void EnableSourceControl(bool enable) override;
         bool IsActive() const override { return m_connectionState == SourceControlState::Active; }
         void EnableTrust(bool enable, AZStd::string fingerprint) override;
-        bool HasTrustIssue() const override { return !m_trustedKey; }
         void SetConnectionSetting(const char* key, const char* value, const SourceControlSettingCallback& respCallBack) override;
         void GetConnectionSetting(const char* key, const SourceControlSettingCallback& respCallBack) override;
         SourceControlState GetSourceControlState() const override { return m_connectionState; }
@@ -206,7 +205,7 @@ namespace AzToolsFramework
         bool ParseOutput(PerforceMap& perforceMap, AZStd::string& perforceOutput, const char* lineDelim = nullptr) const;
         bool ParseDuplicateOutput(AZStd::vector<PerforceMap>& perforceMapList, AZStd::string& perforceOutput) const;
 
-        NullSCComponent m_nullSCComponent;
+        LocalFileSCComponent m_localFileSCComponent;
         AZStd::atomic_bool m_offlineMode;
 
         AZStd::atomic_bool m_resolveKey;

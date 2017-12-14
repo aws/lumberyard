@@ -19,6 +19,8 @@
 
 #include <QScopedPointer>
 
+#include <qwindowdefs.h>
+
 class CVisualLogDialog;
 class CVisualLogWnd;
 struct SVLogCommonData;

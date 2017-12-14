@@ -18,6 +18,7 @@
 
 #include <QWidget>
 #include "Controls/ToolButton.h"
+#include "EditTool.h"
 
 class CSplineObject;
 
@@ -29,36 +30,101 @@ namespace Ui
     class SplinePanel;
 }
 
-#ifdef Q_MOC_RUN
 class CEditSplineObjectTool
     : public CEditTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CEditSplineObjectTool();
+    Q_INVOKABLE CEditSplineObjectTool()
+        : m_pSpline(0)
+        , m_currPoint(-1)
+        , m_modifying(false)
+        , m_curCursor(STD_CURSOR_DEFAULT)
+    {}
+
+    // Ovverides from CEditTool
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    void OnManipulatorDrag(CViewport* pView, ITransformManipulator* pManipulator, QPoint& point0, QPoint& point1, const Vec3& value) override;
+
+    virtual void SetUserData(const char* key, void* userData);
+
+    virtual void Display(DisplayContext& dc) {}
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+
+    bool IsNeedMoveTool() override { return true; }
+    bool IsNeedToSkipPivotBoxForObjects()   override {  return true; }
+
+protected:
+    virtual ~CEditSplineObjectTool();
+    void DeleteThis() { delete this; }
+
+    void SelectPoint(int index);
+    void SetCursor(EStdCursor cursor, bool bForce = false);
+
+    CSplineObject* m_pSpline;
+    int m_currPoint;
+    bool m_modifying;
+    QPoint m_mouseDownPos;
+    Vec3 m_pointPos;
+    EStdCursor m_curCursor;
 };
+
 class CInsertSplineObjectTool
-    : public CEditTool
+    : public CEditSplineObjectTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CInsertSplineObjectTool();
+    CInsertSplineObjectTool();
+
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
+
+protected:
+    virtual ~CInsertSplineObjectTool();
 };
+
 class CMergeSplineObjectsTool
     : public CEditTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CMergeSplineObjectsTool();
+    CMergeSplineObjectsTool();
+
+    // Ovverides from CEditTool
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    virtual void SetUserData(const char* key, void* userData);
+    virtual void Display(DisplayContext& dc) {}
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+
+protected:
+    virtual ~CMergeSplineObjectsTool();
+    void DeleteThis() { delete this; }
+
+    int m_curPoint;
+    CSplineObject* m_pSpline;
 };
+
 class CSplitSplineObjectTool
     : public CEditTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CSplitSplineObjectTool();
+    CSplitSplineObjectTool();
+
+    // Ovverides from CEditTool
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    virtual void SetUserData(const char* key, void* userData);
+    virtual void Display(DisplayContext& dc) {};
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+
+protected:
+    virtual ~CSplitSplineObjectTool();
+    void DeleteThis() { delete this; };
+
+private:
+    CSplineObject* m_pSpline;
+    int m_curPoint;
 };
-#endif
 
 class CSplinePanel
     : public QWidget

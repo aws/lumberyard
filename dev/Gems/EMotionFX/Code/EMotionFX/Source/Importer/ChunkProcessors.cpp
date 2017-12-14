@@ -47,7 +47,6 @@
 #include "../SoftSkinManager.h"
 #include "../DualQuatSkinDeformer.h"
 #include "../VertexAttributeLayerAbstractData.h"
-#include "../NodeLimitAttribute.h"
 #include "../MorphTarget.h"
 #include "../MorphSetup.h"
 #include "../MorphMeshDeformer.h"
@@ -274,8 +273,8 @@ namespace EMotionFX
         MCore::Endian::ConvertFloat(&nodesHeader.mStaticBoxMax.mZ, endianType);
 
         // convert endian and coord system of the static box
-        MCore::Vector3 boxMin(nodesHeader.mStaticBoxMin.mX, nodesHeader.mStaticBoxMin.mY, nodesHeader.mStaticBoxMin.mZ);
-        MCore::Vector3 boxMax(nodesHeader.mStaticBoxMax.mX, nodesHeader.mStaticBoxMax.mY, nodesHeader.mStaticBoxMax.mZ);
+        AZ::Vector3 boxMin(nodesHeader.mStaticBoxMin.mX, nodesHeader.mStaticBoxMin.mY, nodesHeader.mStaticBoxMin.mZ);
+        AZ::Vector3 boxMax(nodesHeader.mStaticBoxMax.mX, nodesHeader.mStaticBoxMax.mY, nodesHeader.mStaticBoxMax.mZ);
 
         // build the box and set it
         MCore::AABB staticBox;
@@ -335,9 +334,9 @@ namespace EMotionFX
             skeleton->SetNode(n, node);
 
             // create Core objects from the data
-            MCore::Vector3      pos     (nodeChunk.mLocalPos.mX,    nodeChunk.mLocalPos.mY,     nodeChunk.mLocalPos.mZ);
-            MCore::Vector3      scale   (nodeChunk.mLocalScale.mX,  nodeChunk.mLocalScale.mY,   nodeChunk.mLocalScale.mZ);
-            MCore::Quaternion   rot     (nodeChunk.mLocalQuat.mX,   nodeChunk.mLocalQuat.mY,    nodeChunk.mLocalQuat.mZ,    nodeChunk.mLocalQuat.mW);
+            AZ::PackedVector3f pos(nodeChunk.mLocalPos.mX, nodeChunk.mLocalPos.mY, nodeChunk.mLocalPos.mZ);
+            AZ::PackedVector3f scale(nodeChunk.mLocalScale.mX, nodeChunk.mLocalScale.mY, nodeChunk.mLocalScale.mZ);
+            MCore::Quaternion rot(nodeChunk.mLocalQuat.mX, nodeChunk.mLocalQuat.mY, nodeChunk.mLocalQuat.mZ, nodeChunk.mLocalQuat.mW);
 
             // convert endian and coordinate system
             ConvertVector3(&pos, endianType);
@@ -351,12 +350,12 @@ namespace EMotionFX
 
             // set the local transform
             Transform bindTransform;
-            bindTransform.mPosition     = pos;
+            bindTransform.mPosition     = AZ::Vector3(pos);
             bindTransform.mRotation     = rot;
 
             EMFX_SCALECODE
             (
-                bindTransform.mScale            = scale;
+                bindTransform.mScale            = AZ::Vector3(scale);
             )
 
             actor->GetBindPose()->SetLocalTransform(nodeIndex, bindTransform);
@@ -395,15 +394,15 @@ namespace EMotionFX
             MCore::Matrix obbMatrix;
             MCore::MemCopy(&obbMatrix, nodeChunk.mOBB, sizeof(MCore::Matrix));
 
-            MCore::Vector3 obbCenter(obbMatrix.m44[3][0], obbMatrix.m44[3][1], obbMatrix.m44[3][2]);
-            MCore::Vector3 obbExtents(obbMatrix.m44[0][3], obbMatrix.m44[1][3], obbMatrix.m44[2][3]);
+            AZ::Vector3 obbCenter(obbMatrix.m44[3][0], obbMatrix.m44[3][1], obbMatrix.m44[3][2]);
+            AZ::Vector3 obbExtents(obbMatrix.m44[0][3], obbMatrix.m44[1][3], obbMatrix.m44[2][3]);
 
         #ifndef MCORE_MATRIX_ROWMAJOR
             obbMatrix.Transpose();
         #endif
 
             obbMatrix.SetRow(3, AZ::Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-            obbMatrix.SetColumn(3, MCore::Vector3(0.0f, 0.0f, 0.0f));
+            obbMatrix.SetColumn(3, AZ::Vector3::CreateZero());
 
             // initialize the OBB
             MCore::OBB obb;
@@ -414,9 +413,9 @@ namespace EMotionFX
 
             if (GetLogging())
             {
-                MCore::LogDetailedInfo("      - Position:      x=%f, y=%f, z=%f", pos.x, pos.y, pos.z);
+                MCore::LogDetailedInfo("      - Position:      x=%f, y=%f, z=%f", pos.GetX(), pos.GetY(), pos.GetZ());
                 MCore::LogDetailedInfo("      - Rotation:      x=%f, y=%f, z=%f, w=%f", rot.x, rot.y, rot.z, rot.w);
-                MCore::LogDetailedInfo("      - Scale:         x=%f, y=%f, z=%f", scale.x, scale.y, scale.z);
+                MCore::LogDetailedInfo("      - Scale:         x=%f, y=%f, z=%f", scale.GetX(), scale.GetY(), scale.GetZ());
                 MCore::LogDetailedInfo("      - IncludeInBoundsCalc: %d", includeInBoundsCalc);
             }
         } // for all nodes
@@ -862,7 +861,7 @@ namespace EMotionFX
         MCore::Endian::ConvertUnsignedInt32(&subMotionsHeader.mNumSubMotions, endianType);
 
         // pre-allocate space for the submotions
-        if (!skelMotion->SetNumSubMotions(subMotionsHeader.mNumSubMotions)) 
+        if (!skelMotion->SetNumSubMotions(subMotionsHeader.mNumSubMotions))
         {
             if (GetLogging())
             {
@@ -886,19 +885,19 @@ namespace EMotionFX
             const char* motionPartName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
 
             // convert into Core objects
-            MCore::Vector3 posePos(fileSubMotion.mPosePos.mX, fileSubMotion.mPosePos.mY, fileSubMotion.mPosePos.mZ);
-            MCore::Vector3 poseScale(fileSubMotion.mPoseScale.mX, fileSubMotion.mPoseScale.mY, fileSubMotion.mPoseScale.mZ);
+            AZ::PackedVector3f posePos(fileSubMotion.mPosePos.mX, fileSubMotion.mPosePos.mY, fileSubMotion.mPosePos.mZ);
+            AZ::PackedVector3f poseScale(fileSubMotion.mPoseScale.mX, fileSubMotion.mPoseScale.mY, fileSubMotion.mPoseScale.mZ);
             MCore::Compressed16BitQuaternion poseRot(fileSubMotion.mPoseRot.mX, fileSubMotion.mPoseRot.mY, fileSubMotion.mPoseRot.mZ, fileSubMotion.mPoseRot.mW);
 
-            MCore::Vector3 bindPosePos(fileSubMotion.mBindPosePos.mX, fileSubMotion.mBindPosePos.mY, fileSubMotion.mBindPosePos.mZ);
-            MCore::Vector3 bindPoseScale(fileSubMotion.mBindPoseScale.mX, fileSubMotion.mBindPoseScale.mY, fileSubMotion.mBindPoseScale.mZ);
+            AZ::PackedVector3f bindPosePos(fileSubMotion.mBindPosePos.mX, fileSubMotion.mBindPosePos.mY, fileSubMotion.mBindPosePos.mZ);
+            AZ::PackedVector3f bindPoseScale(fileSubMotion.mBindPoseScale.mX, fileSubMotion.mBindPoseScale.mY, fileSubMotion.mBindPoseScale.mZ);
             MCore::Compressed16BitQuaternion bindPoseRot(fileSubMotion.mBindPoseRot.mX, fileSubMotion.mBindPoseRot.mY, fileSubMotion.mBindPoseRot.mZ, fileSubMotion.mBindPoseRot.mW);
 
             // convert endian and coordinate system
             ConvertVector3(&posePos, endianType);
             ConvertVector3(&bindPosePos, endianType);
-            ConvertScale  (&poseScale, endianType);
-            ConvertScale  (&bindPoseScale, endianType);
+            ConvertScale(&poseScale, endianType);
+            ConvertScale(&bindPoseScale, endianType);
             Convert16BitQuaternion(&poseRot, endianType);
             Convert16BitQuaternion(&bindPoseRot, endianType);
 
@@ -908,12 +907,12 @@ namespace EMotionFX
                 MCore::Quaternion uncompressedBindPoseRot       = bindPoseRot.ToQuaternion();
 
                 MCore::LogDetailedInfo("- Skeletal SubMotion = '%s'", motionPartName);
-                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", posePos.x, posePos.y, posePos.z);
+                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", posePos.GetX(), posePos.GetY(), posePos.GetZ());
                 MCore::LogDetailedInfo("    + Pose Rotation:         x=%f, y=%f, z=%f, w=%f", uncompressedPoseRot.x, uncompressedPoseRot.y, uncompressedPoseRot.z, uncompressedPoseRot.w);
-                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", poseScale.x, poseScale.y, poseScale.z);
-                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", bindPosePos.x, bindPosePos.y, bindPosePos.z);
+                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", poseScale.GetX(), poseScale.GetY(), poseScale.GetZ());
+                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", bindPosePos.GetX(), bindPosePos.GetY(), bindPosePos.GetZ());
                 MCore::LogDetailedInfo("    + Bind Pose Rotation:    x=%f, y=%f, z=%f, w=%f", uncompressedBindPoseRot.x, uncompressedBindPoseRot.y, uncompressedBindPoseRot.z, uncompressedBindPoseRot.w);
-                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", bindPoseScale.x, bindPoseScale.y, bindPoseScale.z);
+                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", bindPoseScale.GetX(), bindPoseScale.GetY(), bindPoseScale.GetZ());
                 MCore::LogDetailedInfo("    + Num Pos Keys:          %d", fileSubMotion.mNumPosKeys);
                 MCore::LogDetailedInfo("    + Num Rot Keys:          %d", fileSubMotion.mNumRotKeys);
                 MCore::LogDetailedInfo("    + Num Scale Keys:        %d", fileSubMotion.mNumScaleKeys);
@@ -922,15 +921,15 @@ namespace EMotionFX
             // create the part, and add it to the motion
             SkeletalSubMotion* subMotion = SkeletalSubMotion::Create(motionPartName);
 
-            subMotion->SetPosePos                       (posePos);
-            subMotion->SetCompressedPoseRot             (poseRot);
-            subMotion->SetBindPosePos                   (bindPosePos);
-            subMotion->SetCompressedBindPoseRot         (bindPoseRot);
+            subMotion->SetPosePos(AZ::Vector3(posePos));
+            subMotion->SetCompressedPoseRot(poseRot);
+            subMotion->SetBindPosePos(AZ::Vector3(bindPosePos));
+            subMotion->SetCompressedBindPoseRot(bindPoseRot);
 
             EMFX_SCALECODE
             (
-                subMotion->SetPoseScale                 (poseScale);
-                subMotion->SetBindPoseScale             (bindPoseScale);
+                subMotion->SetPoseScale(AZ::Vector3(poseScale));
+                subMotion->SetBindPoseScale(AZ::Vector3(bindPoseScale));
             )
 
             //if (skelMotionSettings->mLoadMotionLODErrors)
@@ -945,7 +944,7 @@ namespace EMotionFX
             if (fileSubMotion.mNumPosKeys > 0)
             {
                 subMotion->CreatePosTrack();
-                KeyTrackLinear<MCore::Vector3, MCore::Vector3>* posTrack = subMotion->GetPosTrack();
+                KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* posTrack = subMotion->GetPosTrack();
                 if (!posTrack->SetNumKeys(fileSubMotion.mNumPosKeys))
                 {
                     if (GetLogging())
@@ -965,7 +964,7 @@ namespace EMotionFX
                     MCore::Endian::ConvertFloat(&key.mTime, endianType);
 
                     // convert endian and coordinate system of the position
-                    MCore::Vector3 pos(key.mValue.mX, key.mValue.mY, key.mValue.mZ);
+                    AZ::PackedVector3f pos(key.mValue.mX, key.mValue.mY, key.mValue.mZ);
                     ConvertVector3(&pos, endianType);
 
                     //LogInfo("       + Key#%i: Time=%f, Pos(%f, %f, %f)", i, key.mTime, pos.x, pos.y, pos.z);
@@ -1016,7 +1015,7 @@ namespace EMotionFX
             if (fileSubMotion.mNumScaleKeys > 0)
             {
                 subMotion->CreateScaleTrack();
-                KeyTrackLinear<MCore::Vector3, MCore::Vector3>* scaleTrack = subMotion->GetScaleTrack();
+                KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* scaleTrack = subMotion->GetScaleTrack();
                 if (!scaleTrack->SetNumKeys(fileSubMotion.mNumScaleKeys))
                 {
                     if (GetLogging())
@@ -1036,13 +1035,13 @@ namespace EMotionFX
                     MCore::Endian::ConvertFloat(&key.mTime, endianType);
 
                     // convert endian and coordinate system
-                    MCore::Vector3 scale(key.mValue.mX, key.mValue.mY, key.mValue.mZ);
+                    AZ::PackedVector3f scale(key.mValue.mX, key.mValue.mY, key.mValue.mZ);
                     ConvertScale(&scale, endianType);
 
                     //LogInfo("       + Key#%i: Time=%f, Scale(%f, %f, %f)", i, key.mTime, scale.x, scale.y, scale.z);
 
                     // add the key
-                    scaleTrack->SetKey(i, key.mTime, scale);
+                    scaleTrack->SetKey(i, key.mTime, AZ::PackedVector3f(scale));
                 }
             }
     #else   // no scaling
@@ -1117,7 +1116,9 @@ namespace EMotionFX
 
         // Try to remain backward compatible by still capturing height when this was enabled in the old mask system.
         if (fileInformation.mMotionExtractionMask & (1 << 2))   // The 1<<2 was the mask used for position Z in the old motion extraction mask settings
-            motion->SetMotionExtractionFlags( MOTIONEXTRACT_CAPTURE_Z );
+        {
+            motion->SetMotionExtractionFlags(MOTIONEXTRACT_CAPTURE_Z);
+        }
 
         return true;
     }
@@ -1151,7 +1152,7 @@ namespace EMotionFX
 
         motion->SetUnitType(static_cast<MCore::Distance::EUnitType>(fileInformation.mUnitType));
         motion->SetFileUnitType(motion->GetUnitType());
-        motion->SetMotionExtractionFlags( static_cast<EMotionFX::EMotionExtractionFlags>(fileInformation.mMotionExtractionFlags) );
+        motion->SetMotionExtractionFlags(static_cast<EMotionFX::EMotionExtractionFlags>(fileInformation.mMotionExtractionFlags));
 
         return true;
     }
@@ -1486,94 +1487,6 @@ namespace EMotionFX
             MCore::LogDetailedInfo("       + UTiling  = %f", matLayer.mUTiling);
             MCore::LogDetailedInfo("       + VTiling  = %f", matLayer.mVTiling);
             MCore::LogDetailedInfo("       + Rotation = %f (radians)", matLayer.mRotationRadians);
-        }
-
-        return true;
-    }
-
-
-    //=================================================================================================
-
-
-    bool ChunkProcessorActorLimit::Process(MCore::File* file, Importer::ImportParameters& importParams)
-    {
-        const MCore::Endian::EEndianType endianType = importParams.mEndianType;
-        Actor* actor = importParams.mActor;
-
-        MCORE_ASSERT(actor);
-        Skeleton* skeleton = actor->GetSkeleton();
-
-        // read the limit from disk
-        FileFormat::Actor_Limit fileLimit;
-        file->Read(&fileLimit, sizeof(FileFormat::Actor_Limit));
-
-        // convert endian
-        MCore::Endian::ConvertUnsignedInt32(&fileLimit.mNodeNumber, endianType);
-        if (fileLimit.mNodeNumber >= actor->GetNumNodes())
-        {
-            MCore::LogError("ChunkProcessorActorLimit::Process: Could not get node by index.");
-            return false;
-        }
-
-        // try to get the node to which the limit belongs to
-        Node* node = skeleton->GetNode(fileLimit.mNodeNumber);
-
-        // create our limit attribute
-        NodeLimitAttribute* limit = NodeLimitAttribute::Create();
-
-        // convert into core objects
-        MCore::Vector3 transMin(fileLimit.mTranslationMin.mX, fileLimit.mTranslationMin.mY, fileLimit.mTranslationMin.mZ);
-        MCore::Vector3 transMax(fileLimit.mTranslationMax.mX, fileLimit.mTranslationMax.mY, fileLimit.mTranslationMax.mZ);
-        MCore::Vector3 scaleMin(fileLimit.mScaleMin.mX, fileLimit.mScaleMin.mY, fileLimit.mScaleMin.mZ);
-        MCore::Vector3 scaleMax(fileLimit.mScaleMax.mX, fileLimit.mScaleMax.mY, fileLimit.mScaleMax.mZ);
-        MCore::Vector3 rotMin(fileLimit.mRotationMin.mX, fileLimit.mRotationMin.mY, fileLimit.mRotationMin.mZ);
-        MCore::Vector3 rotMax(fileLimit.mRotationMax.mX, fileLimit.mRotationMax.mY, fileLimit.mRotationMax.mZ);
-
-        // convert endian and coordinate system
-        ConvertVector3(&transMin, endianType);
-        ConvertVector3(&transMax, endianType);
-        ConvertScale(&rotMin, endianType);      // TODO: or use ConvertScale for this? or some special ConvertEulerAngles?
-        ConvertScale(&rotMax, endianType);
-        ConvertScale(&scaleMin, endianType);
-        ConvertScale(&scaleMax, endianType);
-
-        // set translation minimums and maximums
-        limit->SetTranslationMin(transMin);
-        limit->SetTranslationMax(transMax);
-
-        // set rotation minimums and maximums
-        limit->SetRotationMin(rotMin);
-        limit->SetRotationMax(rotMax);
-
-        // set scale minimums and maximums
-        limit->SetScaleMin(scaleMin);
-        limit->SetScaleMax(scaleMax);
-
-        // set activation flags
-        limit->EnableLimit(NodeLimitAttribute::TRANSLATIONX,    fileLimit.mLimitFlags[0] != 0);
-        limit->EnableLimit(NodeLimitAttribute::TRANSLATIONY,    fileLimit.mLimitFlags[1] != 0);
-        limit->EnableLimit(NodeLimitAttribute::TRANSLATIONZ,    fileLimit.mLimitFlags[2] != 0);
-        limit->EnableLimit(NodeLimitAttribute::ROTATIONX,       fileLimit.mLimitFlags[3] != 0);
-        limit->EnableLimit(NodeLimitAttribute::ROTATIONY,       fileLimit.mLimitFlags[4] != 0);
-        limit->EnableLimit(NodeLimitAttribute::ROTATIONZ,       fileLimit.mLimitFlags[5] != 0);
-        limit->EnableLimit(NodeLimitAttribute::SCALEX,          fileLimit.mLimitFlags[6] != 0);
-        limit->EnableLimit(NodeLimitAttribute::SCALEY,          fileLimit.mLimitFlags[7] != 0);
-        limit->EnableLimit(NodeLimitAttribute::SCALEZ,          fileLimit.mLimitFlags[8] != 0);
-
-        // add the limit attribute to the node
-        node->AddAttribute(limit);
-
-        // print limit information
-        if (GetLogging())
-        {
-            MCore::LogDetailedInfo("- Limits for node '%s'", node->GetName());
-            MCore::LogDetailedInfo("    + TranslateMin = %.3f, %.3f, %.3f", transMin.x, transMin.y, transMin.z);
-            MCore::LogDetailedInfo("    + TranslateMax = %.3f, %.3f, %.3f", transMax.x, transMax.y, transMax.z);
-            MCore::LogDetailedInfo("    + RotateMin    = %.3f, %.3f, %.3f", rotMin.x, rotMin.y, rotMin.z);
-            MCore::LogDetailedInfo("    + RotateMax    = %.3f, %.3f, %.3f", rotMax.x, rotMax.y, rotMax.z);
-            MCore::LogDetailedInfo("    + ScaleMin     = %.3f, %.3f, %.3f", scaleMin.x, scaleMin.y, scaleMin.z);
-            MCore::LogDetailedInfo("    + ScaleMax     = %.3f, %.3f, %.3f", scaleMax.x, scaleMax.y, scaleMax.z);
-            MCore::LogDetailedInfo("    + LimitFlags   = POS[%d, %d, %d], ROT[%d, %d, %d], SCALE[%d, %d, %d]", fileLimit.mLimitFlags[0], fileLimit.mLimitFlags[1], fileLimit.mLimitFlags[2], fileLimit.mLimitFlags[3], fileLimit.mLimitFlags[4], fileLimit.mLimitFlags[5], fileLimit.mLimitFlags[6], fileLimit.mLimitFlags[7], fileLimit.mLimitFlags[8]);
         }
 
         return true;
@@ -2098,7 +2011,7 @@ namespace EMotionFX
                     MCore::Endian::ConvertUnsignedInt16(&deltaPos.mX, endianType, 3);
 
                     // decompress and convert coordinate system
-                    MCore::Vector3 tempPos = MCore::Compressed16BitVector3(deltaPos.mX, deltaPos.mY, deltaPos.mZ).ToVector3(meshDeformDataChunk.mMinValue, meshDeformDataChunk.mMaxValue);
+                    AZ::Vector3 tempPos = MCore::Compressed16BitVector3(deltaPos.mX, deltaPos.mY, deltaPos.mZ).ToVector3(meshDeformDataChunk.mMinValue, meshDeformDataChunk.mMaxValue);
 
                     // compress the value after coordinate system conversion
                     deformData->mDeltas[d].mPosition = MCore::Compressed16BitVector3(tempPos, compressMin, compressMax);
@@ -2114,7 +2027,7 @@ namespace EMotionFX
                     delta = file8BitVectors[d];
 
                     // decompress and convert coordinate system
-                    MCore::Vector3 temp = MCore::Compressed8BitVector3(delta.mX, delta.mY, delta.mZ).ToVector3(-1.0f, +1.0f);
+                    AZ::Vector3 temp = MCore::Compressed8BitVector3(delta.mX, delta.mY, delta.mZ).ToVector3(-1.0f, +1.0f);
 
                     // compress the value after coordinate system conversion
                     deformData->mDeltas[d].mNormal = MCore::Compressed8BitVector3(temp, -1.0f, +1.0f);
@@ -2128,7 +2041,7 @@ namespace EMotionFX
                     deltaT = file8BitVectors[d];
 
                     // decompress and convert coordinate system
-                    MCore::Vector3 temp = MCore::Compressed8BitVector3(deltaT.mX, deltaT.mY, deltaT.mZ).ToVector3(-1.0f, +1.0f);
+                    AZ::Vector3 temp = MCore::Compressed8BitVector3(deltaT.mX, deltaT.mY, deltaT.mZ).ToVector3(-1.0f, +1.0f);
 
                     // compress the value after coordinate system conversion
                     deformData->mDeltas[d].mTangent = MCore::Compressed8BitVector3(temp, -1.0f, +1.0f);
@@ -2193,8 +2106,8 @@ namespace EMotionFX
             file->Read(&transformChunk, sizeof(FileFormat::Actor_MorphTargetTransform));
 
             // create Core objects from the data
-            MCore::Vector3 pos(transformChunk.mPosition.mX, transformChunk.mPosition.mY, transformChunk.mPosition.mZ);
-            MCore::Vector3 scale(transformChunk.mScale.mX, transformChunk.mScale.mY, transformChunk.mScale.mZ);
+            AZ::PackedVector3f pos(transformChunk.mPosition.mX, transformChunk.mPosition.mY, transformChunk.mPosition.mZ);
+            AZ::PackedVector3f scale(transformChunk.mScale.mX, transformChunk.mScale.mY, transformChunk.mScale.mZ);
             MCore::Quaternion rot(transformChunk.mRotation.mX, transformChunk.mRotation.mY, transformChunk.mRotation.mZ, transformChunk.mRotation.mW);
             MCore::Quaternion scaleRot(transformChunk.mScaleRotation.mX, transformChunk.mScaleRotation.mY, transformChunk.mScaleRotation.mZ, transformChunk.mScaleRotation.mW);
 
@@ -2207,8 +2120,8 @@ namespace EMotionFX
 
             // create our transformation
             MorphTargetStandard::Transformation transform;
-            transform.mPosition         = pos;
-            transform.mScale            = scale;
+            transform.mPosition         = AZ::Vector3(pos);
+            transform.mScale            = AZ::Vector3(scale);
             transform.mRotation         = rot;
             transform.mScaleRotation    = scaleRot;
             transform.mNodeIndex        = transformChunk.mNodeIndex;
@@ -2216,9 +2129,9 @@ namespace EMotionFX
             if (GetLogging())
             {
                 MCore::LogDetailedInfo("    - Transform #%d: Node='%s' (index=%d)", i, skeleton->GetNode(transform.mNodeIndex)->GetName(), transform.mNodeIndex);
-                MCore::LogDetailedInfo("       + Pos:      %f, %f, %f", transform.mPosition.x, transform.mPosition.y, transform.mPosition.z);
+                MCore::LogDetailedInfo("       + Pos:      %f, %f, %f", transform.mPosition.GetX(), transform.mPosition.GetY(), transform.mPosition.GetZ());
                 MCore::LogDetailedInfo("       + Rotation: %f, %f, %f %f", transform.mRotation.x, transform.mRotation.y, transform.mRotation.z, transform.mRotation.w);
-                MCore::LogDetailedInfo("       + Scale:    %f, %f, %f", transform.mScale.x, transform.mScale.y, transform.mScale.z);
+                MCore::LogDetailedInfo("       + Scale:    %f, %f, %f", transform.mScale.GetX(), transform.mScale.GetY(), transform.mScale.GetZ());
                 MCore::LogDetailedInfo("       + ScaleRot: %f, %f, %f %f", scaleRot.x, scaleRot.y, scaleRot.z, scaleRot.w);
             }
 
@@ -2592,7 +2505,7 @@ namespace EMotionFX
                         MCore::Endian::ConvertUnsignedInt16(&deltaPos.mX, endianType, 3);
 
                         // decompress and convert coordinate system
-                        MCore::Vector3 tempPos = MCore::Compressed16BitVector3(deltaPos.mX, deltaPos.mY, deltaPos.mZ).ToVector3(meshDeformDataChunk.mMinValue, meshDeformDataChunk.mMaxValue);
+                        AZ::Vector3 tempPos = MCore::Compressed16BitVector3(deltaPos.mX, deltaPos.mY, deltaPos.mZ).ToVector3(meshDeformDataChunk.mMinValue, meshDeformDataChunk.mMaxValue);
 
                         // compress the value after coordinate system conversion
                         deformData->mDeltas[d].mPosition = MCore::Compressed16BitVector3(tempPos, compressMin, compressMax);
@@ -2608,7 +2521,7 @@ namespace EMotionFX
                         delta = file8BitVectors[d];
 
                         // decompress and convert coordinate system
-                        MCore::Vector3 temp = MCore::Compressed8BitVector3(delta.mX, delta.mY, delta.mZ).ToVector3(-1.0f, +1.0f);
+                        AZ::Vector3 temp = MCore::Compressed8BitVector3(delta.mX, delta.mY, delta.mZ).ToVector3(-1.0f, +1.0f);
 
                         // compress the value after coordinate system conversion
                         deformData->mDeltas[d].mNormal = MCore::Compressed8BitVector3(temp, -1.0f, +1.0f);
@@ -2622,7 +2535,7 @@ namespace EMotionFX
                         deltaT = file8BitVectors[d];
 
                         // decompress and convert coordinate system
-                        MCore::Vector3 temp = MCore::Compressed8BitVector3(deltaT.mX, deltaT.mY, deltaT.mZ).ToVector3(-1.0f, +1.0f);
+                        AZ::Vector3 temp = MCore::Compressed8BitVector3(deltaT.mX, deltaT.mY, deltaT.mZ).ToVector3(-1.0f, +1.0f);
 
                         // compress the value after coordinate system conversion
                         deformData->mDeltas[d].mTangent = MCore::Compressed8BitVector3(temp, -1.0f, +1.0f);
@@ -2689,8 +2602,8 @@ namespace EMotionFX
                 file->Read(&transformChunk, sizeof(FileFormat::Actor_MorphTargetTransform));
 
                 // create Core objects from the data
-                MCore::Vector3 pos(transformChunk.mPosition.mX, transformChunk.mPosition.mY, transformChunk.mPosition.mZ);
-                MCore::Vector3 scale(transformChunk.mScale.mX, transformChunk.mScale.mY, transformChunk.mScale.mZ);
+                AZ::PackedVector3f pos(transformChunk.mPosition.mX, transformChunk.mPosition.mY, transformChunk.mPosition.mZ);
+                AZ::PackedVector3f scale(transformChunk.mScale.mX, transformChunk.mScale.mY, transformChunk.mScale.mZ);
                 MCore::Quaternion rot(transformChunk.mRotation.mX, transformChunk.mRotation.mY, transformChunk.mRotation.mZ, transformChunk.mRotation.mW);
                 MCore::Quaternion scaleRot(transformChunk.mScaleRotation.mX, transformChunk.mScaleRotation.mY, transformChunk.mScaleRotation.mZ, transformChunk.mScaleRotation.mW);
 
@@ -2703,8 +2616,8 @@ namespace EMotionFX
 
                 // create our transformation
                 MorphTargetStandard::Transformation transform;
-                transform.mPosition         = pos;
-                transform.mScale            = scale;
+                transform.mPosition         = AZ::Vector3(pos);
+                transform.mScale            = AZ::Vector3(scale);
                 transform.mRotation         = rot;
                 transform.mScaleRotation    = scaleRot;
                 transform.mNodeIndex        = transformChunk.mNodeIndex;
@@ -2712,9 +2625,9 @@ namespace EMotionFX
                 if (GetLogging())
                 {
                     MCore::LogDetailedInfo("     + Transform #%d: Node='%s' (index=%d)", i, skeleton->GetNode(transform.mNodeIndex)->GetName(), transform.mNodeIndex);
-                    MCore::LogDetailedInfo("        - Pos:      %f, %f, %f", transform.mPosition.x, transform.mPosition.y, transform.mPosition.z);
+                    MCore::LogDetailedInfo("        - Pos:      %f, %f, %f", transform.mPosition.GetX(), transform.mPosition.GetY(), transform.mPosition.GetZ());
                     MCore::LogDetailedInfo("        - Rotation: %f, %f, %f %f", transform.mRotation.x, transform.mRotation.y, transform.mRotation.z, transform.mRotation.w);
-                    MCore::LogDetailedInfo("        - Scale:    %f, %f, %f", transform.mScale.x, transform.mScale.y, transform.mScale.z);
+                    MCore::LogDetailedInfo("        - Scale:    %f, %f, %f", transform.mScale.GetX(), transform.mScale.GetY(), transform.mScale.GetZ());
                     MCore::LogDetailedInfo("        - ScaleRot: %f, %f, %f %f", scaleRot.x, scaleRot.y, scaleRot.z, scaleRot.w);
                 }
 
@@ -3926,10 +3839,10 @@ namespace EMotionFX
             const char* subMotionName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
 
             // convert endian and coordinate system
-            MCore::Vector3 posePos(fileSubMotion.mPosePos.mX, fileSubMotion.mPosePos.mY, fileSubMotion.mPosePos.mZ);
-            MCore::Vector3 poseScale(fileSubMotion.mPoseScale.mX, fileSubMotion.mPoseScale.mY, fileSubMotion.mPoseScale.mZ);
-            MCore::Vector3 bindPosePos(fileSubMotion.mBindPosePos.mX, fileSubMotion.mBindPosePos.mY, fileSubMotion.mBindPosePos.mZ);
-            MCore::Vector3 bindPoseScale(fileSubMotion.mBindPoseScale.mX, fileSubMotion.mBindPoseScale.mY, fileSubMotion.mBindPoseScale.mZ);
+            AZ::PackedVector3f posePos(fileSubMotion.mPosePos.mX, fileSubMotion.mPosePos.mY, fileSubMotion.mPosePos.mZ);
+            AZ::PackedVector3f poseScale(fileSubMotion.mPoseScale.mX, fileSubMotion.mPoseScale.mY, fileSubMotion.mPoseScale.mZ);
+            AZ::PackedVector3f bindPosePos(fileSubMotion.mBindPosePos.mX, fileSubMotion.mBindPosePos.mY, fileSubMotion.mBindPosePos.mZ);
+            AZ::PackedVector3f bindPoseScale(fileSubMotion.mBindPoseScale.mX, fileSubMotion.mBindPoseScale.mY, fileSubMotion.mBindPoseScale.mZ);
 
             ConvertVector3(&posePos,           endianType);
             ConvertVector3(&bindPosePos,       endianType);
@@ -3949,26 +3862,26 @@ namespace EMotionFX
                 MCore::Quaternion uncompressedBindPoseRot       = bindPoseRot.ToQuaternion();
 
                 MCore::LogDetailedInfo("- Wavelet Skeletal SubMotion = '%s'", subMotionName);
-                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", posePos.x, posePos.y, posePos.z);
+                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", posePos.GetX(), posePos.GetY(), posePos.GetZ());
                 MCore::LogDetailedInfo("    + Pose Rotation:         x=%f, y=%f, z=%f, w=%f", uncompressedPoseRot.x, uncompressedPoseRot.y, uncompressedPoseRot.z, uncompressedPoseRot.w);
-                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", poseScale.x, poseScale.y, poseScale.z);
-                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", bindPosePos.x, bindPosePos.y, bindPosePos.z);
+                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", poseScale.GetX(), poseScale.GetY(), poseScale.GetZ());
+                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", bindPosePos.GetX(), bindPosePos.GetY(), bindPosePos.GetZ());
                 MCore::LogDetailedInfo("    + Bind Pose Rotation:    x=%f, y=%f, z=%f, w=%f", uncompressedBindPoseRot.x, uncompressedBindPoseRot.y, uncompressedBindPoseRot.z, uncompressedBindPoseRot.w);
-                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", bindPoseScale.x, bindPoseScale.y, bindPoseScale.z);
+                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", bindPoseScale.GetX(), bindPoseScale.GetY(), bindPoseScale.GetZ());
             }
 
             // create the part, and add it to the motion
             SkeletalSubMotion* subMotion = SkeletalSubMotion::Create(subMotionName);
 
-            subMotion->SetPosePos                       (posePos);
+            subMotion->SetPosePos                       (AZ::Vector3(posePos));
             subMotion->SetCompressedPoseRot             (poseRot);
-            subMotion->SetBindPosePos                   (bindPosePos);
+            subMotion->SetBindPosePos                   (AZ::Vector3(bindPosePos));
             subMotion->SetCompressedBindPoseRot         (bindPoseRot);
 
             EMFX_SCALECODE
             (
-                subMotion->SetPoseScale                 (poseScale);
-                subMotion->SetBindPoseScale             (bindPoseScale);
+                subMotion->SetPoseScale                 (AZ::Vector3(poseScale));
+                subMotion->SetBindPoseScale             (AZ::Vector3(bindPoseScale));
             )
 
             waveletMotion->SetSubMotion(i, subMotion);

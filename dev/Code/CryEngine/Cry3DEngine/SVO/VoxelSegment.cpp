@@ -2980,7 +2980,7 @@ void CVoxelSegment::CheckStoreTextureInPool(SShaderItem* pShItem, uint16& nTexW,
         return;
     }
 
-    if (SEfResTexture* pResTexture = pShItem->m_pShaderResources->GetTexture(EFTT_DIFFUSE))
+    if (SEfResTexture* pResTexture = pShItem->m_pShaderResources->GetTextureResource(EFTT_DIFFUSE))
     {
         if (ITexture* pITex = pResTexture->m_Sampler.m_pITex)
         {
@@ -3291,7 +3291,7 @@ void SSuperMesh::AddSuperTriangle(SRayHitTriangle& htIn, PodArray<SMINDEX> arrVe
             int* pLowResSystemCopyAtlasId = 0;
             if (pShItem->m_pShaderResources)
             {
-                SEfResTexture* pResTexture = pShItem->m_pShaderResources->GetTexture(EFTT_DIFFUSE);
+                SEfResTexture* pResTexture = pShItem->m_pShaderResources->GetTextureResource(EFTT_DIFFUSE);
                 if (pResTexture)
                 {
                     ITexture* pITex = pResTexture->m_Sampler.m_pITex;
@@ -3408,7 +3408,7 @@ void SSuperMesh::AddSuperMesh(SSuperMesh& smIn, float fVertexOffset)
                 int* pLowResSystemCopyAtlasId = 0;
                 if (pShItem->m_pShaderResources)
                 {
-                    SEfResTexture* pResTexture = pShItem->m_pShaderResources->GetTexture(EFTT_DIFFUSE);
+                    SEfResTexture* pResTexture = pShItem->m_pShaderResources->GetTextureResource(EFTT_DIFFUSE);
                     if (pResTexture)
                     {
                         ITexture* pITex = pResTexture->m_Sampler.m_pITex;

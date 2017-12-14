@@ -57,6 +57,8 @@ MAP_EXT = {
     ".xib":   "text.xib",
 }
 
+LMBR_WAF_SCRIPT_REL_PATH = "Tools/build/waf-1.7.13/lmbr_waf"
+
 do_debug_print = False
 root_dir = ''
 id = 562000999
@@ -209,7 +211,8 @@ class PBXLegacyTarget(XCodeNode):
         self.buildConfigurationList = XCConfigurationList(build_configuration_list)
 
         action = 'build_' + platform_name + "_$CONFIGURATION"
-        self.buildArgumentsString = "%s/%s -cwd %s %s -p%s --targets=%s" % (XCodeEscapeSpacesForShell(root_dir), XCodeEscapeSpacesForShell(sys.argv[0]), XCodeEscapeSpacesForShell(root_dir), action, project_spec, target)
+        lmbr_waf_script = os.path.join(ctx.engine_path, LMBR_WAF_SCRIPT_REL_PATH)
+        self.buildArgumentsString = "%s -cwd %s %s -p%s --targets=%s" % (XCodeEscapeSpacesForShell(lmbr_waf_script), XCodeEscapeSpacesForShell(root_dir), action, project_spec, target)
         self.buildPhases = []
         self.buildToolPath = sys.executable
         self.buildWorkingDirectory = ""
@@ -259,6 +262,8 @@ class PBXBuildFile(XCodeNode):
 class PBXNativeTarget(XCodeNode):
     def __init__(self, platform_name, project_spec, task_generator, settings, ctx):
         XCodeNode.__init__(self)
+
+        self.lmbr_waf_script = os.path.join(ctx.engine_path, LMBR_WAF_SCRIPT_REL_PATH)
 
         if (task_generator == None):
             return
@@ -315,8 +320,9 @@ class PBXNativeTarget(XCodeNode):
         self.productReference = PBXFileReference(target, node.abspath(), 'wrapper.application', 'BUILT_PRODUCTS_DIR')
 
     def add_waf_build_phase_to_target(self, build_action):
+
         waf_build_phase = PBXShellScriptBuildPhase()
-        waf_build_phase.shellScript = "'%s' '%s/%s' -cwd '%s' %s" % (sys.executable, XCodeEscapeSpacesForShell(root_dir), XCodeEscapeSpacesForShell(sys.argv[0]), XCodeEscapeSpacesForShell(root_dir), build_action)
+        waf_build_phase.shellScript = "'%s' '%s' -cwd '%s' %s" % (sys.executable, XCodeEscapeSpacesForShell(self.lmbr_waf_script), XCodeEscapeSpacesForShell(root_dir), build_action)
         self.buildPhases.append(waf_build_phase)
 
     def add_prepare_for_archive_build_phase_to_target(self):

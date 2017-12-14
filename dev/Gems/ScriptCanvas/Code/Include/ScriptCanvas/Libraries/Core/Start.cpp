@@ -21,20 +21,9 @@ namespace ScriptCanvas
     {
         namespace Core
         {
-            void Start::OnActivate()
-            {
-                AZ::EntityBus::Handler::BusConnect(GetGraph()->GetEntityId());
-            }
-
-            void Start::OnDeactivate()
-            {
-                AZ::EntityBus::Handler::BusDisconnect();
-            }
-
-            void Start::OnEntityActivated(const AZ::EntityId&)
+            void Start::OnInputSignal(const SlotId&)
             {
                 SignalOutput(StartProperty::GetOutSlotId(this));
-                AZ::EntityBus::Handler::BusDisconnect();
             }
         }
     }

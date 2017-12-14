@@ -27,6 +27,8 @@
 #include "MannequinDialog.h"
 #include "FragmentTrack.h"
 
+#include <Editor/Util/FileUtil.h>
+
 #include <ISourceControl.h>
 
 #include <QKeyEvent>
@@ -1804,8 +1806,8 @@ void CSequencerDopeSheetBase::OnRButtonDown(const QPoint& point, Qt::KeyboardMod
                     {
                         const AZStd::string currentAbsPath = Path::GetEditingGameDataFolder() + QtUtil::ToString(QDir::separator() + currentPath).c_str();
                         const string gamePath = PathUtil::ToDosPath(currentAbsPath.c_str());
-                        const uint32 attr = GetIEditor()->GetSourceControl()->GetFileAttributes(gamePath);
-                        if ((attr != SCC_FILE_ATTRIBUTE_INVALID) && (attr & SCC_FILE_ATTRIBUTE_MANAGED))
+                        const uint32 attr = CFileUtil::GetAttributes(gamePath);
+                        if (attr & SCC_FILE_ATTRIBUTE_MANAGED)
                         {
                             if (GetIEditor()->GetSourceControl()->GetLatestVersion(gamePath))
                             {
@@ -1882,17 +1884,17 @@ CSequencerDopeSheetBase::EDSSourceControlResponse CSequencerDopeSheetBase::TryGe
     // Check state of all files
     for (QStringList::const_iterator iter = paths.begin(), itEnd = paths.end(); iter != itEnd; ++iter)
     {
-        const AZStd::string workspacePathAbs = Path::GetEditingGameDataFolder() + "\\" + (*iter).toLatin1().constData();
-        const QString workspacePath = QtUtil::ToQString(PathUtil::ToDosPath(workspacePathAbs.c_str()));
-        ESccFileAttributes fileAttributes = (ESccFileAttributes)pSourceControl->GetFileAttributes(workspacePath.toLatin1().data());
-        const bool bThisFileExists = CFileUtil::FileExists(*iter) && !(fileAttributes & SCC_FILE_ATTRIBUTE_INPAK);
-        const bool bThisFileNeedsUpdate = (!bThisFileExists) || !pSourceControl->GetLatestVersion(workspacePath.toLatin1().data(), GETLATEST_ONLY_CHECK);
+        const QString workspacePath = Path::GamePathToFullPath((*iter).toUtf8().constData());
+        uint32 fileAttributes = CFileUtil::GetAttributes(workspacePath.toUtf8().constData());
 
-        vExists.push_back(bThisFileExists);
-        vNeedsUpdate.push_back(bThisFileNeedsUpdate);
+        const bool fileExistsOnDisk = fileAttributes & SCC_FILE_ATTRIBUTE_NORMAL;
+        const bool fileNeedsUpdate = (fileAttributes & SCC_FILE_ATTRIBUTE_MANAGED) && (fileAttributes & SCC_FILE_ATTRIBUTE_NOTATHEAD);
 
-        bAllFilesExist = bAllFilesExist && bThisFileExists;
-        bAllFilesAreUpToDate = bAllFilesAreUpToDate && !bThisFileNeedsUpdate;
+        vExists.push_back(fileExistsOnDisk);
+        vNeedsUpdate.push_back(fileNeedsUpdate);
+
+        bAllFilesExist = bAllFilesExist && fileExistsOnDisk;
+        bAllFilesAreUpToDate = bAllFilesAreUpToDate && !fileNeedsUpdate;
     }
 
     // User input
@@ -1918,11 +1920,8 @@ CSequencerDopeSheetBase::EDSSourceControlResponse CSequencerDopeSheetBase::TryGe
 
         for (QStringList::const_iterator iter = paths.begin(), itEnd = paths.end(); iter != itEnd; ++iter)
         {
-            const AZStd::string workspacePathAbs = Path::GetEditingGameDataFolder() + "\\" + (*iter).toLatin1().constData();
-            const string workspacePath = PathUtil::ToDosPath(workspacePathAbs.c_str());
-            const bool bThisFileUpdatedSuccessfully = pSourceControl->GetLatestVersion(workspacePath);
-
-            if (!bThisFileUpdatedSuccessfully)
+            const QString workspacePath = Path::GamePathToFullPath((*iter).toUtf8().constData());
+            if (!pSourceControl->GetLatestVersion(workspacePath.toUtf8().constData()))
             {
                 vFailures.push_back(*iter);
             }
@@ -1968,9 +1967,9 @@ CSequencerDopeSheetBase::EDSSourceControlResponse CSequencerDopeSheetBase::TryCh
     // Check state of all files
     for (QStringList::const_iterator iter = paths.begin(), itEnd = paths.end(); iter != itEnd; ++iter)
     {
-        const AZStd::string workspacePathAbs = Path::GetEditingGameDataFolder() + "\\" + (*iter).toLatin1().constData();
-        const QString workspacePath = QtUtil::ToQString(PathUtil::ToDosPath(workspacePathAbs.c_str()));
-        ESccFileAttributes fileAttributes = (ESccFileAttributes)pSourceControl->GetFileAttributes(workspacePath.toLatin1().data());
+        const QString workspacePath = Path::GamePathToFullPath((*iter).toUtf8().constData());
+        uint32 fileAttributes = CFileUtil::GetAttributes(workspacePath.toUtf8().constData());
+
         const bool bThisFileCheckedOut = fileAttributes & SCC_FILE_ATTRIBUTE_CHECKEDOUT;
         vCheckedOut.push_back(bThisFileCheckedOut);
         bAllFilesAreCheckedOut = bAllFilesAreCheckedOut && bThisFileCheckedOut;
@@ -1999,11 +1998,8 @@ CSequencerDopeSheetBase::EDSSourceControlResponse CSequencerDopeSheetBase::TryCh
 
         for (QStringList::const_iterator iter = paths.begin(), itEnd = paths.end(); iter != itEnd; ++iter)
         {
-            const AZStd::string workspacePathAbs = Path::GetEditingGameDataFolder() + "\\" + (*iter).toLatin1().constData();
-            const string workspacePath = PathUtil::ToDosPath(workspacePathAbs.c_str());
-            const bool bThisFileCheckedOut = pSourceControl->CheckOut(workspacePath);
-
-            if (!bThisFileCheckedOut)
+            const AZStd::string filename((*iter).toUtf8().constData());
+            if (!CFileUtil::CheckoutFile(filename.c_str()))
             {
                 vFailures.push_back(*iter);
             }
@@ -4060,14 +4056,6 @@ void CSequencerDopeSheetBase::ShowKeyPropertyCtrlOnSpot(int x, int y, bool bMult
     else
     {
         m_keyPropertiesDlg->PopulateVariables(*m_wndPropsOnSpot);
-    }
-    if (bMultipleKeysSelected)
-    {
-        m_wndPropsOnSpot->SetDisplayOnlyModified(true);
-    }
-    else
-    {
-        m_wndPropsOnSpot->SetDisplayOnlyModified(false);
     }
     m_wndPropsOnSpot->move(x, y);
     m_wndPropsOnSpot->show();

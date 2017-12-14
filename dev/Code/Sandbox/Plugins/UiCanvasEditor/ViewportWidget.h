@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include "EditorCommon.h"
+
 class ViewportWidget
     : public QViewport
 {
@@ -37,11 +39,16 @@ public: // member functions
 
     void UpdateViewportBackground();
 
+    void ActiveCanvasChanged();
+
     //! Flags the viewport display as needing a refresh
     void Refresh();
 
     //! Used to clear the viewport and prevent rendering until the viewport layout updates
     void ClearUntilSafeToRedraw();
+
+    //! Set whether to render the canvas
+    void SetRedrawEnabled(bool enabled);
 
     //! Get the canvas scale factor being used for the preview mode
     float GetPreviewCanvasScale() { return m_previewCanvasScale; }
@@ -115,7 +122,7 @@ private: // data
 
     uint32 m_drawElementBordersFlags;
     bool m_refreshRequested;
-    bool m_canvasRenderIsDisabled;
+    bool m_canvasRenderIsEnabled;
     QTimer m_updateTimer;
 
     float m_previewCanvasScale;

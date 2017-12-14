@@ -33,5 +33,5 @@ public:
     }
 
     void FreezeXForm(int nResetFlag);
-    static void FreezeXForm(CD::SMainContext& mc, int nResetFlag);
+    static void FreezeXForm(const CD::SMainContext& mc, int nResetFlag);
 };

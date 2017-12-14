@@ -52,6 +52,14 @@ namespace GridMate
         : EntityScriptDataSetType(GetDataSetName())
         , m_isEnabled(false)
     {
+        /*
+         * ReplicaChunk has to declare all of its dataset at compile, however, scripts decide that at runtime.
+         * Thus, we create the maximum possible datasets and disable those that aren't being used.
+         *
+         * So a lot of time these datasets aren't used in scripts and thus they don't have any useful value in them.
+         * Marking them as default achieves not sending them on the network.
+         */
+        MarkAsDefaultValue();
     }
 
     void EntityScriptDataSet::DispatchChangedEvent(const TimeContext& tc)
@@ -298,11 +306,6 @@ namespace GridMate
 
     AZ::u32 EntityScriptReplicaChunk::CalculateDirtyDataSetMask(MarshalContext& marshalContext)
     {
-        if ((marshalContext.m_marshalFlags & ReplicaMarshalFlags::ForceDirty))
-        {
-            return m_enabledDataSetMask;
-        }
-
-        return GridMate::ReplicaChunk::CalculateDirtyDataSetMask(marshalContext);
+        return (m_enabledDataSetMask & GridMate::ReplicaChunk::CalculateDirtyDataSetMask(marshalContext));
     }
 }

@@ -291,7 +291,15 @@ void UiLayoutCellComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetExtraWidthRatio", &UiLayoutCellBus::Events::GetExtraWidthRatio)
             ->Event("SetExtraWidthRatio", &UiLayoutCellBus::Events::SetExtraWidthRatio)
             ->Event("GetExtraHeightRatio", &UiLayoutCellBus::Events::GetExtraHeightRatio)
-            ->Event("SetExtraHeightRatio", &UiLayoutCellBus::Events::SetExtraHeightRatio);
+            ->Event("SetExtraHeightRatio", &UiLayoutCellBus::Events::SetExtraHeightRatio)
+            ->VirtualProperty("MinWidth", "GetMinWidth", "SetMinWidth")
+            ->VirtualProperty("MinHeight", "GetMinHeight", "SetMinHeight")
+            ->VirtualProperty("TargetWidth", "GetTargetWidth", "SetTargetWidth")
+            ->VirtualProperty("TargetHeight", "GetTargetHeight", "SetTargetHeight")
+            ->VirtualProperty("ExtraWidthRatio", "GetExtraWidthRatio", "SetExtraWidthRatio")
+            ->VirtualProperty("ExtraHeightRatio", "GetExtraHeightRatio", "SetExtraHeightRatio");
+
+        behaviorContext->Class<UiLayoutCellComponent>()->RequestBus("UiLayoutCellBus");
     }
 }
 

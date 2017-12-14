@@ -98,5 +98,7 @@ namespace AzFramework
     void AssetCatalogComponent::Deactivate()
     {
         m_catalog.reset();
+
+        AzFramework::LegacyAssetEventBus::ClearQueuedEvents();
     }
 } // namespace AzFramework

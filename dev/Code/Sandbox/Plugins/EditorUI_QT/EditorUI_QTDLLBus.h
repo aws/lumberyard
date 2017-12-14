@@ -204,6 +204,20 @@ namespace EditorUIPlugin
         */
         virtual void Reset() = 0;
     };
+
+    /**
+    * Used to notify when things in a library change that are happening due to outside influence
+    * and not directly because of GUI actions the user is taking
+    */
+    class LibraryChangeEvents
+        : public AZ::EBusTraits
+    {
+    public:
+        
+        //! The Library Manager changed the library (ie, something was loaded or selected by a script or other source)
+        virtual void LibraryChangedInManager(const char* libraryName) = 0;
+        using Bus = AZ::EBus<LibraryChangeEvents>;
+    };
     
     class LibraryItemCacheRequests
         : public AZ::EBusTraits

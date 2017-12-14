@@ -61,7 +61,7 @@ public:
     void HideSelectedObjects(bool bHide);
     void RemoveSelectedObjects();
 
-    void PaintBrush();
+    bool PaintBrush();
     void PlaceThing();
     void GetSelectedObjects(std::vector<CVegetationObject*>& objects);
 
@@ -102,12 +102,14 @@ private:
     bool OnLButtonUp(CViewport* view, UINT nFlags, const QPoint& point);
     bool OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point);
 
+    void OnPaintBrushFailed();
 
 
     QPoint m_mouseDownPos;
     QPoint m_mousePos;
     QPoint m_prevMousePos;
     Vec3 m_pointerPos;
+    bool m_mouseOverPaintableSurface;
     static float m_brushRadius;
 
     bool m_bPlaceMode;
@@ -149,6 +151,7 @@ private:
     class CPanelPreview* m_panelPreview;
 
     bool m_isAffectedByBrushes;
+    bool m_instanceLimitMessageActive;
 };
 
 

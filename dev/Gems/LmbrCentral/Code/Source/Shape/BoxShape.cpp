@@ -16,7 +16,15 @@
 #include <MathConversion.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Matrix3x3.h>
+#include <AzCore/Math/Random.h>
+#include <AzCore/Math/MathUtils.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/std/algorithm.h>
+#include "Cry_Vector3.h"
+
+#include <LmbrCentral/Scripting/RandomTimedSpawnerComponentBus.h>
+
+#include <random>
 
 namespace LmbrCentral
 {
@@ -97,7 +105,18 @@ namespace LmbrCentral
         bool result = false;
         if (m_intersectionDataCache.IsAxisAligned())
         {
-            result = Overlap::Point_AABB(AZVec3ToLYVec3(point), m_intersectionDataCache.GetAABB());
+            /* 
+                We use the Point_AABB_MaxInclusive function here because, when working with a box
+                shape with the dimensions (5, 5, 5) we want a point at, say, (1, 5, 1) to be a valid
+                point. If we use Point_AABB (which is max exclusive), then the point (1, 5, 1) would fail
+                because the Y component is at the max bound of the box. 
+                
+                When dealing with randomly generated points that might end up at the max value
+                we want to be max inclusive. However other parts of the engine may be relying on 
+                the max exclusive property of Point_AABB so that method has been left alone.
+            */
+
+            result = Overlap::Point_AABB_MaxInclusive(AZVec3ToLYVec3(point), m_intersectionDataCache.GetAABB());
         }
         else
         {
@@ -127,8 +146,79 @@ namespace LmbrCentral
         return distanceSquared;
     }
     
+    AZ::Vector3 BoxShape::GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution)
+    {
+        float x = 0;
+        float y = 0;
+        float z = 0;
+        AZ::Vector3 minPos = GetConfiguration().GetDimensions() * -0.5f;
+        AZ::Vector3 maxPos = GetConfiguration().GetDimensions() * +0.5f;
+
+        std::default_random_engine generator;
+        generator.seed(static_cast<unsigned int>(time(0)));
+
+        switch(randomDistribution)
+        {
+        case AZ::RandomDistributionType::Normal:
+        {
+            // Points should be generated just inside the shape boundary
+            minPos *= 0.999f;
+            maxPos *= 0.999f;
+
+            std::normal_distribution<float> normalDist;
+            float mean = 0.0f; //Mean will always be 0
+            float stdDev = 0.0f; //stdDev will be the sqrt of the max value (which is the total variation)
+
+            stdDev = sqrtf(maxPos.GetX());
+            normalDist = std::normal_distribution<float>(mean, stdDev);
+            x = normalDist(generator);
+            //Normal distributions can sometimes produce values outside of our desired range
+            //We just need to clamp
+            x = AZStd::clamp<float>(x, minPos.GetX(), maxPos.GetX());
+
+            stdDev = sqrtf(maxPos.GetY());
+            normalDist = std::normal_distribution<float>(mean, stdDev);
+            y = normalDist(generator);
+
+            y = AZStd::clamp<float>(y, minPos.GetY(), maxPos.GetY());
+
+            stdDev = sqrtf(maxPos.GetZ());
+            normalDist = std::normal_distribution<float>(mean, stdDev);
+            z = normalDist(generator);
+
+            z = AZStd::clamp<float>(z, minPos.GetZ(), maxPos.GetZ());
+
+            break;
+        }
+        case AZ::RandomDistributionType::UniformReal:
+        {
+            std::uniform_real_distribution<float> uniformRealDist;
+
+            uniformRealDist = std::uniform_real_distribution<float>(minPos.GetX(), maxPos.GetX());
+            x = uniformRealDist(generator);
+
+            uniformRealDist = std::uniform_real_distribution<float>(minPos.GetY(), maxPos.GetY());
+            y = uniformRealDist(generator);
+
+            uniformRealDist = std::uniform_real_distribution<float>(minPos.GetZ(), maxPos.GetZ());
+            z = uniformRealDist(generator);
+
+            break;
+        }
+        default:
+            AZ_Warning("BoxShape", false, "Unsupported random distribution type. Returning default vector (0,0,0)");
+        }
+
+        //Transform into world space
+        AZ::Vector3 position = AZ::Vector3(x, y, z);
+
+        position = m_currentTransform * position;
+
+        return position;
+    }
+
     void BoxShape::BoxIntersectionDataCache::UpdateIntersectionParams(const AZ::Transform& currentTransform,
-        const BoxShapeConfig& configuration)
+        const BoxShapeConfiguration& configuration)
     {
         if (m_cacheStatus != CacheStatus::Current)
         {

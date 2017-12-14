@@ -12,6 +12,8 @@ REM
 REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 REM
 
+pushd %~dp0%
+
 SETLOCAL
 
 REM search for the engine root from the engine.json if possible
@@ -64,9 +66,12 @@ GOTO :FAILED
 SET AZ_SCAN_DIR=%CMD_DIR%\Code\Tools\AzTestScanner
 SET PYTHONPATH=%AZ_SCAN_DIR%
 
-"%PYTHON%" -m aztest %*
+call "%PYTHON%" -m aztest %*
 IF ERRORLEVEL 1 GOTO FAILED
+
+popd
 EXIT /b 0
 
 :FAILED
+popd
 EXIT /b 1

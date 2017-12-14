@@ -61,6 +61,11 @@ namespace EMotionFX
                 AnimGraphComponent::GetProvidedServices(provided);
             }
 
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+            {
+                AnimGraphComponent::GetIncompatibleServices(incompatible);
+            }
+
             static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
             {
                 AnimGraphComponent::GetDependentServices(dependent);

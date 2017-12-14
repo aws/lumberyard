@@ -24,7 +24,7 @@ namespace AzToolsFramework
         //! ThumbnailKey is used to locate thumbnails in thumbnail cache
         /*
             ThumbnailKey contains any kind of identifiable information to retrieve thumbnails (e.g. assetId, assetType, filename, etc.)
-            To use thumbnail system, keep reference to your thumbnail key, and retrieve Thumbnail via 
+            To use thumbnail system, keep reference to your thumbnail key, and retrieve Thumbnail via ThumbnailerRequestsBus
         */
         class ThumbnailKey
             : public QObject
@@ -74,15 +74,13 @@ Q_SIGNALS:
             void Updated() const;
 
         protected:
+            QFutureWatcher<void> m_watcher;
             State m_state;
             int m_thumbnailSize;
             SharedThumbnailKey m_key;
             QPixmap m_pixmap;
 
             virtual void LoadThread() {}
-
-        private:
-            QFutureWatcher<void> m_watcher;
         };
 
         typedef QSharedPointer<Thumbnail> SharedThumbnail;

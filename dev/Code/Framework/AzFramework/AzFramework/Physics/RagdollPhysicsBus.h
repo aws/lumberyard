@@ -13,7 +13,7 @@
 
 #include <AzCore/Component/ComponentBus.h>
 
-namespace LmbrCentral
+namespace AzFramework
 {
     /*!
     * Messages serviced by the Cry character physics ragdoll behavior.
@@ -33,4 +33,4 @@ namespace LmbrCentral
     };
 
     using RagdollPhysicsRequestBus = AZ::EBus<RagdollPhysicsRequests>;
-} // namespace LmbrCentral
+} // namespace AzFramework

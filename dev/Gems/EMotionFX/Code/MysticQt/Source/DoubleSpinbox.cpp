@@ -39,9 +39,6 @@ namespace MysticQt
         mDownButton     = downButton;
         mMouseMoveSpinningEnabled = false;
 
-        setToolTip("Keep mouse button pressed and move mouse up or down to adjust value");
-
-        //setFocusPolicy(Qt::WheelFocus);
         setFocusPolicy(Qt::StrongFocus);
 
         if (mDownButton == false)

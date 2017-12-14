@@ -69,6 +69,19 @@ namespace GraphCanvas
 
     using StyleSheetRequestBus = AZ::EBus<StyleSheetRequests>;
 
+    //! StyleSheetNotifications
+    class StyleSheetNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void OnStyleSheetUnloaded() {}
+        virtual void OnStyleSheetLoaded() {}
+    };
+
+    using StyleSheetNotificationBus = AZ::EBus<StyleSheetNotifications>;
+
     //! StyleRequests
     //! Get the style for an entity (per its current state)
     class StyleRequests : public AZ::EBusTraits

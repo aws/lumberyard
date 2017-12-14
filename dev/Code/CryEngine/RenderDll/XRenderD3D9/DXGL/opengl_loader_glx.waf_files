@@ -3,8 +3,8 @@
 	{
 		"DXGL/Specification":
 		[
-			"Specification/glad_glx.c",
-			"Specification/glad_glx.h"
+			"Specification/glad/glad_glx.c",
+			"Specification/glad/glad_glx.h"
 		]
 	}
 }

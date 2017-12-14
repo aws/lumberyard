@@ -6,9 +6,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Game
-
 #include <algorithm>
 #include <vector>
 #include <memory>

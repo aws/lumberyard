@@ -19,10 +19,6 @@
 
 #pragma once
 
-// Include Configuration settings for Standard Template Library
-//#define CHANGE_STL_DEBUG_SETTINGS
-#include <STLPortConfig.h>
-
 #include <assert.h>
 
 #define CRY_ASSERT(condition) assert(condition)

@@ -1,9 +1,9 @@
 <ObjectStream version="1">
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-			<Class name="AZ::u64" field="id" value="17890971407271737170" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			<Class name="AZ::u64" field="id" value="18038236412693373559" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
-		<Class name="AZStd::string" field="Name" value="17890971407271737170" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+		<Class name="AZStd::string" field="Name" value="18038236412693373559" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 		<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 			<Class name="PrefabComponent" field="element" version="1" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
@@ -90,7 +90,7 @@
 													<Class name="AZStd::string" field="name" value="InitialCamera" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 												</Class>
 												<Class name="EntityId" field="value" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-													<Class name="AZ::u64" field="id" value="4294967295" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZ::u64" field="id" value="17838901843703919486" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 												</Class>
 											</Class>
 											<Class name="AzFramework::ScriptPropertyString" field="element" version="1" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
@@ -133,10 +133,10 @@
 										<Class name="CameraSettings" field="element" version="1" type="{0A6F349D-98F1-43DE-AE65-679669E089FC}">
 											<Class name="AZStd::string" field="Name" value="Default" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 											<Class name="int" field="Priority" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="float" field="FollowDistance" value="3.7000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+											<Class name="float" field="FollowDistance" value="2.7500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="FollowDistanceLow" value="2.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="FollowHeight" value="1.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-											<Class name="float" field="FollowOffset" value="0.6500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+											<Class name="float" field="FollowOffset" value="0.8000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="PivotOffsetFront" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="PivotOffsetBack" value="0.7500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="MaxLookUpAngle" value="52.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
@@ -155,7 +155,7 @@
 										<Class name="CameraSettings" field="element" version="1" type="{0A6F349D-98F1-43DE-AE65-679669E089FC}">
 											<Class name="AZStd::string" field="Name" value="Interior" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 											<Class name="int" field="Priority" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="float" field="FollowDistance" value="2.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+											<Class name="float" field="FollowDistance" value="1.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="FollowDistanceLow" value="1.8000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="FollowHeight" value="1.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="FollowOffset" value="0.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
@@ -163,8 +163,8 @@
 											<Class name="float" field="PivotOffsetBack" value="0.6000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="MaxLookUpAngle" value="52.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="MaxLookDownAngle" value="-89.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-											<Class name="float" field="VerticalSpeed" value="120.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-											<Class name="float" field="HorizontalSpeed" value="140.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+											<Class name="float" field="VerticalSpeed" value="100.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+											<Class name="float" field="HorizontalSpeed" value="115.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="HorizontalBoostSpeed" value="270.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="HorizontalBoostAccel" value="180.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 											<Class name="float" field="HorizontalBoostDecel" value="360.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>

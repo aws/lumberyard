@@ -114,14 +114,18 @@ function StateMachine:GotoState(targetStateName)
             
                 -- Invoke previous state's OnExit handler.
                 if (self.CurrentState.OnExit ~= nil) then
-                    self.CurrentState:OnExit(self);
+                    self.CurrentState:OnExit(self, targetStateName);
                 end
+				-- Send an event signifying the old state being exited.
+				self:SendStateChangeEvent("Exited" .. tostring(self.CurrentStateName));
             end
             
             -- Invoke new state's OnEnter handler.
             if (stateTable.OnEnter ~= nil) then
-                stateTable:OnEnter(self);
+                stateTable:OnEnter(self, self.CurrentStateName);
             end
+			-- Send an event signifying the new state being entered.
+			self:SendStateChangeEvent("Entered" .. tostring(targetStateName));
 			
             -- Identify any input conditions in the new state's transitions and register event handlers.
             if (stateTable.Transitions ~= nil) then
@@ -137,7 +141,7 @@ function StateMachine:GotoState(targetStateName)
 						sm:GotoState(tostring(transKey));
 					end
 					transTable.InputListeners[listenerCount+1].EventHandler =
-						GameplayNotificationBus.Connect(transTable.InputListeners[listenerCount+1], GameplayNotificationId(self.EntityId, transTable.InputEvent), "float");
+						GameplayNotificationBus.Connect(transTable.InputListeners[listenerCount+1], GameplayNotificationId(self.EntityId, transTable.InputEvent, "float"));
                     end
                 end
             end
@@ -147,15 +151,7 @@ function StateMachine:GotoState(targetStateName)
             end
             
 			-- Send an event signifying the state change.
-			if (self.StateChangeEvents) then
-				local eventName = tostring(self.CurrentStateName) .. "To" .. tostring(targetStateName);
-				local eventId = GameplayNotificationId(self.EntityId, eventName, "float");
-				GameplayNotificationBus.Event.OnEventBegin(eventId, eventName);
-				
-				if (self.IsDebuggingEnabled) then
-					Debug.Log("Sending " .. tostring(eventName) .. " to " .. tostring(StarterGameUtility.GetEntityName(self.EntityId)) .. " " .. tostring(self.EntityId));
-				end
-			end
+			self:SendStateChangeEvent(tostring(self.CurrentStateName) .. "To" .. tostring(targetStateName));
 			
             self.CurrentState = stateTable;
 			self.CurrentStateName = stateKey;
@@ -165,14 +161,31 @@ function StateMachine:GotoState(targetStateName)
     end
     
     if (self.IsDebuggingEnabled) then
-        Debug.Log("[StateMachine " .. tostring(self.Name) .. "] Failed to find state: " .. targetStateName);
+        Debug.Log("[StateMachine " .. tostring(self.Name) .. ":" .. tostring(self.EntityId) .. "] Failed to find state: " .. targetStateName);
     end
+end
+
+function StateMachine:SendStateChangeEvent(eventName)
+	if (self.StateChangeEvents) then
+		local eventId = GameplayNotificationId(self.EntityId, eventName, "float");
+		GameplayNotificationBus.Event.OnEventBegin(eventId, eventName);
+		
+		if (self.IsDebuggingEnabled) then
+			Debug.Log("Sending " .. tostring(eventName) .. " to " .. tostring(StarterGameEntityUtility.GetEntityName(self.EntityId)) .. " " .. tostring(self.EntityId));
+		end
+	end
 end
 
 function StateMachine:OnAnimationEvent(event)
 	--Debug.Log("got animation event: "..event.name);
 	if(self.CurrentState.OnAnimationEvent ~= nil) then
     	self.CurrentState:OnAnimationEvent(event.name, event.time);
+	end
+end
+
+function StateMachine:OnEmotionAnimationEvent(event)
+	if(self.CurrentState.OnEmotionAnimationEvent ~= nil) then
+    	self.CurrentState:OnEmotionAnimationEvent(event, self);
 	end
 end
 

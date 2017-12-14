@@ -17,6 +17,8 @@
 #include "Woodpecker/Driller/DrillerAggregatorOptions.hxx"
 #include "Woodpecker/Driller/GenericCustomizeCSVExportWidget.hxx"
 #include "VRAMDataParser.h"
+#include "AzCore/std/string/string.h"
+#include "AzCore/RTTI/RTTI.h"
 
 namespace Driller
 {

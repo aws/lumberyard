@@ -20,11 +20,20 @@ namespace AzToolsFramework
     {
         class LoadingThumbnail
             : public Thumbnail
+            , public AZ::TickBus::Handler
         {
             Q_OBJECT
         public:
             explicit LoadingThumbnail(int thumbnailSize);
-            void UpdateTime(float deltaTime) override;
+            ~LoadingThumbnail() override;
+
+            void UpdateTime(float /*deltaTime*/) override;
+
+            //////////////////////////////////////////////////////////////////////////
+            // TickBus
+            //////////////////////////////////////////////////////////////////////////
+            //! LoadingThumbnail is not part pf any thumbnail cache, so it needs to be updated manually
+            void OnTick(float deltaTime, AZ::ScriptTimePoint /*time*/) override;
 
         private:
             float m_angle;

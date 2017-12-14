@@ -33,7 +33,7 @@ TEST_F(RCcontrollerTest, CompileGroupCreatedWithUnknownStatusForFailedJobs)
     RCJob* job = new RCJob(rcJobListModel);
     AssetProcessor::JobDetails jobDetails;
     jobDetails.m_jobEntry.m_relativePathToFile = "somepath/failed.dds";
-    jobDetails.m_jobEntry.m_platform = "pc";
+    jobDetails.m_jobEntry.m_platformInfo = { "pc", {"desktop", "renderer"} };
     jobDetails.m_jobEntry.m_jobKey = "Compile Stuff";
     job->SetState(RCJob::failed);
     job->Init(jobDetails);
@@ -58,24 +58,44 @@ TEST_F(RCcontrollerTest, CancelJobTest)
     rcController.QuitRequested(); // We do not want to process any jobs
 
     RCJobListModel* rcJobListModel = rcController.GetQueueModel();
-    RCJob* job = new RCJob(rcJobListModel);
-    AssetProcessor::JobDetails jobDetails;
-    jobDetails.m_jobEntry.m_relativePathToFile = "somepath/failed.dds";
-    jobDetails.m_jobEntry.m_platform = "ios";
-    jobDetails.m_jobEntry.m_jobRunKey = 1;
-    jobDetails.m_jobEntry.m_jobKey = "tiff";
-    job->SetState(RCJob::JobState::pending);
-    job->Init(jobDetails);
-    rcJobListModel->addNewJob(job);
-    RCJob* secondJob = new RCJob(rcJobListModel);
-    jobDetails.m_jobEntry.m_platform = "pc";
-    jobDetails.m_jobEntry.m_jobRunKey = 2;
-    secondJob->Init(jobDetails);
-    rcJobListModel->addNewJob(secondJob);
-    rcJobListModel->markAsStarted(secondJob);
-    rcJobListModel->markAsProcessing(secondJob);
-    jobDetails.m_jobEntry.m_jobRunKey = 3;
-    rcController.JobSubmitted(jobDetails);
+
+    {
+        RCJob* job = new RCJob(rcJobListModel);
+        AssetProcessor::JobDetails jobDetails;
+        jobDetails.m_jobEntry.m_relativePathToFile = "somepath/failed.dds";
+        jobDetails.m_jobEntry.m_platformInfo = { "ios", {"mobile", "renderer"} };
+        jobDetails.m_jobEntry.m_jobRunKey = 1;
+        jobDetails.m_jobEntry.m_jobKey = "tiff";
+        job->SetState(RCJob::JobState::pending);
+        job->Init(jobDetails);
+        rcJobListModel->addNewJob(job);
+    }
+
+    {
+        RCJob* job = new RCJob(rcJobListModel);
+        // note that Init() is a move operation.  we cannot reuse jobDetails.
+        AssetProcessor::JobDetails jobDetails;
+        jobDetails.m_jobEntry.m_relativePathToFile = "somepath/failed.dds";
+        jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
+        jobDetails.m_jobEntry.m_jobRunKey = 2;
+        jobDetails.m_jobEntry.m_jobKey = "tiff";
+        job->SetState(RCJob::JobState::pending);
+        job->Init(jobDetails);
+        rcJobListModel->addNewJob(job);
+        rcJobListModel->markAsStarted(job);
+        rcJobListModel->markAsProcessing(job);
+    }
+    
+    // now submit a new job for the same details as the already running one.
+    {
+        AssetProcessor::JobDetails jobDetails;
+        jobDetails.m_jobEntry.m_relativePathToFile = "somepath/failed.dds";
+        jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
+        jobDetails.m_jobEntry.m_jobKey = "tiff";
+        jobDetails.m_jobEntry.m_jobRunKey = 3;
+        rcController.JobSubmitted(jobDetails);
+    }
+
     for (int idx = 0; idx < rcJobListModel->itemCount(); idx++)
     {
         RCJob* rcJob = rcJobListModel->getItem(idx);

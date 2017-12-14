@@ -20,11 +20,24 @@ if [ -n "$BUILD_TAG" ]; then
     fi
 fi
 
-BASEDIR=$(dirname "$0")
-pushd $BASEDIR
-env python Tools/build/waf-1.7.13/lmbr_waf "$@"
+pushd $(dirname "$0")
+
+# Extract an optional external engine path if present, otherwise use the cwd as the engine dir
+EXTERNAL_ENGINE_PATH=`cat engine.json | grep "ExternalEnginePath" | awk -F":" '{ print $2 }' | sed "s/,//g" | sed "s/\"//g" | xargs echo -n`
+if [ -z $EXTERNAL_ENGINE_PATH ]; then
+    ENGINE_DIR=$(dirname "$0")
+elif [ -d $EXTERNAL_ENGINE_PATH ]; then
+    ENGINE_DIR=$EXTERNAL_ENGINE_PATH
+else
+    echo External Path in engine.json "$EXTERNAL_ENGINE_PATH" does not exist
+    exit 1
+fi
+
+env python "$ENGINE_DIR/Tools/build/waf-1.7.13/lmbr_waf" "$@"
 
 RESULT=$?
+
+pushd $ENGINE_DIR
 
 if [ -f "Tools/build/waf-1.7.13/build_metrics/build_metrics_overrides.py" ]; then
     if [ $RESULT -eq 0 ]; then
@@ -40,5 +53,6 @@ if [ -f "Tools/build/waf-1.7.13/build_metrics/build_metrics_overrides.py" ]; the
     fi
 fi
 
+popd
 popd
 exit $RESULT

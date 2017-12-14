@@ -795,9 +795,9 @@ namespace UnitTest
                     EXPECT_ANY_IS(&a, int, 10);
                     EXPECT_ANY_IS(&a, long, 10);
                     EXPECT_ANY_IS(&a, char, 10);
-                    EXPECT_ANY_IS(&a, unsigned int, 10);
-                    EXPECT_ANY_IS(&a, unsigned long, 10);
-                    EXPECT_ANY_IS(&a, unsigned char, 10);
+                    EXPECT_ANY_IS(&a, unsigned int, 10u);
+                    EXPECT_ANY_IS(&a, unsigned long, 10u);
+                    EXPECT_ANY_IS(&a, unsigned char, 10u);
                 }
 
                 TEST_F(AnyTest, AnyNumericCast_Integral_AssertsOnDataLoss)
@@ -844,9 +844,9 @@ namespace UnitTest
                     EXPECT_ANY_IS(&a, int, 10);
                     EXPECT_ANY_IS(&a, long, 10);
                     EXPECT_ANY_IS(&a, char, 10);
-                    EXPECT_ANY_IS(&a, unsigned int, 10);
-                    EXPECT_ANY_IS(&a, unsigned long, 10);
-                    EXPECT_ANY_IS(&a, unsigned char, 10);
+                    EXPECT_ANY_IS(&a, unsigned int, 10u);
+                    EXPECT_ANY_IS(&a, unsigned long, 10u);
+                    EXPECT_ANY_IS(&a, unsigned char, 10u);
                 }
 
                 TEST_F(AnyTest, AnyNumericCast_FloatingPointToIntegral_AssertsOnDataLoss)

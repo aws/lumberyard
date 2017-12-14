@@ -53,7 +53,7 @@ namespace AssetProcessor
         QString m_rootDir;
         QString m_rcExe;
         QString m_inputFile;
-        QString m_platform;
+        QString m_platformIdentifier;
         QString m_params;
 
         RCParams(AssetProcessor::RCJob* job = nullptr)
@@ -156,7 +156,7 @@ namespace AssetProcessor
         const AssetProcessor::AssetRecognizer* GetRecognizer() const;
         void SetRecognizer(const AssetProcessor::AssetRecognizer* value);
 
-        QString GetPlatform() const;
+        const AssetBuilderSDK::PlatformInfo& GetPlatformInfo() const;
 
         // intentionally non-const to move.
         AssetBuilderSDK::ProcessJobResponse& GetProcessJobResponse();
@@ -191,6 +191,7 @@ namespace AssetProcessor
         QString GetWatchFolder() const;
         AZ::Uuid GetBuilderGuid() const;
         bool IsCritical() const;
+        bool IsAutoFail() const;
         int GetPriority() const;
 
     protected:

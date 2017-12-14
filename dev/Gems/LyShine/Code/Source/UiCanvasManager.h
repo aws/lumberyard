@@ -43,6 +43,7 @@ namespace AzFramework
 class UiCanvasManager
     : protected UiCanvasManagerBus::Handler
     , protected UiCanvasOrderNotificationBus::Handler
+    , private AzFramework::AssetCatalogEventBus::Handler
 {
 public: // member functions
 
@@ -64,11 +65,20 @@ public: // member functions
     void OnCanvasDrawOrderChanged(AZ::EntityId canvasEntityId) override;
     // ~UiCanvasOrderNotificationBus
 
+    // AssetCatalogEventBus::Handler
+    void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
+    // ~AssetCatalogEventBus::Handler
+
     AZ::EntityId CreateCanvasInEditor(UiEntityContext* entityContext);
     AZ::EntityId LoadCanvasInEditor(const string& assetIdPathname, const string& sourceAssetPathname, UiEntityContext* entityContext);
     AZ::EntityId ReloadCanvasFromXml(const AZStd::string& xmlString, UiEntityContext* entityContext);
 
     void ReleaseCanvas(AZ::EntityId canvas, bool forEditor);
+
+    // Wait a tick to release the UI canvas to prevent deleting a UI canvas from an active entity within that UI canvas, such as
+    // unloading a UI canvas from a script canvas that is on an element in that UI canvas
+    // (Used when UI canvas is loaded in game)
+    void ReleaseCanvasDeferred(AZ::EntityId canvas);
 
     AZ::EntityId FindCanvasById(LyShine::CanvasId id);
 
@@ -93,7 +103,8 @@ private: // member functions
 
     bool HandleInputEventForInWorldCanvases(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AZ::Vector2& viewportPos);
 
-    AZ::EntityId LoadCanvasInternal(const string& assetIdPathname, bool forEditor, const string& sourceAssetPathname, UiEntityContext* entityContext);
+    AZ::EntityId LoadCanvasInternal(const string& assetIdPathname, bool forEditor, const string& sourceAssetPathname, UiEntityContext* entityContext,
+        const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable = nullptr, AZ::EntityId previousCanvasId = AZ::EntityId());
 
 private: // types
 

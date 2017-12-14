@@ -25,7 +25,6 @@ namespace ScriptCanvas
     void InitNodeRegistry()
     {
         g_nodeRegistry = AZ::Environment::CreateVariable<NodeRegistry>(s_nodeRegistryName);
-
         using namespace Library;
         Core::InitNodeRegistry(*g_nodeRegistry);
         Math::InitNodeRegistry(*g_nodeRegistry);
@@ -40,9 +39,9 @@ namespace ScriptCanvas
         g_nodeRegistry.Reset();
     }
 
-    AZ::EnvironmentVariable<ScriptCanvas::NodeRegistry> GetNodeRegistry()
+    AZ::EnvironmentVariable<NodeRegistry> GetNodeRegistry()
     {
-        return g_nodeRegistry;
+        return AZ::Environment::FindVariable<NodeRegistry>(s_nodeRegistryName);
     }
 
     void ReflectLibraries(AZ::ReflectContext* reflectContext)

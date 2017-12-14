@@ -87,7 +87,7 @@
   <customwidget>
    <class>AzToolsFramework::AssetBrowser::AssetBrowserTreeView</class>
    <extends>QTreeView</extends>
-   <header>AzToolsFramework/AssetBrowser/AssetBrowserTreeView.h</header>
+   <header>AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h</header>
   </customwidget>
   <customwidget>
    <class>AzToolsFramework::AssetBrowser::SearchWidget</class>

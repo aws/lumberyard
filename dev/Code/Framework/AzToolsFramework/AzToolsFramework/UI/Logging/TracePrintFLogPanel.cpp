@@ -135,22 +135,13 @@ namespace AzToolsFramework
                         m_bufferedLines.push(Logging::LogLine(message, window ? window : "", type, QDateTime::currentMSecsSinceEpoch()));
                     }
 
-                    // Connect to the system tick bus here to ensure we're on the right thread for the singleShot call we want to make
-                    if (!AZ::SystemTickBus::Handler::BusIsConnected())
+                    // if we've already queued a timer tick, don't queue another one:
+                    bool wasQueued = m_alreadyQueuedDrainMessage.exchange(true, AZStd::memory_order_acq_rel);
+                    if (!wasQueued)
                     {
-                        AZ::SystemTickBus::Handler::BusConnect();
+                        QTimer::singleShot(s_delayBetweenTraceprintfUpdates, this, &AZTracePrintFLogTab::DrainMessages);
                     }
                 }
-            }
-        }
-
-        void AZTracePrintFLogTab::OnSystemTick()
-        {
-            AZ::SystemTickBus::Handler::BusDisconnect();
-            bool wasQueued = m_alreadyQueuedDrainMessage.exchange(true, AZStd::memory_order_acq_rel);
-            if (!wasQueued)
-            {
-                QTimer::singleShot(s_delayBetweenTraceprintfUpdates, this, &AZTracePrintFLogTab::DrainMessages);
             }
         }
 

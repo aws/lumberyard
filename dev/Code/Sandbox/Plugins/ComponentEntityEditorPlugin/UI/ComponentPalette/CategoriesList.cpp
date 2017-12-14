@@ -41,42 +41,42 @@ void ComponentCategoryList::Init()
 
     // Need this briefly to collect the list of available categories.
     ComponentDataModel dataModel(this);
-    for (const auto& category : dataModel.GetCategories())
+    for (const auto& cat : dataModel.GetCategories())
     {
-        QString categoryString = QString(category.c_str());
+        QString categoryString = QString(cat.c_str());
         QStringList categories = categoryString.split('/', QString::SkipEmptyParts);
 
         QTreeWidgetItem* parent = nullptr;
-        QTreeWidgetItem* category = nullptr;
+        QTreeWidgetItem* categoryWidget = nullptr;
 
         for (const auto& categoryName : categories)
         {
             if (parent)
             {
-                category = new QTreeWidgetItem(parent);
-                category->setIcon(0, QIcon(categoryIconPath));
+                categoryWidget = new QTreeWidgetItem(parent);
+                categoryWidget->setIcon(0, QIcon(categoryIconPath));
                 
                 // Store the full category path in a user role because we'll need it to locate the actual category
-                category->setData(0, Qt::UserRole, QVariant::fromValue(categoryString));
+                categoryWidget->setData(0, Qt::UserRole, QVariant::fromValue(categoryString));
             }
             else
             {
                 auto existingCategory = findItems(categoryName, Qt::MatchExactly);
                 if (existingCategory.empty())
                 {
-                    category = new QTreeWidgetItem(this);
-                    category->setIcon(0, QIcon(parentCategoryIconPath));
+                    categoryWidget = new QTreeWidgetItem(this);
+                    categoryWidget->setIcon(0, QIcon(parentCategoryIconPath));
                 }
                 else
                 {
-                    category = static_cast<QTreeWidgetItem*>(existingCategory.first());
-                    category->setIcon(0, QIcon(parentCategoryIconPath));
+                    categoryWidget = static_cast<QTreeWidgetItem*>(existingCategory.first());
+                    categoryWidget->setIcon(0, QIcon(parentCategoryIconPath));
                 }
             }
 
-            parent = category;
+            parent = categoryWidget;
 
-            category->setText(0, categoryName);
+            categoryWidget->setText(0, categoryName);
         }
     }
 

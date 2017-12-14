@@ -22,6 +22,11 @@
 
 #include <QObject>
 
+// Ensure we don't try to dllimport when moc includes us
+#if defined(Q_MOC_BUILD) && !defined(EDITOR_CORE)
+#define EDITOR_CORE
+#endif
+
 /** This a base class for all Libraries used by Editor.
 */
 class EDITOR_CORE_API CBaseLibrary

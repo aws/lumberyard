@@ -21,6 +21,7 @@
 
 #include <I3DEngine.h>
 
+#include <QDateTime>
 #include <QPoint>
 
 #define FREEZE_COLOR QColor(100, 100, 100)
@@ -236,20 +237,6 @@ void DisplayContext::DrawPolyLine(const Vec3* pnts, int numPoints, bool cycled)
 }
 
 //////////////////////////////////////////////////////////////////////////
-float DisplayContext::GetWaterLevelAtPos(const Vec3& vPos) const
-{
-    float fWaterLevel = engine->GetWaterLevel(&vPos);
-    float fOceanLevel = engine->GetAccurateOceanHeight(vPos);
-
-    if (fWaterLevel != WATER_LEVEL_UNKNOWN && fWaterLevel != fOceanLevel)
-    {
-        return fWaterLevel;
-    }
-
-    return WATER_LEVEL_UNKNOWN;
-}
-
-//////////////////////////////////////////////////////////////////////////
 void DisplayContext::DrawTerrainCircle(const Vec3& worldPos, float radius, float height)
 {
     // Draw circle with default radius.
@@ -460,14 +447,45 @@ void DisplayContext::DrawCircle(const Vec3& pos, float radius, int nUnchangedAxi
     p0[(nUnchangedAxis + 1) % 3] = pos[(nUnchangedAxis + 1) % 3] + radius * sin(0.0f);
     p0[(nUnchangedAxis + 2) % 3] = pos[(nUnchangedAxis + 2) % 3] + radius * cos(0.0f);
     p0 = ToWorldSpacePosition(p0);
-    float step = 10.0f / 180 * gf_PI;
-    for (float angle = step; angle < 360.0f / 180 * gf_PI + step; angle += step)
+    const float step = 10.0f / 180.0f * gf_PI;
+    for (float angle = step; angle < 360.0f / 180.0f * gf_PI + step; angle += step)
     {
         p1[nUnchangedAxis] = pos[nUnchangedAxis];
         p1[(nUnchangedAxis + 1) % 3] = pos[(nUnchangedAxis + 1) % 3] + radius * sin(angle);
         p1[(nUnchangedAxis + 2) % 3] = pos[(nUnchangedAxis + 2) % 3] + radius * cos(angle);
         p1 = ToWorldSpacePosition(p1);
         InternalDrawLine(p0, m_color4b, p1, m_color4b);
+        p0 = p1;
+    }
+}
+
+void DisplayContext::DrawHalfDottedCircle(const Vec3& pos, float radius, const Vec3& viewPos, int nUnchangedAxis)
+{
+    // Draw circle with default radius
+    Vec3 p0, p1;
+    p0[nUnchangedAxis] = pos[nUnchangedAxis];
+    p0[(nUnchangedAxis + 1) % 3] = pos[(nUnchangedAxis + 1) % 3] + radius * sin(0.0f);
+    p0[(nUnchangedAxis + 2) % 3] = pos[(nUnchangedAxis + 2) % 3] + radius * cos(0.0f);
+    p0 = ToWorldSpacePosition(p0);
+    const Vec3 worldPos = ToWorldSpacePosition(pos);
+    const Vec3 worldView = ToWorldSpacePosition(viewPos);
+    const float step = 10.0f / 180.0f * gf_PI;
+    size_t count = 0;
+    for (float angle = step; angle < 360.0f / 180.0f * gf_PI + step; angle += step)
+    {
+        p1[nUnchangedAxis] = pos[nUnchangedAxis];
+        p1[(nUnchangedAxis + 1) % 3] = pos[(nUnchangedAxis + 1) % 3] + radius * sin(angle);
+        p1[(nUnchangedAxis + 2) % 3] = pos[(nUnchangedAxis + 2) % 3] + radius * cos(angle);
+        p1 = ToWorldSpacePosition(p1);
+        // is circle edge facing away from us or not
+        const float dot = (p0 - worldPos).Dot(worldView - worldPos);
+        const bool facing = dot > 0.0f;
+        // if so skip every other line to produce a dotted effect
+        if (facing || count % 2 == 0)
+        {
+            InternalDrawLine(p0, m_color4b, p1, m_color4b);
+        }
+        count++;
         p0 = p1;
     }
 }
@@ -755,7 +773,7 @@ void DisplayContext::DrawQuadGradient(const Vec3& p1, const Vec3& p2, const Vec3
 //////////////////////////////////////////////////////////////////////////
 QColor DisplayContext::GetSelectedColor()
 {
-    float t = GetTickCount() / 1000.0f;
+    float t = QDateTime::currentMSecsSinceEpoch() / 1000;
     float r1 = fabs(sin(t * 8.0f));
     if (r1 > 255)
     {

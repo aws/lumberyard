@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Vector2.h>
 

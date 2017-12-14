@@ -55,7 +55,13 @@ namespace AzFramework
                 StringFunc::Strip(currentArg, " ", false, true, true);
                 if (!currentArg.empty())
                 {
+#if defined(AZ_PLATFORM_WINDOWS)
+                    // On windows, either '-' or '/' is accepted
                     if ((currentArg[0] == '/') || (currentArg[0] == '-'))
+#else
+                    // On non-windows, only '-' is accepted
+                    if (currentArg[0] == '-')
+#endif // AZ_PLATFORM_WINDOWS
                     {
                         // its possible that its a key-value-pair like /blah=whatever
                         // we support this too, for compatibilty.

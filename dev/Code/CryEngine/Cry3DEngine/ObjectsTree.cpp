@@ -1019,8 +1019,7 @@ void COctreeNode::UnregisterEngineObjectsInArea(const SHotUpdateInfo* pExportInf
                     eType == eERType_Decal ||
                     eType == eERType_WaterVolume ||
                     eType == eERType_Road ||
-                    eType == eERType_DistanceCloud ||
-                    eType == eERType_WaterWave)
+                    eType == eERType_DistanceCloud )
                 {
                     Get3DEngine()->UnRegisterEntityAsJob(pObj);
                     arrUnregisteredObjects.Add(pObj);
@@ -1546,7 +1545,8 @@ bool COctreeNode::RayObjectsIntersection2D(Vec3 vStart, Vec3 vEnd, Vec3& vCloses
         CompileObjects();
     }
 
-    float fOceanLevel = GetTerrain()->GetWaterLevel();
+    const bool oceanEnabled = OceanToggle::IsActive() ? OceanRequest::OceanIsEnabled() : true;
+    const float fOceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetTerrain()->GetWaterLevel();
 
     ERNListType eListType = IRenderNode::GetRenderNodeListId(eERType);
 
@@ -1574,7 +1574,7 @@ bool COctreeNode::RayObjectsIntersection2D(Vec3 vStart, Vec3 vEnd, Vec3& vCloses
             continue;
         }
 
-        if (objBox.max.z < fOceanLevel)
+        if (oceanEnabled && objBox.max.z < fOceanLevel)
         {
             continue;
         }
@@ -1685,7 +1685,6 @@ void COctreeNode::GenerateStatObjAndMatTables(std::vector<IStatObj*>* pStatObjTa
                 eType == eERType_Decal ||
                 eType == eERType_WaterVolume ||
                 eType == eERType_DistanceCloud ||
-                eType == eERType_WaterWave ||
                 eType == eERType_StaticMeshRenderComponent)
             {
                 if ((eType != eERType_Brush || ((CBrush*)pObj)->m_pMaterial) && CObjManager::GetItemId(pMatTable, pObj->GetMaterial(), false) < 0)

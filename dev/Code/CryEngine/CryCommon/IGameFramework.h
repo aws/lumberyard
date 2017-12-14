@@ -546,7 +546,7 @@ struct IGameFramework
     //      haveFocus - Boolean describing if the game has the input focus or not.
     //      updateFlags - Flags specifying how to update.
     // Return Value:
-    //      0 if something went wrong with initialization, non-zero otherwise.
+    //      true if we should continue running the game loop, false otherwise.
     virtual bool PreUpdate(bool haveFocus, unsigned int updateFlags) = 0;
 
     // Description:
@@ -554,7 +554,9 @@ struct IGameFramework
     // Arguments:
     //      haveFocus - Boolean describing if the game has the input focus or not.
     //      updateFlags - Flags specifying how to update.
-    virtual void PostUpdate(bool haveFocus, unsigned int updateFlags) = 0;
+    // Return Value:
+    //      true if we should continue running the game loop, false otherwise.
+    virtual bool PostUpdate(bool haveFocus, unsigned int updateFlags) = 0;
 
     // Description:
     //      Resets the current game

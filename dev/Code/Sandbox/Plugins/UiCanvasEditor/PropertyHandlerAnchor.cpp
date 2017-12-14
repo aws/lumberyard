@@ -106,7 +106,7 @@ void PropertyAnchorCtrl::ConsumeAttribute(AZ::u32 attrib, AzToolsFramework::Prop
 {
     m_common.ConsumeAttributes(GetPropertyVectorCtrl(), attrib, attrValue, debugName);
 
-    if (attrib == AZ_CRC("ReadOnly", 0x3c5ecbf8))
+    if (attrib == AZ::Edit::Attributes::ReadOnly)
     {
         bool value;
         if (attrValue->Read<bool>(value))

@@ -25,6 +25,8 @@
 #include <Cry_GeoIntersect.h>
 #include <Cry_GeoDistance.h>
 
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
 #if ENABLE_VEHICLE_DEBUG
 #define DEBUG_CAMERA(x) x
 #else
@@ -247,7 +249,7 @@ void CVehicleViewActionThirdPerson::Update(float frameTimeIn)
 
     if (!iszero(m_heightAboveWater))
     {
-        float waterLevel = gEnv->p3DEngine->GetWaterLevel(&camWorldPos);
+        float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(camWorldPos) : gEnv->p3DEngine->GetWaterLevel(&camWorldPos);
         camWorldPos.z = max(waterLevel + m_heightAboveWater, camWorldPos.z);
     }
 

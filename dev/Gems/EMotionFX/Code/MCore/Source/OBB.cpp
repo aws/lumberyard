@@ -21,26 +21,26 @@
 namespace MCore
 {
     // check if the box contains a given point
-    bool OBB::Contains(const Vector3& p) const
+    bool OBB::Contains(const AZ::Vector3& p) const
     {
         // translate to box space
-        Vector3 relPoint = p - mCenter;
+        AZ::Vector3 relPoint = p - mCenter;
 
         // convert the box into box space and test each axis
-        float f = MMAT(mRotation, 0, 0) * relPoint.x + MMAT(mRotation, 0, 1) * relPoint.y + MMAT(mRotation, 0, 2) * relPoint.z;
-        if (f >= mExtents.x || f <= -mExtents.x)
+        float f = MMAT(mRotation, 0, 0) * relPoint.GetX() + MMAT(mRotation, 0, 1) * relPoint.GetY() + MMAT(mRotation, 0, 2) * relPoint.GetZ();
+        if (f >= mExtents.GetX() || f <= -mExtents.GetX())
         {
             return false;
         }
 
-        f = MMAT(mRotation, 1, 0) * relPoint.x + MMAT(mRotation, 1, 1) * relPoint.y + MMAT(mRotation, 1, 2) * relPoint.z;
-        if (f >= mExtents.y || f <= -mExtents.y)
+        f = MMAT(mRotation, 1, 0) * relPoint.GetX() + MMAT(mRotation, 1, 1) * relPoint.GetY() + MMAT(mRotation, 1, 2) * relPoint.GetZ();
+        if (f >= mExtents.GetY() || f <= -mExtents.GetY())
         {
             return false;
         }
 
-        f = MMAT(mRotation, 2, 0) * relPoint.x + MMAT(mRotation, 2, 1) * relPoint.y + MMAT(mRotation, 2, 2) * relPoint.z;
-        if (f >= mExtents.z || f <= -mExtents.z)
+        f = MMAT(mRotation, 2, 0) * relPoint.GetX() + MMAT(mRotation, 2, 1) * relPoint.GetY() + MMAT(mRotation, 2, 2) * relPoint.GetZ();
+        if (f >= mExtents.GetZ() || f <= -mExtents.GetZ())
         {
             return false;
         }
@@ -56,9 +56,9 @@ namespace MCore
         mExtents = aabb.CalcExtents();
 
         // transform the center
-        mCenter *= mat;
+        mCenter = mCenter * mat;
 
-        // set the roation
+        // set the rotation
         mRotation = mat;
     }
 
@@ -95,32 +95,32 @@ namespace MCore
         // create the AABB of (box1 in space of box0)
         const Matrix& mtx = _1in0.mRotation;
 
-        float f = Math::Abs(MMAT(mtx, 0, 0) * mExtents.x) + Math::Abs(MMAT(mtx, 1, 0) * mExtents.y) + Math::Abs(MMAT(mtx, 2, 0) * mExtents.z) - box.mExtents.x;
-        if (f > _1in0.mCenter.x)
+        float f = Math::Abs(MMAT(mtx, 0, 0) * mExtents.GetX()) + Math::Abs(MMAT(mtx, 1, 0) * mExtents.GetY()) + Math::Abs(MMAT(mtx, 2, 0) * mExtents.GetZ()) - box.mExtents.GetX();
+        if (f > _1in0.mCenter.GetX())
         {
             return false;
         }
-        if (-f < _1in0.mCenter.x)
-        {
-            return false;
-        }
-
-        f = Math::Abs(MMAT(mtx, 0, 1) * mExtents.x) + Math::Abs(MMAT(mtx, 1, 1) * mExtents.y) + Math::Abs(MMAT(mtx, 2, 1) * mExtents.z) - box.mExtents.y;
-        if (f > _1in0.mCenter.y)
-        {
-            return false;
-        }
-        if (-f < _1in0.mCenter.y)
+        if (-f < _1in0.mCenter.GetX())
         {
             return false;
         }
 
-        f = Math::Abs(MMAT(mtx, 0, 2) * mExtents.x) + Math::Abs(MMAT(mtx, 1, 2) * mExtents.y) + Math::Abs(MMAT(mtx, 2, 2) * mExtents.z) - box.mExtents.z;
-        if (f > _1in0.mCenter.z)
+        f = Math::Abs(MMAT(mtx, 0, 1) * mExtents.GetX()) + Math::Abs(MMAT(mtx, 1, 1) * mExtents.GetY()) + Math::Abs(MMAT(mtx, 2, 1) * mExtents.GetZ()) - box.mExtents.GetY();
+        if (f > _1in0.mCenter.GetY())
         {
             return false;
         }
-        if (-f < _1in0.mCenter.z)
+        if (-f < _1in0.mCenter.GetY())
+        {
+            return false;
+        }
+
+        f = Math::Abs(MMAT(mtx, 0, 2) * mExtents.GetX()) + Math::Abs(MMAT(mtx, 1, 2) * mExtents.GetY()) + Math::Abs(MMAT(mtx, 2, 2) * mExtents.GetZ()) - box.mExtents.GetZ();
+        if (f > _1in0.mCenter.GetZ())
+        {
+            return false;
+        }
+        if (-f < _1in0.mCenter.GetZ())
         {
             return false;
         }
@@ -130,18 +130,18 @@ namespace MCore
 
 
     // calculate the corner points for the OBB
-    void OBB::CalcCornerPoints(Vector3* outPoints) const
+    void OBB::CalcCornerPoints(AZ::Vector3* outPoints) const
     {
         MCORE_ASSERT(outPoints);
         MCORE_ASSERT(CheckIfIsValid());
 
-        Vector3 right   = mRotation.GetRight();
-        Vector3 up      = mRotation.GetUp();
-        Vector3 forward = mRotation.GetForward();
+        AZ::Vector3 right   = mRotation.GetRight();
+        AZ::Vector3 up      = mRotation.GetUp();
+        AZ::Vector3 forward = mRotation.GetForward();
 
-        right   *= mExtents.x;
-        up      *= mExtents.z;
-        forward *= mExtents.y;
+        right   *= mExtents.GetX();
+        up      *= mExtents.GetZ();
+        forward *= mExtents.GetY();
 
         //     7+------+6
         //     /|     /|
@@ -166,7 +166,7 @@ namespace MCore
     //----------------------------------------------------------------------------------------------------------
 
     // calculate the 3 eigen vectors
-    void OBB::GetRealSymmetricEigenvectors(const float A[6], Vector3& v1, Vector3& v2, Vector3& v3)
+    void OBB::GetRealSymmetricEigenvectors(const float A[6], AZ::Vector3& v1, AZ::Vector3& v2, AZ::Vector3& v3)
     {
         // compute coefficients for cubic equation
         const float c2 = A[0] + A[3] + A[5];
@@ -292,7 +292,7 @@ namespace MCore
 
 
     // calculate the eigen vector from a symmetric matrix in combination with a given eigen value
-    void OBB::CalcSymmetricEigenVector(const float A[6], float eigenValue, Vector3& v1)
+    void OBB::CalcSymmetricEigenVector(const float A[6], float eigenValue, AZ::Vector3& v1)
     {
         const float m11 = A[0] - eigenValue;
         const float m12 = A[1];
@@ -361,7 +361,7 @@ namespace MCore
     // Given symmetric matrix A and eigenvalue l, returns eigenvector pair
     // Assumes that order of eigenvalue is 2
     //-------------------------------------------------------------------------------
-    void OBB::CalcSymmetricEigenPair(const float A[6], float eigenValue, Vector3& v1, Vector3& v2)
+    void OBB::CalcSymmetricEigenPair(const float A[6], float eigenValue, AZ::Vector3& v1, AZ::Vector3& v2)
     {
         // find maximal entry in M
         const float m11 = A[0] - eigenValue;
@@ -437,7 +437,7 @@ namespace MCore
     // Compute covariance matrix for set of points
     // Returns centroid and unique values of matrix
     //-------------------------------------------------------------------------------
-    void OBB::CovarianceMatrix(const Vector3* points, uint32 numPoints, Vector3& mean, float C[6])
+    void OBB::CovarianceMatrix(const AZ::Vector3* points, uint32 numPoints, AZ::Vector3& mean, float C[6])
     {
         uint32 i;
 
@@ -454,13 +454,13 @@ namespace MCore
         memset(C, 0, sizeof(float) * 6);
         for (i = 0; i < numPoints; ++i)
         {
-            const Vector3 diff = points[i] - mean;
-            C[0] += diff.x * diff.x;
-            C[1] += diff.x * diff.y;
-            C[2] += diff.x * diff.z;
-            C[3] += diff.y * diff.y;
-            C[4] += diff.y * diff.z;
-            C[5] += diff.z * diff.z;
+            const AZ::Vector3 diff = points[i] - mean;
+            C[0] += diff.GetX() * diff.GetX();
+            C[1] += diff.GetX() * diff.GetY();
+            C[2] += diff.GetX() * diff.GetZ();
+            C[3] += diff.GetY() * diff.GetY();
+            C[4] += diff.GetY() * diff.GetZ();
+            C[5] += diff.GetZ() * diff.GetZ();
         }
 
         // normalize the matrix values
@@ -480,7 +480,7 @@ namespace MCore
 
 
     // calc the best fit for a given x rotation slice
-    void OBB::InitFromPointsRange(const Vector3* points, uint32 numPoints, float xDegrees, float* outMinArea, AABB* outMinBox, Matrix* outMinMatrix)
+    void OBB::InitFromPointsRange(const AZ::Vector3* points, uint32 numPoints, float xDegrees, float* outMinArea, AABB* outMinBox, Matrix* outMinMatrix)
     {
         // calculate the x rotation matrix
         MCore::Matrix rotMatrix;
@@ -493,7 +493,7 @@ namespace MCore
             rotMatrix.RotateZ(Math::DegreesToRadians(z));
 
             // calculate the transposed, which is the same as the inverse as there is only rotation
-            // we need this so we can tranform the point set into space of this current rotation
+            // we need this so we can transform the point set into space of this current rotation
             MCore::Matrix invMatrix = rotMatrix;
             invMatrix.Transpose();
 
@@ -518,7 +518,7 @@ namespace MCore
 
 
     // Compute bounding box for set of points
-    void OBB::InitFromPoints(const Vector3* points, uint32 numPoints)
+    void OBB::InitFromPoints(const AZ::Vector3* points, uint32 numPoints)
     {
         // if we have no points, just init
         if (numPoints == 0)
@@ -556,7 +556,7 @@ namespace MCore
             index++;
         }
         GetJobManager().GetJobPool().Unlock();
-        ExecuteJobList(jobList); // automaticaly syncs to wait for all jobs to be completed
+        ExecuteJobList(jobList); // automatically syncs to wait for all jobs to be completed
 
         // find the real minimum value (single threaded lookup)
         float minimumArea = FLT_MAX;
@@ -618,9 +618,9 @@ namespace MCore
 
 
     // calculate the minimum and maximum point
-    void OBB::CalcMinMaxPoints(Vector3* outMin, Vector3* outMax) const
+    void OBB::CalcMinMaxPoints(AZ::Vector3* outMin, AZ::Vector3* outMax) const
     {
-        Vector3 rotatedExtents = mRotation.Mul3x3(mExtents);
+        AZ::Vector3 rotatedExtents = mRotation.Mul3x3(mExtents);
         *outMax = mCenter + rotatedExtents;
         *outMin = mCenter - rotatedExtents;
 

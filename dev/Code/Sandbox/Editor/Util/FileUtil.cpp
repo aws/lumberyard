@@ -36,8 +36,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QSettings>
-#include "QtUtil.h"
-#include "QtUtilWin.h"
+#include <QThread>
 #include "CryCommonTools/StringHelpers.h"
 #include "QtUtil.h"
 #include "QtUtilWin.h"
@@ -51,6 +50,7 @@
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/Thumbnails/SourceControlThumbnailBus.h>
 
 bool CFileUtil::s_singleFileDlgPref[IFileUtil::EFILE_TYPE_LAST] = { true, true, true, true, true };
 bool CFileUtil::s_multiFileDlgPref[IFileUtil::EFILE_TYPE_LAST] = { true, true, true, true, true };
@@ -89,16 +89,15 @@ bool CFileUtil::CompileLuaFile(const char* luaFilename)
     QString CompilerOutput;
 
     // Create the filepath of the lua compiler
-    char szExeFileName[_MAX_PATH];
-    // Get the path of the executable
-#ifdef KDAB_MAC_PORT
-    GetModuleFileName(GetModuleHandle(NULL), szExeFileName, sizeof(szExeFileName));
-#else
-    return false;
-#endif // KDAB_MAC_PORT
+    QString szExeFileName = qApp->applicationFilePath();
     QString exePath = Path::GetPath(szExeFileName);
 
-    LuaCompiler = Path::AddPathSlash(exePath) + "LuaCompiler.exe ";
+#if defined(AZ_PLATFORM_WINDOWS)
+    const char* luaCompiler = "LuaCompiler.exe";
+#else
+    const char* luaCompiler = "lua";
+#endif
+    LuaCompiler = Path::AddPathSlash(exePath) + luaCompiler + " ";
 
     AZStd::string path = luaFile.toLatin1().data();
     EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, path);
@@ -112,8 +111,8 @@ bool CFileUtil::CompileLuaFile(const char* luaFilename)
     // Execute the compiler and capture the output
     if (!GetIEditor()->ExecuteConsoleApp(cmdLine, CompilerOutput))
     {
-        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Error while executing 'LuaCompiler.exe', make sure the file is in" \
-            " your Master CD folder !"));
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Error while executing '%1', make sure the file is in" \
+            " your Master CD folder !").arg(luaCompiler));
         return false;
     }
 
@@ -343,7 +342,7 @@ bool CFileUtil::CalculateDccFilename(const QString& assetFilename, QString& dccF
         return true;
     }
 
-    gEnv->pLog->LogError("Failed to find psd file for texture: '%s'", assetFilename);
+    gEnv->pLog->LogError("Failed to find psd file for texture: '%s'", assetFilename.toUtf8().data());
     return false;
 }
 
@@ -365,7 +364,7 @@ bool CFileUtil::ExtractDccFilenameFromAssetDatabase(const QString& assetFilename
             }
 
             QString assetDatabaseDccFilename;
-            IAssetItem* pAssetItem = pCurrentDatabaseInterface->GetAsset(assetFilename.toLatin1().data());
+            IAssetItem* pAssetItem = pCurrentDatabaseInterface->GetAsset(assetFilename.toUtf8().data());
             if (pAssetItem)
             {
                 if ((pAssetItem->GetFlags() & IAssetItem::eFlag_Cached))
@@ -377,7 +376,7 @@ bool CFileUtil::ExtractDccFilenameFromAssetDatabase(const QString& assetFilename
                         dccFilename = assetDatabaseDccFilename;
                         dccFilename = Path::GetRelativePath(dccFilename, false);
 
-                        uint32 attr = CFileUtil::GetAttributes(dccFilename.toLatin1().data());
+                        uint32 attr = CFileUtil::GetAttributes(dccFilename.toUtf8().data());
 
                         if (CFileUtil::FileExists(dccFilename))
                         {
@@ -385,7 +384,7 @@ bool CFileUtil::ExtractDccFilenameFromAssetDatabase(const QString& assetFilename
                         }
                         else if (GetIEditor()->IsSourceControlAvailable() && (attr & SCC_FILE_ATTRIBUTE_MANAGED))
                         {
-                            return GetIEditor()->GetSourceControl()->GetLatestVersion(dccFilename.toLatin1().data());
+                            return GetIEditor()->GetSourceControl()->GetLatestVersion(dccFilename.toUtf8().data());
                         }
                     }
                 }
@@ -749,7 +748,6 @@ bool CFileUtil::OverwriteFile(const QString& filename)
     AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
     AZ_Assert(fileIO, "FileIO is not initialized.");
 
-    AZ::IO::HandleType file = AZ::IO::InvalidHandle;
     QString adjFileName = Path::GamePathToFullPath(filename);
 
     AZStd::string filePath = adjFileName.toUtf8().data();
@@ -765,34 +763,44 @@ bool CFileUtil::OverwriteFile(const QString& filename)
     {
         QtUtil::QtMFCScopedHWNDCapture cap;
         CCheckOutDialog dlg(adjFileName, cap);
-        if (dlg.exec() == QDialog::Rejected)
-        {
-            return false;
-        }
-        else if (dlg.result() == CCheckOutDialog::CHECKOUT)
-        {
-            return CheckoutFile(filePath.c_str());
-        }
+        dlg.exec();
     }
 
-    // Until we have a way to set this via FileIO, this call will almost always fail
-    // because the path will contain aliases - boswej
-    CrySetFileAttributes(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+    bool opSuccess = false;
+    switch (CCheckOutDialog::LastResult())
+    {
+    case CCheckOutDialog::CANCEL:
+        break;
+    case CCheckOutDialog::CHECKOUT:
+        opSuccess = CheckoutFile(filePath.c_str());
+        break;
+    case CCheckOutDialog::OVERWRITE:
+        opSuccess = AZ::IO::SystemFile::SetWritable(filePath.c_str(), true);
+        break;
+    default:
+        AZ_Assert(false, "Unsupported result returned from CCheckoutDialog");
+    }
 
-    return true;
+    return opSuccess;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void BlockAndWait(const bool& opComplete, QWidget* parent, const char* message)
 {
-    if (!parent)
+    bool useProgressShiled = false;
+    if (QApplication::instance()->thread() == QThread::currentThread())
     {
-        parent = QApplication::activeWindow() ? QApplication::activeWindow() : MainWindow::instance();
+        if (!parent)
+        {
+            parent = QApplication::activeWindow() ? QApplication::activeWindow() : MainWindow::instance();
+        }
+
+        useProgressShiled = parent ? true : false;
     }
 
     // if we have a valid window, use a progress shield
     // Otherwise just wait.  Be sure to call Qt processEvents
-    if (parent)
+    if (useProgressShiled)
     {
         AzToolsFramework::ProgressShield::LegacyShowAndWait(parent, parent->tr(message),
             [&opComplete](int& current, int& max)
@@ -800,8 +808,8 @@ void BlockAndWait(const bool& opComplete, QWidget* parent, const char* message)
                 current = 0;
                 max = 0;
                 return opComplete;
-            }
-        );
+            },
+            500);
     }
     else
     {
@@ -820,10 +828,11 @@ bool CFileUtil::CheckoutFile(const char* filename, QWidget* parentWindow)
     bool scOpSuccess = false;
     bool scOpComplete = false;
     SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestEdit, filename, true,
-        [&scOpSuccess, &scOpComplete](bool success, const SourceControlFileInfo& /*info*/)
+        [&scOpSuccess, &scOpComplete, filename](bool success, const SourceControlFileInfo& /*info*/)
         {
             scOpSuccess = success;
             scOpComplete = true;
+            Thumbnailer::SourceControlThumbnailRequestBus::Broadcast(&Thumbnailer::SourceControlThumbnailRequests::FileStatusChanged, filename);
         }
     );
 
@@ -839,10 +848,11 @@ bool CFileUtil::RevertFile(const char* filename, QWidget* parentWindow)
     bool scOpSuccess = false;
     bool scOpComplete = false;
     SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestRevert, filename,
-        [&scOpSuccess, &scOpComplete](bool success, const SourceControlFileInfo& /*info*/)
+        [&scOpSuccess, &scOpComplete, filename](bool success, const SourceControlFileInfo& /*info*/)
         {
             scOpSuccess = success;
             scOpComplete = true;
+            Thumbnailer::SourceControlThumbnailRequestBus::Broadcast(&Thumbnailer::SourceControlThumbnailRequests::FileStatusChanged, filename);
         }
     );
 
@@ -858,14 +868,35 @@ bool CFileUtil::DeleteFromSourceControl(const char* filename, QWidget* parentWin
     bool scOpSuccess = false;
     bool scOpComplete = false;
     SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestDelete, filename,
-        [&scOpSuccess, &scOpComplete](bool success, const SourceControlFileInfo& /*info*/)
+        [&scOpSuccess, &scOpComplete, filename](bool success, const SourceControlFileInfo& /*info*/)
         {
+            scOpSuccess = success;
+            scOpComplete = true;
+            Thumbnailer::SourceControlThumbnailRequestBus::Broadcast(&Thumbnailer::SourceControlThumbnailRequests::FileStatusChanged, filename);
+        }
+    );
+
+    BlockAndWait(scOpComplete, parentWindow, "Marking for deletion...");
+    return scOpSuccess;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CFileUtil::GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow)
+{
+    using namespace AzToolsFramework;
+
+    bool scOpSuccess = false;
+    bool scOpComplete = false;
+    SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::GetFileInfo, filename,
+        [&fileInfo, &scOpSuccess, &scOpComplete](bool success, const SourceControlFileInfo& info)
+        {
+            fileInfo = info;
             scOpSuccess = success;
             scOpComplete = true;
         }
     );
 
-    BlockAndWait(scOpComplete, parentWindow, "Marking for deletion...");
+    BlockAndWait(scOpComplete, parentWindow, "Getting file status...");
     return scOpSuccess;
 }
 
@@ -886,15 +917,25 @@ static bool CheckAndCreateDirectory(const QString& path)
 
 static bool MoveFileReplaceExisting(const QString& existingFileName, const QString& newFileName)
 {
-    bool copySuccessful = false;
+    bool moveSuccessful = false;
 
-    QFile(newFileName).setPermissions(QFile::ReadOther | QFile::WriteOther);
-    QFile::remove(newFileName);
-    QFile(existingFileName).setPermissions(QFile::ReadOther | QFile::WriteOther);
-    copySuccessful = QFile::copy(existingFileName, newFileName);
-    QFile::remove(existingFileName);
+    // Delete the new file if it already exists
+    QFile newFile(newFileName);
+    if (newFile.exists())
+    {
+        newFile.setPermissions(newFile.permissions() | QFile::ReadOther | QFile::WriteOther);
+        newFile.remove();
+    }
 
-    return copySuccessful;
+    // Rename the existing file if it exists
+    QFile existingFile(existingFileName);
+    if (existingFile.exists())
+    {
+        existingFile.setPermissions(existingFile.permissions() | QFile::ReadOther | QFile::WriteOther);
+        moveSuccessful = existingFile.rename(newFileName);
+    }
+
+    return moveSuccessful;
 }
 //////////////////////////////////////////////////////////////////////////
 bool CFileUtil::CreateDirectory(const char* directory)
@@ -1047,61 +1088,17 @@ bool CFileUtil::PathExists(const QString& strPath)
 
 bool CFileUtil::GetDiskFileSize(const char* pFilePath, uint64& rOutSize)
 {
-#ifdef KDAB_MAC_PORT
-    BOOL                                                bOK;
-    WIN32_FILE_ATTRIBUTE_DATA       fileInfo;
-
-    #ifndef MAKEQWORD
-        #define MAKEQWORD(lo, hi)   ((uint64)(((uint64) ((DWORD) (hi))) << 32 | ((DWORD) (lo))))
-    #endif
-
-    bOK = ::GetFileAttributesEx(pFilePath, GetFileExInfoStandard, (void*)&fileInfo);
-
-    if (!bOK)
-    {
-        return false;
-    }
-
-    rOutSize = MAKEQWORD(fileInfo.nFileSizeLow, fileInfo.nFileSizeHigh);
-
-    return true;
-#else
-    return false;
-#endif // KDAB_MAC_PORT
+    const QFileInfo fi(pFilePath);
+    rOutSize = fi.size();
+    return fi.exists();
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool   CFileUtil::IsFileExclusivelyAccessable(const QString& strFilePath)
 {
-#ifdef KDAB_MAC_PORT
-    HANDLE hTesteFileHandle(NULL);
-
-    // We should use instead CreateFileTransacted, but this would mean
-    // requiring Vista as the Minimum OS to run.
-    hTesteFileHandle = CreateFile(
-            strFilePath.toLatin1().data(), // The filename
-            0, //   We don't really want to access the file...
-            0, //   This is the hot spot:  we don't want to share this file!
-            NULL, // We don't care about the security attributes.
-            OPEN_EXISTING, // The file must exist, or this will be of no use.
-            FILE_ATTRIBUTE_NORMAL, // We don't care about attributes.
-            NULL // We don't care about template files.
-            );
-
-    // We couldn't actually open the file in exclusive mode for whatever
-    // reason: for example some other app is using it or the file doesn't
-    // exist.
-    if (hTesteFileHandle == INVALID_HANDLE_VALUE)
-    {
-        return false;
-    }
-
-    CloseHandle(hTesteFileHandle);
-
-    return true;
-#else
-    return false;
-#endif // KDAB_MAC_PORT
+    // this was simply trying to open the file before, so keep it like that
+    QFile f(strFilePath);
+    return f.open(QFile::ReadOnly);
 }
 //////////////////////////////////////////////////////////////////////////
 bool   CFileUtil::CreatePath(const QString& strPath)
@@ -1157,9 +1154,7 @@ bool   CFileUtil::CreatePath(const QString& strPath)
 
     if (!bnLastDirectoryWasCreated)
     {
-#ifdef KDAB_MAC_PORT
-        if (ERROR_ALREADY_EXISTS != GetLastError())
-#endif // KDAB_MAC_PORT
+        if (!QDir(strCurrentDirectoryPath).exists())
         {
             return false;
         }
@@ -1178,7 +1173,7 @@ bool   CFileUtil::DeleteFile(const QString& strPath)
 //////////////////////////////////////////////////////////////////////////
 bool CFileUtil::RemoveDirectory(const QString& strPath)
 {
-    return QDir(strPath).removeRecursively();
+    return Deltree(strPath.toUtf8().data(), true);
 }
 
 void CFileUtil::ForEach(const QString& path, std::function<void(const QString&)> predicate, bool recurse)
@@ -1382,11 +1377,7 @@ IFileUtil::ECopyTreeResult CFileUtil::CopyTree(const QString& strSourceDirectory
 
         if (!bnLastDirectoryWasCreated)
         {
-#ifdef KDAB_MAC_PORT
-            if (ERROR_ALREADY_EXISTS != GetLastError())
-#else
-            if (true)
-#endif // KDAB_MAC_PORT
+            if (!QDir(strTargetName).exists())
             {
                 return IFileUtil::ETREECOPYFAIL;
             }
@@ -1454,7 +1445,7 @@ IFileUtil::ECopyTreeResult CFileUtil::CopyTree(const QString& strSourceDirectory
     return eCopyResult;
 }
 //////////////////////////////////////////////////////////////////////////
-IFileUtil::ECopyTreeResult   CFileUtil::CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite, void* pfnProgress, bool* pbCancel)
+IFileUtil::ECopyTreeResult   CFileUtil::CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite, ProgressRoutine pfnProgress, bool* pbCancel)
 {
     CUserOptions                            oFileOptions;
     IFileUtil::ECopyTreeResult                      eCopyResult(IFileUtil::ETREECOPYOK);
@@ -1557,12 +1548,47 @@ IFileUtil::ECopyTreeResult   CFileUtil::CopyFile(const QString& strSourceFile, c
         }
     }
 
-#ifdef KDAB_MAC_PORT
-    bnLastFileWasCopied = ::CopyFileEx(name.toLatin1().data(), strFullStargetName.toLatin1().data(), reinterpret_cast<LPPROGRESS_ROUTINE>(pfnProgress), NULL, (LPBOOL)pbCancel, 0);
-#else
-    // TODO: KDAB - Copy with file progress
-    bnLastFileWasCopied = QFile::copy(name, strFullStargetName);
-#endif // KDAB_MAC_PORT
+    bnLastFileWasCopied = false;
+
+    QFile source(name);
+    if (source.open(QFile::ReadOnly))
+    {
+        QFile out(strFullStargetName);
+        if (out.open(QFile::ReadWrite))
+        {
+            bnLastFileWasCopied = true;
+            char block[4096];
+            qint64 totalRead = 0;
+            while (!source.atEnd()) 
+            {
+                qint64 in = source.read(block, sizeof(block));
+                if (in <= 0)
+                {
+                    break;
+                }
+                totalRead += in;
+                if (in != out.write(block, in))
+                {
+                    bnLastFileWasCopied = false;
+                    break;
+                }
+                if (pbCancel && *pbCancel == true)
+                {
+                    bnLastFileWasCopied = false;
+                    break;
+                }
+                if (pfnProgress)
+                {
+                    pfnProgress(source.size(), totalRead, 0, 0, 0, 0, 0, 0, 0);
+                }
+            }
+            if (totalRead != source.size())
+            {
+                bnLastFileWasCopied = false;
+            }
+        }
+    }
+
     if (!bnLastFileWasCopied)
     {
         eCopyResult = IFileUtil::ETREECOPYFAIL;
@@ -1733,11 +1759,7 @@ IFileUtil::ECopyTreeResult   CFileUtil::MoveTree(const QString& strSourceDirecto
 
         if (!bnLastDirectoryWasCreated)
         {
-#ifdef KDAB_MAC_PORT
-            if (ERROR_ALREADY_EXISTS != GetLastError())
-#else
-            if (true)
-#endif // KDAB_MAC_PORT
+            if (!QDir(strTargetName).exists())
             {
                 return IFileUtil::ETREECOPYFAIL;
             }
@@ -1940,7 +1962,7 @@ QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePa
     return PopupQMenu(filename, fullGamePath, parent, nullptr, extraItemsFront, extraItemsBack);
 }
 
-QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront, const QStringList& extraItemsBack, bool includeOpen)
+QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront, const QStringList& extraItemsBack)
 {
     QMenu menu;
     
@@ -1956,7 +1978,7 @@ QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePa
         menu.addSeparator();
     }
 
-    PopulateQMenu(parent, &menu, filename, fullGamePath, pIsSelected, includeOpen);
+    PopulateQMenu(parent, &menu, filename, fullGamePath, pIsSelected);
     if (extraItemsBack.count())
     {
         menu.addSeparator();
@@ -1973,7 +1995,7 @@ QString CFileUtil::PopupQMenu(const QString& filename, const QString& fullGamePa
     return result ? result->text() : QString();
 }
 
-void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* isSelected, bool includeOpen)
+void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* isSelected)
 {
     QString fullPath;
 
@@ -1993,11 +2015,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
         fullPath = fullGamePath;
     }
 
-    uint32 nFileAttr = SCC_FILE_ATTRIBUTE_INVALID;
-    if (GetIEditor()->IsSourceControlAvailable())
-    {
-        nFileAttr = CFileUtil::GetAttributes(fullPath.toLatin1().data());
-    }
+    uint32 nFileAttr = CFileUtil::GetAttributes(fullPath.toUtf8().data());
 
     // Create pop up menu.
     QAction* action;
@@ -2013,35 +2031,6 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
         {
             menu->insertAction(menu->actions()[0], action);
         }
-    }
-
-    if (!filename.isEmpty() && includeOpen)
-    {
-        action = menu->addAction(QObject::tr("Open"), [=]()
-        {
-            if (!(nFileAttr & SCC_FILE_ATTRIBUTE_INPAK))
-            {
-                QString extension = fullPath;
-                extension.remove(0, extension.lastIndexOf('.'));
-
-                if (extension.compare(".lua") == 0)
-                {
-                    AZStd::string cmd = AZStd::string::format("general.launch_lua_editor \'%s\'", fullPath.toUtf8().data());
-                    GetIEditor()->ExecuteCommand(cmd.c_str());
-                }
-                else
-                {
-                    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(fullPath)))
-                    {
-                        if (QMessageBox::question(caller, QObject::tr("Open File"), QObject::tr("Can't open the file. Do you want to open the file in the Notepad?")) == QMessageBox::Yes)
-                        {
-                            QProcess::startDetached(QStringLiteral("notepad"), { fullPath });
-                        }
-                    }
-                }
-            }
-        });
-        action->setDisabled(nFileAttr & SCC_FILE_ATTRIBUTE_INPAK);
     }
 
 #ifdef AZ_PLATFORM_WINDOWS
@@ -2205,13 +2194,12 @@ void CFileUtil::GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, 
 
             if (pShaderRes)
             {
-                for (size_t j = 0; j < EFTT_MAX; ++j)
+                for ( auto iter= pShaderRes->GetTexturesResourceMap()->begin() ; 
+                    iter!= pShaderRes->GetTexturesResourceMap()->end() ; ++iter )
                 {
-                    if (SEfResTexture* pTex = pShaderRes->GetTexture(j))
-                    {
-                        // add the texture filename
-                        rOutFilenames.insert(pTex->m_Name.c_str());
-                    }
+                    SEfResTexture*  pTex = &(iter->second);
+                    // add the texture filename
+                    rOutFilenames.insert(pTex->m_Name.c_str());
                 }
             }
 
@@ -2229,12 +2217,11 @@ void CFileUtil::GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, 
 
                     if (pShaderRes)
                     {
-                        for (size_t j = 0; j < EFTT_MAX; ++j)
+                        for (auto iter = pShaderRes->GetTexturesResourceMap()->begin();
+                            iter != pShaderRes->GetTexturesResourceMap()->end(); ++iter)
                         {
-                            if (SEfResTexture* pTex = pShaderRes->GetTexture(j))
-                            {
-                                rOutFilenames.insert(pTex->m_Name.c_str());
-                            }
+                            SEfResTexture*  pTex = &(iter->second);
+                            rOutFilenames.insert(pTex->m_Name.c_str());
                         }
                     }
                 }
@@ -2322,9 +2309,12 @@ void CFileUtil::GatherAssetFilenamesFromLevel(DynArray<dll_string>& outFilenames
 
             if (pShaderRes)
             {
-                for (size_t j = 0; SEfResTexture* pTex = pShaderRes->GetTexture(j); ++j)
+                for (auto iter = pShaderRes->GetTexturesResourceMap()->begin();
+                    iter != pShaderRes->GetTexturesResourceMap()->end(); ++iter)
                 {
-                    string textName = pTex->m_Name;
+                    SEfResTexture*  pTex = &(iter->second);
+                    string          textName = pTex->m_Name;
+
                     textName.MakeLower();
                     textName.replace('\\', '/');
                     newFile = true;
@@ -2348,14 +2338,100 @@ void CFileUtil::GatherAssetFilenamesFromLevel(DynArray<dll_string>& outFilenames
 
 uint32 CFileUtil::GetAttributes(const char* filename, bool bUseSourceControl /*= true*/)
 {
-    // Only check source control for a 'stat' operation if its actually connected.  Other ops that make changes can try.
-    if (bUseSourceControl && GetIEditor()->IsSourceControlConnected())
+    using namespace AzToolsFramework;
+
+    bool scOpSuccess = false;
+    SourceControlFileInfo fileInfo;
+
+    if (bUseSourceControl)
     {
-        return GetIEditor()->GetSourceControl()->GetFileAttributes(filename);
+        using SCRequest = SourceControlConnectionRequestBus;
+
+        SourceControlState state = SourceControlState::Disabled;
+        SCRequest::BroadcastResult(state, &SCRequest::Events::GetSourceControlState);
+
+        if (state == SourceControlState::ConfigurationInvalid)
+        {
+            return SCC_FILE_ATTRIBUTE_INVALID;
+        }
+
+        if (state == SourceControlState::Active)
+        {
+            using SCCommand = SourceControlCommandBus;
+
+            bool scOpComplete = false;
+            SCCommand::Broadcast(&SCCommand::Events::GetFileInfo, filename,
+                [&fileInfo, &scOpSuccess, &scOpComplete](bool success, const SourceControlFileInfo& info)
+                {
+                    fileInfo = info;
+                    scOpSuccess = success;
+                    scOpComplete = true;
+                }
+            );
+
+            BlockAndWait(scOpComplete, nullptr, "Getting file status...");
+
+            // we intended to use source control, but the operation failed.  
+            // do not fall through to checking as if bUseSourceControl was false
+            if (!scOpSuccess)
+            {
+                return SCC_FILE_ATTRIBUTE_INVALID;
+            }
+        }
     }
 
     CCryFile file;
-    if (!file.Open(filename, "rb"))
+    bool isCryFile = file.Open(filename, "rb");
+
+    // Using source control and our fstat succeeded.  
+    // Translate SourceControlStatus to (legacy) ESccFileAttributes
+    if (scOpSuccess)
+    {
+        uint32 sccFileAttr = AZ::IO::SystemFile::Exists(filename) ? SCC_FILE_ATTRIBUTE_NORMAL : SCC_FILE_ATTRIBUTE_INVALID;
+
+        if (fileInfo.HasFlag(SourceControlFlags::SCF_Tracked))
+        {
+            sccFileAttr |= SCC_FILE_ATTRIBUTE_MANAGED;
+        }
+
+        if (fileInfo.HasFlag(SourceControlFlags::SCF_OpenByUser))
+        {
+            sccFileAttr |= SCC_FILE_ATTRIBUTE_MANAGED | SCC_FILE_ATTRIBUTE_CHECKEDOUT;
+        }
+
+        if ((sccFileAttr & SCC_FILE_ATTRIBUTE_MANAGED) == SCC_FILE_ATTRIBUTE_MANAGED)
+        {
+            if (fileInfo.HasFlag(SourceControlFlags::SCF_OutOfDate))
+            {
+                sccFileAttr |= SCC_FILE_ATTRIBUTE_NOTATHEAD;
+            }
+
+            if (fileInfo.HasFlag(SourceControlFlags::SCF_OtherOpen))
+            {
+                sccFileAttr |= SCC_FILE_ATTRIBUTE_CHECKEDOUT | SCC_FILE_ATTRIBUTE_BYANOTHER;
+            }
+
+            if (fileInfo.HasFlag(SourceControlFlags::SCF_PendingAdd))
+            {
+                sccFileAttr |= SCC_FILE_ATTRIBUTE_ADD;
+            }
+        }
+
+        if (fileInfo.IsReadOnly())
+        {
+            sccFileAttr |= SCC_FILE_ATTRIBUTE_READONLY;
+        }
+
+        if (file.IsInPak())
+        {
+            sccFileAttr |= SCC_FILE_ATTRIBUTE_READONLY | SCC_FILE_ATTRIBUTE_INPAK;
+        }
+
+        return sccFileAttr;
+    }
+
+    // We've asked not to use source control OR we disabled source control
+    if (!isCryFile)
     {
         return SCC_FILE_ATTRIBUTE_INVALID;
     }
@@ -2471,22 +2547,19 @@ bool CFileUtil::IsAbsPath(const QString& filepath)
 }
 
 CTempFileHelper::CTempFileHelper(const char* pFileName)
-    : m_fileName(pFileName)
 {
-    if (GetIEditor()->GetConsoleVar("ed_lowercasepaths"))
-    {
-        m_fileName = m_fileName.toLower();
-    }
+    char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(pFileName, resolvedPath, AZ_MAX_PATH_LEN);
+    m_fileName = QString::fromUtf8(resolvedPath);
 
     m_tempFileName = Path::ReplaceExtension(m_fileName, "tmp");
 
-    QFile(m_tempFileName).setPermissions(QFile::ReadOther | QFile::WriteOther);
-    QFile::remove(m_tempFileName);
+    CFileUtil::DeleteFile(m_tempFileName);
 }
 
 CTempFileHelper::~CTempFileHelper()
 {
-    QFile::remove(m_tempFileName);
+    CFileUtil::DeleteFile(m_tempFileName);
 }
 
 bool CTempFileHelper::UpdateFile(bool bBackup)
@@ -2497,7 +2570,7 @@ bool CTempFileHelper::UpdateFile(bool bBackup)
         // If the file changed, make sure the destination file is writable
         if (!CFileUtil::OverwriteFile(m_fileName))
         {
-            QFile::remove(m_tempFileName);
+            CFileUtil::DeleteFile(m_tempFileName);
             return false;
         }
 
@@ -2513,7 +2586,7 @@ bool CTempFileHelper::UpdateFile(bool bBackup)
     // If the files are the same, just delete the temp file and return.
     else
     {
-        QFile::remove(m_tempFileName);
+        CFileUtil::DeleteFile(m_tempFileName);
         return true;
     }
 }

@@ -55,4 +55,11 @@ public: // member functions
     //! entities undergo conversion for game: editor -> game components.
     //! \return true if successfully saved. Failure is only possible if serialization data is corrupt.
     virtual bool SaveToStreamForGame(AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType) = 0;
+
+    //! Saves the given canvas entity to the specified buffer. If necessary
+    //! the entity undergoes conversion for game: editor -> game components.
+    //! \return true if successfully saved. Failure is only possible if serialization data is corrupt.
+    //! This is needed because the canvas entity is not part of the root slice. It is here in the entity
+    //! context because that allows us to get to the ToolsFramework functionality.
+    virtual bool SaveCanvasEntityToStreamForGame(AZ::Entity* canvasEntity, AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType) = 0;
 };

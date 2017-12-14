@@ -236,7 +236,6 @@ public:
         {
             m_context->StopEffect(m_data, params, m_scope, m_particleEntityId);
 
-            EBUS_EVENT(AzFramework::GameEntityContextRequestBus, DeactivateGameEntity, m_particleEntityId);
             EBUS_EVENT(AzFramework::GameEntityContextRequestBus, DestroyGameEntity, m_particleEntityId);
             m_particleEntityId = AZ::EntityId();
         }

@@ -283,6 +283,8 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
     const Sector SectorMinY = offsetY >> m_UnitToSectorBitShift;
     const Sector SectorMaxX = (offsetX + areaSize) >> m_UnitToSectorBitShift;
     const Sector SectorMaxY = (offsetY + areaSize) >> m_UnitToSectorBitShift;
+    // TODO : figure out if the water level should be used to calculate the Terrain node's AABB.
+    const float fOceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel();
 
     for (Sector sectorX = SectorMinX; sectorX < SectorMaxX; sectorX++)
     {
@@ -310,7 +312,7 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
             }
 
             leafNode->m_LocalAABB.min.Set((float)(x1 * MetersPerUnit), (float)(y1 * MetersPerUnit), heightMin);
-            leafNode->m_LocalAABB.max.Set((float)(x2 * MetersPerUnit), (float)(y2 * MetersPerUnit), max(heightMax + TerrainConstants::coloredVegetationMaxSafeHeight, GetWaterLevel()));
+            leafNode->m_LocalAABB.max.Set((float)(x2 * MetersPerUnit), (float)(y2 * MetersPerUnit), max(heightMax + TerrainConstants::coloredVegetationMaxSafeHeight, fOceanLevel));
 
             // Build height-based error metrics for sector.
             {
@@ -395,11 +397,16 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
             pRoad->OnTerrainChanged();
         }
     }
+
+    SendLegacyTerrainUpdateNotifications(SectorMinX, SectorMinY, SectorMaxX, SectorMaxY);
 }
 
 void CTerrain::ResetTerrainVertBuffers()
 {
-    m_RootNode->ReleaseHeightMapGeometry(true, nullptr);
+    if (m_RootNode)
+    {
+        m_RootNode->ReleaseHeightMapGeometry(true, nullptr);
+    }
 }
 
 void CTerrain::SetOceanWaterLevel(float fOceanWaterLevel)

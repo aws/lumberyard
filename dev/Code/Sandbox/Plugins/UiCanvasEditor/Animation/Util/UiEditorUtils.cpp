@@ -13,7 +13,6 @@
 
 #include "StdAfx.h"
 #include "Util/EditorUtils.h"
-#include <malloc.h>
 //#include "CustomizeKeyboardPage.h"
 
 #include "Resource.h"
@@ -25,7 +24,9 @@ void HeapCheck::Check(const char* file, int line)
 {
     #ifdef _DEBUG
 
+#if defined(AZ_PLATFORM_WINDOWS)
     _ASSERTE(_CrtCheckMemory());
+#endif
 
     /*
    int heapstatus = _heapchk();

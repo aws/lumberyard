@@ -48,6 +48,7 @@ namespace AZ
                 Events::ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester) override;
 
+                void GetVirtualTypeName(AZStd::string& name, Crc32 type) override;
                 void GetAllVirtualTypes(AZStd::set<Crc32>& types) override;
 
             private:

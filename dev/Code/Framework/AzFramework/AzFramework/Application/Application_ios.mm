@@ -10,73 +10,116 @@
 *
 */
 
-#include "ApplicationAPI.h"
-#include "ApplicationAPI_ios.h"
+#include <AzFramework/API/ApplicationAPI_ios.h>
+#include <AzFramework/Application/Application.h>
 
+#include <UIKit/UIKit.h>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    class ApplicationLifecycleEventsHandler::Pimpl
-        : public IosLifecycleEvents::Bus::Handler
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    class ApplicationIos
+        : public Application::Implementation
+        , public IosLifecycleEvents::Bus::Handler
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_CLASS_ALLOCATOR(ApplicationIos, AZ::SystemAllocator, 0);
+        ApplicationIos();
+        ~ApplicationIos() override;
 
-        Pimpl()
-            : m_lastEvent(ApplicationLifecycleEvents::Event::None)
-        {
-            IosLifecycleEvents::Bus::Handler::BusConnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // IosLifecycleEvents
+        void OnWillResignActive() override;
+        void OnDidBecomeActive() override;
+        void OnDidEnterBackground() override;
+        void OnWillEnterForeground() override;
+        void OnWillTerminate() override;
+        void OnDidReceiveMemoryWarning() override;
 
-        ~Pimpl() override
-        {
-            IosLifecycleEvents::Bus::Handler::BusDisconnect();
-        }
-
-        void OnWillResignActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
-        }
-
-        void OnDidBecomeActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
-        }
-
-        void OnDidEnterBackground() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
-        }
-
-        void OnWillEnterForeground() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
-        }
-
-        void OnWillTerminate() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationWillTerminate);
-        }
-
-        void OnDidReceiveMemoryWarning() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationLowMemoryWarning);
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Application::Implementation
+        void PumpSystemEventLoopOnce() override;
+        void PumpSystemEventLoopUntilEmpty() override;
 
     private:
         ApplicationLifecycleEvents::Event m_lastEvent;
     };
 
-    ApplicationLifecycleEventsHandler::ApplicationLifecycleEventsHandler()
-        : m_pimpl(aznew Pimpl())
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    Application::Implementation* Application::Implementation::Create()
     {
+        return aznew ApplicationIos();
     }
 
-    ApplicationLifecycleEventsHandler::~ApplicationLifecycleEventsHandler()
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationIos::ApplicationIos()
+        : m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
-        delete m_pimpl;
+        IosLifecycleEvents::Bus::Handler::BusConnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationIos::~ApplicationIos()
+    {
+        IosLifecycleEvents::Bus::Handler::BusDisconnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::OnWillResignActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::OnDidBecomeActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::OnDidEnterBackground()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::OnWillEnterForeground()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::OnWillTerminate()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationWillTerminate);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::OnDidReceiveMemoryWarning()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationLowMemoryWarning);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::PumpSystemEventLoopOnce()
+    {
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, TRUE);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationIos::PumpSystemEventLoopUntilEmpty()
+    {
+        SInt32 result;
+        do
+        {
+            result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, DBL_EPSILON, TRUE);
+        }
+        while (result == kCFRunLoopRunHandledSource);
     }
 } // namespace AzFramework

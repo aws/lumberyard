@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include "CharacterTrack.h"
+#include "Maestro/Types/AnimValueType.h"
 
 #define LOOP_TRANSITION_TIME 1.0f
 
@@ -55,7 +56,6 @@ void CCharacterTrack::SerializeKey(ICharacterKey& key, XmlNodeRef& keyNode, bool
         keyNode->getAttr("speed", key.m_speed);
         keyNode->getAttr("loop", key.m_bLoop);
         keyNode->getAttr("blendGap", key.m_bBlendGap);
-        keyNode->getAttr("unload", key.m_bUnload);
         keyNode->getAttr("inplace", key.m_bInPlace);
         keyNode->getAttr("start", key.m_startTime);
     }
@@ -85,10 +85,6 @@ void CCharacterTrack::SerializeKey(ICharacterKey& key, XmlNodeRef& keyNode, bool
         if (key.m_bBlendGap)
         {
             keyNode->setAttr("blendGap", key.m_bBlendGap);
-        }
-        if (key.m_bUnload)
-        {
-            keyNode->setAttr("unload", key.m_bUnload);
         }
         if (key.m_bInPlace)
         {
@@ -163,6 +159,12 @@ inline void TAnimTrack<ICharacterKey>::Reflect(AZ::SerializeContext* serializeCo
         ->Field("Range", &TAnimTrack<ICharacterKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ICharacterKey>::m_nParamType)
         ->Field("Keys", &TAnimTrack<ICharacterKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+AnimValueType CCharacterTrack::GetValueType()
+{
+    return AnimValueType::CharacterAnim; 
 }
 
 //////////////////////////////////////////////////////////////////////////

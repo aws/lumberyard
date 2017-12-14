@@ -10,15 +10,12 @@
 *
 */
 
-
 #pragma once
 
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Vector3.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <MathConversion.h>
-
-#include <AzCore/Component/ComponentBus.h>
-#include <AzCore/EBus/EBus.h>
+#include <AzCore/std/string/string.h>
 
 
 namespace AZ
@@ -54,6 +51,9 @@ namespace StarterGameGem
 		static bool ReplaceMaterialWithClone(AZ::EntityId entityId);
 		static void RestoreOriginalMaterial(AZ::EntityId entityId);
 
+        static int GetSurfaceIndexFromName(const AZStd::string surfaceName);
+        static AZStd::string GetSurfaceNameFromIndex(int surfaceId);
+
     private:
         static _smart_ptr<IMaterial> GetMaterial(AZ::EntityId entityId);
         static bool SetMaterialParam(_smart_ptr<IMaterial> mat, const AZStd::string& paramName, UParamVal var, EParamType type);
@@ -66,6 +66,7 @@ namespace StarterGameGem
         static bool SetShaderMatVec3(AZ::EntityId entityId, _smart_ptr<IMaterial> mat, const AZStd::string& paramName, const AZ::Vector3& var);
         static bool GetShaderMatFloat(AZ::EntityId entityId, _smart_ptr<IMaterial> mat, const AZStd::string& paramName, float& var);
         static bool GetShaderMatVec3(AZ::EntityId entityId, _smart_ptr<IMaterial> mat, const AZStd::string& paramName, AZ::Vector3& var);
+		static _smart_ptr<IMaterial> GetSubMaterial(_smart_ptr<IMaterial> parentMaterial, int subMtlIndex);
 
     };
 

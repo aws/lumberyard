@@ -171,13 +171,17 @@ namespace AzToolsFramework
         {
             TransformComponentMessages::Bus::Handler::BusConnect(GetEntityId());
             AZ::TransformBus::Handler::BusConnect(GetEntityId());
+            AZ::SliceEntityHierarchyRequestBus::Handler::BusConnect(GetEntityId());
 
             // for drag + drop child entity from one parent to another, undo/redo
             if (m_parentEntityId.IsValid())
             {
                 AZ::EntityBus::Handler::BusConnect(m_parentEntityId);
  
-                EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, EntityParentChanged, GetEntityId(), m_parentEntityId, m_previousParentEntityId);
+                if (m_parentEntityId != m_previousParentEntityId)
+                {
+                    EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, EntityParentChanged, GetEntityId(), m_parentEntityId, m_previousParentEntityId);
+                }
 
                 m_previousParentEntityId = m_parentEntityId;
             }
@@ -194,6 +198,7 @@ namespace AzToolsFramework
             AZ::TransformHierarchyInformationBus::Handler::BusDisconnect();
             TransformComponentMessages::Bus::Handler::BusDisconnect();
             AZ::TransformBus::Handler::BusDisconnect();
+            AZ::SliceEntityHierarchyRequestBus::Handler::BusDisconnect();
 
             AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
             AZ::EntityBus::Handler::BusDisconnect();
@@ -1049,12 +1054,23 @@ namespace AzToolsFramework
             ModifyEditorTransform(m_editorTransform.m_scale, data, AZ::Transform::Identity());
         }
 
+        AZ::EntityId TransformComponent::GetSliceEntityParentId()
+        {
+            return GetParentId();
+        }
+
+        AZStd::vector<AZ::EntityId> TransformComponent::GetSliceEntityChildren()
+        {
+            return GetChildren();
+        }
+
         void TransformComponent::BuildGameEntity(AZ::Entity* gameEntity)
         {
             AZ::TransformConfig configuration;
             configuration.m_parentId = m_parentEntityId;
             configuration.m_netSyncEnabled = m_netSyncEnabled;
-            configuration.SetLocalAndWorldTransform(GetLocalTM(), GetWorldTM());
+            configuration.m_worldTransform = GetWorldTM();
+            configuration.m_localTransform = GetLocalTM();
             configuration.m_parentActivationTransformMode = m_parentActivationTransformMode;
             configuration.m_isStatic = m_isStatic;
             configuration.m_interpolatePosition = m_interpolatePosition;

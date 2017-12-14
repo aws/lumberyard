@@ -13,9 +13,7 @@
 #include "StdAfx.h"
 #include "CryEdit.h"
 #include "UI/QComponentEntityEditorOutlinerWindow.h"
-
-#include <ISourceControl.h>
-#include <IEditor.h>
+#include "UI/Outliner/OutlinerWidget.hxx"
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -23,19 +21,12 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
-#include <AzToolsFramework/UI/Outliner/OutlinerWidget.hxx>
 
 QComponentEntityEditorOutlinerWindow::QComponentEntityEditorOutlinerWindow(QWidget* parent)
     : QMainWindow(parent)
-    , m_sourceControl(nullptr)
     , m_outlinerWidget(nullptr)
 {
     gEnv->pSystem->GetISystemEventDispatcher()->RegisterListener(this);
-
-    if (GetIEditor()->IsSourceControlAvailable())
-    {
-        m_sourceControl = GetIEditor()->GetSourceControl();
-    }
 
     Init();
 }
@@ -53,7 +44,7 @@ void QComponentEntityEditorOutlinerWindow::Init()
 {
     QVBoxLayout* layout = new QVBoxLayout();
 
-    m_outlinerWidget = new AzToolsFramework::OutlinerWidget(nullptr);
+    m_outlinerWidget = new OutlinerWidget(nullptr);
     layout->addWidget(m_outlinerWidget);
 
     QWidget* window = new QWidget();

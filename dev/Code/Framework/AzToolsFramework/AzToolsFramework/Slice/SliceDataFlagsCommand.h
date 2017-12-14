@@ -50,6 +50,8 @@ namespace AzToolsFramework
         void Undo() override;
         void Redo() override;
 
+        bool Changed() const override { return m_previousDataFlags != m_nextDataFlags; }
+
     protected:
 
         AZ::EntityId m_entityId;
@@ -81,8 +83,10 @@ namespace AzToolsFramework
             const AZStd::string& friendlyName,
             UndoSystem::URCommandID commandId=0);
 
-        void Undo();
-        void Redo();
+        void Undo() override;
+        void Redo() override;
+
+        bool Changed() const override { return m_previousDataFlagsMap != m_nextDataFlagsMap; }
 
     protected:
 

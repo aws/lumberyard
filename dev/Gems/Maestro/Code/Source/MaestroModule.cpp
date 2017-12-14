@@ -14,6 +14,7 @@
 
 #include "Components/SequenceComponent.h"
 #include "Components/SequenceAgentComponent.h"
+#include "Components/SequenceAgentExternalCreator.h"
 #if defined(MAESTRO_EDITOR)
 #include "Components/EditorSequenceComponent.h"
 #include "Components/EditorSequenceAgentComponent.h"
@@ -38,6 +39,7 @@ namespace Maestro
                 MaestroSystemComponent::CreateDescriptor(),
                 SequenceComponent::CreateDescriptor(),
                 SequenceAgentComponent::CreateDescriptor(),
+                SequenceAgentExternalCreator::CreateDescriptor(),
 #if defined(MAESTRO_EDITOR)
                 EditorSequenceComponent::CreateDescriptor(),
                 EditorSequenceAgentComponent::CreateDescriptor(),
@@ -52,6 +54,7 @@ namespace Maestro
         {
             return AZ::ComponentTypeList{
                 azrtti_typeid<MaestroSystemComponent>(),
+                azrtti_typeid<SequenceAgentExternalCreator>(),
             };
         }
     };

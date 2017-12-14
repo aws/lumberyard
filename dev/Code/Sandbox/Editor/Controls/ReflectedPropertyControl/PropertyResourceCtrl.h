@@ -20,17 +20,16 @@
 #include "ReflectedVar.h"
 #include "Util/VariablePropertyType.h"
 #include <QtWidgets/QWidget>
-#include <QtWidgets/QToolButton>
+#include <QtWidgets/QPushButton>
 #include <QtCore/QVector>
 
-class QPushButton;
 class QLineEdit;
 class QHBoxLayout;
 class CBitmapToolTip;
 class QToolTipWidget;
 
 class BrowseButton
-    : public QToolButton
+    : public QPushButton
 {
     Q_OBJECT
 public:
@@ -62,7 +61,7 @@ public:
     AZ_CLASS_ALLOCATOR(FileResourceSelectorWidget, AZ::SystemAllocator, 0);
     FileResourceSelectorWidget(QWidget* pParent = nullptr);
 
-    void SetPath(const QString& path);
+    bool SetPath(const QString& path);
     QString GetPath() const;
     void SetPropertyType(PropertyType type);
     PropertyType GetPropertyType() const { return m_propertyType; }

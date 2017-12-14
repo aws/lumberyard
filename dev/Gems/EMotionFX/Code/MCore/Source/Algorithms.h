@@ -19,13 +19,13 @@
 namespace AZ
 {
     class Vector2;
+    class Vector3;
 }
 
 namespace MCore
 {
     // forward declarations
     class Matrix;
-    class Vector3;
 
 
     /**
@@ -41,7 +41,7 @@ namespace MCore
      *                      point even further to the top and not visible by the camera at all, a bigger value than screenHeight goes analogue for the bottom border.
      *         z component: The distance of the point to the camera. A negative value means the point is behind the camera and not visible.
      */
-    Vector3 MCORE_API Project(const Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight);
+    AZ::Vector3 MCORE_API Project(const AZ::Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight);
 
     /**
      * Unproject screen coordinates to a 3D point in global space.
@@ -54,15 +54,15 @@ namespace MCore
      * @param projectionMatrix The projection matrix of the camera.
      * @return The unprojected point in global space.
      */
-    Vector3 MCORE_API UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth);
-    Vector3 MCORE_API Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat);
-    Vector3 MCORE_API UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& projectionMatrix, const MCore::Matrix& viewMatrix);
+    AZ::Vector3 MCORE_API UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth);
+    AZ::Vector3 MCORE_API Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat);
+    AZ::Vector3 MCORE_API UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& projectionMatrix, const MCore::Matrix& viewMatrix);
 
     //
-    AZ::Vector2 MCORE_API OrthogonalProject(const Vector3& pos);
-    Vector3 MCORE_API OrthogonalUnproject(const AZ::Vector2& uv);
-    AZ::Vector2 MCORE_API StereographicProject(const Vector3& pos);
-    Vector3 MCORE_API StereographicUnproject(const AZ::Vector2& uv);
+    AZ::Vector2 MCORE_API OrthogonalProject(const AZ::Vector3& pos);
+    AZ::Vector3 MCORE_API OrthogonalUnproject(const AZ::Vector2& uv);
+    AZ::Vector2 MCORE_API StereographicProject(const AZ::Vector3& pos);
+    AZ::Vector3 MCORE_API StereographicUnproject(const AZ::Vector2& uv);
 
     //
     bool MCORE_API PointInPoly(AZ::Vector2* verts, uint32 numVerts, const AZ::Vector2& point);
@@ -291,7 +291,7 @@ namespace MCore
      * @param normalizedVector The normalized direction vector to convert into spherical coordinates.
      * @result The spherical angles, in radians.
      */
-    AZ::Vector2 MCORE_API ToSpherical(const Vector3& normalizedVector);
+    AZ::Vector2 MCORE_API ToSpherical(const AZ::Vector3& normalizedVector);
 
     /**
      * Convert from spherical coordinates back into cartesian coordinates.
@@ -299,7 +299,7 @@ namespace MCore
      * @param spherical The spherical coordinates, as returned by ToSpherical(...).
      * @result The unit direction vector that was converted from the spherical coordinates.
      */
-    Vector3 MCORE_API FromSpherical(const AZ::Vector2& spherical);
+    AZ::Vector3 MCORE_API FromSpherical(const AZ::Vector2& spherical);
 
     /**
      * Calculate the number of samples and spacing between each samples, given a duration and number of samples per second.
@@ -319,8 +319,8 @@ namespace MCore
      * @param v3 Third point of the triangle.
      * @result The area of the triangle.
      */
-    double MCORE_API CalcTriangleAreaAccurate(const Vector3& v1, const Vector3& v2, const Vector3& v3);
-    float MCORE_API CalcTriangleArea(const Vector3& v1, const Vector3& v2, const Vector3& v3);
+    double MCORE_API CalcTriangleAreaAccurate(const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3);
+    float MCORE_API CalcTriangleArea(const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3);
 
 
     // include inline code

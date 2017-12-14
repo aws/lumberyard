@@ -38,7 +38,10 @@ public:
     virtual void Display(DisplayContext& disp);
     virtual bool HitTest(HitContext& hc);
     virtual void GetLocalBounds(AABB& box);
+
     virtual void SetScale(const Vec3& scale) {} // Ignore scale
+    virtual bool SetScale(const Vec3& scale, int flags = 0) { return false; } // Ignore scale
+
     virtual void SetHelperScale(float scale) { m_helperScale = scale; };
     virtual float GetHelperScale() { return m_helperScale; };
     //////////////////////////////////////////////////////////////////////////

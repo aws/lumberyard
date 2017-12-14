@@ -14,8 +14,11 @@
 #define CRYINCLUDE__PARTICLEEDITOR_PLUGIN_H
 #include <Include/IPlugin.h>
 
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+
 class CParticleEditorPlugin
     : public IPlugin
+    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
 {
 public:
     CParticleEditorPlugin(IEditor* editor);
@@ -27,7 +30,11 @@ public:
     const char* GetPluginName() override;
     bool CanExitNow() override;
     void OnEditorNotify(EEditorNotifyEvent aEventId) override;
-
     static const char* m_RegisteredQtViewPaneName;
+
+protected:
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& /*sourceUUID*/, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
 };
 #endif // CRYINCLUDE__PARTICLEEDITOR_EXAMPLEPLUGIN_H

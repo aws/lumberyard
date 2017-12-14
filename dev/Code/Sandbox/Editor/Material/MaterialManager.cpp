@@ -39,9 +39,13 @@
 #include "MainWindow.h"
 
 #include "MaterialUtils.h"
+
+#include <AzCore/std/string/wildcard.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 static const char* MATERIALS_LIBS_PATH = "Materials/";
 static unsigned int s_highlightUpdateCounter = 0;
@@ -51,7 +55,7 @@ static unsigned int s_highlightUpdateCounter = 0;
 static QString UnifyMaterialName(const QString& source)
 {
     char tempBuffer[AZ_MAX_PATH_LEN];
-    azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, source.toLatin1().data());
+    azstrncpy(tempBuffer, AZ_ARRAY_SIZE(tempBuffer), source.toLatin1().data(), AZ_ARRAY_SIZE(tempBuffer) - 1);
     MaterialUtils::UnifyMaterialName(tempBuffer);
     return QString(tempBuffer);
 }
@@ -257,6 +261,7 @@ CMaterialManager::CMaterialManager(CRegistrationContext& regCtx)
     m_materialAssetType = result.GetAssetType();
 
     RegisterCommands(regCtx);
+    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -555,7 +560,7 @@ CMaterial* CMaterialManager::LoadMaterial(const QString& sMaterialName, bool bMa
 
     QString sMaterialNameClear = UnifyMaterialName(sMaterialName);
     QString fullSourcePath = MaterialToFilename(sMaterialNameClear);
-    QString relativePath = PathUtil::ReplaceExtension(sMaterialNameClear.toUtf8().data(), MATERIAL_FILE_EXT);
+    QString relativePath = PathUtil::ReplaceExtension(sMaterialNameClear.toUtf8().data(), MATERIAL_FILE_EXT).c_str();
 
     return LoadMaterialInternal(sMaterialNameClear, fullSourcePath, relativePath, bMakeIfNotFound);
 }
@@ -568,13 +573,13 @@ CMaterial* CMaterialManager::LoadMaterialWithFullSourcePath(const QString& relat
 
 CMaterial* CMaterialManager::LoadMaterialInternal(const QString &materialNameClear, const QString &fullSourcePath, const QString &relativeFilePath, bool makeIfNotFound)
 {    
-    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::CompileAssetSync, AZStd::string(relativeFilePath.toUtf8().data()));
+    // Note:  We are loading from source files here, not from compiled assets, so there is no need to query the asset system for compilation status, etc.
 
     // Load material with this name if not yet loaded.
     CMaterial* pMaterial = (CMaterial*)FindItemByName(materialNameClear);
     if (pMaterial)
     {
-        // If this is a dummy material that was created before for not found mtl file,
+        // If this is a dummy material that was created before for not found mtl file
         // try reload the mtl file again to get valid material data.
         if (pMaterial->IsDummy())
         {
@@ -622,6 +627,32 @@ CMaterial* CMaterialManager::LoadMaterialInternal(const QString &materialNameCle
 CMaterial* CMaterialManager::LoadMaterial(const char* sMaterialName, bool bMakeIfNotFound)
 {
     return LoadMaterial(QString(sMaterialName), bMakeIfNotFound);
+}
+
+void CMaterialManager::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
+{
+    using namespace AzToolsFramework;
+    using namespace AzToolsFramework::AssetBrowser;
+    
+    if (AZStd::wildcard_match("*.mtl", fullSourceFileName))
+    {
+        // we can handle these!  
+        auto materialCallback = [this](const char* fullSourceFileNameInCall, const AZ::Uuid& sourceUUIDInCall)
+        {
+            const SourceAssetBrowserEntry* fullDetails = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUUIDInCall);
+            if (fullDetails)
+            {
+                CMaterial* materialFile = LoadMaterialWithFullSourcePath(QString::fromUtf8(fullDetails->GetRelativePath().c_str()), QString::fromUtf8(fullSourceFileNameInCall), false);
+                if (materialFile)
+                {
+                    OpenViewPane("Material Editor");
+                    SetCurrentMaterial(materialFile); // the material browser pane should be able to deal with this.
+                }
+            }
+        };
+
+        openers.push_back({ "Lumberyard_MaterialEditor", "Open In Material Editor...", QIcon(), materialCallback });
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -807,16 +838,26 @@ void CMaterialManager::OnRequestMaterial(_smart_ptr<IMaterial> pMatInfo)
 //////////////////////////////////////////////////////////////////////////
 void CMaterialManager::OnCreateMaterial(_smart_ptr<IMaterial> pMatInfo)
 {
-    // Ignore if the editor material already exists
-    bool materialAlreadyExists = FindItemByName(UnifyMaterialName(pMatInfo->GetName())) != nullptr;
+    CMaterial* existingMaterial = static_cast<CMaterial*>(FindItemByName(UnifyMaterialName(pMatInfo->GetName())));
+    bool materialAlreadyExists = existingMaterial != nullptr;
 
-    if (!materialAlreadyExists && !(pMatInfo->GetFlags() & MTL_FLAG_PURE_CHILD) && !(pMatInfo->GetFlags() & MTL_FLAG_UIMATERIAL))
+    // If its not a sub-material or a UI material
+    if (!(pMatInfo->GetFlags() & MTL_FLAG_PURE_CHILD) && !(pMatInfo->GetFlags() & MTL_FLAG_UIMATERIAL))
     {
-        CMaterial* pMaterial = new CMaterial(pMatInfo->GetName());
-        pMaterial->SetFromMatInfo(pMatInfo);
-        RegisterItem(pMaterial);
+        // Create a new editor material if it doesn't exist
+        if (!materialAlreadyExists)
+        {
+            CMaterial* pMaterial = new CMaterial(pMatInfo->GetName());
+            pMaterial->SetFromMatInfo(pMatInfo);
+            RegisterItem(pMaterial);
 
-        AddForHighlighting(pMaterial);
+            AddForHighlighting(pMaterial);
+        }
+        else 
+        {
+            // If the material already exists, re-set its values from the engine material that was just re-loaded
+            existingMaterial->SetFromMatInfo(pMatInfo);
+        }
     }
 }
 
@@ -883,11 +924,11 @@ void CMaterialManager::SaveAllLibs()
 //////////////////////////////////////////////////////////////////////////
 QString CMaterialManager::FilenameToMaterial(const QString& filename)
 {
-    // Convert a full or relative path to a normalized name that can be used in a hash (so lowercase, relative path, correct slashes, remove extension)    
+    // Convert a full or relative path to a normalized name that can be used in a hash (so lowercase, relative path, correct slashes, remove extension)
     // note that it may already be an asset path, if so, don't add the overhead of calling into the AP and convert it.
     // if it starts with an alias (@) or if its an absolute file path, we need to convert it.  Otherwise we really don't...
     QString name = filename;
-    if ( (name.left(1) == "@") || (AzFramework::StringFunc::Path::HasDrive(name.toUtf8().data())) )
+    if (name.startsWith(QChar('@')) || AzFramework::StringFunc::Path::HasDrive(name.toUtf8().data()))
     {
         name = Path::FullPathToGamePath(filename); // convert any full path to a relative path instead.
     }
@@ -953,7 +994,20 @@ void CMaterialManager::DeleteMaterial(CMaterial* pMtl)
 
 void CMaterialManager::RemoveMaterialFromDisk(const char * fileName)
 {
-    QFile::remove(fileName);
+    using namespace AzToolsFramework;
+    if (fileName)
+    {
+        SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestDelete, fileName,
+            [](bool success, const SourceControlFileInfo& info)
+        {
+            //If the file is not managed by source control, delete it locally
+            if (!success && !info.IsManaged())
+            {
+                QFile::remove(info.m_filePath.c_str());
+            }
+        }
+        );
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1450,6 +1504,7 @@ void CMaterialManager::PickPreviewMaterial()
 //////////////////////////////////////////////////////////////////////////
 void CMaterialManager::SyncMaterialEditor()
 {
+#if defined(AZ_PLATFORM_WINDOWS)
     if (!m_MatSender)
     {
         return;
@@ -1570,6 +1625,7 @@ void CMaterialManager::SyncMaterialEditor()
     {
         PickPreviewMaterial();
     }
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1664,17 +1720,17 @@ void CMaterialManager::GatherResources(_smart_ptr<IMaterial> pMaterial, CUsedRes
         SShaderItem& shItem = pMaterial->GetShaderItem();
         if (shItem.m_pShaderResources)
         {
-            SInputShaderResources res;
+            SInputShaderResources   res;
             shItem.m_pShaderResources->ConvertToInputResource(&res);
 
-            for (int i = 0; i < EFTT_MAX; i++)
+            for (auto& iter : res.m_TexturesResourcesMap )
             {
-                if (!res.m_Textures[i].m_Name.empty())
+                SEfResTexture*  	pTexture = &(iter.second);
+                if (!pTexture->m_Name.empty())
                 {
-                    resources.Add(res.m_Textures[i].m_Name.c_str());
+                    resources.Add(pTexture->m_Name.c_str());
                 }
             }
-
             gEnv->pRenderer->EF_ReleaseInputShaderResource(&res);
         }
     }

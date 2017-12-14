@@ -80,28 +80,28 @@
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="floatingHeaderFrame">
+     <widget class="QFrame" name="frame">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
-      <property name="layoutDirection">
-       <enum>Qt::RightToLeft</enum>
-      </property>
       <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
+       <enum>QFrame::NoFrame</enum>
       </property>
       <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
+       <enum>QFrame::Plain</enum>
+      </property>
+      <property name="lineWidth">
+       <number>0</number>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <property name="spacing">
         <number>0</number>
        </property>
        <property name="leftMargin">
-        <number>16</number>
+        <number>4</number>
        </property>
        <property name="topMargin">
         <number>0</number>
@@ -112,6 +112,19 @@
        <property name="bottomMargin">
         <number>0</number>
        </property>
+       <item>
+        <widget class="ScriptCanvasEditor::Widget::AutoElidingLabel" name="m_categoryLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
@@ -121,6 +134,13 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ScriptCanvasEditor::Widget::AutoElidingLabel</class>
+   <extends>QLabel</extends>
+   <header>Editor/View/Widgets/AutoElidingLabel.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

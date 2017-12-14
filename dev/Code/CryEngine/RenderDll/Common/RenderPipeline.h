@@ -38,7 +38,7 @@
 #define MAX_SHADOWMAP_FRUSTUMS 1024
 #define MAX_SORT_GROUPS  64
 #define MAX_INSTANCES_THRESHOLD_HW  8
-#define MAX_LIST_ORDER   2
+#define MAX_LIST_ORDER   2                                  // 0 = before water, 1 = after water
 #define MAX_PREDICTION_ZONES MAX_STREAM_PREDICTION_ZONES
 
 #define CULLER_MAX_CAMS 4
@@ -46,7 +46,6 @@
 #define HW_INSTANCING_ENABLED
 
 class CRenderView;
-class CCompiledRenderObject;
 
 struct SViewport
 {
@@ -114,7 +113,6 @@ struct SRendItem
         float fDist;
     };
     CRenderObject* pObj;
-    CCompiledRenderObject* pCompiledObject;
     uint32 nBatchFlags;
     uint32 nOcclQuery : 16;
     enum
@@ -122,7 +120,6 @@ struct SRendItem
         kOcclQueryInvalid = 0xFFFFU
     };
     uint32 nStencRef  : 8;
-    uint32 bRecompile : 1;
     uint8  nTextureID;
     SRendItemSorter rendItemSorter;
 
@@ -211,7 +208,7 @@ struct SRendItem
     // Free all renditem lists. Renderer must be flushed.
     static CThreadSafeWorkerContainer<SRendItem>& RendItems(int threadIndex, int listOrder, int listNum);
 
-    ENGINE_API static int m_RecurseLevel[RT_COMMAND_BUF_COUNT];
+    static int m_RecurseLevel[RT_COMMAND_BUF_COUNT];
     static int m_StartFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
     static int m_EndFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
     static int m_ShadowsStartRI[RT_COMMAND_BUF_COUNT][MAX_SHADOWMAP_FRUSTUMS];
@@ -463,7 +460,7 @@ enum EBatchFlags
     FB_TRANSPARENT    = 0x2,
     FB_SKIN           = 0x4,
     FB_Z              = 0x8,
-    // 0x10
+    FB_FUR            = 0x10,
     FB_ZPREPASS       = 0x20,
     FB_PREPROCESS     = 0x40,
     FB_MOTIONBLUR     = 0x80,
@@ -477,6 +474,7 @@ enum EBatchFlags
     FB_WATER_CAUSTIC  = 0x8000,
     FB_DEBUG          = 0x10000,
     FB_PARTICLES_THICKNESS = 0x20000,
+    FB_TRANSPARENT_AFTER_DOF = 0x40000, // for transparent render element skip Depth of field effect
     FB_EYE_OVERLAY    = 0x80000,
 
     FB_MASK           = 0xfffff //! FB flags cannot exceed 0xfffff
@@ -868,6 +866,8 @@ struct SRenderPipeline
     float m_fLastWaterUpdate;
     int m_nLastWaterFrameID;
 
+    bool m_depthWriteStateUsed;
+
 #if !defined(NULL_RENDERER)
     SMSAA   m_MSAAData;
     bool IsMSAAEnabled() const { return m_MSAAData.Type > 0; }
@@ -926,6 +926,8 @@ struct SRenderPipeline
     int m_nExternalVertexBufferFirstVertex;
 #endif
 
+    // [Shader System TO DO] - change this so that we don't deal with static slots assignments
+    // The following  structure is practically used only once to set Instance texture coord matrix.
     SEfResTexture* m_ShaderTexResources[MAX_TMU];
 
     int m_Frame;
@@ -950,11 +952,8 @@ struct SRenderPipeline
     // Input render data
     SRenderLight* m_pSunLight;
     CThreadSafeWorkerContainer <CRenderObject*> m_TempObjects[RT_COMMAND_BUF_COUNT];
-    CThreadSafeWorkerContainer <CRenderObject*> m_ModifiedObjects[RT_COMMAND_BUF_COUNT];
     CRenderObject* m_ObjectsPool;
     uint32 m_nNumObjectsInPool;
-
-    std::shared_ptr<class CRenderObjectsPools> m_renderObjectsPools;
 
 #if !defined(_RELEASE)
     //===================================================================
@@ -1248,22 +1247,6 @@ struct SCompareByOnlyStableFlagsOctreeID
     {
         return rA.rendItemSorter < rB.rendItemSorter;
     }
-};
-
-//////////////////////////////////////////////////////////////////////////
-// Class used to allocate/deallocate permanent render objects.
-class CRenderObjectImpl
-    : public CRenderObject
-{
-public:
-    ~CRenderObjectImpl();
-
-    static CRenderObject* AllocateFromPool();
-    static void FreeToPool(CRenderObject* pObj);
-
-    static void SetStaticPools(CRenderObjectsPools* pools) { s_pPools = pools; }
-private:
-    static CRenderObjectsPools* s_pPools;
 };
 
 #endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERPIPELINE_H

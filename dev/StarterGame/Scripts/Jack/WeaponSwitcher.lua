@@ -2,27 +2,28 @@ local weaponswitcher =
 {
     Properties = 
     {
-		UIMessages = 
-		{
-			SetCrosshairMessage = { default = "SetCrosshairEvent", description = "set the visible crosshair" },
-		},
-
 		Events =
 		{
 			ControlsEnabled = { default = "EnableControlsEvent", description = "If passed '1.0' it will enable controls, oherwise it will disable them." },
+			EnableWeapon = { default = "EventEnableWeapon", description = "Sent with the name of the weapon in ofder to switch the weapon selection on." },
 		},
 		
 		-- The weapons to be used.
 		Weapons =
 		{
-			Ray =
+			Pistol =
 			{
 				Weapon = {default = EntityId()},
+				Enabled = { default = true, description = "am i available to the player?" },
 			},
-			Flame =
+			Grenade =
 			{
 				Weapon = {default = EntityId()},
+				Enabled = { default = false, description = "am i available to the player?" },
 			},
+		},
+		WeaponSetup = 
+		{
 			GenericEvents =
 			{
 				Activate = "EventActivate";
@@ -55,14 +56,19 @@ function weaponswitcher:OnActivate()
 	self.enableHandler = GameplayNotificationBus.Connect(self, self.enableEventId);
 	self.disableEventId = GameplayNotificationId(self.entityId, "Disable", "float");
 	self.disableHandler = GameplayNotificationBus.Connect(self, self.disableEventId);
+	self.setVisibleEventId = GameplayNotificationId(self.entityId, "SetVisible", "float");
+	self.setVisibleHandler = GameplayNotificationBus.Connect(self, self.setVisibleEventId);
 
 	-- Input listeners (weapon).
 	self.weaponSwitchEventId = GameplayNotificationId(self.entityId, "WeaponSwitch", "float");
 	self.weaponSwitchHandler = GameplayNotificationBus.Connect(self, self.weaponSwitchEventId);
+	
+	self.enableWeaponEventId = GameplayNotificationId(self.entityId, self.Properties.Events.EnableWeapon, "float");
+	self.enableWeaponHandler = GameplayNotificationBus.Connect(self, self.enableWeaponEventId);
 
 	-- Set the weapon information.
-	Debug.Assert(self.Properties.Weapons.Ray.Weapon ~= 0 and self.Properties.Weapons.Ray.Weapon);
-	Debug.Assert(self.Properties.Weapons.Flame.Weapon ~= 0 and self.Properties.Weapons.Flame.Weapon);
+	Debug.Assert(self.Properties.Weapons.Pistol.Weapon ~= 0 and self.Properties.Weapons.Pistol.Weapon);
+	Debug.Assert(self.Properties.Weapons.Grenade.Weapon ~= 0 and self.Properties.Weapons.Grenade.Weapon);
 	
 	self.varWpnSwitchSound = self.Properties.Audio.WpnSwitchSound;
 
@@ -81,9 +87,11 @@ end
 function weaponswitcher:OnDeactivate()
 	self.weaponSwitchHandler:Disconnect();
 	self.weaponSwitchHandler = nil;
+	self.enableWeaponHandler:Disconnect();
+	self.enableWeaponHandler = nil;
 	if(self.tickBusHandler ~= nil) then
 		self.tickBusHandler:Disconnect();
-		self.tickBusHandler = nil;		
+		self.tickBusHandler = nil;
 	end
 	if (self.enableHandler ~= nil) then
 		self.enableHandler:Disconnect();
@@ -91,38 +99,72 @@ function weaponswitcher:OnDeactivate()
 	end
 	if (self.disableHandler ~= nil) then
 		self.disableHandler:Disconnect();
-		self.disableHandler = nil;	
+		self.disableHandler = nil;
+	end
+	if (self.setVisibleHandler ~= nil) then
+		self.setVisibleHandler:Disconnect();
+		self.setVisibleHandler = nil;
 	end
 end
 
 function weaponswitcher:ChangeWeapon()
-
-	-- Detach the old weapon.
-	AttachmentComponentRequestBus.Event.Detach(self.activeWeapon.Weapon);
-	
-	MeshComponentRequestBus.Event.SetVisibility(self.activeWeapon.Weapon, false);
-	
-	-- fire an event off to tell the current weapon that we are not using it anymore
-	GameplayNotificationBus.Event.OnEventBegin(self.activeWeaponActivateEventId, 0);
-
-	AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, self.varWpnSwitchSound);
-
-	-- This could probably be done better... maybe adding all the potential weapons to an
-	-- array or table in 'OnActivate' then searching to find the current one and moving
-	-- on to the next one?
-	if (self.activeWeapon == self.Properties.Weapons.Ray) then
-		self.activeWeapon = self.Properties.Weapons.Flame;
-	elseif (self.activeWeapon == self.Properties.Weapons.Flame) then
-		self.activeWeapon = self.Properties.Weapons.Ray;
+	if (self.activeWeapon == nil) then
+		self.activeWeapon = self.Properties.Weapons[1];
+		self:SetupNewWeapon();
 	else
-		self.activeWeapon = self.Properties.Weapons.Ray;
-	end
+		local foundExisting = false;
+		local foundNext = false;
+		local newWeapon = nil;
+		
+		for key,value in pairs(self.Properties.Weapons) do
+			if (value == self.activeWeapon) then
+				foundExisting = true;
+			elseif (foundExisting and (not foundNext) and value.Enabled) then
+				foundNext = true;
+				newWeapon = value;
+				break;
+			end
+		end
+		-- if i have not found the next one to use do a search from the beginning till our current to wrap our search
+		if (foundExisting and (not foundNext)) then
+			for key,value in pairs(self.Properties.Weapons) do
+				if (value == self.activeWeapon) then
+					-- i have done a full loop, so bail
+					break;
+				elseif (value.Enabled) then
+					foundNext = true;
+					newWeapon = value;
+					break;
+				end
+			end
+		end
+		
+		if(foundExisting and foundNext) then
+			-- Detach the old weapon.
+			AttachmentComponentRequestBus.Event.Detach(self.activeWeapon.Weapon);
+			MeshComponentRequestBus.Event.SetVisibility(self.activeWeapon.Weapon, false);
+			
+			-- fire an event off to tell the current weapon that we are not using it anymore
+			GameplayNotificationBus.Event.OnEventBegin(self.activeWeaponActivateEventId, 0);
 
-	self:SetupNewWeapon();
+			AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, self.varWpnSwitchSound);
+			
+			self.activeWeapon = newWeapon;
+			
+			self:SetupNewWeapon();
+		end
+	end
+	
+	-- if (self.activeWeapon == self.Properties.Weapons.Pistol) then
+		-- self.activeWeapon = self.Properties.Weapons.Grenade;
+	-- elseif (self.activeWeapon == self.Properties.Weapons.Grenade) then
+		-- self.activeWeapon = self.Properties.Weapons.Pistol;
+	-- else
+		-- self.activeWeapon = self.Properties.Weapons.Pistol;
+	-- end
 end
 
 function weaponswitcher:SetupNewWeapon()
-
 	Debug.Assert(self.activeWeapon ~= 0 and self.activeWeapon);
 
 	local tm = TransformBus.Event.GetWorldTM(self.activeWeapon.Weapon);
@@ -130,9 +172,9 @@ function weaponswitcher:SetupNewWeapon()
 	tm = Transform:CreateIdentity();
 	tm:MultiplyByScale(scale);
 	MeshComponentRequestBus.Event.SetVisibility(self.activeWeapon.Weapon, true);
-	AttachmentComponentRequestBus.Event.Attach(self.activeWeapon.Weapon, self.entityId, self.Properties.Weapons.Bone, tm);
+	AttachmentComponentRequestBus.Event.Attach(self.activeWeapon.Weapon, self.entityId, self.Properties.WeaponSetup.Bone, tm);
 
-	self.activeWeaponActivateEventId = GameplayNotificationId(self.activeWeapon.Weapon, self.Properties.Weapons.GenericEvents.Activate, "float");
+	self.activeWeaponActivateEventId = GameplayNotificationId(self.activeWeapon.Weapon, self.Properties.WeaponSetup.GenericEvents.Activate, "float");
 
 	GameplayNotificationBus.Event.OnEventBegin(self.activeWeaponActivateEventId, 1);
 	
@@ -142,9 +184,7 @@ end
 
 function weaponswitcher:OnTick(deltaTime, timePoint)
 	-- First update initialisation
-	local uiElement = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("UIPlayer"));
-	self.SetCrosshairEventId = GameplayNotificationId(uiElement, self.Properties.UIMessages.SetCrosshairMessage, "float");
-	self.activeWeapon = self.Properties.Weapons.Ray;
+	self.activeWeapon = self.Properties.Weapons.Pistol;
 	self:SetupNewWeapon();
 	self.tickBusHandler:Disconnect();
 	self.tickBusHandler = nil;
@@ -153,10 +193,20 @@ end
 function weaponswitcher:SetControlsEnabled(newControlsEnabled)
 	self.controlsEnabled = newControlsEnabled;
 end
-	
+
+function weaponswitcher:EnableWeapon(weapon)
+	for key,value in pairs(self.Properties.Weapons) do
+		if (key == weapon) then
+			value.Enabled = true;
+			return;
+		end
+	end
+end	
+
 function weaponswitcher:OnEventBegin(value)
-	--Debug.Log("weaponswitcher:OnEventBegin " .. tostring(GameplayNotificationBus.GetCurrentBusId()) .. " " .. tostring(value));
-	if (GameplayNotificationBus.GetCurrentBusId() == self.controlsEnabledEventId) then
+	local busId = GameplayNotificationBus.GetCurrentBusId();
+	--Debug.Log("weaponswitcher:OnEventBegin " .. tostring(busId) .. " " .. tostring(value));
+	if (busId == self.controlsEnabledEventId) then
 		--Debug.Log("weaponswitcher:controlsEnabledEventId " .. tostring(value));
 		if (value == 1.0) then
 			self.controlsDisabledCount = self.controlsDisabledCount - 1;
@@ -175,15 +225,19 @@ function weaponswitcher:OnEventBegin(value)
 
 	if (self.controlsEnabled) then
 		-- Player controls.
-		if ((GameplayNotificationBus.GetCurrentBusId() == self.weaponSwitchEventId) and (self.enabled)) then
+		if ((busId == self.weaponSwitchEventId) and (self.enabled)) then
 			self:ChangeWeapon();
 		end
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.enableEventId) then
+	if (busId == self.enableEventId) then
 		self:OnEnable();
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.disableEventId) then
+	elseif (busId == self.disableEventId) then
 		self:OnDisable();
+	elseif (busId == self.setVisibleEventId) then
+		MeshComponentRequestBus.Event.SetVisibility(self.activeWeapon.Weapon, value);
+	elseif (busId == self.enableWeaponEventId) then
+		self:EnableWeapon(value);
 	end
 end
 

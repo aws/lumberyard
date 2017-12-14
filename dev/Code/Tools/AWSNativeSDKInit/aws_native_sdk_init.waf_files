@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Source": [
+            "include/AWSNativeSDKInit/AWSNativeSDKInit.h",
+            "include/AWSNativeSDKInit/AWSMemoryInterface.h",
+            "include/AWSNativeSDKInit/AWSLogSystemInterface.h",
+            "source/AWSNativeSDKInit.cpp",
+            "source/AWSMemoryInterface.cpp",
+            "source/AWSLogSystemInterface.cpp"
+        ]
+    }
+}

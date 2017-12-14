@@ -67,11 +67,11 @@
     #define azmalloc_5(_1, _2, _3, _4, _5)                          AZ::AllocatorInstance< _3 >::Get().Allocate(_1, _2, _5, _4)
 
 /// azcreate(class)
-    #define azcreate_1(_1)                                          new(azmalloc_2(sizeof(_1), AZStd::alignment_of< _1 >::value))_1()
+    #define azcreate_1(_1)                                          new(azmalloc_4(sizeof(_1), AZStd::alignment_of< _1 >::value, AZ::SystemAllocator, #_1)) _1()
 /// azcreate(class,params)
-    #define azcreate_2(_1, _2)                                      new(azmalloc_2(sizeof(_1), AZStd::alignment_of< _1 >::value)) _1 _2
+    #define azcreate_2(_1, _2)                                      new(azmalloc_4(sizeof(_1), AZStd::alignment_of< _1 >::value, AZ::SystemAllocator, #_1)) _1 _2
 /// azcreate(class,params,Allocator)
-    #define azcreate_3(_1, _2, _3)                                  new(azmalloc_3(sizeof(_1), AZStd::alignment_of< _1 >::value, _3)) _1 _2
+    #define azcreate_3(_1, _2, _3)                                  new(azmalloc_4(sizeof(_1), AZStd::alignment_of< _1 >::value, _3, #_1)) _1 _2
 /// azcreate(class,params,Allocator,allocationName)
     #define azcreate_4(_1, _2, _3, _4)                              new(azmalloc_4(sizeof(_1), AZStd::alignment_of< _1 >::value, _3, _4)) _1 _2
 /// azcreate(class,params,Allocator,allocationName,flags)
@@ -125,7 +125,7 @@ namespace AZ {
 
 #define azdestroy_1(_1)         do { AZ::Memory::Internal::call_dtor(_1); azfree_1(_1); } while (0)
 #define azdestroy_2(_1, _2)      do { AZ::Memory::Internal::call_dtor(_1); azfree_2(_1, _2); } while (0)
-#define azdestroy_3(_1, _2, _3)   do { AZ::Memory::Internal::call_dtor(_1); azfree_4(_1, _2, sizeof(_3), AZStd::alignment_of< _3 >::value); } while (0)
+#define azdestroy_3(_1, _2, _3)     do { AZ::Memory::Internal::call_dtor(reinterpret_cast<_3*>(_1)); azfree_4(_1, _2, sizeof(_3), AZStd::alignment_of< _3 >::value); } while (0)
 
 /**
  * azdestroy should be used only with corresponding azcreate.

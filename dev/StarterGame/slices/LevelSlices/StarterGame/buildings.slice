@@ -1,9 +1,9 @@
 <ObjectStream version="1">
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-			<Class name="AZ::u64" field="id" value="17800989617627425270" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			<Class name="AZ::u64" field="id" value="18162940736593029622" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
-		<Class name="AZStd::string" field="Name" value="17800989617627425270" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+		<Class name="AZStd::string" field="Name" value="18162940736593029622" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 		<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 			<Class name="PrefabComponent" field="element" version="1" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
@@ -35876,7 +35876,7 @@
 									<Class name="StaticMeshRenderOptions" field="Render Options" version="3" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="1000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+										<Class name="float" field="ViewDistanceMultiplier" value="1.2000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="unsigned int" field="LODRatio" value="100" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 										<Class name="bool" field="CastDynamicShadows" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="CastLightmapShadows" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -36432,7 +36432,7 @@
 									<Class name="StaticMeshRenderOptions" field="Render Options" version="3" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="1000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+										<Class name="float" field="ViewDistanceMultiplier" value="1.3000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="unsigned int" field="LODRatio" value="100" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 										<Class name="bool" field="CastDynamicShadows" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="CastLightmapShadows" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -36788,7 +36788,7 @@
 									<Class name="StaticMeshRenderOptions" field="Render Options" version="3" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="1000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+										<Class name="float" field="ViewDistanceMultiplier" value="1.4000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="unsigned int" field="LODRatio" value="100" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 										<Class name="bool" field="CastDynamicShadows" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										<Class name="bool" field="CastLightmapShadows" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>

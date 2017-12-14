@@ -79,6 +79,7 @@ namespace GraphCanvas
         class ComputedStyle
             : public AZ::Component
             , protected StyleRequestBus::Handler
+            , protected StyleSheetNotificationBus::Handler
         {
         public:
             AZ_COMPONENT(ComputedStyle, "{695DEBB5-45A1-4CD5-B6B7-D9F7EF801194}");
@@ -87,11 +88,11 @@ namespace GraphCanvas
 
             ComputedStyle() = default;
             ComputedStyle(const SelectorVector& objectSelectors, StyleVector&& styles);
-            ComputedStyle(ComputedStyle&& other);
-            ComputedStyle(const ComputedStyle& other);
             virtual ~ComputedStyle() = default;
 
             const SelectorVector& ObjectSelectors() { return m_objectSelectors; }
+
+            void SetStyleSheetId(const AZ::EntityId& sceneId);
 
         private:
             // StyleRequestBus::Handler
@@ -99,6 +100,10 @@ namespace GraphCanvas
 
             bool HasAttribute(AZ::u32 attribute) const override;
             QVariant GetAttribute(AZ::u32 attribute) const override;
+            ////
+
+            // StyleSheetNotificationBus
+            void OnStyleSheetUnloaded() override;
             ////
 
             // AZ::Component
@@ -157,6 +162,8 @@ namespace GraphCanvas
             void Activate() override;
             void Deactivate() override;
             ////
+
+            void ClearStyles();
 
             StyleVector m_styles;
 

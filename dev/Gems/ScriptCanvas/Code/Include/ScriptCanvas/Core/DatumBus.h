@@ -31,4 +31,14 @@ namespace ScriptCanvas
     };
     
     using DatumNotificationBus = AZ::EBus<DatumNotifications>;
+
+    class DatumSystemNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
+        virtual void OnDatumChanged(Datum&) = 0;
+    };
+
+    using DatumSystemNotificationBus = AZ::EBus<DatumSystemNotifications>;
 }

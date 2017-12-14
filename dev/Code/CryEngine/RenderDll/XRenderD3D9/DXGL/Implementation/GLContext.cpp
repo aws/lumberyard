@@ -21,6 +21,10 @@
 #include "GLView.hpp"
 #include "GLExtensions.hpp"
 
+#if defined(ANDROID)
+#include <AzCore/Android/Utils.h>
+#endif
+
 #define DXGL_VALIDATE_PROGRAMS_ON_DRAW 0
 
 namespace NCryOpenGL
@@ -661,6 +665,7 @@ namespace NCryOpenGL
             m_abResourceUnitsDirty[uUnitType] = false;
         }
         memset(m_apResourceUnitMaps, 0, sizeof(m_apResourceUnitMaps));
+        AzFramework::ApplicationLifecycleEvents::Bus::Handler::BusConnect();
     }
 
     CContext::~CContext()
@@ -684,6 +689,8 @@ namespace NCryOpenGL
         delete m_pFrameBufferCache;
         delete m_pPipelineCache;
         delete m_pUnitMapCache;
+
+        AzFramework::ApplicationLifecycleEvents::Bus::Handler::BusDisconnect();
     }
 
     bool CContext::Initialize()
@@ -1160,7 +1167,7 @@ namespace NCryOpenGL
         const SCapabilities& kCapabilities = m_pDevice->GetAdapter()->m_kCapabilities;
 
         uint32 uNumUniformBuffers = kCapabilities.m_akResourceUnits[eRUT_UniformBuffer].m_aiMaxTotal;
-        for (uint32 uIndex = 0; uIndex < uNumUniformBuffers; ++uIndex)
+        for (uint32 uIndex = 0; uIndex < uNumUniformBuffers && uIndex < MAX_UNIFORM_BUFFER_UNITS; ++uIndex)
         {
             GLint uBufferBound(0);
             // Qualcomm driver crash when calling glGetIntegeri_v with GL_UNIFORM_BUFFER_BINDING.
@@ -2364,7 +2371,7 @@ namespace NCryOpenGL
     void CContext::UpdatePlsState(bool const preFramebufferBind)
     {
 #if DXGLES
-        if (m_PlsExtensionState && GLAD_GL_EXT_shader_pixel_local_storage)
+        if (m_PlsExtensionState && DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage))
         {
             if (preFramebufferBind && PLS_DISABLE == m_PlsExtensionState)
             {
@@ -4163,6 +4170,39 @@ case _D3DValue:                                     \
     }
 
 #endif //DXGL_TRACE_CALLS
+
+    void CContext::OnApplicationWindowCreated()
+    {
+#if defined(DXGL_USE_EGL)
+        if (m_type != RenderingType)
+        {
+            return;
+        }
+
+        AZ_Assert(m_kWindowContext, "Null WindowContext");
+        EGLNativeWindowType window = nullptr;
+#   if defined(ANDROID)
+        window = AZ::Android::Utils::GetWindow();
+#   else
+        DXGL_NOT_IMPLEMENTED;
+        return;
+#   endif // defined(ANDROID)
+        m_kWindowContext->SetWindow(window);
+#else
+        DXGL_NOT_IMPLEMENTED;
+#endif
+    }
+
+    void CContext::OnApplicationWindowDestroy()
+    {
+#if defined(DXGL_USE_EGL)
+        AZ_Assert(m_kWindowContext, "Null WindowContext");
+        m_kWindowContext->SetWindow(nullptr);
+#else
+        DXGL_NOT_IMPLEMENTED
+#endif
+    }
+
 
 #undef CACHE_VAR
 #undef CACHE_FIELD

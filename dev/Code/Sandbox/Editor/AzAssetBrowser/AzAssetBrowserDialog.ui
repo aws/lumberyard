@@ -144,7 +144,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <layout class="QVBoxLayout" name="m_rightLayout">
        <item>
         <widget class="PreviewWidget" name="m_previewWidget" native="true">
@@ -192,7 +192,7 @@
   <customwidget>
    <class>AzToolsFramework::AssetBrowser::AssetBrowserTreeView</class>
    <extends>QTreeView</extends>
-   <header>AzToolsFramework/AssetBrowser/AssetBrowserTreeView.h</header>
+   <header>AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h</header>
   </customwidget>
   <customwidget>
    <class>PreviewWidget</class>

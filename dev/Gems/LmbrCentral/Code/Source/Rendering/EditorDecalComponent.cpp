@@ -12,7 +12,7 @@
 
 #include "StdAfx.h"
 #include "EditorDecalComponent.h"
-
+#include <IEditor.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Math/Quaternion.h>

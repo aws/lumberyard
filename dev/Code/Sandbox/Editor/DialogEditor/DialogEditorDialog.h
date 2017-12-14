@@ -35,7 +35,7 @@ class QMenu;
 class ScriptTreeModel;
 class ScriptListModel;
 
-#define DIALOG_EDITOR_NAME "Dialog Editor"
+#define DIALOG_EDITOR_NAME "Dialog Editor (LEGACY)"
 #define DIALOG_EDITOR_VER "1.00"
 
 class ScriptTreeView

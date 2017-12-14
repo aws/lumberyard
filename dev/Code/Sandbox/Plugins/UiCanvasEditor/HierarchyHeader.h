@@ -11,6 +11,15 @@
 */
 #pragma once
 
+#include <QHeaderView>
+
+class HierarchyWidget;
+class QSize;
+class QPainter;
+class QRect;
+class QEvent;
+class QIcon;
+
 class HierarchyHeader
     : public QHeaderView
 {

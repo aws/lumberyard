@@ -65,11 +65,6 @@ static QDataStream& operator>>(QDataStream& in, ViewLayoutState& myObj)
 // When starting up, "layouts/last" is loaded
 static QLatin1String s_lastLayoutName = QLatin1String("last");
 
-static QString GetViewPaneStateGroupName()
-{
-    return QString("%1/%2").arg("Editor").arg("mainWindowLayouts");
-}
-
 static QString GetFancyViewPaneStateGroupName()
 {
     return QString("%1/%2").arg("Editor").arg("fancyWindowLayouts");
@@ -81,22 +76,22 @@ Q_GLOBAL_STATIC(QtViewPaneManager, s_instance)
 /**
  * Check if this dock widget is tabbed in our custom dock tab widget
  */
-bool QtViewPane::IsTabbed() const
+bool QtViewPane::IsTabbed(QDockWidget* dockWidget)
 {
     // If our dock widget is tabbed, it will have a valid tab widget parent
-    return ParentTabWidget();
+    return ParentTabWidget(dockWidget);
 }
 
 /**
  * Return the tab widget holding this dock widget if it is a tab, otherwise nullptr
  */
-AzQtComponents::DockTabWidget* QtViewPane::ParentTabWidget() const
+AzQtComponents::DockTabWidget* QtViewPane::ParentTabWidget(QDockWidget* dockWidget)
 {
-    if (m_dockWidget)
+    if (dockWidget)
     {
         // If our dock widget is tabbed, it will be parented to a QStackedWidget that is parented to
         // our dock tab widget
-        QStackedWidget* stackedWidget = qobject_cast<QStackedWidget*>(m_dockWidget->parentWidget());
+        QStackedWidget* stackedWidget = qobject_cast<QStackedWidget*>(dockWidget->parentWidget());
         if (stackedWidget)
         {
             AzQtComponents::DockTabWidget* tabWidget = qobject_cast<AzQtComponents::DockTabWidget*>(stackedWidget->parentWidget());
@@ -166,7 +161,7 @@ bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
         else
         {
             // If the dock widget is tabbed, then just remove it from the tab widget
-            AzQtComponents::DockTabWidget* tabWidget = ParentTabWidget();
+            AzQtComponents::DockTabWidget* tabWidget = ParentTabWidget(m_dockWidget);
             if (tabWidget)
             {
                 tabWidget->removeTab(m_dockWidget);
@@ -281,6 +276,49 @@ void DockWidget::RestoreState(bool forceDefault)
     auto dockingArea = m_pane->m_options.preferedDockingArea;
     auto paneRect = m_pane->m_options.paneRect;
 
+    // If we are floating and have multiple instances, try to calculate an appropriate rect from the right-most, non-docked instance
+    // make sure the new location would be reasonable on screen - otherwise use default paneRect for new widget positioning
+    if (dockingArea == Qt::NoDockWidgetArea && m_pane->m_dockWidgetInstances.size() > 1)
+    {
+        static const int horizontalCascadeAmount = 20;
+        static const int verticalCascadeAmount = 20;
+        static const int lowerScreenEdgeBuffer = 50;
+
+        int rightMostX = 0;
+
+        QRect screenRect = QApplication::desktop()->screenGeometry();
+        int screenHeight = screenRect.height();
+        int screenWidth = screenRect.width();
+
+        for (auto& dock : m_pane->m_dockWidgetInstances)
+        {
+            if (dock != this)
+            {
+                QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dock->parentWidget());
+                if (mainWindow && mainWindow->parentWidget())
+                {
+                    QPoint windowLocation = mainWindow->parentWidget()->mapToGlobal(QPoint(0,0));
+
+                    if (windowLocation.x() > rightMostX)
+                    {
+                        // Only nudge it to the right if we have room to do so
+                        if (windowLocation.x() + horizontalCascadeAmount < screenWidth - paneRect.width())
+                        {
+                            paneRect.moveLeft(windowLocation.x() + horizontalCascadeAmount);
+                            rightMostX = windowLocation.x();
+
+                            // Keep it from getting too low on the screen
+                            if (windowLocation.y() + verticalCascadeAmount < screenHeight - lowerScreenEdgeBuffer)
+                            {
+                                paneRect.moveTop(windowLocation.y() + verticalCascadeAmount);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // make sure we're sized properly before we dock
     if (paneRect.isValid())
     {
@@ -360,7 +398,6 @@ QtViewPaneManager::QtViewPaneManager(QObject* parent)
     , m_mainWindow(nullptr)
     , m_settings(nullptr)
     , m_restoreInProgress(false)
-    , m_useNewDocking(false)
     , m_advancedDockManager(nullptr)
 {
     qRegisterMetaTypeStreamOperators<ViewLayoutState>("ViewLayoutState");
@@ -435,16 +472,12 @@ QtViewPaneManager* QtViewPaneManager::instance()
     return s_instance();
 }
 
-void QtViewPaneManager::SetMainWindow(QMainWindow* mainWindow, QSettings* settings, const QByteArray& lastMainWindowState, bool useNewDocking, bool enableLegacyCryEntities)
+void QtViewPaneManager::SetMainWindow(QMainWindow* mainWindow, QSettings* settings, const QByteArray& lastMainWindowState, bool enableLegacyCryEntities)
 {
     Q_ASSERT(mainWindow && !m_mainWindow && settings && !m_settings);
     m_mainWindow = mainWindow;
     m_settings = settings;
-    m_useNewDocking = useNewDocking;
-    if (m_useNewDocking)
-    {
-        m_advancedDockManager = new FancyDocking(mainWindow);
-    }
+    m_advancedDockManager = new FancyDocking(mainWindow);
     m_enableLegacyCryEntities = enableLegacyCryEntities;
 
     m_defaultMainWindowState = mainWindow->saveState();
@@ -466,69 +499,92 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
 
     const bool isMultiPane = modes & QtViewPane::OpenMode::MultiplePanes;
 
+    DockWidget* newDockWidget = pane->m_dockWidget;
+
     if (!pane->IsVisible() || isMultiPane)
     {
         if (!pane->IsConstructed() || isMultiPane)
         {
             QWidget* w = pane->m_factoryFunc();
             w->setProperty("restored", (modes & QtViewPane::OpenMode::RestoreLayout) != 0); 
-            DockWidget* dock = new DockWidget(w, pane, m_settings, m_mainWindow, m_advancedDockManager);
-            pane->m_dockWidget = dock;
-            pane->m_dockWidget->setVisible(true);
+            newDockWidget = new DockWidget(w, pane, m_settings, m_mainWindow, m_advancedDockManager);
+
+            // track every new dock widget instance that we created
+            pane->m_dockWidgetInstances.push_back(newDockWidget);
+            connect(newDockWidget, &QObject::destroyed, this, [pane, newDockWidget]() {
+                pane->m_dockWidgetInstances.removeAll(newDockWidget);
+            });
+
+            // only set the single instance of the dock widget on the pane if this
+            // isn't a special multi-pane instance
+            if (!isMultiPane)
+            {
+                pane->m_dockWidget = newDockWidget;
+            }
+            else
+            {
+                m_advancedDockManager->disableAutoSaveLayout(newDockWidget);
+            }
+
+            newDockWidget->setVisible(true);
 
             // If this pane isn't dockable, set the allowed areas to none on the
             // dock widget so the fancy docking knows to prevent it from docking
             if (!pane->m_options.isDockable)
             {
-                dock->setAllowedAreas(Qt::NoDockWidgetArea);
+                newDockWidget->setAllowedAreas(Qt::NoDockWidgetArea);
             }
 
-            emit viewPaneCreated(pane);
+            // only emit this signal if we're not creating a non-saving instance of the view pane
+            if (!isMultiPane)
+            {
+                emit viewPaneCreated(pane);
+            }
         }
-        else if (!pane->IsTabbed())
+        else if (!QtViewPane::IsTabbed(newDockWidget))
         {
-            pane->m_dockWidget->setVisible(true);
+            newDockWidget->setVisible(true);
         }
 
-        if (modes & QtViewPane::OpenMode::UseDefaultState)
+        if ((modes & QtViewPane::OpenMode::UseDefaultState) || isMultiPane)
         {
             const bool forceToDefault = true;
-            pane->m_dockWidget->RestoreState(forceToDefault);
+            newDockWidget->RestoreState(forceToDefault);
         }
-        else if (!pane->IsTabbed() && !(modes & QtViewPane::OpenMode::OnlyOpen))
+        else if (!QtViewPane::IsTabbed(newDockWidget) && !(modes & QtViewPane::OpenMode::OnlyOpen))
         {
-            pane->m_dockWidget->RestoreState();
+            newDockWidget->RestoreState();
         }
     }
 
     // If the dock widget is off screen (e.g. second monitor was disconnected),
     // restore its default state
-    if (QApplication::desktop()->screenNumber(pane->m_dockWidget) == -1)
+    if (QApplication::desktop()->screenNumber(newDockWidget) == -1)
     {
         const bool forceToDefault = true;
-        pane->m_dockWidget->RestoreState(forceToDefault);
+        newDockWidget->RestoreState(forceToDefault);
     }
 
     if (pane->IsVisible())
     {
         if (!modes.testFlag(QtViewPane::OpenMode::RestoreLayout))
         {
-            pane->m_dockWidget->setFocus();
+            newDockWidget->setFocus();
         }
     }
     else
     {
         // If the dock widget is tabbed, then set it as the active tab
-        AzQtComponents::DockTabWidget* tabWidget = pane->ParentTabWidget();
+        AzQtComponents::DockTabWidget* tabWidget = QtViewPane::ParentTabWidget(newDockWidget);
         if (tabWidget)
         {
-            int index = tabWidget->indexOf(pane->m_dockWidget);
+            int index = tabWidget->indexOf(newDockWidget);
             tabWidget->setCurrentIndex(index);
         }
         // Otherwise just show the widget
         else
         {
-            pane->m_dockWidget->show();
+            newDockWidget->show();
         }
     }
 
@@ -536,13 +592,13 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
     // it isn't hidden behind other floating windows or the Editor main window
     if (modes.testFlag(QtViewPane::OpenMode::None))
     {
-        QMainWindow* mainWindow = qobject_cast<QMainWindow*>(pane->m_dockWidget->parentWidget());
+        QMainWindow* mainWindow = qobject_cast<QMainWindow*>(newDockWidget->parentWidget());
         if (!mainWindow)
         {
             // If the parent of our dock widgets isn't a QMainWindow, then it
             // might be tabbed, so try to find the tab container dock widget
             // and then get the QMainWindow from that.
-            AzQtComponents::DockTabWidget* tabWidget = pane->ParentTabWidget();
+            AzQtComponents::DockTabWidget* tabWidget = QtViewPane::ParentTabWidget(newDockWidget);
             if (tabWidget)
             {
                 QDockWidget* tabDockContainer = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
@@ -568,6 +624,18 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
     }
 
     return pane;
+}
+
+QDockWidget* QtViewPaneManager::InstancePane(const QString& name)
+{
+    const QtViewPane* pane = OpenPane(name, QtViewPane::OpenMode::UseDefaultState | QtViewPane::OpenMode::MultiplePanes);
+    QDockWidget* newPaneWidget = nullptr;
+    if (pane != nullptr)
+    {
+        newPaneWidget = pane->m_dockWidgetInstances.last();
+    }
+
+    return newPaneWidget;
 }
 
 bool QtViewPaneManager::ClosePane(const QString& name, QtViewPane::CloseModes closeModes)
@@ -673,7 +741,7 @@ bool QtViewPaneManager::ClosePanesWithRollback(const QVector<QString>& panesToKe
         // Only close the panes that aren't remaining open and are currently
         // visible (which has to include a check if the pane is tabbed since
         // it could be hidden if its not the active tab)
-        if (panesToKeepOpen.contains(p.m_name) || (!p.IsVisible() && !p.IsTabbed()))
+        if (panesToKeepOpen.contains(p.m_name) || (!p.IsVisible() && !QtViewPane::IsTabbed(p.m_dockWidget)))
         {
             continue;
         }
@@ -755,7 +823,7 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
         state.mainWindowState = m_defaultMainWindowState;
 
         {
-            AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
+            AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, GetFancyViewPaneStateGroupName());
             m_settings->setValue(s_lastLayoutName, QVariant::fromValue<ViewLayoutState>(state));
         }
 
@@ -789,10 +857,7 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
         // If we are using the new docking, set the right dock area to be absolute
         // so that the inspector/rollupbar tab widget will be to the right of the
         // viewport and console
-        if (m_useNewDocking)
-        {
-            m_advancedDockManager->setAbsoluteCornersForDockArea(m_mainWindow, Qt::RightDockWidgetArea);
-        }
+        m_advancedDockManager->setAbsoluteCornersForDockArea(m_mainWindow, Qt::RightDockWidgetArea);
 
         // Retrieve the width of the screen that our main window is on so we can
         // use it later for resizing our panes. The main window ends up being maximized
@@ -810,21 +875,14 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
             m_mainWindow->addDockWidget(Qt::LeftDockWidgetArea, assetBrowserViewPane->m_dockWidget);
             assetBrowserViewPane->m_dockWidget->setFloating(false);
 
-            if (m_useNewDocking)
-            {
-                m_advancedDockManager->splitDockWidget(m_mainWindow, entityOutlinerViewPane->m_dockWidget, assetBrowserViewPane->m_dockWidget, Qt::Vertical);
+            m_advancedDockManager->splitDockWidget(m_mainWindow, entityOutlinerViewPane->m_dockWidget, assetBrowserViewPane->m_dockWidget, Qt::Vertical);
 
-                // Resize our entity outliner (and by proxy the asset browser split with it)
-                // so that they get an appropriate default width since the minimum sizes have
-                // been removed from these widgets
-                static const float entityOutlinerWidthPercentage = 0.15f;
-                int newWidth = (float)screenWidth * entityOutlinerWidthPercentage;
-                m_mainWindow->resizeDocks({ entityOutlinerViewPane->m_dockWidget }, { newWidth }, Qt::Horizontal);
-            }
-            else
-            {
-                m_mainWindow->splitDockWidget(entityOutlinerViewPane->m_dockWidget, assetBrowserViewPane->m_dockWidget, Qt::Vertical);
-            }
+            // Resize our entity outliner (and by proxy the asset browser split with it)
+            // so that they get an appropriate default width since the minimum sizes have
+            // been removed from these widgets
+            static const float entityOutlinerWidthPercentage = 0.15f;
+            int newWidth = (float)screenWidth * entityOutlinerWidthPercentage;
+            m_mainWindow->resizeDocks({ entityOutlinerViewPane->m_dockWidget }, { newWidth }, Qt::Horizontal);
         }
 
 		if (m_enableLegacyCryEntities)
@@ -840,31 +898,24 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
 
 			if (m_enableLegacyCryEntities)
        		{
-            	if (m_useNewDocking)
-            	{
-                	// Tab the entity inspector with the rollupbar so that when they are
-                	// tabbed they will be given the rollupbar's default width which
-                	// is more appropriate, and move the entity inspector to be the
-                	// first tab on the left and active
-                	AzQtComponents::DockTabWidget* tabWidget = m_advancedDockManager->tabifyDockWidget(rollupBarViewPane->m_dockWidget, entityInspectorViewPane->m_dockWidget, m_mainWindow);
-                	if (tabWidget)
-                	{
-                    	tabWidget->moveTab(1, 0);
-                    	tabWidget->setCurrentWidget(entityInspectorViewPane->m_dockWidget);
+                // Tab the entity inspector with the rollupbar so that when they are
+                // tabbed they will be given the rollupbar's default width which
+                // is more appropriate, and move the entity inspector to be the
+                // first tab on the left and active
+                AzQtComponents::DockTabWidget* tabWidget = m_advancedDockManager->tabifyDockWidget(rollupBarViewPane->m_dockWidget, entityInspectorViewPane->m_dockWidget, m_mainWindow);
+                if (tabWidget)
+                {
+                    tabWidget->moveTab(1, 0);
+                    tabWidget->setCurrentWidget(entityInspectorViewPane->m_dockWidget);
 
-                        // Resize our tabbed entity inspector and rollup bar dock widget
-                        // so that it takes up an appropriate amount of space (with the
-                        // minimum sizes removed, it was being shrunk too small by default)
-                        static const float tabWidgetWidthPercentage = 0.2f;
-                        QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
-                        int newWidth = (float)screenWidth * tabWidgetWidthPercentage;
-                        m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
-                	}
-            	}
-            	else
-            	{
-                	m_mainWindow->tabifyDockWidget(rollupBarViewPane->m_dockWidget, entityInspectorViewPane->m_dockWidget);
-            	}
+                    // Resize our tabbed entity inspector and rollup bar dock widget
+                    // so that it takes up an appropriate amount of space (with the
+                    // minimum sizes removed, it was being shrunk too small by default)
+                    static const float tabWidgetWidthPercentage = 0.2f;
+                    QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
+                    int newWidth = (float)screenWidth * tabWidgetWidthPercentage;
+                    m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
+                }
         	}
 		}
 
@@ -903,10 +954,7 @@ void QtViewPaneManager::RestoreLegacyLayout()
     {
         // If we are using the new docking, set the right dock area to be absolute
         // so that the rollupbar will be to the right of the viewport and console
-        if (m_useNewDocking)
-        {
-            m_advancedDockManager->setAbsoluteCornersForDockArea(m_mainWindow, Qt::RightDockWidgetArea);
-        }
+        m_advancedDockManager->setAbsoluteCornersForDockArea(m_mainWindow, Qt::RightDockWidgetArea);
 
         m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, rollupBarViewPane->m_dockWidget);
         rollupBarViewPane->m_dockWidget->setFloating(false);
@@ -931,20 +979,13 @@ void QtViewPaneManager::SaveLayout(QString layoutName)
         // Include all visible and tabbed panes in our layout, since tabbed panes
         // won't be visible if they aren't the active tab, but still need to be
         // retained in the layout
-        if (pane.IsVisible() || pane.IsTabbed())
+        if (pane.IsVisible() || QtViewPane::IsTabbed(pane.m_dockWidget))
         {
             state.viewPanes.push_back(pane.m_dockWidget->PaneName());
         }
     }
 
-    if (m_useNewDocking)
-    {
-        state.mainWindowState = m_advancedDockManager->saveState();
-    }
-    else
-    {
-        state.mainWindowState = m_mainWindow->saveState();
-    }
+    state.mainWindowState = m_advancedDockManager->saveState();
 
     SaveStateToLayout(state, layoutName);
 }
@@ -954,7 +995,7 @@ void QtViewPaneManager::SaveStateToLayout(const ViewLayoutState& state, const QS
     const bool isNew = !HasLayout(layoutName);
 
     {
-        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
+        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, GetFancyViewPaneStateGroupName());
         m_settings->setValue(layoutName, QVariant::fromValue<ViewLayoutState>(state));
     }
 
@@ -1019,20 +1060,13 @@ ViewLayoutState QtViewPaneManager::GetLayout() const
         // Include all visible and tabbed panes in our layout, since tabbed panes
         // won't be visible if they aren't the active tab, but still need to be
         // retained in the layout
-        if (pane.IsVisible() || pane.IsTabbed())
+        if (pane.IsVisible() || QtViewPane::IsTabbed(pane.m_dockWidget))
         {
             state.viewPanes.push_back(pane.m_dockWidget->PaneName());
         }
     }
 
-    if (m_useNewDocking)
-    {
-        state.mainWindowState = m_advancedDockManager->saveState();
-    }
-    else
-    {
-        state.mainWindowState = m_mainWindow->saveState();
-    }
+    state.mainWindowState = m_advancedDockManager->saveState();
 
     return state;
 }
@@ -1056,7 +1090,7 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
 
     ViewLayoutState state;
     {
-        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
+        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, GetFancyViewPaneStateGroupName());
 
         if (!m_settings->contains(layoutName))
         {
@@ -1106,17 +1140,6 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
         return false;
     }
 
-    if (!m_useNewDocking)
-    {
-        bool restoreSuccess = m_mainWindow->restoreState(m_defaultMainWindowState);
-        if (!restoreSuccess)
-        {
-            return false;
-        }
-
-        DockWidgetUtils::deleteWindowGroups(m_mainWindow);
-    }
-
     for (const QString& paneName : state.viewPanes)
     {
         const QtViewPane* pane = OpenPane(paneName, QtViewPane::OpenMode::OnlyOpen);
@@ -1126,9 +1149,9 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
         // properly when using the new docking since it is parented to our
         // custom tab widget instead of the main editor window, so remove the
         // pane as a tab before proceeding with the restore
-        if (m_useNewDocking && pane && pane->IsTabbed())
+        if (pane && QtViewPane::IsTabbed(pane->m_dockWidget))
         {
-            AzQtComponents::DockTabWidget* tabWidget = pane->ParentTabWidget();
+            AzQtComponents::DockTabWidget* tabWidget = QtViewPane::ParentTabWidget(pane->m_dockWidget);
             if (tabWidget)
             {
                 tabWidget->removeTab(pane->m_dockWidget);
@@ -1137,17 +1160,7 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
     }
 
     // must do this after opening all of the panes!
-    if (m_useNewDocking)
-    {
-        m_advancedDockManager->restoreState(state.mainWindowState);
-    }
-    else
-    {
-        m_mainWindow->restoreState(state.mainWindowState);
-
-        // Delete bogus empty QDockWidgetGroupWindow that appear
-        DockWidgetUtils::deleteWindowGroups(m_mainWindow, /*onlyGhosts=*/true);
-    }
+    m_advancedDockManager->restoreState(state.mainWindowState);
 
     // In case of a crash it might happen that the QMainWindow state gets out of sync with the
     // QtViewPaneManager state, which would result in we opening dock widgets that QMainWindow
@@ -1169,40 +1182,13 @@ bool QtViewPaneManager::RestoreLayout(const ViewLayoutState& state)
         return false;
     }
 
-    if (!m_useNewDocking)
-    {
-        //qDebug() << "Starting restore default";
-        const bool restoreSuccess = m_mainWindow->restoreState(m_defaultMainWindowState);
-        if (!restoreSuccess)
-        {
-            return false;
-        }
-        //qDebug() << "Restore default finished. success=" << restoreSuccess;
-        DockWidgetUtils::deleteWindowGroups(m_mainWindow);
-        //DockWidgetUtils::dumpDockWidgets(m_mainWindow);
-    }
-
     for (const QString& paneName : state.viewPanes)
     {
         OpenPane(paneName, QtViewPane::OpenMode::OnlyOpen);
     }
 
     // must do this after opening all of the panes!
-    if (m_useNewDocking)
-    {
-        m_advancedDockManager->restoreState(state.mainWindowState);
-    }
-    else
-    {
-        //QStringList dockwidgets;
-        //DockWidgetUtils::processSavedState(state.mainWindowState, dockwidgets);
-        m_mainWindow->restoreState(state.mainWindowState);
-
-        // Delete bogus empty QDockWidgetGroupWindow that appear
-        DockWidgetUtils::deleteWindowGroups(m_mainWindow, /*onlyGhosts=*/true);
-
-        //DockWidgetUtils::dumpDockWidgets(m_mainWindow);
-    }
+    m_advancedDockManager->restoreState(state.mainWindowState);
 
     return true;
 }
@@ -1218,7 +1204,7 @@ void QtViewPaneManager::RenameLayout(QString name, QString newName)
     }
 
     {
-        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
+        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, GetFancyViewPaneStateGroupName());
 
         m_settings->setValue(newName, m_settings->value(name));
         m_settings->remove(name);
@@ -1237,7 +1223,7 @@ void QtViewPaneManager::RemoveLayout(QString layoutName)
     }
 
     {
-        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
+        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, GetFancyViewPaneStateGroupName());
         m_settings->remove(layoutName.trimmed());
     }
 
@@ -1254,7 +1240,7 @@ QStringList QtViewPaneManager::LayoutNames(bool userLayoutsOnly) const
 {
     QStringList layouts;
 
-    AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
+    AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, GetFancyViewPaneStateGroupName());
     layouts = m_settings->childKeys();
 
     if (userLayoutsOnly)

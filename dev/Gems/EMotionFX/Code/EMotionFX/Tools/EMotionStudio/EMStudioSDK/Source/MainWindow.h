@@ -75,9 +75,6 @@ namespace EMStudio
         MainWindow(QWidget* parent = nullptr, Qt::WindowFlags flags = nullptr);
         ~MainWindow();
 
-        void StopRendering();
-        void StartRendering();
-
         void UpdateCreateWindowMenu();
         void UpdateLayoutsMenu();
         void UpdateUndoRedo();
@@ -109,7 +106,7 @@ namespace EMStudio
         void DisableSaveSelectedActorsMenu();
 
         void OnWorkspaceSaved(const char* filename);
-
+      
         void RegisterDirtyWorkspaceCallback();
 
         MCORE_INLINE MysticQt::ComboBox* GetApplicationModeComboBox()           { return mApplicationMode; }
@@ -125,21 +122,21 @@ namespace EMStudio
         const char* GetLayoutName(uint32 index) const                           { return mLayoutNames[index].AsChar(); }
         const char* GetCurrentLayoutName() const;
 
-        static const char* GetEMotionFXPaneName() { return "EMotion FX Animation Editor (PREVIEW)"; }
+        static const char* GetEMotionFXPaneName();
         MysticQt::KeyboardShortcutManager* GetShortcutManager() const           { return mShortcutManager; }
 
     public slots:
         void OnAutosaveTimeOut();
-        void OnRealtimeInterfaceUpdate();
         void OnScaleSelectedActors();
         void OnScaleSelectedMotions();
         void OnScaleSelectedAnimGraphs();
-        void StartEditorFirstTime();
+        void LoadLayoutAfterShow();
+        void RaiseFloatingWidgets();
+        void LoadCharacterFiles();
 
     protected:
         void moveEvent(QMoveEvent* event) override;
         void resizeEvent(QResizeEvent* event) override;
-        void LoadCharacterFiles();
         void LoadDefaultLayout();
 
     private:
@@ -181,7 +178,6 @@ namespace EMStudio
         // dirty files
         DirtyFileManager*       mDirtyFileManager;
 
-        void SetAspiredRenderingFPS(int32 fps);
         void SetWindowTitleFromFileName(const MCore::String& fileName);
 
         // drag & drop support
@@ -201,16 +197,13 @@ namespace EMStudio
         MysticQt::PropertyWidget::Property*     mAspiredRenderingFPSProperty;
 
         QTimer*                                 mAutosaveTimer;
-        QTimer*                                 mRealtimeInterfaceTimer;
-        AZ::Debug::Timer                        mFrameTimer;
-        int32                                   mAspiredRenderFPS;
         int32                                   mNotificationVisibleTime;
         int32                                   mAutosaveInterval;
         int32                                   mAutosaveNumberOfFiles;
         bool                                    mEnableAutosave;
-        bool                                    mFirstTimeOpenWindow;
+        bool                                    mLayoutLoaded;
 
-        AZStd::vector<AZStd::string>             mCharacterFiles;
+        AZStd::vector<AZStd::string>            mCharacterFiles;
 
         void closeEvent(QCloseEvent* event) override;
         void showEvent(QShowEvent* event) override;

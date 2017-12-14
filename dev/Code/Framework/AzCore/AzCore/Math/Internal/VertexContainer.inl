@@ -12,30 +12,77 @@
 
 #pragma once
 
-#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace AZ
 {
     template<typename Vertex>
-    /*static*/ void VertexContainer<Vertex>::Reflect(SerializeContext& context)
+    static const Vertex& ScriptIndexRead(VertexContainer<Vertex>* thisPtr, int index)
     {
-        context.Class<VertexContainer<Vertex> >()
-            ->Field("Vertices", &VertexContainer<Vertex>::m_vertices);
+        return (*thisPtr)[index - 1];
+    }
 
-        if (EditContext* editContext = context.GetEditContext())
+    template<typename Vertex>
+    static void ScriptUpdateVertex(VertexContainer<Vertex>* thisPtr, int index, const Vertex& vertex)
+    {
+        thisPtr->UpdateVertex(index - 1, vertex);
+    }
+
+    template<typename Vertex>
+    static void ScriptInsertVertex(VertexContainer<Vertex>* thisPtr, int index, const Vertex& vertex)
+    {
+        thisPtr->InsertVertex(index - 1, vertex);
+    }
+
+    template<typename Vertex>
+    static void ScriptRemoveVertex(VertexContainer<Vertex>* thisPtr, int index)
+    {
+        thisPtr->RemoveVertex(index - 1);
+    }
+
+    template<typename Vertex>
+    void VertexContainer<Vertex>::Reflect(ReflectContext* context)
+    {
+        if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
         {
-            editContext->Class<VertexContainer<Vertex> >("Vertices", "Vertex data")
-                ->ClassElement(Edit::ClassElements::EditorData, "")
-                ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
-                ->Attribute(Edit::Attributes::AutoExpand, true)
-                ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
-                ->DataElement(0, &VertexContainer<Vertex>::m_vertices, "Vertices", "Vertex data for shapes")
-                ->Attribute(Edit::Attributes::AddNotify, &VertexContainer<Vertex>::AddNotify)
-                ->Attribute(Edit::Attributes::RemoveNotify, &VertexContainer<Vertex>::RemoveNotify)
-                ->Attribute(Edit::Attributes::ChangeNotify, &VertexContainer<Vertex>::UpdateNotify)
-                ->Attribute(Edit::Attributes::AutoExpand, true);
+            serializeContext->Class<VertexContainer<Vertex> >()
+                ->Field("Vertices", &VertexContainer<Vertex>::m_vertices);
+
+            if (EditContext* editContext = serializeContext->GetEditContext())
+            {
+                editContext->Class<VertexContainer<Vertex> >("Vertices", "Vertex data")
+                    ->ClassElement(Edit::ClassElements::EditorData, "")
+                    ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->Attribute(Edit::Attributes::AutoExpand, true)
+                    ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
+                    ->DataElement(0, &VertexContainer<Vertex>::m_vertices, "Vertices", "List of vertices.")
+                    ->Attribute(Edit::Attributes::AddNotify, &VertexContainer<Vertex>::AddNotify)
+                    ->Attribute(Edit::Attributes::RemoveNotify, &VertexContainer<Vertex>::RemoveNotify)
+                    ->Attribute(Edit::Attributes::ChangeNotify, &VertexContainer<Vertex>::UpdateNotify)
+                    ->Attribute(Edit::Attributes::AutoExpand, true);
+            }
+        }
+
+        if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+        {
+            behaviorContext->Class<VertexContainer<Vertex>>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::RuntimeOwn)
+                ->Method("IndexRead", &VertexContainer::operator[])
+                    ->Attribute(Script::Attributes::Operator, Script::Attributes::OperatorType::IndexRead)
+                    ->Attribute(Script::Attributes::MethodOverride, &ScriptIndexRead<Vertex>)
+                ->Method("Size", &VertexContainer<Vertex>::Size)
+                ->Method("AddVertex", &VertexContainer<Vertex>::AddVertex)
+                ->Method("UpdateVertex", &VertexContainer<Vertex>::UpdateVertex)
+                    ->Attribute(Script::Attributes::MethodOverride, &ScriptUpdateVertex<Vertex>)
+                ->Method("InsertVertex", &VertexContainer<Vertex>::InsertVertex)
+                    ->Attribute(Script::Attributes::MethodOverride, &ScriptInsertVertex<Vertex>)
+                ->Method("RemoveVertex", &VertexContainer<Vertex>::RemoveVertex)
+                    ->Attribute(Script::Attributes::MethodOverride, &ScriptRemoveVertex<Vertex>)
+                ->Method("Clear", &VertexContainer<Vertex>::Clear)
+                ->Method("Empty", &VertexContainer<Vertex>::Empty);
         }
     }
 
@@ -56,7 +103,7 @@ namespace AZ
     AZ_FORCE_INLINE void VertexContainer<Vertex>::AddVertex(const Vertex& vertex)
     {
         m_vertices.push_back(vertex);
-        
+
         if (m_addCallback)
         {
             m_addCallback(m_vertices.size() - 1);
@@ -66,11 +113,11 @@ namespace AZ
     template<typename Vertex>
     AZ_FORCE_INLINE bool VertexContainer<Vertex>::UpdateVertex(size_t index, const Vertex& vertex)
     {
-        AZ_Assert(index < Size(), "Invalid vertex index in %s", __FUNCTION__);
+        AZ_Warning("VertexContainer", index < Size(), "Invalid vertex index in %s", __FUNCTION__);
         if (index < Size())
         {
             m_vertices[index] = vertex;
-            
+
             if (m_updateCallback)
             {
                 m_updateCallback();
@@ -85,11 +132,11 @@ namespace AZ
     template<typename Vertex>
     AZ_FORCE_INLINE bool VertexContainer<Vertex>::InsertVertex(size_t index, const Vertex& vertex)
     {
-        AZ_Assert(index < Size(), "Invalid vertex index in %s", __FUNCTION__);
+        AZ_Warning("VertexContainer", index < Size(), "Invalid vertex index in %s", __FUNCTION__);
         if (index < Size())
         {
             m_vertices.insert(m_vertices.data() + index, vertex);
-            
+
             if (m_addCallback)
             {
                 m_addCallback(index);
@@ -104,7 +151,7 @@ namespace AZ
     template<typename Vertex>
     AZ_FORCE_INLINE bool VertexContainer<Vertex>::RemoveVertex(size_t index)
     {
-        AZ_Assert(index < Size(), "Invalid vertex index in %s", __FUNCTION__);
+        AZ_Warning("VertexContainer", index < Size(), "Invalid vertex index in %s", __FUNCTION__);
         if (index < Size())
         {
             m_vertices.erase(m_vertices.data() + index);
@@ -123,7 +170,7 @@ namespace AZ
     template<typename Vertex>
     AZ_FORCE_INLINE bool VertexContainer<Vertex>::GetVertex(size_t index, Vertex& vertex) const
     {
-        AZ_Assert(index < Size(), "Invalid vertex index in %s", __FUNCTION__);
+        AZ_Warning("VertexContainer", index < Size(), "Invalid vertex index in %s", __FUNCTION__);
         if (index < Size())
         {
             vertex = m_vertices[index];
@@ -169,15 +216,27 @@ namespace AZ
     }
 
     template<typename Vertex>
-    AZ_FORCE_INLINE size_t VertexContainer<Vertex>::Size() const 
-    { 
-        return m_vertices.size(); 
+    AZ_FORCE_INLINE size_t VertexContainer<Vertex>::Size() const
+    {
+        return m_vertices.size();
+    }
+
+    template<typename Vertex>
+    AZ_FORCE_INLINE bool VertexContainer<Vertex>::Empty() const
+    {
+        return m_vertices.empty();
     }
 
     template<typename Vertex>
     AZ_FORCE_INLINE const AZStd::vector<Vertex>& VertexContainer<Vertex>::GetVertices() const
-    { 
-        return m_vertices; 
+    {
+        return m_vertices;
+    }
+
+    template<typename Vertex>
+    AZ_FORCE_INLINE const Vertex& VertexContainer<Vertex>::operator[](size_t index) const
+    {
+        return m_vertices[index];
     }
 
     template<typename Vertex>

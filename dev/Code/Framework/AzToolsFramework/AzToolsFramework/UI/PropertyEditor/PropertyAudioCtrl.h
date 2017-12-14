@@ -17,7 +17,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
-#include <QtWidgets/QWidget>
+#include <QWidget>
 
 #include "PropertyAudioCtrlTypes.h"
 
@@ -25,6 +25,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class QHBoxLayout;
+class QMimeData;
 
 
 namespace AzToolsFramework
@@ -48,7 +49,6 @@ namespace AzToolsFramework
         {
             return m_propertyType;
         }
-        void SetEnableEdit(bool enabled);
 
         QWidget* GetFirstInTabOrder();
         QWidget* GetLastInTabOrder();

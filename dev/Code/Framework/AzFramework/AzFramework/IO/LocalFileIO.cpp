@@ -15,6 +15,7 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/IOUtils.h>
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/Casting/lossy_cast.h>
 #include <cctype>
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_XBONE)
@@ -472,19 +473,10 @@ namespace AZ
                 {
                     azstrncpy(resolvedPath, resolvedPathSize, path, pathLen + 1);
 
-                    //see if the absolute path uses one of our aliases, if it does lowercase the relative part
-                    for (const auto& alias : m_aliases)
+                    //see if the absolute path uses @assets@ or @root@, if it does lowercase the relative part
+                    if (!LowerIfBeginsWith(resolvedPath, resolvedPathSize, GetAlias("@assets@")))
                     {
-                        const char* root = alias.second.c_str();
-                        size_t rootLen = alias.second.length();
-                        if (azstrnicmp(resolvedPath, root, rootLen) == 0)    // we only support aliases at the front of the path
-                        {
-                            for (AZ::u64 i = rootLen; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
-                            {
-                                resolvedPath[i] = static_cast<char>(std::tolower(static_cast<int>(resolvedPath[i])));
-                            }
-                            break;
-                        }
+                        LowerIfBeginsWith(resolvedPath, resolvedPathSize, GetAlias("@root@"));
                     }
 
                     for (AZ::u64 i = 0; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
@@ -525,22 +517,10 @@ namespace AZ
                     {
                         azstrncpy(rootedPathBuffer + rootLength, AZ_MAX_PATH_LEN - rootLength, path, pathLen + 1);
                     }
-
-                    for (AZ::u64 i = rootLength; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
-                    {
-                        resolvedPath[i] = static_cast<char>(std::tolower(static_cast<int>(resolvedPath[i])));
-                    }
                 }
                 else
                 {
-                    char pathbuffer[AZ_MAX_PATH_LEN];
-                    azstrncpy(pathbuffer, AZ_MAX_PATH_LEN, path, AZ_MAX_PATH_LEN);
-                    for (AZ::u64 i = 0; i < AZ_MAX_PATH_LEN && pathbuffer[i] != '\0'; i++)
-                    {
-                        pathbuffer[i] = static_cast<char>(std::tolower(static_cast<int>(pathbuffer[i])));
-                    }
-
-                    ConvertToAbsolutePath(pathbuffer, rootedPathBuffer, AZ_MAX_PATH_LEN);
+                    ConvertToAbsolutePath(path, rootedPathBuffer, AZ_MAX_PATH_LEN);
                 }
                 rootedPath = rootedPathBuffer;
             }
@@ -670,9 +650,12 @@ namespace AZ
                 size_t keyLen = alias.first.length();
                 if (azstrnicmp(resolvedPath, key, keyLen) == 0) // we only support aliases at the front of the path
                 {
-                    for (AZ::u64 i = keyLen; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
+                    if(azstrnicmp(key, "@assets@", 8) == 0 || azstrnicmp(key, "@root@", 6) == 0)
                     {
-                        resolvedPath[i] = static_cast<char>(tolower(static_cast<int>(resolvedPath[i])));
+                        for (AZ::u64 i = keyLen; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
+                        {
+                            resolvedPath[i] = static_cast<char>(tolower(static_cast<int>(resolvedPath[i])));
+                        }
                     }
 
                     const char* dest = alias.second.c_str();
@@ -721,6 +704,25 @@ namespace AZ
             return false;
         }
 #endif // ANDROID
+
+        bool LocalFileIO::LowerIfBeginsWith(char* inOutBuffer, AZ::u64 bufferLen, const char* alias) const
+        {
+            if (alias)
+            {
+                AZ::u64 aliasLen = azlossy_caster(strlen(alias));
+                if (azstrnicmp(inOutBuffer, alias, aliasLen) == 0)
+                {
+                    for (AZ::u64 i = aliasLen; i < bufferLen && inOutBuffer[i] != '\0'; ++i)
+                    {
+                        inOutBuffer[i] = static_cast<char>(std::tolower(static_cast<int>(inOutBuffer[i])));
+                    }
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         AZ::OSString LocalFileIO::RemoveTrailingSlash(const AZ::OSString& pathStr)
         {

@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include "EditorCommon.h"
+
 #include "Animation/UiEditorAnimationBus.h"
 #include "UiEditorDLLBus.h"
 #include "UiEditorEntityContext.h"
@@ -31,13 +33,29 @@ class EditorWindow
 {
     Q_OBJECT
 
-public:
+public: // types
 
-    explicit EditorWindow(EditorWrapper* parentWrapper,
-        const QString& canvasFilename,
-        QWidget* parent,
-        Qt::WindowFlags flags);
+    struct UiCanvasTabMetadata
+    {
+        AZ::EntityId m_canvasEntityId;
+    };
+
+public: // member functions
+
+    explicit EditorWindow(QWidget* parent = nullptr, Qt::WindowFlags flags = 0);
     virtual ~EditorWindow();
+
+    // you are required to implement this to satisfy the unregister/registerclass requirements on "RegisterQtViewPane"
+    // make sure you pick a unique GUID
+    static const GUID& GetClassID()
+    {
+        // {E72CB9F3-DCB5-4525-AEAC-541A8CC778C5}
+        static const GUID guid =
+        {
+            0xe72cb9f3, 0xdcb5, 0x4525, { 0xae, 0xac, 0x54, 0x1a, 0x8c, 0xc7, 0x78, 0xc5 }
+        };
+        return guid;
+    }
 
     void OnEditorNotifyEvent(EEditorNotifyEvent ev) override;
 
@@ -45,10 +63,12 @@ public:
     LyShine::EntityArray GetSelectedElements() override;
     AZ::EntityId GetActiveCanvasId() override;
     UndoStack* GetActiveUndoStack() override;
+    void OpenSourceCanvasFile(QString absolutePathToFile) override;
     // ~UiEditorDLLInterface
 
     // UiEditorChangeNotificationBus
     void OnEditorTransformPropertiesNeedRefresh() override;
+    void OnEditorPropertiesRefreshEntireTree() override;
     // ~UiEditorChangeNotificationBus
 
     // AssetBrowserModelNotificationsBus
@@ -57,14 +77,13 @@ public:
     // ~AssetBrowserModelNotificationsBus
 
     AZ::EntityId GetCanvas();
-    string GetCanvasSourcePathname();
 
-    EditorWrapper* GetEditorWrapper();
     HierarchyWidget* GetHierarchy();
     ViewportWidget* GetViewport();
     PropertiesWidget* GetProperties();
     MainToolbar* GetMainToolbar();
     ModeToolbar* GetModeToolbar();
+    EnterPreviewToolbar* GetEnterPreviewToolbar();
     PreviewToolbar* GetPreviewToolbar();
     NewElementToolbarSection* GetNewElementToolbarSection();
     CoordinateSystemToolbarSection* GetCoordinateSystemToolbarSection();
@@ -72,18 +91,6 @@ public:
 
     bool CanExitNow();
 
-    void DestroyCanvas();
-
-    //! Return true when ok.
-    //! forceAskingForFilename should only be true for "Save As...", not "Save".
-    bool SaveCanvasToXml(bool forceAskingForFilename);
-
-    bool GetChangesHaveBeenMade();
-
-    bool GetDestroyCanvasWasCausedByRestart();
-    void SetDestroyCanvasWasCausedByRestart(bool d);
-
-    QUndoGroup* GetUndoGroup();
     UndoStack* GetActiveStack();
 
     AssetTreeEntry* GetSliceLibraryTree();
@@ -92,8 +99,6 @@ public:
     void UpdatePrefabFiles();
     IFileUtil::FileArray& GetPrefabFiles();
     void AddPrefabFile(const QString& prefabFilename);
-
-    void RefreshEditorMenu(EditorWrapper* parentWrapper);
 
     //! Returns the current mode of the editor (Edit or Preview)
     UiEditorMode GetEditorMode() { return m_editorMode; }
@@ -110,21 +115,16 @@ public:
     //! Set the preview canvas size. (0,0) means use viewport size
     void SetPreviewCanvasSize(AZ::Vector2 previewCanvasSize);
 
-    //! Check if the given toolbar should only be shown in preview mode
-    bool IsPreviewModeToolbar(const QToolBar* toolBar);
-
-    //! Check if the given dockwidget should only be shown in preview mode
-    bool IsPreviewModeDockWidget(const QDockWidget* dockWidget);
-
     void SaveEditorWindowSettings();
 
-    UiSliceManager* GetSliceManager() { return m_sliceManager.get(); }
+    UiSliceManager* GetSliceManager();
 
-    UiEditorEntityContext* GetEntityContext() { return m_entityContext.get(); }
+    UiEditorEntityContext* GetEntityContext();
 
     void ReplaceEntityContext(UiEditorEntityContext* entityContext);
 
     QMenu* createPopupMenu() override;
+    AZ::EntityId GetCanvasForEntityContext(const AzFramework::EntityContextId& contextId);
 
 signals:
 
@@ -136,41 +136,152 @@ protected:
 
     bool event(QEvent* ev) override;
     void keyReleaseEvent(QKeyEvent* ev) override;
+    void paintEvent(QPaintEvent* paintEvent) override;
+    void closeEvent(QCloseEvent* closeEvent) override;
 
 public slots:
     void RestoreEditorWindowSettings();
 
-private:
+private: // types
+
+    struct UiCanvasEditState
+    {
+        UiCanvasEditState();
+
+        // Viewport
+        ViewportInteraction::TranslationAndScale m_canvasViewportMatrixProps;
+        bool m_shouldScaleToFitOnViewportResize;
+        ViewportInteraction::InteractionMode m_viewportInteractionMode;
+        ViewportInteraction::CoordinateSystem m_viewportCoordinateSystem;
+
+        // Hierarchy
+        int m_hierarchyScrollValue;
+        EntityHelpers::EntityIdList m_selectedElements;
+
+        // Properties
+        float m_propertiesScrollValue;
+
+        // Animation
+        UiEditorAnimationStateInterface::UiEditorAnimationEditState m_uiAnimationEditState;
+
+        bool m_inited;
+    };
+
+    // Data for a loaded UI canvas
+    struct UiCanvasMetadata
+    {
+        UiCanvasMetadata();
+        ~UiCanvasMetadata();
+
+        AZ::EntityId m_canvasEntityId;
+        AZStd::string m_canvasSourceAssetPathname;
+        AZStd::string m_canvasDisplayName;
+        UiEditorEntityContext* m_entityContext;
+        UndoStack* m_undoStack;
+        //! Specifies whether this canvas was automatically loaded or loaded by the user
+        bool m_autoLoaded;
+        //! Specifies whether a canvas has been modified and saved since it was loaded/created
+        bool m_canvasChangedAndSaved;
+        //! State of the viewport and other panes (zoom, pan, scroll, selection, ...)
+        UiCanvasEditState m_canvasEditState;
+    };
+
+private: // member functions
+
+    QUndoGroup* GetUndoGroup();
+
+    bool GetChangesHaveBeenMade(const UiCanvasMetadata& canvasMetadata);
+
+    //! Return true when ok.
+    //! forceAskingForFilename should only be true for "Save As...", not "Save".
+    bool SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceAskingForFilename);
+
+    // Called from menu or shortcut key events
+    void NewCanvas();
+    void OpenCanvas(const QString& canvasFilename);
+    void OpenCanvases(const QStringList& canvasFilenames);
+    void CloseCanvas(AZ::EntityId canvasEntityId);
+    void CloseAllCanvases();
+    void CloseAllOtherCanvases(AZ::EntityId canvasEntityId);
+
+    void LoadCanvas(const QString& canvasFilename, bool autoLoad, bool changeActiveCanvasToThis = true);
+    bool CanUnloadCanvas(UiCanvasMetadata& canvasMetadata);
+    void UnloadCanvas(AZ::EntityId canvasEntityId);
+    void UnloadCanvases(const AZStd::vector<AZ::EntityId>& canvasEntityIds);
+
+    bool CanChangeActiveCanvas();
+    void SetActiveCanvas(AZ::EntityId canvasEntityId);
+
+    void SaveActiveCanvasEditState();
+    void RestoreActiveCanvasEditState();
+    void RestoreActiveCanvasEditStatePostEvents();
+
+    void OnCanvasTabCloseButtonPressed(int index);
+    void OnCurrentCanvasTabChanged(int index);
+    void OnCanvasTabContextMenuRequested(const QPoint &point);
 
     void UpdateActionsEnabledState();
 
-    void AddMenu_File(EditorWrapper* parentWrapper);
+    void RefreshEditorMenu();
+
+    //! Check if the given toolbar should only be shown in preview mode
+    bool IsPreviewModeToolbar(const QToolBar* toolBar);
+
+    //! Check if the given dockwidget should only be shown in preview mode
+    bool IsPreviewModeDockWidget(const QDockWidget* dockWidget);
+
+    void AddMenu_File();
     void AddMenuItems_Edit(QMenu* menu);
     void AddMenu_Edit();
-    void AddMenu_View(EditorWrapper* parentWrapper);
+    void AddMenu_View();
     void AddMenu_View_LanguageSetting(QMenu* viewMenu);
     void AddMenu_Preview();
     void AddMenu_PreviewView();
     void AddMenu_Help();
-    void EditorMenu_Open(QString optional_selectedFile, EditorWrapper* parentWrapper);
+    void EditorMenu_Open(QString optional_selectedFile);
+
+    QAction* CreateSaveCanvasAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);
+    QAction* CreateSaveCanvasAsAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);
+    QAction* CreateSaveAllCanvasesAction(bool forContextMenu = false);
+    QAction* CreateCloseCanvasAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);
+    QAction* CreateCloseAllOtherCanvasesAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);
+    QAction* CreateCloseAllCanvasesAction(bool forContextMenu = false);
 
     void SortPrefabsList();
 
     void SaveModeSettings(UiEditorMode mode, bool syncSettings);
     void RestoreModeSettings(UiEditorMode mode);
 
-    void SubmitUnloadSavedCanvasMetricEvent();
+    void SubmitUnloadSavedCanvasMetricEvent(AZ::EntityId canvasEntityId);
     int GetCanvasMaxHierarchyDepth(const LyShine::EntityArray& childElements);
 
     void DeleteSliceLibraryTree();
 
-    EditorWrapper* m_editorWrapper;
+    void DestroyCanvas(const UiCanvasMetadata& canvasMetadata);
 
-    AZ::EntityId m_canvasEntityId;
-    string m_canvasSourceAssetPathname;
+    bool IsCanvasTabMetadataValidForTabIndex(int index);
+    AZ::EntityId GetCanvasEntityIdForTabIndex(int index);
+    int GetTabIndexForCanvasEntityId(AZ::EntityId canvasEntityId);
+    UiCanvasMetadata* GetCanvasMetadataForTabIndex(int index);
+    UiCanvasMetadata* GetCanvasMetadata(AZ::EntityId canvasEntityId);
+    UiCanvasMetadata* GetActiveCanvasMetadata();
+
+    AZStd::string GetCanvasDisplayNameFromAssetPath(const AZStd::string& canvasAssetPathname);
+
+    void HandleCanvasDisplayNameChanged(const UiCanvasMetadata& canvasMetadata);
+
+private slots:
+    // Called when the clean state of the active undo stack changes
+    void CleanChanged(bool clean);
+
+private: // data
+
     QUndoGroup* m_undoGroup;
-    std::unique_ptr< UndoStack > m_undoStack;
 
+    UiSliceManager* m_sliceManager;
+
+    QTabBar* m_canvasTabBar;
+    QWidget* m_canvasTabSectionWidget;
     HierarchyWidget* m_hierarchy;
     PropertiesWrapper* m_properties;
     ViewportWidget* m_viewport;
@@ -189,16 +300,7 @@ private:
     QDockWidget* m_previewActionLogDockWidget;
     QDockWidget* m_previewAnimationListDockWidget;
 
-    bool m_destroyCanvasWasCausedByRestart;
-
     UiEditorMode m_editorMode;
-
-    //! This is used to determine if changes have been made to m_canvas since its last
-    //! save, or if not saved yet, since it was loaded/created.
-    AZStd::string m_originalCanvasXml;
-
-    //! Specifies whether a canvas has been modified and saved since it was loaded/created
-    bool m_canvasChangedAndSaved;
 
     //! This tree caches the folder view of all the slice assets under the slice library path
     AssetTreeEntry* m_sliceLibraryTree = nullptr;
@@ -220,6 +322,10 @@ private:
     //! Local copy of QSetting value of startup location of localization folder
     QString m_startupLocFolderName;
 
-    AZStd::unique_ptr<UiEditorEntityContext> m_entityContext;
-    AZStd::unique_ptr<UiSliceManager> m_sliceManager;
+    std::map< AZ::EntityId, UiCanvasMetadata* > m_canvasMetadataMap;
+    AZ::EntityId m_activeCanvasEntityId;
+
+    int m_newCanvasCount;
 };
+
+Q_DECLARE_METATYPE(EditorWindow::UiCanvasTabMetadata);

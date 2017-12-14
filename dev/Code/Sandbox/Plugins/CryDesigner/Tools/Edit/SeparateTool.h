@@ -36,5 +36,5 @@ public:
 
     void Enter() override;
 
-    static DesignerObject* Separate(CD::SMainContext& mc);
+    static DesignerObject* Separate(const CD::SMainContext& mc);
 };

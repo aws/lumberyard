@@ -31,7 +31,6 @@ namespace EMotionFX
         MotionExporter::MotionExporter()
         {
             BindToCall(&MotionExporter::ProcessContext);
-            ActivateBindings();
         }
 
         void MotionExporter::Reflect(AZ::ReflectContext* context)
@@ -60,5 +59,5 @@ namespace EMotionFX
             }
             return result.GetResult();
         }
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

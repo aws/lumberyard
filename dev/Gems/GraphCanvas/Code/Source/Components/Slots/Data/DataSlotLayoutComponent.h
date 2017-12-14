@@ -35,6 +35,7 @@ namespace GraphCanvas
         , public SlotNotificationBus::Handler
         , public DataSlotLayoutRequestBus::Handler
         , public DataSlotNotificationBus::Handler
+        , public NodeDataSlotRequestBus::Handler
         , public SceneMemberNotificationBus::Handler
         , public StyleNotificationBus::Handler
         , public VisualNotificationBus::Handler
@@ -75,6 +76,10 @@ namespace GraphCanvas
 
         // DataSlotNotificationBus
         void OnDataSlotTypeChanged(const DataSlotType& dataSlotType) override;
+        ////
+
+        // NodeDataSlotRequestBus
+        void RecreatePropertyDisplay() override;
         ////
 
     private:

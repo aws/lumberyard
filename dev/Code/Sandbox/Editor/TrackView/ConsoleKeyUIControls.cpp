@@ -15,6 +15,7 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CConsoleKeyUIControls
@@ -29,9 +30,9 @@ public:
         AddVariable(mv_table, "Key Properties");
         AddVariable(mv_table, mv_command, "Command");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_Console;
+        return paramType == AnimParamType::Console;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -63,7 +64,7 @@ bool CConsoleKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Console)
+        if (paramType == AnimParamType::Console)
         {
             IConsoleKey consoleKey;
             keyHandle.GetKey(&consoleKey);
@@ -91,7 +92,7 @@ void CConsoleKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Console)
+        if (paramType == AnimParamType::Console)
         {
             IConsoleKey consoleKey;
             keyHandle.GetKey(&consoleKey);

@@ -60,7 +60,7 @@ namespace MCore
          * @param minValue The minimum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be -1.
          * @param maxValue The maximum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be +1.
          */
-        MCORE_INLINE TCompressedVector3(const Vector3& vec, float minValue, float maxValue);
+        MCORE_INLINE TCompressedVector3(const AZ::Vector3& vec, float minValue, float maxValue);
 
         /**
          * Create a compressed vector from an uncompressed one.
@@ -68,7 +68,7 @@ namespace MCore
          * @param minValue The minimum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be -1.
          * @param maxValue The maximum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be +1.
          */
-        MCORE_INLINE void FromVector3(const Vector3& vec, float minValue, float maxValue);
+        MCORE_INLINE void FromVector3(const AZ::Vector3& vec, float minValue, float maxValue);
 
         /**
          * Uncompress this compressed vector into an uncompressed Vector3 of floats.
@@ -78,7 +78,7 @@ namespace MCore
          * @param minValue The minimum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be -1.
          * @param maxValue The maximum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be +1.
          */
-        MCORE_INLINE void UnCompress(Vector3* output, float minValue, float maxValue) const;
+        MCORE_INLINE void UnCompress(AZ::PackedVector3f* output, float minValue, float maxValue) const;
 
         /**
          * Uncompress this compressed vector into an uncompressed Vector3 of floats.
@@ -88,7 +88,7 @@ namespace MCore
          * @param maxValue The maximum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be +1.
          * @result The uncompressed version of this vector.
          */
-        MCORE_INLINE Vector3 ToVector3(float minValue, float maxValue) const;
+        MCORE_INLINE AZ::Vector3 ToVector3(float minValue, float maxValue) const;
 
 
     public:

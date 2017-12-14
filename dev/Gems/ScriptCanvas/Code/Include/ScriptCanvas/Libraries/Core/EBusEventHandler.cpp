@@ -179,7 +179,11 @@ namespace ScriptCanvas
 
             void EBusEventHandler::Connect()
             {
-                AZ_Assert(m_handler, "null handler");
+                if (!m_handler)
+                {
+                    AZ_Error("Script Canvas", false, "Cannot connect to an EBus Handler for EBus %s, This is most likely due to the EBus %s interface changing", m_ebusName.data(), m_ebusName.data());
+                    return;
+                }
 
                 AZ::EntityId connectToEntityId;
                 AZ::BehaviorValueParameter busIdParameter;
@@ -226,7 +230,11 @@ namespace ScriptCanvas
 
             void EBusEventHandler::Disconnect()
             {
-                AZ_Assert(m_handler, "null handler");
+                if (!m_handler)
+                {
+                    AZ_Error("Script Canvas", false, "Cannot disconnect from an EBus Handler for EBus %s, This is most likely due to the EBus %s interface changing", m_ebusName.data(), m_ebusName.data());
+                    return;
+                }
                 m_handler->Disconnect();
             }
 
@@ -247,6 +255,18 @@ namespace ScriptCanvas
                 }
 
                 return nullptr;
+            }
+
+            AZStd::vector<SlotId> EBusEventHandler::GetEventSlotIds() const
+            {
+                AZStd::vector<SlotId> eventSlotIds;
+
+                for (const auto& iter : m_eventMap)
+                {
+                    eventSlotIds.push_back(iter.second.m_eventSlotId);
+                }
+
+                return eventSlotIds;
             }
 
             AZStd::vector<SlotId> EBusEventHandler::GetNonEventSlotIds() const
@@ -295,7 +315,7 @@ namespace ScriptCanvas
 
                 if (m_handler)
                 {
-                    AZ_Assert(false, "Handler %s is already initialized", ebusName.data());
+                    AZ_Warning("Script Canvas", false, "Handler %s is already initialized", ebusName.data());
                     return true;
                 }
 
@@ -424,9 +444,8 @@ namespace ScriptCanvas
                     ebusEventEntry.m_parameterSlotIds.push_back(AddOutputTypeSlot(argName, argToolTip, AZStd::move(outputType), OutputStorage::Required, false));
                 }
 
-                const AZStd::string eventID(AZStd::string::format("Handle:%s", event.m_name));
-                // \todo this should be removed... the handling should all be considered "inside" the execution of this node
-                ebusEventEntry.m_eventSlotId = AddSlot(eventID.c_str(), "", SlotType::ExecutionOut);
+                const AZStd::string eventID(AZStd::string::format("ExecutionSlot:%s", event.m_name));
+                ebusEventEntry.m_eventSlotId = AddSlot(eventID, "", SlotType::ExecutionOut);
                 AZ_Assert(ebusEventEntry.m_eventSlotId.IsValid(), "the event execution out slot must be valid");
                 ebusEventEntry.m_eventName = event.m_name;
 
@@ -535,6 +554,7 @@ namespace ScriptCanvas
                     }
                     else
                     {
+                        Disconnect();
                         Connect();
                         SlotId onConnectSlotId = EBusEventHandlerProperty::GetOnConnectedSlotId(this);
                         SignalOutput(onConnectSlotId);

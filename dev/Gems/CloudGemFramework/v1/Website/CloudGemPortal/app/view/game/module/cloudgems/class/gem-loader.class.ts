@@ -46,8 +46,8 @@ export abstract class AbstractCloudGemLoader implements Loader {
             }               
 
         if (!this.definition.isProd) {
-            this.http.get(meta.url).subscribe(
-                () => this.importGem(meta, callback),
+            this.http.get(meta.url).subscribe(() => 
+                this.importGem(meta, callback),
                 (err) => {
                     console.log(err);
                     callback(undefined)
@@ -67,8 +67,8 @@ export abstract class AbstractCloudGemLoader implements Loader {
             let annotations = Reflect.getMetadata('annotations', ref.definition())[0];
             let gem: Gemifiable = {
                 identifier: meta.name,
-                displayName: 'DEFINED BY THE GEM FACTORY',
-                srcIcon: 'DEFINED BY THE GEM FACTORY',
+                displayName: '',
+                srcIcon: '',
                 context: meta,
                 module: ref.definition(),
                 annotations: annotations,

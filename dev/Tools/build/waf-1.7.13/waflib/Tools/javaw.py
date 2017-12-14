@@ -68,7 +68,7 @@ def apply_java(self):
 	only one javac task by task generator.
 	"""
 	Utils.def_attrs(self, jarname='', classpath='',
-		sourcepath='.', srcdir='.',
+		srcdir='.',
 		jar_mf_attributes={}, jar_mf_classpath=[])
 
 	nodes_lst = []
@@ -106,7 +106,7 @@ def apply_java(self):
 		fold = [isinstance(x, Node.Node) and x or self.path.find_dir(x) for x in self.to_list(self.sourcepath)]
 		names = os.pathsep.join([x.srcpath() for x in fold])
 	else:
-		names = [x.srcpath() for x in tsk.srcdir]
+		names = ';'.join(['"{}"'.format(x.abspath()) for x in tsk.srcdir])
 
 	if names:
 		tsk.env.append_value('JAVACFLAGS', ['-sourcepath', names])
@@ -323,7 +323,7 @@ class javac(Task.Task):
 		cmd.extend(to_list(env['OUTDIR']))
 		cmd.extend(to_list(env['JAVACFLAGS']))
 
-		files = [a.path_from(bld.bldnode) for a in self.inputs]
+		files = ['"{}"'.format(a.abspath()).replace('\\','/') for a in self.inputs]
 
 		# workaround for command line length limit:
 		# http://support.microsoft.com/kb/830473
@@ -440,7 +440,8 @@ def configure(conf):
 			conf.find_program(program, var = env_var, path_list = java_path, silent_output = True)
 			env[env_var] = conf.cmd_to_list(env[env_var])
 	except:
-		conf.fatal('[ERROR] Unable to find Java tools in path(s) {}.'.format(java_path))
+		conf.fatal('[ERROR] Unable to find Java tools in path(s) {}. '
+				   'Please run SetupAssistant to verify your JDK path and run configure again.'.format(java_path))
 
 	if 'CLASSPATH' in conf.environ:
 		env['CLASSPATH'] = conf.environ['CLASSPATH']

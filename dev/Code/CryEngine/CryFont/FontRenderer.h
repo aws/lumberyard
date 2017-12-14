@@ -64,7 +64,7 @@ public:
     int         LoadFromMemory(unsigned char* pBuffer, int iBufferSize);
     int         Release();
 
-    int         SetGlyphBitmapSize(int iWidth, int iHeight);
+    int         SetGlyphBitmapSize(int iWidth, int iHeight, float sizeRatio);
     int         GetGlyphBitmapSize(int* pWidth, int* pHeight);
 
     int         SetSizeRatio(float fSizeRatio) { m_fSizeRatio = fSizeRatio; return 1; };

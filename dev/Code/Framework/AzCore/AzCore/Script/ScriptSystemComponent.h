@@ -95,6 +95,7 @@ namespace AZ
         const char* GetBrowserIcon() const override;
         AZ::Uuid GetComponentTypeId() const override;
         void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
+        bool CanCreateComponent(const AZ::Data::AssetId& assetId) const override;
         //////////////////////////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////////////////////////

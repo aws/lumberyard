@@ -66,6 +66,7 @@ namespace AzFramework
         virtual void DrawArc(const AZ::Vector3& pos, float radius, float startAngleDegrees, float sweepAngleDegrees, float angularStepDegrees, int referenceAxis = 2) { (void)pos; (void)radius; (void)startAngleDegrees; (void)sweepAngleDegrees; (void)angularStepDegrees; (void)referenceAxis; }
         virtual void DrawArc(const AZ::Vector3& pos, float radius, float startAngleDegrees, float sweepAngleDegrees, float angularStepDegrees, const AZ::Vector3& fixedAxis) { (void)pos; (void)radius; (void)startAngleDegrees; (void)sweepAngleDegrees; (void)angularStepDegrees; (void)fixedAxis; }
         virtual void DrawCircle(const AZ::Vector3& pos, float radius, int nUnchangedAxis = 2 /*z axis*/) { (void)pos; (void)radius; (void)nUnchangedAxis; }
+        virtual void DrawHalfDottedCircle(const AZ::Vector3& pos, float radius, const AZ::Vector3& viewPos, int nUnchangedAxis = 2 /*z axis*/) { (void)pos; (void)radius; (void)viewPos; (void)nUnchangedAxis; }
         virtual void DrawCone(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius, float height) { (void)pos; (void)dir; (void)radius; (void)height; }
         virtual void DrawWireCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) { (void)center; (void)axis; (void)radius; (void)height; }
         virtual void DrawSolidCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) { (void)center; (void)axis; (void)radius; (void)height; }

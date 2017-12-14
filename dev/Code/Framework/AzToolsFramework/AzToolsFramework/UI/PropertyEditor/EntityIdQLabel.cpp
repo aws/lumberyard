@@ -30,24 +30,26 @@ namespace AzToolsFramework
     void EntityIdQLabel::SetEntityId(AZ::EntityId newId, const AZStd::string_view& nameOverride)
     {
         m_entityId = newId;
-
-        AZ::Entity* pEntity = NULL;
-        EBUS_EVENT_RESULT(pEntity, AZ::ComponentApplicationBus, FindEntity, m_entityId);
-        if (pEntity && nameOverride.empty())
+        if (!m_entityId.IsValid())
         {
-            setText(pEntity->GetName().c_str());
-        }
-        else if(!newId.IsValid())
-        {
-            setText(tr("(Entity not found)"));
-        }
-        else if (!nameOverride.empty())
-        {
-            setText(nameOverride.to_string().c_str());
+            setText(QString());
         }
         else
         {
-            setText(QString());
+            AZ::Entity* pEntity = NULL;
+            EBUS_EVENT_RESULT(pEntity, AZ::ComponentApplicationBus, FindEntity, m_entityId);
+            if (pEntity && nameOverride.empty())
+            {
+                setText(pEntity->GetName().c_str());
+            }
+            else if (!nameOverride.empty())
+            {
+                setText(nameOverride.to_string().c_str());
+            }
+            else
+            {
+                setText(tr("(Entity not found)"));
+            }
         }
     }
 

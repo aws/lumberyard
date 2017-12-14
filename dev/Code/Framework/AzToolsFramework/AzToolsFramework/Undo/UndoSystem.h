@@ -31,26 +31,29 @@ namespace AzToolsFramework
         class IUndoNotify
         {
         public:
+            virtual ~IUndoNotify() = default;
             virtual void OnUndoStackChanged() = 0;
         };
 
         class URSequencePoint
         {
         public:
-            AZ_RTTI(URSequencePoint, "{D6A52DA5-DF44-43BE-B42C-B6E88BDF476A}");
-            AZ_CLASS_ALLOCATOR(URSequencePoint, AZ::SystemAllocator, 0);
+            AZ_RTTI(URSequencePoint, "{D6A52DA5-DF44-43BE-B42C-B6E88BDF476A}")
+            AZ_CLASS_ALLOCATOR(URSequencePoint, AZ::SystemAllocator, 0)
+
+            typedef AZStd::vector<URSequencePoint*> ChildVec;
 
             /**
             Usage: construct a standalone command which can both implement undo+redo and have children commands
             */
-            URSequencePoint(const AZStd::string& friendlyName, URCommandID ID = 0);
+            explicit URSequencePoint(const AZStd::string& friendlyName, URCommandID id = 0);
 
             /**
             Usage: construct a child command which can both implement undo+redo and have children commands
             plus automatically create a friendly child name and append to the parent's children
             NB: Parent takes ownership of the allocation
             */
-            URSequencePoint(URCommandID ID);
+            explicit URSequencePoint(URCommandID id);
 
             /**
             Usage: base implementation automatically deletes all children recursively
@@ -68,17 +71,25 @@ namespace AzToolsFramework
             virtual void Redo();
 
             /**
-            Usage: return the first command in the parent/child tree with a matching ID
+            Usage:  override with class specific change comparison between undo/redo state
+            default to false
+            */
+            virtual bool Changed() const { return false; }
+
+            /**
+            Usage: return the first command in the parent/child tree with a matching id
             returns NULL on failure to make any match
             */
-            URSequencePoint* Find(URCommandID ID, const AZ::Uuid& typeOfCommand);
+            URSequencePoint* Find(URCommandID id, const AZ::Uuid& typeOfCommand);
 
-            void SetParent(URSequencePoint*);
-            URSequencePoint* GetParent() const { return m_Parent; }
-            bool HasRealChildren() const;
             void SetName(const AZStd::string& friendlyName);
-
             AZStd::string& GetName();
+            
+            void SetParent(URSequencePoint* parent);
+            URSequencePoint* GetParent() const { return m_parent; }
+            
+            const ChildVec& GetChildren() const { return m_children; }
+            bool HasRealChildren() const;
 
             /**
             Usage: pass a function callback that eats a URSequencePoint*
@@ -91,22 +102,20 @@ namespace AzToolsFramework
 
             bool IsPosted() const { return m_isPosted; }
 
-            // default ID 0 is never equal, commands are only equal if IDs otherwise match
-            bool operator==(const URCommandID id) { return m_ID == 0 ? false : m_ID == id; }
-            bool operator==(const URSequencePoint* com) { return *this == com->m_ID; }
+            // default id 0 is never equal, commands are only equal if IDs otherwise match
+            bool operator==(const URCommandID id) const { return m_id == 0 ? false : m_id == id; }
+            bool operator==(const URSequencePoint* com) const { return *this == com->m_id; }
 
             friend class UndoStack;
 
         protected:
             void AddChild(URSequencePoint*);
             void RemoveChild(URSequencePoint*);
-            AZStd::string m_FriendlyName;
-            URCommandID m_ID;
+            AZStd::string m_friendlyName;
+            URCommandID m_id;
 
-            typedef AZStd::vector<URSequencePoint*> ChildVec;
-
-            ChildVec m_Children;
-            URSequencePoint* m_Parent;
+            ChildVec m_children;
+            URSequencePoint* m_parent;
             bool m_isPosted;
         };
 
@@ -126,10 +135,10 @@ namespace AzToolsFramework
             URSequencePoint* Redo();
 
             /**
-            Usage: return the first command in all active command trees with a matching ID
+            Usage: return the first command in all active command trees with a matching id
             returns NULL on failure to make any match
             */
-            URSequencePoint* Find(URCommandID ID, const AZ::Uuid& typeOfCommand);
+            URSequencePoint* Find(URCommandID id, const AZ::Uuid& typeOfCommand);
 
             // Moves the clean state to the current point.
             // does not slice, you can undo back past the clean point.

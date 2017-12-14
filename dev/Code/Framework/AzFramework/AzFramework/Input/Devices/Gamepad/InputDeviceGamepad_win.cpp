@@ -138,7 +138,7 @@ namespace XInput
         {
             AZ_Assert(false, "Could not find %s function in %", SetStateFunctionName, DynamicModuleName);
             GetStateFunctionPointer = nullptr;
-            return false;
+            return nullptr;
         }
 
         WeakHandleToDynamicModule = handle;

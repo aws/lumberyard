@@ -13,9 +13,19 @@
 
 #include "pch.h"
 #include "Expected.h"
+
+#if defined(AZ_PLATFORM_WINDOWS)
 #include <windows.h>
 
 bool ExpectedIsDebuggerPresent()
 {
     return IsDebuggerPresent() ? true : false;
 }
+
+#else
+bool ExpectedIsDebuggerPresent()
+{
+    return false;
+}
+
+#endif

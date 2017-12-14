@@ -18,6 +18,7 @@
 #include <ICryAnimation.h>
 #include "Serialization.h"
 #include "IEditor.h"
+#include <algorithm> // for std::max
 
 namespace CharacterTool
 {
@@ -1149,7 +1150,7 @@ namespace CharacterTool
 
     // ---------------------------------------------------------------------------
 
-    IKDefinition::ImpactJoint::ImpactJoint(const string& joint = "")
+    IKDefinition::ImpactJoint::ImpactJoint(const string& joint)
         : joint(joint)
         , arm(0)
         , delay(0)

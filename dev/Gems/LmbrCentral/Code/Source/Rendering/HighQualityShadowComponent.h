@@ -15,6 +15,7 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Math/Vector3.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/HighQualityShadowComponentBus.h>
 
 namespace LmbrCentral
@@ -51,6 +52,7 @@ namespace LmbrCentral
     class HighQualityShadowComponent
         : public AZ::Component
         , public HighQualityShadowComponentRequestBus::Handler
+        , public MeshComponentNotificationBus::Handler
     {
     public:
         friend class EditorHighQualityShadowComponent;
@@ -67,6 +69,12 @@ namespace LmbrCentral
         // HighQualityShadowComponentRequestBus interface implementation
         void SetEnabled(bool enabled) override;
         bool GetEnabled() override;
+        ///////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentNotificationBus interface implementation
+        void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
+        void OnMeshDestroyed() override;
         ///////////////////////////////////
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

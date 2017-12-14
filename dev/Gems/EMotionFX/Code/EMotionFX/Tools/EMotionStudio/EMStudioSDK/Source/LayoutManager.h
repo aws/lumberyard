@@ -17,7 +17,9 @@
 #include "EMStudioConfig.h"
 #include <MCore/Source/Array.h>
 #include <QLineEdit>
+#include <QDialog>
 
+class QPushButton;
 
 namespace EMStudio
 {

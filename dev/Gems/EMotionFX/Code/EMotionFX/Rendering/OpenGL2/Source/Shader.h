@@ -45,14 +45,14 @@ namespace RenderGL
         virtual void SetUniform(const char* name, bool value) = 0;
         virtual void SetUniform(const char* name, const MCore::RGBAColor& color) = 0;
         virtual void SetUniform(const char* name, const AZ::Vector2& vector) = 0;
-        virtual void SetUniform(const char* name, const MCore::Vector3& vector) = 0;
+        virtual void SetUniform(const char* name, const AZ::Vector3& vector) = 0;
         virtual void SetUniform(const char* name, const AZ::Vector4& vector) = 0;
         virtual void SetUniform(const char* name, const MCore::Matrix& matrix) = 0;
         virtual void SetUniform(const char* name, const MCore::Matrix& matrix, bool transpose) = 0;
         virtual void SetUniform(const char* name, const MCore::Matrix* matrices, uint32 count) = 0;
         virtual void SetUniform(const char* name, Texture* texture) = 0;
         virtual void SetUniform(const char* name, const float* values, uint32 numFloats) = 0;
-        virtual void SetUniform(const char* name, const MCore::Vector3* values, uint32 numVectors) = 0;
+        virtual void SetUniform(const char* name, const AZ::PackedVector3f* values, uint32 numVectors) = 0;
     };
 }
 

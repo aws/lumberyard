@@ -18,6 +18,7 @@
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h"
+#include <Maestro/Types/SequenceType.h>
 
 #include <ISplines.h>
 #include <QVBoxLayout>
@@ -154,7 +155,7 @@ void CTrackViewKeyPropertiesDlg::OnKeysChanged(CTrackViewSequence* pSequence)
 
         CAnimParamType paramType = pTrack->GetParameterType();
         EAnimCurveType trackType = pTrack->GetCurveType();
-        EAnimValue valueType = pTrack->GetValueType();
+        AnimValueType valueType = pTrack->GetValueType();
 
         for (int i = 0; i < (int)m_keyControls.size(); i++)
         {
@@ -205,7 +206,7 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* pSequ
 
         CAnimParamType paramType = pTrack->GetParameterType();
         EAnimCurveType trackType = pTrack->GetCurveType();
-        EAnimValue valueType = pTrack->GetValueType();
+        AnimValueType valueType = pTrack->GetValueType();
 
         for (int i = 0; i < (int)m_keyControls.size(); i++)
         {
@@ -325,17 +326,42 @@ void CTrackViewTrackPropsDlg::OnUpdateTime()
         return;
     }
 
-    CUndo undo("Change key time");
-    CUndo::Record(new CUndoTrackObject(m_keyHandle.GetTrack()));
+    const float time = (float)ui->TIME->value();
 
-    const float time = (float) ui->TIME->value();
-    m_keyHandle.SetTime(time);
-
-    CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
-
-    if (newKey != m_keyHandle)
+    // Check if the sequence is legacy
+    CTrackViewTrack* track = m_keyHandle.GetTrack();
+    if (nullptr != track)
     {
-        SetCurrKey(newKey);
+        CTrackViewSequence* sequence = track->GetSequence();
+        if (nullptr != sequence) 
+        {
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo undo("Change key time");
+                CUndo::Record(new CUndoTrackObject(m_keyHandle.GetTrack()));
+
+                m_keyHandle.SetTime(time);
+                CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
+                if (newKey != m_keyHandle)
+                {
+                    SetCurrKey(newKey);
+                }
+            }
+            else
+            {
+                // Let the AZ Undo system manage the nodes on the sequence entity
+                AzToolsFramework::ScopedUndoBatch undoBatch("Change key time");
+
+                m_keyHandle.SetTime(time);
+                CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
+                if (newKey != m_keyHandle)
+                {
+                    SetCurrKey(newKey);
+                }
+
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
+        }
     }
 }
 

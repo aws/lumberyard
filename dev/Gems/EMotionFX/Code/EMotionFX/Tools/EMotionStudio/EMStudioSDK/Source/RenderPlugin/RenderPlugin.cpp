@@ -84,10 +84,13 @@ namespace EMStudio
         // get rid of the emstudio actors
         CleanEMStudioActors();
 
-        // get rid of the OpenGL view widgets
-        while (mViewWidgets.GetIsEmpty() == false)
+        // Get rid of the OpenGL view widgets.
+        // Don't delete them directly as there might be still paint events in the Qt message queue which will cause a crash.
+        // deleteLater will make sure all events will be processed before actually destructing the object.
+        const uint32 numViewWidgets = mViewWidgets.GetLength();
+        for (uint32 i = 0; i < numViewWidgets; ++i)
         {
-            delete mViewWidgets[0];
+            mViewWidgets[i]->deleteLater();
         }
 
         // get rid of the layouts
@@ -219,7 +222,7 @@ namespace EMStudio
             if (currentManipulator->Hit(camera, mousePosX, mousePosY))
             {
                 // calculate the distance of the camera and the active manipulator
-                float distance = (camera->GetPosition() - currentManipulator->GetPosition()).Length();
+                float distance = (camera->GetPosition() - currentManipulator->GetPosition()).GetLength();
                 if (distance < minCamDist && activeManipulatorFound == false)
                 {
                     minCamDist = distance;
@@ -589,7 +592,7 @@ namespace EMStudio
     {
         // calculate the max extend of the character
         EMotionFX::ActorInstance* actorInstance = EMotionFX::ActorInstance::Create(mActor);
-        actorInstance->UpdateMeshDeformers(0.0f);
+        actorInstance->UpdateMeshDeformers(0.0f, true);
 
         MCore::AABB aabb;
         actorInstance->CalcMeshBasedAABB(0, &aabb);
@@ -605,7 +608,7 @@ namespace EMStudio
         }
 
         mCharacterHeight = aabb.CalcHeight();
-        mOffsetFromTrajectoryNode = aabb.GetMin().y + (mCharacterHeight * 0.5f);
+        mOffsetFromTrajectoryNode = aabb.GetMin().GetY() + (mCharacterHeight * 0.5f);
 
         actorInstance->Destroy();
 
@@ -1236,7 +1239,12 @@ namespace EMStudio
             EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(i);
 
             // Ignore actors not owned by the tool.
-            RenderGL::GLActor* renderActor = actorInstance->GetCustomData<RenderGL::GLActor>();
+            if (actorInstance->GetIsOwnedByRuntime())
+            {
+                continue;
+            }
+
+            RenderGL::GLActor* renderActor = static_cast<RenderGL::GLActor*>(actorInstance->GetCustomData());
             if (!renderActor)
             {
                 continue;
@@ -1350,6 +1358,10 @@ namespace EMStudio
         ViewCloseup(false);
     }
 
+    void RenderPlugin::OnAfterLoadActors()
+    {
+        ViewCloseup(false);
+    }
 
     RenderPlugin::Layout* RenderPlugin::FindLayoutByName(const MCore::String& layoutName)
     {
@@ -1512,13 +1524,13 @@ namespace EMStudio
                     const uint32 numParticles = trajectoryPath->mTraceParticles.GetLength();
                     const MCore::Matrix oldGlobalTM = trajectoryPath->mTraceParticles[numParticles - 1].mGlobalTM;
 
-                    const MCore::Vector3 oldPos = oldGlobalTM.GetTranslation();
+                    const AZ::Vector3 oldPos = oldGlobalTM.GetTranslation();
                     const MCore::Quaternion oldRot(oldGlobalTM.Normalized());
                     const MCore::Quaternion rotation(globalTM.Normalized());
 
-                    const MCore::Vector3 deltaPos = globalTM.GetTranslation() - oldPos;
+                    const AZ::Vector3 deltaPos = globalTM.GetTranslation() - oldPos;
                     const float deltaRot = MCore::Math::Abs(rotation.Dot(oldRot));
-                    if (deltaPos.SafeLength() > 0.0001f || deltaRot < 0.99f)
+                    if (MCore::SafeLength(deltaPos) > 0.0001f || deltaRot < 0.99f)
                     {
                         distanceTraveledEnough = true;
                     }
@@ -1566,16 +1578,9 @@ namespace EMStudio
             return;
         }
 
-        // update the mesh deformers
-        //MCore::Timer t;
-        //actorInstance->UpdateMeshDeformers( timePassedInSeconds );
-        //const double totalTime = t.GetTimeDelta();
-        //MCore::LogInfo("%f (%.4f ms)", totalTime, totalTime * 1000);
-
         // get the active widget & it's rendering options
         RenderViewWidget*   widget          = GetActiveViewWidget();
         RenderOptions*      renderOptions   = GetRenderOptions();
-        //Actor*                actor           = actorInstance->GetActor();
 
         MCore::Array<uint32>* visibleNodeIndices = &(GetManager()->GetVisibleNodeIndices());
         MCore::Array<uint32>* selectedNodeIndices = &(GetManager()->GetSelectedNodeIndices());
@@ -1583,12 +1588,6 @@ namespace EMStudio
         {
             selectedNodeIndices = nullptr;
         }
-
-        /*Matrix mat = actorInstance->GetLocalTM();
-        mat.Normalize();
-        renderUtil->RenderLine( mat.GetTranslation(), mat.GetTranslation() + mat.GetRight()     * 10.0f, RGBAColor(1,0,0));
-        renderUtil->RenderLine( mat.GetTranslation(), mat.GetTranslation() + mat.GetUp()        * 10.0f, RGBAColor(0,1,0));
-        renderUtil->RenderLine( mat.GetTranslation(), mat.GetTranslation() + mat.GetForward()   * 10.0f, RGBAColor(0,0,1));*/
 
         // render the AABBs
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_AABB))

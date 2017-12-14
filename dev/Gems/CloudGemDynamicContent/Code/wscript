@@ -25,15 +25,13 @@ def build(bld):
             file_list += aws_files
 
     bld.DefineGem(
-        uselib          = ['AWS_CPP_SDK_CORE', 'OPENSSL'],
+        uselib          = ['AWS_CPP_SDK_CORE'],
         includes        = [bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Code/CryEngine/CrySystem')
         ],
         file_list   = file_list,
         pch     = '',
         platforms = ['all'],
-
-        shared_settings = ['awsgem.json'],
 
         win_lib    = ['gdi32'],
 

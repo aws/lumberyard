@@ -28,7 +28,7 @@ namespace GraphCanvas
     class GridVisualComponent
         : public AZ::Component
         , public VisualRequestBus::Handler
-        , public RootVisualRequestBus::Handler
+        , public SceneMemberUIRequestBus::Handler
         , public GridNotificationBus::Handler
     {
     public:
@@ -74,9 +74,12 @@ namespace GraphCanvas
         bool Contains(const AZ::Vector2&) const override;
         ////
 
-        // RootVisualRequestBus
+        // SceneMemberUIRequestBus
         QGraphicsItem* GetRootGraphicsItem() override;
         QGraphicsLayoutItem* GetRootGraphicsLayoutItem() override;
+
+        void SetSelected(bool selected) override;
+        bool IsSelected() const override;
         ////
 
         // GridNotificationBus

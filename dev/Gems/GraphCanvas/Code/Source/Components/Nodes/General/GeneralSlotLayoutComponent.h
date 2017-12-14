@@ -121,6 +121,8 @@ namespace GraphCanvas
 
             QGraphicsLayoutItem* GetLayoutItem(const AZ::EntityId& slotId) const;
 
+            QGraphicsWidget* m_horizontalSpacer;
+
             QGraphicsLinearLayout* m_inputs;
             AZStd::vector< AZ::EntityId > m_inputSlots;
 

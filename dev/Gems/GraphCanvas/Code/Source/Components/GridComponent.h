@@ -68,8 +68,12 @@ namespace GraphCanvas
         // SceneMemberRequestBus
         void SetScene(const AZ::EntityId& sceneId) override;
         void ClearScene(const AZ::EntityId& oldSceneId) override;
+        void SignalMemberSetupComplete() override;
 
         AZ::EntityId GetScene() const override;
+
+        bool LockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
+        void UnlockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
         ////
 
     protected:

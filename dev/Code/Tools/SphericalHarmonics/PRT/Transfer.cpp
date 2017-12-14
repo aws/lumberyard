@@ -730,7 +730,7 @@ void NSH::NTransfer::CInterreflectionTransfer::ComputeDirectPassMultipleThreadin
                         //start thread whilst building the other
                         SThreadParams param((currentThreadIndex == 0) ? rRayCaster : *clonedRayCasters[currentThreadIndex - 1], samples, crParameters, threadQueries[currentThreadIndex], rIntersectionInfo, crMeshes, cRayLen, cHasTransparentMats, threadRayResults[currentThreadIndex], *threadConfigurators[currentThreadIndex]);
                         threadIDs[currentThreadIndex].first = CreateThread(NULL, 1024000, RayCastingThread, &param, 0, (LPDWORD)&(threadIDs[currentThreadIndex].second));
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
                         SetThreadPriority(threadIDs[currentThreadIndex].first, THREAD_PRIORITY_HIGHEST);
 #endif
                         m_State.rcThreadsRunning++;
@@ -783,7 +783,7 @@ void NSH::NTransfer::CInterreflectionTransfer::ComputeDirectPassMultipleThreadin
                     if (wasProcessing)
                     {
                         wasProcessing = false;
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
                         SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST); //reset main thread priority
 #endif
                     }
@@ -792,7 +792,7 @@ void NSH::NTransfer::CInterreflectionTransfer::ComputeDirectPassMultipleThreadin
                 }
                 if (!wasProcessing)
                 {
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
                     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST); //reset main thread priority
 #endif
                     wasProcessing = true;

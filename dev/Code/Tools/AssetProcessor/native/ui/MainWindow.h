@@ -23,7 +23,11 @@ namespace Ui {
 }
 class GUIApplicationManager;
 class QListWidgetItem;
-class RCJobSortFilterProxyModel;
+namespace AssetProcessor
+{
+    class JobSortFilterProxyModel;
+    class JobsModel;
+}
 
 class MainWindow
     : public QMainWindow
@@ -46,13 +50,12 @@ public Q_SLOTS:
 private:
     Ui::MainWindow* ui;
     GUIApplicationManager* m_guiApplicationManager;
-    RCJobSortFilterProxyModel* m_sortFilterProxy;
+    AssetProcessor::JobSortFilterProxyModel* m_sortFilterProxy;
+    AssetProcessor::JobsModel* m_jobsModel;
     QPointer<AssetProcessor::LogPanel> m_loggingPanel;
     int m_processJobsCount = 0;
     int m_createJobCount = 0;
 
-    void OnProxyIPEditingFinished();
-    void OnProxyConnectChanged(int state);
     void OnPaneChanged(QListWidgetItem* current, QListWidgetItem* previous);
     void OnAddConnection(bool checked);
     void OnRemoveConnection(bool checked);

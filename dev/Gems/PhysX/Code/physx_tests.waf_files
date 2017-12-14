@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/PhysXGenericTest.cpp",
+            "Tests/PhysXSpecificTest.cpp"
+        ]
+    }
+}

@@ -123,7 +123,7 @@ namespace AzToolsFramework
                 m_horizScrollLast = 0;
             }
         }
-        
+
         static void ExpandRow(QTreeView* treeView, const QModelIndex& rowIdx)
         {
             if (!treeView->isExpanded(rowIdx))
@@ -148,7 +148,7 @@ namespace AzToolsFramework
             }
         }
 
-        void ApplyRowOperation(QTreeView* treeView, const QModelIndex& idxParent, AZStd::string pathSoFar, 
+        void ApplyRowOperation(QTreeView* treeView, const QModelIndex& idxParent, AZStd::string pathSoFar,
             const AZStd::function<void(QTreeView* treeView, const QModelIndex&)>& rowOperation)
         {
             AZStd::size_t pos = pathSoFar.find_first_of('/');
@@ -159,7 +159,7 @@ namespace AzToolsFramework
                 QModelIndex rowIdx = treeView->model()->index(idx, 0, idxParent);
                 AZStd::string displayString(treeView->model()->data(rowIdx, Qt::DisplayRole).toString().toUtf8().data());
                 if (name == displayString)
-                {                    
+                {
                     if (pos != AZStd::string::npos)
                     {
                         AZStd::string remaining = pathSoFar.substr(pos + 1);
@@ -174,7 +174,7 @@ namespace AzToolsFramework
             }
         }
 
-        void ApplySnapshot(QTreeView* treeView, const AZStd::function<bool(const QModelIndex&)>& /* expandedFunction */)
+        void ApplySnapshot(QTreeView* treeView)
         {
             Q_ASSERT(treeView && treeView->model());
 
@@ -183,9 +183,6 @@ namespace AzToolsFramework
             // Reset the view to the 'default'/fully negative state then we can apply our positive transforms.
             treeView->collapseAll();
             treeView->clearSelection();
-
-            //RecurseApplySnapshot(QModelIndex(), "", treeView, expandedFunction);
-
             for (auto& expanded : m_expandedElements)
             {
                 ApplyRowOperation(treeView, QModelIndex(), expanded, &QTreeViewStateSaverData::ExpandRow);
@@ -196,7 +193,7 @@ namespace AzToolsFramework
                 ApplyRowOperation(treeView, QModelIndex(), selected, &QTreeViewStateSaverData::SelectRow);
             }
 
-            if (!m_currentElement.empty()) 
+            if (!m_currentElement.empty())
             {
                 ApplyRowOperation(treeView, QModelIndex(), m_currentElement, &QTreeViewStateSaverData::SetCurrentRow);
             }
@@ -339,7 +336,6 @@ namespace AzToolsFramework
     QTreeViewStateSaver::QTreeViewStateSaver(AZ::u32 storageID, QObject* pParent)
         : QObject(pParent)
         , m_data(AZ::UserSettings::CreateFind<QTreeViewStateSaverData>(storageID, AZ::UserSettings::CT_LOCAL))
-        , m_expandedFunction(&QTreeViewStateSaver::DefaultExpandedFunction)
     {
     }
 
@@ -531,14 +527,10 @@ namespace AzToolsFramework
     {
         if (m_attachedTree)
         {
-            m_data->ApplySnapshot(m_attachedTree, m_expandedFunction);
+            m_data->ApplySnapshot(m_attachedTree);
         }
     }
 
-    void QTreeViewStateSaver::SetExpandedFunction(AZStd::function<bool(const QModelIndex&)> expandedFunction)
-    {
-        m_expandedFunction = expandedFunction;
-    }
 
     void QTreeViewStateSaver::Reflect(AZ::ReflectContext* context)
     {
@@ -661,17 +653,10 @@ namespace AzToolsFramework
         m_treeStateSaver->ReadStateFrom(source);
     }
 
-    void QTreeViewWithStateSaving::SetTreeViewExpandedFunction(AZStd::function<bool(const QModelIndex&)> expandedFunction)
-    {
-        Q_ASSERT(m_treeStateSaver);
-
-        m_treeStateSaver->SetExpandedFunction(expandedFunction);
-    }
-
     void QTreeViewWithStateSaving::PauseTreeViewSaving()
     {
         Q_ASSERT(m_treeStateSaver);
-        
+
         m_treeStateSaver->Detach();
     }
 

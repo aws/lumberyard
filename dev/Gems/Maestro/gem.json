@@ -6,7 +6,7 @@
     "Version": "0.1.0",
     "LinkType": "Dynamic",
     "Summary": "Lumberyard Cinematics Module",
-    "Tags": ["Cinematics"],
+    "Tags": ["Cinematics","Required"],
     "IconPath": "preview.png",
     "EditorModule": true,
     "IsRequired": true

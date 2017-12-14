@@ -12,12 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #pragma once
-#include <STLPortConfig.h>
+#include <AzCore/PlatformDef.h>
 
 #include <QtGlobal>
 
-#if defined(_DEBUG)
-#define _STLP_DEBUG 1   // STL Port in debug for debug builds.
+#if defined(AZ_PLATFORM_APPLE_OSX)
+#include <QUuid>
+#include "AzCore/Math/Guid.h"
 #endif
 
 #ifndef VC_EXTRALEAN
@@ -44,31 +45,6 @@
 #endif
 
 #define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS  // Some CString constructors will be explicit.
-
-#include <afxwin.h>         // MFC core and standard components.
-#include <afxext.h>         // MFC extensions.
-
-#ifndef _AFX_NO_OLE_SUPPORT
-#include <afxole.h>         // MFC OLE classes.
-#include <afxodlgs.h>       // MFC OLE dialog classes.
-#include <afxdisp.h>        // MFC Automation classes.
-#endif
-
-#ifndef _AFX_NO_DB_SUPPORT
-#include <afxdb.h>                  // MFC ODBC database classes.
-#endif
-
-#ifndef _AFX_NO_DAO_SUPPORT
-#include <afxdao.h>                 // MFC DAO database classes.
-#endif
-
-#ifndef _AFX_NO_OLE_SUPPORT
-#include <afxdtctl.h>               // MFC support for Internet Explorer 4 Common Controls.
-#endif
-
-#ifndef _AFX_NO_AFXCMN_SUPPORT
-#include <afxcmn.h>                 // MFC support for Windows Common Controls
-#endif
 
 #pragma warning(disable: 4244)  // warning C4244: 'argument' : conversion from 'float' to 'uint8', possible loss of data
 #pragma warning(disable: 4800)  // 'int' : forcing value to bool 'true' or 'false' (performance warning)
@@ -122,8 +98,6 @@
 
 #include "Include/IDisplayViewport.h"
 #include "EditTool.h"
-
-extern HINSTANCE g_hInst;
 
 #include "Core/BrushDeclaration.h"
 #include "Core/BrushCommon.h"

@@ -52,6 +52,7 @@
 #include "Components/IComponentRope.h"
 #include "Components/IComponentCamera.h"
 #include "DynamicResponseProxy.h"
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 // TypeInfo implementations
 #ifndef AZ_MONOLITHIC_BUILD
@@ -7952,8 +7953,8 @@ bool CScriptBind_Entity::ParseLightParams(IScriptTable* pLightTable, CDLight& li
             string specularCubemapUnix = PathUtil::ToUnixPath(specularCubemap);
             string diffuseCubemapUnix = PathUtil::ToUnixPath(diffuseCubemap);
 
-            light.SetSpecularCubemap(gEnv->pRenderer->EF_LoadTexture(specularCubemapUnix.c_str(), FT_DONT_STREAM));
-            light.SetDiffuseCubemap(gEnv->pRenderer->EF_LoadTexture(diffuseCubemapUnix.c_str(), FT_DONT_STREAM));
+            light.SetSpecularCubemap(gEnv->pRenderer->EF_LoadCubemapTexture(specularCubemapUnix.c_str(), FT_DONT_STREAM));
+            light.SetDiffuseCubemap(gEnv->pRenderer->EF_LoadCubemapTexture(diffuseCubemapUnix.c_str(), FT_DONT_STREAM));
 
             if (!light.GetSpecularCubemap() || !light.GetSpecularCubemap()->IsTextureLoaded())
             {
@@ -8569,7 +8570,11 @@ bool CScriptBind_Entity::ParsePhysicsParams(IScriptTable* pTable, SEntityPhysica
         SmartScriptTable subTable;
         if (chain.GetValue("Particle", subTable))
         {
-            m_particleParams = pe_params_particle();
+            pe_params_particle tempParticleParams;
+            tempParticleParams.q0.SetIdentity(); // Initialize the orientation quaternion to prevent the assert when it's assigned at the next line
+
+            m_particleParams = tempParticleParams;
+
             params.pParticle = &m_particleParams;
 
             CScriptSetGetChain particle(subTable);
@@ -8785,7 +8790,8 @@ bool CScriptBind_Entity::ParsePhysicsParams(IScriptTable* pTable, SEntityPhysica
                 areaTable.GetValue("density", m_buoyancyParams.waterDensity);
                 areaTable.GetValue("resistance", m_buoyancyParams.waterResistance);
                 m_buoyancyParams.waterPlane.n = Vec3(0, 0, -1);
-                m_buoyancyParams.waterPlane.origin = Vec3(0, 0, gEnv->p3DEngine->GetWaterLevel());
+                const float noOceanPlaneLevel = -100000000.0f; // If there's no ocean, set this plane very low so it's effectively global.
+                m_buoyancyParams.waterPlane.origin = Vec3(0, 0, OceanToggle::IsActive() ? OceanRequest::GetOceanLevelOrDefault(noOceanPlaneLevel) : gEnv->p3DEngine->GetWaterLevel());
             }
 
             int type = -1;

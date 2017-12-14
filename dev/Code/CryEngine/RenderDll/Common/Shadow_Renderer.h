@@ -127,8 +127,9 @@ struct ShadowMapFrustum
         {
             eFullUpdate,
             eFullUpdateTimesliced,
-            eIncrementalUpdate,
-            eManualUpdate // Updates must triggered manually via script
+            eIncrementalUpdate, // Cached shadow frustums will constantly check if updates are required due to moving objects or proximity to the frustum border
+            eManualUpdate, // Updates must triggered manually via script
+            eManualOrDistanceUpdate // Updates may either be triggered manually by script or when the camera moves too close to the border of the shadow frustum
         };
 
         ShadowCacheData() { Reset(); }

@@ -106,7 +106,6 @@ public:
     void ClearSelection();
     ReflectedPropertyItem* GetSelectedItem();
     virtual void SelectItem(ReflectedPropertyItem* item);
-    void SetDisplayOnlyModified(bool displayOnlyModified);
 
     QVector<ReflectedPropertyItem*> GetSelectedItems();
 
@@ -127,8 +126,6 @@ public:
     void SetReadOnly(bool readonly);
 
     void SetMultiSelect(bool multiSelect);
-
-    void SetSplitter(int width);
 
     void EnableNotifyWithoutValueChange(bool bFlag);
 
@@ -159,8 +156,6 @@ public:
 
     int GetContentHeight() const;
     int GetVisibleHeight() const {return GetContentHeight();}
-
-    void SetRootName(const QString& rootName);
 
     struct SCustomPopupItem
     {
@@ -199,6 +194,8 @@ public:
     QSize sizeHint() const override;
     AzToolsFramework::ReflectedPropertyEditor* GetEditor() { return m_editor; }
 
+    void SetValuesFromNode(XmlNodeRef rootNode);
+
 public slots:
     //invalidates attributes and values
     void InvalidateCtrl(bool queued = true);
@@ -236,8 +233,8 @@ private:
     QWidget* m_filterWidget;
     QLabel* m_titleLabel;
 
-    TSmartPtr<CVarBlock> m_pVarBlock;
-    TSmartPtr<ReflectedPropertyItem> m_root;
+    _smart_ptr<CVarBlock> m_pVarBlock;
+    _smart_ptr<ReflectedPropertyItem> m_root;
     AZStd::unique_ptr<CPropertyContainer> m_rootContainer;
 
     AZ::SerializeContext* m_serializeContext;
@@ -315,8 +312,8 @@ private:
     void ToggleTwoColumnLayout();
 
     QVector<PropertyCard*> m_controlList;
-    QVector<TSmartPtr<CVarBlock>> m_varBlockList;
-    TSmartPtr<CVarBlock> m_pVarBlock;
+    QVector<_smart_ptr<CVarBlock>> m_varBlockList;
+    _smart_ptr<CVarBlock> m_pVarBlock;
 
     QWidget *m_leftContainer;
     QWidget *m_rightContainer;

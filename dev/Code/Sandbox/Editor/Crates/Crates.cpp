@@ -28,6 +28,7 @@
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/Archive/ArchiveAPI.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzQtComponents/DragAndDrop/MainWindowDragAndDrop.h>
 
 #include <AzCore/IO/FileIO.h>
 
@@ -42,13 +43,13 @@ namespace AZ
     void CratesHandler::Activate()
     {
         CratesRequestsBus::Handler::BusConnect();
-        AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(DragAndDropContexts::MainWindow);
+        AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(AzQtComponents::DragAndDropContexts::EditorMainWindow);
     }
 
     void CratesHandler::Deactivate()
     {
         CratesRequestsBus::Handler::BusDisconnect();
-        AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect(DragAndDropContexts::MainWindow);
+        AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect(AzQtComponents::DragAndDropContexts::EditorMainWindow);
     }
 
     void CratesHandler::Reflect(AZ::ReflectContext * context)
@@ -442,7 +443,7 @@ namespace AZ
         AzToolsFramework::ArchiveCommands::Bus::Broadcast(&AzToolsFramework::ArchiveCommands::ExtractArchive, cratePath, extractPath, handle, extractResponseLambda);
     }
 
-    void CratesHandler::DragEnter(QDragEnterEvent* event)
+    void CratesHandler::DragEnter(QDragEnterEvent* event, AzQtComponents::DragAndDropContextBase& /*context*/)
     {
         // Look into SetRouterProcessingState
         if (!event->mimeData()->hasUrls())
@@ -472,7 +473,7 @@ namespace AZ
             event->accept();
         }
     }
-    void CratesHandler::Drop(QDropEvent* event)
+    void CratesHandler::Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& /*context*/)
     {
         const QMimeData* data = event->mimeData();
         foreach(const QUrl& url, data->urls())

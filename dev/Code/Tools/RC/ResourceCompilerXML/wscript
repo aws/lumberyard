@@ -40,7 +40,6 @@ def build(bld):
                                'QT5WIDGETS'],
 
         libpath             = bld.Path('Code/Tools/CryCommonTools'),
-        win_export_definitions = 'ResourceCompilerPlugin.def',
         
         # Testing
         test_all_file_list  = ['resourcecompilerxml_test.waf_files'],

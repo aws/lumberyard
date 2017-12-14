@@ -71,6 +71,11 @@ const GUID& CMaterialDialog::GetClassID()
     return guid;
 }
 
+inline float RoundDegree(float val)
+{
+    return (float)((int)(val * 100 + 0.5f)) * 0.01f;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Material structures.
 //////////////////////////////////////////////////////////////////////////
@@ -81,8 +86,6 @@ const GUID& CMaterialDialog::GetClassID()
 
 struct STextureVars
 {
-    // As asked by Martin Mittring, removed the amount parameter.
-    //CSmartVariable<int> amount;
     CSmartVariable<bool> is_tile[2];
 
     CSmartVariableEnum<int> etcgentype;
@@ -110,6 +113,45 @@ struct STextureVars
     CSmartVariableArray tableTiling;
     CSmartVariableArray tableOscillator;
     CSmartVariableArray tableRotator;
+
+    void Reset()
+    {
+        SEfTexModificator defaultTextureCoordinateModifier;
+        SEfResTexture defaultTextureResource;
+        for (int i = 0; i < 2; i++)
+        {
+            *is_tile[i] = defaultTextureResource.GetTiling(i);
+            *tcmrotosccenter[i] = defaultTextureCoordinateModifier.m_RotOscCenter[i];
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            *rotate[i] = RoundDegree(Word2Degr(defaultTextureCoordinateModifier.m_Rot[i]));
+            *tiling[i] = defaultTextureCoordinateModifier.m_Tiling[i];
+            *offset[i] = defaultTextureCoordinateModifier.m_Offs[i];
+        }
+
+        etcgentype = defaultTextureCoordinateModifier.m_eTGType;
+        etcmrotatetype = defaultTextureCoordinateModifier.m_eRotType;
+        etcmumovetype = defaultTextureCoordinateModifier.m_eMoveType[0];
+        etcmvmovetype = defaultTextureCoordinateModifier.m_eMoveType[1];
+        etextype = defaultTextureResource.m_Sampler.m_eTexType;
+        filter = defaultTextureResource.m_Filter;
+        is_tcgprojected = defaultTextureCoordinateModifier.m_bTexGenProjected;
+
+        tcmuoscrate = defaultTextureCoordinateModifier.m_OscRate[0];
+        tcmvoscrate = defaultTextureCoordinateModifier.m_OscRate[1];
+
+        tcmuoscamplitude = defaultTextureCoordinateModifier.m_OscAmplitude[0];
+        tcmvoscamplitude = defaultTextureCoordinateModifier.m_OscAmplitude[1];
+
+        tcmuoscphase = defaultTextureCoordinateModifier.m_OscPhase[0];
+        tcmvoscphase = defaultTextureCoordinateModifier.m_OscPhase[1];
+
+        tcmrotoscrate = RoundDegree(Word2Degr(defaultTextureCoordinateModifier.m_RotOscRate[2]));
+        tcmrotoscamplitude = RoundDegree(Word2Degr(defaultTextureCoordinateModifier.m_RotOscAmplitude[2]));
+        tcmrotoscphase = RoundDegree(Word2Degr(defaultTextureCoordinateModifier.m_RotOscPhase[2]));
+    }
 };
 
 struct SMaterialLayerVars
@@ -190,10 +232,9 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // Textures.
     //////////////////////////////////////////////////////////////////////////
-    //CSmartVariableArrayT<QString> textureVars[EFTT_MAX];
-    CSmartVariableArray textureVars[EFTT_MAX];
-    CSmartVariableArray advancedTextureGroup[EFTT_MAX];
-    STextureVars textures[EFTT_MAX];
+    CSmartVariableArray     textureVars[EFTT_MAX];
+    CSmartVariableArray     advancedTextureGroup[EFTT_MAX];
+    STextureVars            textures[EFTT_MAX];
 
     //////////////////////////////////////////////////////////////////////////
     // Material layers settings
@@ -240,7 +281,7 @@ public:
     void SetToMaterial(CMaterial* mtl, int propagationFlags = MTL_PROPAGATE_ALL);
     void SetTextureNames(CMaterial* mtl);
 
-    void SetShaderResources(const SInputShaderResources& srTextures, const SInputShaderResources& srTpl, bool bSetTextures = true);
+    void SetShaderResources(const SInputShaderResources& srTextures, bool bSetTextures = true);
     void GetShaderResources(SInputShaderResources& sr, int propagationFlags);
 
     void SetVertexDeform(const SInputShaderResources& sr);
@@ -527,13 +568,6 @@ private:
         AddVariable(tableTexture, *textureVars[id], name.toUtf8().data(), desc.toUtf8().data(), IVariable::DT_TEXTURE);
         AddVariable(*textureVars[id], *advancedTextureGroup[id], "Advanced", "Controls UV tiling, offset, and rotation as well as texture filtering");
 
-        // As asked by Martin Mittring, removed the amount parameter.
-        // Add variables from STextureVars structure.
-        //if (id == EFTT_NORMALS || id == EFTT_ENV)
-        //{
-        //  AddVariable( textureVars[id],textures[id].amount,"Amount" );
-        //  textures[id].amount->SetLimits( 0,255 );
-        //}
         AddVariable(*advancedTextureGroup[id], textures[id].etextype, "TexType", "");
         AddVariable(*advancedTextureGroup[id], textures[id].filter, "Filter", "Sets texture smoothing method to determine texture pixel quality");
 
@@ -630,8 +664,9 @@ private:
         vars->AddVariable(&var);
     }
 
-    void SetTextureResources(const SInputShaderResources& sr, const SInputShaderResources& srTpl, int texid, bool bSetTextures);
+    void SetTextureResources(const SEfResTexture *pTextureRes, uint16 tex, bool bSetTextures);
     void GetTextureResources(SInputShaderResources& sr, int texid, int propagationFlags);
+    void ResetTextureResources(uint16 tex);
     Vec4 ToVec4(const ColorF& col) { return Vec4(col.r, col.g, col.b, col.a); }
     Vec3 ToVec3(const ColorF& col) { return Vec3(col.r, col.g, col.b); }
     ColorF ToCFColor(const Vec3& col) { return ColorF(col); }
@@ -678,20 +713,21 @@ void CMaterialUI::NotifyObjectsAboutMaterialChange(IVariable* var)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMaterialUI::SetShaderResources(const SInputShaderResources& srTextures, const SInputShaderResources& srTpl, bool bSetTextures)
+void CMaterialUI::SetShaderResources(const SInputShaderResources& srTextures, bool bSetTextures)
 {
-    alphaTest = srTpl.m_AlphaRef;
-    voxelCoverage = (float) srTpl.m_VoxelCoverage / 255.0f;
+    alphaTest = srTextures.m_AlphaRef;
+    voxelCoverage = (float) srTextures.m_VoxelCoverage / 255.0f;
 
-    diffuse = ToVec3(srTpl.m_LMaterial.m_Diffuse);
-    specular = ToVec3(srTpl.m_LMaterial.m_Specular);
-    emissiveCol = ToVec3(srTpl.m_LMaterial.m_Emittance);
-    emissiveIntensity = srTpl.m_LMaterial.m_Emittance.a;
-    opacity = srTpl.m_LMaterial.m_Opacity;
-    smoothness = srTpl.m_LMaterial.m_Smoothness;
+    diffuse = ToVec3(srTextures.m_LMaterial.m_Diffuse);
+    specular = ToVec3(srTextures.m_LMaterial.m_Specular);
+    emissiveCol = ToVec3(srTextures.m_LMaterial.m_Emittance);
+    emissiveIntensity = srTextures.m_LMaterial.m_Emittance.a;
+    opacity = srTextures.m_LMaterial.m_Opacity;
+    smoothness = srTextures.m_LMaterial.m_Smoothness;
 
-    SetVertexDeform(srTpl);
+    SetVertexDeform(srTextures);
 
+   
     for (EEfResTextures texId = EEfResTextures(0); texId < EFTT_MAX; texId = EEfResTextures(texId + 1))
     {
         if (!MaterialHelpers::IsAdjustableTexSlot(texId))
@@ -699,7 +735,16 @@ void CMaterialUI::SetShaderResources(const SInputShaderResources& srTextures, co
             continue;
         }
 
-        SetTextureResources(srTextures, srTpl, texId, bSetTextures);
+        auto foundIter = srTextures.m_TexturesResourcesMap.find((ResourceSlotIndex)texId);
+        if (foundIter != srTextures.m_TexturesResourcesMap.end())
+        {
+            const SEfResTexture*    pTextureRes = const_cast<SEfResTexture*>(&foundIter->second);
+            SetTextureResources(pTextureRes, texId, bSetTextures);
+        }
+        else
+        {
+            ResetTextureResources(texId);
+        }
     }
 }
 
@@ -738,15 +783,8 @@ void CMaterialUI::GetShaderResources(SInputShaderResources& sr, int propagationF
     }
 }
 
-inline float RoundDegree(float val)
-{
-    //double v = floor(val*100.0f);
-    //return v*0.01f;
-    return (float)((int)(val * 100 + 0.5f)) * 0.01f;
-}
-
 //////////////////////////////////////////////////////////////////////////
-void CMaterialUI::SetTextureResources(const SInputShaderResources& sr, const SInputShaderResources& srTpl, int tex, bool bSetTextures)
+void CMaterialUI::SetTextureResources( const SEfResTexture *pTextureRes, uint16 texSlot, bool bSetTextures)
 {
     /*
     // Enable/Disable texture map, depending on the mask.
@@ -760,75 +798,79 @@ void CMaterialUI::SetTextureResources(const SInputShaderResources& sr, const SIn
 
     if (bSetTextures)
     {
-        QString texFilename = sr.m_Textures[tex].m_Name.c_str();
+        QString texFilename = pTextureRes->m_Name.c_str();
         texFilename = Path::ToUnixPath(texFilename);
-        textureVars[tex]->Set(texFilename);
+        textureVars[texSlot]->Set(texFilename);
     }
 
-    //textures[tex].amount = srTpl.m_Textures[tex].m_Amount;
-    *textures[tex].is_tile[0] = srTpl.m_Textures[tex].m_bUTile;
-    *textures[tex].is_tile[1] = srTpl.m_Textures[tex].m_bVTile;
+    //textures[tex].amount = pTextureRes->m_Amount;
+    *textures[texSlot].is_tile[0] = pTextureRes->m_bUTile;
+    *textures[texSlot].is_tile[1] = pTextureRes->m_bVTile;
 
-    //textures[tex].amount = sr.m_Textures[tex].m_Amount;
-    *textures[tex].is_tile[0] = sr.m_Textures[tex].m_bUTile;
-    *textures[tex].is_tile[1] = sr.m_Textures[tex].m_bVTile;
+    *textures[texSlot].tiling[0] = pTextureRes->GetTiling(0);
+    *textures[texSlot].tiling[1] = pTextureRes->GetTiling(1);
+    *textures[texSlot].offset[0] = pTextureRes->GetOffset(0);
+    *textures[texSlot].offset[1] = pTextureRes->GetOffset(1);
+    textures[texSlot].filter = (int)pTextureRes->m_Filter;
+    textures[texSlot].etextype = pTextureRes->m_Sampler.m_eTexType;
 
-    *textures[tex].tiling[0] = sr.m_Textures[tex].GetTiling(0);
-    *textures[tex].tiling[1] = sr.m_Textures[tex].GetTiling(1);
-    *textures[tex].offset[0] = sr.m_Textures[tex].GetOffset(0);
-    *textures[tex].offset[1] = sr.m_Textures[tex].GetOffset(1);
-    textures[tex].filter = (int)sr.m_Textures[tex].m_Filter;
-    textures[tex].etextype = sr.m_Textures[tex].m_Sampler.m_eTexType;
-
-    if (sr.m_Textures[tex].m_Ext.m_pTexModifier)
+    if (pTextureRes->m_Ext.m_pTexModifier)
     {
-        textures[tex].etcgentype = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_eTGType;
-        textures[tex].etcmumovetype = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_eMoveType[0];
-        textures[tex].etcmvmovetype = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_eMoveType[1];
-        textures[tex].etcmrotatetype = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_eRotType;
-        textures[tex].is_tcgprojected = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_bTexGenProjected;
-        textures[tex].tcmuoscrate = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_OscRate[0];
-        textures[tex].tcmuoscphase = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_OscPhase[0];
-        textures[tex].tcmuoscamplitude = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_OscAmplitude[0];
-        textures[tex].tcmvoscrate = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_OscRate[1];
-        textures[tex].tcmvoscphase = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_OscPhase[1];
-        textures[tex].tcmvoscamplitude = sr.m_Textures[tex].m_Ext.m_pTexModifier->m_OscAmplitude[1];
+        textures[texSlot].etcgentype = pTextureRes->m_Ext.m_pTexModifier->m_eTGType;
+        textures[texSlot].etcmumovetype = pTextureRes->m_Ext.m_pTexModifier->m_eMoveType[0];
+        textures[texSlot].etcmvmovetype = pTextureRes->m_Ext.m_pTexModifier->m_eMoveType[1];
+        textures[texSlot].etcmrotatetype = pTextureRes->m_Ext.m_pTexModifier->m_eRotType;
+        textures[texSlot].is_tcgprojected = pTextureRes->m_Ext.m_pTexModifier->m_bTexGenProjected;
+        textures[texSlot].tcmuoscrate = pTextureRes->m_Ext.m_pTexModifier->m_OscRate[0];
+        textures[texSlot].tcmuoscphase = pTextureRes->m_Ext.m_pTexModifier->m_OscPhase[0];
+        textures[texSlot].tcmuoscamplitude = pTextureRes->m_Ext.m_pTexModifier->m_OscAmplitude[0];
+        textures[texSlot].tcmvoscrate = pTextureRes->m_Ext.m_pTexModifier->m_OscRate[1];
+        textures[texSlot].tcmvoscphase = pTextureRes->m_Ext.m_pTexModifier->m_OscPhase[1];
+        textures[texSlot].tcmvoscamplitude = pTextureRes->m_Ext.m_pTexModifier->m_OscAmplitude[1];
 
         for (int i = 0; i < 3; i++)
         {
-            *textures[tex].rotate[i] = RoundDegree(Word2Degr(srTpl.m_Textures[tex].m_Ext.m_pTexModifier->m_Rot[i]));
+            *textures[texSlot].rotate[i] = RoundDegree(Word2Degr(pTextureRes->m_Ext.m_pTexModifier->m_Rot[i]));
         }
-        textures[tex].tcmrotoscrate = RoundDegree(Word2Degr(srTpl.m_Textures[tex].m_Ext.m_pTexModifier->m_RotOscRate[2]));
-        textures[tex].tcmrotoscphase = RoundDegree(Word2Degr(srTpl.m_Textures[tex].m_Ext.m_pTexModifier->m_RotOscPhase[2]));
-        textures[tex].tcmrotoscamplitude = RoundDegree(Word2Degr(srTpl.m_Textures[tex].m_Ext.m_pTexModifier->m_RotOscAmplitude[2]));
-        *textures[tex].tcmrotosccenter[0] = srTpl.m_Textures[tex].m_Ext.m_pTexModifier->m_RotOscCenter[0];
-        *textures[tex].tcmrotosccenter[1] = srTpl.m_Textures[tex].m_Ext.m_pTexModifier->m_RotOscCenter[1];
+        textures[texSlot].tcmrotoscrate = RoundDegree(Word2Degr(pTextureRes->m_Ext.m_pTexModifier->m_RotOscRate[2]));
+        textures[texSlot].tcmrotoscphase = RoundDegree(Word2Degr(pTextureRes->m_Ext.m_pTexModifier->m_RotOscPhase[2]));
+        textures[texSlot].tcmrotoscamplitude = RoundDegree(Word2Degr(pTextureRes->m_Ext.m_pTexModifier->m_RotOscAmplitude[2]));
+        *textures[texSlot].tcmrotosccenter[0] = pTextureRes->m_Ext.m_pTexModifier->m_RotOscCenter[0];
+        *textures[texSlot].tcmrotosccenter[1] = pTextureRes->m_Ext.m_pTexModifier->m_RotOscCenter[1];
     }
     else
     {
-        textures[tex].etcgentype = 0;
-        textures[tex].etcmumovetype = 0;
-        textures[tex].etcmvmovetype = 0;
-        textures[tex].etcmrotatetype = 0;
-        textures[tex].is_tcgprojected = false;
-        textures[tex].tcmuoscrate = 0;
-        textures[tex].tcmuoscphase = 0;
-        textures[tex].tcmuoscamplitude = 0;
-        textures[tex].tcmvoscrate = 0;
-        textures[tex].tcmvoscphase = 0;
-        textures[tex].tcmvoscamplitude = 0;
+        textures[texSlot].etcgentype = 0;
+        textures[texSlot].etcmumovetype = 0;
+        textures[texSlot].etcmvmovetype = 0;
+        textures[texSlot].etcmrotatetype = 0;
+        textures[texSlot].is_tcgprojected = false;
+        textures[texSlot].tcmuoscrate = 0;
+        textures[texSlot].tcmuoscphase = 0;
+        textures[texSlot].tcmuoscamplitude = 0;
+        textures[texSlot].tcmvoscrate = 0;
+        textures[texSlot].tcmvoscphase = 0;
+        textures[texSlot].tcmvoscamplitude = 0;
 
         for (int i = 0; i < 3; i++)
         {
-            *textures[tex].rotate[i] = 0;
+            *textures[texSlot].rotate[i] = 0;
         }
 
-        textures[tex].tcmrotoscrate = 0;
-        textures[tex].tcmrotoscphase = 0;
-        textures[tex].tcmrotoscamplitude = 0;
-        *textures[tex].tcmrotosccenter[0] = 0;
-        *textures[tex].tcmrotosccenter[1] = 0;
+        textures[texSlot].tcmrotoscrate = 0;
+        textures[texSlot].tcmrotoscphase = 0;
+        textures[texSlot].tcmrotoscamplitude = 0;
+        *textures[texSlot].tcmrotosccenter[0] = 0;
+        *textures[texSlot].tcmrotosccenter[1] = 0;
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CMaterialUI::ResetTextureResources(uint16 texSlot)
+{
+    QString texFilename = "";
+    textureVars[texSlot]->Set(texFilename);
+    textures[texSlot].Reset();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -854,24 +896,27 @@ void CMaterialUI::GetTextureResources(SInputShaderResources& sr, int tex, int pr
         return;
     }
 
-    QString texFilename;
+    // The following line will insert the slot if did not exist.
+    SEfResTexture*      pTextureRes = &(sr.m_TexturesResourcesMap[tex]);
+    QString             texFilename;
+
     textureVars[tex]->Get(texFilename);
     texFilename = Path::ToUnixPath(texFilename);
 
-    sr.m_Textures[tex].m_Name = texFilename.toLatin1().data();
+    pTextureRes->m_Name = texFilename.toLatin1().data();
 
-    //sr.m_Textures[tex].m_Amount = textures[tex].amount;
-    sr.m_Textures[tex].m_bUTile = *textures[tex].is_tile[0];
-    sr.m_Textures[tex].m_bVTile = *textures[tex].is_tile[1];
-    SEfTexModificator& texm = *sr.m_Textures[tex].AddModificator();
+    //pTextureRes->m_Amount = textures[tex].amount;
+    pTextureRes->m_bUTile = *textures[tex].is_tile[0];
+    pTextureRes->m_bVTile = *textures[tex].is_tile[1];
+    SEfTexModificator& texm = *pTextureRes->AddModificator();
     texm.m_bTexGenProjected = textures[tex].is_tcgprojected;
 
     texm.m_Tiling[0] = *textures[tex].tiling[0];
     texm.m_Tiling[1] = *textures[tex].tiling[1];
     texm.m_Offs[0] = *textures[tex].offset[0];
     texm.m_Offs[1] = *textures[tex].offset[1];
-    sr.m_Textures[tex].m_Filter = (int)textures[tex].filter;
-    sr.m_Textures[tex].m_Sampler.m_eTexType = textures[tex].etextype;
+    pTextureRes->m_Filter = (int)textures[tex].filter;
+    pTextureRes->m_Sampler.m_eTexType = textures[tex].etextype;
     texm.m_eRotType = textures[tex].etcmrotatetype;
     texm.m_eTGType = textures[tex].etcgentype;
     texm.m_eMoveType[0] = textures[tex].etcmumovetype;
@@ -1084,8 +1129,7 @@ void CMaterialUI::PropagateFromLinkedMaterial(CMaterial* mtl)
 
 void CMaterialUI::SetFromMaterial(CMaterial* mtlIn)
 {
-    CMaterial* mtl = mtlIn;
-    QString shaderName = mtl->GetShaderName();
+    QString shaderName = mtlIn->GetShaderName();
     if (!shaderName.isEmpty())
     {
         // Capitalize first letter.
@@ -1094,7 +1138,7 @@ void CMaterialUI::SetFromMaterial(CMaterial* mtlIn)
 
     shader = shaderName;
 
-    int mtlFlags = mtl->GetFlags();
+    int mtlFlags = mtlIn->GetFlags();
     bNoShadow = (mtlFlags & MTL_FLAG_NOSHADOW);
     bAdditive = (mtlFlags & MTL_FLAG_ADDITIVE);
     bWire = (mtlFlags & MTL_FLAG_WIRE);
@@ -1102,9 +1146,9 @@ void CMaterialUI::SetFromMaterial(CMaterial* mtlIn)
     bScatter = (mtlFlags & MTL_FLAG_SCATTER);
     bHideAfterBreaking = (mtlFlags & MTL_FLAG_HIDEONBREAK);
     bBlendTerrainColor = (mtlFlags & MTL_FLAG_BLEND_TERRAIN);
-    texUsageMask = mtl->GetTexmapUsageMask();
+    texUsageMask = mtlIn->GetTexmapUsageMask();
 
-    allowLayerActivation = mtl->LayerActivationAllowed();
+    allowLayerActivation = mtlIn->LayerActivationAllowed();
 
     // Detail, decal and custom textures are always active.
     const uint32 nDefaultFlagsEFTT = (1 << EFTT_DETAIL_OVERLAY) | (1 << EFTT_DECAL_OVERLAY) | (1 << EFTT_CUSTOM) | (1 << EFTT_CUSTOM_SECONDARY);
@@ -1114,14 +1158,14 @@ void CMaterialUI::SetFromMaterial(CMaterial* mtlIn)
         texUsageMask |= 1 << EFTT_NORMALS;
     }
 
-    surfaceType = mtl->GetSurfaceTypeName();
-    SetShaderResources(mtlIn->GetShaderResources(), mtl->GetShaderResources(), true);
+    surfaceType = mtlIn->GetSurfaceTypeName();
+    SetShaderResources(mtlIn->GetShaderResources(), true);
 
     // Propagate settings and properties to a sub material if edited
     PropagateFromLinkedMaterial(mtlIn);
 
     // set each material layer
-    SMaterialLayerResources* pMtlLayerResources = mtl->GetMtlLayerResources();
+    SMaterialLayerResources* pMtlLayerResources = mtlIn->GetMtlLayerResources();
     for (int l(0); l < MTL_LAYER_MAX_SLOTS; ++l)
     {
         materialLayers[l].shader = pMtlLayerResources[l].m_shaderName;
@@ -1255,14 +1299,17 @@ void CMaterialUI::SetToMaterial(CMaterial* mtl, int propagationFlags)
 void CMaterialUI::SetTextureNames(CMaterial* mtl)
 {
     SInputShaderResources& sr = mtl->GetShaderResources();
-    for (EEfResTextures texId = EEfResTextures(0); texId < EFTT_MAX; texId = EEfResTextures(texId + 1))
+
+    for ( auto& iter : sr.m_TexturesResourcesMap )
     {
-        if (!MaterialHelpers::IsAdjustableTexSlot(texId))
+        uint16      texId = iter.first;
+        if (!MaterialHelpers::IsAdjustableTexSlot((EEfResTextures)texId))
         {
             continue;
         }
 
-        textureVars[texId]->Set(sr.m_Textures[texId].m_Name.c_str());
+        SEfResTexture*      pTextureRes = &(iter.second);
+        textureVars[texId]->Set(pTextureRes->m_Name.c_str());
     }
 }
 
@@ -1446,12 +1493,23 @@ BOOL CMaterialDialog::OnInitDialog()
         centralWidget->setSizes({ w, width() - w });
         centralWidget->setStretchFactor(0, 0);
         centralWidget->setStretchFactor(1, 1);
+
+        // Start the background processing of material files after the widget has been initialized
+        m_wndMtlBrowser->StartRecordUpdateJobs();
     }
 
     resize(1200, 800);
 
     return TRUE; // return TRUE unless you set the focus to a control
     // EXCEPTION: OCX Property Pages should return FALSE
+}
+
+void CMaterialDialog::closeEvent(QCloseEvent *ev)
+{
+    // We call save before running any dtors, as it might trigger a modal dialog / nested event loop
+    // asking to overwrite files, and that causes a crash
+    m_wndMtlBrowser->SaveCurrentMaterial();
+    ev->accept(); // All good, dialog will close now
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1461,24 +1519,24 @@ void CMaterialDialog::InitToolbar(UINT nToolbarResID)
     m_toolbar = addToolBar(tr("Material ToolBar"));
     m_toolbar->setFloatable(false);
     QIcon assignselectionIcon;
-    assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_assignselection_normal.png" }, QIcon::Normal);
-    assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_assignselection_active.png" }, QIcon::Active);
-    assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_assignselection_disabled.png" }, QIcon::Disabled);
+    assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_assignselection_normal.png" }, QIcon::Normal);
+    assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_assignselection_active.png" }, QIcon::Active);
+    assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_assignselection_disabled.png" }, QIcon::Disabled);
     m_assignToSelectionAction = m_toolbar->addAction(assignselectionIcon, tr("Assign Item to Selected Objects"), this, SLOT(OnAssignMaterialToSelection()));
     QIcon resetIcon;
-    resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_reset_normal.png" }, QIcon::Normal);
-    resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_reset_active.png" }, QIcon::Active);
-    resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_reset_disabled.png" }, QIcon::Disabled);
+    resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_reset_normal.png" }, QIcon::Normal);
+    resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_reset_active.png" }, QIcon::Active);
+    resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_reset_disabled.png" }, QIcon::Disabled);
     m_resetAction = m_toolbar->addAction(resetIcon, tr("Reset Material on Selection to Default"), this, SLOT(OnResetMaterialOnSelection()));
     QIcon getfromselectionIcon;
-    getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_getfromselection_normal.png" }, QIcon::Normal);
-    getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_getfromselection_active.png" }, QIcon::Active);
-    getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_getfromselection_disabled.png" }, QIcon::Disabled);
+    getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_getfromselection_normal.png" }, QIcon::Normal);
+    getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_getfromselection_active.png" }, QIcon::Active);
+    getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_getfromselection_disabled.png" }, QIcon::Disabled);
     m_getFromSelectionAction = m_toolbar->addAction(getfromselectionIcon, tr("Get Properties From Selection"), this, SLOT(OnGetMaterialFromSelection()));
     QIcon pickIcon;
-    pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_pick_normal.png" }, QIcon::Normal);
-    pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_pick_active.png" }, QIcon::Active);
-    pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_pick_disabled.png" }, QIcon::Disabled);
+    pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_pick_normal.png" }, QIcon::Normal);
+    pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_pick_active.png" }, QIcon::Active);
+    pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_pick_disabled.png" }, QIcon::Disabled);
     m_pickAction = m_toolbar->addAction(pickIcon, tr("Pick Material from Object"), this, SLOT(OnPickMtl()));
     m_pickAction->setCheckable(true);
     QAction* sepAction = m_toolbar->addSeparator();
@@ -1491,36 +1549,36 @@ void CMaterialDialog::InitToolbar(UINT nToolbarResID)
     connect(cb, SIGNAL(currentIndexChanged(int)), this, SLOT(OnChangedBrowserListType(int)));
     m_toolbar->addSeparator();
     QIcon addIcon;
-    addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_add_normal.png" }, QIcon::Normal);
-    addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_add_active.png" }, QIcon::Active);
-    addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_add_disabled.png" }, QIcon::Disabled);
+    addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_add_normal.png" }, QIcon::Normal);
+    addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_add_active.png" }, QIcon::Active);
+    addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_add_disabled.png" }, QIcon::Disabled);
     m_addAction = m_toolbar->addAction(addIcon, tr("Add New Item"), this, SLOT(OnAddItem()));
     QIcon saveIcon;
-    saveIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_save_normal.png" }, QIcon::Normal);
-    saveIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_save_active.png" }, QIcon::Active);
-    saveIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_save_disabled.png" }, QIcon::Disabled);
+    saveIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_save_normal.png" }, QIcon::Normal);
+    saveIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_save_active.png" }, QIcon::Active);
+    saveIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_save_disabled.png" }, QIcon::Disabled);
     m_saveAction = m_toolbar->addAction(saveIcon, tr("Save Item"), this, SLOT(OnSaveItem()));
     QIcon removeIcon;
-    removeIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_remove_normal.png" }, QIcon::Normal);
-    removeIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_remove_active.png" }, QIcon::Active);
-    removeIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_remove_disabled.png" }, QIcon::Disabled);
+    removeIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_remove_normal.png" }, QIcon::Normal);
+    removeIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_remove_active.png" }, QIcon::Active);
+    removeIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_remove_disabled.png" }, QIcon::Disabled);
     m_removeAction = m_toolbar->addAction(removeIcon, tr("Remove Item"), this, SLOT(OnDeleteItem()));
     m_toolbar->addSeparator();
     QIcon copyIcon;
-    copyIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_copy_normal.png" }, QIcon::Normal);
-    copyIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_copy_active.png" }, QIcon::Active);
-    copyIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_copy_disabled.png" }, QIcon::Disabled);
+    copyIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_copy_normal.png" }, QIcon::Normal);
+    copyIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_copy_active.png" }, QIcon::Active);
+    copyIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_copy_disabled.png" }, QIcon::Disabled);
     m_copyAction = m_toolbar->addAction(copyIcon, tr("Copy Material"), this, SLOT(OnCopy()));
     QIcon pasteIcon;
-    pasteIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_paste_normal.png" }, QIcon::Normal);
-    pasteIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_paste_active.png" }, QIcon::Active);
-    pasteIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_paste_disabled.png" }, QIcon::Disabled);
+    pasteIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_paste_normal.png" }, QIcon::Normal);
+    pasteIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_paste_active.png" }, QIcon::Active);
+    pasteIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_paste_disabled.png" }, QIcon::Disabled);
     m_pasteAction = m_toolbar->addAction(pasteIcon, tr("Paste Material"), this, SLOT(OnPaste()));
     m_toolbar->addSeparator();
     QIcon previewIcon;
-    previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_preview_normal.png" }, QIcon::Normal);
-    previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_preview_active.png" }, QIcon::Active);
-    previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_preview_disabled.png" }, QIcon::Disabled);
+    previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_preview_normal.png" }, QIcon::Normal);
+    previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_preview_active.png" }, QIcon::Active);
+    previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_preview_disabled.png" }, QIcon::Disabled);
     m_previewAction = m_toolbar->addAction(previewIcon, tr("Open Large Material Preview Window"), this, SLOT(OnMaterialPreview()));
 
     UpdateActions();
@@ -1558,15 +1616,48 @@ void CMaterialDialog::OnSaveItem()
     CMaterial* pMtl = GetSelectedMaterial();
     if (pMtl)
     {
+        CMaterial* parent = pMtl->GetParent();
+
         if (!pMtl->Save(false))
         {
-            if (!pMtl->GetParent())
+            if (!parent)
             {
                 QMessageBox::warning(this, QString(), tr("The material file cannot be saved. The file is located in a PAK archive or access is denied"));
             }
         }
 
-        pMtl->Reload();
+        if (parent)
+        {
+            //The reload function will clear all the sub-material references, and re-create them.
+            //Thus pMtl will point to old sub-material that should be deleted instead. 
+            //So we need to set m_pMatManager's current material to the new one.
+            int index = -1;
+
+            //Find the corresponding sub-material and record its index
+            for (int i = 0; i < parent->GetSubMaterialCount(); i++)
+            {
+                if (parent->GetSubMaterial(i) == pMtl)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            pMtl->Reload();
+            
+            if (index >= 0 && index < parent->GetSubMaterialCount())
+            {
+                m_pMatManager->SetCurrentMaterial(parent->GetSubMaterial(index));
+            }
+            else //If we can't find the sub-material, use parent instead 
+            {
+                m_pMatManager->SetCurrentMaterial(parent);
+            }
+        }
+        else
+        {
+            pMtl->Reload();
+        }
+        
     }
     UpdateActions();
 }
@@ -1951,7 +2042,6 @@ void CMaterialDialog::OnUpdateProperties(IVariable* var)
     }
 
     m_pMaterialImageListModel->InvalidateMaterial(mtl);
-    m_wndMtlBrowser->IdleSaveMaterial();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2140,8 +2230,11 @@ void CMaterialDialog::OnPaste()
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnMaterialPreview()
 {
-    m_pPreviewDlg = new CMatEditPreviewDlg(this);
-    m_pPreviewDlg->show();
+    if (!m_pPreviewDlg)
+    {
+        m_pPreviewDlg = new CMatEditPreviewDlg(this);
+        m_pPreviewDlg->show();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

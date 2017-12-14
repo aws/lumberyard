@@ -564,14 +564,13 @@ namespace AZ
     //=========================================================================
     bool SliceComponent::SliceReference::RemoveInstance(SliceComponent::SliceInstance* instance)
     {
-        for (auto instanceIt = m_instances.begin(); instanceIt != m_instances.end(); ++instanceIt)
+        AZ_Assert(instance, "Invalid instance provided to SliceReference::RemoveInstance");
+        auto iter = m_instances.find(*instance);
+        if (iter != m_instances.end())
         {
-            if (&*instanceIt == instance)
-            {
-                RemoveInstanceFromEntityInfoMap(*instance);
-                m_instances.erase(instanceIt);
-                return true;
-            }
+            RemoveInstanceFromEntityInfoMap(*instance);
+            m_instances.erase(iter);
+            return true;
         }
 
         return false;
@@ -785,7 +784,10 @@ namespace AZ
 
         // Find the instanced version of the source metadata entity from the asset associated with this reference
         // and store it in the instance for quick lookups later
-        AZ::EntityId instancedMetadataEntityId = instance.m_baseToNewEntityIdMap.find(dependentSlice->GetMetadataEntity()->GetId())->second;
+        auto metadataIdMapIter = instance.m_baseToNewEntityIdMap.find(dependentSlice->GetMetadataEntity()->GetId());
+        AZ_Assert(metadataIdMapIter != instance.m_baseToNewEntityIdMap.end(), "Dependent Metadata Entity ID was not remapped properly.");
+        AZ::EntityId instancedMetadataEntityId = metadataIdMapIter->second;
+
         for (AZ::Entity* entity : instance.m_instantiated->m_metadataEntities)
         {
             if (instancedMetadataEntityId == entity->GetId())
@@ -1191,6 +1193,49 @@ namespace AZ
     }
 
     //=========================================================================
+    // SliceComponent::GenerateNewEntityIds
+    //=========================================================================
+    void SliceComponent::GenerateNewEntityIds(EntityIdToEntityIdMap* previousToNewIdMap)
+    {
+        InstantiatedContainer entityContainer;
+        if (!GetEntities(entityContainer.m_entities))
+        {
+            return;
+        }
+
+        EntityIdToEntityIdMap entityIdMap;
+        if (!previousToNewIdMap)
+        {
+            previousToNewIdMap = &entityIdMap;
+        }
+        AZ::EntityUtils::GenerateNewIdsAndFixRefs(&entityContainer, *previousToNewIdMap, m_serializeContext);
+
+        entityContainer.m_entities.clear();
+
+        for (SliceReference& sliceReference : m_slices)
+        {
+            for (SliceInstance& instance : sliceReference.m_instances)
+            {
+                for (auto& entityIdPair : instance.m_baseToNewEntityIdMap)
+                {
+                    auto iter = previousToNewIdMap->find(entityIdPair.second);
+                    if (iter != previousToNewIdMap->end())
+                    {
+                        entityIdPair.second = iter->second;
+                    }
+                }
+
+                instance.m_entityIdToBaseCache.clear();
+            }
+        }
+
+        if (!m_entityInfoMap.empty())
+        {
+            BuildEntityInfoMap();
+        }
+    }
+
+    //=========================================================================
     // SliceComponent::AddSlice
     //=========================================================================
     SliceComponent::SliceInstanceAddress SliceComponent::AddSlice(const Data::Asset<SliceAsset>& sliceAsset, const IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper)
@@ -1304,7 +1349,31 @@ namespace AZ
         {
             // We're creating an instance just to hold the entity we're re-adding. We don't want to instantiate the underlying asset.
             instance = reference->CreateEmptyInstance(restoreInfo.m_instanceId);
-            instance->m_instantiated = aznew InstantiatedContainer();
+
+            // Make sure the appropriate metadata entities are created with the instance
+            InstantiatedContainer sourceObjects;
+            sourceSlice->GetAllMetadataEntities(sourceObjects.m_metadataEntities);
+            instance->m_instantiated = IdUtils::Remapper<EntityId>::CloneObjectAndGenerateNewIdsAndFixRefs(&sourceObjects, instance->m_baseToNewEntityIdMap, GetSerializeContext());
+
+            // Find the instanced version of the source metadata entity from the asset associated with this reference
+            // and store it in the instance for quick lookups later
+            auto metadataIdMapIter = instance->m_baseToNewEntityIdMap.find(sourceSlice->GetMetadataEntity()->GetId());
+            AZ_Assert(metadataIdMapIter != instance->m_baseToNewEntityIdMap.end(), "Dependent Metadata Entity ID was not remapped properly.");
+            AZ::EntityId instancedMetadataEntityId = metadataIdMapIter->second;
+
+            for (AZ::Entity* metadataEntity : instance->m_instantiated->m_metadataEntities)
+            {
+                if (instancedMetadataEntityId == metadataEntity->GetId())
+                {
+                    instance->m_metadataEntity = metadataEntity;
+                    break;
+                }
+            }
+
+            AZ_Assert(instance->m_metadataEntity, "The instance must have a metadata entity");
+
+            // Prevent entities we don't own from being deleted
+            sourceObjects.ClearAndReleaseOwnership();
         }
 
         // Add the entity to the instance, and wipe the reverse lookup cache so it's updated on access.
@@ -1408,8 +1477,7 @@ namespace AZ
         {
             if (sliceIt->m_asset == sliceAsset)
             {
-                Data::AssetBus::MultiHandler::BusDisconnect(sliceAsset.GetId());
-                m_slices.erase(sliceIt);
+                RemoveSliceReference(sliceIt);
                 return true;
             }
         }
@@ -1433,19 +1501,28 @@ namespace AZ
     //=========================================================================
     bool SliceComponent::RemoveSliceInstance(SliceInstance* instance)
     {
-        for (SliceReference& sliceReference : m_slices)
+        for (auto sliceReferenceIt = m_slices.begin(); sliceReferenceIt != m_slices.end(); ++sliceReferenceIt)
         {
             // note move this function to the slice reference for consistency
-            if (sliceReference.RemoveInstance(instance))
+            if (sliceReferenceIt->RemoveInstance(instance))
             {
-                if (sliceReference.m_instances.empty())
+                if (sliceReferenceIt->m_instances.empty())
                 {
-                    RemoveSlice(&sliceReference);
+                    RemoveSliceReference(sliceReferenceIt);
                 }
                 return true;
             }
         }
         return false;
+    }
+
+    //=========================================================================
+    // SliceComponent::RemoveSliceReference
+    //=========================================================================
+    void SliceComponent::RemoveSliceReference(SliceComponent::SliceList::iterator sliceReferenceIt)
+    {
+        Data::AssetBus::MultiHandler::BusDisconnect(sliceReferenceIt->GetSliceAsset().GetId());
+        m_slices.erase(sliceReferenceIt);
     }
 
     //=========================================================================

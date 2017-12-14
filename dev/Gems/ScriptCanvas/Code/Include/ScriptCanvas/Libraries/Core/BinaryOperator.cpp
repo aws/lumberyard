@@ -22,8 +22,8 @@ namespace ScriptCanvas
         const char* BinaryOperator::k_onTrue = "True";
         const char* BinaryOperator::k_onFalse = "False";
 
-        const char* BinaryOperator::k_lhsName = "Arg1";
-        const char* BinaryOperator::k_rhsName = "Arg2";
+        const char* BinaryOperator::k_lhsName = "Value A";
+        const char* BinaryOperator::k_rhsName = "Value B";
         const char* BinaryOperator::k_resultName = "Result";
         
         void ArithmeticExpression::OnInit()

@@ -72,7 +72,7 @@ def build(bld):
             darwin_lib      = ['curl'],
 
 
-            win_uselib      = ['XTP', 'AWS_CPP_SDK_ALL'],
+            win_uselib      = ['AWS_CPP_SDK_ALL'],
             win_features    = ['crcfix', 'ExternalLyIdentity', 'ExternalLyMetrics'],
             win_use         = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
             win_defines     = ['METRICS_SYSTEM_COMPONENT_ENABLED']

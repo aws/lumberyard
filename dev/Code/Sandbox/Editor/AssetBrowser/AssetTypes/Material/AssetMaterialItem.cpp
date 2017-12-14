@@ -21,7 +21,6 @@
 #include "Util/PathUtil.h"
 #include "Include/IAssetItemDatabase.h"
 #include "IMaterial.h"
-#include "IMusicSystem.h"
 #include "IRenderer.h"
 #include "Include/IAssetViewer.h"
 #include "ImageExtensionHelper.h"
@@ -184,7 +183,7 @@ void CAssetMaterialItem::PreviewRender(
     const QRect& rstViewport,
     int aMouseX, int aMouseY,
     int aMouseDeltaX, int aMouseDeltaY,
-    UINT aKeyFlags)
+    int aMouseWheelDelta, UINT aKeyFlags)
 {
 }
 

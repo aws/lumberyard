@@ -15,6 +15,10 @@
 
 #include "Woodpecker/Driller/DrillerAggregator.hxx"
 #include "Woodpecker/Driller/DrillerAggregatorOptions.hxx"
+#include "AzCore/std/string/string.h"
+#include "AzCore/std/containers/map.h"
+#include "AzCore/RTTI/RTTI.h"
+#include "AzCore/Memory/SystemAllocator.h"
 
 #include "ProfilerDataParser.h"
 

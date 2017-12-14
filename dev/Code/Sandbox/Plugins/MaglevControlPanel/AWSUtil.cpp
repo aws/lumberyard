@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "AWSUtil.h"
 #include <IEditor.h>
 

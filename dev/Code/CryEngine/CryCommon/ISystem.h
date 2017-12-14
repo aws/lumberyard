@@ -31,6 +31,7 @@
 #include "CompileTimeAssert.h"
 
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/std/any.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -80,7 +81,6 @@ struct IMemoryManager;
 namespace Audio
 {
     struct IAudioSystem;
-    struct IMusicSystem;
 } // namespace Audio
 struct IFrameProfileSystem;
 struct IStatoscope;
@@ -195,6 +195,9 @@ enum ESystemUpdateFlags
     ESYSUPDATE_UPDATE_VIEW_ONLY = 0x0040
 };
 
+static const int NUM_SPEC_LEVELS = 4;
+static const int NUM_PLATFORMS = 8;
+
 // Description:
 //   Configuration specification, depends on user selected machine specification.
 enum ESystemConfigSpec
@@ -206,6 +209,33 @@ enum ESystemConfigSpec
     CONFIG_VERYHIGH_SPEC = 4,
 
     END_CONFIG_SPEC_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
+};
+
+// Description:
+//   Status of cvar for a specifc platform and spec level
+//   editedValue - current setting within Graphics Settings Dialog box
+//   overwrittenValue - original setting from platform config file (set to originalValue if not found)
+//   originalValue - original settings from sys_spec config file index
+
+struct CVarFileStatus
+{
+    AZStd::any editedValue;
+    AZStd::any overwrittenValue;
+    AZStd::any originalValue;
+    CVarFileStatus(AZStd::any edit, AZStd::any over, AZStd::any orig) : editedValue(edit), overwrittenValue(over), originalValue(orig) {}
+};
+
+// Description:
+//   Status of specific cvar for Editor mapping
+//   type - CVAR_INT / CVAR_FLOAT / CVAR_STRING
+//   cvarGroup - source of cvar (sys_spec_particles, sys_spec_physics, etc.) or "miscellaneous" if only specified in platform config file
+//   fileVals = CVarFileStatus for each spec level of a specific platform
+
+struct CVarInfo
+{
+    int type;
+    AZStd::string cvarGroup;
+    AZStd::vector<CVarFileStatus> fileVals;
 };
 
 // Description:
@@ -693,6 +723,7 @@ struct SSystemInitParams
     // @root@ To get to the folder where system.cfg lives
     // @assets@ to get to the folder containing game assets (textures and such) - by default, this is @root@/Gamename/
     // @devroot@ to get to source files that are checked into source control (PC EDITOR ONLY!)
+    // @engroot@ to get to path to the engine root folder
     // @user@ to access user store
     // @cache@ to access temporary cache
     // @log@ to access log file and other forensic storage
@@ -818,7 +849,7 @@ struct SSystemInitParams
     {
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
         char checkPath[AZ_MAX_PATH_LEN] = { 0 };
-        azsnprintf(checkPath, AZ_MAX_PATH_LEN, "%s/engineroot.txt", rootPathCache);
+        azsnprintf(checkPath, AZ_MAX_PATH_LEN, "%s/engine.json", rootPathCache);
         return AZ::IO::SystemFile::Exists(checkPath);
 #else
         return false;
@@ -902,7 +933,6 @@ struct SSystemGlobalEnvironment
     IPhysicalWorld*            pPhysicalWorld;
     IFlowSystem*               pFlowSystem;
     IInput*                    pInput;
-    Audio::IMusicSystem*       pMusicSystem;
     IStatoscope*        pStatoscope;
     ICryPak*                   pCryPak;
     AZ::IO::FileIOBase*        pFileIO;
@@ -918,7 +948,6 @@ struct SSystemGlobalEnvironment
     IEntitySystem*             pEntitySystem;
     IConsole*                  pConsole;
     Telemetry::ITelemetrySystem* pTelemetrySystem;
-    Audio::IAudioSystem*       pAudioSystem;
     ISystem*                   pSystem;
     ICharacterManager*         pCharacterManager;
     IAISystem*                 pAISystem;
@@ -1232,7 +1261,14 @@ struct ISystem
     // Arguments:
     //   flags      - One or more flags from ESystemUpdateFlags structure.
     //   nPauseMode - 0=normal(no pause), 1=menu/pause, 2=cutscene
-    virtual bool Update(int updateFlags = 0, int nPauseMode = 0) = 0;
+    virtual bool UpdatePreTickBus(int updateFlags = 0, int nPauseMode = 0) = 0;
+
+    // Summary:
+    //   Updates all subsystems (including the ScriptSink() )
+    // Arguments:
+    //   flags      - One or more flags from ESystemUpdateFlags structure.
+    //   nPauseMode - 0=normal(no pause), 1=menu/pause, 2=cutscene
+    virtual bool UpdatePostTickBus(int updateFlags = 0, int nPauseMode = 0) = 0;
 
     // Summary:
     //   Updates only require components during loading
@@ -1376,8 +1412,6 @@ struct ISystem
     virtual IAISystem* GetAISystem() = 0;
     virtual IMovieSystem* GetIMovieSystem() = 0;
     virtual IPhysicalWorld* GetIPhysicalWorld() = 0;
-    virtual Audio::IAudioSystem* GetIAudioSystem() = 0;
-    virtual Audio::IMusicSystem* GetIMusicSystem() = 0;
     virtual I3DEngine* GetI3DEngine() = 0;
     // **************************************************************************************
     // DEPRECATED: This method is currently deprecated and will be removed in release 1.13
@@ -1553,6 +1587,13 @@ struct ISystem
     //////////////////////////////////////////////////////////////////////////
 
     // Summary:
+    //   Loads configurations from CVarGroup directory recursively
+    //   If m_GraphicsSettingsMap is defined (in Graphics Settings Dialog box), fills in mapping based on sys_spec_Full
+    // Arguments:
+    //   sPath - e.g. "Game/Config/CVarGroups"
+    virtual void AddCVarGroupDirectory(const string& sPath) = 0;
+
+    // Summary:
     //   Saves system configuration.
     virtual void SaveConfiguration() = 0;
 
@@ -1576,6 +1617,15 @@ struct ISystem
     //   bClient - If true changes client config spec (sys_spec variable changed),
     //             if false changes only server config spec (as known on the client).
     virtual void SetConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform, bool bClient) = 0;
+
+    // Summary:
+    //   Return pointer to the Editor map for the Graphics Settings Dialog
+    virtual AZStd::unordered_map<AZStd::string, CVarInfo>* GetGraphicsSettingsMap() const = 0;
+
+    // Summary:
+    //   Sets pointer to the Editor map for the Graphics Settings Dialog
+    virtual void SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* editorMap) = 0;
+
     //////////////////////////////////////////////////////////////////////////
 
     // Summary:
@@ -1761,7 +1811,7 @@ struct ISystem
     // Summary:
     //      Loads a dynamic library, creates and initializes an instance of the module class
 
-    virtual bool InitializeEngineModule(const char* dllName, const char* moduleClassName, const SSystemInitParams& initParams, bool bQuitIfNotFound) = 0;
+    virtual bool InitializeEngineModule(const char* dllName, const char* moduleClassName, const SSystemInitParams& initParams) = 0;
 
     // Summary:
     //      Unloads a dynamic library as well as the corresponding instance of the module class
@@ -1782,20 +1832,17 @@ struct ISystem
     //      Unregister an IWindowMessageHandler that was previously registered using RegisterWindowMessageHandler
     virtual void UnregisterWindowMessageHandler(IWindowMessageHandler* pHandler) = 0;
 
-    // Summary:
-    //      Pumps window messages, informing all registered IWindowMessageHandlers
-    //      If bAll is true, all available messages will be pumped
-    //      If hWnd is not NULL, only messages for the given window are processed (ignored on non-windows platforms)
-    //      Returns the number of messages pumped, or -1 if the OS indicated the application should quit
-    virtual int PumpWindowMessage(bool bAll, WIN_HWND hWnd = 0) = 0;
+    // Deprecated, use AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty instead
+    virtual int AZ_DEPRECATED(PumpWindowMessage(bool bAll, WIN_HWND hWnd = 0),
+        "PumpWindowMessage has been deprecated, use AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty instead.")
+    {
+        // AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
+        return 0;
+    }
 
     // Create an instance of a Local File IO object (which reads directly off the local filesystem, instead of,
     // for example, reading from the network or a pack or USB or such.
     virtual std::shared_ptr<AZ::IO::FileIOBase> CreateLocalFileIO() = 0;
-
-    // Summary:
-    //      Forces an FPS cap, for the Editor to use. Only has an impact if sys_MaxFps is defaulted. Var overrides always apply.
-    virtual void ForceMaxFps(bool enable, int maxFps) = 0;
 };
 
 //JAT - this is a very important function for the dedicated server - it lets us run >1000 players per piece of server hardware
@@ -1892,10 +1939,21 @@ public:
     }
 };
 
+#ifdef AZ_PROFILE_TELEMETRY 
+
+#define LOADING_TIME_PROFILE_SECTION AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore)
+#define LOADING_TIME_PROFILE_SECTION_ARGS(...) AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::AzCore, __VA_ARGS__) 
+#define LOADING_TIME_PROFILE_SECTION_NAMED(sectionName) AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, sectionName) 
+#define LOADING_TIME_PROFILE_SECTION_NAMED_ARGS(sectionName, args) AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::AzCore, sectionName, args) 
+
+#else
+
 #define LOADING_TIME_PROFILE_SECTION CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, __FUNCTION__);
 #define LOADING_TIME_PROFILE_SECTION_ARGS(args) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, __FUNCTION__, args);
 #define LOADING_TIME_PROFILE_SECTION_NAMED(sectionName) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, sectionName);
 #define LOADING_TIME_PROFILE_SECTION_NAMED_ARGS(sectionName, args) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, sectionName, args);
+
+#endif // AZ_PROFILE_TELEMETRY
 
 #else
 
@@ -2011,9 +2069,151 @@ inline void CryWarning(EValidatorModule module, EValidatorSeverity severity, con
     #define CONST_CVAR_FLAGS (VF_NULL)
 #endif
 
+#if defined(_RELEASE) && defined(IS_CONSOLE_PLATFORM)
+#ifndef LOG_CONST_CVAR_ACCESS
+#error LOG_CONST_CVAR_ACCESS should be defined in ProjectDefines.h
+#endif
+
+#include "IConsole.h"
+namespace Detail
+{
+    template<typename T>
+    struct SQueryTypeEnum;
+    template<>
+    struct SQueryTypeEnum<int>
+    {
+        static const int type = CVAR_INT;
+        static int ParseString(const char* s) { return atoi(s); }
+    };
+    template<>
+    struct SQueryTypeEnum<float>
+    {
+        static const int type = CVAR_FLOAT;
+        static float ParseString(const char* s) { return (float)atof(s); }
+    };
+
+    template<typename T>
+    struct SDummyCVar
+        : ICVar
+    {
+        const T value;
+#if LOG_CONST_CVAR_ACCESS
+        mutable bool bWasRead;
+        mutable bool bWasChanged;
+        SDummyCVar(T val)
+            : value(val)
+            , bWasChanged(false)
+            , bWasRead(false) {}
+#else
+        SDummyCVar(T val)
+            : value(val) {}
+#endif
+
+        void WarnUse() const
+        {
+#if LOG_CONST_CVAR_ACCESS
+            if (!bWasRead)
+            {
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "[CVAR] Read from const CVar '%s' via name look-up, this is non-optimal", GetName());
+                bWasRead = true;
+            }
+#endif
+        }
+
+        void InvalidAccess() const
+        {
+#if LOG_CONST_CVAR_ACCESS
+            if (!bWasChanged)
+            {
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, "[CVAR] Write to const CVar '%s' with wrong value '%f' was ignored. This indicates a bug in code or a config file", GetName(), GetFVal());
+                bWasChanged = true;
+            }
+#endif
+        }
+
+        void Release() {}
+        int GetIVal() const { WarnUse(); return static_cast<int>(value); }
+        int64 GetI64Val() const { WarnUse(); return static_cast<int64>(value); }
+        float GetFVal() const { WarnUse(); return static_cast<float>(value); }
+        const char* GetString() const { return ""; }
+        const char* GetDataProbeString() const { return ""; }
+        void Set(const char* s)
+        {
+            if (SQueryTypeEnum<T>::ParseString(s) != value)
+            {
+                InvalidAccess();
+            }
+        }
+        void ForceSet(const char* s) { Set(s); }
+        void Set(const float f)
+        {
+            if (static_cast<T>(f) != value)
+            {
+                InvalidAccess();
+            }
+        }
+        void Set(const int i)
+        {
+            if (static_cast<T>(i) != value)
+            {
+                InvalidAccess();
+            }
+        }
+        void ClearFlags (int flags) {}
+        int GetFlags() const { return VF_CONST_CVAR | VF_READONLY; }
+        int SetFlags(int flags) { return 0; }
+        int GetType() { return SQueryTypeEnum<T>::type; }
+        const char* GetHelp() { return NULL; }
+        bool IsConstCVar() const { return true; }
+        void SetOnChangeCallback(ConsoleVarFunc pChangeFunc) { (void)pChangeFunc; }
+        uint64 AddOnChangeFunctor(const SFunctor& pChangeFunctor) { (void)pChangeFunctor; return 0; }
+        uint64 GetNumberOfOnChangeFunctors() const { return 0; }
+        const SFunctor& GetOnChangeFunctor(uint64 nFunctorIndex) const { InvalidAccess(); SFunctor* pNull = nullptr; return *pNull; }
+        bool RemoveOnChangeFunctor(const uint64 nElement) { return true; }
+        ConsoleVarFunc GetOnChangeCallback() const { InvalidAccess(); return NULL; }
+        void GetMemoryUsage(class ICrySizer* pSizer) const {}
+        int GetRealIVal() const { return GetIVal(); }
+        void SetLimits(float min, float max) { return; }
+        void GetLimits(float& min, float& max) { return; }
+        bool HasCustomLimits() { return false; }
+        void SetDataProbeString(const char* pDataProbeString) { InvalidAccess(); }
+    };
+}
+
+#define REGISTER_DUMMY_CVAR(type, name, value)                                           \
+    do {                                                                                 \
+        static struct DummyCVar                                                          \
+            : Detail::SDummyCVar<type>                                                   \
+        {                                                                                \
+            DummyCVar()                                                                  \
+                : Detail::SDummyCVar<type>(value) {}                                     \
+            const char* GetName() const { return name; }                                 \
+        } DummyStaticInstance;                                                           \
+        if (!(gEnv->pConsole != 0 ? gEnv->pConsole->Register(&DummyStaticInstance) : 0)) \
+        {                                                                                \
+            DEBUG_BREAK;                                                                 \
+            CryFatalError("Can not register dummy CVar");                                \
+        }                                                                                \
+    } while (0)
+
+    # define CONSOLE_CONST_CVAR_MODE
+    # define DeclareConstIntCVar(name, defaultValue) enum { name = (defaultValue) }
+    # define DeclareStaticConstIntCVar(name, defaultValue) enum { name = (defaultValue) }
+
+# define DefineConstIntCVarName(strname, name, defaultValue, flags, help) { COMPILE_TIME_ASSERT((int)(defaultValue) == (int)(name)); REGISTER_DUMMY_CVAR(int, strname, defaultValue); }
+# define DefineConstIntCVar(name, defaultValue, flags, help) { COMPILE_TIME_ASSERT((int)(defaultValue) == (int)(name)); REGISTER_DUMMY_CVAR(int, (#name), defaultValue); }
+// DefineConstIntCVar2 is deprecated, any such instance can be converted to the 3 variant by removing the quotes around the first parameter
+# define DefineConstIntCVar3(name, _var_, defaultValue, flags, help) { COMPILE_TIME_ASSERT((int)(defaultValue) == (int)(_var_)); REGISTER_DUMMY_CVAR(int, name, defaultValue); }
+    # define AllocateConstIntCVar(scope, name)
+
+# define DefineConstFloatCVar(name, flags, help) { REGISTER_DUMMY_CVAR(float, (#name), name ## Default); }
+    # define DeclareConstFloatCVar(name)
+    # define DeclareStaticConstFloatCVar(name)
+    # define AllocateConstFloatCVar(scope, name)
+
+#else
 
     # define DeclareConstIntCVar(name, defaultValue) int name
-    # define DeclareAndExportStaticConstIntCVar(name, defaultValue) ENGINE_API static int name
     # define DeclareStaticConstIntCVar(name, defaultValue) static int name
     # define DefineConstIntCVarName(strname, name, defaultValue, flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register(strname, &name, defaultValue, flags | CONST_CVAR_FLAGS, CVARHELP(help)))
@@ -2029,6 +2229,7 @@ inline void CryWarning(EValidatorModule module, EValidatorSeverity severity, con
     # define DeclareConstFloatCVar(name) float name
     # define DeclareStaticConstFloatCVar(name) static float name
     # define AllocateConstFloatCVar(scope, name) float scope:: name
+#endif
 
 #if defined(USE_CRY_ASSERT)
 static void AssertConsoleExists(void)

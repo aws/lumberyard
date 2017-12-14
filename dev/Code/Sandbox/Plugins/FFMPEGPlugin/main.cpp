@@ -15,7 +15,6 @@
 #include "FFMPEGPlugin.h"
 #include "Include/IEditorClassFactory.h"
 
-HINSTANCE g_hInstance = 0;
 
 PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
 {
@@ -29,16 +28,4 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
     GetIEditor()->GetSystem()->GetILog()->Log("FFMPEG plugin: CreatePluginInstance");
     CFFMPEGPlugin::RegisterTheCommand();
     return new CFFMPEGPlugin;
-}
-
-
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
-{
-    if (fdwReason == DLL_PROCESS_ATTACH)
-    {
-        g_hInstance = hinstDLL;
-        //DisableThreadLibraryCalls(hInstance);
-    }
-
-    return(TRUE);
 }

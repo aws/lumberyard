@@ -34,7 +34,7 @@ namespace GraphCanvas
         : public NodeLayoutComponent
         , public NodeNotificationBus::MultiHandler
         , public WrapperNodeRequestBus::Handler
-        , public StyleNotificationBus::Handler        
+        , public StyleNotificationBus::Handler
     {
     private:
         
@@ -155,10 +155,10 @@ namespace GraphCanvas
             required.push_back(AZ_CRC("GraphCanvas_NodeService", 0xcc0f32cc));
             required.push_back(AZ_CRC("GraphCanvas_StyledGraphicItemService", 0xeae4cdf4));
         }
-		
-		void Init();
+
+        void Init();
         void Activate();
-        void Deactivate();		
+        void Deactivate();
         ////
         
         // WrapperNodeRequestBus

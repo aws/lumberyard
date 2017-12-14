@@ -719,23 +719,24 @@ namespace mesh_compiler
                 switch (nErrorCode)
                 {
                 case VERTICES_SHARING_COORDINATES:
-                    errorCodeMessage = "\nReason: two vertices of a face share the same coordinate. Run the Select Degenerate Faces Script and fix any highlighted vertices.\n";
+                    errorCodeMessage = "Asset contains non-manifold geometry.\nPlease fix the model in your DCC tool to solve this issue.\n";
                     break;
                 case ALL_VERTICES_ON_THE_SAME_VECTOR:
-                    errorCodeMessage = "\nReason: three vertices of a face lie on the same line. Run the Select Degenerate Faces Script and fix any highlighted vertices.\n";
+                    errorCodeMessage = "Asset contains non-manifold geometry.\nPlease fix the model in your DCC tool to solve this issue.\n";
                     break;
                 case BROKEN_TEXTURE_COORDINATES:
-                    errorCodeMessage = "\nReason: texture coordinates are not valid. Double check that the UV's have space on the UV map.\n";
+                    errorCodeMessage = "Texture UV coordinates are not valid.\nCheck that the UV's have space on the UV map in your DCC tool to solve this issue.\n";
                     break;
                 case MEMORY_ALLOCATION_FAILED:
-                    errorCodeMessage = "\nReason: failed to allocate memory for Mikkelsen's Tangent Basis algorithm.";
+                    errorCodeMessage = "Mesh compiler failed to allocate memory for compilation.\nYou can reduce the size of your mesh to attempt to solve this issue.\n";
                     break;
                 default:
-                    errorCodeMessage = "\nInternal error.\n";
+                    AZ_Assert(false, "Unknown error code. Please implement a failure message.");
+                    errorCodeMessage = "Unknown error code encountered.\nThis happens when a programmer has not implemented a message for an error code.\n";
                     break;
                 }
 
-                m_LastError.Format(" CalculateTangentSpace() failed, fix model.\n\nErrorCode:%d\n\n%s%s", nErrorCode, errorMessage.c_str(), errorCodeMessage);
+                m_LastError.Format("\n%s%sCalculateTangentSpace() failed - error code: %d", errorCodeMessage, errorMessage.c_str(), nErrorCode);
                 return false;
             }
 

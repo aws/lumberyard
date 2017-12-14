@@ -22,9 +22,10 @@ namespace AzQtComponents
     /**
      * Create a dock bar button that can be shared between any kind of docking bars for common actions
      */
-    DockBarButton::DockBarButton(DockBarButton::WindowDecorationButton buttonType, QWidget* parent)
+    DockBarButton::DockBarButton(DockBarButton::WindowDecorationButton buttonType, QWidget* parent, bool darkStyle)
         : QPushButton(parent)
         , m_buttonType(buttonType)
+        , m_isDarkStyle(darkStyle)
     {
         setStyleSheet("QPushButton { border: 0px; background: transparent; min-width: 0px;}");
 
@@ -91,20 +92,24 @@ namespace AzQtComponents
      */
     QPixmap DockBarButton::pixmapForButton(bool pressed, bool hovered) const
     {
-        // Construct the icon path suffix from the button state
-        const QString suffix = pressed ? QString("_press.png")
-            : hovered ? QString("_hover.png")
-            : QString(".png");
+        // Construct the icon path suffix from the button state and dark style flag
+        QString suffix = pressed ? QString("_press")
+            : hovered ? QString("_hover")
+            : QString("");
+        if (m_isDarkStyle)
+        {
+            suffix.append("_dark");
+        }
 
         // Return the appropriate icon based on the button state and our button type
         switch (m_buttonType)
         {
         case DockBarButton::CloseButton:
-            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_close%1").arg(suffix));
+            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_close%1.png").arg(suffix));
         case DockBarButton::MaximizeButton:
-            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_maximize%1").arg(suffix));
+            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_maximize%1.png").arg(suffix));
         case DockBarButton::MinimizeButton:
-            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_minimize%1").arg(suffix));
+            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_minimize%1.png").arg(suffix));
         case DockBarButton::DividerButton:
             break;
         }

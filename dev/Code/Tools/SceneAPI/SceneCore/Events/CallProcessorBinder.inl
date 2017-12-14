@@ -29,12 +29,12 @@ namespace AZ
                 if (typeMatch == TypeMatch::Exact)
                 {
                     using Binder = ConstFunctionBindingTemplate<Class, ContextType>;
-                    m_bindings.emplace_back(new Binder(Func));
+                    m_bindings.emplace_back(AZStd::make_unique<Binder>(Func));
                 }
                 else
                 {
                     using Binder = ConstDerivedFunctionBindingTemplate<Class, ContextType>;
-                    m_bindings.emplace_back(new Binder(Func));
+                    m_bindings.emplace_back(AZStd::make_unique<Binder>(Func));
                 }
             }
 
@@ -49,12 +49,12 @@ namespace AZ
                 if (typeMatch == TypeMatch::Exact)
                 {
                     using Binder = FunctionBindingTemplate<Class, ContextType>;
-                    m_bindings.emplace_back(new Binder(Func));
+                    m_bindings.emplace_back(AZStd::make_unique<Binder>(Func));
                 }
                 else
                 {
                     using Binder = DerivedFunctionBindingTemplate<Class, ContextType>;
-                    m_bindings.emplace_back(new Binder(Func));
+                    m_bindings.emplace_back(AZStd::make_unique<Binder>(Func));
                 }
             }
 

@@ -32,7 +32,7 @@ namespace EMStudio
         , public OutlinerCallback
     {
         Q_OBJECT
-                 MCORE_MEMORYOBJECTCATEGORY(OutlinerPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+                MCORE_MEMORYOBJECTCATEGORY(OutlinerPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
         // class ID
@@ -75,7 +75,7 @@ namespace EMStudio
         void OnAddItem(OutlinerCategoryItem* item) override;
         void OnRemoveItem(OutlinerCategoryItem* item) override;
         void OnItemModified() override;
-        void OnRegisterCategory(const QString& name) override;
+        void OnRegisterCategory(OutlinerCategory* category) override;
         void OnUnregisterCategory(const QString& name) override;
         void UpdateViewerAndRestoreOldSelection();
         void UpdateViewer();

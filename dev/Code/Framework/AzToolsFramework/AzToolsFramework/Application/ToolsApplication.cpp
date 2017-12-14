@@ -17,6 +17,7 @@
 #include <AzCore/Debug/Profiler.h>
 
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
@@ -53,10 +54,15 @@
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
+#include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
 #include <AzToolsFramework/UI/LegacyFramework/MainWindowSavedState.h>
 
 #include <QtWidgets/QMessageBox>
-
+#include <QDir>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMap>
 // Not possible to use AZCore's operator new overrides until we address the overall problems
 // with allocators. CryMemoryManager overrides new, so doing so here requires disabling theirs.
 // Fortunately that's simple, but CryEngine makes heavy use of static-init time allocation, which
@@ -67,6 +73,12 @@ namespace AzToolsFramework
 {
     namespace Internal
     {
+        static const char* s_engineConfigFileName = "engine.json";
+        static const char* s_engineConfigExternalEnginePathKey = "ExternalEnginePath";
+        static const char* s_engineConfigEngineVersionKey = "LumberyardVersion";
+
+        static const char* s_startupLogWindow = "Startup";
+
         template<typename IdContainerType>
         void DeleteEntities(const IdContainerType& entityIds)
         {
@@ -78,14 +90,15 @@ namespace AzToolsFramework
             }
 
             UndoSystem::URSequencePoint* currentUndoBatch = nullptr;
-            EBUS_EVENT_RESULT(currentUndoBatch, ToolsApplicationRequests::Bus, GetCurrentUndoBatch);
+            ToolsApplicationRequests::Bus::BroadcastResult(
+                currentUndoBatch, &ToolsApplicationRequests::Bus::Events::GetCurrentUndoBatch);
 
             bool createdUndo = false;
             if (!currentUndoBatch)
             {
                 createdUndo = true;
-                EBUS_EVENT(ToolsApplicationRequests::Bus, BeginUndoBatch, "Delete Selected");
-                EBUS_EVENT_RESULT(currentUndoBatch, ToolsApplicationRequests::Bus, GetCurrentUndoBatch);
+                ToolsApplicationRequests::Bus::BroadcastResult(
+                    currentUndoBatch, &ToolsApplicationRequests::Bus::Events::BeginUndoBatch, "Delete Selected");
                 AZ_Assert(currentUndoBatch, "Failed to create new undo batch.");
             }
 
@@ -150,14 +163,190 @@ namespace AzToolsFramework
 
     } // Internal
 
-    ToolsApplication::ToolsApplication()
-        : m_selectionBounds(AZ::Aabb())
+#define AZ_MAX_ENGINE_VERSION_LEN   64
+    // Private Implementation class to manage the engine root and version
+    // Note: We are not using any AzCore classes because the ToolsApplication
+    // initialization happens early on, before the Allocators get instantiated,
+    // so we are using Qt privately instead 
+    class ToolsApplication::EngineConfigImpl
+    {
+    private:
+        friend class ToolsApplication;
+
+        typedef QMap<QString, QString> EngineJsonMap;
+
+        EngineConfigImpl(const char* logWindow, const char* fileName)
+            : m_logWindow(logWindow)
+            , m_fileName(fileName)
+            , m_isEngineExternal(false)
+        {
+            m_engineRoot[0] = '\0';
+            m_engineVersion[0] = '\0';
+        }
+
+        char            m_engineRoot[AZ_MAX_PATH_LEN];
+        char            m_engineVersion[AZ_MAX_ENGINE_VERSION_LEN];
+        bool            m_isEngineExternal;
+        EngineJsonMap   m_engineConfigMap;
+        const char*     m_logWindow;
+        const char*     m_fileName;
+
+
+        // Read an engine configuration into a map of key/value pairs
+        bool ReadEngineConfigIntoMap(QString engineJsonPath, EngineJsonMap& engineJsonMap)
+        {
+            QFile engineJsonFile(engineJsonPath);
+            if (!engineJsonFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            {
+                AZ_Warning(m_logWindow, false, "Unable to open file '%s' in the current root directory", engineJsonPath.toUtf8().data());
+                return false;
+            }
+
+            QByteArray engineJsonData = engineJsonFile.readAll();
+            engineJsonFile.close();
+            QJsonDocument engineJsonDoc(QJsonDocument::fromJson(engineJsonData));
+            if (engineJsonDoc.isNull())
+            {
+                AZ_Warning(m_logWindow, false, "Unable to read file '%s' in the current root directory", engineJsonPath.toUtf8().data());
+                return false;
+            }
+
+            QJsonObject engineJsonRoot = engineJsonDoc.object();
+            for (const QString& configKey : engineJsonRoot.keys())
+            {
+                QJsonValue configValue = engineJsonRoot[configKey];
+                if (configValue.isString() || configValue.isDouble())
+                {
+                    // Only map strings and numbers, ignore every other type
+                    engineJsonMap[configKey] = configValue.toString();
+                }
+                else
+                {
+                    AZ_Warning(m_logWindow, false, "Ignoring key '%s' from '%s', unsupported type.", configKey.toUtf8().data(), engineJsonPath.toUtf8().data());
+                }
+            }
+            return true;
+        }
+
+        // Initialize the engine config object based on the current 
+        bool Initialize(const char* currentAppRoot)
+        {
+            // Start with the app root as the engine root (legacy), but check to see if the engine root
+            // is external to the app root
+            azstrncpy(m_engineRoot, AZ_ARRAY_SIZE(m_engineRoot), currentAppRoot, strlen(currentAppRoot) + 1);
+
+            // From the appRoot, check and see if we can read any external engine reference in engine.json 
+            QString engineJsonFileName = QString(m_fileName);
+            QString engineJsonFilePath = QDir(currentAppRoot).absoluteFilePath(engineJsonFileName);
+
+            // From the appRoot, check and see if we can read any external engine reference in engine.json 
+            if (!QFile::exists(engineJsonFilePath))
+            {
+                AZ_Warning(m_logWindow, false, "Unable to find '%s' in the current root directory.", m_fileName);
+                return false;
+            }
+            if (!ReadEngineConfigIntoMap(engineJsonFilePath, m_engineConfigMap))
+            {
+                AZ_Warning(m_logWindow, false, "Defaulting root engine path to '%s'", currentAppRoot);
+                return false;
+            }
+
+            // Read in the local engine version value
+            auto localEngineVersionValue = m_engineConfigMap.find(QString(AzToolsFramework::Internal::s_engineConfigEngineVersionKey));
+            QString localEngineVersion(localEngineVersionValue.value());
+            azstrncpy(m_engineVersion, AZ_ARRAY_SIZE(m_engineVersion), localEngineVersion.toUtf8().data(), localEngineVersion.length() + 1);
+
+            // If the local engine.json does not have a 'ExternalEnginePath';
+            auto externalEnginePathValue = m_engineConfigMap.find(QString(AzToolsFramework::Internal::s_engineConfigExternalEnginePathKey));
+            if (externalEnginePathValue == m_engineConfigMap.end())
+            {
+                // If the local engine.json does not have a 'ExternalEnginePath';
+                // This current root is the engine root, no further action needed
+                return false;
+            }
+
+            if (localEngineVersionValue == m_engineConfigMap.end())
+            {
+                AZ_Warning(m_logWindow, false, "Engine version not specified in the engine.json file (%s).", engineJsonFilePath.toUtf8().data());
+                return false;
+            }
+
+            // Validate the 'ExternalEnginePath' value read from the root engine.json
+            QString externalEnginePath(externalEnginePathValue.value());
+            QDir externalEnginePathDir(externalEnginePath);
+            if (!externalEnginePathDir.exists())
+            {
+                AZ_Warning(m_logWindow,  false, "External engine path '%s' is invalid.", externalEnginePath.toUtf8().data());
+                return false;
+            }
+
+            QString externalEngineJsonPath = externalEnginePathDir.absoluteFilePath(engineJsonFileName);
+            if (!QFile::exists(externalEngineJsonPath))
+            {
+                AZ_Warning(m_logWindow, false, "Unable to find '%s' in the external engine's base directory (%s).", m_fileName, externalEnginePath.toUtf8().data());
+                return false;
+            }
+
+            // Read the engine.json from the externalenginepath root
+            EngineJsonMap   externalEngineJsonMap;
+            if (!ReadEngineConfigIntoMap(externalEngineJsonPath, externalEngineJsonMap))
+            {
+                AZ_Warning(m_logWindow, false, "Unable to read '%s' in the external engine's base directory (%s).", m_fileName, externalEnginePath.toUtf8().data());
+                return false;
+            }
+            auto externalEngineJsonConfigPathValue = externalEngineJsonMap.find(QString(AzToolsFramework::Internal::s_engineConfigExternalEnginePathKey));
+            if (externalEngineJsonConfigPathValue != externalEngineJsonMap.end())
+            {
+                AZ_Warning(m_logWindow, false, "External engine path '%s' is not an engine root path.  It is marked as an external app path  (you can only reference true engine root paths).", externalEnginePath.toUtf8().data());
+                return false;
+            }
+            auto externalEngineVersionValue = externalEngineJsonMap.find(QString(AzToolsFramework::Internal::s_engineConfigEngineVersionKey));
+            if (externalEngineVersionValue == externalEngineJsonMap.end())
+            {
+                AZ_Warning(m_logWindow, false, "Engine version not specified in the external engine folder's %s file (%s).", m_fileName, externalEngineJsonPath.toUtf8().data());
+                return false;
+            }
+
+            QString externalEngineVersion(externalEngineVersionValue.value());
+            if (localEngineVersion.compare(externalEngineVersion, Qt::CaseInsensitive) != 0)
+            {
+                // Its okay to continue if there is a version mismatch, but show the warning anyways.  This should also be caught by the build scripts
+                AZ_Warning(m_logWindow, false, "The external version (%s) does not match the root engine version (%s).  ", externalEngineVersion.toUtf8().data(), localEngineVersion.toUtf8().data());
+            }
+
+            azstrncpy(m_engineRoot, AZ_ARRAY_SIZE(m_engineRoot), externalEnginePath.toUtf8().data(), externalEnginePath.length() + 1);
+            m_isEngineExternal = true;
+            return true;
+        }
+
+        const char* GetEngineRoot() const
+        {
+            return m_engineRoot;
+        }
+
+        const char* GetEngineVersion() const
+        {
+            return m_engineVersion;
+        }
+
+        const bool IsEngineExternal() const
+        {
+            return m_isEngineExternal;
+        }
+    };
+
+
+    ToolsApplication::ToolsApplication(int* argc, char*** argv)
+        : AzFramework::Application(argc, argv)
+        , m_selectionBounds(AZ::Aabb())
         , m_undoStack(nullptr)
         , m_currentBatchUndo(nullptr)
         , m_isDuringUndoRedo(false)
         , m_isInIsolationMode(false)
     {
         ToolsApplicationRequests::Bus::Handler::BusConnect();
+        m_engineConfigImpl.reset(new ToolsApplication::EngineConfigImpl(AzToolsFramework::Internal::s_startupLogWindow, 
+                                                                        AzToolsFramework::Internal::s_engineConfigFileName));
     }
 
     ToolsApplication::~ToolsApplication()
@@ -191,6 +380,7 @@ namespace AzToolsFramework
         RegisterComponentDescriptor(AssetSystem::AssetSystemComponent::CreateDescriptor());
         RegisterComponentDescriptor(PerforceComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::SevenZipComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::SliceDependencyBrowserComponent::CreateDescriptor());
     }
 
     AZ::ComponentTypeList ToolsApplication::GetRequiredSystemComponents() const
@@ -207,11 +397,35 @@ namespace AzToolsFramework
                 azrtti_typeid<AssetSystem::AssetSystemComponent>(),
                 azrtti_typeid<PerforceComponent>(),
                 azrtti_typeid<AzToolsFramework::SevenZipComponent>(),
+                azrtti_typeid<AzToolsFramework::SliceDependencyBrowserComponent>(),
                 azrtti_typeid<Components::EditorEntityModelComponent>()
             });
 
         return components;
     }
+
+    void ToolsApplication::Start(const Descriptor& descriptor, const StartupParameters& startupParameters/* = StartupParameters()*/)
+    {
+        Application::Start(descriptor, startupParameters);
+        InitializeEngineConfig();
+    }
+
+    void ToolsApplication::Start(const char* applicationDescriptorFile, const StartupParameters& startupParameters/* = StartupParameters()*/)
+    {
+        Application::Start(applicationDescriptorFile, startupParameters);
+        InitializeEngineConfig();
+    }
+
+    void ToolsApplication::InitializeEngineConfig()
+    {
+        AZ_Assert(m_assetRoot[0] != '\0', "m_assetRoot is not initialized");
+        if (!m_engineConfigImpl->Initialize(m_assetRoot))
+        {
+            AZ_Warning(AzToolsFramework::Internal::s_startupLogWindow, false, "Defaulting engine root path to '%s'", m_assetRoot);
+        }
+    }
+
+
 
     void ToolsApplication::StartCommon(AZ::Entity* systemEntity)
     {
@@ -644,6 +858,54 @@ namespace AzToolsFramework
         return entitiesHaveCommonRoot;
     }
 
+    void ToolsApplication::FindTopLevelEntityIdsInactive(const EntityIdList& entityIdsToCheck, EntityIdList& topLevelEntityIds)
+    {
+        for (AZ::EntityId entityId : entityIdsToCheck)
+        {
+            AZ::Entity* entity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+            if (!entity)
+            {
+                continue;
+            }
+            Components::TransformComponent* transformComponent = entity->FindComponent<Components::TransformComponent>();
+            if (!transformComponent)
+            {
+                continue;
+            }
+
+            bool isTopLevel = true;
+            AZ::EntityId parentId = transformComponent->GetParentId();
+            while (parentId.IsValid())
+            {
+                if (AZStd::find(entityIdsToCheck.begin(), entityIdsToCheck.end(), parentId) != entityIdsToCheck.end())
+                {
+                    isTopLevel = false;
+                    break;
+                }
+                else
+                {
+                    AZ::Entity* parentEntity = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(parentEntity, &AZ::ComponentApplicationBus::Events::FindEntity, parentId);
+                    parentId.SetInvalid();
+                    if (parentEntity)
+                    {
+                        transformComponent = parentEntity->FindComponent<Components::TransformComponent>();
+                        if (transformComponent)
+                        {
+                            parentId = transformComponent->GetParentId();
+                        }
+                    }
+                }
+            }
+
+            if (isTopLevel)
+            {
+                topLevelEntityIds.push_back(entityId);
+            }
+        }
+    }
+
     bool ToolsApplication::RequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const ToolsApplicationRequests::RequestEditProgressCallback& progressCallback)
     {
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
@@ -729,7 +991,7 @@ namespace AzToolsFramework
 
     int ToolsApplication::RemoveDirtyEntity(AZ::EntityId entityId)
     {
-        return (int)m_dirtyEntities.erase(entityId);
+        return static_cast<int>(m_dirtyEntities.erase(entityId));
     }
 
     void ToolsApplication::UndoPressed()
@@ -792,17 +1054,19 @@ namespace AzToolsFramework
         if (!m_currentBatchUndo)
         {
             m_currentBatchUndo = aznew UndoSystem::URSequencePoint(label, 0);
+
+            // notify Cry undo has started (SandboxIntegrationManager)
+            // Only do this at the root level. OnEndUndo will be called at the root
+            // level when EndUndoBatch is called.
+            EBUS_EVENT(ToolsApplicationEvents::Bus, OnBeginUndo, label);
         }
         else
         {
-            UndoSystem::URSequencePoint* pCurrent = m_currentBatchUndo;
+            UndoSystem::URSequencePoint* current = m_currentBatchUndo;
 
             m_currentBatchUndo = aznew UndoSystem::URSequencePoint(label, 0);
-            m_currentBatchUndo->SetParent(pCurrent);
+            m_currentBatchUndo->SetParent(current);
         }
-
-        // notify Cry undo has started (SandboxIntegrationManager)
-        EBUS_EVENT(ToolsApplicationEvents::Bus, OnBeginUndo, label);
 
         return m_currentBatchUndo;
     }
@@ -821,7 +1085,7 @@ namespace AzToolsFramework
 
         if (m_undoStack)
         {
-            auto ptr = m_undoStack->GetTop();
+            const auto ptr = m_undoStack->GetTop();
             if (ptr && ptr == expected)
             {
                 m_currentBatchUndo = ptr;
@@ -834,12 +1098,31 @@ namespace AzToolsFramework
         return BeginUndoBatch(label);
     }
 
+    /**
+     * Iterate over all sequence points for this undo batch, checking in each
+     * case if it changed or not - if no change was recorded, discard this undo.
+     */
+    static bool DidSequencePointChange(const UndoSystem::URSequencePoint* root)
+    {
+        bool changed = false;
+        const UndoSystem::URSequencePoint::ChildVec& children = root->GetChildren();
+        if (!children.empty())
+        {
+            for (const UndoSystem::URSequencePoint* child : children)
+            {
+                if (changed |= DidSequencePointChange(child))
+                {
+                    break;
+                }
+            }
+        }
+
+        return root->Changed() || changed;
+    }
+
     void ToolsApplication::EndUndoBatch()
     {
         AZ_Assert(m_currentBatchUndo, "Cannot end batch - no batch current");
-
-        // notify Cry undo has ended (SandboxIntegrationManager)
-        EBUS_EVENT(ToolsApplicationEvents::Bus, OnEndUndo, m_currentBatchUndo->GetName().c_str());
 
         if (m_currentBatchUndo->GetParent())
         {
@@ -848,15 +1131,22 @@ namespace AzToolsFramework
         }
         else
         {
-            // we're at root
+            // we're at the root
             
             // only undo at bottom of scope (first invoked ScopedUndoBatch in 
             // chain/hierarchy must go out of scope)
             CreateUndosForDirtyEntities();
             m_dirtyEntities.clear();
+
+            // check if any change was recorded during this undo
+            bool changed = DidSequencePointChange(m_currentBatchUndo);
+
+            // notify Cry undo has ended (SandboxIntegrationManager)
+            ToolsApplicationEvents::Bus::Broadcast(
+                &ToolsApplicationEvents::Bus::Events::OnEndUndo, m_currentBatchUndo->GetName().c_str(), changed);
             
             // record each undo batch
-            if (m_undoStack)
+            if (m_undoStack && changed)
             {
                 m_undoStack->Post(m_currentBatchUndo);
             }
@@ -880,28 +1170,30 @@ namespace AzToolsFramework
             return;
         }
 
-        for (auto it = m_dirtyEntities.begin(); it != m_dirtyEntities.end(); ++it)
+        for (AZ::EntityId entityId : m_dirtyEntities)
         {
             AZ::Entity* entity = nullptr;
-            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, *it);
+            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
 
             if (entity)
             {
                 // see if it needs updating in the list:
-                EntityStateCommand* pState = azdynamic_cast<EntityStateCommand*>(m_currentBatchUndo->Find(static_cast<AZ::u64>(*it), AZ::AzTypeInfo<EntityStateCommand>::Uuid()));
-                if (!pState)
+                EntityStateCommand* state = azdynamic_cast<EntityStateCommand*>(m_currentBatchUndo->Find(
+                    static_cast<AZ::u64>(entityId), AZ::AzTypeInfo<EntityStateCommand>::Uuid()));
+                
+                if (!state)
                 {
-                    pState = aznew EntityStateCommand(static_cast<AZ::u64>(*it));
-                    pState->SetParent(m_currentBatchUndo);
+                    state = aznew EntityStateCommand(static_cast<AZ::u64>(entityId));
+                    state->SetParent(m_currentBatchUndo);
                     // capture initial state of entity (before undo)
-                    pState->Capture(entity, true);
+                    state->Capture(entity, true);
                 }
 
                 // capture last state of entity (after undo) - for redo
-                pState->Capture(entity, false);
+                state->Capture(entity, false);
             }
 
-            m_undoCache.UpdateCache(*it);
+            m_undoCache.UpdateCache(entityId);
         }
     }
 
@@ -954,7 +1246,7 @@ namespace AzToolsFramework
             // For example A has child B and B has child C, and if A and C are isolated, B is too.
             AZStd::vector<AZ::EntityId> inbetweenEntityIds;
 
-            for (AZ::EntityId entityId : m_selectedEntities)
+            for (const AZ::EntityId entityId : m_selectedEntities)
             {
                 bool addInbetweenEntityIds = false;
                 inbetweenEntityIds.clear();
@@ -964,7 +1256,7 @@ namespace AzToolsFramework
 
                 while (parentEntityId.IsValid())
                 {
-                    EntityIdSet::iterator found = m_isolatedEntityIdSet.find(parentEntityId);
+                    const EntityIdSet::iterator found = m_isolatedEntityIdSet.find(parentEntityId);
                     if (found != m_isolatedEntityIdSet.end())
                     {
                         addInbetweenEntityIds = true;
@@ -972,7 +1264,7 @@ namespace AzToolsFramework
                     }
                     inbetweenEntityIds.push_back(parentEntityId);
 
-                    AZ::EntityId currentParentId = parentEntityId;
+                    const AZ::EntityId currentParentId = parentEntityId;
                     parentEntityId.SetInvalid();
                     AZ::TransformBus::EventResult(parentEntityId, currentParentId, &AZ::TransformBus::Events::GetParentId);
                 }
@@ -1014,4 +1306,106 @@ namespace AzToolsFramework
     {
         return m_isInIsolationMode;
     }
+
+    const char* ToolsApplication::GetEngineRootPath() const
+    {
+        return m_engineConfigImpl->GetEngineRoot();
+    }
+
+    const char* ToolsApplication::GetEngineVersion() const
+    {
+        return m_engineConfigImpl->GetEngineVersion();
+    }
+
+    bool ToolsApplication::IsEngineRootExternal() const
+    {
+        return m_engineConfigImpl->IsEngineExternal();
+    }
+
+
+
+    AZ::Outcome<AZStd::string, AZStd::string> ToolsApplication::ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const
+    {
+#if defined (AZ_PLATFORM_WINDOWS)
+        static const char* toolSubFolder = "/Tools/LmbrSetup/Win";
+#elif defined(AZ_PLATFORM_APPLE)
+        static const char* toolSubFolder = "/Tools/LmbrSetup/Mac";
+#else
+#error Unsupported Platform for tools
+#endif
+        AZStd::string engineToolsSubfolderBase(toolSubFolder);
+
+        // There are two (or four) possible places where the project configurator can exist.  
+        // We will search through the possibilities in order to find a match
+        AZStd::vector<AZStd::string> toolTargetSearchPaths;
+
+        // 1. The current executable's path
+        AZStd::string appDirPath;
+        AZStd::string curSubFolder;
+
+        // If we want to disregard whatever the current executable's path is
+        if (currentExecutablePath)
+        {
+            appDirPath = AZStd::string(currentExecutablePath);
+
+            // Consider the current executable's folder as a search path
+            AZStd::string localAppPath;
+            if (AzFramework::StringFunc::Path::ConstructFull(appDirPath.c_str(), toolApplicationName, localAppPath, true))
+            {
+                toolTargetSearchPaths.push_back(localAppPath);
+            }
+
+            // Walk up the current folder to the base (root) folder if possible
+            AZStd::string::size_type lastSeperatorIndex = appDirPath.rfind('/');
+#if defined (AZ_PLATFORM_WINDOWS)
+            if (lastSeperatorIndex == AZStd::string::npos)
+            {
+                lastSeperatorIndex = appDirPath.rfind('\\');
+            }
+#endif
+            if (lastSeperatorIndex != AZStd::string::npos)
+            {
+                // Consider the current base (root) folder to contain the tools/lmbrsetup subfolder
+                AZStd::string parentPath = appDirPath.substr(0, lastSeperatorIndex);
+                curSubFolder = appDirPath.substr(lastSeperatorIndex + 1);
+                AZStd::string localToolAppPath;
+                if (AzFramework::StringFunc::Path::ConstructFull(parentPath.c_str(), toolSubFolder, toolApplicationName, localToolAppPath, true))
+                {
+                    toolTargetSearchPaths.push_back(localToolAppPath);
+                }
+            }
+        }
+
+        // Next priority is to look the the engine root's tools/lmbrsetup folder, but only if a current subfolder was determined
+        {
+            AZStd::string engineToolsAppPath;
+            if (AzFramework::StringFunc::Path::ConstructFull(m_engineConfigImpl->GetEngineRoot(), toolSubFolder, toolApplicationName, engineToolsAppPath, true))
+            {
+                toolTargetSearchPaths.push_back(engineToolsAppPath);
+            }
+        }
+        // Next priority is to look at the engine's local build subfolder, but only if a current subfolder was determined
+        if (curSubFolder.length() > 0)
+        {
+            AZStd::string engineBuildAppPath;
+            if (AzFramework::StringFunc::Path::ConstructFull(m_engineConfigImpl->GetEngineRoot(), curSubFolder.c_str(), toolApplicationName, engineBuildAppPath, true))
+            {
+                toolTargetSearchPaths.push_back(engineBuildAppPath);
+            }
+        }
+
+        for (const AZStd::string& searchAbsPath : toolTargetSearchPaths)
+        {
+            if (AZ::IO::SystemFile::Exists(searchAbsPath.c_str()))
+            {
+                return AZ::Success(AZStd::string(searchAbsPath));
+            }
+        }
+
+        return AZ::Failure(AZStd::string::format("Unable to resolve tool application path for '%s'", toolApplicationName));
+    }
+
+    
+
+
 } // namespace AzToolsFramework

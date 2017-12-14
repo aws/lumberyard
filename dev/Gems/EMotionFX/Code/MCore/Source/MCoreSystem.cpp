@@ -24,12 +24,6 @@
 #include "MemoryTracker.h"
 #include "FileSystem.h"
 
-/*
-// include the eval system
-#ifdef MCORE_EVALUATION
-    #include "../../Evaluation/EvalLicenseeInfo.h"
-#endif
-*/
 
 namespace MCore
 {
@@ -49,14 +43,6 @@ namespace MCore
     // static main init method
     bool Initializer::Init(InitSettings* settings)
     {
-        /*
-            // enable specific float exceptions
-            #ifdef MCORE_PLATFORM_WINDOWS
-                #include <float.h>
-                _controlfp(_EM_INEXACT|_EM_OVERFLOW|_EM_UNDERFLOW, _MCW_EM);
-            #endif
-        */
-
         // use the defaults if a nullptr is specified
         InitSettings defaultSettings;
         InitSettings* realSettings = (settings) ? settings : &defaultSettings;
@@ -100,8 +86,7 @@ namespace MCore
         gMCore.Get()->~MCoreSystem();
         freeFunction(gMCore.Get());
 
-        //delete gMCore;
-        gMCore.Set(nullptr);
+        gMCore.Reset();
     }
 
     //-----------------------------------------------------------------
@@ -196,17 +181,6 @@ namespace MCore
         mMemTempBufferSize  = 256 * 1024;
         mMemTempBuffer      = Allocate(mMemTempBufferSize, MCORE_MEMCATEGORY_SYSTEM);// 256 kb
         MCORE_ASSERT(mMemTempBuffer);
-
-        /*
-            // TODO: add the eval check
-            #if defined(MCORE_EVALUATION)
-                LicenseValidator licenseChecker;
-
-                // check if the license is valid and update it
-                if (licenseChecker.HasValidLicense() == false)
-                    return false;
-            #endif
-        */
 
         // start accepting jobs in the manager
         mJobManager->StartAcceptingJobs();
@@ -309,26 +283,21 @@ namespace MCore
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_MATRIX,              "MCORE_MEMCATEGORY_MATRIX");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_HASHTABLE,           "MCORE_MEMCATEGORY_HASHTABLE");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_TRILISTOPTIMIZER,    "MCORE_MEMCATEGORY_TRILISTOPTIMIZER");
-        memTracker.RegisterCategory(MCORE_MEMCATEGORY_EXCEPTION,           "MCORE_MEMCATEGORY_EXCEPTION");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_LOGMANAGER,          "MCORE_MEMCATEGORY_LOGMANAGER");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_COMMANDLINE,         "MCORE_MEMCATEGORY_COMMANDLINE");
-        memTracker.RegisterCategory(MCORE_MEMCATEGORY_PAIR,                "MCORE_MEMCATEGORY_PAIR");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_LOGFILECALLBACK,     "MCORE_MEMCATEGORY_LOGFILECALLBACK");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_HALTONSEQ,           "MCORE_MEMCATEGORY_HALTONSEQ");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_SMALLARRAY,          "MCORE_MEMCATEGORY_SMALLARRAY");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_COORDSYSTEM,         "MCORE_MEMCATEGORY_COORDSYSTEM");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_MCORESYSTEM,         "MCORE_MEMCATEGORY_MCORESYSTEM");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_COMMANDSYSTEM,       "MCORE_MEMCATEGORY_COMMANDSYSTEM");
-        memTracker.RegisterCategory(MCORE_MEMCATEGORY_ENCRYPTION,          "MCORE_MEMCATEGORY_ENCRYPTION");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_ATTRIBUTES,          "MCORE_MEMCATEGORY_ATTRIBUTES");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_IDGENERATOR,         "MCORE_MEMCATEGORY_IDGENERATOR");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_WAVELETS,            "MCORE_MEMCATEGORY_WAVELETS");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_HUFFMAN,             "MCORE_MEMCATEGORY_HUFFMAN");
-        memTracker.RegisterCategory(MCORE_MEMCATEGORY_BITSTREAM,           "MCORE_MEMCATEGORY_BITSTREAM");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_ABSTRACTDATA,        "MCORE_MEMCATEGORY_ABSTRACTDATA");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_SYSTEM,              "MCORE_MEMCATEGORY_SYSTEM");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_THREADING,           "MCORE_MEMCATEGORY_THREADING");
-        memTracker.RegisterCategory(MCORE_MEMCATEGORY_OBJECTPOOL,          "MCORE_MEMCATEGORY_OBJECTPOOL");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_ATTRIBUTEPOOL,       "MCORE_MEMCATEGORY_ATTRIBUTEPOOL");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_ATTRIBUTEFACTORY,    "MCORE_MEMCATEGORY_ATTRIBUTEFACTORY");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_RANDOM,              "MCORE_MEMCATEGORY_RANDOM");

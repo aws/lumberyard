@@ -251,7 +251,17 @@ namespace AzToolsFramework
         AZStd::swap(children, m_entityOrphanTable[entityId]);
         for (auto childId : children)
         {
-            ReparentChild(childId, entityId, AZ::EntityId());
+            // When an orphan child entity is added before its transform parent, the orphan child entity 
+            // will be added to the root entity (root entity has an invalid EntityId) first and then 
+            // reparented to its real transform parent later after the parent is added. Therefore if the 
+            // root entity doesn't contain the orphan child entity, it means the orphan child entity has 
+            // not been added, so we skip reparenting.
+            AZ::EntityId rootEntityId = AZ::EntityId();
+            auto& parentInfo = GetInfo(rootEntityId);
+            if (parentInfo.HasChild(childId))
+            {
+                ReparentChild(childId, entityId, AZ::EntityId());
+            }
         }
 
         EditorEntitySortNotificationBus::MultiHandler::BusConnect(entityId);
@@ -274,7 +284,7 @@ namespace AzToolsFramework
             m_entityOrphanTable[entityId].insert(childId);
         }
 
-        m_savedOrderInfo[entityId] = entityInfo.GetIndexForSorting();
+        m_savedOrderInfo[entityId] = AZStd::make_pair(entityInfo.GetParent(), entityInfo.GetIndexForSorting());
 
         if (entityId.IsValid())
         {
@@ -316,8 +326,17 @@ namespace AzToolsFramework
 
             EditorEntityInfoNotificationBus::Broadcast(&EditorEntityInfoNotificationBus::Events::OnEntityInfoUpdatedAddChildEnd, parentId, childId);
         }
-
-        AzToolsFramework::AddEntityIdToSortInfo(parentId, childId, m_forceAddToBack);
+        
+        AZStd::unordered_map<AZ::EntityId, AZStd::pair<AZ::EntityId, AZ::u64>>::const_iterator orderItr = m_savedOrderInfo.find(childId);
+        if (orderItr != m_savedOrderInfo.end() && orderItr->second.first == parentId)
+        {
+            AzToolsFramework::RecoverEntitySortInfo(parentId, childId, orderItr->second.second);
+            m_savedOrderInfo.erase(childId);
+        }
+        else
+        {
+            AzToolsFramework::AddEntityIdToSortInfo(parentId, childId, m_forceAddToBack);
+        }
         childInfo.UpdateSliceInfo();
         childInfo.UpdateOrderInfo(true);
     }
@@ -482,7 +501,8 @@ namespace AzToolsFramework
             auto savedSortInfoIter = m_savedOrderInfo.find(oldEntityId);
             if (savedSortInfoIter != m_savedOrderInfo.end())
             {
-                AZ::u64 savedSortIndex = savedSortInfoIter->second;
+                AZStd::pair<AZ::EntityId, AZ::u64> parentIdAndSortIndexPair = savedSortInfoIter->second;
+                AZ::u64 savedSortIndex = parentIdAndSortIndexPair.second;
 
                 // Get the appropriate parent ID
                 auto entityInfo = GetInfo(newEntityId);

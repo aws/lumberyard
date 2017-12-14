@@ -19,7 +19,6 @@
 
 namespace LmbrCentral
 {
-
     class BoxShape
         : public ShapeComponentRequestsBus::Handler
         , public BoxShapeComponentRequestsBus::Handler
@@ -80,6 +79,7 @@ namespace LmbrCentral
         AZ::Aabb GetEncompassingAabb() override;
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
+        AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) override;
 
         // BoxShapeComponentRequestBus::Handler implementation
         inline BoxShapeConfig GetBoxConfiguration() override { return GetConfiguration(); }

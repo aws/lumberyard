@@ -29,9 +29,19 @@ namespace ScriptCanvas
         ExecutionIn,
         ExecutionOut,
         DataIn,
-        DataOut
+        DataOut,
+        LatentOut,
     };
 
+    bool CanConnect(SlotType a, SlotType b);
+    bool CanDataConnect(SlotType a, SlotType b);
+    bool CanExecutionConnect(SlotType a, SlotType b);
+    bool IsData(SlotType type);
+    bool IsExecution(SlotType type);
+    bool IsExecutionOut(SlotType type);
+    bool IsIn(SlotType type);
+    bool IsOut(SlotType type);
+    
     class Slot
     {
     public:
@@ -83,4 +93,51 @@ namespace ScriptCanvas
 
         AZStd::vector<AZStd::unique_ptr<Contract>> m_contracts;
     };
-}
+    
+    AZ_INLINE bool CanConnect(SlotType a, SlotType b)
+    {
+        return CanDataConnect(a, b) || CanExecutionConnect(a, b);
+    }
+
+    AZ_INLINE bool CanDataConnect(SlotType a, SlotType b)
+    {
+        return (a == SlotType::DataIn && b == SlotType::DataOut)
+            || (b == SlotType::DataIn && a == SlotType::DataOut);
+    }
+
+    AZ_INLINE bool CanExecutionConnect(SlotType a, SlotType b)
+    {
+        return (a == SlotType::ExecutionIn && IsExecutionOut(b))
+            || (b == SlotType::ExecutionIn && IsExecutionOut(a));
+    }
+
+    AZ_INLINE bool IsData(SlotType type)
+    {
+        return type == SlotType::DataIn || type == SlotType::DataOut;
+    }
+    
+    AZ_INLINE bool IsExecution(SlotType type)
+    {
+        return type == SlotType::ExecutionIn
+            || type == SlotType::ExecutionOut
+            || type == SlotType::LatentOut;
+    }
+
+    AZ_INLINE bool IsExecutionOut(SlotType type)
+    {
+        return type == SlotType::ExecutionOut || type == SlotType::LatentOut;
+    }
+
+    AZ_INLINE bool IsIn(SlotType type)
+    {
+        return type == SlotType::ExecutionIn || type == SlotType::DataIn;
+    }
+
+    AZ_INLINE bool IsOut(SlotType type)
+    {
+        return type == SlotType::ExecutionOut
+            || type == SlotType::DataOut
+            || type == SlotType::LatentOut;
+    }
+
+} // namespace ScriptCanvas

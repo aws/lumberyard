@@ -164,18 +164,14 @@ void STexState::PostCreate()
 {
 }
 
-#if defined(_RENDERER)
-STexState::~STexState()
+void STexState::Destroy()
 {
 }
-#endif
 
-#if defined(_RENDERER)
-STexState::STexState(const STexState& src)
+void STexState::Init(const STexState& src)
 {
     memcpy(this, &src, sizeof(src));
 }
-#endif
 
 void STexState::SetComparisonFilter(bool bEnable)
 {

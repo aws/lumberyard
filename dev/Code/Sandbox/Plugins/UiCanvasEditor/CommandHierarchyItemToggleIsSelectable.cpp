@@ -15,7 +15,7 @@
 
 CommandHierarchyItemToggleIsSelectable::CommandHierarchyItemToggleIsSelectable(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    HierarchyItemRawPtrList& items)
+    const HierarchyItemRawPtrList& items)
     : QUndoCommand()
     , m_stack(stack)
     , m_hierarchy(hierarchy)
@@ -67,7 +67,7 @@ void CommandHierarchyItemToggleIsSelectable::SetIsSelectable(bool isSelectable)
 
 void CommandHierarchyItemToggleIsSelectable::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    HierarchyItemRawPtrList& items)
+    const HierarchyItemRawPtrList& items)
 {
     if (stack->GetIsExecuting())
     {

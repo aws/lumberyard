@@ -72,14 +72,25 @@ namespace AzToolsFramework
         {
             if (source_left.column() == source_right.column())
             {
-                QVariant leftData = sourceModel()->data(source_left);
-                QVariant rightData = sourceModel()->data(source_right);
-                if ((leftData.type() == QVariant::String) &&
-                    (rightData.type() == QVariant::String))
+                QVariant leftData = sourceModel()->data(source_left, AssetBrowserModel::Roles::EntryRole);
+                QVariant rightData = sourceModel()->data(source_right, AssetBrowserModel::Roles::EntryRole);
+                if (leftData.canConvert<const AssetBrowserEntry*>() && rightData.canConvert<const AssetBrowserEntry*>())
                 {
-                    QString leftString = leftData.toString();
-                    QString rightString = rightData.toString();
-                    return QString::compare(leftString, rightString, Qt::CaseInsensitive) > 0;
+                    auto leftEntry = qvariant_cast<const AssetBrowserEntry*>(leftData);
+                    auto rightEntry = qvariant_cast<const AssetBrowserEntry*>(rightData);
+
+                    // folders should always come first
+                    if (azrtti_istypeof<const FolderAssetBrowserEntry*>(leftEntry) && azrtti_istypeof<const SourceAssetBrowserEntry*>(rightEntry))
+                    {
+                        return false;
+                    }
+                    if (azrtti_istypeof<const SourceAssetBrowserEntry*>(leftEntry) && azrtti_istypeof<const FolderAssetBrowserEntry*>(rightEntry))
+                    {
+                        return true;
+                    }
+
+                    // if both entries are of same type, sort alphabetically
+                    return QString::compare(leftEntry->GetDisplayName().c_str(), rightEntry->GetDisplayName().c_str(), Qt::CaseInsensitive) > 0;
                 }
             }
             return QSortFilterProxyModel::lessThan(source_left, source_right);

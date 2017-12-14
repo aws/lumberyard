@@ -84,7 +84,7 @@ namespace CD
         eUT_ExceptSyncPrefab = eUT_All & (~eUT_SyncPrefab),
     };
 
-    void UpdateAll(SMainContext& mc, int updateType = eUT_All);
+    void UpdateAll(const SMainContext& mc, int updateType = eUT_All);
 
     bool IsCreationTool(EDesignerTool mode);
     bool IsSelectElementMode(EDesignerTool mode);
@@ -95,7 +95,7 @@ namespace CD
     void SyncPrefab(SMainContext& mc);
     void SyncMirror(Model* pModel);
     void RunTool(EDesignerTool tool);
-    void UpdateDrawnEdges(CD::SMainContext& mc);
+    void UpdateDrawnEdges(const CD::SMainContext& mc);
     void MessageBox(const QString& title, const QString& msg);
     BrushMatrix34 GetOffsetTM(ITransformManipulator* pManipulator, const BrushVec3& vOffset, const BrushMatrix34& worldTM);
 }

@@ -17,7 +17,6 @@
             "Exporter/MotionEventExport.cpp",
             "Exporter/MotionSetExport.cpp",
             "Exporter/NodeExport.cpp",
-            "Exporter/NodeLimitExport.cpp",
             "Exporter/SkeletalMotionExport.cpp",
             "Exporter/SkinExport.cpp",
             "Exporter/StringExport.cpp",

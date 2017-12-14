@@ -67,7 +67,8 @@ def load_android_armv7_common_settings(conf):
     env['LINKFLAGS'] += [
         system_root,
 
-        '-Wl,--fix-cortex-a8'   # required to fix a bug in some Cortex-A8 implementations for neon support
+        '-Wl,--fix-cortex-a8',  # required to fix a bug in some Cortex-A8 implementations for neon support
+        '-Wl,--icf=safe',       # removes duplicate code
     ]
 
     env['ANDROID_ARCH'] = 'armeabi-v7a'

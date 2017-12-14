@@ -52,7 +52,7 @@ namespace ScriptCanvasEditor
             /////
 
             // SetVariableNodeDescriptNotificationBus
-			void OnVariableActivated() override;
+            void OnVariableActivated() override;
             void OnAssignVariableChanged() override;
             ////
 

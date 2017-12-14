@@ -27,7 +27,6 @@
 #include <MCore/Source/AttributeVector3.h>
 #include <MCore/Source/AttributeVector4.h>
 #include <MCore/Source/AttributeQuaternion.h>
-#include <MCore/Source/AttributeMatrix.h>
 #include <MCore/Source/AttributeColor.h>
 #include <MCore/Source/AttributeArray.h>
 #include <MCore/Source/AttributeSettingsSet.h>
@@ -101,6 +100,7 @@ namespace EMotionFX
         virtual void GetTooltip(MCore::String* outResult) const;
         virtual ECategory GetPaletteCategory() const = 0;
         virtual AnimGraphObject* Clone(AnimGraph* animGraph) = 0;
+        virtual void PostClone(AnimGraphObject* sourceObject, AnimGraph* sourceAnimGraph) { }
         virtual AnimGraphObjectData* CreateObjectData() = 0;
         virtual AnimGraphObject* RecursiveClone(AnimGraph* animGraph, AnimGraphObject* parentObject);
 
@@ -112,13 +112,13 @@ namespace EMotionFX
         virtual void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
         virtual void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance);
         virtual void OnUpdateAttributes() {}
-        virtual void OnUpdateAttribute(MCore::Attribute* attribute, MCore::AttributeSettings* settings)             { MCORE_UNUSED(attribute);          MCORE_UNUSED(settings); }
-        virtual void OnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)                  { MCORE_UNUSED(animGraphInstance);      MCORE_UNUSED(newMotionSet); }
-        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)      { MCORE_UNUSED(animGraph);         MCORE_UNUSED(node);             MCORE_UNUSED(oldName); }
+        virtual void OnUpdateAttribute(MCore::Attribute* attribute, MCore::AttributeSettings* settings)          { MCORE_UNUSED(attribute);         MCORE_UNUSED(settings); }
+        virtual void OnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)            { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(newMotionSet); }
+        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)      { MCORE_UNUSED(animGraph);         MCORE_UNUSED(node);         MCORE_UNUSED(oldName); }
         virtual void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node)                                    { MCORE_UNUSED(animGraph);         MCORE_UNUSED(node); }
         virtual void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)                             { MCORE_UNUSED(animGraph);         MCORE_UNUSED(nodeToRemove); }
-        virtual void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)    { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(newMotionSet); }
-        virtual void OnActorMotionExtractionNodeChanged()                                                           {}
+        virtual void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)   { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(newMotionSet); }
+        virtual void OnActorMotionExtractionNodeChanged()                                                        {}
 
         void CopyBaseObjectTo(AnimGraphObject* object);
 
@@ -151,7 +151,6 @@ namespace EMotionFX
         MCORE_INLINE MCore::AttributeVector3*   GetAttributeVector3(uint32 index) const         { MCORE_ASSERT(mAttributeValues[index]->GetType() == MCore::AttributeVector3::TYPE_ID);     return static_cast<MCore::AttributeVector3*>(mAttributeValues[index]); }
         MCORE_INLINE MCore::AttributeVector4*   GetAttributeVector4(uint32 index) const         { MCORE_ASSERT(mAttributeValues[index]->GetType() == MCore::AttributeVector4::TYPE_ID);     return static_cast<MCore::AttributeVector4*>(mAttributeValues[index]); }
         MCORE_INLINE MCore::AttributeQuaternion* GetAttributeQuaternion(uint32 index) const     { MCORE_ASSERT(mAttributeValues[index]->GetType() == MCore::AttributeQuaternion::TYPE_ID);  return static_cast<MCore::AttributeQuaternion*>(mAttributeValues[index]); }
-        MCORE_INLINE MCore::AttributeMatrix*    GetAttributeMatrix(uint32 index) const          { MCORE_ASSERT(mAttributeValues[index]->GetType() == MCore::AttributeMatrix::TYPE_ID);      return static_cast<MCore::AttributeMatrix*>(mAttributeValues[index]); }
         MCORE_INLINE MCore::AttributeColor*     GetAttributeColor(uint32 index) const           { MCORE_ASSERT(mAttributeValues[index]->GetType() == MCore::AttributeColor::TYPE_ID);       return static_cast<MCore::AttributeColor*>(mAttributeValues[index]); }
         MCORE_INLINE MCore::AttributeArray*     GetAttributeArray(uint32 index) const           { MCORE_ASSERT(mAttributeValues[index]->GetType() == MCore::AttributeArray::TYPE_ID);       return static_cast<MCore::AttributeArray*>(mAttributeValues[index]); }
         MCORE_INLINE bool                       GetAttributeFloatAsBool(uint32 index) const     { MCORE_ASSERT(mAttributeValues[index]->GetType() == MCore::AttributeFloat::TYPE_ID);       return (static_cast<MCore::AttributeFloat*>(mAttributeValues[index])->GetValue() > MCore::Math::epsilon); }
@@ -166,11 +165,8 @@ namespace EMotionFX
         MCORE_INLINE AnimGraph* GetAnimGraph() const                                  { return mAnimGraph; }
         MCORE_INLINE void SetAnimGraph(AnimGraph* animGraph)                         { mAnimGraph = animGraph; }
 
-        //static void ReleaseAttributeInfoSets();
         static uint32 InterfaceTypeToDataType(uint32 interfaceType);
-        static uint32 InterfaceTypeToDataTypeLegacy(uint32 interfaceType);
-        //      static MCORE_INLINE MCore::AttributeSettings* GetAttributeInfo(uint32 attributeInfoSetIndex, uint32 attributeIndex)     { return AnimGraphObject::mAttributeInfoSets[attributeInfoSetIndex]->mAttributes->GetAttribute(attributeIndex); }
-
+        
         virtual uint32 GetAnimGraphSaveVersion() const        { return 1; }
 
         /**

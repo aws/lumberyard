@@ -35,9 +35,11 @@
 #include "TrackViewExportKeyTimeDlg.h"
 #include "AnimationContext.h"
 #include "TrackView/TrackViewCameraNode.h"
+#include "TrackView/DirectorNodeAnimator.h"
 #include "Components/IComponentCamera.h"
 #include "Util/AutoDirectoryRestoreFileDialog.h"
 #include "QtUI/WaitCursor.h"
+#include "Maestro/Types/AnimParamType.h"
 
 #include "QtUtil.h"
 
@@ -45,9 +47,9 @@
 
 namespace
 {
-    void SetTexture(Export::TPath& outName, const IRenderShaderResources* pRes, int nSlot)
+    void SetTexture(Export::TPath& outName, IRenderShaderResources* pRes, int nSlot)
     {
-        SEfResTexture* pTex = pRes->GetTexture(nSlot);
+        SEfResTexture* pTex = pRes->GetTextureResource(nSlot);
         if (pTex)
         {
             cry_strcat(outName, Path::GamePathToFullPath(pTex->m_Name.c_str()).toLatin1().data());
@@ -204,7 +206,7 @@ bool CExportManager::RegisterExporter(IExporter* pExporter)
 inline f32 Sandbox2MayaFOVDeg(const f32 fov, const f32 ratio) { return RAD2DEG(2.0f * atan_tpl(tan(DEG2RAD(fov) / 2.0f) * ratio)); };
 inline f32 Sandbox2MayaFOVRad2Deg(const f32 fov, const f32 ratio) { return RAD2DEG(2.0f * atan_tpl(tan(fov / 2.0f) * ratio)); };
 
-void CExportManager::AddEntityAnimationData(const CTrackViewTrack* pTrack, Export::CObject* pObj, EAnimParamType entityTrackParamType)
+void CExportManager::AddEntityAnimationData(const CTrackViewTrack* pTrack, Export::CObject* pObj, AnimParamType entityTrackParamType)
 {
     int keyCount = pTrack->GetKeyCount();
     pObj->m_entityAnimData.reserve(keyCount * kReserveCount);
@@ -222,15 +224,15 @@ void CExportManager::AddEntityAnimationData(const CTrackViewTrack* pTrack, Expor
         if (pSpline)
         {
             Export::EntityAnimData entityData;
-            entityData.dataType = (Export::EAnimParamType)pTrack->GetParameterType().GetType();
+            entityData.dataType = (Export::AnimParamType)pTrack->GetParameterType().GetType();
             entityData.keyValue = trackValue;
             entityData.keyTime = fCurrentKeytime;
 
-            if (entityTrackParamType == eAnimParamType_Position)
+            if (entityTrackParamType == AnimParamType::Position)
             {
                 entityData.keyValue *= 100.0f;
             }
-            else if (entityTrackParamType == eAnimParamType_FOV)
+            else if (entityTrackParamType == AnimParamType::FOV)
             {
                 entityData.keyValue = Sandbox2MayaFOVDeg(entityData.keyValue, kAspectRatio);
             }
@@ -263,7 +265,7 @@ void CExportManager::AddEntityAnimationData(const CTrackViewTrack* pTrack, Expor
             entityData.leftTangent = fInTantentY / fInTantentX;
             entityData.rightTangent = fOutTantentY / fOutTantentX;
 
-            if (entityTrackParamType == eAnimParamType_Position)
+            if (entityTrackParamType == AnimParamType::Position)
             {
                 entityData.leftTangent *= 100.0f;
                 entityData.rightTangent *= 100.0f;
@@ -333,7 +335,7 @@ void CExportManager::AddEntityAnimationData(const CTrackViewTrack* pTrack, Expor
 }
 
 
-void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Export::CObject* pObj, EAnimParamType entityTrackParamType)
+void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Export::CObject* pObj, AnimParamType entityTrackParamType)
 {
     CTrackViewAnimNode* pEntityNode = nullptr;
     if (qobject_cast<const CEntityObject*>(pBaseObj))
@@ -348,7 +350,7 @@ void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Ex
     if (!pEntityTrack)
     {
         // In case its CameraTarget which does not have track
-        if (bIsCameraTargetObject && entityTrackParamType != eAnimParamType_FOV)
+        if (bIsCameraTargetObject && entityTrackParamType != AnimParamType::FOV)
         {
             AddPosRotScale(pObj, pBaseObj);
         }
@@ -356,7 +358,7 @@ void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Ex
         return;
     }
 
-    if (pEntityTrack->GetParameterType() == eAnimParamType_FOV)
+    if (pEntityTrack->GetParameterType() == AnimParamType::FOV)
     {
         AddEntityAnimationData(pEntityTrack, pObj, entityTrackParamType);
         return;
@@ -365,7 +367,7 @@ void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Ex
 
     bool bIsCameraObject = qobject_cast<const CCameraObject*>(pBaseObj);
 
-    if (pEntityTrack->GetParameterType() == eAnimParamType_Rotation && bIsCameraObject)
+    if (pEntityTrack->GetParameterType() == AnimParamType::Rotation && bIsCameraObject)
     {
         bool bShakeTrackPresent = false;
         CTrackViewTrack* pParentTrack = static_cast<CTrackViewTrack*>(pEntityTrack->GetParentNode());
@@ -375,7 +377,7 @@ void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Ex
             for (int trackID = 0; trackID < pParentTrack->GetChildCount(); ++trackID)
             {
                 CTrackViewTrack* pSubTrack = static_cast<CTrackViewTrack*>(pParentTrack->GetChild(trackID));
-                if (pSubTrack->GetParameterType() == eAnimParamType_ShakeMultiplier)
+                if (pSubTrack->GetParameterType() == AnimParamType::ShakeMultiplier)
                 {
                     bShakeTrackPresent = true;
                     break;
@@ -433,14 +435,14 @@ void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Ex
                 entityData.rightTangent = 0.0f;
 
                 entityData.keyValue = worldAngles.x;
-                entityData.dataType = (Export::EAnimParamType)eAnimParamType_RotationX;
+                entityData.dataType = (Export::AnimParamType)AnimParamType::RotationX;
                 pObj->m_entityAnimData.push_back(entityData);
 
                 entityData.keyValue = worldAngles.y;
-                entityData.dataType = (Export::EAnimParamType)eAnimParamType_RotationY;
+                entityData.dataType = (Export::AnimParamType)AnimParamType::RotationY;
                 pObj->m_entityAnimData.push_back(entityData);
 
-                entityData.dataType = (Export::EAnimParamType)eAnimParamType_RotationZ;
+                entityData.dataType = (Export::AnimParamType)AnimParamType::RotationZ;
                 entityData.keyValue = worldAngles.z;
                 pObj->m_entityAnimData.push_back(entityData);
 
@@ -481,15 +483,15 @@ void CExportManager::AddEntityAnimationData(CBaseObject* pBaseObj)
             }
         }
 
-        ProcessEntityAnimationTrack(pBaseObj, pObj, eAnimParamType_FOV);
+        ProcessEntityAnimationTrack(pBaseObj, pObj, AnimParamType::FOV);
     }
     else if (qobject_cast<CCameraObjectTarget*>(pBaseObj))
     {
         pObj->entityType = Export::eCameraTarget;
     }
 
-    ProcessEntityAnimationTrack(pBaseObj, pObj, eAnimParamType_Position);
-    ProcessEntityAnimationTrack(pBaseObj, pObj, eAnimParamType_Rotation);
+    ProcessEntityAnimationTrack(pBaseObj, pObj, AnimParamType::Position);
+    ProcessEntityAnimationTrack(pBaseObj, pObj, AnimParamType::Rotation);
 
     m_data.m_objects.push_back(pObj);
     m_objectMap[pBaseObj] = int(m_data.m_objects.size() - 1);
@@ -954,16 +956,16 @@ void CExportManager::AddPosRotScale(Export::CObject* pObj, const CBaseObject* pB
 
     if (qobject_cast<const CCameraObjectTarget*>(pBaseObj))
     {
-        AddEntityData(pObj, Export::eAnimParamType_PositionX, pBaseObj->GetPos().x, 0.0f);
-        AddEntityData(pObj, Export::eAnimParamType_PositionY, pBaseObj->GetPos().y, 0.0f);
-        AddEntityData(pObj, Export::eAnimParamType_PositionZ, pBaseObj->GetPos().z, 0.0f);
-        AddEntityData(pObj, Export::eAnimParamType_RotationX, pBaseObj->GetRotation().v.x, 0.0f);
-        AddEntityData(pObj, Export::eAnimParamType_RotationY, pBaseObj->GetRotation().v.y, 0.0f);
-        AddEntityData(pObj, Export::eAnimParamType_RotationZ, pBaseObj->GetRotation().v.z, 0.0f);
+        AddEntityData(pObj, Export::AnimParamType::PositionX, pBaseObj->GetPos().x, 0.0f);
+        AddEntityData(pObj, Export::AnimParamType::PositionY, pBaseObj->GetPos().y, 0.0f);
+        AddEntityData(pObj, Export::AnimParamType::PositionZ, pBaseObj->GetPos().z, 0.0f);
+        AddEntityData(pObj, Export::AnimParamType::RotationX, pBaseObj->GetRotation().v.x, 0.0f);
+        AddEntityData(pObj, Export::AnimParamType::RotationY, pBaseObj->GetRotation().v.y, 0.0f);
+        AddEntityData(pObj, Export::AnimParamType::RotationZ, pBaseObj->GetRotation().v.z, 0.0f);
     }
 }
 
-void CExportManager::AddEntityData(Export::CObject* pObj, Export::EAnimParamType dataType, const float fValue, const float fTime)
+void CExportManager::AddEntityData(Export::CObject* pObj, Export::AnimParamType dataType, const float fValue, const float fTime)
 {
     Export::EntityAnimData entityData;
     entityData.dataType = dataType;
@@ -1141,34 +1143,34 @@ bool CExportManager::ProcessObjectsForExport()
 
             entityData.keyValue = objectPos.x;
             entityData.keyValue *= 100.0f;
-            entityData.dataType = (Export::EAnimParamType)eAnimParamType_PositionX;
+            entityData.dataType = (Export::AnimParamType)AnimParamType::PositionX;
             pObj->m_entityAnimData.push_back(entityData);
 
             entityData.keyValue = objectPos.y;
             entityData.keyValue *= 100.0f;
-            entityData.dataType = (Export::EAnimParamType)eAnimParamType_PositionY;
+            entityData.dataType = (Export::AnimParamType)AnimParamType::PositionY;
             pObj->m_entityAnimData.push_back(entityData);
 
             entityData.keyValue = objectPos.z;
             entityData.keyValue *= 100.0f;
-            entityData.dataType = (Export::EAnimParamType)eAnimParamType_PositionZ;
+            entityData.dataType = (Export::AnimParamType)AnimParamType::PositionZ;
             pObj->m_entityAnimData.push_back(entityData);
 
             entityData.keyValue = worldAngles.x;
-            entityData.dataType = (Export::EAnimParamType)eAnimParamType_RotationX;
+            entityData.dataType = (Export::AnimParamType)AnimParamType::RotationX;
             pObj->m_entityAnimData.push_back(entityData);
 
             entityData.keyValue = worldAngles.y;
-            entityData.dataType = (Export::EAnimParamType)eAnimParamType_RotationY;
+            entityData.dataType = (Export::AnimParamType)AnimParamType::RotationY;
             pObj->m_entityAnimData.push_back(entityData);
 
-            entityData.dataType = (Export::EAnimParamType)eAnimParamType_RotationZ;
+            entityData.dataType = (Export::AnimParamType)AnimParamType::RotationZ;
             entityData.keyValue = worldAngles.z;
             pObj->m_entityAnimData.push_back(entityData);
 
             if (qobject_cast<CCameraObject*>(pObject) || pObj->entityType == Export::eCamera)
             {
-                entityData.dataType = (Export::EAnimParamType)eAnimParamType_FOV;
+                entityData.dataType = (Export::AnimParamType)AnimParamType::FOV;
                 CCameraObject* pCameraObject = (CCameraObject*)pObject;
                 IEntity* entity = pCameraObject->GetIEntity();
                 IComponentCameraPtr pCameraComponent = entity->GetComponent<IComponentCamera>();
@@ -1255,9 +1257,9 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
         {
             CTrackViewTrack* childTrack = allTracks.GetTrack(trackID);
 
-            EAnimParamType trackType = childTrack->GetParameterType().GetType();
+            AnimParamType trackType = childTrack->GetParameterType().GetType();
 
-            if (trackType == eAnimParamType_Animation || trackType == eAnimParamType_Sound)
+            if (trackType == AnimParamType::Animation || trackType == AnimParamType::Sound)
             {
                 QString childName = CleanXMLText(childTrack->GetName());
 
@@ -1281,7 +1283,7 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
                     float keyTime = 0.0f;
                     float keyDuration = 0.0f;
 
-                    if (trackType == eAnimParamType_Animation)
+                    if (trackType == AnimParamType::Animation)
                     {
                         if (!m_animKeyTimeExport)
                         {
@@ -1296,7 +1298,7 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
                         keyContentName = CleanXMLText(animationKey.m_animation.c_str());
                         keyDuration = animationKey.GetActualDuration();
                     }
-                    else if (trackType == eAnimParamType_Sound)
+                    else if (trackType == AnimParamType::Sound)
                     {
                         if (!m_soundKeyTimeExport)
                         {
@@ -1403,7 +1405,7 @@ bool CExportManager::AddObjectsFromSequence(CTrackViewSequence* pSequence, XmlNo
         }
     }
 
-    CTrackViewTrackBundle trackBundle = pSequence->GetTracksByParam(eAnimParamType_Sequence);
+    CTrackViewTrackBundle trackBundle = pSequence->GetTracksByParam(AnimParamType::Sequence);
 
     const uint numSequenceTracks = trackBundle.GetCount();
     for (uint i = 0; i < numSequenceTracks; ++i)
@@ -1421,10 +1423,10 @@ bool CExportManager::AddObjectsFromSequence(CTrackViewSequence* pSequence, XmlNo
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
 
-            if (!sequenceKey.szSelection.empty())
-            {
-                CTrackViewSequence* pSubSequence = GetIEditor()->GetSequenceManager()->GetSequenceByName(sequenceKey.szSelection.c_str());
+            CTrackViewSequence* pSubSequence = CDirectorNodeAnimator::GetSequenceFromSequenceKey(sequenceKey);
 
+            if (pSubSequence)
+            {
                 if (pSubSequence && !pSubSequence->IsDisabled())
                 {
                     XmlNodeRef subSeqNode = 0;
@@ -2113,7 +2115,7 @@ void CExportManager::SaveNodeKeysTimeToXML()
 
             AddObjectsFromSequence(pSequence, m_animTimeNode);
 
-            m_animTimeNode->saveToFile(dlg.selectedFiles().first().toStdString().c_str());
+            m_animTimeNode->saveToFile(dlg.selectedFiles().constFirst().toStdString().c_str());
             QMessageBox::information(QApplication::activeWindow(), QString(), QObject::tr("Export Finished"));
         }
     }

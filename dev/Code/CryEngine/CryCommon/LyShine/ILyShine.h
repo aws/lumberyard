@@ -78,6 +78,9 @@ public:
     //! Release a canvas from use either in-game or in editor, destroy UI Canvas if no longer used in either
     virtual void ReleaseCanvas(AZ::EntityId canvas, bool forEditor = false) = 0;
 
+    //! Queue a canvas for release on the next tick (used in game mode)
+    virtual void ReleaseCanvasDeferred(AZ::EntityId canvas) = 0;
+
     //! Load a sprite object.
     virtual ISprite* LoadSprite(const string& pathname) = 0;
 

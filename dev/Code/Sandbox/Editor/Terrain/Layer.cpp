@@ -37,7 +37,14 @@
 // Static member variables
 UINT CLayer::m_iInstanceCount = 0;
 
-static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMe.tif";
+#if !defined(_RELEASE)
+    // Texture names to be used for error / process loading indications
+    static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMe.tif";
+#else
+    // Some of the textures here will direct to the regular DefaultSolids_diff to prevent eye catching
+    // bug textures in release mode
+    static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
+#endif
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -108,7 +115,7 @@ uint32 CLayer::GetOrRequestLayerId()
             if (bFree[id])
             {
                 m_dwLayerId = id;
-                CryLog("GetOrRequestLayerId() '%s' m_dwLayerId=%d", GetLayerName(), m_dwLayerId);
+                CryLog("GetOrRequestLayerId() '%s' m_dwLayerId=%d", qPrintable(GetLayerName()), m_dwLayerId);
                 GetIEditor()->GetDocument()->SetModifiedFlag(TRUE);
                 GetIEditor()->GetDocument()->SetModifiedModules(eModifiedTerrain);
                 break;

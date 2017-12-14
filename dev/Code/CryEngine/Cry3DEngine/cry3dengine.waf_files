@@ -24,11 +24,10 @@
         "Water":
         [
             "terrain_water_quad.cpp",
-            "WaterWaveRenderNode.cpp",
             "WaterVolumeRenderNode.cpp",
             "terrain_water.h",
             "WaterVolumeRenderNode.h",
-            "WaterWaveRenderNode.h"
+            "Environment/OceanEnvironmentBus.h"
         ]
     },
     "Cry3DEngine_particles_uber.cpp":

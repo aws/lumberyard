@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <AzFramework/Input/Buses/Notifications/InputChannelEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputChannelNotificationBus.h>
 #include <AzFramework/Input/Events/InputChannelEventFilter.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -19,7 +19,7 @@ namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Class that consumes all input event that pass the specified filter.
-    class InputChannelEventSink : public InputChannelEventNotificationBus::Handler
+    class InputChannelEventSink : public InputChannelNotificationBus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ namespace AzFramework
         ~InputChannelEventSink() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputChannelEventNotifications::GetPriority
+        //! \ref AzFramework::InputChannelNotifications::GetPriority
         AZ::s32 GetPriority() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +50,7 @@ namespace AzFramework
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputChannelEventNotifications::OnInputChannelEvent
+        //! \ref AzFramework::InputChannelNotifications::OnInputChannelEvent
         void OnInputChannelEvent(const InputChannel& inputChannel, bool& o_hasBeenConsumed) final;
 
     private:

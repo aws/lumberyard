@@ -95,7 +95,7 @@ namespace EMotionFX
             ~ActorAsset() override;
 
             typedef EMotionFXPtr<EMotionFX::ActorInstance> ActorInstancePtr;
-            ActorInstancePtr CreateInstance();
+            ActorInstancePtr CreateInstance(AZ::EntityId entityId);
 
             EMotionFXPtr<EMotionFX::Actor> GetActor() const { return m_emfxActor; }
 

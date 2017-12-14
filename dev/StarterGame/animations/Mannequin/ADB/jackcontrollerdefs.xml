@@ -23,6 +23,14 @@
   <InteractStart scopes="FullBody" flags="AutoReinstall"/>
   <InteractIdle scopes="FullBody" flags="AutoReinstall"/>
   <InteractEnd scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbient01 scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbient02 scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientCheckGun scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookLeft scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookRight scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookRightLeft scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookSuspicious scopes="FullBody" flags="AutoReinstall"/>
+  <Strafe scopes="FullBody"/>
  </FragmentDefs>
  <ScopeContextDefs>
   <MainCharacter />

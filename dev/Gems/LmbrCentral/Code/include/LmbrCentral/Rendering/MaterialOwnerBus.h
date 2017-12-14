@@ -42,28 +42,52 @@ namespace LmbrCentral
         virtual MaterialHandle GetMaterialHandle() { return MaterialHandle(); }
 
         //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
-        virtual void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/) {};
+        //! \param name        Name of the material param to set. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param value       New value for the param
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        virtual void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/, int /*materialId = 1*/) {};
 
         //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
-        virtual void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/) {};
+        //! \param name        Name of the material param to set. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param value       New value for the param
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        virtual void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/, int /*materialId = 1*/) {};
 
         //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
-        virtual void SetMaterialParamColor(const AZStd::string& /*name*/, const AZ::Color& /*value*/) {};
+        //! \param name        Name of the material param to set. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param value       New value for the param
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        virtual void SetMaterialParamColor(const AZStd::string& /*name*/, const AZ::Color& /*value*/, int /*materialId = 1*/) {};
 
         //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
-        virtual void SetMaterialParamFloat(const AZStd::string& /*name*/, float /*value*/) {};
+        //! \param name        Name of the material param to set. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param value       New value for the param
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        virtual void SetMaterialParamFloat(const AZStd::string& /*name*/, float /*value*/, int /*materialId = 1*/) {};
 
         //! Returns a Material property value for the bus Entity.
-        virtual AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/) { return AZ::Vector4::CreateZero(); };
+        //! \param name        Name of the material param to get. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        //! \return            The value of the param, or 0's if the param could not be found.
+        virtual AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/, int /*materialId = 1*/) { return AZ::Vector4::CreateZero(); };
 
         //! Returns a Material property value for the bus Entity.
-        virtual AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/) { return AZ::Vector3::CreateZero(); };
+        //! \param name        Name of the material param to get. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        //! \return            The value of the param, or 0's if the param could not be found.
+        virtual AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/, int /*materialId = 1*/) { return AZ::Vector3::CreateZero(); };
 
         //! Returns a Material property value for the bus Entity.
-        virtual AZ::Color GetMaterialParamColor(const AZStd::string& /*name*/) { return AZ::Color::CreateZero(); };
+        //! \param name        Name of the material param to get. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        //! \return            The value of the param, or 0's if the param could not be found.
+        virtual AZ::Color GetMaterialParamColor(const AZStd::string& /*name*/, int /*materialId = 1*/) { return AZ::Color::CreateZero(); };
 
         //! Returns a Material property value for the bus Entity.
-        virtual float     GetMaterialParamFloat(const AZStd::string& /*name*/) { return 0.0f; };
+        //! \param name        Name of the material param to get. May be a custom defined param in the shader, or one of the standard lighting params (diffuse, specular, emissive_color, emissive_intensity, shininess, opacity, alpha).
+        //! \param materialId  ID of the desired material slot. The first slot is Material ID 1.
+        //! \return            The value of the param, or 0 if the param could not be found.
+        virtual float     GetMaterialParamFloat(const AZStd::string& /*name*/, int /*materialId = 1*/) { return 0.0f; };
     };
 
     using MaterialOwnerRequestBus = AZ::EBus<MaterialOwnerRequests>;

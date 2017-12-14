@@ -11,9 +11,36 @@
 */
 #include "StdAfx.h"
 #include <platform_impl.h>
+
+#include <FlowSystem/Nodes/FlowBaseNode.h>
+
 #include "SnowGem.h"
 #include "Snow.h"
-#include <FlowSystem/Nodes/FlowBaseNode.h>
+
+#include "SnowComponent.h"
+#ifdef SNOW_EDITOR
+#include "EditorSnowComponent.h"
+#endif // SNOW_EDITOR
+
+SnowGem::SnowGem()
+{
+    m_descriptors.push_back(Snow::SnowComponent::CreateDescriptor());
+
+#ifdef SNOW_EDITOR
+    m_descriptors.push_back(Snow::EditorSnowComponent::CreateDescriptor());
+
+    m_snowConverter = AZStd::make_unique<Snow::SnowConverter>();
+
+    m_snowConverter->BusConnect();
+#endif // SNOW_EDITOR
+}
+
+SnowGem::~SnowGem()
+{
+#ifdef SNOW_EDITOR
+    m_snowConverter->BusDisconnect();
+#endif // SNOW_EDITOR
+}
 
 void SnowGem::PostGameInitialize()
 {

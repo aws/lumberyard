@@ -98,6 +98,8 @@ struct ITerrain
 
     virtual void ChangeOceanMaterial(_smart_ptr<IMaterial> pMat) = 0;
 
+    virtual void InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterMat) = 0;
+
     virtual IRenderNode* AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright, uint8 angle, uint8 angleX = 0, uint8 angleY = 0) = 0;
 };
 

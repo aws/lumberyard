@@ -67,8 +67,6 @@ namespace ScriptCanvas
 
                 static const int k_outputIndex = 9;
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
                 void OnInputSignal(const SlotId& slot) override;
             };
         }

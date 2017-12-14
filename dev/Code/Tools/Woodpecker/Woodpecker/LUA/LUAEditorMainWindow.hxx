@@ -35,6 +35,7 @@ class QAction;
 class QToolbar;
 class QDockWidget;
 class QSettings;
+class QStandardItemModel;
 
 namespace Ui
 {

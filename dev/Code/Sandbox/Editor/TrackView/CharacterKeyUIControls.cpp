@@ -14,6 +14,9 @@
 #include "stdafx.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyItem.h"
 
@@ -26,7 +29,6 @@ public:
     CSmartVariable<QString> mv_animation;
     CSmartVariable<bool> mv_loop;
     CSmartVariable<bool> mv_blendGap;
-    CSmartVariable<bool> mv_unload;
     CSmartVariable<bool> mv_inplace;
     CSmartVariable<float> mv_startTime;
     CSmartVariable<float> mv_endTime;
@@ -38,16 +40,15 @@ public:
         AddVariable(mv_table, mv_animation, "Animation", IVariable::DT_ANIMATION);
         AddVariable(mv_table, mv_loop, "Loop");
         AddVariable(mv_table, mv_blendGap, "Blend Gap");
-        AddVariable(mv_table, mv_unload, "Unload");
         AddVariable(mv_table, mv_inplace, "In Place");
         AddVariable(mv_table, mv_startTime, "Start Time");
         AddVariable(mv_table, mv_endTime, "End Time");
         AddVariable(mv_table, mv_timeScale, "Time Scale");
         mv_timeScale->SetLimits(0.001f, 100.f);
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_Animation || valueType == eAnimValue_CharacterAnim;
+        return paramType == AnimParamType::Animation || valueType == AnimValueType::CharacterAnim;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -91,7 +92,7 @@ bool CCharacterKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Animation || keyHandle.GetTrack()->GetValueType() == eAnimValue_CharacterAnim)
+        if (paramType == AnimParamType::Animation || keyHandle.GetTrack()->GetValueType() == AnimValueType::CharacterAnim)
         {
             ICharacterKey charKey;
             keyHandle.GetKey(&charKey);
@@ -106,7 +107,7 @@ bool CCharacterKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
                 assert(sizeof(EntityId) <= sizeof(AZ::u64));
                 mv_animation->SetUserData(static_cast<AZ::u64>(entity->GetId()));
             }
-            else if (pTrack->GetAnimNode()->GetType() == eAnimNodeType_Component)
+            else if (pTrack->GetAnimNode()->GetType() == AnimNodeType::Component)
             {
                 // no legacy entity was returned and the track's animNode is a component - try to get the AZ::EntityId from the component node's parent
                 CTrackViewAnimNode* parentNode = static_cast<CTrackViewAnimNode*>(pTrack->GetAnimNode()->GetParentNode());
@@ -124,7 +125,6 @@ bool CCharacterKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
             mv_animation = charKey.m_animation.c_str();
             mv_loop = charKey.m_bLoop;
             mv_blendGap = charKey.m_bBlendGap;
-            mv_unload = charKey.m_bUnload;
             mv_inplace = charKey.m_bInPlace;
             mv_endTime = charKey.m_endTime;
             mv_startTime = charKey.m_startTime;
@@ -152,7 +152,7 @@ void CCharacterKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
         CTrackViewTrack* pTrack = keyHandle.GetTrack();
         const CAnimParamType paramType = pTrack->GetParameterType();
 
-        if (paramType == eAnimParamType_Animation || keyHandle.GetTrack()->GetValueType() == eAnimValue_CharacterAnim)
+        if (paramType == AnimParamType::Animation || keyHandle.GetTrack()->GetValueType() == AnimValueType::CharacterAnim)
         {
             ICharacterKey charKey;
             keyHandle.GetKey(&charKey);
@@ -165,7 +165,6 @@ void CCharacterKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
             }
             SyncValue(mv_loop, charKey.m_bLoop, false, pVar);
             SyncValue(mv_blendGap, charKey.m_bBlendGap, false, pVar);
-            SyncValue(mv_unload, charKey.m_bUnload, false, pVar);
             SyncValue(mv_inplace, charKey.m_bInPlace, false, pVar);
             SyncValue(mv_startTime, charKey.m_startTime, false, pVar);
             SyncValue(mv_endTime, charKey.m_endTime, false, pVar);

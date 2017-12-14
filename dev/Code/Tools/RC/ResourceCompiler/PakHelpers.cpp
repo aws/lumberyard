@@ -400,16 +400,10 @@ size_t PakHelpers::CreatePakEntryList(
 
         PakEntry entry;
         entry.m_rcFile = file;
-#if defined(AZ_PLATFORM_WINDOWS)
-        entry.m_rcFile.m_sourceLeftPath = PathHelpers::ToDosPath(file.m_sourceLeftPath);
-        entry.m_rcFile.m_sourceInnerPathAndName = PathHelpers::ToDosPath(file.m_sourceInnerPathAndName);
-        entry.m_rcFile.m_targetLeftPath = PathHelpers::ToDosPath(file.m_targetLeftPath);
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
-        entry.m_rcFile.m_sourceLeftPath = PathHelpers::ToUnixPath(file.m_sourceLeftPath);
-        entry.m_rcFile.m_sourceInnerPathAndName = PathHelpers::ToUnixPath(file.m_sourceInnerPathAndName);
-        entry.m_rcFile.m_targetLeftPath = PathHelpers::ToUnixPath(file.m_targetLeftPath);
-#endif
-        
+
+        entry.m_rcFile.m_sourceLeftPath = PathHelpers::ToPlatformPath(file.m_sourceLeftPath);
+        entry.m_rcFile.m_sourceInnerPathAndName = PathHelpers::ToPlatformPath(file.m_sourceInnerPathAndName);
+        entry.m_rcFile.m_targetLeftPath = PathHelpers::ToPlatformPath(file.m_targetLeftPath);
 
         // cache values used for fast sorting
         entry.m_streamingSuffix = entry.GetStreamingSuffix();
@@ -432,8 +426,8 @@ size_t PakHelpers::CreatePakEntryList(
 
                         if (entry.MakeSortableStreamingSuffix(szPlainSuffix, &szIncrementedSuffix, 0, 1))
                         {
-                            const string tmpFilename = PathHelpers::Join(file.m_sourceLeftPath,
-                                    entry.m_innerDir + "\\" + entry.m_baseName + "." + entry.m_extension + "." + szIncrementedSuffix);
+                            string tmpFilename = PathHelpers::Join(file.m_sourceLeftPath, entry.m_innerDir);
+                            tmpFilename = PathHelpers::Join(tmpFilename, entry.m_baseName + "." + entry.m_extension + "." + szIncrementedSuffix);
 
                             entry.m_bIsLastMip = !FileUtil::FileExists(tmpFilename);
                         }

@@ -21,6 +21,7 @@
 #include <ITimer.h>
 #include <CryArray.h>
 #include <CryThread.h>
+#include <ISystem.h>
 
 #include <AzCore/Debug/Profiler.h>
 

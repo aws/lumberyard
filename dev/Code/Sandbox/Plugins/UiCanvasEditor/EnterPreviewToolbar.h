@@ -11,6 +11,11 @@
 */
 #pragma once
 
+#include <QToolBar>
+
+class EditorWindow;
+class QPushButton;
+
 class EnterPreviewToolbar
     : public QToolBar
 {

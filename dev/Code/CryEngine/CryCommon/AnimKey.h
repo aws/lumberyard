@@ -170,7 +170,8 @@ struct ISelectKey
 struct ISequenceKey
     : public IKey
 {
-    AZStd::string szSelection;  //!< Node name.
+    AZStd::string szSelection;          //!@deprecated : use sequenceEntityId to identify sequences 
+    AZ::EntityId sequenceEntityId;
     float fDuration;
     float fStartTime;
     float fEndTime;
@@ -256,7 +257,6 @@ struct ICharacterKey
 {
     AZStd::string m_animation;      //!< Name of character animation.
     bool m_bBlendGap;               //!< True if gap to next animation should be blended
-    bool m_bUnload;                 //!< Unload after sequence is finished
     bool m_bInPlace;                // Play animation in place (Do not move root).
 
     ICharacterKey()
@@ -264,7 +264,6 @@ struct ICharacterKey
     {
         m_bLoop = false;
         m_bBlendGap = false;
-        m_bUnload = false;
         m_bInPlace = false;
     }
 };
@@ -452,7 +451,7 @@ struct IBoolKey
 struct ICommentKey
     : public IKey
 {
-    enum ETextAlign
+    enum ETextAlign : int
     {
         eTA_Left    =   0,
         eTA_Center  =   BIT(1),

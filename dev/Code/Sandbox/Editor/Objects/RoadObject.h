@@ -84,6 +84,7 @@ public:
     void BeginEditParams(IEditor* ie, int flags);
     void EndEditParams(IEditor* ie);
 
+    using CBaseObject::SetHidden;
     void SetHidden(bool bHidden);
     void UpdateVisibility(bool visible);
 

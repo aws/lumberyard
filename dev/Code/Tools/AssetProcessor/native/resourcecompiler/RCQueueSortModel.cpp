@@ -20,6 +20,8 @@ namespace AssetProcessor
     RCQueueSortModel::RCQueueSortModel(QObject* parent)
         : QSortFilterProxyModel(parent)
     {
+        // jobs assigned to "all" platforms are always active.
+        m_currentlyConnectedPlatforms.insert(QString("all"));
     }
 
     void RCQueueSortModel::AttachToModel(RCJobListModel* target)
@@ -86,9 +88,24 @@ namespace AssetProcessor
         RCJob* leftJob = m_sourceModel->getItem(left.row());
         RCJob* rightJob = m_sourceModel->getItem(right.row());
 
+        // auto fail jobs always take priority to give user feedback asap.
+        bool autoFailLeft = leftJob->IsAutoFail();
+        bool autoFailRight = rightJob->IsAutoFail();
+        if (autoFailLeft)
+        {
+            if (!autoFailRight)
+            {
+                return true; // left before right
+            }
+        }
+        else if (autoFailRight)
+        {
+            return false; // right before left.
+        }
+
         // first thing to check is in platform.
-        bool leftActive = m_currentlyConnectedPlatforms.contains(leftJob->GetPlatform());
-        bool rightActive = m_currentlyConnectedPlatforms.contains(rightJob->GetPlatform());
+        bool leftActive = m_currentlyConnectedPlatforms.contains(leftJob->GetPlatformInfo().m_identifier.c_str());
+        bool rightActive = m_currentlyConnectedPlatforms.contains(rightJob->GetPlatformInfo().m_identifier.c_str());
 
         if (leftActive)
         {
@@ -127,13 +144,13 @@ namespace AssetProcessor
         }
 
         // arbitrarily, lets have PC get done first since pc-format assets are what the editor uses.
-        if (leftJob->GetPlatform() != rightJob->GetPlatform())
+        if (leftJob->GetPlatformInfo().m_identifier != rightJob->GetPlatformInfo().m_identifier)
         {
-            if (leftJob->GetPlatform() == "pc")
+            if (leftJob->GetPlatformInfo().m_identifier == CURRENT_PLATFORM)
             {
                 return true; // left wins.
             }
-            if (rightJob->GetPlatform() == "pc")
+            if (rightJob->GetPlatformInfo().m_identifier == CURRENT_PLATFORM)
             {
                 return false; // right wins
             }

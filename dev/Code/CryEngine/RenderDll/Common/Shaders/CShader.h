@@ -119,11 +119,16 @@ struct CShaderListFilter
     std::vector<Predicate> m_Predicates;
 };
 
-//==================================================================================
+//==============================================================================
 
 #define PD_INDEXED 1
 #define PD_MERGED  4
 
+//==============================================================================
+// [Shader System] - the following structures represent the raw data parsed from 
+// the shaders.  It is in a way part of a processor semi reflection mechanism.
+// To Do:   inherit and share usage
+//------------------------------------------------------------------------------
 struct SParamDB
 {
     const char* szName;
@@ -186,6 +191,13 @@ struct SSamplerDB
     }
 };
 
+//------------------------------------------------------------------------------
+// [Shaders System]
+// szName- a texture functional name which is only used here - possibly obsolete.
+// The texture type is not a type but a slot mapping - should be changed
+// nFlags- does not seem to be in use.  Should be tested if used / removed if possible.
+// ParserFunc - is not set anywhere and should be removed.
+//------------------------------------------------------------------------------
 struct STextureDB
 {
     const char* szName;
@@ -255,9 +267,13 @@ private:
     CTexture* mfTryToLoadTexture(const char* nameTex, STexSamplerRT* smp, int Flags, bool bFindOnly);
     CTexture* mfFindResourceTexture(const char* nameTex, const char* path, int Flags, SEfResTexture* Tex);
     CTexture* mfLoadResourceTexture(const char* nameTex, const char* path, int Flags, SEfResTexture* Tex);
-    bool mfLoadResourceTexture(EEfResTextures Id, SInputShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail = false);
-    bool mfLoadResourceTexture(EEfResTextures Id, CShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail = false);
-    void mfLoadDefaultTexture(EEfResTextures Id, CShaderResources& RS, EEfResTextures Alias);
+
+
+    bool mfLoadResourceTexture(ResourceSlotIndex Id, SInputShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail = false);
+    bool mfLoadResourceTexture(ResourceSlotIndex Id, CShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail = false);
+
+    void mfLoadDefaultTexture(ResourceSlotIndex Id, CShaderResources& RS, EEfResTextures Alias);
+
     void mfCheckShaderResTextures(TArray<SShaderPass>& Dst, CShader* ef, CShaderResources* Res);
     void mfCheckShaderResTexturesHW(TArray<SShaderPass>& Dst, CShader* ef, CShaderResources* Res);
     CTexture* mfCheckTemplateTexName(const char* mapname, ETEX_Type eTT);
@@ -292,6 +308,7 @@ public:
     EEfResTextures mfCheckTextureSlotName(const char* mapname);
     SParamDB* mfGetShaderParamDB(const char* szSemantic);
     const char* mfGetShaderParamName(ECGParam ePR);
+
     bool mfParseParamComp(int comp, SCGParam* pCurParam, const char* szSemantic, char* params, const char* szAnnotations, SShaderFXParams& FXParams, CShader* ef, uint32 nParamFlags, EHWShaderClass eSHClass, bool bExpressionOperand);
     bool mfParseCGParam(char* scr, const char* szAnnotations, SShaderFXParams& FXParams, CShader* ef, std::vector<SCGParam>* pParams, int nComps, uint32 nParamFlags, EHWShaderClass eSHClass, bool bExpressionOperand);
     bool mfParseFXParameter(SShaderFXParams& FXParams, SFXParam* pr, const char* ParamName, CShader* ef, bool bInstParam, int nParams, std::vector<SCGParam>* pParams, EHWShaderClass eSHClass, bool bExpressionOperand);
@@ -358,6 +375,7 @@ public:
     static CShader* s_ShaderOcclTest;
     static CShader* s_ShaderDXTCompress;
     static CShader* s_ShaderStereo;
+    static CShader* s_ShaderFur;
 #else
     static SShaderItem s_DefaultShaderItem;
 #endif

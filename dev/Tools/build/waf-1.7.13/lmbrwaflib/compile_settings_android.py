@@ -54,7 +54,8 @@ def load_android_common_settings(conf):
 
     env['LINKFLAGS'] += [
         '-rdynamic',            # add ALL symbols to the dynamic symbol table
-        '-Wl,--no-undefined'    # tell the gcc linker to fail if it finds undefined references
+        '-Wl,--no-undefined',   # tell the gcc linker to fail if it finds undefined references
+        '-Wl,--gc-sections',    # discards unused sections
     ]
 
     # Pattern to transform outputs

@@ -40,7 +40,6 @@ namespace MetricsEventData
     static const char* Redo = "RedoEvent";
     static const char* Clone = "CloneEvent";
     static const char* LegacyEntityCreated = "LegacyEntityCreated";
-    
 
     // Attribute Keys
     static const char* SliceIdentifier = "SliceId";
@@ -52,6 +51,9 @@ namespace MetricsEventData
     static const char* NavigationActionGroupId = "NavigationActionGroupId";
     static const char* LegacyEntityType = "EntityType";
     static const char* LegacyEntityScriptType = "EntityScriptType";
+    static const char* SourceUuid = "Source";
+    static const char* SourceExtension = "Extension";
+    static const char* SourceNumberOfProducts = "NumberOfProducts";
 }
 
 
@@ -63,7 +65,7 @@ namespace LyEditorMetrics
         "ButtonClick",
         "DragAndDrop",
         "Shortcut",
-        
+
         "ButtonClickToolbar",
         "LeftClickMenu",
         };
@@ -110,6 +112,7 @@ namespace LyEditorMetrics
     {
         InitializeLegacyEntityList();
         InitializeLegacyScriptEntityList();
+        InitializeActionBrowserData();
     }
 
     void LyEditorMetricsSystemComponent::BeginUserAction(LyEditorMetricsSystemComponent::NavigationTrigger behaviour)
@@ -130,7 +133,7 @@ namespace LyEditorMetrics
         // starting a new set of actions here (give them a unique identifier for this session of the Editor)
         m_actionId++;
 
-        // create a string here once so that we can send it to the 
+        // create a string here once so that we can send it to the
         m_actionIdString = AZStd::string::format("%llu", m_actionId);
 
         // store the navigation information, and we'll fire it when we get an actual event
@@ -212,15 +215,15 @@ namespace LyEditorMetrics
         }
 
         LyMetrics::LyScopedMetricsEvent scopeMetricsEvent(MetricsEventData::LegacyEntityCreated,
-        {
-            // Entity Type
             {
-                MetricsEventData::LegacyEntityType, entityType
-            },
-            {
-                MetricsEventData::LegacyEntityScriptType, scriptEntityType
-            }
-        });
+                // Entity Type
+                {
+                    MetricsEventData::LegacyEntityType, entityType
+                },
+                {
+                    MetricsEventData::LegacyEntityScriptType, scriptEntityType
+                }
+            });
     }
 
     void LyEditorMetricsSystemComponent::Undo()
@@ -242,17 +245,50 @@ namespace LyEditorMetrics
         SendNavigationEventIfNeeded();
 
         LyMetrics::LyScopedMetricsEvent cloneMetricsEvent(MetricsEventData::Clone,
-        {
-            // Navigation unique action group id
             {
-                MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
-            }
-        });
+                // Navigation unique action group id
+                {
+                    MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
+                }
+            });
     }
 
     void LyEditorMetricsSystemComponent::MenuTriggered(const char* menuIdentifier, AzToolsFramework::MetricsActionTriggerType triggerType)
     {
         m_actionTracker->SendMetrics(menuIdentifier, triggerType);
+    }
+
+    void LyEditorMetricsSystemComponent::AssetBrowserAction(AzToolsFramework::AssetBrowserActionType actionType, const AZ::Uuid& sourceUuid, const char* extension, int numberOfProducts) 
+    {
+        const char* eventName = m_assetBrowserActionMap[actionType].c_str();
+
+        char hash[AZ::Uuid::MaxStringBuffer];
+        sourceUuid.ToString(hash, sizeof(hash));
+        const char* sourceUuidStr = hash;
+
+        if (m_extensionWhiteList.find(extension) == m_extensionWhiteList.end())
+        {
+            // if extension is whitelisted send it as is
+            extension = "Unknown";
+        }
+
+        LyMetrics::LyScopedMetricsEvent scopeMetricsEvent(eventName,
+        {
+            // Source uuid
+            {
+                MetricsEventData::SourceUuid, sourceUuidStr
+            },
+
+            // Source extension
+            {
+                MetricsEventData::SourceExtension, extension
+            },
+
+            // Number of products
+            {
+                MetricsEventData::SourceNumberOfProducts, AZStd::string::format("%u", numberOfProducts)
+            }
+        });
     }
 
     void LyEditorMetricsSystemComponent::RegisterAction(QAction* action, const QString& metricsText)
@@ -268,7 +304,7 @@ namespace LyEditorMetrics
         if (m_actionTracker != nullptr)
         {
             m_actionTracker->UnregisterAction(action);
-		}
+        }
     }
 
     void LyEditorMetricsSystemComponent::InitializeLegacyEntityList()
@@ -583,21 +619,46 @@ namespace LyEditorMetrics
         }
     }
 
+    void LyEditorMetricsSystemComponent::InitializeActionBrowserData()
+    {
+        using namespace AzToolsFramework;
+
+        const char* extensionWhiteListNames[] = {
+            ".fbx",
+            ".cgf",
+            ".mtl",
+            ".png",
+            ".jpg",
+            ".tif",
+            ".bmp"
+        };
+
+        for (auto name : extensionWhiteListNames)
+        {
+            m_extensionWhiteList.insert(name);
+        }
+
+        m_assetBrowserActionMap[AssetBrowserActionType::SourceExpanded] = "AssetBrowserSourceExpandedEvent";
+        m_assetBrowserActionMap[AssetBrowserActionType::SourceCollapsed] = "AssetBrowserSourceCollapsedEvent";
+        m_assetBrowserActionMap[AssetBrowserActionType::SourceDragged] = "AssetBrowserSourceDraggedEvent";
+        m_assetBrowserActionMap[AssetBrowserActionType::ProductDragged] = "AssetBrowserProductDraggedEvent";
+    }
+
     void LyEditorMetricsSystemComponent::SendSliceInstantiatedMetricsEvent(const char* eventName, const AZ::Crc32& sliceIdentifier)
     {
         AZStd::string identifier = AZStd::string::format("%u", sliceIdentifier);
         LyMetrics::LyScopedMetricsEvent entityMetricsEvent(eventName,
-        {
-            // Slice identifier
             {
-                MetricsEventData::SliceIdentifier, identifier.c_str()
-            },
+                // Slice identifier
+                {
+                    MetricsEventData::SliceIdentifier, identifier.c_str()
+                },
 
-            // Navigation unique action group id
-            {
-                MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
-            }
-        });
+                // Navigation unique action group id
+                {
+                    MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
+                }
+            });
     }
 
     void LyEditorMetricsSystemComponent::SendEntitiesMetricsEvent(const char* eventName, const AZ::EntityId& entityId)
@@ -644,7 +705,7 @@ namespace LyEditorMetrics
                 }
             }
         }
-        
+
         if (!canSendPlainName)
         {
             componentTypeId.ToString(hash, sizeof(hash));
@@ -673,27 +734,27 @@ namespace LyEditorMetrics
     void LyEditorMetricsSystemComponent::SendParentIdMetricsEvent(const char* eventName, const AZ::EntityId& entityId, const AZ::EntityId& newParentId, const AZ::EntityId& oldParentId)
     {
         LyMetrics::LyScopedMetricsEvent scopeMetricsEvent(eventName,
-        {
-            // Entity ID
             {
-                MetricsEventData::EntityId, entityId.ToString().c_str()
-            },
+                // Entity ID
+                {
+                    MetricsEventData::EntityId, entityId.ToString().c_str()
+                },
 
-            // New Parent ID
-            {
-                MetricsEventData::NewParentId, newParentId.IsValid() ? newParentId.ToString().c_str() : ""
-            },
+                // New Parent ID
+                {
+                    MetricsEventData::NewParentId, newParentId.IsValid() ? newParentId.ToString().c_str() : ""
+                },
 
-            // Old Parent ID
-            {
-                MetricsEventData::OldParentId, oldParentId.IsValid() ? oldParentId.ToString().c_str() : ""
-            },
+                // Old Parent ID
+                {
+                    MetricsEventData::OldParentId, oldParentId.IsValid() ? oldParentId.ToString().c_str() : ""
+                },
 
-            // Navigation unique action group id
-            {
-                MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
-            }
-        });
+                // Navigation unique action group id
+                {
+                    MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
+                }
+            });
     }
 
     void LyEditorMetricsSystemComponent::SendNavigationEventIfNeeded()
@@ -704,30 +765,30 @@ namespace LyEditorMetrics
         }
 
         LyMetrics::LyScopedMetricsEvent navigationMetricsEvent(MetricsEventData::Navigation,
-        {
-            // Navigation Behaviour
             {
-                MetricsEventData::NavigationBehaviour, s_navigationTriggerStrings[m_navigationBehaviour]
-            },
+                // Navigation Behaviour
+                {
+                    MetricsEventData::NavigationBehaviour, s_navigationTriggerStrings[m_navigationBehaviour]
+                },
 
-            // Navigation unique action group id
-            {
-                MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
-            }
-        });
+                // Navigation unique action group id
+                {
+                    MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
+                }
+            });
 
         m_needToFireNavigationEvent = false;
     }
-
+    
     void LyEditorMetricsSystemComponent::SendUndoRedoMetricsEvent(const char* eventName)
     {
         LyMetrics::LyScopedMetricsEvent undoRedoMetricsEvent(eventName,
-        {
-            // Navigation unique action group id
             {
-                MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
-            }
-        });
+                // Navigation unique action group id
+                {
+                    MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
+                }
+            });
     }
 
     void LyEditorMetricsSystemComponent::Init()

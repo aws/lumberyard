@@ -69,6 +69,7 @@ struct ITrackViewSequenceManagerListener
 {
     virtual void OnSequenceAdded(CTrackViewSequence* pSequence) {}
     virtual void OnSequenceRemoved(CTrackViewSequence* pSequence) {}
+    virtual void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -131,8 +132,8 @@ public:
     IAnimSequence::EAnimSequenceFlags GetFlags() const;
 
     // Get sequence object in scene
-    CSequenceObject* GetSequenceObject() const { return static_cast<CSequenceObject*>(m_pAnimSequence->GetOwner()); }
-    AZ::EntityId     GetSequenceComponentEntityId() const { return m_pAnimSequence.get() ? m_pAnimSequence->GetOwnerId() : AZ::EntityId(); }
+    CSequenceObject* GetSequenceObject() const { return static_cast<CSequenceObject*>(m_pAnimSequence->GetLegacySequenceObject()); }
+    AZ::EntityId     GetSequenceComponentEntityId() const { return m_pAnimSequence.get() ? m_pAnimSequence->GetSequenceEntityId() : AZ::EntityId(); }
 
     // Get the Object Layer that the sequence entity is in
     CObjectLayer*    GetSequenceObjectLayer() const;
@@ -263,7 +264,7 @@ public:
     void MarkAsModified() override;
     // ~IAnimNodeOwner
 
-    ESequenceType GetSequenceType() const 
+    SequenceType GetSequenceType() const 
     {
         if (m_pAnimSequence.get())
         {
@@ -271,7 +272,7 @@ public:
         }
         else
         {
-            return eSequenceType_Legacy;
+            return kSequenceTypeDefault;
         }
     }
 

@@ -30,6 +30,8 @@ public: // member functions
     void ComputeLayoutForElementAndDescendants(AZ::EntityId entityId) override;
     // ~UiLayoutManagerBus
 
+    bool HasMarkedLayouts() const { return !m_elementsToRecomputeLayout.empty(); }
+
 private: // member functions
 
     AZ_DISABLE_COPY_MOVE(UiLayoutManager);

@@ -73,6 +73,7 @@ namespace GraphCanvas
         StyleNotificationBus::Handler::BusDisconnect();
         DataSlotLayoutRequestBus::Handler::BusDisconnect();
         DataSlotNotificationBus::Handler::BusDisconnect();
+        NodeDataSlotRequestBus::Handler::BusDisconnect();
     }
 
     void DataSlotLayout::OnSceneSet(const AZ::EntityId&)
@@ -99,6 +100,8 @@ namespace GraphCanvas
 
     void DataSlotLayout::OnRegisteredToNode(const AZ::EntityId& nodeId)
     {
+        NodeDataSlotRequestBus::Handler::BusDisconnect();
+        NodeDataSlotRequestBus::Handler::BusConnect(nodeId);
         TryAndSetupSlot();
     }
 
@@ -131,6 +134,7 @@ namespace GraphCanvas
 
         m_slotConnectionPin->setToolTip(displayText.c_str());
         m_slotText->setToolTip(displayText.c_str());
+        m_nodePropertyDisplay->setToolTip(displayText.c_str());
     }
 
     void DataSlotLayout::OnConnectedTo(const AZ::EntityId&, const Endpoint&)
@@ -186,6 +190,11 @@ namespace GraphCanvas
     }
 
     void DataSlotLayout::OnDataSlotTypeChanged(const DataSlotType& dataSlotType)
+    {
+        RecreatePropertyDisplay();
+    }
+
+    void DataSlotLayout::RecreatePropertyDisplay()
     {
         if (m_nodePropertyDisplay != nullptr)
         {

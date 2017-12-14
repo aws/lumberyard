@@ -29,6 +29,8 @@ namespace AZ
         //! Handle to the a module/shared library
         struct IModuleHandle
         {
+            virtual ~IModuleHandle() = default;
+
             //! Is the module handle valid (was it loaded successfully)?
             virtual bool IsValid() = 0;
 
@@ -39,6 +41,8 @@ namespace AZ
         //! Handle to a function within the module/shared library
         struct IFunctionHandle
         {
+            virtual ~IFunctionHandle() = default;
+
             //! Is the function handle valid (was it found inside the module correctly)?
             virtual bool IsValid() = 0;
 

@@ -15,6 +15,7 @@
 #define __SHADERCOMPONENTS_H__
 
 #include "../Defs.h"
+#include "ShadersResourcesGroups/PerFrame.h"
 
 
 #if defined(PF_LOCAL) && !(PF_LOCAL == 1)
@@ -131,43 +132,11 @@ enum ECGParam
     ECGP_PB_WaterRipplesLookupParams,
     ECGP_PB_SkinningExtraWeights,
 
+    ECGP_PI_FurLODInfo,
+    ECGP_PI_FurParams,
+    ECGP_PI_PrevObjWorldMatrix,
+
     ECGP_COUNT,
-};
-
-struct PerFrameParameters
-{
-    int m_FrameID;
-
-    Vec3 m_WaterLevel;
-    Vec4 m_HDRParams;
-
-    float m_SunSpecularMultiplier;
-
-    Vec3 m_DecalZFightingRemedy;
-
-    Vec3 m_CloudShadingColorSun;
-    Vec3 m_CloudShadingColorSky;
-    Vec4 m_CloudShadowParams;
-    Vec4 m_CloudShadowAnimParams;
-
-    Vec4 m_CausticsParams;
-    Vec3 m_CausticsSunDirection;
-
-    Vec4 m_VolumetricFogParams;
-    Vec4 m_VolumetricFogRampParams;
-    Vec4 m_VolumetricFogColorGradientBase;
-    Vec4 m_VolumetricFogColorGradientDelta;
-    Vec4 m_VolumetricFogColorGradientParams;
-    Vec4 m_VolumetricFogColorGradientRadial;
-    Vec4 m_VolumetricFogSamplingParams;
-    Vec4 m_VolumetricFogDistributionParams;
-    Vec4 m_VolumetricFogScatteringParams;
-    Vec4 m_VolumetricFogScatteringBlendParams;
-    Vec4 m_VolumetricFogScatteringColor;
-    Vec4 m_VolumetricFogScatteringSecondaryColor;
-    Vec4 m_VolumetricFogHeightDensityParams;
-    Vec4 m_VolumetricFogHeightDensityRampParams;
-    Vec4 m_VolumetricFogDistanceParams;
 };
 
 enum EOperation
@@ -180,13 +149,29 @@ enum EOperation
     eOp_Log,
 };
 
+//-----------------------------------------------------------------------------
+// This is the binding structure that represents any parameter parsed by the shader parser 
+// and is to be bound in the shader.
+//-----------------------------------------------------------------------------
 struct SCGBind
 {
-    CCryNameR m_Name;
-    uint32 m_Flags;
-    short m_BindingSlot;
-    short m_RegisterOffset;
-    int m_RegisterCount;
+    CCryNameR   m_Name;
+    uint32      m_Flags;
+
+    // m_BindingSlot - For constants it represents the buffer binding slot, for example B0, B1..
+    // For textures and samplers it is the actual binding slot / offset.
+    short       m_BindingSlot;
+
+    // m_RegisterOffset - For constants it is the register offset within the binding slot group
+    // For textures and samplers the offset simply uses the MSB to indicate the usage.   
+    // A texture will be SHADER_BIND_TEXTURE while a sampler will be SHADER_BIND_SAMPLER
+    // [Shader System] - possibly change / remove MSB usage.
+    short       m_RegisterOffset;   
+    
+    // m_RegisterCount - number of vectors used by the parameters.  
+    // Example: matrix 4x4 will require 4 vectors.
+    int         m_RegisterCount;    
+
     SCGBind()
     {
         m_RegisterCount = 1;
@@ -251,6 +236,10 @@ struct SCGLiteral
     void GetMemoryUsage(ICrySizer* pSizer) const{}
 };
 
+//-----------------------------------------------------------------------------
+// This is the binding structure for constant data parsed by the shader parser 
+// and is to be bound in the shader.
+//-----------------------------------------------------------------------------
 struct SCGParam
     : SCGBind
 {
@@ -413,7 +402,7 @@ struct SCGSampler
 enum ECGTexture
 {
     ECGT_Unknown,
-    ECGT_MatSlot_Diffuse,
+    ECGT_MatSlot_Diffuse,   // @adiblev - move this to the end in order to support dynamically growing number
     ECGT_MatSlot_Normals,
     ECGT_MatSlot_Height,
     ECGT_MatSlot_Specular,
@@ -446,6 +435,7 @@ enum ECGTexture
     ECGT_ZTarget,
     ECGT_ZTargetScaled,
     ECGT_ZTargetMS,
+    ECGT_ShadowMaskZTarget,
     ECGT_SceneNormalsBent,
     ECGT_SceneNormals,
     ECGT_SceneDiffuse,
@@ -462,8 +452,11 @@ enum ECGTexture
     ECGT_COUNT
 };
 
-struct SCGTexture
-    : SCGBind
+//-----------------------------------------------------------------------------
+// This is the binding structure for texture data parsed by the shader parser 
+// as well as its binding to the shader (bind slot).
+//-----------------------------------------------------------------------------
+struct SCGTexture : SCGBind
 {
     CTexture* m_pTexture;
     STexAnim* m_pAnimInfo;

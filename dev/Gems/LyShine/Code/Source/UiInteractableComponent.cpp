@@ -26,8 +26,10 @@
 #include <LyShine/Bus/UiElementBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiInteractableNotificationBus Behavior context handler class 
-class BehaviorUiInteractableNotificationBusHandler : public UiInteractableNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiInteractableNotificationBus Behavior context handler class
+class BehaviorUiInteractableNotificationBusHandler
+    : public UiInteractableNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiInteractableNotificationBusHandler, "{BBF912EB-8F45-4869-B1F0-19CDA9D16231}", AZ::SystemAllocator,
@@ -328,7 +330,7 @@ void UiInteractableComponent::SetReleasedActionCallback(OnActionCallback onActio
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiInteractableComponent::Update()
+void UiInteractableComponent::Update(float /* deltaTime */)
 {
     // This currently happens every frame. Needs optimization to just happen on events
     UiInteractableStatesInterface::State state = ComputeInteractableState();

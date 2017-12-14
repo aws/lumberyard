@@ -55,7 +55,7 @@ namespace EMotionFX
 
     void MeshBuilderVertexAttributeLayerVector3::ConvertEndian(uint32 orgVtx, uint32 duplicate, MCore::Endian::EEndianType fromEndian, MCore::Endian::EEndianType targetEndian)
     {
-        MCore::Vector3& value = mVertices[orgVtx][duplicate].mValue;
+        AZ::PackedVector3f& value = mVertices[orgVtx][duplicate].mValue;
         MCore::Endian::ConvertVector3(&value, fromEndian, targetEndian);
     }
 
@@ -90,10 +90,11 @@ namespace EMotionFX
 
     bool MeshBuilderVertexAttributeLayerVector3::CheckIfIsVertexEqual(uint32 orgVtx, uint32 duplicate) const
     {
-        const MCore::Vector3& value = mVertices[orgVtx][duplicate].mValue;
-        return  (MCore::Compare<float>::CheckIfIsClose(value.x, mVertexValue.x, 0.00001f) &&
-                 MCore::Compare<float>::CheckIfIsClose(value.y, mVertexValue.y, 0.00001f) &&
-                 MCore::Compare<float>::CheckIfIsClose(value.z, mVertexValue.z, 0.00001f));
+        const AZ::PackedVector3f& value = mVertices[orgVtx][duplicate].mValue;
+        return  (
+            MCore::Compare<float>::CheckIfIsClose(value.GetX(), mVertexValue.GetX(), 0.00001f) &&
+            MCore::Compare<float>::CheckIfIsClose(value.GetY(), mVertexValue.GetY(), 0.00001f) &&
+            MCore::Compare<float>::CheckIfIsClose(value.GetZ(), mVertexValue.GetZ(), 0.00001f));
     }
 
     bool MeshBuilderVertexAttributeLayerVector4::CheckIfIsVertexEqual(uint32 orgVtx, uint32 duplicate) const

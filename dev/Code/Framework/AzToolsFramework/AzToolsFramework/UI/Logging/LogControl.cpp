@@ -21,6 +21,7 @@
 #include <QHBoxLayout>
 #include <QScrollBar>
 #include <QTableView>
+#include <QHeaderView>
 
 #include "LogPanel_Panel.h"
 
@@ -38,6 +39,7 @@ namespace AzToolsFramework
 
         BaseLogView::BaseLogView(QWidget* pParent)
             : QWidget(pParent)
+            , m_currentItemExpandsToFit(false)
         {
             ++s_panelRefCount;
             if (s_panelRefCount == 1) // we are first panel that exists
@@ -132,6 +134,8 @@ namespace AzToolsFramework
             m_ptrLogView->setModel(ptrModel);
             connect(m_ptrLogView->model(), SIGNAL(rowsInserted(const QModelIndex&, int, int)), this, SLOT(rowsInserted(const QModelIndex&, int, int)));
 
+            connect(m_ptrLogView->selectionModel(), &QItemSelectionModel::currentChanged, this, &BaseLogView::CurrentItemChanged);
+
             QHeaderView* pHeader = m_ptrLogView->horizontalHeader();
 
             int column = -1;
@@ -171,6 +175,15 @@ namespace AzToolsFramework
             auto* pDel = aznew LogPanel::LogPanelItemDelegate(m_ptrLogView, GetMessageColumn());
             m_ptrLogView->setItemDelegate(pDel);
             connect(pDel, SIGNAL(onLinkActivated(const QString&)), this, SIGNAL(onLinkActivated(const QString&)));
+        }
+
+        void BaseLogView::SetCurrentItemExpandsToFit(bool expandsToFit)
+        {
+            if (expandsToFit != m_currentItemExpandsToFit)
+            {
+                m_currentItemExpandsToFit = expandsToFit;
+                CurrentItemChanged(m_ptrLogView->currentIndex(), QModelIndex());
+            }
         }
 
         void BaseLogView::rowsInserted(const QModelIndex& /*parent*/, int start, int end)
@@ -213,11 +226,11 @@ namespace AzToolsFramework
                 QString displayString = pModel->data(pModel->index(row.row(), column), Qt::DisplayRole).toString();
                 if ((column != 0) && (finalString.length() > 0))
                 {
-                    finalString += " - ";
+                    finalString += QLatin1String(" - ");
                 }
-                finalString += displayString.toUtf8().data();
+                finalString += displayString;
             }
-            finalString += "\n";
+            finalString += QLatin1String("\n");
 
             return finalString;
         }
@@ -230,13 +243,12 @@ namespace AzToolsFramework
                 return;
             }
 
-            AZStd::string accumulator;
+            QString accumulator;
             QItemSelectionModel* selectionModel = m_ptrLogView->selectionModel();
             QModelIndexList indices = selectionModel->selectedRows();
             for (QModelIndexList::iterator iter = indices.begin(); iter != indices.end(); ++iter)
             {
-                QString res = this->ConvertRowToText(*iter);
-                accumulator += res.toUtf8().data();
+                accumulator += this->ConvertRowToText(*iter);
             }
 
             if (accumulator.size())
@@ -244,7 +256,7 @@ namespace AzToolsFramework
                 QClipboard* clipboard = QApplication::clipboard();
                 if (clipboard)
                 {
-                    clipboard->setText(accumulator.c_str());
+                    clipboard->setText(accumulator);
                 }
             }
         }
@@ -270,6 +282,16 @@ namespace AzToolsFramework
             if (clipboard)
             {
                 clipboard->setText(finalString);
+            }
+        }
+
+        void BaseLogView::CurrentItemChanged(const QModelIndex& current, const QModelIndex& previous)
+        {
+            if (m_currentItemExpandsToFit)
+            {
+                const auto defaultSize = m_ptrLogView->verticalHeader()->sectionSizeHint(previous.row());
+                m_ptrLogView->verticalHeader()->resizeSection(previous.row(), defaultSize);
+                m_ptrLogView->resizeRowToContents(current.row());
             }
         }
     } // namespace LogPanel

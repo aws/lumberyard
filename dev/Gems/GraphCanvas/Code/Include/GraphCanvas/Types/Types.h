@@ -11,12 +11,53 @@
 */
 #pragma once
 
+#include <qfont.h>
+#include <qfontinfo.h>
+
+#include <AzCore/Math/Color.h>
+
 namespace GraphCanvas
 {
-	enum class ConnectionDisplayState
-	{
-		None,
-		Deletion,
-		Inspection
-	};
+    enum class ConnectionDisplayState
+    {
+        None,
+        Deletion,
+        Inspection
+    };
+
+    class FontConfiguration
+    {
+    public:
+        AZ_TYPE_INFO(FontConfiguration, "{6D1FBE30-5BD8-4E8D-9D57-7BE79DAA9CF4}");
+
+        FontConfiguration()
+            : m_fontColor(0.0f, 0.0f, 0.0f, 1.0f)
+            , m_fontFamily("default")
+            , m_pixelSize(-1)
+            , m_weight(QFont::Normal)
+            , m_style(QFont::Style::StyleNormal)
+            , m_verticalAlignment(Qt::AlignmentFlag::AlignTop)
+            , m_horizontalAlignment(Qt::AlignmentFlag::AlignLeft)
+        {}
+
+        void InitializePixelSize()
+        {
+            if (m_pixelSize < 0)
+            {
+                QFont defaultFont(m_fontFamily.c_str());
+                QFontInfo defaultFontInfo(defaultFont);
+
+                m_pixelSize = defaultFontInfo.pixelSize();
+            }
+        }
+
+
+        AZ::Color               m_fontColor;
+        AZStd::string           m_fontFamily;
+        AZ::s32                 m_pixelSize; 
+        AZ::s32                 m_weight;
+        AZ::s32                 m_style;
+        AZ::s32                 m_verticalAlignment;
+        AZ::s32                 m_horizontalAlignment;
+    };
 }

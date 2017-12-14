@@ -40,9 +40,7 @@ namespace GraphCanvas
     {
         AZ::Entity* entity = SlotComponent::CreateCoreSlotEntity();
 
-        PropertySlotComponent* dataSlot = entity->CreateComponent<PropertySlotComponent>(propertyId, slotConfiguration);
-        dataSlot->SetNode(nodeId);
-        
+        entity->CreateComponent<PropertySlotComponent>(propertyId, slotConfiguration);
         entity->CreateComponent<PropertySlotLayoutComponent>();
         entity->CreateComponent<StylingComponent>(Styling::Elements::PropertySlot, nodeId);
 

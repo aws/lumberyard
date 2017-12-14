@@ -17,6 +17,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 namespace ScriptCanvasEditor
@@ -24,6 +25,7 @@ namespace ScriptCanvasEditor
     class DocumentContext
         : public DocumentContextRequestBus::Handler
         , protected AZ::Data::AssetBus::MultiHandler
+        , protected AzToolsFramework::AssetSystemBus::Handler
     {
     public:
         AZ_TYPE_INFO(DocumentContext, "{50AE481D-9576-40E3-8084-1FCCDACCC09A}");
@@ -37,29 +39,35 @@ namespace ScriptCanvasEditor
 
         ////////////////////////////////////////////////////////////////////////
         // DocumentRequestBus::Handler
-        AZ::Data::Asset<ScriptCanvasAsset> CreateScriptCanvasAsset(const AZ::Data::AssetId& assetId) override;
+        AZ::Data::Asset<ScriptCanvasAsset> CreateScriptCanvasAsset( AZStd::string_view assetAbsolutePath) override;
 
-        void SaveScriptCanvasAsset(const AZ::Data::AssetInfo&, AZ::Data::Asset<ScriptCanvasAsset>, const DocumentContextRequests::SaveCB& saveCB) override;
+        void SaveScriptCanvasAsset(AZStd::string_view, AZ::Data::Asset<ScriptCanvasAsset>, const DocumentContextRequests::SaveCB& saveCB, const DocumentContextRequests::SourceFileChangedCB&) override;
         AZ::Data::Asset<ScriptCanvasAsset> LoadScriptCanvasAsset(const char* assetPath, bool loadBlocking) override;
         AZ::Data::Asset<ScriptCanvasAsset> LoadScriptCanvasAssetById(const AZ::Data::AssetId& assetId, bool loadBlocking) override;
         bool RegisterScriptCanvasAsset(const AZ::Data::AssetId& assetId, const ScriptCanvasAssetFileInfo& assetFileInfo) override;
         bool UnregisterScriptCanvasAsset(const AZ::Data::AssetId& assetId) override;
         ScriptCanvasFileState GetScriptCanvasAssetModificationState(const AZ::Data::AssetId& assetId) override;
         void SetScriptCanvasAssetModificationState(const AZ::Data::AssetId& assetId, ScriptCanvasFileState fileState) override;
+
+        AZ::Outcome<ScriptCanvasAssetFileInfo, AZStd::string> GetFileInfo(const AZ::Data::AssetId& assetId) const override;
+        AZ::Outcome<void, AZStd::string> SetFileInfo(const AZ::Data::AssetId& assetId, const ScriptCanvasAssetFileInfo& fileInfo) override;
         ////////////////////////////////////////////////////////////////////////
 
     private:
         //SourceControl callback
         void SaveAssetPostSourceControl(bool success, const AzToolsFramework::SourceControlFileInfo& fileInfo, AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset,
-            const AZ::Data::AssetInfo& assetInfo, const AZ::Data::AssetStreamInfo& saveInfo, const DocumentContextRequests::SaveCB& saveCB);
+            const AZ::Data::AssetStreamInfo& saveInfo, const DocumentContextRequests::SaveCB& saveCB, const DocumentContextRequests::SourceFileChangedCB& idChangedCB);
 
         //! AZ::Data::AssetBus
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
-        void OnAssetSaved(AZ::Data::Asset<AZ::Data::AssetData> asset, bool success) override;
         void OnAssetUnloaded(const AZ::Data::AssetId assetId, const AZ::Data::AssetType assetType) override;
 
+        // AzToolsFramework::AssetSystemBus
+        void SourceFileChanged(AZStd::string relPath, AZStd::string scanFolder, AZ::Uuid sourceAssetId);
+
         AZStd::unordered_map<AZ::Data::AssetId, ScriptCanvasAssetFileInfo> m_scriptCanvasAssetFileInfo;
+        AZStd::unordered_map<AZStd::string, DocumentContextRequests::SourceFileChangedCB> m_pendingSaveMap;
     };
 }

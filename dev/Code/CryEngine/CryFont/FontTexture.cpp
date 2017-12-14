@@ -70,7 +70,7 @@ int CFontTexture::CreateFromFile(const string& szFileName, int iWidth, int iHeig
 }
 
 //-------------------------------------------------------------------------------------------------
-int CFontTexture::CreateFromMemory(unsigned char* pFileData, int iDataSize, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCellCount, int iHeightCellCount)
+int CFontTexture::CreateFromMemory(unsigned char* pFileData, int iDataSize, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCellCount, int iHeightCellCount, float sizeRatio)
 {
     if (!m_pGlyphCache.LoadFontFromMemory(pFileData, iDataSize))
     {
@@ -79,7 +79,7 @@ int CFontTexture::CreateFromMemory(unsigned char* pFileData, int iDataSize, int 
         return 0;
     }
 
-    if (!Create(iWidth, iHeight, iSmoothMethod, iSmoothAmount, iWidthCellCount, iHeightCellCount))
+    if (!Create(iWidth, iHeight, iSmoothMethod, iSmoothAmount, iWidthCellCount, iHeightCellCount, sizeRatio))
     {
         return 0;
     }
@@ -88,7 +88,7 @@ int CFontTexture::CreateFromMemory(unsigned char* pFileData, int iDataSize, int 
 }
 
 //-------------------------------------------------------------------------------------------------
-int CFontTexture::Create(int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCellCount, int iHeightCellCount)
+int CFontTexture::Create(int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCellCount, int iHeightCellCount, float sizeRatio)
 {
     m_pBuffer = new FONT_TEXTURE_TYPE[iWidth * iHeight];
     if (!m_pBuffer)
@@ -121,7 +121,7 @@ int CFontTexture::Create(int iWidth, int iHeight, int iSmoothMethod, int iSmooth
     m_fTextureCellWidth = m_iCellWidth * m_fInvWidth;
     m_fTextureCellHeight = m_iCellHeight * m_fInvHeight;
 
-    if (!m_pGlyphCache.Create(FONT_GLYPH_CACHE_SIZE, m_iCellWidth, m_iCellHeight, iSmoothMethod, iSmoothAmount))
+    if (!m_pGlyphCache.Create(FONT_GLYPH_CACHE_SIZE, m_iCellWidth, m_iCellHeight, iSmoothMethod, iSmoothAmount, sizeRatio))
     {
         Release();
 

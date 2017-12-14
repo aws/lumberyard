@@ -29,6 +29,7 @@ namespace EMStudio
         mEMFXNode           = node;
         mID                 = node->GetID();
         mCanHaveChildren    = node->GetCanHaveChildren();
+        mHasVisualGraph     = node->GetHasVisualGraph();
         mPlugin             = plugin;
         SetSubTitle(node->GetPaletteName(), false);
 

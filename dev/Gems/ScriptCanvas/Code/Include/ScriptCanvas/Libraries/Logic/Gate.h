@@ -61,7 +61,7 @@ namespace ScriptCanvas
 
                  void OnInputSignal(const SlotId&) override;
  
-                 void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+ 
             };
         }
     }

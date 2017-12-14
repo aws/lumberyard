@@ -75,6 +75,8 @@ namespace AZ
         // Non virtual, just registers component descriptors
         void RegisterComponentDescriptors();
 
+        AZStd::list<AZ::ComponentDescriptor*> GetComponentDescriptors() const { return m_descriptors; }
+
     protected:
         AZStd::list<AZ::ComponentDescriptor*> m_descriptors;
 

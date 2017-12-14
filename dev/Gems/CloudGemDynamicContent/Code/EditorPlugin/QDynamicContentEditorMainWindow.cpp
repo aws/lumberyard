@@ -29,6 +29,13 @@
 
 namespace DynamicContent
 {
+    const int QUploadPackagesDialog::UploadButtonStatus::Upload;
+    const int QUploadPackagesDialog::UploadButtonStatus::Next;
+    const int QUploadPackagesDialog::UploadButtonStatus::Continue;
+
+    const int QUploadPackagesDialog::CancelButtonStatus::Back;
+    const int QUploadPackagesDialog::CancelButtonStatus::Cancel;
+
     // note that these match the list of command handlers found in AWS/cli-plugin-code/resource_commands.py
     static const char* COMMAND_LIST_MANIFESTS = "list-manifests";
     static const char* COMMAND_SHOW_MANIFESTS = "show-manifest";
@@ -734,9 +741,9 @@ namespace DynamicContent
 
     void QDynamicContentEditorMainWindow::OnUploadChangedPackages()
     {
-        if (ManifestNeedsCheckout())
+        if (!PrepareManifestForWork())
         {
-            OfferManifestCheckout();
+            AZ_Warning("Dynamic Content Editor", false, "Source Control down or operation failed");
         }
 
         QScopedPointer<QUploadPackagesDialog> uploadPackagesDialog{ new QUploadPackagesDialog(this) };
@@ -824,10 +831,11 @@ namespace DynamicContent
     {
         auto manifestName = cbManifestSelection->currentText();
 
-        if (ManifestNeedsCheckout())
+        if (!PrepareManifestForWork())
         {
-            OfferManifestCheckout();
+            AZ_Warning("Dynamic Content Editor", false, "Source Control down or operation failed");
         }
+
         auto caption = QString(tr("Add files to the manifest - %1")).arg(manifestName);
 
         auto fileNames = QFileDialog::getOpenFileNames(this,
@@ -871,10 +879,11 @@ namespace DynamicContent
     {
         auto manifestName = cbManifestSelection->currentText();
 
-        if (ManifestNeedsCheckout())
+        if (!PrepareManifestForWork())
         {
-            OfferManifestCheckout();
+            AZ_Warning("Dynamic Content Editor", false, "Source Control down or operation failed");
         }
+
         auto caption = QString(tr("Add folders to the manifest - %1")).arg(manifestName);
 
         auto folderName = QFileDialog::getExistingDirectory(this,
@@ -1154,11 +1163,11 @@ namespace DynamicContent
 
     void QDynamicContentEditorMainWindow::OnAddPackage()
     {
-        if (ManifestNeedsCheckout())
+        if (!PrepareManifestForWork())
         {
-            OfferManifestCheckout();
+            AZ_Warning("Dynamic Content Editor", false, "Source Control down or operation failed");
         }
- 
+
         QScopedPointer<QCreatePackageDialog> createDialog{new QCreatePackageDialog(this)};
 
         QStringList platformNames = m_platformMap.keys();
@@ -1354,7 +1363,8 @@ namespace DynamicContent
     void QDynamicContentEditorMainWindow::UpdateManifestSourceControlState()
     {
         QSharedPointer<ManifestInfo> sourcePtr = m_manifestStatus;
-        sourcePtr->m_manifestSourceStatus = AzToolsFramework::SCS_NUM_STATUSES;
+        sourcePtr->m_manifestSourceFileInfo.m_status = AzToolsFramework::SCS_ProviderIsDown;
+        sourcePtr->m_manifestSourceFileInfo.m_flags = 0;
 
         QString requestedName{ m_manifestStatus->m_currentlySelectedManifestName };
         if (!requestedName.length())
@@ -1367,12 +1377,24 @@ namespace DynamicContent
         {
             if (sourcePtr->m_currentlySelectedManifestName == requestedName)
             {
-                sourcePtr->m_manifestSourceStatus = fileInfo.m_status;
+                sourcePtr->m_manifestSourceFileInfo = fileInfo;
             }
         });
     }
-    bool QDynamicContentEditorMainWindow::OfferManifestCheckout()
+
+    bool QDynamicContentEditorMainWindow::PrepareManifestForWork()
     {
+        // ensure we're connected to source control, free of connection errors.
+        if (!m_manifestStatus->m_manifestSourceFileInfo.CompareStatus(AzToolsFramework::SCS_OpSuccess))
+        {
+            return false;
+        }
+
+        if (m_manifestStatus->m_manifestSourceFileInfo.HasFlag(AzToolsFramework::SCF_OpenByUser))
+        {
+            return true;
+        }
+
         QString checkoutString = m_manifestStatus->m_currentlySelectedManifestName;
         checkoutString += " needs checkout.\n";
 
@@ -1386,28 +1408,34 @@ namespace DynamicContent
 
         if (reply == QMessageBox::Yes)
         {
-            CheckoutManifest();
+            RequestEditManifest();
         }
-        return (reply == QMessageBox::Yes);
+
+        return m_manifestStatus->m_manifestSourceFileInfo.HasFlag(AzToolsFramework::SCF_OpenByUser);
     }
 
-    bool QDynamicContentEditorMainWindow::ManifestNeedsCheckout() const
-    {
-        return (m_manifestStatus->m_manifestSourceStatus == AzToolsFramework::SCS_Tracked || m_manifestStatus->m_manifestSourceStatus == AzToolsFramework::SCS_NotTracked);
-    }
-    void QDynamicContentEditorMainWindow::CheckoutManifest()
+    void QDynamicContentEditorMainWindow::RequestEditManifest()
     {
         QSharedPointer<ManifestInfo> sourcePtr = m_manifestStatus;        
         QString requestedName{ m_manifestStatus->m_currentlySelectedManifestName };
+        bool opComplete = false;
+
         using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-        SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, sourcePtr->m_fullPathToManifest.toStdString().c_str(), true, 
-            [requestedName,sourcePtr](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+        AzToolsFramework::SourceControlResponseCallback scCallback = 
+            [&opComplete, &sourcePtr, requestedName](bool, AzToolsFramework::SourceControlFileInfo fileInfo)
         {
             if (sourcePtr->m_currentlySelectedManifestName == requestedName)
             {
-                sourcePtr->m_manifestSourceStatus = fileInfo.m_status;
+                sourcePtr->m_manifestSourceFileInfo = fileInfo;
+                opComplete = true;
             }
-        });
+        };
+
+        SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, sourcePtr->m_fullPathToManifest.toStdString().c_str(), true, scCallback);
+        while (!opComplete)
+        {
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents, 16);
+        }
     }
 
     void QDynamicContentEditorMainWindow::UpdateManifest(const QVariant& vManifestInfo)
@@ -1511,10 +1539,11 @@ namespace DynamicContent
 
     void QDynamicContentEditorMainWindow::AddFilesToPackage(const ManifestFiles& manifestFiles, const QModelIndex& pakIndex)
     {
-        if (ManifestNeedsCheckout())
+        if (!PrepareManifestForWork())
         {
-            OfferManifestCheckout();
+            AZ_Warning("Dynamic Content Editor", false, "Source Control down or operation failed");
         }
+
         if (pakIndex.isValid())
         {
             auto pakItem = m_packagesModel->itemFromIndex(pakIndex);

@@ -10,19 +10,9 @@
 *
 */
 
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #include "StdAfx.h"
 #include "AISoundManagerSystemComponent.h"
+
 #include "StarterGameUtility.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -32,7 +22,7 @@
 #include <AzCore/Math/MathUtils.h>
 
 #include <AzCore/Component/TransformBus.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
 
 #include <GameplayEventBus.h>
 #include <IRenderAuxGeom.h>
@@ -100,10 +90,10 @@ namespace StarterGameGem
             // IMPORTANT: requires an empty class 'SoundTypesHolder'
             behaviorContext->Class<SoundTypesHolder>("SoundTypes")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                ->Constant("RifleHit", BehaviorConstant(SoundTypes::RifleHit))
-                ->Constant("WhizzPast", BehaviorConstant(SoundTypes::WhizzPast))
-                ->Constant("LauncherExplosion", BehaviorConstant(SoundTypes::LauncherExplosion))
-                ->Constant("GunShot", BehaviorConstant(SoundTypes::GunShot))
+                ->Constant("RifleHit", BehaviorConstant(SoundTypes::ST_RifleHit))
+                ->Constant("WhizzPast", BehaviorConstant(SoundTypes::ST_WhizzPast))
+                ->Constant("LauncherExplosion", BehaviorConstant(SoundTypes::ST_LauncherExplosion))
+                ->Constant("GunShot", BehaviorConstant(SoundTypes::ST_GunShot))
                 ;
 
             behaviorContext->EBus<AISoundManagerSystemRequestBus>("AISoundManagerSystemRequestBus")
@@ -254,7 +244,7 @@ namespace StarterGameGem
     bool AISoundManagerSystemComponent::IsLineSound(const SoundProperties& props) const
     {
         bool isLine = false;
-        if (props.type == SoundTypes::WhizzPast)
+        if (props.type == SoundTypes::ST_WhizzPast)
         {
             isLine = true;
         }

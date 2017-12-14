@@ -29,6 +29,7 @@ textarea{
     }
     .d-inline-block {
         margin-left: 15px;
+        position: relative;
     }
 
     .row.rest-prop {
@@ -36,9 +37,9 @@ textarea{
             max-width: 200px;
             margin-right: 15px;
             display: flex;
-            align-items: center;           
-        }        
-        input { 
+            align-items: center;
+        }
+        input {
             max-width: 600px;
         }
     }
@@ -49,9 +50,9 @@ textarea{
 
     .query-param > label:not(:first-child) {
         display: none;
-    }    
+    }
     .rest-multiplier {
-        > input { 
+        > input {
             margin: 0 15px;
         }
         > span {

@@ -41,7 +41,6 @@ namespace GraphCanvas
         AZ::Entity* entity = SlotComponent::CreateCoreSlotEntity();
 
         ExecutionSlotComponent* executionSlot = entity->CreateComponent<ExecutionSlotComponent>(slotConfiguration);
-        executionSlot->SetNode(nodeId);
 
         entity->CreateComponent<ExecutionSlotLayoutComponent>();
 

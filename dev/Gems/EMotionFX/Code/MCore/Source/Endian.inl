@@ -231,7 +231,7 @@ MCORE_INLINE void Endian::ConvertVector2(AZ::Vector2* value, Endian::EEndianType
 
 
 // convert a Vector3
-MCORE_INLINE void Endian::ConvertVector3(MCore::Vector3* value, Endian::EEndianType sourceEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3(AZ::PackedVector3f* value, Endian::EEndianType sourceEndianType, uint32 count)
 {
     // convert into the new endian, depending on the platform we are running on
     switch (sourceEndianType)
@@ -412,16 +412,16 @@ MCORE_INLINE void Endian::ConvertVector2(AZ::Vector2* value, EEndianType sourceE
 
 
 // convert a Vector3 into another endian type
-MCORE_INLINE void Endian::ConvertVector3(MCore::Vector3* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3(AZ::PackedVector3f* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count)
 {
-    // if we don't need to convert anything
-    if (sourceEndianType == targetEndianType)
-    {
-        return;
-    }
+	// if we don't need to convert anything
+	if (sourceEndianType == targetEndianType)
+	{
+		return;
+	}
 
-    // perform conversion
-    ConvertFloat((float*)value, count * 3);
+	// perform conversion
+	ConvertFloat((float*)value, count * 3);
 }
 
 
@@ -489,7 +489,7 @@ MCORE_INLINE void Endian::ConvertVector2(AZ::Vector2* value, uint32 count)
 
 
 // convert a Vector3
-MCORE_INLINE void Endian::ConvertVector3(MCore::Vector3* value, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3(AZ::PackedVector3f* value, uint32 count)
 {
     ConvertFloat((float*)value, 3 * count);
 }
@@ -651,7 +651,7 @@ MCORE_INLINE void Endian::ConvertVector2To(AZ::Vector2* value, EEndianType targe
 
 
 // convert a Vector3 into another endian type
-MCORE_INLINE void Endian::ConvertVector3To(MCore::Vector3* value, EEndianType targetEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3To(AZ::PackedVector3f* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
     #ifdef MCORE_LITTLE_ENDIAN

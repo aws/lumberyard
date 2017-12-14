@@ -97,14 +97,14 @@ namespace EMStudio
                     const uint32 numParticles = trajectoryPath->mTraceParticles.GetLength();
                     MCore::Matrix oldGlobalTM = trajectoryPath->mTraceParticles[numParticles - 1].mGlobalTM;
 
-                    MCore::Vector3 oldPos = oldGlobalTM.GetTranslation();
+                    AZ::Vector3 oldPos = oldGlobalTM.GetTranslation();
                     MCore::Quaternion oldRot(oldGlobalTM.Normalized());
                     MCore::Quaternion rotation(globalTM.Normalized());
 
-                    MCore::Vector3 deltaPos = globalTM.GetTranslation() - oldPos;
+                    AZ::Vector3 deltaPos = globalTM.GetTranslation() - oldPos;
                     float deltaRot = MCore::Math::Abs(rotation.Dot(oldRot));
 
-                    if (deltaPos.SafeLength() > 0.0001f || deltaRot < 0.99f)
+                    if (MCore::SafeLength(deltaPos) > 0.0001f || deltaRot < 0.99f)
                     {
                         distanceTraveledEnough = true;
                     }

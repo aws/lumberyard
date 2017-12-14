@@ -100,7 +100,7 @@ public:
     void DisplayDimensionHelper(DisplayContext& dc, int nShelf = -1);
     void DisplayDimensionHelper(DisplayContext& dc, const AABB& aabb);
 
-    bool IsOverDoubleClickTime(UINT time) const{return GetTickCount() - time > GetDoubleClickTime(); }
+    bool IsOverDoubleClickTime(UINT time) const{return GetTickCount() - time > QApplication::doubleClickInterval();}
     bool IsTwoPointEquivalent(const QPoint& p0, const QPoint& p1) const { return std::abs(p0.x() - p1.x()) > 2 || std::abs(p0.y() - p1.y()) > 2 ? false : true; }
 
     bool IsModelEmpty() const;

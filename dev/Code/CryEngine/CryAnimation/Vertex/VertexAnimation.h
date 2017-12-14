@@ -175,6 +175,8 @@ public:
     bool CreateFrameStates(const CSoftwareVertexFrames& vertexFrames, const CDefaultSkeleton& skeleton);
     void UpdateFrameWeightsFromPose(const CCharInstance& charInstance);
 
+    void ClearFrameStates();
+
 private:
     bool CompileAdds(CVertexCommandBuffer& commandBuffer);
     void CompileTangents(CVertexCommandBuffer& commandBuffer);

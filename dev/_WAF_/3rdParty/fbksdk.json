@@ -6,9 +6,9 @@
         "include"
     ],
     "defines": [],
-    "lib_required": "True",
     "platform": {
         "win_x64_vs2013": {
+            "lib_required": "True",
             "libpath_debug": [
                 "lib/vs2013/x64/debug"
             ],
@@ -20,6 +20,7 @@
             ]
         },
         "win_x64_vs2015": {
+            "lib_required": "True",
             "libpath_debug": [
                 "lib/vs2015/x64/debug"
             ],
@@ -31,14 +32,15 @@
             ]
         },
         "darwin_x64": {
+            "sharedlib_required": "True",
             "ccflags": [
               "-Wno-null-dereference"
             ],
-            "libpath": [
+            "sharedlibpath": [
                 "lib/clang/release"
             ],
-            "lib": [
-                    "libfbxsdk.a"
+            "shared": [
+                "libfbxsdk.dylib"
             ]
         }
     }

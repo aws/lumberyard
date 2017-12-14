@@ -28,6 +28,8 @@ public:
 
     virtual IDBResultSet* GetResultSet(bool bUnbuffered = false) = 0;
 
+    virtual bool Close() = 0;
+
     virtual bool CloseResultSet() = 0;
 
     virtual bool GetMoreResults() = 0;

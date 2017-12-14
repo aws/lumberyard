@@ -25,11 +25,12 @@ namespace LmbrCentral
     {
         const auto entityId = GetEntityId();
 
+        m_configuration.SetEntityId(entityId);
+        m_configuration.UpdateSizeFromEntityShape();
+
         m_fogVolume.SetEntityId(entityId);
         m_fogVolume.CreateFogVolumeRenderNode(m_configuration);
 
-        m_configuration.SetEntityId(entityId);
-        m_configuration.UpdateSizeFromEntityShape();
         RefreshFog();
 
         RenderNodeRequestBus::Handler::BusConnect(entityId);

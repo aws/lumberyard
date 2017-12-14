@@ -15,8 +15,11 @@
 #include "CheckOutDialog.h"
 #include "ui_CheckOutDialog.h"
 
+#include <AzToolsFramework/SourceControl/SourceControlAPI.h>
+
 
 // CCheckOutDialog dialog
+int CCheckOutDialog::m_lastResult = CCheckOutDialog::CANCEL;
 
 CCheckOutDialog::CCheckOutDialog(const QString& file, QWidget* pParent)
     : QDialog(pParent)
@@ -31,9 +34,9 @@ CCheckOutDialog::CCheckOutDialog(const QString& file, QWidget* pParent)
 
     OnInitDialog();
 
+    connect(m_ui->buttonCancel, &QPushButton::clicked, this, &CCheckOutDialog::OnBnClickedCancel);
     connect(m_ui->buttonCheckout, &QPushButton::clicked, this, &CCheckOutDialog::OnBnClickedCheckout);
-    connect(m_ui->buttonOverwriteAll, &QPushButton::clicked, this, &CCheckOutDialog::OnBnClickedOverwriteAll);
-    connect(m_ui->buttonOk, &QPushButton::clicked, this, &CCheckOutDialog::OnBnClickedOk);
+    connect(m_ui->buttonOverwrite, &QPushButton::clicked, this, &CCheckOutDialog::OnBnClickedOverwrite);
 }
 
 CCheckOutDialog::~CCheckOutDialog()
@@ -41,41 +44,60 @@ CCheckOutDialog::~CCheckOutDialog()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CCheckOutDialog::OnBnClickedCancel()
+{
+    // Cancel operation
+    HandleResult(CANCEL);
+}
+
+//////////////////////////////////////////////////////////////////////////
 // CCheckOutDialog message handlers
 void CCheckOutDialog::OnBnClickedCheckout()
 {
     // Check out this file.
-    done(CHECKOUT);
+    HandleResult(CHECKOUT);
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCheckOutDialog::OnBnClickedOk()
+void CCheckOutDialog::OnBnClickedOverwrite()
 {
     // Overwrite this file.
-    done(OVERWRITE);
+    HandleResult(OVERWRITE);
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCheckOutDialog::OnBnClickedOverwriteAll()
+void CCheckOutDialog::HandleResult(int result)
 {
-    done(OVERWRITE_ALL);
-    InstanceIsForAll() = true;
+    m_lastResult = result;
+    InstanceIsForAll() = m_ui->chkForAll->isChecked();
+    done(result);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CCheckOutDialog::OnInitDialog()
 {
-    setWindowTitle(tr("%1 is read-only").arg(Path::GetFile(m_file)));
+    setWindowTitle(tr("Source Control"));
 
-    m_ui->m_text->setText(tr("%1 is read-only file, can be under Source Control.").arg(m_file));
+    using namespace AzToolsFramework;
+    SourceControlState state = SourceControlState::Disabled;
+    SourceControlConnectionRequestBus::BroadcastResult(state, &SourceControlConnectionRequestBus::Events::GetSourceControlState);
+    bool sccAvailable = state == SourceControlState::Active ? true : false;
 
-    m_ui->buttonOverwriteAll->setEnabled(InstanceEnableForAll());
+    QString text(tr("%1\n\nis read-only, and needs to be writable to continue.").arg(m_file));
 
-    m_ui->buttonCheckout->setEnabled(GetIEditor()->IsSourceControlAvailable());
+    if (!sccAvailable)
+    {
+        text.append("\nEnable and connect to source control for more options.");
+    }
+
+    m_ui->m_text->setText(text);
+
+    m_ui->chkForAll->setEnabled(InstanceEnableForAll());
+    m_ui->chkForAll->setChecked(InstanceIsForAll());
+    m_ui->buttonCheckout->setEnabled(sccAvailable);
 
     adjustSize();
 }
-
 
 //static ////////////////////////////////////////////////////////////////
 bool& CCheckOutDialog::InstanceEnableForAll()
@@ -99,6 +121,7 @@ bool CCheckOutDialog::EnableForAll(bool isEnable)
     if (!bPrevEnable || !isEnable)
     {
         InstanceIsForAll() = false;
+        m_lastResult = CANCEL;
     }
     return bPrevEnable;
 }

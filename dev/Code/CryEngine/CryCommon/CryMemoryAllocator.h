@@ -232,7 +232,7 @@ struct Node_Allocator<eCryLinuxMalloc>
 
 	inline void * pool_alloc(size_t size) 
 	{
-#if defined(LINUX64)
+#if defined(LINUX64) && !defined(ANDROID)
 		char *p = (char*)mmap(NULL, size + sizeof(_MemHead), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_32BIT | MAP_ANONYMOUS, -1, 0);
 #else
         // Mac OS X does not have the MAP_32BIT since it's BSD based, compiling with -fPIC should solve the issue
@@ -246,7 +246,7 @@ struct Node_Allocator<eCryLinuxMalloc>
 	};
 	inline void * cleanup_alloc(size_t size) 
 	{
-#if defined(LINUX64)
+#if defined(LINUX64) && !defined(ANDROID)
 		char* p = (char*)mmap(NULL, size + sizeof(_MemHead), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_32BIT | MAP_ANONYMOUS, -1, 0);
 #else
         // Mac OS X does not have the MAP_32BIT since it's BSD based, compiling with -fPIC should solve the issue

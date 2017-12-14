@@ -138,8 +138,10 @@ QPresetSelectorWidget::QPresetSelectorWidget(QWidget* parent /*= 0*/)
     QAction* exitRename = addPresetName.addAction(QIcon(":/particleQT/buttons/close_btn.png"), QLineEdit::TrailingPosition);
     connect(exitRename, &QAction::triggered, this, &QPresetSelectorWidget::AddActionCanceled);
 
-    layout.contentsMargins().setLeft(0);
-    layout.contentsMargins().setRight(0);
+    QMargins margins = layout.contentsMargins();
+    margins.setLeft(0);
+    margins.setRight(0);
+    layout.setContentsMargins(margins);
     m_tooltip = new QToolTipWidget(this);
     connect(&panelEditName, &QAmazonLineEdit::textChanged, this, [=](){m_tooltip->hide(); });
     QAction* libSaveAction = panelEditName.addAction(QIcon(":/particleQT/buttons/add_btn.png"), QLineEdit::TrailingPosition);
@@ -880,7 +882,7 @@ void QPresetSelectorWidget::OnPanelSaveButtonClicked()
 void QPresetSelectorWidget::OnPresetRightClicked(int i)
 {
     BuildPresetMenu();
-    presetMenu->actions().first()->setData(i);
+    presetMenu->actions().constFirst()->setData(i);
     presetMenu->exec(QCursor::pos());
 }
 

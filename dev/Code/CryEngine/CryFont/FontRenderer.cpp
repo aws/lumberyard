@@ -34,7 +34,7 @@ CFontRenderer::CFontRenderer()
     : m_pLibrary(0)
     , m_pFace(0)
     , m_pGlyph(0)
-    , m_fSizeRatio(0.8f)
+    , m_fSizeRatio(IFFontConstants::defaultSizeRatio)
     , m_pEncoding(FONT_ENCODING_UNICODE)
     , m_iGlyphBitmapWidth(0)
     , m_iGlyphBitmapHeight(0)
@@ -119,10 +119,13 @@ int CFontRenderer::Release()
 }
 
 //-------------------------------------------------------------------------------------------------
-int CFontRenderer::SetGlyphBitmapSize(int iWidth, int iHeight)
+int CFontRenderer::SetGlyphBitmapSize(int iWidth, int iHeight, float sizeRatio)
 {
     m_iGlyphBitmapWidth = iWidth;
     m_iGlyphBitmapHeight = iHeight;
+
+    // Assign the given scale for texture slots as long as its positive
+    m_fSizeRatio = sizeRatio > 0.0f ? sizeRatio : m_fSizeRatio;
 
     FT_Set_Pixel_Sizes(m_pFace, (int)(m_iGlyphBitmapWidth * m_fSizeRatio), (int)(m_iGlyphBitmapHeight * m_fSizeRatio));
 
@@ -198,15 +201,25 @@ int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8
     iCharOffsetX = static_cast<AZ::s8>(m_pGlyph->bitmap_left);
     iCharOffsetY = static_cast<AZ::s8>(((int)(m_iGlyphBitmapHeight * m_fSizeRatio) - m_pGlyph->bitmap_top));     // is that correct? - we need the baseline
 
-    // might happen if font characters are too big or cache dimenstions in font.xml is too small "<font path="VeraMono.ttf" w="320" h="368"/>"
-    AZ_Assert(iX + m_pGlyph->bitmap.width <= pGlyphBitmap->GetWidth(), "CFontRenderer: Check Font XML - characters are either too big or cache dimensions are too small");            
-    AZ_Assert(iY + m_pGlyph->bitmap.rows <= pGlyphBitmap->GetHeight(), "CFontRenderer: Check Font XML - characters are either too big or cache dimensions are too small");
+    const int textureSlotBufferWidth = pGlyphBitmap->GetWidth();
+    const int textureSlotBufferHeight = pGlyphBitmap->GetHeight();
 
-    for (int i = 0; i < m_pGlyph->bitmap.rows; i++)
+    // might happen if font characters are too big or cache dimenstions in font.xml is too small "<font path="VeraMono.ttf" w="320" h="368"/>"
+    const bool charWidthFits = iX + m_pGlyph->bitmap.width <= textureSlotBufferWidth;
+    const bool charHeightFits = iY + m_pGlyph->bitmap.rows <= textureSlotBufferHeight;
+    const bool charFitsInSlot = charWidthFits && charHeightFits;
+    AZ_Error("Font", charFitsInSlot, "Character code %d doesn't fit in font texture; check 'sizeRatio' attribute in font XML or adjust this character's sizing in the font.", iCharCode);
+
+    // Restrict iteration to smallest of either the texture slot or glyph 
+    // bitmap buffer ranges
+    const int bufferMaxIterWidth = AZStd::GetMin<int>(textureSlotBufferWidth, m_pGlyph->bitmap.width);
+    const int bufferMaxIterHeight = AZStd::GetMin<int>(textureSlotBufferHeight, m_pGlyph->bitmap.rows);
+
+    for (int i = 0; i < bufferMaxIterHeight; i++)
     {
         int iNewY = i + iY;
 
-        for (int j = 0; j < m_pGlyph->bitmap.width; j++)
+        for (int j = 0; j < bufferMaxIterWidth; j++)
         {
             unsigned char   cColor = m_pGlyph->bitmap.buffer[(i * m_pGlyph->bitmap.width) + j];
             int             iOffset = iNewY * dwGlyphWidth + iX + j;

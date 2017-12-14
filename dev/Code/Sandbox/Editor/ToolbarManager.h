@@ -111,6 +111,8 @@ public:
     bool IsOlderVersionOf(const AmazonToolbar& referenceToolbar, int versionNumber);
     void AddActionsFromNewerVersion(const AmazonToolbar& referenceToolbar, int versionNumber);
 
+    const bool IsSame(const AmazonToolbar& other) const;
+
 private:
     QString m_name; // Not translated, for settings keys and such
     QString m_translatedName;
@@ -169,6 +171,7 @@ private:
     void SanitizeToolbars();
     void InitializeStandardToolbars();
     void UpdateAllowedAreas(QToolBar* toolbar);
+    bool IsDirty(const AmazonToolbar& toolbar) const;
 
     const AmazonToolbar* FindDefaultToolbar(const QString& toolbarName) const;
     AmazonToolbar* FindToolbar(const QString& toolbarName);

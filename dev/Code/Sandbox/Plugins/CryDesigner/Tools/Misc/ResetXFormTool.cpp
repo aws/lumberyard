@@ -22,7 +22,7 @@ void ResetXFormTool::FreezeXForm(int nResetFlag)
     FreezeXForm(GetMainContext(), nResetFlag);
 }
 
-void ResetXFormTool::FreezeXForm(CD::SMainContext& mc, int nResetFlag)
+void ResetXFormTool::FreezeXForm(const CD::SMainContext& mc, int nResetFlag)
 {
     mc.pModel->RecordUndo("Designer : Pivot", mc.pObject);
     CD::ResetXForm(mc.pObject, mc.pModel, nResetFlag);

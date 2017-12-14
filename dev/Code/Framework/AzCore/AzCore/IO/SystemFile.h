@@ -21,6 +21,7 @@
 
 #if defined(AZ_PLATFORM_ANDROID)
     #include <limits.h>
+    #include <cstdio>
 #endif
 
 // Establish a consistent size that works across platforms. It's actually larger than this
@@ -60,8 +61,10 @@ namespace AZ
 
             #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
             using FileHandleType = void*;
-            #elif defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+            #elif defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
             using FileHandleType = int;
+            #elif defined(AZ_PLATFORM_ANDROID)
+            using FileHandleType = FILE*;
             #else
                 #error Platform not supported!
             #endif

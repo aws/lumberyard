@@ -75,7 +75,7 @@ protected:
     void OnModifyMakeisle();
     void OnModifyFlatten();
     void OnModifySmooth();
-    void OnModifyRemovewater();
+    void OnModifyRemoveOcean();
     void OnModifySmoothSlope();
     void OnHeightmapShowLargePreview();
     void OnModifyNormalize();
@@ -91,7 +91,7 @@ protected:
     void OnOptionsAutoScaleGreyRange();
     void OnOptionsEditTerrainCurve();
     void OnOptionsShowGrid();
-    void OnSetWaterLevel();
+    void OnSetOceanLevel();
     void OnSetMaxHeight();
     void OnSetUnitSize();
 
@@ -106,7 +106,7 @@ protected:
     SNoiseParams* m_sLastParam;
     CHeightmap* m_pHeightmap;
 
-    CTerrainModifyTool* m_pTerrainTool;
+    _smart_ptr<CTerrainModifyTool> m_pTerrainTool;
 
     QLabel* m_terrainDimensions;
 };

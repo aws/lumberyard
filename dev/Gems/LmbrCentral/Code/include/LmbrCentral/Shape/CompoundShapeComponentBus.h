@@ -43,7 +43,7 @@ namespace LmbrCentral
                         ->DataElement(0, &CompoundShapeConfiguration::m_childEntities,
                         "Child Shape Entities", "A list of entities that have shapes on them which when combined, act as the compound shape")
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                        ->ElementAttribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("ShapeService"));
+                        ->ElementAttribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("ShapeService", 0xe86aa5fe));
                 }
             }
         }

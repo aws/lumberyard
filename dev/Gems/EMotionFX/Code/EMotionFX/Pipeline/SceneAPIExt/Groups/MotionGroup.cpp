@@ -13,9 +13,12 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
+#include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 #include <SceneAPIExt/Rules/MetaDataRule.h>
+#include <SceneAPIExt/Rules/MotionRangeRule.h>
 #include <SceneAPIExt/Groups/MotionGroup.h>
 
 namespace EMotionFX
@@ -28,8 +31,6 @@ namespace EMotionFX
 
             MotionGroup::MotionGroup()
                 : m_id(AZ::Uuid::CreateRandom())
-                , m_startFrame(0)
-                , m_endFrame(0)
             {
             }
 
@@ -68,29 +69,9 @@ namespace EMotionFX
                 return m_selectedRootBone;
             }
 
-            AZ::u32 MotionGroup::GetStartFrame() const
-            {
-                return m_startFrame;
-            }
-
-            AZ::u32 MotionGroup::GetEndFrame() const
-            {
-                return m_endFrame;
-            }
-
             void MotionGroup::SetSelectedRootBone(const AZStd::string& selectedRootBone)
             {
                 m_selectedRootBone = selectedRootBone;
-            }
-
-            void MotionGroup::SetStartFrame(AZ::u32 frame)
-            {
-                m_startFrame = frame;
-            }
-
-            void MotionGroup::SetEndFrame(AZ::u32 frame)
-            {
-                m_endFrame = frame;
             }
 
             const AZStd::string& MotionGroup::GetName() const
@@ -108,12 +89,10 @@ namespace EMotionFX
 
                 serializeContext->Class<IMotionGroup, AZ::SceneAPI::DataTypes::IGroup>()->Version(1);
 
-                serializeContext->Class<MotionGroup, IMotionGroup>()->Version(2, VersionConverter)
+                serializeContext->Class<MotionGroup, IMotionGroup>()->Version(3, VersionConverter)
                     ->Field("name", &MotionGroup::m_name)
                     ->Field("selectedRootBone", &MotionGroup::m_selectedRootBone)
                     ->Field("id", &MotionGroup::m_id)
-                    ->Field("startFrame", &MotionGroup::m_startFrame)
-                    ->Field("endFrame", &MotionGroup::m_endFrame)
                     ->Field("rules", &MotionGroup::m_rules);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -128,8 +107,6 @@ namespace EMotionFX
                             ->Attribute("FilterType", IMotionGroup::TYPEINFO_Uuid())
                         ->DataElement("NodeListSelection", &MotionGroup::m_selectedRootBone, "Select root bone", "The root bone of the animation that will be exported.")
                             ->Attribute("ClassTypeIdFilter", AZ::SceneAPI::DataTypes::IBoneData::TYPEINFO_Uuid())
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &MotionGroup::m_startFrame, "Start frame", "The start frame of the animation that will be exported.")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &MotionGroup::m_endFrame, "End frame", "The end frame of the animation that will be exported.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &MotionGroup::m_rules, "", "Add or remove rules to fine-tune the export process.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
                 }
@@ -145,6 +122,42 @@ namespace EMotionFX
                 if (version < 2)
                 {
                     result = result && classElement.AddElementWithData<AZ::Uuid>(context, "id", AZ::Uuid::CreateNull()) != -1;
+                }
+
+                // Start frame and end frame is moved to motion range rule.
+                if (version < 3)
+                {
+                    AZ::u32 startFrame, endFrame;
+                    AZ::SerializeContext::DataElementNode* startFrameNode = classElement.FindSubElement(AZ_CRC("startFrame", 0xd7642114));
+                    AZ::SerializeContext::DataElementNode* endFrameNode = classElement.FindSubElement(AZ_CRC("endFrame", 0xc61fc092));
+                    if (startFrameNode && endFrameNode)
+                    {
+                        startFrameNode->GetData<AZ::u32>(startFrame);
+                        endFrameNode->GetData<AZ::u32>(endFrame);
+
+                        AZ::SceneAPI::Containers::RuleContainer ruleContainer;
+                        AZ::SerializeContext::DataElementNode* ruleContainerNode = classElement.FindSubElement(AZ_CRC("rules", 0x899a993c));
+                        if (ruleContainerNode)
+                        {
+                            ruleContainerNode->GetDataHierarchy<AZ::SceneAPI::Containers::RuleContainer>(context, ruleContainer);
+                            ruleContainerNode->RemoveElementByName(AZ_CRC("rules", 0x899a993c));
+                        }
+                        else
+                        {
+                            AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Can't find rule container.\n");
+                            return false;
+                        }
+
+                        AZStd::shared_ptr<Rule::MotionRangeRule> rule = AZStd::make_shared<Rule::MotionRangeRule>();
+                        rule->SetStartFrame(startFrame);
+                        rule->SetEndFrame(endFrame);
+                        rule->SetProcessRangeRuleConversion(true);
+                        ruleContainer.AddRule(rule);
+                        ruleContainerNode->SetData(context, ruleContainer);
+
+                        classElement.RemoveElementByName(AZ_CRC("startFrame", 0xd7642114));
+                        classElement.RemoveElementByName(AZ_CRC("endFrame", 0xc61fc092));
+                    }
                 }
 
                 return result;

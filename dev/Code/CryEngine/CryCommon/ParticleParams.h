@@ -31,7 +31,8 @@ BASIC_TYPE_INFO(CCryName)
 #define PARTICLE_PARAMS_DEFAULT_BOUNDING_VOLUME 5.f
 #define PARTICLE_PARAMS_DEFAULT_BLUR_STRENGTH 20.f
 #define PARTICLE_PARAMS_WIDTH_TO_HALF_WIDTH 0.5f
-#define PARTICLE_PARAMS_MAX_COUNT 1048576 // The max value of 1M is somewhat arbitrary, used to prevent crashes etc. We use a single integer rather than something like 1024*1024 because PARTICLE_PARAMS_MAX_COUNT is used with STRINGIFY.
+#define PARTICLE_PARAMS_MAX_COUNT_CPU 20000 
+#define PARTICLE_PARAMS_MAX_COUNT_GPU 1048576 
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -1748,9 +1749,10 @@ struct ParticleParams
 
     TRangedType<uint8, 0, 2> nSortQuality;    // Sort new particles as accurately as possible into list, by main camera distance
     TSmallBool bHalfRes;                                    // Use half resolution rendering
-    TSmallBoolTrue bStreamable;                     // Texture/geometry allowed to be streamed
+    TSmallBoolTrue bStreamable;                         // Texture/geometry allowed to be streamed
     TSmallBool bVolumeFog;                              // Use as a participating media of volumetric fog
-    Unit4Float fVolumeThickness;                    // Thickness factor for particle size
+    Unit4Float fVolumeThickness;                        // Thickness factor for particle size
+    TSmallBoolTrue DepthOfFieldBlur;                     //Particles won't be affected by depthOfField post effect if set to false
 
     uint8 nParticleSizeDiscard;
 

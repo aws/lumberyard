@@ -54,6 +54,24 @@ bool CryAssert(const char* szCondition, const char* szFile, unsigned int line, b
         return true;
     }
 
+#if defined(CRY_ASSERT_DIALOG_ONLY_IN_DEBUG) && !defined(AZ_DEBUG_BUILD)
+    // we are in a non-debug build, so we should turn this into a warning instead.
+    if ((gEnv) && (gEnv->pLog))
+    {
+        if (!gEnv->bIgnoreAllAsserts)
+        {
+            gEnv->pLog->LogWarning("%s(%u): Assertion failed - \"%s\"", szFile, line, szCondition);
+        }
+    }
+    
+    if (pIgnore)
+    {
+        // avoid showing the same one repeatedly.
+        *pIgnore = true;
+    }
+    return false;
+#endif
+
     gEnv->pSystem->OnAssert(szCondition, gs_szMessage, szFile, line);
 
     if (!gEnv->bNoAssertDialog && !gEnv->bIgnoreAllAsserts)

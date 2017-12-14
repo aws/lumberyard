@@ -17,7 +17,6 @@
 #include "ScriptBind_System.h"
 #include "ScriptBind_Particle.h"
 #include "ScriptBind_Sound.h"
-#include "ScriptBind_MusicLogic.h"
 #include "ScriptBind_Movie.h"
 #include "ScriptBind_Script.h"
 #include "ScriptBind_Physics.h"
@@ -43,7 +42,6 @@ void CScriptBindings::Init(ISystem* pSystem, IScriptSystem* pSS)
     m_binds.push_back(std::make_unique<CScriptBind_System>(pSS, pSystem));
     m_binds.push_back(std::make_unique<CScriptBind_Particle>(pSS, pSystem));
     m_binds.push_back(std::make_unique<CScriptBind_Sound>(pSS, pSystem));
-    m_binds.push_back(std::make_unique<CScriptBind_MusicLogic>(pSS, pSystem));
     m_binds.push_back(std::make_unique<CScriptBind_Movie>(pSS, pSystem));
     m_binds.push_back(std::make_unique<CScriptBind_Script>(pSS, pSystem));
     m_binds.push_back(std::make_unique<CScriptBind_Physics>(pSS, pSystem));

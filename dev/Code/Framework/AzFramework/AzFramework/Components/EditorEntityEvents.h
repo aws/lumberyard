@@ -40,6 +40,11 @@ namespace AzFramework
         virtual void EditorActivate(AZ::EntityId /*entityId*/) {}
         virtual void EditorDeactivate(AZ::EntityId /*entityId*/) {}
         virtual void EditorDisplay(AZ::EntityId /*entityId*/, EntityDebugDisplayRequests& /*displayInterface*/, const AZ::Transform& /*world*/, bool& /*handled*/) {}
+
+        /**
+        * This API allows a component associated with a primary asset to participate in drag and drop asset events without an editor counterpart
+        */
+        virtual void EditorSetPrimaryAsset(const AZ::Data::AssetId& /*assetId*/) {}
     };
 } // namespace AzFramework
 

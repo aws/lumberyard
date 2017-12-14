@@ -1,0 +1,21 @@
+﻿<div class="prompt-input">
+    <input class="prompt-entry form-control" type="text"
+           [ngModel]="promptContent && promptContent['messages'].length > 0 ? promptContent['messages'][0]['content'] : newPromptMessage"
+           (ngModelChange)="promptChange($event, 0)"/>
+    <i *ngIf="editable" class="fa fa-cog" aria-hidden="true" (click)="editPromptModal()"></i>
+</div>
+
+<!-- Edit prompt modal -->
+<modal *ngIf="mode == sttModes.EditPrompt"
+       [title]="'Edit Prompt'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Save'"
+       (modalSubmitted)="savePrompt()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <prompt-configuration [context]="context" [(promptContent)]="currentPrompt" [showMaxAttempts]="showMaxAttempts" [editable]="editable"></prompt-configuration>
+    </div>
+</modal>

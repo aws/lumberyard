@@ -18,6 +18,8 @@
 #include "IPostEffectGroup.h"
 #include <AzCore/std/sort.h>
 
+#include "../../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
 std::vector< CWaterRipples::SWaterHit > CWaterRipples::s_pWaterHits[RT_COMMAND_BUF_COUNT];
 std::vector< CWaterRipples::SWaterHit > CWaterRipples::s_pWaterHitsMGPU;
 std::vector< CWaterRipples::SWaterHitRecord > CWaterRipples::m_DebugWaterHits;
@@ -158,7 +160,7 @@ void CUberGamePostProcess::Reset(bool bOnSpecChange)
     m_pColorTint->ResetParamVec4(vWhite);
 
     m_pInterlationAmount->ResetParam(0.0f);
-    m_pInterlationTilling->ResetParam(1.0f);
+    m_pInterlationTiling->ResetParam(1.0f);
     m_pInterlationRotation->ResetParam(0.0f);
 
     m_pPixelationScale->ResetParam(0.0f);
@@ -209,7 +211,8 @@ bool CUnderwaterGodRays::Preprocess()
     static ICVar* pVar = iConsole->GetCVar("e_WaterOcean");
 
     //bool bOceanVolumeVisible = (gEnv->p3DEngine->GetOceanRenderFlags() & OCR_OCEANVOLUME_VISIBLE) != 0;
-    if (CRenderer::CV_r_water_godrays && m_pAmount->GetParam() > 0.005f) // && bOceanEnabled && bOceanVolumeVisible)
+    bool godRaysEnabled = OceanToggle::IsActive() ? OceanRequest::GetGodRaysEnabled() : (CRenderer::CV_r_water_godrays == 1);
+    if (godRaysEnabled && m_pAmount->GetParam() > 0.005f) // && bOceanEnabled && bOceanVolumeVisible)
     {
         float fWatLevel = SPostEffectsUtils::m_fWaterLevel;
         if (fWatLevel - 0.1f > gRenDev->GetViewParameters().vOrigin.z)
@@ -258,7 +261,7 @@ void CVolumetricScattering::Reset(bool bOnSpecChange)
     m_pAmount->ResetParam(0.0f);
     m_pType->ResetParam(0.0f);
     m_pQuality->ResetParam(1.0f);
-    m_pTilling->ResetParam(1.0f);
+    m_pTiling->ResetParam(1.0f);
     m_pSpeed->ResetParam(1.0f);
     m_pColor->ResetParamVec4(Vec4(0.5f, 0.75f, 1.0f, 1.0f));
 }
@@ -353,7 +356,8 @@ bool CWaterDroplets::Preprocess()
 
     const bool bUserActive = m_pAmount->GetParam() > 0.005f;
 
-    if (CRenderer::CV_r_water_godrays)
+    bool godRaysEnabled = OceanToggle::IsActive() ? OceanRequest::GetGodRaysEnabled() : (CRenderer::CV_r_water_godrays == 1);
+    if (godRaysEnabled)
     {
         return bUserActive; // user enabled override
     }

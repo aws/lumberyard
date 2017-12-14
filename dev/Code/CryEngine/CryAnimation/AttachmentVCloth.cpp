@@ -1182,9 +1182,18 @@ SSkinningData* CAttachmentVCLOTH::GetVertexTransformationData(bool bVertexAnimat
 
     //clear obsolete data
     int nPrevPrevList = (nFrameID - 2) % tripleBufferSize;
-    if (nPrevPrevList >= 0 && m_arrSkinningRendererData[nPrevPrevList].pSkinningData)
+    if (nPrevPrevList >= 0)
     {
-        m_arrSkinningRendererData[nPrevPrevList].pSkinningData->pPreviousSkinningRenderData = nullptr;
+        if (m_arrSkinningRendererData[nPrevPrevList].nFrameID == (nFrameID - 2) && m_arrSkinningRendererData[nPrevPrevList].pSkinningData)
+        {
+            m_arrSkinningRendererData[nPrevPrevList].pSkinningData->pPreviousSkinningRenderData = nullptr;
+        }
+        else
+        {
+            // If nFrameID was off by more than 2 frames old, then this data is guaranteed to be stale if it exists.  Clear it to be safe.
+            // The triple-buffered pool allocator in EF_CreateRemappedSkinningData will have already freed this data if the frame count/IDs mismatch.
+            m_arrSkinningRendererData[nPrevPrevList].pSkinningData = nullptr;
+        }
     }
 
     PREFAST_ASSUME(pSkinningData);

@@ -1,11 +1,23 @@
 <DeviceList>
     <!-- TODO: Expand list -->
-    <Device model="KFTHWI" file="android_low.cfg"/> <!-- Amazon Kindle Fire HDX -->
-    <Device model="Nexus 7" file="android_low.cfg"/> <!-- Nexus 7 -->
-    <Device model="Nexus 5" file="android_low.cfg"/> <!-- Nexus 5 -->
-    <Device model="SM-N910H" file="android_low.cfg"/> <!-- Samsung Galaxy Note 4  (Asia-Pacific)-->
-    <Device model="SM-T217S" file="android_medium.cfg"/> <!-- Samsung Galaxy Tab 3 -->
-    <Device model="SM-N920C" file="android_medium.cfg"/> <!-- Samsung Note 5 -->    
-    <Device model="Nexus 6" file="android_high.cfg"/> <!-- Motorola Nexus 6 -->
-    <Device model="Pixel" file="android_high.cfg"/> <!-- Google Pixel -->
+    <Config file="android_low.cfg">
+        <Device model="KFTHWI"/> <!-- Amazon Kindle Fire HDX -->
+        <Device model="Nexus 7"/> <!-- Nexus 7 -->
+        <Device model="Nexus 5"/> <!-- Nexus 5 -->
+        <Device model="SM-N910H"/> <!-- Samsung Galaxy Note 4  (Asia-Pacific)-->
+        <Device model="SM-G900F"/> <!-- Samsung Galaxy S5 (Europe)-->
+        <Device model="SM-G900I"/> <!-- Samsung Galaxy S5 (Asia, Australia)-->
+        <Device model="SM-G900A"/> <!-- Samsung Galaxy S5 (AT&T)-->
+        <Device model="SM-G900T"/> <!-- Samsung Galaxy S5 (T-Mobile)-->
+    </Config>
+    <Config file="android_medium.cfg">
+        <Device model="SM-T217S"/> <!-- Samsung Galaxy Tab 3 -->  
+        <Device model="SM-N920C"/> <!-- Samsung Note 5 -->  
+    </Config>
+    <Config file="android_high.cfg">
+        <Device model="Nexus 6"/> <!-- Motorola Nexus 6 -->
+        <Device model="Pixel"/> <!-- Google Pixel -->
+    </Config>
+    <Config file="android_veryhigh.cfg">
+    </Config>
 </DeviceList>

@@ -13,18 +13,7 @@
 #include <StdAfx.h>
 
 #include "AWSBehaviorMap.h"
-
-/// To use a specific AWS API request you have to include each of these.
-#pragma warning(push)
-#pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
-#include <aws/lambda/LambdaClient.h>
-#include <aws/lambda/model/ListFunctionsRequest.h>
-#include <aws/lambda/model/ListFunctionsResult.h>
-#include <aws/lambda/model/InvokeRequest.h>
-#include <aws/lambda/model/InvokeResult.h>
-#include <aws/core/utils/Outcome.h>
-#include <aws/core/utils/memory/stl/AWSStringStream.h>
-#pragma warning(pop)
+#include <AzCore/JSON/document.h>
 
 namespace CloudGemAWSScriptBehaviors
 {
@@ -53,7 +42,10 @@ namespace CloudGemAWSScriptBehaviors
             ->Method("HasKey", &StringMap::HasKey, nullptr, "Returns true if the map contains the specified key, otherwise false")
             ->Method("GetSize", &StringMap::GetSize, nullptr, "Returns the number of key-value pairs in the map")
             ->Method("Clear", &StringMap::Clear, nullptr, "Removes all key-value pairs from the map")
-            ->Method("LogToDebugger", &StringMap::LogToDebugger, nullptr, "Prints all the key value pairs in the map");
+            ->Method("LogToDebugger", &StringMap::LogToDebugger, nullptr, "Prints all the key value pairs in the map")
+            ->Method("ToJSON", &StringMap::ToJSON, nullptr, "Returns the string map as a JSON string")
+            ->Method("FromJSON", &StringMap::FromJSON, nullptr, "Parses a JSON string of key:string pairs (error if not correct format)")
+            ;
 
     }
 
@@ -94,6 +86,52 @@ namespace CloudGemAWSScriptBehaviors
     void StringMap::Clear()
     {
         m_map.clear();
+    }
+
+    AZStd::string StringMap::ToJSON()
+    {
+        rapidjson::Document jsonDoc;
+        jsonDoc.SetObject();
+
+        if (m_map.size() == 0)
+        {
+            return{};
+        }
+
+        auto& allocator = jsonDoc.GetAllocator();
+
+        for (auto& pair : m_map)
+        {
+            jsonDoc.AddMember(
+                rapidjson::StringRef(pair.first.c_str(), pair.first.size()),
+                rapidjson::StringRef(pair.second.c_str(), pair.second.size()),
+                allocator);
+        }
+
+        rapidjson::StringBuffer jsonStringBuffer;
+        rapidjson::Writer<rapidjson::StringBuffer> jsonWriter(jsonStringBuffer);
+        jsonDoc.Accept(jsonWriter);
+
+        AZStd::string returnString{ jsonStringBuffer.GetString() };
+        return returnString;
+    }
+
+    void StringMap::FromJSON(const AZStd::string& jsonIn)
+    {
+        rapidjson::Document jsonDoc;
+        jsonDoc.Parse(jsonIn.c_str());
+        m_map.clear();
+        for (rapidjson::Value::ConstMemberIterator iter = jsonDoc.MemberBegin(); iter != jsonDoc.MemberEnd(); ++iter)
+        {
+            if (iter->value.IsString())
+            {
+                SetValue(iter->name.GetString(), iter->value.GetString());
+            }
+            else
+            {
+                AZ_Warning("AWSBehavior", "StringMap::FromJSON JSON Element %s contains non-string value of type %d", iter->name.GetString(), iter->value.GetType());
+            }
+        }
     }
 
     void StringMap::LogToDebugger()

@@ -47,7 +47,6 @@ void AnimSerializer::ReflectAnimTypes(AZ::SerializeContext* context)
     context->Class<ICharacterKey, ITimeRangeKey>()
         ->Field("Animation", &ICharacterKey::m_animation)
         ->Field("BlendGap", &ICharacterKey::m_bBlendGap)
-        ->Field("UnloadOnEnd", &ICharacterKey::m_bUnload)
         ->Field("PlayInPlace", &ICharacterKey::m_bInPlace);
 
     context->Class<ICommentKey, IKey>()
@@ -99,6 +98,7 @@ void AnimSerializer::ReflectAnimTypes(AZ::SerializeContext* context)
 
     context->Class<ISequenceKey, IKey>()
         ->Field("Node", &ISequenceKey::szSelection)
+        ->Field("SequenceEntityId", &ISequenceKey::sequenceEntityId)
         ->Field("OverrideTimes", &ISequenceKey::bOverrideTimes)
         ->Field("StartTime", &ISequenceKey::fStartTime)
         ->Field("EndTime", &ISequenceKey::fEndTime);

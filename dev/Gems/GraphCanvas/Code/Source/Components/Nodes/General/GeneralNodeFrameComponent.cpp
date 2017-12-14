@@ -39,8 +39,17 @@ namespace GraphCanvas
 
     GeneralNodeFrameComponent::GeneralNodeFrameComponent()
         : m_frameWidget(nullptr)
+        , m_deleteWidget(true)
     {
 
+    }
+
+    GeneralNodeFrameComponent::~GeneralNodeFrameComponent()
+    {
+        if (m_deleteWidget)
+        {
+            delete m_frameWidget;
+        }
     }
 
     void GeneralNodeFrameComponent::Init()
@@ -69,6 +78,16 @@ namespace GraphCanvas
         m_frameWidget->setLayout(layout);
     }
 
+    void GeneralNodeFrameComponent::OnNodeWrapped(const AZ::EntityId&)
+    {
+        m_deleteWidget = false;
+    }
+
+    void GeneralNodeFrameComponent::OnNodeUnwrapped(const AZ::EntityId&)
+    {
+        m_deleteWidget = true;
+    }
+
     ///////////////////////////////////
     // GeneralNodeFrameGraphicsWidget
     ///////////////////////////////////
@@ -76,7 +95,6 @@ namespace GraphCanvas
     GeneralNodeFrameGraphicsWidget::GeneralNodeFrameGraphicsWidget(const AZ::EntityId& entityKey)
         : NodeFrameGraphicsWidget(entityKey)
     {
-
         setZValue(m_style.GetAttribute(Styling::Attribute::ZValue, 0));
     }
 

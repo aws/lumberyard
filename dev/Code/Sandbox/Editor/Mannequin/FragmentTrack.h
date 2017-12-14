@@ -147,6 +147,8 @@ public:
     virtual float GetKeyDuration(const int key) const;
     void SerializeKey(CFragmentKey& key, XmlNodeRef& keyNode, bool bLoading);
 
+    using TSequencerTrack<CFragmentKey>::CloneKey;
+
     void SelectKey(int keyID, bool select);
     void CloneKey(int nKey, const CFragmentKey& key);
     void DistributeSharedKey(int keyID);

@@ -79,9 +79,9 @@ namespace MCommon
          */
         void ViewCloseup(const MCore::AABB& boundingBox, float flightTime);
 
-        void StartFlight(float distance, const MCore::Vector3& position, float alpha, float beta, float flightTime);
+        void StartFlight(float distance, const AZ::Vector3& position, float alpha, float beta, float flightTime);
         bool GetIsFlightActive() const                                  { return mFlightActive; }
-        void SetFlightTargetPosition(const MCore::Vector3& targetPos)   { mFlightTargetPosition = targetPos; }
+        void SetFlightTargetPosition(const AZ::Vector3& targetPos)      { mFlightTargetPosition = targetPos; }
         float FlightTimeLeft() const
         {
             if (mFlightActive == false)
@@ -103,7 +103,7 @@ namespace MCommon
         void SetBeta(float beta)                                        { mBeta = beta; }
 
         // automatically updates the camera afterwards
-        void Set(float alpha, float beta, float currentDistance, const MCore::Vector3& target);
+        void Set(float alpha, float beta, float currentDistance, const AZ::Vector3& target);
 
         void AutoUpdateLimits() override;
 
@@ -121,8 +121,8 @@ namespace MCommon
         float           mFlightCurrentTime;
         float           mFlightSourceDistance;
         float           mFlightTargetDistance;
-        MCore::Vector3  mFlightSourcePosition;
-        MCore::Vector3  mFlightTargetPosition;
+        AZ::Vector3     mFlightSourcePosition;
+        AZ::Vector3     mFlightTargetPosition;
         float           mFlightSourceAlpha;
         float           mFlightTargetAlpha;
         float           mFlightSourceBeta;

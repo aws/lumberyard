@@ -115,9 +115,7 @@ class CUNIXConsole
 
     SSystemUpdateStats   m_updStats;
 
-#if defined(_DEBUG) || defined(FORCE_ASSERTS_IN_PROFILE)
     bool IsLocked() { return m_Lock.IsLocked(); }
-#endif
 
     // The header string.
     //

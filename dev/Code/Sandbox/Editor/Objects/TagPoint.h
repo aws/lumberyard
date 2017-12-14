@@ -36,7 +36,7 @@ public:
     bool Init(IEditor* ie, CBaseObject* prev, const QString& file);
     void InitVariables();
     void Display(DisplayContext& disp);
-    bool IsScalable() { return false; }
+    bool IsScalable() const { return false; }
 
     void BeginEditParams(IEditor* ie, int flags);
     void EndEditParams(IEditor* ie);

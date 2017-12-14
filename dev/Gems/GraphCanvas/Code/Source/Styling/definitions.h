@@ -61,6 +61,9 @@ namespace GraphCanvas
 
             const char* const CommentText = ".commentText";
 
+            // Custom Widgets
+            const char* const CheckBox = "checkBox";
+
         } // namespace Elements
 
         enum class Element : AZ::u32
@@ -90,6 +93,7 @@ namespace GraphCanvas
             const char* const Dragging = ":dragging";
             const char* const Editing = ":editing";
             const char* const Deletion = ":deletion";
+            const char* const Pressed = ":pressed";
 
         } // namespace States
 
@@ -156,6 +160,7 @@ namespace GraphCanvas
             const char* const ConnectionDragMaximumDistance = "connection-drag-max-distance";
             const char* const ConnectionDragPercent = "connection-drag-percentage";
             const char* const ConnectionDragMoveBuffer = "connection-drag-move-buffer";
+            const char* const ConnectionDefaultMarquee = "connection-default-marquee";
 
             const char* const ZValue = "z-value";
 
@@ -215,6 +220,7 @@ namespace GraphCanvas
             ConnectionDragMaximumDistance,
             ConnectionDragPercent,
             ConnectionDragMoveBuffer,
+            ConnectionDefaultMarquee,
 
             ZValue,
 

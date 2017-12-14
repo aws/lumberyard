@@ -31,6 +31,10 @@ namespace ScriptCanvasEditor
         recentOpenFileLocation = settings.value(SCRIPTCANVASEDITOR_SETTINGS_RECENT_OPEN_FILE_LOCATION_KEY).toString();
         settings.endGroup();
 
+        if (recentOpenFileLocation.isEmpty())
+        {
+            return {};
+        }
         AZ::Data::AssetId assetId(recentOpenFileLocation.toUtf8().constData());
         return assetId;
     }

@@ -63,6 +63,7 @@
 #include "ObjectCreateTool.h"
 #include "TerrainModifyTool.h"
 #include "RotateTool.h"
+#include "ManipulatorShim.h"
 #include "VegetationMap.h"
 #include "VegetationTool.h"
 #include "TerrainTexturePainter.h"
@@ -91,6 +92,7 @@
 #include <aws/core/utils/memory/STL/AWSString.h>
 #include <aws/core/platform/FileSystem.h>
 #include <WinWidget/WinWidgetManager.h>
+#include <AWSNativeSDKInit/AWSNativeSDKInit.h>
 
 #include "EditorParticleUtils.h" // Leroy@Conffx
 #include "IEditorParticleUtils.h" // Leroy@Conffx
@@ -110,12 +112,14 @@
 #include <AzFramework/Network/AssetProcessorConnection.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/Application/ToolsApplication.h>
 
-#include "AssetDatabase/AssetDatabaseLocationListener.h"
-#include "AzAssetBrowser/AzAssetBrowserRequestHandler.h"
+#include <Editor/AssetDatabase/AssetDatabaseLocationListener.h>
+#include <Editor/AzAssetBrowser/AzAssetBrowserRequestHandler.h>
 #include <Editor/Thumbnails/TextureThumbnailRenderer.h>
 #include <Editor/Thumbnails/StaticMeshThumbnailRenderer.h>
 #include <Editor/Thumbnails/MaterialThumbnailRenderer.h>
+#include <Editor/AssetEditor/AssetEditorRequestsHandler.h>
 
 #include "aws/core/utils/crypto/Factories.h"
 #include <AzCore/JSON/document.h>
@@ -147,9 +151,10 @@ static CCryEditDoc * theDocument;
 #include <QMimeData>
 #include <QColorDialog>
 #include <QMessageBox>
+#include <QProcess>
 
 #if defined(EXTERNAL_CRASH_REPORTING)
-#include <CrashHandler.h>
+#include <ToolsCrashHandler.h>
 #endif
 #ifndef VERIFY
 #define VERIFY(EXPRESSION) { auto e = EXPRESSION; assert(e); }
@@ -184,7 +189,6 @@ const char* CEditorImpl::m_crashLogFileName = "SessionStatus/editor_statuses.jso
 
 CEditorImpl::CEditorImpl()
     : m_currEditMode(eEditModeSelect)
-    , m_prevEditMode(eEditModeSelect)
     , m_operationMode(eOperationModeNone)
     , m_pSystem(nullptr)
     , m_pFileUtil(nullptr)
@@ -326,29 +330,30 @@ CEditorImpl::CEditorImpl()
 
     m_pAssetDatabaseLocationListener = nullptr;
     m_pAssetBrowserRequestHandler = nullptr;
+    m_assetEditorRequestsHandler = nullptr;
 
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
 
     AZ::IO::SystemFile::CreateDir("SessionStatus");
-#ifdef KDAB_MAC_POR
-    SetFileAttributes(m_crashLogFileName, FILE_ATTRIBUTE_NORMAL);
-#endif
+    QFile::setPermissions(m_crashLogFileName, QFileDevice::ReadOther | QFileDevice::WriteOther);
 }
 
 void CEditorImpl::Initialize()
 {
 #if defined(EXTERNAL_CRASH_REPORTING)
-    InitCrashHandler("Editor", {});
+    CrashHandler::ToolsCrashHandler::InitCrashHandler("Editor", {});
 #endif
 
     // Must be set before QApplication is initialized, so that we support HighDpi monitors, like the Retina displays
     // on Windows 10
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
+#if defined(AZ_PLATFORM_WINDOWS)
     // Prevents (native) sibling widgets from causing problems with docked QOpenGLWidgets on Windows
     // The problem is due to native widgets ending up with pixel formats that are incompatible with the GL pixel format
     // (generally due to a lack of an alpha channel). This blocks the creation of a shared GL context.
     QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+#endif
 
     // Activate QT immediately so that its available as soon as CEditorImpl is (and thus GetIEditor())
     InitializeEditorCommon(GetIEditor());
@@ -416,11 +421,31 @@ void CEditorImpl::LoadPlugins()
     // plugins require QML, so make sure its present:
 
     m_QtApplication->InitializeQML();
-#ifdef AZ_PLATFORM_WINDOWS
-    GetPluginManager()->LoadPlugins(QDir::toNativeSeparators(qApp->applicationDirPath() + "/EditorPlugins/*.dll").toLatin1().data());
-#else
-    GetPluginManager()->LoadPlugins(QDir::toNativeSeparators(qApp->applicationDirPath() + "/EditorPlugins/*.dylib").toLatin1().data());
-#endif
+
+    static const char* editor_plugins_folder = "EditorPlugins";
+
+    // Build, verify, and set the engine root's editor plugin folder
+    QString editorPluginPathStr;
+    const char* engineRoot = nullptr;
+    EBUS_EVENT_RESULT(engineRoot, AzToolsFramework::ToolsApplicationRequestBus, GetEngineRootPath);
+    if (engineRoot != nullptr)
+    {
+        QDir testDir;
+        testDir.setPath(QString("%1/" BINFOLDER_NAME).arg(engineRoot));
+        if (testDir.exists() && testDir.cd(QString(editor_plugins_folder)))
+        {
+            editorPluginPathStr = testDir.absolutePath();
+        }
+    }
+    // If no editor plugin path was found based on the root engine path, then fallback to the current editor.exe path
+    if (editorPluginPathStr.isEmpty())
+    {
+        editorPluginPathStr = QString("%1/%2").arg(qApp->applicationDirPath(),QString(editor_plugins_folder));
+    }
+
+    QString pluginSearchPath = QDir::toNativeSeparators(QString("%1/*" AZ_DYNAMIC_LIBRARY_EXTENSION).arg(editorPluginPathStr));
+
+    GetPluginManager()->LoadPlugins(pluginSearchPath.toUtf8().data());
 
     InitMetrics();
 }
@@ -503,6 +528,7 @@ CEditorImpl::~CEditorImpl()
 
     SAFE_DELETE(m_pAssetDatabaseLocationListener);
     SAFE_DELETE(m_pAssetBrowserRequestHandler);
+    SAFE_DELETE(m_assetEditorRequestsHandler);
 
     // Game engine should be among the last things to be destroyed, as it
     // destroys the engine.
@@ -548,6 +574,7 @@ void CEditorImpl::SetGameEngine(CGameEngine* ge)
 {
     m_pAssetDatabaseLocationListener = new AssetDatabase::AssetDatabaseLocationListener();
     m_pAssetBrowserRequestHandler = new AzAssetBrowserRequestHandler();
+    m_assetEditorRequestsHandler = aznew AssetEditorRequestsHandler();
 
     m_pSystem = ge->GetSystem();
     m_pGameEngine = ge;
@@ -580,6 +607,7 @@ void CEditorImpl::RegisterTools()
     CModellingModeTool::RegisterTool(rc);
     CVertexSnappingModeTool::RegisterTool(rc);
     CRotateTool::RegisterTool(rc);
+    ManipulatorShim::RegisterTool(rc);
 }
 
 void CEditorImpl::ExecuteCommand(const char* sCommand, ...)
@@ -780,9 +808,9 @@ QString CEditorImpl::GetSearchPath(EEditorPathName path)
     return gSettings.searchPaths[path][0];
 }
 
-QString CEditorImpl::GetUserFolder()
+QString CEditorImpl::GetResolvedUserFolder()
 {
-    m_userFolder = Path::GetUserSandboxFolder();
+    m_userFolder = Path::GetResolvedUserSandboxFolder();
     return m_userFolder;
 }
 
@@ -822,9 +850,7 @@ int CEditorImpl::AddRollUpPage(
     }
 
     // Preserve Focused window.
-#ifdef KDAB_MAC_PORT
-    HWND hFocusWnd = GetFocus();
-#endif // KDAB_MAC_PORT
+    QWidget* hFocusWnd = qApp->focusWidget();
     int ndx = GetRollUpControl(rollbarId)->insertItem(iIndex, pwndTemplate, pszCaption);
     if (!bAutoExpand)
     {
@@ -840,12 +866,10 @@ int CEditorImpl::AddRollUpPage(
     m_panelIds.insert(id, pwndTemplate);
 
     // Make sure focus stay in main wnd.
-#ifdef KDAB_MAC_PORT
-    if (hFocusWnd && GetFocus() != hFocusWnd)
+    if (hFocusWnd && qApp->focusWidget() != hFocusWnd)
     {
-        SetFocus(hFocusWnd);
+        hFocusWnd->setFocus();
     }
-#endif // KDAB_MAC_PORT
     return id;
 }
 
@@ -871,9 +895,7 @@ void CEditorImpl::RenameRollUpPage(int rollbarId, int iIndex, const char* pNewNa
 void CEditorImpl::ExpandRollUpPage(int rollbarId, int iIndex, bool bExpand)
 {
     // Preserve Focused window.
-#ifdef KDAB_MAC_PORT
-    HWND hFocusWnd = GetFocus();
-#endif // KDAB_MAC_PORT
+    QWidget* hFocusWnd = qApp->focusWidget();
 
     if (GetRollUpControl(rollbarId))
     {
@@ -881,20 +903,16 @@ void CEditorImpl::ExpandRollUpPage(int rollbarId, int iIndex, bool bExpand)
     }
 
     // Preserve Focused window.
-#ifdef KDAB_MAC_PORT
-    if (hFocusWnd && GetFocus() != hFocusWnd)
+    if (hFocusWnd && qApp->focusWidget() != hFocusWnd)
     {
-        SetFocus(hFocusWnd);
+        hFocusWnd->setFocus();
     }
-#endif // KDAB_MAC_PORT
 }
 
 void CEditorImpl::EnableRollUpPage(int rollbarId, int iIndex, bool bEnable)
 {
     // Preserve Focused window.
-#ifdef KDAB_MAC_PORT
-    HWND hFocusWnd = GetFocus();
-#endif // KDAB_MAC_PORT
+    QWidget* hFocusWnd = qApp->focusWidget();
 
     if (GetRollUpControl(rollbarId))
     {
@@ -902,12 +920,10 @@ void CEditorImpl::EnableRollUpPage(int rollbarId, int iIndex, bool bEnable)
     }
 
     // Preserve Focused window.
-#ifdef KDAB_MAC_PORT
-    if (hFocusWnd && GetFocus() != hFocusWnd)
+    if (hFocusWnd && qApp->focusWidget() != hFocusWnd)
     {
-        SetFocus(hFocusWnd);
+        hFocusWnd->setFocus();
     }
-#endif // KDAB_MAC_PORT
 }
 
 int CEditorImpl::GetRollUpPageCount(int rollbarId)
@@ -948,25 +964,19 @@ void CEditorImpl::SetEditMode(int editMode)
         }
     }
 
-    m_currEditMode = (EEditMode)editMode;
-    m_prevEditMode = m_currEditMode;
+    EEditMode newEditMode = (EEditMode)editMode;
+    if (m_currEditMode == newEditMode)
+    {
+        return;
+    }
+
+    m_currEditMode = newEditMode;
     AABB box(Vec3(0, 0, 0), Vec3(0, 0, 0));
     SetSelectedRegion(box);
 
     if (GetEditTool() && !GetEditTool()->IsNeedMoveTool())
     {
         SetEditTool(0, true);
-    }
-
-    if (editMode == eEditModeMove || editMode == eEditModeRotate || editMode == eEditModeScale)
-    {
-        SetAxisConstraints(m_lastAxis[editMode]);
-        SetReferenceCoordSys(m_lastCoordSys[editMode]);
-    }
-
-    if (editMode == eEditModeRotateCircle)
-    {
-        SetReferenceCoordSys(COORDS_LOCAL);
     }
 
     Notify(eNotify_OnEditModeChange);
@@ -1646,17 +1656,11 @@ void CEditorImpl::SetInGameMode(bool inGame)
         bWasInSimulationMode = GetIEditor()->GetGameEngine()->GetSimulationMode();
         GetIEditor()->GetGameEngine()->SetSimulationMode(false);
         GetIEditor()->GetCommandManager()->Execute("general.enter_game_mode");
-
-        // remove the fps forcing when going into game mode
-        m_pSystem->ForceMaxFps(false, 0);
     }
     else
     {
         GetIEditor()->GetCommandManager()->Execute("general.exit_game_mode");
         GetIEditor()->GetGameEngine()->SetSimulationMode(bWasInSimulationMode);
-
-        // re-enable the fps forcing in editor mode
-        m_pSystem->ForceMaxFps(true, 60);
     }
 }
 
@@ -1744,7 +1748,7 @@ void CEditorImpl::InitMetrics()
             // Therefore, if the UUID from the project name is the same as the UUID in the file, it's one of our projects
             // and we can therefore send the name back, making it easier for Metrics to determine which level it was.
             // We are checking to see if this is a project we ship with Lumberyard, and therefore we can unobfuscate non-customer information.
-            if (projectId && editorProjectName.compare(projectName, Qt::CaseInsensitive) == 0 &&
+            if (projectId && projectId[0] != '\0' && editorProjectName.compare(projectName, Qt::CaseInsensitive) == 0 &&
                 (id == AZ::Uuid(projectId)))
             {
                 QByteArray projectNameUtf8 = projectName.toUtf8();
@@ -1767,16 +1771,14 @@ void CEditorImpl::InitMetrics()
         azstrcat(statusFilePath, _MAX_PATH, m_crashLogFileName);
     }
 
-    bool cloudCanvasInitializedMetrics{ false };
-    EBUS_EVENT_RESULT(cloudCanvasInitializedMetrics, CloudCanvas::AwsApiInitRequestBus, IsAwsApiInitialized);
-
-    Aws::Utils::Crypto::InitCrypto();
-    LyMetrics_Initialize("Editor.exe", 2, !cloudCanvasInitializedMetrics, projectId, statusFilePath);
+    AWSNativeSDKInit::InitializationManager::InitAwsApi();
+    const bool metricsInitAwsApi = false;
+    LyMetrics_Initialize("Editor.exe", 2, metricsInitAwsApi, projectId, statusFilePath);
 }
 
 void CEditorImpl::DetectVersion()
 {
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
     char exe[_MAX_PATH];
     DWORD dwHandle;
     UINT len;
@@ -1802,7 +1804,16 @@ void CEditorImpl::DetectVersion()
         m_productVersion.v[2] = vinfo->dwProductVersionMS & 0xFFFF;
         m_productVersion.v[3] = vinfo->dwProductVersionMS >> 16;
     }
-#endif // KDAB_MAC_PORT
+#else
+    // This requires the application version to be set using QCoreApplication::setApplicationVersion, which isn't done yet.
+    const QString version = qApp->applicationVersion();
+    if (!version.isEmpty())
+    {
+        QByteArray versionBytes = version.toUtf8();
+        m_fileVersion.Set(versionBytes.data());
+        m_productVersion.Set(versionBytes.data());
+    }
+#endif
 }
 
 XmlNodeRef CEditorImpl::FindTemplate(const QString& templateName)
@@ -1822,105 +1833,37 @@ CShaderEnum* CEditorImpl::GetShaderEnum()
 
 bool CEditorImpl::ExecuteConsoleApp(const QString& CommandLine, QString& OutputText, bool bNoTimeOut, bool bShowWindow)
 {
-#ifdef KDAB_MAC_PORT
-    // Execute a console application and redirect its output to the console window
-    SECURITY_ATTRIBUTES sa = { 0 };
-    STARTUPINFO si = { 0 };
-    PROCESS_INFORMATION pi = { 0 };
-    HANDLE hPipeOutputRead = NULL;
-    HANDLE hPipeOutputWrite = NULL;
-    HANDLE hPipeInputRead = NULL;
-    HANDLE hPipeInputWrite = NULL;
-    BOOL bTest = FALSE;
-    bool bReturn = true;
-    DWORD dwNumberOfBytesRead = 0;
-    DWORD dwStartTime = 0;
-    char szCharBuffer[65];
-    char szOEMBuffer[65];
-
     CLogFile::FormatLine("Executing console application '%s'", CommandLine.toLatin1().data());
-    // Initialize the SECURITY_ATTRIBUTES structure
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = NULL;
-    // Create a pipe for standard output redirection
-    VERIFY(CreatePipe(&hPipeOutputRead, &hPipeOutputWrite, &sa, 0));
-    // Create a pipe for standard inout redirection
-    VERIFY(CreatePipe(&hPipeInputRead, &hPipeInputWrite, &sa, 0));
-    // Make a child process useing hPipeOutputWrite as standard out. Also
-    // make sure it is not shown on the screen
-    si.cb = sizeof(STARTUPINFO);
-    si.dwFlags = STARTF_USESHOWWINDOW;
 
-    if (bShowWindow == false)
+    QProcess process;
+    if (bShowWindow)
     {
-        si.dwFlags |= STARTF_USESTDHANDLES;
-        si.hStdInput = hPipeInputRead;
-        si.hStdOutput = hPipeOutputWrite;
-        si.hStdError = hPipeOutputWrite;
+#if defined(AZ_PLATFORM_WINDOWS)
+        process.start(QString("cmd.exe /C %1").arg(CommandLine));
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+        process.start(QString("/usr/bin/osascript -e 'tell application \"Terminal\" to do script \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")));
+#else
+#error "Needs to be implemented"
+#endif
+    }
+    else
+    {
+        process.start(CommandLine);
     }
 
-    si.wShowWindow = bShowWindow ? SW_SHOW : SW_HIDE;
-    // Save the process start time
-    dwStartTime = GetTickCount();
-
-    // Launch the console application
-    char cmdLine[AZ_COMMAND_LINE_LEN];
-    azstrncpy(cmdLine, AZ_COMMAND_LINE_LEN, CommandLine.toLatin1().data(), CommandLine.toLatin1().length() - 1);
-
-    if (!CreateProcess(NULL, cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi))
+    if (!process.waitForStarted())
     {
         return false;
     }
 
-    // If no process was spawned
-    if (!pi.hProcess)
-    {
-        bReturn = false;
-    }
-
-    // Now that the handles have been inherited, close them
-    CloseHandle(hPipeOutputWrite);
-    CloseHandle(hPipeInputRead);
-
-    if (bShowWindow == false)
-    {
-        // Capture the output of the console application by reading from hPipeOutputRead
-        while (true)
-        {
-            // Read from the pipe
-            bTest = ReadFile(hPipeOutputRead, &szOEMBuffer, 64, &dwNumberOfBytesRead, NULL);
-
-            // Break when finished
-            if (!bTest)
-            {
-                break;
-            }
-
-            // Break when timeout has been exceeded
-            if (bNoTimeOut == false && GetTickCount() - dwStartTime > 5000)
-            {
-                break;
-            }
-
-            // Null terminate string
-            szOEMBuffer[dwNumberOfBytesRead] = '\0';
-
-            // Translate into ANSI
-            VERIFY(OemToChar(szOEMBuffer, szCharBuffer));
-
-            // Add it to the output text
-            OutputText += szCharBuffer;
-        }
-    }
-
     // Wait for the process to finish
-    WaitForSingleObject(pi.hProcess, bNoTimeOut ? INFINITE : 1000);
+    process.waitForFinished();
+    if (!bShowWindow)
+    {
+        OutputText = process.readAllStandardOutput();
+    }
 
-    return bReturn;
-#else
-    return false;
-#endif // KDAB_MAC_PORT
+    return true;
 }
 
 void CEditorImpl::BeginUndo()
@@ -2228,9 +2171,6 @@ void CEditorImpl::NotifyExcept(EEditorNotifyEvent event, IEditorNotifyListener* 
     if (event == eNotify_OnInit)
     {
         REGISTER_COMMAND("py", CmdPy, 0, "Execute a Python code snippet.");
-
-        // Force the max fps to 60 when in the editor; will disable when game mode is toggled
-        m_pSystem->ForceMaxFps(true, 60);
     }
 
     GetPluginManager()->NotifyPlugins(event);
@@ -2372,7 +2312,7 @@ void CEditorImpl::ReduceMemory()
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_FREE_GAME_DATA);
     gEnv->pRenderer->FreeResources(FRR_TEXTURES);
 
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
     HANDLE hHeap = GetProcessHeap();
 
     if (hHeap)
@@ -2380,7 +2320,7 @@ void CEditorImpl::ReduceMemory()
         uint64 maxsize = (uint64)HeapCompact(hHeap, 0);
         CryLogAlways("Max Free Memory Block = %I64d Kb", maxsize / 1024);
     }
-#endif // KDAB_MAC_PORT
+#endif
 }
 
 IExportManager* CEditorImpl::GetExportManager()

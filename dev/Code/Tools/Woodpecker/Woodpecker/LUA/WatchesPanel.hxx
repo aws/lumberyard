@@ -16,8 +16,10 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#include <QtCore\QObject>
-#include <QtWidgets\QWidget>
+#include <QObject>
+#include <QWidget>
+#include <QStandardItem>
+
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 
 #include "LUAWatchesDebuggerMessages.h"

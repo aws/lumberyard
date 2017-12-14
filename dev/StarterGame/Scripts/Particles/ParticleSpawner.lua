@@ -150,7 +150,7 @@ function particlespawner:OnEntitySpawned(ticket, spawnedEntityId)
 			ParticleComponentRequestBus.Event.Enable(self.particles[i], false);
 			
 			if (self.Properties.DebugSpawner == true) then
-				Debug.Log("ParticleSpawner [" .. tostring(self.Properties.ParticleSpawnEvent) .. "]: Spawned " .. tostring(StarterGameUtility.GetEntityName(spawnedEntityId)) .. " into slot " .. tostring(i));
+				Debug.Log("ParticleSpawner [" .. tostring(self.Properties.ParticleSpawnEvent) .. "]: Spawned " .. tostring(StarterGameEntityUtility.GetEntityName(spawnedEntityId)) .. " into slot " .. tostring(i));
 			end
 			
 			found = true;

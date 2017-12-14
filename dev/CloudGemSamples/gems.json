@@ -2,6 +2,12 @@
     "GemListFormatVersion": 2,
     "Gems": [
         {
+            "Path": "Gems/EMotionFX",
+            "Uuid": "044a63ea67d04479aa5daf62ded9d9ca",
+            "Version": "0.1.0",
+            "_comment": "EMotionFX"
+        },
+        {
             "Path": "Gems/AWS",
             "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
             "Version": "0.1.0",
@@ -56,16 +62,22 @@
             "_comment": "UiBasics"
         },
         {
-            "Path": "Gems/CloudGemLex",
+            "Path": "Gems/CloudGemSpeechRecognition",
             "Uuid": "6f2e05e82d6f4b76abaa18a70f25d7fe",
             "Version": "0.1.0",
-            "_comment": "CloudGemLex"
+            "_comment": "CloudGemSpeechRecognition"
         },
         {
             "Path": "Gems/CloudGemFramework/v1",
             "Uuid": "6fc787a982184217a5a553ca24676cfa",
             "Version": "1.1.1",
             "_comment": "CloudGemFramework"
+        },
+        {
+            "Path": "Gems/SceneProcessing",
+            "Uuid": "7c2578f634df4345aca98d671e39b8ab",
+            "Version": "0.1.0",
+            "_comment": "SceneProcessing"
         },
         {
             "Path": "Gems/PhysicsEntities",
@@ -78,6 +90,12 @@
             "Uuid": "a6db8cb7bfd645509f538bcb0ddc5343",
             "Version": "0.1.0",
             "_comment": "CloudGemLeaderboard"
+        },
+        {
+            "Path": "Gems/CryLegacyAnimation",
+            "Uuid": "b4807336b070494d974275a581593ed8",
+            "Version": "0.1.0",
+            "_comment": "CryLegacyAnimation"
         },
         {
             "Path": "Gems/CloudGemTextToSpeech",

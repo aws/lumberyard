@@ -30,17 +30,17 @@ local uiobjectivecontroller =
             OnEnter = function(self, sm)
 				self.timer = 0.0;
 				sm.currentText = sm.UserData.Properties.ObjectiveWaitText;
-				StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
-				StarterGameUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 0.0, 0.0);
+				StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
+				StarterGameUIUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 0.0, 0.0);
             end,
             OnExit = function(self, sm)
-				StarterGameUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 1, sm.UserData.Properties.ObjectiveWaitCycleTime);
+				StarterGameUIUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 1, sm.UserData.Properties.ObjectiveWaitCycleTime);
             end,            
             OnUpdate = function(self, sm, deltaTime)
 				self.timer = self.timer + deltaTime;
 				local fadeValue = 1 - Math.Cos((self.timer / sm.UserData.Properties.ObjectiveWaitCycleTime) * math.pi * 2);
-				StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
-				StarterGameUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, fadeValue, 0.0);
+				StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
+				StarterGameUIUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, fadeValue, 0.0);
             end,
             Transitions =
             {
@@ -59,11 +59,11 @@ local uiobjectivecontroller =
 				self.complete = false;
 				sm.currentText = "";
 				self.numCharsToWrite = sm.desiredText:len();
-				StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
+				StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
             end,
             OnExit = function(self, sm)
 				sm.currentText = sm.desiredText;
-				StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
+				StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
             end,            
             OnUpdate = function(self, sm, deltaTime)
 				self.timer = self.timer + deltaTime;
@@ -72,7 +72,7 @@ local uiobjectivecontroller =
 					self.complete = true;
 				else
 					sm.currentText = (sm.desiredText:sub(0, chars) .. string.char(math.random(35,126))); -- these ascii codes are actual visible non formatting characters (skipping ! and ", because " causes problems when text is parsed)
-					StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
+					StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
 				end
             end,
             Transitions =
@@ -89,15 +89,15 @@ local uiobjectivecontroller =
         {      
             OnEnter = function(self, sm)
 				self.timer = 0.0;
-				StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.desiredText);
+				StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.desiredText);
             end,
             OnExit = function(self, sm)
-				StarterGameUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 1.0, sm.UserData.Properties.ObjectiveShownCycleTime);
+				StarterGameUIUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 1.0, sm.UserData.Properties.ObjectiveShownCycleTime);
             end,            
             OnUpdate = function(self, sm, deltaTime)
 				self.timer = self.timer + deltaTime;
 				local fadeValue = Math.Cos((self.timer / sm.UserData.Properties.ObjectiveShownCycleTime) * math.pi * 2);
-				StarterGameUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, fadeValue, 0.0);
+				StarterGameUIUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, fadeValue, 0.0);
             end,
             Transitions =
             {
@@ -114,11 +114,11 @@ local uiobjectivecontroller =
             OnEnter = function(self, sm)
 				self.timer = sm.currentText:len() * sm.UserData.Properties.ObjectiveCharScrambleTime;
 				self.complete = false;
-				StarterGameUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 1.0, sm.UserData.Properties.ObjectiveShownCycleTime)
+				StarterGameUIUtility.UIFaderControl(sm.UserData.canvasEntityId, sm.TextID, 1.0, sm.UserData.Properties.ObjectiveShownCycleTime)
             end,
             OnExit = function(self, sm)
 				sm.currentText = "";
-				StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
+				StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
             end,            
             OnUpdate = function(self, sm, deltaTime)
 				self.timer = self.timer - deltaTime;
@@ -127,7 +127,7 @@ local uiobjectivecontroller =
 					self.complete = true;
 				else
 					sm.currentText = (sm.currentText:sub(0, chars) .. string.char(math.random(35,126))); -- these ascii codes are actual visible non formatting characters
-					StarterGameUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
+					StarterGameUIUtility.UITextSetter(sm.UserData.canvasEntityId, sm.TextID, sm.currentText);
 				end
             end,
             Transitions =

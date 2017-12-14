@@ -16,7 +16,10 @@
 #include <memory>
 #include <QWidget>
 
+#include "Explorer.h"
+
 class QPropertyTree;
+struct ExplorerEntryModifyEvent;
 
 namespace CharacterTool
 {

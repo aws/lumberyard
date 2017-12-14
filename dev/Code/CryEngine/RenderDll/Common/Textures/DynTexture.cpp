@@ -80,7 +80,7 @@ SDynTexture::TextureSubset SDynTexture::s_checkedOutTexturePoolCubeCustom_R16G16
 
 int SDynTexture2::s_nMemoryOccupied[eTP_Max];
 
-ENGINE_API uint32 SDynTexture::s_SuggestedDynTexAtlasCloudsMaxsize;
+uint32 SDynTexture::s_SuggestedDynTexAtlasCloudsMaxsize;
 uint32 SDynTexture::s_SuggestedTexAtlasSize;
 uint32 SDynTexture::s_SuggestedDynTexMaxSize;
 uint32 SDynTexture::s_CurDynTexAtlasCloudsMaxsize;

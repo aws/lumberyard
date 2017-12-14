@@ -1095,7 +1095,7 @@ void CUiAnimViewSequence::DeselectAllKeys()
     CUiAnimViewKeyBundle selectedKeys = GetSelectedKeys();
     for (int i = 0; i < selectedKeys.GetKeyCount(); ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = selectedKeys.GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = selectedKeys.GetKey(i);
         keyHandle.Select(false);
     }
 }
@@ -1221,7 +1221,7 @@ float CUiAnimViewSequence::ClipTimeOffsetForSliding(const float timeOffset)
 
     // If 'bAll' is true, slide all tracks.
     // (Otherwise, slide only selected tracks.)
-    bool bAll = GetAsyncKeyState(VK_MENU);
+    bool bAll = Qt::AltModifier & QApplication::queryKeyboardModifiers();
     if (bAll)
     {
         keys = GetKeysInTimeRange(time0, timeRange.end);
@@ -1240,7 +1240,7 @@ float CUiAnimViewSequence::ClipTimeOffsetForSliding(const float timeOffset)
         CUiAnimViewTrack* pTrack = *pTrackIter;
         for (int i = 0; i < pTrack->GetKeyCount(); ++i)
         {
-            CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+            CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
             const float keyTime = keyHandle.GetTime();
             if (keyTime >= time0)
@@ -1287,7 +1287,7 @@ void CUiAnimViewSequence::SlideKeys(float timeOffset)
 
     // If 'bAll' is true, slide all tracks.
     // (Otherwise, slide only selected tracks.)
-    bool bAll = GetAsyncKeyState(VK_MENU);
+    bool bAll = Qt::AltModifier & QApplication::queryKeyboardModifiers();
     if (bAll)
     {
         keys = GetKeysInTimeRange(time0, timeRange.end);

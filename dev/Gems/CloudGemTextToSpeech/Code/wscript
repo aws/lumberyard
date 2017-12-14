@@ -19,7 +19,6 @@ def build(bld):
                        bld.Path('Code/CryEngine/CrySoundSystem')],
         
         file_list = file_list,
-        shared_settings = ['awsgem.json'],
         uselib = ['AWS_CPP_SDK_CORE', 'MD5'],
         use = ['CloudGemFrameworkStaticLibrary', 'CrySoundSystem']
     )

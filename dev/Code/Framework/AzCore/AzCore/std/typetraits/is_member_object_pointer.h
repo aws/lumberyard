@@ -15,29 +15,11 @@
 
 #include <AzCore/std/typetraits/is_member_pointer.h>
 #include <AzCore/std/typetraits/is_member_function_pointer.h>
-#include <AzCore/std/typetraits/internal/ice_and.h>
-#include <AzCore/std/typetraits/internal/ice_not.h>
-
-#include <AzCore/std/typetraits/bool_trait_def.h>
 
 namespace AZStd
 {
-    namespace Internal
-    {
-        template <typename T>
-        struct is_member_object_pointer_impl
-        {
-            AZSTD_STATIC_CONSTANT(
-                bool, value = (::AZStd::type_traits::ice_and<
-                                       ::AZStd::is_member_pointer<T>::value,
-                                       ::AZStd::type_traits::ice_not<
-                                           ::AZStd::is_member_function_pointer<T>::value
-                                       >::value
-                                   >::value));
-        };
-    }
-
-    AZSTD_TYPE_TRAIT_BOOL_DEF1(is_member_object_pointer, T, ::AZStd::Internal::is_member_object_pointer_impl<T>::value)
+    template<class T>
+    struct is_member_object_pointer : AZStd::integral_constant<bool, AZStd::is_member_pointer<T>::value && !AZStd::is_member_function_pointer<T>::value> {};
 }
 
 #endif // AZSTD_TYPE_TRAITS_IS_MEMBER_OBJECT_POINTER_INCLUDED

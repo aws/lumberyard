@@ -29,30 +29,25 @@ namespace LmbrCentral
     public:
 
         AZ_RTTI(EditorBaseShapeComponent, "{32B9D7E9-6743-427B-BAFD-1C42CFBE4879}", AzToolsFramework::Components::EditorComponentBase);
+
         EditorBaseShapeComponent();
         ~EditorBaseShapeComponent() override = default;
+        static void Reflect(AZ::SerializeContext& context);
 
-        ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        ////////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////
+        // EditorBaseShapeComponent
         void DisplayEntity(bool& handled) override;
-        ////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////////////
         // Transform notification bus handler
-        /// Called when the local transform of the entity has changed.
         void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;
-        //////////////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////////////
         // LmbrCentral::EditorShapeComponentRequestsBus
         void SetShapeColor(const AZ::Vector4& solidColor) override;
         void SetShapeWireframeColor(const AZ::Vector4& wireColor) override;
-        //////////////////////////////////////////////////////////////////////////////////
+        void SetVisibleInEditor(bool visible) override;
 
     protected:
 
@@ -73,15 +68,11 @@ namespace LmbrCentral
 
         virtual void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const {}
 
-        //! Stores the transform of the entity
-        AZ::Transform m_currentEntityTransform;
-
-        // Colors used for debug visualizations
-        AZ::Vector4 m_shapeColor;
-        AZ::Vector4 m_shapeWireColor;
-
-        // Colors used for debug visualizations
-        static const AZ::Vector4 s_shapeColor;
-        static const AZ::Vector4 s_shapeWireColor;
+        AZ::Transform m_currentEntityTransform; ///< Stores the transform of the entity
+        AZ::Vector4 m_shapeColor; ///< Shaded color used for debug visualizations
+        AZ::Vector4 m_shapeWireColor; ///< Wireframe color used for debug visualizations
+        static const AZ::Vector4 s_shapeColor; ///< Shaded color used for debug visualizations
+        static const AZ::Vector4 s_shapeWireColor; ///< Wireframe color used for debug visualizations
+        bool m_visibleInEditor = true; ///< Visible in the editor viewport
     };
 } // namespace LmbrCentral

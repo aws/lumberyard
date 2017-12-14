@@ -11,6 +11,13 @@
 */
 #pragma once
 
+#include <QToolBar>
+
+#include "CanvasSizeToolbarSection.h"
+
+class EditorWindow;
+class QResizeEvent;
+
 class PreviewToolbar
     : public QToolBar
 {

@@ -58,7 +58,7 @@ void UiLayoutGridComponent::ApplyLayoutWidth()
     EBUS_EVENT_ID_RESULT(childEntityIds, GetEntityId(), UiElementBus, GetChildEntityIds);
     for (auto child : childEntityIds)
     {
-        // Set the anchors        
+        // Set the anchors
         EBUS_EVENT_ID(child, UiTransform2dBus, SetAnchors, anchors, false, false);
 
         // Set the offsets
@@ -82,7 +82,7 @@ void UiLayoutGridComponent::ApplyLayoutHeight()
 
         // Calculate alignment
         float hAlignmentOffset = UiLayoutHelpers::GetHorizontalAlignmentOffset(m_childHAlignment, layoutRectSize.GetX(), childrenRectSize.GetX());
-        float vAlignmentOffset = UiLayoutHelpers::GetVerticalAlignmentOffset(m_childVAlignment, layoutRectSize.GetY(), childrenRectSize.GetY());        
+        float vAlignmentOffset = UiLayoutHelpers::GetVerticalAlignmentOffset(m_childVAlignment, layoutRectSize.GetY(), childrenRectSize.GetY());
 
         int numColumns = 0, numRows = 0;
 
@@ -110,7 +110,7 @@ void UiLayoutGridComponent::ApplyLayoutHeight()
         int columnIndex, rowIndex;
         for (auto child : childEntityIds)
         {
-            // Set the anchors        
+            // Set the anchors
             EBUS_EVENT_ID(child, UiTransform2dBus, SetAnchors, anchors, false, false);
 
             // Set the offsets

@@ -15,6 +15,7 @@
 #include "DriverD3D.h"
 #include "D3DPostProcess.h"
 #include "I3DEngine.h"
+#include "../Common/Textures/TextureManager.h"
 #include "../Common/ReverseDepth.h"
 
 
@@ -226,6 +227,9 @@ void CTexture::GenerateHDRMaps()
 
     //  Confetti BEGIN: Igor Lobanchikov :END
     pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, nHDRReducedFormat, 1.0f, "$HDRTargetPrev", &s_ptexHDRTargetPrev);
+
+    pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, nHDRFormat, 1.0f, "$FurLightAcc", &s_ptexFurLightAcc, FT_DONT_RELEASE);
+    pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, eTF_R32G32B32A32F, 1.0f, "$FurPrepass", &s_ptexFurPrepass, FT_DONT_RELEASE);
 
     // Scaled versions of the HDR scene texture
     uint32 nWeight = (r->m_dwHDRCropWidth >> 1);
@@ -1159,7 +1163,7 @@ void CHDRPostProcess::BloomGeneration()
 void CHDRPostProcess::ProcessLensOptics()
 {
     gcpRendD3D->m_RP.m_PersFlags2 &= ~RBPF2_LENS_OPTICS_COMPOSITE;
-    if (CRenderer::CV_r_flares)
+    if (CRenderer::CV_r_flares && CRenderer::CV_r_PostProcess)
     {
         const uint32 nBatchMask = SRendItem::BatchFlags(EFSLIST_LENSOPTICS, gcpRendD3D->m_RP.m_pRLD);
         if (nBatchMask & (FB_GENERAL | FB_TRANSPARENT))
@@ -1213,7 +1217,7 @@ void CHDRPostProcess::ToneMapping()
 
     CSunShafts* pSunShaftsTech = static_cast<CSunShafts*>(PostEffectMgr()->GetEffect(ePFX_SunShafts));
 
-    CTexture* pSunShaftsRT = CTexture::s_ptexBlack;
+    CTexture* pSunShaftsRT = CTextureManager::Instance()->GetBlackTexture();
     if (CRenderer::CV_r_sunshafts && CRenderer::CV_r_PostProcess && pSunShaftsTech && pSunShaftsTech->IsVisible())
     {
         // Create shafts mask texture
@@ -1322,7 +1326,7 @@ void CHDRPostProcess::ToneMapping()
     }
 
     {
-        CTexture* pBloom = CTexture::s_ptexBlack;
+        CTexture*   pBloom = CTextureManager::Instance()->GetBlackTexture();
         if (CRenderer::CV_r_HDRBloom && CRenderer::CV_r_PostProcess)
         {
             pBloom = CTexture::s_ptexHDRFinalBloom;
@@ -1418,11 +1422,12 @@ void CHDRPostProcess::ToneMapping()
 
         if (CRenderer::CV_r_PostProcess && CRenderer::CV_r_HDRVignetting)
         {
-            CTexture::s_ptexVignettingMap->Apply(static_cast<int>(eHDRPostProcessSRVs::VignetteMap), nTexStateLinear);
+            CTextureManager::Instance()->GetDefaultTexture("VignettingMap")->Apply(static_cast<int>(eHDRPostProcessSRVs::VignetteMap), nTexStateLinear);
         }
         else
         {
-            CTexture::s_ptexWhite->Apply(static_cast<int>(eHDRPostProcessSRVs::VignetteMap), nTexStateLinear);
+            CTexture*   pWhite = CTextureManager::Instance()->GetWhiteTexture();
+            pWhite->Apply(static_cast<int>(eHDRPostProcessSRVs::VignetteMap), nTexStateLinear);
         }
 
         if (pTexColorChar)
@@ -1679,7 +1684,7 @@ void CHDRPostProcess::CalculateDolbyDynamicMetadata(CTexture* pSunShaftsRT)
     // Bind HDR targets in order to recreating the same HDR input signal.
     CTexture::s_ptexHDRTarget->Apply(0, nTexStateLinear, EFTT_UNKNOWN, -1, SResourceView::DefaultView, eHWSC_Compute);
     CTexture::s_ptexHDRToneMaps[0]->Apply(1, nTexStateLinear, EFTT_UNKNOWN, -1, SResourceView::DefaultView, eHWSC_Compute);
-    CTexture* pBloom = CTexture::s_ptexBlack;
+    CTexture*   pBloom = CTextureManager::Instance()->GetBlackTexture();
     if (CRenderer::CV_r_HDRBloom && CRenderer::CV_r_PostProcess)
     {
         pBloom = CTexture::s_ptexHDRFinalBloom;
@@ -2011,8 +2016,8 @@ void CHDRPostProcess::Render()
             pSceneRain->Render();
         }
 
-        // Motion blur not enabled in GMEM paths
-        if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr) || CRenderer::CV_r_SSReflections)
+        // Motion blur not enabled in 256bpp GMEM paths
+        if (CD3D9Renderer::eGT_256bpp_PATH != gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
         {
             // Note: Motion blur uses s_ptexHDRTargetPrev to avoid doing another copy, so this should be right before the MB pass
             PostProcessUtils().StretchRect(CTexture::s_ptexHDRTarget, CTexture::s_ptexHDRTargetPrev, false, false, false, false, SPostEffectsUtils::eDepthDownsample_None, false, &gcpRendD3D->m_FullResRect);
@@ -2021,6 +2026,17 @@ void CHDRPostProcess::Render()
         if (bDepthOfFieldEnabled)
         {
             graphicsPipeline.RenderDepthOfField();
+        }
+                
+        uint32 flags = SRendItem::BatchFlags(EFSLIST_TRANSP, gcpRendD3D->m_RP.m_pRLD);
+        if (flags & FB_TRANSPARENT_AFTER_DOF)
+        {
+            PROFILE_LABEL_SCOPE("PARTICLES AFTER DOF");
+            //render (after water) transparent particles list which was set to skip Depth of Field
+            gcpRendD3D->FX_PushRenderTarget(0, CTexture::s_ptexHDRTarget, &gcpRendD3D->m_DepthBufferOrig);
+            uint32 nBatchFilter = FB_TRANSPARENT_AFTER_DOF;
+            gcpRendD3D->FX_ProcessRenderList(EFSLIST_TRANSP, 1, gcpRendD3D->FX_FlushShader_General, true, nBatchFilter);
+            gcpRendD3D->FX_PopRenderTarget(0);
         }
 
         if (bMotionBlurEnabled)

@@ -112,7 +112,6 @@ public:
         static const int defaultSlotHeightSize = 8;
         m_SlotSizes.set(defaultSlotWidthSize, defaultSlotHeightSize);
 
-        m_bNoRescale = false;
         m_FontSmoothAmount = 0;
         m_FontSmoothMethod = FONT_SMOOTH_NONE;
     }
@@ -162,7 +161,7 @@ private:
                 m_FontTexSize.set(512, 512);
             }
 
-            bool fontLoaded = m_pFont->Load(m_strFontPath.c_str(), m_FontTexSize.x, m_FontTexSize.y, m_SlotSizes.x, m_SlotSizes.y, TTFFLAG_CREATE(m_FontSmoothMethod, m_FontSmoothAmount));
+            bool fontLoaded = m_pFont->Load(m_strFontPath.c_str(), m_FontTexSize.x, m_FontTexSize.y, m_SlotSizes.x, m_SlotSizes.y, TTFFLAG_CREATE(m_FontSmoothMethod, m_FontSmoothAmount), m_SizeRatio);
 #if defined(WIN32) || defined(WIN64)
             if (!fontLoaded)
             {
@@ -175,7 +174,7 @@ private:
                     string newFontPath(sysFontPath);
                     newFontPath += "/";
                     newFontPath += pFontName;
-                    m_pFont->Load(newFontPath, m_FontTexSize.x, m_FontTexSize.y, m_SlotSizes.x, m_SlotSizes.y, TTFFLAG_CREATE(m_FontSmoothMethod, m_FontSmoothAmount));
+                    m_pFont->Load(newFontPath, m_FontTexSize.x, m_FontTexSize.y, m_SlotSizes.x, m_SlotSizes.y, TTFFLAG_CREATE(m_FontSmoothMethod, m_FontSmoothAmount), m_SizeRatio);
                 }
             }
 #endif
@@ -250,12 +249,9 @@ private:
             {
                 m_SlotSizes.y = (int)atoi(value.c_str());
             }
-            else if (name == "norescale")
+            else if (name == "sizeratio")
             {
-                if (value.empty() || (atoi(value.c_str()) != 0))
-                {
-                    m_bNoRescale = true;
-                }
+                m_SizeRatio = static_cast<float>(atof(value.c_str()));
             }
             else if (name == "smooth")
             {
@@ -376,7 +372,7 @@ public:
     string    m_strFontPath;
     vector2l  m_FontTexSize;
     Vec2i     m_SlotSizes;
-    bool      m_bNoRescale;
+    float     m_SizeRatio = IFFontConstants::defaultSizeRatio;
 
     int       m_FontSmoothMethod;
     int       m_FontSmoothAmount;

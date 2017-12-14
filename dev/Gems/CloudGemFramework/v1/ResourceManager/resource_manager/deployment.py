@@ -211,21 +211,29 @@ def create_stack(context, args):
     context.view.deployment_stack_created(args.deployment, deployment_stack_id, deployment_access_stack_id)
 
     # Should the new deployment become the project default deployment or the release deployment?
-
+    updated_mappings = False
     if args.make_project_default:
         context.config.set_project_default_deployment(args.deployment)
-        mappings.update(context, util.Args())
         context.view.default_deployment(context.config.user_default_deployment, context.config.project_default_deployment)
+        __update_mappings(context, args.deployment)
+        updated_mappings = True
 
     if args.make_release_deployment:
-        context.config.set_release_deployment(args.deployment)
-        temp_args = util.Args()
-        temp_args.release = True
-        mappings.update(context, temp_args)
+        __set_release_deployment(context, args.deployment)
         context.view.release_deployment(context.config.release_deployment)
-    
+        # We don't need to get mappings twice if this is both default and release.
+        if not updated_mappings:
+            __update_mappings(context, args.deployment)
+
     after_update(context, deployment_uploader)
 
+
+def __set_release_deployment(context, deployment):
+    context.config.set_release_deployment(deployment)
+    if deployment is None:
+        mappings.set_launcher_deployment(context, context.config.default_deployment)
+    else:
+        mappings.set_launcher_deployment(context, deployment)
 
 def delete_stack(context, args):
 
@@ -310,7 +318,6 @@ def protect(context, args):
           
 
 def release(context, args):
-
     # Has the project been initialized?
     if not context.config.project_initialized:
         raise HandledError('The project has not been initialized.')
@@ -318,10 +325,10 @@ def release(context, args):
     old_release_deployment_name = context.config.release_deployment
 
     if args.clear:
-        context.config.set_release_deployment(None)
+        __set_release_deployment(context, None)
 
     if args.set:
-        context.config.set_release_deployment(args.set)
+        __set_release_deployment(context, args.set)
 
     # update mappings if the release deployment changed
     if old_release_deployment_name != context.config.release_deployment:
@@ -369,13 +376,7 @@ def upload_resources(context, args):
                 raise HandledError('There is no {} resource group.'.format(args.resource_group))
             resource_group.delete_stack(context, args)
 
-        if args.deployment == context.config.default_deployment:
-            mappings.update(context, util.Args())
-
-        if args.deployment == context.config.release_deployment:
-            temp_args = util.Args()
-            temp_args.release = True
-            mappings.update(context, temp_args)
+        __update_mappings(context, args.deployment, True)
 
     else:
         update_stack(context, args)
@@ -418,9 +419,15 @@ def update_stack(context, args):
 
     deployment_stack_id = context.config.get_deployment_stack_id(args.deployment)
     pending_resource_status = __get_pending_deployment_resource_status(context, args.deployment)
+    has_changes = context.stack.has_changed_or_deleted_resources(
+        deployment_stack_id,
+        'deployment {}'.format(args.deployment),
+        args,
+        pending_resource_status,
+        ignore_resource_types = [ 'Custom::EmptyDeployment' ]
+    )
 
     # Is it ok to do this?
-
     capabilities = context.stack.confirm_stack_operation(
         deployment_stack_id,
         'deployment {}'.format(args.deployment),
@@ -452,14 +459,7 @@ def update_stack(context, args):
     after_update(context, deployment_uploader)  
 
     # Update mappings...
-
-    if args.deployment == context.config.default_deployment:
-        mappings.update(context, util.Args())
-
-    if args.deployment == context.config.release_deployment:
-        temp_args = util.Args()
-        temp_args.release = True
-        mappings.update(context, temp_args)
+    __update_mappings(context, args.deployment, has_changes)
 
 
 
@@ -825,3 +825,12 @@ def __check_resource_group_gem_status(context, resource_group_name):
     # it is ok if the gem isn't enabled.
     if group:
         group.verify_gem_enabled()
+
+
+def __update_mappings(context, deployment_name, force = False):
+    if deployment_name != context.config.default_deployment and deployment_name != context.config.release_deployment:
+        return
+    temp_args = util.Args()
+    if deployment_name == context.config.release_deployment:
+        temp_args.release = True
+    mappings.update(context, temp_args, force)

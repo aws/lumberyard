@@ -10,11 +10,18 @@
 *
 */
 
+#include <AzCore/base.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/EBus/Results.h>
+#include <AzCore/Asset/AssetManager.h>
+
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetEntryChangeset.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntryCache.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/FolderThumbnail.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/SourceThumbnail.h>
@@ -25,6 +32,9 @@
 #include <QApplication>
 #include <QStyle>
 #include <QSharedPointer>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QMenu>
 
 namespace AzToolsFramework
 {
@@ -46,6 +56,7 @@ namespace AzToolsFramework
 
         void AssetBrowserComponent::Activate()
         {
+            EntryCache::CreateInstance();
             m_disposed = false;
             m_waitingForMore = false;
             m_thread = AZStd::thread(AZStd::bind(&AssetBrowserComponent::UpdateAssets, this));
@@ -79,6 +90,7 @@ namespace AzToolsFramework
             AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
             AssetSystemBus::Handler::BusDisconnect();
+            EntryCache::DestroyInstance();
         }
 
         void AssetBrowserComponent::Reflect(AZ::ReflectContext* context)
@@ -107,7 +119,7 @@ namespace AzToolsFramework
             m_changeset->Synchronize();
         }
 
-        void AssetBrowserComponent::SourceFileRemoved(AZStd::string /*assetId*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
+        void AssetBrowserComponent::SourceFileRemoved(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
         {
             m_changeset->RemoveSource(sourceUUID);
             if (m_dbReady)
@@ -156,7 +168,10 @@ namespace AzToolsFramework
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
                 m_waitingForMore = false;
 
-                m_changeset->Update();
+                if (m_dbReady)
+                {
+                    m_changeset->Update();
+                }
             }
         }
 

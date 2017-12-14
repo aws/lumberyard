@@ -100,7 +100,7 @@ void MergeTool::MergeObjects()
     }
 }
 
-void MergeTool::MergePolygons(CD::SMainContext& mc)
+void MergeTool::MergePolygons(const CD::SMainContext& mc)
 {
     std::vector<CD::PolygonPtr> selectedPolygons = GetPolygonList(CD::GetDesigner()->GetSelectedElements());
     int nSelectedPolygonCount = selectedPolygons.size();

@@ -21,6 +21,7 @@
 #include <Terrain/Texture/MacroTexture.h>
 #include <Terrain/Texture/TexturePool.h>
 #include <AzCore/std/function/function_fwd.h> // for callbacks
+#include "Environment/OceanEnvironmentBus.h"
 
 // lowest level of the outdoor world
 #define TERRAIN_BOTTOM_LEVEL 0
@@ -253,6 +254,7 @@ public:
     void ClearTextureSets();
 
     void SetTerrainElevation(int x1, int y1, int areaSize, const float* heightmap, int weightmapSize, const SurfaceWeight* weightmap) override;
+    void SendLegacyTerrainUpdateNotifications(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY);
 
     void SetDetailLayerProperties(int nId, float fScaleX, float fScaleY, uint8 ucProjAxis, const char* szSurfName, const PodArray<int>& lstnVegetationGroups, _smart_ptr<IMaterial> pMat);
     void LoadSurfaceTypesFromXML(XmlNodeRef pDoc);
@@ -302,7 +304,7 @@ public:
     inline float GetDistanceToSectorWithWater() const;
     int UpdateOcean(const SRenderingPassInfo& passInfo);
     int RenderOcean(const SRenderingPassInfo& passInfo);
-    void InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterMat, int nWaterBottomTexId);
+    void InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterMat) override;
     virtual void SetOceanWaterLevel(float fOceanWaterLevel) override;
     virtual void ChangeOceanMaterial(_smart_ptr<IMaterial> pMat) override;
     //
@@ -476,7 +478,7 @@ inline CTerrainNode* CTerrain::GetLeafNodeAt(const Vec3& pos)
 
 inline float CTerrain::GetWaterLevel()
 {
-    return m_fOceanWaterLevel;
+    return OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : m_fOceanWaterLevel;
 }
 
 inline void CTerrain::SetWaterLevel(float fOceanWaterLevel)

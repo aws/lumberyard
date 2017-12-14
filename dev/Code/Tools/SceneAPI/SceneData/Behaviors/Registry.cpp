@@ -28,14 +28,6 @@ namespace AZ
     {
         namespace SceneData
         {
-            Registry::Registry()
-            {
-                if (!m_softNameTypes.InitializeFromConfigFile("virtual_types.json"))
-                {
-                    m_softNameTypes.InitializeWithDefaults();
-                }
-            }
-
             void Registry::RegisterComponents(ComponentDescriptorList& components)
             {
                 components.insert(components.end(),

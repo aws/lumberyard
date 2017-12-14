@@ -90,26 +90,14 @@ protected:
 class SANDBOX_API CAutoRegisterCommandHelper
 {
 public:
-    CAutoRegisterCommandHelper(void (*registerFunc)(CEditorCommandManager &))
-    {
-        m_registerFunc = registerFunc;
-        m_pNext = 0;
+    static CAutoRegisterCommandHelper* GetFirst();
 
-        if (!s_pLast)
-        {
-            s_pFirst = this;
-        }
-        else
-        {
-            s_pLast->m_pNext = this;
-        }
-
-        s_pLast = this;
-    }
-
+    CAutoRegisterCommandHelper(void(*registerFunc)(CEditorCommandManager &));
     void (* m_registerFunc)(CEditorCommandManager&);
-
     CAutoRegisterCommandHelper* m_pNext;
+
+private:
+
     static CAutoRegisterCommandHelper* s_pFirst;
     static CAutoRegisterCommandHelper* s_pLast;
 };

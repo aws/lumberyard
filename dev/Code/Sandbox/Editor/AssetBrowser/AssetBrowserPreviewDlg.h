@@ -17,7 +17,6 @@
 #define CRYINCLUDE_EDITOR_ASSET_BROWSER_ASSETBROWSERPREVIEWDLG_H
 #pragma once
 #include "Include/IAssetItem.h"
-#include "Util/GdiUtil.h"
 
 #include <QWidget>
 
@@ -48,7 +47,6 @@ protected:
     IAssetItem* m_pAssetItem;
     QPoint m_lastPanDragPt;
     IRenderer* m_piRenderer;
-    CGdiCanvas m_canvas;
     QWidget* m_pAssetPreviewHeaderDlg;
     QWidget* m_pAssetPreviewFooterDlg;
     QFont m_noPreviewTextFont;

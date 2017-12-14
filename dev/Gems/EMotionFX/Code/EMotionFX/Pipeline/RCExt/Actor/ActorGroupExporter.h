@@ -41,5 +41,5 @@ namespace EMotionFX
             ActorGroupExporter(const ActorGroupExporter&) = delete;
 #endif
         };
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

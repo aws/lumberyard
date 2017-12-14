@@ -15,6 +15,7 @@
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
 #include <QString>
+#include <QObject>
 
 namespace AzToolsFramework
 {

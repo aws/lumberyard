@@ -83,13 +83,13 @@ namespace MCore
          * Please note that the scaling has to happen in the space as defined by the scale rotation.
          * @result The scale for each axis.
          */
-        MCORE_INLINE const MCore::Vector3& GetScale() const                 { return mScale; }
+        MCORE_INLINE const AZ::Vector3& GetScale() const                 { return mScale; }
 
         /**
          * Get the translation stored in the matrix that we decomposed.
          * @result The translation.
          */
-        MCORE_INLINE const MCore::Vector3& GetTranslation() const           { return mTranslation; }
+        MCORE_INLINE const AZ::Vector3& GetTranslation() const           { return mTranslation; }
 
         /**
          * Get the sign of the matrix determinant, which is either -1 or +1.
@@ -101,15 +101,15 @@ namespace MCore
     private:
         MCore::Quaternion   mRotation;          /**< The rotation stored in the matrix. */
         MCore::Quaternion   mScaleRotation;     /**< The scale rotation (space in which to scale). */
-        MCore::Vector3      mScale;             /**< The scale factor for each axis. */
-        MCore::Vector3      mTranslation;       /**< The translation. */
+        AZ::Vector3         mScale;             /**< The scale factor for each axis. */
+        AZ::Vector3         mTranslation;       /**< The translation. */
         float               mDeterminantSign;   /**< The sign of the determinant (-1 or +1). */
         static HMatrix      IdentityMatrix;     /**< An identity matrix, used internally. */
 
         MCORE_INLINE float Sign(unsigned char n, float v)               { return (n) ? -(v) : (v); }
         MCORE_INLINE float NormInf(HMatrix M)                           { return MatNorm(M, 0); }
         MCORE_INLINE float NormOne(HMatrix M)                           { return MatNorm(M, 1); }
-        MCORE_INLINE void Swap(float* a, uint32 i, uint32 j)            { a[3] = a[i]; a[i] = a[j]; a[j] = a[3];}
+        MCORE_INLINE void Swap(float* a, uint32 i, uint32 j)            { a[3] = a[i]; a[i] = a[j]; a[j] = a[3]; }
         MCORE_INLINE void MatPad(HMatrix A)                             { A[3][0] = A[0][3] = A[3][1] = A[1][3] = A[3][2] = A[2][3] = 0.0f; A[3][3] = 1.0f; }
 
         AZ::Vector4 SpectralDecomp(HMatrix S, HMatrix U);

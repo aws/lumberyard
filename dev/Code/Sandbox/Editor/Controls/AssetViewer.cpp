@@ -1266,7 +1266,7 @@ void CAssetViewer::RecalculateLayout()
     QRect   rstElementRect;
 
     // magic! compute number of thumbs per one row of asset thumbs, and the needed margin between them
-    CGdiCanvas::ComputeThumbsLayoutInfo(m_clientRect.width(), m_assetThumbSize, m_itemHorizontalSpacing, m_assetItems.size(), thumbsPerRow, horizMargin);
+    ComputeThumbsLayoutInfo(m_clientRect.width(), m_assetThumbSize, m_itemHorizontalSpacing, m_assetItems.size(), thumbsPerRow, horizMargin);
 
     m_thumbsPerRow = thumbsPerRow;
     nCurrentTop = m_itemVerticalSpacing;
@@ -1696,51 +1696,6 @@ void CAssetViewer::DrawThumbnail(QPainter* painter, IAssetItem* const poItem, co
 
 void CAssetViewer::DrawThumbMiniButtons(IAssetItem* const poItem, const QRect& rcThumbBorder)
 {
-    // KDAB: There is no way to add stuff to m_thumbMiniButtons - so this method does nothing....
-#ifdef KDAB_TEMPORARILY_REMOVED
-    BLENDFUNCTION bfActive, bfHovered, bfInactive;
-
-    m_canvas.MakeBlendFunc(AssetViewer::kMiniThumbButton_ActiveAlpha, bfActive);
-    m_canvas.MakeBlendFunc(AssetViewer::kMiniThumbButton_HoveredAlpha, bfHovered);
-    m_canvas.MakeBlendFunc(AssetViewer::kMiniThumbButton_InactiveAlpha, bfInactive);
-
-    int crtY = rcThumbBorder.top();
-
-    m_thumbMiniButtonInstances[poItem].resize(m_thumbMiniButtons.size());
-
-    for (size_t i = 0, iCount = m_thumbMiniButtons.size(); i < iCount; ++i)
-    {
-        QRect rcBtn;
-
-        rcBtn.setLeft(rcThumbBorder.right() + 1);
-        rcBtn.setRight(rcBtn.left() + AssetViewer::kMiniThumbButton_Width);
-        rcBtn.setTop(crtY);
-        rcBtn.setBottom(crtY + AssetViewer::kMiniThumbButton_Height);
-
-        crtY += AssetViewer::kMiniThumbButton_Height + AssetViewer::kMiniThumbButton_VerticalSpacing;
-
-        bool bOn = false;
-
-        //TODO: put this bOn as a method of CThumbMiniButton and also the checking of asset tagged or fav
-        BLENDFUNCTION* pBf = NULL;
-
-        if (m_pHoveredThumbButtonAsset == poItem && m_hoveredThumbButtonIndex == i)
-        {
-            pBf = &bfHovered;
-        }
-        else if (bOn)
-        {
-            pBf = &bfActive;
-        }
-        else
-        {
-            pBf = &bfInactive;
-        }
-
-        m_canvas.BitBltWithAlpha(m_thumbMiniButtons[i]->m_image.GetDC(), rcBtn.left(), rcBtn.top(), -1, -1, 0, 0, -1, -1, pBf);
-        m_thumbMiniButtonInstances[poItem][i] = CThumbMiniButtonInstance(m_thumbMiniButtons[i], rcBtn, poItem, bOn);
-    }
-#endif
 }
 
 void CAssetViewer::keyPressEvent(QKeyEvent* event)

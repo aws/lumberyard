@@ -51,7 +51,7 @@ namespace GraphicsReflectContext
         const float fadeInTime = ScreenFaderNodeProperty::GetFadeInTime(this);
         const float fadeOutTime = ScreenFaderNodeProperty::GetFadeOutTime(this);
         const bool useCurrentColor = ScreenFaderNodeProperty::GetUseCurrentColor(this);
-        const bool eventWhenPaused = ScreenFaderNodeProperty::GetEvenWhenPaused(this);
+        const bool updateAlways = ScreenFaderNodeProperty::GetUpdateAlways(this);
         const AZStd::string textureName = ScreenFaderNodeProperty::GetTextureName(this);
         const AZ::Vector4 screenCoordinates = ScreenFaderNodeProperty::GetScreenCoordinates(this);
 
@@ -66,12 +66,12 @@ namespace GraphicsReflectContext
         if (slot == fadeInSlot)
         {
             AZ::ScreenFaderNotificationBus::Handler::BusConnect(faderId);
-            AZ::ScreenFaderRequestBus::Event(faderId, &AZ::ScreenFaderRequests::FadeIn, color, fadeInTime, useCurrentColor, eventWhenPaused);
+            AZ::ScreenFaderRequestBus::Event(faderId, &AZ::ScreenFaderRequests::FadeIn, color, fadeInTime, useCurrentColor, updateAlways);
         }
         else if (slot == fadeOutSlot)
         {
             AZ::ScreenFaderNotificationBus::Handler::BusConnect(faderId);
-            AZ::ScreenFaderRequestBus::Event(faderId, &AZ::ScreenFaderRequests::FadeOut, color, fadeOutTime, useCurrentColor, eventWhenPaused);
+            AZ::ScreenFaderRequestBus::Event(faderId, &AZ::ScreenFaderRequests::FadeOut, color, fadeOutTime, useCurrentColor, updateAlways);
         }
     }
 

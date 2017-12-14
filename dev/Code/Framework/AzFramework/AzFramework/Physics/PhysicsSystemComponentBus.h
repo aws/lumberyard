@@ -22,7 +22,7 @@ namespace AZ
     class Aabb;
 }
 
-namespace LmbrCentral
+namespace AzFramework
 {
     /**
      * Flags representing the various types of physical entities.
@@ -192,6 +192,6 @@ namespace LmbrCentral
 
     using PhysicsSystemEventBus = AZ::EBus<PhysicsSystemEvents>;
 
-} // namespace LmbrCentral
+} // namespace AzFramework
 
 #include "PhysicsSystemComponentBus.inl"

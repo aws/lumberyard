@@ -40,7 +40,7 @@ namespace LmbrCentral
         void Deactivate() override;
 
         AudioTriggerComponent() = default;
-        AudioTriggerComponent(const AZStd::string& playTriggerName, const AZStd::string& stopTriggerName, bool playsImmediately);
+        AudioTriggerComponent(const AZStd::string& playTriggerName, const AZStd::string& stopTriggerName, Audio::ObstructionType obstructionType, bool playsImmediately, bool notifyFinished);
 
         /*!
          * AudioTriggerComponentRequestBus::Handler Interface
@@ -54,6 +54,8 @@ namespace LmbrCentral
         void KillAllTriggers() override;
 
         void SetMovesWithEntity(bool shouldTrackEntity) override;
+
+        void SetObstructionType(Audio::ObstructionType obstructionType) override;
 
         //! Used as a callback when a trigger instance is finished.
         static void OnAudioEvent(const Audio::SAudioRequestInfo* const);
@@ -80,6 +82,7 @@ namespace LmbrCentral
         //! Editor callbacks
         void OnPlayTriggerChanged();
         void OnStopTriggerChanged();
+        void OnObstructionTypeChanged();
 
         //! Transient data
         Audio::TAudioControlID m_defaultPlayTriggerID = INVALID_AUDIO_CONTROL_ID;
@@ -89,7 +92,9 @@ namespace LmbrCentral
         //! Serialized data
         AZStd::string m_defaultPlayTriggerName;
         AZStd::string m_defaultStopTriggerName;
+        Audio::ObstructionType m_obstructionType = Audio::ObstructionType::Ignore;
         bool m_playsImmediately = false;
+        bool m_notifyWhenTriggerFinishes = false;
     };
 
 } // namespace LmbrCentral

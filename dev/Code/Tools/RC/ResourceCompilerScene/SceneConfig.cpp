@@ -32,8 +32,7 @@ namespace AZ
         SceneConfig::SceneConfig()
         {
             LoadSceneLibrary("SceneCore");
-            LoadSceneLibrary("SceneData");
-            LoadSceneLibrary("FbxSceneBuilder");
+            LoadSceneLibrary("FbxSceneBuilder"); // Still needs to be explicitly loaded in order to be able to get the supported file extensions.
         }
 
         SceneConfig::~SceneConfig()
@@ -52,54 +51,6 @@ namespace AZ
         const char* SceneConfig::GetManifestFileExtension() const
         {
             return AZ::SceneAPI::Import::Utilities::FileFinder::GetManifestExtension();
-        }
-
-        void SceneConfig::ReflectSceneModules(SerializeContext* context)
-        {
-            for (AZStd::unique_ptr<AZ::DynamicModuleHandle>& module : m_modules)
-            {
-                AZ_TraceContext("Scene Module", module->GetFilename());
-                AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Reflecting scene module to context.\n");
-                using ReflectFunc = void(*)(SerializeContext*);
-
-                ReflectFunc reflect = module->GetFunction<ReflectFunc>("Reflect");
-                if (reflect)
-                {
-                    (*reflect)(context);
-                }
-            }
-        }
-
-        void SceneConfig::ActivateSceneModules()
-        {
-            for (AZStd::unique_ptr<AZ::DynamicModuleHandle>& module : m_modules)
-            {
-                AZ_TraceContext("Scene Module", module->GetFilename());
-                AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Activating scene module.\n");
-                using ActivateFunc = void(*)();
-
-                ActivateFunc activate = module->GetFunction<ActivateFunc>("Activate");
-                if (activate)
-                {
-                    (*activate)();
-                }
-            }
-        }
-
-        void SceneConfig::DeactivateSceneModules()
-        {
-            for (AZStd::unique_ptr<AZ::DynamicModuleHandle>& module : m_modules)
-            {
-                AZ_TraceContext("Scene Module", module->GetFilename());
-                AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Deactivating scene module.\n");
-                using DeactivateFunc = void(*)();
-
-                DeactivateFunc deactivate = module->GetFunction<DeactivateFunc>("Deactivate");
-                if (deactivate)
-                {
-                    (*deactivate)();
-                }
-            }
         }
 
         void SceneConfig::LoadSceneLibrary(const char* name)

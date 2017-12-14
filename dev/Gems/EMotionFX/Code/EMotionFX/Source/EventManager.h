@@ -38,9 +38,9 @@ namespace EMotionFX
      */
     struct EMFX_API IntersectionInfo
     {
-        MCore::Vector3  mPosition;
-        MCore::Vector3  mNormal;
-        AZ::Vector2 mUV;
+        AZ::Vector3     mPosition;
+        AZ::Vector3     mNormal;
+        AZ::Vector2     mUV;
         float           mBaryCentricU;
         float           mBaryCentricV;
         ActorInstance*  mActorInstance;
@@ -52,7 +52,7 @@ namespace EMotionFX
 
         IntersectionInfo()
         {
-            mPosition.Zero();
+            mPosition = AZ::Vector3::CreateZero();
             mNormal.Set(0.0f, 1.0f, 0.0f);
             mUV = AZ::Vector2::CreateZero();
             mBaryCentricU   = 0.0f;
@@ -384,8 +384,8 @@ namespace EMotionFX
 
         void OnSimulatePhysics(float timeDelta);
         void OnCustomEvent(uint32 eventType, void* data);
-        void OnDrawLine(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color);
-        void OnDrawTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color);
+        void OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color);
+        void OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color);
         void OnDrawTriangles();
 
         void OnScaleActorData(Actor* actor, float scaleFactor);
@@ -400,7 +400,7 @@ namespace EMotionFX
          * @param outIntersectInfo The resulting intersection info.
          * @result Returns true when an intersection occurred and false when no intersection occurred.
          */
-        bool OnRayIntersectionTest(const MCore::Vector3& start, const MCore::Vector3& end, IntersectionInfo* outIntersectInfo);
+        bool OnRayIntersectionTest(const AZ::Vector3& start, const AZ::Vector3& end, IntersectionInfo* outIntersectInfo);
 
         void OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state);
         void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state);
@@ -409,7 +409,7 @@ namespace EMotionFX
         void OnStartTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition);
         void OnEndTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition);
         void Sync(AnimGraphInstance* animGraphInstance, AnimGraphNode* animGraphNode);
-        void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const MCore::Vector3& offset);
+        void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset);
         void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode);
         void OnConditionTriggered(AnimGraphInstance* animGraphInstance, AnimGraphTransitionCondition* condition);
 

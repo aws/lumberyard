@@ -17,6 +17,8 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+
 #include <Components/Nodes/NodeComponent.h>
 
 #include <Components/GeometryComponent.h>
@@ -38,9 +40,8 @@ namespace GraphCanvas
         }
 
         serializeContext->Class<NodeComponent>()
-            ->Version(2)
+            ->Version(3)
             ->Field("Configuration", &NodeComponent::m_configuration)
-            ->Field("Scene", &NodeComponent::m_sceneId)
             ->Field("Slots", &NodeComponent::m_slots)
             ->Field("UserData", &NodeComponent::m_userData)
             ;
@@ -176,8 +177,9 @@ namespace GraphCanvas
             AZ::EntityId grid;
             SceneRequestBus::EventResult(grid, m_sceneId, &SceneRequests::GetGrid);
 
-            NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::SetSnapToGrid, true);
             NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::SetGrid, grid);
+            NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::SetSnapToGrid, true);
+            NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::SetResizeToGrid, true);
 
             NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnAddedToScene, m_sceneId);
         }
@@ -199,11 +201,34 @@ namespace GraphCanvas
         m_sceneId.SetInvalid();
     }
 
+    void NodeComponent::SignalMemberSetupComplete()
+    {
+        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnMemberSetupComplete);
+    }
+
     AZ::EntityId NodeComponent::GetScene() const
     {
         return m_sceneId;
     }
 
+    bool NodeComponent::LockForExternalMovement(const AZ::EntityId& sceneMemberId)
+    {
+        if (!m_lockingSceneMember.IsValid())
+        {
+            m_lockingSceneMember = sceneMemberId;
+        }
+
+        return m_lockingSceneMember == sceneMemberId;
+    }
+
+    void NodeComponent::UnlockForExternalMovement(const AZ::EntityId& sceneMemberId)
+    {
+        if (m_lockingSceneMember == sceneMemberId)
+        {
+            m_lockingSceneMember.SetInvalid();
+        }
+    }
+        
     void NodeComponent::OnSceneReady()
     {
         SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneReady);
@@ -247,7 +272,7 @@ namespace GraphCanvas
 
         if (SlotRequestBus::FindFirstHandler(slotId))
         {
-            auto slotEntity = AzFramework::EntityReference(slotId).GetEntity();
+            auto slotEntity = AzToolsFramework::GetEntityById(slotId);
             auto entry = AZStd::find_if(m_slots.begin(), m_slots.end(), [slotId](AZ::Entity* slot) { return slot->GetId() == slotId; });
             if (entry == m_slots.end() && slotEntity)
             {

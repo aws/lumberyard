@@ -25,7 +25,7 @@ void RemoveTool::Enter()
     CD::GetDesigner()->SwitchToSelectTool();
 }
 
-bool RemoveTool::RemoveSelectedElements(CD::SMainContext& mc, bool bEraseMirrored)
+bool RemoveTool::RemoveSelectedElements(const CD::SMainContext& mc, bool bEraseMirrored)
 {
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
 

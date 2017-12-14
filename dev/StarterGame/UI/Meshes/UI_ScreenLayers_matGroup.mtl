@@ -2,7 +2,7 @@
  <SubMaterials>
   <Material Name="UI_ScreenLayer2" MtlFlags="524416" Shader="Referenceimage" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="0.5,0.5,0.5,1" Specular="0.5,0.5,0.5,1" Opacity="0.99000001" Shininess="10" vertModifType="0" LayerAct="1">
    <Textures>
-    <Texture Map="Diffuse" File="textures/ui/diegetic_menu/generic_menu_bg/layer_2/uia_asset_diegeticmenu_bg.dds"/>
+    <Texture Map="Diffuse" File="textures/ui/diegetic_menu/generic_menu_bg/layer_2/panel_background.dds"/>
    </Textures>
   </Material>
   <Material Name="UI_ScreenLayer1" MtlFlags="524416" Shader="Referenceimage" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="0.5,0.5,0.5,1" Specular="0.5,0.5,0.5,1" Opacity="0.99000001" Shininess="10" vertModifType="0" LayerAct="1">

@@ -198,7 +198,7 @@
     "border-color": "#000000",
     "border-radius": 0,
 
-    "margin": 0,
+    "margin": 3,
     "spacing": 1,
 
     "min-width": 40,
@@ -262,21 +262,21 @@
     "border-color": "#f3811d",
     "border-radius": 0
   },
-    {
+  {
     "selectors": [ "blockComment" ],
 
     "background-color": "#00000077",
 
-    "border-width": 4,
+    "border-width": 6,
     "border-style": "solid",
     "border-radius": 0,
 
-    "min-height": 40,
+    "min-height": 100,
     "min-width": 100,
-    "max-width": 300,
 
     "margin": 0,
-    "spacing": 1
+    "spacing": 1,
+    "z-value": -2
   },
   {
     "selectors": [ "blockComment:disabled" ],
@@ -306,21 +306,8 @@
   },
   {
     "selectors": [ "blockComment > .commentText" ],
-    "color": "#000000",
 
-    "font-family": "default",
-    "font-size": "120%",
-    "font-style": "italic",
-    "font-variant": "default",
-    "font-weight": "default",
-
-    "min-height": 40,
     "min-width": 100,
-    "max-width": 300,
-
-    "text-alignment": "left",
-    "text-vertical-alignment": "top",
-
     "padding": 6
   },
   {
@@ -334,22 +321,34 @@
   {
     "selectors": [ "blockComment > titleBox" ],
     "color": "#000000",
+    "background-color": "#00000080",
 
-    "border-width": 4,
+    "border-width": 2,
     "border-style": "solid",
     "border-color": "#000000",
     "border-radius": 2,
 
-    "padding": 6
+    "padding": 0
+  },
+  {
+    "selectors": [ "blockComment:hovered > titleBox" ],
+    "background-color": "#000000"
+  },
+  {
+    "selectors": [ "blockComment:selected > titleBox" ],
+    "background-color": "#000000"
   },
   {
     "selectors": [ "blockComment > blockArea" ],
     "color": "#000000",
+    "background-color": "#00000020",
 
-    "border-width": 4,
+    "border-width": 2,
     "border-style": "solid",
     "border-color": "#000000",
-    "border-radius": 2
+    "border-radius": 1,
+
+    "min-height": 40
   },
   {
     "selectors": [ "wrapperNode" ],
@@ -1396,7 +1395,30 @@
     "selectors": [ "connection.varFlow:dragging" ],
 
     "line-style": "dotted",
-    "z-value":  3
+    "z-value": 3
+  },
+  {
+    "selectors": [ "checkBox" ],
+
+    "background-color": "transparent",
+    "color": "#2883FC",
+
+    "border-width": 2,
+    "border-style": "solid",
+    "border-color": "#ffffff",
+    "border-radius": 2,
+
+    "line-width": 2,
+    "line-color": "#ffffff",
+
+    "spacing": 0,
+    "margin":  3,
+    "width": 16,
+    "height": 16
+  },
+  {
+    "selectors": [ "checkBox:hovered" ],
+    "border-color": "#2883FC"
   },
   {
     "selectors": [ "BooleanDataColorPalette" ],

@@ -126,7 +126,9 @@ namespace CD
         m_pStatObj->SetBBoxMin(pMesh->GetBBox().min);
         m_pStatObj->SetBBoxMax(pMesh->GetBBox().max);
 
+#if defined(AZ_PLATFORM_WINDOWS)
         pMesh->Optimize();
+#endif
         pMesh->RestoreFacesFromIndices();
 
         Matrix34 identityTM = Matrix34::CreateIdentity();

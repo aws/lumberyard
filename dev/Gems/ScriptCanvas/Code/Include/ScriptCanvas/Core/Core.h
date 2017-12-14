@@ -42,24 +42,7 @@ namespace ScriptCanvas
     using NodeIdList = AZStd::vector<ID>;
     using NodePtrList = AZStd::vector<Node*>;
     using NodePtrConstList = AZStd::vector<const Node*>;
-
-    static bool s_debugTrace = false;
-
-    static void DebugTrace(const char* format, ...)
-    {
-        if (s_debugTrace)
-        {
-            char msg[2048];
-            va_list va;
-            va_start(va, format);
-            azvsnprintf(msg, 2048, format, va);
-            va_end(va);
-
-            AZ_Printf("Script Canvas", msg)
-        }
-    }
-
-
+    
     struct SlotId
     {
         AZ_TYPE_INFO(SlotId, "{14C629F6-467B-46FE-8B63-48FDFCA42175}");
@@ -114,51 +97,27 @@ namespace AZStd
     };
 }
 
-
 #if defined(SCRIPTCANVAS_ERRORS_ENABLED)
 
-#define SCRIPT_CANVAS_INFINITE_LOOP_DETECTION_COUNT (50)
-
-namespace ScriptCanvas
-{
-    class InfiniteLoopDetector
-    {
-    public:
-        InfiniteLoopDetector(const Node& node);
-        ~InfiniteLoopDetector();
-
-        AZ_FORCE_INLINE int ExecutionCount() const { return m_executionCount; }
-        AZ_FORCE_INLINE bool IsInLoop() const { return m_isInLoop; }
-
-    private:
-        bool m_isInLoop = false;
-        int m_executionCount = 0;
-        const Node& m_node;
-    }; // class InfiniteLoopDetector
-}
-
-#define SCRIPT_CANVAS_IF_NOT_IN_INFINITE_LOOP(node)\
-    InfiniteLoopDetector loopDetector(node);\
-    if (!loopDetector.IsInLoop())
+#define SCRIPT_CANVAS_INFINITE_LOOP_DETECTION_COUNT (1000)
 
 #define SCRIPTCANVAS_RETURN_IF_NOT_GRAPH_RECOVERABLE(graph)\
     if (graph.IsInIrrecoverableErrorState()) { Deactivate(); return; }
 
 #define SCRIPTCANVAS_HANDLE_ERROR(node)\
-    if (node.GetGraph()->IsInErrorState() && (!loopDetector.IsInLoop() || loopDetector.ExecutionCount() == 1))\
+    if ((node).GetGraph()->IsInErrorState())\
     {\
-        node.GetGraph()->HandleError(node);\
+        (node).GetGraph()->HandleError((node));\
     }
 
 #define SCRIPTCANVAS_REPORT_ERROR(node, ...)\
-    node.GetGraph()->ReportError(node, __VA_ARGS__)
+    (node).GetGraph()->ReportError((node), __VA_ARGS__)
 
 #define SCRIPTCANVAS_RETURN_IF_ERROR_STATE(node)\
-    if (node.GetGraph()->IsInErrorState()) { return; }  
+    if ((node).GetGraph()->IsInErrorState()) { return; }  
 
 #else
 
-#define SCRIPTCANVAS_NODE_DETECT_INFINITE_LOOP(node)
 #define SCRIPTCANVAS_RETURN_IF_NOT_GRAPH_RECOVERABLE(graph)
 #define SCRIPTCANVAS_HANDLE_ERROR(node)
 #define SCRIPTCANVAS_REPORT_ERROR(node, ...)

@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <guiddef.h>
 #include <ui_dynamic_content.h>
 #include <QSortFilterProxyModel>
 #include "ManifestDataStructures.h"
@@ -169,9 +168,8 @@ namespace DynamicContent
         void AddFilesToPackage(const ManifestFiles& manifestFiles, const QModelIndex& pakIndex);
 
         void UpdateManifestSourceControlState();
-        bool ManifestNeedsCheckout() const;
-        void CheckoutManifest();
-        bool OfferManifestCheckout();
+        void RequestEditManifest();
+        bool PrepareManifestForWork();
 
         void SelectCurrentManifest();
 
@@ -232,7 +230,7 @@ namespace DynamicContent
 
         struct ManifestInfo
         {
-            AzToolsFramework::SourceControlStatus m_manifestSourceStatus{ AzToolsFramework::SCS_NUM_STATUSES };
+            AzToolsFramework::SourceControlFileInfo m_manifestSourceFileInfo;
             QString m_currentlySelectedManifestName;
             QString m_fullPathToManifest;
         };

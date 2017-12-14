@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -19,7 +17,8 @@
 
 #include <AzCore/Math/Transform.h>
 
-#include <DecalSelectorComponent.h>
+#include "DecalSelectorComponent.h"
+
 
 namespace AZ
 {

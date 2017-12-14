@@ -30,7 +30,7 @@ namespace AzToolsFramework
         public:
             AZ_RTTI(BoundShapeInterface, "{C639CB8E-1957-4E4F-B889-3BE1DFBC358D}");
 
-            BoundShapeInterface(RegisteredBoundId boundId, AZ::u64 userContext = 0) 
+            explicit BoundShapeInterface(RegisteredBoundId boundId, AZ::u64 userContext = 0) 
                 : m_boundId(boundId)
                 , m_userContext(userContext) 
                 , m_isValid(false)

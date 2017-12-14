@@ -187,7 +187,7 @@ typedef uint32 vtx_idx;
 #define SHADER_REFLECT_TEXTURE_SLOTS 0
 #endif
 
-#if (defined(WIN32) || defined(WIN64)) && (!defined(_RELEASE) || defined(RESOURCE_COMPILER))
+#if (defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_APPLE_OSX)) && (!defined(_RELEASE) || defined(RESOURCE_COMPILER))
 #define CRY_ENABLE_RC_HELPER 1
 #endif
 

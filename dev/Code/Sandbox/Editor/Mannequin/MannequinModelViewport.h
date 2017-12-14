@@ -205,6 +205,7 @@ protected:
     bool UseAnimationDrivenMotionForEntity(const IEntity* piEntity);
     void SetFirstperson(IAttachmentManager* pAttachmentManager, EMannequinViewMode viewmode);
 
+    using CRenderViewport::HitTest;
     bool HitTest(HitContext& hc, const bool bIsClick);
 
     void mousePressEvent(QMouseEvent* event) override;

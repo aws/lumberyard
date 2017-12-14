@@ -8,27 +8,27 @@ import { DefinitionService, LyMetricService } from 'app/shared/service/index'
     selector: 'facet-generator',
     template: `
     <div class="row subNav">
-        <div class="tab" 
-            [class.tab-active]="model.activeFacetIndex == i"  
+        <div class="tab"
+            [class.tab-active]="model.activeFacetIndex == i"
             *ngFor="let facet of facets; let i = index">
                 <a (click)="emitActiveTab(i)"> {{facets[i]}} </a>
         </div>
-    </div>            
+    </div>
     <ng-template facet-host></ng-template>
-    
+
     `,
-    styleUrls: ['app/view/game/module/shared/component/facet/facet.component.css']    
+    styleUrls: ['app/view/game/module/shared/component/facet/facet.component.css']
 })
 export class FacetComponent implements OnInit {
     @Input() context?: any;
-    @Input('tabs') facets?: String[];    
+    @Input('tabs') facets?: String[];
     // Optional string that will be used as the registered cloud gem id for metrics
     @Input() metricIdentifier: string;
-    @Output() tabClicked = new EventEmitter<number>(); 
-    @ViewChild(FacetDirective) facetHost: FacetDirective;   
+    @Output() tabClicked = new EventEmitter<number>();
+    @ViewChild(FacetDirective) facetHost: FacetDirective;
 
     private model = {
-        facets: {            
+        facets: {
             qualified: new Array<Facet>()
         },
         cloudGemFacetCount: 0,
@@ -37,15 +37,15 @@ export class FacetComponent implements OnInit {
 
     constructor(private componentFactoryResolver: ComponentFactoryResolver, private definitions: DefinitionService, private lymetrics: LyMetricService) { }
 
-    ngOnInit(): void {         
+    ngOnInit(): void {
         if (!this.context)
-            this.context = {}   
+            this.context = {}
 
         this.context = Object.assign(this.context, this.definitions.defines)
-        
+
         // Default setting for subnav component
         if (!this.facets)
-            this.facets = ["Overview"] 
+            this.facets = []
 
         // Define all qualified facets for this Cloud Gem
         this.defineQualifiedFacets()
@@ -55,18 +55,18 @@ export class FacetComponent implements OnInit {
             return facet.title
         }))
 
-        this.sendEvent(0);        
+        this.emitActiveTab(0);
     }
 
     emitActiveTab(index: number): void {
         this.sendEvent(index);
         this.model.activeFacetIndex = index;
         this.tabClicked.emit(index);
-        this.loadComponent(index - this.model.cloudGemFacetCount)         
+        this.loadComponent(index - this.model.cloudGemFacetCount)
     }
 
     defineQualifiedFacets(): void {
-        //iterate all defined facets        
+        //iterate all defined facets
         for (let i = 0; i < FacetDefinitions.defined.length; i++) {
             let facet = FacetDefinitions.defined[i]
             let isApplicable = true;
@@ -76,8 +76,10 @@ export class FacetComponent implements OnInit {
                 if (!(constraint in this.context)) {
                     isApplicable = false;
                 } else {
+                    isApplicable = true;
                     facet.data[constraint] = this.context[constraint]
                     facet.data["Identifier"] = this.metricIdentifier
+                    break;
                 }
             }
 
@@ -104,7 +106,7 @@ export class FacetComponent implements OnInit {
             index < 0) {
             return;
         }
-  
+
         let facet = this.model.facets.qualified[index];
         if (!facet.component) {
             console.warn("Facet generator failed to find a component for this qualified facet.")

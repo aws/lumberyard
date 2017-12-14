@@ -16,7 +16,7 @@
 namespace MCore
 {
     // clip points against the plane
-    bool PlaneEq::Clip(const Array<Vector3>& pointsIn, Array<Vector3>& pointsOut) const
+    bool PlaneEq::Clip(const Array<AZ::Vector3>& pointsIn, Array<AZ::Vector3>& pointsOut) const
     {
         int32 numPoints = pointsIn.GetLength();
 
@@ -51,7 +51,7 @@ namespace MCore
 
             if ((in != nextIn) && (dist != 0.0f) && (nextDist != 0.0f))
             {
-                Vector3 dir = (pointsIn[vert2] - pointsIn[vert1]);
+                AZ::Vector3 dir = (pointsIn[vert2] - pointsIn[vert1]);
 
                 float frac = dist / (dist - nextDist);
                 if ((frac > 0.0f) && (frac < 1.0f))
@@ -71,9 +71,9 @@ namespace MCore
 
 
     // clip a set of vectors <points> to this plane
-    bool PlaneEq::Clip(Array<Vector3>& points) const
+    bool PlaneEq::Clip(Array<AZ::Vector3>& points) const
     {
-        Array<Vector3> pointsOut;
+        Array<AZ::Vector3> pointsOut;
         if (Clip(points, pointsOut))
         {
             points = pointsOut;

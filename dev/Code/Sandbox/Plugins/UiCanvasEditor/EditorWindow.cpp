@@ -14,6 +14,9 @@
 #include "EditorCommon.h"
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/sort.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzQtComponents/Components/StyledDockWidget.h>
+#include <LyShine/UiComponentTypes.h>
 #include <Util/PathUtil.h>
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include "EditorDefs.h"
@@ -21,9 +24,7 @@
 #include "AnchorPresets.h"
 #include "PivotPresets.h"
 #include "Animation/UiAnimViewDialog.h"
-#include <AzQtComponents/Components/StyledDockWidget.h>
 #include "AssetTreeEntry.h"
-#include <LyShine/UiComponentTypes.h>
 
 #define UICANVASEDITOR_SETTINGS_EDIT_MODE_STATE_KEY     (QString("Edit Mode State") + " " + FileHelpers::GetAbsoluteGameDir())
 #define UICANVASEDITOR_SETTINGS_EDIT_MODE_GEOM_KEY      (QString("Edit Mode Geometry") + " " + FileHelpers::GetAbsoluteGameDir())
@@ -31,20 +32,71 @@
 #define UICANVASEDITOR_SETTINGS_PREVIEW_MODE_GEOM_KEY   (QString("Preview Mode Geometry") + " " + FileHelpers::GetAbsoluteGameDir())
 #define UICANVASEDITOR_SETTINGS_WINDOW_STATE_VERSION    (1)
 
-EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
-    const QString& canvasFilename,
-    QWidget* parent,
-    Qt::WindowFlags flags)
+namespace
+{
+    //! \brief Writes the current value of the sys_localization_folder CVar to the editor settings file (Amazon.ini)
+    void SaveStartupLocalizationFolderSetting()
+    {
+        if (gEnv && gEnv->pConsole)
+        {
+            ICVar* locFolderCvar = gEnv->pConsole->GetCVar("sys_localization_folder");
+
+            QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
+            settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
+
+            settings.setValue(UICANVASEDITOR_SETTINGS_STARTUP_LOC_FOLDER_KEY, locFolderCvar->GetString());
+
+            settings.endGroup();
+            settings.sync();
+        }
+    }
+
+    //! \brief Reads loc folder value from Amazon.ini and re-sets the CVar accordingly
+    void RestoreStartupLocalizationFolderSetting()
+    {
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
+        settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
+
+        QString startupLocFolder(settings.value(UICANVASEDITOR_SETTINGS_STARTUP_LOC_FOLDER_KEY).toString());
+        if (!startupLocFolder.isEmpty() && gEnv && gEnv->pConsole)
+        {
+            ICVar* locFolderCvar = gEnv->pConsole->GetCVar("sys_localization_folder");
+            locFolderCvar->Set(startupLocFolder.toUtf8().constData());
+        }
+
+        settings.endGroup();
+        settings.sync();
+    }
+}
+
+EditorWindow::UiCanvasEditState::UiCanvasEditState()
+    : m_inited(false)
+{
+}
+
+EditorWindow::UiCanvasMetadata::UiCanvasMetadata()
+    : m_entityContext(nullptr)
+    , m_undoStack(nullptr)
+    , m_canvasChangedAndSaved(false)
+{
+}
+
+EditorWindow::UiCanvasMetadata::~UiCanvasMetadata()
+{
+    delete m_entityContext;
+    delete m_undoStack;
+}
+
+EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
     , IEditorNotifyListener()
-    , m_editorWrapper(parentWrapper)
-    , m_canvasEntityId()
-    , m_canvasSourceAssetPathname()
     , m_undoGroup(new QUndoGroup(this))
-    , m_undoStack(new UndoStack(m_undoGroup))
+    , m_sliceManager(new UiSliceManager(AzFramework::EntityContextId::CreateNull()))
     , m_hierarchy(new HierarchyWidget(this))
     , m_properties(new PropertiesWrapper(m_hierarchy, this))
-    , m_viewport(new ViewportWidget(this))
+    , m_canvasTabBar(nullptr)
+    , m_canvasTabSectionWidget(nullptr)
+    , m_viewport(nullptr)
     , m_animationWidget(new CUiAnimViewDialog(this))
     , m_previewActionLog(new PreviewActionLog(this))
     , m_previewAnimationList(new PreviewAnimationList(this))
@@ -57,10 +109,7 @@ EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
     , m_animationDockWidget(nullptr)
     , m_previewActionLogDockWidget(nullptr)
     , m_previewAnimationListDockWidget(nullptr)
-    , m_destroyCanvasWasCausedByRestart(false)
     , m_editorMode(UiEditorMode::Edit)
-    , m_originalCanvasXml()
-    , m_canvasChangedAndSaved(false)
     , m_prefabFiles()
     , m_actionsEnabledWithSelection()
     , m_pasteAsSiblingAction(nullptr)
@@ -68,16 +117,21 @@ EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
     , m_previewModeCanvasEntityId()
     , m_previewModeCanvasSize(0.0f, 0.0f)
     , m_clipboardConnection()
+    , m_newCanvasCount(1)
 {
+    // Since the lifetime of EditorWindow and the UI Editor itself aren't the
+    // same, we use the initial opening of the UI Editor to save the current
+    // value of the loc folder CVar since the user can temporarily change its
+    // value while using the UI Editor.
+    SaveStartupLocalizationFolderSetting();
+
+    PropertyHandlers::Register();
+
     // Store local copy of startup localization value
     QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
     settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
     m_startupLocFolderName = settings.value(UICANVASEDITOR_SETTINGS_STARTUP_LOC_FOLDER_KEY).toString();
     settings.endGroup();
-
-    m_undoStack->setActive(true);
-
-    m_viewport->GetViewportInteraction()->UpdateZoomFactorLabel();
 
     // update menus when the selection changes
     connect(m_hierarchy, &HierarchyWidget::SetUserSelection, [this](HierarchyItemRawPtrList*)
@@ -91,6 +145,72 @@ EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
 
     UpdatePrefabFiles();
 
+    // disable rendering of the editor window until we have restored the window state
+    setUpdatesEnabled(false);
+
+    // Create the central widget
+    QWidget* centralWidget = new QWidget(this);
+
+    // Create a vertical layout for the central widget that will lay out a tab section widget and a viewport widget
+    QVBoxLayout* centralWidgetLayout = new QVBoxLayout(centralWidget);
+    centralWidgetLayout->setContentsMargins(0, 0, 0, 0);
+    centralWidgetLayout->setSpacing(0);
+
+    // Create a tab section widget that's a child of the central widget
+    m_canvasTabSectionWidget = new QWidget(centralWidget);
+    m_canvasTabSectionWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+
+    // Add the tab section widget to the layout of the central widget
+    centralWidgetLayout->addWidget(m_canvasTabSectionWidget);
+
+    // Create a horizontal layout for the tab section widget that will lay out a tab bar and an add canvas button
+    QHBoxLayout* canvasTabSectionWidgetLayout = new QHBoxLayout(m_canvasTabSectionWidget);
+    canvasTabSectionWidgetLayout->setContentsMargins(0, 0, 0, 0);
+
+    // Create a canvas tab bar that's a child of the tab section widget
+    m_canvasTabBar = new QTabBar(m_canvasTabSectionWidget);
+    m_canvasTabBar->setMovable(true);
+    m_canvasTabBar->setTabsClosable(true);
+    m_canvasTabBar->setExpanding(false);
+    m_canvasTabBar->setDocumentMode(true);
+    m_canvasTabBar->setDrawBase(false);
+    m_canvasTabBar->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Add the canvas tab bar to the layout of the tab section widget
+    canvasTabSectionWidgetLayout->addWidget(m_canvasTabBar);
+    
+    // Create a "add canvas" button  that's a child of the tab section widget
+    const int addCanvasButtonPadding = 3;
+    QPushButton* addCanvasButton = new QPushButton(tr("+"), m_canvasTabSectionWidget);
+    // Get the height of the tab bar to determine the button size
+    m_canvasTabBar->addTab("Temp");
+    int tabBarHeight = m_canvasTabBar->sizeHint().height();
+    m_canvasTabBar->removeTab(0);
+    int addCanvasButtonSize = tabBarHeight - (addCanvasButtonPadding * 2);
+    addCanvasButton->setFixedSize(addCanvasButtonSize, addCanvasButtonSize);
+    addCanvasButton->setToolTip(tr("New Canvas (Ctrl+N)"));
+    QObject::connect(addCanvasButton, &QPushButton::clicked, this, [this] { NewCanvas();  });
+    QHBoxLayout* addCanvasButtonLayout = new QHBoxLayout();
+    addCanvasButtonLayout->setContentsMargins(0, addCanvasButtonPadding, addCanvasButtonPadding, addCanvasButtonPadding);
+    addCanvasButtonLayout->addWidget(addCanvasButton);
+    
+    // Add the "add canvas" button to the layout of the tab section widget
+    canvasTabSectionWidgetLayout->addLayout(addCanvasButtonLayout);
+
+    connect(m_canvasTabBar, &QTabBar::tabCloseRequested, this, &EditorWindow::OnCanvasTabCloseButtonPressed);
+    connect(m_canvasTabBar, &QTabBar::currentChanged, this, &EditorWindow::OnCurrentCanvasTabChanged);
+    connect(m_canvasTabBar, &QTabBar::customContextMenuRequested, this, &EditorWindow::OnCanvasTabContextMenuRequested);
+
+    // Create the viewport widget
+    m_viewport = new ViewportWidget(this);
+    m_viewport->GetViewportInteraction()->UpdateZoomFactorLabel();
+    m_viewport->setFocusPolicy(Qt::StrongFocus);
+
+    // Add the viewport widget to the layout of the central widget 
+    centralWidgetLayout->addWidget(m_viewport);
+
+    setCentralWidget(centralWidget);
+
     // Signal: Hierarchical tree -> Properties pane.
     QObject::connect(m_hierarchy,
         SIGNAL(SetUserSelection(HierarchyItemRawPtrList*)),
@@ -103,55 +223,9 @@ EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
         GetViewport(),
         SLOT(UserSelectionChanged(HierarchyItemRawPtrList*)));
 
-    m_viewport->setFocusPolicy(Qt::StrongFocus);
-    setCentralWidget(m_viewport);
-
-    m_entityContext.reset(new UiEditorEntityContext(this));
-
-    // Load the canvas.
-    //
-    // IMPORTANT: This MUST be done BEFORE RefreshEditorMenu().
-    // That's because the menu needs to know the filename
-    // loaded into the canvas.
-    if (canvasFilename.isEmpty())
-    {
-        m_canvasEntityId = gEnv->pLyShine->CreateCanvasInEditor(m_entityContext.get());
-    }
-    else
-    {
-        string sourceAssetPathName = canvasFilename.toLatin1().data();
-        string assetIdPathname = Path::FullPathToGamePath(sourceAssetPathName.c_str());
-        m_canvasEntityId = gEnv->pLyShine->LoadCanvasInEditor(assetIdPathname, sourceAssetPathName, m_entityContext.get());
-        if (m_canvasEntityId.IsValid())
-        {
-            AddRecentFile(canvasFilename);
-            m_canvasSourceAssetPathname = sourceAssetPathName;
-
-            // create the hierarchy tree from the loaded canvas
-            LyShine::EntityArray childElements;
-            EBUS_EVENT_ID_RESULT(childElements, m_canvasEntityId, UiCanvasBus, GetChildElements);
-            m_hierarchy->CreateItems(childElements);
-            if (!childElements.empty())
-            {
-                m_hierarchy->SetUniqueSelectionHighlight(childElements[0]);
-            }
-
-            // restore the expanded state of all items
-            m_hierarchy->ApplyElementIsExpanded();
-        }
-        else
-        {
-            // there was an error loading the file. Report an error and create a new blank canvas
-            QMessageBox::critical(parent, tr("Error"), tr("Failed to load requested UI Canvas file. See log for details"));
-
-            m_canvasEntityId = gEnv->pLyShine->CreateCanvasInEditor(m_entityContext.get());
-        }
-    }
-
-    m_originalCanvasXml = HierarchyClipboard::GetXmlForDiff(m_canvasEntityId);
-
-    // Create the slice manager
-    m_sliceManager.reset(new UiSliceManager(m_entityContext->GetContextId()));
+    QObject::connect(m_undoGroup,
+        SIGNAL(cleanChanged(bool)),
+        SLOT(CleanChanged(bool)));
 
     // by default the BottomDockWidgetArea will be the full width of the main window
     // and will make the Hierarchy and Properties panes less tall. This makes the
@@ -210,16 +284,12 @@ EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
     m_previewAnimationListDockWidget->hide();
     m_previewToolbar->hide();
 
-    // Main menu.
-    //
-    // IMPORTANT: This MUST be done AFTER we load the canvas, AND ALSO after
-    // adding all the QDockWidget. That's because the menu needs to know the
-    // filename loaded into the canvas, AND all the existing QDockWidget for
-    // the "View" menu.
-    RefreshEditorMenu(m_editorWrapper);
+    // Initialize the menus
+    RefreshEditorMenu();
 
     GetIEditor()->RegisterNotifyListener(this);
 
+    // Initialize the toolbars
     m_viewport->GetViewportInteraction()->InitializeToolbars();
 
     // Start listening for any queries on the UiEditorDLLBus
@@ -228,17 +298,15 @@ EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
     // Start listening for any queries on the UiEditorChangeNotificationBus
     UiEditorChangeNotificationBus::Handler::BusConnect();
 
-    // Tell the UI animation system that the active canvas has changed
-    EBUS_EVENT(UiEditorAnimationBus, CanvasLoaded);
-
-    // disable rendering of the editor window until we have restored the window state
-    setVisible(false);
-
-    // Show the canvas properties.
-    m_hierarchy->clearSelection();
-    m_properties->GetProperties()->UserSelectionChanged(nullptr);
-
     AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler::BusConnect();
+
+    // Don't draw the viewport until the window is shown
+    m_viewport->SetRedrawEnabled(false);
+
+    // Create an empty canvas
+    LoadCanvas("", true);
+
+    QTimer::singleShot(0, this, SLOT(RestoreEditorWindowSettings()));
 }
 
 EditorWindow::~EditorWindow()
@@ -252,7 +320,17 @@ EditorWindow::~EditorWindow()
     UiEditorDLLBus::Handler::BusDisconnect();
     UiEditorChangeNotificationBus::Handler::BusDisconnect();
 
-    DestroyCanvas();
+    // Destroy all loaded canvases
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        DestroyCanvas(*canvasMetadata);
+        delete canvasMetadata;
+    }
+
+    m_activeCanvasEntityId.SetInvalid();
+    // Tell the UI animation system that the active canvas has changed
+    EBUS_EVENT(UiEditorAnimationBus, ActiveCanvasChanged);
 
     // unload the preview mode canvas if it exists (e.g. if we close the editor window while in preview mode)
     if (m_previewModeCanvasEntityId.IsValid())
@@ -261,6 +339,13 @@ EditorWindow::~EditorWindow()
     }
 
     delete m_sliceLibraryTree;
+
+    delete m_sliceManager;
+
+    // We must restore the original loc folder CVar value otherwise we will
+    // have no way of obtaining the original loc folder location (in case
+    // the user chooses to open the UI Editor once more).
+    RestoreStartupLocalizationFolderSetting();
 }
 
 LyShine::EntityArray EditorWindow::GetSelectedElements()
@@ -274,7 +359,7 @@ LyShine::EntityArray EditorWindow::GetSelectedElements()
 
 AZ::EntityId EditorWindow::GetActiveCanvasId()
 {
-    return m_canvasEntityId;
+    return GetCanvas();
 }
 
 UndoStack* EditorWindow::GetActiveUndoStack()
@@ -288,6 +373,22 @@ void EditorWindow::OnEditorTransformPropertiesNeedRefresh()
     GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues, &transformComponentUuid);
 }
 
+void EditorWindow::OnEditorPropertiesRefreshEntireTree()
+{
+    GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
+}
+
+void EditorWindow::OpenSourceCanvasFile(QString absolutePathToFile)
+{
+    // If in Preview mode, exit back to Edit mode
+    if (m_editorMode == UiEditorMode::Preview)
+    {
+        ToggleEditorMode();
+    }
+
+    OpenCanvas(absolutePathToFile);
+}
+
 void EditorWindow::EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* /*entry*/)
 {
     DeleteSliceLibraryTree();
@@ -298,48 +399,109 @@ void EditorWindow::EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrows
     DeleteSliceLibraryTree();
 }
 
-void EditorWindow::DestroyCanvas()
+void EditorWindow::DestroyCanvas(const UiCanvasMetadata& canvasMetadata)
 {
-    if (m_destroyCanvasWasCausedByRestart)
+    // Submit metrics for a canvas that has changed since it was last
+    // loaded/created, and all changes have been saved.
+    if (canvasMetadata.m_canvasChangedAndSaved && !GetChangesHaveBeenMade(canvasMetadata))
     {
-        // IMPORTANT: We trigger EditorWrapper::Restart() after
-        // LoadFromXml(). We therefore DON'T want to ReleaseCanvas()
-        // the m_canvas we JUST created.
-        //
-        // Nothing to do.
+        SubmitUnloadSavedCanvasMetricEvent(canvasMetadata.m_canvasEntityId);
     }
-    else
+
+    gEnv->pLyShine->ReleaseCanvas(canvasMetadata.m_canvasEntityId, true);
+}
+
+bool EditorWindow::IsCanvasTabMetadataValidForTabIndex(int index)
+{
+    QVariant data = m_canvasTabBar->tabData(index);
+    return data.isValid();
+}
+
+AZ::EntityId EditorWindow::GetCanvasEntityIdForTabIndex(int index)
+{
+    QVariant data = m_canvasTabBar->tabData(index);
+    AZ_Assert(data.isValid(), "Canvas tab metadata is not valid");
+    if (data.isValid())
     {
-        // Submit metrics for a canvas that has changed since it was last
-        // loaded/created, and all changes have been saved.
-        if (m_canvasChangedAndSaved && !GetChangesHaveBeenMade())
+        auto canvasTabMetadata = data.value<UiCanvasTabMetadata>();
+        return canvasTabMetadata.m_canvasEntityId;
+    }
+    
+    return AZ::EntityId();
+}
+
+int EditorWindow::GetTabIndexForCanvasEntityId(AZ::EntityId canvasEntityId)
+{
+    for (int i = 0; i < m_canvasTabBar->count(); i++)
+    {
+        if (GetCanvasEntityIdForTabIndex(i) == canvasEntityId)
         {
-            SubmitUnloadSavedCanvasMetricEvent();
+            return i;
         }
+    }
 
-        // if we are running in-game ReleaseCanvas will not necessary unload the canvas
-        // we need to avoid the destructor for the hierarchyWidget deleting all the element Entities
-        // in this case. So clear the m_entityIds for all the widgets.
-        // If this canvas is NOT already loaded in game then ReleaseCanvas will delete all the
-        // element entities anyway, so this avoids the double attempt at deleting.
-        GetHierarchy()->ClearAllHierarchyItemEntityIds();
+    return -1;
+}
 
-        // tell the UI animation system the canvas is unloading
-        EBUS_EVENT(UiEditorAnimationBus, CanvasUnloading);
+EditorWindow::UiCanvasMetadata* EditorWindow::GetCanvasMetadataForTabIndex(int index)
+{
+    return GetCanvasMetadata(GetCanvasEntityIdForTabIndex(index));
+}
 
-        gEnv->pLyShine->ReleaseCanvas(m_canvasEntityId, true);
-        m_canvasEntityId.SetInvalid();
+EditorWindow::UiCanvasMetadata* EditorWindow::GetCanvasMetadata(AZ::EntityId canvasEntityId)
+{
+    auto canvasMetadataMapIt = m_canvasMetadataMap.find(canvasEntityId);
+    return (canvasMetadataMapIt != m_canvasMetadataMap.end() ? canvasMetadataMapIt->second : nullptr);
+}
+
+EditorWindow::UiCanvasMetadata* EditorWindow::GetActiveCanvasMetadata()
+{
+    return GetCanvasMetadata(m_activeCanvasEntityId);
+}
+
+AZStd::string EditorWindow::GetCanvasDisplayNameFromAssetPath(const AZStd::string& canvasAssetPathname)
+{
+    QFileInfo fileInfo(canvasAssetPathname.c_str());
+    QString canvasDisplayName(fileInfo.baseName());
+    if (canvasDisplayName.isEmpty())
+    {
+        canvasDisplayName = QString("Canvas%1").arg(m_newCanvasCount++);
+    }
+
+    return AZStd::string(canvasDisplayName.toLatin1().data());
+}
+
+void EditorWindow::HandleCanvasDisplayNameChanged(const UiCanvasMetadata& canvasMetadata)
+{
+    // Update the tab label for the canvas
+    AZStd::string tabText(canvasMetadata.m_canvasDisplayName);
+    if (!canvasMetadata.m_undoStack->isClean())
+    {
+        tabText.append("*");
+    }
+    int tabIndex = GetTabIndexForCanvasEntityId(canvasMetadata.m_canvasEntityId);
+    m_canvasTabBar->setTabText(tabIndex, tabText.c_str());
+    m_canvasTabBar->setTabToolTip(tabIndex, canvasMetadata.m_canvasSourceAssetPathname.empty() ? canvasMetadata.m_canvasDisplayName.c_str() : canvasMetadata.m_canvasSourceAssetPathname.c_str());
+}
+
+void EditorWindow::CleanChanged(bool clean)
+{
+    UiCanvasMetadata *canvasMetadata = GetActiveCanvasMetadata();
+    if (canvasMetadata)
+    {
+        HandleCanvasDisplayNameChanged(*canvasMetadata);
     }
 }
 
-bool EditorWindow::SaveCanvasToXml(bool forceAskingForFilename)
+bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceAskingForFilename)
 {
-    // Default the pathname to where the current canvas was loaded from or last saved to
-    QString filename = m_canvasSourceAssetPathname;
+    AZStd::string sourceAssetPathName = canvasMetadata.m_canvasSourceAssetPathname;
+    AZStd::string assetIdPathname;
 
     if (!forceAskingForFilename)
     {
         // Before saving, make sure the file contains an extension we're expecting
+        QString filename = sourceAssetPathName.c_str();
         if ((!filename.isEmpty()) &&
             (!FileHelpers::FilenameHasExtension(filename, UICANVASEDITOR_CANVAS_EXTENSION)))
         {
@@ -348,32 +510,36 @@ bool EditorWindow::SaveCanvasToXml(bool forceAskingForFilename)
         }
     }
 
-    if (filename.isEmpty() || forceAskingForFilename)
+    if (sourceAssetPathName.empty() || forceAskingForFilename)
     {
+        // Default the pathname to where the current canvas was loaded from or last saved to
+
         QString dir;
         QStringList recentFiles = ReadRecentFiles();
 
         // If the canvas we are saving already has a name
-        if (!filename.isEmpty())
+        if (!sourceAssetPathName.empty())
         {
             // Default to where it was loaded from or last saved to
             // Also notice that we directly assign dir to the filename
             // This allows us to have its existing name already entered in
             // the File Name field.
-            dir = filename;
+            dir = sourceAssetPathName.c_str();
         }
         // Else if we had recently opened canvases, open the most recent one's directory
         else if (recentFiles.size() > 0)
         {
             dir = Path::GetPath(recentFiles.front());
+            dir.append(canvasMetadata.m_canvasDisplayName.c_str());
         }
         // Else go to the default canvas directory
         else
         {
             dir = FileHelpers::GetAbsoluteDir(UICANVASEDITOR_CANVAS_DIRECTORY);
+            dir.append(canvasMetadata.m_canvasDisplayName.c_str());
         }
 
-        filename = QFileDialog::getSaveFileName(nullptr,
+        QString filename = QFileDialog::getSaveFileName(nullptr,
                 QString(),
                 dir,
                 "*." UICANVASEDITOR_CANVAS_EXTENSION,
@@ -383,54 +549,554 @@ bool EditorWindow::SaveCanvasToXml(bool forceAskingForFilename)
         {
             return false;
         }
+
+        // Append extension if not present
+        FileHelpers::AppendExtensionIfNotPresent(filename, UICANVASEDITOR_CANVAS_EXTENSION);
+
+        sourceAssetPathName = filename.toUtf8().data();
+
+        // Check if the canvas is being saved in the product path
+        bool foundRelativePath = false;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(foundRelativePath, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetRelativeProductPathFromFullSourceOrProductPath, sourceAssetPathName, assetIdPathname);
+        if (!foundRelativePath)
+        {
+            // Warn that canvas is being saved outside the product path
+            int result = QMessageBox::warning(this,
+                tr("Warning"),
+                tr("UI canvas %1 is being saved outside the source folder for the project (or the Asset Processor is not running).\n\nSaving to this location will result in not being able to re-open the UI Canvas in the UI Editor from this location.\n\nWould you still like to save to this location?").arg(filename),
+                (QMessageBox::Save | QMessageBox::Cancel),
+                QMessageBox::Cancel);
+
+            if (result == QMessageBox::Save)
+            {
+                assetIdPathname = Path::FullPathToGamePath(sourceAssetPathName.c_str()); // Relative path.
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+    else
+    {
+        sourceAssetPathName = canvasMetadata.m_canvasSourceAssetPathname;
+        EBUS_EVENT_ID_RESULT(assetIdPathname,canvasMetadata.m_canvasEntityId, UiCanvasBus, GetPathname);
     }
 
-    FileHelpers::AppendExtensionIfNotPresent(filename, UICANVASEDITOR_CANVAS_EXTENSION);
-
-    string sourceAssetPathName = filename.toStdString().c_str(); // Full path.
-    string assetIdPathname = Path::FullPathToGamePath(sourceAssetPathName.c_str()); // Relative path.
-
-    FileHelpers::SourceControlAddOrEdit(filename.toStdString().c_str(), this);
+    FileHelpers::SourceControlAddOrEdit(sourceAssetPathName.c_str(), this);
 
     bool saveSuccessful = false;
-    EBUS_EVENT_ID_RESULT(saveSuccessful, m_canvasEntityId, UiCanvasBus, SaveToXml,
-        assetIdPathname, sourceAssetPathName);
+    EBUS_EVENT_ID_RESULT(saveSuccessful, canvasMetadata.m_canvasEntityId, UiCanvasBus, SaveToXml,
+        assetIdPathname.c_str(), sourceAssetPathName.c_str());
 
     if (saveSuccessful)
     {
-        AddRecentFile(filename);
+        AddRecentFile(sourceAssetPathName.c_str());
 
-        if (!m_canvasChangedAndSaved)
+        if (!canvasMetadata.m_canvasChangedAndSaved)
         {
-            m_canvasChangedAndSaved = GetChangesHaveBeenMade();
+            canvasMetadata.m_canvasChangedAndSaved = GetChangesHaveBeenMade(canvasMetadata);
         }
-        m_originalCanvasXml = HierarchyClipboard::GetXmlForDiff(m_canvasEntityId);
-        m_canvasSourceAssetPathname = sourceAssetPathName;
+        canvasMetadata.m_canvasSourceAssetPathname = sourceAssetPathName;
+
+        AZStd::string newDisplayName = GetCanvasDisplayNameFromAssetPath(canvasMetadata.m_canvasSourceAssetPathname);
+        if (canvasMetadata.m_canvasDisplayName != newDisplayName)
+        {
+            canvasMetadata.m_canvasDisplayName = newDisplayName;
+        }
+
+        canvasMetadata.m_undoStack->setClean();
+
+        HandleCanvasDisplayNameChanged(canvasMetadata);
 
         return true;
     }
 
     QMessageBox(QMessageBox::Critical,
         "Error",
-        "Unable to save file. Is the file read-only?",
+        tr("Unable to save %1. Is the file read-only?").arg(sourceAssetPathName.empty() ? "file" : sourceAssetPathName.c_str()),
         QMessageBox::Ok, this).exec();
 
     return false;
 }
 
+void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool changeActiveCanvasToThis)
+{
+    // Don't allow a new canvas to load if there is a context menu up since loading doesn't
+    // delete the context menu. Another option is to close the context menu on canvas load,
+    // but the main editor's behavior seems to be to ignore the main keyboard shortcuts if
+    // a context menu is up
+    QWidget* widget = QApplication::activePopupWidget();
+    if (widget)
+    {
+        return;
+    }
+
+    AZStd::string assetIdPathname;
+    AZStd::string sourceAssetPathName;
+    if (!canvasFilename.isEmpty())
+    {
+        // Get the relative product path of the canvas to load
+        bool foundRelativePath = false;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(foundRelativePath, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetRelativeProductPathFromFullSourceOrProductPath, canvasFilename.toUtf8().data(), assetIdPathname);
+        if (!foundRelativePath)
+        {
+            // Canvas to load is not in a project source folder. Report an error
+            QMessageBox::critical(this, tr("Error"), tr("Failed to open %1. Please ensure the file resides in a valid source folder for the project and that the Asset Processor is running.").arg(canvasFilename));
+            return;
+        }
+
+        // Get the path to the source UI Canvas from the relative product path
+        // This is done because a canvas could be loaded from the cache folder. In this case, we want to find the path to the source file
+        bool fullPathfound = false;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(fullPathfound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, assetIdPathname, sourceAssetPathName);
+        if (!fullPathfound)
+        {
+            // Couldn't find the source file. Report an error
+            QMessageBox::critical(this, tr("Error"), tr("Failed to find the source file for UI canvas %1. Please ensure that the Asset Processor is running and that the source file exists").arg(canvasFilename));
+            return;
+        }
+    }
+
+    // Check if canvas is already loaded
+    AZ::EntityId alreadyLoadedCanvas;
+    if (!canvasFilename.isEmpty())
+    {
+        for (auto mapItem : m_canvasMetadataMap)
+        {
+            auto canvasMetadata = mapItem.second;
+            if (canvasMetadata->m_canvasSourceAssetPathname == sourceAssetPathName)
+            {
+                alreadyLoadedCanvas = canvasMetadata->m_canvasEntityId;
+                break;
+            }
+        }
+    }
+
+    if (alreadyLoadedCanvas.IsValid())
+    {
+        // Canvas is already loaded
+        if (changeActiveCanvasToThis)
+        {
+            if (CanChangeActiveCanvas())
+            {
+                SetActiveCanvas(alreadyLoadedCanvas);
+            }
+        }
+        return;
+    }
+
+    AZ::EntityId canvasEntityId;
+    UiEditorEntityContext* entityContext = new UiEditorEntityContext(this);
+
+    // Load the canvas
+    if (canvasFilename.isEmpty())
+    {
+        canvasEntityId = gEnv->pLyShine->CreateCanvasInEditor(entityContext);
+    }
+    else
+    {
+        canvasEntityId = gEnv->pLyShine->LoadCanvasInEditor(assetIdPathname.c_str(), sourceAssetPathName.c_str(), entityContext);
+        if (canvasEntityId.IsValid())
+        {
+            AddRecentFile(sourceAssetPathName.c_str());
+        }
+        else
+        {
+            // There was an error loading the file. Report an error
+            QMessageBox::critical(this, tr("Error"), tr("Failed to load UI canvas %1. See log for details").arg(sourceAssetPathName.c_str()));
+        }
+    }
+
+    if (!canvasEntityId.IsValid())
+    {
+        delete entityContext;
+        return;
+    }
+
+    // Add a canvas tab
+    AZStd::string canvasDisplayName = GetCanvasDisplayNameFromAssetPath(sourceAssetPathName);
+
+    int newTabIndex = m_canvasTabBar->addTab(canvasDisplayName.c_str()); // this will call OnCurrentCanvasTabChanged if first tab, but nothing will happen because the metadata won't be set yet
+    UiCanvasTabMetadata tabMetadata;
+    tabMetadata.m_canvasEntityId = canvasEntityId;
+    m_canvasTabBar->setTabData(newTabIndex, QVariant::fromValue(tabMetadata));
+    m_canvasTabBar->setTabToolTip(newTabIndex, sourceAssetPathName.empty() ? canvasDisplayName.c_str() : sourceAssetPathName.c_str());
+
+    UiCanvasMetadata* canvasMetadata = new UiCanvasMetadata;
+    canvasMetadata->m_canvasEntityId = canvasEntityId;
+    canvasMetadata->m_canvasSourceAssetPathname = sourceAssetPathName;
+    canvasMetadata->m_canvasDisplayName = canvasDisplayName;
+    canvasMetadata->m_entityContext = entityContext;
+    canvasMetadata->m_undoStack = new UndoStack(m_undoGroup);
+    canvasMetadata->m_autoLoaded = autoLoad;
+    canvasMetadata->m_canvasChangedAndSaved = false;
+
+    // Check if there is an automatically created canvas that should be unloaded.
+    // Unload an automatically created canvas if:
+    // 1. it's the only loaded canvas
+    // 2. changes have not been made to it
+    // 3. the newly loaded canvas is not a new canvas
+    AZ::EntityId unloadCanvasEntityId;
+    if (!canvasMetadata->m_canvasSourceAssetPathname.empty())
+    {
+        if (m_canvasMetadataMap.size() == 1)
+        {
+            UiCanvasMetadata *unloadCanvasMetadata = GetActiveCanvasMetadata();
+            if (unloadCanvasMetadata && unloadCanvasMetadata->m_autoLoaded)
+            {
+                // Check if there are changes to this canvas
+                if (unloadCanvasMetadata->m_canvasSourceAssetPathname.empty() && !GetChangesHaveBeenMade(*unloadCanvasMetadata))
+                {
+                    unloadCanvasEntityId = unloadCanvasMetadata->m_canvasEntityId;
+                }
+            }
+        }
+    }
+
+    // Add the newly loaded canvas to the map
+    m_canvasMetadataMap[canvasEntityId] = canvasMetadata;
+
+    // Make the newly loaded canvas the active canvas
+    if (changeActiveCanvasToThis || !m_activeCanvasEntityId.IsValid())
+    {
+        if (CanChangeActiveCanvas())
+        {
+            SetActiveCanvas(canvasEntityId);
+        }
+    }
+
+    // If there was an automatically created empty canvas, unload it
+    if (unloadCanvasEntityId.IsValid())
+    {
+        UnloadCanvas(unloadCanvasEntityId);
+    }
+}
+
+void EditorWindow::UnloadCanvas(AZ::EntityId canvasEntityId)
+{
+    UiCanvasMetadata* canvasMetadata = GetCanvasMetadata(canvasEntityId);
+    if (canvasMetadata)
+    {
+        // Delete the canvas
+        DestroyCanvas(*canvasMetadata);
+
+        // Remove the undo stack from the undo group
+        m_undoGroup->removeStack(canvasMetadata->m_undoStack);
+
+        // Remove the canvas metadata from the list of loaded canvases
+        m_canvasMetadataMap.erase(canvasMetadata->m_canvasEntityId);
+        delete canvasMetadata;
+
+        // Remove the tab associated with this canvas
+        // OnCurrentCanvasTabChanged will be called, and the active canvas will be updated
+        int tabIndex = GetTabIndexForCanvasEntityId(canvasEntityId);
+        m_canvasTabBar->removeTab(tabIndex);
+
+        // Ensure the active canvas is valid in case removeTab didn't cause it to change or the implementation changed
+        if (!GetCanvasMetadata(m_activeCanvasEntityId))
+        {
+            if (IsCanvasTabMetadataValidForTabIndex(m_canvasTabBar->currentIndex()))
+            {
+                SetActiveCanvas(GetCanvasEntityIdForTabIndex(m_canvasTabBar->currentIndex()));
+            }
+            else
+            {
+                SetActiveCanvas(AZ::EntityId());
+            }
+        }
+    }
+}
+
+void EditorWindow::NewCanvas()
+{
+    LoadCanvas("", false);
+}
+
+void EditorWindow::OpenCanvas(const QString& canvasFilename)
+{
+    LoadCanvas(canvasFilename, false);
+}
+
+void EditorWindow::OpenCanvases(const QStringList& canvasFilenames)
+{
+    for (int i = 0; i < canvasFilenames.size(); i++)
+    {
+        LoadCanvas(canvasFilenames.at(i), false, (i == 0));
+    }
+}
+
+void EditorWindow::CloseCanvas(AZ::EntityId canvasEntityId)
+{
+    UiCanvasMetadata* canvasMetadata = GetCanvasMetadata(canvasEntityId);
+    if (canvasMetadata)
+    {
+        if (CanUnloadCanvas(*canvasMetadata))
+        {
+            UnloadCanvas(canvasMetadata->m_canvasEntityId);
+        }
+    }
+}
+
+void EditorWindow::CloseAllCanvases()
+{
+    if (!m_activeCanvasEntityId.IsValid())
+    {
+        return;
+    }
+
+    // Check if all canvases can be unloaded
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (!CanUnloadCanvas(*canvasMetadata))
+        {
+            return;
+        }
+    }
+
+    // Make a list of canvases to unload. Unload the active canvas last so that the
+    // active canvas doesn't keep changing when the canvases are unloaded one by one
+    AZStd::vector<AZ::EntityId> canvasEntityIds;
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_canvasEntityId != m_activeCanvasEntityId)
+        {
+            canvasEntityIds.push_back(canvasMetadata->m_canvasEntityId);
+        }
+    }
+    canvasEntityIds.push_back(m_activeCanvasEntityId);
+
+    UnloadCanvases(canvasEntityIds);
+}
+
+void EditorWindow::CloseAllOtherCanvases(AZ::EntityId canvasEntityId)
+{
+    if (m_canvasMetadataMap.size() < 2)
+    {
+        return;
+    }
+
+    // Check if all but the specified canvas can be unloaded
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_canvasEntityId != canvasEntityId)
+        {
+            if (!CanUnloadCanvas(*canvasMetadata))
+            {
+                return;
+            }
+        }
+    }
+
+    // Make a list of canvases to unload
+    AZStd::vector<AZ::EntityId> canvasEntityIds;
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_canvasEntityId != canvasEntityId)
+        {
+            canvasEntityIds.push_back(canvasMetadata->m_canvasEntityId);
+        }
+    }
+
+    UnloadCanvases(canvasEntityIds);
+
+    // Update the menus for file/save/close
+    RefreshEditorMenu();
+}
+
+bool EditorWindow::CanChangeActiveCanvas()
+{
+    UiCanvasMetadata *canvasMetadata = GetActiveCanvasMetadata();
+    if (canvasMetadata)
+    {
+        if (canvasMetadata->m_entityContext->HasPendingRequests() || canvasMetadata->m_entityContext->IsInstantiatingSlices())
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void EditorWindow::SetActiveCanvas(AZ::EntityId canvasEntityId)
+{
+    // This function is called explicitly to set the current active canvas (when a new canvas is loaded).
+    // This function is also called from the OnCurrentCanvasTabChanged event handler that is triggered by a user action
+    // that changes the tab index (closing a tab or clicking on a different tab)
+
+    if (canvasEntityId == m_activeCanvasEntityId)
+    {
+        return;
+    }
+
+    // Don't redraw the viewport until the active tab has visually changed
+    m_viewport->SetRedrawEnabled(false);
+
+    // Disable previous active canvas
+    if (m_activeCanvasEntityId.IsValid())
+    {
+        // Disable undo stack
+        UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+        if (canvasMetadata)
+        {
+            canvasMetadata->m_undoStack->setActive(false);
+        }
+
+        // Save canvas edit state
+        SaveActiveCanvasEditState();
+    }
+
+    // Update the active canvas Id
+    m_activeCanvasEntityId = canvasEntityId;
+
+    // Set the current tab index to that of the active canvas.
+    // If this function was called explicitly (when a new canvas is loaded), setCurrentIndex will trigger OnCurrentCanvasTabChanged, and OnCurrentCanvasTabChanged
+    // will call us back, but we will early out because the new active canvas will be the same as the current active canvas.
+    // If this function was called from the OnCurrentCanvasTabChanged event handler (triggered by a user clicking on a tab or a user closing a tab),
+    // the new tab index will be the same as the current tab index so no more events will be triggered by calling setCurrentIndex here
+    m_canvasTabBar->setCurrentIndex(GetTabIndexForCanvasEntityId(m_activeCanvasEntityId));
+
+    // Get the new active canvas's metadata
+    UiCanvasMetadata* canvasMetadata = m_activeCanvasEntityId.IsValid() ? GetCanvasMetadata(m_activeCanvasEntityId) : nullptr;
+
+    // Enable new active canvas
+    if (canvasMetadata)
+    {
+        canvasMetadata->m_undoStack->setActive(true);
+    }
+
+    // Update the slice manager 
+    m_sliceManager->SetEntityContextId(canvasMetadata ? canvasMetadata->m_entityContext->GetContextId() : AzFramework::EntityContextId::CreateNull());
+
+    // Tell the UI animation system that the active canvas has changed
+    EBUS_EVENT(UiEditorAnimationBus, ActiveCanvasChanged);
+
+    // Clear the hierarchy pane
+    m_hierarchy->ClearItems();
+
+    if (m_activeCanvasEntityId.IsValid())
+    {
+        // create the hierarchy tree from the loaded canvas
+        LyShine::EntityArray childElements;
+        EBUS_EVENT_ID_RESULT(childElements, m_activeCanvasEntityId, UiCanvasBus, GetChildElements);
+        m_hierarchy->CreateItems(childElements);
+
+        // restore the expanded state of all items
+        m_hierarchy->ApplyElementIsExpanded();
+    }
+
+    m_hierarchy->clearSelection();
+    m_hierarchy->SetUserSelection(nullptr); // trigger a selection change so the properties updates
+
+    m_viewport->ActiveCanvasChanged();
+
+    RefreshEditorMenu();
+
+    // Restore Canvas edit state
+    RestoreActiveCanvasEditState();
+
+    m_properties->ActiveCanvasChanged();
+
+    // Do the rest of the restore after all other events have had a chance to process because
+    // The hierarchy and properties scrollbars have not been set up yet
+    QTimer::singleShot(0, this, &EditorWindow::RestoreActiveCanvasEditStatePostEvents);
+}
+
+void EditorWindow::SaveActiveCanvasEditState()
+{
+    UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+    if (canvasMetadata)
+    {
+        UiCanvasEditState& canvasEditState = canvasMetadata->m_canvasEditState;
+     
+        // Save viewport state
+        canvasEditState.m_canvasViewportMatrixProps = m_viewport->GetViewportInteraction()->GetCanvasViewportMatrixProps();
+        canvasEditState.m_shouldScaleToFitOnViewportResize = m_viewport->GetViewportInteraction()->ShouldScaleToFitOnViewportResize();
+        canvasEditState.m_viewportInteractionMode = m_viewport->GetViewportInteraction()->GetMode();
+        canvasEditState.m_viewportCoordinateSystem = m_viewport->GetViewportInteraction()->GetCoordinateSystem();
+
+        // Save hierarchy state
+        const QTreeWidgetItemRawPtrQList& selection = m_hierarchy->selectedItems();
+        canvasEditState.m_selectedElements = SelectionHelpers::GetSelectedElementIds(m_hierarchy, selection, false);
+        canvasEditState.m_hierarchyScrollValue = m_hierarchy->verticalScrollBar() ? m_hierarchy->verticalScrollBar()->value() : 0.0f;
+
+        // Save properties state
+        canvasEditState.m_propertiesScrollValue = m_properties->GetProperties()->GetScrollValue();
+
+        // Save animation state
+        canvasEditState.m_uiAnimationEditState.m_time = 0.0f;
+        canvasEditState.m_uiAnimationEditState.m_timelineScale = 1.0f;
+        canvasEditState.m_uiAnimationEditState.m_timelineScrollOffset = 0.0f;
+        EBUS_EVENT_RESULT(canvasEditState.m_uiAnimationEditState, UiEditorAnimationStateBus, GetCurrentEditState);
+
+        canvasEditState.m_inited = true;
+    }
+}
+
+void EditorWindow::RestoreActiveCanvasEditState()
+{
+    UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+    if (canvasMetadata)
+    {
+        const UiCanvasEditState& canvasEditState = canvasMetadata->m_canvasEditState;
+        if (canvasEditState.m_inited)
+        {
+            // Restore viewport state
+            m_viewport->GetViewportInteraction()->SetCanvasViewportMatrixProps(canvasEditState.m_canvasViewportMatrixProps);
+            if (canvasEditState.m_shouldScaleToFitOnViewportResize)
+            {
+                m_viewport->GetViewportInteraction()->CenterCanvasInViewport();
+            }
+            m_viewport->GetViewportInteraction()->SetCoordinateSystem(canvasEditState.m_viewportCoordinateSystem);
+            m_viewport->GetViewportInteraction()->SetMode(canvasEditState.m_viewportInteractionMode);
+
+            // Restore hierarchy state
+            HierarchyHelpers::SetSelectedItems(m_hierarchy, &canvasEditState.m_selectedElements);
+
+            // Restore animation state
+            EBUS_EVENT(UiEditorAnimationStateBus, RestoreCurrentEditState, canvasEditState.m_uiAnimationEditState);
+        }
+    }
+}
+
+void EditorWindow::RestoreActiveCanvasEditStatePostEvents()
+{
+    UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+    if (canvasMetadata)
+    {
+        const UiCanvasEditState& canvasEditState = canvasMetadata->m_canvasEditState;
+        if (canvasEditState.m_inited)
+        {
+            // Restore hierarchy state
+            if (m_hierarchy->verticalScrollBar())
+            {
+                m_hierarchy->verticalScrollBar()->setValue(canvasEditState.m_hierarchyScrollValue);
+            }
+
+            // Restore properties state
+            m_properties->GetProperties()->SetScrollValue(canvasEditState.m_propertiesScrollValue);
+        }
+    }
+
+    m_viewport->SetRedrawEnabled(true);
+    m_viewport->setFocus();
+}
+
+void EditorWindow::UnloadCanvases(const AZStd::vector<AZ::EntityId>& canvasEntityIds)
+{
+    for (int i = 0; i < canvasEntityIds.size(); i++)
+    {
+        UnloadCanvas(canvasEntityIds[i]);
+    }
+}
+
 AZ::EntityId EditorWindow::GetCanvas()
 {
-    return m_canvasEntityId;
-}
-
-string EditorWindow::GetCanvasSourcePathname()
-{
-    return m_canvasSourceAssetPathname;
-}
-
-EditorWrapper* EditorWindow::GetEditorWrapper()
-{
-    return m_editorWrapper;
+    return m_activeCanvasEntityId;
 }
 
 HierarchyWidget* EditorWindow::GetHierarchy()
@@ -462,6 +1128,12 @@ ModeToolbar* EditorWindow::GetModeToolbar()
 {
     AZ_Assert(m_modeToolbar, "Missing mode toolbar");
     return m_modeToolbar;
+}
+
+EnterPreviewToolbar* EditorWindow::GetEnterPreviewToolbar()
+{
+    AZ_Assert(m_enterPreviewToolbar, "Missing enter preview toolbar");
+    return m_enterPreviewToolbar;
 }
 
 PreviewToolbar* EditorWindow::GetPreviewToolbar()
@@ -498,7 +1170,7 @@ void EditorWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
     case eNotify_OnStyleChanged:
     {
         // change skin
-        RefreshEditorMenu(m_editorWrapper);
+        RefreshEditorMenu();
         m_viewport->UpdateViewportBackground();
         break;
     }
@@ -514,18 +1186,32 @@ void EditorWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
 
 bool EditorWindow::CanExitNow()
 {
-    if (GetChangesHaveBeenMade())
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (!CanUnloadCanvas(*canvasMetadata))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool EditorWindow::CanUnloadCanvas(UiCanvasMetadata& canvasMetadata)
+{
+    if (GetChangesHaveBeenMade(canvasMetadata))
     {
         const auto defaultButton = QMessageBox::Cancel;
         int result = QMessageBox::question(this,
-                tr("Changes have been made"),
-                tr("Save changes to the UI canvas?"),
-                (QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel),
-                defaultButton);
+            tr("Changes have been made"),
+            tr("Save changes to UI canvas %1?").arg(canvasMetadata.m_canvasDisplayName.c_str()),
+            (QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel),
+            defaultButton);
 
         if (result == QMessageBox::Save)
         {
-            bool ok = SaveCanvasToXml(false);
+            bool ok = SaveCanvasToXml(canvasMetadata, false);
             if (!ok)
             {
                 return false;
@@ -544,21 +1230,9 @@ bool EditorWindow::CanExitNow()
     return true;
 }
 
-bool EditorWindow::GetChangesHaveBeenMade()
+bool EditorWindow::GetChangesHaveBeenMade(const UiCanvasMetadata& canvasMetadata)
 {
-    AZStd::string canvasXml = HierarchyClipboard::GetXmlForDiff(m_canvasEntityId);
-
-    return (!!canvasXml.compare(m_originalCanvasXml));
-}
-
-bool EditorWindow::GetDestroyCanvasWasCausedByRestart()
-{
-    return m_destroyCanvasWasCausedByRestart;
-}
-
-void EditorWindow::SetDestroyCanvasWasCausedByRestart(bool d)
-{
-    m_destroyCanvasWasCausedByRestart = d;
+    return !canvasMetadata.m_undoStack->isClean();
 }
 
 QUndoGroup* EditorWindow::GetUndoGroup()
@@ -649,18 +1323,22 @@ void EditorWindow::ToggleEditorMode()
             m_previewModeCanvasEntityId.SetInvalid();
         }
 
+        m_canvasTabSectionWidget->show();
+
         SaveModeSettings(UiEditorMode::Preview, false);
         RestoreModeSettings(UiEditorMode::Edit);
     }
     else
     {
+        m_canvasTabSectionWidget->hide();
+
         SaveModeSettings(UiEditorMode::Edit, false);
         RestoreModeSettings(UiEditorMode::Preview);
 
         GetPreviewToolbar()->UpdatePreviewCanvasScale(m_viewport->GetPreviewCanvasScale());
 
         // clone the editor canvas to create a temporary preview mode canvas
-        if (m_canvasEntityId.IsValid())
+        if (m_activeCanvasEntityId.IsValid())
         {
             AZ_Assert(!m_previewModeCanvasEntityId.IsValid(), "There is an existing preview mode canvas");
 
@@ -673,7 +1351,7 @@ void EditorWindow::ToggleEditorMode()
             }
 
             AZ::Entity* clonedCanvas = nullptr;
-            EBUS_EVENT_ID_RESULT(clonedCanvas, m_canvasEntityId, UiCanvasBus, CloneCanvas, canvasSize);
+            EBUS_EVENT_ID_RESULT(clonedCanvas, m_activeCanvasEntityId, UiCanvasBus, CloneCanvas, canvasSize);
 
             if (clonedCanvas)
             {
@@ -691,7 +1369,7 @@ void EditorWindow::ToggleEditorMode()
     }
 
     // Update the menus for this mode
-    RefreshEditorMenu(m_editorWrapper);
+    RefreshEditorMenu();
 }
 
 AZ::Vector2 EditorWindow::GetPreviewCanvasSize()
@@ -727,25 +1405,49 @@ bool EditorWindow::IsPreviewModeDockWidget(const QDockWidget* dockWidget)
 
 void EditorWindow::RestoreEditorWindowSettings()
 {
+    // Allow the editor window to draw now that we are ready to restore state.
+    // Do this before restoring state, otherwise an undocked widget will not be affected by the call
+    setUpdatesEnabled(true);
+
     RestoreModeSettings(m_editorMode);
 
-    // allow the editor window to draw now that we have restored state
-    setVisible(true);
+    m_viewport->SetRedrawEnabled(true);
 }
 
 void EditorWindow::SaveEditorWindowSettings()
 {
-    // This prevents the canvas shifting in the viewport as we switch canvases or close the editor window
-    m_viewport->ClearUntilSafeToRedraw();
-
     // This saves the dock position, size and visibility of all the dock widgets and tool bars
     // for the current mode (it also syncs the settings for the other mode that have already been saved to settings)
     SaveModeSettings(m_editorMode, true);
 }
 
+UiSliceManager* EditorWindow::GetSliceManager()
+{
+    return m_sliceManager;
+}
+
+UiEditorEntityContext* EditorWindow::GetEntityContext()
+{
+    if (GetCanvas().IsValid())
+    {
+        auto canvasMetadata = GetActiveCanvasMetadata();
+        AZ_Assert(canvasMetadata, "Canvas metadata not found");
+        return canvasMetadata ? canvasMetadata->m_entityContext : nullptr;
+    }
+
+    return nullptr;
+}
+
 void EditorWindow::ReplaceEntityContext(UiEditorEntityContext* entityContext)
 {
-    m_entityContext.reset(entityContext);
+    UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+    if (canvasMetadata)
+    {
+        delete canvasMetadata->m_entityContext;
+        canvasMetadata->m_entityContext = entityContext;
+
+        m_sliceManager->SetEntityContextId(entityContext->GetContextId());
+    }
 }
 
 QMenu* EditorWindow::createPopupMenu()
@@ -789,6 +1491,126 @@ QMenu* EditorWindow::createPopupMenu()
     }
 
     return menu;
+}
+
+AZ::EntityId EditorWindow::GetCanvasForEntityContext(const AzFramework::EntityContextId& contextId)
+{
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_entityContext->GetContextId() == contextId)
+        {
+            return canvasMetadata->m_canvasEntityId;
+        }
+    }
+
+    return AZ::EntityId();
+}
+
+void EditorWindow::OnCanvasTabCloseButtonPressed(int index)
+{
+    UiCanvasMetadata* canvasMetadata = GetCanvasMetadataForTabIndex(index);
+    if (canvasMetadata)
+    {
+        if (CanUnloadCanvas(*canvasMetadata))
+        {
+            bool isActiveCanvas = (canvasMetadata->m_canvasEntityId == m_activeCanvasEntityId);
+            UnloadCanvas(canvasMetadata->m_canvasEntityId);
+
+            if (!isActiveCanvas)
+            {
+                // Update the menus for file/save/close
+                RefreshEditorMenu();
+            }
+        }
+    }
+}
+
+void EditorWindow::OnCurrentCanvasTabChanged(int index)
+{
+    // This is called when the first tab is added, when a tab is removed, or when a user clicks on a tab that's not the current tab
+
+    // Get the canvas associated with this index
+    AZ::EntityId canvasEntityId = IsCanvasTabMetadataValidForTabIndex(index) ? GetCanvasEntityIdForTabIndex(index) : AZ::EntityId();
+
+    if (index >= 0 && !canvasEntityId.IsValid())
+    {
+        // This occurs when the first tab is added. Since the tab metadata is set after the tab is added, we don't handle this here.
+        // Instead, SetActiveCanvas is called explicitly when a tab is added
+        return;
+    }
+    
+    if (canvasEntityId.IsValid() && canvasEntityId == m_activeCanvasEntityId)
+    {
+        // Nothing else to do. This occurs when a tab is clicked, but the active canvas cannot be changed so the current tab is reverted
+        // back to the tab of the active canvas
+        return;
+    }
+
+    if (!CanChangeActiveCanvas())
+    {
+        // Set the tab back to that of the active canvas
+        int activeCanvasIndex = GetTabIndexForCanvasEntityId(m_activeCanvasEntityId);
+        m_canvasTabBar->setCurrentIndex(activeCanvasIndex);
+
+        QMessageBox::information(this,
+            tr("Running Slice Operations"),
+            tr("The current UI canvas is still running slice operations. Please wait until complete before changing tabs."));
+
+        return;
+    }
+
+    SetActiveCanvas(canvasEntityId);
+}
+
+void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
+{
+    int tabIndex = m_canvasTabBar->tabAt(point);
+
+    if (tabIndex >= 0)
+    {
+        AZ::EntityId canvasEntityId = GetCanvasEntityIdForTabIndex(tabIndex);
+
+        QMenu menu(this);
+        menu.addAction(CreateSaveCanvasAction(canvasEntityId, true));
+        menu.addAction(CreateSaveCanvasAsAction(canvasEntityId, true));
+        menu.addAction(CreateSaveAllCanvasesAction(true));
+        menu.addSeparator();
+        menu.addAction(CreateCloseCanvasAction(canvasEntityId, true));
+        menu.addAction(CreateCloseAllCanvasesAction(true));
+        menu.addAction(CreateCloseAllOtherCanvasesAction(canvasEntityId, true));
+        menu.addSeparator();
+        
+        QAction* action = new QAction("Copy Full Path", this);
+        UiCanvasMetadata *canvasMetadata = GetCanvasMetadata(canvasEntityId);
+        action->setEnabled(canvasMetadata && !canvasMetadata->m_canvasSourceAssetPathname.empty());
+        QObject::connect(action,
+            &QAction::triggered,
+            [this, canvasEntityId](bool checked)
+        {
+            UiCanvasMetadata *canvasMetadata = GetCanvasMetadata(canvasEntityId);
+            AZ_Assert(canvasMetadata, "Canvas metadata not found");
+            if (canvasMetadata)
+            {
+                QApplication::clipboard()->setText(canvasMetadata->m_canvasSourceAssetPathname.c_str());
+            }
+        });
+        menu.addAction(action);
+
+        menu.exec(m_canvasTabBar->mapToGlobal(point));
+    }
+    else
+    {
+        if (m_canvasMetadataMap.size() > 0)
+        {
+            QMenu menu(this);
+            menu.addAction(CreateSaveAllCanvasesAction(true));
+            menu.addSeparator();
+            menu.addAction(CreateCloseAllCanvasesAction(true));
+
+            menu.exec(m_canvasTabBar->mapToGlobal(point));
+        }
+    }
 }
 
 void EditorWindow::SaveModeSettings(UiEditorMode mode, bool syncSettings)
@@ -872,27 +1694,27 @@ static const char* UIEDITOR_CANVAS_NUM_ROTATED_ELEMENT_METRIC_NAME = "NumRotated
 static const char* UIEDITOR_CANVAS_NUM_SCALED_ELEMENT_METRIC_NAME = "NumScaledElement";
 static const char* UIEDITOR_CANVAS_NUM_SCALE_TO_DEVICE_ELEMENT_METRIC_NAME = "NumScaleToDeviceElement";
 
-void EditorWindow::SubmitUnloadSavedCanvasMetricEvent()
+void EditorWindow::SubmitUnloadSavedCanvasMetricEvent(AZ::EntityId canvasEntityId)
 {
     // Create an unload canvas event
     auto eventId = LyMetrics_CreateEvent(UIEDITOR_UNLOAD_SAVED_CANVAS_METRIC_EVENT_NAME);
 
     // Add unique canvas Id attribute
     AZ::u64 uniqueId = 0;
-    EBUS_EVENT_ID_RESULT(uniqueId, m_canvasEntityId, UiCanvasBus, GetUniqueCanvasId);
+    EBUS_EVENT_ID_RESULT(uniqueId, canvasEntityId, UiCanvasBus, GetUniqueCanvasId);
     QString uniqueIdString;
     uniqueIdString.setNum(uniqueId);
     LyMetrics_AddAttribute(eventId, UIEDITOR_CANVAS_ID_ATTRIBUTE_NAME, qPrintable(uniqueIdString));
 
     // Add canvas size metric
     AZ::Vector2 canvasSize;
-    EBUS_EVENT_ID_RESULT(canvasSize, m_canvasEntityId, UiCanvasBus, GetCanvasSize);
+    EBUS_EVENT_ID_RESULT(canvasSize, canvasEntityId, UiCanvasBus, GetCanvasSize);
     LyMetrics_AddMetric(eventId, UIEDITOR_CANVAS_WIDTH_METRIC_NAME, canvasSize.GetX());
     LyMetrics_AddMetric(eventId, UIEDITOR_CANVAS_HEIGHT_METRIC_NAME, canvasSize.GetY());
 
     // Add max hierarchy depth metric
     LyShine::EntityArray childElements;
-    EBUS_EVENT_ID_RESULT(childElements, m_canvasEntityId, UiCanvasBus, GetChildElements);
+    EBUS_EVENT_ID_RESULT(childElements, canvasEntityId, UiCanvasBus, GetChildElements);
     int maxDepth = GetCanvasMaxHierarchyDepth(childElements);
     LyMetrics_AddMetric(eventId, UIEDITOR_CANVAS_MAX_HIERARCHY_DEPTH_METRIC_NAME, maxDepth);
 
@@ -902,7 +1724,7 @@ void EditorWindow::SubmitUnloadSavedCanvasMetricEvent()
 
     // Make a list of all elements of this canvas
     LyShine::EntityArray allElements;
-    EBUS_EVENT_ID(m_canvasEntityId, UiCanvasBus, FindElements,
+    EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, FindElements,
         [](const AZ::Entity* entity) { return true; },
         allElements);
 
@@ -1175,6 +1997,31 @@ void EditorWindow::keyReleaseEvent(QKeyEvent* ev)
     {
         SignalSnapToGridToggle();
     }
+}
+
+void EditorWindow::paintEvent(QPaintEvent* paintEvent)
+{
+    QMainWindow::paintEvent(paintEvent);
+
+    if (m_viewport)
+    {
+        m_viewport->Refresh();
+    }
+}
+
+void EditorWindow::closeEvent(QCloseEvent* closeEvent)
+{
+    if (!CanExitNow())
+    {
+        // Nothing to do.
+        closeEvent->ignore();
+        return;
+    }
+
+    // Save the current window state
+    SaveEditorWindowSettings();
+
+    QMainWindow::closeEvent(closeEvent);
 }
 
 #include <EditorWindow.moc>

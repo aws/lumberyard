@@ -37,7 +37,7 @@ CGlyphCache::~CGlyphCache()
 }
 
 //-------------------------------------------------------------------------------------------------
-int CGlyphCache::Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount)
+int CGlyphCache::Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount, float sizeRatio)
 {
     m_iSmoothMethod = iSmoothMethod;
     m_iSmoothAmount = iSmoothAmount;
@@ -93,11 +93,11 @@ int CGlyphCache::Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapH
             return 0;
         }
 
-        m_pFontRenderer.SetGlyphBitmapSize(iScaledGlyphWidth, iScaledGlyphHeight);
+        m_pFontRenderer.SetGlyphBitmapSize(iScaledGlyphWidth, iScaledGlyphHeight, sizeRatio);
     }
     else
     {
-        m_pFontRenderer.SetGlyphBitmapSize(m_iGlyphBitmapWidth, m_iGlyphBitmapHeight);
+        m_pFontRenderer.SetGlyphBitmapSize(m_iGlyphBitmapWidth, m_iGlyphBitmapHeight, sizeRatio);
     }
 
     return 1;

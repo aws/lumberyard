@@ -1,6 +1,7 @@
 @import "./styles/variables";
 
-$footer-offset: 135px;
+$footer-offset-collapsed: 145px;
+$footer-offset-expanded: 190px;
 
 .sidebar-container {
     position: fixed;
@@ -13,7 +14,12 @@ $footer-offset: 135px;
     overflow: hidden;
     .sidebar-main {
         min-height: 100%;
-        margin-bottom: -$footer-offset;
+        &.expanded {
+            margin-bottom: -$footer-offset-expanded;
+        }
+        &.collapsed {
+            margin-bottom: -$footer-offset-collapsed;
+        }
     } 
     .sidebar-links { 
         a {
@@ -50,23 +56,31 @@ $footer-offset: 135px;
             }
         }
 
-        .cloud-gem-links {
-            margin-bottom: 20px;
-            .gem-link {
-                margin: 0;
-                padding: 3px;
+        .child-links {
+            .child-link {
+                padding: 0;
                 text-align: left;
-                margin-left: 60px;
-                font-size: 13px
+                padding-left: 60px;
+                font-size: 12px;
+                margin: 5px 0;
+                font-family: "AmazonEmber-Regular";
+                white-space: nowrap;
+                overflow: hidden;
             }
         }
     }
     .sidebar-footer {
-        height: $footer-offset;
+        &.expanded {
+            height: $footer-offset-expanded;
+        }
+        &.collapsed {
+            height: $footer-offset-collapsed;
+        }
         .sidebar-links {
             border-top: 1px solid $border-gray;
             border-bottom: 1px solid $border-gray;
             margin-bottom: 20px;
+            padding-bottom: 15px;
         }
         .sidebar-close {
             float: right;

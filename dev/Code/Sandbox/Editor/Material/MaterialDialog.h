@@ -72,6 +72,7 @@ public slots:
 
 protected:
     BOOL OnInitDialog();
+    void closeEvent(QCloseEvent *ev) override;
 
 protected slots:
     void OnAddItem();
@@ -151,7 +152,7 @@ protected:
 
     class CMaterialUI* m_pMaterialUI;
 
-    CMatEditPreviewDlg* m_pPreviewDlg;
+    QPointer<CMatEditPreviewDlg> m_pPreviewDlg;
 
     QScopedPointer<CMaterialImageListCtrl> m_pMaterialImageListCtrl;
     QScopedPointer<QMaterialImageListModel> m_pMaterialImageListModel;

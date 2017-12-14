@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 import argparse
 import os
@@ -71,7 +71,7 @@ def main():
 
         parser.register('action', 'parsers', AliasedSubParsersAction)
 
-        subparsers = parser.add_subparsers(metavar='COMMAND');
+        subparsers = parser.add_subparsers(metavar='COMMAND')
 
         __add_built_in_commands(context, subparsers)
         __add_hook_module_commands(context, subparsers)
@@ -520,7 +520,7 @@ def __add_mappings_commands(mappings_subparser):
     group.add_argument('--release', required=False, action='store_true', help='Causes the release mappings to be updated. By default the mappings used during development are updated.')
     group.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='Updates the launcher mappings to use the selected deployment')
     __add_common_args(subparser)
-    subparser.set_defaults(func=mappings.update)
+    subparser.set_defaults(func=mappings.force_update)
 
     subparser = subparsers.add_parser('list', help='Show the logical to physical resource name mappings.')
     __add_common_args(subparser)
@@ -619,7 +619,7 @@ def __add_deprecated_commands(context, subparsers):
     group.add_argument('--clear', metavar='DEPLOYMENT', help='Remove the protected status from the provided deployment name. ')
     group.add_argument('--show', action='store_true', help='Show the list of currently protected deployments. ')
     __add_common_args(subparser)
-    subparser.set_defaults(func=deployment.protect);
+    subparser.set_defaults(func=deployment.protect)
 
     subparser = subparsers.add_parser('upload-resources')
     subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', help='The deployment to update. If not specified the default deployment is updated.')
@@ -642,7 +642,7 @@ def __add_deprecated_commands(context, subparsers):
     group.add_argument('--release', required=False, action='store_true', help='Causes the release mappings to be updated. By default the mappings used during development are updated.')
     group.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='Updates the launcher mappings to use the selected deployment')
     __add_common_args(subparser)
-    subparser.set_defaults(func=mappings.update)
+    subparser.set_defaults(func=mappings.force_update)
 
     subparser = subparsers.add_parser('list-mappings')
     __add_common_args(subparser)

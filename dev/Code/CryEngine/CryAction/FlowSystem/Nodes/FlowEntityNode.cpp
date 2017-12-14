@@ -22,7 +22,7 @@
 #include "Components/IComponentScript.h"
 #include "Components/IComponentPhysics.h"
 #include "Components/IComponentRender.h"
-#include "LmbrCentral/Physics/PhysicsComponentBus.h"
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 
 //////////////////////////////////////////////////////////////////////////
 CFlowEntityClass::CFlowEntityClass(IEntityClass* pEntityClass)
@@ -2094,7 +2094,7 @@ public:
 
                 if (GetPortBool(pActInfo, DisablePhysics))
                 {
-                    EBUS_EVENT_ID(childEntityId, LmbrCentral::PhysicsComponentRequestBus, DisablePhysics);
+                    EBUS_EVENT_ID(childEntityId, AzFramework::PhysicsComponentRequestBus, DisablePhysics);
                 }
 
                 if (GetPortBool(pActInfo, KeepTransform))
@@ -2192,7 +2192,7 @@ public:
 
                 if (GetPortBool(pActInfo, EnablePhysics))
                 {
-                    EBUS_EVENT_ID(pActInfo->entityId, LmbrCentral::PhysicsComponentRequestBus, EnablePhysics);
+                    EBUS_EVENT_ID(pActInfo->entityId, AzFramework::PhysicsComponentRequestBus, EnablePhysics);
                 }
 
                 if (GetPortBool(pActInfo, KeepTransform))

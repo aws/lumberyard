@@ -107,6 +107,50 @@ namespace ScriptCanvasEditor
 
             return fullKey;
         }
+        
+        // UserDefined
+        static AZStd::string GetUserDefinedContext(const AZStd::string& contextName)
+        {
+            return GetContextName(TranslationContextGroup::ClassMethod, contextName);
+        }
+
+        static AZStd::string GetUserDefinedKey(const AZStd::string& contextName, TranslationKeyId keyId)
+        {
+            return GetClassKey(TranslationContextGroup::ClassMethod, contextName, keyId);
+        }
+
+        static AZStd::string GetUserDefinedNodeKey(const AZStd::string& contextName, const AZStd::string& nodeName, TranslationKeyId keyId)
+        {
+            return GetKey(TranslationContextGroup::ClassMethod, contextName, nodeName, TranslationItemType::Node, keyId);
+        }
+
+        static AZStd::string GetUserDefinedNodeSlotKey(const AZStd::string& contextName, const AZStd::string& nodeName, TranslationItemType itemType, TranslationKeyId keyId, int slotIndex)
+        {
+            return GetKey(TranslationContextGroup::ClassMethod, contextName, nodeName, itemType, keyId, slotIndex);
+        }
+        ////
+
+        // EBusEvent
+        static AZStd::string GetEbusHandlerContext(const AZStd::string& busName)
+        {
+            return GetContextName(TranslationContextGroup::EbusHandler, busName);
+        }
+
+        static AZStd::string GetEbusHandlerKey(const AZStd::string& busName, TranslationKeyId keyId)
+        {
+            return GetClassKey(TranslationContextGroup::EbusHandler, busName, keyId);
+        }
+
+        static AZStd::string GetEbusHandlerEventKey(const AZStd::string& busName, const AZStd::string& eventName, TranslationKeyId keyId)
+        {
+            return GetKey(TranslationContextGroup::EbusHandler, busName, eventName, TranslationItemType::Node, keyId);
+        }
+
+        static AZStd::string GetEBusHandlerSlotKey(const AZStd::string& busName, const AZStd::string& eventName, TranslationItemType type, TranslationKeyId keyId, int paramIndex)
+        {
+            return GetKey(TranslationContextGroup::EbusHandler, busName, eventName, type, keyId, paramIndex);
+        }
+        ////
 
         static AZStd::string GetKey(TranslationContextGroup group, const AZStd::string& keyBase, const AZStd::string& keyName, TranslationItemType type, TranslationKeyId keyId, int paramIndex = 0)
         {
@@ -307,7 +351,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::TranslationKeyedString keyedString;
             keyedString.m_context = "Globals";
             keyedString.m_key = "DEFAULTS_EBUSHANDLER_BUSID_NAME";
-            keyedString.m_fallback = "BusId";
+            keyedString.SetFallback("BusId");
 
             return keyedString;
         }
@@ -317,7 +361,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::TranslationKeyedString keyedString;
             keyedString.m_context = "Globals";
             keyedString.m_key = "DEFAULTS_EBUSHANDLER_BUSID_TOOLTIP";
-            keyedString.m_fallback = "BusId";
+            keyedString.SetFallback("BusId");
 
             return keyedString;
         }
@@ -327,7 +371,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::TranslationKeyedString keyedString;
             keyedString.m_context = "Globals";
             keyedString.m_key = "DEFAULTS_EBUSHANDLER_ONTRIGGERED_NAME";
-            keyedString.m_fallback = "Out";
+            keyedString.SetFallback("Out");
 
             return keyedString;
         }
@@ -337,7 +381,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::TranslationKeyedString keyedString;
             keyedString.m_context = "Globals";
             keyedString.m_key = "DEFAULTS_EBUSHANDLER_ONTRIGGERED_TOOLTIP";
-            keyedString.m_fallback = "Out";
+            keyedString.SetFallback("Out");
 
             return keyedString;
         }
@@ -347,7 +391,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::TranslationKeyedString keyedString;
             keyedString.m_context = "Globals";
             keyedString.m_key = "DEFAULTS_EBUSSENDER_BUSID_NAME";
-            keyedString.m_fallback = "BusId";
+            keyedString.SetFallback("BusId");
 
             return keyedString;
         }
@@ -357,7 +401,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::TranslationKeyedString keyedString;
             keyedString.m_context = "Globals";
             keyedString.m_key = "DEFAULTS_EBUSSENDER_BUSID_TOOLTIP";
-            keyedString.m_fallback = "BusId";
+            keyedString.SetFallback("BusId");
 
             return keyedString;
         }

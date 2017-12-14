@@ -17,6 +17,9 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include "ShadowsSetupNode.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 namespace ShadowSetupNode
@@ -24,7 +27,7 @@ namespace ShadowSetupNode
     bool s_shadowSetupParamsInit = false;
     std::vector<CAnimNode::SParamInfo> s_shadowSetupParams;
 
-    void AddSupportedParam(const char* sName, int paramId, EAnimValue valueType)
+    void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -42,7 +45,7 @@ CShadowsSetupNode::CShadowsSetupNode()
 
 //-----------------------------------------------------------------------------
 CShadowsSetupNode::CShadowsSetupNode(const int id)
-    : CAnimNode(id, eAnimNodeType_ShadowSetup)
+    : CAnimNode(id, AnimNodeType::ShadowSetup)
 {
     CShadowsSetupNode::Initialize();
 }
@@ -54,14 +57,14 @@ void CShadowsSetupNode::Initialize()
     {
         ShadowSetupNode::s_shadowSetupParamsInit = true;
         ShadowSetupNode::s_shadowSetupParams.reserve(1);
-        ShadowSetupNode::AddSupportedParam("GSMCache", eAnimParamType_GSMCache, eAnimValue_Bool);
+        ShadowSetupNode::AddSupportedParam("GSMCache", AnimParamType::GSMCache, AnimValueType::Bool);
     }
 }
 
 //-----------------------------------------------------------------------------
 void CShadowsSetupNode::Animate(SAnimContext& ac)
 {
-    IAnimTrack* pGsmCache = GetTrackForParameter(eAnimParamType_GSMCache);
+    IAnimTrack* pGsmCache = GetTrackForParameter(AnimParamType::GSMCache);
     if (pGsmCache && (pGsmCache->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled) == 0)
     {
         bool val(false);
@@ -73,7 +76,7 @@ void CShadowsSetupNode::Animate(SAnimContext& ac)
 //-----------------------------------------------------------------------------
 void CShadowsSetupNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_GSMCache);
+    CreateTrack(AnimParamType::GSMCache);
 }
 
 //-----------------------------------------------------------------------------
@@ -96,7 +99,7 @@ CAnimParamType CShadowsSetupNode::GetParamType(unsigned int nIndex) const
         return ShadowSetupNode::s_shadowSetupParams[nIndex].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //-----------------------------------------------------------------------------

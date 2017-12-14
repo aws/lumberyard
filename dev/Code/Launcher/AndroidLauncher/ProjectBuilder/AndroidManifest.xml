@@ -40,11 +40,16 @@
             android:screenOrientation="${ANDROID_SCREEN_ORIENTATION}"
             android:configChanges="orientation|keyboardHidden">
 
+            <!-- Tell NativeActivity the name of or .so -->
+            <meta-data android:name="android.app.lib_name"
+                android:value="${ANDROID_LAUNCHER_NAME}" />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity android:name="com.amazon.lumberyard.io.obb.ObbDownloaderActivity"
             android:launchMode="singleTask"
             android:screenOrientation="${ANDROID_SCREEN_ORIENTATION}"/>

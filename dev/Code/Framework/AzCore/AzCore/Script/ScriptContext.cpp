@@ -586,13 +586,13 @@ namespace AZ
             int depth = 0;
             if (stackOutput)
             {
-                size_t bytesAdded = BufferStringCopy("\n ---------- START STACK TRACE ---------- \n\n", stackOutput, stackOutputSize);
+                size_t bytesAdded = BufferStringCopy("\n ---------- START STACK TRACE ---------- \n", stackOutput, stackOutputSize);
                 stackOutput += bytesAdded;
                 stackOutputSize -= bytesAdded;
             }
             else
             {
-                AZ_TracePrintf("Script", "\n\n ---------- START STACK TRACE ---------- \n");
+                AZ_TracePrintf("Script", "\n ---------- START STACK TRACE ---------- \n");
             }
 
             //luaL_traceback(l,)
@@ -1849,6 +1849,29 @@ LUA_API const Node* lua_getDummyNode()
                 }
             }
 
+            // Helper to do increment operations, but not for bools
+            template<class T>
+            struct Incrementer
+            {
+                static void Increment(T& t)
+                {
+                    t += 1;
+                }
+                static void Decrement(T& t)
+                {
+                    t -= 1;
+                }
+            };
+            template<>
+            struct Incrementer<bool>
+            {
+                static void Increment(bool&)
+                {
+                }
+                static void Decrement(bool&)
+                {
+                }
+            };
 
             // move stack-push and stack read to the type reflection, remove dependency on ScriptValue
             template<class T>
@@ -1864,13 +1887,29 @@ LUA_API const Node* lua_getDummyNode()
                         AllocateTempStorageLuaNative<T>(value, valueClass, *tempAllocator);
                     }
                     void* valueAddress = value.GetValueAddress();
-                    *reinterpret_cast<ValueType*>(valueAddress) = ScriptValue<ValueType>::StackRead(lua, stackIndex);
+                    ValueType& actualValue = *reinterpret_cast<ValueType*>(valueAddress);
+                    actualValue = ScriptValue<ValueType>::StackRead(lua, stackIndex);
+
+                    // If the value is an index, subtract 1 (1 -> 0)
+                    if (value.m_traits & BehaviorParameter::Traits::TR_INDEX)
+                    {
+                        Incrementer<ValueType>::Decrement(actualValue);
+                    }
+
                     return true;
                 }
                 static void ToStack(lua_State* lua, BehaviorValueParameter& value)
                 {
                     void* valueAddress = value.GetValueAddress();
-                    ScriptValue<ValueType>::StackPush(lua, *reinterpret_cast<ValueType*>(valueAddress));
+                    ValueType actualValue = *reinterpret_cast<ValueType*>(valueAddress);
+
+                    // If the value is an index, add 1 (0 -> 1)
+                    if (value.m_traits & BehaviorParameter::Traits::TR_INDEX)
+                    {
+                        Incrementer<ValueType>::Increment(actualValue);
+                    }
+
+                    ScriptValue<ValueType>::StackPush(lua, actualValue);
                 }
 
                 static bool FromStack(const BehaviorParameter* param, LuaLoadFromStack& arg, LuaPrepareValue* prepareValue = nullptr)
@@ -4450,35 +4489,39 @@ LUA_API const Node* lua_getDummyNode()
 
                 // events
                 bool isTableUsed = false;
-                // events broadcast
-                lua_pushliteral(m_lua, "Broadcast");
-                lua_createtable(m_lua, 0, 0);
-                for (auto eventIt : ebus->m_events)
-                {
-                    const BehaviorEBusEventSender& eventSender = eventIt.second;
 
-                    // Check for "ignore" attribute
-                    if (FindAttribute(Script::Attributes::Ignore, eventSender.m_attributes))
+                if (!FindAttribute(Script::Attributes::DisallowBroadcast, ebus->m_attributes))
+                {
+                    // events broadcast
+                    lua_pushliteral(m_lua, "Broadcast");
+                    lua_createtable(m_lua, 0, 0);
+                    for (auto eventIt : ebus->m_events)
                     {
-                        continue; // skip this event
-                    }
+                        const BehaviorEBusEventSender& eventSender = eventIt.second;
 
-                    if (eventSender.m_broadcast)
-                    {
-                        lua_pushstring(m_lua, ValidateName(eventIt.first.c_str())); // push even name
-                        BindMethodOnStack(m_context, eventSender.m_broadcast);
-                        lua_rawset(m_lua, -3); // push the event in the broadcast table
-                        isTableUsed = true;
+                        // Check for "ignore" attribute
+                        if (FindAttribute(Script::Attributes::Ignore, eventSender.m_attributes))
+                        {
+                            continue; // skip this event
+                        }
+
+                        if (eventSender.m_broadcast)
+                        {
+                            lua_pushstring(m_lua, ValidateName(eventIt.first.c_str())); // push even name
+                            BindMethodOnStack(m_context, eventSender.m_broadcast);
+                            lua_rawset(m_lua, -3); // push the event in the broadcast table
+                            isTableUsed = true;
+                        }
                     }
-                }
-                if (isTableUsed)
-                {
-                    lua_rawset(m_lua, -3); // store the broadcast table
-                    isTableUsed = false;
-                }
-                else
-                {
-                    lua_pop(m_lua, 2); // table was never used don't store it
+                    if (isTableUsed)
+                    {
+                        lua_rawset(m_lua, -3); // store the broadcast table
+                        isTableUsed = false;
+                    }
+                    else
+                    {
+                        lua_pop(m_lua, 2); // table was never used don't store it
+                    }
                 }
 
                 // events
@@ -4512,35 +4555,39 @@ LUA_API const Node* lua_getDummyNode()
                     lua_pop(m_lua, 2); // table was never used don't store it
                 }
 
-                // queue broadcast
-                lua_pushliteral(m_lua, "QueueBroadcast");
-                lua_createtable(m_lua, 0, 0);
-                for (auto eventIt : ebus->m_events)
-                {
-                    const BehaviorEBusEventSender& eventSender = eventIt.second;
 
-                    // Check for "ignore" attribute
-                    if (FindAttribute(Script::Attributes::Ignore, eventSender.m_attributes))
+                if (!FindAttribute(Script::Attributes::DisallowBroadcast, ebus->m_attributes))
+                {
+                    // queue broadcast
+                    lua_pushliteral(m_lua, "QueueBroadcast");
+                    lua_createtable(m_lua, 0, 0);
+                    for (auto eventIt : ebus->m_events)
                     {
-                        continue; // skip this event
-                    }
+                        const BehaviorEBusEventSender& eventSender = eventIt.second;
 
-                    if (eventSender.m_queueBroadcast)
-                    {
-                        lua_pushstring(m_lua, ValidateName(eventIt.first.c_str())); // push even name
-                        BindMethodOnStack(m_context, eventSender.m_queueBroadcast);
-                        lua_rawset(m_lua, -3); // push the event in the queue broadcast table
-                        isTableUsed = true;
+                        // Check for "ignore" attribute
+                        if (FindAttribute(Script::Attributes::Ignore, eventSender.m_attributes))
+                        {
+                            continue; // skip this event
+                        }
+
+                        if (eventSender.m_queueBroadcast)
+                        {
+                            lua_pushstring(m_lua, ValidateName(eventIt.first.c_str())); // push even name
+                            BindMethodOnStack(m_context, eventSender.m_queueBroadcast);
+                            lua_rawset(m_lua, -3); // push the event in the queue broadcast table
+                            isTableUsed = true;
+                        }
                     }
-                }
-                if (isTableUsed)
-                {
-                    lua_rawset(m_lua, -3); // store the queue broadcast table
-                    isTableUsed = false;
-                }
-                else
-                {
-                    lua_pop(m_lua, 2); // table was never used don't store it
+                    if (isTableUsed)
+                    {
+                        lua_rawset(m_lua, -3); // store the queue broadcast table
+                        isTableUsed = false;
+                    }
+                    else
+                    {
+                        lua_pop(m_lua, 2); // table was never used don't store it
+                    }
                 }
 
                 // queue event
@@ -4713,13 +4760,42 @@ LUA_API const Node* lua_getDummyNode()
             }
 
             //////////////////////////////////////////////////////////////////////////
+            void OnRemoveClass(const char* className, BehaviorClass* behaviorClass) override
+            {
+                LSV_BEGIN(m_lua, 0);
+
+                // create a reference to the metatable and associate it with the typeId->Metatable ID
+                lua_rawgeti(m_lua, LUA_REGISTRYINDEX, AZ_LUA_CLASS_TABLE_REF); // load the class table
+                AZ_Assert(!lua_isnil(m_lua, -1), "Could not find AZClassMap table! It should be initialize on script creation!");
+
+                // TODO: If all base class offsets are 0 set the LuaDataObject::FL_SKIP_TYPE_CAST
+                // to skip the RTTI in release for performance
+                Internal::azlua_pushtypeid(m_lua, behaviorClass->m_typeId);
+                lua_pushnil(m_lua); // push nil so the entry is cleared
+                lua_rawset(m_lua, -3); // set the table entry typeId(key)->metatable(value)
+                lua_pop(m_lua, 1); // pop the class table
+
+                // Remove the global class name
+                lua_pushnil(m_lua);
+                Internal::azlua_setglobal(m_lua, ValidateName(className));
+            }
+
+            //////////////////////////////////////////////////////////////////////////
             void OnAddEBus(const char* ebusName, BehaviorEBus* ebus) override
             {
                 LSV_BEGIN(m_lua, 0);
 
                 BindEBus(ebusName, ebus);
             }
+
             //////////////////////////////////////////////////////////////////////////
+            void OnRemoveEBus(const char* ebusName, BehaviorEBus*) override
+            {
+                LSV_BEGIN(m_lua, 0);
+
+                lua_pushnil(m_lua);
+                Internal::azlua_setglobal(m_lua, ValidateName(ebusName));
+            }
 
             //////////////////////////////////////////////////////////////////////////
             /// execute all script loaded though load function, plus the one you supply as string

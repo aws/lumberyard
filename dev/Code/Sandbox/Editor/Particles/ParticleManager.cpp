@@ -161,7 +161,7 @@ void CEditorParticleManager::LoadAllDefaultEmitters()
     }
 
     //flags to check whether the default parameter of certain type of emitter are set in the xml
-    AZStd::array <bool, ParticleParams::EEmitterShapeType::_count> checked = { false };
+    AZStd::array <bool, ParticleParams::EEmitterShapeType::_count> checked = { { false } };
 
     //compare each particle's name with emitter shape type name
     for (int childIdx = 0; childIdx < xml->getChildCount(); childIdx++)

@@ -86,6 +86,7 @@ namespace
         UpdateLightFlag(configuration.m_deferred, DLF_DEFERRED_LIGHT, lightParams.m_Flags);
         UpdateLightFlag(configuration.m_volumetricFog, DLF_VOLUMETRIC_FOG, lightParams.m_Flags);
         UpdateLightFlag(configuration.m_volumetricFogOnly, DLF_VOLUMETRIC_FOG_ONLY, lightParams.m_Flags);
+        UpdateLightFlag(configuration.m_castTerrainShadows, DLF_CAST_TERRAIN_SHADOWS, lightParams.m_Flags);
 
         if (static_cast<AZ::u32>(configSpec) >= static_cast<AZ::u32>(configuration.m_castShadowsSpec))
         {
@@ -152,6 +153,7 @@ namespace
             lightParams.m_ProbeExtents.y = configuration.m_probeArea.GetY() / 2.0f;
             lightParams.m_ProbeExtents.z = configuration.m_probeArea.GetZ() / 2.0f;
             lightParams.m_nSortPriority = configuration.m_probeSortPriority;
+            lightParams.m_fProbeAttenuation = configuration.m_probeFade;
 
             //projection
             if (configuration.m_isBoxProjected)
@@ -177,8 +179,8 @@ namespace
                     diffuseMap.insert(dotPos, "_diff");
                 }
 
-                lightParams.SetSpecularCubemap(gEnv->pRenderer->EF_LoadTexture(specularMap.c_str(), FT_DONT_STREAM));
-                lightParams.SetDiffuseCubemap(gEnv->pRenderer->EF_LoadTexture(diffuseMap.c_str(), FT_DONT_STREAM));
+                lightParams.SetSpecularCubemap(gEnv->pRenderer->EF_LoadCubemapTexture(specularMap.c_str(), FT_DONT_STREAM));
+                lightParams.SetDiffuseCubemap(gEnv->pRenderer->EF_LoadCubemapTexture(diffuseMap.c_str(), FT_DONT_STREAM));
 
                 if (lightParams.GetDiffuseCubemap() && lightParams.GetSpecularCubemap())
                 {
@@ -355,23 +357,25 @@ namespace LmbrCentral
 
     void LightInstance::UpdateRenderLight(const LightConfiguration& configuration)
     {
-        unsigned int rndFlags = m_renderLight ? m_renderLight->GetRndFlags() : 0;
+        // ERF_HIDDEN is used to turn on/off the light, so cache it here and set it back later
+        bool isHidden = m_renderLight ? (m_renderLight->GetRndFlags() & ERF_HIDDEN) == ERF_HIDDEN : false;
         DestroyRenderLight();
         CreateRenderLight(configuration);
         if (m_renderLight)
         {
-            m_renderLight->SetRndFlags(rndFlags);
+            m_renderLight->SetRndFlags(ERF_HIDDEN, isHidden);
         }
     }
 
     void LightInstance::UpdateRenderLight(const LensFlareConfiguration& configuration)
     {
-        unsigned int rndFlags = m_renderLight ? m_renderLight->GetRndFlags() : 0;
+        // ERF_HIDDEN is used to turn on/off the light, so cache it here and set it back later
+        bool isHidden = m_renderLight ? (m_renderLight->GetRndFlags() & ERF_HIDDEN) == ERF_HIDDEN : false;
         DestroyRenderLight();
         CreateRenderLight(configuration);
         if (m_renderLight)
         {
-            m_renderLight->SetRndFlags(rndFlags);
+            m_renderLight->SetRndFlags(ERF_HIDDEN, isHidden);
         }
     }
 

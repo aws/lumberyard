@@ -646,7 +646,7 @@ namespace Audio
         {
             auto const pAKObjectData = static_cast<SATLAudioObjectData_wwise*>(pObjectData);
 
-            pAKObjectData->cEnvironemntImplAmounts.clear();
+            pAKObjectData->cEnvironmentImplAmounts.clear();
             pAKObjectData->bNeedsToUpdateEnvironments = false;
 
             return eARS_SUCCESS;
@@ -880,13 +880,13 @@ namespace Audio
                 case eWAET_AUX_BUS:
                 {
                     const float fCurrentAmount = stl::find_in_map(
-                            pAKObjectData->cEnvironemntImplAmounts,
+                            pAKObjectData->cEnvironmentImplAmounts,
                             pAKEnvironmentData->nAKBusID,
                             -1.0f);
 
                     if ((fCurrentAmount == -1.0f) || (fabs(fCurrentAmount - fAmount) > sEnvEpsilon))
                     {
-                        pAKObjectData->cEnvironemntImplAmounts[pAKEnvironmentData->nAKBusID] = fAmount;
+                        pAKObjectData->cEnvironmentImplAmounts[pAKEnvironmentData->nAKBusID] = fAmount;
                         pAKObjectData->bNeedsToUpdateEnvironments = true;
                     }
 
@@ -1750,11 +1750,11 @@ namespace Audio
             AkAuxSendValue aAuxValues[AK_MAX_AUX_PER_OBJ];
             uint32 nAuxCount = 0;
 
-            SATLAudioObjectData_wwise::TEnvironmentImplMap::iterator iEnvPair = pAKObjectData->cEnvironemntImplAmounts.begin();
-            const SATLAudioObjectData_wwise::TEnvironmentImplMap::const_iterator iEnvStart = pAKObjectData->cEnvironemntImplAmounts.begin();
-            const SATLAudioObjectData_wwise::TEnvironmentImplMap::const_iterator iEnvEnd = pAKObjectData->cEnvironemntImplAmounts.end();
+            SATLAudioObjectData_wwise::TEnvironmentImplMap::iterator iEnvPair = pAKObjectData->cEnvironmentImplAmounts.begin();
+            const SATLAudioObjectData_wwise::TEnvironmentImplMap::const_iterator iEnvStart = pAKObjectData->cEnvironmentImplAmounts.begin();
+            const SATLAudioObjectData_wwise::TEnvironmentImplMap::const_iterator iEnvEnd = pAKObjectData->cEnvironmentImplAmounts.end();
 
-            if (pAKObjectData->cEnvironemntImplAmounts.size() <= AK_MAX_AUX_PER_OBJ)
+            if (pAKObjectData->cEnvironmentImplAmounts.size() <= AK_MAX_AUX_PER_OBJ)
             {
                 for (; iEnvPair != iEnvEnd; ++nAuxCount)
                 {
@@ -1766,7 +1766,7 @@ namespace Audio
                     // If an amount is zero, we still want to send it to the middleware, but we also want to remove it from the map.
                     if (fAmount == 0.0f)
                     {
-                        iEnvPair = pAKObjectData->cEnvironemntImplAmounts.erase(iEnvPair);
+                        iEnvPair = pAKObjectData->cEnvironmentImplAmounts.erase(iEnvPair);
                     }
                     else
                     {
@@ -1794,7 +1794,7 @@ namespace Audio
                 {
                     if (iEnvPair->second == 0.0f)
                     {
-                        iEnvPair = pAKObjectData->cEnvironemntImplAmounts.erase(iEnvPair);
+                        iEnvPair = pAKObjectData->cEnvironmentImplAmounts.erase(iEnvPair);
                     }
                     else
                     {
@@ -1823,6 +1823,12 @@ namespace Audio
         }
 
         return eResult;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    const char* const CAudioSystemImpl_wwise::GetImplSubPath() const
+    {
+        return sWwiseImplSubPath;
     }
 
     //////////////////////////////////////////////////////////////////////////

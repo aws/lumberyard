@@ -16,7 +16,7 @@
 
 CommandHierarchyItemReparent::CommandHierarchyItemReparent(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    HierarchyItemRawPtrList& items)
+    const HierarchyItemRawPtrList& items)
     : QUndoCommand()
     , m_stack(stack)
     , m_hierarchy(hierarchy)
@@ -169,8 +169,8 @@ void CommandHierarchyItemReparent::Reparent(ChildItemList& sourceChildren, Child
 void CommandHierarchyItemReparent::Push(bool onCreationOfElement,
     UndoStack* stack,
     HierarchyWidget* hierarchy,
-    HierarchyItemRawPtrList& items,
-    QTreeWidgetItemRawPtrList& itemParents)
+    const HierarchyItemRawPtrList& items,
+    const QTreeWidgetItemRawPtrList& itemParents)
 {
     if (onCreationOfElement)
     {

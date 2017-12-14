@@ -38,6 +38,7 @@ class CContentCGF;
 class I3DSampler;
 class ICrySizer;
 class CRenderView;
+class IDeformableNode;
 struct ISystem;
 struct ICharacterInstance;
 struct CVars;
@@ -593,10 +594,7 @@ struct IVisArea
     // </interfuscator:shuffle>
 };
 
-// Water level unknown.
-#define WATER_LEVEL_UNKNOWN -1000000.f
-#define BOTTOM_LEVEL_UNKNOWN -1000000.f
-
+#include "OceanConstants.h"
 
 // float m_SortId       : offseted by +WATER_LEVEL_SORTID_OFFSET if the camera object line is crossing the water surface
 // : otherwise offseted by -WATER_LEVEL_SORTID_OFFSET
@@ -1160,6 +1158,15 @@ struct I3DEngine
         int nMeshPoolSize; // in MB
     };
 
+    struct OceanAnimationData
+    {
+        float fWindDirection;
+        float fWindSpeed;
+        float fWavesSpeed;
+        float fWavesAmount;
+        float fWavesSize;
+    };
+
     struct SStremaingBandwidthData
     {
         SStremaingBandwidthData()
@@ -1188,6 +1195,15 @@ struct I3DEngine
         string m_geomName;
         bool m_useStreaming;
         unsigned long m_loadingFlags;
+    };
+
+    struct CausticsParams
+    {
+        float tiling = 0.0f;
+        float distanceAttenuation = 0.0f;
+        float height = 0.0f;
+        float depth = 0.0f;
+        float intensity = 0.0f;
     };
 
     // <interfuscator:shuffle>
@@ -1356,6 +1372,26 @@ struct I3DEngine
     // Return Value:
     //     A pointer to an object derived from IStatObj.
     virtual IStatObj* FindStatObjectByFilename(const char* filename) = 0;
+    
+    //Summary:
+    //      Creates a deformable render node
+    //See Also:
+    //      IDeformableNode
+    //Arguments:
+    //      None
+    //Return Value:
+    //      A pointer to a object derivede from IDeformableNode.
+    virtual IDeformableNode* CreateDeformableNode() = 0;
+
+    //Summary:
+    //      Destroyes a deformable render node
+    //See Also:
+    //      IDeformableNode
+    //Arguments:
+    //      IDeformableNode*
+    //Return Value:
+    //      None
+    virtual void DestroyDeformableNode( IDeformableNode* node) = 0;
 
     virtual void ResetCoverageBufferSignalVariables() = 0;
 
@@ -1518,16 +1554,8 @@ struct I3DEngine
     // Return Value:
     //     A Vec4 value which constains:
     //     x = unused, y = distance attenuation, z = caustics multiplier, w = caustics darkening multiplier
-    virtual Vec4 GetCausticsParams() const = 0;
-
-    // Summary:
-    //     Gets ocean animation caustics parameters.
-    // Return Value:
-    //     A Vec4 value which constains:
-    //     x = unused, y = height, z = depth, w = intensity
-    virtual Vec4 GetOceanAnimationCausticsParams() const = 0;
-
-
+    virtual CausticsParams GetCausticsParams() const = 0;
+    
     // Summary:
     //     Gets ocean animation parameters.
     // Return Value:
@@ -1536,6 +1564,10 @@ struct I3DEngine
     //     1: x = waves size, y = free, z = free, w = free
 
     virtual void GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const = 0;
+
+    // Summary:
+    //     Gets ocean animation parameters.
+    virtual OceanAnimationData GetOceanAnimationParams() const = 0;
 
     // Summary:
     //     Gets HDR setup parameters.
@@ -2069,6 +2101,8 @@ struct I3DEngine
     virtual int32 GetPostEffectID(const char* pPostEffectName) = 0;
 
     virtual void ResetPostEffects(bool bOnSpecChange = false) = 0;
+    //Disable post effect groups other than default and base.
+    virtual void DisablePostEffects() = 0;
 
     virtual void SetShadowsGSMCache(bool bCache) = 0;
     virtual void SetCachedShadowBounds(const AABB& shadowBounds, float fAdditionalCascadesScale) = 0;
@@ -2217,9 +2251,13 @@ struct I3DEngine
     virtual ITimeOfDay* GetTimeOfDay() = 0;
 
     // Description:
-    //    Forces SkyBox material to update next frame to new material.
+    //    Updates the sky material paths.  LoadSkyMaterial will handle loading these materials.
     virtual void SetSkyMaterialPath(const string& skyMaterialPath) = 0;
     virtual void SetSkyLowSpecMaterialPath(const string& skyMaterialPath) = 0;
+    
+    // Description:
+    //    Loads the sky material for the level.  e_SkyType will determine if we load the low spec sky material or the regular sky material.
+    virtual void LoadSkyMaterial() = 0;
 
     // Description:
     //    Returns SkyBox material.
@@ -2469,7 +2507,6 @@ struct SRenderingPassInfo
         DECALS = BIT(7),
         TERRAIN_DETAIL_MATERIALS = BIT(8),
         MERGED_MESHES = BIT(10),
-        WATER_WAVES = BIT(12),
         ROADS = BIT(13),
         WATER_VOLUMES = BIT(14),
         CLOUDS = BIT(15),
@@ -2480,8 +2517,8 @@ struct SRenderingPassInfo
 
         // below are precombined flags
         STATIC_OBJECTS = BRUSHES | VEGETATION,
-        DEFAULT_FLAGS = SHADOWS | BRUSHES | VEGETATION | ENTITIES | TERRAIN | WATEROCEAN | PARTICLES | DECALS | TERRAIN_DETAIL_MATERIALS | MERGED_MESHES | WATER_WAVES | ROADS | WATER_VOLUMES | CLOUDS | GEOM_CACHES,
-        DEFAULT_RECURSIVE_FLAGS = BRUSHES | VEGETATION | ENTITIES | TERRAIN | WATEROCEAN | PARTICLES | DECALS | TERRAIN_DETAIL_MATERIALS | MERGED_MESHES | WATER_WAVES | ROADS | WATER_VOLUMES | CLOUDS | GEOM_CACHES
+        DEFAULT_FLAGS = SHADOWS | BRUSHES | VEGETATION | ENTITIES | TERRAIN | WATEROCEAN | PARTICLES | DECALS | TERRAIN_DETAIL_MATERIALS | MERGED_MESHES | ROADS | WATER_VOLUMES | CLOUDS | GEOM_CACHES,
+        DEFAULT_RECURSIVE_FLAGS = BRUSHES | VEGETATION | ENTITIES | TERRAIN | WATEROCEAN | PARTICLES | DECALS | TERRAIN_DETAIL_MATERIALS | MERGED_MESHES | ROADS | WATER_VOLUMES | CLOUDS | GEOM_CACHES
     };
 
     // creating function for RenderingPassInfo, the create functions will fetch all other necessary
@@ -2527,7 +2564,6 @@ struct SRenderingPassInfo
     bool RenderDecals() const;
     bool RenderTerrainDetailMaterial() const;
     bool RenderMergedMeshes() const;
-    bool RenderWaterWaves() const;
     bool RenderRoads() const;
     bool RenderWaterVolumes() const;
     bool RenderClouds() const;
@@ -2755,12 +2791,6 @@ inline bool SRenderingPassInfo::RenderTerrainDetailMaterial() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-inline bool SRenderingPassInfo::RenderWaterWaves() const
-{
-    return (m_nRenderingFlags& SRenderingPassInfo::WATER_WAVES) != 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 inline bool SRenderingPassInfo::RenderRoads() const
 {
     return (m_nRenderingFlags& SRenderingPassInfo::ROADS) != 0;
@@ -2848,7 +2878,6 @@ inline void SRenderingPassInfo::InitRenderingFlags(uint32 nRenderingFlags)
     static ICVar* pWaterOcean = gEnv->pConsole->GetCVar("e_WaterOcean");
     static ICVar* pParticles = gEnv->pConsole->GetCVar("e_Particles");
     static ICVar* pDecals = gEnv->pConsole->GetCVar("e_Decals");
-    static ICVar* pWaterWaves = gEnv->pConsole->GetCVar("e_WaterWaves");
     static ICVar* pWaterVolumes = gEnv->pConsole->GetCVar("e_WaterVolumes");
     static ICVar* pRoads = gEnv->pConsole->GetCVar("e_Roads");
     static ICVar* pClouds = gEnv->pConsole->GetCVar("e_Clouds");
@@ -2886,10 +2915,6 @@ inline void SRenderingPassInfo::InitRenderingFlags(uint32 nRenderingFlags)
     if (pDecals->GetIVal() == 0)
     {
         m_nRenderingFlags &= ~SRenderingPassInfo::DECALS;
-    }
-    if (pWaterWaves->GetIVal() == 0)
-    {
-        m_nRenderingFlags &= ~SRenderingPassInfo::WATER_WAVES;
     }
     if (pRoads->GetIVal() == 0)
     {

@@ -14,10 +14,7 @@
 
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/Graph.h>
-
 #include <ScriptCanvas/CodeGen/CodeGen.h>
-
-#include <AzCore/Component/EntityBus.h>
 #include <Include/ScriptCanvas/Libraries/Core/Start.generated.h>
 
 namespace ScriptCanvas
@@ -28,7 +25,6 @@ namespace ScriptCanvas
         {
             class Start 
                 : public Node
-                , public AZ::EntityBus::Handler
             {
             public:
 
@@ -42,15 +38,8 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::GraphEntryPoint(true)
                 );
 
-                void OnActivate() override;
-                void OnDeactivate() override;
-
-                // EntityBus::Handler
-                void OnEntityActivated(const AZ::EntityId&) override;
-                /////
+                void OnInputSignal(const SlotId&) override;
                 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
                 // Outputs
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled when the entity that owns this graph is fully activated."));
 

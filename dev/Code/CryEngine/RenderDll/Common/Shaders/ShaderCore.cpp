@@ -49,6 +49,7 @@ CShader* CShaderMan::s_ShaderCommon;
 CShader* CShaderMan::s_ShaderOcclTest;
 CShader* CShaderMan::s_ShaderDXTCompress = NULL;
 CShader* CShaderMan::s_ShaderStereo = NULL;
+CShader* CShaderMan::s_ShaderFur = nullptr;
 #else
 SShaderItem CShaderMan::s_DefaultShaderItem;
 #endif
@@ -465,19 +466,24 @@ void CShaderResources::PostLoad(CShader* pSH)
     AdjustForSpec();
     if (pSH && (pSH->m_Flags & EF_SKY))
     {
-        if (m_Textures[EFTT_DIFFUSE])
+        SEfResTexture*      pTextureRes = GetTextureResource(EFTT_DIFFUSE);
+        if (pTextureRes && !pTextureRes->m_Name.empty())
         {
-            char sky[128];
-            char path[1024];
-            strcpy(sky, m_Textures[EFTT_DIFFUSE]->m_Name.c_str());
+            char    sky[128];
+            char    path[1024];
+
+            strcpy(sky, pTextureRes->m_Name.c_str());
             int size = strlen(sky);
             const char* ext = fpGetExtension(sky);
-            while (sky[size] != '_')
+            if (size > 0)
             {
-                size--;
-                if (!size)
+                while (sky[size] != '_')   
                 {
-                    break;
+                    size--;
+                    if (!size)
+                    {
+                        break;
+                    }
                 }
             }
             sky[size] = 0;
@@ -1378,8 +1384,13 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_SRGB2] = gb->m_Mask;
             }
             else
+            if (gb->m_ParamName == "%_RT_DEPTHFIXUP")
             {
-                assert(0);
+                g_HWSR_MaskBit[HWSR_DEPTHFIXUP] = gb->m_Mask;
+            }
+            else
+            {
+                AZ_Assert(false, "Invalid shader param %s", gb->m_ParamName.c_str());
             }
         }
     }
@@ -1794,6 +1805,7 @@ void CShaderMan::mfReleaseSystemShaders ()
     SAFE_RELEASE_FORCE(s_ShaderDeferredRain);
     SAFE_RELEASE_FORCE(s_ShaderDeferredSnow);
     SAFE_RELEASE_FORCE(s_ShaderStars);
+    SAFE_RELEASE_FORCE(s_ShaderFur);
     m_bLoadedSystem = false;
 #endif
 }
@@ -1859,7 +1871,8 @@ void CShaderMan::mfLoadDefaultSystemShaders()
         mfRefreshSystemShader("PostEffectsGame",    CShaderMan::s_shPostEffectsGame);
         mfRefreshSystemShader("PostAA", CShaderMan::s_shPostAA);
         mfRefreshSystemShader("ShadowBlur", CShaderMan::s_ShaderShadowBlur);
-        mfRefreshSystemShader("Sunshafts",  CShaderMan::s_shPostSunShafts);
+        mfRefreshSystemShader("Sunshafts", CShaderMan::s_shPostSunShafts);
+        mfRefreshSystemShader("Fur", CShaderMan::s_ShaderFur);
     }
 #endif
 }
@@ -2187,29 +2200,32 @@ void SHRenderTarget::GetMemoryUsage(ICrySizer* pSizer) const
 
 void CShaderResources::CreateModifiers(SInputShaderResources* pInRes)
 {
-    uint32 i;
-    m_nLastTexture = 0;
-    for (i = 0; i < EFTT_MAX; i++)
+    for (auto iter = m_TexturesResourcesMap.begin(); iter != m_TexturesResourcesMap.end(); ++iter)
     {
-        if (!m_Textures[i])
-        {
-            continue;
-        }
+        uint            slotIdx = iter->first;
+        SEfResTexture*  pDst = &(iter->second);  
 
-        SEfResTexture* pDst = m_Textures[i];
         pDst->m_Ext.m_nUpdateFlags = 0;
 
-        SEfResTexture& InTex = pInRes->m_Textures[i];
-        if (!InTex.m_Ext.m_pTexModifier)
+        SEfResTexture*  pInTex = pInRes->GetTextureResource(slotIdx);
+        if (!pInTex || !pInTex->m_Ext.m_pTexModifier)
         {
             continue;
         }
 
-        InTex.m_Ext.m_nUpdateFlags = 0;
-        InTex.m_Ext.m_nLastRecursionLevel = -1;
-        m_nLastTexture = i;
-        SEfResTexture* pTex = m_Textures[i];
-        SEfTexModificator* pMod = InTex.m_Ext.m_pTexModifier;
+        pInTex->m_Ext.m_nUpdateFlags = 0;
+        pInTex->m_Ext.m_nLastRecursionLevel = -1;
+        SEfTexModificator* pMod = pInTex->m_Ext.m_pTexModifier;
+
+
+            if (pMod->m_eTGType >= ETG_Max)
+            {
+                pMod->m_eTGType = ETG_Stream;
+            }
+            if (pMod->m_eRotType >= ETMR_Max)
+            {
+                pMod->m_eRotType = ETMR_NoChange;
+            }
 
             if (pMod->m_eMoveType[0] >= ETMM_Max)
             {
@@ -2218,14 +2234,6 @@ void CShaderResources::CreateModifiers(SInputShaderResources* pInRes)
             if (pMod->m_eMoveType[1] >= ETMM_Max)
             {
                 pMod->m_eMoveType[1] = ETMM_NoChange;
-            }
-            if (pMod->m_eTGType >= ETG_Max)
-            {
-                pMod->m_eTGType = ETG_Stream;
-            }
-            if (pMod->m_eRotType >= ETMR_Max)
-            {
-                pMod->m_eRotType = ETMR_NoChange;
             }
 
             if (pMod->m_eMoveType[0] == ETMM_Pan && (pMod->m_OscAmplitude[0] == 0 || pMod->m_OscRate[0] == 0))
@@ -2278,8 +2286,8 @@ void CShaderResources::CreateModifiers(SInputShaderResources* pInRes)
                 m_ResFlags |= MTL_FLAG_NOTINSTANCED;
             }
 
-        InTex.UpdateForCreate();
-        if (InTex.m_Ext.m_nUpdateFlags & HWMD_TEXCOORD_FLAG_MASK)
+        pInTex->UpdateForCreate();
+        if (pInTex->m_Ext.m_nUpdateFlags & HWMD_TEXCOORD_FLAG_MASK)
         {
             SEfTexModificator* pDstMod = new SEfTexModificator;
             *pDstMod = *pMod;
@@ -2341,13 +2349,7 @@ void SEfResTexture::UpdateForCreate()
         pMod->m_Tiling[1] = 1.0f;
     }
 
-    bTr = (pMod->m_eMoveType[0] != ETMM_NoChange ||
-           pMod->m_eMoveType[1] != ETMM_NoChange ||
-           pMod->m_eRotType != ETMR_NoChange ||
-           pMod->m_Offs[0] != 0.0f ||
-           pMod->m_Offs[1] != 0.0f ||
-           pMod->m_Tiling[0] != 1.0f ||
-           pMod->m_Tiling[1] != 1.0f);
+    bTr = pMod->isModified();
 
     if (pMod->m_eTGType != ETG_Stream)
     {
@@ -2441,13 +2443,7 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
     pMod->m_Tiling[0] = (float)fsel(-fabsf(fTiling0), 1.0f, fTiling0);
     pMod->m_Tiling[1] = (float)fsel(-fabsf(fTiling1), 1.0f, fTiling1);
 
-    if (pMod->m_eMoveType[0] != ETMM_NoChange ||
-        pMod->m_eMoveType[1] != ETMM_NoChange ||
-        pMod->m_eRotType != ETMR_NoChange ||
-        pMod->m_Offs[0] != 0.0f ||
-        pMod->m_Offs[1] != 0.0f ||
-        pMod->m_Tiling[0] != 1.0f ||
-        pMod->m_Tiling[1] != 1.0f)
+    if (pMod->isModified())
     {
         pMod->m_TexMatrix.SetIdentity();
         float fTime = gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nProcessThreadID].m_RealTime;
@@ -2693,8 +2689,12 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
                 Matrix44(su, 0, 0, 0,
                     0, sv, 0, 0,
                     0, 0, 1, 0,
-                    -du, -dv, 0, 1);
+                    du, dv, 0, 1);
         }
+    }
+    else
+    {   // This can be avoided - why would you have an empty modulator?
+        pMod->m_TexMatrix.SetIdentity();
     }
 
     if (pMod->m_eTGType != ETG_Stream)
@@ -3271,95 +3271,36 @@ inline bool sCompareRes(CShaderResources* a, CShaderResources* b)
         return (a->m_ResFlags & MTL_FLAG_2SIDED) < (b->m_ResFlags & MTL_FLAG_2SIDED);
     }
 
-    ITexture* pTA = NULL;
-    ITexture* pTB = NULL;
-    if (a->m_Textures[EFTT_SPECULAR])
-    {
-        pTA = a->m_Textures[EFTT_SPECULAR]->m_Sampler.m_pITex;
-    }
-    if (b->m_Textures[EFTT_SPECULAR])
-    {
-        pTB = b->m_Textures[EFTT_SPECULAR]->m_Sampler.m_pITex;
-    }
-    if (pTA != pTB)
-    {
-        return pTA < pTB;
-    }
+    // [Shader System TO DO] - optimize - should be data driven based on marked slots only
 
-    pTA = NULL;
-    pTB = NULL;
-    if (a->m_Textures[EFTT_DIFFUSE])
-    {
-        pTA = a->m_Textures[EFTT_DIFFUSE]->m_Sampler.m_pITex;
-    }
-    if (b->m_Textures[EFTT_DIFFUSE])
-    {
-        pTB = b->m_Textures[EFTT_DIFFUSE]->m_Sampler.m_pITex;
-    }
-    if (pTA != pTB)
-    {
-        return pTA < pTB;
-    }
+    uint16      testSlots[] = { 
+        EFTT_SPECULAR , 
+        EFTT_DIFFUSE , 
+        EFTT_NORMALS ,
+        EFTT_ENV , 
+        EFTT_DECAL_OVERLAY , 
+        EFTT_DETAIL_OVERLAY , 
+        EFTT_MAX 
+    };
 
-    pTA = NULL;
-    pTB = NULL;
-    if (a->m_Textures[EFTT_NORMALS])
+    ITexture        *pTA = nullptr, *pTB = nullptr;
+    for (int i=0 ; testSlots[i] != EFTT_MAX; i++)
     {
-        pTA = a->m_Textures[EFTT_NORMALS]->m_Sampler.m_pITex;
-    }
-    if (b->m_Textures[EFTT_NORMALS])
-    {
-        pTB = b->m_Textures[EFTT_NORMALS]->m_Sampler.m_pITex;
-    }
-    if (pTA != pTB)
-    {
-        return pTA < pTB;
-    }
+        uint16          texSlot = testSlots[i];
+        SEfResTexture*  pTexResA = a->GetTextureResource(texSlot);
+        SEfResTexture*  pTexResB = b->GetTextureResource(texSlot);
+        pTA = pTexResA ? pTexResA->m_Sampler.m_pITex : nullptr;
+        pTB = pTexResB ? pTexResB->m_Sampler.m_pITex : nullptr;
 
-    pTA = NULL;
-    pTB = NULL;
-    if (a->m_Textures[EFTT_ENV])
-    {
-        pTA = a->m_Textures[EFTT_ENV]->m_Sampler.m_pITex;
-    }
-    if (b->m_Textures[EFTT_ENV])
-    {
-        pTB = b->m_Textures[EFTT_ENV]->m_Sampler.m_pITex;
-    }
-    if (pTA != pTB)
-    {
-        return pTA < pTB;
-    }
-
-    pTA = NULL;
-    pTB = NULL;
-    if (a->m_Textures[EFTT_DECAL_OVERLAY])
-    {
-        pTA = a->m_Textures[EFTT_DECAL_OVERLAY]->m_Sampler.m_pITex;
-    }
-    if (b->m_Textures[EFTT_DECAL_OVERLAY])
-    {
-        pTB = b->m_Textures[EFTT_DECAL_OVERLAY]->m_Sampler.m_pITex;
-    }
-    if (pTA != pTB)
-    {
-        return pTA < pTB;
-    }
-
-    pTA = NULL;
-    pTB = NULL;
-    if (a->m_Textures[EFTT_DETAIL_OVERLAY])
-    {
-        pTA = a->m_Textures[EFTT_DETAIL_OVERLAY]->m_Sampler.m_pITex;
-    }
-    if (b->m_Textures[EFTT_DETAIL_OVERLAY])
-    {
-        pTB = b->m_Textures[EFTT_DETAIL_OVERLAY]->m_Sampler.m_pITex;
+        if (pTA != pTB)
+        {
+            return pTA < pTB;
+        }
     }
     return (pTA < pTB);
 }
 
-inline bool sIdenticalRes(CShaderResources* a, CShaderResources* b, bool bCheckTexture)
+inline bool sIdenticalRes(CShaderResources* a, CShaderResources* b)
 {
     if (a->m_AlphaRef != b->m_AlphaRef)
     {
@@ -3386,29 +3327,21 @@ inline bool sIdenticalRes(CShaderResources* a, CShaderResources* b, bool bCheckT
         return false;
     }
 
-    if (bCheckTexture)
+	// [Shader System TO DO] - revisit this comparison!!!
+    for (int texSlot = 0; texSlot < EFTT_MAX; texSlot++)
     {
-        for (int i = 0; i < EFTT_MAX; i++)
-        {
-            if (a->m_Textures[i] != b->m_Textures[i])
-            {
-                return false;
-            }
-        }
-    }
-    else
-    {
-        for (int i = 0; i < EFTT_MAX; i++)
-        {
-            if (a->m_Textures[i] && a->m_Textures[i]->IsHasModificators())
-            {
-                return false;
-            }
-            if (b->m_Textures[i] && b->m_Textures[i]->IsHasModificators())
-            {
-                return false;
-            }
-        }
+        SEfResTexture*      pTextureA = a->GetTextureResource(texSlot);
+        if (pTextureA && pTextureA->IsHasModificators())
+            return false;
+
+        SEfResTexture*      pTextureB = b->GetTextureResource(texSlot);
+        if (pTextureB && pTextureB->IsHasModificators())
+            return false;
+
+        // [Shader System] - To Do - test and add this for being more correct 
+        // Finally compare the pointer to the texture resource itself
+//        if (pTextureA->m_Sampler.m_pITex != pTextureB->m_Sampler.m_pITex)     
+//            return false;
     }
 
     const float emissiveIntensity = a->GetStrengthValue(EFTT_EMITTANCE);
@@ -3469,8 +3402,11 @@ void CShaderMan::mfSortResources()
     //return;
     std::sort(&CShader::s_ShaderResources_known.begin()[1], CShader::s_ShaderResources_known.end(), sCompareRes);
 
-    int nGroups = 20000;
-    CShaderResources* pPrev = NULL;
+    int                 nGroups = 20000;
+    CShaderResources*   pPrev = nullptr;
+
+    // Now that the shader resources has been sorted, run over them and create groups of 
+    // identical resources.
     for (i = 1; i < CShader::s_ShaderResources_known.Num(); i++)
     {
         CShaderResources* pRes = CShader::s_ShaderResources_known[i];
@@ -3482,7 +3418,7 @@ void CShaderMan::mfSortResources()
             {
                 if (pPrev)
                 {
-                    if (!sIdenticalRes(pRes, pPrev, false))
+                    if (!sIdenticalRes(pRes, pPrev))
                     {
                         nGroups++;
                     }
@@ -3492,8 +3428,9 @@ void CShaderMan::mfSortResources()
             pPrev = pRes;
         }
     }
-    iLog->Log("--- %d Resources, %d Resource groups.", CShader::s_ShaderResources_known.Num(), nGroups - 20000);
+    iLog->Log("--- [Shaders System] : %d Shaders Resources, %d Shaders Resource groups.", CShader::s_ShaderResources_known.Num(), nGroups - 20000);
 
+    // now run over the list of active (compiled binary) shaders
     {
         AUTO_LOCK(CBaseResource::s_cResLock);
 

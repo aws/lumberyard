@@ -13,6 +13,11 @@
 
 #include "LmbrCentral.h"
 
+namespace Water
+{
+    class WaterVolumeConverter;
+}
+
 namespace LmbrCentral
 {
     /**
@@ -29,6 +34,7 @@ namespace LmbrCentral
         AZ_RTTI(LmbrCentralEditorModule, "{1BF648D7-3703-4B52-A688-67C253A059F2}", LmbrCentralModule);
 
         LmbrCentralEditorModule();
+        ~LmbrCentralEditorModule();
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
     };
 } // namespace LmbrCentral

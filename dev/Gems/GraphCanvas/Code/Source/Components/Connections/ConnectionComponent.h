@@ -107,7 +107,12 @@ namespace GraphCanvas
         void SetScene(const AZ::EntityId& sceneId) override;
         void ClearScene(const AZ::EntityId& oldSceneId) override;
 
+        void SignalMemberSetupComplete() override;
+
         AZ::EntityId GetScene() const override;
+
+        bool LockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
+        void UnlockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
         ////
 
         // ConnectionRequestBus
@@ -153,6 +158,8 @@ namespace GraphCanvas
         AZStd::string m_tooltip;
 
         ConnectionEventFilter* m_eventFilter;
+
+        AZ::EntityId m_lockingSceneMember;
 
         //! Store custom data for this connection
         AZStd::any m_userData;

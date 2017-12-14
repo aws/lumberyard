@@ -179,9 +179,9 @@ public:
     */
     void TimeChanged(float newTime);
 
-    /** Notify after a sequence has been loaded, useful for Undo/Redo
+    /** Notify after a sequence has been activated, useful for Undo/Redo
     */
-    void OnSequenceLoaded(AZ::EntityId entityId);
+    void OnSequenceActivated(AZ::EntityId entityId);
 
 private:
     static void GoToFrameCmd(IConsoleCmdArgs* pArgs);
@@ -234,12 +234,12 @@ private:
     //! sequence after undo has destroyed and recreated it.
     AZ::EntityId m_mostRecentSequenceId;
 
-    //! Name of active sequence (for switching back from game mode and saving)
-    QString m_sequenceName;
+    //! Id of active sequence to restore (for switching back from game mode and saving)
+    AZ::EntityId m_sequenceToRestore;
 
 
     //! Time of active sequence (for switching back from game mode and saving)
-    float m_sequenceTime;
+    float m_sequenceRestoreTime;
 
     bool m_bLooping;
 

@@ -36,6 +36,8 @@ namespace AZ
             return "Linux";
         case PLATFORM_ANDROID:
             return "Android";
+        case PLATFORM_ANDROID_64:
+            return "Android64";
         case PLATFORM_APPLE_IOS:
             return "iOS";
         case PLATFORM_APPLE_OSX:

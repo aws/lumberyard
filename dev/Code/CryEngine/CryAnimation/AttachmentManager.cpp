@@ -621,6 +621,7 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
                                 }
                             }
 
+                            pAttachment->m_vertexAnimation.ClearFrameStates();
                             if (const CModelMesh* pModelMesh = ((CSkin*)pIModelSKIN.get())->GetModelMesh(0))
                             {
                                 pAttachment->m_vertexAnimation.CreateFrameStates(pModelMesh->m_softwareMesh.GetVertexFrames(), *(pICharacter->m_pDefaultSkeleton.get()));
@@ -1464,6 +1465,14 @@ void CAttachmentManager::VerifyProxyLinks()
 //special update for skinned joints
 void CAttachmentManager::UpdateAllRedirectedTransformations(Skeleton::CPoseData& rPoseData)
 {
+    if (m_TypeSortingRequired)
+    {
+        SortByType();
+    }
+#ifdef EDITOR_PCDEBUGCODE
+    Verification();
+#endif
+
     const f32 fIPlaybackScale    = m_pSkelInstance->GetPlaybackScale();
     const f32 fLPlaybackScale    = m_pSkelInstance->m_SkeletonAnim.GetLayerPlaybackScale(0);
     const f32 fAverageFrameTime  = g_AverageFrameTime * fIPlaybackScale * fLPlaybackScale ? g_AverageFrameTime * fIPlaybackScale * fLPlaybackScale : g_AverageFrameTime;
@@ -1530,6 +1539,12 @@ void CAttachmentManager::UpdateAllRedirectedTransformations(Skeleton::CPoseData&
 
     for (uint32 i = m_sortop[0][vc]; i < m_sortop[1][vc]; i++)
     {
+        // If our sorted indices are no longer valid, then bail out so we don't access m_arrAttachments out of bounds. (calling SortByType() here wouldn't make sense)
+        if (m_TypeSortingRequired)
+        {
+            break;
+        }
+
         IAttachment* pIAttachment   = m_arrAttachments[i];
         if (pIAttachment->GetType() != CA_PROW)
         {

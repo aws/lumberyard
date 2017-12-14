@@ -36,7 +36,7 @@ def build(bld):
         # Platform Specific
         win_debug_all_linkflags = ['/NODEFAULTLIB:libcmtd.lib','/NODEFAULTLIB:libcd.lib'],
         win_ndebug_linkflags    = ['/NODEFAULTLIB:libcmt.lib','/NODEFAULTLIB:libc.lib'],
-        win_lib                 = ['gdi32'],
+        win_lib                 = ['gdi32', 'Ws2_32'],
 
         # Testing
         test_all_file_list      = ['perforceplugin_test.waf_files'],

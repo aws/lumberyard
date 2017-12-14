@@ -12,14 +12,6 @@
 
 def build(bld):
 
-    msvc_cxx_flags = [
-        '/W4', # warning level
-    ]
-    clang_flags = [
-        '-Werror',  # warnings as errors
-        '-Wall'     # warning level
-    ]
-
     bld.CryEngineStaticLibrary(
 
         # Settings
@@ -42,11 +34,21 @@ def build(bld):
 
         debug_defines       = ['ENABLE_UNDOCACHE_CONSISTENCY_CHECKS'], # we want this on ONLY in debug, not when AZ_DEBUG_BUILD is enabled.
 
+        # Compiler specific
+        msvc_cxxflags       = [
+                               '/W4', # warning level
+                              ],
+
+        clang_cxxflags      = [
+                               '-Werror',  # warnings as errors
+                               '-Wall',    # warning level
+                              ],
+
         # Platform specific
         win_file_list       = ['aztoolsframework_win.waf_files'],
-        win_cxxflags        = msvc_cxx_flags,
         win_features        = ['crcfix'],
 
         darwin_file_list    = ['aztoolsframework_osx.waf_files'],
-        darwin_cxxflags     = clang_flags + ['-Wno-non-pod-varargs'] # ToDo: fixme (moved from the global clang settings)
+        darwin_cxxflags     = ['-Wno-non-pod-varargs'], # ToDo: fixme (moved from the global clang settings)
+        darwin_enable_rtti  = True,
     )

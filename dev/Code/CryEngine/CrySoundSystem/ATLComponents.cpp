@@ -29,9 +29,9 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CAudioEventManager::CAudioEventManager()
         : m_oAudioEventPool(g_audioCVars.m_nAudioEventPoolSize, 1)
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         , m_pDebugNameStore(nullptr)
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     {
     }
 
@@ -264,9 +264,9 @@ namespace Audio
         : m_cObjectPool(g_audioCVars.m_nAudioObjectPoolSize, s_nMinAudioObjectID)
         , m_fTimeSinceLastVelocityUpdateMS(0.0f)
         , m_refAudioEventManager(refAudioEventManager)
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         , m_pDebugNameStore(nullptr)
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     {
     }
 
@@ -283,11 +283,11 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioObjectManager::Update(const float fUpdateIntervalMS, const SATLWorldPosition& rListenerPosition)
     {
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         //reset the ray counts
         CATLAudioObject::CPropagationProcessor::s_nTotalAsyncPhysRays = 0;
         CATLAudioObject::CPropagationProcessor::s_nTotalSyncPhysRays = 0;
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
         m_fTimeSinceLastVelocityUpdateMS += fUpdateIntervalMS;
         const bool bUpdateVelocity = m_fTimeSinceLastVelocityUpdateMS > s_fVelocityUpdateIntervalMS;
@@ -455,7 +455,7 @@ namespace Audio
             {
                 pObject->ReportStartedEvent(pEvent);
             }
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
             else
             {
                 g_audioLogger.Log(
@@ -464,7 +464,7 @@ namespace Audio
                     pEvent->GetID(),
                     m_pDebugNameStore->LookupAudioObjectName(pEvent->m_nObjectID));
             }
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
         else
         {
@@ -488,7 +488,7 @@ namespace Audio
                     ReleaseInstance(pObject);
                 }
             }
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
             else
             {
                 g_audioLogger.Log(
@@ -497,7 +497,7 @@ namespace Audio
                     pEvent->GetID(),
                     m_pDebugNameStore->LookupAudioObjectName(pEvent->m_nObjectID));
             }
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
         else
         {
@@ -519,7 +519,7 @@ namespace Audio
                 ReleaseInstance(pObject);
             }
         }
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         else
         {
             g_audioLogger.Log(
@@ -528,7 +528,7 @@ namespace Audio
                 nRayID,
                 m_pDebugNameStore->LookupAudioObjectName(nAudioObjectID));
         }
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -571,10 +571,10 @@ namespace Audio
             const TAudioObjectID nObjectID = pOldObject->GetID();
             m_cAudioObjects.erase(nObjectID);
 
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
             m_pDebugNameStore->RemoveAudioObject(nObjectID);
             pOldObject->CheckBeforeRemoval(m_pDebugNameStore);
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
             pOldObject->Clear();
             EAudioRequestStatus eResult = eARS_FAILURE;
@@ -623,9 +623,9 @@ namespace Audio
             pAudioObject->SetImplDataPtr(pObjectData);
 
             char const* szAudioObjectName = nullptr;
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
             szAudioObjectName = m_pDebugNameStore->LookupAudioObjectName(pAudioObject->GetID());
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
             EAudioRequestStatus eResult = eARS_FAILURE;
             AudioSystemImplementationRequestBus::BroadcastResult(eResult, &AudioSystemImplementationRequestBus::Events::RegisterAudioObject, pAudioObject->GetImplDataPtr(), szAudioObjectName);
@@ -902,86 +902,62 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    EAudioRequestStatus CAudioEventListenerManager::AddRequestListener(const SAudioManagerRequestDataInternal<eAMRT_ADD_REQUEST_LISTENER>* const pRequestData)
+    void CAudioEventListenerManager::AddRequestListener(const SAudioEventListener& listener)
     {
-        EAudioRequestStatus eResult = eARS_FAILURE;
-        TListenerArray::const_iterator Iter(m_cListeners.begin());
-        TListenerArray::const_iterator const IterEnd(m_cListeners.end());
-
-        for (; Iter != IterEnd; ++Iter)
+        for (const auto& currentListener : m_cListeners)
         {
-            if (Iter->OnEvent == pRequestData->func && Iter->pObjectToListenTo == pRequestData->pObjectToListenTo
-                && Iter->requestType == pRequestData->requestType && Iter->specificRequestMask == pRequestData->specificRequestMask)
+            if (currentListener == listener)
             {
-                eResult = eARS_SUCCESS;
-                break;
+            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                g_audioLogger.Log(eALT_WARNING, "AudioEventListenerManager::AddRequestListener - Request listener being added already exists!");
+            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                return;
             }
         }
 
-        if (eResult == eARS_FAILURE)
-        {
-            SAudioEventListener oAudioEventListener;
-            oAudioEventListener.pObjectToListenTo = pRequestData->pObjectToListenTo;
-            oAudioEventListener.OnEvent = pRequestData->func;
-            oAudioEventListener.requestType = pRequestData->requestType;
-            oAudioEventListener.specificRequestMask = pRequestData->specificRequestMask;
-            m_cListeners.push_back(oAudioEventListener);
-            eResult = eARS_SUCCESS;
-        }
-
-        return eResult;
+        m_cListeners.push_back(listener);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    EAudioRequestStatus CAudioEventListenerManager::RemoveRequestListener(AudioRequestCallbackType func, const void* const pObjectToListenTo)
+    void CAudioEventListenerManager::RemoveRequestListener(const SAudioEventListener& listener)
     {
-        EAudioRequestStatus eResult = eARS_FAILURE;
-
-        TListenerArray::iterator Iter(m_cListeners.begin());
-        const TListenerArray::const_iterator IterEnd(m_cListeners.end());
-
-        for (; Iter != IterEnd; ++Iter)
+        for (auto iter = m_cListeners.begin(); iter != m_cListeners.end(); ++iter)
         {
-            if ((Iter->OnEvent == func || func == nullptr) && Iter->pObjectToListenTo == pObjectToListenTo)
+            if ((iter->m_fnOnEvent == listener.m_fnOnEvent || listener.m_fnOnEvent == nullptr) && iter->m_callbackOwner == listener.m_callbackOwner)
             {
-                if (Iter != IterEnd - 1)
-                {
-                    (*Iter) = m_cListeners.back();
-                }
-
+                // Copy the back element into this iter position and pop the back element...
+                (*iter) = m_cListeners.back();
                 m_cListeners.pop_back();
-                eResult = eARS_SUCCESS;
-                break;
+                return;
             }
         }
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        if (eResult == eARS_FAILURE)
-        {
-            g_audioLogger.Log(eALT_WARNING, "Failed to remove a request listener!");
-        }
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
-
-        return eResult;
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        g_audioLogger.Log(eALT_WARNING, "AudioEventListenerManager::RemoveRequestListener - Failed to remove a request listener (not found)!");
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioEventListenerManager::NotifyListener(const SAudioRequestInfo* const pResultInfo)
     {
+        // This should always be on the main thread!
         FUNCTION_PROFILER_ALWAYS(gEnv->pSystem, PROFILE_AUDIO);
 
-        TListenerArray::const_iterator Iter(m_cListeners.begin());
-        TListenerArray::const_iterator const IterEnd(m_cListeners.end());
-
-        for (; Iter != IterEnd; ++Iter)
-        {
-            const SAudioEventListener& currentListener = *Iter;
-            if (((currentListener.specificRequestMask & pResultInfo->nSpecificAudioRequest) > 0) //check: is the listener interested in this specific event?
-                && (currentListener.pObjectToListenTo == nullptr || currentListener.pObjectToListenTo == pResultInfo->pOwner) //check: is the listener interested in events from this sender
-                && (currentListener.requestType == eART_AUDIO_ALL_REQUESTS || currentListener.requestType == pResultInfo->eAudioRequestType)) //check: is the listener interested this eventType
+        auto found = AZStd::find_if(m_cListeners.begin(), m_cListeners.end(),
+            [pResultInfo](const SAudioEventListener& currentListener)
             {
-                Iter->OnEvent(pResultInfo);
+                // 1) Is the listener interested in this request type?
+                // 2) Is the listener interested in this request sub-type?
+                // 3) Is the listener interested in this owner (or any owner)?
+                return ((currentListener.m_requestType == eART_AUDIO_ALL_REQUESTS || currentListener.m_requestType == pResultInfo->eAudioRequestType)
+                    && ((currentListener.m_specificRequestMask & pResultInfo->nSpecificAudioRequest) != 0)
+                    && (currentListener.m_callbackOwner == nullptr || currentListener.m_callbackOwner == pResultInfo->pOwner));
             }
+        );
+
+        if (found != m_cListeners.end())
+        {
+            found->m_fnOnEvent(pResultInfo);
         }
     }
 
@@ -1006,9 +982,9 @@ namespace Audio
         , m_rPreloadRequests(rPreloadRequests)
         , m_nTriggerImplIDCounter(AUDIO_TRIGGER_IMPL_ID_NUM_RESERVED)
         , m_rFileCacheMgr(rFileCacheMgr)
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         , m_pDebugNameStore(nullptr)
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     {
     }
 
@@ -1180,9 +1156,9 @@ namespace Audio
             auto const pTrigger = itRemove->second;
             if (eDataScope == eADS_ALL || (pTrigger->GetDataScope() == eDataScope))
             {
-        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                 m_pDebugNameStore->RemoveAudioTrigger(pTrigger->GetID());
-        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
                 DeleteAudioTrigger(pTrigger);
                 itRemove = m_rTriggers.erase(itRemove);
@@ -1199,9 +1175,9 @@ namespace Audio
             auto const pRtpc = itRemove->second;
             if (eDataScope == eADS_ALL || (pRtpc->GetDataScope() == eDataScope))
             {
-        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                 m_pDebugNameStore->RemoveAudioRtpc(pRtpc->GetID());
-        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
                 DeleteAudioRtpc(pRtpc);
                 itRemove = m_rRtpcs.erase(itRemove);
@@ -1218,9 +1194,9 @@ namespace Audio
             auto const pSwitch = itRemove->second;
             if (eDataScope == eADS_ALL || (pSwitch->GetDataScope() == eDataScope))
             {
-        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                 m_pDebugNameStore->RemoveAudioSwitch(pSwitch->GetID());
-        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
                 DeleteAudioSwitch(pSwitch);
                 itRemove = m_rSwitches.erase(itRemove);
@@ -1237,9 +1213,9 @@ namespace Audio
             auto const pEnvironment = itRemove->second;
             if (eDataScope == eADS_ALL || (pEnvironment->GetDataScope() == eDataScope))
             {
-        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                 m_pDebugNameStore->RemoveAudioEnvironment(pEnvironment->GetID());
-        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
                 DeleteAudioEnvironment(pEnvironment);
                 itRemove = m_rEnvironments.erase(itRemove);
@@ -1343,9 +1319,9 @@ namespace Audio
                                         {
                                             m_rPreloadRequests[nAudioPreloadRequestID] = pPreloadRequest;
 
-                                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                                        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                                             m_pDebugNameStore->AddAudioPreloadRequest(nAudioPreloadRequestID, sAudioPreloadRequestName);
-                                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                                        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                                         }
                                         else
                                         {
@@ -1381,9 +1357,9 @@ namespace Audio
             auto const pRequest = itRemove->second;
             if (eDataScope == eADS_ALL || (pRequest->GetDataScope() == eDataScope))
             {
-        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                 m_pDebugNameStore->RemoveAudioPreloadRequest(pRequest->GetID());
-        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
                 DeleteAudioPreloadRequest(pRequest);
                 itRemove = m_rPreloadRequests.erase(itRemove);
@@ -1457,9 +1433,9 @@ namespace Audio
                         {
                             m_rEnvironments[nATLEnvironmentID] = pNewEnvironment;
 
-                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                             m_pDebugNameStore->AddAudioEnvironment(nATLEnvironmentID, sATLEnvironmentName);
-                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                         }
                     }
                 }
@@ -1531,9 +1507,9 @@ namespace Audio
                     {
                         m_rTriggers[nATLTriggerID] = pNewTrigger;
 
-                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                         m_pDebugNameStore->AddAudioTrigger(nATLTriggerID, sATLTriggerName);
-                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     }
                 }
                 else
@@ -1562,9 +1538,9 @@ namespace Audio
                 {
                     auto pNewSwitch = azcreate(CATLSwitch, (nATLSwitchID, eDataScope), Audio::AudioSystemAllocator, "ATLSwitch");
 
-            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                     m_pDebugNameStore->AddAudioSwitch(nATLSwitchID, sATLSwitchName);
-            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
                     const size_t nATLSwitchStatesCount = static_cast<size_t>(pATLSwitchNode->getChildCount());
 
@@ -1615,13 +1591,17 @@ namespace Audio
                                 auto pNewState = azcreate(CATLSwitchState, (nATLSwitchID, nATLSwitchStateID, cSwitchStateImplVec), Audio::AudioSystemAllocator, "ATLSwitchState");
                                 pNewSwitch->cStates[nATLSwitchStateID] = pNewState;
 
-                        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                                 m_pDebugNameStore->AddAudioSwitchState(nATLSwitchID, nATLSwitchStateID, sATLSwitchStateName);
-                        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                             }
                         }
                     }
                     m_rSwitches[nATLSwitchID] = pNewSwitch;
+                }
+                else
+                {
+                    g_audioLogger.Log(eALT_ERROR, "ParseAudioSwitches - Switch '%s' already exists!", sATLSwitchName);
                 }
             }
         }
@@ -1682,10 +1662,14 @@ namespace Audio
                     {
                         m_rRtpcs[nATLRtpcID] = pNewRtpc;
 
-                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                         m_pDebugNameStore->AddAudioRtpc(nATLRtpcID, sATLRtpcName);
-                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     }
+                }
+                else
+                {
+                    g_audioLogger.Log(eALT_ERROR, "ParseAudioRtpcs - Rtpc '%s' already exists!", sATLRtpcName);
                 }
             }
         }
@@ -2092,4 +2076,5 @@ namespace Audio
     }
 
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
 } // namespace Audio

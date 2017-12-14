@@ -12,7 +12,6 @@
 
 // include required headers
 #include "TimeViewPlugin.h"
-//#include "TimeViewWidget.h"
 #include "TrackDataWidget.h"
 #include "TrackHeaderWidget.h"
 #include "TimeInfoWidget.h"
@@ -73,7 +72,6 @@ namespace EMStudio
         mCurMouseY          = 0;
         mTotalTime          = FLT_MAX;
         mVerticalScrollBar  = nullptr;
-        //  mHorizontalScroll   = nullptr;
         mZoomInCursor       = nullptr;
         mZoomOutCursor      = nullptr;
         mIsAnimating        = false;
@@ -87,7 +85,8 @@ namespace EMStudio
         mEventHistoryItem   = nullptr;
         mActorInstanceData  = nullptr;
         mEventEmitterNode   = nullptr;
-
+        
+        mMainWindow                 = nullptr;
         mMotionWindowPlugin         = nullptr;
         mMotionEventsPlugin         = nullptr;
         mMotionListWindow           = nullptr;
@@ -213,13 +212,13 @@ namespace EMStudio
         layout->setSpacing(0);
 
         // create an inner widget and let it use the created layout
-        QMainWindow* mainWindow = new QMainWindow();
+        mMainWindow = new QMainWindow();
         QWidget* innerWidget = new QWidget();
         innerWidget->setLayout(layout);
-        mainWindow->setCentralWidget(innerWidget);
+        mMainWindow->setCentralWidget(innerWidget);
 
         // insert the inner widget inside the docking window
-        mDock->SetContents(mainWindow);
+        mDock->SetContents(mMainWindow);
 
         // create the splitter window and add the widgets to it
         QSplitter* splitterWidget = new QSplitter(innerWidget);
@@ -252,21 +251,6 @@ namespace EMStudio
         innerWidgetLeft->setObjectName("StyledWidget");
         leftLayout->setObjectName("StyledWidget");
 
-        /*
-            // create the scale slider
-            MysticQt::Slider* scaleSlider = new MysticQt::Slider( Qt::Horizontal );
-            scaleSlider->setMaximumWidth( 300 );
-            scaleSlider->setRange(100, 1000);
-            scaleSlider->setValue( 200 );
-            scaleSlider->setSingleStep( 10 );
-            //scaleSlider->setFixedHeight( 10 );
-            scaleSlider->setMinimumHeight( 10 );
-            scaleSlider->setMaximumHeight( 10 );
-            connect(scaleSlider, SIGNAL(valueChanged(int)), this, SLOT(OnScaleSliderValueChanged(int)) );
-            bottomLeftLayout->addWidget( scaleSlider );
-        */
-        //--------------------------------
-
         // create the area on the right
         QWidget* innerWidgetRight = new QWidget();
         splitterWidget->addWidget(innerWidgetRight);
@@ -290,37 +274,6 @@ namespace EMStudio
         mVerticalScrollBar->setMaximumHeight(10000);
         connect(mVerticalScrollBar, SIGNAL(valueChanged(int)), this, SLOT(OnVerticalScrollBar(int)));
         rightLayout->addWidget(mVerticalScrollBar, 1, 1);
-
-        /*  mHorizontalScroll = new QScrollBar(Qt::Horizontal);
-            mHorizontalScroll->setRange(0, 1000);
-            connect(mHorizontalScroll, SIGNAL(valueChanged(int)), this, SLOT(OnHSliderValueChanged(int)) );
-            rightLayout->addWidget( mHorizontalScroll, 2, 0 );
-        */
-        //----------------------
-
-        /*TimeTrack* track = new TimeTrack(this, "Motion Track 1");
-        TimeTrackElement* elem1 = new TimeTrackElement("Running");
-        elem1->SetStartTime( 1.0 );
-        elem1->SetEndTime( 2.5 );
-        track->AddElement( elem1 );
-
-        TimeTrackElement* elem2 = new TimeTrackElement("Walking");
-        elem2->SetStartTime( 3.0 );
-        elem2->SetEndTime( 3.3 );
-        elem2->SetSelected( true );
-        track->AddElement( elem2 );
-        AddTrack( track );
-
-        TimeTrack* track2= new TimeTrack(this, "Motion Track 2");
-        TimeTrackElement* elem3 = new TimeTrackElement("Looking Around");
-        elem3->SetStartTime( 2.0 );
-        elem3->SetEndTime( 3.0 );
-        track2->AddElement( elem3 );
-        AddTrack( track2 );
-
-        //AddTrack( new TimeTrack(this, "Motion Track 3") );
-        //AddTrack( new TimeTrack(this, "Motion Events") );
-        //AddTrack( new TimeTrack(this, "Controllers") );*/
 
         connect(mTrackDataWidget, SIGNAL(ElementTrackChanged(uint32, float, float, const char*, const char*)), this, SLOT(MotionEventTrackChanged(uint32, float, float, const char*, const char*)));
         connect(mTrackDataWidget, SIGNAL(MotionEventChanged(TimeTrackElement*, double, double)), this, SLOT(MotionEventChanged(TimeTrackElement*, double, double)));
@@ -440,8 +393,6 @@ namespace EMStudio
     // calculate time values
     void TimeViewPlugin::CalcTime(double xPixel, double* outPixelTime, uint32* outMinutes, uint32* outSeconds, uint32* outMilSecs, uint32* outFrameNr, bool scaleXPixel) const
     {
-        //const double pixelTime = (xPixel + mScrollX) * TIMEVIEW_SECONDSPERPIXEL * mTimeScale;
-        //  const double pixelTime = ((xPixel+mScrollX/**mTimeScale*/) / mPixelsPerSecond);
         if (scaleXPixel)
         {
             xPixel *= mTimeScale;
@@ -496,6 +447,7 @@ namespace EMStudio
         mTimeInfoWidget->update();
         mDirty = false;
     }
+
 
     /*
     // scroll horizontally
@@ -914,6 +866,11 @@ namespace EMStudio
     // render the frame
     void TimeViewPlugin::ProcessFrame(float timePassedInSeconds)
     {
+        if (GetManager()->GetAvoidRendering() || mMainWindow->visibleRegion().isEmpty())
+        {
+            return;
+        }
+
         mTotalTime += timePassedInSeconds;
 
         ValidatePluginLinks();
@@ -1064,7 +1021,7 @@ namespace EMStudio
             mTotalTime = 0.0f;
         }
 
-        if (mDock->visibleRegion().isEmpty() == false && redraw && mDirty)
+        if (redraw && mDirty)
         {
             UpdateVisualData();
         }
@@ -2233,6 +2190,7 @@ namespace EMStudio
     {
         mTargetScrollY  = value;
         mScrollY        = value;
+        UpdateVisualData();
     }
 
 

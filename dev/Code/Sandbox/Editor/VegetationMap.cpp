@@ -469,12 +469,15 @@ CVegetationMap::CVegetationMap()
 
     // Initialize the random number generator
     srand(GetTickCount());
+
+    AzToolsFramework::EditorVegetation::EditorVegetationRequestsBus::Handler::BusConnect(this);
 }
 
 
 //////////////////////////////////////////////////////////////////////////
 CVegetationMap::~CVegetationMap()
 {
+    AzToolsFramework::EditorVegetation::EditorVegetationRequestsBus::Handler::BusDisconnect();
     ClearAll();
 }
 
@@ -909,6 +912,11 @@ CVegetationInstance* CVegetationMap::CreateObjInstance(CVegetationObject* object
         return 0;
     }
 
+    if (m_numInstances >= MAX_VEGETATION_INSTANCES)
+    {
+        return nullptr;
+    }
+
     CVegetationInstance* obj = new CVegetationInstance();
     obj->m_refCount = 1; // Starts with 1 reference.
     obj->object = object;
@@ -1292,7 +1300,7 @@ CVegetationInstance* CVegetationMap::PlaceObjectInstance(const Vec3& worldPos, C
 
 
 //////////////////////////////////////////////////////////////////////////
-void CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* object, Vec3* pPos)
+bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* object, Vec3* pPos)
 {
     assert(object != 0);
 
@@ -1348,6 +1356,7 @@ void CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
     float cy = (rc.bottom() + 1 + rc.top()) / 2.0f;
 
     // Calculate the vegetation for every point in the area marked by the brush
+    bool success = true;
     for (int i = 0; i < count; i++)
     {
         if (bProgress)
@@ -1435,6 +1444,12 @@ void CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
             obj->scale = fScale;
             RegisterInstance(obj);
         }
+        else
+        {
+            // Stop trying to create more instances if we failed (e.g. reached max vegetation instance limit)
+            success = false;
+            break;
+        }
     }
 
     // if undo stored, store info for redo
@@ -1442,6 +1457,8 @@ void CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
     {
         StoreBaseUndo();
     }
+
+    return success;
 }
 
 
@@ -1644,7 +1661,7 @@ CVegetationObject* CVegetationMap::CreateObject(CVegetationObject* prev)
     if (id < 0)
     {
         // Free id not found
-        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Vegetation objects limit is reached."));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Vegetation objects limit is reached."));
         return 0;
     }
 
@@ -3266,36 +3283,23 @@ void CVegetationMap::StoreBaseUndo(EStoreUndo state)
     }
 }
 
-CVegetationInstance* CVegetationMap::CloneInstance(CVegetationInstance* pOriginal)
+AZStd::vector<CVegetationInstance*> CVegetationMap::GetObjectInstances(const AZ::Vector2& min, const AZ::Vector2& max)
 {
-    SectorInfo* si = GetVegSector(pOriginal->pos);
+    AZStd::vector<CVegetationInstance*> result;
+    std::vector<CVegetationInstance*> vegetationInstances;
 
-    if (!si)
+    GetObjectInstances(min.GetX(), min.GetY(), max.GetX(), max.GetY(), vegetationInstances);
+    result.reserve(vegetationInstances.size());
+
+    for (const auto& vegetation : vegetationInstances)
     {
-        return 0;
+        result.push_back(vegetation);
     }
 
-    CVegetationInstance* obj = new CVegetationInstance;
-    obj->m_refCount = 1; // Starts with 1 reference.
-    //obj->AddRef();
-    obj->pos = pOriginal->pos;
-    obj->scale = pOriginal->scale;
-    obj->object = pOriginal->object;
-    obj->brightness = pOriginal->brightness;
-    obj->angle = pOriginal->angle;
-    obj->pRenderNode = 0;
-    obj->pRenderNodeGroundDecal = 0;
-    obj->m_boIsSelected = false;
+    return result;
+}
 
-    if (CUndo::IsRecording())
-    {
-        CUndo::Record(new CUndoVegInstanceCreate(obj, false));
-    }
-
-    // Add object to end of the list of instances in sector.
-    // Increase number of instances.
-    obj->object->SetNumInstances(obj->object->GetNumInstances() + 1);
-    m_numInstances++;
-    SectorLink(obj, si);
-    return obj;
+void CVegetationMap::DeleteObjectInstance(CVegetationInstance* instance)
+{
+    DeleteObjInstance(instance);
 }

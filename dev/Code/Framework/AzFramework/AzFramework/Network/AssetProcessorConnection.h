@@ -26,7 +26,7 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Socket/AzSocket_fwd.h>
 #include <AzFramework/Network/SocketConnection.h>
-
+#include <AzFramework/Asset/AssetSystemTypes.h>
 
 namespace AzFramework
 {
@@ -86,6 +86,7 @@ namespace AzFramework
             EConnectionState GetConnectionState() const override;
             bool IsConnected() const override;
             bool SendMsg(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength) override;
+            bool SendMsg(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength) override;
             bool SendRequest(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength, TMessageCallback handler) override;
             SocketConnection::TMessageCallbackHandle AddMessageHandler(AZ::u32 typeId, TMessageCallback callback) override;
             void RemoveMessageHandler(AZ::u32 typeId, TMessageCallbackHandle callbackHandle) override;
@@ -131,7 +132,7 @@ namespace AzFramework
             //send recv messages
             bool SendRequest(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength, TMessageCallback handler);
             void QueueMessageForSend(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength);
-            void InvokeMessageHandler(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength);
+            void InvokeMessageHandler(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength);
             void InvokeResponseHandler(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength);
             void AddResponseHandler(AZ::u32 typeId, AZ::u32 serial, SocketConnection::TMessageCallback callback);
             void RemoveResponseHandler(AZ::u32 typeId, AZ::u32 serial);
@@ -188,8 +189,15 @@ namespace AzFramework
 
         typedef AZStd::vector<AZ::u8, AZ::OSStdAllocator> MessageBuffer;
 
+        template <class Response>
+        static bool SendResponse(const Response& response, AZ::u32 requestSerial)
+        {
+            requestSerial |= AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG; //Set response bit
+            return SendRequest(response, nullptr, requestSerial);
+        }
+
         template <class Request>
-        static bool SendRequest(const Request& request, SocketConnection* connection = nullptr)
+        static bool SendRequest(const Request& request, SocketConnection* connection = nullptr, AZ::u32 serial = AzFramework::AssetSystem::DEFAULT_SERIAL)
         {
             if (!connection)
             {
@@ -202,11 +210,11 @@ namespace AzFramework
                 return false;
             }
 
-            return SendRequestToConnection(request, connection);
+            return SendRequestToConnection(request, connection, serial);
         }
 
         template <class Request>
-        static bool SendRequestToConnection(const Request& request, SocketConnection* connection)
+        static bool SendRequestToConnection(const Request& request, SocketConnection* connection, AZ::u32 serial = AzFramework::AssetSystem::DEFAULT_SERIAL)
         {
             AZ_Assert(connection, "SendRequest requires a valid SocketConnection");
             if (!connection)
@@ -219,7 +227,7 @@ namespace AzFramework
             AZ_Assert(serialized, "AssetProcessor::SendRequest: failed to serialize");
             if (serialized)
             {
-                return connection->SendMsg(request.GetMessageType(), requestBuffer.data(), static_cast<AZ::u32>(requestBuffer.size()));
+                return connection->SendMsg(request.GetMessageType(), serial, requestBuffer.data(), static_cast<AZ::u32>(requestBuffer.size()));
             }
             return false;
         }
@@ -253,12 +261,12 @@ namespace AzFramework
             MessageBuffer requestBuffer;
             bool emptyResponseMessage = true;
             bool serialized = PackMessage(request, requestBuffer);
-            AZ_Assert(serialized, "RemoteFileIO::SendRequest: failed to serialize");
+            AZ_Assert(serialized, "AssetProcessor::SendRequest: failed to serialize");
             if (serialized)
             {
                 MessageBuffer responseBuffer;
 
-                auto readResponseFunction = [&responseBuffer, &emptyResponseMessage](AZ::u32 connId, const void* data, AZ::u32 dataLength)
+                auto readResponseFunction = [&responseBuffer, &emptyResponseMessage](AZ::u32 connId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength)
                     {
                         (void)connId;
                         if (dataLength != 0)

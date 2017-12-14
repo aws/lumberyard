@@ -25,7 +25,6 @@
 #include "IItemSystem.h"
 #include "IGameRulesSystem.h"
 #include "IVehicleSystem.h"
-#include <IMusicSystem.h>
 #include "IMovieSystem.h"
 #include "IPlayerProfiles.h"
 #include "IStreamEngine.h"
@@ -957,23 +956,6 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
     gEnv->pGame->GetIGameFramework()->GetIVehicleSystem()->Reset();
     checkpoint.Check("ResetSubSystems");
 
-    // MusicSystem Serialization
-    if (gEnv->pMusicSystem)
-    {
-        gEnv->pMusicSystem->EndTheme(Audio::EThemeFade_StopAtOnce, 0);
-        loadEnvironment.m_pSer = loadEnvironment.m_pLoadGame->GetSection(SAVEGAME_MUSICSYSTEM_SECTION);
-
-        if (loadEnvironment.m_pSer.get())
-        {
-            gEnv->pMusicSystem->Serialize(*loadEnvironment.m_pSer);
-        }
-        else
-        {
-            GameWarning("Unable to open section %s", SAVEGAME_MUSICSYSTEM_SECTION);
-        }
-    }
-    checkpoint.Check("MusicSystem");
-
     if (GetISystem()->IsSerializingFile() == 1)      //general quickload fix-ups
     {
         //clear keys
@@ -1116,13 +1098,6 @@ void CGameSerialize::SaveEngineSystems(SSaveEnvironment& savEnv)
 
     // SoundSystem data
     // Audio: serialize the audiosystem?
-
-    // MusicSystem data
-    if (gEnv->pMusicSystem)
-    {
-        gEnv->pMusicSystem->Serialize(savEnv.m_pSaveGame->AddSection(SAVEGAME_MUSICSYSTEM_SECTION));
-    }
-    savEnv.m_checkpoint.Check("MusicSystem");
 
     //itemsystem - LTL inventory only
     if (savEnv.m_pCryAction->GetIItemSystem())

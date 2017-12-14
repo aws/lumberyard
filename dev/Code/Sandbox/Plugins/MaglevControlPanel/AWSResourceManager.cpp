@@ -57,6 +57,7 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/EBus/Results.h>
+#include <AzFramework/API/ApplicationAPI.h>
 
 #include <AWSResourceManager.moc>
 #include <IAWSResourceManager.moc>
@@ -120,7 +121,18 @@ AWSResourceManager::AWSResourceManager(IEditor* editor)
 
 AZStd::string AWSResourceManager::GetRootDirectoryPath()
 {
-    return AZStd::string(::Path::GetExecutableParentDirectoryUnicode().toLatin1().data());
+    // Request the engine root as the root directory
+    const char* engineRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+
+    if (!engineRoot)
+    {
+        // If unable to get the engine root from the bus, fallback to the executable's path
+        return AZStd::string(::Path::GetExecutableParentDirectoryUnicode().toUtf8().data());
+    }
+
+    return AZStd::string(engineRoot);
+
 }
 
 AZStd::string AWSResourceManager::GetGameDirectoryPath()

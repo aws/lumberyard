@@ -20,11 +20,12 @@ struct IRenderNode;
 
 namespace LmbrCentral
 {
-    //! Provides common implementation for the MaterialOwnerRequests interface that will be needed by 
-    //! most components that have materials.
-    class MaterialOwnerRequestBusHandlerImpl 
-        : public MaterialOwnerRequestBus::Handler
-        , public MeshComponentNotificationBus::Handler
+    //! This is helper class to provide common implementation for the MaterialOwnerRequests interface 
+    //! that will be needed by most components that have materials.
+    //! This does not actually inherit the MaterialOwnerRequestBus::Handler interface because it is
+    //! not intended to subscribe to that bus, but it does provide implementations for all the same functions.
+    class MaterialOwnerRequestBusHandlerImpl
+        : public MeshComponentNotificationBus::Handler
         , public AZ::TickBus::Handler
     {
         using MaterialPtr = _smart_ptr < IMaterial >;
@@ -45,19 +46,19 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // MaterialOwnerRequestBus interface implementation
-        bool IsMaterialOwnerReady() override;
-        void SetMaterial(MaterialPtr) override;
-        MaterialPtr GetMaterial() override;
-        void SetMaterialHandle(MaterialHandle) override;
-        MaterialHandle GetMaterialHandle() override;
-        void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/) override;
-        void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/) override;
-        void SetMaterialParamColor(   const AZStd::string& /*name*/, const AZ::Color& /*value*/) override;
-        void SetMaterialParamFloat(   const AZStd::string& /*name*/, float /*value*/) override;
-        AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/) override;
-        AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/) override;
-        AZ::Color   GetMaterialParamColor(   const AZStd::string& /*name*/) override;
-        float       GetMaterialParamFloat(const AZStd::string& /*name*/) override;
+        bool IsMaterialOwnerReady();
+        void SetMaterial(MaterialPtr);
+        MaterialPtr GetMaterial();
+        void SetMaterialHandle(MaterialHandle);
+        MaterialHandle GetMaterialHandle();
+        void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/, int /*materialId = 1*/);
+        void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/, int /*materialId = 1*/);
+        void SetMaterialParamColor(   const AZStd::string& /*name*/, const AZ::Color& /*value*/, int /*materialId = 1*/);
+        void SetMaterialParamFloat(   const AZStd::string& /*name*/, float /*value*/, int /*materialId = 1*/);
+        AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/, int /*materialId = 1*/);
+        AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/, int /*materialId = 1*/);
+        AZ::Color   GetMaterialParamColor(   const AZStd::string& /*name*/, int /*materialId = 1*/);
+        float       GetMaterialParamFloat(const AZStd::string& /*name*/, int /*materialId = 1*/);
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

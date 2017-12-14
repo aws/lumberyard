@@ -404,7 +404,7 @@ namespace DynamicContent
 
     void PackagesModel::SetUpIcon()
     {
-        QIcon& iconToSet = QIcon{m_inProgressMovie.currentPixmap()};
+        QIcon iconToSet = QIcon{m_inProgressMovie.currentPixmap()};
         updatingItem->setIcon(iconToSet);
         
         connect(&m_inProgressMovie, &QMovie::frameChanged, this, &PackagesModel::OnProgressIndicatorAnimationUpdate);

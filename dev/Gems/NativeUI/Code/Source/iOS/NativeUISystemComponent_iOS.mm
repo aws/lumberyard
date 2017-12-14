@@ -12,6 +12,8 @@
 
 #include <NativeUISystemComponent.h>
 
+#include <AzFramework/API/ApplicationAPI.h>
+
 #import <UIKit/UIKit.h>
 
 namespace NativeUI
@@ -40,7 +42,7 @@ namespace NativeUI
         [rootViewController presentViewController:alert animated:YES completion:nil];
         while (userSelection.empty())
         {
-            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, TRUE);
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopOnce);
         }
         
         return userSelection;

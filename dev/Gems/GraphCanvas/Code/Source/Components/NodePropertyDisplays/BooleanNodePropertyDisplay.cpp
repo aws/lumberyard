@@ -17,6 +17,7 @@
 
 #include <Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h>
 
+#include <Widgets/GraphCanvasCheckBox.h>
 #include <Widgets/GraphCanvasLabel.h>
 
 namespace GraphCanvas
@@ -26,59 +27,36 @@ namespace GraphCanvas
     ///////////////////////////////
     BooleanNodePropertyDisplay::BooleanNodePropertyDisplay(BooleanDataInterface* dataInterface)
         : m_dataInterface(dataInterface)
-        , m_displayLabel(nullptr)
-        , m_proxyWidget(nullptr)
+        , m_checkBox(nullptr)
     {
         m_dataInterface->RegisterDisplay(this);
         
         m_disabledLabel = aznew GraphCanvasLabel();
-        m_displayLabel = aznew GraphCanvasLabel();
-        m_proxyWidget = new QGraphicsProxyWidget();
+        m_checkBox = aznew GraphCanvasCheckBox();
         
-        m_pushButton = new QPushButton();
-        m_pushButton->setProperty("HasNoWindowDecorations", true);
-
-        QObject::connect(m_pushButton, &QPushButton::clicked, [this](bool) { this->InvertValue(); });
-        
-        m_proxyWidget->setWidget(m_pushButton);
-
-        RegisterShortcutDispatcher(m_pushButton);
+        GraphCanvasCheckBoxNotificationBus::Handler::BusConnect(m_checkBox);
     }
     
     BooleanNodePropertyDisplay::~BooleanNodePropertyDisplay()
     {
+        GraphCanvasCheckBoxNotificationBus::Handler::BusDisconnect();
+
         delete m_dataInterface;
 
-        delete m_proxyWidget;
-        delete m_displayLabel;
+        delete m_checkBox;
         delete m_disabledLabel;
     }
 
     void BooleanNodePropertyDisplay::RefreshStyle()
     {
         m_disabledLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisabledLabelStyle("boolean").c_str());
-        m_displayLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisplayLabelStyle("boolean").c_str());
-
-        QSizeF minimumSize = m_displayLabel->minimumSize();
-        m_pushButton->setMinimumSize(minimumSize.width(), minimumSize.height());
+        m_checkBox->SetSceneStyle(GetSceneId());
     }
     
     void BooleanNodePropertyDisplay::UpdateDisplay()
     {
         bool value = m_dataInterface->GetBool();
-        
-        if (value)
-        {
-            m_pushButton->setText("True");
-            m_displayLabel->SetLabel("True");
-        }
-        else
-        {
-            m_pushButton->setText("False");
-            m_displayLabel->SetLabel("False");
-        }
-        
-        m_proxyWidget->update();
+        m_checkBox->SetChecked(value);
     }
 
     QGraphicsLayoutItem* BooleanNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
@@ -88,19 +66,22 @@ namespace GraphCanvas
 
     QGraphicsLayoutItem* BooleanNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
     {
-        return m_displayLabel;
+        return m_checkBox;
     }
 
     QGraphicsLayoutItem* BooleanNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
     {
-        return m_proxyWidget;
+        return m_checkBox;
+    }
+
+    void BooleanNodePropertyDisplay::OnValueChanged(bool value)
+    {
+        m_dataInterface->SetBool(value);
+        UpdateDisplay();
     }
     
-    void BooleanNodePropertyDisplay::InvertValue()
+    void BooleanNodePropertyDisplay::OnClicked()
     {
         TryAndSelectNode();
-
-        m_dataInterface->SetBool(!m_dataInterface->GetBool());
-        UpdateDisplay();
     }
 }

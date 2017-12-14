@@ -121,12 +121,12 @@ namespace ScriptCanvasEditor
             return -1;
         }
 
-        void GraphTabBar::AddGraphTab(const AZ::EntityId& sceneId, const AZ::Data::AssetId& assetId, const AZ::EntityId& graphId, const AZStd::string& tabName)
+        void GraphTabBar::AddGraphTab(const AZ::Data::AssetId& assetId, AZStd::string_view tabName)
         {
-            InsertGraphTab(count(), sceneId, assetId, graphId, tabName);
+            InsertGraphTab(count(),  assetId, tabName);
         }
 
-        void GraphTabBar::InsertGraphTab(int tabIndex, const AZ::EntityId& sceneId, const AZ::Data::AssetId& assetId, const AZ::EntityId& graphId, const AZStd::string& tabName)
+        void GraphTabBar::InsertGraphTab(int tabIndex, const AZ::Data::AssetId& assetId, AZStd::string_view tabName)
         {
             if (!SelectTab(assetId))
             {
@@ -135,8 +135,7 @@ namespace ScriptCanvasEditor
                 ScriptCanvasFileState fileState;
                 DocumentContextRequestBus::BroadcastResult(fileState, &DocumentContextRequests::GetScriptCanvasAssetModificationState, assetId);
 
-                CanvasWidget* canvasWidget = aznew CanvasWidget(assetId, graphId, this);
-                canvasWidget->ShowScene(sceneId);
+                CanvasWidget* canvasWidget = aznew CanvasWidget(this);
 
                 GraphTabMetadata tabMetadata;
                 tabMetadata.m_assetId = assetId;
@@ -145,56 +144,29 @@ namespace ScriptCanvasEditor
                 tabMetadata.m_fileState = fileState;
                 setTabData(newTabIndex, QVariant::fromValue(tabMetadata));
                 SetTabText(newTabIndex, tabName.data(), fileState);
-
-                setCurrentIndex(newTabIndex);
-                currentChangedTab(newTabIndex);
             }
         }
 
-        void GraphTabBar::InsertBlankGraphTab(int tabIndex, const AZ::Data::AssetId& assetId)
+        bool GraphTabBar::SetGraphTabData(int index, GraphTabMetadata tabMetadata)
         {
-            if (!SelectTab(assetId))
-            {
-                int newTabIndex = insertTab(tabIndex, "");
-                DocumentContextNotificationBus::MultiHandler::BusConnect(assetId);
-                ScriptCanvasFileState fileState;
-                DocumentContextRequestBus::BroadcastResult(fileState, &DocumentContextRequests::GetScriptCanvasAssetModificationState, assetId);
-
-                CanvasWidget* canvasWidget = aznew CanvasWidget(assetId, AZ::EntityId(), this);
-
-                GraphTabMetadata tabMetadata;
-                tabMetadata.m_assetId = assetId;
-                tabMetadata.m_hostWidget = canvasWidget;
-                tabMetadata.m_fileState = fileState;
-
-                setTabData(newTabIndex, QVariant::fromValue(tabMetadata));
-                setCurrentIndex(newTabIndex);
-                currentChangedTab(newTabIndex);
-            }
-        }
-
-        bool GraphTabBar::SetGraphTabData(const AZ::Data::AssetId& assetId, const AZ::EntityId& sceneId, const AZ::EntityId& graphId, const AZStd::string& tabName)
-        {
-            int index = FindTab(assetId);
             if (index >= 0 && index < count())
             {
                 QVariant data = tabData(index);
                 if (data.isValid())
                 {
-                    auto graphMetadata = data.value<GraphTabMetadata>();
+                    auto curMetadata = data.value<GraphTabMetadata>();
+                    DocumentContextNotificationBus::MultiHandler::BusDisconnect(curMetadata.m_assetId);
 
-                    graphMetadata.m_tabName = QString(tabName.data());
-                    if (graphMetadata.m_hostWidget)
+                    // The canvas widget is owned by the tab and cannot be replaced
+                    if (tabMetadata.m_hostWidget != curMetadata.m_hostWidget)
                     {
-                        if (auto canvasWidget = qobject_cast<Widget::CanvasWidget*>(graphMetadata.m_hostWidget))
-                        {
-                            canvasWidget->SetGraphId(graphId);
-                            canvasWidget->ShowScene(sceneId);
-                        }
+                        delete tabMetadata.m_hostWidget;
+                        tabMetadata.m_hostWidget = aznew CanvasWidget(this);
                     }
+                    setTabData(index, QVariant::fromValue(tabMetadata));
+                    SetTabText(index, tabMetadata.m_tabName, tabMetadata.m_fileState);
+                    DocumentContextNotificationBus::MultiHandler::BusConnect(tabMetadata.m_assetId);
 
-                    setTabData(index, QVariant::fromValue(graphMetadata));
-                    SetTabText(index, graphMetadata.m_tabName, graphMetadata.m_fileState);
                     update();
                     show();
                     return true;

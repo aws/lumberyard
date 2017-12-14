@@ -17,7 +17,9 @@ local bullet =
 		
 		Firepower =
 		{
-			Damage = { default = 50.0, description = "The amount of damage a single shot does." },
+			DamageMin = { default = 10.0, description = "The damage done to something at the edge of the explosion." },
+			DamageMax = { default = 50.0, description = "The damage done to something at the epicenter." },
+			
 			ForceMultiplier = { default = 1250, description = "The strength of the explosion at the center." },
 		},
 		
@@ -193,7 +195,9 @@ function bullet:OnActivate()
 	self.explosionTimer = 0.0;
 	self.dissipateTimer = 0.0;
 	
-	self.ignoreSurfaceId = StarterGameUtility.GetSurfaceIndexFromString("mat_nodraw");
+	self.Properties.Range.InitialNormalised = self.Properties.Range.Initial / self.Properties.Range.Max;
+	
+	self.ignoreSurfaceId = StarterGameMaterialUtility.GetSurfaceIndexFromName("mat_nodraw");
 	
 	self.entitiesHit = {}
 		
@@ -328,7 +332,7 @@ function bullet:UpdateFired(deltaTime)
 	if (self.life >= self.Properties.Lifespan) then
 		self:Detonate(nil);
 	end
-
+	
 	-- There's currently a physics bug where the bullet can go through geometry without triggering
 	-- the 'OnCollision' callback. Therefore, we'll do our own simple raycast check each update to
 	-- catch any obvious collisions that didn't get reported.
@@ -347,13 +351,16 @@ function bullet:UpdateFired(deltaTime)
 		local hits = PhysicsSystemRequestBus.Broadcast.RayCast(rayCastConfig);
 		if (hits:HasBlockingHit()) then
 			local hit = hits:GetBlockingHit();
-			if (hit.entityId ~= self.entityId and not StarterGameUtility.EntityHasTag(hit.entityId, "PlayerWeapon") and not StarterGameUtility.EntityHasTag(hit.entityId, "PlayerCharacter")) then
-				--Debug.Log("Hit entity: " .. tostring(StarterGameUtility.GetEntityName(hit.entityId)));
+			if (hit.entityId ~= self.entityId and not StarterGameEntityUtility.EntityHasTag(hit.entityId, "PlayerWeapon") and not StarterGameEntityUtility.EntityHasTag(hit.entityId, "PlayerCharacter")) then
+				--Debug.Log("Hit entity: " .. tostring(StarterGameEntityUtility.GetEntityName(hit.entityId)));
 				-- Move to the collision point before detonating.
 				local tm = TransformBus.Event.GetWorldTM(self.entityId);
 				tm:SetTranslation(hit.position);
 				TransformBus.Event.SetWorldTM(self.entityId, tm);
-				self:Detonate(nil);
+				
+				-- Emulate the collision parameters.
+				local data = StarterGameUtility.CreatePseudoCollisionEvent(hit.entityId, hit.position, hit.normal, dir:GetNormalized());
+				self:Detonate(data);
 			end
 		end
 	end
@@ -366,7 +373,7 @@ function bullet:OnCollision(data)
 		local player = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
 		--Debug.Log("Collision surfaces " .. data.surfaces[1] .. " " .. data.surfaces[2]);
 		if (data.entity ~= player and data.surfaces[2] ~= self.ignoreSurfaceId) then
-			--Debug.Log("Collided with " .. tostring(data.entity) .. " (" .. tostring(StarterGameUtility.GetEntityName(data.entity)) .. ") at " .. tostring(data.position));
+			--Debug.Log("Collided with " .. tostring(data.entity) .. " (" .. tostring(StarterGameEntityUtility.GetEntityName(data.entity)) .. ") at " .. tostring(data.position));
 			self:Detonate(data);
 			detonated = true;
 		end
@@ -477,23 +484,29 @@ function bullet:UpdateExplosion(deltaTime)
 			-- the impulse. If the distance is greater than 1.0 then it means the entity is
 			-- actually outside the range.
 			if (dist > 0.0 and dist < 1.0) then
-				-- deal damage to other things
-				local godMode = utilities.GetDebugManagerBool("GodMode", false);
-				
-				local hitPlayer = StarterGameUtility.EntityHasTag(hitEntityId, "PlayerCharacter");
-				if( (self.owner ~= hitEntityId) and not ((godMode == true) and hitPlayer)) then
-					local damageEventId = GameplayNotificationId(hitEntityId, self.Properties.Events.DealDamage, "float");
-					GameplayNotificationBus.Event.OnEventBegin(damageEventId, -self.Properties.Firepower.Damage);
+				local damage = self.Properties.Firepower.DamageMax;
+				if (dist > self.Properties.Range.InitialNormalised) then
+					local delta = (dist - self.Properties.Range.InitialNormalised) / (1.0 - self.Properties.Range.InitialNormalised);
+					damage = utilities.Lerp(self.Properties.Firepower.DamageMax, self.Properties.Firepower.DamageMin, delta);
 				end
 				
 				-- If it's an A.I. then deal damage to it as well.
-				if (StarterGameUtility.EntityHasTag(hitEntityId, "AICharacter")) then
+				if (StarterGameEntityUtility.EntityHasTag(hitEntityId, "AICharacter")) then
 					local params = GotShotParams();
-					params.damage = self.Properties.Firepower.Damage;
+					params.damage = damage;
 					params.assailant = self.owner;
 					params.immediatelyRagdoll = true;
 					local eventId = GameplayNotificationId(hitEntityId, self.Properties.Events.GotShot, "float");
+					--Debug.Log("Hit " .. tostring(hitEntityId) .. " for " .. tostring(damage) .. "(diat: " .. tostring(dist) .. ")");
 					GameplayNotificationBus.Event.OnEventBegin(eventId, params);
+				end
+				
+				-- deal damage to other things
+				local godMode = utilities.GetDebugManagerBool("GodMode", false);
+				local hitPlayer = StarterGameEntityUtility.EntityHasTag(hitEntityId, "PlayerCharacter");
+				if( (self.owner ~= hitEntityId) and not ((godMode == true) and hitPlayer)) then
+					local damageEventId = GameplayNotificationId(hitEntityId, self.Properties.Events.DealDamage, "float");
+					GameplayNotificationBus.Event.OnEventBegin(damageEventId, -damage);
 				end
 				
 				if (not hitPlayer) then

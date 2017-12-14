@@ -33,28 +33,30 @@ namespace EditorUIPlugin
     public:
         AZ_RTTI(LibraryStateCommand, "{A4EB7570-54D3-4793-A2CB-08701E35E6C4}", UndoSystem::URSequencePoint);
         AZ_CLASS_ALLOCATOR(LibraryStateCommand, AZ::SystemAllocator, 0);
-        
+
         void Undo() override;
         void Redo() override;
+
+        bool Changed() const override { return true; }
 
         // capture the the library's states
         void Capture(const AZStd::string& libId, bool isModified);
 
     protected:
-        //protected constructor, user shouldn't use this command directly. 
-        LibraryStateCommand(const AZStd::string& friendlyName);
+        //protected constructor, user shouldn't use this command directly.
+        explicit LibraryStateCommand(const AZStd::string& friendlyName);
         virtual ~LibraryStateCommand();
 
         void RestoreLibrary(XmlNodeRef& libSaveData, int newPos, const LibTreeExpandInfo& expandInfo) const;
         int GetLibraryIndex(const AZStd::string& libId) const;
-        
+
         //The name of the captured library (name is the id we can use)
-        AZStd::string m_libId;                              
-        
+        AZStd::string m_libId;
+
         //the index of this library in lib manager
-        int m_libUndoPos;                                       
+        int m_libUndoPos;
         int m_libRedoPos;
-        
+
         //undo data for library content
         XmlNodeRef m_undoState;
         XmlNodeRef m_redoState;
@@ -62,7 +64,7 @@ namespace EditorUIPlugin
         //undo data of library expand in the lib tree view
         LibTreeExpandInfo m_undoExpand;
         LibTreeExpandInfo m_redoExpand;
-        
+
         // DISABLE COPY
         LibraryStateCommand(const LibraryStateCommand& other) = delete;
         const LibraryStateCommand& operator= (const LibraryStateCommand& other) = delete;
@@ -96,13 +98,15 @@ namespace EditorUIPlugin
     public:
         AZ_RTTI(LibraryMoveCommand, "{1760318A-A35C-40C7-AD36-4DBD9A1DA895}", UndoSystem::URSequencePoint);
         AZ_CLASS_ALLOCATOR(LibraryMoveCommand, AZ::SystemAllocator, 0);
-        
-        LibraryMoveCommand(const AZStd::string& libId);
+
+        explicit LibraryMoveCommand(const AZStd::string& libId);
 
         void Undo() override;
         void Redo() override;
 
-        // capture the 
+        bool Changed() const override { return m_undoPos != m_redoPos; }
+
+        // capture the
         void CaptureStart();
         void CaptureEnd();
 
@@ -110,11 +114,10 @@ namespace EditorUIPlugin
         void MoveLibrary(int newPosition) const;
         int GetLibraryIndex() const;
 
-        AZStd::string m_libId;                              ///< The name of the captured library (name is the id we can use)
+        AZStd::string m_libId; ///< The name of the captured library (name is the id we can use)
+        int m_undoPos; ///< The initial position before move.
+        int m_redoPos; ///< The position after move.
 
-        int m_undoPos;                                     //the initial position before move
-        int m_redoPos;                                       //the position after move
-        
         // DISABLE COPY
         LibraryMoveCommand(const LibraryMoveCommand& other) = delete;
         const LibraryMoveCommand& operator= (const LibraryMoveCommand& other) = delete;
@@ -127,13 +130,13 @@ namespace EditorUIPlugin
         AZ_RTTI(LibraryModifyCommand, "{77C691A9-7C09-4D93-835A-C1A949D13829}", LibraryStateCommand);
         AZ_CLASS_ALLOCATOR(LibraryModifyCommand, AZ::SystemAllocator, 0);
 
-        LibraryModifyCommand(const AZStd::string& libId);
-        
-        // capture the 
+        explicit LibraryModifyCommand(const AZStd::string& libId);
+
+        // capture the
         void CaptureStart();
         void CaptureEnd();
 
-    protected:                                                             
+    protected:
         // DISABLE COPY
         LibraryModifyCommand(const LibraryModifyCommand& other) = delete;
         const LibraryModifyCommand& operator= (const LibraryModifyCommand& other) = delete;

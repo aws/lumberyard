@@ -111,7 +111,7 @@
   </widget>
   <widget class="QToolBar" name="ToolBar1">
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Terrain Tools</string>
    </property>
    <property name="iconSize">
     <size>
@@ -144,7 +144,7 @@
   </widget>
   <widget class="QToolBar" name="ToolBar2">
    <property name="windowTitle">
-    <string>toolBar_2</string>
+    <string>Brush Toolbar</string>
    </property>
    <property name="iconSize">
     <size>

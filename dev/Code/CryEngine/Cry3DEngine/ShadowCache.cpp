@@ -23,6 +23,8 @@ void ShadowCache::InitShadowFrustum(ShadowMapFrustum*& pFr, int nLod, int nFirst
     FUNCTION_PROFILER_3DENGINE;
     assert(nLod >= 0);
 
+    // If we only allow updates via script, then early out here.
+    // When script triggers an update, m_nUpdateStrategy will be set to ShadowMapFrustum::ShadowCacheData::eFullUpdate for a single frame to process a full cached shadow update
     if ( m_nUpdateStrategy == ShadowMapFrustum::ShadowCacheData::eManualUpdate )
     {
         return;
@@ -37,10 +39,11 @@ void ShadowCache::InitShadowFrustum(ShadowMapFrustum*& pFr, int nLod, int nFirst
     {
         pFr->pShadowCacheData = new ShadowMapFrustum::ShadowCacheData;
     }
-
-    // check if we have come too close to the border of the map
+    
+    // Check if we both allow updates if the user moves too close to the border of the shadow map and if we have come too close to said border
     ShadowMapFrustum::ShadowCacheData::eUpdateStrategy nUpdateStrategy = m_nUpdateStrategy;
-    if (nUpdateStrategy == ShadowMapFrustum::ShadowCacheData::eIncrementalUpdate && Get3DEngine()->m_CachedShadowsBounds.IsReset())
+    bool allowDistanceBasedUpdates = nUpdateStrategy == ShadowMapFrustum::ShadowCacheData::eManualOrDistanceUpdate || nUpdateStrategy == ShadowMapFrustum::ShadowCacheData::eIncrementalUpdate;
+    if (allowDistanceBasedUpdates && Get3DEngine()->m_CachedShadowsBounds.IsReset())
     {
         // Distance from the camera to the center of the last time this cached static shadow map was updated
         const float distanceBetweenCenters = (passInfo.GetCamera().GetPosition() - pFr->aabbCasters.GetCenter()).GetLength();
@@ -79,6 +82,12 @@ void ShadowCache::InitShadowFrustum(ShadowMapFrustum*& pFr, int nLod, int nFirst
                 }
             }
         }
+    }
+
+    // If we allow only manual or distance-based updates, then early out here if nUpdateStrategy was not set to ShadowMapFrustum::ShadowCacheData::eFullUpdate after the distance checks above.
+    if ( nUpdateStrategy == ShadowMapFrustum::ShadowCacheData::eManualOrDistanceUpdate )
+    {
+        return;
     }
 
     AABB projectionBoundsLS(AABB::RESET);

@@ -46,13 +46,7 @@ namespace AzToolsFramework
     void TransformManipulator::Register(AzToolsFramework::ManipulatorManagerId manipulatorManagerId)
     {
         m_manipulatorManagerId = manipulatorManagerId;
-
         ManipulatorManagerNotificationBus::Handler::BusConnect(m_manipulatorManagerId);
-
-        TransformManipulatorMode currentMode = TransformManipulatorMode::Translation;
-        ManipulatorManagerRequestBus::EventResult(currentMode, m_manipulatorManagerId, &ManipulatorManagerRequestBus::Events::GetTransformManipulatorMode);
-
-        SwitchManipulators(currentMode);
     }
 
     void TransformManipulator::Unregister()
@@ -68,23 +62,18 @@ namespace AzToolsFramework
         ManipulatorManagerNotificationBus::Handler::BusDisconnect();
     }
 
-    void TransformManipulator::OnTransformManipulatorModeChanged(TransformManipulatorMode /*previousMode*/, TransformManipulatorMode currentMode)
-    {
-        SwitchManipulators(currentMode);
-    }
-
-    void TransformManipulator::InstallTranslationLinearManipulatorMouseDownCallback(LinearManipulatorMouseActionCallback onMouseDownCallback)
+    void TransformManipulator::InstallTranslationLinearManipulatorLeftMouseDownCallback(LinearManipulator::MouseActionCallback onMouseDownCallback)
     {
         for (int i = s_translationLinearManipulatorBeginIndex; i < s_translationLinearManipulatorEndIndex; ++i)
         {
             if (LinearManipulator* translationLinearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get()))
             {
-                translationLinearManipulator->InstallMouseDownCallback(onMouseDownCallback);
+                translationLinearManipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
             }
         }
     }
 
-    void TransformManipulator::InstallTranslationLinearManipulatorMouseMoveCallback(LinearManipulatorMouseActionCallback onMouseMoveCallback)
+    void TransformManipulator::InstallTranslationLinearManipulatorMouseMoveCallback(LinearManipulator::MouseActionCallback onMouseMoveCallback)
     {
         for (int i = s_translationLinearManipulatorBeginIndex; i < s_translationLinearManipulatorEndIndex; ++i)
         {
@@ -95,18 +84,18 @@ namespace AzToolsFramework
         }
     }
 
-    void TransformManipulator::InstallTranslationPlanarManipulatorMouseDownCallback(PlanarManipulatorMouseActionCallback onMouseDownCallback)
+    void TransformManipulator::InstallTranslationPlanarManipulatorLeftMouseDownCallback(PlanarManipulator::MouseActionCallback onMouseDownCallback)
     {
         for (int i = s_translationPlanarManipulatorBeginIndex; i < s_translationPlanarManipulatorEndIndex; ++i)
         {
             if (PlanarManipulator* translationPlanarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[i].get()))
             {
-                translationPlanarManipulator->InstallMouseDownCallback(onMouseDownCallback);
+                translationPlanarManipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
             }
         }
     }
 
-    void TransformManipulator::InstallTranslationPlanarManipulatorMouseMoveCallback(PlanarManipulatorMouseActionCallback onMouseMoveCallback)
+    void TransformManipulator::InstallTranslationPlanarManipulatorMouseMoveCallback(PlanarManipulator::MouseActionCallback onMouseMoveCallback)
     {
         for (int i = s_translationPlanarManipulatorBeginIndex; i < s_translationPlanarManipulatorEndIndex; ++i)
         {
@@ -117,18 +106,18 @@ namespace AzToolsFramework
         }
     }
 
-    void TransformManipulator::InstallScaleLinearManipulatorMouseDownCallback(LinearManipulatorMouseActionCallback onMouseDownCallback)
+    void TransformManipulator::InstallScaleLinearManipulatorLeftMouseDownCallback(LinearManipulator::MouseActionCallback onMouseDownCallback)
     {
         for (int i = s_scaleLinearManipulatorBeginIndex; i < s_scaleLinearManipulatorEndIndex; ++i)
         {
             if (LinearManipulator* scaleLinearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get()))
             {
-                scaleLinearManipulator->InstallMouseDownCallback(onMouseDownCallback);
+                scaleLinearManipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
             }
         }
     }
 
-    void TransformManipulator::InstallScaleLinearManipulatorMouseMoveCallback(LinearManipulatorMouseActionCallback onMouseMoveCallback)
+    void TransformManipulator::InstallScaleLinearManipulatorMouseMoveCallback(LinearManipulator::MouseActionCallback onMouseMoveCallback)
     {
         for (int i = s_scaleLinearManipulatorBeginIndex; i < s_scaleLinearManipulatorEndIndex; ++i)
         {
@@ -139,18 +128,18 @@ namespace AzToolsFramework
         }
     }
 
-    void TransformManipulator::InstallRotationAngularManipulatorMouseDownCallback(AngularManipulatorMouseActionCallback onMouseDownCallback)
+    void TransformManipulator::InstallRotationAngularManipulatorLeftMouseDownCallback(AngularManipulator::MouseActionCallback onMouseDownCallback)
     {
         for (int i = s_rotationAngularManipulatorBeginIndex; i < s_rotationAngularManipulatorEndIndex; ++i)
         {
             if (AngularManipulator* rotationAngularManipulator = azdynamic_cast<AngularManipulator*>(m_manipulators[i].get()))
             {
-                rotationAngularManipulator->InstallMouseDownCallback(onMouseDownCallback);
+                rotationAngularManipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
             }
         }
     }
 
-    void TransformManipulator::InstallRotationAngularManipulatorMouseMoveCallback(AngularManipulatorMouseActionCallback onMouseMoveCallback)
+    void TransformManipulator::InstallRotationAngularManipulatorMouseMoveCallback(AngularManipulator::MouseActionCallback onMouseMoveCallback)
     {
         for (int i = s_rotationAngularManipulatorBeginIndex; i < s_rotationAngularManipulatorEndIndex; ++i)
         {
@@ -166,33 +155,34 @@ namespace AzToolsFramework
         for (int i = 0; i < s_manipulatorCount; ++i)
         {
             BaseManipulator* manipulator = m_manipulators[i].get();
-            if (manipulator != nullptr && manipulator->IsRegistered())
+            if (manipulator != nullptr && manipulator->Registered())
             {
                 manipulator->SetBoundsDirty();
             }
         }
     }
 
-    void TransformManipulator::SwitchManipulators(TransformManipulatorMode mode)
+    void TransformManipulator::SwitchManipulators(Mode mode)
     {
         for (int i = 0; i < s_manipulatorCount; ++i)
         {
             BaseManipulator* manipulator = m_manipulators[i].get();
-            if (manipulator != nullptr && manipulator->IsRegistered())
+            if (manipulator != nullptr && manipulator->Registered())
             {
                 manipulator->Unregister();
             }
         }
+        
+        const float lineLength = 2.0f;
+        const float lineWidth = 0.05f;
 
         switch (mode)
         {
-            case TransformManipulatorMode::None:
+        case Mode::Translation:
             {
-                return;
-            } break;
-
-            case TransformManipulatorMode::Translation:
-            {
+                const float coneLength = 0.28f;
+                const float coneRadius = 0.07f;
+        
                 const int translationLinearManipulatorCount = s_translationLinearManipulatorEndIndex - s_translationLinearManipulatorBeginIndex;
                 AZ::Vector3 translationAxes[translationLinearManipulatorCount] = { 
                     AZ::Vector3::CreateAxisX(), AZ::Vector3::CreateAxisY(), AZ::Vector3::CreateAxisZ() 
@@ -208,11 +198,15 @@ namespace AzToolsFramework
                     {
                         translationLinearManipulator->Register(m_manipulatorManagerId);
                         translationLinearManipulator->SetPosition(AZ::Vector3::CreateZero());
-                        int axisIndex = i - s_translationLinearManipulatorBeginIndex;
-                        int colorIndex = axisIndex;
-                        translationLinearManipulator->SetDirection(translationAxes[axisIndex]);
-                        translationLinearManipulator->SetColor(translationAxesColors[colorIndex]);
-                        translationLinearManipulator->SetLength(130.0f);
+                        const int axisIndex = i - s_translationLinearManipulatorBeginIndex;
+                        translationLinearManipulator->SetAxis(translationAxes[axisIndex]);
+
+                        ManipulatorViews views;
+                        views.emplace_back(CreateManipulatorViewLine(
+                            *translationLinearManipulator, translationAxesColors[axisIndex], lineLength, lineWidth));
+                        views.emplace_back(CreateManipulatorViewCone(
+                            *translationLinearManipulator, translationAxesColors[axisIndex], translationLinearManipulator->GetAxis() * (lineLength - coneLength), coneLength, coneRadius));
+                        translationLinearManipulator->SetViews(AZStd::move(views));
                     }
                 }
 
@@ -221,24 +215,25 @@ namespace AzToolsFramework
                     AZ::Color(1.0f, 0.0f, 0.0f, 0.5f), AZ::Color(0.0f, 1.0f, 0.0f, 0.5f), AZ::Color(0.0f, 0.0f, 1.0f, 0.5f)
                 };
 
+                const float planeSize = 0.6f;
                 for (int i = s_translationPlanarManipulatorBeginIndex; i < s_translationPlanarManipulatorEndIndex; ++i)
                 {
                     if (PlanarManipulator* translationPlanarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[i].get()))
                     {
                         translationPlanarManipulator->Register(m_manipulatorManagerId);
                         translationPlanarManipulator->SetPosition(AZ::Vector3::CreateZero());
-                        int planeAxis1Index = (i - s_translationPlanarManipulatorBeginIndex) % translationLinearManipulatorCount;
-                        int planeAxis2Index = (i - s_translationPlanarManipulatorBeginIndex + 1) % translationLinearManipulatorCount;
+                        const int planeAxis1Index = (i - s_translationPlanarManipulatorBeginIndex) % translationLinearManipulatorCount;
+                        const int planeAxis2Index = (i - s_translationPlanarManipulatorBeginIndex + 1) % translationLinearManipulatorCount;
                         translationPlanarManipulator->SetAxes(translationAxes[planeAxis1Index], translationAxes[planeAxis2Index]);
-                        int colorIndex = i - s_translationPlanarManipulatorBeginIndex;
-                        translationPlanarManipulator->SetColor(translationPlanesColors[colorIndex]);
-                        translationPlanarManipulator->SetAxesLength(70.0f, 70.0f);
+                        const int colorIndex = i - s_translationPlanarManipulatorBeginIndex;
+
+                        translationPlanarManipulator->SetView(
+                            CreateManipulatorViewQuad(*translationPlanarManipulator, translationPlanesColors[colorIndex], translationPlanesColors[colorIndex], planeSize));
                     }
                 }
-
-            } break;
-
-            case TransformManipulatorMode::Scale:
+            }
+            break;
+        case Mode::Scale:
             {
                 const int scaleLinearManipulatorCount =  s_scaleLinearManipulatorEndIndex - s_scaleLinearManipulatorBeginIndex;
                 AZ::Vector3 scaleAxes[scaleLinearManipulatorCount] = {
@@ -249,28 +244,25 @@ namespace AzToolsFramework
                     AZ::Color(1.0f, 0.0f, 0.0f, 1.0f), AZ::Color(0.0f, 1.0f, 0.0f, 1.0f), AZ::Color(0.0f, 0.0f, 1.0f, 1.0f)
                 };
 
+                const float boxSize = 0.1f;
                 for (int i = s_scaleLinearManipulatorBeginIndex; i < s_scaleLinearManipulatorEndIndex; ++i)
                 {
                     if (LinearManipulator* scaleLinearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get()))
                     {
                         scaleLinearManipulator->Register(m_manipulatorManagerId);
                         scaleLinearManipulator->SetPosition(AZ::Vector3::CreateZero());
-                        int axisIndex = i - s_scaleLinearManipulatorBeginIndex;
-                        int colorIndex = axisIndex;
-                        scaleLinearManipulator->SetDirection(scaleAxes[axisIndex]);
-                        scaleLinearManipulator->SetColor(scaleAxesColors[colorIndex]);
-                        scaleLinearManipulator->SetLength(130.0f);
+                        const int axisIndex = i - s_scaleLinearManipulatorBeginIndex;
+                        scaleLinearManipulator->SetAxis(scaleAxes[axisIndex]);
 
-                        scaleLinearManipulator->SetDisplayType(LinearManipulator::DisplayType::Cube);
-                        int upAxisIndex = (axisIndex + 1) % scaleLinearManipulatorCount;
-                        int sideAxisIndex = (axisIndex + 2) % scaleLinearManipulatorCount;
-                        scaleLinearManipulator->SetUpDirection(scaleAxes[upAxisIndex]);
-                        scaleLinearManipulator->SetSideReferenceDirection(scaleAxes[sideAxisIndex]);
+                        ManipulatorViews views;
+                        views.emplace_back(CreateManipulatorViewLine(*scaleLinearManipulator, scaleAxesColors[axisIndex], lineLength, lineWidth));
+                        views.emplace_back(CreateManipulatorViewBox(AZ::Transform::CreateIdentity(), scaleAxesColors[axisIndex], scaleLinearManipulator->GetAxis() * (lineLength - boxSize), AZ::Vector3(boxSize, boxSize, boxSize)));
+                        scaleLinearManipulator->SetViews(AZStd::move(views));
                     }
                 }
-            } break;
-
-            case TransformManipulatorMode::Rotation:
+            } 
+            break;
+        case Mode::Rotation:
             {
                 const int rotationAngularManipulatorCount = s_rotationAngularManipulatorEndIndex - s_rotationAngularManipulatorBeginIndex;
                 AZ::Vector3 rotationAxes[rotationAngularManipulatorCount] = {
@@ -285,16 +277,20 @@ namespace AzToolsFramework
                 {
                     if (AngularManipulator* rotationManipulator = azdynamic_cast<AngularManipulator*>(m_manipulators[i].get()))
                     {
+                        size_t rotationAxisIndex = i - s_rotationAngularManipulatorBeginIndex;
+
                         rotationManipulator->Register(m_manipulatorManagerId);
-                        rotationManipulator->SetPosition(AZ::Vector3::CreateZero());
-                        int rotationAxisIndex = i - s_rotationAngularManipulatorBeginIndex;
-                        int colorIndex = rotationAxisIndex;
-                        rotationManipulator->SetRotationAxis(rotationAxes[rotationAxisIndex]);
-                        rotationManipulator->SetRadius(180.0f);
-                        rotationManipulator->SetColor(rotationCircleColors[colorIndex]);
+                        rotationManipulator->SetTransform(AZ::Transform::CreateIdentity());
+                        rotationManipulator->SetAxis(rotationAxes[rotationAxisIndex]);
+
+                        rotationManipulator->SetView(
+                            CreateManipulatorViewCircle(
+                                *rotationManipulator, rotationCircleColors[rotationAxisIndex],
+                                lineLength, lineWidth));
                     }
                 }
-            } break;
+            } 
+            break;
         }
     }
 } // namespace AzToolsFramework

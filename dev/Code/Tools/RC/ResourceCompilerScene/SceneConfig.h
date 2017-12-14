@@ -31,10 +31,6 @@ namespace AZ
 
             const char* GetManifestFileExtension() const override;
 
-            void ReflectSceneModules(SerializeContext* context) override;
-            void ActivateSceneModules() override;
-            void DeactivateSceneModules() override;
-
             size_t GetErrorCount() const override;
 
         protected:

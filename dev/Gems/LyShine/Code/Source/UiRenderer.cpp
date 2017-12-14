@@ -82,3 +82,28 @@ void UiRenderer::DecrementStencilRef()
     --m_stencilRef;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRenderer::PushAlphaFade(float alphaFadeValue)
+{
+    float currentAlphaFade = GetAlphaFade();
+    m_alphaFadeStack.push(alphaFadeValue * currentAlphaFade);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRenderer::PopAlphaFade()
+{
+    m_alphaFadeStack.pop();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiRenderer::GetAlphaFade() const
+{
+    float alphaFade = 1.0f; // by default nothing is faded
+
+    if (!m_alphaFadeStack.empty())
+    {
+        alphaFade = m_alphaFadeStack.top();
+    }
+    return alphaFade;
+}
+

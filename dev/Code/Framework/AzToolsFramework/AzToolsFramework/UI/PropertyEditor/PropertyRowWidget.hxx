@@ -28,6 +28,45 @@
 
 namespace AzToolsFramework
 {
+
+    // Renders the property names with an ellipsis (...) when they are too long.
+    // In that scenario, the tooltip is modified to include the full name as well
+    // as the description.
+    // e.g.
+    // Description "Some stuff that explains it!"
+    // Displayed: "A Really Long Nam..."
+    // Tooltip:
+    // A Really Long Name
+    // Some stuff that explains it!
+    class ElidingLabel : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit ElidingLabel(QWidget* parent = nullptr);
+
+        void SetText(const QString& text);
+        const QString& Text() const { return m_text; }
+
+        void SetDescription(const QString& description);
+        const QString& Description() const { return m_description; }
+
+        void RefreshStyle();
+
+    protected:
+        void paintEvent(QPaintEvent* event) override;
+        void resizeEvent(QResizeEvent* event) override;
+
+    private:
+        void Elide();
+
+        QString m_text;
+        QString m_elidedText;
+        QString m_description;
+
+        QLabel* m_label;
+    };
+
     class PropertyHandlerBase;
     class PropertyAttributeReader;
     // the purpose of a Property Row Widget is to house the user's property GUI
@@ -104,7 +143,6 @@ namespace AzToolsFramework
         void SetDescription(const QString& text);
 
         void HideContent();
-        void SetReadOnly(bool readOnly);
 
     protected:
         int CalculateLabelWidth() const;
@@ -124,7 +162,7 @@ namespace AzToolsFramework
 
         QWidget* m_leftAreaContainer;
 
-        QLabel* m_nameLabel;
+        ElidingLabel* m_nameLabel;
         QLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
         InstanceDataNode* m_sourceNode;
 
@@ -158,7 +196,8 @@ namespace AzToolsFramework
 
         bool m_isSelected;
         bool m_selectionEnabled;
-        bool m_readOnly;
+        bool m_readOnly; //holds whether the ReadOnly attribute was set
+
         QElapsedTimer m_clickStartTimer;
         QPoint m_clickPos;
 
@@ -186,6 +225,9 @@ namespace AzToolsFramework
         void UpdateDefaultLabel(InstanceDataNode* node);
 
         void createContainerButtons();
+
+        void UpdateEnabledState();
+
     signals:
         void onExpandedOrContracted(InstanceDataNode* node, bool expanded, bool fromUserInteraction = false);
         void onRequestedContainerClear(InstanceDataNode* node);

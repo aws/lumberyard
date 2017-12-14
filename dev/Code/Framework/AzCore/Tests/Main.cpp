@@ -10,8 +10,6 @@
 *
 */
 
-
-
 #include "TestTypes.h"
 
 #include <AzCore/Debug/Timer.h>
@@ -80,9 +78,12 @@ public:
         if (UnitTest::TestRunner::Instance().m_isAssertTest)
         {
             UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
-            return true;
         }
-        return false;
+        else
+        {
+            GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
+        }
+        return true;
     }
     bool OnAssert(const char* /*message*/) override
     {
@@ -125,3 +126,19 @@ public:
 };
 
 AZ_UNIT_TEST_HOOK(new TraceDrillerHook());
+
+#if defined(HAVE_BENCHMARK)
+AZTEST_EXPORT size_t AzRunBenchmarks(int argc, char** argv)
+{
+    AZ::AllocatorInstance<AZ::OSAllocator>::Create();
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+
+    ::benchmark::Initialize(&argc, argv);
+    ::benchmark::RunSpecifiedBenchmarks();
+
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
+
+    return 0;
+}
+#endif // HAVE_BENCHMARK

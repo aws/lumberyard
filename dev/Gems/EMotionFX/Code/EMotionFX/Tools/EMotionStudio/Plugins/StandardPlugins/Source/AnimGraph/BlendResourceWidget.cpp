@@ -128,7 +128,7 @@ namespace EMStudio
         mTable->setSelectionBehavior(QAbstractItemView::SelectRows);
         mTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
         connect(mTable, SIGNAL(itemSelectionChanged()), this, SLOT(OnItemSelectionChanged()));
-        connect(mTable, SIGNAL(cellDoubleClicked(int, int)), this, SLOT(OnCellDoubleClicked(int, int)));
+        connect(mTable, SIGNAL(cellDoubleClicked(int,int)), this, SLOT(OnCellDoubleClicked(int,int)));
 
         // set the minimum size and the resizing policy
         mTable->setMinimumHeight(120);
@@ -345,7 +345,7 @@ namespace EMStudio
                 ++numDisplayedAnimGraphs;
             }
         }
-        
+
         mTable->setRowCount(numDisplayedAnimGraphs);
 
         // disable the sorting
@@ -1200,7 +1200,9 @@ namespace EMStudio
                 mMotionSetComboBox->setEnabled(true);
 
                 if (usedAnimGraphs.size() > 0)
+                {
                     mMotionSetComboBox->setStyleSheet("border: 1px solid orange;");
+                }
             }
             else if (usedMotionSets.size() == 1)
             {
@@ -1214,7 +1216,9 @@ namespace EMStudio
                     mMotionSetComboBox->setCurrentIndex(0);
 
                     if (usedAnimGraphs.size() > 0)
+                    {
                         mMotionSetComboBox->setStyleSheet("border: 1px solid orange;");
+                    }
                 }
 
                 // enable the combo box in case it was disabled before
@@ -1528,7 +1532,7 @@ namespace EMStudio
 
         AnimGraphPlugin* animGraphPlugin = static_cast<AnimGraphPlugin*>(plugin);
         BlendResourceWidget* resourceWidget = animGraphPlugin->GetResourceWidget();
-        
+
         resourceWidget->UpdateMotionSetComboBox();
         return true;
     }
@@ -1540,10 +1544,7 @@ namespace EMStudio
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(loadAnimGraphCommand->mOldAnimGraphID);
         if (animGraph)
         {
-            OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-            outlinerCategoryItem->mID = animGraph->GetID();
-            outlinerCategoryItem->mUserData = animGraph;
-            GetOutlinerManager()->FindCategoryByName("Anim Graphs")->AddItem(outlinerCategoryItem);
+            GetOutlinerManager()->AddItemToCategory("Anim Graphs", animGraph->GetID(), animGraph);
         }
 
         if (commandLine.GetValueAsBool("autoActivate", command))
@@ -1610,10 +1611,7 @@ namespace EMStudio
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandCreateAnimGraph* createAnimGraphCommand = static_cast<CommandSystem::CommandCreateAnimGraph*>(command);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(createAnimGraphCommand->mPreviouslyUsedID);
-        OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-        outlinerCategoryItem->mID = animGraph->GetID();
-        outlinerCategoryItem->mUserData = animGraph;
-        GetOutlinerManager()->FindCategoryByName("Anim Graphs")->AddItem(outlinerCategoryItem);
+        GetOutlinerManager()->AddItemToCategory("Anim Graphs", animGraph->GetID(), animGraph);
         return UpdateTableBlendResourceWidget();
     }
 
@@ -1625,7 +1623,7 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandRemoveAnimGraph* removeAnimGraphCommand = static_cast<CommandSystem::CommandRemoveAnimGraph*>(command);
-        GetOutlinerManager()->FindCategoryByName("Anim Graphs")->RemoveItem(removeAnimGraphCommand->mOldID);
+        GetOutlinerManager()->RemoveItemFromCategory("Anim Graphs", removeAnimGraphCommand->mOldID);
         return UpdateTableBlendResourceWidget();
     }
 
@@ -1638,10 +1636,7 @@ namespace EMStudio
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandCloneAnimGraph* cloneAnimGraphCommand = static_cast<CommandSystem::CommandCloneAnimGraph*>(command);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(cloneAnimGraphCommand->mOldAnimGraphID);
-        OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-        outlinerCategoryItem->mID = animGraph->GetID();
-        outlinerCategoryItem->mUserData = animGraph;
-        GetOutlinerManager()->FindCategoryByName("Anim Graphs")->AddItem(outlinerCategoryItem);
+        GetOutlinerManager()->AddItemToCategory("Anim Graphs", animGraph->GetID(), animGraph);
         return UpdateTableBlendResourceWidget();
     }
 

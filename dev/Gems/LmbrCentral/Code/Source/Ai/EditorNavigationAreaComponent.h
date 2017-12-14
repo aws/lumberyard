@@ -31,7 +31,7 @@ namespace AZ
 namespace LmbrCentral
 {
     /**
-     * EditorNavigationAreaComponent makes use of PolygonPrismShape to construct a volume to generate 
+     * EditorNavigationAreaComponent makes use of PolygonPrismShape to construct a volume to generate
      * a Nav Mesh for the terrain to be used by AI characters for navigation.
      */
     class EditorNavigationAreaComponent
@@ -43,39 +43,28 @@ namespace LmbrCentral
     {
     public:
         AZ_COMPONENT(EditorNavigationAreaComponent, "{8391FF77-7F4E-4576-9617-37793F88C5DA}", AzToolsFramework::Components::EditorComponentBase);
-        
+
         EditorNavigationAreaComponent();
         ~EditorNavigationAreaComponent() override;
 
     protected:
-        //////////////////////////////////////////////////////////////////////////
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
 
     private:
-        //////////////////////////////////////////////////////////////////////////
         // ShapeComponentNotificationsBus::Handler
         void OnShapeChanged(ShapeChangeReasons changeReason) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // NavigationAreaRequestBus
         void RefreshArea() override;
-        //////////////////////////////////////////////////////////////////////////
-        
-        //////////////////////////////////////////////////////////////////////////
+
         // INavigationSystemListener
         void OnNavigationEvent(const INavigationSystem::ENavigationEvent event) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // EditorNavigationAreaComponent
         void UpdateGameArea();
         void RelinkWithMesh(bool updateGameArea);
@@ -85,7 +74,6 @@ namespace LmbrCentral
         void DestroyMeshes();
         void CreateVolume(AZ::Vector3* vertices, size_t vertexCount, NavigationVolumeID requestedID);
         void DestroyArea();
-        //////////////////////////////////////////////////////////////////////////
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
@@ -99,12 +87,6 @@ namespace LmbrCentral
 
         static void Reflect(AZ::ReflectContext* context);
 
-        AZStd::vector<AZStd::string> m_agentTypes; ///< Define a list of AgentTypes corresponding to those defined in Scripts/AI/Navigation.xml.
-        AZStd::vector<AZ::u32> m_meshes; ///< NavigationMeshID - vector of mesh ids for each AgentType.
-        AZStd::string m_name; ///< Name used to register volume (currently Entity name).
-        AZ::u32 m_volume = 0; ///< NavigationVolumeID - id of created nav mesh volume.
-        bool m_exclusion = false; ///< Is this area an exclusion volume or not (should it add or subtract from the nav mesh).
-
         /**
          * Called when editor property grid values are modified to ensure navigation area updates correctly.
          */
@@ -115,7 +97,12 @@ namespace LmbrCentral
                 m_navigationAreaChanged();
             }
         }
-        
-        AZStd::function<void()> m_navigationAreaChanged = nullptr; ///< Callback for when the navigation area is modified.
+
+        AZStd::vector<AZStd::string> m_agentTypes; ///< Define a list of AgentTypes corresponding to those defined in Scripts/AI/Navigation.xml.
+        AZStd::vector<AZ::u32> m_meshes; ///< NavigationMeshID - vector of mesh ids for each AgentType.
+        AZStd::string m_name; ///< Name used to register volume (currently Entity name).
+        AZ::u32 m_volume = 0; ///< NavigationVolumeID - id of created nav mesh volume.
+        bool m_exclusion = false; ///< Is this area an exclusion volume or not (should it add or subtract from the nav mesh).
+        AZStd::function<void()> m_navigationAreaChanged = nullptr; ///< Callback when the navigation area is modified.
     };
 } // namespace LmbrCentral

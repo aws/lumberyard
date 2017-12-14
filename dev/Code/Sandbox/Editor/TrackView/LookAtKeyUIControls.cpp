@@ -15,6 +15,7 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
+#include "Maestro/Types/AnimParamType.h"
 
 #include "Objects/EntityObject.h"
 
@@ -35,9 +36,9 @@ public:
         AddVariable(mv_table, mv_smoothTime, "Target Smooth Time");
         AddVariable(mv_table, mv_lookPose, "Look Pose");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_LookAt;
+        return paramType == AnimParamType::LookAt;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -71,7 +72,7 @@ bool CLookAtKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKey
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_LookAt)
+        if (paramType == AnimParamType::LookAt)
         {
             // Add the options for the boneSets to the combo box.
             mv_lookPose.SetEnumList(NULL);
@@ -149,7 +150,7 @@ void CLookAtKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_LookAt)
+        if (paramType == AnimParamType::LookAt)
         {
             ILookAtKey lookAtKey;
             keyHandle.GetKey(&lookAtKey);

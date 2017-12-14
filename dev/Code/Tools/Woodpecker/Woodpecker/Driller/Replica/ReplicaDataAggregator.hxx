@@ -19,6 +19,7 @@
 #include "GridMate/drillers/ReplicaDriller.h"
 
 #include "Woodpecker/Driller/GenericCustomizeCSVExportWidget.hxx"
+#include <AzCore/RTTI/RTTI.h>
 
 namespace Driller
 {

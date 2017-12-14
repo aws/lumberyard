@@ -35,7 +35,7 @@ public:
 
     unsigned int GetCount() const { return m_sequences.size(); }
 
-    void CreateSequence(QString name, ESequenceType sequenceType);
+    void CreateSequence(QString name, SequenceType sequenceType);
     void DeleteSequence(CTrackViewSequence* pSequence);
 
     void RenameNode(CTrackViewAnimNode* pAnimNode, const char* newName) const;
@@ -54,10 +54,11 @@ public:
 
     //  ITrackViewSequenceManager Overrides
     // Callback from SequenceObject
-    IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true) override;
-    void OnDeleteSequenceObject(const AZ::EntityId& entityId) override;
+    IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true, AZ::EntityId entityId = AZ::EntityId()) override;
+    void OnDeleteSequenceEntity(const AZ::EntityId& entityId) override;
     void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) override;
-    void OnSequenceLoaded(const AZ::EntityId& entityId) override;
+    void OnSequenceActivated(const AZ::EntityId& entityId) override;
+    void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) override;
     //~ ITrackViewSequenceManager Overrides
 
 private:

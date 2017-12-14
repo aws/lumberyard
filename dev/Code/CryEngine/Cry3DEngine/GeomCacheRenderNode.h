@@ -93,6 +93,7 @@ public:
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos);
     virtual _smart_ptr<IMaterial> GetMaterialOverride() { return m_pMaterial; }
 
+    void SetBaseMaxViewDistance(float maxViewDistance) override { m_maxViewDist = maxViewDistance; }
     virtual float GetMaxViewDist();
 
     virtual void GetMemoryUsage(ICrySizer* pSizer) const;
@@ -121,6 +122,7 @@ public:
 
     // IGeomCacheRenderNode
     virtual bool LoadGeomCache(const char* sGeomCacheFileName);
+    void SetGeomCache(_smart_ptr<IGeomCache> geomCache) override;
 
     virtual void SetPlaybackTime(const float time);
     virtual float GetPlaybackTime() const { return m_playbackTime; }
@@ -140,12 +142,17 @@ public:
 
     // Set stand in CGFs and distance
     virtual void SetStandIn(const char* pFilePath, const char* pMaterial);
+    IStatObj* GetStandIn() override { return m_pStandIn; }
     virtual void SetFirstFrameStandIn(const char* pFilePath, const char* pMaterial);
+    IStatObj* GetFirstFrameStandIn() override { return m_pFirstFrameStandIn; }
     virtual void SetLastFrameStandIn(const char* pFilePath, const char* pMaterial);
+    IStatObj* GetLastFrameStandIn() override { return m_pLastFrameStandIn; }
     virtual void SetStandInDistance(const float distance);
+    float GetStandInDistance() override { return m_standInDistance; }
 
     // Set distance at which cache will start streaming automatically (0 means no auto streaming)
     virtual void SetStreamInDistance(const float distance);
+    float GetStreamInDistance() override { return m_streamInDistance; }
 
     virtual void DebugDraw(const SGeometryDebugDrawInfo& info, float fExtrudeScale, uint nodeIndex) const;
     virtual bool RayIntersection(SRayHitInfo& hitInfo, _smart_ptr<IMaterial> pCustomMtl, uint* pHitNodeIndex) const;

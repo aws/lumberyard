@@ -15,6 +15,7 @@
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QHBoxLayout>
+
 #include "../UICore/ColorPickerDelegate.hxx"
 
 namespace AzToolsFramework
@@ -27,10 +28,19 @@ namespace AzToolsFramework
         QHBoxLayout* pLayout = new QHBoxLayout(this);
         pLayout->setAlignment(Qt::AlignLeft);
 
-        m_colorLabel = new QLabel();
-        m_colorLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        m_colorLabel->setMinimumWidth(PropertyQTConstant_MinimumWidth);
-        m_colorLabel->setFixedHeight(PropertyQTConstant_DefaultHeight);
+        m_colorEdit = new QLineEdit();
+        m_colorEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        m_colorEdit->setMinimumWidth(PropertyQTConstant_MinimumWidth);
+        m_colorEdit->setFixedHeight(PropertyQTConstant_DefaultHeight);
+        /*Use regex to validate the input
+        *\d\d?    Match 0-99
+        *1\d\d    Match 100 - 199
+        *2[0-4]\d Match 200-249
+        *25[0-5]  Match 250 - 255
+        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?)\s*,\s*){2} Match the first two "0-255,"
+        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?) Match the last "0-255"
+        */
+        m_colorEdit->setValidator(new QRegExpValidator(QRegExp("^\\s*((25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*,\\s*){2}(25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*$")));
 
         m_pDefaultButton = new QToolButton(this);
         m_pDefaultButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -45,13 +55,17 @@ namespace AzToolsFramework
 
         pLayout->setContentsMargins(0, 0, 0, 0);
         pLayout->addWidget(m_pDefaultButton);
-        pLayout->addWidget(m_colorLabel);
+        pLayout->addWidget(m_colorEdit);
 
         m_pColorDialog = nullptr;
         this->setFocusProxy(m_pDefaultButton);
         setFocusPolicy(m_pDefaultButton->focusPolicy());
 
         connect(m_pDefaultButton, SIGNAL(clicked()), this, SLOT(openColorDialog()));
+
+        connect(m_colorEdit, SIGNAL(editingFinished()), this, SLOT(OnEditingFinished()));
+        connect(m_colorEdit, SIGNAL(returnPressed()), this, SLOT(OnEditingFinished()));
+        connect(m_colorEdit, SIGNAL(textEdited(const QString&)), this, SLOT(OnTextEdited(const QString&)));
     }
 
     PropertyColorCtrl::~PropertyColorCtrl()
@@ -93,8 +107,7 @@ namespace AzToolsFramework
 
             int R, G, B;
             m_color.getRgb(&R, &G, &B);
-
-            m_colorLabel->setText(QStringLiteral("R: %1 G: %2 B: %3").arg(R).arg(G).arg(B));
+            m_colorEdit->setText(QStringLiteral("%1,%2,%3").arg(R).arg(G).arg(B));
         }
     }
 
@@ -127,8 +140,10 @@ namespace AzToolsFramework
         connect(m_pColorDialog, SIGNAL(currentColorChanged(QColor)), this, SLOT(onSelected(QColor)));
 
         // Position the picker around cursor.
+        QLayout* layout = m_pColorDialog->layout();
+        if (layout)
         {
-            QSize halfSize = (m_pColorDialog->layout()->sizeHint() / 2);
+            QSize halfSize = (layout->sizeHint() / 2);
             m_pColorDialog->move(QCursor::pos() - QPoint(halfSize.width(), halfSize.height()));
         }
     }
@@ -142,6 +157,17 @@ namespace AzToolsFramework
         emit valueChanged(m_color);
     }
 
+    QColor PropertyColorCtrl::convertFromString(const QString& string)
+    {
+        QStringList strList = string.split(",", QString::SkipEmptyParts);
+        int R = 0, G = 0, B = 0;
+        AZ_Assert(strList.size() == 3, "Invalid input string for RGB field!");
+        R = strList[0].trimmed().toInt();
+        G = strList[1].trimmed().toInt();
+        B = strList[2].trimmed().toInt();
+        return QColor(R, G, B);
+    }
+
     ////////////////////////////////////////////////////////////////
     QWidget* AZColorPropertyHandler::CreateGUI(QWidget* pParent)
     {
@@ -151,6 +177,47 @@ namespace AzToolsFramework
             EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
         });
         return newCtrl;
+    }
+
+    // called when the user pressed enter, tab or we lost focus
+    void PropertyColorCtrl::OnEditingFinished()
+    {
+
+        int pos = 0;
+        QString text = m_colorEdit->text();
+        QValidator::State validateState = m_colorEdit->validator()->validate(text, pos);
+
+        if (validateState == QValidator::State::Acceptable)
+        {
+            QColor newValue = convertFromString(text);
+            if (newValue != m_color)
+            {
+                setValue(newValue);
+                emit valueChanged(newValue);
+            }
+        }
+        else
+        {   
+            //If the text is not valid, set back to old value
+            setValue(m_color);
+        }
+    }
+
+    // called each time when a new character has been entered or removed, this doesn't update the value yet
+    void PropertyColorCtrl::OnTextEdited(const QString& newText)
+    {
+        int pos = 0;
+        QString text = newText;
+        QValidator::State validateState = m_colorEdit->validator()->validate(text, pos);
+
+        if (validateState == QValidator::State::Invalid)
+        {
+            m_colorEdit->setStyleSheet("color: red;");
+        }
+        else
+        {
+            m_colorEdit->setStyleSheet("");
+        }
     }
 
     void AZColorPropertyHandler::ConsumeAttribute(PropertyColorCtrl* /*GUI*/, AZ::u32 /*attrib*/, PropertyAttributeReader* /*attrValue*/, const char* /*debugName*/)

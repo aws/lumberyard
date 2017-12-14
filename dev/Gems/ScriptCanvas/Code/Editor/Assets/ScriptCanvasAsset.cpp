@@ -31,6 +31,17 @@ namespace ScriptCanvasEditor
 
     }
 
+    ScriptCanvasData::ScriptCanvasData(ScriptCanvasData&& other)
+        : m_scriptCanvasEntity(AZStd::move(other.m_scriptCanvasEntity))
+    {
+    }
+
+    ScriptCanvasData& ScriptCanvasData::operator=(ScriptCanvasData&& other)
+    {
+        m_scriptCanvasEntity = AZStd::move(other.m_scriptCanvasEntity);
+        return *this;
+    }
+
     void ScriptCanvasData::Reflect(AZ::ReflectContext* reflectContext)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
@@ -39,24 +50,6 @@ namespace ScriptCanvasEditor
                 ->Field("m_scriptCanvas", &ScriptCanvasData::m_scriptCanvasEntity)
                 ;
         }
-    }
-
-    AZStd::string ScriptCanvasAsset::GetPath()
-    {
-        AZ::Data::AssetInfo assetInfo;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, GetId());
-        return assetInfo.m_relativePath;
-        return{};
-    }
-
-    void ScriptCanvasAsset::SetPath(const AZStd::string& path)
-    {
-        AZ::Data::AssetInfo assetInfo;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, GetId());
-        assetInfo.m_relativePath = path;
-        assetInfo.m_assetId = GetId();
-        assetInfo.m_assetType = azrtti_typeid<ScriptCanvasAsset>();
-        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::RegisterAsset, assetInfo.m_assetId, assetInfo);
     }
 
     AZ::Entity* ScriptCanvasAsset::GetScriptCanvasEntity() const
@@ -80,11 +73,5 @@ namespace ScriptCanvasEditor
     const ScriptCanvasData& ScriptCanvasAsset::GetScriptCanvasData() const
     {
         return m_data;
-    }
-
-    bool ScriptCanvasAsset::ShouldVetoAssetReload()
-    {
-        // TODO: Add logic to selectively determine when to veto the AssetReload
-        return true;
     }
 } // namespace ScriptCanvasEditor

@@ -24,6 +24,8 @@
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/Bus/NodeIdPair.h>
 
+#include <GraphCanvas/Components/GridBus.h>
+#include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
@@ -239,6 +241,86 @@ namespace ScriptCanvasEditor
 
         return graphCanvasEntity != nullptr;
     }
+
+    /////////////////////////////
+    // CreateBlockCommentAction
+    /////////////////////////////
+
+    CreateBlockCommentAction::CreateBlockCommentAction(QObject* parent)
+        : CreateNodeAction("Create Block Comment", parent)
+    {
+    }
+
+    void CreateBlockCommentAction::RefreshAction(const AZ::EntityId& sceneId)
+    {
+        bool hasSelection = false;
+        GraphCanvas::SceneRequestBus::EventResult(hasSelection, sceneId, &GraphCanvas::SceneRequests::HasSelectedItems);
+
+        if (hasSelection)
+        {
+            setText("Create Block Comment For Selection");
+            setToolTip("Will create a block comment around the selected nodes.");
+        }
+        else
+        {
+            setText("Create Block Comment");
+            setToolTip("Will create a block comment at the specified point.");
+        }
+    }
+
+    bool CreateBlockCommentAction::TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos)
+    {
+        bool hasSelection = false;
+        GraphCanvas::SceneRequestBus::EventResult(hasSelection, sceneId, &GraphCanvas::SceneRequests::HasSelectedItems);
+        AZ::Entity* graphCanvasEntity = nullptr;
+        GraphCanvas::GraphCanvasRequestBus::BroadcastResult(graphCanvasEntity, &GraphCanvas::GraphCanvasRequests::CreateBlockCommentNodeAndActivate);
+
+        if (graphCanvasEntity)
+        {
+            GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, graphCanvasEntity->GetId(), scenePos);
+
+            if (hasSelection)
+            {
+                AZStd::vector< AZ::EntityId > selectedNodes;
+                GraphCanvas::SceneRequestBus::EventResult(selectedNodes, sceneId, &GraphCanvas::SceneRequests::GetSelectedNodes);
+                
+                QGraphicsItem* rootItem = nullptr;
+                QRectF boundingArea;
+
+                for (const AZ::EntityId& selectedNode : selectedNodes)
+                {
+                    GraphCanvas::SceneMemberUIRequestBus::EventResult(rootItem, selectedNode, &GraphCanvas::SceneMemberUIRequests::GetRootGraphicsItem);
+
+                    if (rootItem)
+                    {
+                        if (boundingArea.isEmpty())
+                        {
+                            boundingArea = rootItem->sceneBoundingRect();
+                        }
+                        else
+                        {
+                            boundingArea = boundingArea.united(rootItem->sceneBoundingRect());
+                        }
+                    }
+                }
+
+                AZ::Vector2 gridStep;
+                AZ::EntityId grid;
+                GraphCanvas::SceneRequestBus::EventResult(grid, sceneId, &GraphCanvas::SceneRequests::GetGrid);
+
+                GraphCanvas::GridRequestBus::EventResult(gridStep, grid, &GraphCanvas::GridRequests::GetMinorPitch);
+
+                boundingArea.adjust(-gridStep.GetX(), -gridStep.GetY(), gridStep.GetX(), gridStep.GetY());
+                
+                GraphCanvas::BlockCommentRequestBus::Event(graphCanvasEntity->GetId(), &GraphCanvas::BlockCommentRequests::SetBlock, boundingArea);
+            }
+
+            GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::ClearSelection);
+            GraphCanvas::SceneMemberUIRequestBus::Event(graphCanvasEntity->GetId(), &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
+        }
+
+        return graphCanvasEntity != nullptr;
+    }
     
     //////////////////////////
     // CreateNodeContextMenu
@@ -261,6 +343,7 @@ namespace ScriptCanvasEditor
         addAction(new DeleteGraphSelectionAction(this));
         addSeparator();
         addAction(new AddCommentAction(this));
+        addAction(new CreateBlockCommentAction(this));
         addSeparator();
         addAction(new AddSelectedEntitiesAction(this));
         addSeparator();
@@ -299,10 +382,14 @@ namespace ScriptCanvasEditor
         }
     }
 
+    void CreateNodeContextMenu::ResetSourceSlotFilter()
+    {
+        m_palette->ResetSourceSlotFilter();
+    }
+
     void CreateNodeContextMenu::FilterForSourceSlot(const AZ::EntityId& sceneId, const AZ::EntityId& sourceSlotId)
     {
-        (void)sceneId;
-        (void)sourceSlotId;
+        m_palette->FilterForSourceSlot(sceneId, sourceSlotId);
     }
 
     const Widget::NodePalette* CreateNodeContextMenu::GetNodePalette() const

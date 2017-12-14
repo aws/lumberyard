@@ -18,7 +18,10 @@
 struct SDeformableData;
 struct SMMRMProjectile;
 
-class CDeformableNode
+#include <IDeformableNode.h>
+    
+class CDeformableNode 
+    : public IDeformableNode
 {
     SDeformableData** m_pData;
     size_t m_nData;
@@ -62,21 +65,21 @@ protected:
 
 public:
 
-    CDeformableNode(uint16 slot);
+    CDeformableNode();
 
-    ~CDeformableNode();
+    ~CDeformableNode() override;
 
-    void SetStatObj(IStatObj* pStatObj);
+    void SetStatObj(IStatObj* pStatObj) override;
 
-    void CreateDeformableSubObject(bool create, const Matrix34& worldTM, IGeneralMemoryHeap* pHeap);
-
+    void CreateDeformableSubObject(bool create, const Matrix34& worldTM, IGeneralMemoryHeap* pHeap) override;
+    void Render(const struct SRendParams& rParams, const SRenderingPassInfo& passInfo, const AABB& aabb) override;
     void RenderInternalDeform(CRenderObject* pRenderObject
         , int nLod, const AABB& bbox, const SRenderingPassInfo& passInfo
-        , const SRendItemSorter& rendItemSorter);
+        , const SRendItemSorter& rendItemSorter) override;
 
-    void BakeDeform(const Matrix34& worldTM);
+    void BakeDeform(const Matrix34& worldTM) override;
 
-    bool HasDeformableData() const { return m_nData != 0; }
+    bool HasDeformableData() const override { return m_nData != 0; }
 };
 
 

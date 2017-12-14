@@ -289,9 +289,10 @@ namespace AZ
 
         if (m_state == ES_INIT)
         {
-            bool result = true;
-            EBUS_EVENT_RESULT(result, ComponentApplicationBus, RemoveEntity, this);
-            (void)result;
+            EBUS_EVENT(EntitySystemBus, OnEntityDestruction, m_id);
+            EBUS_EVENT_ID(m_id, EntityBus, OnEntityDestruction, m_id);
+
+            EBUS_EVENT(ComponentApplicationBus, RemoveEntity, this);
         }
 
         for (ComponentArrayType::reverse_iterator it = m_components.rbegin(); it != m_components.rend(); ++it)
@@ -978,14 +979,16 @@ namespace AZ
         SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<Entity>(&Serialize::StaticInstance<SerializeEntityFactory>::s_instance)->
-                PersistentId([](const void* instance) -> u64 { return static_cast<u64>(reinterpret_cast<const Entity*>(instance)->GetId()); })->
-                Version(2, &ConvertOldData)->
-                Field("Id", &Entity::m_id, { {Edit::Attributes::IdGeneratorFunction, aznew AttributeData<IdUtils::Remapper<EntityId>::IdGenerator>(&Entity::MakeId) } })->
-                Field("Name", &Entity::m_name)->
-                Field("IsDependencyReady", &Entity::m_isDependencyReady)->
-                Field("IsRuntimeActive", &Entity::m_isRuntimeActiveByDefault)->
-                Field("Components", &Entity::m_components);
+            serializeContext->Class<Entity>(&Serialize::StaticInstance<SerializeEntityFactory>::s_instance)
+                ->PersistentId([](const void* instance) -> u64 { return static_cast<u64>(reinterpret_cast<const Entity*>(instance)->GetId()); })
+                ->Version(2, &ConvertOldData)
+                ->Field("Id", &Entity::m_id)
+                    ->Attribute(Edit::Attributes::IdGeneratorFunction, &Entity::MakeId)
+                ->Field("Name", &Entity::m_name)
+                ->Field("IsDependencyReady", &Entity::m_isDependencyReady)
+                ->Field("IsRuntimeActive", &Entity::m_isRuntimeActiveByDefault)
+                ->Field("Components", &Entity::m_components)
+                ;
 
             serializeContext->Class<EntityId>()
                 ->Version(1, &EntityIdConverter)
@@ -1014,13 +1017,13 @@ namespace AZ
         if (behaviorContext)
         {
             behaviorContext->Class<EntityId>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Method("IsValid", &EntityId::IsValid)
                 ->Method("ToString", &EntityId::ToString)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
                 ->Method("Equal", &EntityId::operator==)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ;
 
             behaviorContext->Constant("SystemEntityId", BehaviorConstant(SystemEntityId));

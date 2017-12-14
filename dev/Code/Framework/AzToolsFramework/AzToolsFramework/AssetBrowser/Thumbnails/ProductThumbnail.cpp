@@ -19,40 +19,27 @@ namespace AzToolsFramework
     namespace AssetBrowser
     {
         //////////////////////////////////////////////////////////////////////////
-        // ProductThumbnailKey
-        //////////////////////////////////////////////////////////////////////////
-        ProductThumbnailKey::ProductThumbnailKey(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType)
-            : ThumbnailKey()
-            , m_assetId(assetId)
-            , m_assetType(assetType)
-        {}
-
-        const AZ::Data::AssetId& ProductThumbnailKey::GetAssetId() const
-        {
-            return m_assetId;
-        }
-
-        const AZ::Data::AssetType& ProductThumbnailKey::GetAssetType() const
-        {
-            return m_assetType;
-        }
-
-        //////////////////////////////////////////////////////////////////////////
         // ProductThumbnail
         //////////////////////////////////////////////////////////////////////////
-        ProductThumbnail::ProductThumbnail(SharedThumbnailKey key, int thumbnailSize)
+        ProductThumbnail::ProductThumbnail(Thumbnailer::SharedThumbnailKey key, int thumbnailSize)
             : Thumbnail(key, thumbnailSize)
         {}
 
         void ProductThumbnail::LoadThread() 
         {
-            auto productKey = qobject_cast<const ProductThumbnailKey*>(m_key);
+            auto productKey = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(m_key);
             AZ_Assert(productKey, "Incorrect key type, excpected ProductThumbnailKey");
 
             QString iconPath;
             AZ::AssetTypeInfoBus::EventResult(iconPath, productKey->GetAssetType(), &AZ::AssetTypeInfo::GetBrowserIcon);
-            AZ_Assert(!iconPath.isEmpty(), "Icon not found");
-            m_pixmap = QPixmap(iconPath).scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);
+            if (!iconPath.isEmpty())
+            {
+                m_pixmap = QPixmap(iconPath).scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);
+            }
+            else
+            {
+                m_state = State::Failed;
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -63,9 +50,9 @@ namespace AzToolsFramework
 
         ProductThumbnailCache::~ProductThumbnailCache() = default;
 
-        bool ProductThumbnailCache::IsSupportedThumbnail(SharedThumbnailKey key) const
+        bool ProductThumbnailCache::IsSupportedThumbnail(Thumbnailer::SharedThumbnailKey key) const
         {
-            return qobject_cast<const ProductThumbnailKey*>(key.data());
+            return qobject_cast<const Thumbnailer::ProductThumbnailKey*>(key.data());
         }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

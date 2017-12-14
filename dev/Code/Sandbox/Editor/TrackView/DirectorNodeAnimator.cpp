@@ -16,6 +16,8 @@
 #include "TrackViewAnimNode.h"
 #include "TrackViewTrack.h"
 #include "TrackViewSequenceManager.h"
+#include "Maestro/Types/SequenceType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 ////////////////////////////////////////////////////////////////////////////
 CDirectorNodeAnimator::CDirectorNodeAnimator(CTrackViewAnimNode* pDirectorNode)
@@ -33,13 +35,9 @@ void CDirectorNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContex
         return;
     }
 
-    const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-
-    CTrackViewTrack* pSequenceTrack = pNode->GetTrackForParameter(eAnimParamType_Sequence);
+    CTrackViewTrack* pSequenceTrack = pNode->GetTrackForParameter(AnimParamType::Sequence);
     if (pSequenceTrack && !pSequenceTrack->IsDisabled())
     {
-        const unsigned int numSequences = pSequenceManager->GetCount();
-
         std::vector<CTrackViewSequence*> inactiveSequences;
         std::vector<CTrackViewSequence*> activeSequences;
 
@@ -53,7 +51,8 @@ void CDirectorNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContex
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
 
-            CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection.c_str());
+            CTrackViewSequence* pSequence = GetSequenceFromSequenceKey(sequenceKey);
+
             if (pSequence)
             {
                 if (sequenceKey.time <= time)
@@ -118,7 +117,7 @@ void CDirectorNodeAnimator::Render(CTrackViewAnimNode* pNode, const SAnimContext
         return;
     }
 
-    CTrackViewTrack* pSequenceTrack = pNode->GetTrackForParameter(eAnimParamType_Sequence);
+    CTrackViewTrack* pSequenceTrack = pNode->GetTrackForParameter(AnimParamType::Sequence);
     if (pSequenceTrack && !pSequenceTrack->IsDisabled())
     {
         // Render sub sequences
@@ -150,8 +149,8 @@ void CDirectorNodeAnimator::ForEachActiveSequence(const SAnimContext& ac, CTrack
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
 
-            const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-            CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection.c_str());
+            CTrackViewSequence* pSequence = GetSequenceFromSequenceKey(sequenceKey);
+
             if (pSequence)
             {
                 SAnimContext newAnimContext = ac;
@@ -183,8 +182,8 @@ void CDirectorNodeAnimator::ForEachActiveSequence(const SAnimContext& ac, CTrack
         ISequenceKey sequenceKey;
         keyHandle.GetKey(&sequenceKey);
 
-        const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection.c_str());
+        CTrackViewSequence* pSequence = GetSequenceFromSequenceKey(sequenceKey);
+
         if (pSequence)
         {
             SAnimContext newAnimContext = ac;
@@ -225,3 +224,29 @@ void CDirectorNodeAnimator::UnBind(CTrackViewAnimNode* pNode)
         }
     }
 }
+
+/*static*/ CTrackViewSequence* CDirectorNodeAnimator::GetSequenceFromSequenceKey(const ISequenceKey& sequenceKey)
+{
+    CTrackViewSequence* retSequence = nullptr;
+    const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
+
+    if (pSequenceManager)
+    {
+        // Legacy sequences that have had their sequenceEntityId's set by UpConvertKeys() will take
+        // this code path too, not just component sequences.
+        // Delete this comment when SequenceType::Legacy is removed.
+        if (sequenceKey.sequenceEntityId.IsValid())
+        {            
+            retSequence = pSequenceManager->GetSequenceByEntityId(sequenceKey.sequenceEntityId);
+            AZ_Assert(retSequence, "Null sequence returned when a Sequence Component was expected.");
+        }
+        else if (!sequenceKey.szSelection.empty())
+        {
+            // SequenceType::Legacy
+            retSequence = pSequenceManager->GetLegacySequenceByName(sequenceKey.szSelection.c_str());
+            AZ_Assert(retSequence && retSequence->GetSequenceType() == SequenceType::SequenceComponent, "Component or Null sequence returned when a Legacy Sequence was expected.");
+        }
+    }
+    return retSequence;
+}
+

@@ -78,7 +78,7 @@ class CREImposter
     : public CRendElementBase
 {
     friend class CRECloud;
-    ENGINE_API static IDynTexture* m_pScreenTexture;
+    static IDynTexture* m_pScreenTexture;
 
     CameraViewParameters m_LastViewParameters;
     bool m_bScreenImposter;
@@ -116,7 +116,7 @@ public:
     int m_FrameUpdate;
     float m_fTimeUpdate;
 
-    ENGINE_API static int m_MemUpdated;
+    static int m_MemUpdated;
     static int m_MemPostponed;
     static int m_PrevMemUpdated;
     static int m_PrevMemPostponed;
@@ -152,17 +152,17 @@ public:
         ReleaseResources();
     }
 
-    ENGINE_API bool UpdateImposter();
-    ENGINE_API void ReleaseResources();
+    bool UpdateImposter();
+    void ReleaseResources();
 
-    ENGINE_API bool PrepareForUpdate();
+    bool PrepareForUpdate();
 
     virtual void GetMemoryUsage(ICrySizer* pSizer) const
     {
         pSizer->AddObject(this, sizeof(*this));
     }
-    ENGINE_API virtual void mfPrepare(bool bCheckOverflow);
-    ENGINE_API virtual bool mfDraw(CShader* ef, SShaderPass* sl);
+    virtual void mfPrepare(bool bCheckOverflow);
+    virtual bool mfDraw(CShader* ef, SShaderPass* sl);
     const SMinMaxBox& mfGetWorldSpaceBounds() { return m_WorldSpaceBV; }
 
     virtual bool IsSplit() { return m_bSplit; }
@@ -183,7 +183,7 @@ public:
     virtual float GetFar() { return m_fFar; }
     virtual CTerrainNode* GetTerrainNode() { return m_pTerrainNode; }
     virtual float GetTransparency() { return m_fCurTransparency; }
-    ENGINE_API virtual Vec3 GetPosition();
+    virtual Vec3 GetPosition();
     virtual int GetLogResolutionX() { return m_nLogResolutionX; }
     virtual int GetLogResolutionY() { return m_nLogResolutionY; }
     virtual CameraViewParameters& GetLastViewParameters() { return m_LastViewParameters; }

@@ -52,6 +52,7 @@ namespace Input
                         ->Attribute(AZ::Edit::Attributes::Category, "Gameplay")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/InputConfig.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/InputConfig.png")
+                        ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<InputEventBindingsAsset>::Uuid())
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-input.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &InputConfigurationComponent::m_inputEventBindingsAsset, "Input to event bindings",
@@ -156,5 +157,10 @@ namespace Input
     void InputConfigurationComponent::OnInputContextDeactivated()
     {
         m_inputEventBindings.Deactivate(Input::ProfileId(m_associatedProfileName.c_str()));
+    }
+
+    void InputConfigurationComponent::EditorSetPrimaryAsset(const AZ::Data::AssetId& assetId)
+    {
+        m_inputEventBindingsAsset.Create(assetId);
     }
 }

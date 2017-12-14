@@ -912,7 +912,7 @@ namespace CloudCanvas
                     }
                     const auto& pakFileToMount = m_pakFilesToMount.front();
                     const AZStd::string downloadedPath{ pakFileToMount->GetAliasedFilePath() };
-                    const bool pakMounted = gEnv->pCryPak->OpenPack("@assets@", downloadedPath.c_str());
+                    const bool pakMounted = gEnv->pCryPak->OpenPack("@assets@", downloadedPath.c_str(), ICryPak::FLAGS_NO_LOWCASE);
                     if (!pakMounted)
                     {
                         pakFileToMount->IncrementOpenRetryCount();

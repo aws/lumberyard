@@ -25,6 +25,9 @@ namespace ScriptCanvasEditor
 {
     namespace Nodes
     {
+        AZStd::string GetContextName(const AZ::SerializeContext::ClassData& classData);
+        AZStd::string GetCategoryName(const AZ::SerializeContext::ClassData& classData);
+
         NodeIdPair CreateNode(const AZ::Uuid& classData, AZ::EntityId graphId, const AZStd::string& styleOverride);
         NodeIdPair CreateEntityNode(const AZ::EntityId& sourceId, AZ::EntityId graphId);
         
@@ -40,7 +43,7 @@ namespace ScriptCanvasEditor
         NodeIdPair CreateObjectMethodNode(const AZStd::string& className, const AZStd::string& methodName, AZ::EntityId graphId);
         NodeIdPair CreateObjectOrObjectMethodNode(const AZStd::string& className, const AZStd::string& methodName, AZ::EntityId graphId);
 
-        // SlotGroup will control how elements are groupped.
+        // SlotGroup will control how elements are grouped.
         // Invalid will cause the slots to put themselves into whatever category they belong to by default.
         AZ::EntityId CreateGraphCanvasSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::Slot& slot, GraphCanvas::SlotGroup group = GraphCanvas::SlotGroups::Invalid);
         AZ::EntityId CreateForcedDataTypeGraphCanvasSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::Slot& slot, const AZ::Uuid& dataType, GraphCanvas::SlotGroup slotGroup = GraphCanvas::SlotGroups::Invalid);

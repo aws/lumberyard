@@ -80,6 +80,10 @@ public:
 
     bool IsDoingUndoOperation() const { return m_bDoingUndoOperation; }
 
+public: // static functions
+
+    static QString GetEntityIdAsString(const AZ::EntityId& entityId) { return QString::number(static_cast<AZ::u64>(entityId)); }
+
 protected slots:
     void OnGoToPrevKey();
     void OnGoToNextKey();
@@ -140,7 +144,9 @@ protected slots:
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
+#if defined(AZ_PLATFORM_WINDOWS)
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+#endif
     bool event(QEvent* event) override;
 
 private slots:
@@ -184,7 +190,7 @@ private:
     void SetCursorPosText(float fTime);
 
     void SaveZoomScrollSettings();
-#ifdef Q_OS_WIN
+#if defined(AZ_PLATFORM_WINDOWS)
     bool processRawInput(MSG* pMsg);
 #endif
 
@@ -198,6 +204,7 @@ private:
 
     void OnSequenceAdded(CTrackViewSequence* pSequence) override;
     void OnSequenceRemoved(CTrackViewSequence* pSequence) override;
+    void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) override;
 
     virtual void BeginUndoTransaction();
     virtual void EndUndoTransaction();
@@ -229,7 +236,7 @@ private:
     CMovieCallback* m_pMovieCallback;
 
     // Current sequence
-    QString m_currentSequenceName;
+    AZ::EntityId m_currentSequenceEntityId;
 
     // State
     bool m_bRecord;

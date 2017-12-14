@@ -32,8 +32,10 @@
 #include "Sprite.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiButtonNotificationBus Behavior context handler class 
-class UiButtonNotificationBusBehaviorHandler : public UiButtonNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiButtonNotificationBus Behavior context handler class
+class UiButtonNotificationBusBehaviorHandler
+    : public UiButtonNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiButtonNotificationBusBehaviorHandler, "{8CB61B57-8A99-46AE-ABAC-23384FA5BC96}", AZ::SystemAllocator,

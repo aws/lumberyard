@@ -784,8 +784,8 @@ void CBrush::SetEntityStatObj(unsigned int nSlot, IStatObj* pStatObj, const Matr
     // If object differ we must re-physicalize.
     if (pStatObj != pPrevStatObj)
     {
-        if (!pPrevStatObj || !pStatObj || (pStatObj->GetCloneSourceObject() != pPrevStatObj))// ||
-        {       //(pStatObj->GetFlags() & (STATIC_OBJECT_GENERATED|STATIC_OBJECT_CLONE))==STATIC_OBJECT_CLONE)
+        if (!pPrevStatObj || !pStatObj || (pStatObj->GetCloneSourceObject() != pPrevStatObj))
+        {      
             Physicalize();
         }
     }
@@ -807,7 +807,7 @@ void CBrush::SetEntityStatObj(unsigned int nSlot, IStatObj* pStatObj, const Matr
     {
         if (!m_pDeform)
         {
-            m_pDeform = new CDeformableNode(m_nSID);
+            m_pDeform = new CDeformableNode();
         }
         m_pDeform->SetStatObj(static_cast<CStatObj*>(m_pStatObj.get()));
         m_pDeform->BakeDeform(GetMatrix());
@@ -827,7 +827,7 @@ void CBrush::SetStatObj(IStatObj* pStatObj)
     {
         if (!m_pDeform)
         {
-            m_pDeform = new CDeformableNode(m_nSID);
+            m_pDeform = new CDeformableNode();
         }
         m_pDeform->SetStatObj(static_cast<CStatObj*>(m_pStatObj.get()));
         m_pDeform->BakeDeform(GetMatrix());

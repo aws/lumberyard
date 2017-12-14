@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "DeploymentDetailWidget.h"
 
 #include "DetailWidget/DeploymentDetailWidget.moc"

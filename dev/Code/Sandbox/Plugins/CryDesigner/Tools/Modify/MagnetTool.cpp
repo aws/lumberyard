@@ -17,6 +17,17 @@
 #include "Tools/DesignerTool.h"
 #include "Viewport.h"
 
+
+MagnetTool::MagnetTool(CD::EDesignerTool tool)
+    : SelectTool(tool)
+    , m_Phase(eMTP_ChooseFirstPoint)
+    , m_nSelectedSourceVertex(-1)
+    , m_nSelectedUpVertex(-1)
+    , m_bPickedTargetPos(false)
+    , m_bSwitchedSides(false)
+{
+}
+
 void MagnetTool::AddVertexToList(const BrushVec3& vertex, ColorB color, std::vector<SSourceVertex>& vertices)
 {
     bool bHasSame = false;
@@ -81,8 +92,11 @@ void MagnetTool::Leave()
 
 void MagnetTool::PrepareChooseFirstPointStep()
 {
-    ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
+    m_nSelectedSourceVertex = -1;
+    m_nSelectedUpVertex = -1;
+    m_Phase = eMTP_ChooseFirstPoint;
 
+    ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
     if (pSelected->IsEmpty() || (*pSelected)[0].m_pPolygon == NULL)
     {
         return;
@@ -133,10 +147,6 @@ void MagnetTool::PrepareChooseFirstPointStep()
 
         AddVertexToList((*pSelected)[k].m_pPolygon->GetRepresentativePosition(), CD::kElementBoxColor, m_SourceVertices);
     }
-
-    m_nSelectedSourceVertex = -1;
-    m_nSelectedUpVertex = -1;
-    m_Phase = eMTP_ChooseFirstPoint;
 }
 
 void MagnetTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point)

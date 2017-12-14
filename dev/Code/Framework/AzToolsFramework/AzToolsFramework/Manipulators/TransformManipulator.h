@@ -9,58 +9,56 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
-
-#include "ManipulatorBus.h"
-#include "BaseManipulator.h"
+#include <AzToolsFramework/Manipulators/ManipulatorBus.h>
+#include <AzToolsFramework/Manipulators/BaseManipulator.h>
+#include <AzToolsFramework/Manipulators/PlanarManipulator.h>
+#include <AzToolsFramework/Manipulators/LinearManipulator.h>
+#include <AzToolsFramework/Manipulators/AngularManipulator.h>
 
 namespace AzToolsFramework
 {
     /**
-     * This is an aggregation of manipulators used to modify each of a Transform's three components, namely scale, rotation and translation.
+     * This is an aggregation of manipulators used to modify each of a Transform's
+     * three components, namely scale, rotation and translation.
      */
     class TransformManipulator
         : private ManipulatorManagerNotificationBus::Handler
     {
     public:
-
         AZ_RTTI(TransformManipulator, "{B2006A9B-A502-45E8-A49C-D6C458A13E83}");
         AZ_CLASS_ALLOCATOR(TransformManipulator, AZ::SystemAllocator, 0);
+
+        enum class Mode
+        {
+            Translation,
+            Scale,
+            Rotation
+        };
 
         explicit TransformManipulator(AZ::EntityId entityId);
         ~TransformManipulator();
 
-        void Register(AzToolsFramework::ManipulatorManagerId manipulatorManagerId);
+        void Register(ManipulatorManagerId manipulatorManagerId);
         void Unregister();
 
-        //////////////////////////////////////////////////////////////////////////
-        /// ManipulatorManagerNotificationBus::Handler
-        void OnTransformManipulatorModeChanged(TransformManipulatorMode previousMode, TransformManipulatorMode currentMode) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        using LinearManipulatorMouseActionCallback = AZStd::function<void(const LinearManipulationData&)>;
-        using PlanarManipulatorMouseActionCallback = AZStd::function<void(const PlanarManipulationData&)>;
-        using AngularManipulatorMouseActionCallback = AZStd::function<void(const AngularManipulationData&)>;
-
-        void InstallTranslationLinearManipulatorMouseDownCallback(LinearManipulatorMouseActionCallback onMouseDownCallback);
-        void InstallTranslationLinearManipulatorMouseMoveCallback(LinearManipulatorMouseActionCallback onMouseMoveCallback);
-        void InstallTranslationPlanarManipulatorMouseDownCallback(PlanarManipulatorMouseActionCallback onMouseDownCallback);
-        void InstallTranslationPlanarManipulatorMouseMoveCallback(PlanarManipulatorMouseActionCallback onMouseMoveCallback);
-
-        void InstallScaleLinearManipulatorMouseDownCallback(LinearManipulatorMouseActionCallback onMouseDownCallback);
-        void InstallScaleLinearManipulatorMouseMoveCallback(LinearManipulatorMouseActionCallback onMouseMoveCallback);
-
-        void InstallRotationAngularManipulatorMouseDownCallback(AngularManipulatorMouseActionCallback onMouseDownCallback);
-        void InstallRotationAngularManipulatorMouseMoveCallback(AngularManipulatorMouseActionCallback onMouseMoveCallback);
+        void InstallTranslationLinearManipulatorLeftMouseDownCallback(LinearManipulator::MouseActionCallback onMouseDownCallback);
+        void InstallTranslationLinearManipulatorMouseMoveCallback(LinearManipulator::MouseActionCallback onMouseMoveCallback);
+        void InstallTranslationPlanarManipulatorLeftMouseDownCallback(PlanarManipulator::MouseActionCallback onMouseDownCallback);
+        void InstallTranslationPlanarManipulatorMouseMoveCallback(PlanarManipulator::MouseActionCallback onMouseMoveCallback);
+        void InstallScaleLinearManipulatorLeftMouseDownCallback(LinearManipulator::MouseActionCallback onMouseDownCallback);
+        void InstallScaleLinearManipulatorMouseMoveCallback(LinearManipulator::MouseActionCallback onMouseMoveCallback);
+        void InstallRotationAngularManipulatorLeftMouseDownCallback(AngularManipulator::MouseActionCallback onMouseDownCallback);
+        void InstallRotationAngularManipulatorMouseMoveCallback(AngularManipulator::MouseActionCallback onMouseMoveCallback);
 
         void SetBoundsDirty();
 
     private:
-
-        void SwitchManipulators(TransformManipulatorMode mode);
+        void SwitchManipulators(Mode mode);
 
         const static int s_translationLinearManipulatorBeginIndex = 0;
         const static int s_translationLinearManipulatorEndIndex = 3;
@@ -76,6 +74,6 @@ namespace AzToolsFramework
 
         AZStd::vector<AZStd::unique_ptr<BaseManipulator>> m_manipulators;
 
-        ManipulatorManagerId m_manipulatorManagerId;
+        ManipulatorManagerId m_manipulatorManagerId = InvalidManipulatorManagerId;
     };
 } // namespace AzToolsFramework

@@ -41,6 +41,8 @@ namespace AzFramework
         //! EBus Trait: requests should be handled by only one input device connected to each id
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
+        typedef AZStd::recursive_mutex MutexType;
+
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! EBus Trait: requests can be addressed to a specific InputDeviceId
         using BusIdType = InputDeviceId;

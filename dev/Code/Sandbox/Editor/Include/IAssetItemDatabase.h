@@ -22,6 +22,9 @@
 struct IAssetItem;
 struct IAssetViewer;
 
+class QString;
+class QStringList;
+
 // Description:
 //  This struct keeps the info, filter and sorting settings for an asset field
 struct SAssetField
@@ -126,7 +129,7 @@ struct SAssetField
     // choose a value for the field from this list in the UI
     TFieldEnumValues m_enumValues;
     // recommended list column width
-    UINT m_listColumnWidth;
+    unsigned int m_listColumnWidth;
 };
 
 struct SFieldFiltersPreset

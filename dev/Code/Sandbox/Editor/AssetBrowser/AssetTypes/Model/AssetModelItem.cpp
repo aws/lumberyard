@@ -229,9 +229,9 @@ bool CAssetModelItem::Cache()
 
             if (pShaderRes)
             {
-                for (size_t j = 0; j < EFTT_MAX; ++j)
+                for ( auto iter=pShaderRes->GetTexturesResourceMap()->begin() ; iter!=pShaderRes->GetTexturesResourceMap()->end() ; ++iter )
                 {
-                    if (SEfResTexture* pTex = pShaderRes->GetTexture(j))
+                    if (SEfResTexture* pTex = &(iter->second))
                     {
                         m_dependencies["Textures"].insert(pTex->m_Name.c_str());
                     }
@@ -254,9 +254,9 @@ bool CAssetModelItem::Cache()
 
                 if (pShaderRes)
                 {
-                    for (size_t j = 0; j < EFTT_MAX; ++j)
+                    for (auto iter = pShaderRes->GetTexturesResourceMap()->begin(); iter != pShaderRes->GetTexturesResourceMap()->end(); ++iter)
                     {
-                        if (SEfResTexture* pTex = pShaderRes->GetTexture(j))
+                        if (SEfResTexture* pTex = &(iter->second))
                         {
                             m_dependencies["Textures"].insert(pTex->m_Name.c_str());
                         }
@@ -790,9 +790,9 @@ void CAssetModelItem::CacheFieldsInfoForLoadedStatObj(IStatObj* pStatObj)
 
             if (pShaderRes)
             {
-                for (size_t j = 0; j < EFTT_MAX; ++j)
+                for (auto iter = pShaderRes->GetTexturesResourceMap()->begin(); iter != pShaderRes->GetTexturesResourceMap()->end(); ++iter)
                 {
-                    if (SEfResTexture* pTex = pShaderRes->GetTexture(j))
+                    if (SEfResTexture* pTex = &(iter->second))
                     {
                         m_dependencies["Textures"].insert(pTex->m_Name.c_str());
                     }
@@ -815,9 +815,9 @@ void CAssetModelItem::CacheFieldsInfoForLoadedStatObj(IStatObj* pStatObj)
 
                 if (pShaderRes)
                 {
-                    for (size_t j = 0; j < EFTT_MAX; ++j)
+                    for (auto iter = pShaderRes->GetTexturesResourceMap()->begin(); iter != pShaderRes->GetTexturesResourceMap()->end(); ++iter)
                     {
-                        if (SEfResTexture* pTex = pShaderRes->GetTexture(j))
+                        if (SEfResTexture* pTex = &(iter->second))
                         {
                             m_dependencies["Textures"].insert(pTex->m_Name.c_str());
                         }
@@ -840,8 +840,8 @@ void CAssetModelItem::DrawTextOnReportImage(QPaintDevice* pd) const
     const QColor filenameShadowColor(0, 0, 0);
     const QColor filenameColor(255, 255, 0);
     const QColor otherInfosColor(0, 0, 0);
-    QFont fontInfoTitle(QStringLiteral("Arial"), 9.5, QFont::Bold);
-    QFont fontInfo(QStringLiteral("Arial"), 8.0, QFont::Bold);
+    QFont fontInfoTitle(QStringLiteral("Arial"), 9, QFont::Bold);
+    QFont fontInfo(QStringLiteral("Arial"), 8, QFont::Bold);
 
     QPainter painter(pd);
     painter.setFont(fontInfoTitle);

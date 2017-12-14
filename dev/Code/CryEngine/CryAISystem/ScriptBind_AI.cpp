@@ -64,6 +64,8 @@
 #include "BehaviorTree/BehaviorTreeManager.h"
 #include "Components/IComponentPhysics.h"
 
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
 //#pragma optimize("", off)
 //#pragma inline_depth(0)
 
@@ -5183,7 +5185,7 @@ int CScriptBind_AI::GetFlyingVehicleFlockingPos(IFunctionHandler* pH)
             continue;
         }
 
-        float heightAboveWater = vHisPos.z - gEnv->p3DEngine->GetWaterLevel(&vHisPos);
+        float heightAboveWater = vHisPos.z - OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vHisPos) : gEnv->p3DEngine->GetWaterLevel(&vHisPos);
         if (heightAboveWater < checkAbove)                  // only think flying object
         {
             continue;
@@ -5391,7 +5393,8 @@ int CScriptBind_AI::IsPointInWaterRegion(IFunctionHandler* pH)
         return pH->EndFunction(0);
     }
 
-    float level = gEnv->p3DEngine->GetWaterLevel(&vStart) -  gEnv->p3DEngine->GetTerrainElevation(vStart.x, vStart.y);
+    const float oceanLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vStart) : gEnv->p3DEngine->GetWaterLevel(&vStart);
+    float level = oceanLevel -  gEnv->p3DEngine->GetTerrainElevation(vStart.x, vStart.y);
 
     return pH->EndFunction(level);
 }

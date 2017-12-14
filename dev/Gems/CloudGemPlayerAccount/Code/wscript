@@ -25,14 +25,12 @@ def build(bld):
             file_list.append('lmbraws_unsupported.waf_files')
 
     bld.DefineGem(
-        includes        = [bld.Path('Code/CryEngine/CryAction'),
-                           bld.Path('Code/SDKs/AWSNativeSDK/include'),
+        includes        = [bld.Path('Code/CryEngine/CryAction')
         ],
         platforms = ['all'],
 
         file_list = file_list,
         uselib = ['AWS_CPP_SDK_COGNITO_IDP','AWS_CPP_SDK_CORE'],
-        shared_settings = ['awsgem.json'],
-
+ 
        
     )

@@ -16,6 +16,7 @@
 #include "CryHeaders.h"
 #include "StringUtils.h"                                // stristr()
 #include "../Common/Textures/TextureHelpers.h"
+#include "../Common/Textures/TextureManager.h"
 
 #if defined(WIN32) || defined(WIN64)
 #include <direct.h>
@@ -25,45 +26,66 @@
 #endif
 
 //===============================================================================
+#if !defined(_RELEASE)
+    // Texture names to be used for error / process loading indications
+    static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMe.tif";
+#else
+    // Some of the textures here will direct to the regular DefaultSolids_diff to prevent eye catching
+    // bug textures in release mode
+    static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
+#endif
 
-
+//===============================================================================
 CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResources* Res, bool bShare)
 {
-    uint32 i, j;
-    SInputShaderResources RS = *Res;
+    uint16      i, j;
+    SInputShaderResources localCopySR = *Res;    // pay attention to this local copy
 
     // prepare local resources for cache-check, textures are looked up but not triggered for load
-    for (i = 0; i < EFTT_MAX; i++)
+    for ( auto& iter : localCopySR.m_TexturesResourcesMap )
     {
+        SEfResTexture*      pTextureRes = &(iter.second);
+
         // Store off the previous texture's flags before we clean up the sampler slot
-        uint32 textureFlags = (RS.m_Textures[i].m_Sampler.m_pTex) ? RS.m_Textures[i].m_Sampler.m_pTex->GetFlags() : 0;
+        uint32              textureFlags = (pTextureRes->m_Sampler.m_pTex) ? pTextureRes->m_Sampler.m_pTex->GetFlags() : 0;
 
-        RS.m_Textures[i].m_Sampler.Cleanup();
-        if (!RS.m_Textures[i].m_Name.empty())
-        {
-            // If the texture that used to exist in this resource slot was created as an alpha texture
-            // e.g. - A gloss map stored in the alpha channel of a normal map (see CShaderMan::mfRefreshResources for some extra details on the texture slots that use the FT_ALPHA texture path)
-            // then we need to pass the FT_ALPHA flag into mfFindResourceTexture so it can find the actual texture resource.
-            const uint32 alphaTextureFlags = textureFlags & FT_ALPHA;
+        pTextureRes->m_Sampler.Cleanup();
+        if (!pTextureRes->m_Name.empty())
+        {   // If the texture that used to exist in this resource slot was created as an alpha texture
+            // e.g. - a gloss map stored in the alpha channel of a normal map (see CShaderMan::mfRefreshResources for some 
+            // extra details on the texture slots that use the FT_ALPHA texture path), we need to pass the FT_ALPHA flag 
+            // into mfFindResourceTexture so it can find the actual texture resource.
+            const uint32    alphaTextureFlags = textureFlags & FT_ALPHA;
 
-            RS.m_Textures[i].m_Sampler.m_pTex = mfFindResourceTexture(RS.m_Textures[i].m_Name.c_str(), RS.m_TexturePath.c_str(), RS.m_Textures[i].m_Sampler.GetTexFlags() | alphaTextureFlags, &RS.m_Textures[i]);
-            if (RS.m_Textures[i].m_Sampler.m_pTex)
-            {
-                RS.m_Textures[i].m_Sampler.m_pTex->AddRef();
+            // Find the actual texture resource according to the given name
+            pTextureRes->m_Sampler.m_pTex = mfFindResourceTexture(
+                pTextureRes->m_Name.c_str(), localCopySR.m_TexturePath.c_str(),
+                pTextureRes->m_Sampler.GetTexFlags() | alphaTextureFlags, pTextureRes);
+
+            if (pTextureRes->m_Sampler.m_pTex)
+            {   // increase usage counter if texture was found
+                pTextureRes->m_Sampler.m_pTex->AddRef();
             }
         }
+/*      [Shader System TO DO] - verify if possible to remove slot
+        else
+        {
+            AZ_Warning( "ShadersSystem", false, "CShaderMan::mfCreateShaderResources - texture name does not exist at slot %d - removing slot", iter->first);
+            pLocalCopySR.m_TexturesResourcesMap.erase(iter);
+        }
+*/
     }
 
-    // check local resources vs. global cache
-    int nFree = -1;
-    for (i = 1; i < CShader::s_ShaderResources_known.Num(); i++)
+    // check local resources vs' global cache
+    int      nFree = -1;
+    for (i = 1; i < CShader::s_ShaderResources_known.Num(); i++)    // first entry is a null entry
     {
-        // not thread safe can be modified from render thread in SRenderShaderResources dtor ()
+        // NOT thread safe can be modified from render thread in SRenderShaderResources dtor ()
         // (if flushing of unloaded textures (UnloadLevel) is not complete before pre-loading of new materials)
-        CShaderResources* pSR = CShader::s_ShaderResources_known[i];
-        if (!pSR)
+        CShaderResources*   pLoadedSRes = CShader::s_ShaderResources_known[i];
+        if (!pLoadedSRes)
         {
-            nFree = i;
+            nFree = i;  // find the first free slot in the bank
             if (!bShare || Res->m_ShaderParams.size())
             {
                 break;
@@ -75,43 +97,61 @@ CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResource
             continue;
         }
 
-        if (RS.m_ResFlags == pSR->GetResFlags() &&
-            RS.m_LMaterial.m_Opacity == pSR->GetStrengthValue(EFTT_OPACITY) &&
-            RS.m_LMaterial.m_Emittance.a == pSR->GetStrengthValue(EFTT_EMITTANCE) &&
-            RS.m_AlphaRef == pSR->GetAlphaRef() &&
-            !stricmp(RS.m_TexturePath.c_str(), pSR->m_TexturePath.c_str()))
+        // [Shader System TO DO] - see if can be replaced with unified compare function
+        if (localCopySR.m_ResFlags == pLoadedSRes->GetResFlags() &&
+            localCopySR.m_LMaterial.m_Opacity == pLoadedSRes->GetStrengthValue(EFTT_OPACITY) &&
+            localCopySR.m_LMaterial.m_Emittance.a == pLoadedSRes->GetStrengthValue(EFTT_EMITTANCE) &&
+            localCopySR.m_AlphaRef == pLoadedSRes->GetAlphaRef() &&
+            localCopySR.m_TexturePath == pLoadedSRes->m_TexturePath)
         {
-            if ((!pSR->m_pDeformInfo && !RS.m_DeformInfo.m_eType) || (pSR->m_pDeformInfo && *pSR->m_pDeformInfo == RS.m_DeformInfo))
+            // if there is not shader deformation or both deformations are identical
+            if ((!pLoadedSRes->m_pDeformInfo && !localCopySR.m_DeformInfo.m_eType) || (pLoadedSRes->m_pDeformInfo && *pLoadedSRes->m_pDeformInfo == localCopySR.m_DeformInfo))
             {
+                // [Shader System TO DO] - optimize 
+                // The following code runs over all slots and verify a match between current shader and 
+                // loaded shaders If no match - break and add to the loaded.
                 for (j = 0; j < EFTT_MAX; j++)
                 {
-                    if (!pSR->m_Textures[j] || pSR->m_Textures[j]->m_Name.empty())
+                    SEfResTexture*  pLoadedTexRes = pLoadedSRes->GetTextureResource(j);
+                    SEfResTexture*  pShaderTexRes = localCopySR.GetTextureResource(j);
+
+                    // No loaded (cached) texture slot or no texture name for this slot
+                    if (!pLoadedTexRes || pLoadedTexRes->m_Name.empty())
                     {
-                        if (RS.m_Textures[j].m_Name.empty())
-                        {
+                        if (!pShaderTexRes || pShaderTexRes->m_Name.empty())
+                        {   // match - no texture slot or texture name - move to the next slot
                             continue;
                         }
+
+                        // slot exists but cannot be found in the resource - no shaders match - try the next cached shader
                         break;
                     }
-                    else if (RS.m_Textures[j].m_Name.empty())
+                    // Cached slot entry with texture name exists - test to see if exists for the current shader
+                    else if (!pShaderTexRes || pShaderTexRes->m_Name.empty())
                     {
-                        break;
+                        break;  // texture slot doesn't exist / no texture name for current shader - no match - move to next cached shader
                     }
-                    if (RS.m_Textures[j] != *pSR->m_Textures[j])
+
+                    // both slots exist - run a full comparison between the two shaders (current and cached)
+                    if (*pLoadedTexRes != *pShaderTexRes)
                     {
-                        break;
+                        break;  // no match - move to the next cached shader
                     }
                 }
+
+                // The two shader resources fully match - return the cached shader resource (no need to load)
                 if (j == EFTT_MAX)
                 {
-                    pSR->AddRef();
-                    return pSR;
+                    pLoadedSRes->AddRef();      // add usage count to this loaded shader resource
+                    return pLoadedSRes;
                 }
             }
         }
     }
 
-    CShaderResources* pSR = new CShaderResources(&RS);
+    // The current shader resource does not exist - create a dynamic copy to be loaded and 
+    // insert to the cached resources bank.
+    CShaderResources*   pSR = new CShaderResources(&localCopySR);
     pSR->m_nRefCounter = 1;
     if (!CShader::s_ShaderResources_known.Num())
     {
@@ -173,33 +213,30 @@ uint32 SShaderItem::PostLoad()
     if (pR)
     {
         pR->PostLoad(pSH);
-        for (int i = 0; i < EFTT_MAX; i++)
+
+        for (auto& iter : pR->m_TexturesResourcesMap )
         {
-            if (!pR->m_Textures[i] || !pR->m_Textures[i]->m_Sampler.m_pTarget)
+            SEfResTexture*  pTexture = &(iter.second);
+            bool            is2DTexture = (pTexture->m_Sampler.m_eTexType == eTT_Auto2D || pTexture->m_Sampler.m_eTexType == eTT_Dyn2D);
+
+            if (!pTexture->m_Sampler.m_pTarget)
             {
                 continue;
             }
 
-            if (gRenDev->m_RP.m_eQuality == eRQ_Low)
+            if (is2DTexture)
             {
-                STexSamplerRT& sampler(pR->m_Textures[i]->m_Sampler);
-                if (sampler.m_eTexType == eTT_Auto2D || sampler.m_eTexType == eTT_Dyn2D)
+                if (gRenDev->m_RP.m_eQuality == eRQ_Low)
                 {
-                    sampler.m_eTexType = eTT_2D;
+                    pTexture->m_Sampler.m_eTexType = eTT_2D;
                 }
-            }
-
-            if (pR->m_Textures[i]->m_Sampler.m_eTexType == eTT_Auto2D || pR->m_Textures[i]->m_Sampler.m_eTexType == eTT_Dyn2D)
-            {
                 pR->m_ResFlags |= MTL_FLAG_NOTINSTANCED;
-            }
-            pR->m_RTargets.AddElem(pR->m_Textures[i]->m_Sampler.m_pTarget);
-            if (pR->m_Textures[i]->m_Sampler.m_eTexType == eTT_Auto2D || pR->m_Textures[i]->m_Sampler.m_eTexType == eTT_Dyn2D)
-            {
                 nPreprocessFlags |= FSPR_SCANTEX;
             }
+            pR->m_RTargets.AddElem(pTexture->m_Sampler.m_pTarget);
         }
     }
+
     if (pTech && pTech->m_Passes.Num() && (pTech->m_Passes[0].m_RenderState & GS_ALPHATEST_MASK))
     {
         if (pR && !pR->m_AlphaRef)
@@ -266,7 +303,9 @@ uint32 SShaderItem::PostLoad()
             }
             else
             {
-                AZ_Warning("Shader Load", false, "Shader %s use refraction but it's not enabled for this configuration. Check the value of the CVAR r_Refraction.", pSH->m_NameShader.c_str());
+                AZ_Warning("ShadersSystem", false, 
+                    "Shader %s use refraction but it's not enabled for this configuration. Check the value of the CVAR r_Refraction.", 
+                    pSH->m_NameShader.c_str());
             }
         }
     }
@@ -284,8 +323,14 @@ uint32 SShaderItem::PostLoad()
     return nPreprocessFlags;
 }
 
+//------------------------------------------------------------------------------
+// [Shader System TO DO] - remove and replace with data driven from the shader files
+// This method should be per shader type and not generic to the entire engine.
 
-
+// This method associates fixed slots with known contextual material textures
+// The engine slots are left unhandled and will be assigned through the 
+// shader and engine side - explore how!
+//------------------------------------------------------------------------------
 EEfResTextures CShaderMan::mfCheckTextureSlotName(const char* mapname)
 {
     EEfResTextures slot = EFTT_UNKNOWN;
@@ -383,11 +428,13 @@ EEfResTextures CShaderMan::mfCheckTextureSlotName(const char* mapname)
     {
         slot = EFTT_SMOOTHNESS;                                                //EFTT_GLOSS_NORMAL_A;
     }
+
     return slot;
 }
 
-//=================================================================================================
-
+//------------------------------------------------------------------------------
+// [Shader System TO DO] - data driven per update frequencies and the slots map
+//------------------------------------------------------------------------------
 CTexture* CShaderMan::mfCheckTemplateTexName(const char* mapname, ETEX_Type eTT)
 {
     CTexture* TexPic = NULL;
@@ -513,7 +560,7 @@ CTexture* CShaderMan::mfCheckTemplateTexName(const char* mapname, ETEX_Type eTT)
     else
     if (!strnicmp(mapname, "$White", 6))
     {
-        TexPic = CTexture::s_ptexWhite;
+        TexPic = CTextureManager::Instance()->GetWhiteTexture();
     }
     else
     if (!strnicmp(mapname, "$RT_2D", 6))
@@ -689,6 +736,9 @@ CTexture* CShaderMan::mfCheckTemplateTexName(const char* mapname, ETEX_Type eTT)
     return TexPic;
 }
 
+//------------------------------------------------------------------------------
+// [Shader System TO DO] - remove and replace with data driven from the shader files
+//------------------------------------------------------------------------------
 const char* CShaderMan::mfTemplateTexIdToName(int Id)
 {
     switch (Id)
@@ -951,72 +1001,90 @@ CTexture* CShaderMan::mfLoadResourceTexture(const char* nameTex, const char* pat
     return mfTryToLoadTexture(nameTex, Tex ? &Tex->m_Sampler : NULL, Flags, false);
 }
 
-bool CShaderMan::mfLoadResourceTexture(EEfResTextures Id, SInputShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail)
+
+bool CShaderMan::mfLoadResourceTexture(ResourceSlotIndex Id, SInputShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail)
 {
-    bool bReturn = false;
+    SEfResTexture*  pTextureRes = RS.GetTextureResource(Id);
 
-    if (!bReturn && !RS.m_Textures[Id].m_Name.empty())
+    if (!pTextureRes || pTextureRes->m_Name.empty())
+        return false;
+
+    // Texture slot and texture name exist
+    STexSamplerRT&  texSampler(pTextureRes->m_Sampler);
+
+    // No texture or texture not loaded - try to load it
+    if (!texSampler.m_pTex || !texSampler.m_pTex->IsTextureLoaded())
     {
-        if (!RS.m_Textures[Id].m_Sampler.m_pTex || !RS.m_Textures[Id].m_Sampler.m_pTex->IsTextureLoaded())
-        {
-            RS.m_Textures[Id].m_Sampler.m_pTex = mfLoadResourceTexture(RS.m_Textures[Id].m_Name.c_str(), RS.m_TexturePath.c_str(), RS.m_Textures[Id].m_Sampler.GetTexFlags() | CustomFlags, &RS.m_Textures[Id]);
-        }
-
-        if (!(bReturn = RS.m_Textures[Id].m_Sampler.m_pTex->IsTextureLoaded()) && bReplaceMeOnFail)
-        {
-            RS.m_Textures[Id].m_Sampler.m_pTex = mfLoadResourceTexture("EngineAssets/TextureMsg/ReplaceMe.tif", RS.m_TexturePath.c_str(), RS.m_Textures[Id].m_Sampler.GetTexFlags() | CustomFlags, &RS.m_Textures[Id]);
-        }
+        texSampler.m_pTex = mfLoadResourceTexture( pTextureRes->m_Name.c_str(), RS.m_TexturePath.c_str(), texSampler.GetTexFlags() | CustomFlags, pTextureRes);
     }
 
-    return bReturn;
+    bool    bTextureLoadSuccess = texSampler.m_pTex->IsTextureLoaded();
+    // Texture was not successfully loaded but is marked for placeholder loading on fail
+    if (!bTextureLoadSuccess && bReplaceMeOnFail)
+    {
+        texSampler.m_pTex = mfLoadResourceTexture( szReplaceMe, RS.m_TexturePath.c_str(), texSampler.GetTexFlags() | CustomFlags, pTextureRes);
+    }
+    return bTextureLoadSuccess;
 }
 
-bool CShaderMan::mfLoadResourceTexture(EEfResTextures Id, CShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail)
+bool CShaderMan::mfLoadResourceTexture(ResourceSlotIndex Id, CShaderResources& RS, uint32 CustomFlags, bool bReplaceMeOnFail)
 {
-    bool bTextureLoaded = RS.m_Textures[Id]->m_Sampler.m_pTex && RS.m_Textures[Id]->m_Sampler.m_pTex->IsTextureLoaded();
+    SEfResTexture*  pTextureRes = RS.GetTextureResource(Id);
 
-    if (!RS.m_Textures[Id]->m_Name.empty())
-    {
+    // Texture slot does not exist
+    if (!pTextureRes)
+        return false;
+
+    STexSamplerRT&  texSampler(pTextureRes->m_Sampler);
+    bool            bTextureLoaded = texSampler.m_pTex && texSampler.m_pTex->IsTextureLoaded();
+
+    if (!pTextureRes->m_Name.empty())
+    {   // texture can be retrieved
         if (!bTextureLoaded || (CustomFlags & FT_ALPHA))
         {
-            SAFE_RELEASE(RS.m_Textures[Id]->m_Sampler.m_pTex);
-            RS.m_Textures[Id]->m_Sampler.m_pTex = mfLoadResourceTexture(RS.m_Textures[Id]->m_Name.c_str(), RS.m_TexturePath.c_str(), RS.m_Textures[Id]->m_Sampler.GetTexFlags() | CustomFlags, RS.m_Textures[Id]);
+            SAFE_RELEASE(texSampler.m_pTex);
+            texSampler.m_pTex = mfLoadResourceTexture(pTextureRes->m_Name.c_str(), RS.m_TexturePath.c_str(), texSampler.GetTexFlags() | CustomFlags, pTextureRes);
         }
 
-        if (!(bTextureLoaded = RS.m_Textures[Id]->m_Sampler.m_pTex->IsTextureLoaded()) && bReplaceMeOnFail)
+        if (!(bTextureLoaded = texSampler.m_pTex->IsTextureLoaded()) && bReplaceMeOnFail)
         {
-            RS.m_Textures[Id]->m_Sampler.m_pTex = mfLoadResourceTexture("EngineAssets/TextureMsg/ReplaceMe.tif", RS.m_TexturePath.c_str(), RS.m_Textures[Id]->m_Sampler.GetTexFlags() | CustomFlags, RS.m_Textures[Id]);
+            texSampler.m_pTex = mfLoadResourceTexture("EngineAssets/TextureMsg/ReplaceMe.tif", RS.m_TexturePath.c_str(), texSampler.GetTexFlags() | CustomFlags, pTextureRes);
         }
     }
 
     return bTextureLoaded;
 }
 
-void CShaderMan::mfLoadDefaultTexture(EEfResTextures Id, CShaderResources& RS, EEfResTextures Def)
+//------------------------------------------------------------------------------
+// Notice - the function will actively add the marked slot if it does not exist.
+//------------------------------------------------------------------------------
+void CShaderMan::mfLoadDefaultTexture(ResourceSlotIndex Id, CShaderResources& RS, EEfResTextures Def)
 {
-    RS.m_Textures[Id]->m_Sampler.m_pTex = TextureHelpers::LookupTexDefault(Def);
+    RS.m_TexturesResourcesMap[Id].m_Sampler.m_pTex = TextureHelpers::LookupTexDefault(Def);
 }
 
+//------------------------------------------------------------------------------
+// Mark refresh required if any texture slot contains a texture
 bool CShaderMan::mfRefreshResourceConstants(CShaderResources* Res)
 {
-    bool bChanged = false;
+    if (!Res)
+        return false;
 
-    if (Res)
+    for (auto iter = Res->m_TexturesResourcesMap.begin(); iter != Res->m_TexturesResourcesMap.end(); ++iter)
     {
-        for (int i = 0; i < EFTT_MAX; i++)
-        {
-            if (!Res->m_Textures[i] || !Res->m_Textures[i]->m_Sampler.m_pTex)
-            {
-                continue;
-            }
-
-            bChanged |= true;
+        SEfResTexture*  pTexture = &iter->second;
+        if (pTexture->m_Sampler.m_pTex)
+        {   // marked changed if the sampler contains pointer to a texture
+            return true;
         }
     }
-
-    return bChanged;
+    return false;
 }
 
+//------------------------------------------------------------------------------
+// [Shader System] - TO DO : be very careful when optimizing this as it can lead 
+// to loss / uncorrelated  of texture slots.
+//------------------------------------------------------------------------------
 void CShaderMan::mfRefreshResources(CShaderResources* Res)
 {
     if (Res)
@@ -1026,15 +1094,15 @@ void CShaderMan::mfRefreshResources(CShaderResources* Res)
             int Flags = 0;
             if (i == EFTT_NORMALS)
             {
-                if ((!Res->m_Textures[i] || Res->m_Textures[i]->m_Name.empty()))
+                if ((!Res->TextureSlotExists(i) || Res->m_TexturesResourcesMap[i].m_Name.empty()))
                 {
                     continue;
                 }
 
                 Flags |= FT_TEX_NORMAL_MAP;
-                if (!Res->m_Textures[i])
+                if (!Res->TextureSlotExists(i))     // add a slot
                 {
-                    Res->AddTextureMap(i);
+                    Res->m_TexturesResourcesMap[i].Cleanup();
                 }
 
                 if (!mfLoadResourceTexture((EEfResTextures)i, *Res, Flags))
@@ -1043,15 +1111,10 @@ void CShaderMan::mfRefreshResources(CShaderResources* Res)
                 }
 
                 // Support for gloss in regular normal map
-                CTexture* pTexN = (Res->m_Textures[i] ? Res->m_Textures[i]->m_Sampler.m_pTex : NULL);
+                CTexture* pTexN = (Res->TextureSlotExists(i) ? Res->m_TexturesResourcesMap[i].m_Sampler.m_pTex : NULL);
                 if (pTexN && (pTexN->GetFlags() & FT_HAS_ATTACHED_ALPHA))
                 {
-                    if (!Res->m_Textures[EFTT_SMOOTHNESS])
-                    {
-                        Res->AddTextureMap(EFTT_SMOOTHNESS);
-                    }
-
-                    Res->m_Textures[EFTT_SMOOTHNESS]->m_Name = pTexN->GetSourceName();
+                    Res->m_TexturesResourcesMap[EFTT_SMOOTHNESS].m_Name = pTexN->GetSourceName();
                     if (!mfLoadResourceTexture(EFTT_SMOOTHNESS, *Res, Flags | FT_ALPHA))
                     {
                         mfLoadDefaultTexture(EFTT_SMOOTHNESS, *Res, (EEfResTextures)i);
@@ -1061,56 +1124,51 @@ void CShaderMan::mfRefreshResources(CShaderResources* Res)
                 continue;
             }
             else
-            if (i == EFTT_HEIGHT)
-            {
-                if (!Res->m_Textures[EFTT_NORMALS] || !Res->m_Textures[EFTT_NORMALS]->m_Sampler.m_pTex)
+                if (i == EFTT_HEIGHT)
                 {
-                    continue;
-                }
-                if (!Res->m_Textures[i])
-                {
-                    continue; //Res->AddTextureMap(i);
-                }
-                mfLoadResourceTexture((EEfResTextures)i, *Res, Flags);
-            }
-            else
-            if (i == EFTT_CUSTOM_SECONDARY)
-            {
-                if ((!Res->m_Textures[i] || Res->m_Textures[i]->m_Name.empty()))
-                {
-                    continue;
-                }
-
-                if (!Res->m_Textures[i])
-                {
-                    Res->AddTextureMap(i);
-                }
-
-                if (!mfLoadResourceTexture((EEfResTextures)i, *Res, Flags))
-                {
-                    mfLoadDefaultTexture((EEfResTextures)i, *Res, (EEfResTextures)i);
-                }
-
-                // Support for gloss in blend layer normal map
-                CTexture* pTexN = (Res->m_Textures[i] ? Res->m_Textures[i]->m_Sampler.m_pTex : NULL);
-                if (pTexN && (pTexN->GetFlags() & FT_HAS_ATTACHED_ALPHA))
-                {
-                    if (!Res->m_Textures[EFTT_SECOND_SMOOTHNESS])
+                    if (!Res->TextureSlotExists(EFTT_NORMALS) || !Res->m_TexturesResourcesMap[EFTT_NORMALS].m_Sampler.m_pTex)
                     {
-                        Res->AddTextureMap(EFTT_SECOND_SMOOTHNESS);
+                        continue;
+                    }
+                    if (!Res->TextureSlotExists(i))
+                    {
+                        continue; //Res->AddTextureMap(i);
+                    }
+                    mfLoadResourceTexture((EEfResTextures)i, *Res, Flags);
+                }
+                else
+                    if (i == EFTT_CUSTOM_SECONDARY)
+                    {
+                        if ((!Res->TextureSlotExists(i) || Res->m_TexturesResourcesMap[i].m_Name.empty()))
+                        {
+                            continue;
+                        }
+
+                        if (!Res->TextureSlotExists(i))
+                        {   // adds the slot
+                            Res->m_TexturesResourcesMap[i].Cleanup();
+                        }
+
+                        if (!mfLoadResourceTexture((EEfResTextures)i, *Res, Flags))
+                        {
+                            mfLoadDefaultTexture((EEfResTextures)i, *Res, (EEfResTextures)i);
+                        }
+
+                        // Support for gloss in blend layer normal map
+                        CTexture* pTexN = (Res->TextureSlotExists(i) ? Res->m_TexturesResourcesMap[i].m_Sampler.m_pTex : NULL);
+                        if (pTexN && (pTexN->GetFlags() & FT_HAS_ATTACHED_ALPHA))
+                        {
+                            Res->m_TexturesResourcesMap[EFTT_SECOND_SMOOTHNESS].m_Name = pTexN->GetSourceName();
+                            if (!mfLoadResourceTexture(EFTT_SECOND_SMOOTHNESS, *Res, Flags | FT_ALPHA))
+                            {
+                                mfLoadDefaultTexture(EFTT_SECOND_SMOOTHNESS, *Res, EFTT_SMOOTHNESS);
+                            }
+                        }
+
+                        continue;
                     }
 
-                    Res->m_Textures[EFTT_SECOND_SMOOTHNESS]->m_Name = pTexN->GetSourceName();
-                    if (!mfLoadResourceTexture(EFTT_SECOND_SMOOTHNESS, *Res, Flags | FT_ALPHA))
-                    {
-                        mfLoadDefaultTexture(EFTT_SECOND_SMOOTHNESS, *Res, EFTT_SMOOTHNESS);
-                    }
-                }
-
-                continue;
-            }
-
-            SEfResTexture* Tex = Res->m_Textures[i];
+            SEfResTexture* Tex = Res->GetTextureResource(i);
             if (!Tex)
             {
                 continue;
@@ -1130,40 +1188,40 @@ void CShaderMan::mfRefreshResources(CShaderResources* Res)
                     Tex->m_Sampler.m_pTex = CTexture::s_ptexFromObjCM;
                 }
                 else
-                if (Tex->m_Sampler.m_eTexType == eTT_Dyn2D)
-                {
-                    // This block was for loading Flash files
-                }
-                else
-                if (Tex->m_Sampler.m_eTexType == eTT_Auto2D)
-                {
-                    if (i == EFTT_ENV)
+                    if (Tex->m_Sampler.m_eTexType == eTT_Dyn2D)
                     {
-                        mfSetResourceTexState(Tex);
-
-                        SAFE_RELEASE(Tex->m_Sampler.m_pTarget);
-                        Tex->m_Sampler.m_pTarget = new SHRenderTarget;
-
-                        Tex->m_Sampler.m_pTex = CTexture::s_ptexRT_2D;
-                        Tex->m_Sampler.m_pTarget->m_pTarget[0] = CTexture::s_ptexRT_2D;
-
-                        Tex->m_Sampler.m_pTarget->m_bTempDepth = true;
-                        Tex->m_Sampler.m_pTarget->m_eOrder = eRO_PreProcess;
-                        Tex->m_Sampler.m_pTarget->m_eTF = eTF_R8G8B8A8;
-                        Tex->m_Sampler.m_pTarget->m_nIDInPool = -1;
-                        Tex->m_Sampler.m_pTarget->m_nFlags |= FRT_RENDTYPE_RECURSIVECURSCENE | FRT_CAMERA_CURRENT;
-                        Tex->m_Sampler.m_pTarget->m_nFlags |= FRT_CLEAR_DEPTH | FRT_CLEAR_STENCIL | FRT_CLEAR_COLOR;
+                        // This block was for loading Flash files
                     }
-                }
-                else
-                if (Tex->m_Sampler.m_eTexType == eTT_User)
-                {
-                    Tex->m_Sampler.m_pTex = NULL;
-                }
-                else
-                {
-                    mfLoadResourceTexture((EEfResTextures)i, *Res, Flags);
-                }
+                    else
+                        if (Tex->m_Sampler.m_eTexType == eTT_Auto2D)
+                        {
+                            if (i == EFTT_ENV)
+                            {
+                                mfSetResourceTexState(Tex);
+
+                                SAFE_RELEASE(Tex->m_Sampler.m_pTarget);
+                                Tex->m_Sampler.m_pTarget = new SHRenderTarget;
+
+                                Tex->m_Sampler.m_pTex = CTexture::s_ptexRT_2D;
+                                Tex->m_Sampler.m_pTarget->m_pTarget[0] = CTexture::s_ptexRT_2D;
+
+                                Tex->m_Sampler.m_pTarget->m_bTempDepth = true;
+                                Tex->m_Sampler.m_pTarget->m_eOrder = eRO_PreProcess;
+                                Tex->m_Sampler.m_pTarget->m_eTF = eTF_R8G8B8A8;
+                                Tex->m_Sampler.m_pTarget->m_nIDInPool = -1;
+                                Tex->m_Sampler.m_pTarget->m_nFlags |= FRT_RENDTYPE_RECURSIVECURSCENE | FRT_CAMERA_CURRENT;
+                                Tex->m_Sampler.m_pTarget->m_nFlags |= FRT_CLEAR_DEPTH | FRT_CLEAR_STENCIL | FRT_CLEAR_COLOR;
+                            }
+                        }
+                        else
+                            if (Tex->m_Sampler.m_eTexType == eTT_User)
+                            {
+                                Tex->m_Sampler.m_pTex = NULL;
+                            }
+                            else
+                            {
+                                mfLoadResourceTexture((EEfResTextures)i, *Res, Flags);
+                            }
             }
 
             // assign streaming priority based on the importance (sampler slot)

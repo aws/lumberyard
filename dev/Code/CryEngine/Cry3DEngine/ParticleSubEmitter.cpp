@@ -223,11 +223,9 @@ void CParticleSubEmitter::EmitParticles(SParticleUpdateContext& context)
         {
             return;
         }
-        else if (fCount > PARTICLE_PARAMS_MAX_COUNT)
+        else if (fCount > PARTICLE_PARAMS_MAX_COUNT_CPU)
         {
-            // The CPU particle system probably won't even operate at this level of output, but we still limit to this same value to remain consistent
-            // with the limit that's applied to the Editor value and the GPU.
-            fCount = PARTICLE_PARAMS_MAX_COUNT;
+            fCount = PARTICLE_PARAMS_MAX_COUNT_CPU;
         }
 
         const float fEmitterLife = GetStopAge() - GetStartAge();
@@ -1145,7 +1143,7 @@ float CParticleSubEmitter::ComputeDensityIncrease(float fStrength, float fPartic
     forces.vWind = qToA * forces.vWind * params.fAirResistance.fWindScale;
 
     fDist = params.GetTravelBounds(bbTravel, QuatTS(IDENTITY), forces, opts, fixed);
-    if (plocB)
+    if (plocB && locA.s > FLT_EPSILON)
     {
         // Add previous emission from previous location, in local space
         QuatTS locToA = locA.GetInverted() * *plocB;

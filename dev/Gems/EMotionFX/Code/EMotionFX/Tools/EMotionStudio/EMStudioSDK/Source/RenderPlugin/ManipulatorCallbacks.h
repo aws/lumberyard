@@ -33,7 +33,7 @@ namespace EMStudio
         /**
          * the constructor.
          */
-        TranslateManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const MCore::Vector3& oldValue)
+        TranslateManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const AZ::Vector3& oldValue)
             : ManipulatorCallback(actorInstance, oldValue)
         {
         }
@@ -46,7 +46,7 @@ namespace EMStudio
         /**
          * update the actor instance.
          */
-        void Update(const MCore::Vector3& value) override
+        void Update(const AZ::Vector3& value) override
         {
             ManipulatorCallback::Update(value);
 
@@ -79,13 +79,15 @@ namespace EMStudio
             EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
             if (actorInstance)
             {
-                MCore::Vector3 newPos = actorInstance->GetLocalPosition();
+                AZ::Vector3 newPos = actorInstance->GetLocalPosition();
                 actorInstance->SetLocalPosition(mOldValueVec);
 
-                if (MCore::Vector3(mOldValueVec - newPos).Length() >= MCore::Math::epsilon)
+                if (AZ::Vector3(mOldValueVec - newPos).GetLength() >= MCore::Math::epsilon)
                 {
                     MCore::String outResult;
-                    if (GetCommandManager()->ExecuteCommand(MCore::String().Format("AdjustActorInstance -actorInstanceID %i -pos %s", actorInstance->GetID(), MCore::String(newPos).AsChar()).AsChar(), outResult) == false)
+                    if (GetCommandManager()->ExecuteCommand(
+                            MCore::String().Format("AdjustActorInstance -actorInstanceID %i -pos %s", actorInstance->GetID(),
+                                MCore::String(newPos).AsChar()).AsChar(), outResult) == false)
                     {
                         MCore::LogError(outResult.AsChar());
                     }
@@ -111,7 +113,7 @@ namespace EMStudio
         /**
          * the constructor.
          */
-        RotateManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const MCore::Vector3& oldValue)
+        RotateManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const AZ::Vector3& oldValue)
             : ManipulatorCallback(actorInstance, oldValue)
         {
         }
@@ -194,7 +196,7 @@ namespace EMStudio
         /**
          * the constructor.
          */
-        ScaleManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const MCore::Vector3& oldValue)
+        ScaleManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const AZ::Vector3& oldValue)
             : ManipulatorCallback(actorInstance, oldValue)
         {
         }
@@ -207,7 +209,7 @@ namespace EMStudio
         /**
          * function to get the current value.
          */
-        MCore::Vector3 GetCurrValueVec() override
+        AZ::Vector3 GetCurrValueVec() override
         {
             uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
             if (actorInstanceID != MCORE_INVALIDINDEX32)
@@ -216,21 +218,24 @@ namespace EMStudio
             }
             else
             {
-                return MCore::Vector3(1.0f, 1.0f, 1.0f);
+                return AZ::Vector3(1.0f, 1.0f, 1.0f);
             }
         }
 
         /**
          * update the actor instance.
          */
-        void Update(const MCore::Vector3& value) override
+        void Update(const AZ::Vector3& value) override
         {
             // update the position, if actorinstance is still valid
             uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
             if (actorInstanceID != MCORE_INVALIDINDEX32)
             {
                 float minScale = 0.001f;
-                MCore::Vector3 scale = MCore::Vector3(MCore::Max(mOldValueVec.x * value.x, minScale), MCore::Max(mOldValueVec.y * value.y, minScale), MCore::Max(mOldValueVec.z * value.z, minScale));
+                AZ::Vector3 scale = AZ::Vector3(
+                        MCore::Max(float(mOldValueVec.GetX() * value.GetX()), minScale),
+                        MCore::Max(float(mOldValueVec.GetY() * value.GetY()), minScale),
+                        MCore::Max(float(mOldValueVec.GetZ() * value.GetZ()), minScale));
                 mActorInstance->SetLocalScale(scale);
 
                 // update the callback
@@ -259,13 +264,15 @@ namespace EMStudio
             EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
             if (actorInstance)
             {
-                MCore::Vector3 newScale = actorInstance->GetLocalScale();
+                AZ::Vector3 newScale = actorInstance->GetLocalScale();
                 actorInstance->SetLocalScale(mOldValueVec);
 
-                if (MCore::Vector3(mOldValueVec - newScale).Length() >= MCore::Math::epsilon)
+                if (AZ::Vector3(mOldValueVec - newScale).GetLength() >= MCore::Math::epsilon)
                 {
                     MCore::String outResult;
-                    if (GetCommandManager()->ExecuteCommand(MCore::String().Format("AdjustActorInstance -actorInstanceID %i -scale %s", actorInstance->GetID(), MCore::String(newScale).AsChar()).AsChar(), outResult) == false)
+                    if (GetCommandManager()->ExecuteCommand(
+                            MCore::String().Format("AdjustActorInstance -actorInstanceID %i -scale %s", actorInstance->GetID(),
+                                MCore::String(newScale).AsChar()).AsChar(), outResult) == false)
                     {
                         MCore::LogError(outResult.AsChar());
                     }

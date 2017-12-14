@@ -57,9 +57,6 @@ def load_debug_cryengine_settings(conf):
     conf.load_cryengine_common_settings()
     
     v['DEFINES'] += [ '_DEBUG' ]
-    
-    #In debug force stl to either use, or not use debug iterators. The standard only says that they are to be off for sure in relase, in debug its up to the implementation. We don't want to leave this to chance so we force it. Note that if you are going to use mixed release and debug dll's then you have no choice but to turn them OFF, otherwise imcompatible code will give you iterator errors. Note that turning them on makes the containers run much much slower because of all of the checks.
-    v['DEFINES'] += [ '_ITERATOR_DEBUG_LEVEL=2' ]
            
 @conf   
 def load_profile_cryengine_settings(conf):
@@ -70,9 +67,6 @@ def load_profile_cryengine_settings(conf):
     conf.load_cryengine_common_settings()
     
     v['DEFINES'] += [ '_PROFILE', 'PROFILE', 'NDEBUG' ]
-    
-    #Just in case, force stl to not use debug iterators, non debug builds should never turn them on
-    v['DEFINES'] += [ '_ITERATOR_DEBUG_LEVEL=0' ]
         
 @conf   
 def load_performance_cryengine_settings(conf):
@@ -84,9 +78,6 @@ def load_performance_cryengine_settings(conf):
     
     v['DEFINES'] += [ '_RELEASE', 'PERFORMANCE_BUILD', 'NDEBUG' ]
     
-    #Just in case,force stl to not use debug iterators, non debug builds should never turn them on
-    v['DEFINES'] += [ '_ITERATOR_DEBUG_LEVEL=0' ]
-    
 @conf   
 def load_release_cryengine_settings(conf):
     """
@@ -96,9 +87,6 @@ def load_release_cryengine_settings(conf):
     conf.load_cryengine_common_settings()
     
     v['DEFINES'] += [ '_RELEASE', 'NDEBUG' ]
-    
-    #Just in case, force stl to not use debug iterators, non debug builds should never turn them on
-    v['DEFINES'] += [ '_ITERATOR_DEBUG_LEVEL=0' ]
     
 #############################################################################   
 #############################################################################

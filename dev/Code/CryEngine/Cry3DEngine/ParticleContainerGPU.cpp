@@ -272,6 +272,10 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
 
         if (re)
         {
+            if (!pParams->DepthOfFieldBlur && !passInfo.IsAuxWindow())
+            {
+                pObj->m_ObjFlags |= FOB_RENDER_TRANS_AFTER_DOF;
+            }
             re->SetCameraFOV(camInfo.pCamera->GetFov());
             re->SetAspectRatio(camInfo.pCamera->GetProjRatio());
             re->SetWireframeEnabled(rParam.bIsShowWireframe);

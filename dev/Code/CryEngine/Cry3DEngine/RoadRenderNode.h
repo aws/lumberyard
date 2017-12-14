@@ -25,6 +25,8 @@ public:
 
     // IRoadRenderNode implementation
     virtual void SetVertices(const Vec3* pVerts, int nVertsNum, float fTexCoordBegin, float fTexCoordEnd, float fTexCoordBeginGlobal, float fTexCoordEndGlobal);
+    virtual void SetVertices(const AZStd::vector<AZ::Vector3>& pVerts, const AZ::Transform& transform, float fTexCoordBegin, float fTexCoordEnd, float fTexCoordBeginGlobal, float fTexCoordEndGlobal);
+
     virtual void SetSortPriority(uint8 sortPrio);
     virtual void SetIgnoreTerrainHoles(bool bVal);
     virtual void SetPhysicalize(bool bVal)

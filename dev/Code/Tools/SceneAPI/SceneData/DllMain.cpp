@@ -22,8 +22,7 @@
 #include <SceneAPI/SceneData/Behaviors/Registry.h>
 
 static AZ::SceneAPI::SceneData::ManifestMetaInfoHandler* g_manifestMetaInfoHandler = nullptr;
-static AZ::SceneAPI::SceneData::Registry* g_behaviorRegistry = nullptr;
-static bool g_hasBeenReflected = false;
+static AZ::SceneAPI::SceneData::Registry::ComponentDescriptorList g_componentDescriptors;
 
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
@@ -32,10 +31,6 @@ extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
     if (!g_manifestMetaInfoHandler)
     {
         g_manifestMetaInfoHandler = aznew AZ::SceneAPI::SceneData::ManifestMetaInfoHandler();
-    }
-    if (!g_behaviorRegistry)
-    {
-        g_behaviorRegistry = aznew AZ::SceneAPI::SceneData::Registry();
     }
 }
 
@@ -48,27 +43,40 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
     if (context)
     {
         AZ::SceneAPI::RegisterDataTypeReflection(context);
-        
-        if (!g_hasBeenReflected)
+    }
+    
+    // Descriptor registration is done in Reflect instead of Initialize because the ResourceCompilerScene initializes the libraries before
+    // there's an application.
+    if (g_componentDescriptors.empty())
+    {
+        AZ::SceneAPI::SceneData::Registry::RegisterComponents(g_componentDescriptors);
+        for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
         {
-            AZ::SceneAPI::SceneData::Registry::ComponentDescriptorList components;
-            AZ::SceneAPI::SceneData::Registry::RegisterComponents(components);
-            for (AZ::ComponentDescriptor* descriptor : components)
-            {
-                AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Handler::RegisterComponentDescriptor, descriptor);
-            }
-            // There's no need to keep track of the component descriptor pointers. The descriptors register themselves with the ComponentDescriptorBus
-            //      which calls them to unregister and delete themselves upon application termination.
-
-            g_hasBeenReflected = true;
+            AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Handler::RegisterComponentDescriptor, descriptor);
         }
     }
 }
 
 extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
 {
-    delete g_behaviorRegistry;
-    g_behaviorRegistry = nullptr;
+    AZ::SerializeContext* context = nullptr;
+    EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
+    if (context)
+    {
+        context->EnableRemoveReflection();
+        Reflect(context);
+        context->DisableRemoveReflection();
+    }
+
+    if (!g_componentDescriptors.empty())
+    {
+        for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
+        {
+            descriptor->ReleaseDescriptor();
+        }
+        g_componentDescriptors.clear();
+        g_componentDescriptors.shrink_to_fit();
+    }
 
     delete g_manifestMetaInfoHandler;
     g_manifestMetaInfoHandler = nullptr;

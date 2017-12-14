@@ -15,7 +15,7 @@
 #include <Woodpecker/LuaIDEApplication.h>
 
 #if defined(EXTERNAL_CRASH_REPORTING)
-#include <CrashHandler.h>
+#include <ToolsCrashHandler.h>
 #endif
 
 // Editor.cpp : Defines the entry point for the application.
@@ -52,7 +52,7 @@ int _tmain(int argc, _TCHAR* argv[])
         desc.m_enableProjectManager = false;
 
 #if defined(EXTERNAL_CRASH_REPORTING)
-        InitCrashHandler("LuaEditor", {});
+        CrashHandler::ToolsCrashHandler::InitCrashHandler("LuaEditor", {});
 #endif
 
         exitCode = app.Run(desc);

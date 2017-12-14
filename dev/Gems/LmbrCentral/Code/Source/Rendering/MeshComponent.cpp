@@ -66,37 +66,40 @@ namespace LmbrCentral
                 ->Event("GetVisibility", &MeshComponentRequestBus::Events::GetVisibility)
                 ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
             
-            const char* setMaterialParamTooltip = "Sets a Material parameter for the given Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.";
-            const char* getMaterialParamTooltip = "Returns a Material parameter value for the given Entity.";
-            AZ::BehaviorParameterOverrides setParamNameDetails = { "Param Name", "The name of the Material parameter to set" };
-            AZ::BehaviorParameterOverrides getParamNameDetails = { "Param Name", "The name of the Material parameter to return" };
-            const AZStd::array<AZ::BehaviorParameterOverrides, 1> getMaterialParamArgs = { { getParamNameDetails } };
+            const char* setMaterialParamTooltip = "Sets a Material param value for the given Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.";
+            const char* getMaterialParamTooltip = "Returns a Material param value for the given Entity";
+            AZ::BehaviorParameterOverrides setParamNameDetails = { "ParamName", "The name of the Material param to set" };
+            AZ::BehaviorParameterOverrides getParamNameDetails = { "ParamName", "The name of the Material param to return" };
+            AZ::BehaviorParameterOverrides paramMaterialIdDetails = { "MaterialID", "The ID of a Material slot to access, if the Owner has multiple Materials. IDs start at 1.",  AZ::BehaviorMakeDefaultValue(1) };
+            const AZStd::array<AZ::BehaviorParameterOverrides, 2> getMaterialParamArgs = { { getParamNameDetails, paramMaterialIdDetails } };
             const char* newValueTooltip = "The new value to apply";
 
-            behaviorContext->EBus<MaterialOwnerRequestBus>("MaterialOwnerRequestBus", nullptr, "This bus is handled by Components that have a Material such as Mesh Component, Decal Component, etc.")
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+            behaviorContext->EBus<MaterialOwnerRequestBus>("MaterialOwnerRequestBus", nullptr, "Includes functions for Components that have a Material such as Mesh Component, Decal Component, etc.")
                     ->Attribute(AZ::Script::Attributes::Category, "Rendering")
                 ->Event("IsMaterialOwnerReady", &MaterialOwnerRequestBus::Events::IsMaterialOwnerReady)
-                    ->Attribute(AZ::Script::Attributes::ToolTip, "Indicates whether the Material Owner is fully initialized, and MaterialOwnerRequestBus can be used on the Material")
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Indicates whether the Material Owner is fully initialized, and is ready for Material requests")
                 ->Event("SetMaterial", &MaterialOwnerRequestBus::Events::SetMaterialHandle)
-                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets an Entity's material")
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets an Entity's Material")
                 ->Event("GetMaterial", &MaterialOwnerRequestBus::Events::GetMaterialHandle)
-                    ->Attribute(AZ::Script::Attributes::ToolTip, "Returns an Entity's current material")
-                ->Event("SetParamVector4", &MaterialOwnerRequestBus::Events::SetMaterialParamVector4, { { setParamNameDetails,{ "Vector4", newValueTooltip } } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Returns an Entity's current Material")
+                ->Event("SetParamVector4", &MaterialOwnerRequestBus::Events::SetMaterialParamVector4, { { setParamNameDetails, { "Vector4", newValueTooltip }, paramMaterialIdDetails } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
-                ->Event("SetParamColor", &MaterialOwnerRequestBus::Events::SetMaterialParamColor, { { setParamNameDetails,{ "Color", newValueTooltip } } })
+                ->Event("SetParamVector3", &MaterialOwnerRequestBus::Events::SetMaterialParamVector3, { { setParamNameDetails, { "Vector3", newValueTooltip }, paramMaterialIdDetails } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
-                ->Event("SetParamNumber", &MaterialOwnerRequestBus::Events::SetMaterialParamFloat, { { setParamNameDetails,{ "Number", newValueTooltip } } }) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
+                ->Event("SetParamColor", &MaterialOwnerRequestBus::Events::SetMaterialParamColor,     { { setParamNameDetails, { "Color"  , newValueTooltip }, paramMaterialIdDetails } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
+                ->Event("SetParamNumber", &MaterialOwnerRequestBus::Events::SetMaterialParamFloat,    { { setParamNameDetails, { "Number" , newValueTooltip }, paramMaterialIdDetails } }) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
                     ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
                 ->Event("GetParamVector4", &MaterialOwnerRequestBus::Events::GetMaterialParamVector4, getMaterialParamArgs)
                     ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
-                ->Event("GetParamColor", &MaterialOwnerRequestBus::Events::GetMaterialParamColor, getMaterialParamArgs)
+                ->Event("GetParamVector3", &MaterialOwnerRequestBus::Events::GetMaterialParamVector3, getMaterialParamArgs)
                     ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
-                ->Event("GetParamNumber", &MaterialOwnerRequestBus::Events::GetMaterialParamFloat, getMaterialParamArgs) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
+                ->Event("GetParamColor", &MaterialOwnerRequestBus::Events::GetMaterialParamColor,     getMaterialParamArgs)
+                    ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
+                ->Event("GetParamNumber", &MaterialOwnerRequestBus::Events::GetMaterialParamFloat,    getMaterialParamArgs) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
                     ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip);
 
             behaviorContext->EBus<MaterialOwnerNotificationBus>("MaterialOwnerNotificationBus", nullptr, "Provides notifications from Components that have a Material such as Mesh Component, Decal Component, etc.")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "Rendering")
                 ->Handler<MaterialOwnerNotificationBusBehaviorHandler>()
                 ;
@@ -225,6 +228,7 @@ namespace LmbrCentral
 
     MeshComponentRenderNode::MeshComponentRenderNode()
         : m_statObj(nullptr)
+        , m_deformNode(nullptr)
         , m_materialOverride(nullptr)
         , m_auxiliaryRenderFlags(0)
         , m_auxiliaryRenderFlagsHistory(0)
@@ -238,15 +242,11 @@ namespace LmbrCentral
         m_worldBoundingBox.Reset();
         m_worldTransform = AZ::Transform::CreateIdentity();
         m_renderTransform = Matrix34::CreateIdentity();
-        // Connect for LegacyAssetEventBus::Handler
-        AzFramework::LegacyAssetEventBus::Handler::BusConnect(AZ_CRC("mtl", 0xb01910e0));
     }
 
     MeshComponentRenderNode::~MeshComponentRenderNode()
     {
         DestroyMesh();
-        // Disconnect for LegacyAssetEventBus::Handler
-        AzFramework::LegacyAssetEventBus::Handler::BusDisconnect();
     }
 
     void MeshComponentRenderNode::CopyPropertiesTo(MeshComponentRenderNode& rhs) const
@@ -301,8 +301,6 @@ namespace LmbrCentral
             AZ::Transform parentTransform = AZ::Transform::CreateIdentity();
             EBUS_EVENT_ID_RESULT(parentTransform, m_renderOptions.m_attachedToEntityId, AZ::TransformBus, GetWorldTM);
             OnTransformChanged(AZ::Transform::CreateIdentity(), parentTransform);
-
-            m_renderOptions.OnChanged();
 
             if (HasMesh())
             {
@@ -367,6 +365,12 @@ namespace LmbrCentral
         RegisterWithRenderer(false);
         m_statObj = nullptr;
 
+        if (gEnv && gEnv->p3DEngine)
+        {
+            gEnv->p3DEngine->DestroyDeformableNode(m_deformNode);
+            m_deformNode = nullptr;
+        }
+
         EBUS_EVENT_ID(m_renderOptions.m_attachedToEntityId, MeshComponentNotificationBus, OnMeshDestroyed);
 
         m_meshAsset.Release();
@@ -429,6 +433,8 @@ namespace LmbrCentral
         {
             m_meshAsset = asset;
             m_statObj = m_meshAsset.Get()->m_statObj;
+            
+
 
             if (HasMesh())
             {
@@ -438,7 +444,7 @@ namespace LmbrCentral
                     m_materialOverride = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(materialOverridePath.c_str());
 
                     AZ_Warning("MeshComponent", m_materialOverride != gEnv->p3DEngine->GetMaterialManager()->GetDefaultMaterial(),
-                        "Failed to load override material \"%s\".",
+                        "Failed to load override Material \"%s\".",
                         materialOverridePath.c_str());
                 }
                 else
@@ -449,11 +455,36 @@ namespace LmbrCentral
                 UpdateLocalBoundingBox();
                 UpdateLodDistance(gEnv->p3DEngine->GetFrameLodInfo());
 
+                //Check for deformable behavior and create deformers if needed.
+                if (m_statObj->IsDeformable())
+                {
+                    if (m_deformNode)
+                    {
+                        gEnv->p3DEngine->DestroyDeformableNode(m_deformNode);
+                    }
+                    m_deformNode = gEnv->p3DEngine->CreateDeformableNode();
+                    m_deformNode->SetStatObj(m_statObj);
+                    m_deformNode->BakeDeform(m_renderTransform);
+                }
+
                 RegisterWithRenderer(true);
 
                 // Inform listeners that the mesh has been changed
                 EBUS_EVENT_ID(m_renderOptions.m_attachedToEntityId, MeshComponentNotificationBus, OnMeshCreated, asset);
             }
+        }
+    }
+
+    void MeshComponentRenderNode::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        //The equal function just check the AssetId.
+        if (asset == m_meshAsset)
+        {
+            // We need to make sure m_meshAsset is assigned with the new asset.
+            // Since the new asset passed in has zero refCount. The assigning will clear the refCount of the old m_meshAsset
+            // and set the refCount of the new asset to 1, otherwise it will be unloaded.
+            m_meshAsset = asset;
+            m_statObj = m_meshAsset.Get()->m_statObj;
         }
     }
 
@@ -465,6 +496,10 @@ namespace LmbrCentral
 
         UpdateWorldBoundingBox();
 
+        if (m_deformNode)
+        {
+            m_deformNode->BakeDeform(m_renderTransform);
+        }
         m_objectMoved = true;
     }
 
@@ -562,8 +597,10 @@ namespace LmbrCentral
         UpdateRenderFlag(m_visible == false, ERF_HIDDEN, flags);
         UpdateRenderFlag(m_renderOptions.m_receiveWind, ERF_RECVWIND, flags);
         UpdateRenderFlag(m_renderOptions.m_visibilityOccluder  && m_renderOptions.IsStatic(), ERF_GOOD_OCCLUDER, flags);
-
-        UpdateRenderFlag(!(false == m_renderOptions.m_affectNavmesh  && m_renderOptions.IsStatic()), ERF_EXCLUDE_FROM_TRIANGULATION, flags);
+        //Dynamic meshes shouldn't affect the navmeshes. If that decision is changed we should change this line to no longer require
+        //static and note that the flag is tied to the negation of the navemesh boolean. 
+        //Also see the editormeshcomponent.cpp AffectNavemesh function. 
+        UpdateRenderFlag(!(m_renderOptions.m_affectNavmesh && m_renderOptions.IsStatic()), ERF_EXCLUDE_FROM_TRIANGULATION, flags);
         UpdateRenderFlag(false == m_renderOptions.m_affectDynamicWater && m_renderOptions.IsStatic(), ERF_NODYNWATER, flags);
         UpdateRenderFlag(false == m_renderOptions.m_acceptDecals, ERF_NO_DECALNODE_DECALS, flags);
 
@@ -635,10 +672,15 @@ namespace LmbrCentral
         }
 
         rParams.pMatrix = &m_renderTransform;
+        rParams.bForceDrawStatic = !m_renderOptions.m_dynamicMesh;
         if (rParams.pMatrix->IsValid())
         {
             rParams.lodValue = ComputeLOD(inRenderParams.lodValue.LodA(), passInfo);
             m_statObj->Render(rParams, passInfo);
+            if (m_deformNode && m_deformNode->HasDeformableData())
+            {
+                m_deformNode->Render(rParams, passInfo, AZAabbToLyAABB(CalculateWorldAABB()));
+            }
         }
 
         rParams.pMaterial = previousMaterial;
@@ -802,38 +844,6 @@ namespace LmbrCentral
     {
         return nullptr;
     }
-    //////////////////////////////////////////////////////////////////////////
-
-
-    // override from LegacyAssetEventBus::Handler
-    // Notifies listeners that a file changed
-    // Handle material Overrides
-
-    void MeshComponentRenderNode::OnFileChanged(AZStd::string assetPath)
-    {
-        if (m_materialOverride == nullptr)
-        {
-            return;
-        }
-
-        if (nullptr != strstr(assetPath.c_str(), m_materialOverride->GetName()))
-        {
-            OnAssetPropertyChanged();
-        }
-    }
-
-    void MeshComponentRenderNode::OnFileRemoved(AZStd::string assetPath)
-    {
-        if (m_materialOverride == nullptr)
-        {
-            return;
-        }
-
-        if (nullptr != strstr(assetPath.c_str(), m_materialOverride->GetName()))
-        {
-            OnAssetPropertyChanged();
-        }
-    }
 
     //////////////////////////////////////////////////////////////////////////
     // MeshComponent
@@ -842,7 +852,6 @@ namespace LmbrCentral
     MeshComponent::MeshComponent()
     {
         m_materialBusHandler = aznew MaterialOwnerRequestBusHandlerImpl(); 
-        
     }
 
     MeshComponent::~MeshComponent()
@@ -918,44 +927,44 @@ namespace LmbrCentral
         return m_materialBusHandler->GetMaterialHandle();
     }
 
-    void MeshComponent::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value)
+    void MeshComponent::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamVector4(name, value);
+        m_materialBusHandler->SetMaterialParamVector4(name, value, materialId);
     }
 
-    void MeshComponent::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value)
+    void MeshComponent::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamVector3(name, value);
+        m_materialBusHandler->SetMaterialParamVector3(name, value, materialId);
     }
 
-    void MeshComponent::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value)
+    void MeshComponent::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamColor(name, value);
+        m_materialBusHandler->SetMaterialParamColor(name, value, materialId);
     }
 
-    void MeshComponent::SetMaterialParamFloat(const AZStd::string& name, float value)
+    void MeshComponent::SetMaterialParamFloat(const AZStd::string& name, float value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamFloat(name, value);
+        m_materialBusHandler->SetMaterialParamFloat(name, value, materialId);
     }
 
-    AZ::Vector4 MeshComponent::GetMaterialParamVector4(const AZStd::string& name)
+    AZ::Vector4 MeshComponent::GetMaterialParamVector4(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamVector4(name);
+        return m_materialBusHandler->GetMaterialParamVector4(name, materialId);
     }
 
-    AZ::Vector3 MeshComponent::GetMaterialParamVector3(const AZStd::string& name)
+    AZ::Vector3 MeshComponent::GetMaterialParamVector3(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamVector3(name);
+        return m_materialBusHandler->GetMaterialParamVector3(name, materialId);
     }
 
-    AZ::Color MeshComponent::GetMaterialParamColor(const AZStd::string& name)
+    AZ::Color MeshComponent::GetMaterialParamColor(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamColor(name);
+        return m_materialBusHandler->GetMaterialParamColor(name, materialId);
     }
 
-    float MeshComponent::GetMaterialParamFloat(const AZStd::string& name)
+    float MeshComponent::GetMaterialParamFloat(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamFloat(name);
+        return m_materialBusHandler->GetMaterialParamFloat(name, materialId);
     }
 
     IRenderNode* MeshComponent::GetRenderNode()

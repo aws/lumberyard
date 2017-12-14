@@ -11,10 +11,11 @@
     "GemFormatVersion": 3,
     "LinkType": "Dynamic",
     "Name": "LightningArc",
-    "Summary": "Provides an entity that can be used to produce electricity effects.",
+    "Summary": "Provides components for simulating lightning, lightning arcs and sky highlights.",
     "Tags": ["Weather", "Weather Effects","Sky"],
-    "DisplayName": "Lightning Arc",
+    "DisplayName": "Lightning",
     "Uuid": "4c28210b23544635aa15be668dbff15d",
     "Version": "1.0.0",
-    "IconPath": "preview.png"
+    "IconPath": "preview.png",
+    "EditorModule": true
 }

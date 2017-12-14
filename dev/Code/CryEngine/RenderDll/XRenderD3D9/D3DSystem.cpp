@@ -54,10 +54,6 @@
 #endif // defined(WIN32)
 // Enable Uncrustify: *INDENT-ON*
 
-#if !defined(CRY_USE_METAL) && (defined(MAC) || defined(LINUX))
-#include <SDL.h>
-#endif
-
 
 #include "../Common/RenderCapabilities.h"
 
@@ -749,8 +745,6 @@ void CD3D9Renderer::DestroyWindow(void)
 
 #if defined(CRY_USE_METAL)
     DXGLDestroyMetalWindow(m_hWnd);
-#elif defined(DXGL_USE_SDL)
-    DXGLDestroySDLWindow(m_hWnd);
 #elif defined(WIN32)
     if (gEnv && gEnv->pSystem)
     {
@@ -780,6 +774,8 @@ void CD3D9Renderer::DestroyWindow(void)
         ::DestroyIcon(m_hIconSmall);
         m_hIconSmall = NULL;
     }
+#elif defined(OPENGL)
+    DXGLDestroyWindow(m_hWnd);
 #endif
 }
 
@@ -797,19 +793,17 @@ static BOOL g_doGamma = false;
 
 void CD3D9Renderer::RestoreGamma(void)
 {
-    //if (!m_bFullScreen)
-    //  return;
-
     if (!(GetFeatures() & RFT_HWGAMMA))
     {
         return;
     }
 
-    if (CV_r_nohwgamma)
+    if (CV_r_nohwgamma && m_nLastNoHWGamma)
     {
         return;
     }
 
+    m_nLastNoHWGamma = CV_r_nohwgamma;
     m_fLastGamma = 1.0f;
     m_fLastBrightness = 0.5f;
     m_fLastContrast = 0.5f;
@@ -901,6 +895,17 @@ void CD3D9Renderer::SetDeviceGamma(gammaramp_t* gamma)
 
 void CD3D9Renderer::SetGamma(float fGamma, float fBrightness, float fContrast, bool bForce)
 {
+    // Early out if HW gamma is disabled (same early out as SetDeviceGamma)
+    if (CV_r_nohwgamma)
+    {
+        // Restore default if HW gamma was previously enabled
+        if (m_nLastNoHWGamma == 0)
+        {
+            RestoreGamma();
+        }
+        return;
+    }
+
     if (m_pStereoRenderer)  // Function can be called on shutdown
     {
         fGamma += GetS3DRend().GetGammaAdjustment();
@@ -908,7 +913,7 @@ void CD3D9Renderer::SetGamma(float fGamma, float fBrightness, float fContrast, b
 
     fGamma = CLAMP(fGamma, 0.4f, 1.6f);
 
-    if (!bForce && m_fLastGamma == fGamma && m_fLastBrightness == fBrightness && m_fLastContrast == fContrast)
+    if (!bForce && m_fLastGamma == fGamma && m_fLastBrightness == fBrightness && m_fLastContrast == fContrast && m_nLastNoHWGamma == CV_r_nohwgamma)
     {
         return;
     }
@@ -941,6 +946,7 @@ void CD3D9Renderer::SetGamma(float fGamma, float fBrightness, float fContrast, b
 
     SetDeviceGamma(&gamma);
 
+    m_nLastNoHWGamma = CV_r_nohwgamma;
     m_fLastGamma = fGamma;
     m_fLastBrightness = fBrightness;
     m_fLastContrast = fContrast;
@@ -1135,7 +1141,9 @@ LRESULT CALLBACK LowLevelKeyboardProc (INT nCode, WPARAM wParam, LPARAM lParam)
 #if defined(SUPPORT_DEVICE_INFO)
 HWND CD3D9Renderer::CreateWindowCallback()
 {
-    return gcpRendD3D->SetWindow(gcpRendD3D->GetBackbufferWidth(), gcpRendD3D->GetBackbufferHeight(), gcpRendD3D->m_bFullScreen, gcpRendD3D->m_hWnd) ? gcpRendD3D->m_hWnd : 0;
+    gcpRendD3D->SetWindow(gcpRendD3D->GetBackbufferWidth(), gcpRendD3D->GetBackbufferHeight(), gcpRendD3D->m_bFullScreen, gcpRendD3D->m_hWnd);
+
+    return gcpRendD3D->m_hWnd;
 }
 #endif
 
@@ -1149,9 +1157,10 @@ bool CD3D9Renderer::SetWindow(int width, int height, bool fullscreen, WIN_HWND h
 #endif
 
 #if defined(CRY_USE_METAL)
-    DXGLCreateMetalWindow(m_WinTitle, width, height, fullscreen, &m_hWnd);
-#elif defined(DXGL_USE_SDL)
-    DXGLCreateSDLWindow(m_WinTitle, width, height, fullscreen, &m_hWnd);
+    if (gcpRendD3D->m_hWnd == 0)
+    {
+        DXGLCreateMetalWindow(m_WinTitle, width, height, fullscreen, &m_hWnd);
+    }
 #elif defined(WIN32)
     DWORD style, exstyle;
     int x, y, wdt, hgt;
@@ -1296,6 +1305,8 @@ bool CD3D9Renderer::SetWindow(int width, int height, bool fullscreen, WIN_HWND h
     {
         iConsole->Exit("Couldn't create window\n");
     }
+#elif defined(OPENGL)
+    return DXGLCreateWindow(m_WinTitle, width, height, fullscreen, &m_hWnd);
 #else
     return false;
 #endif //WIN32
@@ -1521,7 +1532,7 @@ static void Command_ColorGradingChartImage(IConsoleCmdArgs* pCmd)
     }
 }
 
-WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, WIN_HINSTANCE hinst, WIN_HWND Glhwnd, bool bReInit, const SCustomRenderInitArgs* pCustomArgs, bool bShaderCacheGen)
+WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, bool isEditor, WIN_HINSTANCE hinst, WIN_HWND Glhwnd, bool bReInit, const SCustomRenderInitArgs* pCustomArgs, bool bShaderCacheGen)
 {
     LOADING_TIME_PROFILE_SECTION;
 
@@ -1597,10 +1608,9 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
 
     m_hInst = (HINSTANCE)(TRUNCATE_PTR)hinst;
 
-    if (Glhwnd == (WIN_HWND)1)
+    m_bEditor = isEditor;
+    if (isEditor)
     {
-        Glhwnd = 0;
-        m_bEditor = true;
         fullscreen = false;
     }
 
@@ -2467,6 +2477,11 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
 #else
     rd->m_Features |= RFT_COMPUTE_SHADERS;
 #endif
+
+    if (RenderCapabilities::SupportsStructuredBuffer(EShaderStage_Vertex))
+    {
+        rd->m_Features |= RFT_HW_VERTEX_STRUCTUREDBUF;
+    }
 
 #if defined(DIRECT3D10) && !defined(OPENGL_ES) && !defined(CRY_USE_METAL)
     rd->m_bDeviceSupportsGeometryShaders = (rd->m_Features & RFT_HW_SM40) != 0;

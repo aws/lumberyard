@@ -116,11 +116,12 @@ public:
 
     virtual int64 GetAutoIncrementedValue() const;
 
+    bool Close() override;
+
     // additional function
-    virtual bool Prepare();
+    bool Prepare();
 
 protected:
-    bool Close();
     bool ResetBind();
     void ReleaseResultSet();
 

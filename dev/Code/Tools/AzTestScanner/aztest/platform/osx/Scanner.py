@@ -95,7 +95,6 @@ class Scanner:
 
     def exports_symbol(self, filename, symbol):
         # C prefix symbol
-        # http://stackoverflow.com/questions/2627511/why-do-c-compilers-prepend-underscores-to-external-names
         prefixed_symbol = "_" + symbol
 
         cmd = ['nm', '-j', filename]

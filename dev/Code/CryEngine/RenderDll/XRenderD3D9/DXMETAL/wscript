@@ -12,13 +12,6 @@
 
 def build(bld):
 
-    supported_plats=['ios','appletv']
-    if bld.is_monolithic_build():
-        if bld.options.mac_build_renderer == 'METAL':
-            supported_plats.append( 'darwin')
-    else:
-        supported_plats.append('darwin');
-
     #==============================
     # Build CryRenderMetal
     #==============================
@@ -28,7 +21,7 @@ def build(bld):
         target              = 'CryRenderMetal',
         vs_filter           = 'CryEngine',
         file_list           = [ 'metal_renderer.waf_files', 'metal_mesh_baker.waf_files' ],
-        platforms           = supported_plats,
+        platforms           = ['ios', 'appletv', 'darwin'],
         configurations      = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
         pch        	        = '../../StdAfx.cpp',
         use                 = ['AzFramework'],
@@ -46,7 +39,8 @@ def build(bld):
                                 'XRENDERGL_EXPORTS',
                                 '_RENDERER',
                                 'DXSDK="'+bld.Path('Code/SDKs/DXSDK/Include')+'/"',
-                                'OPENGL', 'CRY_USE_METAL'], # Defining this will get stdafx.h to include the correct header file for OpenGl/Metal
+                                'OPENGL', 
+                                'CRY_USE_METAL'], # Defining this will get stdafx.h to include the correct header file for OpenGl/Metal
         lib                 = [ 'HLSLcc' ],
         libpath             = [ bld.Path('Code/SDKs/') ],
 
@@ -60,14 +54,10 @@ def build(bld):
         appletv_libpath     = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/ios') ],
         appletv_framework   = [ 'Metal', 'CoreGraphics', 'OpenGLES' ],
 
-        #==============================
-        # DARWIN
-        #==============================
         darwin_cxxflags        = [ '-x', 'objective-c++', '-Wno-c++11-narrowing'  ],
         darwin_libpath         = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
         darwin_framework       = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
-        
-        
+
         test_all_file_list      = ['metal_test.waf_files'],
 
     )

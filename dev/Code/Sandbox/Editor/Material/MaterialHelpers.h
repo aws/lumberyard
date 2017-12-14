@@ -31,10 +31,15 @@ namespace MaterialHelpers
     uint64 SetShaderGenParamsVars(IShader* pShader, CVarBlock* pBlock);
 
     //////////////////////////////////////////////////////////////////////////
+    // [Shader System TO DO] change the usage of these functions to retrieve by slot name
     inline EEfResTextures FindTexSlot(const char* texName) { return GetIEditor()->Get3DEngine()->GetMaterialHelpers().FindTexSlot(texName); }
     inline const char* FindTexName(EEfResTextures texSlot) { return GetIEditor()->Get3DEngine()->GetMaterialHelpers().FindTexName(texSlot); }
     inline const char* LookupTexName(EEfResTextures texSlot) { return GetIEditor()->Get3DEngine()->GetMaterialHelpers().LookupTexName(texSlot); }
     inline const char* LookupTexDesc(EEfResTextures texSlot) { return GetIEditor()->Get3DEngine()->GetMaterialHelpers().LookupTexDesc(texSlot); }
+
+    //--------------------------------------------------------------------------
+    // Adjustable means that the slot is not virtual, i.e. using a sub-channel from another 
+    // slot (for example - smoothness that uses the normal's alpha)
     inline bool IsAdjustableTexSlot(EEfResTextures texSlot) { return GetIEditor()->Get3DEngine()->GetMaterialHelpers().IsAdjustableTexSlot(texSlot); }
 
     //////////////////////////////////////////////////////////////////////////
@@ -43,7 +48,7 @@ namespace MaterialHelpers
 
     //////////////////////////////////////////////////////////////////////////
     inline void SetTexturesFromXml(SInputShaderResources& pShaderResources, const XmlNodeRef& node) { GetIEditor()->Get3DEngine()->GetMaterialHelpers().SetTexturesFromXml(pShaderResources, node); }
-    inline void SetXmlFromTextures(const SInputShaderResources& pShaderResources, XmlNodeRef& node) { GetIEditor()->Get3DEngine()->GetMaterialHelpers().SetXmlFromTextures(pShaderResources, node); }
+    inline void SetXmlFromTextures( SInputShaderResources& pShaderResources, XmlNodeRef& node) { GetIEditor()->Get3DEngine()->GetMaterialHelpers().SetXmlFromTextures(pShaderResources, node); }
 
     //////////////////////////////////////////////////////////////////////////
     inline void SetVertexDeformFromXml(SInputShaderResources& pShaderResources, const XmlNodeRef& node) { GetIEditor()->Get3DEngine()->GetMaterialHelpers().SetVertexDeformFromXml(pShaderResources, node); }

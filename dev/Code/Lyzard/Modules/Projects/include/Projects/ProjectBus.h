@@ -49,9 +49,13 @@ namespace Projects
         /// Get the Id of the engine instance this project is associated with.
         virtual Engines::EngineId GetEngineId() = 0;
         /// Get the name of the project.
-        virtual const AZStd::string& GetName() = 0;
-        /// Get the absolute path to the project.
-        virtual const AZStd::string& GetPath() = 0;
+        virtual const AZStd::string& GetName() const = 0;
+        /// Get the relative path to the project from the current app root.
+        virtual const AZStd::string& GetRelativePath() const = 0;
+        /// Get the absolute path to the project's app root folder.
+        virtual const AZStd::string& GetRootPath() const = 0;
+        /// Get the full absolute path to the project
+        virtual const AZStd::string& GetFullPath() const = 0;
 
         /// Get the settings object at key in the Project Settings as a Document (contains an allocator). If the key doesn't exist, returns a valid document containing the "null" value.
         virtual AZ::Outcome<rapidjson::Document, AZStd::string> GetProjectSettingsValue(const char* key) = 0;
@@ -159,6 +163,23 @@ namespace Projects
         */
         virtual AZ::Outcome<AZStd::string, AZStd::string> GetProjectCreationLogFile(const NewProjectDescriptor& desc, bool createOnDemand) const = 0;
 
+        /**
+        * Register an external app root project
+        *
+        * \param[in] externalAppRootPath    The path to the external app root folder
+        * \returns                          The project id of the external project on success, error message on failure
+        */
+        virtual AZ::Outcome<ProjectId, AZStd::string> RegisterExternalAppRootFolder(const AZStd::string& externalAppRootPath) = 0;
+
+        /**
+        *  Configure an external project folder to an engine path
+        *
+        * \param[in] pathToProjectFolder    The path to the external project folder to set the engine path for
+        * \param[in] pathToEngineFolder     The path to the engine to set the external project to
+        * \param[in] gameName               The name of the game in the external folder.  If blank, attempt to get it from a required bootstrap.cfg
+        * \returns                          The version number of the engine path that the external project folder is set to on success, error message on failure
+        */
+        virtual AZ::Outcome<AZStd::string, AZStd::string> SetExternalProjectToEngine(const AZStd::string& pathToProjectFolder, const AZStd::string& pathToEngineFolder, const AZStd::string& gameName) const = 0;
     };
     using ProjectManagerRequestBus = AZ::EBus<ProjectManagerRequests>;
 
@@ -202,13 +223,13 @@ namespace Projects
         /**
         * Build the game project 
         *
-        * \param[in] desc                   The descriptor of the new project to build
+        * \param[in] projectDesc            The new project descriptor
         * \param[in] targetPlatform         The target platform to build the project against
         * \param[in] targetConfiguration    The build configuration to build the target against.
         *
         * \returns                  Void on success, error message on failure.
         */
-        virtual Lyzard::StringOutcome BuildProject(const NewProjectDescriptor& desc, const AZStd::string& targetPlatform, const AZStd::string& targetConfiguration) const = 0;
+        virtual Lyzard::StringOutcome BuildProject(const NewProjectDescriptor& projectDesc, const AZStd::string& targetPlatform, const AZStd::string& targetConfiguration) const = 0;
 
         /**
         * Get the default msvs version specified in _WAF_/user_settings.options

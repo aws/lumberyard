@@ -45,7 +45,7 @@ namespace MysticQt
         : public QTreeWidget
     {
         Q_OBJECT
-        MCORE_MEMORYOBJECTCATEGORY(PropertyWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MYSTICQT_CUSTOMWIDGETS);
+                       MCORE_MEMORYOBJECTCATEGORY(PropertyWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MYSTICQT_CUSTOMWIDGETS);
 
     public:
         class MYSTICQT_API Property
@@ -67,7 +67,7 @@ namespace MysticQt
             float AsFloat() const;
             MCore::String AsString() const;
             AZ::Vector2 AsVector2() const;
-            MCore::Vector3 AsVector3() const;
+            AZ::Vector3 AsVector3() const;
             AZ::Vector4 AsVector4() const;
             MCore::RGBAColor AsColor() const;
 
@@ -108,9 +108,9 @@ namespace MysticQt
         Property* AddReadOnlyColorProperty(const char* groupName, const char* valueName, const MCore::RGBAColor& value)     { return AddColorProperty (groupName, valueName, value, value, true); }
 
         // vector3
-        Property* AddVector3Property(const char* groupName, const char* valueName, const MCore::Vector3& value, const MCore::Vector3& defaultValue, const MCore::Vector3& min, const MCore::Vector3& max, bool readOnly = false, bool useGizmo = true);
-        Property* AddVector3Property(const char* groupName, const char* valueName, const MCore::Vector3& value, bool useGizmo = true)             { return AddVector3Property (groupName, valueName, value, value, MCore::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX), MCore::Vector3(FLT_MAX, FLT_MAX, FLT_MAX), false, useGizmo); }
-        Property* AddReadOnlyVector3Property(const char* groupName, const char* valueName, const MCore::Vector3& value)     { return AddVector3Property (groupName, valueName, value, value, MCore::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX), MCore::Vector3(FLT_MAX, FLT_MAX, FLT_MAX), true, false); }
+        Property* AddVector3Property(const char* groupName, const char* valueName, const AZ::Vector3& value, const AZ::Vector3& defaultValue, const AZ::Vector3& min, const AZ::Vector3& max, bool readOnly = false, bool useGizmo = true);
+        Property* AddVector3Property(const char* groupName, const char* valueName, const AZ::Vector3& value, bool useGizmo = true)             { return AddVector3Property (groupName, valueName, value, value, AZ::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX), AZ::Vector3(FLT_MAX, FLT_MAX, FLT_MAX), false, useGizmo); }
+        Property* AddReadOnlyVector3Property(const char* groupName, const char* valueName, const AZ::Vector3& value)        { return AddVector3Property (groupName, valueName, value, value, AZ::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX), AZ::Vector3(FLT_MAX, FLT_MAX, FLT_MAX), true, false); }
 
         // vector4
         Property* AddVector4Property(const char* groupName, const char* valueName, const AZ::Vector4& value, const AZ::Vector4& defaultValue, const AZ::Vector4& min, const AZ::Vector4& max, bool readOnly = false);

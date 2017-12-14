@@ -312,9 +312,9 @@ namespace MCore
 
 
     // calculate euler angles
-    Vector3 Matrix::CalcEulerAngles() const
+    AZ::Vector3 Matrix::CalcEulerAngles() const
     {
-        Vector3 v;
+        AZ::Vector3 v;
         /*
         // Version with smooth transitions to poles, but slow
             float SignCosY = 1;
@@ -341,34 +341,34 @@ namespace MCore
         if (Math::Abs(TMAT(2, 0)) < 0.9f)
         {
             float SignCosY = 1.0f;
-            v.y = Math::ASin(-TMAT(2, 0));
-            v.z = Math::ATan(TMAT(1, 0) / TMAT(0, 0));
-            if (Math::Abs(v.y) < Math::Abs(v.z))
+            v.SetY(Math::ASin(-TMAT(2, 0)));
+            v.SetZ(Math::ATan(TMAT(1, 0) / TMAT(0, 0)));
+            if (Math::Abs(v.GetY()) < Math::Abs(v.GetZ()))
             {
-                SignCosY = Math::SignOfCos(v.y);
-                v.z = Math::ATan2(SignCosY * TMAT(1, 0), SignCosY * TMAT(0, 0));
+                SignCosY = Math::SignOfCos(v.GetY());
+                v.SetZ(Math::ATan2(SignCosY * TMAT(1, 0), SignCosY * TMAT(0, 0)));
             }
             else
             {
-                v.y = Math::ATan2(-TMAT(2, 0), Math::Sqrt(TMAT(0, 0) * TMAT(0, 0) + TMAT(1, 0) * TMAT(1, 0)) * Math::SignOfFloat(Math::SignOfCos(v.z) * TMAT(0, 0)));
-                SignCosY = Math::SignOfCos(v.y);
+                v.SetY(Math::ATan2(-TMAT(2, 0), Math::Sqrt(TMAT(0, 0) * TMAT(0, 0) + TMAT(1, 0) * TMAT(1, 0)) * Math::SignOfFloat(Math::SignOfCos(v.GetZ()) * TMAT(0, 0))));
+                SignCosY = Math::SignOfCos(v.GetY());
             }
-            v.x = Math::ATan2(SignCosY * m44[2][1], SignCosY * TMAT(2, 2));
+            v.SetX(Math::ATan2(SignCosY * m44[2][1], SignCosY * TMAT(2, 2)));
         }
         else
         {
-            v.z = 0.5f * Math::ATan2(-TMAT(1, 2), TMAT(1, 1));
-            v.y = Math::ATan2(-TMAT(2, 0), TMAT(0, 0));
-            v.x = -Math::SignOfSin(v.y) * v.z;
+            v.SetZ(0.5f * Math::ATan2(-TMAT(1, 2), TMAT(1, 1)));
+            v.SetY(Math::ATan2(-TMAT(2, 0), TMAT(0, 0)));
+            v.SetX(-Math::SignOfSin(v.GetY()) * v.GetZ());
         }
 
-        v.y = -v.y;
-        v.z = -v.z;
+        v.SetY(-v.GetY());
+        v.SetZ(-v.GetZ());
 
         // get the angles in the range [-pi, pi]
-        v.x = v.x + Math::twoPi * Math::Floor((-v.x) / Math::twoPi + 0.5f);
-        v.y = v.y + Math::twoPi * Math::Floor((-v.y) / Math::twoPi + 0.5f);
-        v.z = v.z + Math::twoPi * Math::Floor((-v.z) / Math::twoPi + 0.5f);
+        v.SetX(v.GetX() + Math::twoPi * Math::Floor((-v.GetX()) / Math::twoPi + 0.5f));
+        v.SetY(v.GetY() + Math::twoPi * Math::Floor((-v.GetY()) / Math::twoPi + 0.5f));
+        v.SetZ(v.GetZ() + Math::twoPi * Math::Floor((-v.GetZ()) / Math::twoPi + 0.5f));
 
         return v;
     }
@@ -409,19 +409,19 @@ namespace MCore
 
 
     // setup as scale matrix
-    void Matrix::SetScaleMatrix(const Vector3& s)
+    void Matrix::SetScaleMatrix(const AZ::Vector3& s)
     {
-        TMAT(0, 0) = s.x;
+        TMAT(0, 0) = s.GetX();
         TMAT(0, 1) = 0.0f;
         TMAT(0, 2) = 0.0f;
         TMAT(0, 3) = 0.0f;
         TMAT(1, 0) = 0.0f;
-        TMAT(1, 1) = s.y;
+        TMAT(1, 1) = s.GetY();
         TMAT(1, 2) = 0.0f;
         TMAT(1, 3) = 0.0f;
         TMAT(2, 0) = 0.0f;
         TMAT(2, 1) = 0.0f;
-        TMAT(2, 2) = s.z;
+        TMAT(2, 2) = s.GetZ();
         TMAT(2, 3) = 0.0f;
         TMAT(3, 0) = 0.0f;
         TMAT(3, 1) = 0.0f;
@@ -431,7 +431,7 @@ namespace MCore
 
 
     // setup as translation matrix
-    void Matrix::SetTranslationMatrix(const Vector3& t)
+    void Matrix::SetTranslationMatrix(const AZ::Vector3& t)
     {
         TMAT(0, 0) = 1.0f;
         TMAT(0, 1) = 0.0f;
@@ -445,9 +445,9 @@ namespace MCore
         TMAT(2, 1) = 0.0f;
         TMAT(2, 2) = 1.0f;
         TMAT(2, 3) = 0.0f;
-        TMAT(3, 0) = t.x;
-        TMAT(3, 1) = t.y;
-        TMAT(3, 2) = t.z;
+        TMAT(3, 0) = t.GetX();
+        TMAT(3, 1) = t.GetY();
+        TMAT(3, 2) = t.GetZ();
         TMAT(3, 3) = 1.0f;
     }
 
@@ -527,46 +527,46 @@ namespace MCore
     }
 
 
-    void Matrix::SetRotationMatrixEulerZYX(const Vector3& v)
+    void Matrix::SetRotationMatrixEulerZYX(const AZ::Vector3& v)
     {
-        *this = Matrix::RotationMatrixX(v.z);
-        this->MultMatrix4x3(Matrix::RotationMatrixY(v.y));
-        this->MultMatrix4x3(Matrix::RotationMatrixZ(v.x));
+        *this = Matrix::RotationMatrixX(v.GetZ());
+        this->MultMatrix4x3(Matrix::RotationMatrixY(v.GetY()));
+        this->MultMatrix4x3(Matrix::RotationMatrixZ(v.GetX()));
     }
 
 
 
-    void Matrix::SetRotationMatrixEulerXYZ(const Vector3& v)
+    void Matrix::SetRotationMatrixEulerXYZ(const AZ::Vector3& v)
     {
-        *this = Matrix::RotationMatrixX(v.x);
-        this->MultMatrix4x3(Matrix::RotationMatrixY(v.y));
-        this->MultMatrix4x3(Matrix::RotationMatrixZ(v.z));
+        *this = Matrix::RotationMatrixX(v.GetX());
+        this->MultMatrix4x3(Matrix::RotationMatrixY(v.GetY()));
+        this->MultMatrix4x3(Matrix::RotationMatrixZ(v.GetZ()));
     }
 
 
 
-    void Matrix::SetRotationMatrixAxisAngle(const Vector3& axis, float angle)
+    void Matrix::SetRotationMatrixAxisAngle(const AZ::Vector3& axis, float angle)
     {
-        const float length2 = axis.SquareLength();
+        const float length2 = axis.GetLengthSq();
         if (Math::Abs(length2) < 0.00001f)
         {
             Identity();
             return;
         }
 
-        const Vector3 n = axis / Math::Sqrt(length2);
+        const AZ::Vector3 n = axis / Math::Sqrt(length2);
         const float s = Math::Sin(angle);
         const float c = Math::Cos(angle);
         const float k = 1.0f - c;
-        const float xx = n.x * n.x * k + c;
-        const float yy = n.y * n.y * k + c;
-        const float zz = n.z * n.z * k + c;
-        const float xy = n.x * n.y * k;
-        const float yz = n.y * n.z * k;
-        const float zx = n.z * n.x * k;
-        const float xs = n.x * s;
-        const float ys = n.y * s;
-        const float zs = n.z * s;
+        const float xx = n.GetX() * n.GetX() * k + c;
+        const float yy = n.GetY() * n.GetY() * k + c;
+        const float zz = n.GetZ() * n.GetZ() * k + c;
+        const float xy = n.GetX() * n.GetY() * k;
+        const float yz = n.GetY() * n.GetZ() * k;
+        const float zx = n.GetZ() * n.GetX() * k;
+        const float xs = n.GetX() * s;
+        const float ys = n.GetY() * s;
+        const float zs = n.GetZ() * s;
 
         TMAT(0, 0) = xx;
         TMAT(0, 1) = xy + zs;
@@ -587,19 +587,19 @@ namespace MCore
     }
 
 
-    void Matrix::Scale3x3(const Vector3& scale)
+    void Matrix::Scale3x3(const AZ::Vector3& scale)
     {
-        TMAT(0, 0) *= scale.x;
-        TMAT(0, 1) *= scale.y;
-        TMAT(0, 2) *= scale.z;
+        TMAT(0, 0) *= scale.GetX();
+        TMAT(0, 1) *= scale.GetY();
+        TMAT(0, 2) *= scale.GetZ();
 
-        TMAT(1, 0) *= scale.x;
-        TMAT(1, 1) *= scale.y;
-        TMAT(1, 2) *= scale.z;
+        TMAT(1, 0) *= scale.GetX();
+        TMAT(1, 1) *= scale.GetY();
+        TMAT(1, 2) *= scale.GetZ();
 
-        TMAT(2, 0) *= scale.x;
-        TMAT(2, 1) *= scale.y;
-        TMAT(2, 2) *= scale.z;
+        TMAT(2, 0) *= scale.GetX();
+        TMAT(2, 1) *= scale.GetY();
+        TMAT(2, 2) *= scale.GetZ();
     }
 
 
@@ -776,7 +776,7 @@ namespace MCore
 
     // init from position, rotation, scale and shear
     // use this to reconstruct a matrix that has been decomposed using the DecomposeQRGramSchmidt method
-    void Matrix::InitFromPosRotScaleShear(const Vector3& pos, const Quaternion& rot, const Vector3& scale, const Vector3& shear)
+    void Matrix::InitFromPosRotScaleShear(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale, const AZ::Vector3& shear)
     {
         // convert quat to matrix
         const float xx = rot.x * rot.x;
@@ -797,47 +797,47 @@ namespace MCore
         TMAT(2, 3) = 0.0f;
 
         // scale
-        TMAT(0, 0) *= scale.x;
-        TMAT(0, 1) *= scale.y;
-        TMAT(0, 2) *= scale.z;
-        TMAT(1, 0) *= scale.x;
-        TMAT(1, 1) *= scale.y;
-        TMAT(1, 2) *= scale.z;
-        TMAT(2, 0) *= scale.x;
-        TMAT(2, 1) *= scale.y;
-        TMAT(2, 2) *= scale.z;
+        TMAT(0, 0) *= scale.GetX();
+        TMAT(0, 1) *= scale.GetY();
+        TMAT(0, 2) *= scale.GetZ();
+        TMAT(1, 0) *= scale.GetX();
+        TMAT(1, 1) *= scale.GetY();
+        TMAT(1, 2) *= scale.GetZ();
+        TMAT(2, 0) *= scale.GetX();
+        TMAT(2, 1) *= scale.GetY();
+        TMAT(2, 2) *= scale.GetZ();
 
         // multiply with the shear matrix
         float v[3];
         v[0] = TMAT(0, 0);
         v[1] = TMAT(0, 1);
         v[2] = TMAT(0, 2);
-        TMAT(0, 1) = v[0] * shear.x + v[1];
-        TMAT(0, 2) = v[0] * shear.y + v[1] * shear.z + v[2];
+        TMAT(0, 1) = v[0] * shear.GetX() + v[1];
+        TMAT(0, 2) = v[0] * shear.GetY() + v[1] * shear.GetZ() + v[2];
 
         v[0] = TMAT(1, 0);
         v[1] = TMAT(1, 1);
         v[2] = TMAT(1, 2);
-        TMAT(1, 1) = v[0] * shear.x + v[1];
-        TMAT(1, 2) = v[0] * shear.y + v[1] * shear.z + v[2];
+        TMAT(1, 1) = v[0] * shear.GetX() + v[1];
+        TMAT(1, 2) = v[0] * shear.GetY() + v[1] * shear.GetZ() + v[2];
 
         v[0] = TMAT(2, 0);
         v[1] = TMAT(2, 1);
         v[2] = TMAT(2, 2);
-        TMAT(2, 1) = v[0] * shear.x + v[1];
-        TMAT(2, 2) = v[0] * shear.y + v[1] * shear.z + v[2];
+        TMAT(2, 1) = v[0] * shear.GetX() + v[1];
+        TMAT(2, 2) = v[0] * shear.GetY() + v[1] * shear.GetZ() + v[2];
 
         // translation
-        TMAT(3, 0) = pos.x;
-        TMAT(3, 1) = pos.y;
-        TMAT(3, 2) = pos.z;
+        TMAT(3, 0) = pos.GetX();
+        TMAT(3, 1) = pos.GetY();
+        TMAT(3, 2) = pos.GetZ();
         TMAT(3, 3) = 1.0f;
     }
 
 
     // init from position, rotation, scale, scale rotation
     // use this to reconstruct a matrix decomposed using the MatrixDecomposer class using polar decomposition
-    void Matrix::InitFromPosRotScaleScaleRot(const Vector3& pos, const Quaternion& rot, const Vector3& scale, const Quaternion& scaleRot)
+    void Matrix::InitFromPosRotScaleScaleRot(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale, const Quaternion& scaleRot)
     {
         float xx = scaleRot.x * scaleRot.x;
         float xy = scaleRot.x * scaleRot.y, yy = scaleRot.y * scaleRot.y;
@@ -876,15 +876,15 @@ namespace MCore
         }
 
         // apply scaling
-        TMAT(0, 0) *= scale.x;
-        TMAT(0, 1) *= scale.y;
-        TMAT(0, 2) *= scale.z;
-        TMAT(1, 0) *= scale.x;
-        TMAT(1, 1) *= scale.y;
-        TMAT(1, 2) *= scale.z;
-        TMAT(2, 0) *= scale.x;
-        TMAT(2, 1) *= scale.y;
-        TMAT(2, 2) *= scale.z;
+        TMAT(0, 0) *= scale.GetX();
+        TMAT(0, 1) *= scale.GetY();
+        TMAT(0, 2) *= scale.GetZ();
+        TMAT(1, 0) *= scale.GetX();
+        TMAT(1, 1) *= scale.GetY();
+        TMAT(1, 2) *= scale.GetZ();
+        TMAT(2, 0) *= scale.GetX();
+        TMAT(2, 1) *= scale.GetY();
+        TMAT(2, 2) *= scale.GetZ();
 
         // undo the scale rotation
         float v[3];
@@ -958,31 +958,31 @@ namespace MCore
         }
 
         // apply translation
-        TMAT(3, 0) = pos.x;
-        TMAT(3, 1) = pos.y;
-        TMAT(3, 2) = pos.z;
+        TMAT(3, 0) = pos.GetX();
+        TMAT(3, 1) = pos.GetY();
+        TMAT(3, 2) = pos.GetZ();
     }
 
 
     // init from pos/rot/scale
-    void Matrix::InitFromPosRotScale(const Vector3& pos, const Quaternion& rot, const Vector3& scale)
+    void Matrix::InitFromPosRotScale(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale)
     {
         // init on a scale + translation matrix
-        TMAT(0, 0) = scale.x;
+        TMAT(0, 0) = scale.GetX();
         TMAT(0, 1) = 0.0f;
         TMAT(0, 2) = 0.0f;
         TMAT(0, 3) = 0.0f;
         TMAT(1, 0) = 0.0f;
-        TMAT(1, 1) = scale.y;
+        TMAT(1, 1) = scale.GetY();
         TMAT(1, 2) = 0.0f;
         TMAT(1, 3) = 0.0f;
         TMAT(2, 0) = 0.0f;
         TMAT(2, 1) = 0.0f;
-        TMAT(2, 2) = scale.z;
+        TMAT(2, 2) = scale.GetZ();
         TMAT(2, 3) = 0.0f;
-        TMAT(3, 0) = pos.x;
-        TMAT(3, 1) = pos.y;
-        TMAT(3, 2) = pos.z;
+        TMAT(3, 0) = pos.GetX();
+        TMAT(3, 1) = pos.GetY();
+        TMAT(3, 2) = pos.GetZ();
         TMAT(3, 3) = 1.0f;
 
         // multiply it with a rotation matrix built from the quaternion
@@ -1037,24 +1037,24 @@ namespace MCore
 
 
     // init from pos/rot/scale with parent scale compensation
-    void Matrix::InitFromNoScaleInherit(const Vector3& pos, const Quaternion& rot, const Vector3& scale, const Vector3& invParentScale)
+    void Matrix::InitFromNoScaleInherit(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale, const AZ::Vector3& invParentScale)
     {
         // init on a scale + translation matrix
-        TMAT(0, 0) = scale.x;
+        TMAT(0, 0) = scale.GetX();
         TMAT(0, 1) = 0.0f;
         TMAT(0, 2) = 0.0f;
         TMAT(0, 3) = 0.0f;
         TMAT(1, 0) = 0.0f;
-        TMAT(1, 1) = scale.y;
+        TMAT(1, 1) = scale.GetY();
         TMAT(1, 2) = 0.0f;
         TMAT(1, 3) = 0.0f;
         TMAT(2, 0) = 0.0f;
         TMAT(2, 1) = 0.0f;
-        TMAT(2, 2) = scale.z;
+        TMAT(2, 2) = scale.GetZ();
         TMAT(2, 3) = 0.0f;
-        TMAT(3, 0) = pos.x;
-        TMAT(3, 1) = pos.y;
-        TMAT(3, 2) = pos.z;
+        TMAT(3, 0) = pos.GetX();
+        TMAT(3, 1) = pos.GetY();
+        TMAT(3, 2) = pos.GetZ();
         TMAT(3, 3) = 1.0f;
 
         // multiply it with a rotation matrix built from the quaternion
@@ -1107,19 +1107,19 @@ namespace MCore
         }
 
         // multiply this with the 3x3 scale inverse parent scale matrix
-        TMAT(0, 0) *= invParentScale.x;
-        TMAT(0, 1) *= invParentScale.y;
-        TMAT(0, 2) *= invParentScale.z;
-        TMAT(1, 0) *= invParentScale.x;
-        TMAT(1, 1) *= invParentScale.y;
-        TMAT(1, 2) *= invParentScale.z;
-        TMAT(2, 0) *= invParentScale.x;
-        TMAT(2, 1) *= invParentScale.y;
-        TMAT(2, 2) *= invParentScale.z;
+        TMAT(0, 0) *= invParentScale.GetX();
+        TMAT(0, 1) *= invParentScale.GetY();
+        TMAT(0, 2) *= invParentScale.GetZ();
+        TMAT(1, 0) *= invParentScale.GetX();
+        TMAT(1, 1) *= invParentScale.GetY();
+        TMAT(1, 2) *= invParentScale.GetZ();
+        TMAT(2, 0) *= invParentScale.GetX();
+        TMAT(2, 1) *= invParentScale.GetY();
+        TMAT(2, 2) *= invParentScale.GetZ();
     }
 
 
-    void Matrix::InitFromPosRot(const Vector3& pos, const Quaternion& rot)
+    void Matrix::InitFromPosRot(const AZ::Vector3& pos, const Quaternion& rot)
     {
         const float xx = rot.x * rot.x;
         const float xy = rot.x * rot.y, yy = rot.y * rot.y;
@@ -1138,9 +1138,9 @@ namespace MCore
         TMAT(2, 1) = +yz - xw + yz - xw;
         TMAT(2, 2) = -xx - yy + zz + ww;
         TMAT(2, 3) = 0.0f;
-        TMAT(3, 0) = pos.x;
-        TMAT(3, 1) = pos.y;
-        TMAT(3, 2) = pos.z;
+        TMAT(3, 0) = pos.GetX();
+        TMAT(3, 1) = pos.GetY();
+        TMAT(3, 2) = pos.GetZ();
         TMAT(3, 3) = 1.0f;
     }
 
@@ -1568,19 +1568,19 @@ namespace MCore
 
     void Matrix::TransposeTranslation()
     {
-        Vector3 temp;
+        AZ::Vector3 temp;
 
-        temp.x = TMAT(3, 0);
-        temp.y = TMAT(3, 1);
-        temp.z = TMAT(3, 2);
+        temp.SetX(TMAT(3, 0));
+        temp.SetY(TMAT(3, 1));
+        temp.SetZ(TMAT(3, 2));
 
         TMAT(3, 0) = TMAT(0, 3);
         TMAT(3, 1) = TMAT(1, 3);
         TMAT(3, 2) = TMAT(2, 3);
 
-        TMAT(0, 3) = temp.x;
-        TMAT(1, 3) = temp.y;
-        TMAT(2, 3) = temp.z;
+        TMAT(0, 3) = temp.GetX();
+        TMAT(1, 3) = temp.GetY();
+        TMAT(2, 3) = temp.GetZ();
     }
 
 
@@ -1611,7 +1611,7 @@ namespace MCore
 
 
 
-    Vector3 Matrix::InverseRot(const Vector3& v)
+    AZ::Vector3 Matrix::InverseRot(const AZ::Vector3& v)
     {
         Matrix m(*this);
         m.Inverse();
@@ -1650,14 +1650,14 @@ namespace MCore
 
     void Matrix::OrthoNormalize()
     {
-        Vector3 x = GetRight();
-        Vector3 y = GetUp();
+        AZ::Vector3 x = GetRight();
+        AZ::Vector3 y = GetUp();
         //Vector3 z = GetForward();
 
         x.Normalize();
         y -= x * x.Dot(y);
         y.Normalize();
-        Vector3 z = x.Cross(y);
+        AZ::Vector3 z = x.Cross(y);
 
         SetRight(x);
         SetUp(y);
@@ -1669,16 +1669,16 @@ namespace MCore
     void Matrix::Mirror(const Matrix& transform, const PlaneEq& plane)
     {
         // components
-        Vector3 x = transform.GetRight();
-        Vector3 y = transform.GetForward();
-        Vector3 z = transform.GetUp();
-        Vector3 t = transform.GetTranslation();
-        Vector3 n = plane.GetNormal();
-        Vector3 n2 = n * -2.0f;
+        AZ::Vector3 x = transform.GetRight();
+        AZ::Vector3 y = transform.GetForward();
+        AZ::Vector3 z = transform.GetUp();
+        AZ::Vector3 t = transform.GetTranslation();
+        AZ::Vector3 n = plane.GetNormal();
+        AZ::Vector3 n2 = n * -2.0f;
         float   d = plane.GetDist();
 
         // mirror translation
-        Vector3 mt = t + n2 * (t.Dot(n) - d);
+        AZ::Vector3 mt = t + n2 * (t.Dot(n) - d);
 
         // mirror x rotation
         x += t;
@@ -1708,23 +1708,23 @@ namespace MCore
     }
 
 
-    void Matrix::LookAt(const Vector3& view, const Vector3& target, const Vector3& up)
+    void Matrix::LookAt(const AZ::Vector3& view, const AZ::Vector3& target, const AZ::Vector3& up)
     {
-        const Vector3 z = (target - view).Normalize();
-        const Vector3 x = (up.Cross(z)).Normalize();
-        const Vector3 y = z.Cross(x);
+        const AZ::Vector3 z = (target - view).GetNormalized();
+        const AZ::Vector3 x = (up.Cross(z)).GetNormalized();
+        const AZ::Vector3 y = z.Cross(x);
 
-        TMAT(0, 0) = x.x;
-        TMAT(0, 1) = y.x;
-        TMAT(0, 2) = z.x;
+        TMAT(0, 0) = x.GetX();
+        TMAT(0, 1) = y.GetX();
+        TMAT(0, 2) = z.GetX();
         TMAT(0, 3) = 0.0f;
-        TMAT(1, 0) = x.y;
-        TMAT(1, 1) = y.y;
-        TMAT(1, 2) = z.y;
+        TMAT(1, 0) = x.GetY();
+        TMAT(1, 1) = y.GetY();
+        TMAT(1, 2) = z.GetY();
         TMAT(1, 3) = 0.0f;
-        TMAT(2, 0) = x.z;
-        TMAT(2, 1) = y.z;
-        TMAT(2, 2) = z.z;
+        TMAT(2, 0) = x.GetZ();
+        TMAT(2, 1) = y.GetZ();
+        TMAT(2, 2) = z.GetZ();
         TMAT(2, 3) = 0.0f;
         TMAT(3, 0) = -x.Dot(view);
         TMAT(3, 1) = -y.Dot(view);
@@ -1742,23 +1742,23 @@ namespace MCore
     }
 
 
-    void Matrix::LookAtRH(const Vector3& view, const Vector3& target, const Vector3& up)
+    void Matrix::LookAtRH(const AZ::Vector3& view, const AZ::Vector3& target, const AZ::Vector3& up)
     {
-        const Vector3 z = (view - target).Normalize();
-        const Vector3 x = (up.Cross(z)).Normalize();
-        const Vector3 y = z.Cross(x);
+        const AZ::Vector3 z = (view - target).GetNormalized();
+        const AZ::Vector3 x = (up.Cross(z)).GetNormalized();
+        const AZ::Vector3 y = z.Cross(x);
 
-        TMAT(0, 0) = x.x;
-        TMAT(0, 1) = y.x;
-        TMAT(0, 2) = z.x;
+        TMAT(0, 0) = x.GetX();
+        TMAT(0, 1) = y.GetX();
+        TMAT(0, 2) = z.GetX();
         TMAT(0, 3) = 0.0f;
-        TMAT(1, 0) = x.y;
-        TMAT(1, 1) = y.y;
-        TMAT(1, 2) = z.y;
+        TMAT(1, 0) = x.GetY();
+        TMAT(1, 1) = y.GetY();
+        TMAT(1, 2) = z.GetY();
         TMAT(1, 3) = 0.0f;
-        TMAT(2, 0) = x.z;
-        TMAT(2, 1) = y.z;
-        TMAT(2, 2) = z.z;
+        TMAT(2, 0) = x.GetZ();
+        TMAT(2, 1) = y.GetZ();
+        TMAT(2, 2) = z.GetZ();
         TMAT(2, 3) = 0.0f;
         TMAT(3, 0) = -x.Dot(view);
         TMAT(3, 1) = -y.Dot(view);
@@ -2078,9 +2078,9 @@ namespace MCore
     bool Matrix::CheckIfIsOrthogonal(float tolerance) const
     {
         // get the matrix vectors
-        Vector3 right   = GetRight();
-        Vector3 up      = GetUp();
-        Vector3 forward = GetForward();
+        AZ::Vector3 right   = GetRight();
+        AZ::Vector3 up      = GetUp();
+        AZ::Vector3 forward = GetForward();
 
         // check if the vectors form an orthonormal set
         if (Math::Abs(right.Dot(up))      > tolerance)
@@ -2136,9 +2136,9 @@ namespace MCore
     float Matrix::CalcHandedness() const
     {
         // get the matrix vectors
-        Vector3 right   = GetRight();
-        Vector3 up      = GetUp();
-        Vector3 forward = GetForward();
+        AZ::Vector3 right   = GetRight();
+        AZ::Vector3 up      = GetUp();
+        AZ::Vector3 forward = GetForward();
 
         // calculate the handedness (negative result means left handed, positive means right handed)
         return (right.Cross(up)).Dot(forward);
@@ -2197,9 +2197,9 @@ namespace MCore
     void Matrix::Normalize()
     {
         // get the current vectors
-        Vector3 right   = GetRight();
-        Vector3 up      = GetUp();
-        Vector3 forward = GetForward();
+        AZ::Vector3 right   = GetRight();
+        AZ::Vector3 up      = GetUp();
+        AZ::Vector3 forward = GetForward();
 
         // normalize them
         right.Normalize();
@@ -2214,15 +2214,15 @@ namespace MCore
 
 
     // creates a shear matrix
-    void Matrix::SetShearMatrix(const Vector3& s)
+    void Matrix::SetShearMatrix(const AZ::Vector3& s)
     {
         TMAT(0, 0) = 1;
-        TMAT(0, 1) = s.x;
-        TMAT(0, 2) = s.y;
+        TMAT(0, 1) = s.GetX();
+        TMAT(0, 2) = s.GetY();
         TMAT(0, 3) = 0;
         TMAT(1, 0) = 0;
         TMAT(1, 1) = 1;
-        TMAT(1, 2) = s.z;
+        TMAT(1, 2) = s.GetZ();
         TMAT(1, 3) = 0;
         TMAT(2, 0) = 0;
         TMAT(2, 1) = 0;
@@ -2264,15 +2264,15 @@ namespace MCore
 
 
     // simple decompose a matrix into translation and rotation
-    void Matrix::Decompose(MCore::Vector3* outTranslation, MCore::Quaternion* outRotation) const
+    void Matrix::Decompose(AZ::Vector3* outTranslation, MCore::Quaternion* outRotation) const
     {
         // make a copy of the matrix
         Matrix mat(*this);
 
         // normalize the basis vectors
-        mat.GetRight().SafeNormalize();
-        mat.GetUp().SafeNormalize();
-        mat.GetForward().SafeNormalize();
+        mat.SetRight(SafeNormalize(mat.GetRight()));
+        mat.SetUp(SafeNormalize(mat.GetUp()));
+        mat.SetForward(SafeNormalize(mat.GetForward()));
 
         // extract the translation from the matrix
         *outTranslation = mat.GetTranslation();
@@ -2284,15 +2284,15 @@ namespace MCore
 
 
     // calculate a rotation matrix from two vectors
-    void Matrix::SetRotationMatrixTwoVectors(const Vector3& from, const Vector3& to)
+    void Matrix::SetRotationMatrixTwoVectors(const AZ::Vector3& from, const AZ::Vector3& to)
     {
         // calculate intermediate values
-        const float lengths = to.SafeLength() * from.SafeLength();
+        const float lengths = SafeLength(to) * SafeLength(from);
         const float D = (lengths > Math::epsilon) ? 1.0f / lengths : 0.0f;
-        const float C = (to.x * from.x + to.y * from.y + to.z * from.z) * D;
-        const float vzwy = (to.y * from.z) - (to.z * from.y);
-        const float wxuz = (to.z * from.x) - (to.x * from.z);
-        const float uyvx = (to.x * from.y) - (to.y * from.x);
+        const float C = (to.GetX() * from.GetX() + to.GetY() * from.GetY() + to.GetZ() * from.GetZ()) * D;
+        const float vzwy = (to.GetY() * from.GetZ()) - (to.GetZ() * from.GetY());
+        const float wxuz = (to.GetZ() * from.GetX()) - (to.GetX() * from.GetZ());
+        const float uyvx = (to.GetX() * from.GetY()) - (to.GetY() * from.GetX());
         const float A = vzwy * vzwy + wxuz * wxuz + uyvx * uyvx;
 
         // return identity if the cross product of the two vectors is small
@@ -2326,7 +2326,7 @@ namespace MCore
 
     // output: x=pitch, y=yaw, z=roll
     // reconstruction: roll*pitch*yaw (zxy)
-    Vector3 Matrix::CalcPitchYawRoll() const
+    AZ::Vector3 Matrix::CalcPitchYawRoll() const
     {
         const float pitch = Math::ASin(-TMAT(2, 1));
         const float cosPitch = Math::Cos(pitch);
@@ -2345,7 +2345,7 @@ namespace MCore
             yaw  = 0.0f;
         }
 
-        return Vector3(pitch, yaw, roll);
+        return AZ::Vector3(pitch, yaw, roll);
     }
 
 
@@ -2380,7 +2380,7 @@ namespace MCore
 
 
     //
-    void Matrix::DecomposeQRGramSchmidt(Vector3& translation, Quaternion& rot, Vector3& scale, Vector3& shear) const
+    void Matrix::DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot, AZ::Vector3& scale, AZ::Vector3& shear) const
     {
         Matrix rotMatrix;
         DecomposeQRGramSchmidt(translation, rotMatrix, scale, shear);
@@ -2388,7 +2388,7 @@ namespace MCore
     }
 
     //
-    void Matrix::DecomposeQRGramSchmidt(Vector3& translation, Quaternion& rot, Vector3& scale) const
+    void Matrix::DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot, AZ::Vector3& scale) const
     {
         Matrix rotMatrix;
         DecomposeQRGramSchmidt(translation, rotMatrix, scale);
@@ -2397,7 +2397,7 @@ namespace MCore
 
 
     //
-    void Matrix::DecomposeQRGramSchmidt(Vector3& translation, Quaternion& rot) const
+    void Matrix::DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot) const
     {
         Matrix rotMatrix;
         DecomposeQRGramSchmidt(translation, rotMatrix);
@@ -2406,7 +2406,7 @@ namespace MCore
 
 
     //
-    void Matrix::DecomposeQRGramSchmidt(Vector3& translation, Matrix& rot, Vector3& scale, Vector3& shear) const
+    void Matrix::DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot, AZ::Vector3& scale, AZ::Vector3& shear) const
     {
         // build orthogonal matrix Q
         float invLength = Math::InvSqrt(TMAT(0, 0) * TMAT(0, 0) + TMAT(1, 0) * TMAT(1, 0) + TMAT(2, 0) * TMAT(2, 0));
@@ -2462,22 +2462,22 @@ namespace MCore
         MMAT(R, 2, 2) = MMAT(rot, 0, 2) * TMAT(0, 2) + MMAT(rot, 1, 2) * TMAT(1, 2) + MMAT(rot, 2, 2) * TMAT(2, 2);
 
         // the scaling component
-        scale.x = MMAT(R, 0, 0);
-        scale.y = MMAT(R, 1, 1);
-        scale.z = MMAT(R, 2, 2);
+        scale.SetX(MMAT(R, 0, 0));
+        scale.SetY(MMAT(R, 1, 1));
+        scale.SetZ(MMAT(R, 2, 2));
 
         // the shear component
-        const float invScaleX = 1.0f / scale.x;
-        shear.x = MMAT(R, 0, 1) * invScaleX;
-        shear.y = MMAT(R, 0, 2) * invScaleX;
-        shear.z = MMAT(R, 1, 2) / scale.y;
+        const float invScaleX = 1.0f / scale.GetX();
+        shear.SetX(MMAT(R, 0, 1) * invScaleX);
+        shear.SetY(MMAT(R, 0, 2) * invScaleX);
+        shear.SetZ(MMAT(R, 1, 2) / scale.GetY());
 
         translation = GetTranslation();
     }
 
 
     //
-    void Matrix::DecomposeQRGramSchmidt(Vector3& translation, Matrix& rot, Vector3& scale) const
+    void Matrix::DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot, AZ::Vector3& scale) const
     {
         // build orthogonal matrix Q
         float invLength = Math::InvSqrt(TMAT(0, 0) * TMAT(0, 0) + TMAT(1, 0) * TMAT(1, 0) + TMAT(2, 0) * TMAT(2, 0));
@@ -2533,16 +2533,16 @@ namespace MCore
         MMAT(R, 2, 2) = MMAT(rot, 0, 2) * TMAT(0, 2) + MMAT(rot, 1, 2) * TMAT(1, 2) + MMAT(rot, 2, 2) * TMAT(2, 2);
 
         // the scaling component
-        scale.x = MMAT(R, 0, 0);
-        scale.y = MMAT(R, 1, 1);
-        scale.z = MMAT(R, 2, 2);
+        scale.SetX(MMAT(R, 0, 0));
+        scale.SetY(MMAT(R, 1, 1));
+        scale.SetZ(MMAT(R, 2, 2));
 
         translation = GetTranslation();
     }
 
 
     // decompose into translation and rotation
-    void Matrix::DecomposeQRGramSchmidt(Vector3& translation, Matrix& rot) const
+    void Matrix::DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot) const
     {
         // build orthogonal matrix Q
         float invLength = Math::InvSqrt(TMAT(0, 0) * TMAT(0, 0) + TMAT(1, 0) * TMAT(1, 0) + TMAT(2, 0) * TMAT(2, 0));

@@ -33,7 +33,7 @@ public:
     // Ovverides from CEntityObject.
     //////////////////////////////////////////////////////////////////////////
     virtual void InitVariables() {}
-    bool IsScalable() { return false; }
+    bool IsScalable() const { return false; }
     virtual void Serialize(CObjectArchive& ar);
 
 

@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "EditTool.h"
+
 class CBaseObject;
 
 /*!

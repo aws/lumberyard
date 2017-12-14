@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_EDITOR_INCLUDE_ISOURCECONTROL_H
-#define CRYINCLUDE_EDITOR_INCLUDE_ISOURCECONTROL_H
 #pragma once
 
 #include <map>
@@ -44,13 +42,9 @@ enum ESccFlags
     NONE                      = 0,
     GETLATEST_REVERT          = 1 << 0, // don't revert when perform GetLatestVersion() on opened files
     GETLATEST_ONLY_CHECK      = 1 << 1, // don't actually get latest version of the file, check if scc has more recent version
-    ADD_WITHOUT_SUBMIT        = 1 << 2, // add the files to the default changelist
     ADD_CHANGELIST            = 1 << 3, // add a changelist with the description
-    ADD_AS_BINARY_FILE        = 1 << 4, // add the files as binary files
-    DELETE_WITHOUT_SUBMIT     = 1 << 5, // mark for delete and don't submit
     RENAME_WITHOUT_SUBMIT     = 1 << 6, // mark for move and don't submit
     RENAME_WITHOUT_REVERT     = 1 << 7, // mark for move and don't revert changes
-    DELETE_MOVED_FILES        = 1 << 8, // make sure moved files are not left on disk
 };
 
 // Lock status of an item in source control
@@ -70,12 +64,6 @@ struct ISourceControl
 {
     DEFINE_UUID(0x1D391E8C, 0xA124, 0x46bb, 0x80, 0x8D, 0x9B, 0xCA, 0x15, 0x5B, 0xCA, 0xFD)
 
-    // Description:
-    //    Returns attributes of the file.
-    // Return:
-    //    Combination of flags from ESccFileAttributes enumeration.
-    virtual uint32 GetFileAttributes(const char* filename) = 0;
-
     // Source Control State
     enum ConnectivityState
     {
@@ -87,26 +75,12 @@ struct ISourceControl
 
     using SourceControlState = AzToolsFramework::SourceControlState;
 
-    typedef std::function<void(ConnectivityState)> connectivityChangedFunction;
-
-    virtual bool DoesChangeListExist(const char* pDesc, char* changeid, int nLen) = 0;
-    virtual bool CreateChangeList(const char* pDesc, char* changeid, int nLen) = 0;
-    virtual bool Add(const char* filename, const char* desc = 0, int nFlags = 0, char* changelistId = NULL) = 0;
     virtual bool CheckOut(const char* filename, int nFlags = 0, char* changelistId = NULL) = 0;
     virtual bool Rename(const char* filename, const char* newfilename, const char* desc = 0, int nFlags = 0) = 0;
     virtual bool GetLatestVersion(const char* filename, int nFlags = 0) = 0;
-    //function to register callback
-    virtual uint RegisterCallback(connectivityChangedFunction func) = 0;
-    //function to unregister callback
-    virtual void UnRegisterCallback(uint handle) = 0;
     //function to enable/disable source control
     virtual void SetSourceControlState(SourceControlState state) = 0;
     virtual ConnectivityState GetConnectivityState() = 0;
-
-    // GetOtherUser - Get other user name who edit file filename
-    // outUser: output char buffer, provided by user, 64 - recommended size of this buffer
-    // nOutUserSize: size of outUser buffer, 64 is recommended
-    virtual bool GetOtherUser(const char* filename, char* outUser, int nOutUserSize) = 0;
 
     // Show settings dialog
     virtual void ShowSettings() = 0;
@@ -119,6 +93,4 @@ struct ISourceControl
     virtual ULONG STDMETHODCALLTYPE Release() { return 0; };
     //////////////////////////////////////////////////////////////////////////
 };
-
-#endif // CRYINCLUDE_EDITOR_INCLUDE_ISOURCECONTROL_H
 

@@ -11,7 +11,11 @@
 */
 
 #include <AzCore/base.h>
-#include <QSyntaxHighlighter.h>
+#include <QSyntaxHighlighter>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/unordered_set.h>
+#include <QTextEdit>
 
 #pragma once
 

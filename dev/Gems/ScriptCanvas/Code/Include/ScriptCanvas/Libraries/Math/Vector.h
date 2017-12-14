@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_VectorNodeHasProperties = true;
-
             class Vector2
-                : public NativeDatumNode<Vector2, AZ::Vector2, k_VectorNodeHasProperties>
+                : public NativeDatumNode<Vector2, AZ::Vector2>
             {
             public:
-                using ParentType = NativeDatumNode<Vector2, AZ::Vector2, k_VectorNodeHasProperties>;
+                using ParentType = NativeDatumNode<Vector2, AZ::Vector2>;
                 AZ_COMPONENT(Vector2, "{EB647398-7F56-4727-9C7C-277593DB1F11}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -45,16 +43,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Vector.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    AddProperty(&AZ::Vector2::GetX, &AZ::Vector2::SetX, "x");
-                    AddProperty(&AZ::Vector2::GetY, &AZ::Vector2::SetY, "y");
                 }
 
                 void Visit(NodeVisitor& visitor) const override
@@ -64,10 +55,10 @@ namespace ScriptCanvas
             };
 
             class Vector3
-                : public NativeDatumNode<Vector3, AZ::Vector3, k_VectorNodeHasProperties>
+                : public NativeDatumNode<Vector3, AZ::Vector3>
             {
             public:
-                using ParentType = NativeDatumNode<Vector3, AZ::Vector3, k_VectorNodeHasProperties>;
+                using ParentType = NativeDatumNode<Vector3, AZ::Vector3>;
                 AZ_COMPONENT(Vector3, "{95A12BDE-D4B4-47E8-A917-3E42F678E7FA}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -86,17 +77,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Vector.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    AddProperty(&AZ::Vector3::GetX, &AZ::Vector3::SetX, "x");
-                    AddProperty(&AZ::Vector3::GetY, &AZ::Vector3::SetY, "y");
-                    AddProperty(&AZ::Vector3::GetZ, &AZ::Vector3::SetZ, "z");
                 }
 
                 void Visit(NodeVisitor& visitor) const override
@@ -106,10 +89,10 @@ namespace ScriptCanvas
             };
 
             class Vector4
-                : public NativeDatumNode<Vector4, AZ::Vector4, k_VectorNodeHasProperties>
+                : public NativeDatumNode<Vector4, AZ::Vector4>
             {
             public:
-                using ParentType = NativeDatumNode<Vector4, AZ::Vector4, k_VectorNodeHasProperties>;
+                using ParentType = NativeDatumNode<Vector4, AZ::Vector4>;
                 AZ_COMPONENT(Vector4, "{9CAE50A1-C575-4DFC-95C5-FA0A12DABCBD}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -128,18 +111,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Vector.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    AddProperty(&AZ::Vector4::GetX, &AZ::Vector4::SetX, "x");
-                    AddProperty(&AZ::Vector4::GetY, &AZ::Vector4::SetY, "y");
-                    AddProperty(&AZ::Vector4::GetZ, &AZ::Vector4::SetZ, "z");
-                    AddProperty(&AZ::Vector4::GetW, &AZ::Vector4::SetW, "w");
                 }
 
                 void Visit(NodeVisitor& visitor) const override

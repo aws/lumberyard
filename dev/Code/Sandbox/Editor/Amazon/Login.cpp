@@ -84,6 +84,8 @@ namespace Amazon {
         this->setContentsMargins(30, 29, 27, 30);
         this->setObjectName("LoginDialog");
 
+        m_nam = new QNetworkAccessManager(this);
+
         m_layout.setContentsMargins(0, 0, 0, 0);
 
         m_welcomeTitle.setText(WELCOME_TITLE_TEXT);
@@ -127,7 +129,7 @@ namespace Amazon {
 
         m_layout.addSpacerItem(m_spacer);
         m_layout.addWidget(&m_footerText);
-        m_page.setNetworkAccessManager(&m_nam);
+        m_page.setNetworkAccessManager(m_nam);
 
 
         //This allows createWindow to be called when the webpage tries to open a new window
@@ -137,8 +139,14 @@ namespace Amazon {
         this->setLayout(&m_layout);
 
         QObject::connect(&m_webView, &QWebView::urlChanged, this, &LoginDialog::urlChanged);
-        QObject::connect(&m_nam, &QNetworkAccessManager::finished, this, &LoginDialog::networkFinished);
+        QObject::connect(m_nam, &QNetworkAccessManager::finished, this, &LoginDialog::networkFinished);
         QObject::connect(&m_loadingRetry, &QPushButton::clicked, this, &LoginDialog::init);
+    }
+
+    LoginDialog::~LoginDialog() {
+        QObject::disconnect(&m_webView, &QWebView::urlChanged, this, &LoginDialog::urlChanged);
+        QObject::disconnect(m_nam, &QNetworkAccessManager::finished, this, &LoginDialog::networkFinished);
+        QObject::disconnect(&m_loadingRetry, &QPushButton::clicked, this, &LoginDialog::init);
     }
 
 

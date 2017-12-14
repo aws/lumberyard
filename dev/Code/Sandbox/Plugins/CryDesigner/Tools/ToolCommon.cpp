@@ -88,7 +88,7 @@ namespace CD
         GetIEditor()->WriteToConsole(szBuffer);
     }
 
-    void SyncPrefab(SMainContext& mc)
+    void SyncPrefab(const SMainContext& mc)
     {
         if (!mc.IsValid())
         {
@@ -135,7 +135,7 @@ namespace CD
         }
     }
 
-    void UpdateAll(SMainContext& mc, int updateType)
+    void UpdateAll(const SMainContext& mc, int updateType)
     {
         if (!mc.IsValid())
         {
@@ -181,7 +181,7 @@ namespace CD
         }
     }
 
-    void UpdateDrawnEdges(CD::SMainContext& mc)
+    void UpdateDrawnEdges(const CD::SMainContext& mc)
     {
         ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
 

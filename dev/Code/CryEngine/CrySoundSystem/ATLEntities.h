@@ -17,12 +17,14 @@
 #include <ATLUtils.h>
 #include <IAudioSystem.h>
 #include <IStreamEngine.h>
+#include <CryFlags.h>
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     #include <TimeValue.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
 #include <AzCore/std/containers/map.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 // external forward declaration
 struct EventPhys;
@@ -381,38 +383,38 @@ namespace Audio
     class CATLAudioFileEntry
     {
     public:
-        explicit CATLAudioFileEntry(const char* const sPassedPath = nullptr, IATLAudioFileEntryData* const pImplData = nullptr)
-            : m_sPath(sPassedPath)
-            , m_nSize(0)
-            , m_nUseCount(0)
-            , m_nMemoryBlockAlignment(AUDIO_MEMORY_ALIGNMENT)
-            , m_nFlags(eAFF_NOTFOUND)
-            , m_eDataScope(eADS_ALL)
-            , m_eStreamTaskType(eStreamTaskTypeCount)
-            , m_pMemoryBlock(nullptr)
-            , m_pReadStream(nullptr)
-            , m_pImplData(pImplData)
+        explicit CATLAudioFileEntry(const char* const filePath = nullptr, IATLAudioFileEntryData* const implData = nullptr)
+            : m_filePath(filePath)
+            , m_fileSize(0)
+            , m_useCount(0)
+            , m_memoryBlockAlignment(AUDIO_MEMORY_ALIGNMENT)
+            , m_flags(eAFF_NOTFOUND)
+            , m_dataScope(eADS_ALL)
+            , m_streamTaskType(eStreamTaskTypeCount)
+            , m_memoryBlock(nullptr)
+            , m_readStream(nullptr)
+            , m_implData(implData)
         {
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-            m_oTimeCached.SetValue(0);
+            m_timeCached.SetValue(0);
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
 
-        ~CATLAudioFileEntry() {}
+        ~CATLAudioFileEntry() = default;
 
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_sPath;
-        size_t m_nSize;
-        size_t m_nUseCount;
-        size_t m_nMemoryBlockAlignment;
-        TATLEnumFlagsType m_nFlags;
-        EATLDataScope m_eDataScope;
-        EStreamTaskType m_eStreamTaskType;
-        _smart_ptr<ICustomMemoryBlock> m_pMemoryBlock;
-        IReadStreamPtr m_pReadStream;
-        IATLAudioFileEntryData* m_pImplData;
+        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_filePath;
+        size_t m_fileSize;
+        size_t m_useCount;
+        size_t m_memoryBlockAlignment;
+        CCryFlags<TATLEnumFlagsType> m_flags;
+        EATLDataScope m_dataScope;
+        EStreamTaskType m_streamTaskType;
+        AZStd::unique_ptr<ICustomMemoryBlock> m_memoryBlock;
+        IReadStreamPtr m_readStream;
+        IATLAudioFileEntryData* m_implData;
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        CTimeValue m_oTimeCached;
+        CTimeValue m_timeCached;
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 

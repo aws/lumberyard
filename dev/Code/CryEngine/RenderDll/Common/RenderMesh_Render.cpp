@@ -258,11 +258,11 @@ bool CRenderMesh::RenderChunkMergeAbleInShadowPass(CRenderChunk* pPreviousChunk,
 
     if (bCurrentAlphaTested)
     {
-        const SEfResTexture* pCurrentResTex =  pCurrentShaderResource->GetTexture(EFTT_DIFFUSE);
-        const SEfResTexture* pPreviousResTex =  pPreviousShaderResource->GetTexture(EFTT_DIFFUSE);
+        const SEfResTexture* pCurrentResTex =  pCurrentShaderResource->GetTextureResource(EFTT_DIFFUSE);
+        const SEfResTexture* pPreviousResTex =  pPreviousShaderResource->GetTextureResource(EFTT_DIFFUSE);
 
-        const CTexture* pCurrentDiffuseTex  = pCurrentResTex ? pCurrentResTex->m_Sampler.m_pTex : NULL;
-        const CTexture* pPreviousDiffuseTex = pPreviousResTex ? pPreviousResTex->m_Sampler.m_pTex : NULL;
+        const CTexture* pCurrentDiffuseTex  = pCurrentResTex ? pCurrentResTex->m_Sampler.m_pTex : nullptr;
+        const CTexture* pPreviousDiffuseTex = pPreviousResTex ? pPreviousResTex->m_Sampler.m_pTex : nullptr;
 
         if (pCurrentDiffuseTex != pPreviousDiffuseTex)
         {

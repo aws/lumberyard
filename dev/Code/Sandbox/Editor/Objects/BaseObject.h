@@ -25,6 +25,8 @@
 #include "ObjectLoader.h"
 #include "Util/Variable.h"
 
+#include "AZCore/Math/Guid.h"
+
 //////////////////////////////////////////////////////////////////////////
 // forward declarations.
 class CGroup;

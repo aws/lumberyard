@@ -22,6 +22,8 @@
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneData/Rules/MaterialRule.h>
@@ -73,7 +75,10 @@ namespace EMotionFX
 
             void ActorGroupBehavior::GetCategoryAssignments(CategoryRegistrationList& categories, const AZ::SceneAPI::Containers::Scene& scene)
             {
-                if (SceneHasActorGroup(scene))
+                const bool hasRequiredData =
+                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IBoneData>(scene, false) &&
+                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::ISkinWeightData>(scene, false);
+                if (SceneHasActorGroup(scene) || hasRequiredData)
                 {
                     categories.emplace_back("Actors", Group::ActorGroup::TYPEINFO_Uuid(), s_animationsPreferredTabOrder);
                 }
@@ -167,7 +172,11 @@ namespace EMotionFX
 
             AZ::SceneAPI::Events::ProcessingResult ActorGroupBehavior::BuildDefault(AZ::SceneAPI::Containers::Scene& scene) const
             {
-                if (SceneHasActorGroup(scene) || !AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IBoneData>(scene, true))
+                const bool hasRequiredData =
+                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IBoneData>(scene, true) &&
+                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::ISkinWeightData>(scene, true);
+                if (SceneHasActorGroup(scene) || !hasRequiredData || 
+                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IAnimationData>(scene, true))
                 {
                     return AZ::SceneAPI::Events::ProcessingResult::Ignored;
                 }
@@ -205,6 +214,7 @@ namespace EMotionFX
                         group.OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, Group::ActorGroup::TYPEINFO_Uuid(), group.GetName()));
                         updated = true;
                     }
+                    AZ::SceneAPI::Utilities::SceneGraphSelector::UpdateNodeSelection(scene.GetGraph(), group.GetSceneNodeSelectionList());
                 }
 
                 return updated ? AZ::SceneAPI::Events::ProcessingResult::Success : AZ::SceneAPI::Events::ProcessingResult::Ignored;

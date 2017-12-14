@@ -21,6 +21,23 @@ class QWidget;
 #undef CreateDirectory
 #endif
 
+namespace AzToolsFramework
+{
+    struct SourceControlFileInfo;
+}
+
+typedef int (*ProgressRoutine)(
+    qint64 totalFileSize,
+    qint64 totalBytesTransferred,
+    qint64 streamSize,
+    qint64 streamBytesTransferred,
+    long   streamNumber,
+    long   callbackReason,
+    void*  sourceFile,
+    void*  destinationFile,
+    void*  data
+);
+
 struct IFileUtil
 {
     //! File types used for File Open dialogs
@@ -106,8 +123,11 @@ struct IFileUtil
     //! Discard changes to a file from source control API.  Blocks until completed
     virtual bool RevertFile(const char* filename, QWidget* parentWindow = nullptr) = 0;
 
-    //! Deletes a file using source control API.  Blocks until completed.
+    //! Deletes a file using source control API.  Blocks until completed
     virtual bool DeleteFromSourceControl(const char* filename, QWidget* parentWindow = nullptr) = 0;
+
+    //! Gather information about a file using the source control API.  Blocks until completed
+    virtual bool GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr) = 0;
 
     //! Creates this directory.
     virtual void CreateDirectory(const char* dir) = 0;
@@ -150,7 +170,7 @@ struct IFileUtil
     //////////////////////////////////////////////////////////////////////////
     // @param LPPROGRESS_ROUTINE pfnProgress - called by the system to notify of file copy progress
     // @param LPBOOL pbCancel - when the contents of this BOOL are set to TRUE, the system cancels the copy operation
-    virtual ECopyTreeResult CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false, void* pfnProgress = nullptr, bool* pbCancel = nullptr) = 0;
+    virtual ECopyTreeResult CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false, ProgressRoutine pfnProgress = nullptr, bool* pbCancel = nullptr) = 0;
 
     // As we don't have a FileUtil interface here, we have to duplicate some code :-( in order to keep
     // function calls clean.

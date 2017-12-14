@@ -27,6 +27,7 @@ class CObjectLayerManager;
 class CObjectClassDesc;
 class CObjectArchive;
 class CObjectPhysicsManager;
+class CViewport;
 struct HitContext;
 enum class ImageRotationDegrees;
 

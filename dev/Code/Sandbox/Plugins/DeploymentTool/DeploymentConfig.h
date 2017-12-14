@@ -29,7 +29,6 @@ struct DeploymentConfig
         , m_assetProcessorRemoteIpPort("45643")
         , m_shaderCompilerIP("127.0.0.1")
         , m_shaderCompilerPort("61453")
-        , m_compiler("Clang")
         , m_buildConfiguration("Profile")
         , m_platformOptions(PlatformOptions::Android)
         , m_buildGame(false)
@@ -45,7 +44,6 @@ struct DeploymentConfig
     AZStd::string m_shaderCompilerIP;
     AZStd::string m_shaderCompilerPort;
     AZStd::string m_projectName;
-    AZStd::string m_compiler;
     AZStd::string m_buildConfiguration;
     PlatformOptions m_platformOptions;
     bool m_buildGame;

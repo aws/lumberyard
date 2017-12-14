@@ -270,11 +270,13 @@ void CSmartObjectClassDialog::OnTVSelChanged()
     if (!item.isValid() || m_ui->m_TreeCtrl->model()->hasChildren(item))
     {
         m_ui->m_description->clear();
+        m_ui->m_btnEdit->setEnabled(false);
     }
     else
     {
         CSOLibrary::VectorClassData::iterator it = CSOLibrary::FindClass(item.data().toString().toLatin1().data());
         m_ui->m_description->setPlainText(it->description);
+        m_ui->m_btnEdit->setEnabled(true);
     }
 
     if (m_bMultiple || !item.isValid())
@@ -308,7 +310,7 @@ void CSmartObjectClassDialog::OnInitDialog()
     }
 
     //m_ui->m_btnNew->setEnabled(false);
-    //m_ui->m_btnEdit->setEnabled(false);
+    m_ui->m_btnEdit->setEnabled(false);
     m_ui->m_btnDelete->setEnabled(false);
     m_ui->m_btnRefresh->setEnabled(false);
 

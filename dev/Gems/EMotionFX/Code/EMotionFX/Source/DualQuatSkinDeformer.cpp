@@ -129,21 +129,17 @@ namespace EMotionFX
         MCore::Matrix   invNodeTM           = globalMatrices[ node->GetNodeIndex() ];
         invNodeTM.Inverse();
 
-        MCore::Vector3  newPos, newNormal, newTangent, scaledPos;
-        MCore::Vector3  vtxPos, normal, tangent;
-        MCore::Vector3* positions   = (MCore::Vector3*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
-        MCore::Vector3* normals     = (MCore::Vector3*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
-        AZ::Vector4*    tangents    = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
-        uint32*         orgVerts    = (uint32* )mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
-        uint32          i;
-
-        // make sure the actor global scales are updated
-        const MCore::Vector3* scales = actorInstance->CalcGlobalScales();
+        AZ::Vector3  newPos, newNormal, newTangent;
+        AZ::Vector3  vtxPos, normal, tangent;
+        AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
+        AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
+        AZ::Vector4*        tangents    = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
+        uint32*             orgVerts    = (uint32* )mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
 
         // precalc the skinning matrices
         MCore::Matrix mat;
         const uint32 numBones = mBones.GetLength();
-        for (i = 0; i < numBones; i++)
+        for (uint32 i = 0; i < numBones; i++)
         {
             const uint32 nodeIndex = mBones[i].mNodeNr;
             mat = globalMatrices[nodeIndex];
@@ -151,7 +147,6 @@ namespace EMotionFX
             mat.MultMatrix4x3(invNodeTM);
             mat.Normalize();
             mBones[i].mDualQuat.FromRotationTranslation(MCore::Quaternion::ConvertFromMatrix(mat), mat.GetTranslation());
-            mBones[i].mScaleMatrix.SetScaleMatrix(MCore::Vector3(1.0f, 1.0f, 1.0f) / scales[node->GetNodeIndex() ]);
         }
 
         // find the skinning layer
@@ -174,17 +169,14 @@ namespace EMotionFX
                 orgVertex = *(orgVerts++);
 
                 // reset the skinned position
-                newPos.Zero();
-                newNormal.Zero();
-                newTangent.Zero();
-                scaledPos.Zero();
+                newPos = AZ::Vector3::CreateZero();
+                newNormal = AZ::Vector3::CreateZero();
+                newTangent = AZ::Vector3::CreateZero();
 
                 const float tangentW = tangents->GetW();
-                vtxPos.Set  (positions->x,  positions->y,   positions->z);
-                normal.Set  (normals->x,    normals->y,     normals->z);
+                vtxPos.Set  (positions->GetX(),  positions->GetY(),   positions->GetZ());
+                normal.Set  (normals->GetX(),    normals->GetY(),     normals->GetZ());
                 tangent.Set (tangents->GetX(),  tangents->GetY(),   tangents->GetZ());
-
-                vtxPos *= MCore::Matrix::ScaleMatrix(scales[node->GetNodeIndex()]).Inversed();  // TODO: optimize this by precalculating the inverse matrices
 
                 // process the skin influences for this vertex
                 const uint32 numInfluences = layer->GetNumInfluences(orgVertex);
@@ -198,7 +190,7 @@ namespace EMotionFX
 
                     MCore::Matrix scaleMatrix;
                     MCore::MemSet(scaleMatrix.m16, 0, sizeof(float) * 16);
-                    for (i = 0; i < numInfluences; ++i)
+                    for (uint32 i = 0; i < numInfluences; ++i)
                     {
                         // get the influence
                         influence   = layer->GetInfluence(orgVertex, i);
@@ -214,17 +206,13 @@ namespace EMotionFX
 
                         // weighted sum
                         skinQuat += influenceQuat * weight;
-
-                        boneInfo->mScaleMatrix.Skin4x3(vtxPos, scaledPos, weight);
-                        //boneInfo->mScaleMatrix.Skin3x3( tangent, scaledTangent, weight );
-                        //boneInfo->mScaleMatrix.Skin3x3( tangent, scaledTangent, weight );
                     }
 
                     // normalize the dual quaternion
                     skinQuat.Normalize();
 
                     // perform skinning
-                    newPos      = skinQuat.TransformPoint(scaledPos);
+                    newPos      = skinQuat.TransformPoint(vtxPos);
                     newNormal   = skinQuat.TransformVector(normal);
                     newTangent  = skinQuat.TransformVector(tangent);
                 }
@@ -237,11 +225,11 @@ namespace EMotionFX
                 }
 
                 // output the skinned values
-                positions->Set  (newPos.x,      newPos.y,       newPos.z);
+                positions->Set  (newPos.GetX(),      newPos.GetY(),       newPos.GetZ());
                 positions++;
-                normals->Set    (newNormal.x,   newNormal.y,    newNormal.z);
+                normals->Set    (newNormal.GetX(),   newNormal.GetY(),    newNormal.GetZ());
                 normals++;
-                tangents->Set   (newTangent.x,  newTangent.y,   newTangent.z, tangentW);
+                tangents->Set   (newTangent.GetX(),  newTangent.GetY(),   newTangent.GetZ(), tangentW);
                 tangents++;
             }
         }
@@ -261,12 +249,11 @@ namespace EMotionFX
                 orgVertex = *(orgVerts++);
 
                 // reset the skinned position
-                newPos.Zero();
-                newNormal.Zero();
-                scaledPos.Zero();
+                newPos = AZ::Vector3::CreateZero();
+                newNormal = AZ::Vector3::CreateZero();
 
-                vtxPos.Set  (positions->x,  positions->y,   positions->z);
-                normal.Set  (normals->x,    normals->y,     normals->z);
+                vtxPos.Set  (positions->GetX(),  positions->GetY(),   positions->GetZ());
+                normal.Set  (normals->GetX(),    normals->GetY(),     normals->GetZ());
 
                 // process the skin influences for this vertex
                 const uint32 numInfluences = layer->GetNumInfluences(orgVertex);
@@ -278,7 +265,7 @@ namespace EMotionFX
                     // our skinning dual quaternion
                     MCore::DualQuaternion skinQuat(MCore::Quaternion(0, 0, 0, 0), MCore::Quaternion(0, 0, 0, 0));
 
-                    for (i = 0; i < numInfluences; ++i)
+                    for (uint32 i = 0; i < numInfluences; ++i)
                     {
                         // get the influence
                         influence   = layer->GetInfluence(orgVertex, i);
@@ -294,16 +281,13 @@ namespace EMotionFX
 
                         // weighted sum
                         skinQuat += influenceQuat * weight;
-
-                        // scale
-                        boneInfo->mScaleMatrix.Skin4x3(vtxPos, scaledPos, weight);
                     }
 
                     // normalize the dual quaternion
                     skinQuat.Normalize();
 
                     // perform skinning
-                    newPos      = skinQuat.TransformPoint(scaledPos);
+                    newPos      = skinQuat.TransformPoint(vtxPos);
                     newNormal   = skinQuat.TransformVector(normal);
                 }
                 else
@@ -314,9 +298,9 @@ namespace EMotionFX
                 }
 
                 // output the skinned values
-                positions->Set  (newPos.x,      newPos.y,       newPos.z);
+                positions->Set(newPos.GetX(), newPos.GetY(), newPos.GetZ());
                 positions++;
-                normals->Set    (newNormal.x,   newNormal.y,    newNormal.z);
+                normals->Set(newNormal.GetX(), newNormal.GetY(), newNormal.GetZ());
                 normals++;
             }
         }
@@ -369,7 +353,7 @@ namespace EMotionFX
                     BoneInfo& lastBone = mBones.GetLast();
                     lastBone.mNodeNr = influence->GetNodeNr();
                     lastBone.mDualQuat.Identity();
-                    lastBone.mScaleMatrix.Identity();
+                    ////lastBone.mScaleMatrix.Identity();
                     boneIndex = mBones.GetLength() - 1;
                 }
 

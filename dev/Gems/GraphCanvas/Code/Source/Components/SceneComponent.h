@@ -17,7 +17,6 @@
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/Math/Vector2.h>
 
-#include <AzFramework/Entity/EntityReference.h>
 
 #include <Components/ColorPaletteManager/ColorPaletteManagerBus.h>
 #include <GraphCanvas/Components/GeometryBus.h>
@@ -25,6 +24,7 @@
 #include <GraphCanvas/Components/MimeDataHandlerBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
 
 class QAction;
 class QMimeData;
@@ -91,6 +91,7 @@ namespace GraphCanvas
         , public AZ::EntityBus::Handler
         , public SceneRequestBus::Handler
         , public GeometryNotificationBus::MultiHandler
+        , public VisualNotificationBus::MultiHandler
         , public ViewNotificationBus::Handler
         , public SceneMimeDelegateRequestBus::Handler
     {
@@ -183,6 +184,8 @@ namespace GraphCanvas
         void SetSelectedArea(const AZ::Vector2& topLeft, const AZ::Vector2& topRight) override;
 
         bool HasSelectedItems() const override;
+        bool HasEntitiesAt(const AZ::Vector2& scenePoint) const override;
+
         AZStd::vector<AZ::EntityId> GetSelectedItems() const override;
 
         QGraphicsScene* AsQGraphicsScene() override;
@@ -214,7 +217,7 @@ namespace GraphCanvas
         void SetMimeType(const char* mimeType) override;
 
         AZStd::vector<AZ::EntityId> GetEntitiesAt(const AZ::Vector2& position) const override;
-        AZStd::vector<AZ::EntityId> GetEntitiesInRect(const QRectF& rect) const override;
+        AZStd::vector<AZ::EntityId> GetEntitiesInRect(const QRectF& rect, Qt::ItemSelectionMode mode) const override;
 
         AZStd::vector<Endpoint> GetEndpointsInRect(const QRectF& rect) const override;
 
@@ -231,6 +234,11 @@ namespace GraphCanvas
 
         void SignalDragSelectStart() override;
         void SignalDragSelectEnd() override;
+        ////
+
+        // VisualNotificationBus
+        bool OnMousePress(const AZ::EntityId& sourceId, const QGraphicsSceneMouseEvent* mouseEvent) override;
+        bool OnMouseRelease(const AZ::EntityId& sourceId, const QGraphicsSceneMouseEvent* mouseEvent) override;
         ////
 
         // GeometryNotificationBus
@@ -273,19 +281,23 @@ namespace GraphCanvas
         void NotifyConnectedSlots();
         void OnSelectionChanged();
 
+        void RegisterSelectionItem(const AZ::EntityId& itemId);
+        void UnregisterSelectionItem(const AZ::EntityId& itemId);
+
+        void AddSceneMember(const AZ::EntityId& item, bool positionItem = false, const AZ::Vector2& position = AZ::Vector2());
+
         AZStd::unordered_set<AZ::EntityId> FindConnections(const AZStd::unordered_set<AZ::EntityId>& nodeIds, bool internalConnectionsOnly = false) const override;
 
         //! Validates that the node ids in the connection can be found in the supplied node set
         bool ValidateConnectionEndpoints(AZ::Entity* connectionRef, const AZStd::unordered_set<AZ::Entity*>& nodeRefs);
 
-        //! Filter a set of entity refs into a node, connection and group entityReferences set based on if they are in the scene
-        void FilterItems(const AZStd::unordered_set<AzFramework::EntityReference>& itemIds, AZStd::unordered_set<AzFramework::EntityReference>& nodeIds,
-            AZStd::unordered_set<AzFramework::EntityReference>& connectionIds) const override;
-
         //! Filter a set of entity id's into a node, connection and group entityId set based on if they are in the scene
         void FilterItems(const AZStd::unordered_set<AZ::EntityId>& itemIds, AZStd::unordered_set<AZ::EntityId>& nodeIds, AZStd::unordered_set<AZ::EntityId>& connectionIds) const;
 
         QPointF GetViewCenterScenePoint() const;
+
+        bool m_allowReset;
+        QPointF m_pasteOffset;
 
         int m_deleteCount;
         AZStd::string m_copyMimeType;
@@ -311,6 +323,10 @@ namespace GraphCanvas
         bool m_activateScene;
         bool m_isDragSelecting;
         bool m_ignoreSelectionChanges;
+
+        AZ::EntityId m_pressedEntity;
+        AZ::Vector2  m_originalPosition;
+        bool m_isDraggingEntity;
     };
 
     //! This is the is Qt Ui QGraphicsScene elements that is stored in the GraphCanvas SceneComponent

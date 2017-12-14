@@ -27,6 +27,8 @@
 #include <INavigationSystem.h>
 
 #include "Util/GeometryUtil.h"
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+
 
 static const int maxForbiddenNameLen = 1024;
 
@@ -331,7 +333,7 @@ bool CNavigation::ValidateAreas()
     {
         if (it->second.shape.size() < 2)
         {
-            AIWarning("AI Path %s has only %d points", it->first.c_str(), it->second.shape.size());
+            AIWarning("AI Path %s has only %lu points", it->first.c_str(), it->second.shape.size());
             result = false;
         }
     }
@@ -340,7 +342,7 @@ bool CNavigation::ValidateAreas()
         CAIShape* pShape = m_designerForbiddenAreas.GetShapes()[i];
         if (pShape->GetPoints().size() < 3)
         {
-            AIWarning("AI Designer Forbidden Area %s has only %d points", pShape->GetName().c_str(), pShape->GetPoints().size());
+            AIWarning("AI Designer Forbidden Area %s has only %lu points", pShape->GetName().c_str(), pShape->GetPoints().size());
             result = false;
         }
     }
@@ -349,7 +351,7 @@ bool CNavigation::ValidateAreas()
         CAIShape* pShape = m_forbiddenAreas.GetShapes()[i];
         if (pShape->GetPoints().size() < 3)
         {
-            AIWarning("AI Forbidden Area %s has only %d points", pShape->GetName().c_str(), pShape->GetPoints().size());
+            AIWarning("AI Forbidden Area %s has only %lu points", pShape->GetName().c_str(), pShape->GetPoints().size());
             result = false;
         }
     }
@@ -358,7 +360,7 @@ bool CNavigation::ValidateAreas()
         CAIShape* pShape = m_forbiddenBoundaries.GetShapes()[i];
         if (pShape->GetPoints().size() < 3)
         {
-            AIWarning("AI Forbidden Boundary %s has only %d points", pShape->GetName().c_str(), pShape->GetPoints().size());
+            AIWarning("AI Forbidden Boundary %s has only %lu points", pShape->GetName().c_str(), pShape->GetPoints().size());
             result = false;
         }
     }
@@ -366,7 +368,7 @@ bool CNavigation::ValidateAreas()
     {
         if (it->second.GetPolygon().size() < 3)
         {
-            AIWarning("AI Area %s has only %d points", it->first.c_str(), it->second.GetPolygon().size());
+            AIWarning("AI Area %s has only %lu points", it->first.c_str(), it->second.GetPolygon().size());
             result = false;
         }
     }
@@ -374,7 +376,7 @@ bool CNavigation::ValidateAreas()
     {
         if (it->second.shape.size() < 2)
         {
-            AIWarning("AI Occlusion Plane %s has only %d points", it->first.c_str(), it->second.shape.size());
+            AIWarning("AI Occlusion Plane %s has only %lu points", it->first.c_str(), it->second.shape.size());
             result = false;
         }
     }
@@ -382,7 +384,7 @@ bool CNavigation::ValidateAreas()
     {
         if (it->second.shape.size() < 2)
         {
-            AIWarning("AI Perception Modifier %s has only %d points", it->first.c_str(), it->second.shape.size());
+            AIWarning("AI Perception Modifier %s has only %lu points", it->first.c_str(), it->second.shape.size());
             result = false;
         }
     }
@@ -1677,7 +1679,6 @@ bool CNavigation::IntersectsSpecialArea(const Vec3& vStart, const Vec3& vEnd, Ve
                 return true;
             }
         }
-        ++fi;
     }
     return false;
 }
@@ -2167,9 +2168,9 @@ void CNavigation::AddBeachPointsToTriangulator(const AABB& worldAABB)
             v00.z = pEngine->GetTerrainElevation(v00.x, v00.y);
             v10.z = pEngine->GetTerrainElevation(v10.x, v00.y);
             v01.z = pEngine->GetTerrainElevation(v01.x, v00.y);
-            float water00Z = pEngine->GetWaterLevel(&v00);
-            float water10Z = pEngine->GetWaterLevel(&v10);
-            float water01Z = pEngine->GetWaterLevel(&v01);
+            float water00Z = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v00) : pEngine->GetWaterLevel(&v00);
+            float water10Z = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v10) : pEngine->GetWaterLevel(&v10);
+            float water01Z = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v01) : pEngine->GetWaterLevel(&v01);
             float depth00 = water00Z - v00.z;
             float depth10 = water10Z - v10.z;
             float depth01 = water01Z - v01.z;
@@ -2200,7 +2201,7 @@ void CNavigation::AddBeachPointsToTriangulator(const AABB& worldAABB)
         {
             Vec3 v(ix, iy, 0.0f);
             v.z = pEngine->GetTerrainElevation(v.x, v.y);
-            float waterZ = pEngine->GetWaterLevel(&v);
+            float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v) : pEngine->GetWaterLevel(&v);
             float depth = waterZ - v.z;
             if (depth > criticalDeepDepth)
             {
@@ -2247,14 +2248,14 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
     for (unsigned i = 0, ni = m_forbiddenBoundaries.GetShapes().size(); i < ni; ++i)
     {
         CAIShape* pShape = m_forbiddenBoundaries.GetShapes()[i];
-        AILogProgress("%s, %d points", pShape->GetName().c_str(), pShape->GetPoints().size());
+        AILogProgress("%s, %lu points", pShape->GetName().c_str(), pShape->GetPoints().size());
     }
 
     AILogProgress("Generating triangulation: designer-created forbidden areas:");
     for (unsigned i = 0, ni = m_designerForbiddenAreas.GetShapes().size(); i < ni; ++i)
     {
         CAIShape* pShape = m_designerForbiddenAreas.GetShapes()[i];
-        AILogProgress("%s, %d points", pShape->GetName().c_str(), pShape->GetPoints().size());
+        AILogProgress("%s, %lu points", pShape->GetName().c_str(), pShape->GetPoints().size());
     }
 
     if (!CalculateForbiddenAreas())
@@ -2266,7 +2267,7 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
     for (unsigned i = 0, ni = m_forbiddenAreas.GetShapes().size(); i < ni; ++i)
     {
         CAIShape* pShape = m_forbiddenAreas.GetShapes()[i];
-        AILogProgress("%s, %d points", pShape->GetName().c_str(), pShape->GetPoints().size());
+        AILogProgress("%s, %lu points", pShape->GetName().c_str(), pShape->GetPoints().size());
     }
 
     AILogProgress("Building forbidden area QuadTrees");
@@ -2410,7 +2411,7 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
         }
 
         // don't triangulate objects that your feet wouldn't touch when walking in water
-        float waterZ = pEngine->GetWaterLevel(&obstaclePos, 0);
+        float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(obstaclePos) : pEngine->GetWaterLevel(&obstaclePos, 0);
         if (ftop < (waterZ - 1.5f))
         {
             continue;
@@ -2588,7 +2589,7 @@ void CNavigation::AddForbiddenArea(CAIShape* pShape)
 
         if (doForbiddenDebug)
         {
-            AILogAlways("%d: CreatePossibleCutList generates %d", debugForbiddenCounter, nodesToRefine.size());
+            AILogAlways("%d: CreatePossibleCutList generates %lu", debugForbiddenCounter, nodesToRefine.size());
         }
 
         for (ListNodeIds::iterator nI = nodesToRefine.begin(); nI != nodesToRefine.end(); ++nI)
@@ -2598,7 +2599,7 @@ void CNavigation::AddForbiddenArea(CAIShape* pShape)
 
         if (doForbiddenDebug)
         {
-            AILogAlways("%d: RefineTriangle generates %d %d %d", debugForbiddenCounter, lstNewNodes.size(), lstOldNodes.size(), newCutsVector.size());
+            AILogAlways("%d: RefineTriangle generates %lu %lu %lu", debugForbiddenCounter, lstNewNodes.size(), lstOldNodes.size(), newCutsVector.size());
         }
 
         static int cutOff = 1;
@@ -3069,7 +3070,7 @@ bool CNavigation::CalculateForbiddenAreas()
                         pShape->SetName(name);
                         pShape->SetPoints(hullVertices);
                         extraAreas.InsertShape(pShape);
-                        AILogProgress("Created forbidden area %s with %d points", name.c_str(), hullVertices.size());
+                        AILogProgress("Created forbidden area %s with %lu points", name.c_str(), hullVertices.size());
                     }
                 } // r >= criticalRadius - i.e. using geometry
                 else if (false && vegRad > 0.0f)
@@ -3097,7 +3098,7 @@ bool CNavigation::CalculateForbiddenAreas()
                         pShape->SetName(name);
                         pShape->SetPoints(pts);
                         extraAreas.InsertShape(pShape);
-                        AILogProgress("Created forbidden area %s with %d points", name.c_str(), pts.size());
+                        AILogProgress("Created forbidden area %s with %lu points", name.c_str(), pts.size());
                     }
                 }
                 else
@@ -3108,7 +3109,7 @@ bool CNavigation::CalculateForbiddenAreas()
         } // render node
     } // loop over entities
 
-    AILogProgress("Combining %d extra areas", extraAreas.GetShapes().size());
+    AILogProgress("Combining %lu extra areas", extraAreas.GetShapes().size());
     if (!CombineForbiddenAreas(extraAreas))
     {
         m_forbiddenAreas.Copy(extraAreas);
@@ -3117,7 +3118,7 @@ bool CNavigation::CalculateForbiddenAreas()
 
     m_forbiddenAreas.Insert(extraAreas);
 
-    AILogProgress("Combining %d forbidden areas", m_forbiddenAreas.GetShapes().size());
+    AILogProgress("Combining %lu forbidden areas", m_forbiddenAreas.GetShapes().size());
     if (!CombineForbiddenAreas(m_forbiddenAreas))
     {
         return false;
@@ -3358,7 +3359,7 @@ bool CNavigation::CombineForbiddenAreas(CAIShapeContainer& areasContainer)
         if (!pNextShape)
         {
             // Could not find overlapping shape!
-            AIWarning("Forbidden area %s was reported to intersect with another shape, but the intersecting shape was not found! (%d areas left)", pCurrentShape->GetName().c_str(), areas.size());
+            AIWarning("Forbidden area %s was reported to intersect with another shape, but the intersecting shape was not found! (%lu areas left)", pCurrentShape->GetName().c_str(), areas.size());
             processedAreas.push_back(pCurrentShape);
 
             AABB aabb = pCurrentShape->GetAABB();
@@ -4408,7 +4409,7 @@ void CNavigation::CalculateLinkWater(CGraphNodeManager& nodeManager, CGraphLinkM
         float distToMid = -1.0f;
         GetIntermediatePosition(pt, nodePos, linkManager.GetEdgeCenter(link), otherPos,
             distTotal, distToMid, iPt, numPts);
-        float waterLevel = p3DEngine->GetWaterLevel(&pt);
+        float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pt) : p3DEngine->GetWaterLevel(&pt);
         if (waterLevel != WATER_LEVEL_UNKNOWN)
         {
             float terrainZ = p3DEngine->GetTerrainElevation(pt.x, pt.y);

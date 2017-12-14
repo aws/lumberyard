@@ -26,6 +26,7 @@
 #include "GLBlitFramebufferHelper.hpp"
 
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzFramework/API/ApplicationAPI.h>
 
 namespace NCryOpenGL
 {
@@ -539,6 +540,7 @@ namespace NCryOpenGL
 
     class CContext
         : public SList::TListEntry
+        , public AzFramework::ApplicationLifecycleEvents::Bus::Handler
     {
 #if DXGL_STREAMING_CONSTANT_BUFFERS
         friend struct SStreamingBufferContext;
@@ -733,6 +735,9 @@ namespace NCryOpenGL
         void BeginTrace(uint32 uFirstVertex, uint32 uFirstIndex);
         void EndTrace();
 #endif
+
+        void OnApplicationWindowCreated() override;
+        void OnApplicationWindowDestroy() override;
 
     private:
         uint32 m_uIndex;

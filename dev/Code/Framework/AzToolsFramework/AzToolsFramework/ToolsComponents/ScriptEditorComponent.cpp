@@ -22,6 +22,7 @@
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzCore/std/sort.h>
 
 extern "C" {
 #	include	<Lua/lualib.h>
@@ -78,6 +79,7 @@ namespace AzToolsFramework
         const char* AssetTypeName = "asset";
         const char* EntityRefName = "entity";
         const char* UiFieldName = "ui";
+        const char* UiOrderValue = "order";
         const char* DescriptionFieldName = "description";
 
         bool ScriptEditorComponent::DoComponentsMatch(const ScriptEditorComponent* thisComponent, const ScriptEditorComponent* otherComponent)
@@ -477,6 +479,7 @@ namespace AzToolsFramework
                 ei.m_editData.m_name = CacheString(propertyName);
                 ei.m_editData.m_description = "";
                 ei.m_editData.m_elementId = AZ::Edit::UIHandlers::Default;
+                ei.m_sortOrder = FLT_MAX;
                 bool isValidProperty = true;
 
                 if (sdc.IsTable(propertyIndex))
@@ -566,6 +569,14 @@ namespace AzToolsFramework
                                                 const char* value = nullptr;
                                                 propertyTable.ReadValue(attrIndex, value);
                                                 ei.m_editData.m_elementId = AZ::Crc32(value);
+                                            }
+                                        }
+                                        else if (strcmp(attrName, UiOrderValue) == 0)
+                                        {
+                                            // Handle ui sorting value
+                                            if (propertyTable.IsNumber(attrIndex))
+                                            {
+                                                propertyTable.ReadValue(attrIndex, ei.m_sortOrder);
                                             }
                                         }
                                         else
@@ -697,6 +708,35 @@ namespace AzToolsFramework
             }
         }
 
+        void ScriptEditorComponent::SortProperties(AzFramework::ScriptPropertyGroup& group)
+        {
+            // sort properties
+            AZStd::sort(group.m_properties.begin(), group.m_properties.end(),
+                    [&](const AZ::ScriptProperty* lhs, const AZ::ScriptProperty* rhs) -> bool
+            {
+                auto lhsElementInfoPair = m_dataElements.find(lhs);
+                auto rhsElementInfoPair = m_dataElements.find(rhs);
+                AZ_Assert(lhsElementInfoPair != m_dataElements.end() && rhsElementInfoPair != m_dataElements.end(), "We have script properties that have do not have dataElements, this should not be possible!");
+                if (lhsElementInfoPair->second.m_sortOrder == FLT_MAX && rhsElementInfoPair->second.m_sortOrder == FLT_MAX)
+                {
+                    // use alphabetical sort
+                    return lhs->m_name < rhs->m_name;
+                }
+                else
+                {
+                    // sort based on the order defined by user
+                    return lhsElementInfoPair->second.m_sortOrder < rhsElementInfoPair->second.m_sortOrder;
+                }
+            }
+            );
+
+            // process subgroups (should we sort groups? in general or alphabetically)
+            for (AzFramework::ScriptPropertyGroup& subGroup : group.m_groups)
+            {
+                SortProperties(subGroup);
+            }
+        }
+
         void ScriptEditorComponent::LoadScript()
         {
             LSV_BEGIN(m_scriptComponent.m_context->NativeContext(), 0);
@@ -761,6 +801,8 @@ namespace AzToolsFramework
             // Remove all old properties, every confirmed property will have
             // a corresponding Element data
             RemovedOldProperties(m_scriptComponent.m_properties);
+
+            SortProperties(m_scriptComponent.m_properties);
 
             EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
         }
@@ -916,6 +958,7 @@ namespace AzToolsFramework
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("CanvasUI", 0xe1e05605))
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &ScriptEditorComponent::m_customName)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Category, "Scripting")

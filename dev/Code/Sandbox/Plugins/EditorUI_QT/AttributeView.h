@@ -235,6 +235,8 @@ private:
     //Save an CAttributeItem's ( w/ or w/o its children's) variable's pointer to input list variableList and item list if it's provided
     void GetItemVariables(CAttributeItem* item, bool recursive, /*out*/ QVector<IVariable*> & variableList, /*out*/ QVector<CAttributeItem*>* itemList);
 
+    //Set maximum particle count for the input widgets
+    void SetMaxParticleCount(int maxCount);
 private:
     CAttributeViewConfig m_config;
     CAttributeViewConfig m_defaultConfig;

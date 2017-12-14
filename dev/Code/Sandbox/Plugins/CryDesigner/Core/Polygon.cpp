@@ -2720,7 +2720,9 @@ namespace CD
             {
                 break;
             }
-            int e[2] = { (edgeindices & 0xFFFF0000) >> 16, edgeindices & 0x0000FFFF };
+            int e[2];
+            e[0] = (edgeindices & 0xFFFF0000) >> 16;
+            e[1] = edgeindices & 0x0000FFFF;
             if (e[0] >= m_Vertices.size() || e[1] >= m_Vertices.size())
             {
                 DESIGNER_ASSERT(0);

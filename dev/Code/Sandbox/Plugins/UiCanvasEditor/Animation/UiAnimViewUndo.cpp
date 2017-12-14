@@ -104,7 +104,7 @@ std::vector<bool> CUndoAnimKeySelection::SaveKeyStates(CUiAnimViewSequence* pSeq
 
     for (unsigned int i = 0; i < numkeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = keys.GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = keys.GetKey(i);
         selectionState.push_back(keyHandle.IsSelected());
     }
 
@@ -122,7 +122,7 @@ void CUndoAnimKeySelection::RestoreKeyStates(CUiAnimViewSequence* pSequence, con
     CUiAnimViewSequenceNotificationContext context(pSequence);
     for (unsigned int i = 0; i < numkeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = keys.GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = keys.GetKey(i);
         keyHandle.Select(keyStates[i]);
     }
 }

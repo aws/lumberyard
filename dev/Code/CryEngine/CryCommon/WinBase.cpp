@@ -1105,7 +1105,8 @@ int CryMessageBox(const char* lpText, const char* lpCaption, unsigned int uType)
 #ifdef WIN32
 #   error WIN32 is defined in WinBase.cpp (it is a non-Windows file)
 #elif defined(MAC)
-    CFStringRef strText = CFStringCreateWithCString(NULL, lpText, strlen(lpText));
+    const int stringSize = strlen(lpText);
+    CFStringRef strText = CFStringCreateWithCString(NULL, lpText, stringSize);
     CFStringRef strCaption = CFStringCreateWithCString(NULL, lpCaption, strlen(lpCaption));
 
     CFOptionFlags kResult;
@@ -1248,7 +1249,7 @@ DLL_EXPORT void*     CryInterlockedExchangePointer(void* volatile* dst, void* ex
     //return (void*)CryInterlockedCompareExchange((long volatile*)dst, (long)exchange, (long)comperand);
 }
 
-#if defined(LINUX64) || defined(MAC) || defined(IOS_SIMULATOR)
+#if (defined(LINUX64) && !defined(ANDROID)) || defined(MAC) || defined(IOS_SIMULATOR)
 DLL_EXPORT unsigned char _InterlockedCompareExchange128(int64 volatile* dst, int64 exchangehigh, int64 exchangelow, int64* comperand)
 {
     bool bEquals;
@@ -1298,7 +1299,7 @@ void CryDebugBreak()
 // WinAPI debug functions.
 DLL_EXPORT void OutputDebugString(const char* outputString)
 {
-#if _DEBUG
+#ifdef _DEBUG
     // There is no such thing as a debug console on XCode
     fprintf(stderr, "debug: %s\n", outputString);
 #endif

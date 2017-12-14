@@ -44,16 +44,9 @@ namespace
     }
 }
 
-ConnectionManager::ConnectionManager(AssetProcessor::PlatformConfiguration* platformConfig, int defaultProxyPort, QObject* parent)
+ConnectionManager::ConnectionManager(AssetProcessor::PlatformConfiguration* platformConfig, QObject* parent)
     : QAbstractItemModel(parent)
     , m_nextConnectionId(1)
-    , m_defaultProxyPort(defaultProxyPort)
-#if defined(FORCE_PROXY_MODE)
-    , m_proxyMode(true)
-#else
-    , m_proxyMode(false)
-#endif
-    , m_proxyIPAdressAndPort(QString())
     , m_platformConfig(platformConfig)
 {
     Q_ASSERT(!s_singleton);
@@ -61,8 +54,6 @@ ConnectionManager::ConnectionManager(AssetProcessor::PlatformConfiguration* plat
     qRegisterMetaType<qintptr>("qintptr");
     qRegisterMetaType<quint16>("quint16");
     qRegisterMetaType<QHostAddress>("QHostAddress");
-
-    AssetProcessor::IncomingConnectionInfoBus::Handler::BusConnect();
 
     QTimer::singleShot(0, this, SLOT(UpdateWhiteListFromBootStrap()));
 }
@@ -90,13 +81,6 @@ ConnectionManager* ConnectionManager::Get()
     return s_singleton;
 }
 
-void ConnectionManager::ReadProxyServerInformation()
-{
-    const IniConfiguration* iniConfiguration = IniConfiguration::Get();
-    QString proxyInfo = iniConfiguration->proxyInformation();
-    SetProxyInformation(proxyInfo);
-}
-
 int ConnectionManager::getCount() const
 {
     return m_connectionMap.size();
@@ -121,18 +105,16 @@ unsigned int ConnectionManager::addConnection(qintptr socketDescriptor)
 {
     beginResetModel();
 
-    Connection* connection = new Connection(m_platformConfig, m_proxyMode, socketDescriptor, m_proxyIPAdressAndPort, m_defaultProxyPort, this);
+    Connection* connection = new Connection(m_platformConfig, socketDescriptor, this);
     connect(connection, &Connection::IsAddressWhiteListed, this, &ConnectionManager::IsAddressWhiteListed);
     connect(this, &ConnectionManager::AddressIsWhiteListed, connection, &Connection::AddressIsWhiteListed);
   
     connection->SetConnectionId(m_nextConnectionId);
     connect(connection, &Connection::StatusChanged, this, &ConnectionManager::OnStatusChanged);
-    connect(connection, &Connection::DeliverMessage, this, &ConnectionManager::SendMessageToService);
+    connect(connection, &Connection::DeliverMessage, this, &ConnectionManager::RouteIncomingMessage);
     connect(connection, SIGNAL(DisconnectConnection(unsigned int)), this, SIGNAL(ConnectionDisconnected(unsigned int)));
     connect(connection, SIGNAL(ConnectionDestroyed(unsigned int)), this, SLOT(RemoveConnectionFromMap(unsigned int)));
     connect(connection, SIGNAL(Error(unsigned int, QString)), this, SIGNAL(ConnectionError(unsigned int, QString)));
-    connect(this, &ConnectionManager::ProxyInfoChanged, connection, &Connection::SetProxyInformation);
-    connect(this, &ConnectionManager::ProxyConnectChanged, connection, &Connection::SetProxyMode, Qt::UniqueConnection);
 
     m_connectionMap.insert(m_nextConnectionId, connection);
     Q_EMIT connectionAdded(m_nextConnectionId, connection);
@@ -430,50 +412,10 @@ void ConnectionManager::RegisterService(unsigned int type, regFunc func)
     m_messageRoute.insert(type, func);
 }
 
-bool ConnectionManager::ProxyConnect()
-{
-#if defined (FORCE_PROXY_MODE)
-    return true;
-#else
-    return m_proxyMode;
-#endif
-}
-
-QString ConnectionManager::proxyInformation()
-{
-    return m_proxyIPAdressAndPort;
-}
-
 
 void ConnectionManager::NewConnection(qintptr socketDescriptor)
 {
     addConnection(socketDescriptor);
-}
-
-void ConnectionManager::SetProxyConnect(bool value)
-{
-    if (m_proxyMode != value)
-    {
-        m_proxyMode = value;
-        Q_EMIT ProxyConnectChanged(m_proxyMode);
-    }
-}
-
-void ConnectionManager::SetProxyInformation(QString proxyInformation)
-{
-    if (m_proxyIPAdressAndPort.compare(proxyInformation) != 0)
-    {
-        if (!proxyInformation.contains(':'))
-        {
-            // if the user has only entered the IPAddress in the proxy field, we will assume that the proxy port is 45643, which is the AP default listening port.
-            m_proxyIPAdressAndPort = QString("%1:%2").arg(proxyInformation).arg(45643);
-        }
-        else
-        {
-            m_proxyIPAdressAndPort = proxyInformation;
-        }
-        Q_EMIT ProxyInfoChanged(m_proxyIPAdressAndPort);
-    }
 }
 
 void ConnectionManager::WhiteListingEnabled(bool enabled)
@@ -522,7 +464,6 @@ void ConnectionManager::IsAddressWhiteListed(QHostAddress incominghostaddr, void
 {
     if (!m_whiteListingEnabled)
     {
-        EBUS_EVENT(AssetProcessor::IncomingConnectionInfoBus, OnNewIncomingConnection, incominghostaddr);
         Q_EMIT AddressIsWhiteListed(token, true);
         return;
     }
@@ -575,7 +516,6 @@ void ConnectionManager::IsAddressWhiteListed(QHostAddress incominghostaddr, void
             QHostAddress ha(incomingIpAddress);
             if(ha.isInSubnet(QHostAddress::parseSubnet(whitelistaddress.c_str())))
             {
-                EBUS_EVENT(AssetProcessor::IncomingConnectionInfoBus, OnNewIncomingConnection, incominghostaddr);
                 Q_EMIT AddressIsWhiteListed(token, true);
                 return;
             }
@@ -601,7 +541,6 @@ void ConnectionManager::IsAddressWhiteListed(QHostAddress incominghostaddr, void
                 {
                     if (address == whiteAddress)
                     {
-                        EBUS_EVENT(AssetProcessor::IncomingConnectionInfoBus, OnNewIncomingConnection, incominghostaddr);
                         Q_EMIT AddressIsWhiteListed(token, true);
                         return;
                     }
@@ -1054,6 +993,24 @@ void ConnectionManager::UpdateConnectionMetrics()
     }
 }
 
+bool ConnectionManager::IsResponse(unsigned int serial)
+{
+    return serial & AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG;
+}
+
+void ConnectionManager::RouteIncomingMessage(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload)
+{
+    if (IsResponse(serial))
+    {
+        serial &= ~AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG; // Clear the bit
+        getConnection(connId)->InvokeResponseHandler(serial, type, payload);
+    }
+    else
+    {
+        SendMessageToService(connId, type, serial, payload);
+    }
+}
+
 void ConnectionManager::SendMessageToService(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload)
 {
     QString platform = getConnection(connId)->AssetPlatform();
@@ -1122,22 +1079,5 @@ void ConnectionManager::MakeSureConnectionMapEmpty()
     }
 }
 
-void ConnectionManager::OnNewIncomingConnection(QHostAddress hostAddress)
-{
-    if (m_proxyMode)
-    {
-        AZ::u64 currTime = AZStd::GetTimeUTCMilliSecond();
-        if ((m_lastHostAddress == hostAddress) && (currTime - m_lastConnectionTimeInUTCMilliSecs <= 100))
-        {
-            // if we are here it means that we have detected a proxy connect to itself. Disabling proxy connect and showing a message to the user
-            QMetaObject::invokeMethod(this, "SetProxyConnect", Qt::QueuedConnection, Q_ARG(bool, false));// we are queuing it because this function call will happen from the connectionworker thread
-            EBUS_EVENT(AssetProcessor::MessageInfoBus, ProxyConnectFailed);
-            return;
-        }
-
-        m_lastHostAddress = hostAddress;
-        m_lastConnectionTimeInUTCMilliSecs = currTime;
-    }
-}
 
 #include <native/connection/connectionManager.moc>

@@ -16,7 +16,7 @@
 namespace MCore
 {
     // returns a random direction vector
-    Vector3 Random::RandDirVecF()
+    AZ::Vector3 Random::RandDirVecF()
     {
         float z = RandF(-1.0f, 1.0f);
         float a = RandF(0.0f, Math::twoPi);
@@ -26,33 +26,33 @@ namespace MCore
         float x = r * Math::Cos(a);
         float y = r * Math::Sin(a);
 
-        return Vector3(x, y, z);
+        return AZ::Vector3(x, y, z);
     }
 
 
 
     // returns a random direction vector, using <dir> as basis vector with a cone of <coneAngle> radians
-    Vector3 Random::RandomDirVec(const Vector3& dir, float coneAngle)
+    AZ::Vector3 Random::RandomDirVec(const AZ::Vector3& dir, float coneAngle)
     {
         // determine r, phi and theta of direction vector
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
 
         // make sure the direction vector isn't a zero length vector
         if (r < Math::epsilon)
         {
-            return Vector3(0.0f, 0.0f, 1.0f);
+            return AZ::Vector3(0.0f, 0.0f, 1.0f);
         }
 
         const float oneOverR        = 1.0f / r;
-        const float theta           = Math::ACos(dir.z * oneOverR);
-        const float phi             = atan2(dir.y, dir.x);
+        const float theta           = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi             = atan2(dir.GetY(), dir.GetX());
         const float halfConeAngle   = 0.5f * coneAngle;             // set up random vector within a cone that points upwards
         const float newPhi          = RandF(0, Math::twoPi);
         const float newTheta        = RandF(0, halfConeAngle);
         float sa                    = Math::Sin(newTheta);
 
         // calculate the resulting random vector
-        Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+        AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
         // rotate the random vector towards the direction vector
         float ca    = Math::Cos(-theta);
@@ -60,11 +60,11 @@ namespace MCore
         float cb    = Math::Cos(-phi);
         sa          = Math::Sin(-theta);
 
-        Vector3 oldResult(result);
-        result.z    = oldResult.x * sa + oldResult.z * ca;
-        oldResult.x = oldResult.x * ca - oldResult.z * sa;
-        result.x    = sb * oldResult.y + cb * oldResult.x;
-        result.y    = cb * oldResult.y - sb * oldResult.x;
+        AZ::Vector3 oldResult(result);
+        result.SetZ(oldResult.GetX() * sa + oldResult.GetZ() * ca);
+        oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa);
+        result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+        result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
         return result;
     }
@@ -74,20 +74,20 @@ namespace MCore
 
     // returns a random direction vector, using <dir> as basis vector with a cone of <coneAngle> radians, sampled on a <gridSizeX x gridSizeY> grid
     // and it will return a random position inside gridcell [xGridPos][yGridPos]
-    Vector3 Random::RandomDirVec(const Vector3& dir, float coneAngle, uint32 gridSizeX, uint32 gridSizeY, uint32 xGridPos, uint32 yGridPos)
+    AZ::Vector3 Random::RandomDirVec(const AZ::Vector3& dir, float coneAngle, uint32 gridSizeX, uint32 gridSizeY, uint32 xGridPos, uint32 yGridPos)
     {
         // determine r, phi and theta of direction vector
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
 
         // make sure the direction vector isn't a zero length vector
         if (r < Math::epsilon)
         {
-            return Vector3(0.0f, 0.0f, 1.0f);
+            return AZ::Vector3(0.0f, 0.0f, 1.0f);
         }
 
         const float oneOverR        = 1.0f / r;
-        const float theta           = Math::ACos(dir.z * oneOverR);
-        const float phi             = Math::ATan2(dir.y, dir.x);
+        const float theta           = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi             = Math::ATan2(dir.GetY(), dir.GetX());
         const float halfConeAngle   = 0.5f * coneAngle;             // set up random vector within a cone that points upwards
 
         const float phiGridSize     = Math::twoPi / (float)gridSizeX;
@@ -98,7 +98,7 @@ namespace MCore
         float sa                    = Math::Sin(newTheta);
 
         // calculate the random generated vector
-        Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+        AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
         // rotate the random vector towards the direction vector
         const float ca  = Math::Cos(-theta);
@@ -106,11 +106,11 @@ namespace MCore
         const float cb  = Math::Cos(-phi);
         sa              = Math::Sin(-theta);
 
-        Vector3 oldResult(result);
-        result.z    = oldResult.x * sa + oldResult.z * ca;
-        oldResult.x = oldResult.x * ca - oldResult.z * sa;
-        result.x    = sb * oldResult.y + cb * oldResult.x;
-        result.y    = cb * oldResult.y - sb * oldResult.x;
+        AZ::Vector3 oldResult(result);
+        result.SetZ(oldResult.GetX() * sa + oldResult.GetZ() * ca);
+        oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa);
+        result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+        result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
         return result;
     }
@@ -118,20 +118,20 @@ namespace MCore
 
 
 
-    Vector3 Random::RandomDirVec(const Vector3& dir, float startPhi, float endPhi, float startTheta, float endTheta, bool midPoint)
+    AZ::Vector3 Random::RandomDirVec(const AZ::Vector3& dir, float startPhi, float endPhi, float startTheta, float endTheta, bool midPoint)
     {
         // determine r, phi and theta of direction vector
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
 
         // make sure the direction vector isn't a zero length vector
         if (r < Math::epsilon)
         {
-            return Vector3(0.0f, 0.0f, 1.0f);
+            return AZ::Vector3(0.0f, 0.0f, 1.0f);
         }
 
         const float oneOverR    = 1.0f / r;
-        const float theta       = Math::ACos(dir.z * oneOverR);
-        const float phi         = Math::ATan2(dir.y, dir.x);
+        const float theta       = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi         = Math::ATan2(dir.GetY(), dir.GetX());
         //float halfConeAngle = 0.5f*coneAngle;                 // set up random vector within a cone that points upwards
 
         const float newPhi      = midPoint ? (endPhi + startPhi) * 0.5f : RandF(startPhi, endPhi);
@@ -139,7 +139,7 @@ namespace MCore
         float sa                = Math::Sin(newTheta);
 
         // calculate the random direction vector
-        Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+        AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
         // rotate the random vector towards the direction vector
         const float ca  = Math::Cos(-theta);
@@ -147,11 +147,11 @@ namespace MCore
         const float cb  = Math::Cos(-phi);
         sa              = Math::Sin(-theta);
 
-        Vector3 oldResult(result);
-        result.z    = oldResult.x * sa + oldResult.z * ca;
-        oldResult.x = oldResult.x * ca - oldResult.z * sa;
-        result.x    = sb * oldResult.y + cb * oldResult.x;
-        result.y    = cb * oldResult.y - sb * oldResult.x;
+        AZ::Vector3 oldResult(result);
+        result.SetZ(oldResult.GetX() * sa + oldResult.GetZ() * ca);
+        oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa);
+        result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+        result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
         return result;
     }
@@ -159,9 +159,9 @@ namespace MCore
 
 
     // stratisfied random direction vectors
-    Array<Vector3> Random::RandomDirVectorsStratisfied(const Vector3& dir, float coneAngle, uint32 numVectors)
+    Array<AZ::Vector3> Random::RandomDirVectorsStratisfied(const AZ::Vector3& dir, float coneAngle, uint32 numVectors)
     {
-        Array<Vector3> result;
+        Array<AZ::Vector3> result;
 
         uint32 num = (uint32)Math::Sqrt((float)numVectors);
         for (uint32 y = 0; y < num; ++y)
@@ -177,20 +177,20 @@ namespace MCore
 
 
 
-    Array<Vector3> Random::RandomDirVectorsHammersley(const Vector3& dir, float coneAngle, uint32 numVectors)
+    Array<AZ::Vector3> Random::RandomDirVectorsHammersley(const AZ::Vector3& dir, float coneAngle, uint32 numVectors)
     {
-        Array<Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
+        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1]; // TODO: use memory manager instead
         PlaneHammersley(uvSet, numVectors);
 
         //  precalculate values
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
         MCORE_ASSERT(r > 0);
         const float oneOverR        = 1.0f / r;
-        const float theta           = Math::ACos(dir.z * oneOverR);
-        const float phi             = Math::ATan2(dir.y, dir.x);
+        const float theta           = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi             = Math::ATan2(dir.GetY(), dir.GetX());
         const float halfConeAngle   = 0.5f * coneAngle;             // set up random vector within a cone that points upwards
         const float ca              = Math::Cos(-theta);
         const float sb              = Math::Sin(-phi);
@@ -205,14 +205,14 @@ namespace MCore
             const float sa          = Math::Sin(newTheta);
 
             // calculate the random vector
-            Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+            AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
             // rotate the random vector towards the direction vector
-            Vector3 oldResult(result);
-            result.z    = oldResult.x * sa2 + oldResult.z * ca;
-            oldResult.x = oldResult.x * ca - oldResult.z * sa2;
-            result.x    = sb * oldResult.y + cb * oldResult.x;
-            result.y    = cb * oldResult.y - sb * oldResult.x;
+            AZ::Vector3 oldResult(result);
+            result.SetZ(oldResult.GetX() * sa2 + oldResult.GetZ() * ca);
+            oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa2);
+            result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+            result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
             arrayResult[i] = result;
         }
@@ -226,20 +226,20 @@ namespace MCore
 
 
 
-    Array<Vector3> Random::RandomDirVectorsHammersley2(const Vector3& dir, float coneAngle, uint32 numVectors, uint32 base)
+    Array<AZ::Vector3> Random::RandomDirVectorsHammersley2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 base)
     {
-        Array<Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
+        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1];
         PlaneHammersley2(uvSet, numVectors, base);
 
         //  precalculate values
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
         MCORE_ASSERT(r > 0);
         const float oneOverR        = 1.0f / r;
-        const float theta           = Math::ACos(dir.z * oneOverR);
-        const float phi             = Math::ATan2(dir.y, dir.x);
+        const float theta           = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi             = Math::ATan2(dir.GetY(), dir.GetX());
         const float halfConeAngle   = 0.5f * coneAngle;             // set up random vector within a cone that points upwards
         const float ca              = Math::Cos(-theta);
         const float sb              = Math::Sin(-phi);
@@ -254,14 +254,14 @@ namespace MCore
             const float sa          = Math::Sin(newTheta);
 
             // calculate the random vector
-            Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+            AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
             // rotate the random vector towards the direction vector
-            Vector3 oldResult(result);
-            result.z    = oldResult.x * sa2 + oldResult.z * ca;
-            oldResult.x = oldResult.x * ca - oldResult.z * sa2;
-            result.x    = sb * oldResult.y + cb * oldResult.x;
-            result.y    = cb * oldResult.y - sb * oldResult.x;
+            AZ::Vector3 oldResult(result);
+            result.SetZ(oldResult.GetX() * sa2 + oldResult.GetZ() * ca);
+            oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa2);
+            result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+            result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
             arrayResult[i] = result;
         }
@@ -275,20 +275,20 @@ namespace MCore
 
 
 
-    Array<Vector3> Random::RandomDirVectorsHalton(const Vector3& dir, float coneAngle, uint32 numVectors, uint32 p2)
+    Array<AZ::Vector3> Random::RandomDirVectorsHalton(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 p2)
     {
-        Array<Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_RANDOM);
+        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_RANDOM);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1];
         PlaneHalton(uvSet, numVectors, p2);
 
         //  precalculate values
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
         MCORE_ASSERT(r > 0);
         const float oneOverR        = 1.0f / r;
-        const float theta           = Math::ACos(dir.z * oneOverR);
-        const float phi             = Math::ATan2(dir.y, dir.x);
+        const float theta           = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi             = Math::ATan2(dir.GetY(), dir.GetX());
         const float halfConeAngle   = 0.5f * coneAngle;             // set up random vector within a cone that points upwards
         const float ca              = Math::Cos(-theta);
         const float sb              = Math::Sin(-phi);
@@ -303,14 +303,14 @@ namespace MCore
             const float sa          = Math::Sin(newTheta);
 
             // calculate the random vector
-            Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+            AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
             // rotate the random vector towards the direction vector
-            Vector3 oldResult(result);
-            result.z    = oldResult.x * sa2 + oldResult.z * ca;
-            oldResult.x = oldResult.x * ca - oldResult.z * sa2;
-            result.x    = sb * oldResult.y + cb * oldResult.x;
-            result.y    = cb * oldResult.y - sb * oldResult.x;
+            AZ::Vector3 oldResult(result);
+            result.SetZ(oldResult.GetX() * sa2 + oldResult.GetZ() * ca);
+            oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa2);
+            result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+            result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
             arrayResult[i] = result;
         }
@@ -323,20 +323,20 @@ namespace MCore
 
 
 
-    Array<Vector3> Random::RandomDirVectorsHalton2(const Vector3& dir, float coneAngle, uint32 numVectors, uint32 baseA, uint32 baseB)
+    Array<AZ::Vector3> Random::RandomDirVectorsHalton2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 baseA, uint32 baseB)
     {
-        Array<Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
+        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1];
         PlaneHalton2(uvSet, numVectors, baseA, baseB);
 
         //  precalculate values
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
         MCORE_ASSERT(r > 0);
         const float oneOverR        = 1.0f / r;
-        const float theta           = Math::ACos(dir.z * oneOverR);
-        const float phi             = Math::ATan2(dir.y, dir.x);
+        const float theta           = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi             = Math::ATan2(dir.GetY(), dir.GetX());
         const float halfConeAngle   = 0.5f * coneAngle;             // set up random vector within a cone that points upwards
         const float ca              = Math::Cos(-theta);
         const float sb              = Math::Sin(-phi);
@@ -351,14 +351,14 @@ namespace MCore
             const float sa          = Math::Sin(newTheta);
 
             // calculate the random vector
-            Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+            AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
             // rotate the random vector towards the direction vector
-            Vector3 oldResult(result);
-            result.z    = oldResult.x * sa2 + oldResult.z * ca;
-            oldResult.x = oldResult.x * ca - oldResult.z * sa2;
-            result.x    = sb * oldResult.y + cb * oldResult.x;
-            result.y    = cb * oldResult.y - sb * oldResult.x;
+            AZ::Vector3 oldResult(result);
+            result.SetZ(oldResult.GetX() * sa2 + oldResult.GetZ() * ca);
+            oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa2);
+            result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+            result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
             arrayResult[i] = result;
         }
@@ -372,24 +372,24 @@ namespace MCore
 
 
 
-    Vector3 Random::UVToVector(const Vector3& dir, float coneAngle, float u, float v)
+    AZ::Vector3 Random::UVToVector(const AZ::Vector3& dir, float coneAngle, float u, float v)
     {
         // determine r, phi and theta of direction vector
-        const float r = dir.SafeLength();
+        const float r = SafeLength(dir);
         if (r < MCore::Math::epsilon)
         {
-            return Vector3(0.0f, 0.0f, 1.0f);
+            return AZ::Vector3(0.0f, 0.0f, 1.0f);
         }
 
         const float oneOverR        = 1.0f / r;
-        const float theta           = Math::ACos(dir.z * oneOverR);
-        const float phi             = Math::ATan2(dir.y, dir.x);
+        const float theta           = Math::ACos(dir.GetZ() * oneOverR);
+        const float phi             = Math::ATan2(dir.GetY(), dir.GetX());
         const float halfConeAngle   = 0.5f * coneAngle;             // set up random vector within a cone that points upwards
         const float newPhi          = u * Math::twoPi;
         const float newTheta        = v * halfConeAngle;
         float sa                    = Math::Sin(newTheta);
 
-        Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
+        AZ::Vector3 result(Math::Cos(newPhi) * sa, Math::Sin(newPhi) * sa, Math::Cos(newTheta));
 
         // rotate the random vector towards the direction vector
         const float ca  = Math::Cos(-theta);
@@ -397,11 +397,11 @@ namespace MCore
         const float cb  = Math::Cos(-phi);
         sa              = Math::Sin(-theta);
 
-        Vector3 oldResult(result);
-        result.z    = oldResult.x * sa + oldResult.z * ca;
-        oldResult.x = oldResult.x * ca - oldResult.z * sa;
-        result.x    = sb * oldResult.y + cb * oldResult.x;
-        result.y    = cb * oldResult.y - sb * oldResult.x;
+        AZ::Vector3 oldResult(result);
+        result.SetZ(oldResult.GetX() * sa + oldResult.GetZ() * ca);
+        oldResult.SetX(oldResult.GetX() * ca - oldResult.GetZ() * sa);
+        result.SetX(sb * oldResult.GetY() + cb * oldResult.GetX());
+        result.SetY(cb * oldResult.GetY() - sb * oldResult.GetX());
 
         return result;
     }

@@ -34,6 +34,7 @@ namespace LmbrCentral
     */
     class EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
+        , public AZ::Data::AssetBus::Handler
         , private MeshComponentRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
@@ -118,6 +119,11 @@ namespace LmbrCentral
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         ///////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Data::AssetBus::Handler
+        void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+        //////////////////////////////////////////////////////////////////////////
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {

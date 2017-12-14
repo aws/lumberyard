@@ -52,7 +52,7 @@ private:
     FbxSurfaceMaterial* CreateFBXMaterial(const std::string& name, const Export::Mesh* pMesh);
     FbxNode* CreateFBXNode(const Export::Object* pObj);
     FbxNode* CreateFBXAnimNode(FbxScene* pScene, FbxAnimLayer* pCameraAnimBaseLayer, const Export::Object* pObj);
-    void FillAnimationData(Export::Object* pObject, FbxNode* pNode, FbxAnimLayer* pAnimLayer, FbxAnimCurve* pCurve, Export::EAnimParamType paramType);
+    void FillAnimationData(Export::Object* pObject, FbxNode* pNode, FbxAnimLayer* pAnimLayer, FbxAnimCurve* pCurve, Export::AnimParamType paramType);
 
     FbxManager* m_pFBXManager;
     SFBXSettings m_settings;

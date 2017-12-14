@@ -28,8 +28,14 @@ namespace AzFramework
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! The id used to identify any virtual keyboard input device
+        //! The id used to identify the primary virtual keyboard input device
         static const InputDeviceId Id;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Check whether an input device id identifies a virtual keyboard (regardless of index)
+        //! \param[in] inputDeviceId The input device id to check
+        //! \return True if the input device id identifies a virtual keyboard, false otherwise
+        static bool IsVirtualKeyboardDevice(const InputDeviceId& inputDeviceId);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! All the input channel ids that identify virtual keyboard commands which systems may need

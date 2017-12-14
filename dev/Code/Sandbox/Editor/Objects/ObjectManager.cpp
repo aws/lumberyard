@@ -1040,7 +1040,7 @@ bool CObjectManager::AddObject(CBaseObject* obj)
     if (p)
     {
         CErrorRecord err;
-        err.error = QObject::tr("New Object %1 has Duplicate GUID %2, New Object Ignored").arg(obj->GetName(), GuidUtil::ToString(obj->GetId()));
+        err.error = QObject::tr("New Object %1 has Duplicate GUID %2, New Object Ignored").arg(obj->GetName()).arg(GuidUtil::ToString(obj->GetId()));
         err.severity = CErrorRecord::ESEVERITY_ERROR;
         err.pObject = obj;
         err.flags = CErrorRecord::FLAG_OBJECTID;
@@ -4594,7 +4594,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pObjectName);
         if (!pObject)
         {
-            std::runtime_error("Invalid object.");
+            throw std::runtime_error("Invalid object.");
         }
 
         if (pObject->GetTypeName() != "EnvironmentProbe")
@@ -4609,7 +4609,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            std::runtime_error("Invalid object.");
+            throw std::runtime_error("Invalid object.");
         }
 
         return pObject->GetTypeName();

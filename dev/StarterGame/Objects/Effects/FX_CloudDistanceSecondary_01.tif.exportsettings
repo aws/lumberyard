@@ -1,1 +1,1 @@
-/autooptimizefile=0 /mipgentype=sigma-six /preset=Greyscale /reduce=0
+/autooptimizefile=0 /M=50,0,50,50,50,50 /mipgentype=box /preset=Opacity /reduce=0

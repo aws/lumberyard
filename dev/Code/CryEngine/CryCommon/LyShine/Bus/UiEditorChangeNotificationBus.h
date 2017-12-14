@@ -24,6 +24,9 @@ public: // member functions
 
     //! Called when the transform properties in the UI editor need to be refreshed
     virtual void OnEditorTransformPropertiesNeedRefresh() = 0;
+
+    //! Forces a refresh of the entire properties tree in the UI Editor.
+    virtual void OnEditorPropertiesRefreshEntireTree() = 0;
 };
 
 typedef AZ::EBus<UiEditorChangeNotificationInterface> UiEditorChangeNotificationBus;

@@ -1,8 +1,14 @@
 {
     "auto": {
         "Tests": [
+            "Tests/AnimGraphTransitionFixture.cpp",
+            "Tests/AnimGraphTransitionFixture.h",
+            "Tests/AnimGraphTransitionTests.cpp",
             "Tests/EMotionFXTest.cpp",
-            "Tests/EmotionFXMathLibTests.cpp"
+            "Tests/EmotionFXMathLibTests.cpp",
+            "Tests/SystemComponentFixture.cpp",
+            "Tests/SystemComponentFixture.h",
+            "Tests/SystemComponentTests.cpp"
         ]
     }
 }

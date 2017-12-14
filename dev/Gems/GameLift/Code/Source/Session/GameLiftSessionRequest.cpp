@@ -57,7 +57,7 @@ namespace GridMate
         }
 
         Aws::GameLift::Model::CreateGameSessionRequest request;
-        m_clientService->UseFleetId() ? request.SetFleetId(m_clientService->GetFleetId()) : request.SetAliasId(m_clientService->GetAliasId());
+        m_clientService->UseFleetId() ? request.SetFleetId(m_clientService->GetFleetId().c_str()) : request.SetAliasId(m_clientService->GetAliasId().c_str());
         request.WithMaximumPlayerSessionCount(m_requestParams.m_numPublicSlots + m_requestParams.m_numPrivateSlots)
             .WithName(m_requestParams.m_instanceName.c_str())
             .WithGameProperties(gameProperties);
@@ -82,7 +82,7 @@ namespace GridMate
 
         if (m_createGameSessionOutcomeCallable.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
         {
-            auto result = m_createGameSessionOutcomeCallable.get();
+            Aws::GameLift::Model::CreateGameSessionOutcome result = m_createGameSessionOutcomeCallable.get();
 
             if (!result.IsSuccess())
             {

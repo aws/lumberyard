@@ -793,10 +793,10 @@ struct IStatObj
 
     virtual bool UpdateStreamableComponents(float fImportance, const Matrix34A& objMatrix, bool bFullUpdate, int nNewLod) = 0;
 
-    virtual void RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHideMask, const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
-    virtual void RenderObjectInternal(CRenderObject* pRenderObject, int nLod, uint8 uLodDissolveRef, bool dissolveOut, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
-    virtual void RenderSubObject(CRenderObject* pRenderObject, int nLod, int nSubObjId, const Matrix34A& renderTM, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
-    virtual void RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
+    virtual void RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHideMask, const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw) = 0;
+    virtual void RenderObjectInternal(CRenderObject* pRenderObject, int nLod, uint8 uLodDissolveRef, bool dissolveOut, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw) = 0;
+    virtual void RenderSubObject(CRenderObject* pRenderObject, int nLod, int nSubObjId, const Matrix34A& renderTM, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw) = 0;
+    virtual void RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw) = 0;
     virtual void RenderRenderMesh(CRenderObject* pObj, struct SInstancingInfo* pInstInfo, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
 
     virtual SPhysGeomArray& GetArrPhysGeomInfo() = 0;

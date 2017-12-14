@@ -13,7 +13,7 @@ import {
     OnInit
 } from '@angular/core';
 import { Gemifiable, Tackable } from '../class/index';
-import { UrlService, GemService } from "app/shared/service/index";
+import { UrlService } from "app/shared/service/index";
 
 export function createComponentFactory(compiler: Compiler, cloudgem: Gemifiable, thumbnailonly: boolean): Promise<ComponentFactory<any>> {
     let component = thumbnailonly ? cloudgem.thumbnail : cloudgem.index;
@@ -35,8 +35,7 @@ export class GemFactory {
 
     constructor(private vcRef: ViewContainerRef,
         private compiler: Compiler,
-        private urlService: UrlService,
-        private gemService: GemService
+        private urlService: UrlService
     ) {
 
     }
@@ -84,8 +83,5 @@ export class GemFactory {
 
         gem.displayName = (<Tackable>this.cmpRef.instance).displayName
         gem.srcIcon = (<Tackable>this.cmpRef.instance).srcIcon;
-
-        // store in the gem service for keeping track of the current gems
-        this.gemService.addGem(gem);
     }
 }

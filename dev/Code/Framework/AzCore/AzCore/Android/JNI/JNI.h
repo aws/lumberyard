@@ -23,10 +23,20 @@
 
 
 #if defined(AZ_DEBUG_BUILD)
-    // Currently disabled so that an Activity reference can be passed through JNI
-    // See related JIRA: https://jira.agscollab.com/browse/LY-41435
-    //#define JNI_SIGNATURE_VALIDATION
+    #define JNI_SIGNATURE_VALIDATION
 #endif
+
+
+// redefine the JNI_FALSE and JNI_TRUE macros to ensure their correct types are represented when using them
+#if defined(JNI_FALSE)
+    #undef JNI_FALSE
+    #define JNI_FALSE jboolean(0)
+#endif // defined(JNI_FALSE)
+
+#if defined(JNI_TRUE)
+    #undef JNI_TRUE
+    #define JNI_TRUE jboolean(1)
+#endif // defined(JNI_TRUE)
 
 
 namespace AZ

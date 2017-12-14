@@ -10,73 +10,116 @@
 *
 */
 
-#include "ApplicationAPI.h"
-#include "ApplicationAPI_appletv.h"
+#include <AzFramework/API/ApplicationAPI_appletv.h>
+#include <AzFramework/Application/Application.h>
 
+#include <UIKit/UIKit.h>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    class ApplicationLifecycleEventsHandler::Pimpl
-        : public AppleTVLifecycleEvents::Bus::Handler
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    class ApplicationAppleTV
+        : public Application::Implementation
+        , public AppleTVLifecycleEvents::Bus::Handler
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_CLASS_ALLOCATOR(ApplicationAppleTV, AZ::SystemAllocator, 0);
+        ApplicationAppleTV();
+        ~ApplicationAppleTV() override;
 
-        Pimpl()
-            : m_lastEvent(ApplicationLifecycleEvents::Event::None)
-        {
-            AppleTVLifecycleEvents::Bus::Handler::BusConnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // AppleTVLifecycleEvents
+        void OnWillResignActive() override;
+        void OnDidBecomeActive() override;
+        void OnDidEnterBackground() override;
+        void OnWillEnterForeground() override;
+        void OnWillTerminate() override;
+        void OnDidReceiveMemoryWarning() override;
 
-        ~Pimpl() override
-        {
-            AppleTVLifecycleEvents::Bus::Handler::BusDisconnect();
-        }
-
-        void OnWillResignActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
-        }
-
-        void OnDidBecomeActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
-        }
-
-        void OnDidEnterBackground() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
-        }
-
-        void OnWillEnterForeground() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
-        }
-
-        void OnWillTerminate() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationWillTerminate);
-        }
-
-        void OnDidReceiveMemoryWarning() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationLowMemoryWarning);
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Application::Implementation
+        void PumpSystemEventLoopOnce() override;
+        void PumpSystemEventLoopUntilEmpty() override;
 
     private:
         ApplicationLifecycleEvents::Event m_lastEvent;
     };
 
-    ApplicationLifecycleEventsHandler::ApplicationLifecycleEventsHandler()
-        : m_pimpl(aznew Pimpl())
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    Application::Implementation* Application::Implementation::Create()
     {
+        return aznew ApplicationAppleTV();
     }
 
-    ApplicationLifecycleEventsHandler::~ApplicationLifecycleEventsHandler()
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationAppleTV::ApplicationAppleTV()
+        : m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
-        delete m_pimpl;
+        AppleTVLifecycleEvents::Bus::Handler::BusConnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationAppleTV::~ApplicationAppleTV()
+    {
+        AppleTVLifecycleEvents::Bus::Handler::BusDisconnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::OnWillResignActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::OnDidBecomeActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::OnDidEnterBackground()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::OnWillEnterForeground()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::OnWillTerminate()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationWillTerminate);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::OnDidReceiveMemoryWarning()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationLowMemoryWarning);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::PumpSystemEventLoopOnce()
+    {
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, TRUE);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAppleTV::PumpSystemEventLoopUntilEmpty()
+    {
+        SInt32 result;
+        do
+        {
+            result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, DBL_EPSILON, TRUE);
+        }
+        while (result == kCFRunLoopRunHandledSource);
     }
 } // namespace AzFramework

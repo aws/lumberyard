@@ -253,7 +253,7 @@ namespace GraphCanvas
     void EntityIdNodePropertyDisplay::OnIdSet()
     {
         QGraphicsItem* ownerItem = nullptr;
-        RootVisualRequestBus::EventResult(ownerItem, GetId(), &RootVisualRequests::GetRootGraphicsItem);
+        SceneMemberUIRequestBus::EventResult(ownerItem, GetId(), &SceneMemberUIRequests::GetRootGraphicsItem);
 
         if (ownerItem)
         {

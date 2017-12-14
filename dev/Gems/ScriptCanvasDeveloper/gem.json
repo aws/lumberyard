@@ -6,7 +6,7 @@
     "Version": "0.1.0",
     "LinkType": "DynamicStatic",
     "EditorModule": true,
-    "Summary": "Script Canvas Developer Gem containing developer features(such as the ability to dump available nodes).",
+    "Summary": "The Script Canvas Developer Gem contains a suite of utility features that aids in the development and debugging of Script Canvas systems.",
     "Tags": ["Scripting", "Editor"],
     "IconPath": "preview.png",
     "Dependencies" : [

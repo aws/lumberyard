@@ -13,8 +13,10 @@
 #define AZCORE_ENTITY_UTILS_H
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/functional.h>
+#include <AzCore/Serialization/IdUtils.h>
 
 namespace AZ
 {
@@ -53,12 +55,15 @@ namespace AZ
         * What if I want to store and EntityId that should never be remapped. You should NOT do that, as we clone entities a lot and remap all
         * references to maintain the same behavior. If you really HAVE TO store entity id which is not no be remapped, just use "u64" type variable.
         */
-        unsigned int ReplaceEntityRefs(void* classPtr, const Uuid& classUuid, const EntityIdMapper& mapper, SerializeContext* context = nullptr);
-
         template<class T>
         unsigned int ReplaceEntityRefs(T* classPtr, const EntityIdMapper& mapper, SerializeContext* context = nullptr)
         {
-            return ReplaceEntityRefs(classPtr, SerializeTypeInfo<T>::GetUuid(classPtr), mapper, context);
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+            auto idMapper = [&mapper](const EntityId& originalId, bool isEntityId, const IdUtils::Remapper<EntityId>::IdGenerator&) -> EntityId
+            {
+                return mapper(originalId, isEntityId);
+            };
+            return IdUtils::Remapper<EntityId>::RemapIds(classPtr, SerializeTypeInfo<T>::GetUuid(classPtr), idMapper, context, false);
         }
 
         /**
@@ -79,23 +84,29 @@ namespace AZ
          * Replaces all entity ids in the object's hierarchy and remaps them with the result returned by the mapper.
          * "entity id" is only Entity::m_id every other EntityId variable is considered a reference \ref ReplaceEntityRefs
          */
-        unsigned int ReplaceEntityIds(void* classPtr, const Uuid& classUuid, const EntityIdMapper& mapper, SerializeContext* context = nullptr);
-
         template<class T>
         unsigned int ReplaceEntityIds(T* classPtr, const EntityIdMapper& mapper, SerializeContext* context = nullptr)
         {
-            return ReplaceEntityIds(classPtr, SerializeTypeInfo<T>::GetUuid(classPtr), mapper, context);
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+            auto idMapper = [&mapper](const EntityId& originalId, bool isEntityId, const IdUtils::Remapper<EntityId>::IdGenerator&) -> EntityId
+            {
+                return mapper(originalId, isEntityId);
+            };
+            return IdUtils::Remapper<EntityId>::RemapIds(classPtr, SerializeTypeInfo<T>::GetUuid(classPtr), idMapper, context, true);
         }
 
         /**
          * Replaces all EntityId objects (entity ids and entity refs) in the object's hierarchy.
          */
-        unsigned int ReplaceEntityIdsAndEntityRefs(void* classPtr, const Uuid& classUuid, const EntityIdMapper& mapper, SerializeContext* context = nullptr);
-
         template<class T>
         unsigned int ReplaceEntityIdsAndEntityRefs(T* classPtr, const EntityIdMapper& mapper, SerializeContext* context = nullptr)
         {
-            return ReplaceEntityIdsAndEntityRefs(classPtr, SerializeTypeInfo<T>::GetUuid(classPtr), mapper, context);
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+            auto idMapper = [&mapper](const EntityId& originalId, bool isEntityId, const IdUtils::Remapper<EntityId>::IdGenerator&) -> EntityId
+            {
+                return mapper(originalId, isEntityId);
+            };
+            return IdUtils::Remapper<EntityId>::ReplaceIdsAndIdRefs(classPtr, SerializeTypeInfo<T>::GetUuid(classPtr), idMapper, context);
         }
 
         /**
@@ -104,38 +115,7 @@ namespace AZ
         template<class T, class MapType>
         void GenerateNewIdsAndFixRefs(T* object, MapType& newIdMap, SerializeContext* context = nullptr)
         {
-            if (!context)
-            {
-                context = GetApplicationSerializeContext();
-                if (!context)
-                {
-                    AZ_Error("Serialization", false, "Not serialize context provided! Failed to get component application default serialize context! ComponentApp is not started or input serialize context should not be null!");
-                    return;
-                }
-            }
-
-            ReplaceEntityIds(
-                object,
-                [&newIdMap](const EntityId& originalId, bool /*isEntityId*/) -> EntityId
-                {
-                    auto it = newIdMap.insert(AZStd::make_pair(originalId, Entity::MakeId()));
-                    return it.first->second;
-                }, context);
-
-            ReplaceEntityRefs(
-                object,
-                [&newIdMap](const EntityId& originalId, bool /*isEntityId*/) -> EntityId
-                {
-                    auto findIt = newIdMap.find(originalId);
-                    if (findIt == newIdMap.end())
-                    {
-                        return originalId; // entityId is not being remapped
-                    }
-                    else
-                    {
-                        return findIt->second; // return the remapped id
-                    }
-                }, context);
+            IdUtils::Remapper<EntityId>::GenerateNewIdsAndFixRefs(object, newIdMap, context);
         }
 
         /**
@@ -144,21 +124,7 @@ namespace AZ
         template<class T, class Map>
         T* CloneObjectAndFixEntities(const T* object, Map& newIdMap, SerializeContext* context = nullptr)
         {
-            if (!context)
-            {
-                context = GetApplicationSerializeContext();
-                if (!context)
-                {
-                    AZ_Error("Serialization", false, "Not serialize context provided! Failed to get component application default serialize context! ComponentApp is not started or input serialize context should not be null!");
-                    return nullptr;
-                }
-            }
-
-            T* clonedObject = context->CloneObject(object);
-
-            GenerateNewIdsAndFixRefs(clonedObject, newIdMap, context);
-
-            return clonedObject;
+            return IdUtils::Remapper<EntityId>::CloneObjectAndGenerateNewIdsAndFixRefs(object, newIdMap, context);
         }
 
         /**

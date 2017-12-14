@@ -328,13 +328,6 @@
        <number>5</number>
       </property>
       <item>
-       <widget class="QCheckBox" name="DISPLAY_BUDGET_MONITOR">
-        <property name="text">
-         <string>Budgets</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QCheckBox" name="DISPLAY_DRAWCALLS">
         <property name="text">
          <string>Drawcalls per Object</string>

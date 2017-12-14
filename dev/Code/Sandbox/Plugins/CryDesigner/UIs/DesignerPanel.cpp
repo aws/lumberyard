@@ -17,6 +17,7 @@
 #include "Tools/BaseTool.h"
 #include "../EditorCommon/QtViewPane.h"
 #include "Material/MaterialManager.h"
+#include "Objects/DesignerObject.h"
 
 #include <QTabWidget>
 #include <QPushButton>
@@ -55,7 +56,7 @@ public:
         }
         if (!s_pBrushDesignerPanelId)
         {
-            s_pBrushDesignerPanelId = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, _T("Designer Menu"), s_pBrushDesignerPanel);
+            s_pBrushDesignerPanelId = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, QObject::tr("Designer Menu"), s_pBrushDesignerPanel);
         }
 
         return s_pBrushDesignerPanel;
@@ -147,7 +148,7 @@ void DesignerPanel::RemoveAttributeWidget()
     m_pAttributeTab = NULL;
 }
 
-int DesignerPanel::ArrangeButtons(CD::SWidgetContext& wc, CD::EToolGroup toolGroup, int stride, int offset)
+int DesignerPanel::ArrangeButtons(const CD::SWidgetContext& wc, CD::EToolGroup toolGroup, int stride, int offset)
 {
     std::vector<CD::EDesignerTool> tools = CD::ToolGroupMapper::the().GetToolList(toolGroup);
     int iEnd(tools.size() + offset);

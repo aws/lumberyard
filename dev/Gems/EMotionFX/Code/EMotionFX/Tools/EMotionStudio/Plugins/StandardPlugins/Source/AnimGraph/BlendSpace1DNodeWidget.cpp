@@ -35,7 +35,6 @@ namespace EMStudio
         , m_currentNode(nullptr)
         , m_animGraphPlugin(animGraphPlugin)
         , m_registeredForPerFrameCallback(false)
-        , m_lastUniqueDataUpdateCounter(-1)
         , m_zoomFactor(0)
         , m_hoverMotionIndex(MCORE_INVALIDINDEX32)
     {
@@ -116,7 +115,7 @@ namespace EMStudio
             }
         }
 
-        OnNodeDataChange();
+        update();
 
         if (m_currentNode)
         {
@@ -130,14 +129,10 @@ namespace EMStudio
 
     void BlendSpace1DNodeWidget::ProcessFrame(float timePassedInSeconds)
     {
-        EMotionFX::BlendSpace1DNode::UniqueData* uniqueData = GetUniqueData();
-        if (uniqueData)
-        {
-            if (uniqueData->m_updateCounter != m_lastUniqueDataUpdateCounter)
-            {
-                OnNodeDataChange();
-            }
-        }
+        if (GetManager()->GetAvoidRendering() || visibleRegion().isEmpty())
+            return;
+
+        update();
     }
 
     void BlendSpace1DNodeWidget::paintEvent(QPaintEvent* event)
@@ -161,42 +156,84 @@ namespace EMStudio
 
         m_zoomScale = MCore::LinearInterpolate<float>(1.0f, s_maxZoomScale, m_zoomFactor);
 
-        PrepareForDrawing(uniqueData);
-        if (m_scale(0) <= 0)
-        {
-            // This happens if the window is so small that there is no space to draw after leaving margins
-            return;
-        }
+        // Detect if the node is in an active blend tree. Checking if the parent is ready is
+        // more stable since a non-connected blend space node wont be ready
+        EMotionFX::AnimGraphNode* nodeThatShouldBeReady = m_currentNode->GetParentNode()
+            ? m_currentNode->GetParentNode()
+            : m_currentNode;
 
         const AZStd::vector<float>& points = uniqueData->m_motionCoordinates;
         const size_t numPoints = points.size();
 
-        m_renderPoints.resize(numPoints);
-        for (size_t i = 0; i < numPoints; ++i)
+        if (animGraphInstance
+            && m_currentNode
+            && !animGraphInstance->GetIsOutputReady(nodeThatShouldBeReady->GetObjectIndex()))
         {
-            AZ::Vector2 transformedPt = TransformToScreenCoords(points[i]);
-            m_renderPoints[i].setX(transformedPt.GetX());
-            m_renderPoints[i].setY(transformedPt.GetY());
-        }
+            PrepareForDrawing(uniqueData);
+            if (m_scale.GetX() <= 0)
+            {
+                // This happens if the window is so small that there is no space to draw after leaving margins
+                return;
+            }
 
-        DrawGrid(painter);
-        DrawBoundRect(painter, uniqueData);
-
-        if (numPoints > 0)
-        {
-            DrawAxisLabels(painter, uniqueData);
-            DrawMotionsLine(painter, uniqueData);
-            DrawPoints(painter, uniqueData);
-            DrawCurrentPointAndBlendingInfluence(painter, uniqueData);
-            DrawHoverMotionInfo(painter, uniqueData);
+            DrawBoundRect(painter, uniqueData);
+            DrawBlendSpaceInfoText(painter, "The blend tree containing this blend space node is currently not in active state. "
+                "To be able to interactively visualize the operation of this blend space, set the blend tree containing this node "
+                "to active state.");
         }
-        else
+        else if (uniqueData->m_motionCoordinates.empty()
+                 || !GetCurrentNode()->GetValidCalculationMethodAndEvaluator())
         {
+            PrepareForDrawing(uniqueData);
+            if (m_scale(0) <= 0)
+            {
+                // This happens if the window is so small that there is no space to draw after leaving margins
+                return;
+            }
+
+            DrawBoundRect(painter, uniqueData);
             DrawBlendSpaceInfoText(painter, "You will create a blend space by selecting the calculation method for the axis "
                 "and adding motions to blend using the Attributes window below.\n\nFor the axis, you can choose to have the "
                 "coordinates of the motions to be calculated automatically or to enter them manually. To have it calculated "
                 "automatically, pick one of the available evaluators. The evaluators calculate the coordinate by analyzing the "
                 "motion.");
+        }
+        else 
+        {
+            DrawGrid(painter);
+            m_warningBoundRect.setRect(0, 0, 0, 0);
+
+            if (numPoints < 2) 
+            {
+                DrawBlendSpaceWarningText(painter, "At least two motion coordinates are required.");
+            }
+            else if (uniqueData->m_hasOverlappingCoordinates)
+            {
+                DrawBlendSpaceWarningText(painter, "Two or more motions are sharing the same coordinates, which might cause inaccurate blended "
+                    "animations. Please check the coordinates and try again.");
+            }
+
+            PrepareForDrawing(uniqueData);
+            if (m_scale(0) <= 0)
+            {
+                // This happens if the window is so small that there is no space to draw after leaving margins
+                return;
+            }
+            DrawBoundRect(painter, uniqueData);
+            
+            m_renderPoints.resize(numPoints);
+            for (size_t i = 0; i < numPoints; ++i)
+            {
+                AZ::Vector2 transformedPt = TransformToScreenCoords(points[i]);
+                m_renderPoints[i].setX(transformedPt.GetX());
+                m_renderPoints[i].setY(transformedPt.GetY());
+            }
+
+            DrawAxisLabels(painter, uniqueData);
+            DrawMotionsLine(painter, uniqueData);
+            DrawPoints(painter, uniqueData);
+            DrawCurrentPointAndBlendingInfluence(painter, uniqueData);
+            DrawHoverMotionInfo(painter, uniqueData);
         }
     }
 
@@ -246,16 +283,6 @@ namespace EMStudio
         }
     }
 
-    void BlendSpace1DNodeWidget::OnNodeDataChange()
-    {
-        EMotionFX::BlendSpace1DNode::UniqueData* uniqueData = GetUniqueData();
-        if (uniqueData)
-        {
-            m_lastUniqueDataUpdateCounter = uniqueData->m_updateCounter;
-            update();
-        }
-    }
-
     void BlendSpace1DNodeWidget::PrepareForDrawing(EMotionFX::BlendSpace1DNode::UniqueData* uniqueData)
     {
         const float max = uniqueData->GetRangeMax();
@@ -265,7 +292,7 @@ namespace EMStudio
         const float rangeY = 2; // always from -1 to +1
 
         const int w = width();
-        const int h = height();
+        const int h = height() - m_warningBoundRect.height();
         const int wAfterMargin = w - s_leftMargin - s_rightMargin;
         const int hAfterMargin = h - s_topMargin - s_bottomMargin;
 
@@ -274,7 +301,7 @@ namespace EMStudio
                                                      // y increases downwards
 
         m_drawCenterX = s_leftMargin + wAfterMargin / 2;
-        m_drawCenterY = h - s_bottomMargin - hAfterMargin / 2;
+        m_drawCenterY = h - s_bottomMargin - hAfterMargin / 2 + m_warningBoundRect.height();
 
         m_drawRect.setRect(m_drawCenterX - wAfterMargin / 2, m_drawCenterY - hAfterMargin / 2, wAfterMargin, hAfterMargin);
 
@@ -506,6 +533,37 @@ namespace EMStudio
         painter.drawText(m_drawRect, Qt::AlignCenter | Qt::TextWordWrap, infoText);
     }
 
+    void BlendSpace1DNodeWidget::DrawBlendSpaceWarningText(QPainter& painter, const char* warningText)
+    {
+        const QRect warningRect(10, 10, width() - 20, height() - 20);
+        QString offsetWarningText(s_warningOffsetForIcon); // some space for the warning icon
+        offsetWarningText.append(warningText);
+
+        // Draw/compute the bounding rect of the warning text. This is a trick to get the proper bounding
+        // rect of the text
+        painter.setPen(m_infoTextPen);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawText(warningRect, Qt::AlignTop | Qt::AlignHCenter | Qt::TextWordWrap, offsetWarningText, &m_warningBoundRect);
+
+        // adjust the bounding rect to give some margins
+        m_warningBoundRect.adjust(-10, -5, 10, 5);
+
+        // Draw background rect for the text
+        painter.setBrush(m_infoTextBackgroundBrush);
+        painter.setPen(Qt::NoPen);
+        painter.drawRect(m_warningBoundRect);
+
+        // Draw warning icon
+        const QIcon& warningIcon = MysticQt::GetMysticQt()->FindIcon("Images/Icons/warning_25.png");
+        const QPoint iconPosition(m_warningBoundRect.x() + 5,
+            m_warningBoundRect.center().y() - 8);
+        painter.drawPixmap(iconPosition, warningIcon.pixmap(16, 16));
+
+        painter.setPen(m_infoTextPen);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawText(warningRect, Qt::AlignTop | Qt::AlignHCenter | Qt::TextWordWrap, offsetWarningText);
+    }
+
     void BlendSpace1DNodeWidget::SetCurrentSamplePosition(int windowX, int windowY)
     {
         EMotionFX::AnimGraphInstance* animGraphInstance = GetAnimGraphInstance();
@@ -609,6 +667,13 @@ namespace EMStudio
 
         const EMotionFX::AnimGraphInstance* animGraphInstance = GetAnimGraphInstance();
         if (!animGraphInstance)
+        {
+            return nullptr;
+        }
+        
+        // Check that we are looking at the correct animgrah instance
+        const EMotionFX::AnimGraphNode* thisNode = animGraphInstance->GetAnimGraph()->RecursiveFindNodeByID(blendSpaceNode->GetID());
+        if (thisNode != blendSpaceNode)
         {
             return nullptr;
         }

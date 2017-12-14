@@ -20,6 +20,7 @@
 
 #include <Components/Nodes/Comment/CommentNodeLayoutComponent.h>
 
+#include <Components/Nodes/Comment/CommentNodeFrameComponent.h>
 #include <Components/Nodes/Comment/CommentNodeTextComponent.h>
 #include <Components/Nodes/Comment/CommentBus.h>
 #include <Components/Nodes/General/GeneralNodeFrameComponent.h>
@@ -56,7 +57,7 @@ namespace GraphCanvas
         AZ::Entity* entity = NodeComponent::CreateCoreNodeEntity(config);
 
         entity->CreateComponent<StylingComponent>(Styling::Elements::Comment, AZ::EntityId());
-        entity->CreateComponent<GeneralNodeFrameComponent>();
+        entity->CreateComponent<CommentNodeFrameComponent>();
         entity->CreateComponent<CommentNodeLayoutComponent>();
         entity->CreateComponent<CommentNodeTextComponent>();
 
@@ -74,6 +75,9 @@ namespace GraphCanvas
     void CommentNodeLayoutComponent::Init()
     {
         NodeLayoutComponent::Init();
+
+        AZ::EntityBus::Handler::BusConnect(GetEntityId());
+
         m_layout = new QGraphicsLinearLayout(Qt::Vertical);
         m_comment = new QGraphicsLinearLayout(Qt::Horizontal);
     }
@@ -92,6 +96,23 @@ namespace GraphCanvas
 
         StyleNotificationBus::Handler::BusDisconnect();
         NodeNotificationBus::Handler::BusDisconnect();        
+    }
+
+    void CommentNodeLayoutComponent::OnEntityExists(const AZ::EntityId& entityId)
+    {
+        AZ::Entity* entity = GetEntity();
+
+        CommentNodeFrameComponent* commentFrameComponent = entity->FindComponent<CommentNodeFrameComponent>();
+
+        if (!commentFrameComponent)
+        {
+            GeneralNodeFrameComponent* generalNodeFrameComponent = entity->FindComponent<GeneralNodeFrameComponent>();
+            entity->RemoveComponent(generalNodeFrameComponent);
+
+            entity->CreateComponent<CommentNodeFrameComponent>();
+        }
+
+        AZ::EntityBus::Handler::BusDisconnect(GetEntityId());
     }
 
     void CommentNodeLayoutComponent::OnStyleChanged()

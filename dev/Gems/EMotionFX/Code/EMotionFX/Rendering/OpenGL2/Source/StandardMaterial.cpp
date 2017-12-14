@@ -24,6 +24,7 @@ namespace RenderGL
     StandardMaterial::StandardMaterial(GLActor* actor)
         : Material(actor)
     {
+        mMaterial           = nullptr;
         mActiveShader       = nullptr;
         mAttributesUpdated  = true;
 
@@ -95,7 +96,7 @@ namespace RenderGL
             // lights
             //      if (mAttributes[LIGHTING])
             {
-                MCore::Vector3 mainLightDir(0.0f, -1.0f, 0.0f);
+                AZ::Vector3 mainLightDir(0.0f, -1.0f, 0.0f);
                 mainLightDir *= MCore::Matrix::RotationMatrixZ(MCore::Math::DegreesToRadians(gfx->GetMainLightAngleA())) * MCore::Matrix::RotationMatrixX(MCore::Math::DegreesToRadians(gfx->GetMainLightAngleB()));
                 mainLightDir.Normalize();
                 mActiveShader->SetUniform("mainLightDir", mainLightDir);
@@ -103,7 +104,7 @@ namespace RenderGL
                 mActiveShader->SetUniform("groundColor", mActor->GetGroundColor());
                 mActiveShader->SetUniform("eyePoint", camera->GetPosition());
 
-                MCore::Vector3 rimLightDir = camera->GetViewMatrix().GetUp();
+                AZ::Vector3 rimLightDir = camera->GetViewMatrix().GetUp();
                 rimLightDir *= MCore::Matrix::RotationMatrixZ(MCore::Math::DegreesToRadians(gfx->GetRimAngle()));
                 rimLightDir.Normalize();
                 mActiveShader->SetUniform("rimLightDir", rimLightDir);

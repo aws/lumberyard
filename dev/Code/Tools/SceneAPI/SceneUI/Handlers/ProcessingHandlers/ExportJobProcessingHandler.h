@@ -18,6 +18,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>
+#include <SceneAPI/SceneUI/CommonWidgets/JobWatcher.h>
 
 namespace AZ
 {
@@ -25,8 +26,6 @@ namespace AZ
     {
         namespace SceneUI
         {
-            class JobWatcher;
-
             class SCENE_UI_API ExportJobProcessingHandler : public ProcessingHandler
             {
                 Q_OBJECT

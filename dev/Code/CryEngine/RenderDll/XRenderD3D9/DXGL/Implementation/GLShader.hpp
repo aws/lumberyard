@@ -19,11 +19,6 @@
 
 #include "GLCommon.hpp"
 #if !DXGL_INPUT_GLSL && DXGL_GLSL_FROM_HLSLCROSSCOMPILER
-#if defined(DXGL_USE_SDL)
-DXGL_TODO("Find a better way to prevent typedef conflicts between the stdint replacement in sdl and the one in hlslcc")
-#include <stdint.h>
-#define _PSTDINT_H_INCLUDED 1
-#endif //defined(DXGL_USE_SDL)
 #include "hlslcc.hpp"
 #endif //!DXGL_INPUT_GLSL && DXGL_GLSL_FROM_HLSLCROSSCOMPILER
 

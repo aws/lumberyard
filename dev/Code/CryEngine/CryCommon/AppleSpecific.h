@@ -556,7 +556,7 @@ inline int64 CryGetTicksPerSec()
 #ifdef _RELEASE
 #define __debugbreak()
 #else
-#define __debugbreak() raise(SIGTRAP)
+#define __debugbreak() ::raise(SIGTRAP)
 #endif
 
 #define __assume(x)

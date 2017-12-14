@@ -15,13 +15,13 @@
 #include "3DConnexionDriver.h"
 #include "Viewport.h"
 
+#if defined(AZ_PLATFORM_WINDOWS)
+
 //////////////////////////////////////////////////////////////////////////
 C3DConnexionDriver::C3DConnexionDriver()
 {
-#ifdef KDAB_MAC_PORT
     m_pRawInputDeviceList = 0;
     m_pRawInputDevices = 0;
-#endif // KDAB_MAC_PORT
     m_nUsagePage1Usage8Devices = 0;
     m_fMultiplier = 1.0f;
 
@@ -35,7 +35,6 @@ C3DConnexionDriver::~C3DConnexionDriver()
 
 bool C3DConnexionDriver::InitDevice()
 {
-#ifdef KDAB_MAC_PORT
     // Find the Raw Devices
     UINT nDevices;
     // Get Number of devices attached
@@ -105,15 +104,11 @@ bool C3DConnexionDriver::InitDevice()
     }
 
     return true;
-#else
-    return false;
-#endif // KDAB_MAC_PORT
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool C3DConnexionDriver::GetInputMessageData(LPARAM lParam, S3DConnexionMessage& msg)
 {
-#ifdef KDAB_MAC_PORT
     ZeroStruct(msg);
 
     RAWINPUTHEADER header;
@@ -181,7 +176,6 @@ bool C3DConnexionDriver::GetInputMessageData(LPARAM lParam, S3DConnexionMessage&
         }
     }
     return true;
-#else
-    return false;
-#endif // KDAB_MAC_PORT
 }
+
+#endif

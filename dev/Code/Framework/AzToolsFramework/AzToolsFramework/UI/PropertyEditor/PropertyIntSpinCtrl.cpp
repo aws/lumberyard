@@ -173,22 +173,7 @@ namespace AzToolsFramework
     {
         (void)debugName;
         AZ::s64 value;
-        if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool boolValue;
-            if (attrValue->Read<bool>(boolValue))
-            {
-                QSpinBox* p = qobject_cast<QSpinBox*>(GUI->GetFirstInTabOrder());
-                p->setReadOnly(boolValue);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ::Edit::Attributes::Min)
+        if (attrib == AZ::Edit::Attributes::Min)
         {
             if (attrValue->Read<AZ::s64>(value))
             {

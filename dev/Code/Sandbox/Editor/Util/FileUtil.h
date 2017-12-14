@@ -55,10 +55,11 @@ public:
     //! Display OpenFile dialog and allow to select multiple files.
     //! @return true if selected, false if canceled.
     //! @outputFile Inputs and Outputs filename.
-    /*static bool SelectSingleFile(IFileUtil::ECustomFileType fileType, QString& outputFile, const QString& filter = "", const QString& initialDir = "");
+    /*
+    static bool SelectSingleFile(IFileUtil::ECustomFileType fileType, QString& outputFile, const QString& filter = "", const QString& initialDir = "");
     static bool SelectSingleFile(IFileUtil::ECustomFileType fileType, char* outputFile, int outputSize, const char* filter = "", const char* initialDir = "");
     static bool SelectSingleFile(IFileUtil::ECustomFileType fileType, QString& outputFile, const QString& filter = {}, const QString& initialDir = {});
-*/
+    */
     static bool SelectSaveFile(const QString& fileFilter, const QString& defaulExtension, const QString& startFolder, QString& fileName);
 
     //! Attempt to make a file writable
@@ -72,6 +73,9 @@ public:
 
     //! Deletes a file using source control API.  Blocks until completed.
     static bool DeleteFromSourceControl(const char* filename, QWidget* parentWindow = nullptr);
+
+    //! Gather information about a file using the source control API.  Blocks until completed
+    static bool GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr);
 
     //! Creates this directory if it doesn't exist. Returns false if the director doesn't exist and couldn't be created.
     static bool CreateDirectory(const char* dir);
@@ -119,7 +123,8 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // @param LPPROGRESS_ROUTINE pfnProgress - called by the system to notify of file copy progress
     // @param LPBOOL pbCancel - when the contents of this BOOL are set to TRUE, the system cancels the copy operation
-    static IFileUtil::ECopyTreeResult   CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false, void* pfnProgress = nullptr, bool* pbCancel = nullptr);
+    static IFileUtil::ECopyTreeResult   CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false, ProgressRoutine pfnProgress = nullptr, bool* pbCancel = nullptr);
+
 
     // As we don't have a FileUtil interface here, we have to duplicate some code :-( in order to keep
     // function calls clean.
@@ -140,8 +145,8 @@ public:
     // return false if source control operation failed
     static QString PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent);
     static QString PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront);
-    static QString PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront, const QStringList& extraItemsBack, bool includeOpen = true);
-    static void PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* pIsSelected = nullptr, bool includeOpen = true);
+    static QString PopupQMenu(const QString& filename, const QString& fullGamePath, QWidget* parent, bool* pIsSelected, const QStringList& extraItemsFront, const QStringList& extraItemsBack);
+    static void PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* pIsSelected = nullptr);
 
     static void GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, bool bMakeLowerCase = false, bool bMakeUnixPath = false);
     static void GatherAssetFilenamesFromLevel(DynArray<dll_string>& rOutFilenames);

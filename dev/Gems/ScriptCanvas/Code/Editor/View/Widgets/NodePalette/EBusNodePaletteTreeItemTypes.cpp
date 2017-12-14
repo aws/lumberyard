@@ -15,8 +15,9 @@
 
 #include <QCoreApplication>
 
+#include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
-#include <GraphCanvas/Components/Nodes/NodeUIBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
 
 #include "EBusNodePaletteTreeItemTypes.h"
 
@@ -199,10 +200,16 @@ namespace ScriptCanvasEditor
 
         if (eventNode.m_graphCanvasId.IsValid())
         {
-            GraphCanvas::NodeUIRequestBus::Event(eventNode.m_graphCanvasId, &GraphCanvas::NodeUIRequests::SetSelected, true);
+            GraphCanvas::SceneMemberUIRequestBus::Event(eventNode.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
             ScriptCanvasEditor::NodeCreationNotificationBus::Event(sceneId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, eventNode.m_graphCanvasId);
 
-            sceneDropPosition += AZ::Vector2(20, 20);
+            AZ::EntityId gridId;
+            GraphCanvas::SceneRequestBus::EventResult(gridId, sceneId, &GraphCanvas::SceneRequests::GetGrid);
+
+            AZ::Vector2 offset;
+            GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
+
+            sceneDropPosition += offset;
         }
         return eventNode.m_graphCanvasId.IsValid();
     }

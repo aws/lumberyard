@@ -100,15 +100,18 @@ struct TAutoTransaction
     bool m_bCommitted;
 
     TAutoTransaction(T* pConnection)
+        : m_pConnection(pConnection)
+        , m_bCommitted(false)
     {
-        m_pConnection = pConnection;
-        m_bCommitted = false;
-        pConnection->SetAutoCommit(false);
+        if (m_pConnection)
+        {
+            m_pConnection->SetAutoCommit(false);
+        }
     }
 
     bool Commit()
     {
-        if (!m_bCommitted)
+        if (m_pConnection && !m_bCommitted)
         {
             bool bSuccess = m_pConnection->Commit();
             m_pConnection->SetAutoCommit(true);

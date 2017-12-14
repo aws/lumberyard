@@ -16,8 +16,6 @@
 #include "Common/GraphicsPipeline.h"
 #include "Common/GraphicsPipelineStateSet.h"
 
-class CShadowMapPass;
-class CSceneGBufferPass;
 class CAutoExposurePass;
 class CBloomPass;
 class CScreenSpaceObscurancePass;
@@ -87,9 +85,6 @@ public:
 
     void Reset() override;
 
-    bool CreatePipelineStates(DevicePipelineStatesArray* pStatesArray,
-        const SGraphicsPipelineStateDescription& stateDesc,
-        CGraphicsPipelineStateLocalCache* pStateCache);
     void UpdatePerViewConstantBuffer();
     void UpdatePerViewConstantBuffer(const ViewParameters& viewInfo);
     void BindPerViewConstantBuffer();
@@ -110,7 +105,6 @@ public:
     void ResetRenderState();
 
     // Partial pipeline functions, will be removed once the entire pipeline is implemented in Execute()
-    void RenderGBuffer();
     void RenderAutoExposure();
     void RenderBloom();
     void RenderScreenSpaceObscurance();
@@ -123,15 +117,11 @@ public:
     void RenderPostAA();
     void RenderTemporalAA(CTexture* sourceTexture, CTexture* outputTarget, const DepthOfFieldParameters& depthOfFieldParameters);
 
-    CShadowMapPass* GetShadowMapPass() const                       { return m_pShadowMapPass; };
-    CSceneGBufferPass* GetGBufferPass() const                      { return m_pSceneGBufferPass; };
     AzRHI::ConstantBufferPtr GetPerViewConstantBuffer() const      { return m_PerViewConstantBuffer; }
     CDeviceResourceSetPtr GetDefaultMaterialResources() const      { return m_pDefaultMaterialResources; }
     CDeviceResourceSetPtr GetDefaultInstanceExtraResources() const { return m_pDefaultInstanceExtraResources; }
 
 private:
-    CShadowMapPass*               m_pShadowMapPass;
-    CSceneGBufferPass*            m_pSceneGBufferPass;
     CAutoExposurePass*            m_pAutoExposurePass;
     CBloomPass*                   m_pBloomPass;
     CScreenSpaceObscurancePass*   m_pScreenSpaceObscurancePass;

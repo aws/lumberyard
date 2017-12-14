@@ -278,7 +278,7 @@ namespace EMotionFX
         // Iterate through all entries and add their unique id strings to the given list.
         const size_t numMotionEntries = m_motionEntries.size();
         idStrings.reserve(numMotionEntries);
-        
+
         for (const auto& item : m_motionEntries)
         {
             MotionEntry* motionEntry = item.second;
@@ -379,7 +379,9 @@ namespace EMotionFX
 
         const auto& iterator = m_motionEntries.find(key);
         if (iterator == m_motionEntries.end())
+        {
             return nullptr;
+        }
 
         return iterator->second;
     }
@@ -466,7 +468,7 @@ namespace EMotionFX
         AZ_Assert(newId, "Motion id must not be nullptr.");
         const AZ::u32 oldStringId = motionEntry->GetStringID();
         const AZ::u32 newStringId = MCore::GetAzStringIdGenerator().GenerateIdForString(newId);
-        
+
         motionEntry->SetStringId(newStringId);
 
         // Update the hash-map.
@@ -489,7 +491,7 @@ namespace EMotionFX
         Motion* motion = entry->GetMotion();
 
         // If loading on demand is enabled and the motion hasn't loaded yet.
-        if (!motion && !entry->GetLoadingFailed())
+        if (!motion && !entry->GetFilenameString().empty() && !entry->GetLoadingFailed())
         {
             motion = m_callback->LoadMotion(entry);
 

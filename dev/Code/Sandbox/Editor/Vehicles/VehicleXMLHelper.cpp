@@ -981,7 +981,7 @@ void DefinitionTable::Dump()
         XmlNodeRef def = it->second;
         const char* name = def->getAttr("name");
         const char* type = def->getTag();
-        CryLog("## %s is a %s", (const char*)it->first, name, type);
+        CryLog("## %s with name %s is a %s", (const char*)it->first, name, type);
     }
 }
 

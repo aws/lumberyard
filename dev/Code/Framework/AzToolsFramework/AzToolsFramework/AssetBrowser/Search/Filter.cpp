@@ -565,16 +565,16 @@ namespace AzToolsFramework
         }
 
         //////////////////////////////////////////////////////////////////////////
-        // ProductsFilter
+        // CleanerProductsFilter
         //////////////////////////////////////////////////////////////////////////
-        ProductsFilter::ProductsFilter() {}
+        CleanerProductsFilter::CleanerProductsFilter() {}
 
-        QString ProductsFilter::GetNameInternal() const
+        QString CleanerProductsFilter::GetNameInternal() const
         {
             return QString();
         }
 
-        bool ProductsFilter::MatchInternal(const AssetBrowserEntry* entry) const
+        bool CleanerProductsFilter::MatchInternal(const AssetBrowserEntry* entry) const
         {
             auto product = azrtti_cast<const ProductAssetBrowserEntry*>(entry);
             if (!product)
@@ -590,15 +590,18 @@ namespace AzToolsFramework
             {
                 return true;
             }
-            // hide product if name is the same as the source
-            if (!AzFramework::StringFunc::Equal(product->GetDisplayName().c_str(), source->GetDisplayName().c_str()))
+
+            AZStd::string assetTypeName;
+            AZ::AssetTypeInfoBus::EventResult(assetTypeName, product->GetAssetType(), &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
+            if (!assetTypeName.empty())
             {
                 return true;
             }
+            
             return false;
         }
 
-        void ProductsFilter::FilterInternal(AZStd::vector<const AssetBrowserEntry*>& result, const AssetBrowserEntry* entry) const
+        void CleanerProductsFilter::FilterInternal(AZStd::vector<const AssetBrowserEntry*>& result, const AssetBrowserEntry* entry) const
         {
             if (MatchInternal(entry))
             {

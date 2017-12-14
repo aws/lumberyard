@@ -17,9 +17,9 @@
 #include "EditorMeshComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Rtti/BehaviorContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Asset/AssetManager.h>
-#include <AzCore/std/string/const_string.h>
+#include <AzCore/std/string/string_view.h>
 
 #include <MathConversion.h>
 
@@ -48,7 +48,8 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/StaticMesh.png")
                         ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<LmbrCentral::MeshAsset>::Uuid())
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon,&EditorMeshComponent::GetMeshViewportIconPath)
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/StaticMesh.png")
+                        ->Attribute(AZ::Edit::Attributes::DynamicIconOverride, &EditorMeshComponent::GetMeshViewportIconPath)
                         ->Attribute(AZ::Edit::Attributes::PreferNoViewportIcon, true)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-static-mesh.html")
@@ -69,47 +70,47 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Max, 1.f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_maxViewDist, "Max view distance", "Maximum view distance in meters.")
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Max, &MeshComponentRenderNode::GetDefaultMaxViewDist)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_viewDistMultiplier, "View distance multiplier", "Adjusts max view distance. If 1.0 then default is used. 1.1 would be 10% further than default.")
                         ->Attribute(AZ::Edit::Attributes::Suffix, "x")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &MeshComponentRenderNode::MeshRenderOptions::m_lodRatio, "LOD distance ratio", "Controls LOD ratio over distance.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0)
                         ->Attribute(AZ::Edit::Attributes::Max, 255)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_castShadows, "Cast shadows", "Casts shadows.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_useVisAreas, "Use VisAreas", "Allow VisAreas to control this component's visibility.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Advanced")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_rainOccluder, "Rain occluder", "Occludes dynamic raindrops.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &MeshComponentRenderNode::MeshRenderOptions::StaticPropertyVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_affectDynamicWater, "Affect dynamic water", "Will generate ripples in dynamic water.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &MeshComponentRenderNode::MeshRenderOptions::StaticPropertyVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_receiveWind, "Receive wind", "Receives wind.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMajorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_acceptDecals, "Accept decals", "Can receive decals.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_affectNavmesh, "Affect navmesh", "Will affect navmesh generation.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &MeshComponentRenderNode::MeshRenderOptions::StaticPropertyVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_visibilityOccluder, "Visibility occluder", "Is appropriate for occluding visibility of other objects.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &MeshComponentRenderNode::MeshRenderOptions::StaticPropertyVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_dynamicMesh, "Deformable mesh", "Enables vertex deformation on mesh.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMajorChanged)
                     ;
 
                 editContext->Class<MeshComponentRenderNode>(
@@ -162,7 +163,7 @@ namespace LmbrCentral
         auto renderOptionsChangeCallback =
             [this]()
         {
-            this->m_mesh.ApplyRenderOptions();
+            this->m_mesh.RefreshRenderState();
 
             AffectNavmesh();
         };
@@ -194,7 +195,7 @@ namespace LmbrCentral
 
     void EditorMeshComponent::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
     {
-        (void)asset;
+        AZ::Data::AssetBus::Handler::BusConnect(asset.GetId());
 
         CreateEditorPhysics();
 
@@ -206,6 +207,7 @@ namespace LmbrCentral
 
     void EditorMeshComponent::OnMeshDestroyed()
     {
+        AZ::Data::AssetBus::Handler::BusDisconnect();
         DestroyEditorPhysics();
     }
 
@@ -243,6 +245,7 @@ namespace LmbrCentral
     void EditorMeshComponent::OnStaticChanged(bool isStatic)
     {
         m_mesh.SetTransformStaticState(isStatic);
+        AffectNavmesh();
     }
 
     AZ::Aabb EditorMeshComponent::GetWorldBounds()
@@ -378,7 +381,7 @@ namespace LmbrCentral
             pe_params_foreign_data foreignData;
             m_physicalEntity->GetParams(&foreignData);
 
-            if (m_mesh.m_renderOptions.m_affectNavmesh)
+            if (m_mesh.m_renderOptions.m_affectNavmesh && m_mesh.m_renderOptions.IsStatic())
             {
                 foreignData.iForeignFlags &= ~PFF_EXCLUDE_FROM_STATIC;
             }
@@ -396,8 +399,8 @@ namespace LmbrCentral
             }
         }
     }
-    AZStd::const_string staticViewportIcon = "Editor/Icons/Components/Viewport/StaticMesh.png";
-    AZStd::const_string dynamicViewportIcon = "Editor/Icons/Components/Viewport/DynamicMesh.png";
+    AZStd::string_view staticViewportIcon = "Editor/Icons/Components/Viewport/StaticMesh.png";
+    AZStd::string_view dynamicViewportIcon = "Editor/Icons/Components/Viewport/DynamicMesh.png";
     AZStd::string EditorMeshComponent::GetMeshViewportIconPath()
     {
         if (m_mesh.m_renderOptions.IsStatic())
@@ -406,5 +409,9 @@ namespace LmbrCentral
           return dynamicViewportIcon;
     }
 
+    void EditorMeshComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        CreateEditorPhysics();
+    }
 
 } // namespace LmbrCentral

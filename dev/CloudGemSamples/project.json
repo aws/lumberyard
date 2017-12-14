@@ -6,7 +6,7 @@
     "project_id": "{DA252341-B8FE-5CDD-80BB-04BCFDCBFADE}",
 
     "android_settings" : {
-        "package_name" : "com.lumberyard.empty",
+        "package_name" : "com.lumberyard.CloudGemSamples",
         "version_number" : 1,
         "version_name" : "1.0.0.0",
         "orientation" : "landscape"

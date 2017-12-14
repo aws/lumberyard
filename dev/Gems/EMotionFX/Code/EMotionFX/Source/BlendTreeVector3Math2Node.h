@@ -87,7 +87,7 @@ namespace EMotionFX
         AnimGraphObjectData* CreateObjectData() override;
 
     private:
-        typedef void (MCORE_CDECL * BlendTreeVec3Math1Function)(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
+        typedef void (MCORE_CDECL * BlendTreeVec3Math1Function)(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
 
         EMathFunction               mMathFunction;
         BlendTreeVec3Math1Function  mCalculateFunc;
@@ -98,12 +98,12 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void OnUpdateAttributes() override;
 
-        static void MCORE_CDECL CalculateDot(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateCross(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateAdd(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateSubtract(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateMultiply(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateDivide(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateAngleDegrees(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateDot(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateCross(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateAdd(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateSubtract(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateMultiply(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateDivide(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateAngleDegrees(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput);
     };
 }   // namespace EMotionFX

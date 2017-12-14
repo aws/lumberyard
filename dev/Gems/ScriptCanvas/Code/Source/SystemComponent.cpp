@@ -29,7 +29,6 @@ namespace ScriptCanvas
     void SystemComponent::Reflect(AZ::ReflectContext* context)
     {
         ReflectLibraries(context);
-        GraphAsset::Reflect(context);
 
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
@@ -81,12 +80,9 @@ namespace ScriptCanvas
         SystemRequestBus::Handler::BusDisconnect();
     }
 
-    void SystemComponent::CreateGraphOnEntity(AZ::Entity* graphEntity)
+    Graph* SystemComponent::CreateGraphOnEntity(AZ::Entity* graphEntity)
     {
-        if (graphEntity)
-        {
-            graphEntity->CreateComponent<Graph>();
-        }
+        return graphEntity ? graphEntity->CreateComponent<Graph>() : nullptr;
     }
 
     ScriptCanvas::Graph* SystemComponent::MakeGraph()

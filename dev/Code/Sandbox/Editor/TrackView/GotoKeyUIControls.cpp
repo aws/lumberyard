@@ -15,6 +15,7 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CGotoKeyUIControls
@@ -29,9 +30,9 @@ public:
         AddVariable(mv_table, "Key Properties");
         AddVariable(mv_table, mv_command, "Goto Time");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        if (paramType == eAnimParamType_Goto)
+        if (paramType == AnimParamType::Goto)
         {
             return true;
         }
@@ -70,7 +71,7 @@ bool CGotoKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys)
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Goto)
+        if (paramType == AnimParamType::Goto)
         {
             IDiscreteFloatKey discreteFloatKey;
             keyHandle.GetKey(&discreteFloatKey);
@@ -98,7 +99,7 @@ void CGotoKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& select
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Goto)
+        if (paramType == AnimParamType::Goto)
         {
             IDiscreteFloatKey discreteFloatKey;
 

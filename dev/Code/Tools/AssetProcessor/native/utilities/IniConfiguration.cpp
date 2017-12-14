@@ -11,7 +11,7 @@
 */
 #include "native/utilities/IniConfiguration.h"
 #include "native/utilities/assetUtils.h"
-#include <QSettings>
+#include <QFile>
 #include <AzCore/Debug/Trace.h>
 #include "native/assetprocessor.h"
 
@@ -23,7 +23,6 @@ namespace
 
 IniConfiguration::IniConfiguration(QObject* pParent)
     : QObject(pParent)
-    , m_proxyInformation(QString())
     , m_listeningPort(0)
 {
     Q_ASSERT(s_singleton == nullptr);
@@ -52,36 +51,17 @@ void IniConfiguration::parseCommandLine(QStringList args)
     }
 }
 
-void IniConfiguration::SetProxyInformation(QString info)
-{
-    if (info.isEmpty())
-    {
-        info = QString("127.0.0.1:%1").arg(m_listeningPort);
-    }
-
-    if (m_proxyInformation.compare(info) != 0)
-    {
-        QSettings saver(m_userConfigFilePath, QSettings::IniFormat);
-        saver.setValue("AssetProcessorProxyInformation", info);
-        m_proxyInformation = info;
-        Q_EMIT ProxyInfoChanged(m_proxyInformation);
-    }
-}
-
 void IniConfiguration::readINIConfigFile(QDir dir)
 {
     m_userConfigFilePath = dir.filePath("AssetProcessorConfiguration.ini");
-    QSettings loader(m_userConfigFilePath, QSettings::IniFormat);
-    // Deleting the key that we used to use for reading the listening port,
-    // we now read it from the bootstrap file
-    loader.remove("AssetProcessorListeningPort");
+	// if AssetProcessorProxyInformation.ini file exists then delete it
+	// we used to store proxy info in this file
+	if (QFile::exists(m_userConfigFilePath))
+	{
+		QFile::remove(m_userConfigFilePath);
+	}
+    
     m_listeningPort = AssetUtilities::ReadListeningPortFromBootstrap();
-    QString proxyInfo = loader.value("AssetProcessorProxyInformation", QString()).toString();
-    if (proxyInfo.isEmpty())
-    {
-        proxyInfo = QString("localhost:%1").arg(m_listeningPort);
-    }
-    SetProxyInformation(proxyInfo);
 }
 
 quint16 IniConfiguration::listeningPort() const
@@ -92,11 +72,6 @@ quint16 IniConfiguration::listeningPort() const
 void IniConfiguration::SetListeningPort(quint16 port)
 {
     m_listeningPort = port;
-}
-
-QString IniConfiguration::proxyInformation() const
-{
-    return m_proxyInformation;
 }
 
 #include <native/utilities/IniConfiguration.moc>

@@ -154,8 +154,7 @@ uint32 CMissingAssetResolver::AddResolveRequest(const char* assetStr, const TMis
 {
     if (strlen(assetStr) > 0)
     {
-        // A path that contains ../ could lead to directory outside the game folder and cause the editor to hang on closing
-        // while it continues to search the entire HDD for the asset.
+        // prevent usage of ../ path usage as it can lead to illegal HDD directory searches and editor hang
         if (strstr(assetStr, "../") != NULL)
         {
             string log;

@@ -21,6 +21,8 @@ namespace AZ
     {
         /**
          * Trace messages event handle.
+         * Whenever code invokes AZ_TracePrintf / AZ_Warning / AZ_Assert / AZ_Error and similar macros
+         * this bus gets invoked and is an ideal place to put logging sinks / displays.
          * All messages are optional (they have default implementation) and you can handle only one at a time.
          * Most messages return a boolean, if false means all the default handling will be
          * executed (callstack, details, etc.) if returned true only a minimal amount of data
@@ -38,6 +40,12 @@ namespace AZ
 
             virtual bool OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) { return false; }
             virtual bool OnAssert(const char* /*message*/) { return false; }
+
+            /** 
+            * Exception handling is only invoked in the case of an actual OS-level exception.
+            * If any handlers return true, the program will be allowed to continue running despite the exception and no callstack will be emitted.
+            * If all handlers return false, the OS will be given the exception, (as well as any other exception handlers).
+            */
             virtual bool OnException(const char* /*message*/) { return false; }
             virtual bool OnPreError(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) { return false; }
             virtual bool OnError(const char* /*window*/, const char* /*message*/) { return false; }

@@ -47,7 +47,7 @@ public:
     int GetAnimationLayerIndex() const { return m_iAnimationLayer; }
     void SetAnimationLayerIndex(int index) { m_iAnimationLayer = index; }
 
-    virtual EAnimValue GetValueType() { return eAnimValue_CharacterAnim; }
+    virtual AnimValueType GetValueType();
 
     float GetEndTime() const { return m_timeRange.end; }
 

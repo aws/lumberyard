@@ -896,7 +896,7 @@ void CMannTagDefEditorDialog::OnTagTreeSelChanged()
     if (IsTagTreeItem(item, id))
     {
         uint32 priority = m_tagDefTreeModel->selectedTagDefinition()->GetPriority(id);
-        priority = std::max(std::min(priority, 10u), 0u);
+        priority = std::min(priority, 10u);
         m_ui->m_priorityEdit->setSpecialValueText(QString());
         m_ui->m_priorityEdit->setValue(priority);
     }

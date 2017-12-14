@@ -54,8 +54,6 @@ namespace ScriptCanvas
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Output signal"));
 
                 void OnInputSignal(const SlotId& slotId) override;
-
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
             };
         }
     }

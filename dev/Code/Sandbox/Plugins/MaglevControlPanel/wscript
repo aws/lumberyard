@@ -23,14 +23,18 @@ def build(bld):
         use	            = ['AzFramework',
                            'EditorUI_QT',
                            'EditorCommon',
-                           'EditorCore'],
+                           'EditorCore'] + 
+                           bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
+
         uselib          = ['QTANGLE',
                            'QT5CORE',
                            'QT5GUI',
                            'QT5WIDGETS',
                            'BOOSTPYTHON',
                            'AWS_CPP_SDK_CORE',
-                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT'],
+                           'AWS_CPP_SDK_COGNITO_IDENTITY',
+                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                           'AWS_CPP_SDK_MOBILEANALYTICS'],
         features	    = ['qt5',
                            'EmbeddedPython'],
         includes        = ['.',
@@ -42,11 +46,13 @@ def build(bld):
                            bld.Path('Code/CryEngine/CryAction')],
 
         defines         = ['QT_NO_DEBUG',
-                           'QT_LARGEFILE_SUPPORT',
                            'QT_NO_EMIT',
                            'EDITOR_COMMON_IMPORTS'],
-        darwin_use		= bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
-        win_use			= bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
+        darwin_use      = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
+        win_use         = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
+
+        darwin_cxxflags = ['-Wno-unused-local-typedef'],
+        darwin_x64_lib  = ['python2.7', 'curl'],
 
         # Testing
         test_all_file_list = ['maglevcontrolpanel_test.waf_files'],

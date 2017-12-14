@@ -67,90 +67,90 @@ MCORE_INLINE void Matrix::SetTranslation(float tx, float ty, float tz)
 
 
 
-MCORE_INLINE void Matrix::SetRight(const Vector3& x)
+MCORE_INLINE void Matrix::SetRight(const AZ::Vector3& x)
 {
-    TMAT(0, 0) = x.x;
-    TMAT(0, 1) = x.y;
-    TMAT(0, 2) = x.z;
+    TMAT(0, 0) = x.GetX();
+    TMAT(0, 1) = x.GetY();
+    TMAT(0, 2) = x.GetZ();
 }
 
 
 
-MCORE_INLINE void Matrix::SetUp(const Vector3& y)
+MCORE_INLINE void Matrix::SetUp(const AZ::Vector3& y)
 {
-    TMAT(1, 0) = y.x;
-    TMAT(1, 1) = y.y;
-    TMAT(1, 2) = y.z;
+    TMAT(1, 0) = y.GetX();
+    TMAT(1, 1) = y.GetY();
+    TMAT(1, 2) = y.GetZ();
 }
 
 
 
-MCORE_INLINE void Matrix::SetForward(const Vector3& z)
+MCORE_INLINE void Matrix::SetForward(const AZ::Vector3& z)
 {
-    TMAT(2, 0) = z.x;
-    TMAT(2, 1) = z.y;
-    TMAT(2, 2) = z.z;
+    TMAT(2, 0) = z.GetX();
+    TMAT(2, 1) = z.GetY();
+    TMAT(2, 2) = z.GetZ();
 }
 
 
 
-MCORE_INLINE void Matrix::SetTranslation(const Vector3& t)
+MCORE_INLINE void Matrix::SetTranslation(const AZ::Vector3& t)
 {
-    TMAT(3, 0) = t.x;
-    TMAT(3, 1) = t.y;
-    TMAT(3, 2) = t.z;
+    TMAT(3, 0) = t.GetX();
+    TMAT(3, 1) = t.GetY();
+    TMAT(3, 2) = t.GetZ();
 }
 
 
 
-MCORE_INLINE Vector3 Matrix::GetRight() const
+MCORE_INLINE AZ::Vector3 Matrix::GetRight() const
 {
     //return *reinterpret_cast<Vector3*>( m16/* + 0*/);
-    return Vector3(TMAT(0, 0), TMAT(0, 1), TMAT(0, 2));
+    return AZ::Vector3(TMAT(0, 0), TMAT(0, 1), TMAT(0, 2));
 }
 
 
 
-MCORE_INLINE Vector3 Matrix::GetForward() const
+MCORE_INLINE AZ::Vector3 Matrix::GetForward() const
 {
     //  return *reinterpret_cast<Vector3*>(m16+4);
-    return Vector3(TMAT(1, 0), TMAT(1, 1), TMAT(1, 2));
+    return AZ::Vector3(TMAT(1, 0), TMAT(1, 1), TMAT(1, 2));
 }
 
 
 
-MCORE_INLINE Vector3 Matrix::GetUp() const
+MCORE_INLINE AZ::Vector3 Matrix::GetUp() const
 {
     //  return *reinterpret_cast<Vector3*>(m16+8);
-    return Vector3(TMAT(2, 0), TMAT(2, 1), TMAT(2, 2));
+    return AZ::Vector3(TMAT(2, 0), TMAT(2, 1), TMAT(2, 2));
 }
 
 
 
-MCORE_INLINE Vector3 Matrix::GetTranslation() const
+MCORE_INLINE AZ::Vector3 Matrix::GetTranslation() const
 {
     //return *reinterpret_cast<Vector3*>(m16+12);
-    return Vector3(TMAT(3, 0), TMAT(3, 1), TMAT(3, 2));
+    return AZ::Vector3(TMAT(3, 0), TMAT(3, 1), TMAT(3, 2));
 }
 
 
 
-MCORE_INLINE Vector3 Matrix::Mul3x3(const Vector3& v) const
+MCORE_INLINE AZ::Vector3 Matrix::Mul3x3(const AZ::Vector3& v) const
 {
-    return Vector3(
-        v.x * TMAT(0, 0) + v.y * TMAT(1, 0) + v.z * TMAT(2, 0),
-        v.x * TMAT(0, 1) + v.y * TMAT(1, 1) + v.z * TMAT(2, 1),
-        v.x * TMAT(0, 2) + v.y * TMAT(1, 2) + v.z * TMAT(2, 2));
+    return AZ::Vector3(
+        v.GetX() * TMAT(0, 0) + v.GetY() * TMAT(1, 0) + v.GetZ() * TMAT(2, 0),
+        v.GetX() * TMAT(0, 1) + v.GetY() * TMAT(1, 1) + v.GetZ() * TMAT(2, 1),
+        v.GetX() * TMAT(0, 2) + v.GetY() * TMAT(1, 2) + v.GetZ() * TMAT(2, 2));
 }
 
 
 
-MCORE_INLINE void operator *= (Vector3& v, const Matrix& m)
+MCORE_INLINE void operator *= (AZ::Vector3& v, const Matrix& m)
 {
-    v = Vector3(
-            v.x * MMAT(m, 0, 0) + v.y * MMAT(m, 1, 0) + v.z * MMAT(m, 2, 0) + MMAT(m, 3, 0),
-            v.x * MMAT(m, 0, 1) + v.y * MMAT(m, 1, 1) + v.z * MMAT(m, 2, 1) + MMAT(m, 3, 1),
-            v.x * MMAT(m, 0, 2) + v.y * MMAT(m, 1, 2) + v.z * MMAT(m, 2, 2) + MMAT(m, 3, 2));
+    v = AZ::Vector3(
+		v.GetX() * MMAT(m, 0, 0) + v.GetY() * MMAT(m, 1, 0) + v.GetZ() * MMAT(m, 2, 0) + MMAT(m, 3, 0),
+		v.GetX() * MMAT(m, 0, 1) + v.GetY() * MMAT(m, 1, 1) + v.GetZ() * MMAT(m, 2, 1) + MMAT(m, 3, 1),
+		v.GetX() * MMAT(m, 0, 2) + v.GetY() * MMAT(m, 1, 2) + v.GetZ() * MMAT(m, 2, 2) + MMAT(m, 3, 2));
 }
 
 
@@ -166,28 +166,30 @@ MCORE_INLINE void operator *= (AZ::Vector4& v, const Matrix& m)
 
 
 
-MCORE_INLINE Vector3 operator * (const Vector3& v, const Matrix& m)
+MCORE_INLINE AZ::Vector3 operator * (const AZ::Vector3& v, const Matrix& m)
 {
-    return Vector3(
-        v.x * MMAT(m, 0, 0) + v.y * MMAT(m, 1, 0) + v.z * MMAT(m, 2, 0) + MMAT(m, 3, 0),
-        v.x * MMAT(m, 0, 1) + v.y * MMAT(m, 1, 1) + v.z * MMAT(m, 2, 1) + MMAT(m, 3, 1),
-        v.x * MMAT(m, 0, 2) + v.y * MMAT(m, 1, 2) + v.z * MMAT(m, 2, 2) + MMAT(m, 3, 2));
+    return AZ::Vector3(
+        v.GetX() * MMAT(m, 0, 0) + v.GetY() * MMAT(m, 1, 0) + v.GetZ() * MMAT(m, 2, 0) + MMAT(m, 3, 0),
+        v.GetX() * MMAT(m, 0, 1) + v.GetY() * MMAT(m, 1, 1) + v.GetZ() * MMAT(m, 2, 1) + MMAT(m, 3, 1),
+        v.GetX() * MMAT(m, 0, 2) + v.GetY() * MMAT(m, 1, 2) + v.GetZ() * MMAT(m, 2, 2) + MMAT(m, 3, 2));
 }
 
 
 
 
 // skin a vertex position
-MCORE_INLINE void Matrix::Skin4x3(const MCore::Vector3& in, Vector3& out, float weight)
+MCORE_INLINE void Matrix::Skin4x3(const AZ::Vector3& in, AZ::Vector3& out, float weight)
 {
-    out.x += (in.x * TMAT(0, 0) + in.y * TMAT(1, 0) + in.z * TMAT(2, 0) + TMAT(3, 0)) * weight;
-    out.y += (in.x * TMAT(0, 1) + in.y * TMAT(1, 1) + in.z * TMAT(2, 1) + TMAT(3, 1)) * weight;
-    out.z += (in.x * TMAT(0, 2) + in.y * TMAT(1, 2) + in.z * TMAT(2, 2) + TMAT(3, 2)) * weight;
+	out.Set(
+		out.GetX() + (in.GetX() * TMAT(0, 0) + in.GetY() * TMAT(1, 0) + in.GetZ() * TMAT(2, 0) + TMAT(3, 0)) * weight,
+		out.GetY() + (in.GetX() * TMAT(0, 1) + in.GetY() * TMAT(1, 1) + in.GetZ() * TMAT(2, 1) + TMAT(3, 1)) * weight,
+		out.GetZ() + (in.GetX() * TMAT(0, 2) + in.GetY() * TMAT(1, 2) + in.GetZ() * TMAT(2, 2) + TMAT(3, 2)) * weight
+	);
 }
 
 
 // skin a position and normal
-MCORE_INLINE void Matrix::Skin(const Vector3* inPos, const Vector3* inNormal, Vector3* outPos, Vector3* outNormal, float weight)
+MCORE_INLINE void Matrix::Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, AZ::Vector3* outPos, AZ::Vector3* outNormal, float weight)
 {
     const float mat00 = TMAT(0, 0);
     const float mat10 = TMAT(1, 0);
@@ -202,18 +204,22 @@ MCORE_INLINE void Matrix::Skin(const Vector3* inPos, const Vector3* inNormal, Ve
     const float mat22 = TMAT(2, 2);
     const float mat32 = TMAT(3, 2);
 
-    outPos->x += (inPos->x * mat00 + inPos->y * mat10 + inPos->z * mat20 + mat30) * weight;
-    outPos->y += (inPos->x * mat01 + inPos->y * mat11 + inPos->z * mat21 + mat31) * weight;
-    outPos->z += (inPos->x * mat02 + inPos->y * mat12 + inPos->z * mat22 + mat32) * weight;
+	outPos->Set(
+		outPos->GetX() + (inPos->GetX() * mat00 + inPos->GetY() * mat10 + inPos->GetZ() * mat20 + mat30) * weight,
+		outPos->GetY() + (inPos->GetX() * mat01 + inPos->GetY() * mat11 + inPos->GetZ() * mat21 + mat31) * weight,
+		outPos->GetZ() + (inPos->GetX() * mat02 + inPos->GetY() * mat12 + inPos->GetZ() * mat22 + mat32) * weight
+	);
 
-    outNormal->x += (inNormal->x * mat00 + inNormal->y * mat10 + inNormal->z * mat20) * weight;
-    outNormal->y += (inNormal->x * mat01 + inNormal->y * mat11 + inNormal->z * mat21) * weight;
-    outNormal->z += (inNormal->x * mat02 + inNormal->y * mat12 + inNormal->z * mat22) * weight;
+	outNormal->Set(
+		outNormal->GetX() + (inNormal->GetX() * mat00 + inNormal->GetY() * mat10 + inNormal->GetZ() * mat20) * weight,
+		outNormal->GetY() + (inNormal->GetX() * mat01 + inNormal->GetY() * mat11 + inNormal->GetZ() * mat21) * weight,
+		outNormal->GetZ() + (inNormal->GetX() * mat02 + inNormal->GetY() * mat12 + inNormal->GetZ() * mat22) * weight
+	);
 }
 
 
 // skin a position, normal, and tangent
-MCORE_INLINE void Matrix::Skin(const Vector3* inPos, const Vector3* inNormal, const AZ::Vector4* inTangent, Vector3* outPos, Vector3* outNormal, AZ::Vector4* outTangent, float weight)
+MCORE_INLINE void Matrix::Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, const AZ::Vector4* inTangent, AZ::Vector3* outPos, AZ::Vector3* outNormal, AZ::Vector4* outTangent, float weight)
 {
     const float mat00 = TMAT(0, 0);
     const float mat10 = TMAT(1, 0);
@@ -228,27 +234,35 @@ MCORE_INLINE void Matrix::Skin(const Vector3* inPos, const Vector3* inNormal, co
     const float mat22 = TMAT(2, 2);
     const float mat32 = TMAT(3, 2);
 
-    outPos->x += (inPos->x * mat00 + inPos->y * mat10 + inPos->z * mat20 + mat30) * weight;
-    outPos->y += (inPos->x * mat01 + inPos->y * mat11 + inPos->z * mat21 + mat31) * weight;
-    outPos->z += (inPos->x * mat02 + inPos->y * mat12 + inPos->z * mat22 + mat32) * weight;
+	outPos->Set(
+		outPos->GetX() + (inPos->GetX() * mat00 + inPos->GetY() * mat10 + inPos->GetZ() * mat20 + mat30) * weight,
+		outPos->GetY() + (inPos->GetX() * mat01 + inPos->GetY() * mat11 + inPos->GetZ() * mat21 + mat31) * weight,
+		outPos->GetZ() + (inPos->GetX() * mat02 + inPos->GetY() * mat12 + inPos->GetZ() * mat22 + mat32) * weight
+	);
 
-    outNormal->x += (inNormal->x * mat00 + inNormal->y * mat10 + inNormal->z * mat20) * weight;
-    outNormal->y += (inNormal->x * mat01 + inNormal->y * mat11 + inNormal->z * mat21) * weight;
-    outNormal->z += (inNormal->x * mat02 + inNormal->y * mat12 + inNormal->z * mat22) * weight;
+	outNormal->Set(
+		outNormal->GetX() + (inNormal->GetX() * mat00 + inNormal->GetY() * mat10 + inNormal->GetZ() * mat20) * weight,
+		outNormal->GetY() + (inNormal->GetX() * mat01 + inNormal->GetY() * mat11 + inNormal->GetZ() * mat21) * weight,
+		outNormal->GetZ() + (inNormal->GetX() * mat02 + inNormal->GetY() * mat12 + inNormal->GetZ() * mat22) * weight
+	);
 
-    outTangent->SetX(outTangent->GetX() + (inTangent->GetX() * mat00 + inTangent->GetY() * mat10 + inTangent->GetZ() * mat20) * weight);
-    outTangent->SetY(outTangent->GetY() + (inTangent->GetX() * mat01 + inTangent->GetY() * mat11 + inTangent->GetZ() * mat21) * weight);
-    outTangent->SetZ(outTangent->GetZ() + (inTangent->GetX() * mat02 + inTangent->GetY() * mat12 + inTangent->GetZ() * mat22) * weight);
-    //outTangent->w = inTangent->w;
+	outTangent->Set(
+		outTangent->GetX() + (inTangent->GetX() * mat00 + inTangent->GetY() * mat10 + inTangent->GetZ() * mat20) * weight,
+		outTangent->GetY() + (inTangent->GetX() * mat01 + inTangent->GetY() * mat11 + inTangent->GetZ() * mat21) * weight,
+		outTangent->GetZ() + (inTangent->GetX() * mat02 + inTangent->GetY() * mat12 + inTangent->GetZ() * mat22) * weight,
+		inTangent->GetW()
+	);
 }
 
 
 // skin a normal
-MCORE_INLINE void Matrix::Skin3x3(const MCore::Vector3& in, Vector3& out, float weight)
+MCORE_INLINE void Matrix::Skin3x3(const AZ::Vector3& in, AZ::Vector3& out, float weight)
 {
-    out.x += (in.x * TMAT(0, 0) + in.y * TMAT(1, 0) + in.z * TMAT(2, 0)) * weight;
-    out.y += (in.x * TMAT(0, 1) + in.y * TMAT(1, 1) + in.z * TMAT(2, 1)) * weight;
-    out.z += (in.x * TMAT(0, 2) + in.y * TMAT(1, 2) + in.z * TMAT(2, 2)) * weight;
+	out.Set(
+		out.GetX() + (in.GetX() * TMAT(0, 0) + in.GetY() * TMAT(1, 0) + in.GetZ() * TMAT(2, 0)) * weight,
+		out.GetY() + (in.GetX() * TMAT(0, 1) + in.GetY() * TMAT(1, 1) + in.GetZ() * TMAT(2, 1)) * weight,
+		out.GetZ() + (in.GetX() * TMAT(0, 2) + in.GetY() * TMAT(1, 2) + in.GetZ() * TMAT(2, 2)) * weight
+	);
 }
 
 
@@ -265,13 +279,13 @@ MCORE_INLINE Matrix& Matrix::operator *= (float value)
 
 
 // scale (uniform)
-MCORE_INLINE void Matrix::Scale(const Vector3& scale)
+MCORE_INLINE void Matrix::Scale(const AZ::Vector3& scale)
 {
     for (uint32 i = 0; i < 4; ++i)
     {
-        TMAT(i, 0) *= scale.x;
-        TMAT(i, 1) *= scale.y;
-        TMAT(i, 2) *= scale.z;
+        TMAT(i, 0) *= scale.GetX();
+        TMAT(i, 1) *= scale.GetY();
+        TMAT(i, 2) *= scale.GetZ();
     }
 }
 

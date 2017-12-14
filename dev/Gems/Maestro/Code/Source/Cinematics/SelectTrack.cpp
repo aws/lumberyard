@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include "SelectTrack.h"
+#include "Maestro/Types/AnimValueType.h"
 
 //////////////////////////////////////////////////////////////////////////
 void CSelectTrack::SerializeKey(ISelectKey& key, XmlNodeRef& keyNode, bool bLoading)
@@ -41,6 +42,12 @@ void CSelectTrack::SerializeKey(ISelectKey& key, XmlNodeRef& keyNode, bool bLoad
         keyNode->setAttr("BlendTime", key.fBlendTime);
     }
 }
+
+//////////////////////////////////////////////////////////////////////////
+AnimValueType CSelectTrack::GetValueType()
+{
+    return AnimValueType::Select; 
+};
 
 //////////////////////////////////////////////////////////////////////////
 void CSelectTrack::GetKeyInfo(int key, const char*& description, float& duration)

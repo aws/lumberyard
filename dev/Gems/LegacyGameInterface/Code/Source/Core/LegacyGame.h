@@ -46,7 +46,6 @@ namespace LegacyGameInterface
         bool Init(IGameFramework* gameFramework) override;
         bool CompleteInit() override;
         void Shutdown() override;
-        int Update(bool hasFocus, unsigned int updateFlags) override;
         void PlayerIdSet(EntityId playerId) override;
         IGameFramework* GetIGameFramework() override { return m_gameFramework; }
         EntityId GetClientActorId() const override { return m_clientEntityId; }

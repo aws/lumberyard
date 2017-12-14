@@ -22,6 +22,7 @@
 #include "UI/ComponentPalette/ComponentPaletteWindow.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzToolsFramework/UI/Slice/SliceRelationshipWidget.hxx>
 #include <AzFramework/API/ApplicationAPI.h>
 
 #include "ComponentEntityEditorPlugin.h"
@@ -72,6 +73,11 @@ ComponentEntityEditorPlugin::ComponentEntityEditorPlugin(IEditor* editor)
         LyViewPane::EntityOutliner,
         LyViewPane::CategoryTools,
         outlinerOptions);
+
+    AzToolsFramework::ViewPaneOptions options;
+    options.preferedDockingArea = Qt::NoDockWidgetArea;
+    options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    RegisterViewPane<SliceRelationshipWidget>(LyViewPane::SliceRelationships, LyViewPane::CategoryTools, options);
 
     RegisterModuleResourceSelectors(GetIEditor()->GetResourceSelectorHost());
 

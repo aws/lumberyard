@@ -87,7 +87,7 @@ void CConstraintEntity::Display(DisplayContext& dc)
     bool useEntityFrame = GetEntityPropertyBool("bUseEntityFrame");
     quaternionf qbody0;
     qbody0.SetIdentity();
-    Vec3 posBody0;
+    Vec3 posBody0(ZERO);
     if (m_body0)
     {
         pe_status_pos pos;
@@ -97,7 +97,7 @@ void CConstraintEntity::Display(DisplayContext& dc)
     }
     quaternionf qbody1;
     qbody1.SetIdentity();
-    Vec3 posBody1;
+    Vec3 posBody1(ZERO);
     if (m_body1)
     {
         pe_status_pos pos;

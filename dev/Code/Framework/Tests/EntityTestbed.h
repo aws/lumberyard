@@ -23,7 +23,7 @@
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Asset/AssetCatalogComponent.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
-#include <AzToolsFramework/UI/Outliner/OutlinerWidget.hxx>
+//#include <AzToolsFramework/UI/Outliner/OutlinerWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
@@ -71,7 +71,7 @@ namespace UnitTest
         AZ::Entity* m_systemEntity                                  = nullptr;
         QApplication* m_qtApplication                               = nullptr;
         QWidget* m_window                                           = nullptr;
-        AzToolsFramework::OutlinerWidget* m_outliner                = nullptr;
+        //AzToolsFramework::OutlinerWidget* m_outliner                = nullptr;
         AzToolsFramework::EntityPropertyEditor* m_propertyEditor    = nullptr;
         AZ::u32 m_entityCounter                                     = 0;
         AZ::IO::LocalFileIO m_localFileIO;
@@ -133,7 +133,7 @@ namespace UnitTest
         void SetupUI()
         {
             m_window = new QWidget();
-            m_outliner = aznew AzToolsFramework::OutlinerWidget(nullptr);
+            //m_outliner = aznew AzToolsFramework::OutlinerWidget(nullptr);
             m_propertyEditor = aznew AzToolsFramework::EntityPropertyEditor(nullptr);
 
             AZ::SerializeContext* serializeContext = nullptr;
@@ -141,12 +141,12 @@ namespace UnitTest
 
             m_window->setMinimumHeight(600);
             m_propertyEditor->setMinimumWidth(600);
-            m_outliner->setMinimumWidth(100);
+            //m_outliner->setMinimumWidth(100);
 
             QVBoxLayout* leftLayout = new QVBoxLayout();
             QHBoxLayout* outlinerLayout = new QHBoxLayout();
             QHBoxLayout* outlinerButtonLayout = new QHBoxLayout();
-            outlinerLayout->addWidget(m_outliner);
+            //outlinerLayout->addWidget(m_outliner);
             leftLayout->addLayout(outlinerLayout);
             leftLayout->addLayout(outlinerButtonLayout);
 
@@ -207,13 +207,13 @@ namespace UnitTest
         {
             OnDestroy();
 
-            delete m_outliner;
+            //delete m_outliner;
             delete m_propertyEditor;
             delete m_window;
             delete m_qtApplication;
             delete m_componentApplication;
 
-            m_outliner = nullptr;
+            //m_outliner = nullptr;
             m_propertyEditor = nullptr;
             m_window = nullptr;
             m_qtApplication = nullptr;

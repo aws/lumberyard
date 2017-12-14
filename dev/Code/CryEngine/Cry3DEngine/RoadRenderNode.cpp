@@ -20,6 +20,7 @@
 #include "ObjMan.h"
 #include "MatMan.h"
 #include "MeshCompiler/MeshCompiler.h"
+#include "MathConversion.h"
 
 const float fRoadAreaZRange = 2.5f;
 const float fRoadTerrainZOffset = 0.06f;
@@ -60,6 +61,17 @@ CRoadRenderNode::~CRoadRenderNode()
     Get3DEngine()->m_lstRoadRenderNodesForUpdate.Delete(this);
 
     GetInstCount(eERType_Road)--;
+}
+
+void CRoadRenderNode::SetVertices(const AZStd::vector<AZ::Vector3>& pVerts, const AZ::Transform& transform, float fTexCoordBegin, float fTexCoordEnd, float fTexCoordBeginGlobal, float fTexCoordEndGlobal)
+{
+    PodArray<Vec3> points;
+    points.reserve(pVerts.size());
+    for (auto azPoint : pVerts)
+    {
+        points.Add(AZVec3ToLYVec3(transform * azPoint));
+    }
+    SetVertices(points.GetElements(), pVerts.size(), fTexCoordBegin, fTexCoordEnd, fTexCoordBeginGlobal, fTexCoordEndGlobal);
 }
 
 void CRoadRenderNode::SetVertices(const Vec3* pVertsAll, int nVertsNumAll,

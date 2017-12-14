@@ -529,7 +529,7 @@ void CViewportTitleDlg::OnViewportFOVChanged(float fov)
 {
     const float degFOV = RAD2DEG(fov);
 
-    m_ui->m_fovStaticCtrl->setText(QString::fromLatin1("%1%2").arg(static_cast<int>(degFOV)).arg(QString(QByteArray::fromPercentEncoding("%C2%B0"))));
+    m_ui->m_fovStaticCtrl->setText(QString::fromLatin1("%1%2").arg(qRound(degFOV)).arg(QString(QByteArray::fromPercentEncoding("%C2%B0"))));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -662,6 +662,12 @@ void CViewportTitleDlg::OnSearchTermChange()
         UnhideUnfreezeAll();
         GetIEditor()->GetAI()->RestartContinuousUpdate();
         return;
+    }
+
+    // Make sure to lower case all terms because later we lower case all inputs to compare against
+    for (auto term : terms)
+    {
+        term = term.toLower();
     }
 
     // Perform a search.

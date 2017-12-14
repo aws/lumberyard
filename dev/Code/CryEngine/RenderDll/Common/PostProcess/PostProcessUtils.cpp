@@ -47,7 +47,8 @@ bool SPostEffectsUtils::Create()
 {
     const SViewport& MainVp = gRenDev->m_MainViewport;
     const bool bCreatePostAA = CRenderer::CV_r_AntialiasingMode && !CTexture::IsTextureExist(CTexture::s_ptexPrevBackBuffer[0][0]);
-    const bool bCreateCaustics = (CRenderer::CV_r_watervolumecaustics && CRenderer::CV_r_watercaustics && CRenderer::CV_r_watercausticsdeferred) && !CTexture::IsTextureExist(CTexture::s_ptexWaterCaustics[0]);
+    //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.
+    const bool bCreateCaustics = (CRenderer::CV_r_watervolumecaustics && CRenderer::CV_r_watercaustics) && !CTexture::IsTextureExist(CTexture::s_ptexWaterCaustics[0]);
 
     static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
     int DolbyCvarValue = DolbyCvar ? DolbyCvar->GetIVal() : eDVM_Disabled;
@@ -141,7 +142,7 @@ bool SPostEffectsUtils::Create()
         //  Confetti End: Igor Lobanchikov
         //CTexture::s_ptexWaterVolumeDDN->DisableMgpuSync();
 
-        if (CRenderer::CV_r_watervolumecaustics && CRenderer::CV_r_watercaustics && CRenderer::CV_r_watercausticsdeferred)
+        if (CRenderer::CV_r_watervolumecaustics && CRenderer::CV_r_watercaustics) //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.
         {
             const int nCausticRes = clamp_tpl(CRenderer::CV_r_watervolumecausticsresolution, 256, 4096);
             CreateRenderTarget("$WaterVolumeCaustics", CTexture::s_ptexWaterCaustics[0], nCausticRes, nCausticRes, Clr_Unknown, 1, false, eTF_R8G8B8A8, TO_WATERVOLUMECAUSTICSMAP);

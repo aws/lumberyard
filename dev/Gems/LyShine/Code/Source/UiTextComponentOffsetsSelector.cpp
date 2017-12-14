@@ -19,7 +19,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
     lineOffsetsStack.top()->batchLineLength = batchLine.lineSize.GetX();
 
     // The "current line index" resets to zero with each new line. This
-    // index allows us to index relative to the current line of text 
+    // index allows us to index relative to the current line of text
     // we're iterating on.
     int curLineIndexIter = 0;
 
@@ -28,8 +28,8 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
     // to obtain the selection range for that line.
     int firstIndexLineIndex = 0;
 
-    // For input text, we could safely assume one DrawBatch per line, 
-    // since we don't support marked-up input (at least for now). But 
+    // For input text, we could safely assume one DrawBatch per line,
+    // since we don't support marked-up input (at least for now). But
     // it's easy enough to iterate through the list anyways.
     for (const UiTextComponent::DrawBatch& drawBatch : batchLine.drawBatchList)
     {
@@ -47,7 +47,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
                 firstIndexLineIndex = curLineIndexIter;
 
                 // Get the width of the string of characters prior to the
-                // selection string. This will be used to offset the 
+                // selection string. This will be used to offset the
                 // cursor position from the left of the start of the line.
                 AZStd::string unselectedPrecedingString(displayedText.substr(0, firstIndexLineIndex));
                 lineOffsetsStack.top()->left.SetX(curLineWidth + drawBatch.font->GetTextSize(unselectedPrecedingString.c_str(), false, m_fontContext).x);
@@ -119,11 +119,11 @@ void UiTextComponentOffsetsSelector::HandleTopAndMiddleOffsets()
 
         // We take the max here in case the top offset occurs on
         // the first line (in which case the height offset would be zero).
-        // This either pushes the cursor to the following line 
+        // This either pushes the cursor to the following line
         // (m_fontSize) or following lines if an offset is applied (curHeightOffset).
         lineOffsetsStack.top()->left.SetY(AZStd::GetMax<float>(curHeightOffset, m_fontSize));
 
-        // Always reset right (relative) y-offset when a new left 
+        // Always reset right (relative) y-offset when a new left
         // ("absolute") y-offset is assigned.
         lineOffsetsStack.top()->right.SetY(0.0f);
     }
@@ -132,11 +132,11 @@ void UiTextComponentOffsetsSelector::HandleTopAndMiddleOffsets()
         const float curHeightOffset = lineOffsetsStack.top()->left.GetY() + lineOffsetsStack.top()->right.GetY();
         lineOffsetsStack.pop();
 
-        // We need to substract m_fontSize here to "prime" for the 
+        // We need to substract m_fontSize here to "prime" for the
         // fact that we'll be adding it back in, below.
         lineOffsetsStack.top()->left.SetY(lineOffsetsStack.top()->left.GetY() + (curHeightOffset - m_fontSize));
 
-        // Always reset right (relative) y-offset when a new left 
+        // Always reset right (relative) y-offset when a new left
         // ("absolute") y-offset is assigned.
         lineOffsetsStack.top()->right.SetY(0.0f);
     }
@@ -145,9 +145,9 @@ void UiTextComponentOffsetsSelector::HandleTopAndMiddleOffsets()
 void UiTextComponentOffsetsSelector::IncrementYOffsets()
 {
     // We increment the left (absolute) y-offset only when we are NOT
-    // iterating through a "middle" section. Once we hit a middle 
+    // iterating through a "middle" section. Once we hit a middle
     // section, we want to lock/freeze the left (absolute) y-offset
-    // position and only increment the right (relative) y-offset 
+    // position and only increment the right (relative) y-offset
     // position. This allows the rendered rect to span the entirety
     // of the selection.
     const bool iteratingOnMiddleSection = 2 == lineOffsetsStack.size() && m_lineCounter < m_numLines;
@@ -155,7 +155,7 @@ void UiTextComponentOffsetsSelector::IncrementYOffsets()
     {
         lineOffsetsStack.top()->left.SetY(lineOffsetsStack.top()->left.GetY() + m_fontSize);
 
-        // Always reset right (relative) y-offset when a new left 
+        // Always reset right (relative) y-offset when a new left
         // ("absolute") y-offset is assigned.
         lineOffsetsStack.top()->right.SetY(0.0f);
     }
@@ -202,7 +202,7 @@ void UiTextComponentOffsetsSelector::CalculateOffsets(UiTextComponent::LineOffse
             firstIndexFound = lastIndexFound = true;
         }
 
-        // If we still haven't found m_firstIndex, we can skip additional 
+        // If we still haven't found m_firstIndex, we can skip additional
         // early-out, stack-popping logic, etc.
         if (firstIndexFound)
         {

@@ -22,7 +22,8 @@ def build(bld):
         configurations        = ['debug_dedicated', 'profile_dedicated', 'performance_dedicated', 'release_dedicated'],
         file_list             = 'linuxlauncher.waf_files',
 
-        includes              = [bld.Path('Code/CryEngine/CrySystem')],
+        includes              = [bld.Path('Code/CryEngine/CrySystem'),
+                                 bld.Path('Code/Launcher')],
         lib                   = ['uuid'],
         create_linux_launcher = True,
 

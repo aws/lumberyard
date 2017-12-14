@@ -252,7 +252,7 @@ namespace AzToolsFramework
     //=========================================================================
     bool EditorEntityContextComponent::DestroyEditorEntity(AZ::EntityId entityId)
     {
-        if (DestroyEntity(entityId))
+        if (DestroyEntityById(entityId))
         {
             EBUS_EVENT(EditorRequests::Bus, DestroyEditorRepresentation, entityId, false);
             return true;

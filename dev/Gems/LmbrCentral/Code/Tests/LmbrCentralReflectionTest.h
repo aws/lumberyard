@@ -14,6 +14,7 @@
 #include <AzTest/AzTest.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzFramework/Application/Application.h>
 
 /**
  * Fixture class for tests that require a module to have been reflected.
@@ -88,6 +89,14 @@ void ModuleReflectionTest<ApplicationT, ModuleT>::SetUpTestCase()
     {
         modules.emplace_back(new ModuleT);
     };
+    
+    // Framework application types need to have CalculateAppRoot called before
+    // calling Create
+    AZ::ComponentApplication* app = s_application.get();
+    if (auto frameworkApplication = azrtti_cast<AzFramework::Application*>(app))
+    {
+        frameworkApplication->CalculateAppRoot();
+    }
 
     // Create() starts the application and returns the system entity.
     AZ::Entity* systemEntity = s_application->Create(appDescriptor, appStartup);

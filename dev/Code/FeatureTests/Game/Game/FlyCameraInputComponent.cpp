@@ -248,15 +248,15 @@ bool FlyCameraInputComponent::OnInputChannelEventFiltered(const InputChannel& in
     }
 
     const InputDeviceId& deviceId = inputChannel.GetInputDevice().GetInputDeviceId();
-    if (deviceId == InputDeviceMouse::Id)
+    if (InputDeviceMouse::IsMouseDevice(deviceId))
     {
         OnMouseEvent(inputChannel);
     }
-    else if (deviceId == InputDeviceKeyboard::Id)
+    else if (InputDeviceKeyboard::IsKeyboardDevice(deviceId))
     {
         OnKeyboardEvent(inputChannel);
     }
-    else if (deviceId == InputDeviceTouch::Id)
+    else if (InputDeviceTouch::IsTouchDevice(deviceId))
     {
         const InputChannel::PositionData2D* positionData2D = inputChannel.GetCustomData<InputChannel::PositionData2D>();
         if (positionData2D)
@@ -266,7 +266,7 @@ bool FlyCameraInputComponent::OnInputChannelEventFiltered(const InputChannel& in
             OnTouchEvent(inputChannel, screenPosition);
         }
     }
-    else if (AzFramework::InputDeviceGamepad::IsGamepad(deviceId)) // Any gamepad
+    else if (InputDeviceGamepad::IsGamepadDevice(deviceId))
     {
         OnGamepadEvent(inputChannel);
     }

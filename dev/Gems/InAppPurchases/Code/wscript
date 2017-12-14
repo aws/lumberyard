@@ -40,5 +40,4 @@ def build(bld):
         android_file_list           = [ 'inapppurchases_android.waf_files' ],
         android_java_src_path       = [ java_src_root.abspath() ],
         android_aidl_src_path       = [ java_src_root.abspath() ],
-        android_use                 = ['SDL2_Android'],
     )

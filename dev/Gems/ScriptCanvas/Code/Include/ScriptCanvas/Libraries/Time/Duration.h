@@ -73,9 +73,7 @@ namespace ScriptCanvas
                 float m_currentTime;
 
                 void OnInputSignal(const SlotId&) override;
-
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
+            
             protected:
 
                 void OnDeactivate() override;

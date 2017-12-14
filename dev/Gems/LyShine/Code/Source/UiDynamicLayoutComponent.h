@@ -81,6 +81,8 @@ protected: // member functions
 
     AZ_DISABLE_COPY_MOVE(UiDynamicLayoutComponent);
 
+    void SetPrototypeElementActive(bool active);
+
     //! Resize the parent to fit all cloned child elements
     void ResizeToFitChildElements();
 

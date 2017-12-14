@@ -480,7 +480,17 @@ enum EToken
     eT_NoLights,
     eT_NoMaterialState,
     eT_PositionInvariant,
-    eT_TechniqueZ, // Has to be first Technique
+
+    //-------------------------------------------------------------------------
+    // Technique Order
+    //-------------------------------------------------------------------------
+    // Remark:  The following technique has to be first Technique as we are subtracting it to get 
+    // index of technique's slots.
+    // Warning: if technique slots order is changed they should be well reflected in other files 
+    // such as 'IShader.h' which defines the order of the techniques' slots as per 'EShaderTechniqueID'.  
+    // This is all matched in the method 'CShaderMan::mfPostLoadFX' during load.
+    //-------------------------------------------------------------------------
+    eT_TechniqueZ,
     eT_TechniqueShadowGen,
     eT_TechniqueMotionBlur,
     eT_TechniqueCustomRender,
@@ -493,6 +503,7 @@ enum EToken
     eT_TechniqueThickness,
 
     eT_TechniqueMax,
+	//-------------------------------------------------------------------------
 
     eT_KeyFrameParams,
     eT_KeyFrameRandColor,

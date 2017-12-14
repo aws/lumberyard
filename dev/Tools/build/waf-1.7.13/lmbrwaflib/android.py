@@ -64,8 +64,12 @@ SUPPORTED_APIS = [
     'android-21',
     'android-22',
     'android-23',
-    'android-24'
+    'android-24',
+    'android-25',
+    'android-26',
 ]
+
+MIN_ARMv8_API = 'android-21'
 
 # while some earlier versions may work, it's probably best to enforce a min version of the build tools
 MIN_BUILD_TOOLS_VERSION = '19.1.0'
@@ -186,52 +190,32 @@ def apply_so_name(self):
         self.env.append_value('LINKFLAGS', flag.split())
 
 
-@feature('find_android_api_libs')
-@before_method('propagate_uselib_vars')
-def find_api_lib(self):
+################################################################
+@conf
+def get_android_api_lib_list(ctx):
     """
-    Goes through the list of libraries included by the 'uselib' keyword and search if there's a better version of the library for the
-    API level being used. If one is found, the new version is used instead.
-    The api specific version must have the same name as the original library + "_android_XX".
-    For example, if we are including a library called "foo", and we also have defined "foo_android_21", when compiling with API 23,
-    "foo" will be replaced with "foo_android_21". We do this for supporting multiple versions of a library depending on which API
-    level the user is using.
+    Gets a list of android apis that pre-built libs could be built against based 
+    on the current build target e.g. NDK_PLATFORM
     """
+    api_list = sorted(SUPPORTED_APIS)
+    ndk_platform = ctx.get_android_ndk_platform()
+    try:
+        index = api_list.index(ndk_platform)
+    except:
+        ctx.fatal('[ERROR] Unsupported Android NDK platform version %s', ndk_platform)
+    else:
+        # we can only use libs built with api levels lower or equal to the one being used
+        return api_list[:index + 1] # end index is exclusive, so we add 1
 
-    def find_api_helper(lib_list, api_list):
-        if not lib_list or not api_list:
-            return
 
-        for idx, lib in enumerate(lib_list):
-            for api_level in api_list:
-                lib_name = (lib + '_' + api_level).upper()
-                if is_third_party_uselib_configured(self.bld, lib_name):
-                    lib_list[idx] = lib_name
-                    break
-
-    if 'android' not in self.bld.env['PLATFORM']:
-        return
-
-    uselib_keys = getattr(self, 'uselib', None)
-    use_keys = getattr(self, 'use', None)
-    if uselib_keys or use_keys:
-        # sort the list of supported apis and search if there's a better version depending on the Android NDK platform version being used.
-        api_list = sorted(SUPPORTED_APIS)
-        ndk_platform = self.bld.get_android_ndk_platform()
-        try:
-            index = api_list.index(ndk_platform)
-        except:
-            self.bld.fatal('[ERROR] Unsupported Android NDK platform version %s' % ndk_platform)
-            return
-
-        # we can only use libs built with api levels lower or equal to the one being used.
-        api_list = api_list[:index + 1] # end index is exclusive, so we add 1
-        # reverse the list so we use the lib with the higher api (if we find one).
-        api_list.reverse()
-        api_list = [ api.replace('-', '_') for api in api_list ]
-
-        find_api_helper(uselib_keys, api_list)
-        find_api_helper(use_keys, api_list)
+################################################################
+@conf
+def is_android_armv8_api_valid(ctx):
+    """
+    Checks to make sure desired API level meets the min spec for ARMv8 targets
+    """
+    ndk_platform = ctx.get_android_ndk_platform()
+    return (ndk_platform >= MIN_ARMv8_API)
 
 
 ################################################################
@@ -682,7 +666,9 @@ def copy_and_patch_android_libraries(conf, source_node, android_root):
 
     # Patch the libraries
     for lib in libs_to_patch:
-        dest_path = os.path.join(conf.Path(conf.get_android_patched_libraries_relative_path()), lib.name)
+        cur_path = conf.path.abspath()
+        rel_path = conf.get_android_patched_libraries_relative_path()
+        dest_path = os.path.join(cur_path, rel_path, lib.name)
         shutil.rmtree(dest_path, ignore_errors=True, onerror=remove_readonly)
         shutil.copytree(lib.path, dest_path)
         for file in lib.patch_files:
@@ -1352,9 +1338,14 @@ def AndroidAPK(ctx, *k, **kw):
 
     project_name = kw['project_name']
 
+    env = ctx.env
+
+    platform = env['PLATFORM']
+    configuration = env['CONFIGURATION']
+
     if ctx.cmd in ('configure', 'generate_uber_files', 'generate_module_def_files', 'msvs'):
         return 
-    if ctx.env['PLATFORM'] not in ('android_armv7_clang', 'android_armv7_gcc', 'project_generator'):
+    if not (ctx.is_android_platform(platform) or platform =='project_generator'):
         return
     if project_name not in ctx.get_enabled_game_project_list():
         return
@@ -1364,11 +1355,6 @@ def AndroidAPK(ctx, *k, **kw):
 
     root_input = ctx.path.get_src().make_node('src')
     root_output = ctx.path.get_bld()
-
-    env = ctx.env
-
-    platform = env['PLATFORM']
-    configuration = env['CONFIGURATION']
 
     apk_layout_dir = root_output.make_node('builder')
 
@@ -1495,7 +1481,9 @@ def AndroidAPK(ctx, *k, **kw):
                         ctx.fatal('[ERROR] Required java lib - {} - was not found'.format(jar_path))
 
             if 'patches' in value:
-                lib_path = os.path.join(ctx.Path(ctx.get_android_patched_libraries_relative_path()), libName)
+                cur_path = ctx.srcnode.abspath()
+                rel_path = ctx.get_android_patched_libraries_relative_path()
+                lib_path = os.path.join(cur_path, rel_path, libName)
             else:
                 # Search the multiple library paths where the library can be
                 lib_path = None
@@ -2131,6 +2119,8 @@ def get_device_file_timestamp(remote_file_path, device_id, as_root = False):
     '''
     timestamp_string = ''
     device_sdk_version = adb_call('shell', 'getprop', 'ro.build.version.sdk', device = device_id)
+    if "\n" in device_sdk_version:
+        device_sdk_version = device_sdk_version[string.rfind(device_sdk_version, "\n"):]
 
     # for devices running Android 5.1.1 or under, use the old 'ls' command for getting the file timestame
     if int(device_sdk_version) <= 22:
@@ -2224,7 +2214,7 @@ def run_rc_job(ctx, job, source, target, game, assets_type, is_obb):
         '/src="{}"'.format(source),
         '/trg="{}"'.format(target),
         '/threads={}'.format(ctx.options.max_cores),
-        '/game={}'.format(game)
+        '/game={}'.format(game.lower())
     ]
 
     if is_obb:
@@ -2407,12 +2397,30 @@ def adb_copy_task(self, android_device, src_node, output_target):
 ###############################################################################
 # create a deployment context for each build variant
 for configuration in ['debug', 'profile', 'release']:
-    for compiler in ['clang', 'gcc']:
+    for target in ['android_armv7_gcc', 'android_armv7_clang', 'android_armv8_clang']:
+        build_variant = '{}_{}'.format(target, configuration)
+
         class DeployAndroidContext(Build.BuildContext):
             fun = 'deploy'
-            variant = 'android_armv7_' + compiler + '_' + configuration
-            after = ['build_android_armv7_' + compiler + '_' + configuration]
-            cmd = 'deploy_android_armv7_' + compiler + '_' + configuration
+            variant = build_variant
+
+
+            def get_asset_deploy_mode(self):
+                if not hasattr(self, 'asset_deploy_mode'):
+                    asset_deploy_mode = self.options.deploy_android_asset_mode.lower()
+
+                    configuration = self.env['CONFIGURATION']
+                    if configuration == 'release':
+                        # force release mode to use the project's settings
+                        asset_deploy_mode = ASSET_DEPLOY_PROJECT_SETTINGS
+
+                    if asset_deploy_mode not in ASSET_DEPLOY_MODES:
+                        bld.fatal('[ERROR] Unable to determine the asset deployment mode.  Valid options for --deploy-android-asset-mode are limited to: {}'.format(ASSET_DEPLOY_MODES))
+
+                    self.asset_deploy_mode = asset_deploy_mode
+                    setattr(self.options, 'deploy_android_asset_mode', asset_deploy_mode)
+
+                return self.asset_deploy_mode
 
 
             def use_vfs(self):
@@ -2433,42 +2441,44 @@ for configuration in ['debug', 'profile', 'release']:
                 return self.cached_use_obb
 
 
+            def get_asset_cache_path(self):
+                if not hasattr(self, 'asset_cache_path'):
+                    game = self.get_bootstrap_game()
+                    assets = self.get_bootstrap_assets("android").lower()
+
+                    self.asset_cache_path = "Cache/{}/{}".format(game, assets)
+
+                return self.asset_cache_path
+
+
             def get_asset_cache(self):
                 if not hasattr(self, 'asset_cache'):
-                    game = self.get_bootstrap_game()
-                    assets = self.get_bootstrap_assets("android")
-                    asset_dir = "Cache/{}/{}".format(game, assets).lower()
-
-                    self.asset_cache = self.path.find_dir(asset_dir)
+                    self.asset_cache = self.path.find_dir(self.get_asset_cache_path())
 
                 return self.asset_cache
 
 
             def get_layout_node(self):
-                if not hasattr(self, 'android_armv7_layout_node'):
+                if not hasattr(self, 'android_layout_node'):
                     game = self.get_bootstrap_game()
-                    asset_deploy_mode = self.options.deploy_android_asset_mode.lower()
+                    asset_deploy_mode = self.get_asset_deploy_mode()
 
                     if asset_deploy_mode == ASSET_DEPLOY_LOOSE:
-                        self.android_armv7_layout_node = self.get_asset_cache()
+                        self.android_layout_node = self.get_asset_cache()
 
                     elif asset_deploy_mode == ASSET_DEPLOY_PAKS:
-                        self.android_armv7_layout_node = self.path.make_node('AndroidArmv7LayoutPak/{}'.format(game))
+                        self.android_layout_node = self.path.make_node('AndroidLayoutPak/{}'.format(game))
 
                     elif asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS:
-                        layout_folder_name = 'AndroidArmv7LayoutObb' if self.use_obb() else 'AndroidArmv7LayoutPak'
-                        self.android_armv7_layout_node = self.path.make_node('{}/{}'.format(layout_folder_name, game))
+                        layout_folder_name = 'AndroidLayoutObb' if self.use_obb() else 'AndroidLayoutPak'
+                        self.android_layout_node = self.path.make_node('{}/{}'.format(layout_folder_name, game))
 
                 # just incase get_layout_node is called before deploy_android_asset_mode has been validated, which
-                # could mean android_armv7_layout_node never getting set
+                # could mean android_layout_node never getting set
                 try:
-                    return self.android_armv7_layout_node
+                    return self.android_layout_node
                 except:
-                    self.fatal('[ERROR] Unable to determine the asset layout node for Android ARMv7.')
-
-
-            def get_abi(self):
-                return 'armeabi-v7a'
+                    self.fatal('[ERROR] Unable to determine the asset layout node for Android.')
 
 
             def user_message(self, message):
@@ -2476,14 +2486,14 @@ for configuration in ['debug', 'profile', 'release']:
 
 
         class DeployAndroid(DeployAndroidContext):
-            after = ['build_android_armv7_' + compiler + '_' + configuration]
-            cmd = 'deploy_android_armv7_' + compiler + '_' + configuration
+            after = ['build_' + build_variant]
+            cmd = 'deploy_' + build_variant
             features = ['deploy_android_prepare']
 
 
         class DeployAndroidDevices(DeployAndroidContext):
-            after = ['deploy_android_armv7_' + compiler + '_' + configuration]
-            cmd = 'deploy_android_devices_' + compiler + '_' + configuration
+            after = ['deploy_' + build_variant]
+            cmd = 'deploy_devices_' + build_variant
             features = ['deploy_android_devices']
 
 
@@ -2500,7 +2510,7 @@ def prepare_to_deploy_android(tsk_gen):
     configuration = bld.env['CONFIGURATION']
 
     # handle a few non-fatal early out cases
-    if platform not in ('android_armv7_gcc', 'android_armv7_clang') or not bld.is_option_true('deploy_android') or bld.options.from_android_studio:
+    if not bld.is_android_platform(platform) or not bld.is_option_true('deploy_android') or bld.options.from_android_studio:
         bld.user_message('Skipping Android Deployment...')
         return
 
@@ -2522,18 +2532,11 @@ def prepare_to_deploy_android(tsk_gen):
         return
 
     # determine the selected asset deploy mode
-    asset_deploy_mode = bld.options.deploy_android_asset_mode.lower()
-    if configuration == 'release':
-        # force release mode to use the project's settings
-        asset_deploy_mode = ASSET_DEPLOY_PROJECT_SETTINGS
-
-    if asset_deploy_mode not in ASSET_DEPLOY_MODES:
-        bld.fatal('[ERROR] Unable to determine the asset deployment mode.  Valid options for --deploy-android-asset-mode are limited to: {}'.format(ASSET_DEPLOY_MODES))
-
-    setattr(options, 'deploy_android_asset_mode', asset_deploy_mode)
+    asset_deploy_mode = bld.get_asset_deploy_mode()
     Logs.debug('android_deploy: Using asset mode - {}'.format(asset_deploy_mode))
 
     if bld.get_asset_cache() is None:
+        asset_dir = bld.get_asset_cache_path()
         bld.fatal('[ERROR] There is no asset cache to read from at {}.  Please run AssetProcessor / AssetProcessorBatch from '
                    'the Bin64vc120 / Bin64vc140 / BinMac64 directory with "es3" assets enabled in the AssetProcessorPlatformConfig.ini'.format(asset_dir))
 
@@ -2559,10 +2562,10 @@ def prepare_to_deploy_android(tsk_gen):
         # handles the shaders
         if asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS:
 
-            shaders_pak = '{}/shaders.pak'.format(game).lower()
+            shadercachestartup_pak = '{}/shadercachestartup.pak'.format(game).lower()
             shaderscache_pak = '{}/shadercache.pak'.format(game).lower()
 
-            if layout_node.find_resource(shaders_pak) and layout_node.find_resource(shaderscache_pak):
+            if layout_node.find_resource(shadercachestartup_pak) and layout_node.find_resource(shaderscache_pak):
                 bld.user_message('Using found shaders paks in the layout folder - {}'.format(layout_node.relpath()))
 
             else: 
@@ -2642,13 +2645,12 @@ def prepare_to_deploy_android(tsk_gen):
                 APK_WITH_ASSETS_SUFFIX # suffix
             )
 
-    compiler = platform.split('_')[2]
-    Options.commands.append('deploy_android_devices_' + compiler + '_' + configuration)
+    Options.commands.append('deploy_devices_' + platform + '_' + configuration)
 
 
 @taskgen_method
 @feature('deploy_android_devices')
-def deploy_to_devices(ctx):
+def deploy_to_devices(tsk_gen):
     '''
     Installs the project APK and copies the layout directory to all the
     android devices that are connected to the host.
@@ -2663,14 +2665,14 @@ def deploy_to_devices(ctx):
 
         return should_copy
 
-    bld = ctx.bld
+    bld = tsk_gen.bld
     platform = bld.env['PLATFORM']
     configuration = bld.env['CONFIGURATION']
 
     game = bld.get_bootstrap_game()
     executable_name = bld.get_executable_name(game)
 
-    asset_deploy_mode = bld.options.deploy_android_asset_mode.lower()
+    asset_deploy_mode = bld.get_asset_deploy_mode()
 
     # get location of APK either from command line option or default build location
     if Options.options.apk_path == '':
@@ -2702,7 +2704,10 @@ def deploy_to_devices(ctx):
     variant = '{}_{}'.format(platform, configuration)
     apk_builder_path = os.path.join( variant, bld.get_android_project_relative_path(), executable_name, 'builder' )
     apk_builder_node = bld.get_bintemp_folder_node().make_node(apk_builder_path)
-    stripped_libs_node = apk_builder_node.make_node([ 'lib', bld.get_abi() ])
+
+    abi_func = getattr(bld, 'get_%s_target_abi' % platform, None)
+    lib_paths = ['lib'] + [ abi_func() ] if abi_func else [] # since we don't support 'fat' apks it's ok to not have the abi specifier but it's still perferred
+    stripped_libs_node = apk_builder_node.make_node(lib_paths)
 
     game_package = bld.get_android_package_name(game)
     device_install_path = '/data/data/{}'.format(game_package)
@@ -2866,7 +2871,7 @@ def deploy_to_devices(ctx):
                     # Faster to check if we should copy now rather than in the copy_task
                     if should_copy_file(src_file, target_time):
                         final_target_dir = '{}/{}'.format(output_target, string.replace(src_file.path_from(layout_node), '\\', '/'))
-                        ctx.adb_copy_task(android_device, src_file, final_target_dir)
+                        tsk_gen.adb_copy_task(android_device, src_file, final_target_dir)
 
                 # Push the timestamp_file_name last so that it has a timestamp that we can use on the next deploy to know which files to
                 # upload to the device

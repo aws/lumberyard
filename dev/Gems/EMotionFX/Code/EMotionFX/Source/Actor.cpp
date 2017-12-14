@@ -26,7 +26,6 @@
 #include "EventManager.h"
 #include "EventHandler.h"
 #include "NodeMap.h"
-#include "RetargetSetup.h"
 #include "NodeGroup.h"
 #include "ActorManager.h"
 #include "MorphSetup.h"
@@ -61,7 +60,6 @@ namespace EMotionFX
     }
 
 
-
     Actor::NodeLODInfo::~NodeLODInfo()
     {
         MCore::Destroy(mMesh);
@@ -86,9 +84,6 @@ namespace EMotionFX
         mSkeleton = Skeleton::Create();
 
         // init some members
-        mLODCreationData.SetMemoryCategory(EMFX_MEMCATEGORY_EMSTUDIODATA);
-        mLODCreationData.Add(nullptr);
-
         mLODs.AddEmpty();
         mLODs[0].mNodeInfos.SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
 
@@ -114,9 +109,6 @@ namespace EMotionFX
         mMaterials[0].SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
         mMorphSetups.Add(nullptr);
 
-        // init the retarget setup
-        mRetargetSetup = RetargetSetup::Create(this);
-
         GetActorManager().RegisterActor(this);
         GetEventManager().OnCreateActor(this);
     }
@@ -128,25 +120,11 @@ namespace EMotionFX
         // trigger the OnDeleteActor event
         GetEventManager().OnDeleteActor(this);
 
-        // get rid of the LOD creation data
-        const uint32 numLODCreationData = mLODCreationData.GetLength();
-        for (uint32 i = 0; i < numLODCreationData; ++i)
-        {
-            delete mLODCreationData[i];
-        }
-        mLODCreationData.Clear();
-
         // clear the node mirror data
         mNodeMirrorInfos.Clear(true);
 
         // delete all the materials
         RemoveAllMaterials();
-
-        // remove all retarget infos
-        if (mRetargetSetup)
-        {
-            mRetargetSetup->Destroy();
-        }
 
         // remove all morph setups
         RemoveAllMorphSetups();
@@ -192,27 +170,6 @@ namespace EMotionFX
         result->mStaticAABB             = mStaticAABB;
         result->mAttributeSet->CopyFrom(*mAttributeSet);
 
-        // get the number of LOD create Data and resize the LOD data array of the clone
-        const uint32 numLODCreationData = mLODCreationData.GetLength();
-        result->mLODCreationData.Resize(numLODCreationData);
-
-        // iterate through all LOD create data and sync them
-        for (uint32 i = 0; i < numLODCreationData; ++i)
-        {
-            // is there no LOD data for this LOD level yet?
-            if (mLODCreationData[i] == nullptr)
-            {
-                result->mLODCreationData[i] = nullptr;
-            }
-            else
-            {
-                // clone the LOD data
-                LODCreationData* newLODData = new LODCreationData();
-                *newLODData = *(mLODCreationData[i]);
-                result->mLODCreationData[i] = newLODData;
-            }
-        }
-
         result->RecursiveAddDependencies(this);
 
         // clone all nodes groups
@@ -256,8 +213,8 @@ namespace EMotionFX
             {
                 NodeLODInfo& resultNodeInfo = result->mLODs[i].mNodeInfos[n];
                 const NodeLODInfo& sourceNodeInfo = mLODs[i].mNodeInfos[n];
-                resultNodeInfo.mMesh        = (sourceNodeInfo.mMesh    ) ? sourceNodeInfo.mMesh->Clone()     : nullptr;
-                resultNodeInfo.mStack       = (sourceNodeInfo.mStack   ) ? sourceNodeInfo.mStack->Clone(resultNodeInfo.mMesh)        : nullptr;
+                resultNodeInfo.mMesh        = (sourceNodeInfo.mMesh) ? sourceNodeInfo.mMesh->Clone()     : nullptr;
+                resultNodeInfo.mStack       = (sourceNodeInfo.mStack) ? sourceNodeInfo.mStack->Clone(resultNodeInfo.mMesh)        : nullptr;
             }
         }
 
@@ -282,9 +239,6 @@ namespace EMotionFX
         result->CopyTransformsFrom(this);
 
         result->mNodeMirrorInfos = mNodeMirrorInfos;
-
-        // copy the retarget setup
-        result->mRetargetSetup->InitFrom(mRetargetSetup);
 
         // trigger the event
         GetEMotionFX().GetEventManager()->OnPostCreateActor(result);
@@ -396,9 +350,6 @@ namespace EMotionFX
         {
             CopyLODLevel(this, lodIndex - 1, numLODs - 1, true, false);
         }
-
-        // increase the LOD level count
-        mLODCreationData.Add(nullptr);
     }
 
 
@@ -426,14 +377,11 @@ namespace EMotionFX
 
         // create an empty morph setup for the new LOD level
         mMorphSetups.Insert(insertAt, nullptr);
-
-        // increase the LOD level count
-        mLODCreationData.Insert(insertAt, nullptr);
     }
 
 
     // replace existing LOD level with the current actor
-    void Actor::CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags, bool delLODActorFromMem, bool copyLODCreationData)
+    void Actor::CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags, bool delLODActorFromMem)
     {
         const LODLevel& sourceLOD = copyActor->mLODs[copyLODLevel];
         LODLevel& targetLOD = mLODs[replaceLODLevel];
@@ -509,18 +457,6 @@ namespace EMotionFX
             mMorphSetups[replaceLODLevel] = nullptr;
         }
 
-        // copy the LOD creation data
-        if (copyLODCreationData && mLODCreationData[copyLODLevel])
-        {
-            // in case there is no LOD creation data for our LOD level create it
-            if (mLODCreationData[replaceLODLevel] == nullptr)
-            {
-                mLODCreationData[replaceLODLevel] = GetLODCreationData(replaceLODLevel);
-            }
-
-            *(mLODCreationData[replaceLODLevel]) = *(mLODCreationData[copyLODLevel]);
-        }
-
         // remove the actor from memory if desired
         if (delLODActorFromMem)
         {
@@ -550,13 +486,6 @@ namespace EMotionFX
         for (uint32 i = 0; i < numLODs; ++i)
         {
             mMorphSetups[i] = nullptr;
-        }
-
-        // resize the LOD creation data array and initialize it
-        mLODCreationData.Resize(numLODs);
-        for (uint32 i = 0; i < numLODs; ++i)
-        {
-            mLODCreationData[i] = nullptr;
         }
     }
 
@@ -592,10 +521,6 @@ namespace EMotionFX
             mMorphSetups[lodLevel]->Destroy();
         }
         mMorphSetups.Remove(lodLevel);
-
-        // decrease the LOD level count
-        delete mLODCreationData[lodLevel];
-        mLODCreationData.Remove(lodLevel);
     }
 
 
@@ -838,7 +763,7 @@ namespace EMotionFX
     uint32 Actor::CalcMaxNumInfluences(uint32 lodLevel, AZStd::vector<uint32>& outVertexCounts) const
     {
         uint32 maxInfluences = 0;
-        
+
         // Reset the values.
         outVertexCounts.resize(CalcMaxNumInfluences(lodLevel) + 1);
         for (size_t k = 0; k < outVertexCounts.size(); ++k)
@@ -1096,28 +1021,6 @@ namespace EMotionFX
                         outBoneList->Add(nodeNr);
                     }
                 }
-            }
-        }
-    }
-
-
-
-    // update all mesh deformers
-    void Actor::UpdateMeshDeformers(ActorInstance* actorInstance, float timePassedInSeconds)
-    {
-        // get the LOD level
-        uint32 lodLevel = actorInstance->GetLODLevel();
-
-        const uint32 numNodes = actorInstance->GetNumEnabledNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            const uint16 nodeNr = actorInstance->GetEnabledNode(i);
-            Node* node = mSkeleton->GetNode(nodeNr);
-
-            MeshDeformerStack* stack = GetMeshDeformerStack(lodLevel, nodeNr);
-            if (stack)
-            {
-                stack->Update(actorInstance, node, timePassedInSeconds);
             }
         }
     }
@@ -1585,69 +1488,6 @@ namespace EMotionFX
     }
 
 
-    // constructor
-    Actor::LODCreationData::LODCreationData()
-    {
-        mEnabledMorphTargets.SetMemoryCategory(EMFX_MEMCATEGORY_EMSTUDIODATA);
-        mEnabledNodes.SetMemoryCategory(EMFX_MEMCATEGORY_EMSTUDIODATA);
-        mPreviewMode    = PREVIEWMODE_NONE;
-        mMode           = PREVIEWMODE_NONE;
-    }
-
-
-    // destructor
-    Actor::LODCreationData::~LODCreationData()
-    {
-        mEnabledMorphTargets.Clear();
-        mEnabledNodes.Clear();
-    }
-
-
-    // get the LOD creation data for the given LOD level
-    Actor::LODCreationData* Actor::GetLODCreationData(uint32 lodLevel)
-    {
-        // check if the LOD level is in range
-        if (lodLevel >= mLODCreationData.GetLength())
-        {
-            return nullptr;
-        }
-
-        // if there is no data yet create a new one
-        if (mLODCreationData[lodLevel] == nullptr)
-        {
-            // create new LOD data for the given LOD level
-            mLODCreationData[lodLevel] = new LODCreationData();
-
-            // get the number of nodes, iterate through them and collect the enabled nodes for the given LOD level
-            const uint32 numNodes = mSkeleton->GetNumNodes();
-            for (uint32 i = 0; i < numNodes; ++i)
-            {
-                Node* node = mSkeleton->GetNode(i);
-
-                // is this node enabled for the given LOD level? if yes add it to the creation data enabled nodes
-                if (node->GetSkeletalLODStatus(lodLevel))
-                {
-                    mLODCreationData[lodLevel]->mEnabledNodes.Add(node->GetID());
-                }
-            }
-
-            // get the morph setup for the given LOD level and collect the enabled morph targets for the given LOD level
-            MorphSetup* morphSetup = mMorphSetups[lodLevel];
-            if (morphSetup)
-            {
-                // get the number of morph targets, iterate through them and add them to the enabled morph targets array in the creation data
-                const uint32 numMorphTargets = morphSetup->GetNumMorphTargets();
-                for (uint32 i = 0; i < numMorphTargets; ++i)
-                {
-                    mLODCreationData[lodLevel]->mEnabledMorphTargets.Add(morphSetup->GetMorphTarget(i)->GetID());
-                }
-            }
-        }
-
-        return mLODCreationData[lodLevel];
-    }
-
-    
     /*
     // NOTE: Keeping this commented here for future reference to see how to add a new node dynamically.
     void Actor::CreateTrajectoryNode()
@@ -1717,7 +1557,7 @@ namespace EMotionFX
         SetTrajectoryNode(trajectoryNode, false);
     }
 */
-       
+
 
     // generate a path from the current node towards the root
     void Actor::GenerateUpdatePathToRoot(uint32 endNodeIndex, MCore::Array<uint32>& outPath) const
@@ -1738,7 +1578,7 @@ namespace EMotionFX
     }
 
 
-        // set the motion extraction node
+    // set the motion extraction node
     void Actor::SetMotionExtractionNode(Node* node)
     {
         if (node)
@@ -1867,7 +1707,7 @@ namespace EMotionFX
     {
         if (mStaticAABB.CheckIfIsValid() == false)
         {
-            ActorInstance* actorInstance = ActorInstance::Create(this, mThreadIndex);
+            ActorInstance* actorInstance = ActorInstance::Create(this, AZ::EntityId(AZ::EntityId::InvalidEntityId), mThreadIndex);
             //actorInstance->UpdateMeshDeformers(0.0f);
             //actorInstance->UpdateStaticBasedAABBDimensions();
             actorInstance->GetStaticBasedAABB(&mStaticAABB);
@@ -1879,7 +1719,7 @@ namespace EMotionFX
     // auto detect the mirror axes
     void Actor::AutoDetectMirrorAxes()
     {
-        MCore::Vector3 globalMirrorPlaneNormal(1.0f, 0.0f, 0.0f);
+        AZ::Vector3 globalMirrorPlaneNormal(1.0f, 0.0f, 0.0f);
 
         Pose pose;
         pose.LinkToActor(this);
@@ -1907,8 +1747,8 @@ namespace EMotionFX
             bool    found       = false;
             for (uint8 a = 0; a < 3; ++a) // mirror along x, y and then z axis
             {
-                MCore::Vector3 axis(0.0f, 0.0f, 0.0f);
-                axis[a] = 1.0f;
+                AZ::Vector3 axis(0.0f, 0.0f, 0.0f);
+                axis.SetElement(a, 1.0f);
 
                 // mirror it over the current plane
                 pose.InitFromBindPose(this);
@@ -1920,7 +1760,7 @@ namespace EMotionFX
                 Transform globalResult = pose.GetGlobalTransform(i);
 
                 // check if we have a matching distance in global space
-                const float dist = (globalResult.mPosition - endGlobalTransform.mPosition).SafeLength();
+                const float dist = MCore::SafeLength(globalResult.mPosition - endGlobalTransform.mPosition);
                 if (dist <= MCore::Math::epsilon)
                 {
                     //MCore::LogInfo("%s = %f (axis=%d)", mNodes[i]->GetName(), dist, a);
@@ -1946,8 +1786,8 @@ namespace EMotionFX
                 {
                     for (uint8 f = 0; f < 3; ++f) // flip axis
                     {
-                        MCore::Vector3 axis(0.0f, 0.0f, 0.0f);
-                        axis[a] = 1.0f;
+                        AZ::Vector3 axis(0.0f, 0.0f, 0.0f);
+                        axis.SetElement(a, 1.0f);
 
                         uint8 flags = 0;
                         if (f == 0)
@@ -1973,7 +1813,7 @@ namespace EMotionFX
                         Transform globalResult = pose.GetGlobalTransform(i);
 
                         // check if we have a matching distance in global space
-                        const float dist = (globalResult.mPosition - endGlobalTransform.mPosition).SafeLength();
+                        const float dist = MCore::SafeLength(globalResult.mPosition - endGlobalTransform.mPosition);
                         if (dist <= MCore::Math::epsilon)
                         {
                             //MCore::LogInfo("*** %s = %f (axis=%d) (flip=%d)", mNodes[i]->GetName(), dist, a, f);
@@ -2067,7 +1907,7 @@ namespace EMotionFX
 
         // calculate the global space transform and mirror it
         const Transform nodeTransform       = pose.GetGlobalTransform(nodeIndex);
-        const Transform mirroredTransform   = nodeTransform.Mirrored(MCore::Vector3(1.0f, 0.0f, 0.0f));
+        const Transform mirroredTransform   = nodeTransform.Mirrored(AZ::Vector3(1.0f, 0.0f, 0.0f));
 
         uint32 numMatches = 0;
         uint16 result = MCORE_INVALIDINDEX16;
@@ -2081,9 +1921,13 @@ namespace EMotionFX
             {
                 // only check the translation for now
         #ifndef EMFX_SCALE_DISABLED
-                if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(curNodeTransform.mPosition, mirroredTransform.mPosition, MCore::Math::epsilon) && MCore::Compare<float>::CheckIfIsClose(curNodeTransform.mScale.SafeLength(), mirroredTransform.mScale.SafeLength(), MCore::Math::epsilon))
+                if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(
+                        curNodeTransform.mPosition,
+                        mirroredTransform.mPosition, MCore::Math::epsilon) &&
+                    MCore::Compare<float>::CheckIfIsClose(MCore::SafeLength(curNodeTransform.mScale),
+                        MCore::SafeLength(mirroredTransform.mScale), MCore::Math::epsilon))
         #else
-                if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(curNodeTransform.mPosition, mirroredTransform.mPosition, MCore::Math::epsilon))
+                if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(curNodeTransform.mPosition, mirroredTransform.mPosition, MCore::Math::epsilon))
         #endif
                 {
                     numMatches++;
@@ -2137,7 +1981,7 @@ namespace EMotionFX
     void Actor::SetNumNodes(uint32 numNodes)
     {
         mSkeleton->SetNumNodes(numNodes);
-        mNodeInfos.Resize(numNodes);
+        mNodeInfos.resize(numNodes);
         for (uint32 i = 0; i < mLODs.GetLength(); ++i)
         {
             LODLevel& lod = mLODs[i];
@@ -2155,7 +1999,7 @@ namespace EMotionFX
         mSkeleton->GetBindPose()->LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
 
         // initialize the LOD data
-        mNodeInfos.AddEmpty();
+        mNodeInfos.emplace_back();
         for (uint32 i = 0; i < mLODs.GetLength(); ++i)
         {
             LODLevel& lod = mLODs[i];
@@ -2176,7 +2020,7 @@ namespace EMotionFX
         {
             mLODs[i].mNodeInfos.Remove(nr);
         }
-        mNodeInfos.Remove(nr);
+        mNodeInfos.erase(mNodeInfos.begin() + nr);
     }
 
 
@@ -2188,7 +2032,7 @@ namespace EMotionFX
         {
             mLODs[i].mNodeInfos.Clear();
         }
-        mNodeInfos.Clear();
+        mNodeInfos.clear();
     }
 
 
@@ -2429,7 +2273,7 @@ namespace EMotionFX
     {
         return mUsedForVisualization;
     }
-    
+
     void Actor::SetIsOwnedByRuntime(bool isOwnedByRuntime)
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
@@ -2445,11 +2289,6 @@ namespace EMotionFX
 #else
         return true;
 #endif
-    }
-
-    RetargetSetup* Actor::GetRetargetSetup() const
-    {
-        return mRetargetSetup;
     }
 
 
@@ -2540,7 +2379,7 @@ namespace EMotionFX
     // calculate the OBB for a given node
     void Actor::CalcOBBFromBindPose(uint32 lodLevel, uint32 nodeIndex, const MCore::Matrix& invBindPoseMatrix)
     {
-        MCore::Array<MCore::Vector3> points;
+        MCore::Array<AZ::Vector3> points;
 
         // if there is a mesh
         Mesh* mesh = GetMesh(lodLevel, nodeIndex);
@@ -2567,7 +2406,8 @@ namespace EMotionFX
                 // get the vertex positions in bind pose
                 const uint32 numVerts = loopMesh->GetNumVertices();
                 points.Reserve(numVerts * 2);
-                MCore::Vector3* positions = (MCore::Vector3*)loopMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
+                AZ::PackedVector3f* positions = (AZ::PackedVector3f*)loopMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
+                //AZ::Vector3* positions = (AZ::Vector3*)loopMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
 
                 SkinningInfoVertexAttributeLayer* skinLayer = (SkinningInfoVertexAttributeLayer*)loopMesh->FindSharedVertexAttributeLayer(SkinningInfoVertexAttributeLayer::TYPE_ID);
                 if (skinLayer)
@@ -2590,7 +2430,9 @@ namespace EMotionFX
                             // if this is the same node as we are updating the bounds for, add the vertex position to the list
                             if (nodeNr == nodeIndex)
                             {
-                                points.Add(positions[v] * invBindPoseMatrix);
+                                AZ::Vector3 tempPos(positions[v]);
+                                points.Add(tempPos * invBindPoseMatrix);
+                                //    points.Add(positions[v] * invBindPoseMatrix);
                             }
                         } // for all influences
                     } // for all vertices
@@ -2755,29 +2597,36 @@ namespace EMotionFX
     {
         MCORE_ASSERT(mMotionExtractionNode != MCORE_INVALIDINDEX32);
         if (mMotionExtractionNode == MCORE_INVALIDINDEX32)
+        {
             return AXIS_Y;
+        }
 
         // Get the local space rotation matrix of the motion extraction node.
-        const Transform& localTransform = GetBindPose()->GetLocalTransform( mMotionExtractionNode );
+        const Transform& localTransform = GetBindPose()->GetLocalTransform(mMotionExtractionNode);
         const MCore::Matrix rotationMatrix = localTransform.mRotation.ToMatrix();
 
         // Calculate angles between the up axis and each of the rotation's basis vectors.
-        const MCore::Vector3 globalUpAxis(0.0f, 0.0f, 1.0f);
-        const float dotX = rotationMatrix.GetRow(0).Dot( globalUpAxis );    // Right
-        const float dotY = rotationMatrix.GetRow(1).Dot( globalUpAxis );    // Forward
-        const float dotZ = rotationMatrix.GetRow(2).Dot( globalUpAxis );    // Up
+        const AZ::Vector3 globalUpAxis(0.0f, 0.0f, 1.0f);
+        const float dotX = rotationMatrix.GetRow(0).Dot(globalUpAxis);      // Right
+        const float dotY = rotationMatrix.GetRow(1).Dot(globalUpAxis);      // Forward
+        const float dotZ = rotationMatrix.GetRow(2).Dot(globalUpAxis);      // Up
 
         const float difX = 1.0f - MCore::Clamp(MCore::Math::Abs(dotX), 0.0f, 1.0f);
         const float difY = 1.0f - MCore::Clamp(MCore::Math::Abs(dotY), 0.0f, 1.0f);
         const float difZ = 1.0f - MCore::Clamp(MCore::Math::Abs(dotZ), 0.0f, 1.0f);
-        
+
         // Pick the axis which has the smallest angle difference.
         if (difX <= difY && difY <= difZ)
+        {
             return AXIS_X;
+        }
         else if (difY <= difX && difX <= difZ)
+        {
             return AXIS_Y;
+        }
         else
+        {
             return AXIS_Z;
+        }
     }
-
 } // namespace EMotionFX

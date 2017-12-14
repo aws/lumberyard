@@ -31,6 +31,9 @@ public:
     virtual void Render(CTrackViewAnimNode* pNode, const SAnimContext& ac) override;
     virtual void UnBind(CTrackViewAnimNode* pNode) override;
 
+    // Utility function to find a CTrackViewSequence* from an ISequenceKey
+    static CTrackViewSequence* GetSequenceFromSequenceKey(const ISequenceKey& sequenceKey);
+
 private:
     void ForEachActiveSequence(const SAnimContext& ac, CTrackViewTrack* pSequenceTrack,
         const bool bHandleOtherKeys, std::function<void(CTrackViewSequence*, const SAnimContext&)> animateFunction,

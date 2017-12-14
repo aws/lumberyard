@@ -39,8 +39,10 @@ namespace AzToolsFramework
 
         virtual void Post();
 
-        virtual void Undo();
-        virtual void Redo();
+        void Undo() override;
+        void Redo() override;
+
+        bool Changed() const override { return m_previousSelectionList != m_proposedSelectionList; }
 
         const AZStd::vector<AZ::EntityId>& GetInitialSelectionList() const;
 

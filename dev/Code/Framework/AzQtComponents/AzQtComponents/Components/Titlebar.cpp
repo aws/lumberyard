@@ -39,8 +39,6 @@ static const QColor g_simpleBarColor(221, 221, 221);
 // Constant for our title bar text color when drawing in simple mode
 static const QColor g_simpleBarTextColor(0, 0, 0);
 
-bool AzQtComponents::TitleBar::m_isUsingNewDocking = false;
-
 namespace AzQtComponents
 {
     // Works like QWidget::window() but also considers a docked QDockWidget.
@@ -246,7 +244,7 @@ namespace AzQtComponents
         // title bars, then use the standard context menu with min/max/close/etc... actions
         StyledDockWidget* dockWidgetParent = qobject_cast<StyledDockWidget*>(parentWidget());
         // Main Window title bar, old title bar in old docking, and new title bar will use standard context menu
-        if (!dockWidgetParent || !m_isUsingNewDocking || m_drawSimple)
+        if (!dockWidgetParent || m_drawSimple)
         {
             updateStandardContextMenu();
         }
@@ -505,6 +503,14 @@ namespace AzQtComponents
         return false;
     }
 
+    QRect TitleBar::draggableRect() const
+    {
+        // This is rect() - the button rect, so we can enable aero-snap dragging in that space
+        QRect r = rect();
+        r.setWidth(m_firstButton->x() - layout()->spacing());
+        return r;
+    }
+
     bool TitleBar::canResizeTop() const
     {
         const QWidget *w = window();
@@ -742,7 +748,12 @@ namespace AzQtComponents
             }
             else
             {
-                DockBarButton* button = new DockBarButton(buttonType, this);
+                // Use the dark style of buttons for the titlebars on floating
+                // dock widget containers since they are a lighter color
+                StyledDockWidget* dockWidgetParent = qobject_cast<StyledDockWidget*>(parentWidget());
+                bool isDarkStyle = dockWidgetParent && dockWidgetParent->isFloating();
+
+                DockBarButton* button = new DockBarButton(buttonType, this, isDarkStyle);
                 QObject::connect(button, &DockBarButton::buttonPressed, this, &TitleBar::handleButtonClicked);
                 w = button;
             }
@@ -814,11 +825,6 @@ namespace AzQtComponents
         }
     }
 
-    void TitleBar::enableNewContextMenus(bool dockSetting)
-    {
-        m_isUsingNewDocking = dockSetting;
-    }
-
-#include <Components/Titlebar.moc>
+#include <Components/TitleBar.moc>
 } // namespace AzQtComponents
 

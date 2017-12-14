@@ -11,12 +11,12 @@
 */
 #include "stdafx.h"
 
+#include <AzAssetBrowser/ui_AzAssetBrowserWindow.h>
+
 #include <Editor/AzAssetBrowser/AzAssetBrowserWindow.h>
 #include <Editor/AzAssetBrowser/Preview/PreviewWidget.h>
 
-#include <AzAssetBrowser/ui_AzAssetBrowserWindow.h>
-
-#include <AzToolsFramework/AssetBrowser/AssetBrowserTreeView.h>
+#include <AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
@@ -51,12 +51,13 @@ AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
         m_ui->m_searchParametersWidget->SetFilter(*it);
     }
 
-    connect(m_ui->m_searchWidget->GetFilter().data(), &AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter::updatedSignal,
-        m_filterModel.data(), &AzToolsFramework::AssetBrowser::AssetBrowserFilterModel::filterUpdatedSlot);
-    connect(m_ui->m_assetBrowserTreeViewWidget, &AzToolsFramework::AssetBrowser::AssetBrowserTreeView::selectionChangedSignal, 
+    connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal,
+        m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
+    connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal,
         this, &AzAssetBrowserWindow::SelectionChangedSlot);
-    connect(m_ui->m_searchParametersWidget, &AzToolsFramework::AssetBrowser::SearchParametersWidget::ClearAllSignal, 
+    connect(m_ui->m_searchParametersWidget, &SearchParametersWidget::ClearAllSignal,
         [=]() { m_ui->m_searchWidget->ClearAssetTypeFilter(); });
+    connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserWindow::DoubleClickedItem);
 
     m_ui->m_assetBrowserTreeViewWidget->LoadState("AssetBrowserTreeView_main");
 }
@@ -88,6 +89,37 @@ void AzAssetBrowserWindow::UpdatePreview() const
 void AzAssetBrowserWindow::SelectionChangedSlot(const QItemSelection& /*selected*/, const QItemSelection& /*deselected*/) const
 {
     UpdatePreview();
+}
+
+// while its tempting to use Activated here, we dont actually want it to count as activation
+// just becuase on some OS clicking once is activation.
+void AzAssetBrowserWindow::DoubleClickedItem(const QModelIndex& element)
+{
+    using namespace AzToolsFramework;
+    using namespace AzToolsFramework::AssetBrowser;
+    // assumption: Double clicking an item selects it before telling us we double clicked it.
+    auto selectedAssets = m_ui->m_assetBrowserTreeViewWidget->GetSelectedAssets();
+    for (const AssetBrowserEntry* entry : selectedAssets)
+    {
+        AZ::Data::AssetId assetIdToOpen;
+
+        if (const ProductAssetBrowserEntry* productEntry = azrtti_cast<const ProductAssetBrowserEntry*>(entry))
+        {
+            assetIdToOpen = productEntry->GetAssetId();
+        }
+        else if (const SourceAssetBrowserEntry* sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(entry))
+        {
+            // manufacture an empty AssetID with the source's UUID
+            assetIdToOpen = AZ::Data::AssetId(sourceEntry->GetSourceUuid(), 0);
+        }
+        
+        if (assetIdToOpen.IsValid())
+        {
+            bool handledBySomeone = false;
+            AssetBrowserInteractionNotificationsBus::Broadcast(&AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, assetIdToOpen, handledBySomeone);
+        }
+    }
+
 }
 
 #include <AzAssetBrowser/AzAssetBrowserWindow.moc>

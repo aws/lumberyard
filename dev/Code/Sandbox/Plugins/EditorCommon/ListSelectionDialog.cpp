@@ -30,6 +30,7 @@
 #include <QEvent>
 #include <QKeyEvent>
 #include <QCoreApplication>
+#include <QByteArray>
 #include <ICryAnimation.h>
 #include "IResourceSelectorHost.h"
 
@@ -213,9 +214,8 @@ const char* ListSelectionDialog::ChooseItem(const char* currentValue)
         QStandardItem* item = m_model->itemFromIndex(sourceCurrentIndex);
         if (item)
         {
-            QString qstr = item->data().toString();
-            m_chosenItem = qstr.toLocal8Bit().data();
-            return m_chosenItem.c_str();
+            m_chosenItem = item->data().toString().toUtf8();
+            return m_chosenItem.constData();
         }
     }
     return currentValue;

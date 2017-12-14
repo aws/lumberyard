@@ -136,6 +136,17 @@ namespace UnitTest
         AZ_TEST_STATIC_ASSERT(is_member_function_pointer<MyStruct*>::value == false);
         AZ_TEST_STATIC_ASSERT(is_member_function_pointer<int (MyStruct::*)()>::value == true);
         AZ_TEST_STATIC_ASSERT(is_member_function_pointer<int MyStruct::*>::value == false);
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const>::value));
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() volatile>::value));
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const volatile>::value));
+#if !defined(AZ_COMPILER_MSVC) || _MSC_VER >= 1900
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() &>::value));
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const&>::value));
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const volatile&>::value));
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() &&>::value));
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const&&>::value));
+        AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const volatile&&>::value));
+#endif
 
         // is_enum
         AZ_TEST_STATIC_ASSERT(is_enum<int>::value == false);

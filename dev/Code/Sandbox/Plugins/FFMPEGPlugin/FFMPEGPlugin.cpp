@@ -19,6 +19,9 @@ typedef CryStringT<char> string;
 #include "Include/ICommandManager.h"
 #include "Util/PathUtil.h"
 
+#include <QCoreApplication>
+#include <QSettings>
+
 namespace PluginInfo
 {
     const char* kName = "FFMPEG Writer";
@@ -69,47 +72,29 @@ static void Command_FFMPEGEncode(const char* input, const char* output, const ch
     QString ffmpegEXEPath;
     QString outTxt;
 
-    HKEY hKey = nullptr;
-    LONG result = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Amazon\\Lumberyard\\Settings", 0, KEY_READ, &hKey);
-    if (result == ERROR_SUCCESS)
-    {
-        unsigned long type = REG_SZ, size = 1024;
-        char buffer[1024];
-        memset(buffer, '\0', sizeof(buffer));
-        size = 1024;
-        if (RegQueryValueEx(hKey, "FFMPEG_PLUGIN", NULL, &type, (LPBYTE)&buffer[0], &size) == ERROR_SUCCESS)
-        {
-            if (::GetFileAttributes(buffer) != INVALID_FILE_ATTRIBUTES)
-            {
-                ffmpegEXEPath = buffer;
-            }
-        }
+    QSettings settings("Amazon", "Lumberyard");
+    settings.beginGroup("Settings");
+    ffmpegEXEPath = settings.value("FFMPEG_PLUGIN").toString();
 
-        RegCloseKey(hKey);
-    }
-
-    if (ffmpegEXEPath.isEmpty())
+    if (ffmpegEXEPath.isEmpty() || !QFile::exists(ffmpegEXEPath))
     {
-        char dllPath[_MAX_PATH];
-        GetModuleFileName(GetModuleHandle(NULL), dllPath, sizeof(dllPath));
-        char buffer[_MAX_PATH];
-        char drive[_MAX_DRIVE];
-        char dir[_MAX_DIR];
-        _splitpath(dllPath, drive, dir, 0, 0);
-        _makepath(buffer, drive, dir, 0, 0);
-        // buffer now contains the path to the editor exe.
+        QString path = qApp->applicationDirPath();
         QString checkPath;
 
         const char* possibleLocations[] = {
-            "rc\\ffmpeg.exe",
-            "editorplugins\\ffmpeg.exe",
-            "..\\editor\\plugins\\ffmpeg.exe",
+            "rc/ffmpeg",
+            "editorplugins/ffmpeg",
+            "../editor/plugins/ffmpeg",
         };
 
         for (int idx = 0; idx < 3; ++idx)
         {
-            checkPath = QStringLiteral("%s%s").arg(buffer, possibleLocations[idx]);
-            if (GetFileAttributes(checkPath.toLatin1().data()) != INVALID_FILE_ATTRIBUTES)
+#if defined(AZ_PLATFORM_WINDOWS)
+            checkPath = QStringLiteral("%s/%s.exe").arg(path, possibleLocations[idx]);
+#else
+            checkPath = QStringLiteral("%s/%s").arg(path, possibleLocations[idx]);
+#endif
+            if (QFile::exists(checkPath))
             {
                 ffmpegEXEPath = checkPath;
                 break;
@@ -118,7 +103,11 @@ static void Command_FFMPEGEncode(const char* input, const char* output, const ch
 
         if (ffmpegEXEPath.isEmpty())
         {
+#if defined(AZ_PLATFORM_WINDOWS)
             ffmpegEXEPath = "ffmpeg.exe";
+#else
+            ffmpegEXEPath = "ffmpeg";
+#endif
             // try the current folder if all else fails, this will also work if its in the PATH somehow.
         }
     }

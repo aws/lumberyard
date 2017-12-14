@@ -30,6 +30,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Slice/SliceBus.h>
 #include <AzCore/IO/FileIO.h>
 
 #include <AzFramework/Entity/EntityContextBus.h>
@@ -41,7 +42,6 @@
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
-#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
@@ -1162,7 +1162,7 @@ namespace AzToolsFramework
                 AZ::SliceComponent::EntityAncestorList sliceAncestryToPushTo;
                 AZ::SliceComponent::SliceInstanceAddress transformAncestorSliceAddress(nullptr, nullptr);
                 AZ::EntityId parentId;
-                EBUS_EVENT_ID_RESULT(parentId, entityId, AZ::TransformBus, GetParentId);
+                AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, entityId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
                 while (parentId.IsValid())
                 {
                     // If we find a transform ancestor that's not part of the selected entities
@@ -1187,7 +1187,7 @@ namespace AzToolsFramework
                         transformAncestorSliceAddress.first->GetInstanceEntityAncestry(parentId, sliceAncestryToPushTo);
                         break;
                     }
-                    EBUS_EVENT_ID_RESULT(parentId, parentId, AZ::TransformBus, GetParentId);
+                    AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, parentId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
                 }
 
                 // No slice ancestry found in any selected transform ancestors, so we don't have any slice to push
@@ -1263,7 +1263,7 @@ namespace AzToolsFramework
             // Test if the newly added loose entity is a descendant of an entity that's unpushable, if so mark it as unpushable too.
             AZ::EntityId unpushableAncestorId(AZ::EntityId::InvalidEntityId);
             AZ::EntityId parentId;
-            AZ::TransformBus::EventResult(parentId, entityId, &AZ::TransformInterface::GetParentId);
+            AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, entityId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
             while (parentId.IsValid())
             {
                 EntityIdSet::iterator foundItr = unpushableNewChildEntityIds.find(parentId);
@@ -1275,7 +1275,7 @@ namespace AzToolsFramework
 
                 AZ::EntityId currentParentId = parentId;
                 parentId.SetInvalid();
-                AZ::TransformBus::EventResult(parentId, currentParentId, &AZ::TransformInterface::GetParentId);
+                AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, currentParentId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
             }
 
             AZ::Entity* entity = nullptr;
@@ -1316,7 +1316,7 @@ namespace AzToolsFramework
             (void)fieldTreeItem;
 
             AZ::EntityId parentId;
-            AZ::TransformBus::EventResult(parentId, entityId, &AZ::TransformBus::Events::GetParentId);
+            AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, entityId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
             return parentId;
         };
         AZStd::unordered_set<AZ::EntityId> rootLevelAdditions;
@@ -1431,14 +1431,15 @@ namespace AzToolsFramework
 
             // These are asset entities - not live entities, so we need to retrieve their parent id manually (they're not connected to buses)
             AZ::EntityId parentId;
-            AzToolsFramework::Components::TransformComponent* transformComponent =
-                fieldTreeItem->m_entity->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-            if (transformComponent)
+            AZ::SliceEntityHierarchyInterface* sliceHierarchyInterface = AZ::EntityUtils::FindFirstDerivedComponent<AZ::SliceEntityHierarchyInterface>(fieldTreeItem->m_entity);
+            if (sliceHierarchyInterface)
             {
-                parentId = transformComponent->GetParentId();
+                parentId = sliceHierarchyInterface->GetSliceEntityParentId();
             }
-
+            else
+            {
+                AZ_Warning("Slice Push", false, "Attempting to get SliceEntityHierarchy parent id from entity that has no SliceEntityHierarchyInterface.");
+            }
             return parentId;
         };
         AZStd::unordered_set<AZ::EntityId> rootLevelRemovals;
@@ -1638,13 +1639,12 @@ namespace AzToolsFramework
                     // Add entity
                     if (item->m_isEntityAdd)
                     {
-                        if (AZ::TransformInterface* transform = item->m_entity->GetTransform())
+                        AZ::EntityId parentId;
+                        AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, item->m_entity->GetId(), &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
+                        if (!parentId.IsValid())
                         {
-                            if (!transform->GetParentId().IsValid())
-                            {
-                                pushError = QString("A new root cannot be pushed to an existing slice. New entities should be added as children or descendants of the slice root.");
-                                break;
-                            }
+                            pushError = QString("A new root cannot be pushed to an existing slice. New entities should be added as children or descendants of the slice root.");
+                            break;
                         }
 
                         entitiesToRemove.push_back(item->m_entity->GetId());
@@ -1726,8 +1726,8 @@ namespace AzToolsFramework
             SliceTransaction::TransactionPtr& transaction = transactionPair.second;
             SliceTransaction::Result result = transaction->Commit(
                 transactionPair.first,
-                nullptr, nullptr,
-                SliceTransaction::SliceCommitFlags::ApplyWorldSliceTransformRules);
+                SliceUtilities::SlicePreSaveCallbackForWorldEntities, 
+                nullptr);
 
             if (!result)
             {

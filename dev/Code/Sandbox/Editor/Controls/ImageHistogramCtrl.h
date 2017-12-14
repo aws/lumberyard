@@ -19,34 +19,60 @@
 
 #include <QWidget>
 
-class SANDBOX_API CImageHistogramCtrl
+class QComboBox;
+class QLabel;
+
+enum class EHistogramDrawMode
+{
+    Luminosity,
+    OverlappedRGB,
+    SplitRGB,
+    RedChannel,
+    GreenChannel,
+    BlueChannel,
+    AlphaChannel
+};
+Q_ENUMS(EHistogramDrawMode)
+Q_DECLARE_METATYPE(EHistogramDrawMode)
+
+
+class SANDBOX_API CImageHistogramDisplay
     : public QWidget
     , public CImageHistogram
 {
     Q_OBJECT
 public:
-    enum EDrawMode
-    {
-        eDrawMode_Luminosity,
-        eDrawMode_OverlappedRGB,
-        eDrawMode_SplitRGB,
-        eDrawMode_RedChannel,
-        eDrawMode_GreenChannel,
-        eDrawMode_BlueChannel,
-        eDrawMode_AlphaChannel
-    };
-
-    CImageHistogramCtrl(QWidget* parent = nullptr);
-    virtual ~CImageHistogramCtrl();
+    CImageHistogramDisplay(QWidget* parent = nullptr);
+    virtual ~CImageHistogramDisplay();
 
     void paintEvent(QPaintEvent* event) override;
 
-    int             m_graphMargin;
-    float           m_graphHeightPercent;
-    EDrawMode       m_drawMode;
-    QColor          m_backColor;
+    EHistogramDrawMode  m_drawMode;
+    int                 m_graphMargin;
+    float               m_graphHeightPercent;
+    QColor              m_backColor;
+};
 
-    void mousePressEvent(QMouseEvent* event) override;
+class SANDBOX_API CImageHistogramCtrl
+    : public QWidget
+{
+    Q_OBJECT
+
+public:
+    CImageHistogramCtrl(QWidget* parent = nullptr);
+    virtual ~CImageHistogramCtrl();
+
+    EHistogramDrawMode drawMode() const;
+    void setDrawMode(EHistogramDrawMode drawMode);
+
+    void ComputeHistogram(CImageEx& img, CImageHistogram::EImageFormat format);
+
+    CImageHistogramDisplay* histogramDisplay() const;
+
+private:
+    CImageHistogramDisplay* m_display;
+    QComboBox*              m_drawMode;
+    QLabel*                 m_infoText;
 };
 
 

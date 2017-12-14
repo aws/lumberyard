@@ -170,6 +170,16 @@ void CEquipPackDialog::UpdateEquipPackParams()
 
 void CEquipPackDialog::AddEquipmentListItem(const SEquipment& equip)
 {
+    if (!GetIEditor() ||
+        !GetIEditor()->GetGameEngine() ||
+        !GetIEditor()->GetGameEngine()->GetIEquipmentSystemInterface())
+    {
+        AZ_Error("Equipment Manager",
+            false,
+            "This equipment item can't be added without a valid equipment system interface. The equipment system is deprecated, please contact support if you are using it.");
+        return;
+    }
+
     QString sSetup = equip.sSetup;
     QTreeWidgetItem* parent = new QTreeWidgetItem(QStringList { equip.sName });
     parent->setFlags(parent->flags() | Qt::ItemIsUserCheckable);
@@ -200,15 +210,17 @@ void CEquipPackDialog::AddEquipmentListItem(const SEquipment& equip)
                 {
                     categoryItem = new QTreeWidgetItem(parent, QStringList { QString(accessoryItem.type) });
                     categoryItem->setFlags(categoryItem->flags() | Qt::ItemIsUserCheckable);
+                    categoryItem->setCheckState(0, Qt::Unchecked);
                 }
             }
 
             QTreeWidgetItem* accessory = new QTreeWidgetItem(categoryItem, QStringList { QString(accessoryItem.name) });
             accessory->setFlags(accessory->flags() | Qt::ItemIsUserCheckable);
+            accessory->setCheckState(0, Qt::Unchecked);
 
             QString formattedName = QString(tr("|%1|")).arg(QtUtil::ToQString(accessoryItem.name));
 
-            if (sSetup != formattedName)
+            if (sSetup.indexOf(formattedName) != -1)
             {
                 accessory->setCheckState(0, Qt::Checked);
                 categoryItem->setCheckState(0, Qt::Checked);

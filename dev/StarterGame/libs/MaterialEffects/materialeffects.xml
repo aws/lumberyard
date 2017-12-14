@@ -12,7 +12,7 @@
   <Created>2005-10-12T15:13:39Z</Created>
   <LastSaved>2014-04-08T17:21:06Z</LastSaved>
   <Company>Crytek</Company>
-  <Version>11.9999</Version>
+  <Version>11.5606</Version>
  </DocumentProperties>
  <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
   <WindowHeight>13245</WindowHeight>
@@ -140,18 +140,18 @@
   <Names>
    <NamedRange ss:Name="Print_Area" ss:RefersTo="=Sheet1!R1C1:R5C5"/>
   </Names>
-  <Table ss:ExpandedColumnCount="50" ss:ExpandedRowCount="12" x:FullColumns="1"
+  <Table ss:ExpandedColumnCount="50" ss:ExpandedRowCount="17" x:FullColumns="1"
    x:FullRows="1" ss:StyleID="s21" ss:DefaultRowHeight="15">
-   <Column ss:StyleID="s22" ss:Width="114"/>
-   <Column ss:StyleID="s21" ss:Width="153.75"/>
-   <Column ss:StyleID="s21" ss:Width="148.5"/>
-   <Column ss:StyleID="s21" ss:Width="140.25"/>
-   <Column ss:StyleID="s21" ss:Width="148.5"/>
-   <Column ss:StyleID="s21" ss:Width="147.75"/>
-   <Column ss:StyleID="s21" ss:Width="144"/>
+   <Column ss:StyleID="s22" ss:AutoFitWidth="0" ss:Width="124.5"/>
+   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="195.75"/>
+   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="186.75"/>
+   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="189"/>
+   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="237.75"/>
+   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="179.25"/>
+   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="186.75"/>
    <Column ss:StyleID="s21" ss:Width="148.5"/>
    <Column ss:StyleID="s21" ss:Width="188.25"/>
-   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="174"/>
+   <Column ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="238.5"/>
    <Column ss:StyleID="s21" ss:Width="210"/>
    <Column ss:StyleID="s21" ss:Width="181.5" ss:Span="1"/>
    <Column ss:Index="14" ss:StyleID="s21" ss:AutoFitWidth="0" ss:Width="201.75"/>
@@ -451,16 +451,66 @@
     <Cell ss:StyleID="s28"/>
    </Row>
    <Row ss:AutoFitHeight="0" ss:StyleID="s26">
+    <Cell ss:StyleID="s30"><Data ss:Type="String">mat_character_collider</Data></Cell>
+    <Cell ss:StyleID="s27"><Data ss:Type="String">collisions:character_player</Data></Cell>
+    <Cell ss:StyleID="s27"><Data ss:Type="String">collisions:character_metal</Data></Cell>
+    <Cell ss:StyleID="s27"><Data ss:Type="String">collisions:character_soil</Data></Cell>
+    <Cell ss:StyleID="s27"><Data ss:Type="String">collisions:character_grass</Data></Cell>
+    <Cell ss:StyleID="s27"/>
+    <Cell ss:StyleID="s27"><Data ss:Type="String">collisions:character_rock</Data></Cell>
+    <Cell ss:StyleID="s27"/>
+    <Cell ss:StyleID="s27"/>
+    <Cell ss:StyleID="s27"><Data ss:Type="String">collisions:character_rock_dusty</Data></Cell>
+    <Cell ss:StyleID="s27"><Data ss:Type="String">collisions:character_player</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
     <Cell ss:StyleID="s23"><Data ss:Type="String">footstep</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:default</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:metal</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:soil</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:grass</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:water</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:rock</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:wood</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:water</Data></Cell>
-    <Cell><Data ss:Type="String">footstep:rock_dusty</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:default</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:metal</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:soil</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:grass</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:water</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:rock</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:wood</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:water</Data></Cell>
+    <Cell ss:StyleID="s26"><Data ss:Type="String">footstep:rock_dusty</Data></Cell>
+    <Cell ss:StyleID="s26"/>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">footstep_walk</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_walk:default</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_walk:metal</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_walk:soil</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_walk:grass</Data></Cell>
+    <Cell ss:Index="7"><Data ss:Type="String">footstep_walk:rock</Data></Cell>
+    <Cell ss:Index="10"><Data ss:Type="String">footstep_walk:soil</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">footstep_jump_takeoff</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_takeoff:default</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_takeoff:metal</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_takeoff:soil</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_takeoff:grass</Data></Cell>
+    <Cell ss:Index="7"><Data ss:Type="String">footstep_jump_takeoff:rock</Data></Cell>
+    <Cell ss:Index="10"><Data ss:Type="String">footstep_jump_takeoff:soil</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">footstep_jump_landlight</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landlight:default</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landlight:metal</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landlight:soil</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landlight:grass</Data></Cell>
+    <Cell ss:Index="7"><Data ss:Type="String">footstep_jump_landlight:rock</Data></Cell>
+    <Cell ss:Index="10"><Data ss:Type="String">footstep_jump_landlight:soil</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">footstep_jump_landhard</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landhard:default</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landhard:metal</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landhard:soil</Data></Cell>
+    <Cell><Data ss:Type="String">footstep_jump_landhard:grass</Data></Cell>
+    <Cell ss:Index="7"><Data ss:Type="String">footstep_jump_landhard:rock</Data></Cell>
+    <Cell ss:Index="10"><Data ss:Type="String">footstep_jump_landhard:soil</Data></Cell>
    </Row>
   </Table>
   <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
@@ -477,13 +527,14 @@
     <HorizontalResolution>300</HorizontalResolution>
     <VerticalResolution>300</VerticalResolution>
    </Print>
-   <Zoom>70</Zoom>
+   <Zoom>85</Zoom>
    <Selected/>
+   <LeftColumnVisible>3</LeftColumnVisible>
    <Panes>
     <Pane>
      <Number>3</Number>
-     <ActiveRow>18</ActiveRow>
-     <ActiveCol>10</ActiveCol>
+     <ActiveRow>17</ActiveRow>
+     <ActiveCol>4</ActiveCol>
     </Pane>
    </Panes>
    <ProtectObjects>False</ProtectObjects>

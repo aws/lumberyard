@@ -33,6 +33,7 @@
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/EntityUtils.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/Utils.h>
@@ -41,6 +42,7 @@
 #include <AzCore/std/sort.h>
 #include <AzCore/std/time.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/Asset/AssetManagerBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
 
@@ -84,6 +86,7 @@ UiCanvasManager::UiCanvasManager()
 {
     UiCanvasManagerBus::Handler::BusConnect();
     UiCanvasOrderNotificationBus::Handler::BusConnect();
+    AzFramework::AssetCatalogEventBus::Handler::BusConnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +94,7 @@ UiCanvasManager::~UiCanvasManager()
 {
     UiCanvasManagerBus::Handler::BusDisconnect();
     UiCanvasOrderNotificationBus::Handler::BusDisconnect();
+    AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
 
     // destroy ALL the loaded canvases, whether loaded in game or in Editor
     for (auto canvas : (m_loadedCanvases))
@@ -155,6 +159,8 @@ AZ::EntityId UiCanvasManager::LoadCanvas(const AZStd::string& assetIdPathname)
     {
         // The game entity context needs to know its corresponding canvas entity for instantiating dynamic slices
         entityContext->SetCanvasEntity(canvasEntityId);
+
+        EBUS_EVENT(UiCanvasManagerNotificationBus, OnCanvasLoaded, canvasEntityId);
     }
 
     return canvasEntityId;
@@ -163,7 +169,7 @@ AZ::EntityId UiCanvasManager::LoadCanvas(const AZStd::string& assetIdPathname)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasManager::UnloadCanvas(AZ::EntityId canvasEntityId)
 {
-    ReleaseCanvas(canvasEntityId, false);
+    ReleaseCanvasDeferred(canvasEntityId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,6 +196,89 @@ UiCanvasManager::CanvasEntityList UiCanvasManager::GetLoadedCanvases()
 void UiCanvasManager::OnCanvasDrawOrderChanged(AZ::EntityId canvasEntityId)
 {
     SortCanvasesByDrawOrder();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
+{
+    // get AssetInfo from asset id
+    AZ::Data::AssetInfo assetInfo;
+    EBUS_EVENT_RESULT(assetInfo, AZ::Data::AssetCatalogRequestBus, GetAssetInfoById, assetId);
+    if (assetInfo.m_assetType != LyShine::CanvasAsset::TYPEINFO_Uuid())
+    {
+        // this is not a UI canvas asset
+        return;
+    }
+
+    // get pathname from asset id
+    AZStd::string assetPath;
+    EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
+
+    CanvasList reloadedCanvases;  // keep track of the reloaded canvases and add them to m_loadedCanvases after the loop
+    AZStd::vector<AZ::EntityId> unloadedCanvases;  // also keep track of any canvases that fail to reload and are unloaded
+
+    // loop over all canvases loaded in game and reload any canvases loaded from this canvas asset
+    // NOTE: this could be improved by using AssetId for the comparison rather than pathnames
+    string adjustedSearchName = NormalizePath(assetPath.c_str());
+    auto iter = m_loadedCanvases.begin();
+    while (iter != m_loadedCanvases.end())
+    {
+        UiCanvasComponent* canvasComponent = *iter;
+        string adjustedName = NormalizePath(canvasComponent->GetPathname());
+        if (adjustedSearchName == adjustedName)
+        {
+            AZ::EntityId existingCanvasEntityId = canvasComponent->GetEntityId();
+
+            //Before unloading the existing canvas, make a copy of its mapping table
+            AZ::SliceComponent::EntityIdToEntityIdMap existingRemapTable = canvasComponent->GetEditorToGameEntityIdMap();
+
+            // unload the canvas, just deleting the canvas entity does this
+            AZ::Entity* existingCanvasEntity = canvasComponent->GetEntity();
+            delete existingCanvasEntity;
+
+            // Remove the deleted canvas entry in the m_loadedCanvases vector and move the iterator to the next
+            iter = m_loadedCanvases.erase(iter);
+
+            // reload canvas with the same entity IDs (except for new entities, deleted entities etc)
+            UiGameEntityContext* entityContext = new UiGameEntityContext();
+            string pathname(assetPath.c_str());
+            UiCanvasComponent* newCanvasComponent = UiCanvasComponent::LoadCanvasInternal(pathname, false, pathname, entityContext, &existingRemapTable, existingCanvasEntityId);
+
+            if (!newCanvasComponent)
+            {
+                delete entityContext;
+                unloadedCanvases.push_back(existingCanvasEntityId);
+            }
+            else
+            {
+                // The game entity context needs to know its corresponding canvas entity for instantiating dynamic slices
+                entityContext->SetCanvasEntity(newCanvasComponent->GetEntityId());
+                reloadedCanvases.push_back(newCanvasComponent);
+            }
+        }
+        else
+        {
+            ++iter; // we did not delete this canvas - move to next in list
+        }
+    }
+
+    // add the successfully reloaded canvases at the end
+    m_loadedCanvases.insert(m_loadedCanvases.end(), reloadedCanvases.begin(), reloadedCanvases.end());
+
+    // In case any draw orders changed resort
+    SortCanvasesByDrawOrder();
+
+    // notify any listeners of any UI canvases that were reloaded
+    for (auto reloadedCanvasComponent : reloadedCanvases)
+    {
+        EBUS_EVENT(UiCanvasManagerNotificationBus, OnCanvasReloaded, reloadedCanvasComponent->GetEntityId());
+    }
+
+    // notify any listeners of any UI canvases that were unloaded
+    for (auto unloadedCanvas : unloadedCanvases)
+    {
+        EBUS_EVENT(UiCanvasManagerNotificationBus, OnCanvasUnloaded, unloadedCanvas);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +329,7 @@ AZ::EntityId UiCanvasManager::ReloadCanvasFromXml(const AZStd::string& xmlString
 
             // Complete initialization of new canvas. We assume this is for editor
             UiCanvasComponent* newCanvasComponent = UiCanvasComponent::FixupReloadedCanvasForEditorInternal(
-                newCanvasEntity, rootSliceEntity, entityContext, oldCanvasId, oldPathname);
+                    newCanvasEntity, rootSliceEntity, entityContext, oldCanvasId, oldPathname);
 
             newCanvasComponent->SetCanvasToViewportMatrix(oldCanvasToViewportMatrix);
 
@@ -281,7 +370,47 @@ void UiCanvasManager::ReleaseCanvas(AZ::EntityId canvasEntityId, bool forEditor)
             {
                 stl::find_and_erase(m_loadedCanvases, canvasComponent);
                 delete canvasEntity;
+
+                EBUS_EVENT(UiCanvasManagerNotificationBus, OnCanvasUnloaded, canvasEntityId);
             }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::ReleaseCanvasDeferred(AZ::EntityId canvasEntityId)
+{
+    AZ::Entity* canvasEntity = nullptr;
+    EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
+    AZ_Assert(canvasEntity, "Canvas entity not found by ID");
+
+    if (canvasEntity)
+    {
+        UiCanvasComponent* canvasComponent = canvasEntity->FindComponent<UiCanvasComponent>();
+        AZ_Assert(canvasComponent, "Canvas entity has no canvas component");
+
+        if (canvasComponent)
+        {
+            // Remove canvas component from list of loaded canvases
+            stl::find_and_erase(m_loadedCanvases, canvasComponent);
+
+            // Deactivate elements of the canvas
+            canvasComponent->DeactivateElements();
+
+            // Deactivate the canvas element
+            canvasEntity->Deactivate();
+
+            EBUS_EVENT(UiCanvasManagerNotificationBus, OnCanvasUnloaded, canvasEntityId);
+
+            // Queue UI canvas deletion until next tick. This prevents deleting a UI canvas from an active entity within that UI canvas
+            AZStd::function<void()> destroyCanvas = [canvasEntityId]()
+            {
+                AZ::Entity* canvasEntity = nullptr;
+                EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
+                delete canvasEntity;
+            };
+
+            AZ::TickBus::QueueFunction(destroyCanvas);
         }
     }
 }
@@ -405,8 +534,8 @@ bool UiCanvasManager::HandleInputEventForLoadedCanvases(const AzFramework::Input
     // Get the active modifier keys (if any) of the input event. Will only exist for keyboard keys.
     const AzFramework::ModifierKeyStates* modifierKeyStates = inputChannel.GetCustomData<AzFramework::ModifierKeyStates>();
     const AzFramework::ModifierKeyMask activeModifierKeys = modifierKeyStates ?
-                                                            modifierKeyStates->GetActiveModifierKeys() :
-                                                            AzFramework::ModifierKeyMask::None;
+        modifierKeyStates->GetActiveModifierKeys() :
+        AzFramework::ModifierKeyMask::None;
 
     for (auto iter = m_loadedCanvases.rbegin(); iter != m_loadedCanvases.rend(); ++iter)
     {
@@ -574,7 +703,8 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, bool forEditor, const string& sourceAssetPathname, UiEntityContext* entityContext)
+AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, bool forEditor, const string& sourceAssetPathname, UiEntityContext* entityContext,
+    const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable, AZ::EntityId previousCanvasId)
 {
     string pathToOpen;
     if (forEditor)
@@ -608,7 +738,7 @@ AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, 
         string lowerCaseExt = PathUtil::ToLower(extension);
         if (lowerCaseExt != "uicanvas")
         {
-            // Invalid extension 
+            // Invalid extension
             AZ_Warning("UI", false, "Given UI canvas path \"%s\" has an invalid extension. Replacing extension with \"%s\".",
                 pathToOpen.c_str(), canvasExtension.c_str());
             pathToOpen = PathUtil::ReplaceExtension(pathToOpen, canvasExtension);
@@ -643,7 +773,7 @@ AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, 
     else
     {
         // not already loaded in editor, attempt to load...
-        canvasComponent = UiCanvasComponent::LoadCanvasInternal(pathToOpen, forEditor, assetIdPath, entityContext);
+        canvasComponent = UiCanvasComponent::LoadCanvasInternal(pathToOpen, forEditor, assetIdPath, entityContext, previousRemapTable, previousCanvasId);
     }
 
     if (canvasComponent)

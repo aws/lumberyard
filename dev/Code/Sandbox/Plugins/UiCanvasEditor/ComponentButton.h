@@ -11,6 +11,10 @@
 */
 #pragma once
 
+#include <QPushButton>
+
+#include "EditorCommon.h"
+
 class ComponentButton
     : public QPushButton
 {

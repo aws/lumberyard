@@ -20,11 +20,7 @@
 // These redicilous dependencies are needed just to be able to use
 // Sandbox gizmos drawing and hit-testing code =(
 #pragma warning(disable: 4266)
-#ifdef KDAB_MAC_PORT
-#include <SDKDDKVer.h>
-#include <afxwin.h>
-#include <afxdlgs.h>
-#endif // KDAB_MAC_PORT
+
 #include "platform.h"
 
 #include "ISystem.h"

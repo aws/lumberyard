@@ -15,6 +15,7 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/containers/vector.h>
 #include <QtWidgets/QWidget>
 
 #include "Woodpecker/Driller/DrillerDataTypes.h"

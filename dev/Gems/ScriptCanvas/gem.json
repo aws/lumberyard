@@ -6,7 +6,7 @@
     "Version": "0.1.0",
     "LinkType": "DynamicStatic",
     "EditorModule": true,
-    "Summary": "Script Canvas is Lumberyard's visual game authoring environment.",
+    "Summary": "The Script Canvas Gem contains Lumberyard's visual scripting environment that enables content creators with little to no engineering experience to build game logic.",
     "Tags": ["Scripting", "Game"],
     "IconPath": "preview.png",
     "Dependencies" : [

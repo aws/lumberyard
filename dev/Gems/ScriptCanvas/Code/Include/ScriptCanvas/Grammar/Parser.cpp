@@ -102,8 +102,11 @@ namespace ScriptCanvas
                 AZ_Warning("Script Dragon", false, "No effective statements; this script does nothing.");
             }
 
-            m_root->PrettyPrint();
-
+            if (m_root)
+            {
+                m_root->PrettyPrint();
+            }
+            
             return m_root;
         }
 

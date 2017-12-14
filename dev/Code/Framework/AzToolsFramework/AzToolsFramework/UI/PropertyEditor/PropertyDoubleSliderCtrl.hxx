@@ -15,9 +15,12 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QAbstractSlider>
 #include "PropertyEditorAPI.h"
+
+#include <QAbstractSlider>
+#include <QBasicTimer>
+#include <QStyle>
+#include <QWidget>
 
 #pragma once
 

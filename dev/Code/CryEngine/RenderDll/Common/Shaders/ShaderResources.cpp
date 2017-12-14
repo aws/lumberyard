@@ -67,16 +67,10 @@ namespace UVTransform
 
 void CShaderResources::Reset()
 {
-    for (int i = 0; i < EFTT_MAX; i++)
-    {
-        m_Textures[i] = NULL;
-    }
-
+    m_TexturesResourcesMap.clear();
     m_Id = 0;
     m_IdGroup = 0;
-    m_nLastTexture = 0;
     m_pDeformInfo = NULL;
-    m_pCamera = NULL;
     m_pSky = NULL;
     m_ConstantBuffer = NULL;
     m_nMtlLayerNoDrawFlags = 0;
@@ -106,17 +100,8 @@ void CShaderResources::ConvertToInputResource(SInputShaderResources* pDst)
         pDst->m_DeformInfo = *m_pDeformInfo;
     }
 
-    for (int i = 0; i < EFTT_MAX; i++)
-    {
-        if (m_Textures[i])
-        {
-            pDst->m_Textures[i] = *m_Textures[i];
-        }
-        else
-        {
-            pDst->m_Textures[i].Reset();
-        }
-    }
+    // Copy all used textures data
+    pDst->m_TexturesResourcesMap = m_TexturesResourcesMap;
 
     ToInputLM(pDst->m_LMaterial);
 }
@@ -128,21 +113,18 @@ size_t CShaderResources::GetResourceMemoryUsage(ICrySizer*  pSizer)
     size_t  nTotalSize(0);
 
     SIZER_COMPONENT_NAME(pSizer, "CShaderResources");
-    for (nCurrentElement = 0; nCurrentElement < EFTT_MAX; ++nCurrentElement)
+    for (auto &iter : m_TexturesResourcesMap )
     {
-        SEfResTexture*& rpTexture = m_Textures[nCurrentElement];
-        if (rpTexture)
+        SEfResTexture*  	pTexture = &(iter.second);
+        if (pTexture->m_Sampler.m_pITex)
         {
-            if (rpTexture->m_Sampler.m_pITex)
+            nCurrentElementSize = pTexture->m_Sampler.m_pITex->GetDataSize();
+            pSizer->AddObject(pTexture->m_Sampler.m_pITex, nCurrentElementSize);
+            nTotalSize += nCurrentElementSize;
+            IResourceCollector* pColl = pSizer->GetResourceCollector();
+            if (pColl)
             {
-                nCurrentElementSize = rpTexture->m_Sampler.m_pITex->GetDataSize();
-                pSizer->AddObject(rpTexture->m_Sampler.m_pITex, nCurrentElementSize);
-                nTotalSize += nCurrentElementSize;
-                IResourceCollector* pColl = pSizer->GetResourceCollector();
-                if (pColl)
-                {
-                    pColl->AddResource(rpTexture->m_Sampler.m_pITex->GetName(), nCurrentElementSize);
-                }
+                pColl->AddResource(pTexture->m_Sampler.m_pITex->GetName(), nCurrentElementSize);
             }
         }
     }
@@ -166,11 +148,10 @@ void CShaderResources::Release()
 
 void CShaderResources::Cleanup()
 {
-    for (int i = 0; i < EFTT_MAX; i++)
-    {
-        SAFE_DELETE(m_Textures[i]);
-    }
+    m_TexturesResourcesMap.clear();
+
     SAFE_DELETE(m_pDeformInfo);
+
     if (m_pSky)
     {
         for (size_t i = 0; i < sizeof(m_pSky->m_SkyBox) / sizeof(m_pSky->m_SkyBox[0]); ++i)
@@ -181,8 +162,9 @@ void CShaderResources::Cleanup()
     }
     ReleaseConstants();
 
-    // not thread safe main thread can potentially access this destroyed entry in mfCreateShaderResources()
+    // Not thread safe main thread can potentially access this destroyed entry in mfCreateShaderResources()
     // (if flushing of unloaded textures (UnloadLevel) is not complete before pre-loading of new materials)
+    // [Shader System TO DO] - test and fix
     if (CShader::s_ShaderResources_known.Num() > m_Id && CShader::s_ShaderResources_known[m_Id] == this)
     {
         CShader::s_ShaderResources_known[m_Id] = NULL;
@@ -212,6 +194,10 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
 
     m_pipelineStateCache = std::make_shared<CGraphicsPipelineStateLocalCache>();
     Reset();
+
+    if (!pSrc)
+        return;
+
     m_szMaterialName = pSrc->m_szMaterialName;
     m_TexturePath = pSrc->m_TexturePath;
     m_ResFlags = pSrc->m_ResFlags;
@@ -226,26 +212,8 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
         *m_pDeformInfo = pSrc->m_DeformInfo;
     }
 
-    for (int i = 0; i < EFTT_MAX; i++)
-    {
-        if (pSrc && (!pSrc->m_Textures[i].m_Name.empty() || pSrc->m_Textures[i].m_Sampler.m_pTex))
-        {
-            if (!m_Textures[i])
-            {
-                AddTextureMap(i);
-            }
-            assert(m_Textures[i]);
-            pSrc->m_Textures[i].CopyTo(m_Textures[i]);
-        }
-        else
-        {
-            if (m_Textures[i])
-            {
-                m_Textures[i]->Reset();
-            }
-            m_Textures[i] = NULL;
-        }
-    }
+    m_TexturesResourcesMap = pSrc->m_TexturesResourcesMap;
+    
 
     SetInputLM(pSrc->m_LMaterial);
 }
@@ -254,16 +222,8 @@ CShaderResources& CShaderResources::operator=(const CShaderResources& src)
 {
     Cleanup();
     SBaseShaderResources::operator = (src);
-    int i;
-    for (i = 0; i < EFTT_MAX; i++)
-    {
-        if (!src.m_Textures[i])
-        {
-            continue;
-        }
-        AddTextureMap(i);
-        *m_Textures[i] = *src.m_Textures[i];
-    }
+
+    m_TexturesResourcesMap = src.m_TexturesResourcesMap;
     m_Constants = src.m_Constants;
     m_IdGroup = src.m_IdGroup;
     return *this;
@@ -491,9 +451,9 @@ namespace
 {
     void WriteConstants(SFXParam* requestedParameter, DynArray<SShaderParam>& parameters, Vec4* outConstants)
     {
-        const AZ::u32 parameterFlags = requestedParameter->GetParamFlags();
+        const AZ::u32 parameterFlags = requestedParameter->GetFlags();
         const AZ::u8  paramStageSetter = requestedParameter->m_OffsetStageSetter;
-        const AZ::u32 registerOffset = requestedParameter->m_RegisterOffset[paramStageSetter];
+        const AZ::u32 registerOffset = requestedParameter->m_Register[paramStageSetter];
         float* outputData = &outConstants[registerOffset][0];
 
         for (AZ::u32 componentIdx = 0; componentIdx < 4; componentIdx++)
@@ -528,7 +488,7 @@ namespace
 
             if (parameter->m_BindingSlot == eConstantBufferShaderSlot_PerMaterial)
             {
-                if (parameter->m_RegisterOffset[shaderClass] < 0 || parameter->m_RegisterOffset[shaderClass] >= 10000)
+                if (parameter->m_Register[shaderClass] < 0 || parameter->m_Register[shaderClass] >= 10000)
                 {
                     continue;
                 }
@@ -554,8 +514,8 @@ namespace
                     outParameters.push_back(parameter);
                     parameter->m_OffsetStageSetter = shaderClass;
                     parameter->m_StagesUsage = ((0x1 << shaderClass) & 0xff);
-                    minSlotOffset = std::min(minSlotOffset, static_cast<AZ::s32>(parameter->m_RegisterOffset[shaderClass]));
-                    maxSlotOffset = std::max(maxSlotOffset, static_cast<AZ::s32>(parameter->m_RegisterOffset[shaderClass] + parameter->m_RegisterCount));
+                    minSlotOffset = std::min(minSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass]));
+                    maxSlotOffset = std::max(maxSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass] + parameter->m_RegisterCount));
                 }
             }
         }
@@ -605,7 +565,7 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
 	// slots go over.
     std::sort(usedParameters.begin(), usedParameters.end(), [] (const SFXParam* lhs, const SFXParam* rhs)
     {
-        return lhs->m_RegisterOffset[0] < rhs->m_RegisterOffset[0];
+        return lhs->m_Register[0] < rhs->m_Register[0];
     });
 
     if (usedParameters.size())
@@ -651,40 +611,42 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
 
     // Update common parameters
     {
+        // Updating the texture modifiers
+        SEfResTexture*          pTextureRes = nullptr;
         for (AZ::u32 i = 0; i < UVTransform::GetSupportedSlotCount(); ++i)
         {
-            const EEfResTextures slot = UVTransform::GetSupportedSlot(i).m_Slot;
-            const AZ::u32 registerOffset = UVTransform::GetSupportedSlot(i).m_RegisterOffset;
-            Matrix44 matrix(IDENTITY);
+            const EEfResTextures    slot = UVTransform::GetSupportedSlot(i).m_Slot;
+            const AZ::u32           registerOffset = UVTransform::GetSupportedSlot(i).m_RegisterOffset;
+            Matrix44                matrix(IDENTITY);
 
-            SEfResTexture* texture = m_Textures[slot];
-            if (texture && texture->m_Ext.m_pTexModifier)
+            pTextureRes = GetTextureResource (slot);
+            if (pTextureRes && pTextureRes->m_Ext.m_pTexModifier)
             {
-                texture->Update(slot);
-                matrix = texture->m_Ext.m_pTexModifier->m_TexMatrix;
+                pTextureRes->Update(slot);
+                matrix = pTextureRes->m_Ext.m_pTexModifier->m_TexMatrix;
             }
-
             *reinterpret_cast<Matrix44*>(&m_Constants[registerOffset]) = matrix;
         }
 
-        SEfResTexture* texture = nullptr;
-        Vec4 texelDensity(0.0f, 0.0f, 1.0f, 1.0f);
-        Vec4 detailTiling(1.0f);
+        Vec4            texelDensity(0.0f, 0.0f, 1.0f, 1.0f);
+        Vec4            detailTiling(1.0f);
 
-        texture = m_Textures[EFTT_NORMALS];
-        if (texture && texture->m_Sampler.m_pTex)
+        // [Shader System TO DO] - move that to be data driven
+        pTextureRes = GetTextureResource(EFTT_NORMALS);
+        if (pTextureRes && pTextureRes->m_Sampler.m_pTex)
         {
-            texelDensity.x = (float)texture->m_Sampler.m_pTex->GetWidth();
-            texelDensity.y = (float)texture->m_Sampler.m_pTex->GetHeight();
+            texelDensity.x = (float)pTextureRes->m_Sampler.m_pTex->GetWidth();
+            texelDensity.y = (float)pTextureRes->m_Sampler.m_pTex->GetHeight();
             texelDensity.z = 1.0f / std::max(1.0f, texelDensity.x);
             texelDensity.w = 1.0f / std::max(1.0f, texelDensity.y);
         }
-        texture = m_Textures[EFTT_DETAIL_OVERLAY];
-        if (texture && texture->m_Ext.m_pTexModifier)
+
+        pTextureRes = GetTextureResource(EFTT_DETAIL_OVERLAY);
+        if (pTextureRes && pTextureRes->m_Ext.m_pTexModifier)
         {
-            texture->Update(EFTT_DETAIL_OVERLAY);
-            detailTiling.x = texture->m_Ext.m_pTexModifier->m_Tiling[0];
-            detailTiling.y = texture->m_Ext.m_pTexModifier->m_Tiling[1];
+            pTextureRes->Update(EFTT_DETAIL_OVERLAY);
+            detailTiling.x = pTextureRes->m_Ext.m_pTexModifier->m_Tiling[0];
+            detailTiling.y = pTextureRes->m_Ext.m_pTexModifier->m_Tiling[1];
             detailTiling.z = 1.0f / detailTiling.x;
             detailTiling.w = 1.0f / detailTiling.y;
         }
@@ -840,37 +802,28 @@ static void AdjustSamplerState(SEfResTexture* pTex, bool bUseGlobalMipBias)
     pTex->m_Sampler.m_nTexState = CTexture::GetTexState(ST);
 }
 
+// [Shader System TO DO] - delete this hard coded method.   Move to data driven
 void CShaderResources::AdjustForSpec()
 {
     // Note: Anisotropic filtering for smoothness maps is deliberately disabled, otherwise
-    //       mip transitions become too obvious when using maps prefiltered with normal variance
+    //       mip transitions become too obvious when using maps pre-filtered with normal variance
+    uint16       SamplersModulatorsIdx[] = {
+        EFTT_DIFFUSE,
+        EFTT_NORMALS,
+        EFTT_SPECULAR,
+        EFTT_CUSTOM,
+        EFTT_CUSTOM_SECONDARY,
+        EFTT_EMITTANCE,
+        0xffff,
+    };
 
-    if (m_Textures[EFTT_DIFFUSE])
+    for (uint32 pos = 0; SamplersModulatorsIdx[pos] != 0xffff ; pos++)
     {
-        AdjustSamplerState(m_Textures[EFTT_DIFFUSE], true);
-    }
-    if (m_Textures[EFTT_NORMALS])
-    {
-        AdjustSamplerState(m_Textures[EFTT_NORMALS], true);
-    }
-    if (m_Textures[EFTT_SPECULAR])
-    {
-        AdjustSamplerState(m_Textures[EFTT_SPECULAR], true);
-    }
-
-    if (m_Textures[EFTT_CUSTOM])
-    {
-        AdjustSamplerState(m_Textures[EFTT_CUSTOM], true);
-    }
-    if (m_Textures[EFTT_CUSTOM_SECONDARY])
-    {
-        AdjustSamplerState(m_Textures[EFTT_CUSTOM_SECONDARY], true);
-    }
-
-    if (m_Textures[EFTT_EMITTANCE])
-    {
-        AdjustSamplerState(m_Textures[EFTT_EMITTANCE], true);
+        SEfResTexture*  pTextureRes = GetTextureResource(SamplersModulatorsIdx[pos]);
+        if (pTextureRes)
+        {
+            AdjustSamplerState(pTextureRes, true);
+        }
     }
 }
 #endif
-

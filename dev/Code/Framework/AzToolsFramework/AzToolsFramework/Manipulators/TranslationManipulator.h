@@ -13,9 +13,10 @@
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
-
-#include "ManipulatorBus.h"
-#include "BaseManipulator.h"
+#include <AzToolsFramework/Manipulators/ManipulatorBus.h>
+#include <AzToolsFramework/Manipulators/PlanarManipulator.h>
+#include <AzToolsFramework/Manipulators/LinearManipulator.h>
+#include <AzToolsFramework/Manipulators/SurfaceManipulator.h>
 
 namespace AzToolsFramework
 {
@@ -25,7 +26,6 @@ namespace AzToolsFramework
     class TranslationManipulator
     {
     public:
-
         /**
          * How many dimensions does this translation manipulator have
          */
@@ -41,82 +41,92 @@ namespace AzToolsFramework
         explicit TranslationManipulator(AZ::EntityId entityId, Dimensions dimensions);
         virtual ~TranslationManipulator();
 
-        TranslationManipulator(const TranslationManipulator&) = delete;
-        TranslationManipulator& operator=(const TranslationManipulator&) = delete;
-
         void Register(ManipulatorManagerId manipulatorManagerId);
         void Unregister();
 
-        using LinearManipulatorMouseActionCallback = AZStd::function<void(const LinearManipulationData&)>;
-        using PlanarManipulatorMouseActionCallback = AZStd::function<void(const PlanarManipulationData&)>;
+        void InstallLinearManipulatorMouseDownCallback(LinearManipulator::MouseActionCallback onMouseDownCallback);
+        void InstallLinearManipulatorMouseMoveCallback(LinearManipulator::MouseActionCallback onMouseMoveCallback);
+        void InstallLinearManipulatorMouseUpCallback(LinearManipulator::MouseActionCallback onMouseUpCallback);
 
-        void InstallLinearManipulatorMouseDownCallback(LinearManipulatorMouseActionCallback onMouseDownCallback);
-        void InstallLinearManipulatorMouseMoveCallback(LinearManipulatorMouseActionCallback onMouseMoveCallback);
-        void InstallLinearManipulatorMouseUpCallback(LinearManipulatorMouseActionCallback onMouseUpCallback);
+        void InstallPlanarManipulatorMouseDownCallback(PlanarManipulator::MouseActionCallback onMouseDownCallback);
+        void InstallPlanarManipulatorMouseMoveCallback(PlanarManipulator::MouseActionCallback onMouseMoveCallback);
+        void InstallPlanarManipulatorMouseUpCallback(PlanarManipulator::MouseActionCallback onMouseUpCallback);
 
-        void InstallPlanarManipulatorMouseDownCallback(PlanarManipulatorMouseActionCallback onMouseDownCallback);
-        void InstallPlanarManipulatorMouseMoveCallback(PlanarManipulatorMouseActionCallback onMouseMoveCallback);
-        void InstallPlanarManipulatorMouseUpCallback(PlanarManipulatorMouseActionCallback onMouseUpCallback);
+        void InstallSurfaceManipulatorMouseDownCallback(SurfaceManipulator::MouseActionCallback onMouseDownCallback);
+        void InstallSurfaceManipulatorMouseMoveCallback(SurfaceManipulator::MouseActionCallback onMouseMoveCallback);
+        void InstallSurfaceManipulatorMouseUpCallback(SurfaceManipulator::MouseActionCallback onMouseUpCallback);
 
         void SetBoundsDirty();
 
-        void SetPosition(const AZ::Vector3& origin);
-        const AZ::Vector3& GetPosition() const { return m_origin; }
+        void SetPosition(const AZ::Vector3& position);
+        const AZ::Vector3& GetPosition() const { return m_position; }
 
         void SetAxes(const AZ::Vector3& axis1, const AZ::Vector3& axis2, const AZ::Vector3& axis3 = AZ::Vector3::CreateAxisZ());
-        void SetAxesColor(const AZ::Color& axis1Color, const AZ::Color& axis2Color, const AZ::Color& axis3Color = AZ::Color(0.0f, 0.0f, 1.0f, 0.5f));
-        void SetPlanesColor(const AZ::Color& plane1Color, const AZ::Color& plane2Color = AZ::Color(0.0f, 1.0f, 0.0f, 0.5f), const AZ::Color& plane3Color = AZ::Color(0.0f, 0.0f, 1.0f, 0.5f));
 
-        /**
-         * Set all three axes to the same length.
-         */
-        void SetAxisLength(float axisLength);
+        void ConfigurePlanarView(
+            const AZ::Color& plane1Color,
+            const AZ::Color& plane2Color = AZ::Color(0.0f, 1.0f, 0.0f, 0.5f),
+            const AZ::Color& plane3Color = AZ::Color(0.0f, 0.0f, 1.0f, 0.5f));
 
-        /**
-         * Set all three planes to the same size and they will displayed as squares.
-         */
-        void SetPlaneSize(float size);
+        void ConfigureLinearView(
+            float axisLength,
+            const AZ::Color& axis1Color, const AZ::Color& axis2Color,
+            const AZ::Color& axis3Color = AZ::Color(0.0f, 0.0f, 1.0f, 0.5f));
+
+        void ConfigureSurfaceView(
+            float radius, const AZ::Color& color);
 
     private:
+        AZ_DISABLE_COPY_MOVE(TranslationManipulator)
 
-        struct ManipulatorIndices
-        {
-            explicit ManipulatorIndices(Dimensions dimensions)
-            {
-                switch (dimensions)
-                {
-                case Dimensions::Two:
-                    m_linearBeginIndex = 0;
-                    m_linearEndIndex = 2;
-                    m_planarBeginIndex = 2;
-                    m_planarEndIndex = 3;
-                    break;
-                case Dimensions::Three:
-                    m_linearBeginIndex = 0;
-                    m_linearEndIndex = 3;
-                    m_planarBeginIndex = 3;
-                    m_planarEndIndex = 6;
-                    break;
-                default:
-                    AZ_Assert(false, "Invalid dimensions provided");
-                    break;
-                }
-            }
-
-            int m_linearBeginIndex = 0;
-            int m_linearEndIndex = 0;
-            int m_planarBeginIndex = 0;
-            int m_planarEndIndex = 0;
-        };
-
-        AZ::Vector3 m_origin; ///< Local space position of TranslationManipulator.
-        const ManipulatorIndices m_manipulatorIndices; ///< Indices to control which manipulators to affect depending on if the TranslationManipulator is in 2 or 3 dimensions.
+        AZ::Vector3 m_position; ///< Local space position of TranslationManipulator.
         const Dimensions m_dimensions; ///< How many dimensions of freedom does this manipulator have.
 
+        AZStd::vector<AZStd::unique_ptr<LinearManipulator>> m_linearManipulators;
+        AZStd::vector<AZStd::unique_ptr<PlanarManipulator>> m_planarManipulators;
+        AZStd::unique_ptr<SurfaceManipulator> m_surfaceManipulator = nullptr;
+
         /**
-         * If dimensions is 2 - manipulators count is 3 - the first 2 are LinearManipulators and the last is a PlanarManipulator.
-         * If dimensions is 3 - manipulators count is 6 - the first 3 are LinearManipulators and the last 3 are PlanarManipulators.
+         * Common processing for base manipulator type.
          */
-        AZStd::vector<AZStd::unique_ptr<BaseManipulator>> m_manipulators; ///< Underlying manipulators to compose TranslationManipulator
+        void ProcessManipulators(AZStd::function<void(BaseManipulator*)>);
+    };
+
+    /**
+     * IndexedTranslationManipulator wraps a standard TranslationManipulator and allows it to be linked
+     * to a particular index in a list of vertices/points.
+     */
+    template<typename Vertex>
+    struct IndexedTranslationManipulator
+    {
+        explicit IndexedTranslationManipulator(
+            AZ::EntityId entityId, TranslationManipulator::Dimensions dimensions, size_t index, const Vertex& position)
+                : m_manipulator(entityId, dimensions)
+        {
+            m_vertices.push_back({ position, index });
+        }
+
+        /**
+         * Store vertex start position as manipulator event occurs, index refers to location in container.
+         */
+        struct VertexLookup
+        {
+            Vertex m_start;
+            size_t m_index;
+        };
+
+        /**
+         * Helper to iterate over all vertices stored by the manipulator.
+         */
+        void Process(AZStd::function<void(VertexLookup&)> fn)
+        {
+            for (VertexLookup& vertex : m_vertices)
+            {
+                fn(vertex);
+            }
+        }
+
+        AZStd::vector<VertexLookup> m_vertices; ///< List of vertices currently associated with this translation manipulator.
+        TranslationManipulator m_manipulator;
     };
 } // namespace AzToolsFramework

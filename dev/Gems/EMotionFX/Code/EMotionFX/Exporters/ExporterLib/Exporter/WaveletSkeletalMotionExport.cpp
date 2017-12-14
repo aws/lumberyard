@@ -76,12 +76,12 @@ namespace ExporterLib
         const float invScale = 1.0f / scale;
 
         // get the animation start pose and the bind pose transformation information
-        MCore::Vector3                      posePosition    = subMotion->GetPosePos() * invScale;
+        AZ::PackedVector3f                  posePosition    = AZ::PackedVector3f(subMotion->GetPosePos() * invScale);
         MCore::Compressed16BitQuaternion    poseRotation    = subMotion->GetCompressedPoseRot();
-        MCore::Vector3                      poseScale       = subMotion->GetPoseScale();
-        MCore::Vector3                      bindPosePosition = subMotion->GetBindPosePos() * invScale;
+        AZ::PackedVector3f                  poseScale       = AZ::PackedVector3f(subMotion->GetPoseScale());
+        AZ::PackedVector3f                  bindPosePosition = AZ::PackedVector3f(subMotion->GetBindPosePos() * invScale);
         MCore::Compressed16BitQuaternion    bindPoseRotation = subMotion->GetCompressedBindPoseRot();
-        MCore::Vector3                      bindPoseScale   = subMotion->GetBindPoseScale();
+        AZ::PackedVector3f                  bindPoseScale   = AZ::PackedVector3f(subMotion->GetBindPoseScale());
 
         EMotionFX::FileFormat::Motion_WaveletSkeletalSubMotion subMotionChunk;
 

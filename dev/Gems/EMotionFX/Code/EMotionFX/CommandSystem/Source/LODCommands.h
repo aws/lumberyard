@@ -10,14 +10,12 @@
 *
 */
 
-#ifndef __EMFX_LODCOMMANDS_H
-#define __EMFX_LODCOMMANDS_H
+#pragma once
 
 // include the required headers
 #include "CommandSystemConfig.h"
 #include <MCore/Source/Command.h>
 #include <MCore/Source/CommandGroup.h>
-#include <EMotionFX/Source/LODGenerator.h>
 #include <EMotionFX/Source/MorphSetup.h>
 
 
@@ -31,21 +29,11 @@ namespace CommandSystem
 
 
     // remove a LOD level from the actor
-        MCORE_DEFINECOMMAND_START(CommandRemoveLOD, "Remove LOD", false)
+    MCORE_DEFINECOMMAND_START(CommandRemoveLOD, "Remove LOD", false)
     bool                            mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
-
     // helper functions
-    EMotionFX::LODGenerator::InitSettings COMMANDSYSTEM_API ConstructInitSettings(MCore::Command* command, const MCore::CommandLine& parameters);
-    EMotionFX::LODGenerator::GenerateSettings COMMANDSYSTEM_API ConstructGenerateSettings(MCore::Command* command, const MCore::CommandLine& parameters, EMotionFX::MorphSetup* morphSetup);
-    void COMMANDSYSTEM_API ConstructInitSettingsCommandParameters(const EMotionFX::LODGenerator::InitSettings& initSettings, MCore::String* outString);
-    void COMMANDSYSTEM_API ConstructGenerateSettingsCommandParameters(const EMotionFX::LODGenerator::GenerateSettings& generateSettings, MCore::String* outString, EMotionFX::MorphSetup* morphSetup);
     void COMMANDSYSTEM_API ClearLODLevels(EMotionFX::Actor* actor, MCore::CommandGroup* commandGroup = nullptr);
-
-    void COMMANDSYSTEM_API ConstructReplaceAutomaticLODCommand(EMotionFX::Actor* actor, uint32 lodLevel, const EMotionFX::LODGenerator::InitSettings& initSettings, const EMotionFX::LODGenerator::GenerateSettings& generateSettings, const MCore::Array<uint32>& enabledNodeIDs, MCore::String* outString, bool useForMetaData = false);
     void COMMANDSYSTEM_API ConstructReplaceManualLODCommand(EMotionFX::Actor* actor, uint32 lodLevel, const char* lodActorFileName, const MCore::Array<uint32>& enabledNodeIDs, MCore::String* outString, bool useForMetaData = false);
 } // namespace CommandSystem
-
-
-#endif

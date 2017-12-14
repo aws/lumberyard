@@ -32,7 +32,7 @@ public:
     bool Cache();
     void OnBeginPreview(QWidget* hQuickPreviewWnd);
     void OnEndPreview();
-    void PreviewRender(QWidget* hRenderWindow, const QRect& rstViewport, int aMouseX, int aMouseY, int aMouseDeltaX, int aMouseDeltaY, UINT aKeyFlags);
+    void PreviewRender(QWidget* hRenderWindow, const QRect& rstViewport, int aMouseX, int aMouseY, int aMouseDeltaX, int aMouseDeltaY, int aMouseWheelDelta, UINT aKeyFlags);
     void* CreateInstanceInViewport(float aX, float aY, float aZ);
     bool MoveInstanceInViewport(const void* pDraggedObject, float aX, float aY, float aZ);
     void AbortCreateInstanceInViewport(const void* pDraggedObject);

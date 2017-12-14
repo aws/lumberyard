@@ -42,7 +42,6 @@ def build(bld):
                                    
                                    'AzToolsFramework', 
                                    'GFxFramework',
-                                   'EMotionFXStaticLib',
                                    'AssetBuilderSDK'],
         uselib                  = ['QT5CORE',
                                    'QT5GUI',

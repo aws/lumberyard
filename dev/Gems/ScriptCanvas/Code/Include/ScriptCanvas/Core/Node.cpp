@@ -19,12 +19,15 @@
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/IdUtils.h>
 #include <ScriptCanvas/Core/Attributes.h>
 #include <ScriptCanvas/Core/Contract.h>
 #include <ScriptCanvas/Core/Contracts/ConnectionLimitContract.h>
 #include <ScriptCanvas/Core/Contracts/DynamicTypeContract.h>
 #include <ScriptCanvas/Core/Contracts/StorageRequiredContract.h>
 #include <ScriptCanvas/Core/GraphBus.h>
+#include <ScriptCanvas/Core/PureData.h>
+#include <ScriptCanvas/Libraries/Core/EBusEventHandler.h>
 
 namespace ScriptCanvas
 {
@@ -68,8 +71,8 @@ namespace ScriptCanvas
     void Node::Activate()
     {
         SignalBus::Handler::BusConnect(GetEntityId());
-
         OnActivate();
+        MarkDefaultableInput();
     }
 
     void Node::Deactivate()
@@ -121,15 +124,155 @@ namespace ScriptCanvas
             }
         }
     }
+    
+    void Node::MarkDefaultableInput()
+    {
+        for (const auto& slotIdIndex : m_slotContainer.m_slotIdSlotMap)
+        {
+            const auto& inputSlot = m_slotContainer.m_slots[slotIdIndex.second];
+            const auto& slotId = slotIdIndex.first;
+
+            if (inputSlot.GetType() == SlotType::DataIn)
+            {
+                // for each output slot...
+                // for each connected node...
+                // remove the ability to default it...
+                // ...and until a more viable solution is available, variable get input in another node must be exclusive   
+                
+                AZStd::vector<AZStd::pair<const Node*, const SlotId>> connections = GetConnectedNodes(inputSlot);
+                if (!connections.empty())
+                {
+                    bool isConnectedToPureData = false;
+
+                    for (auto& nodePtrSlotId : connections)
+                    {
+                        if (azrtti_cast<const PureData*>(nodePtrSlotId.first))
+                        {
+                            isConnectedToPureData = true;
+                            break;
+                        }
+                    }
+                
+                    if (!isConnectedToPureData)
+                    {
+                        m_possiblyStaleInput.insert(slotId);
+                    }
+                }
+            }
+        }
+    }
+    
+    bool Node::IsInEventHandlingScope(const ID& possibleEventHandler) const
+    {
+        if (auto eventHandler = azrtti_cast<ScriptCanvas::Nodes::Core::EBusEventHandler*>(GetGraph()->GetNode(possibleEventHandler)))
+        {
+            auto eventSlots = eventHandler->GetEventSlotIds();
+            AZStd::unordered_set<ID> path;
+            return IsInEventHandlingScope(possibleEventHandler, eventSlots, {}, path);
+        }
+
+        return false;
+    }
+
+    bool Node::IsInEventHandlingScope(const ID& eventHandler, const AZStd::vector<SlotId>& eventSlots, const SlotId& connectionSlot, AZStd::unordered_set<ID>& path) const
+    {
+        const ID candidateNodeId = GetEntityId();
+
+        if (candidateNodeId == eventHandler)
+        {
+            return AZStd::find(eventSlots.begin(), eventSlots.end(), connectionSlot) != eventSlots.end();
+        }
+        else if (path.find(candidateNodeId) != path.end())
+        {
+            return false;
+        }
+
+        // prevent loops in the search
+        path.insert(candidateNodeId);
+        
+        // check all parents of the candidate for a path to the handler
+        auto connectedNodes = GetConnectedNodesAndSlotsByType(SlotType::ExecutionIn);
+        
+        //  for each connected parent
+        for (auto& node : connectedNodes)
+        {
+            // return true if that parent is the event handler we're looking for, and we're connected to an event handling execution slot
+            if (node.first->IsInEventHandlingScope(eventHandler, eventSlots, node.second, path))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    bool Node::IsTargetInDataFlowPath(const Node* targetNode) const
+    {
+        AZStd::unordered_set<ID> path;
+        return azrtti_cast<const PureData*>(this) 
+            || azrtti_cast<const PureData*>(targetNode)
+            || (targetNode && IsTargetInDataFlowPath(targetNode->GetEntityId(), path));
+    }
+    
+    bool Node::IsTargetInDataFlowPath(const ID& targetNodeId, AZStd::unordered_set<ID>& path) const
+    {
+        const ID candidateNodeId = GetEntityId();
+
+        if (candidateNodeId == targetNodeId)
+        {
+            // an executable path from the source to the target has been found
+            return true;
+        }
+        else if (IsInEventHandlingScope(targetNodeId)) // targetNodeId is handler, and this node resides in that event handlers event execution slots
+        {
+            // this node pushes data into handled event as results for that event
+            return true;
+        }
+        else if (path.find(candidateNodeId) != path.end())
+        {
+            // a loop has been encountered, without yielding a path
+            return false;
+        }
+        
+        // prevent loops in the search
+        path.insert(candidateNodeId);
+
+        // check all children of the candidate for a path to the target
+        auto connectedNodes = GetConnectedNodesByType(SlotType::ExecutionOut);
+        //  for each connected child
+        for (auto& node : connectedNodes)
+        {
+            // return true if that child is in the data flow path of target node
+            if (node->IsTargetInDataFlowPath(targetNodeId, path))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void Node::RefreshInput()
+    {
+        for (const auto& slotID : m_possiblyStaleInput)
+        {
+            SetDefault(slotID);
+        }
+    }
+
+    void Node::SetDefault(const SlotId& slotID)
+    {
+        if (auto input = ModInput(slotID))
+        {
+            input->SetDefaultValue();
+        }
+    }
 
     void Node::SignalInput(const SlotId& slotId)
     {
-        SCRIPT_CANVAS_IF_NOT_IN_INFINITE_LOOP((*this))
-        {
-            DebugTrace("Node::SignalInput: %s : %s\n", GetDebugName().data(), GetSlotName(slotId).c_str());
-            LogNotificationBus::Event(GetGraphId(), &LogNotifications::OnNodeSignalInput, slotId.m_id, GetNodeName(), GetSlotName(slotId));
-            OnInputSignal(slotId);
-        }
+        LogNotificationBus::Event(GetGraphId(), &LogNotifications::OnNodeSignalInput, slotId.m_id, GetNodeName(), GetSlotName(slotId));
+        OnInputSignal(slotId);
+        RefreshInput();
         SCRIPTCANVAS_HANDLE_ERROR((*this));
     }
 
@@ -137,8 +280,11 @@ namespace ScriptCanvas
     {
         SCRIPTCANVAS_RETURN_IF_ERROR_STATE((*this));
         
+        bool executionCheckRequired(false);
+
         if (slotId.IsValid())
         {
+            auto graph = GetGraph();
             auto slotIdIt = m_slotContainer.m_slotIdSlotMap.find(slotId);
             if (slotIdIt != m_slotContainer.m_slotIdSlotMap.end())
             {
@@ -146,16 +292,16 @@ namespace ScriptCanvas
                 GraphRequestBus::EventResult(connectedEndpoints, m_graphId, &GraphRequests::GetConnectedEndpoints, Endpoint{ GetEntityId(), slotId });
                 for (const Endpoint& endpoint : connectedEndpoints)
                 {
-                    DebugTrace("SignalOutput: Node %s Target Slot: %s\n", GetEntityId().ToString().data(), slotId.m_id.ToString<AZStd::string>().data());
-                    SignalBus::Event(endpoint.GetNodeId(), &SignalInterface::SignalInput, endpoint.GetSlotId());
-
                     Slot* slot = nullptr;
                     AZ::Entity* nodeEntity = nullptr;
                     AZ::ComponentApplicationBus::BroadcastResult(nodeEntity, &AZ::ComponentApplicationRequests::FindEntity, endpoint.GetNodeId());
 
                     if (auto* node = nodeEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity) : nullptr)
                     {
-                        slot = node->GetSlot(endpoint.GetSlotId());
+                        const auto& slotID = endpoint.GetSlotId();
+                        slot = node->GetSlot(slotID);
+                        graph->AddToExecutionStack(*node, slotID);
+                        executionCheckRequired = true;
                         LogNotificationBus::Event(GetGraphId(), &LogNotifications::OnNodeSignalOutput, GetNodeName(), node->GetNodeName(), slot ? slot->GetName() : endpoint.GetSlotId().m_id.ToString<AZStd::string>().data());
                     }
                     else
@@ -169,6 +315,11 @@ namespace ScriptCanvas
             {
                 AZ_Warning("Script Canvas", false, "Node does not have the output slot that was signaled. Node: %s Slot: %s", RTTI_GetTypeName(), slotId.m_id.ToString<AZStd::string>().data());
             }
+        }
+
+        if (executionCheckRequired)
+        {
+            GetGraph()->Execute();
         }
     }
 
@@ -311,7 +462,7 @@ namespace ScriptCanvas
             const auto& previousInputType = iter.first->GetSlotDataType(iter.second);
             if (!(previousInputType.IS_A(type) || type.IS_A(previousInputType)))
             {
-                // no acceptable tyep relationship
+                // no acceptable type relationship
                 return false;
             }
         }
@@ -374,10 +525,6 @@ namespace ScriptCanvas
             }
 
             AZ_Warning("Script Canvas", false, "Node %s does not have the specified slot: %s. Supported slots are:\n", GetEntity()->GetName().data(), slotId.m_id.ToString<AZStd::string>().c_str());
-//             for (auto& currentSlot : m_slotContainer.m_slots)
-//             {
-//                 AZ_TracePrintf("Script Canvas", "%s\n", currentSlot.GetName().data());
-//             }
         }
 
         return {};
@@ -568,7 +715,7 @@ namespace ScriptCanvas
         return slotIDOut;
     }
 
-    SlotId Node::AddInputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, Data::Type&& type, InputTypeContract contractType, bool addUniqueSlotByNameAndType)
+    SlotId Node::AddInputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, InputTypeContract contractType, bool addUniqueSlotByNameAndType)
     {
         SlotId slotIDOut;
         AZStd::vector<ContractDescriptor> contracts;
@@ -588,7 +735,7 @@ namespace ScriptCanvas
         int slotIndex;
         if (AddSlotInternal({ name, toolTip, SlotType::DataIn, contracts, addUniqueSlotByNameAndType }, slotIDOut, slotIndex))
         {
-            AddNonDatumType(AZStd::move(type), slotIndex);
+            AddNonDatumType(type, slotIndex);
         }
 
         return slotIDOut;
@@ -599,34 +746,24 @@ namespace ScriptCanvas
         return AddInputTypeSlot(name, toolTip, AZ::BehaviorContextHelper::IsStringParameter(typeDesc) ? Data::Type::String() : Data::FromBehaviorContextTypeChecked(typeDesc.m_typeId), contractType, addUniqueSlotByNameAndType);
     }
 
-    SlotId Node::AddOutputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, Data::Type&& type, OutputStorage outputStorage, bool addUniqueSlotByNameAndType)
+    SlotId Node::AddOutputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, OutputStorage outputStorage, bool addUniqueSlotByNameAndType)
     {
         SlotId slotIDOut;
         AZStd::vector<ContractDescriptor> contracts;
-        /*
-        \todo reevaluate a time to use this. It allows a lot of optimization on at edit time, at the cost of some convenience
-
-        if (outputStorage == OutputStorage::Required && !Data::IsValueType(type))
-        {
-            auto func = []() { return aznew StorageRequiredContract(); };
-            ContractDescriptor descriptor{ AZStd::move(func) };
-            contracts.emplace_back(descriptor);
-        }
-        */
-
+        
         int slotIndex;
         if (AddSlotInternal({ name, toolTip, SlotType::DataOut, contracts, addUniqueSlotByNameAndType }, slotIDOut, slotIndex))
         {
-            AddNonDatumType(AZStd::move(type), slotIndex);
+            AddNonDatumType(type, slotIndex);
         }
 
         return slotIDOut;
     }
 
-    void Node::AddNonDatumType(Data::Type&& type, int slotIndex)
+    void Node::AddNonDatumType(const Data::Type& type, int slotIndex)
     {
         const int outputTypeIndex = azlossy_cast<int>(m_nonDatumTypes.size());
-        m_nonDatumTypes.emplace_back(AZStd::move(type));
+        m_nonDatumTypes.emplace_back(type);
         m_nonDatumTypeIndexBySlotIndex.insert(AZStd::make_pair(slotIndex, outputTypeIndex));
 
     }
@@ -642,6 +779,80 @@ namespace ScriptCanvas
         slotIDOut = AddSlot(slotConfiguration);
         const Slot* unused(nullptr);
         return GetValidSlotIndex(slotIDOut, unused, indexOut);
+    }
+
+    bool Node::RemoveSlot(const SlotId& slotId)
+    {
+        auto slotIdIt = m_slotContainer.m_slotIdSlotMap.find(slotId);
+        if (slotIdIt != m_slotContainer.m_slotIdSlotMap.end())
+        {
+            int slotIndex = slotIdIt->second;
+            auto* slotIt = m_slotContainer.m_slots.begin() + slotIndex;
+            /// Disconnect connected endpoints
+            Graph* graph = GetGraph();
+            if(graph)
+            {
+                Endpoint baseEndpoint{ GetEntityId(), slotId };
+                for (const auto& connectedEndpoint : graph->GetConnectedEndpoints(baseEndpoint))
+                {
+                    graph->DisconnectByEndpoint(baseEndpoint, connectedEndpoint);
+                }
+            }
+
+            m_slotContainer.m_slots.erase(slotIt);
+            int nonDatumTypeIndex = -1;
+            int inputIndex = -1;
+
+            auto nonDatumTypeIt = m_nonDatumTypeIndexBySlotIndex.find(slotIndex);
+            if (nonDatumTypeIt != m_nonDatumTypeIndexBySlotIndex.end())
+            {
+                nonDatumTypeIndex = nonDatumTypeIt->second;
+                m_nonDatumTypes.erase(m_nonDatumTypes.begin() + nonDatumTypeIndex);
+                m_nonDatumTypeIndexBySlotIndex.erase(nonDatumTypeIt);
+            }
+
+            auto inputIndexIt = m_inputIndexBySlotIndex.find(slotIndex);
+            if (inputIndexIt != m_inputIndexBySlotIndex.end())
+            {
+                inputIndex = inputIndexIt->second;
+                m_inputData.erase(m_inputData.begin() + inputIndex);
+                m_inputIndexBySlotIndex.erase(inputIndexIt);
+            }
+
+            //! Fixes the InputData/NonDatumType/SlotName/SlotId to SlotIndex mappings to contain the correct index into the SlotContainer::m_slots vector
+            AZStd::unordered_map<int, int> newIndexMap;
+            for (const AZStd::pair<int, int>& slotToNonDatumTypeIndexPair : m_nonDatumTypeIndexBySlotIndex)
+            {
+                const int iterSlotIndex = slotToNonDatumTypeIndexPair.first;
+                const int iterNonDatumIndex = slotToNonDatumTypeIndexPair.second;
+                const int newSlotIndex = iterSlotIndex < slotIndex ? iterSlotIndex : iterSlotIndex - 1;
+                const int newNonDatumIndex = nonDatumTypeIndex == -1 || iterNonDatumIndex < nonDatumTypeIndex ? iterNonDatumIndex : iterNonDatumIndex - 1;
+                newIndexMap.emplace(newSlotIndex, newNonDatumIndex);
+            }
+            m_nonDatumTypeIndexBySlotIndex = newIndexMap;
+
+            newIndexMap.clear();
+            for (const AZStd::pair<int, int>& slotToInputIndexPair : m_inputIndexBySlotIndex)
+            {
+                const int iterSlotIndex = slotToInputIndexPair.first;
+                const int iterInputIndex = slotToInputIndexPair.second;
+                const int newSlotIndex = iterSlotIndex < slotIndex ? iterSlotIndex : iterSlotIndex - 1;
+                const int newInputIndex = inputIndex == -1 || iterInputIndex < inputIndex ? iterInputIndex: iterInputIndex - 1;
+                newIndexMap.emplace(newSlotIndex, newInputIndex);
+            }
+            m_inputIndexBySlotIndex = newIndexMap;
+            
+            m_slotContainer.m_slotIdSlotMap.clear();
+            m_slotContainer.m_slotNameSlotMap.clear();
+            for (size_t slotIndex = 0; slotIndex < m_slotContainer.m_slots.size(); ++slotIndex)
+            {
+                m_slotContainer.m_slotIdSlotMap.emplace(m_slotContainer.m_slots[slotIndex].GetId(), static_cast<int>(slotIndex));
+                m_slotContainer.m_slotNameSlotMap.emplace(m_slotContainer.m_slots[slotIndex].GetName(), static_cast<int>(slotIndex));
+            }
+            return true;
+        }
+
+        return false;
     }
 
     AZStd::vector<Endpoint> Node::GetEndpointsByType(SlotType slotType) const
@@ -660,9 +871,10 @@ namespace ScriptCanvas
         return endpoints;
     }
 
-    void Node::SetGraphId(const AZ::EntityId& id)
+    void Node::SetGraph(Graph* graph)
     {
-        m_graphId = id;
+        m_graphId = graph->GetUniqueId();
+        OnGraphSet(graph);
     }
 
     Graph* Node::GetGraph() const
@@ -692,8 +904,8 @@ namespace ScriptCanvas
         {
             AZ::Entity* nodeEntity{};
             AZ::ComponentApplicationBus::BroadcastResult(nodeEntity, &AZ::ComponentApplicationRequests::FindEntity, endpoint.GetNodeId());
-            auto* node = nodeEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity) : nullptr;
-            if (node)
+            
+            if (auto* node = nodeEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity) : nullptr)
             {
                 connectedNodes.emplace_back(node);
             }
@@ -701,6 +913,25 @@ namespace ScriptCanvas
 
         return connectedNodes;
     }
+
+    AZStd::vector<AZStd::pair<const Node*, SlotId>> Node::GetConnectedNodesAndSlotsByType(SlotType slotType) const
+    {
+        AZStd::vector<AZStd::pair<const Node*, SlotId>> connectedNodes;
+
+        for (const auto& endpoint : GetEndpointsByType(slotType))
+        {
+            AZ::Entity* nodeEntity{};
+            AZ::ComponentApplicationBus::BroadcastResult(nodeEntity, &AZ::ComponentApplicationRequests::FindEntity, endpoint.GetNodeId());
+            
+            if (auto* node = nodeEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity) : nullptr)
+            {
+                connectedNodes.emplace_back(AZStd::make_pair(node, endpoint.GetSlotId()));
+            }
+        }
+
+        return connectedNodes;
+    }
+
 
     const Node* Node::GetNextExecutableNode() const
     {
@@ -881,11 +1112,20 @@ namespace ScriptCanvas
         AZStd::vector<AZStd::pair<const Node*, const SlotId>> connectedNodes;
         AZStd::vector<Endpoint> connectedEndpoints;
         GraphRequestBus::EventResult(connectedEndpoints, m_graphId, &GraphRequests::GetConnectedEndpoints, Endpoint{ GetEntityId(), slot.GetId() });
-        Graph* graph = GetGraph();
 
         for (const Endpoint& endpoint : connectedEndpoints)
         {
-            connectedNodes.emplace_back(AZStd::make_pair(graph->GetNode(endpoint.GetNodeId()), endpoint.GetSlotId()));
+            AZ::Entity* nodeEntity{};
+            AZ::ComponentApplicationBus::BroadcastResult(nodeEntity, &AZ::ComponentApplicationRequests::FindEntity, endpoint.GetNodeId());
+            auto connectedNode = nodeEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity) : nullptr;
+            if (connectedNode)
+            {
+                connectedNodes.emplace_back(connectedNode, endpoint.GetSlotId());
+            }
+            else
+            {
+                AZ_Error("Script Canvas", false, "Unable to find node with id %s in the graph %s. Most likely the node was serialized with a type that is no longer reflected", endpoint.GetNodeId().ToString().data(), m_graphId.ToString().data());
+            }
         }
         return connectedNodes;
     }
@@ -895,11 +1135,20 @@ namespace ScriptCanvas
         AZStd::vector<AZStd::pair<Node*, const SlotId>> connectedNodes;
         AZStd::vector<Endpoint> connectedEndpoints;
         GraphRequestBus::EventResult(connectedEndpoints, m_graphId, &GraphRequests::GetConnectedEndpoints, Endpoint{ GetEntityId(), slot.GetId() });
-        Graph* graph = GetGraph();
 
         for (const Endpoint& endpoint : connectedEndpoints)
         {
-            connectedNodes.emplace_back(AZStd::make_pair(graph->GetNode(endpoint.GetNodeId()), endpoint.GetSlotId()));
+            AZ::Entity* nodeEntity{};
+            AZ::ComponentApplicationBus::BroadcastResult(nodeEntity, &AZ::ComponentApplicationRequests::FindEntity, endpoint.GetNodeId());
+            auto connectedNode = nodeEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity) : nullptr;
+            if (connectedNode)
+            {
+                connectedNodes.emplace_back(connectedNode, endpoint.GetSlotId());
+            }
+            else
+            {
+                AZ_Error("Script Canvas", false, "Unable to find node with id %s in the graph %s. Most likely the node was serialized with a type that is no longer reflected", endpoint.GetNodeId().ToString().data(), m_graphId.ToString().data());
+            }
         }
         return connectedNodes;
     }

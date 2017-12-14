@@ -10,23 +10,105 @@
 *
 */
 
+#include "PlanarManipulator.h"
+
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
-
-#include "PlanarManipulator.h"
+#include <AzToolsFramework/Manipulators/ManipulatorView.h>
+#include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
 
 namespace AzToolsFramework
 {
+    PlanarManipulator::StartInternal PlanarManipulator::CalculateManipulationDataStart(
+        const Fixed& fixed, const AZ::Transform& worldFromLocal, bool snapping, float gridSize,
+        const AZ::Vector3 localStartPosition, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
+        ManipulatorSpace manipulatorSpace)
+    {
+        AZ::Transform worldFromLocalNormalized = worldFromLocal;
+        const AZ::Vector3 scale = worldFromLocalNormalized.ExtractScale();
+
+        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
+        const AZ::Vector3 normal = Internal::TransformAxisForSpace(manipulatorSpace, localFromWorldNormalized, fixed.m_normal);
+        const AZ::Vector3 axis1 = Internal::TransformAxisForSpace(manipulatorSpace, localFromWorldNormalized, fixed.m_axis1);
+        const AZ::Vector3 axis2 = Internal::TransformAxisForSpace(manipulatorSpace, localFromWorldNormalized, fixed.m_axis2);
+
+        const AZ::Vector3 localRayOrigin = localFromWorldNormalized * rayOrigin;
+        const AZ::Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(rayDirection);
+
+        StartInternal startInternal;
+        Internal::CalculateRayPlaneIntersectingPoint(
+            localRayOrigin, localRayDirection, localStartPosition,
+            normal, startInternal.m_localHitPosition);
+
+        const AZ::Vector3 scaleRecip = scale.GetReciprocal();
+        const AZ::Vector3 snapOffset = snapping
+            ? CalculateSnappedOffset(localStartPosition, axis1, gridSize * MaxElement(scaleRecip)) +
+              CalculateSnappedOffset(localStartPosition, axis2, gridSize * MaxElement(scaleRecip))
+            : AZ::Vector3::CreateZero();
+
+        startInternal.m_snapOffset = snapOffset;
+        startInternal.m_localPosition = localStartPosition + snapOffset;
+
+        return startInternal;
+    }
+
+    PlanarManipulator::Action PlanarManipulator::CalculateManipulationDataAction(
+        const Fixed& fixed, const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
+        bool snapping, float gridSize, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
+        ManipulatorSpace manipulatorSpace)
+    {
+        AZ::Transform worldFromLocalNormalized = worldFromLocal;
+        const AZ::Vector3 scale = worldFromLocalNormalized.ExtractScale();
+
+        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
+        const AZ::Vector3 normal = Internal::TransformAxisForSpace(manipulatorSpace, localFromWorldNormalized, fixed.m_normal);
+
+        const AZ::Vector3 localRayOrigin = localFromWorldNormalized * rayOrigin;
+        const AZ::Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(rayDirection);
+
+        AZ::Vector3 localHitPosition;
+        Internal::CalculateRayPlaneIntersectingPoint(
+            localRayOrigin, localRayDirection, startInternal.m_localPosition,
+            normal, localHitPosition);
+
+        const AZ::Vector3 scaleRecip = scale.GetReciprocal();
+        const AZ::Vector3 axis1 = Internal::TransformAxisForSpace(manipulatorSpace, localFromWorldNormalized, fixed.m_axis1);
+        const AZ::Vector3 axis2 = Internal::TransformAxisForSpace(manipulatorSpace, localFromWorldNormalized, fixed.m_axis2);
+        const AZ::Vector3 hitDelta = (localHitPosition - startInternal.m_localHitPosition) * scaleRecip;
+
+        const AZ::Vector3 unsnappedOffset =
+            axis1.Dot(hitDelta) * axis1 +
+            axis2.Dot(hitDelta) * axis2;
+
+        Action action;
+        action.m_start.m_localPosition = startInternal.m_localPosition;
+        action.m_start.m_snapOffset = startInternal.m_snapOffset;
+        action.m_current.m_localOffset = snapping
+            ? unsnappedOffset +
+                CalculateSnappedOffset(unsnappedOffset, axis1, gridSize * MaxElement(scaleRecip)) +
+                CalculateSnappedOffset(unsnappedOffset, axis2, gridSize * MaxElement(scaleRecip))
+            : unsnappedOffset;
+
+        return action;
+    }
+
     PlanarManipulator::PlanarManipulator(AZ::EntityId entityId)
         : BaseManipulator(entityId)
     {
-
+        AttachLeftMouseDownImpl();
     }
 
-    void PlanarManipulator::InstallMouseDownCallback(MouseActionCallback onMouseDownCallback)
+    PlanarManipulator::~PlanarManipulator() {}
+
+    void PlanarManipulator::InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback)
     {
-        m_onMouseDownCallback = onMouseDownCallback;
+        m_onLeftMouseDownCallback = onMouseDownCallback;
+    }
+
+    void PlanarManipulator::InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback)
+    {
+        m_onLeftMouseUpCallback = onMouseUpCallback;
     }
 
     void PlanarManipulator::InstallMouseMoveCallback(MouseActionCallback onMouseMoveCallback)
@@ -34,218 +116,97 @@ namespace AzToolsFramework
         m_onMouseMoveCallback = onMouseMoveCallback;
     }
 
-    void PlanarManipulator::InstallMouseUpCallback(MouseActionCallback onMouseUpCallback)
+    void PlanarManipulator::OnLeftMouseDownImpl(
+        const ViewportInteraction::MouseInteraction& interaction, float /*rayIntersectionDistance*/)
     {
-        m_onMouseUpCallback = onMouseUpCallback;
-    }
+        AZ::Transform worldFromLocal;
+        AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
-    void PlanarManipulator::OnMouseDown(const ViewportInteraction::MouseInteraction& interaction, float /*t*/)
-    {
-        if (!IsRegistered())
+        const bool snapping =
+            GridSnapping(interaction.m_interactionId.m_viewportId);
+        const float gridSize =
+            GridSize(interaction.m_interactionId.m_viewportId);
+        const ManipulatorSpace manipulatorSpace =
+            GetManipulatorSpace(GetManipulatorManagerId());
+
+        m_startInternal = CalculateManipulationDataStart(
+            m_fixed, worldFromLocal, snapping, gridSize, m_position,
+            interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
+            manipulatorSpace);
+
+        if (m_onLeftMouseDownCallback)
         {
-            return;
-        }
-
-        if (m_isPerformingOperation)
-        {
-            AZ_Warning("Manipulators", false, "MouseDown action received, but this manipulator is still performing!");
-            return;
-        }
-        m_isPerformingOperation = true;
-        AzToolsFramework::ManipulatorManagerRequestBus::Event(m_manipulatorManagerId,
-            &AzToolsFramework::ManipulatorManagerRequestBus::Events::SetActiveManipulator, this);
-
-        ViewportInteraction::CameraState cameraState;
-        ViewportInteractionRequestBus::EventResult(cameraState, interaction.m_viewportID, &ViewportInteractionRequestBus::Events::GetCameraState);
-        m_cameraFarClip = cameraState.m_farClip;
-
-        m_manipulatorPlaneNormalWorld = m_axis1World.Cross(m_axis2World);
-        Internal::CalcRayPlaneIntersectingPoint(interaction.m_rayOrigin, interaction.m_rayDirection, m_cameraFarClip,
-            m_originWorld, m_manipulatorPlaneNormalWorld, m_currentHitWorldPosition);
-        m_startHitWorldPosition = m_currentHitWorldPosition;
-
-        if (m_onMouseDownCallback)
-        {
-            PlanarManipulationData data;
-            data.m_manipulatorId = GetManipulatorId();
-            data.m_startHitWorldPosition = m_startHitWorldPosition;
-            data.m_currentHitWorldPosition = m_currentHitWorldPosition;
-            data.m_manipulationWorldDirection1 = m_axis1World;
-            data.m_manipulationWorldDirection2 = m_axis2World;
-            data.m_axesDelta.fill(0.0f);
-
-            m_onMouseDownCallback(data);
+            m_onLeftMouseDownCallback(CalculateManipulationDataAction(
+                m_fixed, m_startInternal, worldFromLocal, snapping, gridSize,
+                interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
+                manipulatorSpace));
         }
     }
 
-    void PlanarManipulator::OnMouseMove(const ViewportInteraction::MouseInteraction& interaction)
+    void PlanarManipulator::OnMouseMoveImpl(const ViewportInteraction::MouseInteraction& interaction)
     {
-        if (!IsRegistered())
-        {
-            return;
-        }
-
-        if (!m_isPerformingOperation)
-        {
-            AZ_Warning("Manipulators", false, "MouseMove action received, but this manipulator is not performing operations!");
-            return;
-        }
-
         if (m_onMouseMoveCallback)
         {
-            PlanarManipulationData data = GetManipulationData(interaction.m_rayOrigin, interaction.m_rayDirection);
-            m_onMouseMoveCallback(data);
+            AZ::Transform worldFromLocal;
+            AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(),
+                &AZ::TransformBus::Events::GetWorldTM);
+
+            m_onMouseMoveCallback(CalculateManipulationDataAction(
+                m_fixed, m_startInternal, worldFromLocal, GridSnapping(interaction.m_interactionId.m_viewportId),
+                GridSize(interaction.m_interactionId.m_viewportId), interaction.m_mousePick.m_rayOrigin,
+                interaction.m_mousePick.m_rayDirection, GetManipulatorSpace(GetManipulatorManagerId())));
         }
     }
 
-
-    void PlanarManipulator::OnMouseUp(const ViewportInteraction::MouseInteraction& interaction)
+    void PlanarManipulator::OnLeftMouseUpImpl(const ViewportInteraction::MouseInteraction& interaction)
     {
-        if (!IsRegistered())
+        if (m_onLeftMouseUpCallback)
         {
-            return;
-        }
+            AZ::Transform worldFromLocal;
+            AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(),
+                &AZ::TransformBus::Events::GetWorldTM);
 
-        if (!m_isPerformingOperation)
-        {
-            AZ_Warning("Manipulators", false, "MouseUp action received, but this manipulator didn't receive MouseDown action before!");
-            return;
-        }
-        m_isPerformingOperation = false;
-        AzToolsFramework::ManipulatorManagerRequestBus::Event(m_manipulatorManagerId,
-            &AzToolsFramework::ManipulatorManagerRequestBus::Events::SetActiveManipulator, nullptr);
-
-        if (m_onMouseUpCallback)
-        {
-            PlanarManipulationData data = GetManipulationData(interaction.m_rayOrigin, interaction.m_rayDirection);
-            m_onMouseUpCallback(data);
+            m_onLeftMouseUpCallback(CalculateManipulationDataAction(
+                m_fixed, m_startInternal, worldFromLocal, GridSnapping(interaction.m_interactionId.m_viewportId),
+                GridSize(interaction.m_interactionId.m_viewportId), interaction.m_mousePick.m_rayOrigin,
+                interaction.m_mousePick.m_rayDirection, GetManipulatorSpace(GetManipulatorManagerId())));
         }
     }
 
-    void PlanarManipulator::OnMouseOver(ManipulatorId manipulatorId)
+    void PlanarManipulator::Draw(
+        AzFramework::EntityDebugDisplayRequests& display,
+        const ViewportInteraction::CameraState& cameraState,
+        const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        if (!IsRegistered())
-        {
-            return;
-        }
-        BaseManipulator::OnMouseOver(manipulatorId);
-    }
+        AZ::Transform worldFromLocal;
+        AZ::TransformBus::EventResult(
+            worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
-    void PlanarManipulator::Invalidate()
-    {
-        ManipulatorManagerRequestBus::Event(m_manipulatorManagerId, &ManipulatorManagerRequestBus::Events::DeleteManipulatorBound, m_quadBoundId);
-        m_quadBoundId = Picking::InvalidBoundId;
-
-        BaseManipulator::Invalidate();
-    }
-
-    void PlanarManipulator::SetBoundsDirty()
-    {
-        ManipulatorManagerRequestBus::Event(m_manipulatorManagerId, &ManipulatorManagerRequestBus::Events::SetBoundDirty, m_quadBoundId);
-        BaseManipulator::SetBoundsDirty();
-    }
-
-    void PlanarManipulator::Draw(AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState)
-    {
-        if (!IsRegistered())
-        {
-            return;
-        }
-
-        AZ::Transform entityWorldTM;
-        AZ::TransformBus::EventResult(entityWorldTM, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
-        m_originWorld = entityWorldTM * m_origin;
-
-        float projectedDistanceToCamera = cameraState.m_forward.Dot(m_originWorld - cameraState.m_location);
-        if (projectedDistanceToCamera < cameraState.m_nearClip)
-        {
-            SetBoundsDirty();
-            return;
-        }
-
-        ManipulatorReferenceSpace referenceSpace;
-        ManipulatorManagerRequestBus::EventResult(referenceSpace, m_manipulatorManagerId, &ManipulatorManagerRequestBus::Events::GetManipulatorReferenceSpace);
-        Internal::TransformDirectionBasedOnReferenceSpace(referenceSpace, entityWorldTM, m_axis1, m_axis1World);
-        Internal::TransformDirectionBasedOnReferenceSpace(referenceSpace, entityWorldTM, m_axis2, m_axis2World);
-
-        // Ignore scaling when m_isSizeFixedInScreen is false.
-        float lengthAxis1_world = m_lengthAxis1;
-        float lengthAxis2_world = m_lengthAxis2;
-
-        if (m_isSizeFixedInScreen)
-        {
-            m_screenToWorldMultiplier = Internal::CalcScreenToWorldMultiplier(projectedDistanceToCamera, cameraState);
-        }
-        else
-        {
-            m_screenToWorldMultiplier = 1.0f;
-        }
-
-        lengthAxis1_world = m_lengthAxis1 * m_screenToWorldMultiplier;
-        lengthAxis2_world = m_lengthAxis2 * m_screenToWorldMultiplier;
-
-        /* draw manipulators */
-
-        if (m_isMouseOver)
-        {
-            display.SetColor(m_mouseOverColor.GetAsVector4());
-        }
-        else
-        {
-            display.SetColor(m_color.GetAsVector4());
-        }
-
-        AZ::Vector3 endAxis1_world = m_originWorld + lengthAxis1_world * m_axis1World;
-        AZ::Vector3 endAxis2_world = m_originWorld + lengthAxis2_world * m_axis2World;
-        AZ::Vector3 fourthPoint = m_originWorld + lengthAxis1_world * m_axis1World + lengthAxis2_world * m_axis2World;
-        display.CullOff();
-        display.DrawQuad(m_originWorld, endAxis1_world, fourthPoint, endAxis2_world);
-        display.CullOn();
-
-        /* Update the manipulator's bounds if necessary. */
-
-        // If m_isSizeFixedInScreen is true, any camera movement can potentially change the size of the 
-        // manipulator. So we update bounds every frame regardless until we have performance issue.
-        if (m_isSizeFixedInScreen || m_isBoundsDirty)
-        {
-            Picking::BoundShapeQuad quadBoundData;
-            quadBoundData.m_corner1 = m_originWorld;
-            quadBoundData.m_corner2 = endAxis1_world;
-            quadBoundData.m_corner3 = fourthPoint;
-            quadBoundData.m_corner4 = endAxis2_world;
-
-            ManipulatorManagerRequestBus::EventResult(m_quadBoundId, m_manipulatorManagerId, &ManipulatorManagerRequestBus::Events::UpdateManipulatorBound,
-                m_manipulatorId, m_quadBoundId, quadBoundData);
-
-            m_isBoundsDirty = false;
-        }
+        m_manipulatorView->Draw(
+            GetManipulatorManagerId(), GetManipulatorId(),
+            MouseOver(), m_position, worldFromLocal,
+            display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
     }
 
     void PlanarManipulator::SetAxes(const AZ::Vector3& axis1, const AZ::Vector3& axis2)
     {
-        m_axis1 = axis1;
-        m_axis2 = axis2;
+        m_fixed.m_axis1 = axis1;
+        m_fixed.m_axis2 = axis2;
+        m_fixed.m_normal = axis1.Cross(axis2);
     }
 
-    void PlanarManipulator::SetAxesLength(float length1, float length2)
+    void PlanarManipulator::SetView(AZStd::unique_ptr<ManipulatorView>&& view)
     {
-        m_lengthAxis1 = length1;
-        m_lengthAxis2 = length2;
+        m_manipulatorView = AZStd::move(view);
     }
 
-    PlanarManipulationData PlanarManipulator::GetManipulationData(const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection)
+    void PlanarManipulator::InvalidateImpl()
     {
-        PlanarManipulationData data;
-        data.m_manipulatorId = GetManipulatorId();
-        data.m_startHitWorldPosition = m_startHitWorldPosition;
-        Internal::CalcRayPlaneIntersectingPoint(rayOrigin, rayDirection, m_cameraFarClip, m_originWorld, m_manipulatorPlaneNormalWorld, m_currentHitWorldPosition);
-        data.m_currentHitWorldPosition = m_currentHitWorldPosition;
-        data.m_manipulationWorldDirection1 = m_axis1World;
-        data.m_manipulationWorldDirection2 = m_axis2World;
-        AZ::Vector3 worldHitDelta = m_currentHitWorldPosition - m_startHitWorldPosition;
-        data.m_axesDelta[0] = m_axis1World.Dot(worldHitDelta);
-        data.m_axesDelta[1] = m_axis2World.Dot(worldHitDelta);
-        
-        return data;
+        m_manipulatorView->Invalidate(GetManipulatorManagerId());
+    }
+
+    void PlanarManipulator::SetBoundsDirtyImpl()
+    {
+        m_manipulatorView->SetBoundDirty(GetManipulatorManagerId());
     }
 }

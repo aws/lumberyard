@@ -823,7 +823,7 @@ namespace GridMate
             typedef DataSet<AZ::u8> BasicUChar;
             typedef DataSet<AZ::u32> BasicUInt;
 
-            friend class GridSession;
+            friend class GridMate::GridSession;
         public:
             GM_CLASS_ALLOCATOR(GridSessionReplica);
 
@@ -897,8 +897,8 @@ namespace GridMate
         class GridMemberStateReplica
             : public ReplicaChunk
         {
-            friend class GridMember;
-            friend class GridSession;
+            friend class GridMate::GridMember;
+            friend class GridMate::GridSession;
 
         public:
             GM_CLASS_ALLOCATOR(GridMemberStateReplica);

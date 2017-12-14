@@ -128,14 +128,7 @@ namespace EMStudio
             {
                 return;
             }
-
-            OutlinerCategory* category = manager->FindCategoryByName("Motions");
-            if (category == nullptr)
-            {
-                return;
-            }
-
-            category->RemoveItem(motion->GetID());
+            manager->RemoveItemFromCategory("Motions", motion->GetID());
         }
     };
 
@@ -389,16 +382,13 @@ namespace EMStudio
         for (uint32 i = 0; i < numMotions; ++i)
         {
             EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(i);
-                
+
             if (motion->GetIsOwnedByRuntime())
             {
                 continue;
             }
 
-            OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-            outlinerCategoryItem->mID = motion->GetID();
-            outlinerCategoryItem->mUserData = motion;
-            outlinerCategory->AddItem(outlinerCategoryItem);
+            outlinerCategory->AddItem(motion->GetID(), motion);
         }
 
         // add the event handler
@@ -416,8 +406,11 @@ namespace EMStudio
             EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionID);
             if (motion)
             {
-                mMotionEntries.push_back(new MotionTableEntry(motion));
-                return mMotionListWindow->AddMotionByID(motionID);
+                if (!motion->GetIsOwnedByRuntime())
+                {
+                    mMotionEntries.push_back(new MotionTableEntry(motion));
+                    return mMotionListWindow->AddMotionByID(motionID);
+                }
             }
         }
 
@@ -756,14 +749,14 @@ namespace EMStudio
                             uint32 parentIndex = curNode->GetParentIndex();
                             if (parentIndex == MCORE_INVALIDINDEX32)
                             {
-                                MCore::Vector3 startPos = mGlobalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
-                                MCore::Vector3 endPos   = startPos + MCore::Vector3(0.0f, 3.0f, 0.0f);
+                                AZ::Vector3 startPos = mGlobalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
+                                AZ::Vector3 endPos   = startPos + AZ::Vector3(0.0f, 3.0f, 0.0f);
                                 renderUtil->RenderLine(startPos, endPos, MCore::RGBAColor(0.0f, 1.0f, 1.0f));
                             }
                             else
                             {
-                                MCore::Vector3 startPos = mGlobalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
-                                MCore::Vector3 endPos   = mGlobalMatrices[ parentIndex ].GetTranslation();
+                                AZ::Vector3 startPos = mGlobalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
+                                AZ::Vector3 endPos   = mGlobalMatrices[ parentIndex ].GetTranslation();
                                 renderUtil->RenderLine(startPos, endPos, MCore::RGBAColor(0.0f, 1.0f, 1.0f));
                             }
                         }
@@ -906,6 +899,16 @@ namespace EMStudio
         // Note: this has to use the index as the plugin always store a synced copy of all motions and this callback is called after the RemoveMotion command has been applied
         // this means the motion is not in the motion manager anymore
         motionWindowPlugin->RemoveMotionById(motionID);
+
+        // An invalid motion id can be passed in case there is a command group where a remove a motion set is before remove a motion command while the motion was in the motion set.
+        // In that case the RemoveMotion command can't fill the motion id for the command object as the motion object is already destructed. The root of this issue is that motion sets don't use
+        // the asset system yet, nor are they constructed/destructed using the command system like all other motions.
+        // For this case we'll call re-init which cleans entries to non-loaded motions and syncs the UI.
+        if (motionID == MCORE_INVALIDINDEX32)
+        {
+            motionWindowPlugin->ReInit();
+        }
+
         return true;
     }
 
@@ -917,10 +920,7 @@ namespace EMStudio
         EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(importMotionCommand->mOldMotionID);
         if (motion)
         {
-            OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-            outlinerCategoryItem->mID = motion->GetID();
-            outlinerCategoryItem->mUserData = motion;
-            GetOutlinerManager()->FindCategoryByName("Motions")->AddItem(outlinerCategoryItem);
+            GetOutlinerManager()->AddItemToCategory("Motions", motion->GetID(), motion);
         }
         return CallbackAddMotionByID(importMotionCommand->mOldMotionID);
     }
@@ -940,7 +940,7 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandRemoveMotion* removeMotionCommand = static_cast<CommandSystem::CommandRemoveMotion*>(command);
-        GetOutlinerManager()->FindCategoryByName("Motions")->RemoveItem(removeMotionCommand->mOldMotionID);
+        GetOutlinerManager()->RemoveItemFromCategory("Motions", removeMotionCommand->mOldMotionID);
         return CallbackRemoveMotion(removeMotionCommand->mOldMotionID);
     }
 

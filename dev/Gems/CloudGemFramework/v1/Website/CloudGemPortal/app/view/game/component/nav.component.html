@@ -13,7 +13,7 @@
         </div>
         <div class="brand-right">
             <p class="small">
-                {{nav.projectName}} 
+                {{nav.projectName}}
             </p>
             <div ngbDropdown class="d-inline-block">
                 <div id="deploymentDropdown" dropdownToggle ngbDropdownToggle>
@@ -33,7 +33,7 @@
             <a (click)="$event.preventDefault()" class="nav-item nav-link" href="#" title="Copy the Cloud Gem Portal shareable URL to the clipboard">
                 <i class="fa fa-share-square-o" (click)="onShare()"></i>
             </a>
-            <div ngbDropdown class="d-inline-block">
+            <div ngbDropdown class="d-inline-block deployment-dropdown">
                 <div id="account-dropdown" dropdownToggle ngbDropdownToggle>
                     <a title="{{nav.deploymentName}}">
                         {{ nav.username }}

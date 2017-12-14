@@ -30,39 +30,40 @@ namespace ScriptCanvasEditor
     };
 
     class UndoCache;
+
+    class SceneUndoState
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(SceneUndoState, AZ::SystemAllocator, 0);
+
+        SceneUndoState(AzToolsFramework::UndoSystem::IUndoNotify* undoNotify);
+        ~SceneUndoState();
+
+        void BeginUndoBatch(AZStd::string_view label);
+        void EndUndoBatch();
+
+        AZStd::unique_ptr<UndoCache> m_undoCache;
+        AZStd::unique_ptr<AzToolsFramework::UndoSystem::UndoStack> m_undoStack;
+
+        AzToolsFramework::UndoSystem::URSequencePoint* m_currentUndoBatch = nullptr;
+    };
+
     class UndoManager
         : public UndoRequestBus::Handler
         , public AzToolsFramework::UndoSystem::IUndoNotify
         , public MainWindowNotificationBus::Handler
     {
-    private:
-        class SceneUndoState
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(SceneUndoState, AZ::SystemAllocator, 0);
-
-            SceneUndoState(const AZ::EntityId& entityId, AzToolsFramework::UndoSystem::IUndoNotify* undoNotify);
-            ~SceneUndoState();
-
-            void BeginUndoBatch(AZStd::string_view label);
-            void EndUndoBatch();
-
-            AZStd::unique_ptr<UndoCache> m_undoCache;
-            AZStd::unique_ptr<AzToolsFramework::UndoSystem::UndoStack> m_undoStack;
-
-            AzToolsFramework::UndoSystem::URSequencePoint* m_currentUndoBatch = nullptr;
-
-        private:
-
-            AZ::EntityId m_sceneId;
-        };
     public:
         AZ_CLASS_ALLOCATOR(UndoManager, AZ::SystemAllocator, 0);
 
         UndoManager();
         ~UndoManager();
 
-        UndoCache* GetUndoCache() override;
+        UndoCache* GetActiveSceneUndoCache() override;
+        UndoCache* GetSceneUndoCache(AZ::EntityId sceneId);
+
+        AZStd::unique_ptr<SceneUndoState> ExtractSceneUndoState(AZ::EntityId sceneId);
+        void InsertUndoState(AZ::EntityId sceneId, AZStd::unique_ptr<SceneUndoState> sceneUndoState);
 
         void BeginUndoBatch(AZStd::string_view label) override;
         void EndUndoBatch() override;

@@ -19,6 +19,8 @@
 #include "AnimationContext.h"
 #include <limits>
 
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 // CTVEventsDialog dialog
 
@@ -315,14 +317,14 @@ int TVEventsModel::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float
     int usageCount = 0;
     float firstTime = std::numeric_limits<float>::max();
 
-    CTrackViewAnimNodeBundle nodeBundle = pSequence->GetAnimNodesByType(eAnimNodeType_Event);
+    CTrackViewAnimNodeBundle nodeBundle = pSequence->GetAnimNodesByType(AnimNodeType::Event);
     const unsigned int numNodes = nodeBundle.GetCount();
 
     for (unsigned int currentNode = 0; currentNode < numNodes; ++currentNode)
     {
         CTrackViewAnimNode* pCurrentNode = nodeBundle.GetNode(currentNode);
 
-        CTrackViewTrackBundle tracks = pCurrentNode->GetTracksByParam(eAnimParamType_TrackEvent);
+        CTrackViewTrackBundle tracks = pCurrentNode->GetTracksByParam(AnimParamType::TrackEvent);
         const unsigned int numTracks = tracks.GetCount();
 
         for (unsigned int currentTrack = 0; currentTrack < numTracks; ++currentTrack)

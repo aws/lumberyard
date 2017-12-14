@@ -16,7 +16,8 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#include <QtWidgets/QWidget>
+#include <QWidget>
+#include <QDockWidget>
 
 #include "DrillerNetworkMessages.h"
 #include "DrillerMainWindowMessages.h"

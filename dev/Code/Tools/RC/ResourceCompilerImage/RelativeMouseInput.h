@@ -22,6 +22,8 @@
 
 #include <QPoint>
 
+class QWidget;
+
 class CRelativeMouseInput
 {
 public:

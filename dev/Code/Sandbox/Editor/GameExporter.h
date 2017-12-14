@@ -87,7 +87,7 @@ private:
     void ExportMergedMeshInstanceSectors(const char* pszGamePath, EEndian eExportEndian, std::vector<struct IStatInstGroup*>* pVegGroupTable);
     void ExportOcclusionMesh(const char* pszGamePath);
     void ExportHeightMap(const char* pszGamePath, EEndian eExportEndian);
-    void ExportAnimations(const QString& path);
+    void ExportLegacyAnimations(const QString& path);
     void ExportMapInfo(XmlNodeRef& node);
     QString ExportAI(const QString& path, bool coverSurfaces);
 

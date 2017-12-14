@@ -395,13 +395,6 @@ void HierarchyMenu::New_ElementFromSlice(HierarchyWidget* hierarchy,
 void HierarchyMenu::AddComponents(HierarchyWidget* hierarchy,
     QTreeWidgetItemRawPtrQList& selectedItems)
 {
-    if (selectedItems.empty())
-    {
-        // Nothing has been selected.
-        // Nothing to do.
-        return;
-    }
-
     addActions(ComponentHelpers::CreateAddComponentActions(hierarchy,
             selectedItems,
             this));
@@ -438,13 +431,6 @@ void HierarchyMenu::RemoveComponents(HierarchyWidget* hierarchy,
     QTreeWidgetItemRawPtrQList& selectedItems,
     const AZ::Component* optionalOnlyThisComponentType)
 {
-    if (selectedItems.empty())
-    {
-        // Nothing has been selected.
-        // Nothing to do.
-        return;
-    }
-
     addActions(ComponentHelpers::CreateRemoveComponentActions(hierarchy,
             selectedItems,
             optionalOnlyThisComponentType));

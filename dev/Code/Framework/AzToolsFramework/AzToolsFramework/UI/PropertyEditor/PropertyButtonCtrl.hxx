@@ -44,8 +44,6 @@ Q_SIGNALS:
     private:
 
         QPushButton* m_button;
-
-    protected:
     };
 
     class ButtonHandlerCommon
@@ -67,7 +65,7 @@ Q_SIGNALS:
         AZ_CLASS_ALLOCATOR(ButtonBoolHandler, AZ::SystemAllocator, 0);
 
         QWidget* CreateGUI(QWidget* pParent) override;
-        AZ::u32 GetHandlerName(void) const override { return AZ::Edit::UIHandlers::Button; }
+        AZ::u32 GetHandlerName() const override { return AZ::Edit::UIHandlers::Button; }
         void WriteGUIValuesIntoProperty(size_t index, PropertyButtonCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
         bool ReadValuesIntoGUI(size_t index, PropertyButtonCtrl* GUI, const property_t& instance, InstanceDataNode* node) override;
         void ConsumeAttribute(PropertyButtonCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
@@ -79,10 +77,10 @@ Q_SIGNALS:
     {
         Q_OBJECT
     public:
-        AZ_CLASS_ALLOCATOR(ButtonBoolHandler, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(ButtonStringHandler, AZ::SystemAllocator, 0);
 
         QWidget* CreateGUI(QWidget* pParent) override;
-        AZ::u32 GetHandlerName(void) const override { return AZ::Edit::UIHandlers::Button; }
+        AZ::u32 GetHandlerName() const override { return AZ::Edit::UIHandlers::Button; }
         void WriteGUIValuesIntoProperty(size_t index, PropertyButtonCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
         bool ReadValuesIntoGUI(size_t index, PropertyButtonCtrl* GUI, const property_t& instance, InstanceDataNode* node) override;
         void ConsumeAttribute(PropertyButtonCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;

@@ -33,8 +33,9 @@ namespace CloudGemFramework
     #pragma warning( push )
     #pragma warning( disable: 4250 )
     // warning C4250: 'CloudGemFramework::ServiceRequestJobConfig<RequestType>' : inherits 'CloudGemFramework::AwsApiJobConfig::CloudGemFramework::AwsApiJobConfig::GetJobContext' via dominance
+    // Thanks to http://stackoverflow.com/questions/11965596/diamond-inheritance-scenario-compiles-fine-in-g-but-produces-warnings-errors for the explanation
     // This is the expected and desired behavior. The warning is superfluous.
-    // http://stackoverflow.com/questions/11965596/diamond-inheritance-scenario-compiles-fine-in-g-but-produces-warnings-errors
+    
     #endif
 
     template<class RequestType>

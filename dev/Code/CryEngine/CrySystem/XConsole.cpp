@@ -23,10 +23,8 @@
 #include "UnicodeFunctions.h"
 #include "UnicodeIterator.h"
 
-#include <IInput.h>
 #include <ITimer.h>
 #include <IScriptSystem.h>
-#include <IInput.h>
 #include <IRenderer.h>
 #include <INetwork.h>     // EvenBalance - M.Quinn
 #include <ISystem.h>
@@ -36,7 +34,9 @@
 #include <IRenderAuxGeom.h>
 #include "ConsoleHelpGen.h"         // CConsoleHelpGen
 
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
+#include <AzCore/std/string/conversions.h>
 
 //#define DEFENCE_CVAR_HASH_LOGGING
 
@@ -306,13 +306,14 @@ int CXConsole::con_restricted = 0;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 CXConsole::CXConsole()
+    : AzFramework::InputChannelEventListener(AzFramework::InputChannelEventListener::GetPriorityDebug())
+    , AzFramework::InputTextEventListener(AzFramework::InputTextEventListener::GetPriorityDebug())
 {
     m_fRepeatTimer = 0;
     m_pSysDeactivateConsole = 0;
     m_pFont = NULL;
     m_pRenderer = NULL;
     m_pNetwork = NULL; // EvenBalance - M. Quinn
-    m_pInput = NULL;
     m_pImage = NULL;
     m_nCursorPos = 0;
     m_nScrollPos = 0;
@@ -473,14 +474,10 @@ void CXConsole::Init(ISystem* pSystem)
     }
     m_pRenderer = pSystem->GetIRenderer();
     m_pNetwork = gEnv->pNetwork;  // EvenBalance - M. Quinn
-    m_pInput = pSystem->GetIInput();
     m_pTimer = pSystem->GetITimer();
 
-    if (m_pInput)
-    {
-        // Assign this class as input listener.
-        m_pInput->AddConsoleEventListener(this);
-    }
+    AzFramework::InputChannelEventListener::Connect();
+    AzFramework::InputTextEventListener::Connect();
 
 #if defined(_RELEASE)
     static const int kDeactivateConsoleDefault = 1;
@@ -809,7 +806,8 @@ ICVar* CXConsole::RegisterCVarGroup(const char* szName, const char* szFileName)
     }
 
     ICVar* pCVar = stl::find_in_map(m_mapVariables, szName, NULL);
-    if (pCVar)
+    AZStd::unordered_map<AZStd::string, CVarInfo>* map = gEnv->pSystem->GetGraphicsSettingsMap();
+    if (pCVar && !map)
     {
         assert(0);          // groups should be only registered once
         return pCVar;
@@ -817,9 +815,13 @@ ICVar* CXConsole::RegisterCVarGroup(const char* szName, const char* szFileName)
 
     CXConsoleVariableCVarGroup* pCVarGroup = new CXConsoleVariableCVarGroup(this, szName, szFileName, VF_COPYNAME);
 
-    pCVar = pCVarGroup;
+    // Register cvar if not opening graphics settings dialog box
+    if (!map)
+    {
+        pCVar = pCVarGroup;
 
-    RegisterVar(pCVar, CXConsoleVariableCVarGroup::OnCVarChangeFunc);
+        RegisterVar(pCVar, CXConsoleVariableCVarGroup::OnCVarChangeFunc);
+    }
     /*
         // log to file - useful during development - might not be required for final shipping
         {
@@ -1207,11 +1209,11 @@ void CXConsole::Update()
 
     if (!m_bConsoleActive)
     {
-        m_nRepeatEvent.keyId = eKI_Unknown;
+        m_nRepeatEventId = AzFramework::InputChannelId();
     }
 
     // Process Key press repeat (backspace and cursor on PC)
-    if (m_nRepeatEvent.keyId != eKI_Unknown)
+    if (m_nRepeatEventId != AzFramework::InputChannelId())
     {
         const float fRepeatDelay = 1.0f / 40.0f;          // in sec (similar to Windows default but might differ from actual setting)
         const float fHitchDelay = 1.0f / 10.0f;               // in sec. Very low, but still reasonable frame-rate (debug builds)
@@ -1224,11 +1226,15 @@ void CXConsole::Update()
             if (m_fRepeatTimer < -fHitchDelay)
             {
                 // bad framerate or hitch
-                m_nRepeatEvent.keyId = eKI_Unknown;
+                m_nRepeatEventId = AzFramework::InputChannelId();
             }
             else
             {
-                ProcessInput(m_nRepeatEvent);
+                const AzFramework::InputChannel* repeatInputChannel = AzFramework::InputChannelRequests::FindInputChannel(m_nRepeatEventId);
+                if (repeatInputChannel)
+                {
+                    ProcessInput(*repeatInputChannel);
+                }
                 m_fRepeatTimer = fRepeatDelay;            // next repeat even in .. sec
             }
         }
@@ -1242,27 +1248,30 @@ void CXConsole::Update()
 #   define PROCESS_XCONSOLE_INPUT
 
 //////////////////////////////////////////////////////////////////////////
-bool CXConsole::OnInputEvent(const SInputEvent& event)
+bool CXConsole::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
 #ifdef PROCESS_XCONSOLE_INPUT
-
-    // Process input event
-    ConsoleBindsMapItor itorBind;
-
-    if (event.deviceType == EInputDeviceType::eIDT_Gamepad)
+    const AzFramework::InputDeviceId& deviceId = inputChannel.GetInputDevice().GetInputDeviceId();
+    if (!AzFramework::InputDeviceKeyboard::IsKeyboardDevice(deviceId))
     {
+        // Don't consume non-keyboard events
         return false;
     }
 
-    if (event.state == eIS_Released && m_bConsoleActive)
+    if (inputChannel.IsStateEnded() && m_bConsoleActive)
     {
-        m_nRepeatEvent.keyId = eKI_Unknown;
+        m_nRepeatEventId = AzFramework::InputChannelId();
     }
 
-    if (event.state != eIS_Pressed)
+    if (!inputChannel.IsStateBegan())
     {
-        return false;
+        // Consume keyboard events if the console is active
+        return m_bConsoleActive;
     }
+
+    const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+    const AzFramework::ModifierKeyStates* customData = inputChannel.GetCustomData<AzFramework::ModifierKeyStates>();
+    const AzFramework::ModifierKeyStates modifierKeyStates = customData ? *customData : AzFramework::ModifierKeyStates();
 
     // restart cursor blinking
     m_fCursorBlinkTimer = 0.0f;
@@ -1270,7 +1279,7 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
 
     // key repeat
     const float fStartRepeatDelay = 0.5f;                       // in sec (similar to Windows default but might differ from actual setting)
-    m_nRepeatEvent = event;
+    m_nRepeatEventId = channelId;
     m_fRepeatTimer = fStartRepeatDelay;
 
     //execute Binds
@@ -1278,10 +1287,10 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
     {
         const char* cmd = 0;
 
-        if (event.modifiers == 0)
+        if (modifierKeyStates.GetActiveModifierKeys() == AzFramework::ModifierKeyMask::None)
         {
             // fast
-            cmd = FindKeyBind(event.keyName.c_str());
+            cmd = FindKeyBind(channelId.GetName());
         }
         else
         {
@@ -1289,29 +1298,29 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
             char szCombinedName[255];
             int iLen = 0;
 
-            if (event.modifiers & eMM_Ctrl)
+            if (modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::CtrlAny))
             {
                 strcpy(szCombinedName,                "ctrl_");
                 iLen += 5;
             }
-            if (event.modifiers & eMM_Shift)
+            if (modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::ShiftAny))
             {
                 strcpy(&szCombinedName[iLen], "shift_");
                 iLen += 6;
             }
-            if (event.modifiers & eMM_Alt)
+            if (modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::AltAny))
             {
                 strcpy(&szCombinedName[iLen], "alt_");
                 iLen += 4;
             }
-            if (event.modifiers & eMM_Win)
+            if (modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::SuperAny))
             {
                 strcpy(&szCombinedName[iLen], "win_");
                 iLen += 4;
             }
 
-            assert(sizeof(szCombinedName) > (iLen + strlen(event.keyName.c_str()) + 1));
-            strcpy(&szCombinedName[iLen], event.keyName.c_str());
+            assert(sizeof(szCombinedName) > (iLen + strlen(channelId.GetName()) + 1));
+            strcpy(&szCombinedName[iLen], channelId.GetName());
 
             cmd = FindKeyBind(szCombinedName);
         }
@@ -1324,37 +1333,36 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
     }
     else
     {
-        if (event.keyId != eKI_Tab)
+        if (channelId != AzFramework::InputDeviceKeyboard::Key::EditTab)
         {
             ResetAutoCompletion();
         }
 
-        if (event.keyId == eKI_C && (event.modifiers & eMM_Ctrl) != 0)
+        if (channelId == AzFramework::InputDeviceKeyboard::Key::AlphanumericC &&
+            modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::CtrlAny))
         {
             Copy();
-            return false;
+
+            // Consume keyboard events if the console is active, which it will be if we get here
+            return true;
         }
     }
 
-    if (event.keyId == eKI_Tilde)
+    if (channelId == AzFramework::InputDeviceKeyboard::Key::PunctuationTilde)
     {
         if (m_bActivationKeyEnable)
         {
             ShowConsole(!GetStatus());
-            m_nRepeatEvent.keyId = eKI_Unknown;
+            m_nRepeatEventId = AzFramework::InputChannelId();
             m_bIsConsoleKeyPressed = true;
             return true;
         }
     }
-    if (event.keyId == eKI_Escape)
+    if (channelId == AzFramework::InputDeviceKeyboard::Key::Escape)
     {
         //switch process or page or other things
         if (m_pSystem)
         {
-            if (!m_bConsoleActive)
-            {
-                //m_pSystem->GetIGame()->SendMessage("Switch");
-            }
             ShowConsole(false);
 
             ISystemUserCallback* pCallback = ((CSystem*)m_pSystem)->GetUserCallback();
@@ -1364,10 +1372,14 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
             }
         }
         m_bIsConsoleKeyPressed = true;
-        return false;
+        // Mark this input as handled. Pressing escape here is used in the editor to exit game mode, and return to edit mode.
+        // If AI/Physics mode was enabled before entering game mode, when returning to edit mode it will be enabled again.
+        // When it is enabled, it will reset input. If this returns false, then other handlers on the ebus would continue to process
+        // input events after the input had been reset. By returning true, the input is marked as handled.
+        return true;
     }
 
-    return ProcessInput(event);
+    return ProcessInput(inputChannel);
 
 #else
 
@@ -1377,23 +1389,21 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CXConsole::OnInputEventUI(const SUnicodeEvent& event)
+bool CXConsole::OnInputTextEventFiltered(const AZStd::string& textUTF8)
 {
 #ifdef PROCESS_XCONSOLE_INPUT
-    const uint32 inputChar = event.inputChar;
-
     // Ignore tilde/accent character since it is reserved for toggling the console
-    bool isTilde = (inputChar == 96 || inputChar == 126);
-    if (m_bConsoleActive && inputChar >= 32 && !isTilde)
+    const bool isTilde = (textUTF8 == "~" || textUTF8 == "`");
+    if (m_bConsoleActive && !isTilde)
     {
-        AddInputChar(inputChar);
+        AddInputUTF8(textUTF8);
     }
 #endif
     return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CXConsole::ProcessInput(const SInputEvent& event)
+bool CXConsole::ProcessInput(const AzFramework::InputChannel& inputChannel)
 {
 #ifdef PROCESS_XCONSOLE_INPUT
 
@@ -1402,21 +1412,26 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         return false;
     }
 
-    // this is not so super-nice as the XKEY's ... but a small price to pay
-    // if speed is a problem (which would be laughable for this) the CCryName
-    // can be cached in a static var
-    if (event.keyId == eKI_Enter || event.keyId == eKI_NP_Enter)
+    const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+    const AzFramework::ModifierKeyStates* customData = inputChannel.GetCustomData<AzFramework::ModifierKeyStates>();
+    const AzFramework::ModifierKeyStates modifierKeyStates = customData ? *customData : AzFramework::ModifierKeyStates();
+
+    const bool isAltModifierActive = modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::AltAny);
+    const bool isCtrlModifierActive = modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::CtrlAny);
+
+    if (channelId == AzFramework::InputDeviceKeyboard::Key::EditEnter ||
+        channelId == AzFramework::InputDeviceKeyboard::Key::NumPadEnter)
     {
         ExecuteInputBuffer();
         m_nScrollLine = 0;
         return true;
     }
-    else if (event.keyId == eKI_Backspace)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::EditBackspace)
     {
         RemoveInputChar(true);
         return true;
     }
-    else if (event.keyId == eKI_Left)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowLeft)
     {
         if (m_nCursorPos)
         {
@@ -1428,7 +1443,7 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_Right)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowRight)
     {
         if (m_nCursorPos < (int)(m_sInputBuffer.length()))
         {
@@ -1440,7 +1455,7 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_Up)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowUp)
     {
         const char* szHistoryLine = GetHistoryElement(true);      // true=UP
 
@@ -1451,7 +1466,7 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_Down)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowDown)
     {
         const char* szHistoryLine = GetHistoryElement(false);     // false=DOWN
 
@@ -1462,18 +1477,18 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_Tab)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::EditTab)
     {
-        if (!(event.modifiers & eMM_Alt))
+        if (!isAltModifierActive)
         {
             m_sInputBuffer = ProcessCompletion(m_sInputBuffer.c_str());
             m_nCursorPos = m_sInputBuffer.size();
         }
         return true;
     }
-    else if (event.keyId == eKI_PgUp || event.keyId == eKI_MouseWheelUp)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationPageUp)
     {
-        if (event.modifiers & eMM_Ctrl)
+        if (isCtrlModifierActive)
         {
             m_nScrollLine = min((int)(m_dqConsoleBuffer.size() - 1), m_nScrollLine + 21);
         }
@@ -1483,9 +1498,9 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_PgDn || event.keyId == eKI_MouseWheelDown)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationPageDown)
     {
-        if (event.modifiers & eMM_Ctrl)
+        if (isCtrlModifierActive)
         {
             m_nScrollLine = max(0, m_nScrollLine - 21);
         }
@@ -1495,9 +1510,9 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_Home)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationHome)
     {
-        if (event.modifiers & eMM_Ctrl)
+        if (isCtrlModifierActive)
         {
             m_nScrollLine = m_dqConsoleBuffer.size() - 1;
         }
@@ -1507,9 +1522,9 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_End)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationEnd)
     {
-        if (event.modifiers & eMM_Ctrl)
+        if (isCtrlModifierActive)
         {
             m_nScrollLine = 0;
         }
@@ -1519,32 +1534,16 @@ bool CXConsole::ProcessInput(const SInputEvent& event)
         }
         return true;
     }
-    else if (event.keyId == eKI_Delete)
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationDelete)
     {
         RemoveInputChar(false);
         return true;
     }
-    else
-    {
-        // Below is a hack due to pc having character input event being caught when in the editor and also due to inconsistencies in keyboard devices (Some fire OnInputEvent and OnInputEventUI and some only fire OnInputEvent)
-        // i.e. OnInputEventUI will never be fired
-        // The below isn't true unicode, it's converted from ascii
-        // TODO: Rework windows processing of input (WM_CHAR) into CKeyboard (Both cases when in editor and not) and make all keyboard devices consistent and can remove the below code
-        if (gEnv->IsEditor())
-        {
-            const char inputChar = m_pInput->GetInputCharAscii(event);
-
-            if (inputChar)
-            {
-                AddInputChar(inputChar);
-                return true;
-            }
-        }
-    }
 
 #endif
 
-    return false;
+    // Consume keyboard events if the console is active, which it will be if we get here
+    return true;
 }
 
 #ifdef PROCESS_XCONSOLE_INPUT
@@ -3290,13 +3289,22 @@ void CXConsole::AddLinePlus(const char* inputStr)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CXConsole::AddInputChar(const uint32 c)
+void CXConsole::AddInputUTF8(const AZStd::string& textUTF8)
 {
     ScopedSwitchToGlobalHeap useGlobalHeap;
 
-    // Convert UCS code-point into UTF-8 string
-    char utf8_buf[5];
-    Unicode::Convert(utf8_buf, c);
+    // Ignore control characters like backspace and tab
+    AZStd::string textUTF8ToInsert;
+    for (int i = 0; i < textUTF8.length(); ++i)
+    {
+        const char charToInsert = textUTF8.at(i);
+        if (!AZStd::is_cntrl(charToInsert))
+        {
+            textUTF8ToInsert += charToInsert;
+        }
+    }
+
+    const char* utf8_buf = textUTF8ToInsert.c_str();
 
     if (m_nCursorPos < (int)(m_sInputBuffer.length()))
     {

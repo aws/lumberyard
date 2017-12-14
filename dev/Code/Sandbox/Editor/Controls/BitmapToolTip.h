@@ -51,12 +51,10 @@ public:
 
     // Operations
 public:
-    void RefreshLayout();
     void RefreshViewmode();
 
     bool LoadImage(const QString& imageFilename);
     void SetTool(QWidget* pWnd, const QRect& rect);
-    void CorrectPosition();
 
     // Generated message map functions
 protected:
@@ -65,7 +63,6 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
     void keyReleaseEvent(QKeyEvent* event) override;
 
-    void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
     void hideEvent(QHideEvent* event) override;
 
@@ -73,15 +70,16 @@ private:
     void GetShowMode(EShowMode& showMode, bool& showInOriginalSize) const;
     const char* GetShowModeDescription(EShowMode showMode, bool showInOriginalSize) const;
 
-    QLabel m_staticBitmap;
-    QLabel m_staticText;
+    QLabel* m_staticBitmap;
+    QLabel* m_staticText;
     QString m_filename;
     bool        m_bShowHistogram;
     EShowMode m_eShowMode;
     bool    m_bShowFullsize;
     bool    m_bHasAlpha;
     bool    m_bIsLimitedHDR;
-    CImageHistogramCtrl m_rgbaHistogram, m_alphaChannelHistogram;
+    CImageHistogramCtrl* m_rgbaHistogram;
+    CImageHistogramCtrl* m_alphaChannelHistogram;
     int m_nTimer;
     QWidget* m_hToolWnd;
     QRect m_toolRect;

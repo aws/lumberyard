@@ -837,17 +837,15 @@ namespace UnitTest
             m_parentEntity = aznew Entity("Parent");
             m_parentEntity->Init();
 
-            AZ::TransformConfig parentConfig;
+            AZ::TransformConfig parentConfig{ AZ::Transform::CreateTranslation(AZ::Vector3(5.f, 5.f, 5.f)) };
             parentConfig.m_isStatic = true;
-            parentConfig.SetTransform(AZ::Transform::CreateTranslation(AZ::Vector3(5.f, 5.f, 5.f)));
             m_parentEntity->CreateComponent<TransformComponent>()->SetConfiguration(parentConfig);
 
             m_childEntity = aznew Entity("Child");
             m_childEntity->Init();
 
-            AZ::TransformConfig childConfig;
+            AZ::TransformConfig childConfig{ AZ::Transform::CreateTranslation(AZ::Vector3(5.f, 5.f, 5.f)) };
             childConfig.m_isStatic = true;
-            childConfig.SetTransform(AZ::Transform::CreateTranslation(AZ::Vector3(5.f, 5.f, 5.f)));
             childConfig.m_parentId = m_parentEntity->GetId();
             childConfig.m_parentActivationTransformMode = AZ::TransformConfig::ParentActivationTransformMode::MaintainOriginalRelativeTransform;
             m_childEntity->CreateComponent<TransformComponent>()->SetConfiguration(childConfig);
@@ -943,7 +941,7 @@ namespace UnitTest
     ///////////////////////////////////////////////////////////////////////////
     // TransformConfig
 
-    static bool operator==(const AZ::TransformConfig& lhs, const AZ::TransformConfig& rhs)
+    static bool operator==(const TransformConfig& lhs, const TransformConfig& rhs)
     {
         return lhs.m_parentId == rhs.m_parentId
             && lhs.m_parentActivationTransformMode == rhs.m_parentActivationTransformMode
@@ -951,8 +949,8 @@ namespace UnitTest
             && lhs.m_interpolatePosition == rhs.m_interpolatePosition
             && lhs.m_interpolateRotation == rhs.m_interpolateRotation
             && lhs.m_isStatic == rhs.m_isStatic
-            && lhs.GetLocalTransform() == rhs.GetLocalTransform()
-            && lhs.GetWorldTransform() == rhs.GetWorldTransform()
+            && lhs.m_localTransform == rhs.m_localTransform
+            && lhs.m_worldTransform == rhs.m_worldTransform
             ;
     }
 
@@ -970,10 +968,9 @@ namespace UnitTest
                 floatBuf[i] = m_random.GetRandomFloat();
             }
 
-            config.SetLocalAndWorldTransform(
-                AZ::Transform::CreateFromColumnMajorFloat12(&floatBuf[0]),
-                AZ::Transform::CreateFromColumnMajorFloat12(&floatBuf[12]));
-            config.m_parentId = AZ::Entity::MakeId();
+            config.m_worldTransform = Transform::CreateFromColumnMajorFloat12(&floatBuf[0]);
+            config.m_localTransform = Transform::CreateFromColumnMajorFloat12(&floatBuf[12]);
+            config.m_parentId = Entity::MakeId();
             config.m_parentActivationTransformMode = (TransformConfig::ParentActivationTransformMode)(m_random.GetRandom() % 2);
             config.m_netSyncEnabled = (m_random.GetRandom() % 2) == 1;
             config.m_interpolatePosition = (m_random.GetRandom() % 2) == 1 ? InterpolationMode::NoInterpolation : InterpolationMode::LinearInterpolation;

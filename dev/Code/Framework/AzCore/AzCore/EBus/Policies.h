@@ -23,6 +23,7 @@
 #include <AzCore/std/containers/intrusive_set.h>
 
 #include <AzCore/Module/Environment.h>
+#include <AzCore/EBus/Environment.h>
 
 namespace AZ
 {
@@ -166,45 +167,6 @@ namespace AZ
 
     /**
      * A choice of AZ::EBusTraits::StoragePolicy that specifies
-     * that EBus data is stored in the AZ::Environment.
-     * With this policy, a single EBus instance is shared across all
-     * modules (DLLs) that attach to the AZ::Environment. 
-     * @tparam Context A class that contains EBus data.
-     */
-    template <class Context>
-    struct EBusEnvironmentStoragePolicy
-    {
-        /**
-         * Returns the EBus data.
-         * @return A reference to the EBus data.
-         */
-        static Context& Get()
-        {
-            if (!s_context)
-            {
-                // EBus traits should provide a valid unique name, so that handlers can 
-                // connect to the EBus across modules.
-                // This can fail on some compilers. If it fails, make sure that you give 
-                // each bus a unique name.
-                s_context = Environment::CreateVariable<Context>(AZ_FUNCTION_SIGNATURE);
-            }
-            return *s_context;
-        }
-
-        /**
-         * Environment variable that contains a pointer to the EBus data.
-         */
-        static EnvironmentVariable<Context> s_context;
-    };
-
-    /**
-     * Environment variable that contains a pointer to the EBus data.
-     */
-    template <class Context>
-    EnvironmentVariable<Context> EBusEnvironmentStoragePolicy<Context>::s_context;
-
-    /**
-     * A choice of AZ::EBusTraits::StoragePolicy that specifies
      * that EBus data is stored in a global static variable.
      * With this policy, each module (DLL) has its own instance of the EBus.
      * @tparam Context A class that contains EBus data.
@@ -214,16 +176,27 @@ namespace AZ
     {
         /**
          * Returns the EBus data.
+         * @return A pointer to the EBus data.
+         */
+        static Context* Get()
+        {
+            // Because the context in this policy lives in static memory space, and
+            // doesn't need to be allocated, there is no reason to defer creation.
+            return &GetOrCreate();
+        }
+
+        /**
+         * Returns the EBus data.
          * @return A reference to the EBus data.
          */
-        static Context& Get()
+        static Context& GetOrCreate()
         {
             static Context s_context;
             return s_context;
         }
     };
     
-#if !defined(AZ_PLATFORM_APPLE) // thread_local storage is not supported for Apple platforms.
+#if !defined(AZ_PLATFORM_APPLE) // thread_local storage is not supported for Apple platforms, before iOS 9. 
     /**
      * A choice of AZ::EBusTraits::StoragePolicy that specifies 
      * that EBus data is stored in a thread_local static variable.
@@ -235,9 +208,20 @@ namespace AZ
     {
         /**
          * Returns the EBus data.
+         * @return A pointer to the EBus data.
+         */
+        static Context* Get()
+        {
+            // Because the context in this policy lives in static memory space, and
+            // doesn't need to be allocated, there is no reason to defer creation.
+            return &GetOrCreate();
+        }
+
+        /**
+         * Returns the EBus data.
          * @return A reference to the EBus data.
          */
-        static Context& Get()
+        static Context& GetOrCreate()
         {
             thread_local static Context s_context;
             return s_context;
@@ -245,188 +229,8 @@ namespace AZ
     };
 #endif
 
-
-    /// @cond EXCLUDE_DOCS
     template <bool IsEnabled, class Bus, class MutexType>
-    struct EBusMessageQueuePolicy
-    {
-        typedef int BusMessage;
-        typedef Internal::NullBusMessageCall BusMessageCall;
-        void Execute() {};
-        void Clear() {};
-    };
-
-    template <class Bus, class MutexType>
-    struct EBusMessageQueuePolicy<true, Bus, MutexType>
-    {
-        typedef AZStd::function<void(typename Bus::InterfaceType*)> BusMessageCall;
-        struct BusMessage
-        {
-            typename Bus::BusIdType m_id;
-            typename Bus::BusPtr m_ptr;
-            BusMessageCall m_invoke;
-            bool      m_isForward : 1; ///< True if the message should be sent forward. False if backwards.
-            bool      m_isUseId : 1;   ///< True if the 'id' field should be used.
-        };
-
-        typedef AZStd::deque<BusMessage, typename Bus::AllocatorType> DequeType;
-        typedef AZStd::queue<BusMessage, DequeType > MessageQueueType;
-
-        MessageQueueType            m_messages;
-        MutexType                   m_messagesMutex;        ///< Used to control access to the m_messages. Make sure you never interlock with the EBus mutex. Otherwise, a deadlock can occur.
-
-        void Execute()
-        {
-            while (!m_messages.empty())
-            {
-                //////////////////////////////////////////////////////////////////////////
-                // Pop element from the queue.
-                m_messagesMutex.lock();
-                size_t numMessages = m_messages.size();
-                if (numMessages == 0)
-                {
-                    m_messagesMutex.unlock();
-                    return;
-                }
-                BusMessage& srcMsg = m_messages.front();
-                BusMessage msg;
-                msg.m_isUseId = srcMsg.m_isUseId;
-                if (srcMsg.m_isUseId)
-                {
-                    msg.m_id = srcMsg.m_id;
-                }
-                else
-                {
-                    msg.m_ptr = srcMsg.m_ptr;
-                }
-                msg.m_isForward = srcMsg.m_isForward;
-                AZStd::swap(msg.m_invoke, srcMsg.m_invoke); // Don't copy the object.
-                m_messages.pop();
-                if (numMessages == 1)
-                {
-                    m_messages.get_container().clear(); // If it was the last message, free all memory.
-                }
-                m_messagesMutex.unlock();
-                //////////////////////////////////////////////////////////////////////////
-
-                auto& context = Bus::GetContext();
-                if (msg.m_isUseId)
-                {
-                    context.m_mutex.lock();
-                    typename Bus::BusesContainer::iterator iter = context.m_buses.find(msg.m_id);
-                    if (iter != context.m_buses.end())
-                    {
-                        typename Bus::EBNode * bus = Bus::BusesContainer::toNodePtr(iter);
-                        if (msg.m_isForward)
-                        {
-                            typename Bus::CallstackForwardIterator currentEvent(bus->begin(), &bus->m_busId);
-                            typename Bus::EBNode::iterator lastEvent = bus->end();
-                            for (; currentEvent.m_iterator != lastEvent; )
-                            {
-                                typename Bus::InterfaceType * handler = *currentEvent.m_iterator++;
-                                msg.m_invoke(handler);
-                            }
-                        }
-                        else
-                        {
-                            typename Bus::CallstackReverseIterator currentEvent(bus->rbegin(), &bus->m_busId);
-                            typename Bus::EBNode::reverse_iterator lastEvent = bus->rend();
-                            for (; currentEvent.m_iterator != lastEvent; )
-                            {
-                                typename Bus::InterfaceType * handler = *currentEvent.m_iterator++;
-                                msg.m_invoke(handler);
-                            }
-                        }
-                    }
-                    context.m_mutex.unlock();
-                }
-                else if (msg.m_ptr)
-                {
-                    if (msg.m_ptr->size())
-                    {
-                        msg.m_ptr->lock();
-                        if (msg.m_isForward)
-                        {
-                            typename Bus::CallstackForwardIterator currentEvent(msg.m_ptr->begin(), &msg.m_ptr.get()->m_busId);
-                            typename Bus::EBNode::iterator lastEvent = msg.m_ptr->end();
-                            for (; currentEvent.m_iterator != lastEvent; )
-                            {
-                                typename Bus::InterfaceType * handler = *currentEvent.m_iterator++;
-                                msg.m_invoke(handler);
-                            }
-                        }
-                        else
-                        {
-                            typename Bus::CallstackReverseIterator currentEvent(msg.m_ptr->rbegin(), &msg.m_ptr.get()->m_busId);
-                            typename Bus::EBNode::reverse_iterator lastEvent = msg.m_ptr->rend();
-                            for (; currentEvent.m_iterator != lastEvent; )
-                            {
-                                typename Bus::InterfaceType * handler = *currentEvent.m_iterator++;
-                                msg.m_invoke(handler);
-                            }
-                        }
-                        msg.m_ptr->unlock();
-                    }
-                }
-                else
-                {
-                    if (context.m_buses.size())
-                    {
-                        context.m_mutex.lock();
-                        if (msg.m_isForward)
-                        {
-                            typename Bus::BusesContainer::iterator firstBus = context.m_buses.begin();
-                            typename Bus::BusesContainer::iterator lastBus = context.m_buses.end();
-                            for (; firstBus != lastBus; )
-                            {
-                                typename Bus::EBNode&  bus = *firstBus;
-                                typename Bus::CallstackForwardIterator currentEvent(bus.begin(), &bus.m_busId);
-                                typename Bus::EBNode::iterator lastEvent = bus.end();
-                                bus.add_ref(); // Lock the bus, so remove all handlers. We don't remove them until we get to the next one.
-                                for (; currentEvent.m_iterator != lastEvent; )
-                                {
-                                    typename Bus::InterfaceType * handler = *currentEvent.m_iterator++;
-                                    msg.m_invoke(handler);
-                                }
-                                ++firstBus; // Go to the next bus.
-                                bus.release(); // If the bus is empty, we can remove it.
-                            }
-                        }
-                        else
-                        {
-                            auto firstBus = context.m_buses.rbegin();
-                            auto lastBus = context.m_buses.rend();
-                            for (; firstBus != lastBus; )
-                            {
-                                typename Bus::EBNode&  bus = *firstBus;
-                                typename Bus::CallstackReverseIterator currentEvent(bus.rbegin(), &bus.m_busId);
-                                typename Bus::EBNode::reverse_iterator lastEvent = bus.rend();
-                                bus.add_ref(); // Lock the bus, so remove all handlers. We don't remove them until we get to the next one.
-                                for (; currentEvent.m_iterator != lastEvent; )
-                                {
-                                    typename Bus::InterfaceType * handler = *currentEvent.m_iterator++;
-                                    msg.m_invoke(handler);
-                                }
-                                ++firstBus; // Go to the next bus.
-                                bus.release(); // If the bus is empty, we can remove it.
-                            }
-                        }
-                        context.m_mutex.unlock();
-                    }
-                }
-            }
-        }
-
-        void Clear()
-        {
-            m_messagesMutex.lock();
-            m_messages.get_container().clear();
-            m_messagesMutex.unlock();
-        }
-    };
-
-    template <bool IsEnabled, class Bus, class MutexType>
-    struct EBusFunctionQueuePolicy
+    struct EBusQueuePolicy
     {
         typedef Internal::NullBusMessageCall BusMessageCall;
         void Execute() {};
@@ -436,17 +240,16 @@ namespace AZ
     };
 
     template <class Bus, class MutexType>
-    struct EBusFunctionQueuePolicy<true, Bus, MutexType>
+    struct EBusQueuePolicy<true, Bus, MutexType>
     {
         typedef AZStd::function<void()> BusMessageCall;
 
         typedef AZStd::deque<BusMessageCall, typename Bus::AllocatorType> DequeType;
         typedef AZStd::queue<BusMessageCall, DequeType > MessageQueueType;
 
-        EBusFunctionQueuePolicy()
-            : m_isActive(true)  {}
+        EBusQueuePolicy() = default;
 
-        bool                        m_isActive;
+        bool                        m_isActive = Bus::Traits::EventQueueingActiveByDefault;
         MessageQueueType            m_messages;
         MutexType                   m_messagesMutex;        ///< Used to control access to the m_messages. Make sure you never interlock with the EBus mutex. Otherwise, a deadlock can occur.
 
@@ -551,26 +354,13 @@ namespace AZ
         Interface*  m_handler = nullptr;
         int m_order = 0;
 
-        inline EBusRouterNode& operator=(Interface* handler)
-        {
-            m_handler = handler;
-            return *this;
-        }
+        EBusRouterNode& operator=(Interface* handler);
 
-        inline Interface* operator->() const
-        {
-            return m_handler;
-        }
+        Interface* operator->() const;
 
-        inline operator Interface*() const
-        {
-            return m_handler;
-        }
+        operator Interface*() const;
 
-        bool operator<(const EBusRouterNode& rhs) const
-        {
-            return m_order < rhs.m_order;
-        }
+        bool operator<(const EBusRouterNode& rhs) const;
     };
 
     template <class Bus>
@@ -588,30 +378,71 @@ namespace AZ
         };
 
         template <class CallstackHandler, class Function, class... InputArgs>
-        inline bool RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function func, InputArgs&&... args)
-        {
-            auto rtLast = m_routers.end();
-            CallstackHandler rtCurrent(m_routers.begin(), busIdPtr, isQueued, isReverse);
-            while (rtCurrent.m_iterator != rtLast)
-            {
-                ((*rtCurrent.m_iterator++)->*func)(args...);
-
-                if (rtCurrent.m_processingState == EventProcessingState::SkipListenersAndRouters)
-                {
-                    return true;
-                }
-            }
-
-            if (rtCurrent.m_processingState != EventProcessingState::ContinueProcess)
-            {
-                return true;
-            }
-
-            return false;
-        }
+        inline bool RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function func, InputArgs&&... args);
 
         Container m_routers;
     };
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    template <class Interface>
+    inline EBusRouterNode<Interface>& EBusRouterNode<Interface>::operator=(Interface* handler)
+    {
+        m_handler = handler;
+        return *this;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    template <class Interface>
+    inline Interface* EBusRouterNode<Interface>::operator->() const
+    {
+        return m_handler;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    template <class Interface>
+    inline EBusRouterNode<Interface>::operator Interface*() const
+    {
+        return m_handler;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    template <class Interface>
+    bool EBusRouterNode<Interface>::operator<(const EBusRouterNode& rhs) const
+    {
+        return m_order < rhs.m_order;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    template <class Bus>
+    template <class CallstackHandler, class Function, class... InputArgs>
+    inline bool EBusRouterPolicy<Bus>::RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function func, InputArgs&&... args)
+    {
+        auto rtLast = m_routers.end();
+        CallstackHandler rtCurrent(m_routers.begin(), busIdPtr, isQueued, isReverse);
+        while (rtCurrent.m_iterator != rtLast)
+        {
+            ((*rtCurrent.m_iterator++)->*func)(args...);
+
+            if (rtCurrent.m_processingState == EventProcessingState::SkipListenersAndRouters)
+            {
+                return true;
+            }
+        }
+
+        if (rtCurrent.m_processingState != EventProcessingState::ContinueProcess)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     /// @endcond
     //////////////////////////////////////////////////////////////////////////
 } // namespace AZ

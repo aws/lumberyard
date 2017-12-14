@@ -92,7 +92,7 @@ namespace UiSerialize
 
         bool CompareValueData(const void* lhs, const void* rhs) override
         {
-            return AZ::SerializeContext::EqualityCompareHelper<CryStringT<char>>::CompareValues(lhs, rhs);
+            return AZ::SerializeContext::EqualityCompareHelper<CryStringT<char> >::CompareValues(lhs, rhs);
         }
     };
 
@@ -106,38 +106,38 @@ namespace UiSerialize
 
         switch (numArgs)
         {
-            case noArgsGiven:
+        case noArgsGiven:
+        {
+            *thisPtr = UiTransform2dInterface::Offsets();
+        }
+        break;
+
+        case allArgsGiven:
+        {
+            if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
             {
-                *thisPtr = UiTransform2dInterface::Offsets();
+                float left = 0;
+                float top = 0;
+                float right = 0;
+                float bottom = 0;
+                dc.ReadArg(0, left);
+                dc.ReadArg(1, top);
+                dc.ReadArg(2, right);
+                dc.ReadArg(3, bottom);
+                *thisPtr = UiTransform2dInterface::Offsets(left, top, right, bottom);
             }
-            break;
-            
-            case allArgsGiven:
+            else
             {
-                if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
-                {
-                    float left = 0;
-                    float top = 0;
-                    float right = 0;
-                    float bottom = 0;
-                    dc.ReadArg(0, left);
-                    dc.ReadArg(1, top);
-                    dc.ReadArg(2, right);
-                    dc.ReadArg(3, bottom);
-                    *thisPtr = UiTransform2dInterface::Offsets(left, top, right, bottom);
-                }
-                else
-                {
-                    dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiOffsets(), all must be numbers!");
-                }
+                dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiOffsets(), all must be numbers!");
             }
-            break;
-            
-            default:
-            {
-                dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "UiOffsets() accepts only 0 or 4 arguments, not %d!", numArgs);
-            }
-            break;
+        }
+        break;
+
+        default:
+        {
+            dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "UiOffsets() accepts only 0 or 4 arguments, not %d!", numArgs);
+        }
+        break;
         }
     }
 
@@ -151,38 +151,38 @@ namespace UiSerialize
 
         switch (numArgs)
         {
-            case noArgsGiven:
-            {
-                *thisPtr = UiTransform2dInterface::Anchors();
-            }
-            break;
+        case noArgsGiven:
+        {
+            *thisPtr = UiTransform2dInterface::Anchors();
+        }
+        break;
 
-            case allArgsGiven:
+        case allArgsGiven:
+        {
+            if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
             {
-                if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
-                {
-                    float left = 0;
-                    float top = 0;
-                    float right = 0;
-                    float bottom = 0;
-                    dc.ReadArg(0, left);
-                    dc.ReadArg(1, top);
-                    dc.ReadArg(2, right);
-                    dc.ReadArg(3, bottom);
-                    *thisPtr = UiTransform2dInterface::Anchors(left, top, right, bottom);
-                }
-                else
-                {
-                    dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiAnchors(), all must be numbers!");
-                }
+                float left = 0;
+                float top = 0;
+                float right = 0;
+                float bottom = 0;
+                dc.ReadArg(0, left);
+                dc.ReadArg(1, top);
+                dc.ReadArg(2, right);
+                dc.ReadArg(3, bottom);
+                *thisPtr = UiTransform2dInterface::Anchors(left, top, right, bottom);
             }
-            break;
+            else
+            {
+                dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiAnchors(), all must be numbers!");
+            }
+        }
+        break;
 
-            default:
-            {
-                dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "UiAnchors() accepts only 0 or 4 arguments, not %d!", numArgs);
-            }
-            break;
+        default:
+        {
+            dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "UiAnchors() accepts only 0 or 4 arguments, not %d!", numArgs);
+        }
+        break;
         }
     }
 
@@ -487,7 +487,7 @@ namespace UiSerialize
         {
             AZ::SerializeContext::DataElementNode& childElementNode = childrenNode.GetSubElement(childIndex);
             MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, childElementNode, entities);
-        }       
+        }
 
         // the children list has now been processed so it will now just contain entity IDs
         // Now copy this node (elementNode) to the list we are building and then replace it
@@ -541,7 +541,7 @@ namespace UiSerialize
                 return false;
             }
             AZ::SerializeContext::DataElementNode& rootEntityNode = classElement.GetSubElement(rootEntityIndex);
-            
+
             // All UI element entities will be copied to this container and then added to the m_childEntities list
             AZStd::vector<AZ::SerializeContext::DataElementNode> copiedEntities;
 
@@ -569,7 +569,7 @@ namespace UiSerialize
                 entitiesNode.AddElement(entityElement);
             }
         }
-    
+
         return true;
     }
 
@@ -626,7 +626,7 @@ namespace UiSerialize
                 AZ::SerializeContext::DataElementNode& dstStateActionsNode = dstBaseClassElement.GetSubElement(stateActionsIndex);
                 colorIndex = dstStateActionsNode.FindElement(AZ_CRC("element"));
                 AZ::SerializeContext::DataElementNode& dstColorNode = dstStateActionsNode.GetSubElement(colorIndex);
-                
+
                 if (!LyShine::ConvertSubElementFromVector3ToAzColor(context, dstColorNode, "Color"))
                 {
                     return false;

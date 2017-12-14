@@ -176,7 +176,9 @@ namespace CD
                     IIndexedMesh* pMesh = m_pStatObj[0]->GetIndexedMesh();
                     FillMesh(*meshes[0], pMesh);
                     m_pStatObj[0]->SetMaterial(pMaterial);
+#if defined(AZ_PLATFORM_WINDOWS)
                     pMesh->Optimize();
+#endif
                     InvalidateStatObj(m_pStatObj[0], CheckFlags(eCompiler_Physicalize));
                 }
                 else
@@ -192,7 +194,9 @@ namespace CD
                         pSubObj->SetMaterial(pMaterial);
                         IIndexedMesh* pMesh = pSubObj->GetIndexedMesh();
                         FillMesh(*meshes[i], pMesh);
+#if defined(AZ_PLATFORM_WINDOWS)
                         pMesh->Optimize();
+#endif
                         InvalidateStatObj(pSubObj, CheckFlags(eCompiler_Physicalize));
                         pSubObj->m_eStreamingStatus = ecss_Ready;
                     }
@@ -278,7 +282,9 @@ namespace CD
                 continue;
             }
 
+#if defined(AZ_PLATFORM_WINDOWS)
             pMesh->Optimize();
+#endif
             InvalidateStatObj(statObjList[i], CheckFlags(eCompiler_Physicalize));
             statObjList[i]->m_eStreamingStatus = ecss_Ready;
         }
@@ -638,7 +644,7 @@ namespace CD
 
             for (int i = 0; i < nSubsetCount; ++i)
             {
-                const SMeshSubset& subset = pMesh->GetSubSet(i);
+                SMeshSubset& subset = const_cast<SMeshSubset&>(pMesh->GetSubSet(i));
                 ar.Write(&subset.vCenter, sizeof(Vec3));
                 ar.Write(&subset.fRadius, sizeof(float));
                 ar.Write(&subset.fTexelDensity, sizeof(float));
@@ -742,7 +748,9 @@ namespace CD
                 pMesh->SetSubsetMaterialProperties(i, subset.nMatFlags, subset.nPhysicalizeType, eVF_P3F_C4B_T2F);
             }
 
+#if defined(AZ_PLATFORM_WINDOWS)
             pMesh->Optimize();
+#endif
 
             statObjList[k]->SetMaterial(pMaterial);
             InvalidateStatObj(statObjList[k], CheckFlags(eCompiler_Physicalize));
@@ -798,7 +806,9 @@ namespace CD
             vtx_idx* const indices = pMesh->GetMesh()->GetStreamPtr<vtx_idx>(CMesh::INDICES);
             if (nIndexCount == 0 || indices == 0)
             {
+#if defined(AZ_PLATFORM_WINDOWS)
                 pMesh->Optimize();
+#endif
                 break;
             }
         }

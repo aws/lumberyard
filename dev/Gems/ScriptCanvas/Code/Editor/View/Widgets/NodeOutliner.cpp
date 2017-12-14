@@ -13,7 +13,6 @@
 #include <precompiled.h>
 #include "NodeOutliner.h"
 #include <GraphCanvas/Components/VisualBus.h>
-#include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 
 #include <QEvent>
@@ -180,7 +179,7 @@ namespace ScriptCanvasEditor
                         if (selectedIndex.row() < nodeIds.size())
                         {
                             AZ::EntityId nodeId = selectedIndex.data().value<AZ::EntityId>();
-                            GraphCanvas::NodeUIRequestBus::Event(nodeId, &GraphCanvas::NodeUIRequests::SetSelected, true);
+                            GraphCanvas::SceneMemberUIRequestBus::Event(nodeId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
 
                             validSelection = true;
                         }
@@ -191,7 +190,7 @@ namespace ScriptCanvasEditor
                         if (selectedIndex.row() < nodeIds.size())
                         {
                             AZ::EntityId nodeId = selectedIndex.data().value<AZ::EntityId>();
-                            GraphCanvas::NodeUIRequestBus::Event(nodeId, &GraphCanvas::NodeUIRequests::SetSelected, false);
+                            GraphCanvas::SceneMemberUIRequestBus::Event(nodeId, &GraphCanvas::SceneMemberUIRequests::SetSelected, false);
                         }
                     }
                 }
@@ -221,7 +220,7 @@ namespace ScriptCanvasEditor
                     AZ::EntityId selectedNodeId = index.data(NodeOutlineModel::NodeIdRole).value<AZ::EntityId>();
                     if (selectedNodeId.IsValid())
                     {
-                        GraphCanvas::NodeUIRequestBus::Event(selectedNodeId, &GraphCanvas::NodeUIRequests::SetSelected, true);
+                        GraphCanvas::SceneMemberUIRequestBus::Event(selectedNodeId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
                     }
 
                     QGraphicsItem* nodeItem{};
@@ -256,7 +255,7 @@ namespace ScriptCanvasEditor
             {
                 QSignalBlocker blocker(m_quickFilter);
                 m_quickFilter->setText("");
-                m_model->m_filter.clear();
+                m_model->ClearFilter();
             }
 
             UpdateFilter();
@@ -266,7 +265,7 @@ namespace ScriptCanvasEditor
         {
             if (m_model)
             {
-                m_model->m_filter = m_quickFilter->text();
+                m_model->SetFilter(m_quickFilter->text());
                 m_model->invalidate();
             }
         }
@@ -311,13 +310,24 @@ namespace ScriptCanvasEditor
             {
                 return true;
             }
-
-            QRegExp filterRegEx = QRegExp(m_filter, Qt::CaseInsensitive);
+            
             QString test = model->data(index, Qt::DisplayRole).toString();
 
-            bool showRow = test.lastIndexOf(filterRegEx) >= 0;
+            bool showRow = test.lastIndexOf(m_filterRegex) >= 0;
 
             return showRow;
+        }
+
+        void NodeOutlineModelSortFilterProxyModel::SetFilter(const QString& filter)
+        {
+            m_filter = filter;
+            m_filterRegex = QRegExp(m_filter, Qt::CaseInsensitive);
+        }
+
+        void NodeOutlineModelSortFilterProxyModel::ClearFilter()
+        {
+            m_filter.clear();
+            m_filterRegex = QRegExp(m_filter, Qt::CaseInsensitive);
         }
 
         void NodeOutliner::OnNodeAdded(const AZ::EntityId& /*nodeId*/)

@@ -89,8 +89,8 @@ namespace AZ
     public:
         void UnpackCrate(const AZStd::string& cratePath) override;
     public:
-        void DragEnter(QDragEnterEvent* event) override;
-        void Drop(QDropEvent* event) override;
+        void DragEnter(QDragEnterEvent* event, AzQtComponents::DragAndDropContextBase&  context) override;
+        void Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
     };
 
 } // namespace AZ

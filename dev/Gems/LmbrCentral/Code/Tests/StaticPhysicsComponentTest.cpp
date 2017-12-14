@@ -54,7 +54,7 @@ protected:
 
     const char* GetSourceDataBuffer() const override { return kLegacyPhysicsComponentWithStaticBehavior; }
 
-    StaticPhysicsConfig m_staticPhysicsConfig;
+    AzFramework::StaticPhysicsConfig m_staticPhysicsConfig;
 };
 
 TEST_F(LoadStaticPhysicsComponentFromLegacyData, Application_IsRunning)

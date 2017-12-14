@@ -22,14 +22,14 @@
 namespace MCore
 {
     // ray-boundingsphere
-    bool Ray::Intersects(const BoundingSphere& s, Vector3* intersectA, Vector3* intersectB) const
+    bool Ray::Intersects(const BoundingSphere& s, AZ::Vector3* intersectA, AZ::Vector3* intersectB) const
     {
-        Vector3 rayOrg = mOrigin - s.GetCenter(); // ray in space of the sphere
+        AZ::Vector3 rayOrg = mOrigin - s.GetCenter(); // ray in space of the sphere
 
         float b, c, t1, t2, delta;
 
         b = rayOrg.Dot(mDirection);
-        c = rayOrg.SquareLength() - s.GetRadiusSquared();
+        c = rayOrg.GetLengthSq() - s.GetRadiusSquared();
 
         delta = ((b * b) - c);
 
@@ -99,7 +99,7 @@ namespace MCore
 
 
     // ray-plane
-    bool Ray::Intersects(const PlaneEq& p, Vector3* intersect) const
+    bool Ray::Intersects(const PlaneEq& p, AZ::Vector3* intersect) const
     {
         // check if ray is parallel to plane (no intersection) or ray pointing away from plane (no intersection)
         float dot1 = p.GetNormal().Dot(mDirection);
@@ -125,9 +125,9 @@ namespace MCore
         // calc intersection point
         if (intersect)
         {
-            intersect->x = mOrigin.x + (mDirection.x * t);
-            intersect->y = mOrigin.y + (mDirection.y * t);
-            intersect->z = mOrigin.z + (mDirection.z * t);
+            intersect->SetX(mOrigin.GetX() + (mDirection.GetX() * t));
+            intersect->SetY(mOrigin.GetY() + (mDirection.GetY() * t));
+            intersect->SetZ(mOrigin.GetZ() + (mDirection.GetZ() * t));
         }
 
         return true;
@@ -135,15 +135,15 @@ namespace MCore
 
 
     // ray-triangle intersection test
-    bool Ray::Intersects(const Vector3& p1, const Vector3& p2, const Vector3& p3, Vector3* intersect, float* baryU, float* baryV) const
+    bool Ray::Intersects(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, AZ::Vector3* intersect, float* baryU, float* baryV) const
     {
         // calculate two vectors of the polygon
-        const Vector3 edge1 = p2 - p1;
-        const Vector3 edge2 = p3 - p1;
+        const AZ::Vector3 edge1 = p2 - p1;
+        const AZ::Vector3 edge2 = p3 - p1;
 
         // begin calculating determinant - also used to calculate U parameter
-        const Vector3 dir = mDest - mOrigin;
-        const Vector3 pvec = dir.Cross(edge2);
+        const AZ::Vector3 dir = mDest - mOrigin;
+        const AZ::Vector3 pvec = dir.Cross(edge2);
 
         // if determinant is near zero, ray lies in plane of triangle
         const float det = edge1.Dot(pvec);
@@ -153,7 +153,7 @@ namespace MCore
         }
 
         // calculate distance from vert0 to ray origin
-        const Vector3 tvec = mOrigin - p1;
+        const AZ::Vector3 tvec = mOrigin - p1;
 
         // calculate U parameter and test bounds
         const float inv_det = 1.0f / det;
@@ -164,7 +164,7 @@ namespace MCore
         }
 
         // prepare to test V parameter
-        const Vector3 qvec = tvec.Cross(edge1);
+        const AZ::Vector3 qvec = tvec.Cross(edge1);
 
         // calculate V parameter and test bounds
         const float v = dir.Dot(qvec) * inv_det;
@@ -200,20 +200,20 @@ namespace MCore
 
 
     // ray-axis aligned bounding box
-    bool Ray::Intersects(const AABB& b, Vector3* intersectA, Vector3* intersectB) const
+    bool Ray::Intersects(const AABB& b, AZ::Vector3* intersectA, AZ::Vector3* intersectB) const
     {
         float tNear = -FLT_MAX, tFar = FLT_MAX;
 
-        const Vector3& minVec = b.GetMin();
-        const Vector3& maxVec = b.GetMax();
+        const AZ::Vector3& minVec = b.GetMin();
+        const AZ::Vector3& maxVec = b.GetMax();
 
         // For all three axes, check the near and far intersection point on the two slabs
         for (int32 i = 0; i < 3; i++)
         {
-            if (Math::Abs(mDirection[i]) < Math::epsilon)
+            if (Math::Abs(mDirection.GetElement(i)) < Math::epsilon)
             {
                 // direction is parallel to this plane, check if we're somewhere between min and max
-                if ((mOrigin[i] < minVec[i]) || (mOrigin[i] > maxVec[i]))
+                if ((mOrigin.GetElement(i) < minVec.GetElement(i)) || (mOrigin.GetElement(i) > maxVec.GetElement(i)))
                 {
                     return false;
                 }
@@ -221,8 +221,8 @@ namespace MCore
             else
             {
                 // calculate t's at the near and far slab, see if these are min or max t's
-                float t1 = (minVec[i] - mOrigin[i]) / mDirection[i];
-                float t2 = (maxVec[i] - mOrigin[i]) / mDirection[i];
+                float t1 = (minVec.GetElement(i) - mOrigin.GetElement(i)) / mDirection.GetElement(i);
+                float t2 = (maxVec.GetElement(i) - mOrigin.GetElement(i)) / mDirection.GetElement(i);
                 if (t1 > t2)
                 {
                     float temp = t1;

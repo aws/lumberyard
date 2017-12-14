@@ -19,7 +19,6 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Outcome/Outcome.h>
-#include <AzFramework/Entity/EntityReference.h>
 
 namespace ScriptCanvas
 {

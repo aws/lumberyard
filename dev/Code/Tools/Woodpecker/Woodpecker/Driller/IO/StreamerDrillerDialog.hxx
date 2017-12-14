@@ -19,13 +19,20 @@
 #include "Woodpecker/Driller/DrillerMainWindowMessages.h"
 #include "Woodpecker/Driller/stripchart.hxx"
 
-#include <QtWidgets/QMainWindow>
+#include <QMainWindow>
+#include <QDialog>
+#include <QAbstractTableModel>
 
 #include "Woodpecker/Driller/DrillerDataTypes.h"
 
 namespace Ui
 {
 	class StreamerDrillerDialog;
+}
+
+namespace AZ
+{
+    class ReflectContext;
 }
 
 namespace Driller

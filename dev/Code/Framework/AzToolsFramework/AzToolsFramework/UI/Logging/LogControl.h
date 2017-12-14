@@ -25,6 +25,7 @@
 class QIcon;
 class QAction;
 class QTableView;
+class QAbstractItemModel;
 
 namespace AzToolsFramework
 {
@@ -60,6 +61,9 @@ namespace AzToolsFramework
 
             // you MUST call this, it sets up the model and connects various signals.
             void ConnectModelToView(QAbstractItemModel* ptrModel);
+
+            // whether to expand the row height of the current item to show the full message text.
+            void SetCurrentItemExpandsToFit(bool expandsToFit);
 
             // utility functions to retrieve standard icons without having to load them or prepare them over and over.
             static QIcon& GetInformationIcon();
@@ -107,11 +111,14 @@ namespace AzToolsFramework
             virtual void CopyAll();
             virtual void CopySelected();
 
+            void CurrentItemChanged(const QModelIndex& current, const QModelIndex& previous);
+
             // connect to this signal if you want to know when someone clicked a link in a URL in a rich text box.
         signals:
             void onLinkActivated(const QString& link);
 
         private:
+            bool m_currentItemExpandsToFit;
 
             // used to avoid reloading the icons over and over...
             static int s_panelRefCount;

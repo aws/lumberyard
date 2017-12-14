@@ -11,12 +11,18 @@
 */
 #pragma once
 
+#include "HierarchyWidget.h"
+
 namespace HierarchyHelpers
 {
     //-------------------------------------------------------------------------------
 
     void Delete(HierarchyWidget* hierarchy,
         SerializeHelpers::SerializedEntryList& entries);
+
+    template< typename T >
+    void AppendAllChildrenToEndOfList(QTreeWidgetItem* rootItem,
+        T& itemList);
 
     //! Handles whether the given item should be de-selected for control-key multi-selection.
     //
@@ -27,20 +33,20 @@ namespace HierarchyHelpers
     //-------------------------------------------------------------------------------
 
     QAction* CreateAddElementAction(HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         bool addAtRoot,
         const QPoint* optionalPos);
 
     //-------------------------------------------------------------------------------
 
     void CreateItemsAndElements(HierarchyWidget* widget,
-        SerializeHelpers::SerializedEntryList& entryList);
+        const SerializeHelpers::SerializedEntryList& entryList);
 
     using Creator = std::function<void( HierarchyItem* parent,
                                         LyShine::EntityArray& listOfNewlyCreatedTopLevelElements )>;
 
     LyShine::EntityArray CreateItemsAndElements(HierarchyWidget* widget,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         bool createAsChildOfSelection,
         Creator creator);
 
@@ -196,7 +202,7 @@ namespace HierarchyHelpers
         int end = rootItem->childCount();
         for (int i = 0; i < end; ++i)
         {
-            itemList.push_back(dynamic_cast<T::value_type>(rootItem->child(i)));
+            itemList.push_back(dynamic_cast<typename T::value_type>(rootItem->child(i)));
         }
 
         // Note: This is a breadth-first traversal through all items.
@@ -206,7 +212,7 @@ namespace HierarchyHelpers
 
             for (int i = 0; i < end; ++i)
             {
-                itemList.push_back(dynamic_cast<T::value_type>(item->child(i)));
+                itemList.push_back(dynamic_cast<typename T::value_type>(item->child(i)));
             }
         }
     }
@@ -227,7 +233,7 @@ namespace HierarchyHelpers
 
             for (int i = 0; i < end; ++i)
             {
-                rootList.push_back(dynamic_cast<T::value_type>(item->child(i)));
+                rootList.push_back(dynamic_cast<typename T::value_type>(item->child(i)));
             }
         }
     }

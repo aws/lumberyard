@@ -31,7 +31,7 @@ namespace AudioControls
     class IAudioSystemControl
     {
     public:
-        IAudioSystemControl::IAudioSystemControl()
+        IAudioSystemControl()
             : m_name()
             , m_id(ACE_INVALID_CID)
             , m_type(AUDIO_IMPL_INVALID_TYPE)
@@ -42,7 +42,7 @@ namespace AudioControls
         {
         }
 
-        IAudioSystemControl::IAudioSystemControl(const string& name, CID id, TImplControlType type)
+        IAudioSystemControl(const string& name, CID id, TImplControlType type)
             : m_name(name)
             , m_id(id)
             , m_type(type)

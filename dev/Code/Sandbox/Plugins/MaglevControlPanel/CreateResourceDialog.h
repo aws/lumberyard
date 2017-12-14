@@ -67,8 +67,8 @@ protected:
     virtual void SaveAndClose();
     virtual void CloseDialog();
 
-    QRegExpValidator* GetValidator(const string& regEx);
-    int SetValidatorOnLineEdit(QLineEdit* target, const string& resourceName, const string& fieldName);
+    QRegExpValidator* GetValidator(const QString& regEx);
+    int SetValidatorOnLineEdit(QLineEdit* target, const QString& resourceName, const QString& fieldName);
 
     QSharedPointer<ICloudFormationTemplateModel>& GetTemplateModel() { return m_templateModel; }
     ResourceManagementView* m_view;

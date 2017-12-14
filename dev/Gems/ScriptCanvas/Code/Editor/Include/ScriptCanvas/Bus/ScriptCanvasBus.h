@@ -48,9 +48,4 @@ namespace ScriptCanvasEditor
     };
 
     using UINotificationBus = AZ::EBus<UINotifications>;
-
-    inline const char* GetViewPaneName()
-    {
-        return "Script Canvas (PREVIEW)";
-    }
 }

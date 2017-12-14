@@ -20,6 +20,8 @@
 #include "IStatObj.h"  // MAX_STATOBJ_LODS_NUM
 #include "ITimeOfDay.h"
 
+#include "Environment/OceanEnvironmentBus.h"
+
 //////////////////////////////////////////////////////////////////////////
 void OnTimeOfDayVarChange(ICVar* pArgs)
 {
@@ -107,8 +109,12 @@ void CVars::Init()
         "Activates drawing of ocean. \n"
         "1: use usual rendering path\n"
         "2: use fast rendering path with merged fog");
-    DefineConstIntCVar(e_WaterOceanBottom, 1, VF_CHEAT,
-        "Activates drawing bottom of ocean");
+
+    if (!OceanToggle::IsActive())
+    {
+        DefineConstIntCVar(e_WaterOceanBottom, 1, VF_CHEAT,
+            "Activates drawing bottom of ocean");
+    }
 
     REGISTER_CVAR(e_WaterOceanFFT, 0, VF_NULL,
         "Activates fft based ocean");
@@ -371,7 +377,9 @@ void CVars::Init()
     REGISTER_CVAR_CB(e_ShadowsCacheRenderCharacters, 0, VF_NULL,
         "Render characters into the shadow cache. 0=disabled, 1=enabled", OnDynamicDistanceShadowsVarChange);
     REGISTER_CVAR(e_ShadowsCacheRequireManualUpdate, 0, VF_NULL,
-        "Sets whether levels must trigger manual updates of the cached shadow maps: 0=Cached shadows default to Incremental updates, 1=Levels must trigger cached shadow updates via script");
+        "Sets whether levels must trigger manual updates of the cached shadow maps: 0=Cached shadows default to Incremental updates\n"
+        "1=Levels must trigger cached shadow updates via script\n"
+        "2=Levels may either trigger cached shadow updates via script or allow cached shadows to update if the user moves too close to the border of the shadowmap");
     REGISTER_CVAR_CB(e_DynamicDistanceShadows, 1, VF_NULL,
         "Enable dynamic distance shadows, 0=disable, 1=enable, -1=don't render dynamic distance shadows", OnDynamicDistanceShadowsVarChange);
     DefineConstIntCVar(e_ShadowsCascadesDebug, 0, VF_CHEAT,
@@ -399,8 +407,6 @@ void CVars::Init()
         "Shadows slope bias for shadowgen");
     REGISTER_CVAR(e_ShadowsConstBiasHQ, 0.05f, VF_NULL,
         "Shadows slope bias for shadowgen (high quality mode)");
-    DefineConstIntCVar(e_ShadowsOnWater, 0, VF_NULL,
-        "Enable/disable shadows on water");
 
     DefineConstIntCVar(e_ShadowsMasksLimit, 0, VF_NULL,
         "Maximum amount of allocated shadow mask textures\n"
@@ -601,16 +607,13 @@ void CVars::Init()
         "Activates drawing of water volumes\n"
         "1: use usual rendering path\n"
         "2: use fast rendering path with merged fog");
-    DefineConstIntCVar(e_WaterWaves, 0, VF_CHEAT,
-        "Activates drawing of water waves");
-    DefineConstIntCVar(e_WaterWavesTessellationAmount,    5, VF_NULL,
-        "Sets water waves tessellation amount");
-    REGISTER_CVAR(e_WaterTessellationAmount, 10, VF_NULL,
-        "Set tessellation amount");
-    REGISTER_CVAR(e_WaterTessellationAmountX, 10, VF_NULL,
-        "Set tessellation on x axis - 0 means not used");
-    REGISTER_CVAR(e_WaterTessellationAmountY, 10, VF_NULL,
-        "Set tessellation on y axis - 0 means not used");
+
+    if (!OceanToggle::IsActive())
+    {
+        REGISTER_CVAR(e_WaterTessellationAmount, 200, VF_NULL,  // being deprecated by Water gem
+            "Set tessellation amount");
+    }
+
     REGISTER_CVAR(e_WaterTessellationSwathWidth, 12, VF_NULL,
         "Set the swath width for the boustrophedonic mesh stripping");
     DefineConstIntCVar(e_BBoxes, 0, VF_CHEAT,

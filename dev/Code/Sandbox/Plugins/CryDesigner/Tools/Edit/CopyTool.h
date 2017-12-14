@@ -36,5 +36,5 @@ public:
 
     void Enter() override;
 
-    static void Copy(CD::SMainContext& mc, ElementManager* pOutCopiedElements);
+    static void Copy(const CD::SMainContext& mc, ElementManager* pOutCopiedElements);
 };

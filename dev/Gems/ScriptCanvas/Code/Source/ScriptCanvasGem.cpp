@@ -34,6 +34,7 @@
 
 #include <Builder/CoreBuilderSystemComponent.h>
 #include <ScriptCanvas/Core/Graph.h>
+#include <ScriptCanvas/Data/DataRegistry.h>
 
 #include <ScriptCanvas/Libraries/Libraries.h>
 
@@ -49,36 +50,17 @@ namespace ScriptCanvas
     //! The descriptors will be registered at the appropriate time.
     //! The descriptors will be destroyed (and thus unregistered) at the appropriate time.
     ScriptCanvasModule::ScriptCanvasModule()
-        : AZ::Module()
+        : ScriptCanvasModuleCommon()
     {
-        m_descriptors.insert(m_descriptors.end(), {
-            ScriptCanvas::SystemComponent::CreateDescriptor(),
-            ScriptCanvasBuilder::CoreBuilderSystemComponent::CreateDescriptor(),
-            ScriptCanvas::Graph::CreateDescriptor(),
-            ScriptCanvas::Debugger::Component::CreateDescriptor(),
-       });
-
-        ScriptCanvas::InitNodeRegistry();
-        AZStd::vector<AZ::ComponentDescriptor*> libraryDescriptors = ScriptCanvas::GetLibraryDescriptors();
-        m_descriptors.insert(m_descriptors.end(), libraryDescriptors.begin(), libraryDescriptors.end());
     }
 
     ScriptCanvasModule::~ScriptCanvasModule()
     {
-        ScriptCanvas::ResetNodeRegistry();
     }
 
     AZ::ComponentTypeList ScriptCanvasModule::GetRequiredSystemComponents() const
     {
-        AZ::ComponentTypeList components;
-
-        components.insert(components.end(), std::initializer_list<AZ::Uuid> {
-            azrtti_typeid<ScriptCanvas::SystemComponent>(),
-            azrtti_typeid<ScriptCanvasBuilder::CoreBuilderSystemComponent>(),
-            azrtti_typeid<ScriptCanvas::Debugger::Component>(),
-        });
-
-        return components;
+        return GetCommonSystemComponents();
     }
 }
 

@@ -34,6 +34,29 @@
 #include "physicalworld.h"
 
 
+/*
+    Why 182?
+    Because any more than 182 cells will cause the engine to crash.
+    If a water volume has a surface mesh with more vertices than can be indexed
+    by a 16 bit unsigned int, we will crash. Indices are hard-coded as 16-bits
+    so the only way to avoid the crash is either to cap the cell size or
+    convert all indices to 32-bit. Indices are hard coded as part of the CGF
+    file header so avoiding the crash by capping the cell size is easiest.
+
+    Why will a value over 182 cause the engine to crash? 
+    CPhysArea::Update has the following formula to calculate the number of 
+    triangles in a water surface mesh:
+    AZ::u32 triCount = sqr(swm.nCells - 1) * 2;
+    This value will be sent, eventually, to CTriMesh::CreateTriMesh as nTris. 
+    This method will generate nTris * 3 number of indices. If that value is greater
+    than 0xFFFF (the max 16-bit unsigned int) we will crash. 
+    So the max number of cells we can support is:
+    where MaxTriCount = 0xFFFF / 3
+    MaxCellCount = floor(sqrt(MaxTriCount / 2) + 1)
+    And this gets us 182.
+*/
+const AZ::u32 CWaterMan::s_MaxCells = 182;
+
 CWaterMan::CWaterMan(CPhysicalWorld* pWorld, IPhysicalEntity* pArea)
 {
     m_pWorld = pWorld;
@@ -839,8 +862,7 @@ void CWaterMan::TimeStep(float time_interval)
     {
         m_dt = m_pWorld->m_vars.fixedTimestep;
     }
-    float g = m_waveSpeed;
-
+    
     for (dt = m_timeSurplus; dt < time_interval; dt += m_dt)
     {
         float doffs = min(fabs_tpl(m_doffs), m_dt * 3) * sgnnz(m_doffs);
@@ -897,7 +919,7 @@ void CWaterMan::TimeStep(float time_interval)
                                         ptile->mv[i] += Vec2(ptile1->pvel[i1]) * max(0.0f, -ptile1->pvel[i1].z * m_dt * 0.25f) * pullm;
                                     }
                                 }
-                                vsum += (ptile->pvel[i].z += (h * rnused[nused] - ptile->ph[i]) * g * m_dt);
+                                vsum += (ptile->pvel[i].z += (h * rnused[nused] - ptile->ph[i]) * m_waveSpeed * m_dt);
                             }
                         }
                     }
@@ -916,7 +938,7 @@ void CWaterMan::TimeStep(float time_interval)
                                     hasBorder |= 1 - used;
                                     ptile->mv[i] += Vec2(ptile->pvel[i1]) * max(0.0f, -ptile->pvel[i1].z * m_dt * 0.25f) * pullm;
                                 }
-                                vsum += (ptile->pvel[i].z += (h * rnused[nused] - ptile->ph[i]) * g * m_dt);
+                                vsum += (ptile->pvel[i].z += (h * rnused[nused] - ptile->ph[i]) * m_waveSpeed * m_dt);
                             }
                         }
                     }
@@ -977,7 +999,7 @@ void CWaterMan::TimeStep(float time_interval)
                 h = max(h, ptile->ph[i] = min(maxh, max(minh, hnew)) * (1 - flip & inside));
                 vmax = max(vmax, ptile->pvel[i].len2());
             }
-            ptile->Activate(isneg(sqr(m_minVel) - max(vmax, h * sqr(2 * g))));
+            ptile->Activate(isneg(sqr(m_minVel) - max(vmax, h * sqr(2 * m_waveSpeed))));
         }
     }
     m_timeSurplus = dt - time_interval;

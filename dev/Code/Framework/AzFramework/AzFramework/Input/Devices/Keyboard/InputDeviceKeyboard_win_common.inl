@@ -10,7 +10,7 @@
 *
 */
 
-#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_win_scancodes.inl>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_win_scancodes.inl>
 
 #include <AzCore/std/string/conversions.h>
 

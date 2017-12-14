@@ -214,13 +214,12 @@ namespace AudioControls
         if (bPreloadsChanged)
         {
             QMessageBox messageBox(this);
-            messageBox.setText(tr("Preload requests have been modified. \n\nFor the new data to be loaded the audio system needs to be refreshed, this will stop all currently playing audio. Do you want to do this now?. \n\nYou can always refresh manually at a later time through the Audio menu."));
+            messageBox.setText(tr("Preload requests have been modified.\n\nFor the new data to be loaded the audio system needs to be refreshed, this will stop all currently playing audio. Do you want to do this now?\n\nYou can always refresh manually at a later time through the Audio menu."));
             messageBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
             messageBox.setDefaultButton(QMessageBox::No);
             messageBox.setWindowTitle("Audio Controls Editor");
             if (messageBox.exec() == QMessageBox::Yes)
             {
-                Audio::SAudioRequest oAudioRequestData;
                 QString sLevelName = GetIEditor()->GetLevelName();
 
                 if (QString::compare(sLevelName, "Untitled", Qt::CaseInsensitive) == 0)
@@ -229,10 +228,7 @@ namespace AudioControls
                     sLevelName = QString();
                 }
 
-                Audio::SAudioManagerRequestData<Audio::eAMRT_REFRESH_AUDIO_SYSTEM> oAMData(sLevelName.isNull() ? nullptr : sLevelName.toLatin1().data());
-                oAudioRequestData.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING);
-                oAudioRequestData.pData = &oAMData;
-                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toLatin1().data());
             }
         }
         m_pATLModel->ClearDirtyFlags();

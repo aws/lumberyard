@@ -25,6 +25,11 @@ using namespace UnitTestInternal;
 
 namespace UnitTest
 {
+    class Algorithms
+        : public AllocatorsFixture
+    {
+    };
+
     /**
      *
      */
@@ -126,7 +131,7 @@ namespace UnitTest
      *
      */
     static bool IsFive(int i) { return i == 5; }
-    TEST(Algorithms, Compare)
+    TEST_F(Algorithms, Compare)
     {
         vector<int> emptyVector;
         array<int, 3> allFivesArray = {
@@ -161,7 +166,7 @@ namespace UnitTest
     /**
      *
      */
-    TEST(Algorithms, Heap)
+    TEST_F(Algorithms, Heap)
     {
         using AZStd::size_t;
 
@@ -206,47 +211,34 @@ namespace UnitTest
 #endif
     }
 
-    /**
-     * Sort algoritms
-     */
-    class AlgorithmsSortTest
-        : public AllocatorsFixture
+    TEST_F(Algorithms, InsertionSort)
     {
-    public:
-        void run()
+        array<int, 10> elementsSrc = {
+            { 10, 2, 6, 3, 5, 8, 7, 9, 1, 4 }
+        };
+
+        // Insertion sort
+        array<int, 10> elements1(elementsSrc);
+        insertion_sort(elements1.begin(), elements1.end());
+        for (size_t i = 1; i < elements1.size(); ++i)
         {
-            using AZStd::size_t;
+            EXPECT_LT(elements1[i - 1], elements1[i]);
+        }
+        insertion_sort(elements1.begin(), elements1.end(), AZStd::greater<int>());
+        for (size_t i = 1; i < elements1.size(); ++i)
+        {
+            EXPECT_GT(elements1[i - 1], elements1[i]);
+        }
+    }
 
-            array<int, 10> elementsSrc = {
-                {10, 2, 6, 3, 5, 8, 7, 9, 1, 4}
-            };
-
-            // Insertion sort
-            array<int, 10> elements1(elementsSrc);
-            insertion_sort(elements1.begin(), elements1.end());
-            for (size_t i = 1; i < elements1.size(); ++i)
+    TEST_F(Algorithms, Sort)
+    {
+        vector<int> sortTest;
+        for (int iSizeTest = 0; iSizeTest < 4; ++iSizeTest)
+        {
+            int vectorSize = 0;
+            switch (iSizeTest)
             {
-                AZ_TEST_ASSERT(elements1[i - 1] < elements1[i]);
-            }
-            insertion_sort(elements1.begin(), elements1.end(), AZStd::greater<int>());
-            for (size_t i = 1; i < elements1.size(); ++i)
-            {
-                AZ_TEST_ASSERT(elements1[i - 1] > elements1[i]);
-            }
-
-            // Make sure we have more than min elements for insertion sort (at the moment at 32).
-            // Otherwise sort will just call insertion_sort
-            //typedef AZStd::static_buffer_allocator<1028,4> temp_buffer_allocator_type;
-            typedef AZStd::allocator temp_buffer_allocator_type;
-
-            temp_buffer_allocator_type tempBufferAllocator;
-
-            vector<int> sortTest;
-            for (int iSizeTest = 0; iSizeTest < 4; ++iSizeTest)
-            {
-                int vectorSize = 0;
-                switch (iSizeTest)
-                {
                 case 0:
                     vectorSize = 15;     // less than insertion sort threshold (32 at the moment)
                     break;
@@ -259,64 +251,117 @@ namespace UnitTest
                 case 3:
                     vectorSize = 100;     // just more
                     break;
-                }
-                ;
+            }
 
-                sortTest.clear();
-                for (int i = vectorSize; i >= 0; --i)
-                {
-                    sortTest.push_back(i);
-                }
+            sortTest.clear();
+            for (int i = vectorSize; i >= 0; --i)
+            {
+                sortTest.push_back(i);
+            }
 
-                // Normal sort test
-                sort(sortTest.begin(), sortTest.end());
-                for (size_t i = 1; i < sortTest.size(); ++i)
-                {
-                    AZ_TEST_ASSERT(sortTest[i - 1] < sortTest[i]);
-                }
-                sort(sortTest.begin(), sortTest.end(), AZStd::greater<int>());
-                for (size_t i = 1; i < sortTest.size(); ++i)
-                {
-                    AZ_TEST_ASSERT(sortTest[i - 1] > sortTest[i]);
-                }
-
-                // Stable sort test
-                stable_sort(sortTest.begin(), sortTest.end(), tempBufferAllocator);
-                for (size_t i = 1; i < sortTest.size(); ++i)
-                {
-                    AZ_TEST_ASSERT(sortTest[i - 1] < sortTest[i]);
-                }
-                stable_sort(sortTest.begin(), sortTest.end(), AZStd::greater<int>(), tempBufferAllocator);
-                for (size_t i = 1; i < sortTest.size(); ++i)
-                {
-                    AZ_TEST_ASSERT(sortTest[i - 1] > sortTest[i]);
-                }
-
-                // partial_sort test
-                int sortSize = vectorSize / 2;
-                partial_sort(sortTest.begin(), sortTest.begin() + sortSize, sortTest.end());
-                for (int i = 1; i < sortSize; ++i)
-                {
-                    AZ_TEST_ASSERT(sortTest[i - 1] < sortTest[i]);
-                }
-                partial_sort(sortTest.begin(), sortTest.begin() + sortSize, sortTest.end(), AZStd::greater<int>());
-                for (int i = 1; i < sortSize; ++i)
-                {
-                    AZ_TEST_ASSERT(sortTest[i - 1] > sortTest[i]);
-                }
+            // Normal sort test
+            sort(sortTest.begin(), sortTest.end());
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_LT(sortTest[i - 1], sortTest[i]);
+            }
+            sort(sortTest.begin(), sortTest.end(), AZStd::greater<int>());
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_GT(sortTest[i - 1], sortTest[i]);
             }
         }
-    };
+    }
 
-    TEST_F(AlgorithmsSortTest, Test)
+    TEST_F(Algorithms, StableSort)
     {
-        run();
+        vector<int> sortTest;
+        for (int iSizeTest = 0; iSizeTest < 4; ++iSizeTest)
+        {
+            int vectorSize = 0;
+            switch (iSizeTest)
+            {
+                case 0:
+                    vectorSize = 15;     // less than insertion sort threshold (32 at the moment)
+                    break;
+                case 1:
+                    vectorSize = 32;     // exact size
+                    break;
+                case 2:
+                    vectorSize = 64;     // double
+                    break;
+                case 3:
+                    vectorSize = 100;     // just more
+                    break;
+            }
+
+            sortTest.clear();
+            for (int i = vectorSize; i >= 0; --i)
+            {
+                sortTest.push_back(i);
+            }
+
+            // Stable sort test
+            stable_sort(sortTest.begin(), sortTest.end(), sortTest.get_allocator());
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_LT(sortTest[i - 1], sortTest[i]);
+            }
+            stable_sort(sortTest.begin(), sortTest.end(), AZStd::greater<int>(), sortTest.get_allocator());
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_GT(sortTest[i - 1], sortTest[i]);
+            }
+        }
+    }
+
+    TEST_F(Algorithms, PartialSort)
+    {
+        vector<int> sortTest;
+        for (int iSizeTest = 0; iSizeTest < 4; ++iSizeTest)
+        {
+            int vectorSize = 0;
+            switch (iSizeTest)
+            {
+                case 0:
+                    vectorSize = 15;     // less than insertion sort threshold (32 at the moment)
+                    break;
+                case 1:
+                    vectorSize = 32;     // exact size
+                    break;
+                case 2:
+                    vectorSize = 64;     // double
+                    break;
+                case 3:
+                    vectorSize = 100;     // just more
+                    break;
+            }
+
+            sortTest.clear();
+            for (int i = vectorSize; i >= 0; --i)
+            {
+                sortTest.push_back(i);
+            }
+
+            // partial_sort test
+            int sortSize = vectorSize / 2;
+            partial_sort(sortTest.begin(), sortTest.begin() + sortSize, sortTest.end());
+            for (int i = 1; i < sortSize; ++i)
+            {
+                EXPECT_LT(sortTest[i - 1], sortTest[i]);
+            }
+            partial_sort(sortTest.begin(), sortTest.begin() + sortSize, sortTest.end(), AZStd::greater<int>());
+            for (int i = 1; i < sortSize; ++i)
+            {
+                EXPECT_GT(sortTest[i - 1], sortTest[i]);
+            }
+        }
     }
 
     /**
      * Endian swap test.
      */
-    TEST(Algorithms, EndianSwap)
+    TEST_F(Algorithms, EndianSwap)
     {
         array<char, 10> charArr  = {
             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}

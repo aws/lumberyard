@@ -32,7 +32,7 @@ public:
 
     CGotoTrack();
 
-    virtual EAnimValue GetValueType() { return eAnimValue_DiscreteFloat; }
+    virtual AnimValueType GetValueType();
 
     void GetValue(float time, float& value, bool applyMultiplier=false);
     void SetValue(float time, const float& value, bool bDefault = false, bool applyMultiplier = false);

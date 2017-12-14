@@ -283,6 +283,16 @@ namespace AzFramework
         bool Replace(AZStd::string& inout, const char replaceA, const char withB, bool bCaseSensitive = false, bool bReplaceFirst = false, bool bReplaceLast = false);
         bool Replace(AZStd::string& inout, const char* replaceA, const char* withB, bool bCaseSensitive = false, bool bReplaceFirst = false, bool bReplaceLast = false);
 
+        /**
+        * Simple string trimming (trims spaces, tabs, and line-feed/cr characters from both ends)
+        *
+        * \param[in, out] value     The value to trim
+        * \param[in] leading        Flag to trim the leading whitespace characters from the string
+        * \param[in] trailing       Flag to trim the trailing whitespace characters from the string
+        * \returns The reference to the trimmed value
+        */
+        AZStd::string& TrimWhiteSpace(AZStd::string& value, bool leading, bool trailing);
+
         //! Strip
         /*! Strip away the first, last or all character(s) or substring(s) in a AZStd::string with
         *! case sensitivity.
@@ -440,7 +450,21 @@ namespace AzFramework
             }
         }
 
+        //////////////////////////////////////////////////////////////////////////
+        //! StringFunc::AssetPath Namespace
+        /*! For string functions for support asset path calculations 
+        */
+        namespace AssetPath
+        {
+            //! CalculateBranchToken
+            /*! Calculate the branch token that is used for asset processor connection negotiations
+            *
+            * \param appRootPath - The absolute path of the app root to base the token calculation on
+            * \param token       - The result of the branch token calculation
+            */
+            void CalculateBranchToken(const AZStd::string& appRootPath, AZStd::string& token);
 
+        }
         //////////////////////////////////////////////////////////////////////////
         //! StringFunc::AssetDatabasePath Namespace
         /*! For string functions for physical paths and how the database expects them to appear.
@@ -985,6 +1009,16 @@ namespace AzFramework
             bool Decode(AZStd::vector<AZ::u8>& out, const char* in, const size_t size);
 
         };
+
+        namespace Utf8
+        {
+            /**
+             * Check to see if a string contains any byte that cannot be encoded in 7-bit ASCII.
+             * @param in A string with UTF-8 encoding.
+             * @return true if the string passed in contains any byte that cannot be encoded in 7-bit ASCII, otherwise false.
+             */
+            bool CheckNonAsciiChar(const AZStd::string& in);
+        }
     } // namespace StringFunc
 } // namespace AzFramework
   //////////////////////////////////////////////////////////////////////////

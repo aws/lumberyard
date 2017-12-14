@@ -61,6 +61,7 @@ struct ConvertorInitContext
     const IConfig* config;
     size_t inputFileCount;
     const RcFile* inputFiles;
+    const char* appRootPath = nullptr;
 };
 
 // Convertor interface, all converters must implement this interface.

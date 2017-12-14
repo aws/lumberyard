@@ -176,11 +176,13 @@ QString CMaterial::GetFilename() const
 //////////////////////////////////////////////////////////////////////////
 int CMaterial::GetTextureFilenames(QStringList& outFilenames) const
 {
-    for (int i = 0; i < EFTT_MAX; ++i)
+    for (auto& iter : m_shaderResources.m_TexturesResourcesMap )
     {
-        QString name = QtUtil::ToQString(m_shaderResources.m_Textures[i].m_Name);
+        const SEfResTexture*    pTexture = (const SEfResTexture*) &(iter.second);
+        QString                 name = QtUtil::ToQString(pTexture->m_Name);
         if (name.isEmpty())
         {
+            AZ_Warning("Shaders System", false, "Error:  CMaterial::GetTextureFilenames - texture slot name does not exist for slot %d", iter.first );
             continue;
         }
 
@@ -216,9 +218,9 @@ int CMaterial::GetTextureFilenames(QStringList& outFilenames) const
 //////////////////////////////////////////////////////////////////////////
 int CMaterial::GetAnyTextureFilenames(QStringList& outFilenames) const
 {
-    for (int i = 0; i < EFTT_MAX; ++i)
+    for ( auto& iter : m_shaderResources.m_TexturesResourcesMap )
     {
-        QString name = QtUtil::ToQString(m_shaderResources.m_Textures[i].m_Name);
+        QString name = QtUtil::ToQString( iter.second.m_Name);
         if (name.isEmpty())
         {
             continue;
@@ -244,7 +246,7 @@ int CMaterial::GetAnyTextureFilenames(QStringList& outFilenames) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMaterial::UpdateFileAttributes()
+void CMaterial::UpdateFileAttributes(bool useSourceControl)
 {
     QString filename = GetFilename();
     if (filename.isEmpty())
@@ -252,7 +254,7 @@ void CMaterial::UpdateFileAttributes()
         return;
     }
 
-    m_scFileAttributes = CFileUtil::GetAttributes(filename.toLatin1().data());
+    m_scFileAttributes = CFileUtil::GetAttributes(filename.toUtf8().data(), useSourceControl);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -307,32 +309,35 @@ void CMaterial::CheckSpecialConditions()
     }
 
     // If environment texture name have auto/nearest cubemap in it, force material to use auto cube-map for it.
-    if (!m_shaderResources.m_Textures[EFTT_ENV].m_Name.empty())
-    {
-        const char* sAtPos;
+    SEfResTexture*      pTextureRes = m_shaderResources.GetTextureResource(EFTT_ENV);
+    if (!pTextureRes)
+        return;
 
-        sAtPos = strstr(m_shaderResources.m_Textures[EFTT_ENV].m_Name.c_str(), "auto_2d");
+    if (!pTextureRes->m_Name.empty())
+    {
+        const char*         sAtPos;
+        sAtPos = strstr(pTextureRes->m_Name.c_str(), "auto_2d");
         if (sAtPos)
         {
-            m_shaderResources.m_Textures[EFTT_ENV].m_Sampler.m_eTexType = eTT_Auto2D;   // Force Auto-2D
+            pTextureRes->m_Sampler.m_eTexType = eTT_Auto2D;   // Force Auto-2D
         }
-        sAtPos = strstr(m_shaderResources.m_Textures[EFTT_ENV].m_Name.c_str(), "nearest_cubemap");
+        sAtPos = strstr(pTextureRes->m_Name.c_str(), "nearest_cubemap");
         if (sAtPos)
         {
-            m_shaderResources.m_Textures[EFTT_ENV].m_Sampler.m_eTexType = eTT_NearestCube;  // Force Nearest Cubemap
+            pTextureRes->m_Sampler.m_eTexType = eTT_NearestCube;  // Force Nearest Cubemap
         }
     }
 
     // Force auto 2D map if user sets texture type
-    if (m_shaderResources.m_Textures[EFTT_ENV].m_Sampler.m_eTexType == eTT_Auto2D)
+    if (pTextureRes->m_Sampler.m_eTexType == eTT_Auto2D)
     {
-        m_shaderResources.m_Textures[EFTT_ENV].m_Name = "auto_2d";
+        pTextureRes->m_Name = "auto_2d";
     }
 
     // Force nearest cube map if user sets texture type
-    if (m_shaderResources.m_Textures[EFTT_ENV].m_Sampler.m_eTexType == eTT_NearestCube)
+    if (pTextureRes->m_Sampler.m_eTexType == eTT_NearestCube)
     {
-        m_shaderResources.m_Textures[EFTT_ENV].m_Name = "nearest_cubemap";
+        pTextureRes->m_Name = "nearest_cubemap";
         m_mtlFlags |= MTL_FLAG_REQUIRE_NEAREST_CUBEMAP;
     }
 }
@@ -430,7 +435,7 @@ bool CMaterial::LoadShader()
     }
     //////////////////////////////////////////////////////////////////////////
 
-    gEnv->pRenderer->UpdateShaderItem(&m_shaderItem);
+    gEnv->pRenderer->UpdateShaderItem(&m_shaderItem, nullptr);
 
     //////////////////////////////////////////////////////////////////////////
     // Set Shader Params for material layers
@@ -1188,9 +1193,17 @@ void CMaterial::SetFromMatInfo(_smart_ptr<IMaterial> pMatInfo)
 
             if (pChildMatInfo->GetFlags() & MTL_FLAG_PURE_CHILD)
             {
-                CMaterial* pChild = new CMaterial(pChildMatInfo->GetName(), pChildMatInfo->GetFlags());
-                pChild->SetFromMatInfo(pChildMatInfo);
-                SetSubMaterial(i, pChild);
+                CMaterial* existingChild = GetSubMaterial(i);
+                if (existingChild)
+                {
+                    existingChild->SetFromMatInfo(pChildMatInfo);
+                }
+                else
+                {
+                    CMaterial* pChild = new CMaterial(pChildMatInfo->GetName(), pChildMatInfo->GetFlags());
+                    pChild->SetFromMatInfo(pChildMatInfo);
+                    SetSubMaterial(i, pChild);
+                }
             }
             else
             {
@@ -1317,27 +1330,31 @@ void CMaterial::SetSubMaterial(int nSlot, CMaterial* mtl)
 }
 
 //////////////////////////////////////////////////////////////////////////
+// This method will populate for the material editor the name and tool tip of the 
+// different textures of the current material 
+//CVarBlock* CMaterial::UpdateTextureNames(AZStd::unordered_map<ResourceSlotIndex, CSmartVariableArray>& textureVarsMap)
 CVarBlock* CMaterial::UpdateTextureNames(CSmartVariableArray textureVars[EFTT_MAX])
 {
-    CVarBlock* pTextureSlots = new CVarBlock;
-    IShader* pTemplShader = m_shaderItem.m_pShader;
-    int nTech = max(0, m_shaderItem.m_nTechnique);
-    SShaderTexSlots* pShaderSlots = pTemplShader ? pTemplShader->GetUsedTextureSlots(nTech) : NULL;
+    CVarBlock*          pTextureSlots = new CVarBlock;
+    IShader*            pTemplShader = m_shaderItem.m_pShader;
+    int                 nTech = max(0, m_shaderItem.m_nTechnique);
+    SShaderTexSlots*    pShaderSlots = pTemplShader ? pTemplShader->GetUsedTextureSlots(nTech) : nullptr;
 
-    for (EEfResTextures texId = EEfResTextures(0); texId < EFTT_MAX; texId = EEfResTextures(texId + 1))
+    for (EEfResTextures nTexSlot = EEfResTextures(0); nTexSlot < EFTT_MAX; nTexSlot = EEfResTextures(nTexSlot + 1))
     {
-        if (!MaterialHelpers::IsAdjustableTexSlot(texId))
-        {
+        if (!MaterialHelpers::IsAdjustableTexSlot((EEfResTextures)nTexSlot))
+        {   // do not take into account virtual slots (such as smoothness - normal's alpha)
+            // in theory this case should not happen as it is filtered from the source list.
             continue;
         }
 
-        IVariable* pVar = textureVars[texId].GetVar();
-        SShaderTextureSlot* pSlot = pShaderSlots ? pShaderSlots->m_UsedSlots[texId] : NULL;
-        const string& sTexName = m_shaderResources.m_Textures[texId].m_Name;
+        IVariable*          pVar = textureVars[nTexSlot].GetVar();
+        SShaderTextureSlot* pSlot = pShaderSlots ? pShaderSlots->m_UsedTextureSlots[nTexSlot] : nullptr;
 
-        // if slot is NULL, fall back to default name
-        pVar->SetName(pSlot && pSlot->m_Name.length() ? pSlot->m_Name.c_str() : MaterialHelpers::LookupTexName(texId));
-        pVar->SetDescription(pSlot && pSlot->m_Description.length() ? pSlot->m_Description.c_str() : MaterialHelpers::LookupTexDesc(texId));
+        // If slot is NULL, fall back to default name - name here is the context name (i.e. diffuse, normal..) 
+        // and not the actual texture file name
+        pVar->SetName(pSlot && pSlot->m_Name.length() ? pSlot->m_Name.c_str() : MaterialHelpers::LookupTexName((EEfResTextures) nTexSlot));
+        pVar->SetDescription(pSlot && pSlot->m_Description.length() ? pSlot->m_Description.c_str() : MaterialHelpers::LookupTexDesc((EEfResTextures)nTexSlot));
 
         int flags = pVar->GetFlags();
 
@@ -1347,14 +1364,17 @@ CVarBlock* CMaterial::UpdateTextureNames(CSmartVariableArray textureVars[EFTT_MA
         flags |= IVariable::UI_COLLAPSED;
 
         //clear the auto-expand flag if there is no texture assigned.
-        if (sTexName.empty())
+        SEfResTexture*  pTextureRes = m_shaderResources.GetTextureResource(nTexSlot);
+        bool            noTextureName = (!pTextureRes ? true : pTextureRes->m_Name.empty());
+
+        if (noTextureName)
         {
             flags &= ~IVariable::UI_AUTO_EXPAND;
         }
 
         // if slot is NULL, but we have reflection information, this slot isn't used - make the variable invisible
         // unless there's a texture in the slot
-        if (pShaderSlots && !pSlot && sTexName.empty())
+        if (pShaderSlots && !pSlot && noTextureName)
         {
             flags |= IVariable::UI_INVISIBLE;
         }
@@ -1418,12 +1438,13 @@ void CMaterial::GatherUsedResources(CUsedResources& resources)
         return;
     }
 
-    SInputShaderResources& sr = GetShaderResources();
-    for (int texid = 0; texid < EFTT_MAX; texid++)
+    SInputShaderResources&  sr = GetShaderResources();
+    for (auto iter = sr.m_TexturesResourcesMap.begin(); iter != sr.m_TexturesResourcesMap.end(); ++iter)
     {
-        if (!sr.m_Textures[texid].m_Name.empty())
+        SEfResTexture*  	pTexture = &iter->second;
+        if (!pTexture->m_Name.empty())
         {
-            resources.Add(sr.m_Textures[texid].m_Name.c_str());
+            resources.Add(pTexture->m_Name.c_str());
         }
     }
 }
@@ -1549,13 +1570,7 @@ bool CMaterial::Save(bool bSkipReadOnly)
 //////////////////////////////////////////////////////////////////////////
 void CMaterial::ClearMatInfo()
 {
-    _smart_ptr<IMaterial> pMatInfo = m_pMatInfo;
-    m_pMatInfo = 0;
-    // This call can release CMaterial.
-    if (pMatInfo)
-    {
-        Release();
-    }
+    m_pMatInfo = nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1628,6 +1643,8 @@ void CMaterial::NotifyChanged()
 }
 
 //////////////////////////////////////////////////////////////////////////
+// Run over all texture resources of the material and find the resources +
+// resolve texture names.
 void CMaterial::ResolveTextures()
 {
     if (!m_allowResolve)
@@ -1635,45 +1652,50 @@ void CMaterial::ResolveTextures()
         return;
     }
 
-    for (int i = 0; i < EFTT_MAX; ++i)
+    // Run over all existing slots with texture name in the shader resources and
+    // try to find all repeating texture names.
+    for (auto& iter : m_shaderResources.m_TexturesResourcesMap)
     {
         // clear requests for this slot
+        uint16              nSlot = iter.first;
         for (TTexResolveReq::iterator it = m_resolveRequests.begin(); it != m_resolveRequests.end(); ++it)
         {
-            stl::find_and_erase(it->second.slotsv, i);
+            stl::find_and_erase(it->second.slotsv, nSlot);
         }
 
         // skip if empty
-        const char* tex = m_shaderResources.m_Textures[i].m_Name.c_str();
-        if (strlen(tex) == 0)
+        SEfResTexture*  	pTexture = &(iter.second);
+        if (pTexture->m_Name.empty())
         {
+//            AZ_Warning("ShadersSystem", false, "CMaterial::ResolveTextures - missing texture name for slot %d for material [%s]",
+//                iter->first, this->m_name.toStdString().c_str());
             continue;
         }
 
-        // if file is not requested already start request if file not exists
-        // otherwise if request exists, add this slot to the request
-        TTexResolveReq::iterator it = m_resolveRequests.find(tex);
+        // Find the Id associated with this texture name - add an entry of doesn't exist.
+        const char*                 tex = pTexture->m_Name.c_str();
+        TTexResolveReq::iterator    it = m_resolveRequests.find(tex);
         if (it == m_resolveRequests.end())
-        {
-            uint32 id = GetIEditor()->GetMissingAssetResolver()->AddResolveRequest(tex, functor(*this, &CMaterial::OnResolved), IVariable::DT_TEXTURE);
-            if (id != 0)
+        {   // request for this texture name was not found
+            uint32  texId = GetIEditor()->GetMissingAssetResolver()->AddResolveRequest(tex, functor(*this, &CMaterial::OnResolved), IVariable::DT_TEXTURE);
+            if (texId != 0)    // resources did not exist - add it to the list.
             {
-                m_resolveRequests[tex] = SResolveInfo(id, i);
+                m_resolveRequests[tex] = SResolveInfo(texId, nSlot);
             }
         }
         else
-        {
-            it->second.slotsv.push_back(i);
+        {   // request was found (which means that it requires name resolve) - add the current texture slot
+            it->second.slotsv.push_back(nSlot);
         }
     }
 
-    // clear unneeded resolves!
+    // Clear all entries empty of registered slots
     for (TTexResolveReq::iterator it = m_resolveRequests.begin(); it != m_resolveRequests.end(); )
     {
         if (it->second.slotsv.empty())
         {
             GetIEditor()->GetMissingAssetResolver()->CancelRequest(functor(*this, &CMaterial::OnResolved), it->second.id);
-            it = m_resolveRequests.erase(it);
+            it = m_resolveRequests.erase(it);   // iterator is being advanced
         }
         else
         {
@@ -1689,18 +1711,22 @@ void CMaterial::CancelResolve()
 }
 
 //////////////////////////////////////////////////////////////////////////
+// [Shader System TO DO] - optimize: can we make it better than o(n^2) which means o(n^3) in total?
+// Resolve texture name duplication
 void CMaterial::OnResolved(uint32 id, bool success, const char* orgName, const char* newName)
 {
     for (TTexResolveReq::iterator it = m_resolveRequests.begin(); it != m_resolveRequests.end(); ++it)
     {
+        // Texture id was found
         if (it->second.id == id)
-        {
+        {  
+            // Run over all registered slots and replace the name of the texture in the shader resource 
             for (std::vector<int>::iterator it2 = it->second.slotsv.begin(); success && it2 != it->second.slotsv.end(); ++it2)
             {
-                m_shaderResources.m_Textures[*it2].m_Name = newName;
+                // The current slot is found in the shader resources
+                 m_shaderResources.m_TexturesResourcesMap[*it2].m_Name = newName;     // replace the name of the texture
             }
-
-            m_resolveRequests.erase(it);
+            m_resolveRequests.erase(it);    // remove current texture entry (no need to resolve it anymore).
 
             if (success)
             {
@@ -1711,7 +1737,6 @@ void CMaterial::OnResolved(uint32 id, bool success, const char* orgName, const c
                 m_allowResolve = true;
             }
             return;
-            ;
         }
     }
 }
@@ -1868,7 +1893,7 @@ void CMaterial::RecordUndo(const char* sText, bool bForceUpdate)
 //////////////////////////////////////////////////////////////////////////
 void CMaterial::OnMakeCurrent()
 {
-    UpdateFileAttributes();
+    UpdateFileAttributes(false);
 
     // If Shader not yet loaded, load it now.
     if (!m_shaderItem.m_pShader)
@@ -1956,7 +1981,7 @@ void CMaterial::UpdateHighlighting()
             ColorF emissiveColor = Interpolate(original.m_Emittance, highlightColor, highlightIntensity);
             ColorF specularColor = Interpolate(original.m_Specular, highlightColor, highlightIntensity);
 
-            // do not touch alpha channel
+            // [Shader System TO DO] remove this hard coded association!
             m_shaderItem.m_pShaderResources->SetColorValue(EFTT_DIFFUSE, diffuseColor);
             m_shaderItem.m_pShaderResources->SetColorValue(EFTT_SPECULAR, specularColor);
             m_shaderItem.m_pShaderResources->SetColorValue(EFTT_EMITTANCE, emissiveColor);

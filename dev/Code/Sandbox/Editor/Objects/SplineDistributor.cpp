@@ -164,6 +164,17 @@ void CSplineDistributor::OnGeometryChange(IVariable* pVariable)
     LoadGeometry(mv_geometryFile);
 }
 
+void CSplineDistributor::OnMaterialChanged(MaterialChangeFlags change)
+{
+    OnUpdate();
+}
+
+void CSplineDistributor::SetMinSpec(uint32 nSpec, bool bSetChildren)
+{
+    CSplineObject::SetMinSpec(nSpec, bSetChildren);
+    OnUpdate();
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 void CSplineDistributor::LoadGeometry(const QString& filename)

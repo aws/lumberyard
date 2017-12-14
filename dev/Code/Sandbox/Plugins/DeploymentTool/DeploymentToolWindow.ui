@@ -151,30 +151,6 @@
                 </item>
                </widget>
               </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="selectCompilerLabel">
-                <property name="text">
-                 <string>Select Compiler</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QComboBox" name="compilerComboBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the compiler to use to build the game with&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Clang</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>GCC</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
               <item row="3" column="0">
                <widget class="QLabel" name="fileTransferSettingLabel">
                 <property name="minimumSize">

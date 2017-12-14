@@ -353,7 +353,7 @@ unsigned GetSmartObjectNavIndex(EntityId smartObjectEntityId, const string& clas
             Vec3 pos = pHelper ? pSmartObject->GetHelperPos(pHelper) : pSmartObject->GetPos();
             unsigned navIndex = pSmartObject->GetCorrespondingNavNode(pHelper);
 
-#if defined(DEBUG) || defined(FORCE_ASSERTS_IN_PROFILE)
+#if defined(AZ_ENABLE_TRACING)
             AIAssert(navIndex);
             GraphNode* pNode = gAIEnv.pGraph->GetNode(navIndex);
             AIAssert(pNode);

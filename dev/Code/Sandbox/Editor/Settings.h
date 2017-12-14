@@ -560,12 +560,6 @@ struct SANDBOX_API SEditorSettings
     // Enable Double Clicking in Layer Editor
     bool bLayerDoubleClicking;
 
-    // Enable the old Qt docking
-    bool enableQtDocking;
-
-    // Time of day
-    bool bShowBasicPropertiesInTimeOfDay;
-
     // FlowGraph scripting direction notification.
     bool showFlowgraphNotification;
 

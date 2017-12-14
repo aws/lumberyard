@@ -34,6 +34,21 @@ namespace LmbrCentral
 
     protected:
 
+        /**
+         * Removes the asset alias from a string
+         *
+         * StatObjs, CharacterInstances and GeometryCaches are stored in 
+         * dictionaries by their path which is not aliased like the new AZ systems.
+         * To look up mesh instances we need the un-aliased path. 
+         *
+         * This method assumes that the alias will be at the beginning of the string.
+         *
+         * @param assetPath The asset path string to remove the alias from
+         */
+        void StripAssetAlias(const char*& assetPath);
+
+        static const AZStd::string s_assetAliasToken; //< The token used to strip the asset alias in StripAssetAlias
+
         ICVar* GetAsyncLoadCVar();
         ICVar* m_asyncLoadCvar;
     };
@@ -109,4 +124,36 @@ namespace LmbrCentral
         void Register();
         void Unregister();
     };
+
+    /**
+     * Handler for Alembic Geometry Caches (cax)
+     */
+    class GeomCacheAssetHandler
+        : public MeshAssetHandlerBase
+        , public AZ::AssetTypeInfoBus::Handler
+    {
+    public:
+
+        AZ_CLASS_ALLOCATOR(GeomCacheAssetHandler, AZ::SystemAllocator, 0);
+
+        ~GeomCacheAssetHandler() override;
+
+        // AZ::Data::AssetHandler
+        AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;
+        bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
+        bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
+        void DestroyAsset(AZ::Data::AssetPtr ptr) override;
+        void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
+
+        // AZ::AssetTypeInfoBus::Handler
+        AZ::Data::AssetType GetAssetType() const override;
+        const char* GetAssetTypeDisplayName() const override;
+        const char* GetGroup() const override;
+        AZ::Uuid GetComponentTypeId() const override;
+        void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
+
+        void Register();
+        void Unregister();
+    };
+
 } // namespace LmbrCentral

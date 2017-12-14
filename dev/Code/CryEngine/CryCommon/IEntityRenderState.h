@@ -19,6 +19,11 @@
 #include <limits>
 #include <AzCore/Component/EntityId.h>
 
+namespace AZ 
+{
+    class Vector2;
+}
+
 struct IMaterial;
 struct IVisArea;
 struct SEntityEvent;
@@ -31,6 +36,7 @@ struct pe_articgeomparams;
 
 class CTerrainNode;
 
+// @NOTE: When removing an item from this enum, replace it with a dummy - ID's from this enum are stored in data and should not change.
 enum EERType
 {
     eERType_NotRenderNode,
@@ -43,7 +49,7 @@ enum EERType
     eERType_Decal,
     eERType_ParticleEmitter,
     eERType_WaterVolume,
-    eERType_WaterWave,
+    eERType_Dummy_5, // used to be eERType_WaterWave, preserve order for compatibility
     eERType_Road,
     eERType_DistanceCloud,
     eERType_VolumeObject,
@@ -449,6 +455,9 @@ struct IRenderNode
 
     virtual bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const { return false; }
 
+    // Returns distance for first lod change, not factoring in distance multiplier or lod ratio
+    virtual float GetFirstLodDistance() const { return FLT_MAX; }
+
     // Description:
     //  Bias value to add to the regular lod
     virtual void SetShadowLodBias(int8 nShadowLodBias) { m_cShadowLodBias = nShadowLodBias; }
@@ -602,6 +611,7 @@ struct IRoadRenderNode
 {
     // <interfuscator:shuffle>
     virtual void SetVertices(const Vec3* pVerts, int nVertsNum, float fTexCoordBegin, float fTexCoordEnd, float fTexCoordBeginGlobal, float fTexCoordEndGlobal) = 0;
+    virtual void SetVertices(const AZStd::vector<AZ::Vector3>& pVerts, const AZ::Transform& transform, float fTexCoordBegin, float fTexCoordEnd, float fTexCoordBeginGlobal, float fTexCoordEndGlobal) = 0;
     virtual void SetSortPriority(uint8 sortPrio) = 0;
     virtual void SetIgnoreTerrainHoles(bool bVal) = 0;
     virtual void SetPhysicalize(bool bVal) = 0;
@@ -802,52 +812,13 @@ struct IWaterVolumeRenderNode
     virtual void CreateOcean(uint64 volumeID, /* TBD */ bool keepSerializationParams = false) = 0;
     virtual void CreateArea(uint64 volumeID, const Vec3* pVertices, unsigned int numVertices, const Vec2& surfUVScale, const Plane& fogPlane, bool keepSerializationParams = false, int nSID = -1) = 0;
     virtual void CreateRiver(uint64 volumeID, const Vec3* pVertices, unsigned int numVertices, float uTexCoordBegin, float uTexCoordEnd, const Vec2& surfUVScale, const Plane& fogPlane, bool keepSerializationParams = false, int nSID = -1) = 0;
+    virtual void CreateRiver(uint64 volumeID, const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, float uTexCoordBegin, float uTexCoordEnd, const AZ::Vector2& surfUVScale, const AZ::Plane& fogPlane, bool keepSerializationParams = false, int nSID = -1) = 0;
 
     virtual void SetAreaPhysicsArea(const Vec3* pVertices, unsigned int numVertices, bool keepSerializationParams = false) = 0;
     virtual void SetRiverPhysicsArea(const Vec3* pVertices, unsigned int numVertices, bool keepSerializationParams = false) = 0;
+    virtual void SetRiverPhysicsArea(const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, bool keepSerializationParams = false) = 0;
 
     virtual IPhysicalEntity* SetAndCreatePhysicsArea(const Vec3* pVertices, unsigned int numVertices) = 0;
-    // </interfuscator:shuffle>
-};
-
-// Description:
-//   SWaterWaveParams is an interface to the Water Wave Render Node object.
-struct SWaterWaveParams
-{
-    SWaterWaveParams()
-        : m_fSpeed(5.0f)
-        , m_fSpeedVar(2.0f)
-        , m_fLifetime(8.0f)
-        , m_fLifetimeVar(2.0f)
-        , m_fHeight(0.75f)
-        , m_fHeightVar(0.4f)
-        , m_fPosVar(5.0f)
-        , m_fCurrLifetime(-1.0f)
-        , m_fCurrFrameLifetime(-1.0f)
-        , m_fCurrSpeed(0.0f)
-        , m_fCurrHeight(1.0f)
-    {
-    }
-
-    Vec3 m_pPos;
-    float m_fSpeed, m_fSpeedVar;
-    float m_fLifetime, m_fLifetimeVar;
-    float m_fHeight, m_fHeightVar;
-    float m_fPosVar;
-
-    float m_fCurrLifetime;
-    float m_fCurrFrameLifetime;
-    float m_fCurrSpeed;
-    float m_fCurrHeight;
-};
-
-struct IWaterWaveRenderNode
-    : public IRenderNode
-{
-    // <interfuscator:shuffle>
-    virtual void Create(uint64 nID, const Vec3* pVertices, uint32 nVertexCount, const Vec2& pUVScale, const Matrix34& pWorldTM) = 0;
-    virtual void SetParams(const SWaterWaveParams& pParams) = 0;
-    virtual const SWaterWaveParams& GetParams() const = 0;
     // </interfuscator:shuffle>
 };
 
@@ -1013,6 +984,8 @@ struct IGeomCacheRenderNode
 {
     virtual bool LoadGeomCache(const char* sGeomCacheFileName) = 0;
 
+    virtual void SetGeomCache(_smart_ptr<IGeomCache> geomCache) = 0;
+
     // Gets the geometry cache that is rendered
     virtual IGeomCache* GetGeomCache() const = 0;
 
@@ -1046,12 +1019,17 @@ struct IGeomCacheRenderNode
 
     // Set stand in CGFs and distance
     virtual void SetStandIn(const char* pFilePath, const char* pMaterial) = 0;
+    virtual IStatObj* GetStandIn() = 0;
     virtual void SetFirstFrameStandIn(const char* pFilePath, const char* pMaterial) = 0;
+    virtual IStatObj* GetFirstFrameStandIn() = 0;
     virtual void SetLastFrameStandIn(const char* pFilePath, const char* pMaterial) = 0;
+    virtual IStatObj* GetLastFrameStandIn() = 0;
     virtual void SetStandInDistance(const float distance) = 0;
+    virtual float GetStandInDistance() = 0;
 
     // Set distance at which cache will start streaming automatically (0 means no auto streaming)
     virtual void SetStreamInDistance(const float distance) = 0;
+    virtual float GetStreamInDistance() = 0;
 
     // Start/Stop drawing the cache
     virtual void SetDrawing(bool bDrawing) = 0;
@@ -1061,6 +1039,9 @@ struct IGeomCacheRenderNode
 
     // Ray intersection against cache
     virtual bool RayIntersection(struct SRayHitInfo& hitInfo, _smart_ptr<IMaterial> pCustomMtl = NULL, uint* pHitNodeIndex = NULL) const = 0;
+
+    // Set max view distance 
+    virtual void SetBaseMaxViewDistance(float maxViewDistance) = 0;
 
     // Get node information
     virtual uint GetNodeCount() const = 0;

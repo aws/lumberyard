@@ -10,7 +10,6 @@
 *
 */
 
-
 #include "StdAfx.h"
 #include "StarterGameGemModule.h"
 
@@ -23,6 +22,7 @@
 
 #include "AudioMultiListenerComponent.h"
 #include "CameraSettingsComponent.h"
+#include "ConsoleVarListenerComponent.h"
 #include "CutscenePlayerComponent.h"
 #include "DebugManagerComponent.h"
 #include "DecalSelectorComponent.h"
@@ -30,12 +30,20 @@
 #include "ParticleManagerComponent.h"
 #include "PersistentDataSystemComparitorComponent.h"
 #include "PersistentDataSystemManipulatorComponent.h"
+#include "PlayFromHereComponent.h"
 #include "StarterGameNavigationComponent.h"
 #include "StatComponent.h"
 #include "VisualiseRangeComponent.h"
+#include "WaypointSettingsComponent.h"
 #include "WaypointsComponent.h"
-
+#include "EMFXFootstepComponent.h"
 #include "StarterGameCVars.h"
+
+#ifdef STARTER_GAME_EDITOR
+#include "EditorWaypointsComponent.h"
+
+#include "PlayFromHereEditorSystemComponent.h"
+#endif
 
 
 namespace StarterGameGem
@@ -50,11 +58,13 @@ namespace StarterGameGem
 
             AISoundManagerSystemComponent::CreateDescriptor(),
             PersistentDataSystemComponent::CreateDescriptor(),
+            StarterGameNavigationComponent::CreateDescriptor(),
             VisualiseAIStatesSystemComponent::CreateDescriptor(),
             VisualisePathSystemComponent::CreateDescriptor(),
 
             AudioMultiListenerComponent::CreateDescriptor(),
             CameraSettingsComponent::CreateDescriptor(),
+            ConsoleVarListenerComponent::CreateDescriptor(),
             CutscenePlayerComponent::CreateDescriptor(),
             DebugManagerComponent::CreateDescriptor(),
             DecalSelectorComponent::CreateDescriptor(),
@@ -62,10 +72,18 @@ namespace StarterGameGem
             ParticleManagerComponent::CreateDescriptor(),
             PersistentDataSystemComparitorComponent::CreateDescriptor(),
             PersistentDataSystemManipulatorComponent::CreateDescriptor(),
-			StarterGameNavigationComponent::CreateDescriptor(),
+            PlayFromHereComponent::CreateDescriptor(),
 			StatComponent::CreateDescriptor(),
             VisualiseRangeComponent::CreateDescriptor(),
+            WaypointSettingsComponent::CreateDescriptor(),
             WaypointsComponent::CreateDescriptor(),
+			EMFXFootstepComponent::CreateDescriptor(),
+
+#ifdef STARTER_GAME_EDITOR
+			EditorWaypointsComponent::CreateDescriptor(),
+
+			PlayFromHereEditorSystemComponent::CreateDescriptor(),
+#endif
         });
 	}
 
@@ -103,6 +121,10 @@ namespace StarterGameGem
             azrtti_typeid<PersistentDataSystemComponent>(),
             azrtti_typeid<VisualiseAIStatesSystemComponent>(),
             azrtti_typeid<VisualisePathSystemComponent>(),
+
+#ifdef STARTER_GAME_EDITOR
+            azrtti_typeid<PlayFromHereEditorSystemComponent>(),
+#endif
 		};
 	}
 

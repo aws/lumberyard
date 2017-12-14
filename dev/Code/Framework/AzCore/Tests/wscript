@@ -20,7 +20,8 @@ def build(bld):
         platforms               = ['win', 'darwin'],
         configurations          = ['test_all'],
         use                     = ['AzTest', 'AzCore'],
-        win_cxxflags            = ['/W4']
+        msvc_cxxflags           = ['/W4'],
+        clang_cxxflags          = ['-Wall', '-Werror'],
     )
 
     bld.CryEngineSharedLibrary(
@@ -30,8 +31,10 @@ def build(bld):
         file_list               = 'azcoretests.waf_files',
         platforms               = ['win', 'darwin'],
         configurations          = ['test_all'],
-        use                     = ['AzTest', 'AzCore'],
-        win_cxxflags            = ['/W4']
+        use                     = ['AzTest', 'AzCore', 'BENCHMARK'],
+        win_lib                 = ['shlwapi'],
+        msvc_cxxflags           = ['/W4'],
+        clang_cxxflags          = ['-Wall', '-Werror'],
     )
 
 

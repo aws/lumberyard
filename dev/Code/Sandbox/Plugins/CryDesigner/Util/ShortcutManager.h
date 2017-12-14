@@ -17,18 +17,28 @@
 
 namespace CD
 {
+    // Because this class uses the old CryTek serialization system that does
+    // not support  versioning we have to keep the old window key values so
+    // that customers can still load their custom settings for CryDesigner
+    // plugin. 
     enum EFirstKey
     {
         EFKey_None = 0,
+#if defined (AZ_PLATFORM_WINDOWS)
         EFKey_Ctrl = FCONTROL,
         EFKey_Shift = FSHIFT,
         EFKey_CtrlShift = FCONTROL | FSHIFT,
+#else
+        EFKey_Ctrl = Qt::ControlModifier,
+        EFKey_Shift = Qt::ShiftModifier,
+        EFKey_CtrlShift = EFKey_Ctrl | EFKey_Shift,
+#endif
     };
 
     enum ESecondKey
     {
         ESKey_None               = 0,
-
+#if defined (AZ_PLATFORM_WINDOWS)
         ESKey_Tab                = VK_TAB,
         ESKey_Return             = VK_RETURN,
         ESKey_Backspace          = VK_BACK,
@@ -43,7 +53,22 @@ namespace CD
         ESKey_Down               = VK_DOWN,
         ESKey_Insert             = VK_INSERT,
         ESKey_Delete             = VK_DELETE,
-
+#else
+        ESKey_Tab                = Qt::Key_Tab,
+        ESKey_Return             = Qt::Key_Return,
+        ESKey_Backspace          = Qt::Key_Backspace,
+        ESKey_Space              = Qt::Key_Space,
+        ESKey_PageUp             = Qt::Key_PageUp,
+        ESKey_PageDown           = Qt::Key_PageDown,
+        ESKey_End                = Qt::Key_End,
+        ESKey_Home               = Qt::Key_Home,
+        ESKey_Left               = Qt::Key_Left,
+        ESKey_Up                 = Qt::Key_Up,
+        ESKey_Right              = Qt::Key_Right,
+        ESKey_Down               = Qt::Key_Down,
+        ESKey_Insert             = Qt::Key_Insert,
+        ESKey_Delete             = Qt::Key_Delete,
+#endif
         ESKey_0                  = 0x30,
         ESKey_1,
         ESKey_2,
@@ -82,7 +107,11 @@ namespace CD
         ESKey_Y,
         ESKey_Z,
 
+#if defined (AZ_PLATFORM_WINDOWS)
         ESKey_F1                  = VK_F1,
+#else
+        ESKey_F1                  = Qt::Key_F1,
+#endif
         ESKey_F2,
         ESKey_F3,
         ESKey_F4,
@@ -141,8 +170,8 @@ public:
     void Serialize(Serialization::IArchive& ar);
     void Save();
     void Load();
-    void Add(CD::SShortCutItem& sc){ m_ShortCutItems.push_back(sc); }
-    void SetShortcut(CD::SShortCutItem& sc);
+    void Add(const CD::SShortCutItem& sc){ m_ShortCutItems.push_back(sc); }
+    void SetShortcut(const CD::SShortCutItem& sc);
     bool Process(uint32 nChar);
     bool CheckDuplicatedShortcuts();
 

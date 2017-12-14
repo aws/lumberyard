@@ -2359,141 +2359,72 @@ void CHyperGraphDialog::NewFGModule(IFlowGraphModule::EType type)
 
 bool CHyperGraphDialog::RemoveModuleFile(const char* filePath)
 {
-    // If we do not have source control available, treat files as untracked.
-    AzToolsFramework::SourceControlStatus sourceControlStatus = AzToolsFramework::SCS_NotTracked;
-    unsigned int sourceControlFlags = 0;
+    bool tryLocalDelete = false;
+    bool promptLocalDelete = true;
+    AzToolsFramework::SourceControlFileInfo sccFileInfo;
 
-    bool isSourceControlActive = false;
+    if (CFileUtil::GetSccFileInfo(filePath, sccFileInfo, this))
     {
-        using SCRequestBus = AzToolsFramework::SourceControlConnectionRequestBus;
-        SCRequestBus::BroadcastResult(isSourceControlActive, &SCRequestBus::Events::IsActive);
-    }
-
-    if (isSourceControlActive && AzToolsFramework::SourceControlCommandBus::FindFirstHandler() != nullptr)
-    {
-        // Get the source control status for this file.
-        bool sourceControlOperationComplete = false;
-        using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-        SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, filePath,
-            [&sourceControlStatus, &sourceControlFlags, &sourceControlOperationComplete](bool success, const AzToolsFramework::SourceControlFileInfo& info)
+        if (sccFileInfo.IsManaged())
         {
-            sourceControlStatus = info.m_status;
-            sourceControlFlags = info.m_flags;
-            sourceControlOperationComplete = true;
-        });
-
-        // Wait until the source control operation is complete.
-        while (!sourceControlOperationComplete)
-        {
-            AZ::TickBus::ExecuteQueuedEvents();
-            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
-        }
-    }
-
-    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-
-    // Delete may be done by two cases, when the file is already checked out or when it's not
-    // so we'll use this flag to signal our intention to delete.
-    bool markForDelete = false;
-
-    switch (sourceControlStatus)
-    {
-    // File is not tracked by P4, we'll check if it's read-only otherwise we'll ask the user to confirm and delete is requested.
-    case AzToolsFramework::SCS_NotTracked:
-
-        // If the file is read-only, we will inform the user and will not delete.
-        if (fileIO && fileIO->IsReadOnly(filePath))
-        {
-            if (QMessageBox::warning(this, tr("File is read-only..."), tr("Warning! \"%1\" is read-only on disk, do you still wish to delete the file?").arg(filePath), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+            bool acceptDelete = false;
+            if (sccFileInfo.HasFlag(AzToolsFramework::SCF_OpenByUser))
             {
-                if (AZ::IO::SystemFile::SetWritable(filePath, true))
-                {
-                    return fileIO->Remove(filePath) == AZ::IO::ResultCode::Success;
-                }
+                // Files that are checked out already or marked for add, will need to be reverted, this is potentially destructive so we ask the user to confirm.
+                acceptDelete = (QMessageBox::warning(this, tr("Confirm delete"), tr("\"%1\" is currently opened for edit, if you proceed any changes you may have made will be reverted before the file is deleted. Are you sure you want to delete this file and lose unsaved changes? ").arg(filePath), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+            }
+            else
+            {
+                // The file is checked in, if the user accepts we will mark it for delete.
+                acceptDelete = (QMessageBox::question(this, tr("Mark for delete"), tr("Are you sure you want to mark \"%1\" for deletion?").arg(filePath)) == QMessageBox::Yes);
             }
 
-            // Still could not delete the file.
-            AZ_Warning("Debug", "The file \"%1\" could not be deleted.", filePath);
+            return acceptDelete ? CFileUtil::DeleteFromSourceControl(filePath, this) : false;
+        }
 
+        // The file isn't under scc, lets try to delete it locally.
+        tryLocalDelete = true;
+    }
+    else if (QMessageBox::warning(this, tr("Source Control Provider Unavailable"), tr("The source control provider cannot be reached for file status on \"%1\". Would you like to remove the local file? "
+        "All unsaved changes will be lost.\n\nIf using source control, you will need to reconcile offline work later.").arg(filePath), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+    {
+        // if we can not communicate with scc, give the option to forcefully remove the file.
+        tryLocalDelete = true;
+        promptLocalDelete = false;
+    }
+
+    if (tryLocalDelete)
+    {
+        // If the file is read-only, we will inform the user and will not delete.
+        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+        AZ_Assert(fileIO, "FileIO is not initialized.");
+
+        if (!fileIO)
+        {
             return false;
         }
-        else
+
+        bool acceptDelete = false;
+        if (promptLocalDelete)
         {
-            // File is not read-only, so we can delete it if the user accepts.
-            if (QMessageBox::question(this, tr("Confirm delete"), tr("Are you sure you want to delete \"%1\" ?").arg(filePath)) == QMessageBox::Yes)
+            if (fileIO->IsReadOnly(filePath))
             {
-                return fileIO->Remove(filePath) == AZ::IO::ResultCode::Success;
+                if (QMessageBox::warning(this, tr("File is read-only..."), tr("\"%1\" is read-only on disk, do you still wish to delete the file?").arg(filePath), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+                {
+                    acceptDelete = true;
+                    AZ::IO::SystemFile::SetWritable(filePath, true);
+                }
+            }
+            else
+            {
+                acceptDelete = (QMessageBox::question(this, tr("Confirm delete"), tr("Are you sure you want to delete \"%1\" ?").arg(filePath)) == QMessageBox::Yes);
             }
         }
-        break;
 
-    case AzToolsFramework::SCS_OpenByUser:
-        // Files that are checked out already or marked for add, will need to be reverted, this is potentially destructive so we ask the user to confirm.
-        if (QMessageBox::warning(this, tr("Confirm delete"), tr("Warning! \"%1\" is currently opened for edit, if you proceed any changes you may have done will be reverted before the file is deleted. Are you sure you want to delete this file and lose unsaved changed? ").arg(filePath), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+        if (!promptLocalDelete || acceptDelete)
         {
-            bool revertSuccess = false;
-            bool operationComplete = false;
-
-            // Request source control revert
-            using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-            SCCommandBus::Broadcast(&SCCommandBus::Events::RequestRevert, filePath,
-                [&revertSuccess, &operationComplete](bool success, const AzToolsFramework::SourceControlFileInfo& info)
-            {
-                revertSuccess = success;
-                operationComplete = true;
-            });
-
-            // Wait for completion
-            AzToolsFramework::ProgressShield::LegacyShowAndWait(this, tr("Reverting file..."),
-                [&operationComplete](int& current, int& max)
-            {
-                current = 0;
-                max = 0;
-                return operationComplete;
-            });
-
-            // Now that the file is reverted, we want to mark it for delete.
-            markForDelete = true;
+            return fileIO->Remove(filePath) != AZ::IO::ResultCode::Success;
         }
-        break;
-
-    // The file is checked in, if the user accepts we will mark it for delete.
-    case AzToolsFramework::SCS_Tracked:
-
-        if (QMessageBox::question(this, tr("Mark for delete"), tr("Are you sure you want to mark \"%1\" for deletion?").arg(filePath)) == QMessageBox::Yes)
-        {
-            markForDelete = true;
-        }
-
-    default:
-        break;
-    }
-
-    // We intend to mark the file for delete
-    if (markForDelete)
-    {
-        bool deleteSuccess = false;
-        bool deleteComplete = false;
-
-        // Request source control delete
-        using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-        SCCommandBus::Broadcast(&SCCommandBus::Events::RequestDelete, filePath,
-            [&deleteSuccess, &deleteComplete](bool success, const AzToolsFramework::SourceControlFileInfo& info)
-        {
-            deleteSuccess = success;
-            deleteComplete = true;
-        });
-
-        // Wait for completion
-        AzToolsFramework::ProgressShield::LegacyShowAndWait(this, tr("Marking for delete..."),
-            [&deleteComplete](int& current, int& max)
-        {
-            current = 0;
-            max = 0;
-            return deleteComplete;
-        });
-
-        return deleteSuccess;
     }
 
     return false;

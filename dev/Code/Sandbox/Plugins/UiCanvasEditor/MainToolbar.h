@@ -11,6 +11,14 @@
 */
 #pragma once
 
+#include <QToolBar>
+
+class EditorWindow;
+class NewElementToolbarSection;
+class CoordinateSystemToolbarSection;
+class CanvasSizeToolbarSection;
+class QLabel;
+
 class MainToolbar
     : public QToolBar
 {

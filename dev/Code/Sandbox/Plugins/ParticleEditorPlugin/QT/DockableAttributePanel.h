@@ -30,6 +30,7 @@ class DefaultViewWidget;
 class CBaseLibraryManager;
 struct IVariableContainer;
 class CParticleEffect;
+struct SLodInfo;
 
 struct ParticleTabData
 {

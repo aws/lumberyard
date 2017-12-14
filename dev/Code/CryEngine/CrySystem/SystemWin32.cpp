@@ -22,9 +22,7 @@
 #include <ICryPak.h>
 #include <IMovieSystem.h>
 #include <IEntitySystem.h>
-#include <IInput.h>
 #include <ILog.h>
-#include <IMusicSystem.h>
 #include <IScriptSystem.h>
 #include <ICryAnimation.h>
 #include <CryLibrary.h>
@@ -74,10 +72,6 @@ LINK_SYSTEM_LIBRARY(wininet.lib)
 LINK_SYSTEM_LIBRARY(Winmm.lib)
 #endif
 
-#if defined(ANDROID)
-    #include <SDL.h>
-#endif
-
 #if defined(APPLE)
 #include "SystemUtilsApple.h"
 #endif
@@ -95,13 +89,7 @@ const char* g_szModuleGroups[][2] = {
     {"CryScriptSystem.dll", g_szGroupCore},
     {"CryNetwork.dll", g_szGroupCore},
     {"CryPhysics.dll", g_szGroupCore},
-    {"CryInput.dll", g_szGroupCore},
     {"CrySoundSystem.dll", g_szGroupCore},
-#ifdef WIN64
-    {"CrySound64.dll", g_szGroupCore},
-#else
-    {"CrySound.dll", g_szGroupCore},
-#endif
     {"CryFont.dll", g_szGroupCore},
     {"CryAISystem.dll", g_szGroupCore},
     {"CryEntitySystem.dll", g_szGroupCore},
@@ -480,11 +468,6 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
                 {
                     pSizer->AddObject(info, info->memInfo.allocated - info->memInfo.requested);
                 }
-            }
-            if (m_env.pMusicSystem)
-            {
-                SIZER_COMPONENT_NAME(pSizer, "Music");
-                m_env.pMusicSystem->GetMemoryUsage(pSizer);
             }
         }
     }

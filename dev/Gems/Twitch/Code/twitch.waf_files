@@ -1,0 +1,32 @@
+{
+    "none": {
+        "Include": [
+            "Include/Twitch/TwitchBus.h",
+            "Include/Twitch/TwitchTypes.h",
+            "Include/Twitch/FuelTypes.h",
+            "Include/Twitch/BaseTypes.h",
+            "Include/Twitch/RESTTypes.h"
+        ],
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+          "Source/TwitchModule.cpp",
+          "Source/TwitchSystemComponent.cpp",
+          "Source/TwitchSystemComponent.h"
+        ],
+        "Source/Reflection": [
+          "Source/TwitchReflection.cpp",
+          "Source/TwitchReflection.h"
+        ],
+        "Source/FuelInterface": [
+            "Source/IFuelInterface.h"
+        ],
+        "Source/TwitchREST": [
+            "Source/ITwitchREST.h"
+        ]
+    }
+}

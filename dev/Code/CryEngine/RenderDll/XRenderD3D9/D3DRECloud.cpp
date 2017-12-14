@@ -75,20 +75,27 @@ void CRECloud::IlluminateCloud(Vec3 vLightPos, Vec3 vObjPos, ColorF cLightColor,
     CShader* pSH = rd->m_RP.m_pShader;
     SShaderTechnique* pSHT = rd->m_RP.m_pCurTechnique;
     SShaderPass* pPass = rd->m_RP.m_pCurPass;
-    CShaderResources* pShRes = rd->m_RP.m_pShaderResources;
+    CShaderResources*   pShRes = rd->m_RP.m_pShaderResources;
 
-    if (pShRes && pShRes->m_Textures[EFTT_DIFFUSE])
+    if (pShRes)
     {
-        m_pTexParticle = pShRes->m_Textures[EFTT_DIFFUSE]->m_Sampler.m_pTex;
+        SEfResTexture*  pTextureRes = pShRes->GetTextureResource(EFTT_DIFFUSE);
+        if (pTextureRes)
+        {
+            m_pTexParticle = pTextureRes->m_Sampler.m_pTex;
+        }
     }
-
-    m_pTexParticle->Apply(0);
-
+    if (m_pTexParticle)
+    {
+        m_pTexParticle->Apply(0);
+    }
+    else
+    {
+        AZ_Warning("Shaders System", false, "Error: missing diffuse texture for clouds in CRECloud::IlluminateCloud");
+    }
 
     rd->FX_SetFPMode();
     HRESULT h = S_OK;
-
-    assert(0);
 
     rd->EF_ClearTargetsLater(FRT_CLEAR, Clr_White, Clr_FarPlane.r, 0);
     rd->FX_Commit();
@@ -143,8 +150,6 @@ void CRECloud::IlluminateCloud(Vec3 vLightPos, Vec3 vObjPos, ColorF cLightColor,
         {
             vWinPos.y = 0;
         }
-
-        assert(0);
 
         // scattering coefficient vector.
         //m_sfScatterFactor = m_sfAlbedo * 80 * (1.0f/(4.0f*(float)M_PI));
@@ -224,15 +229,6 @@ void CRECloud::DisplayWithoutImpostor(const CameraViewParameters& camera)
     Vec3 vParticleX = (vUp % vParticlePlane).GetNormalized();
     Vec3 vParticleY = (vParticleX % vParticlePlane).GetNormalized();
 
-    // texture is rotated to get minimum texture occupation so we need compensate that
-    //  Matrix33 mCamInv = Matrix33(cam.vX.GetNormalized(),cam.vY.GetNormalized(),vParticlePlane.GetNormalized());      mCamInv.Invert();
-
-    //  Vec3 vParticleX = mCamInv.TransformVector(vParticleWSX);
-    //  Vec3 vParticleY = mCamInv.TransformVector(vParticleWSY);
-
-    //  Vec3 vParticleX = cam.vX;
-    //  Vec3 vParticleY = cam.vY;
-
     float fCosAngleSinceLastSort = m_vLastSortViewDir * rd->GetViewParameters().ViewDir();
 
     float fSquareDistanceSinceLastSort = (rd->GetViewParameters().vOrigin - m_vLastSortCamPos).GetLengthSquared();
@@ -267,7 +263,6 @@ void CRECloud::DisplayWithoutImpostor(const CameraViewParameters& camera)
     CShader* pSH = rd->m_RP.m_pShader;
     SShaderTechnique* pSHT = rd->m_RP.m_pCurTechnique;
     SShaderPass* pPass = rd->m_RP.m_pCurPass;
-    CShaderResources* pShRes = rd->m_RP.m_pShaderResources;
     CREImposter* pRE = (CREImposter*)pObj->GetRE();
     Vec3 vPos = pRE->GetPosition();
 
@@ -283,13 +278,24 @@ void CRECloud::DisplayWithoutImpostor(const CameraViewParameters& camera)
         pSH->FXSetTechnique(techName);
     }
     pSH->FXBegin(&nPasses, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
-
-    if (pShRes && pShRes->m_Textures[EFTT_DIFFUSE])
-    {
-        m_pTexParticle = pShRes->m_Textures[EFTT_DIFFUSE]->m_Sampler.m_pTex;
-    }
     pSH->FXBeginPass(0);
-    m_pTexParticle->Apply(0);
+
+    CShaderResources*   pShRes = rd->m_RP.m_pShaderResources;
+    if (pShRes)
+    {
+        SEfResTexture*  pTextureRes = pShRes->GetTextureResource(EFTT_DIFFUSE);
+        if (pTextureRes)
+            m_pTexParticle = pTextureRes->m_Sampler.m_pTex;
+    }
+    if (m_pTexParticle)
+    {
+        m_pTexParticle->Apply(0);
+    }
+    else
+    {
+        AZ_Warning("ShadersSystem", false, "Error: missing diffuse texture for clouds in CRECloud::DisplayWithoutImpostor");
+    }
+
     /*
         // set depth texture for soft clipping of cloud particle against scene geometry
         if(0 != CTexture::s_ptexZTarget)

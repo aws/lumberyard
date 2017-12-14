@@ -13,11 +13,24 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/std/function/function_fwd.h>
+#include <AzCore/std/string/string.h>
+
+#include <QIcon>
 
 class QMimeData;
 class QWidget;
-class QIcon;
+
 class QMenu;
+namespace AZ
+{
+    namespace Data
+    {
+        struct AssetId;
+    }
+
+    struct Uuid;
+}
 
 namespace AzToolsFramework
 {
@@ -36,6 +49,7 @@ namespace AzToolsFramework
             //! Indicates that the Asset Database has been initialized
             virtual void OnDatabaseInitialized() = 0;
         };
+        class AssetBrowserEntry;
 
         using AssetDatabaseLocationNotificationsBus = AZ::EBus<AssetDatabaseLocationNotifications>;
 
@@ -58,7 +72,41 @@ namespace AzToolsFramework
         // Interaction
         //////////////////////////////////////////////////////////////////////////
 
-        class AssetBrowserEntry;
+        /**
+        * This struct is used to respond about being able to open source files.
+        * See /ref AssetBrowserInteractionNotifications::OpenSourceFileInEditor below
+        */
+        struct SourceFileOpenerDetails
+        {
+            //! You provide a function to call (you may use std-bind to bind to your class) if your opener is chosen to handle the open operation
+            typedef AZStd::function<void(const char* /*fullSourceFileName*/, const AZ::Uuid& /*source uuid*/)> SourceFileOpenerFunctionType;
+
+            AZStd::string m_identifier; ///< choose something unique for your opener.  It may be used to restore state.  it will not be shown to user.
+
+            /**
+            * m_displayText is used when more than one listener offers to open this kind of file and 
+            * we need the user to pick which one they want.  They will be offered all the available openers in a menu
+            * which shows this text, and the one they pick will get its SourceFileOpenerFunctionType called.
+            */
+            AZStd::string m_displayText; 
+            QIcon m_iconToUse; ///< optional.  Same as m_displayText.  Used when there's ambiguity.  If empty, no icon.
+
+            /**
+            * This is the function to call.  If you fill a nullptr in here, then the default operating system behavior will be suppressed
+            * but no opener will be opened.  This will also cause the 'open' option in context menus to disappear if the only openers
+            * are nullptr ones.
+            */
+            SourceFileOpenerFunctionType m_opener; 
+
+            SourceFileOpenerDetails() = default;
+            SourceFileOpenerDetails(const char* identifier, const char* displayText, QIcon icon, SourceFileOpenerFunctionType functionToCall)
+                : m_identifier(identifier)
+                , m_displayText(displayText)
+                , m_iconToUse(icon)
+                , m_opener(functionToCall) {}
+        };
+
+        typedef AZStd::vector<SourceFileOpenerDetails> SourceFileOpenerList;
 
         //! Bus for interaction with asset browser widget
         class AssetBrowserInteractionNotifications
@@ -67,10 +115,39 @@ namespace AzToolsFramework
         public:
             using Bus = AZ::EBus<AssetBrowserInteractionNotifications>;
 
-            //! Notification that a drag operation has started
-            virtual void StartDrag(QMimeData* data) = 0;
+            //! Override this to get first attempt at handling these messages.   Higher priority goes first.
+            virtual AZ::s32 GetPriority() const { return 0; }
+
             //! Notification that a context menu is about to be shown and offers an opportunity to add actions.
-            virtual void AddContextMenuActions(QWidget* caller, QMenu* menu, const AZStd::vector<AssetBrowserEntry*>& entries) = 0;
+            virtual void AddContextMenuActions(QWidget* /*caller*/, QMenu* /*menu*/, const AZStd::vector<AssetBrowserEntry*>& /*entries*/) {};
+
+            /**
+            * Implement AddSourceFileOpeners to provide your own editor for source files
+            * This gets called to collect the list of available openers for a file.
+            * Add your detail(s) to the openers list if you would like to be one of the options available to open the file.
+            * You can also add more than one to the list, or check the existing list to determine your behavior.
+            * If there is more than one in the list, the user will be given the choice of openers to use.
+            * If nobody responds (nobody adds their entry into the openers list), then the default operating system handler
+            * will be called (whatever that kind of file is associated with).
+            */
+            virtual void AddSourceFileOpeners(const char* /*fullSourceFileName*/, const AZ::Uuid& /*sourceUUID*/, SourceFileOpenerList& /*openers*/) {}
+
+            /**
+            * If you have an Asset Entry and would like to try to open it using the associated editor, you can use this bus to do so.
+            * Note that you can override this bus with a higher-than-zero priorit handler, and set alreadyHandled to true in your handler
+            * to prevent the default behavior from occuring.
+            * The default behavior is to call the above function for all handlers of that asset type, to gather the openers that can open it.
+            * following that, it either opens it with the opener (if there is only one) or prompts the user for which one to use.
+            * If no opener is present it tries to open it using the asset editor.
+            * finally, if its not a generic asset, it tries the operating system.
+            */
+            virtual void OpenAssetInAssociatedEditor(const AZ::Data::AssetId& /*assetId*/, bool& /*alreadyHandled*/) {}
+
+            //! required in order to sort the busses.
+            inline bool Compare(const AssetBrowserInteractionNotifications* other) const
+            {
+                return GetPriority() > other->GetPriority();
+            }
         };
 
         using AssetBrowserInteractionNotificationsBus = AZ::EBus<AssetBrowserInteractionNotifications>;
@@ -89,7 +166,7 @@ namespace AzToolsFramework
             virtual bool IsLoaded() const = 0;
 
             virtual void BeginAddEntry(AssetBrowserEntry* parent) = 0;
-            virtual void EndAddEntry() = 0;
+            virtual void EndAddEntry(AssetBrowserEntry* parent) = 0;
 
             virtual void BeginRemoveEntry(AssetBrowserEntry* entry) = 0;
             virtual void EndRemoveEntry() = 0;

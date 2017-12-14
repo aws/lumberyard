@@ -19,6 +19,7 @@
 
 #include <QScopedPointer>
 #include <QTreeWidget>
+#include "Objects/EntityObject.h"
 
 class LensFlareLightEntityModel;
 

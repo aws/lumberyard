@@ -17,6 +17,7 @@
 #include <AzCore/EBus/EBus.h>
 
 #include <Woodpecker/Driller/DrillerDataTypes.h>
+#include <AzCore/std/string/string.h>
 
 #pragma once
 

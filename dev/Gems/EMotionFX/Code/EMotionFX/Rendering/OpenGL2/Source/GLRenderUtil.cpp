@@ -25,7 +25,6 @@
 
 namespace RenderGL
 {
-
     // constructor
     GLRenderUtil::GLRenderUtil(GraphicsManager* graphicsManager)
         : RenderUtil()
@@ -267,7 +266,7 @@ namespace RenderGL
         mLineShader->Activate();
 
         mLineShader->SetAttribute("inPosition",   3, GL_FLOAT, sizeof(LineVertex), 0);
-        mLineShader->SetAttribute("inColor",      4, GL_FLOAT, sizeof(LineVertex), sizeof(MCore::Vector3));
+        mLineShader->SetAttribute("inColor",      4, GL_FLOAT, sizeof(LineVertex), sizeof(AZ::PackedVector3f));
         mLineShader->SetUniform("matViewProj",  mGraphicsManager->GetCamera()->GetViewProjMatrix(), false);
 
         glDrawArrays(GL_LINES, 0, numVertices);
@@ -389,7 +388,7 @@ namespace RenderGL
             for (uint32 i = 0; i < mesh->mNumVertices; ++i)
             {
                 vertices[i].mPosition = mesh->mPositions[i];
-                vertices[i].mNormal   = MCore::Vector3(1.0, 0.0, 0.0);
+                vertices[i].mNormal   = AZ::PackedVector3f(1.0, 0.0, 0.0);
             }
         }
         else
@@ -413,15 +412,15 @@ namespace RenderGL
         MCommon::Camera* camera = mGraphicsManager->GetCamera();
         mMeshShader->SetUniform("worldViewProjectionMatrix", globalTM * camera->GetViewProjMatrix());
         mMeshShader->SetUniform("cameraPosition", camera->GetPosition());
-        mMeshShader->SetUniform("lightDirection", camera->GetViewMatrix().Transposed().GetUp().Normalized());   // This is GetUp() now, as lookat matrices always seem to use the z axis to point forward
+        mMeshShader->SetUniform("lightDirection", camera->GetViewMatrix().Transposed().GetUp().GetNormalized());   // This is GetUp() now, as lookat matrices always seem to use the z axis to point forward
         mMeshShader->SetUniform("diffuseColor", color);
-        mMeshShader->SetUniform("specularColor", MCore::Vector3(1.0f, 1.0f, 1.0f) * 0.3f);
+        mMeshShader->SetUniform("specularColor", AZ::Vector3(1.0f, 1.0f, 1.0f) * 0.3f);
         mMeshShader->SetUniform("specularPower", 8.0f);
 
         // setup shader attributes and draw the mesh
         const uint32 stride = sizeof(UtilMeshVertex);
         mMeshShader->SetAttribute("inPosition", 3, GL_FLOAT, stride, 0);
-        mMeshShader->SetAttribute("inNormal", 3, GL_FLOAT, stride, sizeof(MCore::Vector3));
+        mMeshShader->SetAttribute("inNormal", 3, GL_FLOAT, stride, sizeof(AZ::PackedVector3f));
         mMeshShader->SetUniform("worldMatrix", globalTM);
 
         glDrawElements(GL_TRIANGLES, mesh->mNumIndices, GL_UNSIGNED_INT, (GLvoid*)nullptr);
@@ -431,7 +430,7 @@ namespace RenderGL
 
 
     // overloaded RenderTriangle function
-    void GLRenderUtil::RenderTriangle(const MCore::Vector3& v1, const MCore::Vector3& v2, const MCore::Vector3& v3, const MCore::RGBAColor& color)
+    void GLRenderUtil::RenderTriangle(const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3, const MCore::RGBAColor& color)
     {
         glPushAttrib(GL_ENABLE_BIT);
 
@@ -454,9 +453,9 @@ namespace RenderGL
         // render the triangle
         glColor4f(color.r, color.g, color.b, color.a);
         glBegin(GL_TRIANGLES);
-        glVertex3f(v1.x, v1.y, v1.z);
-        glVertex3f(v2.x, v2.y, v2.z);
-        glVertex3f(v3.x, v3.y, v3.z);
+        glVertex3f(v1.GetX(), v1.GetY(), v1.GetZ());
+        glVertex3f(v2.GetX(), v2.GetY(), v2.GetZ());
+        glVertex3f(v3.GetX(), v3.GetY(), v3.GetZ());
         glEnd();
 
         // disable blending again
@@ -511,15 +510,15 @@ namespace RenderGL
 
         mMeshShader->SetUniform("worldViewProjectionMatrix", globalTM * camera->GetViewProjMatrix());
         mMeshShader->SetUniform("cameraPosition", camera->GetPosition());
-        mMeshShader->SetUniform("lightDirection", camera->GetViewMatrix().Transposed().GetUp().Normalized());
+        mMeshShader->SetUniform("lightDirection", camera->GetViewMatrix().Transposed().GetUp().GetNormalized());
         mMeshShader->SetUniform("diffuseColor", color);
-        mMeshShader->SetUniform("specularColor", MCore::Vector3(1.0f, 1.0f, 1.0f));
+        mMeshShader->SetUniform("specularColor", AZ::Vector3(1.0f, 1.0f, 1.0f));
         mMeshShader->SetUniform("specularPower", 30.0f);
 
         // setup shader attributes and draw the mesh
         const uint32 stride = sizeof(TriangleVertex);
         mMeshShader->SetAttribute("inPosition", 3, GL_FLOAT, stride, 0);
-        mMeshShader->SetAttribute("inNormal", 3, GL_FLOAT, stride, sizeof(MCore::Vector3));
+        mMeshShader->SetAttribute("inNormal", 3, GL_FLOAT, stride, sizeof(AZ::PackedVector3f));
         mMeshShader->SetUniform("worldMatrix", globalTM);
 
         glDrawElements(GL_TRIANGLES, numVertices, GL_UNSIGNED_INT, (GLvoid*)nullptr);

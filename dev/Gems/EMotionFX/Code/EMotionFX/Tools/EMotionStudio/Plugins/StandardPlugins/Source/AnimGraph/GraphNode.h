@@ -283,6 +283,7 @@ namespace EMStudio
         bool                            mIsEnabled;
         bool                            mIsHighlighted;
         bool                            mCanHaveChildren;
+        bool                            mHasVisualGraph;
         bool                            mHasVisualOutputPorts;
 
         uint32                          mMaxInputWidth; // will be calculated automatically in CalcRequiredWidth()

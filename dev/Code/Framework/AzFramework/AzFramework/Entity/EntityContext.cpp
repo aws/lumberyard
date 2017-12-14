@@ -120,6 +120,7 @@ namespace AzFramework
         // Manually create an asset to hold the root slice.
         m_rootAsset.Get()->SetData(rootEntity, rootEntity->FindComponent<AZ::SliceComponent>());
         auto* rootSliceComponent = m_rootAsset.Get()->GetComponent();
+        rootSliceComponent->InitMetadata();
         rootSliceComponent->SetMyAsset(m_rootAsset.Get());
         rootSliceComponent->SetSerializeContext(m_serializeContext);
         rootSliceComponent->ListenForAssetChanges();
@@ -167,11 +168,20 @@ namespace AzFramework
     {
         if (m_rootAsset)
         {
+            // clear slice instantiation queue
+            for (InstantiatingSliceInfo& instantiating : m_queuedSliceInstantiations)
+            {
+                AZ::Data::AssetBus::MultiHandler::BusDisconnect(instantiating.m_asset.GetId());
+                EBUS_EVENT_PTR(m_eventBusPtr, EntityContextEventBus, OnSliceInstantiationFailed, instantiating.m_asset.GetId());
+                EBUS_EVENT_ID(instantiating.m_ticket, SliceInstantiationResultBus, OnSliceInstantiationFailed, instantiating.m_asset.GetId());
+            }
+            m_queuedSliceInstantiations.clear();
+
             EntityIdList entityIds = GetRootSliceEntityIds();
 
             for (AZ::EntityId entityId : entityIds)
             {
-                DestroyEntity(entityId);
+                DestroyEntityById(entityId);
             }
 
             // Re-create fresh root slice asset.
@@ -326,9 +336,13 @@ namespace AzFramework
                 switch (entity->GetState())
                 {
                 case AZ::Entity::ES_ACTIVATING:
-                case AZ::Entity::ES_ACTIVE:
                     // Queue deactivate to trigger next frame
                     EBUS_QUEUE_FUNCTION(AZ::TickBus, &AZ::Entity::Deactivate, entity);
+                    break;
+
+                case AZ::Entity::ES_ACTIVE:
+                    // Deactivate immediately
+                    entity->Deactivate();
                     break;
 
                 default:
@@ -368,7 +382,7 @@ namespace AzFramework
     //=========================================================================
     // DestroyEntity
     //=========================================================================
-    bool EntityContext::DestroyEntity(AZ::EntityId entityId)
+    bool EntityContext::DestroyEntityById(AZ::EntityId entityId)
     {
         AZ::Entity* entity = nullptr;
         EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
@@ -459,6 +473,30 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // CancelSliceInstantiation
+    //=========================================================================
+    void EntityContext::CancelSliceInstantiation(const SliceInstantiationTicket& ticket)
+    {
+        auto iter = AZStd::find_if(m_queuedSliceInstantiations.begin(), m_queuedSliceInstantiations.end(),
+            [ticket](const InstantiatingSliceInfo& instantiating)
+            {
+                return instantiating.m_ticket == ticket;
+            });
+
+        if (iter != m_queuedSliceInstantiations.end())
+        {
+            const AZ::Data::AssetId assetId = iter->m_asset.GetId();
+
+            // Erase ticket, but stay connected to AssetBus in case asset is used by multiple tickets.
+            m_queuedSliceInstantiations.erase(iter);
+
+            // No need to queue this notification.
+            // (It's queued in other circumstances, to avoid holding the AssetBus lock any longer than necessary)
+            SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiationFailed, assetId);
+        }
+    }
+
+    //=========================================================================
     // CloneSliceInstance
     //=========================================================================
     AZ::SliceComponent::SliceInstanceAddress EntityContext::CloneSliceInstance(
@@ -520,22 +558,18 @@ namespace AzFramework
         newRootSlice->SetSerializeContext(m_serializeContext);
         newRootSlice->ListenForAssetChanges();
 
-        AZ::SliceComponent::EntityList entities;
-        newRootSlice->GetEntities(entities);
-
+        m_loadedEntityIdMap.clear();
         if (remapIds)
         {
-            AZ::SliceComponent::EntityIdToEntityIdMap entityIdMap;
-            AZ::SliceComponent::InstantiatedContainer entityContainer;
-            entityContainer.m_entities = AZStd::move(entities);
-            AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&entityContainer, idRemapTable ? *idRemapTable : entityIdMap, m_serializeContext);
-            entities = AZStd::move(entityContainer.m_entities);
-            m_loadedEntityIdMap = AZStd::move(entityIdMap);
+            newRootSlice->GenerateNewEntityIds(&m_loadedEntityIdMap);
+            if (idRemapTable)
+            {
+                *idRemapTable = m_loadedEntityIdMap;
+            }
         }
-        else
-        {
-            m_loadedEntityIdMap.clear();
-        }
+
+        AZ::SliceComponent::EntityList entities;
+        newRootSlice->GetEntities(entities);
 
         // Make sure the root slice metadata entity is marked as persistent.
         AZ::Entity* metadataEntity = newRootSlice->GetMetadataEntity();
@@ -632,6 +666,8 @@ namespace AzFramework
                         EBUS_EVENT_ID(ticket, SliceInstantiationResultBus, OnSliceInstantiationFailed, failedAsset.GetId());
                     };
 
+                // Instantiation is queued against the tick bus. This ensures we're not holding the AssetBus lock
+                // while the instantiation is handled, which may be costly.
                 EBUS_QUEUE_FUNCTION(AZ::TickBus, notifyCallback);
 
                 iter = m_queuedSliceInstantiations.erase(iter);
@@ -657,16 +693,18 @@ namespace AzFramework
             return;
         }
 
-        AZ::Data::AssetBus::MultiHandler::BusDisconnect(readyAsset.GetId());
+        const AZ::Data::AssetId readyAssetId = readyAsset.GetId();
 
-        for (auto iter = m_queuedSliceInstantiations.begin(); iter != m_queuedSliceInstantiations.end(); )
-        {
-            const InstantiatingSliceInfo& instantiating = *iter;
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect(readyAssetId);
 
-            if (instantiating.m_asset.GetId() == readyAsset.GetId())
-            {                
-                AZStd::function<void()> instantiateCallback =
-                    [instantiating, this]()
+        AZStd::function<void()> instantiateCallback =
+            [this, readyAssetId]()
+            {
+                for (auto iter = m_queuedSliceInstantiations.begin(); iter != m_queuedSliceInstantiations.end(); )
+                {
+                    const InstantiatingSliceInfo& instantiating = *iter;
+
+                    if (instantiating.m_asset.GetId() == readyAssetId)
                     {
                         const AZ::Data::Asset<AZ::Data::AssetData>& asset = instantiating.m_asset;
                         const SliceInstantiationTicket& ticket = instantiating.m_ticket;
@@ -703,20 +741,20 @@ namespace AzFramework
                             EBUS_EVENT_PTR(m_eventBusPtr, EntityContextEventBus, OnSliceInstantiationFailed, asset.GetId());
                             EBUS_EVENT_ID(ticket, SliceInstantiationResultBus, OnSliceInstantiationFailed, asset.GetId());
                         }
-                    };
 
-                // Instantiation is queued against the tick bus. This ensures we're not holding the AssetBus lock
-                // while the instantiation is handled, which may be costly. This also guarantees callers can
-                // jump on the SliceInstantiationResultBus for their ticket before the events are fired.
-                EBUS_QUEUE_FUNCTION(AZ::TickBus, instantiateCallback);
+                        iter = m_queuedSliceInstantiations.erase(iter);
+                    }
+                    else
+                    {
+                        ++iter;
+                    }
+                }
+            };
 
-                iter = m_queuedSliceInstantiations.erase(iter);
-            }
-            else
-            {
-                ++iter;
-            }
-        }
+        // Instantiation is queued against the tick bus. This ensures we're not holding the AssetBus lock
+        // while the instantiation is handled, which may be costly. This also guarantees callers can
+        // jump on the SliceInstantiationResultBus for their ticket before the events are fired.
+        EBUS_QUEUE_FUNCTION(AZ::TickBus, instantiateCallback);
     }
 
     //=========================================================================

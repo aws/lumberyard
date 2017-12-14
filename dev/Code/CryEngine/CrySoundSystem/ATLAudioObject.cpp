@@ -391,10 +391,11 @@ namespace Audio
                 if (fDist > 0.0f)
                 {
                     ISurfaceType* const pMat = pSurfaceTypeManager->GetSurfaceType(pRayInfo->aHits[i].surface_idx);
-                    IEntity* pEntity = gEnv->pEntitySystem->GetEntityFromPhysics(pRayInfo->aHits[i].pCollider);
-
                     if (pMat)
                     {
+                        IPhysicalEntity* pCollider = pRayInfo->aHits[i].pCollider;
+                        IEntity* pEntity = (pCollider ? gEnv->pEntitySystem->GetEntityFromPhysics(pCollider) : nullptr);
+
                         const ISurfaceType::SPhysicalParams& physParams = pMat->GetPhyscalParams();
                         fTotalOcclusion += physParams.sound_obstruction * (pEntity ? pEntity->GetObstructionMultiplier() : 1.f);// not clamping b/w 0 and 1 for performance reasons
                         ++nNumRealHits;
@@ -799,7 +800,8 @@ namespace Audio
             if ((CPropagationProcessor::s_minObstructionDistance < fDistance) && (fDistance < g_audioCVars.m_fOcclusionMaxDistance))
             {
                 // make the physics ray cast call sync or async depending on the distance to the listener
-                const bool bSyncCall = (fDistance <= g_audioCVars.m_fOcclusionMaxSyncDistance);
+                // LY-64528 - disable synchronous raycasts from audio thread, they can cause crashes.
+                const bool bSyncCall = false;   // = (fDistance <= g_audioCVars.m_fOcclusionMaxSyncDistance);
                 m_oPropagationProcessor.RunObstructionQuery(rListenerPosition, bSyncCall);
             }
         }
@@ -872,7 +874,9 @@ namespace Audio
     {
         // cast the obstruction rays synchronously and reset the obstruction/occlusion values
         // (instead of merely setting them as targets for the SmoothFloats)
-        m_oPropagationProcessor.RunObstructionQuery(rListenerPosition, true, true);
+        // LY-64528 - disable synchronous raycasts from audio thread, they can cause crashes.
+        const bool bSyncCall = false;
+        m_oPropagationProcessor.RunObstructionQuery(rListenerPosition, bSyncCall, true);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

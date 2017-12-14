@@ -34,7 +34,7 @@ public:
     bool Cache();
     void OnBeginPreview(QWidget* hQuickPreviewWnd);
     void OnEndPreview();
-    void PreviewRender(QWidget* hRenderWindow, const QRect& rstViewport, int aMouseX, int aMouseY, int aMouseDeltaX, int aMouseDeltaY, UINT aKeyFlags);
+    void PreviewRender(QWidget* hRenderWindow, const QRect& rstViewport, int aMouseX, int aMouseY, int aMouseDeltaX, int aMouseDeltaY, int aMouseWheelDelta, UINT aKeyFlags);
     bool Render(QWidget* hRenderWindow, const QRect& rstViewport, bool bCacheThumbnail);
     void CacheThumbnail(QWidget* hRenderWindow, const QRect& rc);
     void OnPreviewRenderKeyEvent(bool bKeyDown, UINT aChar, UINT aKeyFlags);

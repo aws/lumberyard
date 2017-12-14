@@ -22,15 +22,23 @@ MCORE_INLINE bool Compare<float>::CheckIfIsClose(const float& a, const float& b,
 template <>
 MCORE_INLINE bool Compare<AZ::Vector2>::CheckIfIsClose(const AZ::Vector2& a, const AZ::Vector2& b, float threshold)
 {
-    return ((a - b).GetLengthSq() <= threshold);
+    return ((a - b).GetLength() <= threshold);
 }
 
 
 // Vector3
 template <>
-MCORE_INLINE bool Compare<Vector3>::CheckIfIsClose(const Vector3& a, const Vector3& b, float threshold)
+MCORE_INLINE bool Compare<AZ::Vector3>::CheckIfIsClose(const AZ::Vector3& a, const AZ::Vector3& b, float threshold)
 {
-    return ((a - b).SquareLength() <= threshold);
+    return ((a - b).GetLengthExact() <= threshold);
+}
+
+
+// PackedVector3f
+template <>
+MCORE_INLINE bool Compare<AZ::PackedVector3f>::CheckIfIsClose(const AZ::PackedVector3f& a, const AZ::PackedVector3f& b, float threshold)
+{
+	return ((AZ::Vector3(a) - AZ::Vector3(b)).GetLengthExact() <= threshold);
 }
 
 
@@ -38,7 +46,7 @@ MCORE_INLINE bool Compare<Vector3>::CheckIfIsClose(const Vector3& a, const Vecto
 template <>
 MCORE_INLINE bool Compare<AZ::Vector4>::CheckIfIsClose(const AZ::Vector4& a, const AZ::Vector4& b, float threshold)
 {
-    return ((a - b).GetLengthSq() <= threshold);
+    return ((a - b).GetLengthExact() <= threshold);
 }
 
 
@@ -68,7 +76,7 @@ MCORE_INLINE bool Compare<MCore::Quaternion>::CheckIfIsClose(const MCore::Quater
         return Compare<Vector4>::CheckIfIsClose( Vector4(a.x, a.y, a.z, a.w), Vector4(b.x, b.y, b.z, b.w), threshold);
         */
 
-    Vector3 axisA, axisB;
+    AZ::Vector3 axisA, axisB;
     float   angleA, angleB;
 
     // convert to an axis and angle representation
@@ -80,15 +88,15 @@ MCORE_INLINE bool Compare<MCore::Quaternion>::CheckIfIsClose(const MCore::Quater
     {
         return false;
     }
-    if (Math::Abs(axisA.x - axisB.x) > threshold)
+    if (Math::Abs(axisA.GetX() - axisB.GetX()) > threshold)
     {
         return false;
     }
-    if (Math::Abs(axisA.y - axisB.y) > threshold)
+    if (Math::Abs(axisA.GetY() - axisB.GetY()) > threshold)
     {
         return false;
     }
-    if (Math::Abs(axisA.z - axisB.z) > threshold)
+    if (Math::Abs(axisA.GetZ() - axisB.GetZ()) > threshold)
     {
         return false;
     }

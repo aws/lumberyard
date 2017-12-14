@@ -16,6 +16,9 @@
 #include <ICryPak.h>
 #include <StringUtils.h>
 #include "Util/PathUtil.h"
+
+#include "IEditor.h"
+
 namespace CharacterTool
 {
     static bool LoadFile(vector<char>* buf, const char* filename)

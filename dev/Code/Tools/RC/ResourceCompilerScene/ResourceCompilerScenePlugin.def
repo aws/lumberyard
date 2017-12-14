@@ -1,5 +1,4 @@
 LIBRARY	ResourceCompilerScene
 EXPORTS
-	RegisterConvertors			@1
-	InitializeAzEnvironment			@2
-	BeforeUnloadDLL				@3
+	InitializeAzEnvironment			@1
+	BeforeUnloadDLL				@2

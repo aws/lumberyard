@@ -21,7 +21,7 @@
 
 #define UNKNOWN_GROUND_HEIGHT -1E10f
 
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 
 namespace {
 

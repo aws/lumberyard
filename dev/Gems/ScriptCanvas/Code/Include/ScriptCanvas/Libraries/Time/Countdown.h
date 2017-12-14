@@ -88,8 +88,6 @@ namespace ScriptCanvas
 
                 void OnInputSignal(const SlotId&) override;
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
                 bool ShowHoldTime() const
                 {
                     // TODO: This only works on the property grid. If a true value is connected to the "SetLoop" slot,

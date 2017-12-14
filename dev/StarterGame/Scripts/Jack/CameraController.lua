@@ -25,6 +25,7 @@ local cameracontroller =
 		Events =
 		{
 			ControlsEnabled = { default = "EnableControlsEvent", description = "If passed '1.0' it will enable controls, otherwise it will disable them." },
+			ResetOrientation = { default = "ResetOrientationEvent", description = "Resets the orientation of the camera." },
 		},
 	},
 	
@@ -90,6 +91,8 @@ function cameracontroller:OnActivate()
 	self.controlsEnabled = true;
 	self.controlsEnabledEventId = GameplayNotificationId(self.entityId, self.Properties.Events.ControlsEnabled, "float");
 	self.controlsEnabledHandler = GameplayNotificationBus.Connect(self, self.controlsEnabledEventId);
+	self.resetOrientationEventId = GameplayNotificationId(self.entityId, self.Properties.Events.ResetOrientation, "float");
+	self.resetOrientationHandler = GameplayNotificationBus.Connect(self, self.resetOrientationEventId);
 	
 	self.cameraSettingsEventId = GameplayNotificationId(self.entityId, "CameraSettings", "float");
 	self.cameraSettingsHandler = GameplayNotificationBus.Connect(self, self.cameraSettingsEventId);
@@ -146,6 +149,9 @@ function cameracontroller:OnDeactivate()
 	
 	self.lookLeftRightForcedHandler:Disconnect();
 	self.lookUpDownForcedHandler:Disconnect();
+	
+	self.controlsEnabledHandler:Disconnect();
+	self.resetOrientationHandler:Disconnect();
 	
 	self.debugNumPad1Handler:Disconnect();
 	self.debugNumPad2Handler:Disconnect();
@@ -441,13 +447,14 @@ function cameracontroller:PowWithSign(i, p)
 
 end
 
-function cameracontroller:SetNewSettings(newSettings, time)
-	--Debug.Log("Camera changes to " .. newSettings.Name);
-
+function cameracontroller:SetNewSettings(newSettings)
+	--Debug.Log("Camera changes to " .. newSettings.Name .. " time = " .. newSettings.TransitionTime);
+	local transTime = newSettings.TransitionTime;
+	
 	-- if setting from nothing, snap
 	-- elseif going back to previous settings while still transitioning, reverse the timer (and rescale)
 	-- else use supplied transition time
-	if (self.CurrentSettings.Name == "" or time == 0.0) then
+	if (self.CurrentSettings.Name == "" or transTime == 0.0) then
 		--Debug.Log("... snap");
 		self.CurrentSettings:CopySettings(newSettings);
 		self:ApplyRenderCameraValues();
@@ -456,17 +463,17 @@ function cameracontroller:SetNewSettings(newSettings, time)
 		self.TransitionDurationInv = 0.0;
 	elseif (self.TransitionTimer > 0.0 and newSettings.Name == self.TransitionFromSettings.Name) then
 		--Debug.Log("... bounce");
-		local rescale = time * self.TransitionDurationInv; -- if transition time is different, need to rescale how long we take accordingly
+		local rescale = transTime * self.TransitionDurationInv; -- if transition time is different, need to rescale how long we take accordingly
 		self.TransitionTimer = (self.TransitionDuration - self.TransitionTimer) * rescale;
-		self.TransitionDuration = time;
-		self.TransitionDurationInv = 1.0 / time;
+		self.TransitionDuration = transTime;
+		self.TransitionDurationInv = 1.0 / transTime;
 		self.TransitionFromSettings:CopySettings(self.TransitionToSettings);
 		self.TransitionToSettings:CopySettings(newSettings);
 	else
 		--Debug.Log("... slide");
-		self.TransitionTimer = time; -- TODO: get duration for this mode change, snap if first setting
-		self.TransitionDuration = time;
-		self.TransitionDurationInv = 1.0 / time;
+		self.TransitionTimer = transTime; -- TODO: get duration for this mode change, snap if first setting
+		self.TransitionDuration = transTime;
+		self.TransitionDurationInv = 1.0 / transTime;
 		self.TransitionFromSettings:CopySettings(self.CurrentSettings);
 		self.TransitionToSettings:CopySettings(newSettings);
 	end
@@ -491,13 +498,7 @@ end
 function cameracontroller:SetControlsEnabled(newControlsEnabled)
 	self.controlsEnabled = newControlsEnabled;
 	if (newControlsEnabled) then 
-		local characterTm = TransformBus.Event.GetWorldTM(self.Properties.PlayerEntity);
-		local flatForward = characterTm:GetColumn(0):Cross(Vector3(0,0,-1));
-		self.CamProps.OrbitHorizontal = -Math.RadToDeg(StarterGameUtility.ArcTan2(flatForward.x, flatForward.y));
-		self.CamProps.OrbitVertical = 0.0;
-		self:StorePrevOrbitValues();
-		self.performedFirstUpdateAfterReset = false;
-		self:UpdateTransform(0.0);
+		self:ResetOrientation();
 	else
 		self.InputValues.Controller.LookLeftRight[1] = 0.0;
 		self.InputValues.Controller.LookUpDown[1] = 0.0;
@@ -506,9 +507,20 @@ function cameracontroller:SetControlsEnabled(newControlsEnabled)
 	end	
 end
 
+function cameracontroller:ResetOrientation()
+	local characterTm = TransformBus.Event.GetWorldTM(self.Properties.PlayerEntity);
+	local flatForward = characterTm:GetColumn(0):Cross(Vector3(0,0,-1));
+	self.CamProps.OrbitHorizontal = -Math.RadToDeg(StarterGameUtility.ArcTan2(flatForward.x, flatForward.y));
+	self.CamProps.OrbitVertical = 0.0;
+	self:StorePrevOrbitValues();
+	self.performedFirstUpdateAfterReset = false;
+	self:UpdateTransform(0.0);
+end
+
 function cameracontroller:OnEventBegin(value)
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.controlsEnabledEventId) then
+	local busId = GameplayNotificationBus.GetCurrentBusId();
+	if (busId == self.controlsEnabledEventId) then
 		if (value == 1.0) then
 			self.controlsDisabledCount = self.controlsDisabledCount - 1;
 		else
@@ -523,63 +535,65 @@ function cameracontroller:OnEventBegin(value)
 		if (self.controlsEnabled ~= newEnabled) then
 			self:SetControlsEnabled(newEnabled);
 		end
+	elseif (busId == self.resetOrientationEventId) then
+		self:ResetOrientation();
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightForcedEventId) then
+	if (busId == self.lookLeftRightForcedEventId) then
 		--Debug.Log("lookLeftRightForcedEvent: " .. tostring(value));
 		self.InputValues.Forced.LookLeftRight = value;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownForcedEventId) then
+	elseif (busId == self.lookUpDownForcedEventId) then
 		--Debug.Log("LookUpDownForcedEvent: " .. tostring(value));
 		self.InputValues.Forced.LookUpDown = value;
 	end
 	
 	if (self.controlsEnabled == true) then
-		if (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightEventId) then
+		if (busId == self.lookLeftRightEventId) then
 			self.InputValues.Controller.LookLeftRight[1] = value;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownEventId) then
+		elseif (busId == self.lookUpDownEventId) then
 			self.InputValues.Controller.LookUpDown[1] = value;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightKMEventId) then
+		elseif (busId == self.lookLeftRightKMEventId) then
 			self.InputValues.Mouse.LookLeftRight[1] = value;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownKMEventId) then
+		elseif (busId == self.lookUpDownKMEventId) then
 			self.InputValues.Mouse.LookUpDown[1] = value;
 		end
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.cameraSettingsEventId) then
+	if (busId == self.cameraSettingsEventId) then
 		--Debug.Log("Heard event to change camera settings to '" .. tostring(value.Name) .. "'");
 		-- TODO: get transition duration
-		self:SetNewSettings(value, 0.25);
+		self:SetNewSettings(value);
 	end
 			
 	-- Debug input for moving the camera.
 	if (self.TransitionTimer <= 0.0) then
 		local debugCamMovement = false;
 		local adjustStep = 0.05;
-		if (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad1EventId) then
+		if (busId == self.debugNumPad1EventId) then
 			self.CurrentSettings.FollowDistanceLow = self.CurrentSettings.FollowDistanceLow - adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad3EventId) then
+		elseif (busId == self.debugNumPad3EventId) then
 			self.CurrentSettings.FollowDistanceLow = self.CurrentSettings.FollowDistanceLow + adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad8EventId) then
+		elseif (busId == self.debugNumPad8EventId) then
 			self.CurrentSettings.FollowDistance = self.CurrentSettings.FollowDistance - adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad2EventId) then
+		elseif (busId == self.debugNumPad2EventId) then
 			self.CurrentSettings.FollowDistance = self.CurrentSettings.FollowDistance + adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad4EventId) then
+		elseif (busId == self.debugNumPad4EventId) then
 			self.CurrentSettings.FollowOffset = self.CurrentSettings.FollowOffset - adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad6EventId) then
+		elseif (busId == self.debugNumPad6EventId) then
 			self.CurrentSettings.FollowOffset = self.CurrentSettings.FollowOffset + adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad9EventId) then
+		elseif (busId == self.debugNumPad9EventId) then
 			self.CurrentSettings.FollowHeight = self.CurrentSettings.FollowHeight - adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad7EventId) then
+		elseif (busId == self.debugNumPad7EventId) then
 			self.CurrentSettings.FollowHeight = self.CurrentSettings.FollowHeight + adjustStep;
 			debugCamMovement = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.debugNumPad5EventId) then
+		elseif (busId == self.debugNumPad5EventId) then
 			self.CurrentSettings:CopySettings(self.TransitionToSettings);
 			debugCamMovement = true;
 		end
@@ -592,15 +606,16 @@ function cameracontroller:OnEventBegin(value)
 end
 
 function cameracontroller:OnEventUpdating(value)
-
+	
+	local busId = GameplayNotificationBus.GetCurrentBusId();
 	if (self.controlsEnabled == true) then
-		if (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightEventId) then
+		if (busId == self.lookLeftRightEventId) then
 			self.InputValues.Controller.LookLeftRight[1] = value;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownEventId) then
+		elseif (busId == self.lookUpDownEventId) then
 			self.InputValues.Controller.LookUpDown[1] = value;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightKMEventId) then
+		elseif (busId == self.lookLeftRightKMEventId) then
 			self.InputValues.Mouse.LookLeftRight[1] = value;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownKMEventId) then
+		elseif (busId == self.lookUpDownKMEventId) then
 			self.InputValues.Mouse.LookUpDown[1] = value;
 		end
 	end
@@ -608,18 +623,19 @@ function cameracontroller:OnEventUpdating(value)
 end
 
 function cameracontroller:OnEventEnd()
-
-	if (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightEventId) then
+	
+	local busId = GameplayNotificationBus.GetCurrentBusId();
+	if (busId == self.lookLeftRightEventId) then
 		self.InputValues.Controller.LookLeftRight[2] = true;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownEventId) then
+	elseif (busId == self.lookUpDownEventId) then
 		self.InputValues.Controller.LookUpDown[2] = true;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightKMEventId) then
+	elseif (busId == self.lookLeftRightKMEventId) then
 		self.InputValues.Mouse.LookLeftRight[2] = true;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownKMEventId) then
+	elseif (busId == self.lookUpDownKMEventId) then
 		self.InputValues.Mouse.LookUpDown[2] = true;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookLeftRightForcedEventId) then
+	elseif (busId == self.lookLeftRightForcedEventId) then
 		self.InputValues.Forced.LookLeftRight = 0;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.lookUpDownForcedEventId) then
+	elseif (busId == self.lookUpDownForcedEventId) then
 		self.InputValues.Forced.LookUpDown = 0;
 	end
 

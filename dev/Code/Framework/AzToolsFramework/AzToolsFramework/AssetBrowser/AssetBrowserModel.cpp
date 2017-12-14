@@ -13,6 +13,8 @@
 #include <AzCore/Script/ScriptTimePoint.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntryCache.h>
+
 
 #include <QMimeData>
 
@@ -108,16 +110,16 @@ namespace AzToolsFramework
                 return QVariant();
             }
 
-            AssetBrowserEntry* item = static_cast<AssetBrowserEntry*>(index.internalPointer());
-
-            if (role == Qt::DecorationRole)
-            {
-                return QVariant::fromValue(item->GetThumbnailKey());
-            }
-
             if (role == Qt::DisplayRole)
             {
-                return item->data(index.column());
+                const AssetBrowserEntry* item = static_cast<AssetBrowserEntry*>(index.internalPointer());
+                return item->GetDisplayName().c_str();
+            }
+
+            if (role == Roles::EntryRole)
+            {
+                const AssetBrowserEntry* item = static_cast<AssetBrowserEntry*>(index.internalPointer());
+                return QVariant::fromValue(item);
             }
 
             return QVariant();
@@ -160,7 +162,7 @@ namespace AzToolsFramework
 
         QVariant AssetBrowserModel::headerData(int section, Qt::Orientation orientation, int role) const
         {
-            if (orientation == Qt::Horizontal && role == Qt::DisplayRole)
+            if (orientation == Qt::Horizontal && role == Roles::EntryRole)
             {
                 return tr(AssetBrowserEntry::m_columnNames[section]);
             }
@@ -240,12 +242,25 @@ namespace AzToolsFramework
             }
         }
 
-        void AssetBrowserModel::EndAddEntry()
+        void AssetBrowserModel::EndAddEntry(AssetBrowserEntry* parent)
         {
             if (m_addingEntry)
             {
                 m_addingEntry = false;
                 endInsertRows();
+
+                // we have to also invalidate our parent all the way up the chain.
+                // since in this model, the children's data is actually relevant to the filtering of a parent
+                // since a parent "matches" the filter if its children do.
+                while (parent)
+                {
+                    QModelIndex parentIndex;
+                    if (GetEntryIndex(parent, parentIndex))
+                    {
+                        Q_EMIT dataChanged(parentIndex, parentIndex);
+                    }
+                    parent = parent->GetParent();
+                }
             }
         }
 
@@ -272,14 +287,20 @@ namespace AzToolsFramework
         void AssetBrowserModel::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/) 
         {
             // if any entries changed since last tick, notify the views
-            AZStd::vector<AssetBrowserEntry*> entries;
-            m_rootEntry->GetDirty(entries);
-            for (auto entry : entries)
+            
+            if (EntryCache* cache = EntryCache::GetInstance())
             {
-                QModelIndex index;
-                if (GetEntryIndex(entry, index))
+                if (!cache->m_dirtyThumbnailsSet.empty())
                 {
-                    Q_EMIT dataChanged(index, index);
+                    for (AssetBrowserEntry* entry : cache->m_dirtyThumbnailsSet)
+                    {
+                        QModelIndex index;
+                        if (GetEntryIndex(entry, index))
+                        {
+                            Q_EMIT dataChanged(index, index, { Roles::EntryRole });
+                        }
+                    }
+                    cache->m_dirtyThumbnailsSet.clear();
                 }
             }
         }

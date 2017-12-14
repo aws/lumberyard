@@ -136,6 +136,9 @@ public:
     virtual void SetFlags(int flags) { m_Flags = flags; };
     virtual int GetFlags() const { return m_Flags; };
 
+    bool IsMaterialGroup() const override;
+    bool IsSubMaterial() const override;
+
     // Returns true if this is the default material.
     virtual bool IsDefault();
 
@@ -193,13 +196,15 @@ public:
     bool AreTexturesStreamedIn(const int nMinPrecacheRoundIds[MAX_STREAM_PREDICTION_ZONES]) const;
 
     //////////////////////////////////////////////////////////////////////////
-    virtual bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam = false);
-    virtual bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam = false);
-    virtual bool SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam = false);
-    virtual void SetDirty(bool dirty = true);
-    virtual bool IsDirty() const;
-
-    virtual void SetCamera(CCamera& cam);
+    // Functions to set param into the material/material group
+    // If this is a material group, materialIndex specifies the index of the sub-material to be modified
+    //////////////////////////////////////////////////////////////////////////
+    bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam = false, int materialIndex = 0) override;
+    bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam = false, int materialIndex = 0) override;
+    bool SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam = false, int materialIndex = 0) override;
+    
+    void SetDirty(bool dirty = true) override;
+    bool IsDirty() const override;
 
     //////////////////////////////////////////////////////////////////////////
     // Sub materials.
@@ -226,7 +231,7 @@ public:
     virtual void* GetUserData() const;
 
     virtual _smart_ptr<IMaterial> GetSafeSubMtl(int nSlot);
-    virtual CMatInfo* Clone();
+    virtual _smart_ptr<CMatInfo> Clone();
     virtual void Copy(_smart_ptr<IMaterial> pMtlDest, EMaterialCopyFlags flags);
 
     //////////////////////////////////////////////////////////////////////////

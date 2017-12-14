@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <LyShine/Bus/UiCanvasManagerBus.h>
 #include <LyShine/Bus/World/UiCanvasRefBus.h>
 #include <LyShine/UiAssetTypes.h>
 
@@ -20,6 +21,7 @@ class UiCanvasAssetRefComponent
     : public AZ::Component
     , public UiCanvasRefBus::Handler
     , public UiCanvasAssetRefBus::Handler
+    , public UiCanvasManagerNotificationBus::Handler
 {
 public: // member functions
 
@@ -42,6 +44,10 @@ public: // member functions
     AZ::EntityId LoadCanvas() override;
     void UnloadCanvas() override;
     // ~UiCanvasAssetRefInterface
+
+    // UiCanvasManagerNotification
+    void OnCanvasUnloaded(AZ::EntityId canvasEntityId) override;
+    // ~UiCanvasManagerNotification
 
 public: // static member functions
 

@@ -41,6 +41,7 @@
 #include "Expected.h"
 #include "Util/PathUtil.h"
 #include <QApplication>
+#include <QDir>
 #include <QMessageBox>
 #include <QtViewPaneManager.h>
 #include <Cry_Color.h>
@@ -48,11 +49,6 @@
 #include "EffectPlayer.h"
 #include "CharacterToolSystem.h"
 #include "SceneContent.h"
-
-#define IEntity IEntity_AfxOleOverride
-#include <shlobj.h>
-#include <shellapi.h>
-#undef IEntity
 
 static void DrawSkeletonBoundingBox(IRenderAuxGeom* pAuxGeom, const ICharacterInstance* pCharacter, const QuatT& location)
 {
@@ -1045,59 +1041,11 @@ namespace CharacterTool {
     }
 
     //////////////////////////////////////////////////////////////////////////
-    string RemoveRelativeParts(const string& path)
-    {
-        string strPath = path;
-        // Remove all dir/..
-        int nBack;
-        while ((nBack = strPath.find("\\..")) > 0)
-        {
-            int nPrev;
-            for (nPrev = nBack - 1; nPrev > 0; nPrev--)
-            {
-                if (strPath[nPrev] == '\\')
-                {
-                    break;
-                }
-            }
-            strPath.erase(nPrev, nBack + 3 - nPrev);
-        }
-
-        // Remove all ./
-        strPath.replace(".\\", "");
-        if (!strPath.empty() && strPath[0] == '\\')
-        {
-            strPath = strPath.Mid(1);
-        }
-
-        // Repeat for unix
-        while ((nBack = strPath.find("/..")) > 0)
-        {
-            int nPrev;
-            for (nPrev = nBack - 1; nPrev > 0; nPrev--)
-            {
-                if (strPath[nPrev] == '/')
-                {
-                    break;
-                }
-            }
-            strPath.erase(nPrev, nBack + 3 - nPrev);
-        }
-
-        // Remove all ./
-        strPath.replace("./", "");
-        if (!strPath.empty() && strPath[0] == '/')
-        {
-            strPath = strPath.Mid(1);
-        }
-        return strPath;
-    }
-    //////////////////////////////////////////////////////////////////////////
     string GetExecutableFullPath()
     {
-        char moduleFileName[512];
-        GetModuleFileName(NULL, moduleFileName, 512);
-        return RemoveRelativeParts(moduleFileName);
+        // To be extra careful, and perhaps a little overkill, we call
+        // cleanPath to ensure we return an absolute path.
+        return QDir::toNativeSeparators(QDir::cleanPath(QCoreApplication::applicationFilePath())).toUtf8().data();
     }
     //////////////////////////////////////////////////////////////////////////
     void GetParentDirectoryString(string& strInputParentDirectory)

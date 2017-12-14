@@ -42,7 +42,7 @@ command_handlers = {
     'describe-project': project.describe,
     'create-project-stack': project.create_stack,
     'list-regions': project.get_regions,
-    'update-mappings': mappings.update,
+    'update-mappings': mappings.force_update,
     'list-mappings': mappings.list,
     'list-deployments': deployment.list,
     'list-resource-groups': resource_group.list,

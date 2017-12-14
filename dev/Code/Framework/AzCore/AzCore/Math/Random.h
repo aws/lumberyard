@@ -96,6 +96,19 @@ namespace AZ
 #       error Platform not supported
 #endif
     };
+
+    /**
+    * An enum representing the different random distributions available
+    *
+    * These map to random distributions in std::random. Those distributions
+    * have no common base class so this is an enum to help determine which
+    * random distribution is needed.
+    */
+    enum class RandomDistributionType : AZ::u32
+    {
+        Normal,
+        UniformReal
+    };
 }
 
 #endif

@@ -16,6 +16,7 @@
 #include "SequenceTrack.h"
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence Tracks in Component Entity Sequences now occur through AZ::SerializeContext and the Sequence Component
 void CSequenceTrack::SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool bLoading)
 {
     if (bLoading)
@@ -23,6 +24,12 @@ void CSequenceTrack::SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool b
         const char* szSelection;
         szSelection = keyNode->getAttr("node");
         key.szSelection = szSelection;
+
+        AZ::u64 id64;
+        if (keyNode->getAttr("sequenceEntityId", id64))
+        {
+            key.sequenceEntityId = AZ::EntityId(id64);
+        }
 
         if (!keyNode->getAttr("overridetimes", key.bOverrideTimes))
         {
@@ -49,6 +56,8 @@ void CSequenceTrack::SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool b
     else
     {
         keyNode->setAttr("node", key.szSelection.c_str());
+        AZ::u64 id64 = static_cast<AZ::u64>(key.sequenceEntityId);
+        keyNode->setAttr("sequenceEntityId", id64);
 
         if (key.bOverrideTimes == true)
         {
@@ -60,15 +69,48 @@ void CSequenceTrack::SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool b
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// UpConvertKeys()
+//
+// Legacy levels used sequence names in ISequenceKey. We now use sequenceEntityId.
+// This method goes through any legacy keys that used names, finds their corresponding
+// ownerIds, fills them in and clears the name.
+//
+// This can be removed when Legacy Object Sequences are deprecated.
+bool CSequenceTrack::UpConvertKeys()
+{
+    bool keysChanged = false;
+    for (int i = m_keys.size(); --i >= 0;)
+    {
+        ISequenceKey& key = m_keys[i];
+        if (!key.szSelection.empty())
+        {
+            // if for some reason we had a name and a valid ownerId, keep the existing ownerId
+            if (!key.sequenceEntityId.IsValid())
+            {
+                IAnimSequence* sequence = gEnv->pMovieSystem->FindLegacySequenceByName(key.szSelection.c_str());
+                if (sequence)
+                {
+                    key.sequenceEntityId = sequence->GetSequenceEntityId();
+                }
+            }
+            key.szSelection.clear();
+            keysChanged = true;
+        }
+    }
+    return keysChanged;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CSequenceTrack::GetKeyInfo(int key, const char*& description, float& duration)
 {
     assert(key >= 0 && key < (int)m_keys.size());
     CheckValid();
     description = 0;
     duration = m_keys[key].fDuration;
-    if (m_keys[key].szSelection.size() > 0)
+    IAnimSequence* sequence = gEnv->pMovieSystem->FindSequence(m_keys[key].sequenceEntityId);
+    if (sequence)
     {
-        description = m_keys[key].szSelection.c_str();
+        description = sequence->GetName();
     }
 }
 

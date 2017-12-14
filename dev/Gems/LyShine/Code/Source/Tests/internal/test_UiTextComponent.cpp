@@ -2638,8 +2638,325 @@ namespace
     }
 }
 
+void FontSharedPtrTests()
+{
+    // Verify test font isn't loaded
+    {
+        const char* fontName = "notosans-regular";
+        AZ_Assert(nullptr == GetISystem()->GetICryFont()->GetFont(fontName), "Test failed");
+    }
+
+    // Basic font load and unload
+    {
+        const char* fontName = "notosans-regular";
+
+        IFFont* font = GetISystem()->GetICryFont()->NewFont(fontName);
+        AZ_Assert(font, "Test failed");
+        AZ_Assert(font == GetISystem()->GetICryFont()->GetFont(fontName), "Test failed");
+
+        const bool loadSuccess = font->Load("ui/fonts/lyshineexamples/notosans/notosans-regular.font");
+        AZ_Assert(loadSuccess, "Test failed");
+        font->AddRef();
+        AZ_Assert(1 == font->Release(), "Test failed");
+        AZ_Assert(0 == font->Release(), "Test failed");
+        AZ_Assert(nullptr == GetISystem()->GetICryFont()->GetFont(fontName), "Test failed");
+    }
+
+    // Font and font family case sensitivity checks
+    {
+        // IFFont case sensitivity checks
+        {
+
+            const char* fontName = "notosans-regular";
+            const char* fontNameUpper = "NOTOSANS-REGULAR";
+            const char* fontNameMixed1 = "Notosans-regular";
+            const char* fontNameMixed2 = "Notosans-Regular";
+            const char* fontNameMixed3 = "NoToSaNs-ReGuLaR";
+
+            IFFont* const font = GetISystem()->GetICryFont()->NewFont(fontName);
+            AZ_Assert(font, "Test failed");
+            AZ_Assert(2 == font->AddRef(), "Test failed");
+            AZ_Assert(1 == font->Release(), "Test failed");
+
+            // Verify that creating a new font for a font that's already created returns
+            // that same font
+            AZ_Assert(font == GetISystem()->GetICryFont()->NewFont(fontName), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->NewFont(fontNameUpper), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->NewFont(fontNameMixed1), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->NewFont(fontNameMixed2), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->NewFont(fontNameMixed3), "Test failed");
+
+            // Getting the font with the expected name returns the same font
+            AZ_Assert(font == GetISystem()->GetICryFont()->GetFont(fontName), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->GetFont(fontNameUpper), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->GetFont(fontNameMixed1), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->GetFont(fontNameMixed2), "Test failed");
+            AZ_Assert(font == GetISystem()->GetICryFont()->GetFont(fontNameMixed3), "Test failed");
+
+            // Release the font
+            AZ_Assert(0 == font->Release(), "Test failed");
+        }
+
+        // FontFamily case sensitivity checks
+        {
+            const char* notoSansFontFamily = "ui/fonts/lyshineexamples/notosans/notosans.fontfamily";
+            const char* notoSansName = "notosans";
+
+            // Shouldn't be loaded yet
+            FontFamilyPtr fontFamily = gEnv->pCryFont->GetFontFamily(notoSansFontFamily);
+            AZ_Assert(!fontFamily.get(), "Test failed");
+            fontFamily = gEnv->pCryFont->GetFontFamily(notoSansName);
+            AZ_Assert(!fontFamily.get(), "Test failed");
+
+            // Should load successfully
+            fontFamily = gEnv->pCryFont->LoadFontFamily(notoSansFontFamily);
+            AZ_Assert(fontFamily.get(), "Test failed");
+
+            // GetFontFamily case-sensitivity tests by filepath
+            {
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamily), "Test failed");
+
+                const char* notoSansFontFamilyUpper = "UI/FONTS/LYSHINEEXAMPLES/NOTOSANS/NOTOSANS.FONTFAMILY";
+                const char* notoSansFontFamilyMixed1 = "ui/fonts/lyshineexamples/notosans/Notosans.fontfamily";
+                const char* notoSansFontFamilyMixed2 = "ui/fonts/lyshineexamples/notosans/Notosans.Fontfamily";
+                const char* notoSansFontFamilyMixed3 = "ui/fonts/lyshineexamples/notosans/NotoSans.Fontfamily";
+                const char* notoSansFontFamilyMixed4 = "ui/fonts/lyshineexamples/notosans/notosans.FONTFAMILY";
+                const char* notoSansFontFamilyMixed5 = "ui/fonts/lyshineexamples/notosans/NOTOSANS.fontfamily";
+                const char* notoSansFontFamilyMixed6 = "Ui/fonts/lyshineexamples/notosans/notosans.fontfamily";
+                const char* notoSansFontFamilyMixed7 = "ui/fonts/lyshineexamples/Notosans/notosans.fontfamily";
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyUpper), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyMixed1), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyMixed2), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyMixed3), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyMixed4), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyMixed5), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyMixed6), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansFontFamilyMixed7), "Test failed");
+            }
+
+            // GetFontFamily case-sensitivity tests by font name
+            {
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansName), "Test failed");
+
+                const char* notoSansNameUpper = "NOTOSANS";
+                const char* notoSansNameMixed1 = "Notosans";
+                const char* notoSansNameMixed2 = "NotoSans";
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansNameUpper), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansNameMixed1), "Test failed");
+                AZ_Assert(fontFamily == gEnv->pCryFont->GetFontFamily(notoSansNameMixed2), "Test failed");
+            }
+        }
+    }
+
+    // Font family ref count test
+    {
+        const char* notoSansFontFamily = "ui/fonts/lyshineexamples/notosans/notosans.fontfamily";
+        const char* notoSansRegularPath = "ui/fonts/lyshineexamples/notosans/notosans-regular.font";
+        const char* notoSansItalicPath = "ui/fonts/lyshineexamples/notosans/notosans-italic.font";
+        const char* notoSansBoldPath = "ui/fonts/lyshineexamples/notosans/notosans-bold.font";
+        const char* notoSansBoldItalicPath = "ui/fonts/lyshineexamples/notosans/notosans-bolditalic.font";
+
+        const char* notoSansRegular = "notosans-regular";
+        const char* notoSansBold = "notosans-bold";
+        const char* notoSansItalic = "notosans-italic";
+        const char* notoSansBoldItalic = "notosans-boldItalic";
+
+        {
+            FontFamilyPtr notoSans = FontFamilyLoad(notoSansFontFamily);
+            AZ_Assert(2 == notoSans->normal->AddRef(), "Test failed");
+            AZ_Assert(1 == notoSans->normal->Release(), "Test failed");
+            AZ_Assert(2 == notoSans->bold->AddRef(), "Test failed");
+            AZ_Assert(1 == notoSans->bold->Release(), "Test failed");
+            AZ_Assert(2 == notoSans->italic->AddRef(), "Test failed");
+            AZ_Assert(1 == notoSans->italic->Release(), "Test failed");
+            AZ_Assert(2 == notoSans->boldItalic->AddRef(), "Test failed");
+            AZ_Assert(1 == notoSans->boldItalic->Release(), "Test failed");
+
+            // This is a negative test which is difficult to support currently.
+            // Uncommenting this line should trigger an assert in CryFont because
+            // the font was de-allocated while still being referenced by a 
+            // FontFamily
+            //notoSans->normal->Release();
+
+            // Attempt to load FontFamily already loaded
+            {
+                FontFamilyPtr dupeFamily = GetISystem()->GetICryFont()->LoadFontFamily(notoSansFontFamily);
+                AZ_Assert(nullptr == dupeFamily, "Test failed");
+
+                //Ref counts should remain the same
+                AZ_Assert(2 == notoSans->normal->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->normal->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->bold->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->bold->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->italic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->italic->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->boldItalic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->boldItalic->Release(), "Test failed");
+            }
+
+            IFFont* fontRegular = GetISystem()->GetICryFont()->GetFont(notoSansRegularPath);
+            AZ_Assert(fontRegular, "Test failed");
+            AZ_Assert(fontRegular == notoSans->normal, "Test failed");
+
+            // Verify that ref counts are handled properly when font family
+            // fonts are referenced outside of the font family.
+            {
+                // NewFont shouldn't increment ref count
+                IFFont* checkFont = GetISystem()->GetICryFont()->NewFont(notoSansRegularPath);
+                AZ_Assert(fontRegular == checkFont, "Test failed");
+                AZ_Assert(2 == checkFont->AddRef(), "Test failed");
+                AZ_Assert(1 == checkFont->Release(), "Test failed");
+
+                // Load also doesn't increment ref count
+                AZ_Assert(checkFont->Load(notoSansRegularPath), "Test failed");
+                AZ_Assert(2 == checkFont->AddRef(), "Test failed");
+                AZ_Assert(1 == checkFont->Release(), "Test failed");
+
+                // If font is loaded as a Font Family, then ref counts will increment
+                FontFamilyPtr notoSansRegularFamily = FontFamilyLoad(notoSansRegularPath);
+
+                // Verify that every font of the single-font font family are the same
+                AZ_Assert(notoSansRegularFamily->normal == notoSansRegularFamily->bold, "Test failed");
+                AZ_Assert(notoSansRegularFamily->bold == notoSansRegularFamily->italic, "Test failed");
+                AZ_Assert(notoSansRegularFamily->italic == notoSansRegularFamily->boldItalic, "Test failed");
+
+                // Verify that the single-font is the same font in the original font family
+                AZ_Assert(notoSansRegularFamily->normal == notoSans->normal, "Test failed");
+
+                // Check "single font as a font family" ref counts
+                AZ_Assert(6 == notoSansRegularFamily->normal->AddRef(), "Test failed");
+                AZ_Assert(5 == notoSansRegularFamily->normal->Release(), "Test failed");
+                AZ_Assert(6 == notoSansRegularFamily->bold->AddRef(), "Test failed");
+                AZ_Assert(5 == notoSansRegularFamily->bold->Release(), "Test failed");
+                AZ_Assert(6 == notoSansRegularFamily->italic->AddRef(), "Test failed");
+                AZ_Assert(5 == notoSansRegularFamily->italic->Release(), "Test failed");
+                AZ_Assert(6 == notoSansRegularFamily->boldItalic->AddRef(), "Test failed");
+                AZ_Assert(5 == notoSansRegularFamily->boldItalic->Release(), "Test failed");
+
+                // Check ref counts of the original font family
+                AZ_Assert(6 == notoSans->normal->AddRef(), "Test failed");
+                AZ_Assert(5 == notoSans->normal->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->bold->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->bold->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->italic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->italic->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->boldItalic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->boldItalic->Release(), "Test failed");
+
+                // Attempt to load single-font font-family again
+                {
+                    FontFamilyPtr dupeFamily = GetISystem()->GetICryFont()->LoadFontFamily(notoSansRegularPath);
+                    AZ_Assert(nullptr == dupeFamily, "Test failed");
+
+                    //Ref counts should remain the same
+                    AZ_Assert(6 == notoSansRegularFamily->normal->AddRef(), "Test failed");
+                    AZ_Assert(5 == notoSansRegularFamily->normal->Release(), "Test failed");
+                    AZ_Assert(6 == notoSansRegularFamily->bold->AddRef(), "Test failed");
+                    AZ_Assert(5 == notoSansRegularFamily->bold->Release(), "Test failed");
+                    AZ_Assert(6 == notoSansRegularFamily->italic->AddRef(), "Test failed");
+                    AZ_Assert(5 == notoSansRegularFamily->italic->Release(), "Test failed");
+                    AZ_Assert(6 == notoSansRegularFamily->boldItalic->AddRef(), "Test failed");
+                    AZ_Assert(5 == notoSansRegularFamily->boldItalic->Release(), "Test failed");
+                }
+            }
+
+            // notoSansRegularFamily should now be out of scope, so the original font family's
+            // ref counts should return to their original values
+            {
+                AZ_Assert(2 == notoSans->normal->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->normal->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->bold->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->bold->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->italic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->italic->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->boldItalic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->boldItalic->Release(), "Test failed");
+            }
+
+            // Reference a FontFamily already loaded
+            {
+                FontFamilyPtr dupeFamily = GetISystem()->GetICryFont()->GetFontFamily("notosans");
+
+                // Ref couts for underlying fonts should stay the same
+                AZ_Assert(2 == notoSans->normal->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->normal->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->bold->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->bold->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->italic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->italic->Release(), "Test failed");
+                AZ_Assert(2 == notoSans->boldItalic->AddRef(), "Test failed");
+                AZ_Assert(1 == notoSans->boldItalic->Release(), "Test failed");
+            }
+
+            IFFont* fontBold = GetISystem()->GetICryFont()->GetFont(notoSansBoldPath);
+            AZ_Assert(fontBold, "Test failed");
+            AZ_Assert(fontBold == notoSans->bold, "Test failed");
+
+            IFFont* fontItalic = GetISystem()->GetICryFont()->GetFont(notoSansItalicPath);
+            AZ_Assert(fontItalic, "Test failed");
+            AZ_Assert(fontItalic == notoSans->italic, "Test failed");
+
+            IFFont* fontBoldItalic = GetISystem()->GetICryFont()->GetFont(notoSansBoldItalicPath);
+            AZ_Assert(fontBoldItalic, "Test failed");
+            AZ_Assert(fontBoldItalic == notoSans->boldItalic, "Test failed");
+        }
+
+        // Once FontFamilyPtr goes out of scope, all associated font family 
+        // fonts should get unloaded too.
+        IFFont* fontRegular = GetISystem()->GetICryFont()->GetFont(notoSansRegular);
+        AZ_Assert(!fontRegular, "Test failed");
+
+        IFFont* fontBold = GetISystem()->GetICryFont()->GetFont(notoSansBold);
+        AZ_Assert(!fontBold, "Test failed");
+
+        IFFont* fontItalic = GetISystem()->GetICryFont()->GetFont(notoSansItalic);
+        AZ_Assert(!fontItalic, "Test failed");
+
+        IFFont* fontBoldItalic = GetISystem()->GetICryFont()->GetFont(notoSansBoldItalic);
+        AZ_Assert(!fontBoldItalic, "Test failed");
+    }
+
+    // Load Vera.font as a font family, then load Vera.fontfamily that also
+    // uses Vera.font as a font
+    {
+        const char* veraFontFile = "fonts/vera.font";
+        FontFamilyPtr veraFont = gEnv->pCryFont->LoadFontFamily(veraFontFile);
+        AZ_Assert(veraFont.get(), "Test failed");
+
+        // Verify that vera.font has been referenced 4 times for all four
+        // font styles in the font family markup (single fonts loaded as
+        // font families get re-used for each of the font styles)
+        AZ_Assert(5 == veraFont->normal->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->normal->Release(), "Test failed");
+        AZ_Assert(5 == veraFont->bold->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->bold->Release(), "Test failed");
+        AZ_Assert(5 == veraFont->italic->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->italic->Release(), "Test failed");
+        AZ_Assert(5 == veraFont->boldItalic->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->boldItalic->Release(), "Test failed");
+
+        const char* veraFontFamilyFile = "fonts/vera.fontfamily";
+        FontFamilyPtr veraFontFamily = gEnv->pCryFont->LoadFontFamily(veraFontFamilyFile);
+        
+        // This should fail, because a font family named "vera" is already loaded
+        AZ_Assert(!veraFontFamily.get(), "Test failed");
+
+        // Since vera font family failed to load, the number of refs to the
+        // vera.font (loaded as a font family) should remain the same.
+        AZ_Assert(5 == veraFont->normal->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->normal->Release(), "Test failed");
+        AZ_Assert(5 == veraFont->bold->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->bold->Release(), "Test failed");
+        AZ_Assert(5 == veraFont->italic->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->italic->Release(), "Test failed");
+        AZ_Assert(5 == veraFont->boldItalic->AddRef(), "Test failed");
+        AZ_Assert(4 == veraFont->boldItalic->Release(), "Test failed");
+    }
+}
+
 void UiTextComponent::UnitTest(CLyShine* lyshine)
 {
+    FontSharedPtrTests();
     VerifyShippingFonts();
 
     // These fonts are required for subsequent unit-tests to work.

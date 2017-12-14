@@ -68,6 +68,20 @@ public:
     void Deactivate() override {}
 };
 
+static const AZ::TypeId DeactivateDuringActivationComponentTypeId = "{E18A3FFE-FA61-4682-A6C2-FB065D5DDDD2}";
+class DeactivateDuringActivationComponent : public AZ::Component
+{
+public:
+    AZ_COMPONENT(DeactivateDuringActivationComponent , DeactivateDuringActivationComponentTypeId);
+    static void Reflect(AZ::ReflectContext*) {}
+    void Activate() override
+    {
+        AzFramework::BehaviorEntity behaviorEntity{ GetEntityId() };
+        behaviorEntity.Deactivate();
+    }
+    void Deactivate() override {}
+};
+
 class BehaviorEntityTest
     : public UnitTest::FrameworkApplicationFixture
 {
@@ -79,6 +93,7 @@ protected:
 
         m_application->RegisterComponentDescriptor(HatComponent::CreateDescriptor());
         m_application->RegisterComponentDescriptor(EarComponent::CreateDescriptor());
+        m_application->RegisterComponentDescriptor(DeactivateDuringActivationComponent::CreateDescriptor());
 
         AzFramework::GameEntityContextRequestBus::BroadcastResult(m_rawEntity, &AzFramework::GameEntityContextRequestBus::Events::CreateGameEntity, "Hat");
         m_behaviorEntity = AzFramework::BehaviorEntity(m_rawEntity->GetId());
@@ -148,13 +163,26 @@ TEST_F(BehaviorEntityTest, Activate_Succeeds)
     EXPECT_EQ(AZ::Entity::ES_ACTIVE, m_rawEntity->GetState());
 }
 
-TEST_F(BehaviorEntityTest, Deactivate_Succeeds)
+TEST_F(BehaviorEntityTest, Deactivate_ForActivatedEntity_Succeeds)
 {
     m_rawEntity->Activate();
     EXPECT_EQ(AZ::Entity::ES_ACTIVE, m_rawEntity->GetState()); // sanity check
 
     m_behaviorEntity.Deactivate();
-    m_application->Tick(); // some contexts queue entity deactivation on TickBus
+    EXPECT_EQ(AZ::Entity::ES_INIT, m_rawEntity->GetState());
+}
+
+TEST_F(BehaviorEntityTest, Deactivate_ForActivatingEntity_SucceedsOneTickLater)
+{
+    // this component calls BehaviorEntity::Deactivate() during Activate().
+    // activate should succeed, and a deactivate should be queued on TickBus
+    m_rawEntity->CreateComponent(DeactivateDuringActivationComponentTypeId);
+
+    m_rawEntity->Activate();
+    EXPECT_EQ(AZ::Entity::ES_ACTIVE, m_rawEntity->GetState());
+
+    m_application->Tick();
+
     EXPECT_EQ(AZ::Entity::ES_INIT, m_rawEntity->GetState());
 }
 
@@ -170,7 +198,13 @@ TEST_F(BehaviorEntityTest, CreateComponent_Succeeds)
 
 TEST_F(BehaviorEntityTest, CreateComponent_WithNonexistentType_Fails)
 {
+    // We expect an assert in Entity::CreateComponent()
+    AZ_TEST_START_ASSERTTEST;
+
     AzFramework::BehaviorComponentId componentId = m_behaviorEntity.CreateComponent(AZ::TypeId::CreateNull());
+
+    AZ_TEST_STOP_ASSERTTEST(1);
+
     EXPECT_FALSE(componentId.IsValid());
     EXPECT_EQ(0, m_rawEntity->GetComponents().size());
 }

@@ -16,6 +16,8 @@
 #include <ICryAnimation.h>
 #include "IBreakableManager.h"
 
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+
 #define MAX_BIRDS_DISTANCE 300
 
 #undef MAX_REST_TIME
@@ -91,8 +93,11 @@ void CBoidBird::UpdatePhysics(float dt, SBoidContext& bc)
         m_pPhysics->GetStatus(&ppos);
         m_pos = ppos.pos;
         Vec3 pos = m_pos;
+
+        float oceanLevel = OceanRequest::GetWaterLevel(pos);
+
         // When hitting water surface, increase physics density.
-        if (!m_inwater && m_pos.z + bc.fBoidRadius <= bc.engine->GetWaterLevel(&pos))
+        if (!m_inwater && m_pos.z + bc.fBoidRadius <= oceanLevel)
         {
             m_inwater = true;
             pe_simulation_params sym;

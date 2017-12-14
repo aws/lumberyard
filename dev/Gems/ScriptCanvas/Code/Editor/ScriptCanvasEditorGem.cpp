@@ -33,6 +33,7 @@
 #include <Core/GraphAssetHandler.h>
 #include <Core/GraphAsset.h>
 #include <Core/Graph.h>
+#include <ScriptCanvas/Data/DataRegistry.h>
 
 #include <Builder/BuilderSystemComponent.h>
 
@@ -46,6 +47,7 @@
 
 #include <Libraries/Libraries.h>
 #include <Editor/Nodes/EditorLibrary.h>
+
 #include <ScriptCanvas/Components/EditorGraph.h>
 #include <ScriptCanvas/Components/EditorScriptCanvasComponent.h>
 
@@ -71,20 +73,16 @@ namespace ScriptCanvas
     //! The descriptors will be registered at the appropriate time.
     //! The descriptors will be destroyed (and thus unregistered) at the appropriate time.
     ScriptCanvasModule::ScriptCanvasModule()
-        : AZ::Module()
+        : ScriptCanvasModuleCommon()
     {
         m_descriptors.insert(m_descriptors.end(), {
-            ScriptCanvas::SystemComponent::CreateDescriptor(),
-            ScriptCanvas::Graph::CreateDescriptor(),
             ScriptCanvasBuilder::BuilderSystemComponent::CreateDescriptor(),
-            ScriptCanvasBuilder::CoreBuilderSystemComponent::CreateDescriptor(),
-            ScriptCanvasEditor::Graph::CreateDescriptor(),
             ScriptCanvasEditor::EditorScriptCanvasComponent::CreateDescriptor(),
-            ScriptCanvasEditor::SystemComponent::CreateDescriptor(),
-            ScriptCanvas::Debugger::Component::CreateDescriptor(),
-            ScriptCanvasEditor::Metrics::SystemComponent::CreateDescriptor(),
-            ScriptCanvasEditor::IconComponent::CreateDescriptor(),
             ScriptCanvasEditor::EntityMimeDataHandler::CreateDescriptor(),
+            ScriptCanvasEditor::Graph::CreateDescriptor(),
+            ScriptCanvasEditor::IconComponent::CreateDescriptor(),
+            ScriptCanvasEditor::Metrics::SystemComponent::CreateDescriptor(),
+            ScriptCanvasEditor::SystemComponent::CreateDescriptor(),
 
             // GraphCanvas additions
             // Base Descriptor
@@ -101,32 +99,24 @@ namespace ScriptCanvas
             ScriptCanvasEditor::UserDefinedNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::VariableNodeDescriptorComponent::CreateDescriptor()
         });
-
-        ScriptCanvas::InitNodeRegistry();
-        AZStd::vector<AZ::ComponentDescriptor*> libraryDescriptors = ScriptCanvas::GetLibraryDescriptors();
-        m_descriptors.insert(m_descriptors.end(), libraryDescriptors.begin(), libraryDescriptors.end());
-        
-        libraryDescriptors = ScriptCanvasEditor::GetLibraryDescriptors();
+      
+        auto libraryDescriptors = ScriptCanvasEditor::GetLibraryDescriptors();
         m_descriptors.insert(m_descriptors.end(), libraryDescriptors.begin(), libraryDescriptors.end());
         ScriptCanvasEditor::Library::Editor::InitNodeRegistry(GetNodeRegistry().Get());
     }
 
     ScriptCanvasModule::~ScriptCanvasModule()
     {
-        ScriptCanvas::ResetNodeRegistry();
     }
 
     AZ::ComponentTypeList ScriptCanvasModule::GetRequiredSystemComponents() const
     {
-        AZ::ComponentTypeList components;
+        AZ::ComponentTypeList components = GetCommonSystemComponents();
 
         components.insert(components.end(), std::initializer_list<AZ::Uuid> {
-                azrtti_typeid<ScriptCanvas::SystemComponent>(),
                 azrtti_typeid<ScriptCanvasBuilder::BuilderSystemComponent>(),
-                azrtti_typeid<ScriptCanvasBuilder::CoreBuilderSystemComponent>(),
                 azrtti_typeid<ScriptCanvasEditor::SystemComponent>(),
-                azrtti_typeid<ScriptCanvasEditor::Metrics::SystemComponent>(),
-                azrtti_typeid<ScriptCanvas::Debugger::Component>(),
+                azrtti_typeid<ScriptCanvasEditor::Metrics::SystemComponent>()
         });
 
         return components;

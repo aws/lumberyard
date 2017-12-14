@@ -14,7 +14,6 @@
 #define AZTOOLSFRAMEWORK_TOOLSAPPLICATION_H
 
 #include <AzCore/base.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -32,7 +31,7 @@ namespace AzToolsFramework
         AZ_RTTI(ToolsApplication, "{2895561E-BE90-4CC3-8370-DD46FCF74C01}", AzFramework::Application);
         AZ_CLASS_ALLOCATOR(ToolsApplication, AZ::SystemAllocator, 0);
 
-        ToolsApplication();
+        ToolsApplication(int* argc = nullptr, char*** argv = nullptr);
         ~ToolsApplication();
 
         void Stop();
@@ -40,6 +39,13 @@ namespace AzToolsFramework
         void Reflect(AZ::ReflectContext* context) override;
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
+
+        AZ::Outcome<AZStd::string, AZStd::string> ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const override;
+
+        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::Application
+        void Start(const Descriptor& descriptor, const StartupParameters& startupParameters = StartupParameters()) override;
+        void Start(const char* applicationDescriptorFile, const StartupParameters& startupParameters = StartupParameters())  override;
 
     protected:
 
@@ -84,17 +90,16 @@ namespace AzToolsFramework
         bool IsSelected(const AZ::EntityId& entityId) override;
         UndoSystem::UndoStack* GetUndoStack() override { return m_undoStack; }
         UndoSystem::URSequencePoint* GetCurrentUndoBatch() override { return m_currentBatchUndo; }
-        PreemptiveUndoCache* GetUndoCache() { return &m_undoCache; }
+        PreemptiveUndoCache* GetUndoCache() override { return &m_undoCache; }
 
         EntityIdSet GatherEntitiesAndAllDescendents(const EntityIdList& inputEntities) override;
 
         void DeleteSelected() override;
         void DeleteEntities(const EntityIdList& entities) override;
         void DeleteEntitiesAndAllDescendants(const EntityIdList& entities) override;
-        bool FindCommonRoot(const AzToolsFramework::EntityIdSet& entitiesToBeChecked, AZ::EntityId& commonRootEntityId
-            , AzToolsFramework::EntityIdList* topLevelEntities = nullptr) override;
-        bool FindCommonRootInactive(const AzToolsFramework::EntityList& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, 
-            AzToolsFramework::EntityList* topLevelEntities = nullptr) override;
+        bool FindCommonRoot(const EntityIdSet& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityIdList* topLevelEntities = nullptr) override;
+        bool FindCommonRootInactive(const EntityList& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityList* topLevelEntities = nullptr) override;
+        void FindTopLevelEntityIdsInactive(const EntityIdList& entityIdsToCheck, EntityIdList& topLevelEntityIds) override;
 
         bool RequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const RequestEditProgressCallback& progressCallback) override;
         void RequestEditForFile(const char* assetPath, RequestEditResultCallback resultCallback) override;
@@ -102,16 +107,19 @@ namespace AzToolsFramework
         void EnterEditorIsolationMode() override;
         void ExitEditorIsolationMode() override;
         bool IsEditorInIsolationMode() override;
+        const char* GetEngineRootPath() const override;
+        const char* GetEngineVersion() const override;
+        bool IsEngineRootExternal() const override;
+
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
         // AzFramework::SimpleAssetRequests::Bus::Handler
         struct PathAssetEntry
         {
-        public:
-            PathAssetEntry(const char* path)
+            explicit PathAssetEntry(const char* path)
                 : m_path(path) {}
-            PathAssetEntry(AZStd::string&& path)
+            explicit PathAssetEntry(AZStd::string&& path)
                 : m_path(AZStd::move(path)) {}
             AZStd::string m_path;
         };
@@ -119,9 +127,7 @@ namespace AzToolsFramework
 
         void CreateUndosForDirtyEntities();
         void ConsistencyCheckUndoCache();
-
-    protected:
-
+        void InitializeEngineConfig();
         AZ::Aabb                            m_selectionBounds;
         EntityIdList                        m_selectedEntities;
         EntityIdList                        m_highlightedEntities;
@@ -132,6 +138,9 @@ namespace AzToolsFramework
         bool                                m_isDuringUndoRedo;
         bool                                m_isInIsolationMode;
         EntityIdSet                         m_isolatedEntityIdSet;
+
+        class EngineConfigImpl;
+        AZStd::unique_ptr<EngineConfigImpl> m_engineConfigImpl;
     };
 } // namespace AzToolsFramework
 

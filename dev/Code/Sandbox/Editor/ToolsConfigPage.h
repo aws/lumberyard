@@ -70,8 +70,6 @@ public:
     virtual void OnOK();
     virtual void OnCancel();
 
-    bool eventFilter(QObject* watched, QEvent* event) override;
-
 protected:
     virtual void OnInitDialog();
 

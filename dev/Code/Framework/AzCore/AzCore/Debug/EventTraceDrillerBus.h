@@ -32,6 +32,7 @@ namespace AZ
             // EBusTraits overrides
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
             static const bool EnableEventQueue = true;
+            static const bool EventQueueingActiveByDefault = false;
             //////////////////////////////////////////////////////////////////////////
 
             virtual ~EventTraceDrillerInterface() {}

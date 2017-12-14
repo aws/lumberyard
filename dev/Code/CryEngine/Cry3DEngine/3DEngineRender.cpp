@@ -29,7 +29,6 @@
 #include "LightEntity.h"
 #include "FogVolumeRenderNode.h"
 #include "ObjectsTree.h"
-#include "WaterWaveRenderNode.h"
 #include "CloudsManager.h"
 #include "MatMan.h"
 #include "VolumeObjectRenderNode.h"
@@ -45,11 +44,11 @@
 #include "Brush.h"
 #include "ClipVolumeManager.h"
 #include "ITimeOfDay.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #include "IGameFramework.h"
 #include <ICryAnimation.h>
 #include <IAISystem.h>
-#include <IMusicSystem.h>
 #include "IPlatformOS.h"
 #include <CryProfileMarker.h>
 
@@ -538,27 +537,27 @@ public:
 
     //private: // -------------------------------------------------------------------
 
-    uint32                                    m_dwWidth;                                // >0
-    uint32                                    m_dwHeight;                               // >0
-    f32                                           m_fInvWidth;                              // >0
-    f32                                           m_fInvHeight;                             // >0
-    uint32                                    m_dwVirtualWidth;                     // >0
-    uint32                                    m_dwVirtualHeight;                // >0
-    f32                                           m_fInvVirtualWidth;               // >0
-    f32                                           m_fInvVirtualHeight;              // >0
-    std::vector<uint8>            m_RGB;                                        // [channel + x*3 + m_dwWidth*3*y], channel=0..2, x<m_dwWidth, y<m_dwHeight, no alpha channel to occupy less memory
-    uint32                                    m_nFileId;                                // counts up until it finds free file id
-    bool                                      m_bFlipY;                                     // might be useful for some image formats
-    bool                                      m_bMetaData;                              // output additional metadata
+    uint32                      m_dwWidth;                  // >0
+    uint32                      m_dwHeight;                 // >0
+    f32                         m_fInvWidth;                // >0
+    f32                         m_fInvHeight;               // >0
+    uint32                      m_dwVirtualWidth;           // >0
+    uint32                      m_dwVirtualHeight;          // >0
+    f32                         m_fInvVirtualWidth;         // >0
+    f32                         m_fInvVirtualHeight;        // >0
+    std::vector<uint8>          m_RGB;                      // [channel + x*3 + m_dwWidth*3*y], channel=0..2, x<m_dwWidth, y<m_dwHeight, no alpha channel to occupy less memory
+    uint32                      m_nFileId;                  // counts up until it finds free file id
+    bool                        m_bFlipY;                   // might be useful for some image formats
+    bool                        m_bMetaData;                // output additional metadata
 
-    float                                     m_fPanoramaShotVertFOV;       // -1 means not set yet - in radians
+    float                       m_fPanoramaShotVertFOV;     // -1 means not set yet - in radians
 
 private:
 
-    uint32                                    m_dwSliceCount;                       //
-    C3DEngine&                           m_rEngine;                                 //
-    float                                     m_fHorizFOV;                              // - in radians
-    float                                     m_fTransitionSize;                // [0..1], 0=no transition, 1.0=full transition
+    uint32                      m_dwSliceCount;             //
+    C3DEngine&                  m_rEngine;                  //
+    float                       m_fHorizFOV;                // - in radians
+    float                       m_fTransitionSize;          // [0..1], 0=no transition, 1.0=full transition
 };
 #endif
 
@@ -580,9 +579,12 @@ void C3DEngine::ScreenshotDispatcher(const int nRenderFlags, const SRenderingPas
     const uint32  dwPanWidth          = max(1, GetCVars()->e_ScreenShotWidth);
     const uint32  dwPanHeight         = max(1, GetCVars()->e_ScreenShotHeight);
     const f32         fTransitionSize = min(1.f, abs(GetCVars()->e_ScreenShotQuality) * 0.01f);
-    const uint32  MinSlices               =   max(max(1, GetCVars()->e_ScreenShotMinSlices),
-            max(static_cast<int>((dwPanWidth + GetRenderer()->GetWidth() - 1) / GetRenderer()->GetWidth()),
-                static_cast<int>((dwPanHeight + GetRenderer()->GetHeight() - 1) / GetRenderer()->GetHeight())));
+
+    const uint32 widthSlices  = (dwPanWidth  + GetRenderer()->GetWidth()  - 1) / GetRenderer()->GetWidth();
+    const uint32 heightSlices = (dwPanHeight + GetRenderer()->GetHeight() - 1) / GetRenderer()->GetHeight();
+    uint32 MinSlices    = max(widthSlices, heightSlices);
+    MinSlices           = max(MinSlices, (uint32)GetCVars()->e_ScreenShotMinSlices);
+
     const uint32  dwVirtualWidth  =   GetRenderer()->GetWidth() * MinSlices;
     const uint32  dwVirtualHeight =   GetRenderer()->GetHeight() * MinSlices;
 
@@ -592,7 +594,10 @@ void C3DEngine::ScreenshotDispatcher(const int nRenderFlags, const SRenderingPas
     {
     case ESST_HIGHRES:
         GetConsole()->ShowConsole(false);
+
+        MinSlices = max(MinSlices, 1u);
         pStitchedImage  =   new CStitchedImage(*this, dwPanWidth, dwPanHeight, dwVirtualWidth, dwVirtualHeight, MinSlices, fTransitionSize);
+
         ScreenShotHighRes(pStitchedImage, nRenderFlags, passInfo, MinSlices, fTransitionSize);
         pStitchedImage->SaveImage("HiRes");
         pStitchedImage->Clear();    // good for debugging
@@ -604,7 +609,12 @@ void C3DEngine::ScreenshotDispatcher(const int nRenderFlags, const SRenderingPas
         break;
     case ESST_PANORAMA:
         GetConsole()->ShowConsole(false);
+
+        // Panorama screenshots will exhibit artifacts if insufficient slices are used to render them
+        // 20 slices yields great quality.
+        MinSlices = max(MinSlices, 20u);
         pStitchedImage  =   new CStitchedImage(*this, dwPanWidth, dwPanHeight, dwVirtualWidth, dwVirtualHeight, MinSlices, fTransitionSize);
+        
         ScreenShotPanorama(pStitchedImage, nRenderFlags, passInfo, MinSlices, fTransitionSize);
         pStitchedImage->SaveImage("Panorama");
         pStitchedImage->Clear();    // good for debugging
@@ -1566,35 +1576,48 @@ int __cdecl C3DEngine__Cmp_SRNInfo(const void* v1, const void* v2)
 void C3DEngine::SetSkyMaterialPath(const string& skyMatName)
 {
     m_skyMatName = skyMatName;
-    m_pSkyMat = NULL;
+    m_pSkyMat = nullptr;
 }
 
 void C3DEngine::SetSkyLowSpecMaterialPath(const string& skyLowSpecMatName)
 {
     m_skyLowSpecMatName = skyLowSpecMatName;
-    m_pSkyLowSpecMat = NULL;
+    m_pSkyLowSpecMat = nullptr;
 }
 
-_smart_ptr<IMaterial> C3DEngine::GetSkyMaterial()
+void C3DEngine::LoadSkyMaterial()
 {
-    _smart_ptr<IMaterial> pRes(0);
-    if (GetCVars()->e_SkyType == 0)
+    const int skyType = GetCVars()->e_SkyType;
+    if (skyType == 0)
     {
         if (!m_pSkyLowSpecMat)
         {
-            m_pSkyLowSpecMat = m_skyLowSpecMatName.empty() ? 0 : m_pMatMan->LoadMaterial(m_skyLowSpecMatName.c_str(), false, false, MTL_FLAG_IS_SKY);
+            m_pSkyLowSpecMat = m_skyLowSpecMatName.empty() ? nullptr : m_pMatMan->LoadMaterial(m_skyLowSpecMatName.c_str(), false, false, MTL_FLAG_IS_SKY);
+            AZ_Warning("3DEngine", m_pSkyLowSpecMat, "Missing low spec sky material: %s", m_skyLowSpecMatName.c_str());
         }
-        pRes = m_pSkyLowSpecMat;
     }
     else
     {
         if (!m_pSkyMat)
         {
-            m_pSkyMat = m_skyMatName.empty() ? nullptr : GetMatMan()->LoadMaterial(m_skyMatName.c_str(), false, false, MTL_FLAG_IS_SKY);
+            m_pSkyMat = m_skyMatName.empty() ? nullptr : m_pMatMan->LoadMaterial(m_skyMatName.c_str(), false, false, MTL_FLAG_IS_SKY);
+            AZ_Warning("3DEngine", m_pSkyMat, "Missing sky material: %s", m_skyMatName.c_str());
         }
-        pRes = m_pSkyMat;
     }
-    return pRes;
+    m_previousSkyType = skyType;
+}
+
+_smart_ptr<IMaterial> C3DEngine::GetSkyMaterial()
+{
+    const int skyType = GetCVars()->e_SkyType;
+
+    // If e_SkyType has changed, then we may need to load a different sky material.
+    if (skyType != m_previousSkyType)
+    {
+        LoadSkyMaterial();
+    }
+
+    return (skyType == 0) ? m_pSkyLowSpecMat : m_pSkyMat;
 }
 
 void C3DEngine::SetSkyMaterial(_smart_ptr<IMaterial> pSkyMat)
@@ -2057,17 +2080,25 @@ void C3DEngine::ProcessOcean(const SRenderingPassInfo& passInfo)
         return;
     }
 
-    float fOceanLevel = GetTerrain()->GetWaterLevel();
-
-    bool bOceanVisible = !Get3DEngine()->m_bShowTerrainSurface;
-    bOceanVisible |= m_pTerrain->GetDistanceToSectorWithWater() >= 0 && fOceanLevel && m_pTerrain->IsOceanVisible();
-
+    bool bOceanVisible = false;
+    if (OceanToggle::IsActive())
+    {
+        bOceanVisible = OceanRequest::OceanIsEnabled();
+    }
+    else
+    {
+        bOceanVisible = !Get3DEngine()->m_bShowTerrainSurface;
+        bOceanVisible |= m_pTerrain->GetDistanceToSectorWithWater() >= 0 && m_pTerrain->IsOceanVisible();
+    }
+    
     if (bOceanVisible && passInfo.RenderWaterOcean() && m_bOcean)
     {
         Vec3 vCamPos = passInfo.GetCamera().GetPosition();
         float fWaterPlaneSize = passInfo.GetCamera().GetFarPlane();
 
-        AABB boxOcean(Vec3(vCamPos.x - fWaterPlaneSize, vCamPos.y - fWaterPlaneSize, 0),
+        float fOceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetTerrain()->GetWaterLevel();
+
+        AABB boxOcean(Vec3(vCamPos.x - fWaterPlaneSize, vCamPos.y - fWaterPlaneSize, std::numeric_limits<float>::lowest()),
             Vec3(vCamPos.x + fWaterPlaneSize, vCamPos.y + fWaterPlaneSize, fOceanLevel + 0.5f));
 
         if ((!bOceanIsForcedByVisAreaFlags && passInfo.GetCamera().IsAABBVisible_EM(boxOcean)) ||
@@ -2104,11 +2135,6 @@ void C3DEngine::ProcessOcean(const SRenderingPassInfo& passInfo)
                 if ((GetOceanRenderFlags() & OCR_OCEANVOLUME_VISIBLE))
                 {
                     m_pTerrain->RenderOcean(passInfo);
-
-                    if (passInfo.RenderWaterWaves())
-                    {
-                        GetWaterWaveManager()->Update(passInfo);
-                    }
                 }
             }
         }
@@ -2198,7 +2224,14 @@ void C3DEngine::RenderSkyBox(_smart_ptr<IMaterial> pMat, const SRenderingPassInf
             pObj->m_II.m_Matrix = pObj->m_II.m_Matrix * Matrix33::CreateRotationZ(DEG2RAD(m_fSkyBoxAngle));
             pObj->m_fSort = fForceDrawLastSortOffset; // force sky to draw last
 
-            m_pRESky->m_fTerrainWaterLevel = max(0.0f, m_pTerrain->GetWaterLevel());
+            if (OceanToggle::IsActive())
+            {
+                m_pRESky->m_fTerrainWaterLevel = OceanRequest::GetOceanLevelOrDefault(-100000.0f);
+            }
+            else
+            {
+                m_pRESky->m_fTerrainWaterLevel = max(0.0f, m_pTerrain->GetWaterLevel());
+            }
             m_pRESky->m_fSkyBoxStretching = m_fSkyBoxStretching;
 
             SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
@@ -3430,7 +3463,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         DRAW_OBJ_STATS(eERType_Decal);
         DRAW_OBJ_STATS(eERType_ParticleEmitter);
         DRAW_OBJ_STATS(eERType_WaterVolume);
-        DRAW_OBJ_STATS(eERType_WaterWave);
         DRAW_OBJ_STATS(eERType_Road);
         DRAW_OBJ_STATS(eERType_DistanceCloud);
         DRAW_OBJ_STATS(eERType_VolumeObject);
@@ -3662,6 +3694,10 @@ void C3DEngine::ScreenShotHighRes(CStitchedImage* pStitchedImage, const int nRen
 {
 #if defined(WIN32) || defined(WIN64)
 
+    //If the requested format is TGA we want the framebuffer in BGR format; otherwise we want RGB
+    const char* szExtension = GetCVars()->e_ScreenShotFileFormat->GetString();
+    bool BGRA = (_stricmp(szExtension, "tga") == 0) ? true : false;
+
     // finish frame started by system
     GetRenderer()->EndFrame();
 
@@ -3703,10 +3739,10 @@ void C3DEngine::ScreenShotHighRes(CStitchedImage* pStitchedImage, const int nRen
             const float normalizedX = ((static_cast<f32>(reverseX) - halfTransitionSize) / sliceCountF);
             const float normalizedY = ((static_cast<f32>(reverseY) - halfTransitionSize) / sliceCountF);
 
-            GetRenderer()->SetRenderTile(
-                ScreenScale * normalizedX,
-                ScreenScale * normalizedY,
-                ScreenScale, ScreenScale);
+                GetRenderer()->SetRenderTile(
+                    ScreenScale * normalizedX,
+                    ScreenScale * normalizedY,
+                    ScreenScale, ScreenScale);
 
             UpdateRenderingCamera("ScreenShotHighRes", screenShotPassInfo);
 
@@ -3718,10 +3754,6 @@ void C3DEngine::ScreenShotHighRes(CStitchedImage* pStitchedImage, const int nRen
             GetRenderer()->EndFrame();
 
             PrintMessagePlus("reading frame buffer ... ");
-
-            //If the requested format is TGA we want the framebuffer in BGR format; otherwise we want RGB
-            const char* szExtension = GetCVars()->e_ScreenShotFileFormat->GetString();
-            bool BGRA = (_stricmp(szExtension, "tga") == 0) ? true : false;
 
             GetRenderer()->ReadFrameBufferFast(pImage, ScreenWidth, ScreenHeight, BGRA);
             pStitchedImage->RasterizeRect(pImage, ScreenWidth, ScreenHeight, x, y, fTransitionSize,
@@ -3830,6 +3862,10 @@ bool C3DEngine::ScreenShotPanorama(CStitchedImage* pStitchedImage, const int nRe
 {
 #if defined(WIN32) || defined(WIN64)
 
+    //If the requested format is TGA we want the framebuffer in BGR format; otherwise we want RGB
+    const char* szExtension = GetCVars()->e_ScreenShotFileFormat->GetString();
+    bool BGRA = (_stricmp(szExtension, "tga") == 0) ? true : false;
+
     // finish frame started by system
     GetRenderer()->EndFrame();
 
@@ -3884,7 +3920,7 @@ bool C3DEngine::ScreenShotPanorama(CStitchedImage* pStitchedImage, const int nRe
         // Make sure we've composited to the final back buffer.
         GetRenderer()->SwitchToNativeResolutionBackbuffer();
 
-        GetRenderer()->ReadFrameBufferFast(pImage, GetRenderer()->GetWidth(), GetRenderer()->GetHeight());
+        GetRenderer()->ReadFrameBufferFast(pImage, GetRenderer()->GetWidth(), GetRenderer()->GetHeight(), BGRA);
 
         GetRenderer()->EndFrame();                          // show last frame (from direction)
 

@@ -61,7 +61,6 @@ CPanelDisplayRender::CPanelDisplayRender(QWidget* pParent /*=nullptr*/)
     m_dbg_renderer_profile_shaders = FALSE;
     m_dbg_renderer_overdraw = FALSE;
     m_dbg_renderer_resources = FALSE;
-    m_dbg_budget_monitoring = FALSE;
     m_dbg_drawcalls = FALSE;
 
     m_boIsUpdatingValues = false;
@@ -100,7 +99,6 @@ CPanelDisplayRender::CPanelDisplayRender(QWidget* pParent /*=nullptr*/)
     connect(ui->GAME_TOKEN_DEBUGGER, &QCheckBox::clicked, this, &CPanelDisplayRender::OnChangeDebugFlag);
     connect(ui->DISPLAY_OVERDRAW, &QCheckBox::clicked, this, &CPanelDisplayRender::OnChangeDebugFlag);
     connect(ui->DISPLAY_RENDERERRESOURCES, &QCheckBox::clicked, this, &CPanelDisplayRender::OnChangeDebugFlag);
-    connect(ui->DISPLAY_BUDGET_MONITOR, &QCheckBox::clicked, this, &CPanelDisplayRender::OnChangeDebugFlag);
     connect(ui->DISPLAY_DRAWCALLS, &QCheckBox::clicked, this, &CPanelDisplayRender::OnChangeDebugFlag);
     connect(ui->HIGHLIGHT_BREAKABLE, &QCheckBox::clicked, this, &CPanelDisplayRender::OnChangeDebugFlag);
     connect(ui->HIGHLIGHT_MISSING_SURFACE_TYPE, &QCheckBox::clicked, this, &CPanelDisplayRender::OnChangeDebugFlag);
@@ -153,7 +151,6 @@ void CPanelDisplayRender::UpdateData(bool fromUi)
         m_dbg_renderer_profile_shaders = ui->DISPLAY_PROFILESHADERS->isChecked();
         m_dbg_renderer_overdraw = ui->DISPLAY_OVERDRAW->isChecked();
         m_dbg_renderer_resources = ui->DISPLAY_RENDERERRESOURCES->isChecked();
-        m_dbg_budget_monitoring = ui->DISPLAY_BUDGET_MONITOR->isChecked();
         m_dbg_drawcalls = ui->DISPLAY_DRAWCALLS->isChecked();
         m_dbg_highlight_breakable = ui->HIGHLIGHT_BREAKABLE->isChecked();
         m_dbg_highlight_missing_surface_type = ui->HIGHLIGHT_MISSING_SURFACE_TYPE->isChecked();
@@ -189,7 +186,6 @@ void CPanelDisplayRender::UpdateData(bool fromUi)
         ui->DISPLAY_PROFILESHADERS->setChecked(m_dbg_renderer_profile_shaders);
         ui->DISPLAY_OVERDRAW->setChecked(m_dbg_renderer_overdraw);
         ui->DISPLAY_RENDERERRESOURCES->setChecked(m_dbg_renderer_resources);
-        ui->DISPLAY_BUDGET_MONITOR->setChecked(m_dbg_budget_monitoring);
         ui->DISPLAY_DRAWCALLS->setChecked(m_dbg_drawcalls);
         ui->HIGHLIGHT_BREAKABLE->setChecked(m_dbg_highlight_breakable);
         ui->HIGHLIGHT_MISSING_SURFACE_TYPE->setChecked(m_dbg_highlight_missing_surface_type);
@@ -406,7 +402,6 @@ void CPanelDisplayRender::SetControls()
     {
         m_dbg_renderer_resources = (piVariable->GetIVal() == 1) ? TRUE : FALSE;
         m_dbg_drawcalls = (piVariable->GetIVal() == 6) ? TRUE : FALSE;
-        m_dbg_budget_monitoring = (piVariable->GetIVal() == 15) ? TRUE : FALSE;
     }
 
     piVariable = gEnv->pConsole->GetCVar("Profile");
@@ -938,7 +933,6 @@ void CPanelDisplayRender::OnDebugOptionChanged()
     {
         m_dbg_renderer_resources = (piVariable->GetIVal() == 1) ? TRUE : FALSE;
         m_dbg_drawcalls = (piVariable->GetIVal() == 6) ? TRUE : FALSE;
-        m_dbg_budget_monitoring = (piVariable->GetIVal() == 15) ? TRUE : FALSE;
     }
 
     piVariable = gEnv->pConsole->GetCVar("Profile");
@@ -1012,11 +1006,6 @@ void CPanelDisplayRender::UpdateDebugOptions()
         if (m_dbg_drawcalls)
         {
             piVariable->Set(6);
-        }
-        else
-        if (m_dbg_budget_monitoring)
-        {
-            piVariable->Set(15);
         }
         else
         {

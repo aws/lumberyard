@@ -1629,8 +1629,8 @@ namespace EMotionFX
         SetFlag(BOOL_ISOWNEDBYRUNTIME, isOwnedByRuntime);
 #endif
     }
-    
-    
+
+
     bool MotionInstance::GetIsOwnedByRuntime() const
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
@@ -1787,14 +1787,19 @@ namespace EMotionFX
         TransformData* transformData = mActorInstance->GetTransformData();
         const Pose* bindPose = transformData->GetBindPose();
         MCore::Quaternion permBindPoseRotDiff = firstFrameTransform.mRotation * bindPose->GetLocalTransform(motionExtractionNodeIndex).mRotation.Conjugated();
-        MCore::Vector3 permBindPosePosDiff = bindPose->GetLocalTransform(motionExtractionNodeIndex).mPosition - firstFrameTransform.mPosition;
+        AZ::Vector3 permBindPosePosDiff = bindPose->GetLocalTransform(motionExtractionNodeIndex).mPosition - firstFrameTransform.mPosition;
         permBindPoseRotDiff.x = 0.0f;
         permBindPoseRotDiff.y = 0.0f;
         permBindPoseRotDiff.Normalize();
 
+        if (!(mMotion->GetMotionExtractionFlags() & MOTIONEXTRACT_CAPTURE_Z))
+        {
+            permBindPosePosDiff.SetZ(0.0f);
+        }
+
         // If this is the first frame's motion extraction switch turn that flag off.
         MCore::Quaternion bindPoseRotDiff(0.0f, 0.0f, 0.0f, 1.0f);
-        MCore::Vector3 bindPosePosDiff(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 bindPosePosDiff(0.0f, 0.0f, 0.0f);
         if (mBoolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
         {
             bindPoseRotDiff = permBindPoseRotDiff;
@@ -1802,7 +1807,7 @@ namespace EMotionFX
         }
 
         // Capture rotation around the up axis only.
-        trajectoryDelta.ApplyMotionExtractionFlags( mMotion->GetMotionExtractionFlags() );
+        trajectoryDelta.ApplyMotionExtractionFlags(mMotion->GetMotionExtractionFlags());
 
         MCore::Quaternion removeRot = currentFrameTransform.mRotation * firstFrameTransform.mRotation.Conjugated();
         removeRot.x = 0.0f;
@@ -1814,7 +1819,7 @@ namespace EMotionFX
         rotation.y = 0.0f;
         rotation.Normalize();
 
-        MCore::Vector3 rotatedPos = rotation * trajectoryDelta.mPosition;
+        AZ::Vector3 rotatedPos = rotation * (trajectoryDelta.mPosition - bindPosePosDiff);
 
         // Calculate the real trajectory delta, taking into account the actor instance rotation.
         outTrajectoryDelta.mPosition = mActorInstance->GetLocalRotation() * rotatedPos;

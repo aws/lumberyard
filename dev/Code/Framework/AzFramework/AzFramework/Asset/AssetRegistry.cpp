@@ -83,11 +83,17 @@ namespace AzFramework
                 ->Field("sizeBytes", &AZ::Data::AssetInfo::m_sizeBytes)
                 ->Field("assetType", &AZ::Data::AssetInfo::m_assetType);
 
+            serializeContext->Class<AZ::Data::ProductDependency>()
+                ->Version(1)
+                ->Field("assetId", &AZ::Data::ProductDependency::m_assetId)
+                ->Field("flags", &AZ::Data::ProductDependency::m_flags);
+
             serializeContext->Class<AssetRegistry>()
-                ->Version(4)
+                ->Version(5)
                 ->Field("m_assetIdToInfo", &AssetRegistry::m_assetIdToInfo)
                 ->Field("m_assetPathToIdMap", &AssetRegistry::m_assetPathToId)
-                ->Field("m_legacyAssetIdToRealAssetId", &AssetRegistry::m_legacyAssetIdToRealAssetId);
+                ->Field("m_legacyAssetIdToRealAssetId", &AssetRegistry::m_legacyAssetIdToRealAssetId)
+                ->Field("m_assetDependencies", &AssetRegistry::m_assetDependencies);
             // note that the above m_assetPathToIdMap used to be called m_assetPathToId in prior serialization
             // and m_assetPathToIdByUUID prior to that, so do not rename it to those more obvious fields in the future.
         }
@@ -137,6 +143,7 @@ namespace AzFramework
         }
         
         m_assetIdToInfo.erase(id);
+        m_assetDependencies.erase(id);
     }
 
     void AssetRegistry::RegisterLegacyAssetMapping(const AZ::Data::AssetId& legacyId, const AZ::Data::AssetId& newId)
@@ -149,7 +156,17 @@ namespace AzFramework
         m_legacyAssetIdToRealAssetId.erase(legacyId);
     }
 
-    AZ::Data::AssetId AssetRegistry::GetAssetIdByLegacyAssetId(const AZ::Data::AssetId& legacyAssetId)
+    void AssetRegistry::SetAssetDependencies(AZ::Data::AssetId id, const AZStd::vector<AZ::Data::ProductDependency>& dependencies)
+    {
+        m_assetDependencies[id] = dependencies;
+    }
+
+    void AssetRegistry::RegisterAssetDependency(AZ::Data::AssetId id, const AZ::Data::ProductDependency& dependency)
+    {
+        m_assetDependencies[id].push_back(dependency);
+    }
+
+    AZ::Data::AssetId AssetRegistry::GetAssetIdByLegacyAssetId(const AZ::Data::AssetId& legacyAssetId) const
     {
         auto found = m_legacyAssetIdToRealAssetId.find(legacyAssetId);
         if (found != m_legacyAssetIdToRealAssetId.end())

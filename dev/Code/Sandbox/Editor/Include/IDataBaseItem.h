@@ -15,6 +15,7 @@
 #define CRYINCLUDE_EDITOR_INCLUDE_IDATABASEITEM_H
 #pragma once
 
+#include <qwindowdefs.h>
 #include <IEditor.h>
 
 struct IDataBaseLibrary;
@@ -83,7 +84,7 @@ struct IDataBaseItem
     //! Generate new unique id for this item.
     virtual void GenerateId() = 0;
     //! Returns GUID of this material.
-    virtual REFGUID GetGUID() const = 0;
+    virtual const GUID& GetGUID() const = 0;
 
     //! Validate item for errors.
     virtual void Validate() {};

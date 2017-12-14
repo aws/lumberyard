@@ -13,7 +13,6 @@
 #pragma once
 
 #include <QWidget>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Component/EntityId.h>
 #include <Debugger/Bus.h>
 #include <AzCore/Asset/AssetCommon.h>
@@ -36,19 +35,18 @@ namespace ScriptCanvasEditor
 {
     namespace Widget
     {
-        class CanvasWidget 
+        class CanvasWidget
             : public QWidget
             , ScriptCanvas::Debugger::NotificationBus::Handler
         {
             Q_OBJECT
         public:
             AZ_CLASS_ALLOCATOR(CanvasWidget, AZ::SystemAllocator, 0);
-            CanvasWidget(const AZ::Data::AssetId& assetId, const AZ::EntityId& graphId, QWidget* parent = nullptr);
+            CanvasWidget(QWidget* parent = nullptr);
             ~CanvasWidget() override;
 
             void ShowScene(const AZ::EntityId& sceneId);
             const GraphCanvas::ViewId& GetViewId() const;
-            void SetGraphId(const AZ::EntityId& graphId) { m_graphId = graphId; }
 
         protected:
 
@@ -57,9 +55,6 @@ namespace ScriptCanvasEditor
             bool m_attached;
 
             void SetupGraphicsView();
-            
-            AZ::Data::AssetId m_assetId;
-            AZ::EntityId m_graphId;
 
             AZStd::unique_ptr<Ui::CanvasWidget> ui;
 

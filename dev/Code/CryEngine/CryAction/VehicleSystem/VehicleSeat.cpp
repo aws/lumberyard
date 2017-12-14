@@ -25,7 +25,6 @@
 #include "IGameRulesSystem.h"
 #include "PersistentDebug.h"
 #include "CryActionCVars.h"
-#include <IMusicSystem.h>
 
 #include "VehicleSeat.h"
 #include "VehicleSeatGroup.h"
@@ -880,9 +879,6 @@ bool CVehicleSeat::SitDown()
             params.bValue = true;
             pMovement->OnEvent(IVehicleMovement::eVME_PlayerEnterLeaveVehicle, params);
         }
-
-        // Send an event to MusicLogic
-        gEnv->pMusicSystem->GetMusicLogic()->SetEvent(Audio::eMUSICLOGICEVENT_VEHICLE_ENTER, 0.0f);
     }
 
     UpdatePassengerLocalTM(pActor);
@@ -1095,9 +1091,6 @@ bool CVehicleSeat::Exit(bool isTransitionEnabled, bool force /*=false*/, Vec3 ex
             params.bValue = false;
             pMovement->OnEvent(IVehicleMovement::eVME_PlayerEnterLeaveVehicle, params);
         }
-
-        // Send an event to MusicLogic
-        gEnv->pMusicSystem->GetMusicLogic()->SetEvent(Audio::eMUSICLOGICEVENT_VEHICLE_LEAVE, 0.0f);
     }
 
     if (!pActor)

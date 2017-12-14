@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
 #include <ATLEntities.h>
 #include <IStreamEngine.h>
 
@@ -37,7 +39,7 @@ namespace Audio
         : public IStreamCallback
     {
     public:
-        explicit CFileCacheManager(TATLPreloadRequestLookup& rPreloadRequests);
+        explicit CFileCacheManager(TATLPreloadRequestLookup& preloadRequests);
         ~CFileCacheManager() override;
 
         CFileCacheManager(const CFileCacheManager&) = delete;           // Copy protection
@@ -47,41 +49,44 @@ namespace Audio
         void Initialize();
         void Release();
         void Update();
-        TAudioFileEntryID TryAddFileCacheEntry(const XmlNodeRef pFileNode, const EATLDataScope eDataScope, const bool bAutoLoad);
-        bool TryRemoveFileCacheEntry(const TAudioFileEntryID nAudioFileID, const EATLDataScope eDataScope);
+        TAudioFileEntryID TryAddFileCacheEntry(const XmlNodeRef fileXmlNode, const EATLDataScope dataScope, const bool autoLoad);
+        bool TryRemoveFileCacheEntry(const TAudioFileEntryID audioFileID, const EATLDataScope dataScope);
         void UpdateLocalizedFileCacheEntries();
-        void DrawDebugInfo(IRenderAuxGeom& auxGeom, const float fPosX, const float fPosY);
 
-        EAudioRequestStatus TryLoadRequest(const TAudioPreloadRequestID nPreloadRequestID, const bool bLoadSynchronously, const bool bAutoLoadOnly);
-        EAudioRequestStatus TryUnloadRequest(const TAudioPreloadRequestID nPreloadRequestID);
-        EAudioRequestStatus UnloadDataByScope(const EATLDataScope eDataScope);
+        EAudioRequestStatus TryLoadRequest(const TAudioPreloadRequestID preloadRequestID, const bool loadSynchronously, const bool autoLoadOnly);
+        EAudioRequestStatus TryUnloadRequest(const TAudioPreloadRequestID preloadRequestID);
+        EAudioRequestStatus UnloadDataByScope(const EATLDataScope dataScope);
+
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        void DrawDebugInfo(IRenderAuxGeom& auxGeom, const float posX, const float posY);
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
     private:
         // Internal type definitions.
         using TAudioFileEntries = ATLMapLookupType<TAudioFileEntryID, CATLAudioFileEntry*>;
 
         // IStreamCallback
-        void StreamAsyncOnComplete(IReadStream* pStream, unsigned int nError) override;
-        void StreamOnComplete(IReadStream* pStream, unsigned int nError) override {}
+        void StreamAsyncOnComplete(IReadStream* readStream, unsigned int error) override;
+        void StreamOnComplete(IReadStream* readStream, unsigned int error) override {}
         // ~IStreamCallback
 
         // Internal methods
-        void AllocateHeap(const size_t nSize, const char* const sUsage);
-        bool UncacheFileCacheEntryInternal(CATLAudioFileEntry* const pAudioFileEntry, const bool bNow, const bool bIgnoreUsedCount = false);
-        bool DoesRequestFitInternal(const size_t nRequestSize);
-        bool FinishStreamInternal(const IReadStreamPtr pStream, const unsigned int nError);
-        bool AllocateMemoryBlockInternal(CATLAudioFileEntry* const __restrict pAudioFileEntry);
-        void UncacheFile(CATLAudioFileEntry* const pAudioFileEntry);
+        void AllocateHeap(const size_t size, const char* const usage);
+        bool UncacheFileCacheEntryInternal(CATLAudioFileEntry* const audioFileEntry, const bool now, const bool ignoreUsedCount = false);
+        bool DoesRequestFitInternal(const size_t requestSize);
+        bool FinishStreamInternal(const IReadStreamPtr readStream, const unsigned int error);
+        bool AllocateMemoryBlockInternal(CATLAudioFileEntry* const __restrict audioFileEntry);
+        void UncacheFile(CATLAudioFileEntry* const audioFileEntry);
         void TryToUncacheFiles();
-        void UpdateLocalizedFileEntryData(CATLAudioFileEntry* const pAudioFileEntry);
-        bool TryCacheFileCacheEntryInternal(CATLAudioFileEntry* const pAudioFileEntry, const TAudioFileEntryID nFileID, const bool bLoadSynchronously, const bool bOverrideUseCount = false, const size_t nUseCount = 0);
+        void UpdateLocalizedFileEntryData(CATLAudioFileEntry* const audioFileEntry);
+        bool TryCacheFileCacheEntryInternal(CATLAudioFileEntry* const audioFileEntry, const TAudioFileEntryID fileID, const bool loadSynchronously, const bool overrideUseCount = false, const size_t useCount = 0);
 
         // Internal members
-        TATLPreloadRequestLookup& m_rPreloadRequests;
-        TAudioFileEntries m_cAudioFileEntries;
+        TATLPreloadRequestLookup& m_preloadRequests;
+        TAudioFileEntries m_audioFileEntries;
 
-        _smart_ptr<CCustomMemoryHeap> m_pMemoryHeap;
-        size_t m_nCurrentByteTotal;
-        size_t m_nMaxByteTotal;
+        AZStd::unique_ptr<CCustomMemoryHeap> m_memoryHeap;
+        size_t m_currentByteTotal;
+        size_t m_maxByteTotal;
     };
 } // namespace Audio

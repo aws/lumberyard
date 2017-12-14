@@ -34,7 +34,9 @@ namespace AzFramework
             NegotiationInfo_BranchIndentifier,
         };
 
-        const unsigned int NEGOTIATION_SERIAL = 0xffffffff;
+        const unsigned int DEFAULT_SERIAL = 0;
+        const unsigned int NEGOTIATION_SERIAL = 0x0fffffff;
+        const unsigned int RESPONSE_SERIAL_FLAG = (1U << 31);
 
         //This enum should have the list of all asset system errors
         enum AssetSystemErrors

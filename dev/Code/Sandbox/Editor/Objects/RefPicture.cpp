@@ -304,9 +304,11 @@ void CRefPicture::UpdateImage(const QString& picturePath)
         return;
     }
 
-    SShaderItem& si(m_pMaterial->GetShaderItem());
-    SInputShaderResources isr(si.m_pShaderResources);
-    isr.m_Textures[ EFTT_DIFFUSE ].m_Name = picturePath.toLatin1().data();
+    SShaderItem&            si(m_pMaterial->GetShaderItem());
+    SInputShaderResources   isr(si.m_pShaderResources);
+
+    // The following will create the diffuse slot if did not exist
+    isr.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = picturePath.toLatin1().data();
 
     SShaderItem siDst(GetIEditor()->GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask()));
     m_pMaterial->AssignShaderItem(siDst);

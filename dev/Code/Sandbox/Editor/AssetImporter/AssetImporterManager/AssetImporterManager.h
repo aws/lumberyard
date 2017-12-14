@@ -15,6 +15,7 @@
 #include <AssetImporter/UI/SelectDestinationDialog.h>
 
 class QStringList;
+class QFile;
 
 enum class ImportFilesMethod
 {

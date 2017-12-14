@@ -15,6 +15,7 @@
 #include <QFont>
 #include <QGraphicsItem>
 #include <QPainter>
+#include <qwidget.h>
 
 #include <AzCore/Serialization/EditContext.h>
 
@@ -34,12 +35,27 @@ namespace GraphCanvas
         , m_defaultAlignment(Qt::AlignVCenter | Qt::AlignHCenter)
         , m_elide(true)
         , m_wrap(false)
-        , m_maximumSize(0,0)
+        , m_maximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)
         , m_minimumSize(0,0)
+        , m_wrapMode(WrapMode::MaximumWidth)
     {
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         setGraphicsItem(this);
         setFlag(ItemIsMovable, false);
+    }
+
+    void GraphCanvasLabel::SetFontColor(const QColor& color)
+    {
+        m_styleHelper.AddAttributeOverride(Styling::Attribute::Color, color);
+
+        update();
+    }
+
+    void GraphCanvasLabel::ClearFontColor()
+    {
+        m_styleHelper.RemoveAttributeOverride(Styling::Attribute::Color);
+
+        update();
     }
 
     void GraphCanvasLabel::SetLabel(const AZStd::string& label, const AZStd::string& translationContext, const AZStd::string& translationKey)
@@ -83,10 +99,25 @@ namespace GraphCanvas
         update();
     }
 
+    void GraphCanvasLabel::SetWrapMode(WrapMode wrapMode)
+    {
+        if (m_wrapMode != wrapMode)
+        {
+            m_wrapMode = wrapMode;
+
+            UpdateDesiredBounds();
+            UpdateDisplayText();
+            RefreshDisplay();
+        }
+    }
+
+    QRectF GraphCanvasLabel::GetDisplayedSize() const
+    {
+        return m_displayedSize;
+    }
+
     void GraphCanvasLabel::SetElide(bool elide)
     {
-        AZ_Warning("GraphCanvasLabel", !(elide && m_wrap), "GraphCanvasLabel doesn't support eliding text and word wrapping at the same time.");
-
         if (m_elide != elide)
         {
             m_elide = elide;
@@ -96,8 +127,6 @@ namespace GraphCanvas
 
     void GraphCanvasLabel::SetWrap(bool wrap)
     {
-        AZ_Warning("GraphCanvasLabel", !(m_elide && wrap), "GraphCanvasLabel doesn't support eliding text and word wrapping at the same time.");
-
         if (m_wrap != wrap)
         {
             m_wrap = wrap;
@@ -133,28 +162,32 @@ namespace GraphCanvas
 
     void GraphCanvasLabel::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget /*= nullptr*/)
     {
+        AZ_Warning("GraphCanvasLabel", !(m_elide && m_wrap), "GraphCanvasLabel doesn't support eliding text and word wrapping at the same time.");
+
         painter->save();
 
         // Background
         {
             qreal borderRadius = m_styleHelper.GetAttribute(Styling::Attribute::BorderRadius, 0);
 
+            m_displayedSize = boundingRect();
+
             if (borderRadius == 0)
             {
-                painter->fillRect(boundingRect(), m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
+                painter->fillRect(m_displayedSize, m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
 
                 if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth))
                 {
                     QPen restorePen = painter->pen();
                     painter->setPen(m_styleHelper.GetBorder());
-                    painter->drawRect(boundingRect());
+                    painter->drawRect(m_displayedSize);
                     painter->setPen(restorePen);
                 }
             }
             else
             {
                 QPainterPath path;
-                path.addRoundedRect(boundingRect(), borderRadius, borderRadius);
+                path.addRoundedRect(m_displayedSize, borderRadius, borderRadius);
                 painter->fillPath(path, m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
 
                 if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth))
@@ -172,7 +205,7 @@ namespace GraphCanvas
         {
             qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 2.0f);
 
-            QRectF innerBounds = boundingRect();
+            QRectF innerBounds = m_displayedSize;
             innerBounds = innerBounds.adjusted(padding, padding, -padding, -padding);
 
             painter->setPen(m_styleHelper.GetColor(Styling::Attribute::Color));
@@ -204,20 +237,16 @@ namespace GraphCanvas
         switch (which)
         {
         case Qt::MinimumSize:
-            return m_minimumSize;            
+            return m_minimumSize;
         case Qt::PreferredSize:
             return m_desiredBounds.size();
         case Qt::MaximumSize:
             return m_maximumSize;
-        case Qt::MinimumDescent:
-            //         {
-            //             QFont FONT = QFont();
-            //             QFontMetricsF metrics(FONT);
-            //             return{ 0, qMin(constraint.height(), metrics.descent()) };
-            //         }
         default:
-            return QSizeF();
+            return QGraphicsWidget::sizeHint(which, constraint);
         }
+
+        return QGraphicsWidget::sizeHint(which, constraint);
     }
 
     void GraphCanvasLabel::UpdateDisplayText()
@@ -230,7 +259,22 @@ namespace GraphCanvas
 
         if (m_elide)
         {
-            m_displayText = metrics.elidedText(m_labelText, Qt::ElideRight, innerBounds.width());
+            QStringList newlines = m_labelText.split('\n');
+
+            m_displayText.clear();
+
+            bool needsNewline = false;
+
+            for (const QString& currentLine : newlines)
+            {
+                if (needsNewline)
+                {
+                    m_displayText.append('\n');
+                }
+
+                m_displayText = m_displayText.append(metrics.elidedText(currentLine, Qt::TextElideMode::ElideRight, innerBounds.width()));
+                needsNewline = true;
+            }
         }
         else
         {
@@ -250,7 +294,18 @@ namespace GraphCanvas
             flags = flags | Qt::TextWordWrap;
         }
 
-        QRectF maxInnerBounds(rect().topLeft(), maximumSize());
+        flags = flags & ~Qt::TextSingleLine;
+
+        m_maximumSize = m_styleHelper.GetMaximumSize();
+
+        QSizeF sizeClamp = maximumSize();
+
+        if (m_wrapMode == WrapMode::BoundingWidth)
+        {
+            sizeClamp.setWidth(boundingRect().size().width());
+        }
+
+        QRectF maxInnerBounds(rect().topLeft(), sizeClamp);
         maxInnerBounds = maxInnerBounds.adjusted(padding, padding, -padding, -padding);
 
         // Horizontal Padding:
@@ -265,8 +320,7 @@ namespace GraphCanvas
         // Seem so be an off by 1 error here. So adding one in each direction to my desired size to stop text from being clipped.
         m_desiredBounds.adjust(-1.0, -1.0, 1.0, 1.0);
 
-        m_minimumSize = m_styleHelper.GetMinimumSize(m_desiredBounds.size());
-        m_maximumSize = m_styleHelper.GetMaximumSize();
+        m_minimumSize = m_styleHelper.GetMinimumSize(m_desiredBounds.size());        
 
         adjustSize();
     }

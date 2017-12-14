@@ -6,5 +6,6 @@
     "Tags": ["Weather", "Weather Effects"],
     "Uuid": "8827e54450f040dbaed1776ba4b35b43",
     "Version": "0.1.0",
-    "IconPath": "preview.png"
+    "IconPath": "preview.png",
+    "EditorModule": true
 }

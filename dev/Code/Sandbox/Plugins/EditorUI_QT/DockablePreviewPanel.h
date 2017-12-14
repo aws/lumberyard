@@ -19,6 +19,7 @@ class CPreviewWindowView;
 class QMenu;
 struct SLodInfo;
 class QShortcut;
+class CBaseLibraryItem;
 
 class EDITOR_QT_UI_API DockablePreviewPanel
     : public FloatableDockPanel

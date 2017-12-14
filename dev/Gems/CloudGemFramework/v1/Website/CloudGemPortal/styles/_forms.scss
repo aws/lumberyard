@@ -103,14 +103,17 @@ button:focus {
 	transform: scale(1);
 }
 /* disabled checkbox */
-[type="checkbox"]:disabled:not(:checked) + label:before,
 [type="checkbox"]:disabled:checked + label:before {
 	box-shadow: none;
-	border-color: $primary-color;
-	background-color: $primary-color;
+	border-color: $light-gray;
+	background-color: $lighter-gray;
+}
+[type="checkbox"]:disabled:not(:checked) + label:before {
+    border-color: $light-gray;
+	background-color: $white;
 }
 [type="checkbox"]:disabled:checked + label:after {
-	color: $primary-color;
+	color: $white;
 }
 [type="checkbox"]:disabled + label {
 	color: $primary-color;

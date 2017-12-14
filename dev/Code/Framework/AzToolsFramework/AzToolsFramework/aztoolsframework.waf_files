@@ -5,25 +5,14 @@
             "stdafx.h",
             "stdafx.cpp"
         ],
-        "UI/AssetEditor": [
-            "UI/AssetEditor/AssetEditorWidget.hxx",
-            "UI/AssetEditor/AssetEditorWidget.cpp"
+        "AssetEditor": [
+            "AssetEditor/AssetEditorBus.h",
+            "AssetEditor/AssetEditorWidget.cpp",
+            "AssetEditor/AssetEditorWidget.h"
         ],
         "UI/Logging": [
             "UI/Logging/LogLine.h",
             "UI/Logging/LogLine.cpp"
-        ],
-        "UI/Outliner" : [
-            "UI/Outliner/OutlinerTreeView.hxx",
-            "UI/Outliner/OutlinerTreeView.cpp",
-            "UI/Outliner/OutlinerWidget.hxx",
-            "UI/Outliner/OutlinerWidget.cpp",
-            "UI/Outliner/OutlinerCacheBus.h",
-            "UI/Outliner/OutlinerListModel.hxx",
-            "UI/Outliner/OutlinerListModel.cpp",
-            "UI/Outliner/OutlinerSortFilterProxyModel.hxx",
-            "UI/Outliner/OutlinerSortFilterProxyModel.cpp",
-            "UI/Outliner/OutlinerWidget.ui"
         ],
         "UI/PropertyEditor/Resources": [
             "UI/PropertyEditor/Resources/Icons.qrc"
@@ -45,7 +34,9 @@
             "API/AssetDatabaseBus.h",
             "API/ComponentEntityObjectBus.h",
             "API/EditorCameraBus.h",
+            "API/EditorVegetationRequestsBus.h",
             "API/EntityCompositionRequestBus.h",
+            "API/EntityCompositionNotificationBus.h",
             "API/ViewPaneOptions.h"
         ],
         "Application": [
@@ -74,17 +65,21 @@
             "AssetBrowser/AssetBrowserEntry.cpp",
             "AssetBrowser/AssetBrowserEntry.h",
             "AssetBrowser/AssetBrowserEntry.inl",
-            "AssetBrowser/AssetBrowserModel.cpp",
-            "AssetBrowser/AssetBrowserModel.h",
-            "AssetBrowser/AssetBrowserTreeView.cpp",
-            "AssetBrowser/AssetBrowserTreeView.h",
-            "AssetBrowser/AssetEntryChangeset.cpp",
-            "AssetBrowser/AssetEntryChangeset.h",
             "AssetBrowser/AssetBrowserFilterModel.cpp",
             "AssetBrowser/AssetBrowserFilterModel.h",
+            "AssetBrowser/AssetBrowserModel.cpp",
+            "AssetBrowser/AssetBrowserModel.h",
+            "AssetBrowser/AssetEntryChangeset.cpp",
+            "AssetBrowser/AssetEntryChangeset.h",
             "AssetBrowser/AssetSelectionModel.cpp",
             "AssetBrowser/AssetSelectionModel.h",
             "AssetBrowser/EBusFindAssetTypeByName.h"
+        ],
+        "AssetBrowser/Views": [
+            "AssetBrowser/Views/AssetBrowserTreeView.cpp",
+            "AssetBrowser/Views/AssetBrowserTreeView.h",
+            "AssetBrowser/Views/EntryDelegate.cpp",
+            "AssetBrowser/Views/EntryDelegate.h"
         ],
         "AssetBrowser/Search": [
             "AssetBrowser/Search/Filter.cpp",
@@ -103,6 +98,17 @@
             "AssetBrowser/Search/SearchWidget.h",
             "AssetBrowser/Search/SearchWidget.ui"
         ],
+        "AssetBrowser/Internal": [
+            "AssetBrowser/AssetBrowserEntryCache.cpp",
+            "AssetBrowser/AssetBrowserEntryCache.h"
+        ],
+        "MaterialBrowser": [
+            "MaterialBrowser/MaterialBrowserBus.h",
+            "MaterialBrowser/MaterialBrowserComponent.cpp",
+            "MaterialBrowser/MaterialBrowserComponent.h",
+            "MaterialBrowser/MaterialThumbnail.cpp",
+            "MaterialBrowser/MaterialThumbnail.h"
+        ],
         "Thumbnails": [
             "Thumbnails/ThumbnailerComponent.cpp",
             "Thumbnails/ThumbnailerComponent.h",
@@ -110,6 +116,9 @@
             "Thumbnails/LoadingThumbnail.h",
             "Thumbnails/MissingThumbnail.cpp",
             "Thumbnails/MissingThumbnail.h",
+            "Thumbnails/SourceControlThumbnail.cpp",
+            "Thumbnails/SourceControlThumbnail.h",
+            "Thumbnails/SourceControlThumbnailBus.h",
             "Thumbnails/ProductThumbnail.cpp",
             "Thumbnails/ProductThumbnail.h",
             "Thumbnails/Thumbnail.cpp",
@@ -117,8 +126,6 @@
             "Thumbnails/Thumbnail.inl",
             "Thumbnails/ThumbnailContext.cpp",
             "Thumbnails/ThumbnailContext.h",
-            "Thumbnails/ThumbnailDelegate.cpp",
-            "Thumbnails/ThumbnailDelegate.h",
             "Thumbnails/ThumbnailerBus.h",
             "Thumbnails/ThumbnailWidget.cpp",
             "Thumbnails/ThumbnailWidget.h"
@@ -180,13 +187,29 @@
             "Manipulators/AngularManipulator.h",
             "Manipulators/BaseManipulator.cpp",
             "Manipulators/BaseManipulator.h",
+            "Manipulators/EditorVertexSelection.h",
+            "Manipulators/EditorVertexSelection.cpp",
+            "Manipulators/HoverSelection.h",
+            "Manipulators/HoverSelection.cpp",
+            "Manipulators/LineSegmentSelectionManipulator.cpp",
+            "Manipulators/LineSegmentSelectionManipulator.h",
             "Manipulators/LinearManipulator.cpp",
             "Manipulators/LinearManipulator.h",
             "Manipulators/ManipulatorBus.h",
             "Manipulators/ManipulatorManager.cpp",
             "Manipulators/ManipulatorManager.h",
+            "Manipulators/ManipulatorView.cpp",
+            "Manipulators/ManipulatorView.h",
+            "Manipulators/ManipulatorSnapping.cpp",
+            "Manipulators/ManipulatorSnapping.h",
+            "Manipulators/SurfaceManipulator.cpp",
+            "Manipulators/SurfaceManipulator.h",
             "Manipulators/PlanarManipulator.cpp",
             "Manipulators/PlanarManipulator.h",
+            "Manipulators/SelectionManipulator.cpp",
+            "Manipulators/SelectionManipulator.h",
+            "Manipulators/SplineSelectionManipulator.h",
+            "Manipulators/SplineSelectionManipulator.cpp",
             "Manipulators/TransformManipulator.cpp",
             "Manipulators/TransformManipulator.h",
             "Manipulators/TranslationManipulator.cpp",
@@ -221,14 +244,18 @@
             "Slice/SliceUtilities.cpp",
             "Slice/SliceTransaction.cpp",
             "Slice/SliceTransaction.h",
+            "Slice/SliceDependencyBrowserComponent.h",
+            "Slice/SliceDependencyBrowserComponent.cpp",
+            "Slice/SliceDependencyBrowserBus.h",
+            "Slice/SliceRelationshipNode.h",
+            "Slice/SliceRelationshipNode.cpp",
             "Slice/SliceMetadataEntityContextBus.h",
             "Slice/SliceMetadataEntityContextComponent.h",
             "Slice/SliceMetadataEntityContextComponent.cpp"
         ],
-
         "SourceControl": [
-            "SourceControl/NullSCComponent.cpp",
-            "SourceControl/NullSCComponent.h",
+            "SourceControl/LocalFileSCComponent.cpp",
+            "SourceControl/LocalFileSCComponent.h",
             "SourceControl/PerforceComponent.cpp",
             "SourceControl/PerforceComponent.h",
             "SourceControl/QtSourceControlNotificationHandler.cpp",
@@ -282,7 +309,10 @@
             "ToolsComponents/TransformComponent.cpp",
             "ToolsComponents/TransformComponentBus.h",
             "ToolsComponents/ScriptEditorComponent.cpp",
-            "ToolsComponents/ScriptEditorComponent.h"
+            "ToolsComponents/ScriptEditorComponent.h",
+            "ToolsComponents/ToolsAssetCatalogComponent.cpp",
+            "ToolsComponents/ToolsAssetCatalogComponent.h",
+            "ToolsComponents/ToolsAssetCatalogBus.h"
         ],
         "ToolsMessaging": [
             "ToolsMessaging/EntityHighlightBus.h"
@@ -342,6 +372,8 @@
             "UI/PropertyEditor/PropertyBoolCheckBoxCtrl.cpp",
             "UI/PropertyEditor/PropertyBoolComboBoxCtrl.hxx",
             "UI/PropertyEditor/PropertyBoolComboBoxCtrl.cpp",
+            "UI/PropertyEditor/PropertyBoolRadioButtonsCtrl.hxx",
+            "UI/PropertyEditor/PropertyBoolRadioButtonsCtrl.cpp",
             "UI/PropertyEditor/PropertyButtonCtrl.hxx",
             "UI/PropertyEditor/PropertyButtonCtrl.cpp",
             "UI/PropertyEditor/PropertyColorCtrl.hxx",
@@ -386,7 +418,9 @@
         ],
         "UI/Slice": [
             "UI/Slice/SlicePushWidget.cpp",
-            "UI/Slice/SlicePushWidget.hxx"
+            "UI/Slice/SlicePushWidget.hxx",
+            "UI/Slice/SliceRelationshipWidget.cpp",
+            "UI/Slice/SliceRelationshipWidget.hxx"
         ],
         "UI/UICore": [
             "UI/UICore/AspectRatioAwarePixmapWidget.hxx",

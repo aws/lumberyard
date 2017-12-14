@@ -10,7 +10,7 @@
 *
 */
 
-#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_win_common.inl>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_win_common.inl>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -59,7 +59,7 @@ namespace EMotionFX
                 serializeContext->Class<ParameterDefaults>()
                     ->Version(1)
                     ->Field("Parameters", &ParameterDefaults::m_parameters)
-                    ;
+                ;
             }
         }
 
@@ -74,7 +74,7 @@ namespace EMotionFX
                     ->Field("AnimGraphAsset", &Configuration::m_animGraphAsset)
                     ->Field("MotionSetAsset", &Configuration::m_motionSetAsset)
                     ->Field("ParameterDefaults", &Configuration::m_parameterDefaults)
-                    ;
+                ;
             }
         }
 
@@ -90,7 +90,7 @@ namespace EMotionFX
                 serializeContext->Class<AnimGraphComponent, AZ::Component>()
                     ->Version(1)
                     ->Field("Configuration", &AnimGraphComponent::m_configuration)
-                    ;
+                ;
             }
 
             auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
@@ -100,9 +100,9 @@ namespace EMotionFX
 
                 behaviorContext->EBus<AnimGraphComponentRequestBus>("AnimGraphComponentRequestBus")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                    // General API
+                // General API
                     ->Event("FindParameterIndex", &AnimGraphComponentRequestBus::Events::FindParameterIndex)
-                    // Parameter setters
+                // Parameter setters
                     ->Event("SetParameterFloat", &AnimGraphComponentRequestBus::Events::SetParameterFloat)
                     ->Event("SetParameterBool", &AnimGraphComponentRequestBus::Events::SetParameterBool)
                     ->Event("SetParameterString", &AnimGraphComponentRequestBus::Events::SetParameterString)
@@ -117,7 +117,7 @@ namespace EMotionFX
                     ->Event("SetNamedParameterVector3", &AnimGraphComponentRequestBus::Events::SetNamedParameterVector3)
                     ->Event("SetNamedParameterRotationEuler", &AnimGraphComponentRequestBus::Events::SetNamedParameterRotationEuler)
                     ->Event("SetNamedParameterRotation", &AnimGraphComponentRequestBus::Events::SetNamedParameterRotation)
-                    // Parameter getters
+                // Parameter getters
                     ->Event("GetParameterFloat", &AnimGraphComponentRequestBus::Events::GetParameterFloat)
                     ->Event("GetParameterBool", &AnimGraphComponentRequestBus::Events::GetParameterBool)
                     ->Event("GetParameterString", &AnimGraphComponentRequestBus::Events::GetParameterString)
@@ -132,7 +132,7 @@ namespace EMotionFX
                     ->Event("GetNamedParameterVector3", &AnimGraphComponentRequestBus::Events::GetNamedParameterVector3)
                     ->Event("GetNamedParameterRotationEuler", &AnimGraphComponentRequestBus::Events::GetNamedParameterRotationEuler)
                     ->Event("GetNamedParameterRotation", &AnimGraphComponentRequestBus::Events::GetNamedParameterRotation)
-                    ;
+                ;
 
                 behaviorContext->EBus<AnimGraphComponentNotificationBus>("AnimGraphComponentNotificationBus")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
@@ -144,7 +144,7 @@ namespace EMotionFX
                     ->Event("OnAnimGraphVector2ParameterChanged", &AnimGraphComponentNotificationBus::Events::OnAnimGraphVector2ParameterChanged)
                     ->Event("OnAnimGraphVector3ParameterChanged", &AnimGraphComponentNotificationBus::Events::OnAnimGraphVector3ParameterChanged)
                     ->Event("OnAnimGraphRotationParameterChanged", &AnimGraphComponentNotificationBus::Events::OnAnimGraphRotationParameterChanged)
-                    ;
+                ;
             }
         }
 
@@ -389,7 +389,7 @@ namespace EMotionFX
                 MCore::AttributeFloat* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeFloat>(parameterIndex);
                 if (param)
                 {
-                    const bool previousValue = AZ::IsClose(param->GetValue(),1.f, MCore::Math::epsilon);
+                    const bool previousValue = AZ::IsClose(param->GetValue(), 1.f, MCore::Math::epsilon);
                     param->SetValue(value ? 1.0f : 0.0f);
 
                     // Notify listeners about the parameter change
@@ -480,8 +480,8 @@ namespace EMotionFX
                 MCore::AttributeVector3* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeVector3>(parameterIndex);
                 if (param)
                 {
-                    const AZ::Vector3 previousValue = MCore::EmfxVec3ToAzVec3(param->GetValue());
-                    param->SetValue(MCore::AzVec3ToEmfxVec3(value));
+                    const AZ::Vector3 previousValue = AZ::Vector3(param->GetValue());
+                    param->SetValue(AZ::PackedVector3f(value));
 
                     // Notify listeners about the parameter change
                     AnimGraphComponentNotificationBus::Event(
@@ -742,9 +742,9 @@ namespace EMotionFX
 
             if (m_animGraphInstance)
             {
-                MCore::Vector3 value;
+                AZ::Vector3 value;
                 m_animGraphInstance->GetVector3ParameterValue(parameterIndex, &value);
-                return EmfxVec3ToAzVec3(value);
+                return value;
             }
             return AZ::Vector3::CreateZero();
         }
@@ -762,7 +762,7 @@ namespace EMotionFX
             {
                 MCore::Quaternion value;
                 m_animGraphInstance->GetRotationParameterValue(parameterIndex, &value);
-                return EmfxVec3ToAzVec3(value.ToEuler());
+                return value.ToEuler();
             }
             return AZ::Vector3::CreateZero();
         }

@@ -138,16 +138,16 @@ namespace MCore
 
 
     // quaternion from an axis and angle
-    Quaternion::Quaternion(const Vector3& axis, float angle)
+    Quaternion::Quaternion(const AZ::Vector3& axis, float angle)
     {
-        const float squaredLength = axis.SquareLength();
+        const float squaredLength = axis.GetLengthSq();
         if (squaredLength > 0.0f)
         {
             const float halfAngle = angle * 0.5f;
             const float sinScale = Math::Sin(halfAngle) / Math::Sqrt(squaredLength);
-            x = axis.x * sinScale;
-            y = axis.y * sinScale;
-            z = axis.z * sinScale;
+            x = axis.GetX() * sinScale;
+            y = axis.GetY() * sinScale;
+            z = axis.GetZ() * sinScale;
             w = Math::Cos(halfAngle);
         }
         else
@@ -182,7 +182,7 @@ namespace MCore
 
 
     // convert to an axis and angle
-    void Quaternion::ToAxisAngle(Vector3* axis, float* angle) const
+    void Quaternion::ToAxisAngle(AZ::Vector3* axis, float* angle) const
     {
         *angle = 2.0f * Math::ACos(w);
 
@@ -203,24 +203,24 @@ namespace MCore
     //  converts from unit quaternion to spherical rotation angles
     void Quaternion::ToSpherical(AZ::Vector2* spherical, float* angle) const
     {
-        Vector3 axis;
+        AZ::Vector3 axis;
         ToAxisAngle(&axis, angle);
 
         float longitude;
-        if (axis.x * axis.x + axis.z * axis.z < 0.0001f)
+        if (axis.GetX() * axis.GetX() + axis.GetZ() * axis.GetZ() < 0.0001f)
         {
             longitude = 0.0f;
         }
         else
         {
-            longitude = Math::ATan2(axis.x, axis.z);
+            longitude = Math::ATan2(axis.GetX(), axis.GetZ());
             if (longitude < 0.0f)
             {
                 longitude += Math::twoPi;
             }
         }
 
-        spherical->SetX(-Math::ASin(axis.y));
+        spherical->SetX(-Math::ASin(axis.GetY()));
         spherical->SetY(longitude);
     }
 
@@ -395,7 +395,7 @@ namespace MCore
 
 
     // convert a quaternion to euler angles (in degrees)
-    Vector3 Quaternion::ToEuler() const
+    AZ::Vector3 Quaternion::ToEuler() const
     {
         /*
             // METHOD #1:
@@ -469,13 +469,14 @@ namespace MCore
 
         // METHOD #3 (without conversion to matrix first):
         // TODO: safety checks?
-        Vector3 result;
         float m00 = 1.0f - (2.0f * ((y * y) + z * z));
         float m01 = 2.0f * (x * y + w * z);
 
-        result.x = Math::ATan2(2.0f * (y * z + w * x), 1.0f - (2.0f * ((x * x) + (y * y))));
-        result.y = Math::ATan2(-2.0f * (x * z - w * y), Math::Sqrt((m00 * m00) + (m01 * m01)));
-        result.z = Math::ATan2(m01, m00);
+        AZ::Vector3 result(
+            Math::ATan2(2.0f * (y * z + w * x), 1.0f - (2.0f * ((x * x) + (y * y)))),
+            Math::ATan2(-2.0f * (x * z - w * y), Math::Sqrt((m00 * m00) + (m01 * m01))),
+            Math::ATan2(m01, m00)
+            );
 
         return result;
     }
@@ -523,7 +524,7 @@ namespace MCore
 
 
     // set as delta rotation
-    Quaternion Quaternion::CreateDeltaRotation(const Vector3& fromVector, const Vector3& toVector)
+    Quaternion Quaternion::CreateDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector)
     {
         Quaternion q;
         q.SetAsDeltaRotation(fromVector, toVector);
@@ -532,7 +533,7 @@ namespace MCore
 
 
     // set as delta rotation but limited
-    Quaternion Quaternion::CreateDeltaRotation(const Vector3& fromVector, const Vector3& toVector, float maxAngleRadians)
+    Quaternion Quaternion::CreateDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector, float maxAngleRadians)
     {
         Quaternion q;
         q.SetAsDeltaRotation(fromVector, toVector, maxAngleRadians);
@@ -541,14 +542,14 @@ namespace MCore
 
 
     // set as delta rotation
-    void Quaternion::SetAsDeltaRotation(const Vector3& fromVector, const Vector3& toVector)
+    void Quaternion::SetAsDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector)
     {
         // check if we are in parallel or not
         const float dot = fromVector.Dot(toVector);
         if (dot < 0.99999f) // we have rotated compared to the forward direction
         {
             const float angleRadians = Math::ACos(dot);
-            const Vector3 rotAxis = fromVector.Cross(toVector);
+            const AZ::Vector3 rotAxis = fromVector.Cross(toVector);
             *this = Quaternion(rotAxis, angleRadians);
         }
         else
@@ -559,7 +560,7 @@ namespace MCore
 
 
     // set as delta rotation, but limited
-    void Quaternion::SetAsDeltaRotation(const Vector3& fromVector, const Vector3& toVector, float maxAngleRadians)
+    void Quaternion::SetAsDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector, float maxAngleRadians)
     {
         // check if we are in parallel or not
         const float dot = fromVector.Dot(toVector);
@@ -567,7 +568,7 @@ namespace MCore
         {
             const float angleRadians = Math::ACos(dot);
             const float rotAngle = Min(angleRadians, maxAngleRadians);
-            const Vector3 rotAxis = fromVector.Cross(toVector);
+            const AZ::Vector3 rotAxis = fromVector.Cross(toVector);
             *this = Quaternion(rotAxis, rotAngle);
         }
         else
@@ -588,18 +589,18 @@ namespace MCore
        if the input quaternion is of non-unit length, the outputs are non-unit as well
        otherwise, outputs are both unit
     */
-    void Quaternion::DecomposeSwingTwist(const Vector3& direction, Quaternion* outSwing, Quaternion* outTwist) const
+    void Quaternion::DecomposeSwingTwist(const AZ::Vector3& direction, Quaternion* outSwing, Quaternion* outTwist) const
     {
-        Vector3 rotAxis(x, y, z);
-        Vector3 p = rotAxis.Projected(direction); // return projection v1 on to v2 (parallel component)
-        outTwist->Set(p.x, p.y, p.z, w);
+        AZ::Vector3 rotAxis(x, y, z);
+        AZ::Vector3 p = Projected(rotAxis, direction); // return projection v1 on to v2 (parallel component)
+        outTwist->Set(p.GetX(), p.GetY(), p.GetZ(), w);
         outTwist->Normalize();
         *outSwing = *this * outTwist->Conjugated();
     }
 
 
     // rotate the current quaternion
-    void Quaternion::RotateFromTo(const Vector3& fromVector, const Vector3& toVector)
+    void Quaternion::RotateFromTo(const AZ::Vector3& fromVector, const AZ::Vector3& toVector)
     {
         *this = CreateDeltaRotation(fromVector, toVector) * *this;
     }

@@ -16,6 +16,8 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/PlatformIncl.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/IO/FileOperations.h>
 #include <time.h>
 
 #ifdef AZ_PLATFORM_WINDOWS
@@ -149,6 +151,7 @@ namespace UnitTest
             // Contains random folder name, but needs to be same for all tests
             static int randomFolderKey;
 
+            AZStd::string m_root;
             AZStd::string folderName;
             AZStd::string deepFolder;
             AZStd::string extraFolder;
@@ -176,7 +179,7 @@ namespace UnitTest
 
                 folderName = currentDir;
                 folderName.append("/temp");
-
+                m_root = folderName;
                 if (folderName.size() > 0)
                 {
                     folderName = PathUtil::AddSlash(folderName);
@@ -656,6 +659,94 @@ namespace UnitTest
         };
 
         TEST_F(AliasTest, Test)
+        {
+            run();
+        }
+
+        class SmartMoveTests
+            : public FolderFixture
+        {
+        public:
+            void run()
+            {
+                LocalFileIO localFileIO;
+                AZ::IO::FileIOBase::SetInstance(&localFileIO);
+                AZStd::string path;
+                AzFramework::StringFunc::Path::GetFullPath(file01Name.c_str(), path);
+                AZ_TEST_ASSERT(localFileIO.CreatePath(path.c_str()));
+                AzFramework::StringFunc::Path::GetFullPath(file02Name.c_str(), path);
+                AZ_TEST_ASSERT(localFileIO.CreatePath(path.c_str()));
+
+                AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
+                localFileIO.Open(file01Name.c_str(), OpenMode::ModeWrite | OpenMode::ModeText, fileHandle);
+                localFileIO.Write(fileHandle, "DummyFile", 9);
+                localFileIO.Close(fileHandle);
+
+                AZ::IO::HandleType fileHandle1 = AZ::IO::InvalidHandle;
+                localFileIO.Open(file02Name.c_str(), OpenMode::ModeWrite | OpenMode::ModeText, fileHandle1);
+                localFileIO.Write(fileHandle1, "TestFile", 8);
+                localFileIO.Close(fileHandle1);
+
+                fileHandle1 = AZ::IO::InvalidHandle;
+                localFileIO.Open(file02Name.c_str(), OpenMode::ModeRead | OpenMode::ModeText, fileHandle1);
+                static const size_t testStringLen = 256;
+                char testString[testStringLen] = { 0 };
+                localFileIO.Read(fileHandle1, testString, testStringLen);
+                localFileIO.Close(fileHandle1);
+                AZ_TEST_ASSERT(strncmp(testString, "TestFile", 8) == 0);
+
+                // try swapping files when none of the files are in use
+                AZ_TEST_ASSERT(AZ::IO::SmartMove(file01Name.c_str(), file02Name.c_str()));
+
+                fileHandle1 = AZ::IO::InvalidHandle;
+                localFileIO.Open(file02Name.c_str(), OpenMode::ModeRead | OpenMode::ModeText, fileHandle1);
+                testString[0] = '\0';
+                localFileIO.Read(fileHandle1, testString, testStringLen);
+                localFileIO.Close(fileHandle1);
+                AZ_TEST_ASSERT(strncmp(testString, "DummyFile", 9) == 0);
+
+                //try swapping files when source file is not present, this should fail
+                AZ_TEST_ASSERT(!AZ::IO::SmartMove(file01Name.c_str(), file02Name.c_str()));
+
+                fileHandle = AZ::IO::InvalidHandle;
+                localFileIO.Open(file01Name.c_str(), OpenMode::ModeWrite | OpenMode::ModeText, fileHandle);
+                localFileIO.Write(fileHandle, "TestFile", 8);
+                localFileIO.Close(fileHandle);
+
+#if defined(AZ_PLATFORM_WINDOWS)
+                fileHandle1 = AZ::IO::InvalidHandle;
+                localFileIO.Open(file02Name.c_str(), OpenMode::ModeRead | OpenMode::ModeText, fileHandle1);
+                testString[0] = '\0';
+                localFileIO.Read(fileHandle1, testString, testStringLen);
+
+                // try swapping files when the destination file is open for read only, 
+                // since window is unable to move files that are open for read, this will fail.
+                AZ_TEST_ASSERT(!AZ::IO::SmartMove(file01Name.c_str(), file02Name.c_str()));
+                localFileIO.Close(fileHandle1);
+#endif
+                fileHandle = AZ::IO::InvalidHandle;
+                localFileIO.Open(file01Name.c_str(), OpenMode::ModeRead | OpenMode::ModeText, fileHandle);
+
+                // try swapping files when the source file is open for read only
+                AZ_TEST_ASSERT(AZ::IO::SmartMove(file01Name.c_str(), file02Name.c_str()));
+                localFileIO.Close(fileHandle);
+
+                fileHandle1 = AZ::IO::InvalidHandle;
+                localFileIO.Open(file02Name.c_str(), OpenMode::ModeRead | OpenMode::ModeText, fileHandle1);
+                testString[0] = '\0';
+                localFileIO.Read(fileHandle1, testString, testStringLen);
+                AZ_TEST_ASSERT(strncmp(testString, "TestFile", 8) == 0);
+                localFileIO.Close(fileHandle1);
+
+                localFileIO.Remove(file01Name.c_str());
+                localFileIO.Remove(file02Name.c_str());
+                localFileIO.DestroyPath(m_root.c_str());
+
+                AZ::IO::FileIOBase::SetInstance(nullptr);
+            }
+        };
+
+        TEST_F(SmartMoveTests, Test)
         {
             run();
         }

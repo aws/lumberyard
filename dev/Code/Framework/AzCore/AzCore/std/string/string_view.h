@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/string/string.h>
 
 namespace AZStd
@@ -239,9 +240,8 @@ namespace AZStd
 
         using size_type = AZStd::size_t;
         using difference_type = AZStd::ptrdiff_t;
-        using basic_string = AZStd::basic_string<value_type, traits_type>;
 
-        static const size_type npos = basic_string::npos;
+        static const size_type npos = basic_string<value_type, traits_type>::npos;
 
         using iterator = const value_type*;
         using const_iterator = const value_type*;
@@ -253,7 +253,8 @@ namespace AZStd
             , m_end(nullptr)
         { }
 
-        basic_string_view(const basic_string& s)
+        template<typename Allocator>
+        basic_string_view(const AZStd::basic_string<value_type, traits_type, Allocator>& s)
             : m_begin(s.c_str())
             , m_end(m_begin + s.length())
         { }
@@ -327,23 +328,23 @@ namespace AZStd
             rshorten(n);
         }
 
-        operator basic_string() const
+        operator basic_string<value_type, traits_type, AZStd::allocator>() const
         {
-            return to_string();
+            return to_string<AZStd::allocator>();
         }
 
-        basic_string to_string(allocator alloc = allocator()) const
+        template<typename Allocator = AZStd::allocator>
+        basic_string<value_type, traits_type, Allocator> to_string(Allocator alloc = Allocator()) const
         {
-            return basic_string(m_begin, m_end, alloc);
+            return basic_string<value_type, traits_type, Allocator>(m_begin, m_end, alloc);
         }
 
         basic_string_view& operator=(const basic_string_view& s) { if (&s != this) { m_begin = s.m_begin; m_end = s.m_end; } return *this; }
-        basic_string_view& operator=(const basic_string& s) { return *this = basic_string_view(s); }
+        template<typename Allocator = AZStd::allocator> basic_string_view& operator=(const basic_string<value_type, traits_type, Allocator>& s) { return *this = basic_string_view(s); }
         basic_string_view& operator=(const_pointer s) { return *this = basic_string_view(s); }
 
         basic_string_view& assign(const basic_string_view& s) { return *this = s; }
-        basic_string_view& assign(const basic_string& s, size_type len) { return *this = basic_string_view(s.c_str(), len); }
-        basic_string_view& assign(const basic_string& s) { return *this = basic_string_view(s); }
+        template<typename Allocator = AZStd::allocator> basic_string_view& assign(const basic_string<value_type, traits_type, Allocator>& s) { return *this = basic_string_view(s); }
         basic_string_view& assign(const_pointer s) { return *this = basic_string_view(s); }
         basic_string_view& assign(const_pointer s, size_type len) { return *this = basic_string_view(s, len); }
         basic_string_view& assign(const_pointer f, const_pointer l) { return *this = basic_string_view(f, l); }
@@ -385,7 +386,7 @@ namespace AZStd
             {
                 return 0;
             }
-            size_type rlen = AZStd::min<size_t>(count, size() - pos);
+            size_type rlen = AZ::GetMin<size_type>(count, size() - pos);
             Traits::copy(dest, data() + pos, rlen);
             return rlen;
         }
@@ -393,12 +394,12 @@ namespace AZStd
         basic_string_view substr(size_type pos = 0, size_type count = npos) const
         {
             AZ_Assert(pos <= size(), "Cannot create substring where position is larger than size");
-            return pos > size() ? basic_string_view() : basic_string_view(data() + pos, AZStd::min<size_t>(count, size() - pos));
+            return pos > size() ? basic_string_view() : basic_string_view(data() + pos, AZ::GetMin<size_type>(count, size() - pos));
         }
 
         int compare(basic_string_view other) const
         {
-            size_t cmpSize = AZStd::min<size_t>(size(), other.size());
+            size_t cmpSize = AZ::GetMin<size_type>(size(), other.size());
             int cmpval = cmpSize == 0 ? 0 : Traits::compare(data(), other.data(), cmpSize);
             if (cmpval == 0)
             {
@@ -593,6 +594,11 @@ namespace AZStd
 
     using string_view = basic_string_view<char>;
     using wstring_view = basic_string_view<wchar_t>;
+
+    template<class Element, class Traits = AZStd::char_traits<Element>>
+    using basic_const_string = basic_string_view<Element, Traits>;
+    using const_string = string_view;
+    using const_wstring = wstring_view;
 
     template<class Element, class Traits>
     struct hash<basic_string_view<Element, Traits>>

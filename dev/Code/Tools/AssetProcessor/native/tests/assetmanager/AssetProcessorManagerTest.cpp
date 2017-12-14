@@ -51,8 +51,9 @@ AssetProcessorManagerTest::AssetProcessorManagerTest()
 void AssetProcessorManagerTest::SetUp()
 {
     using namespace AssetProcessor;
-
     AssetProcessorTest::SetUp();
+
+    m_config = new AssetProcessor::PlatformConfiguration();
 
     AssetUtilities::ResetAssetRoot();
 
@@ -61,7 +62,7 @@ void AssetProcessorManagerTest::SetUp()
 
     UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("bootstrap.cfg"), QString("sys_game_folder=SamplesProject\n"));
 
-    m_gameName = AssetUtilities::ComputeGameName();
+    m_gameName = AssetUtilities::ComputeGameName(tempPath.absolutePath(), true);
 
     AssetUtilities::ResetAssetRoot();
     QDir newRoot;
@@ -76,19 +77,20 @@ void AssetProcessorManagerTest::SetUp()
 
     UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("subfolder1/assetProcessorManagerTest.txt"));
 
-    m_config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1));
+    m_config->AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1));
 
-    m_config.EnablePlatform("pc", true);
+    m_config->EnablePlatform({ "pc", {"host", "renderer"} }, true);
 
-    m_assetProcessorManager = new AssetProcessorManager_Test(&m_config);
+    m_assetProcessorManager = new AssetProcessorManager_Test(m_config);
+    m_assertAbsorber.Clear();
 }
 
 void AssetProcessorManagerTest::TearDown()
 {
     AssetUtilities::ResetAssetRoot();
     delete m_assetProcessorManager;
+    delete m_config;
     delete m_qApp;
-
     AssetProcessor::AssetProcessorTest::TearDown();
 }
 
@@ -109,7 +111,7 @@ TEST_F(AssetProcessorManagerTest, UnitTestForGettingJobInfoBySourceUUIDSuccess)
     entry.m_relativePathToFile = relFileName;
     entry.m_absolutePathToFile = absPath;
     entry.m_jobKey = "txt";
-    entry.m_platform = "pc";
+    entry.m_platformInfo = { "pc", {"host", "renderer", "desktop"} };
     entry.m_jobRunKey = 1;
 
     UnitTestUtils::CreateDummyFile(m_normalizedCacheRootDir.absoluteFilePath("outputfile.txt"));
@@ -152,6 +154,10 @@ TEST_F(AssetProcessorManagerTest, UnitTestForGettingJobInfoBySourceUUIDSuccess)
         ASSERT_TRUE(AzFramework::StringFunc::Equal(response.m_jobList[idx].m_sourceFile.c_str(), relFileName.toUtf8().data()));
         ASSERT_TRUE(AzFramework::StringFunc::Equal(response.m_jobList[idx].m_watchFolder.c_str(), tempPath.filePath("subfolder1").toUtf8().data()));
     }
+
+    ASSERT_EQ(m_assertAbsorber.m_numWarningsAbsorbed, 0);
+    ASSERT_EQ(m_assertAbsorber.m_numErrorsAbsorbed, 0);
+    ASSERT_EQ(m_assertAbsorber.m_numAssertsAbsorbed, 0);
 }
 
 TEST_F(AssetProcessorManagerTest, UnitTestForGettingJobInfoBySourceUUIDFailure)
@@ -184,7 +190,7 @@ TEST_F(AssetProcessorManagerTest, UnitTestForCancelledJob)
     entry.m_relativePathToFile = relFileName;
     entry.m_absolutePathToFile = absPath;
     entry.m_jobKey = "txt";
-    entry.m_platform = "pc";
+    entry.m_platformInfo = { "pc", {"host", "renderer", "desktop"} };
     entry.m_jobRunKey = 1;
 
     AZ::Uuid sourceUUID = AssetUtilities::CreateSafeSourceUUIDFromName(entry.m_relativePathToFile.toUtf8().data());

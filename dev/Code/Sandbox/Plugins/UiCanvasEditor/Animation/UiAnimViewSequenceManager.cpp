@@ -239,42 +239,18 @@ void CUiAnimViewSequenceManager::ActiveCanvasChanged()
     m_animationSystem = nullptr;
     EBUS_EVENT_ID_RESULT(m_animationSystem, canvasId, UiCanvasBus, GetAnimationSystem);
 
-    m_animationContext->ActiveCanvasChanged();
-
     // get the undo stack from the UI editor, if no editor is active this will be null
     UndoStack* undoStack = nullptr;
     EBUS_EVENT_RESULT(undoStack, UiEditorDLLBus, GetActiveUndoStack);
     UiAnimUndoManager::Get()->SetActiveUndoStack(undoStack);
 
+    m_animationContext->ActiveCanvasChanged();
+
+    DeleteAllSequences();
     CreateSequencesFromAnimationSystem();
 
     // tell listeners in UI animation system the active canvas has changed
     EBUS_EVENT(UiEditorAnimListenerBus, OnActiveCanvasChanged);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CUiAnimViewSequenceManager::CanvasLoaded()
-{
-    EBUS_EVENT(UiEditorAnimListenerBus, OnCanvasLoaded);
-
-    // currently we call this directly here, when we support multiple canvases being loaded
-    // it will be called from editor window
-    ActiveCanvasChanged();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CUiAnimViewSequenceManager::CanvasUnloading()
-{
-    // in practice this means that the active canvas is unloading or all canvases are unloading
-
-    EBUS_EVENT(UiEditorAnimListenerBus, OnCanvasUnloading);
-
-    m_animationContext->SetSequence(nullptr, false, false);
-
-    m_animationSystem->SetRecording(false);
-    m_animationSystem = nullptr;
-
-    DeleteAllSequences();
 }
 
 ////////////////////////////////////////////////////////////////////////////

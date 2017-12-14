@@ -34,6 +34,9 @@
 #include <../EditorUI_QT/Utils.h>
 #include <EditorUI_QTDLLBus.h>
 
+// AZ
+#include <AzFramework/API/ApplicationAPI.h>
+
 //Local
 #include "QT/DockableAttributePanel.h"
 
@@ -96,7 +99,13 @@ void DockableAttributePanel::Init(const QString& panelName, CBaseLibraryManager*
     m_vars = m_pParticleUI->CreateVars();
 
     m_attributeView->CreateDefaultConfigFile(m_vars);
-    CAttributeViewConfig* attributeViewConfig = m_attributeView->CreateConfigFromFile(DEFAULT_ATTRIBUTE_VIEW_LAYOUT_PATH);
+
+    AZStd::string defaultAttributeViewLayoutPath(DEFAULT_ATTRIBUTE_VIEW_LAYOUT_PATH);
+    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ResolveEnginePath, defaultAttributeViewLayoutPath);
+
+    CAttributeViewConfig* attributeViewConfig = m_attributeView->CreateConfigFromFile(QString(defaultAttributeViewLayoutPath.c_str()));
+
+
     CRY_ASSERT(attributeViewConfig);
     m_attributeView->SetConfiguration(*attributeViewConfig, m_vars);
     SetOnVariableChangeCallbackRecurse(m_vars.get());

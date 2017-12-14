@@ -48,7 +48,8 @@
 namespace EMotionFX
 {
     // constructor
-    Importer::Importer() : BaseObject()
+    Importer::Importer()
+        : BaseObject()
     {
         // set the memory category
         mChunkProcessors.SetMemoryCategory(EMFX_MEMCATEGORY_IMPORTER);
@@ -1080,7 +1081,6 @@ namespace EMotionFX
         RegisterChunkProcessor(new ChunkProcessorActorStdMaterial());
         RegisterChunkProcessor(new ChunkProcessorActorStdMaterialLayer());
         RegisterChunkProcessor(new ChunkProcessorActorGenericMaterial());
-        RegisterChunkProcessor(new ChunkProcessorActorLimit());
         RegisterChunkProcessor(new ChunkProcessorActorInfo());
         RegisterChunkProcessor(new ChunkProcessorActorMeshLOD());
         RegisterChunkProcessor(new ChunkProcessorActorProgMorphTarget());
@@ -1305,7 +1305,7 @@ namespace EMotionFX
         case Mesh::ATTRIB_NORMALS:
         case Mesh::ATTRIB_POSITIONS:
         {
-            MCore::Vector3* data = (MCore::Vector3*)layer->GetOriginalData();
+            AZ::PackedVector3f* data = (AZ::PackedVector3f*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();
             ChunkProcessor::ConvertVector3(data, sourceEndianType, numAttribs);
             return true;
@@ -1331,11 +1331,11 @@ namespace EMotionFX
             const uint32 numAttribs = layer->GetNumAttributes();
             for (uint32 i = 0; i < numAttribs; ++i)
             {
-                MCore::Vector3 tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
+                AZ::PackedVector3f tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
                 MCore::Endian::ConvertVector3(&tangent, sourceEndianType);      // convert the endian of the Vector3 part
-                data[i].SetX(tangent.x);
-                data[i].SetY(tangent.y);
-                data[i].SetZ(tangent.z);
+                data[i].SetX(tangent.GetX());
+                data[i].SetY(tangent.GetY());
+                data[i].SetZ(tangent.GetZ());
                 float dataW = data[i].GetW();
                 MCore::Endian::ConvertFloat(&dataW, sourceEndianType);      // convert endian of the w component
                 data[i].SetW(dataW);
@@ -1375,11 +1375,11 @@ namespace EMotionFX
             const uint32 numAttribs = layer->GetNumAttributes();
             for (uint32 i = 0; i < numAttribs; ++i)
             {
-                MCore::Vector3 tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
+                AZ::PackedVector3f tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
                 MCore::Endian::ConvertVector3(&tangent, sourceEndianType);      // convert the endian of the Vector3 part
-                data[i].SetX(tangent.x);
-                data[i].SetY(tangent.y);
-                data[i].SetZ(tangent.z);
+                data[i].SetX(tangent.GetX());
+                data[i].SetY(tangent.GetY());
+                data[i].SetZ(tangent.GetZ());
                 float dataW = data[i].GetW();
                 MCore::Endian::ConvertFloat(&dataW, sourceEndianType);      // convert endian of the w component
                 data[i].SetW(dataW);
@@ -1742,7 +1742,7 @@ namespace EMotionFX
         }
 
         // recursively update attributes of all state machines and blend tree nodes
-        if (animGraph->GetRootStateMachine()) 
+        if (animGraph->GetRootStateMachine())
         {
             animGraph->RecursiveUpdateAttributes();
         }

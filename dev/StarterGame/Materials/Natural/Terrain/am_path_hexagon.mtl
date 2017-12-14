@@ -1,12 +1,12 @@
-<Material MtlFlags="524288" Shader="Terrain.Layer" GenMask="21A000000" StringGenMask="%NORMAL_MAP%OFFSET_BUMP_MAPPING%PARALLAX_OCCLUSION_MAPPING%TEMP_TERRAIN" SurfaceType="mat_rock" Diffuse="1,1,1" Specular="0.029556841,0.029556841,0.029556841" Opacity="1" Shininess="255" CloakAmount="0" vertModifType="0" LayerAct="1">
+<Material MtlFlags="524288" Shader="Terrain.Layer" GenMask="21A000000" StringGenMask="%NORMAL_MAP%OFFSET_BUMP_MAPPING%PARALLAX_OCCLUSION_MAPPING%TEMP_TERRAIN" SurfaceType="mat_rock" Diffuse="1,1,1,1" Specular="0.029556841,0.029556841,0.029556841,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
  <Textures>
-  <Texture Map="Diffuse" File="objects/natural/road/am_floor_tile_diff.dds">
+  <Texture Map="Diffuse" File="textures/natural/terrain/am_floor_tile_diff.dds">
    <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.25" TileV="0.25"/>
   </Texture>
-  <Texture Map="Bumpmap" File="objects/natural/road/am_floor_tile_ddna.dds">
+  <Texture Map="Bumpmap" File="textures/natural/terrain/am_floor_tile_ddna.dds">
    <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.25" TileV="0.25"/>
   </Texture>
-  <Texture Map="Heightmap" File="objects/natural/road/am_floor_tile_displ.dds">
+  <Texture Map="Heightmap" File="textures/natural/terrain/am_floor_tile_displ.dds">
    <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.25" TileV="0.25"/>
   </Texture>
  </Textures>

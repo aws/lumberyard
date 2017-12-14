@@ -20,6 +20,7 @@
 #include <AzCore/Component/EntityBus.h>
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzCore/Component/TransformBus.h>
 
 #include "TrackViewNode.h"
 #include "TrackViewTrack.h"
@@ -81,6 +82,7 @@ class CTrackViewAnimNode
     , public IEntityObjectListener
     , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , public AZ::EntityBus::Handler
+    , private AZ::TransformNotificationBus::Handler
 {
     friend class CAbstractUndoAnimNodeTransaction;
     friend class CAbstractUndoTrackTransaction;
@@ -108,7 +110,7 @@ public:
     virtual ETrackViewNodeType GetNodeType() const override { return eTVNT_AnimNode; }
 
     // Create & remove sub anim nodes
-    virtual CTrackViewAnimNode* CreateSubNode(const QString& name, const EAnimNodeType animNodeType, CEntityObject* pOwner = nullptr, AZ::Uuid componentTypeId = AZ::Uuid::CreateNull(), AZ::ComponentId componenId=AZ::InvalidComponentId);
+    virtual CTrackViewAnimNode* CreateSubNode(const QString& name, const AnimNodeType animNodeType, CEntityObject* pOwner = nullptr, AZ::Uuid componentTypeId = AZ::Uuid::CreateNull(), AZ::ComponentId componenId=AZ::InvalidComponentId);
     virtual void RemoveSubNode(CTrackViewAnimNode* pSubNode);
 
     // Create & remove sub tracks
@@ -160,7 +162,7 @@ public:
     CTrackViewAnimNodeBundle GetAllAnimNodes();
     CTrackViewAnimNodeBundle GetSelectedAnimNodes();
     CTrackViewAnimNodeBundle GetAllOwnedNodes(const CEntityObject* pOwner);
-    CTrackViewAnimNodeBundle GetAnimNodesByType(EAnimNodeType animNodeType);
+    CTrackViewAnimNodeBundle GetAnimNodesByType(AnimNodeType animNodeType);
     CTrackViewAnimNodeBundle GetAnimNodesByName(const char* pName);
 
     // Track getters
@@ -174,7 +176,7 @@ public:
     virtual CTrackViewKeyBundle GetKeysInTimeRange(const float t0, const float t1) override;
 
     // Type getters
-    EAnimNodeType GetType() const;
+    AnimNodeType GetType() const;
 
     // Flags
     EAnimNodeFlags GetFlags() const;
@@ -194,6 +196,7 @@ public:
     Vec3 GetScale() const { return m_pAnimNode->GetScale(); }
     void SetRotation(const Quat& rotation);
     Quat GetRotation() const { return m_pAnimNode->GetRotate(); }
+    Quat GetRotation(float time) const { return m_pAnimNode != nullptr ? m_pAnimNode->GetRotate(time) : Quat(0,0,0,0); }
 
     // Param
     unsigned int GetParamCount() const;
@@ -201,7 +204,7 @@ public:
     const char* GetParamName(const CAnimParamType& paramType) const;
     bool IsParamValid(const CAnimParamType& param) const;
     IAnimNode::ESupportedParamFlags GetParamFlags(const CAnimParamType& paramType) const;
-    EAnimValue GetParamValueType(const CAnimParamType& paramType) const;
+    AnimValueType GetParamValueType(const CAnimParamType& paramType) const;
     void UpdateDynamicParams();
 
     // Parameter getters/setters
@@ -239,7 +242,7 @@ public:
     
     void SetComponent(AZ::ComponentId componentId, const AZ::Uuid& componentTypeId);
 
-    // returns the AZ::ComponentId of the component associated with this node if it is of type eAnimNodeType_Component, InvalidComponentId otherwise
+    // returns the AZ::ComponentId of the component associated with this node if it is of type AnimNodeType::Component, InvalidComponentId otherwise
     AZ::ComponentId GetComponentId() const;
 
     // IAnimNodeOwner
@@ -251,7 +254,7 @@ public:
     // Returns the number of keys set
     int SetKeysForChangedTrackValues(float time) { return m_pAnimNode->SetKeysForChangedTrackValues(time); }
 
-    // returns true if this node is associated with an eAnimNodeType_AzEntity node and contains a component with the given id
+    // returns true if this node is associated with an AnimNodeType::AzEntity node and contains a component with the given id
     bool ContainsComponentWithId(AZ::ComponentId componentId) const;
 
     //////////////////////////////////////////////////////////////////////////
@@ -264,6 +267,11 @@ public:
     // AZ::EntityBus
     void OnEntityActivated(const AZ::EntityId& activatedEntityId) override;
     //~AZ::EntityBus 
+
+    //////////////////////////////////////////////////////////////////////////
+    //! AZ::TransformNotificationBus::Handler
+    void OnParentChanged(AZ::EntityId oldParent, AZ::EntityId newParent) override;
+    //////////////////////////////////////////////////////////////////////////
 
     void OnEntityRemoved();
 
@@ -292,7 +300,7 @@ protected:
     // ~IAnimNodeOwner
 
     IAnimNode* GetAnimNode() { return m_pAnimNode.get(); }
-    EAnimNodeType GetAnimNodeTypeFromObject(const CBaseObject* object) const;
+    AnimNodeType GetAnimNodeTypeFromObject(const CBaseObject* object) const;
 
 private:
     // Copy selected keys to XML representation for clipboard
@@ -341,8 +349,11 @@ private:
     virtual void OnDone() override;
     // ~IEntityObjectListener
 
+    void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM);
+
     // Helper functions
     static void RemoveChildNode(CTrackViewAnimNode* child);
+    static AZ::Transform GetEntityWorldTM(const AZ::EntityId entityId);
 
     IAnimSequence* m_pAnimSequence;
     AZStd::intrusive_ptr<IAnimNode> m_pAnimNode;

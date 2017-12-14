@@ -49,10 +49,10 @@ namespace MCore
          * @param org The origin of the ray.
          * @param endPoint The end (destination) point of the ray.
          */
-        MCORE_INLINE Ray(const Vector3& org, const Vector3& endPoint)
+        MCORE_INLINE Ray(const AZ::Vector3& org, const AZ::Vector3& endPoint)
             : mOrigin(org)
             , mDest(endPoint)
-            , mDirection((endPoint - org).Normalize()) {}
+            , mDirection((endPoint - org).GetNormalized()) {}
 
         /**
          * Constructor which sets the origin, destination point and direction.
@@ -60,7 +60,7 @@ namespace MCore
          * @param endPoint The destination point of the ray, so where it should end.
          * @param dir The normalized direction vector of the ray, which should be (endPoint - startPoint).Normalize()
          */
-        MCORE_INLINE Ray(const Vector3& org, const Vector3& endPoint, const Vector3& dir)
+        MCORE_INLINE Ray(const AZ::Vector3& org, const AZ::Vector3& endPoint, const AZ::Vector3& dir)
             : mOrigin(org)
             , mDest(endPoint)
             , mDirection(dir) {}
@@ -71,37 +71,37 @@ namespace MCore
          * @param org The origin of the ray, so the start point.
          * @param endPoint The destination of the ray, so the end point.
          */
-        MCORE_INLINE void Set(const Vector3& org, const Vector3& endPoint)                                      { mOrigin = org; mDest = endPoint; mDirection = (mDest - mOrigin).Normalize(); }
+        MCORE_INLINE void Set(const AZ::Vector3& org, const AZ::Vector3& endPoint)                              { mOrigin = org; mDest = endPoint; mDirection = (mDest - mOrigin).GetNormalized(); }
 
         /**
          * Set the origin of the ray, so the start point. The direction will automatically be updated as well.
          * @param org The origin.
          */
-        MCORE_INLINE void SetOrigin(const Vector3& org)                                                         { mOrigin = org; mDirection = (mDest - mOrigin).Normalize(); }
+        MCORE_INLINE void SetOrigin(const AZ::Vector3& org)                                                     { mOrigin = org; mDirection = (mDest - mOrigin).GetNormalized(); }
 
         /**
          * Set the destination point of the ray.
          * @param dest The destination of the ray.
          */
-        MCORE_INLINE void SetDest(const Vector3& dest)                                                          { mDest = dest; mDirection = (mDest - mOrigin).Normalize(); }
+        MCORE_INLINE void SetDest(const AZ::Vector3& dest)                                                      { mDest = dest; mDirection = (mDest - mOrigin).GetNormalized(); }
 
         /**
          * Get the origin of the ray.
          * @result The origin of the ray, so where it starts.
          */
-        MCORE_INLINE const Vector3& GetOrigin() const                                                           { return mOrigin; }
+        MCORE_INLINE const AZ::Vector3& GetOrigin() const                                                       { return mOrigin; }
 
         /**
          * Get the destination of the ray.
          * @result The destination point of the ray, so where it ends.
          */
-        MCORE_INLINE const Vector3& GetDest() const                                                             { return mDest; }
+        MCORE_INLINE const AZ::Vector3& GetDest() const                                                         { return mDest; }
 
         /**
          * Get the direction of the ray.
          * @result The normalized direction vector of the ray, so the direction its heading to.
          */
-        MCORE_INLINE const Vector3& GetDirection() const                                                        { return mDirection; }
+        MCORE_INLINE const AZ::Vector3& GetDirection() const                                                    { return mDirection; }
 
         /**
          * Perform a ray/sphere intersection test.
@@ -110,7 +110,7 @@ namespace MCore
          * @param intersectB If not nullptr, the farthest intersection point will be stored in this vector, in case of an intersection.
          * @result Returns true when an intersection occured, otherwise false. If there is no intersection, 'intersectA' and 'intersectB' won't be changed.
          */
-        bool Intersects(const BoundingSphere& s, Vector3* intersectA = nullptr, Vector3* intersectB = nullptr) const;
+        bool Intersects(const BoundingSphere& s, AZ::Vector3* intersectA = nullptr, AZ::Vector3* intersectB = nullptr) const;
 
         /**
          * Perform a ray/plane intersection test.
@@ -118,7 +118,7 @@ namespace MCore
          * @param intersect If not nullptr, the intersection point will be stored in this vector, in case of an intersection.
          * @result Returns true when an intersection occured, otherwise false. If there is no intersection, 'intersect' will not be changed.
          */
-        bool Intersects(const PlaneEq& p, Vector3* intersect = nullptr) const;
+        bool Intersects(const PlaneEq& p, AZ::Vector3* intersect = nullptr) const;
 
         /**
          * Perform a ray/triangle intersection test.
@@ -150,7 +150,7 @@ namespace MCore
          *
          * @see BarycentricInterpolate
          */
-        bool Intersects(const Vector3& p1, const Vector3& p2, const Vector3& p3, Vector3* intersect = nullptr, float* baryU = nullptr, float* baryV = nullptr) const;
+        bool Intersects(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, AZ::Vector3* intersect = nullptr, float* baryU = nullptr, float* baryV = nullptr) const;
 
         /**
          * Perform a ray/AABB (Axis Aligned Bounding Box) intersection test.
@@ -159,17 +159,17 @@ namespace MCore
          * @param intersectB If not nullptr, the farthest intersection point will be stored in this vector, in case of an intersection.
          * @result Returns true when an intersection occured, otherwise false. If there is no intersection, 'intersectA' and 'intersectB' won't be modified.
          */
-        bool Intersects(const AABB& b, Vector3* intersectA = nullptr, Vector3* intersectB = nullptr) const;
+        bool Intersects(const AABB& b, AZ::Vector3* intersectA = nullptr, AZ::Vector3* intersectB = nullptr) const;
 
         /**
          * Calculates the length of the ray.
          * @result The length of the ray.
          */
-        MCORE_INLINE float Length() const                                                                       { return (mDest - mOrigin).SafeLength(); }
+        MCORE_INLINE float Length() const                                                                       { return SafeLength(mDest - mOrigin); }
 
     private:
-        Vector3     mOrigin;    /**< The origin of the ray. */
-        Vector3     mDest;      /**< The destination of the ray. */
-        Vector3     mDirection; /**< The normalized direction vector of the ray. */
+        AZ::Vector3 mOrigin;    /**< The origin of the ray. */
+        AZ::Vector3 mDest;      /**< The destination of the ray. */
+        AZ::Vector3 mDirection; /**< The normalized direction vector of the ray. */
     };
 }   // namespace MCore

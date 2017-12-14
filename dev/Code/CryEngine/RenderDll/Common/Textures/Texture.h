@@ -366,12 +366,12 @@ struct SDynTexture
     static uint32 s_iNumTextureBytesCheckedOut;
     static uint32 s_iNumTextureBytesCheckedIn;
 
-    ENGINE_API static uint32 s_SuggestedDynTexAtlasCloudsMaxsize;
-    ENGINE_API static uint32 s_SuggestedTexAtlasSize;
-    ENGINE_API static uint32 s_SuggestedDynTexMaxSize;
-    ENGINE_API static uint32 s_CurDynTexAtlasCloudsMaxsize;
-    ENGINE_API static uint32 s_CurTexAtlasSize;
-    ENGINE_API static uint32 s_CurDynTexMaxSize;
+    static uint32 s_SuggestedDynTexAtlasCloudsMaxsize;
+    static uint32 s_SuggestedTexAtlasSize;
+    static uint32 s_SuggestedDynTexMaxSize;
+    static uint32 s_CurDynTexAtlasCloudsMaxsize;
+    static uint32 s_CurTexAtlasSize;
+    static uint32 s_CurDynTexMaxSize;
 
     CTexture* CreateDynamicRT();
     CTexture* GetDynamicRT();
@@ -1670,6 +1670,8 @@ public:
     ILINE const int GetRequiredMipNonVirtual() const { return max(0, m_fpMinMipCur >> 8); }
     ILINE const int GetRequiredMipNonVirtualFP() const { return m_fpMinMipCur; }
     virtual const ETEX_Type GetTextureType() const;
+    virtual void SetTextureType(ETEX_Type type);
+
     ILINE const int GetDefState() const { return m_nDefState; }
     virtual void SetClamp(bool bEnable)
     {
@@ -2107,7 +2109,7 @@ public:
         assert (pTex);
         if (pTex)
         {
-            pTex->Apply(nTUnit, nState, -1, nSUnit);
+            pTex->Apply(nTUnit, nState, EFTT_UNKNOWN, nSUnit);
         }
     }
     static const CCryNameTSCRC& mfGetClassName();
@@ -2116,8 +2118,14 @@ public:
     static CTexture* GetByNameCRC(CCryNameTSCRC Name);
     static CTexture* ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst);
     static CTexture* CreateTextureArray(const char* name, ETEX_Type eType, uint32 nWidth, uint32 nHeight, uint32 nArraySize, int nMips, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
-    ENGINE_API static CTexture* CreateRenderTarget(const char* name, uint32 nWidth, uint32 nHeight, const ColorF& cClear, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
     static CTexture* CreateTextureObject(const char* name, uint32 nWidth, uint32 nHeight, int nDepth, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
+    
+    // Methods exposed to external libraries
+    ENGINE_API static CTexture* CreateRenderTarget(const char* name, uint32 nWidth, uint32 nHeight, const ColorF& cClear, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
+    ENGINE_API static void ApplyDepthTextureState(int unit, int nFilter, bool clamp);
+    ENGINE_API static CTexture* GetZTargetTexture();
+    ENGINE_API static int GetTextureState(const STexState& TS);
+    ENGINE_API static uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF, ETEX_TileMode eTM = eTM_None);
 
     static void InitStreaming();
     static void InitStreamingDev();
@@ -2181,7 +2189,7 @@ public:
     void RT_UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
     bool Create2DTexture(int nWidth, int nHeight, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
     bool Create3DTexture(int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
-    bool SetNoTexture(CTexture* pDefaultTexture = s_ptexNoTexture);
+    bool SetNoTexture( const CTexture* pDefaultTexture );
     bool IsMSAAChanged();
 
     static byte* Convert(const byte* srcData, int width, int height, int srcMipCount, ETEX_Format srcFormat, ETEX_Format dstFormat, int& outSize, bool bLinear);
@@ -2215,8 +2223,6 @@ public:
     static bool IsInPlaceFormat(const ETEX_Format fmt);
     static void ExpandMipFromFile(byte* dest, const int destSize, const byte* src, const int srcSize, const ETEX_Format fmt);
 
-    ENGINE_API static uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF, ETEX_TileMode eTM = eTM_None);
-
     //  Confetti BEGIN: Igor Lobanchikov
     static ILINE bool IsBlockCompressed(const ETEX_Format eTF) { return CImageExtensionHelper::IsBlockCompressed(eTF); }
     static ILINE int BytesPerBlock(ETEX_Format eTF) { return CImageExtensionHelper::BytesPerBlock(eTF); }
@@ -2246,7 +2252,7 @@ public:
 
 public:
 
-    ENGINE_API static std::vector<STexState> s_TexStates;
+    static std::vector<STexState> s_TexStates;
     static int GetTexState(const STexState& TS)
     {
         uint32 i;
@@ -2283,52 +2289,8 @@ public:
     static ETEX_Format s_eTFZ;
 
     // ==============================================================================
-    static CTexture* s_ptexNoTexture;
-    static CTexture* s_ptexNoTextureCM;
-    static CTexture* s_ptexWhite;
-    static CTexture* s_ptexGray;
-    static CTexture* s_ptexBlack;
-    static CTexture* s_ptexBlackAlpha;
-    static CTexture* s_ptexBlackCM;
-    static CTexture* s_ptexDefaultProbeCM;
-    static CTexture* s_ptexFlatBump;
-#if !defined(_RELEASE)
-    static CTexture* s_ptexDefaultMergedDetail;
-    static CTexture* s_ptexMipMapDebug;
-    static CTexture* s_ptexColorBlue;
-    static CTexture* s_ptexColorCyan;
-    static CTexture* s_ptexColorGreen;
-    static CTexture* s_ptexColorPurple;
-    static CTexture* s_ptexColorRed;
-    static CTexture* s_ptexColorWhite;
-    static CTexture* s_ptexColorYellow;
-    static CTexture* s_ptexColorMagenta;
-    static CTexture* s_ptexColorOrange;
-    static CTexture* s_ptexIconTextureCompiling;
-    static CTexture* s_ptexIconTextureCompiling_a;
-    static CTexture* s_ptexIconTextureCompiling_cm;
-    static CTexture* s_ptexIconTextureCompiling_ddn;
-    static CTexture* s_ptexIconTextureCompiling_ddna;
-#endif
-    static CTexture* s_ptexPaletteDebug;
-    static CTexture* s_ptexPaletteTexelsPerMeter;
-    static CTexture* s_ptexIconShaderCompiling;
-    static CTexture* s_ptexIconStreaming;
-    static CTexture* s_ptexIconStreamingTerrainTexture;
-    static CTexture* s_ptexIconNullSoundSystem;
-    static CTexture* s_ptexIconNullMusicSystem;
-    static CTexture* s_ptexIconNavigationProcessing;
     static CTexture* s_ptexMipColors_Diffuse;
     static CTexture* s_ptexMipColors_Bump;
-    static CTexture* s_ptexShadowJitterMap;
-    static CTexture* s_ptexEnvironmentBRDF;
-    static CTexture* s_ptexScreenNoiseMap;
-    static CTexture* s_ptexDissolveNoiseMap;
-    static CTexture* s_ptexGrainFilterMap;
-    static CTexture* s_ptexFilmGrainMap;
-    static CTexture* s_ptexVignettingMap; // todo: create at runtime based on viggneting cvars
-    static CTexture* s_ptexAOJitter;
-    static CTexture* s_ptexAOVOJitter;
     static CTexture* s_ptexFromRE[8];
     static CTexture* s_ptexShadowID[8];
     static CTexture* s_ptexShadowMask;
@@ -2342,13 +2304,11 @@ public:
     static CTexture* s_ptexSvoOpac;
     static CTexture* s_ptexFromObjCM;
     static CTexture* s_ptexRT_2D;
-    static CTexture* s_ptex16_PointsOnSphere;
     static CTexture* s_ptexCachedShadowMap[MAX_GSM_LODS_NUM];
     static CTexture* s_ptexNearestShadowMap;
     static CTexture* s_ptexHeightMapAO[2];
     static CTexture* s_ptexHeightMapAODepth[2];
 
-    static CTexture* s_ptexNormalsFitting;
     static CTexture* s_ptexSceneNormalsMap;         // RT with normals for deferred shading
     static CTexture* s_ptexSceneNormalsMapMS;         // Dummy normals target for binding multisampled rt
     static CTexture* s_ptexSceneNormalsBent;
@@ -2400,7 +2360,7 @@ public:
     static CTexture* s_ptexSceneDiffuseAccMapMS;
     static CTexture* s_ptexSceneSpecularAccMapMS;
 
-    ENGINE_API static CTexture* s_ptexZTarget;
+    static CTexture* s_ptexZTarget;
 
     static CTexture* s_ptexZOcclusion[2];
     static CTexture* s_ptexZTargetReadBack[4];
@@ -2412,6 +2372,11 @@ public:
     static CTexture* s_ptexVelocityObjects[2];  // Dynamic object velocity (for left and right eye)
     static CTexture* s_ptexVelocity;
     static CTexture* s_ptexVelocityTiles[3];
+
+    // Intermediate textures used for fur rendering
+    static CTexture* s_ptexFurZTarget;  // Z target with outermost shell stipples. s_ptexZTarget has the stipples blurred out
+    static CTexture* s_ptexFurLightAcc; // Lighting accumulation after deferred shading
+    static CTexture* s_ptexFurPrepass;  // Packed diffuse, specular, and depth for shell passes
 
     // Confetti Begin: David Srour
     // Dedicated stencil & linear depth buffer for GMEM render path.
@@ -2455,7 +2420,7 @@ public:
     static SEnvTexture s_EnvCMaps[MAX_ENVCUBEMAPS];
     static SEnvTexture s_EnvTexts[MAX_ENVTEXTURES];
     static TArray<SEnvTexture> s_CustomRT_2D;
-    static TArray<CTexture> s_ShaderTemplates;
+    static TArray<CTexture> s_ShaderTemplates;      // [Shader System TO DO] bad design - change (or shoot)
     static bool s_ShaderTemplatesInitialized;
 
     static CTexture* s_pTexNULL;
@@ -2477,7 +2442,6 @@ public:
 #endif
 
     static CTexture* s_defaultEnvironmentProbeDummy;
-    static CTexture* s_defaultEnvironmentProbe;
     void* operator new(size_t sz)
     {
         return CryModuleMemalign(sz, std::alignment_of<CTexture>::value);

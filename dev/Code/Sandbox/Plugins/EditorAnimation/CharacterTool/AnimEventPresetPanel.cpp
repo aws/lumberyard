@@ -201,7 +201,7 @@ namespace CharacterTool
 
     static string PresetsFilename()
     {
-        string folder = GetIEditor()->GetUserFolder().toLatin1().data();
+        string folder = GetIEditor()->GetResolvedUserFolder().toUtf8().data();
         folder += "\\CharacterTool\\AnimEventPresets.json";
         return folder;
     }

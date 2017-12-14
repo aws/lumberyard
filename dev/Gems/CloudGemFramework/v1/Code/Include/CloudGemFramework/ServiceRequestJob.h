@@ -341,6 +341,12 @@ namespace CloudGemFramework
                         requestStream->clear();
                         requestStream->seekg(0);
                         requestContent = AZStd::string{std::istreambuf_iterator<AZStd::string::value_type>(*requestStream.get()),eos};
+                        // Replace the character "%" with "%%" to prevent the error when printing the string that contains the percentage sign
+                        AZStd::size_t start_pos = requestContent.find("%", 0);
+                        while (start_pos != AZStd::string::npos) {
+                            requestContent.replace(start_pos, 1, "%%");
+                            start_pos = requestContent.find("%", start_pos + 2);
+                        }
                     }
 
                     Aws::IOStream& responseStream = response->GetResponseBody();
@@ -378,7 +384,7 @@ namespace CloudGemFramework
                 }
                 else
                 {
-                    AZ_Warning(ServiceClientJobType::COMPONENT_DISPLAY_NAME, false, message.c_str());
+                     AZ_Warning(ServiceClientJobType::COMPONENT_DISPLAY_NAME, false, message.c_str());
                 }
 
                 OnFailure();

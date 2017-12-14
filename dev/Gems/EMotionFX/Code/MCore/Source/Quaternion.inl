@@ -11,11 +11,11 @@
 */
 
 // multiply a vector by a quaternion
-MCORE_INLINE Vector3 Quaternion::operator * (const Vector3& p) const
+MCORE_INLINE AZ::Vector3 Quaternion::operator * (const AZ::Vector3& p) const
 {
-    Quaternion v(p.x, p.y, p.z, 0.0f);
+    Quaternion v(p.GetX(), p.GetY(), p.GetZ(), 0.0f);
     v = *this* v* this->Conjugated();
-    return Vector3(v.x, v.y, v.z);
+    return AZ::Vector3(v.x, v.y, v.z);
 }
 
 
@@ -63,27 +63,27 @@ MCORE_INLINE Quaternion& Quaternion::Normalize()
 
 
 // get the right axis
-MCORE_INLINE Vector3 Quaternion::CalcRightAxis() const
+MCORE_INLINE AZ::Vector3 Quaternion::CalcRightAxis() const
 {
-    return Vector3(1.0f -  2.0f * y * y - 2.0f * z * z,
+    return AZ::Vector3(1.0f -  2.0f * y * y - 2.0f * z * z,
         2.0f * x * y + 2.0f * z * w,
         2.0f * x * z - 2.0f * y * w);
 }
 
 
 // get the forward axis
-MCORE_INLINE Vector3 Quaternion::CalcForwardAxis() const
+MCORE_INLINE AZ::Vector3 Quaternion::CalcForwardAxis() const
 {
-    return Vector3(2.0f * x * y - 2.0f * z * w,
+    return AZ::Vector3(2.0f * x * y - 2.0f * z * w,
         1.0f - 2.0f * x * x - 2.0f * z * z,
         2.0f * y * z + 2.0f * x * w);
 }
 
 
 // get the up axis
-MCORE_INLINE Vector3 Quaternion::CalcUpAxis() const
+MCORE_INLINE AZ::Vector3 Quaternion::CalcUpAxis() const
 {
-    return Vector3(2.0f * x * z + 2.0f * y * w,
+    return AZ::Vector3(2.0f * x * z + 2.0f * y * w,
         2.0f * y * z - 2.0f * x * w,
         1.0f - 2.0f * x * x - 2.0f * y * y);
 }

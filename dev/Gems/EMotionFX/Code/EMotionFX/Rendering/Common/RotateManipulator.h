@@ -94,10 +94,10 @@ namespace MCommon
         void ProcessMouseInput(MCommon::Camera* camera, int32 mousePosX, int32 mousePosY, int32 mouseMovementX, int32 mouseMovementY, bool leftButtonPressed, bool middleButtonPressed, bool rightButtonPressed, uint32 keyboardKeyFlags = 0);
 
     protected:
-        MCore::Vector3          mRotation;
+        AZ::Vector3             mRotation;
         MCore::Quaternion       mRotationQuat;
-        MCore::Vector3          mRotationAxis;
-        MCore::Vector3          mClickPosition;
+        AZ::Vector3             mRotationAxis;
+        AZ::Vector3             mClickPosition;
 
         // bounding volumes for the axes
         MCore::BoundingSphere   mInnerBoundingSphere;

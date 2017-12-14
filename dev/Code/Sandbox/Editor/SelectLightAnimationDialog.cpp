@@ -17,6 +17,7 @@
 #include "StdAfx.h"
 #include "SelectLightAnimationDialog.h"
 #include <IMovieSystem.h>
+#include "Maestro/Types/AnimNodeType.h"
 
 //////////////////////////////////////////////////////////////////////////
 CSelectLightAnimationDialog::CSelectLightAnimationDialog(QWidget* pParent)
@@ -46,8 +47,8 @@ void CSelectLightAnimationDialog::GetItems(std::vector<SItem>& outItems)
 
         for (int k = 0; k < pSequence->GetNodeCount(); ++k)
         {
-            assert(pSequence->GetNode(k)->GetType() == eAnimNodeType_Light);
-            if (pSequence->GetNode(k)->GetType() != eAnimNodeType_Light)
+            assert(pSequence->GetNode(k)->GetType() == AnimNodeType::Light);
+            if (pSequence->GetNode(k)->GetType() != AnimNodeType::Light)
             {
                 continue;
             }

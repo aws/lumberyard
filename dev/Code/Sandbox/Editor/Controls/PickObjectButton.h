@@ -15,6 +15,8 @@
 #define CRYINCLUDE_EDITOR_CONTROLS_PICKOBJECTBUTTON_H
 #pragma once
 
+#include "IEditor.h"
+
 #include <QPushButton>
 
 class QPickObjectButton

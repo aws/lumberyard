@@ -9,12 +9,13 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "Utils.h"
-#include "AndroidEnv.h"
+#include <AzCore/Android/Utils.h>
+#include <AzCore/Android/AndroidEnv.h>
+#include <AzCore/Android/JNI/Object.h>
 
 #include <AzCore/Debug/Trace.h>
-#include <AzCore/std/containers/vector.h>
-#include <AzCore/std/containers/set.h>
+
+#include <AzCore/Memory/OSAllocator.h>
 
 
 namespace AZ
@@ -137,6 +138,45 @@ namespace AZ
 
                 AZ_Assert(false, "Failed to locate the bootstrap.cfg path");
                 return nullptr;
+            }
+
+            ////////////////////////////////////////////////////////////////
+            void ShowSplashScreen()
+            {
+                JNI::Internal::Object<AZ::OSAllocator> activity(GetActivityClassRef(), GetActivityRef());
+
+                activity.RegisterMethod("ShowSplashScreen", "()V");
+                activity.InvokeVoidMethod("ShowSplashScreen");
+            }
+
+            ////////////////////////////////////////////////////////////////
+            void DismissSplashScreen()
+            {
+                JNI::Internal::Object<AZ::OSAllocator> activity(GetActivityClassRef(), GetActivityRef());
+
+                activity.RegisterMethod("DismissSplashScreen", "()V");
+                activity.InvokeVoidMethod("DismissSplashScreen");
+            }
+
+            ////////////////////////////////////////////////////////////////
+            ANativeWindow* GetWindow()
+            {
+                return AndroidEnv::Get()->GetWindow();
+            }
+
+            ////////////////////////////////////////////////////////////////
+            bool GetWindowSize(int& widthPixels, int& heightPixels)
+            {
+                ANativeWindow* window = GetWindow();
+                if (window)
+                {
+                    widthPixels = ANativeWindow_getWidth(window);
+                    heightPixels = ANativeWindow_getHeight(window);
+
+                    // should an error occur from the above functions a negative value will be returned
+                    return (widthPixels > 0 && heightPixels > 0);
+                }
+                return false;
             }
         }
     }

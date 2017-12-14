@@ -19,6 +19,11 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
+#include "ViewportNudge.h"
+#include "ViewportPivot.h"
+#include "ViewportSnap.h"
+#include "ViewportElement.h"
+
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY         "ViewportWidget::m_drawElementBordersFlags"
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_DEFAULT     ( ViewportWidget::DrawElementBorders_Unselected )
 
@@ -133,7 +138,7 @@ ViewportWidget::ViewportWidget(EditorWindow* parent)
     , m_viewportPivot(new ViewportPivot())
     , m_drawElementBordersFlags(GetDrawElementBordersFlags())
     , m_refreshRequested(true)
-    , m_canvasRenderIsDisabled(false)
+    , m_canvasRenderIsEnabled(true)
     , m_updateTimer(this)
     , m_previewCanvasScale(1.0f)
 {
@@ -198,6 +203,17 @@ void ViewportWidget::UpdateViewportBackground()
     SetSettings(tweakedSettings);
 }
 
+void ViewportWidget::ActiveCanvasChanged()
+{
+    bool canvasLoaded = m_editorWindow->GetCanvas().IsValid();
+    if (canvasLoaded)
+    {
+        m_viewportInteraction->CenterCanvasInViewport();
+    }
+
+    m_viewportInteraction->InitializeToolbars();
+}
+
 void ViewportWidget::Refresh()
 {
     m_refreshRequested = true;
@@ -206,38 +222,45 @@ void ViewportWidget::Refresh()
 void ViewportWidget::ClearUntilSafeToRedraw()
 {
     // set flag so that Update will just clear the screen rather than rendering canvas
-    m_canvasRenderIsDisabled = true;
+    m_canvasRenderIsEnabled = false;
 
     // Force an update
-    Refresh();
-    RefreshTick();
+    Update();
 
-    // Schedule a timer to clear the m_canvasRenderIsDisabled flag
+    // Schedule a timer to set the m_canvasRenderIsEnabled flag
     // using a time of zero just waits until there is nothing on the event queue
     QTimer::singleShot(0, this, SLOT(EnableCanvasRender()));
 }
 
+void ViewportWidget::SetRedrawEnabled(bool enabled)
+{
+    m_canvasRenderIsEnabled = enabled;
+}
+
 void ViewportWidget::contextMenuEvent(QContextMenuEvent* e)
 {
-    UiEditorMode editorMode = m_editorWindow->GetEditorMode();
-    if (editorMode == UiEditorMode::Edit)
+    if (m_editorWindow->GetCanvas().IsValid())
     {
-        // The context menu.
-        const QPoint pos = e->pos();
-        HierarchyMenu contextMenu(m_editorWindow->GetHierarchy(),
-            HierarchyMenu::Show::kCutCopyPaste |
-            HierarchyMenu::Show::kSavePrefab |
-            HierarchyMenu::Show::kNew_EmptyElement |
-            HierarchyMenu::Show::kNew_ElementFromPrefabs |
-            HierarchyMenu::Show::kDeleteElement |
-            HierarchyMenu::Show::kNewSlice |
-            HierarchyMenu::Show::kNew_InstantiateSlice |
-            HierarchyMenu::Show::kPushToSlice,
-            true,
-            nullptr,
-            &pos);
+        UiEditorMode editorMode = m_editorWindow->GetEditorMode();
+        if (editorMode == UiEditorMode::Edit)
+        {
+            // The context menu.
+            const QPoint pos = e->pos();
+            HierarchyMenu contextMenu(m_editorWindow->GetHierarchy(),
+                HierarchyMenu::Show::kCutCopyPaste |
+                HierarchyMenu::Show::kSavePrefab |
+                HierarchyMenu::Show::kNew_EmptyElement |
+                HierarchyMenu::Show::kNew_ElementFromPrefabs |
+                HierarchyMenu::Show::kDeleteElement |
+                HierarchyMenu::Show::kNewSlice |
+                HierarchyMenu::Show::kNew_InstantiateSlice |
+                HierarchyMenu::Show::kPushToSlice,
+                true,
+                nullptr,
+                &pos);
 
-        contextMenu.exec(e->globalPos());
+            contextMenu.exec(e->globalPos());
+        }
     }
 
     QViewport::contextMenuEvent(e);
@@ -245,7 +268,9 @@ void ViewportWidget::contextMenuEvent(QContextMenuEvent* e)
 
 void ViewportWidget::HandleSignalRender(const SRenderContext& context)
 {
-    if (!m_canvasRenderIsDisabled)
+    // Called from QViewport when redrawing the viewport.
+    // Triggered from a QViewport resize event or from our call to QViewport::Update
+    if (m_canvasRenderIsEnabled)
     {
         gEnv->pRenderer->SetSrgbWrite(true);
 
@@ -274,7 +299,7 @@ void ViewportWidget::UserSelectionChanged(HierarchyItemRawPtrList* items)
 
 void ViewportWidget::EnableCanvasRender()
 {
-    m_canvasRenderIsDisabled = false;
+    m_canvasRenderIsEnabled = true;
 
     // force a redraw
     Refresh();
@@ -285,7 +310,11 @@ void ViewportWidget::RefreshTick()
 {
     if (m_refreshRequested)
     {
-        Update();
+        if (m_canvasRenderIsEnabled)
+        {
+            // Redraw the canvas
+            Update();
+        }
         m_refreshRequested = false;
 
         // in case we were called manually, reset the timer
@@ -520,26 +549,19 @@ void ViewportWidget::resizeEvent(QResizeEvent* ev)
 {
     m_editorWindow->GetPreviewToolbar()->ViewportHasResized(ev);
 
-    QViewport::resizeEvent(ev);
-
-    QMetaObject::invokeMethod(this, "RenderInternal", Qt::QueuedConnection);
-
-    UiEditorMode editorMode = m_editorWindow->GetEditorMode();
-    if (editorMode == UiEditorMode::Edit)
+    if (m_editorWindow->GetCanvas().IsValid())
     {
-        if (m_viewportInteraction->ShouldScaleToFitOnViewportResize())
+        UiEditorMode editorMode = m_editorWindow->GetEditorMode();
+        if (editorMode == UiEditorMode::Edit)
         {
-            m_viewportInteraction->CenterCanvasInViewport();
-            Refresh();
-            RefreshTick();
+            if (m_viewportInteraction->ShouldScaleToFitOnViewportResize())
+            {
+                m_viewportInteraction->CenterCanvasInViewport();
+            }
         }
     }
-    else // if (editorMode == UiEditorMode::Preview)
-    {
-        // force a redraw immediately to get as close to smooth canvas redraw as possible
-        Refresh();
-        RefreshTick();
-    }
+
+    QViewport::resizeEvent(ev);
 }
 
 void ViewportWidget::RenderEditMode()

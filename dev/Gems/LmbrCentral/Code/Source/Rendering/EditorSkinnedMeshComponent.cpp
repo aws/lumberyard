@@ -15,7 +15,7 @@
 #include "EditorSkinnedMeshComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Rtti/BehaviorContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 #include <MathConversion.h>
 
@@ -55,13 +55,16 @@ namespace LmbrCentral
             {
                 editContext->Class<EditorSkinnedMeshComponent>("Skinned Mesh", "The Skinned Mesh component is the primary way to add animated visual geometry to entities")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SkinnedMesh.png")
                         ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<LmbrCentral::CharacterDefinitionAsset>::Uuid())
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SkinnedMesh.png")
                         ->Attribute(AZ::Edit::Attributes::PreferNoViewportIcon, true)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-skinned-mesh.html")
+#ifndef ENABLE_LEGACY_ANIMATION
+                        ->Attribute(AZ::Edit::Attributes::AddableByUser, false)
+#endif
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSkinnedMeshComponent::m_mesh);
 

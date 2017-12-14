@@ -81,7 +81,7 @@
      <Audio bEnableAudio="0" audioRTPCRtpc="particlefx"/>
     </Properties>
    </Object>
-   <Object Type="Entity" Layer="AmbientFX" LayerGUID="{8283a863-818f-46dd-9062-801556a41278}" Id="{df7b8a1b-0d63-4f44-b742-06d18bf33548}" Name="WindArea2" HideOrder="0" Pos="856.4812,860.28308,65.758537" FloorNumber="-1" Rotate="0.8571673,0,0,-0.51503807" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="WindArea">
+   <Object Type="Entity" Layer="AmbientFX" LayerGUID="{8283a863-818f-46dd-9062-801556a41278}" Id="{df7b8a1b-0d63-4f44-b742-06d18bf33548}" Name="WindArea2" HideOrder="0" Pos="856.4812,860.28308,60.008537" FloorNumber="-1" Rotate="0.8571673,0,0,-0.51503807" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="WindArea">
     <Properties bActive="1" AirDensity="0" AirResistance="0" bEllipsoidal="1" FalloffInner="10" Speed="4">
      <Dir x="-1" y="0" z="0"/>
      <Size x="60" y="400" z="50"/>
@@ -616,6 +616,12 @@
    <Object Type="ParticleEntity" Layer="AmbientFX" LayerGUID="{8283a863-818f-46dd-9062-801556a41278}" Id="{2ca5eddc-f0ca-4fcf-906f-50165b5d03d7}" Name="FallingLeaves4" HideOrder="0" Pos="967.76868,1134.3342,55.823223" FloorNumber="-1" Rotate="1,0,0,0" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="ParticleEffect">
     <Properties bActive="1" esAttachForm="" esAttachType="" Comment="" bCountPerUnit="0" CountScale="1" NetworkSync="0" ParticleEffect="AmbientFX.Leaves.FallingLeaves" bPrime="1" PulsePeriod="0" bRegisterByBBox="0" Scale="1" soclasses_SmartObjectClass="" SpeedScale="1" Strength="-1" TimeScale="1">
      <Audio bEnableAudio="0" audioRTPCRtpc="particlefx"/>
+    </Properties>
+   </Object>
+   <Object Type="Entity" Layer="AmbientFX" LayerGUID="{8283a863-818f-46dd-9062-801556a41278}" Id="{6135d0df-7221-4608-a6bd-bc0e9a1fe3a7}" Name="WindArea4" HideOrder="0" Pos="856.4812,864.03308,46.758537" FloorNumber="-1" Rotate="0.8571673,0,0,-0.51503807" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="WindArea">
+    <Properties bActive="1" AirDensity="0" AirResistance="0" bEllipsoidal="1" FalloffInner="10" Speed="4">
+     <Dir x="-1" y="0" z="0"/>
+     <Size x="60" y="400" z="50"/>
     </Properties>
    </Object>
    <Object Type="ParticleEntity" Layer="AmbientFX" LayerGUID="{8283a863-818f-46dd-9062-801556a41278}" Id="{07c3dee0-c14b-4099-a33e-092e092a8dbc}" Name="Butterflies4" HideOrder="0" Pos="1042.0341,1209.1025,54.512871" FloorNumber="-1" Rotate="1,0,0,0" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="ParticleEffect">

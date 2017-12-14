@@ -251,6 +251,11 @@ namespace AzToolsFramework
      * \return ref NodeDisplayVisibility
      */
     NodeDisplayVisibility CalculateNodeDisplayVisibility(const InstanceDataNode& node, bool isSlicePushUI = false);
+    
+    /**
+     * Used by in-editor tools to determine if a node matches the passed in filter
+    */
+    bool NodeMatchesFilter(const InstanceDataNode& node, const char* filter);
 
     /**
      * Used by in-editor tools to read the visibility attribute on a given instance

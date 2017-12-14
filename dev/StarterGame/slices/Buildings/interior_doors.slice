@@ -1,9 +1,9 @@
 <ObjectStream version="1">
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-			<Class name="AZ::u64" field="id" value="17859135215593207634" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			<Class name="AZ::u64" field="id" value="18207665979098063479" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
-		<Class name="AZStd::string" field="Name" value="17859135215593207634" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+		<Class name="AZStd::string" field="Name" value="18207665979098063479" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 		<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 			<Class name="PrefabComponent" field="element" version="1" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
@@ -322,11 +322,7 @@
 										<Class name="AZ::u64" field="Id" value="2763995801202683941" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 								</Class>
-								<Class name="AZStd::vector" field="ComponentOrderArray" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
-									<Class name="AZ::u64" field="element" value="10613729735681533442" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-									<Class name="AZ::u64" field="element" value="5143005701098013067" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-									<Class name="AZ::u64" field="element" value="2261482722150085963" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-								</Class>
+								<Class name="AZStd::vector" field="ComponentOrderArray" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
 							</Class>
 							<Class name="EditorLockComponent" field="element" type="{C3A169C9-7EFB-4D6C-8710-3591680D0936}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -403,7 +399,7 @@
 										<Class name="bool" field="m_isSyncEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									</Class>
 									<Class name="bool" field="TriggerOnce" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="int" field="ActivatedBy" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+									<Class name="int" field="ActivatedBy" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
 									<Class name="AZStd::vector" field="SpecificInteractEntities" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 										<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 											<Class name="AZ::u64" field="id" value="16599502684405071723" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -412,7 +408,9 @@
 									<Class name="AZStd::vector" field="RequiredTags" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
 									<Class name="AZStd::vector" field="ExcludedTags" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
 								</Class>
-								<Class name="AZStd::vector" field="RequiredTags" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
+								<Class name="AZStd::vector" field="RequiredTags" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
+									<Class name="AZStd::string" field="element" value="PlayerCharacter" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+								</Class>
 								<Class name="AZStd::vector" field="ExcludedTags" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
 							</Class>
 							<Class name="GenericComponentWrapper" field="element" type="{68D358CA-89B9-4730-8BA6-E181DEA28FDE}">
@@ -946,6 +944,13 @@
 												</Class>
 												<Class name="AZStd::string" field="value" value="Play_AMZ_sfx_spfx_ship_door_open" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 											</Class>
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" value="2996469915" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" value="Delay" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+												</Class>
+												<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
 										</Class>
 										<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
 									</Class>
@@ -990,6 +995,13 @@
 													<Class name="AZStd::string" field="name" value="TriggerOnce" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 												</Class>
 												<Class name="bool" field="value" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" value="2996469915" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" value="Delay" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+												</Class>
+												<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 											</Class>
 										</Class>
 										<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>

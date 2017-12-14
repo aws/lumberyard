@@ -145,7 +145,8 @@ void StairProfileTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint&
                     selectedStairs.push_back(SSpot(GetPlane().P2W(intersection)));
                     std::vector<BrushVec3> vList;
                     GenerateVertexListFromSpotList(selectedStairs, vList);
-                    CD::PolygonPtr pPolygon = new CD::Polygon(vList, GetPlane(), GetMatID(), &GetTexInfo(), true);
+                    auto texInfo = GetTexInfo();
+                    CD::PolygonPtr pPolygon = new CD::Polygon(vList, GetPlane(), GetMatID(), &texInfo, true);
                     pPolygon->ModifyOrientation();
                     pPolygon->SetMaterialID(CD::GetDesigner()->GetCurrentSubMatID());
                     GetModel()->AddPolygon(pPolygon, CD::eOpType_Split);

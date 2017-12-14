@@ -45,6 +45,7 @@
 #include <QHostAddress>
 #include <QRegExpValidator>
 #include <QMessageBox>
+#include <native/resourcecompiler/JobsModel.h>
 
 #ifdef Q_OS_WIN
 #include <Windows.h>
@@ -53,7 +54,8 @@
 MainWindow::MainWindow(GUIApplicationManager* guiApplicationManager, QWidget* parent)
     : QMainWindow(parent)
     , m_guiApplicationManager(guiApplicationManager)
-    , m_sortFilterProxy(new RCJobSortFilterProxyModel(this))
+    , m_sortFilterProxy(new AssetProcessor::JobSortFilterProxyModel(this))
+    , m_jobsModel(new AssetProcessor::JobsModel(this))
     , ui(new Ui::MainWindow)
     , m_loggingPanel(nullptr)
 {
@@ -66,28 +68,14 @@ void MainWindow::Activate()
 
     int listeningPort = m_guiApplicationManager->GetApplicationServer()->GetServerListeningPort();
     ui->port->setText(QString::number(listeningPort));
-    ui->proxyIP->setPlaceholderText(QString("localhost:%1").arg(listeningPort));
-    ui->proxyIP->setText(m_guiApplicationManager->GetIniConfiguration()->proxyInformation());
-    ui->proxyEnable->setChecked(m_guiApplicationManager->GetConnectionManager()->ProxyConnect());
 
     ui->gameProject->setText(m_guiApplicationManager->GetGameName());
     ui->gameRoot->setText(m_guiApplicationManager->GetSystemRoot().absolutePath());
 
-    connect(ui->proxyIP, &QLineEdit::editingFinished, this, &MainWindow::OnProxyIPEditingFinished);
-    connect(ui->proxyEnable, &QCheckBox::stateChanged, this, &MainWindow::OnProxyConnectChanged);
     connect(ui->buttonList, &QListWidget::currentItemChanged, this, &MainWindow::OnPaneChanged);
     connect(ui->supportButton, &QPushButton::clicked, this, &MainWindow::OnSupportClicked);
 
     ui->buttonList->setCurrentRow(0);
-
-    connect(m_guiApplicationManager->GetConnectionManager(), &ConnectionManager::ProxyConnectChanged, this,
-        [this](bool proxyMode)
-    {
-        if (static_cast<bool>(ui->proxyEnable->checkState()) != proxyMode)
-        {
-            ui->proxyEnable->setChecked(proxyMode);
-        }
-    });
 
     //Connection view
     ui->connectionTreeView->setModel(m_guiApplicationManager->GetConnectionManager());
@@ -142,52 +130,37 @@ void MainWindow::Activate()
     ui->whiteListAddIPLineEdit->setStyleSheet("background-color: rgb(48, 48, 48);");
     ui->whiteListAddHostNameLineEdit->setStyleSheet("background-color: rgb(48, 48, 48);");
 
-
-#if !defined(FORCE_PROXY_MODE)
     //Job view
-    m_sortFilterProxy->setSourceModel(m_guiApplicationManager->GetRCController()->GetQueueModel());
+    m_sortFilterProxy->setSourceModel(m_jobsModel);
     m_sortFilterProxy->setDynamicSortFilter(true);
-    m_sortFilterProxy->setFilterKeyColumn(2);
+    m_sortFilterProxy->setFilterKeyColumn(JobsModel::ColumnSource);
 
     ui->jobTreeView->setModel(m_sortFilterProxy);
     ui->jobTreeView->setSortingEnabled(true);
-    ui->jobTreeView->header()->resizeSection(RCJobListModel::ColumnState, 80);
-    ui->jobTreeView->header()->resizeSection(RCJobListModel::ColumnJobId, 40);
-    ui->jobTreeView->header()->resizeSection(RCJobListModel::ColumnCommand, 220);
-    ui->jobTreeView->header()->resizeSection(RCJobListModel::ColumnCompleted, 80);
-    ui->jobTreeView->header()->resizeSection(RCJobListModel::ColumnPlatform, 60);
-    ui->jobTreeView->header()->setSectionResizeMode(RCJobListModel::ColumnCommand, QHeaderView::Stretch);
+    ui->jobTreeView->header()->setDefaultAlignment(Qt::AlignHCenter);
+    ui->jobTreeView->header()->resizeSection(JobsModel::ColumnStatus, 100);
+    ui->jobTreeView->header()->resizeSection(JobsModel::ColumnSource, 160);
+    ui->jobTreeView->header()->resizeSection(JobsModel::ColumnPlatform, 100);
+    ui->jobTreeView->header()->resizeSection(JobsModel::ColumnJobKey, 120);
+    ui->jobTreeView->header()->resizeSection(JobsModel::ColumnCompleted, 80);
+    ui->jobTreeView->header()->setSectionResizeMode(JobsModel::ColumnSource, QHeaderView::Stretch);
     ui->jobTreeView->header()->setStretchLastSection(false);
 
     ui->jobTreeView->setToolTip(tr("Double click to view Job Log"));
 
-    connect(ui->jobTreeView->header(), &QHeaderView::sortIndicatorChanged, m_sortFilterProxy, &RCJobSortFilterProxyModel::sort);
+    connect(ui->jobTreeView->header(), &QHeaderView::sortIndicatorChanged, m_sortFilterProxy, &AssetProcessor::JobSortFilterProxyModel::sort);
     connect(ui->jobTreeView, &QAbstractItemView::doubleClicked, [this](const QModelIndex &index)
     {
-        
-        // we have to deliver this using a safe cross-thread approach.
-        // the Asset Processor Manager always runs on a separate thread to us.
-        using AssetJobLogRequest = AzToolsFramework::AssetSystem::AssetJobLogRequest;
-        using AssetJobLogResponse = AzToolsFramework::AssetSystem::AssetJobLogResponse;
-        AssetJobLogRequest request;
-        AssetJobLogResponse response;
-
-        request.m_jobRunKey = m_sortFilterProxy->data(index, RCJobListModel::jobIndexRole).toInt();
-
-        QMetaObject::invokeMethod(m_guiApplicationManager->GetAssetProcessorManager(), "ProcessGetAssetJobLogRequest",
-            Qt::BlockingQueuedConnection,
-            Q_ARG(const AssetJobLogRequest&, request),
-            Q_ARG(AssetJobLogResponse&, response));
-
         // read the log file and show it to the user
-        
+        AZStd::string jobLog = m_sortFilterProxy->data(index, AssetProcessor::JobsModel::DataRoles::logRole).toString().toUtf8().data();
         QDialog logDialog;
         logDialog.setMinimumSize(1024, 400);
         QHBoxLayout* pLayout = new QHBoxLayout(&logDialog);
         logDialog.setLayout(pLayout);
         AzToolsFramework::LogPanel::GenericLogPanel* logPanel = new AzToolsFramework::LogPanel::GenericLogPanel(&logDialog);
+        logPanel->SetCurrentItemsExpandToFit(true);
         logDialog.layout()->addWidget(logPanel);
-        logPanel->ParseData(response.m_jobLog.c_str(), response.m_jobLog.size());
+        logPanel->ParseData(jobLog.c_str(), jobLog.size());
 
         auto tabsResetFunction = [logPanel]() -> void
         {
@@ -259,8 +232,10 @@ void MainWindow::Activate()
     }
 
     connect(m_loggingPanel, &AzToolsFramework::LogPanel::BaseLogPanel::TabsReset, this, loggingPanelResetFunction);
+    connect(m_guiApplicationManager->GetRCController(), &AssetProcessor::RCController::JobStatusChanged, m_jobsModel, &AssetProcessor::JobsModel::OnJobStatusChanged);
+    connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::JobRemoved, m_jobsModel, &AssetProcessor::JobsModel::OnJobRemoved);
+    m_jobsModel->PopulateJobsFromDatabase();
 
-#endif //FORCE_PROXY_MODE
 }
 
 void MainWindow::OnSupportClicked(bool checked)
@@ -271,12 +246,22 @@ void MainWindow::OnSupportClicked(bool checked)
 void MainWindow::OnJobFilterClear(bool checked)
 {
     ui->jobFilterLineEdit->setText(QString());
+    ui->filterLabel->setText(QString());
 }
 
 void MainWindow::OnJobFilterRegExpChanged()
 {
     QRegExp regExp(ui->jobFilterLineEdit->text(), Qt::CaseInsensitive, QRegExp::PatternSyntax::RegExp);
-    m_sortFilterProxy->setFilterRegExp(regExp);
+    bool isFilterTextEmpty = ui->jobFilterLineEdit->text().isEmpty();
+    m_sortFilterProxy->OnFilterRegexExpChanged(regExp, isFilterTextEmpty);
+    if (isFilterTextEmpty)
+    {
+        ui->filterLabel->setText(QString());
+    }
+    else
+    {
+        ui->filterLabel->setText(QString("Showing %1 out of %2 rows.").arg(m_sortFilterProxy->rowCount()).arg(m_jobsModel->rowCount()));
+    }
 }
 
 void MainWindow::OnAddConnection(bool checked)
@@ -410,25 +395,10 @@ MainWindow::~MainWindow()
 }
 
 
-void MainWindow::OnProxyIPEditingFinished()
-{
-    if (m_guiApplicationManager && m_guiApplicationManager->GetIniConfiguration())
-    {
-        m_guiApplicationManager->GetIniConfiguration()->SetProxyInformation(ui->proxyIP->text());
-    }
-}
-
-
-void MainWindow::OnProxyConnectChanged(int state)
-{
-    if (m_guiApplicationManager)
-    {
-        m_guiApplicationManager->GetConnectionManager()->SetProxyConnect(state == 2);
-    }
-}
 
 void MainWindow::ShowWindow()
 {
+    setWindowState(Qt::WindowActive);
     show();
     raise();
 

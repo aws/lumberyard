@@ -77,8 +77,15 @@ namespace AZStd
         }
 #   else
         int result = clock_gettime(CLOCK_MONOTONIC_RAW, &ts);  // Similar to CLOCK_MONOTONIC, but provides access to a raw hardware-based time that is not subject to NTP adjustments.
-        (void)result;
+        if (result < 0)
+        {
+            // NOTE(HS): WSL doesn't implement support for CLOCK_MONOTONIC_RAW and there
+            // is no way to check platform for conditional compile. Fallback to supported
+            // option if desired option fails.
+            result = clock_gettime(CLOCK_MONOTONIC, &ts);
+        }
         AZ_Assert(result != -1, "clock_gettime error: %s\n", strerror(errno));
+        (void)result;
 #   endif
 
         timeNow =  ts.tv_sec * GetTimeTicksPerSecond() + ts.tv_nsec;

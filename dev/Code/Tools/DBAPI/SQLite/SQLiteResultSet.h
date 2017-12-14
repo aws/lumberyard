@@ -97,7 +97,6 @@ public:
 
 protected:
 
-    bool Close();
 
     bool IsClosed() const { return m_hStatement == NULL; }
 

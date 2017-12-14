@@ -40,12 +40,12 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("ProximityTriggerService"));
+            provided.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("ShapeService"));
+            required.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
         }
 
     private:

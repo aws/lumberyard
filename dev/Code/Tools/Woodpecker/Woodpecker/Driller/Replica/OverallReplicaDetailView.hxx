@@ -20,9 +20,10 @@
 #include <AzCore/std/string/string.h>
 
 #include <QAbstractTableModel>
-#include <QtWidgets/QMainWindow>
-#include <QtWidgets/qdialog.h>
-#include <qsortfilterproxymodel.h>
+#include <QMainWindow>
+#include <QDialog>
+#include <QSortFilterProxyModel>
+#include <QTimer>
 
 #include "Woodpecker/Driller/DrillerMainWindowMessages.h"
 #include "Woodpecker/Driller/DrillerOperationTelemetryEvent.h"
@@ -37,6 +38,8 @@ namespace Ui
 {
     class OverallReplicaDetailView;
 }
+
+namespace AZ { class ReflectContext; }
 
 namespace Driller
 {

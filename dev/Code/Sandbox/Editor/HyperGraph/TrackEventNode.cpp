@@ -197,7 +197,7 @@ void CTrackEventNode::PopulateOutput(bool bLoading)
     if (m_pSequence == NULL)
     {
         m_inputs[kSequenceName].pVar->Get(sequence);
-        m_pSequence = GetIEditor()->GetMovieSystem()->FindSequence(sequence.toLatin1().data());
+        m_pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(sequence.toLatin1().data());
     }
 
     // Check if sequence exists

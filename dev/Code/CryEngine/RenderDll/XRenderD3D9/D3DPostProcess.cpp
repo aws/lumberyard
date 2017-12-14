@@ -18,6 +18,8 @@
 #include "I3DEngine.h"
 #include "D3DPostProcess.h"
 #include <Common/RenderCapabilities.h>
+#include <Common/Textures/TextureManager.h>
+
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 #pragma warning(disable: 4244)
@@ -908,7 +910,7 @@ void SD3DPostEffectsUtils::TexBlurDirectional(CTexture* pTex, const Vec2& vDir, 
         CShaderMan::s_shPostEffects->FXBeginPass(0);
 
         SetTexture(pTex, 0, FILTER_LINEAR, TADDR_BORDER);
-        SetTexture(CTexture::s_ptexScreenNoiseMap, 1, FILTER_POINT, 0);
+        SetTexture(CTextureManager::Instance()->GetDefaultTexture("ScreenNoiseMap"), 1, FILTER_POINT, 0);
 
         DrawFullScreenTri(pTex->GetWidth(), pTex->GetHeight());
 
@@ -949,7 +951,7 @@ void SD3DPostEffectsUtils::TexBlurDirectional(CTexture* pTex, const Vec2& vDir, 
         CShaderMan::s_shPostEffects->FXBeginPass(0);
 
         SetTexture(pTempRT, 0, FILTER_LINEAR, TADDR_BORDER);
-        SetTexture(CTexture::s_ptexScreenNoiseMap, 1, FILTER_POINT, 0);
+        SetTexture(CTextureManager::Instance()->GetDefaultTexture("ScreenNoiseMap"), 1, FILTER_POINT, 0);
 
         DrawFullScreenTri(pTex->GetWidth(), pTex->GetHeight());
 

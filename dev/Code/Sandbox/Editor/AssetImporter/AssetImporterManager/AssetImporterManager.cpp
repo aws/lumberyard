@@ -109,7 +109,7 @@ bool AssetImporterManager::OnBrowseFiles()
     QSettings settings;
     QString currentAbsolutePath = settings.value(AssetImporterManagerPrivate::g_selectFilesPath).toString();
 
-    QDir gameRoot = Path::GetEditingGameDataFolder().c_str();
+    QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
     QString gameRootAbsPath = gameRoot.absolutePath();
 
     // Case 1: if currentAbsolutePath is empty at this point, that means this is the first time
@@ -172,7 +172,7 @@ void AssetImporterManager::OnBrowseDestinationFilePath(QLineEdit* destinationLin
     QSettings settings;
     QString currentDestination = settings.value(AssetImporterManagerPrivate::g_selectDestinationFilesPath).toString();
 
-    QDir gameRoot = Path::GetEditingGameDataFolder().c_str();
+    QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
     QString gameRootAbsPath = gameRoot.absolutePath();
 
     // Case 1: if currentDestination is empty at this point, that means this is the first time

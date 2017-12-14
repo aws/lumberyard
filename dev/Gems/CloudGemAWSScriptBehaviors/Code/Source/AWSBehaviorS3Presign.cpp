@@ -113,6 +113,9 @@ namespace CloudGemAWSScriptBehaviors
         EBUS_EVENT_RESULT(bucketName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, m_bucketName.c_str());
 
         CloudGemFramework::AwsApiClientJobConfig<Aws::S3::S3Client> clientConfig;
+        AZStd::string region;
+        EBUS_EVENT_RESULT(region, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "region");
+        clientConfig.region = region.c_str();
         auto s3Client = clientConfig.GetClient();
 
         Aws::String url = s3Client->GeneratePresignedUrl(bucketName.c_str(), m_keyName.c_str(), httpMethod);

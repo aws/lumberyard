@@ -170,11 +170,11 @@ private:
     void SolveHierarchy();
 
     void AddEntityAnimationData(CBaseObject* pObj);
-    void ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Export::CObject* pObj, EAnimParamType entityTrackParamType);
-    void AddEntityAnimationData(const CTrackViewTrack* pTrack, Export::CObject* pObj, EAnimParamType entityTrackParamType);
+    void ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Export::CObject* pObj, AnimParamType entityTrackParamType);
+    void AddEntityAnimationData(const CTrackViewTrack* pTrack, Export::CObject* pObj, AnimParamType entityTrackParamType);
 
     void AddPosRotScale(Export::CObject* pObj, const CBaseObject* pBaseObj);
-    void AddEntityData(Export::CObject* pObj, Export::EAnimParamType dataType, const float fValue, const float fTime);
+    void AddEntityData(Export::CObject* pObj, Export::AnimParamType dataType, const float fValue, const float fTime);
 
     bool AddObjectsFromSequence(CTrackViewSequence* pSequence, XmlNodeRef seqNode = 0);
     bool AddCameraTargetObject(CBaseObjectPtr pLookAt);

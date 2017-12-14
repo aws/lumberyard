@@ -112,9 +112,8 @@ namespace MCore
         bool SetInt32Attribute(const char* internalName, int32 value, bool createIfNotExists = true);
         bool SetColorAttribute(const char* internalName, const RGBAColor& value, bool createIfNotExists = true);
         bool SetVector2Attribute(const char* internalName, const AZ::Vector2& value, bool createIfNotExists = true);
-        bool SetVector3Attribute(const char* internalName, const Vector3& value, bool createIfNotExists = true);
+        bool SetVector3Attribute(const char* internalName, const AZ::PackedVector3f& value, bool createIfNotExists = true);
         bool SetVector4Attribute(const char* internalName, const AZ::Vector4& value, bool createIfNotExists = true);
-        bool SetMatrixAttribute(const char* internalName, const Matrix& value, bool createIfNotExists = true);
         bool SetQuaternionAttribute(const char* internalName, const Quaternion& value, bool createIfNotExists = true);
         bool SetBoolAttribute(const char* internalName, bool value, bool createIfNotExists = true);
 
@@ -124,10 +123,9 @@ namespace MCore
         int32 GetInt32Attribute(const char* internalName, int32 defaultValue = 0);
         bool GetBoolAttribute(const char* internalName, bool defaultValue = false);
         AZ::Vector2 GetVector2Attribute(const char* internalName, const AZ::Vector2& defaultValue = AZ::Vector2(0.0f, 0.0f));
-        Vector3 GetVector3Attribute(const char* internalName, const Vector3& defaultValue = Vector3(0.0f, 0.0f, 0.0f));
+        AZ::PackedVector3f GetVector3Attribute(const char* internalName, const AZ::PackedVector3f& defaultValue = AZ::PackedVector3f(0.0f, 0.0f, 0.0f));
         AZ::Vector4 GetVector4Attribute(const char* internalName, const AZ::Vector4& defaultValue = AZ::Vector4(0.0f, 0.0f, 0.0f, 0.0f));
         Quaternion GetQuaternionAttribute(const char* internalName, const Quaternion& defaultValue = Quaternion());
-        Matrix GetMatrixAttribute(const char* internalName, const Matrix& defaultValue = Matrix());   // TODO: the matrix default value currently is an uninitialized matrix!
         RGBAColor GetColorAttribute(const char* internalName, const RGBAColor& defaultValue = RGBAColor());
 
         void Merge(const AttributeSet& other, bool overwriteExisting = false, bool overwriteOnlyWhenSameType = true);

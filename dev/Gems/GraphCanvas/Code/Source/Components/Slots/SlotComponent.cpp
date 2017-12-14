@@ -116,11 +116,27 @@ namespace GraphCanvas
         AZ_Error("Graph Canvas", false, "The scene cannot be cleared directly on a slot; it follows that of the node to which it belongs (slot: %s)", GetEntityId().ToString().data());
     }
 
+    void SlotComponent::SignalMemberSetupComplete()
+    {
+        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnMemberSetupComplete);
+    }
+
     AZ::EntityId SlotComponent::GetScene() const
     {
         AZ::EntityId sceneId;
         SceneMemberRequestBus::EventResult(sceneId, m_nodeId, &SceneMemberRequests::GetScene);
         return sceneId;
+    }
+
+    bool SlotComponent::LockForExternalMovement(const AZ::EntityId&)
+    {
+        AZ_Error("Graph Canvas", false, "The slot should not be controlled directly, as the node it belongs to already controls it's postioning (slot: %s)", GetEntityId().ToString().data());
+        return false;
+    }
+
+    void SlotComponent::UnlockForExternalMovement(const AZ::EntityId&)
+    {
+        AZ_Error("Graph Canvas", false, "The slot should not be controlled directly, as the node it belongs to already controls it's postioning (slot: %s)", GetEntityId().ToString().data());
     }
 
     void SlotComponent::OnSceneSet(const AZ::EntityId& sceneId)
@@ -141,27 +157,30 @@ namespace GraphCanvas
 
     void SlotComponent::SetNode(const AZ::EntityId& nodeId)
     {
-        m_nodeId = nodeId;
-
-        SceneMemberNotificationBus::Handler::BusDisconnect();
-        SceneMemberNotificationBus::Handler::BusConnect(m_nodeId);
-        AZ::EntityId sceneId = GetScene();
-        if (sceneId.IsValid())
+        if (m_nodeId != nodeId)
         {
-            OnSceneSet(sceneId);
-        }
+            m_nodeId = nodeId;
 
-        SlotNotificationBus::Event(GetEntityId(), &SlotNotifications::OnRegisteredToNode, m_nodeId);
+            SceneMemberNotificationBus::Handler::BusDisconnect();
+            SceneMemberNotificationBus::Handler::BusConnect(m_nodeId);
+            AZ::EntityId sceneId = GetScene();
+            if (sceneId.IsValid())
+            {
+                OnSceneSet(sceneId);
+            }
+
+            SlotNotificationBus::Event(GetEntityId(), &SlotNotifications::OnRegisteredToNode, m_nodeId);
+        }
     }
 
     void SlotComponent::SetName(const AZStd::string& name)
     {
-        if (name == m_slotConfiguration.m_name.m_fallback)
+        if (name == m_slotConfiguration.m_name.GetDisplayString())
         {
             return;
         }
 
-        m_slotConfiguration.m_name.m_fallback = name;
+        m_slotConfiguration.m_name.SetFallback(name);
 
         // Default tooltip.
         if (m_slotConfiguration.m_tooltip.empty())
@@ -192,12 +211,12 @@ namespace GraphCanvas
 
     void SlotComponent::SetTooltip(const AZStd::string& tooltip)
     {
-        if (tooltip == m_slotConfiguration.m_tooltip.m_fallback)
+        if (tooltip == m_slotConfiguration.m_tooltip.GetDisplayString())
         {
             return;
         }
 
-        m_slotConfiguration.m_tooltip.m_fallback = tooltip;
+        m_slotConfiguration.m_tooltip.SetFallback(tooltip);
 
         // Default tooltip.
         if (m_slotConfiguration.m_tooltip.empty())

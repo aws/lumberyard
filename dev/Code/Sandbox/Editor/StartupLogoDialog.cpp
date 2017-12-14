@@ -20,6 +20,8 @@
 
 #include <QPainter>
 #include <QThread>
+#include <QFont>
+#include <QPixmap>
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -27,72 +29,16 @@
 
 CStartupLogoDialog* CStartupLogoDialog::s_pLogoWindow = 0;
 
-CStartupLogoDialog::CStartupLogoDialog(QWidget* pParent /*=NULL*/)
+CStartupLogoDialog::CStartupLogoDialog(QString versionText, QWidget* pParent /*=NULL*/)
     : QWidget(pParent, Qt::Dialog | Qt::FramelessWindowHint)
     , m_ui(new Ui::StartupLogoDialog)
 {
     m_ui->setupUi(this);
-    OnInitDialog();
-
-    // TODO: move this into the global qss file once mainwindow and dialogs_2 branches are merged
-    setStyleSheet("CStartupLogoDialog > QLabel { background: transparent; color: 'white' }");
-}
-
-CStartupLogoDialog::~CStartupLogoDialog()
-{
-    s_pLogoWindow = 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// CStartupLogoDialog message handlers+
-
-
-void CStartupLogoDialog::SetVersion(const SFileVersion& v)
-{
-#if defined(LY_BUILD)
-    m_ui->m_TransparentVersion->setText(tr("Version %1.%2.%3.%4 - Build %5").arg(v[3]).arg(v[2]).arg((v[1] << 16)).arg(v[0]).arg(LY_BUILD));
-#else
-    m_ui->m_TransparentVersion->setText(tr("Version %1.%2.%3.%4").arg(v[3]).arg(v[2]).arg((v[1] << 16)).arg(v[0]));
-#endif
-}
-
-
-void CStartupLogoDialog::SetInfo(const char* text)
-{
-    m_ui->m_TransparentText->setText(text);
-    if (QThread::currentThread() == thread())
-    {
-        m_ui->m_TransparentText->repaint();
-    }
-    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);  // if you don't process events, repaint does not function correctly.
-}
-
-void CStartupLogoDialog::SetText(const char* text)
-{
-    if (s_pLogoWindow)
-    {
-        s_pLogoWindow->SetInfo(text);
-    }
-}
-
-void CStartupLogoDialog::SetInfoText(const char* text)
-{
-    SetInfo(text);
-}
-
-void CStartupLogoDialog::paintEvent(QPaintEvent*)
-{
-    QPainter painter(this);
-    painter.drawPixmap(rect(), m_hBitmap);
-}
-
-void CStartupLogoDialog::OnInitDialog()
-{
+ 
     s_pLogoWindow = this;
 
-    m_hBitmap = QPixmap(QStringLiteral(":/StartupLogoDialog/sandbox_dark.png"));
-
-    setFixedSize(m_hBitmap.size());
+    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/sandbox_dark.png"));
+    setFixedSize(m_backgroundImage.size());
 
     QFont smallFont(QStringLiteral("MS Shell Dlg 2"));
     smallFont.setPointSizeF(7.5);
@@ -103,6 +49,41 @@ void CStartupLogoDialog::OnInitDialog()
     m_ui->m_TransparentBeta->setFont(bigFont);
 
     setWindowTitle(tr("Starting Lumberyard Editor"));
+
+    setStyleSheet("CStartupLogoDialog > QLabel { background: transparent; color: 'white' }");
+
+    m_ui->m_TransparentVersion->setText(versionText);
+}
+
+CStartupLogoDialog::~CStartupLogoDialog()
+{
+    s_pLogoWindow = 0;
+}
+
+void CStartupLogoDialog::SetText(const char* text)
+{
+    if (s_pLogoWindow)
+    {
+        s_pLogoWindow->SetInfoText(text);
+    }
+}
+
+void CStartupLogoDialog::SetInfoText(const char* text)
+{
+    m_ui->m_TransparentText->setText(text);
+
+    if (QThread::currentThread() == thread())
+    {
+        m_ui->m_TransparentText->repaint();
+    }
+
+    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);  // if you don't process events, repaint does not function correctly.
+}
+
+void CStartupLogoDialog::paintEvent(QPaintEvent*)
+{
+    QPainter painter(this);
+    painter.drawPixmap(rect(), m_backgroundImage);
 }
 
 #include <StartupLogoDialog.moc>

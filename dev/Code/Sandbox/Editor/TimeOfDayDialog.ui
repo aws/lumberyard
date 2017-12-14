@@ -456,7 +456,7 @@
              <item row="0" column="0" colspan="3">
               <widget class="QSlider" name="timelineSlider">
                <property name="maximum">
-                <number>1440</number>
+                <number>1439</number>
                </property>
                <property name="pageStep">
                 <number>60</number>
@@ -553,8 +553,8 @@
   <widget class="QDockWidget" name="hdrPaneDock">
    <property name="minimumSize">
     <size>
-     <width>200</width>
-     <height>37</height>
+     <width>350</width>
+     <height>40</height>
     </size>
    </property>
    <property name="features">
@@ -594,8 +594,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>218</width>
-     <height>47</height>
+     <width>450</width>
+     <height>50</height>
     </size>
    </property>
    <property name="features">
@@ -699,13 +699,6 @@
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="ClickableLabel" name="toggleAdvancedPropertiesClickable">
-             <property name="text">
-              <string>Toggle Advanced Properties</string>
-             </property>
-            </widget>
-           </item>
           </layout>
          </widget>
         </item>
@@ -765,7 +758,11 @@
             </widget>
            </item>
            <item row="3" column="1">
-            <widget class="QDoubleSpinBox" name="playSpeedDoubleSpinBox"/>
+            <widget class="AzQtComponents::StyledDoubleSpinBox" name="playSpeedDoubleSpinBox">
+             <property name="singleStep">
+              <double>0.001000000000000</double>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
@@ -908,7 +905,7 @@
     <string>24</string>
    </property>
    <property name="toolTip">
-    <string>Set Time to 24:00</string>
+    <string>Set Time to 23:59</string>
    </property>
   </action>
   <action name="actionStartStopRecording">
@@ -971,6 +968,11 @@
    <extends>QWidget</extends>
    <header>Controls/ColorGradientCtrl.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AzQtComponents::StyledDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>AzQtComponents/Components/StyledSpinBox.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

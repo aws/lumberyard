@@ -453,7 +453,82 @@ HRESULT STDMETHODCALLTYPE CCryDX12Device::CheckFeatureSupport(
     UINT FeatureSupportDataSize)
 {
     DX12_FUNC_LOG
-    return -1;
+
+    switch (Feature)
+    {
+    case D3D11_FEATURE_D3D11_OPTIONS2:
+    {
+        D3D11_FEATURE_DATA_D3D11_OPTIONS2* dx11FeatureDataOptions2 = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS2*>(pFeatureSupportData);
+        HRESULT result;
+
+        D3D12_FEATURE_DATA_D3D12_OPTIONS dx12FeatureDataOptions;
+        result = m_pDevice->GetD3D12Device()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &dx12FeatureDataOptions, sizeof(dx12FeatureDataOptions));
+        if (result == S_OK)
+        {
+            dx11FeatureDataOptions2->PSSpecifiedStencilRefSupported = dx12FeatureDataOptions.PSSpecifiedStencilRefSupported;
+            dx11FeatureDataOptions2->TypedUAVLoadAdditionalFormats = dx12FeatureDataOptions.TypedUAVLoadAdditionalFormats;
+            dx11FeatureDataOptions2->ROVsSupported = dx12FeatureDataOptions.ROVsSupported;
+            dx11FeatureDataOptions2->MapOnDefaultTextures = true; // Assumed true in DX12
+            dx11FeatureDataOptions2->StandardSwizzle = dx12FeatureDataOptions.StandardSwizzle64KBSupported;
+
+            switch (dx12FeatureDataOptions.ConservativeRasterizationTier)
+            {
+            case D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED:
+                dx11FeatureDataOptions2->ConservativeRasterizationTier = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
+                break;
+            case D3D12_CONSERVATIVE_RASTERIZATION_TIER_1:
+                dx11FeatureDataOptions2->ConservativeRasterizationTier = D3D11_CONSERVATIVE_RASTERIZATION_TIER_1;
+                break;
+            case D3D12_CONSERVATIVE_RASTERIZATION_TIER_2:
+                dx11FeatureDataOptions2->ConservativeRasterizationTier = D3D11_CONSERVATIVE_RASTERIZATION_TIER_2;
+                break;
+            case D3D12_CONSERVATIVE_RASTERIZATION_TIER_3:
+                dx11FeatureDataOptions2->ConservativeRasterizationTier = D3D11_CONSERVATIVE_RASTERIZATION_TIER_3;
+                break;
+            }
+
+            switch (dx12FeatureDataOptions.TiledResourcesTier)
+            {
+            case D3D12_TILED_RESOURCES_TIER_NOT_SUPPORTED:
+                dx11FeatureDataOptions2->TiledResourcesTier = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
+                break;
+            case D3D12_TILED_RESOURCES_TIER_1:
+                dx11FeatureDataOptions2->TiledResourcesTier = D3D11_TILED_RESOURCES_TIER_1;
+                break;
+            case D3D12_TILED_RESOURCES_TIER_2:
+                dx11FeatureDataOptions2->TiledResourcesTier = D3D11_TILED_RESOURCES_TIER_2;
+                break;
+            case D3D12_TILED_RESOURCES_TIER_3:
+                dx11FeatureDataOptions2->TiledResourcesTier = D3D11_TILED_RESOURCES_TIER_3;
+                break;
+            }
+        }
+        else
+        {
+            return E_INVALIDARG;
+        }
+
+
+        D3D12_FEATURE_DATA_ARCHITECTURE dx12FeatureDataArchitecture;
+        dx12FeatureDataArchitecture.NodeIndex = 0;
+        result = m_pDevice->GetD3D12Device()->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &dx12FeatureDataArchitecture, sizeof(dx12FeatureDataArchitecture));
+        if (result == S_OK)
+        {
+            dx11FeatureDataOptions2->UnifiedMemoryArchitecture = dx12FeatureDataArchitecture.UMA;
+        }
+        else
+        {
+            return E_INVALIDARG;
+        }
+
+        break;
+    }
+    default:
+        AZ_Assert(false, "No conversion to DX12 has been written for this feature support check.");
+        return E_INVALIDARG;
+    }
+
+    return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE CCryDX12Device::GetPrivateData(

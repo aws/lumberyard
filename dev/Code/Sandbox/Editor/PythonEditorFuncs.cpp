@@ -211,9 +211,7 @@ namespace
         if (bRelativePath)
         {
             // Try to open from user folder
-            QByteArray userSandboxFolderArray(MAX_PATH, 0);
-            gEnv->pFileIO->ResolvePath(Path::GetUserSandboxFolder().toLatin1().data(), userSandboxFolderArray.data(), userSandboxFolderArray.length());
-            QString userSandboxFolder = QString::fromLatin1(userSandboxFolderArray);
+            QString userSandboxFolder = Path::GetResolvedUserSandboxFolder();
             Path::ConvertBackSlashToSlash(userSandboxFolder);
             path = userSandboxFolder + pFile;
 

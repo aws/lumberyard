@@ -92,14 +92,21 @@ bool StaticMeshThumbnailRenderer::Render(QPixmap& thumbnail, AZ::Data::AssetId a
 
     m_previewControl->Update(true);
     m_previewControl->repaint();
+    CImageEx img;
+    // getimageoffscreen actually requires a real operating system window handle resource, which hiding the window can cause
+    // to be lost.
+    m_previewControl->GetImageOffscreen(img, QSize(thumbnailSize, thumbnailSize));
     m_previewControl->hide();
 
-    CImageEx img;
-    m_previewControl->GetImageOffscreen(img, QSize(thumbnailSize, thumbnailSize));
+    if (img.IsValid())
+    {
+        // this can fail if the request to draw the thumbnail was queued up but then the window
+        // was hidden or deleted in the interim.
+        thumbnail = QPixmap::fromImage(QImage(reinterpret_cast<uchar*>(img.GetData()),
+            img.GetWidth(), img.GetHeight(), QImage::Format_ARGB32)).copy();
+        img.Release();
+        return true;
+    }
 
-    thumbnail = QPixmap::fromImage(QImage(reinterpret_cast<uchar*>(img.GetData()),
-                img.GetWidth(), img.GetHeight(), QImage::Format_ARGB32)).copy();
-
-    img.Release();
-    return true;
+    return false;
 }

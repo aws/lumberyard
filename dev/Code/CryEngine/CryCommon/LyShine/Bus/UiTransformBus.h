@@ -118,11 +118,35 @@ public: // member functions
     //! Set the scale
     virtual void SetScale(AZ::Vector2 scale) = 0;
 
+    //! Get the scale X
+    virtual float GetScaleX() = 0;
+
+    //! Set the scale X
+    virtual void SetScaleX(float scale) = 0;
+
+    //! Get the scale Y
+    virtual float GetScaleY() = 0;
+
+    //! Set the scale Y
+    virtual void SetScaleY(float scale) = 0;
+
     //! Get the pivot point for the element
     virtual AZ::Vector2 GetPivot() = 0;
 
     //! Set the pivot point for the element
     virtual void SetPivot(AZ::Vector2 pivot) = 0;
+
+    //! Get the pivot point for the element
+    virtual float GetPivotX() = 0;
+
+    //! Set the pivot point for the element
+    virtual void SetPivotX(float pivot) = 0;
+
+    //! Get the pivot point for the element
+    virtual float GetPivotY() = 0;
+
+    //! Set the pivot point for the element
+    virtual void SetPivotY(float pivot) = 0;
 
     //! Get whether the element and all its children will be scaled to allow for the difference
     //! between the authored canvas size and the actual viewport size.
@@ -237,6 +261,18 @@ public: // member functions
     //! Set the position for this element relative to the center of the element's anchors
     virtual void SetLocalPosition(const AZ::Vector2& position) = 0;
 
+    //! Get the X position for this element relative to the center of the element's anchors
+    virtual float GetLocalPositionX() = 0;
+
+    //! Set the X position for this element relative to the center of the element's anchors
+    virtual void SetLocalPositionX(float position) = 0;
+
+    //! Get the Y position for this element relative to the center of the element's anchors
+    virtual float GetLocalPositionY() = 0;
+
+    //! Set the Y position for this element relative to the center of the element's anchors
+    virtual void SetLocalPositionY(float position) = 0;
+
     //! Move this element in viewport space
     virtual void MoveViewportPositionBy(const AZ::Vector2& offset) = 0;
 
@@ -280,6 +316,9 @@ public: // member functions
 
     //! Send notification of canvas space rect change and reset to unchanged
     virtual void NotifyAndResetCanvasSpaceRectChange() = 0;
+
+    //! This is called each frame (when needed) to efficiently update the rect and transform in one pass
+    virtual void RecomputeTransformsAndSendNotifications() = 0;
 
 public: // static member data
 

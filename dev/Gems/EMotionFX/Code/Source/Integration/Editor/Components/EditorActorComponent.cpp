@@ -39,7 +39,7 @@
 
 namespace EMotionFX
 {
-    namespace Integration 
+    namespace Integration
     {
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::Reflect(AZ::ReflectContext* context)
@@ -58,12 +58,12 @@ namespace EMotionFX
                     ->Field("RenderSkeleton", &EditorActorComponent::m_renderSkeleton)
                     ->Field("RenderCharacter", &EditorActorComponent::m_renderCharacter)
                     ->Field("SkinningMethod", &EditorActorComponent::m_skinningMethod)
-                    ;
+                ;
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<EditorActorComponent>("Actor", "Manages a EMotion FX actor instance")
+                    editContext->Class<EditorActorComponent>("Actor", "The Actor component manages an instance of an Actor")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation")
                         ->Attribute(AZ::Edit::Attributes::Icon, ":/EMotionFX/ActorComponent.png")
@@ -72,50 +72,53 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(0, &EditorActorComponent::m_actorAsset,
-                            "Actor asset", "Assigned actor asset")
+                        "Actor asset", "Assigned actor asset")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAssetSelected)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute("EditButton", "Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32")
                         ->Attribute("EditDescription", "Open in Animation Editor")
                         ->Attribute("EditCallback", &EditorActorComponent::LaunchAnimationEditor)
                         ->DataElement(0, &EditorActorComponent::m_materialPerLOD,
-                            "LOD Materials", "Material assignment for each LOD level")
+                        "LOD Materials", "Material assignment for each LOD level")
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnMaterialChanged)
                         ->ClassElement(AZ::Edit::ClassElements::Group, "Options")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(0, &EditorActorComponent::m_renderCharacter,
-                            "Draw character", "Toggles rendering of character mesh.")
+                        "Draw character", "Toggles rendering of character mesh.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnDebugDrawFlagChanged)
                         ->DataElement(0, &EditorActorComponent::m_renderSkeleton,
-                            "Draw skeleton", "Toggles rendering of skeleton.")
+                        "Draw skeleton", "Toggles rendering of skeleton.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnDebugDrawFlagChanged)
                         ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorActorComponent::m_skinningMethod,
-                            "Skinning method", "Choose the skinning method this actor is using")
+                        "Skinning method", "Choose the skinning method this actor is using")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnSkinningMethodChanged)
                         ->EnumAttribute(SkinningMethod::DualQuat, "Dual quat skinning")
                         ->EnumAttribute(SkinningMethod::Linear, "Linear skinning")
                         ->ClassElement(AZ::Edit::ClassElements::Group, "Attach To")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorActorComponent::m_attachmentType,
-                            "Attachment type", "Type of attachment to use when attaching to the target entity.")
+                        "Attachment type", "Type of attachment to use when attaching to the target entity.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAttachmentTypeChanged)
                         ->EnumAttribute(AttachmentType::None, "None")
-                        ->EnumAttribute(AttachmentType::ActorAttachment, "Actor attachment")
+                    // ActorAttachment is disabled in 1.11 because it doesn't work as intended. We are encouraging user to use AttachmentComponent instead.
+                    // In the future, ActorAttachment will be replaced with AttachmentComponent when AttachmentComponent also handles actor instance's attachment update.
+                    //->EnumAttribute(AttachmentType::ActorAttachment, "Actor attachment")
                         ->EnumAttribute(AttachmentType::SkinAttachment, "Skin attachment")
                         ->DataElement(0, &EditorActorComponent::m_attachmentTarget,
-                            "Target entity", "Entity Id whose actor instance we should attach to.")
+                        "Target entity", "Entity Id whose actor instance we should attach to.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
                         ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("EMotionFXActorService", 0xd6e8f48d))
                         ->Attribute(AZ::Edit::Attributes::Visibility, &EditorActorComponent::AttachmentTargetVisibility)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAttachmentTargetChanged)
                         ->DataElement(AZ::Edit::UIHandlers::Button, &EditorActorComponent::m_attachmentJointName,
-                            "Target joint", "Joint on target entity to which to attach.")
+                        "Target joint", "Joint on target entity to which to attach.")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &EditorActorComponent::AttachmentTargetJointVisibility)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAttachmentTargetJointSelect)
                         ->Attribute(AZ::Edit::Attributes::ButtonText, &EditorActorComponent::AttachmentJointButtonText)
-                        ;
+                    ;
                 }
             }
         }
@@ -146,6 +149,7 @@ namespace EMotionFX
             CreateActorInstance();
 
             ActorComponentRequestBus::Handler::BusConnect(GetEntityId());
+            EditorActorComponentRequestBus::Handler::BusConnect(GetEntityId());
             LmbrCentral::MeshComponentRequestBus::Handler::BusConnect(GetEntityId());
             LmbrCentral::RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
         }
@@ -153,12 +157,14 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::Deactivate()
         {
-            ActorComponentRequestBus::Handler::BusDisconnect();
+            LmbrCentral::RenderNodeRequestBus::Handler::BusDisconnect();
             LmbrCentral::MeshComponentRequestBus::Handler::BusDisconnect();
+            EditorActorComponentRequestBus::Handler::BusDisconnect();
+            ActorComponentRequestBus::Handler::BusDisconnect();
+
             AZ::TransformNotificationBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
             AZ::Data::AssetBus::Handler::BusDisconnect();
-            LmbrCentral::RenderNodeRequestBus::Handler::BusDisconnect();
 
             DestroyActorInstance();
         }
@@ -198,9 +204,9 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         // ActorComponentRequestBus::Handler
         //////////////////////////////////////////////////////////////////////////
-        void EditorActorComponent::RequestLaunchAnimationEditor()
+        const AZ::Data::AssetId& EditorActorComponent::GetActorAssetId()
         {
-            LaunchAnimationEditor(m_actorAsset.GetId(), m_actorAsset.GetType());
+            return m_actorAsset.GetId();
         }
         //////////////////////////////////////////////////////////////////////////
 
@@ -271,12 +277,30 @@ namespace EMotionFX
         AZStd::string EditorActorComponent::AttachmentJointButtonText()
         {
             return m_attachmentJointName.empty() ?
-                AZStd::string("(No joint selected)") : m_attachmentJointName;
+                   AZStd::string("(No joint selected)") : m_attachmentJointName;
         }
+
+        //////////////////////////////////////////////////////////////////////////
+        AZ::Crc32 EditorActorComponent::OnAttachmentTypeChanged()
+        {
+            if (m_attachmentType == AttachmentType::None)
+            {
+                m_attachmentTarget.SetInvalid();
+                m_attachmentJointName.clear();
+            }
+            return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+        }
+
 
         //////////////////////////////////////////////////////////////////////////
         AZ::Crc32 EditorActorComponent::OnAttachmentTargetChanged()
         {
+            if (GetEntityId() == m_attachmentTarget)
+            {
+                m_attachmentTarget.SetInvalid();
+                AZ_Error("EMotionFX", false, "You cannot attach to yourself!\n");
+            }
+
             return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
         }
 
@@ -311,21 +335,21 @@ namespace EMotionFX
 
                 QObject::connect(nodeSelectWindow, &EMStudio::NodeSelectionWindow::accepted,
                     [this, nodeSelectWindow, &refreshLevel, &actorInstance]()
-                {
-                    auto& selectedItems = nodeSelectWindow->GetNodeHierarchyWidget()->GetSelectedItems();
-                    if (!selectedItems.GetIsEmpty())
                     {
-                        const char* jointName = selectedItems[0].GetNodeName();
-                        EMotionFX::Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(jointName);
-                        if (node)
+                        auto& selectedItems = nodeSelectWindow->GetNodeHierarchyWidget()->GetSelectedItems();
+                        if (!selectedItems.GetIsEmpty())
                         {
-                            m_attachmentJointName = jointName;
-                            m_attachmentJointIndex = node->GetNodeIndex();
+                            const char* jointName = selectedItems[0].GetNodeName();
+                            EMotionFX::Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(jointName);
+                            if (node)
+                            {
+                                m_attachmentJointName = jointName;
+                                m_attachmentJointIndex = node->GetNodeIndex();
 
-                            refreshLevel = AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+                                refreshLevel = AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+                            }
                         }
-                    }
-                });
+                    });
 
                 nodeSelectWindow->Update(actorInstance->GetID(), &selection);
                 nodeSelectWindow->exec();
@@ -340,9 +364,11 @@ namespace EMotionFX
             if (assetId.IsValid())
             {
                 AZ::Data::AssetId animgraphAssetId;
-                EBUS_EVENT_RESULT(animgraphAssetId, EditorAnimGraphComponentRequestBus, GetAnimGraphAssetId);
+                animgraphAssetId.SetInvalid();
+                EditorAnimGraphComponentRequestBus::EventResult(animgraphAssetId, GetEntityId(), &EditorAnimGraphComponentRequestBus::Events::GetAnimGraphAssetId);
                 AZ::Data::AssetId motionSetAssetId;
-                EBUS_EVENT_RESULT(motionSetAssetId, EditorAnimGraphComponentRequestBus, GetMotionSetAssetId);
+                motionSetAssetId.SetInvalid();
+                EditorAnimGraphComponentRequestBus::EventResult(motionSetAssetId, GetEntityId(), &EditorAnimGraphComponentRequestBus::Events::GetMotionSetAssetId);
 
                 // call to open must be done before LoadCharacter
                 const char* panelName = EMStudio::MainWindow::GetEMotionFXPaneName();
@@ -389,14 +415,20 @@ namespace EMotionFX
                     m_actorInstance.get());
             }
 
-            m_actorInstance = actorAsset->CreateInstance();
+            m_actorInstance = actorAsset->CreateInstance(GetEntityId());
             if (!m_actorInstance)
             {
                 AZ_Error("EMotionFX", actorAsset, "Failed to create actor instance.");
                 return;
             }
 
-            InitializeMaterialSlots(*actorAsset);
+            // If we are loading the actor for the first time, automatically add the material
+            // per lod information. If the amount of lods between different actors that are assigned
+            // to this component differ, then reinit the materials.
+            if (m_materialPerLOD.size() != actorAsset->GetActor()->GetNumLODLevels())
+            {
+                InitializeMaterialSlots(*actorAsset);
+            }
 
             // Assign entity Id to user data field, so we can extract owning entity from an EMFX actor pointer.
             m_actorInstance->SetCustomData(reinterpret_cast<void*>(static_cast<AZ::u64>(GetEntityId())));
@@ -502,7 +534,7 @@ namespace EMotionFX
             {
                 MCore::AABB emfxAabb;
                 m_actorInstance->CalcNodeBasedAABB(&emfxAabb);
-                return AZ::Aabb::CreateFromMinMax(EmfxVec3ToAzVec3(emfxAabb.GetMin()), EmfxVec3ToAzVec3(emfxAabb.GetMax()));
+                return AZ::Aabb::CreateFromMinMax(emfxAabb.GetMin(), emfxAabb.GetMax());
             }
 
             return AZ::Aabb::CreateNull();

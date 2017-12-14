@@ -772,7 +772,6 @@ namespace MFC
             textureVars[tex]->Set(texFilename);
         }
 
-        //textures[tex].amount = srTpl.m_Textures[tex].m_Amount;
         *textures[tex].is_tile[0] = srTpl.m_Textures[tex].m_bUTile;
         *textures[tex].is_tile[1] = srTpl.m_Textures[tex].m_bVTile;
 
@@ -1691,7 +1690,7 @@ namespace MFC
 
         if (m_textureSlotsItem)
         {
-            m_textureSlots = pMtl->UpdateTextureNames(m_pMaterialUI->textureVars);
+            m_textureSlots = pMtl->UpdateTextureNames(m_pMaterialUI->m_textureVarsMap);
             m_propsCtrl.ReplaceVarBlock(m_textureSlotsItem, m_textureSlots);
         }
 

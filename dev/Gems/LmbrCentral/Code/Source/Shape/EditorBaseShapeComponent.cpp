@@ -11,12 +11,27 @@
 */
 #include "StdAfx.h"
 #include "EditorBaseShapeComponent.h"
-#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 namespace LmbrCentral
 {
     const AZ::Vector4 EditorBaseShapeComponent::s_shapeColor(1.00f, 1.00f, 0.78f, 0.4f);
     const AZ::Vector4 EditorBaseShapeComponent::s_shapeWireColor(1.00f, 1.00f, 0.78f, 0.5f);
+
+    void EditorBaseShapeComponent::Reflect(AZ::SerializeContext& context)
+    {
+        context.Class<EditorBaseShapeComponent, EditorComponentBase>()
+            ->Field("Visible", &EditorBaseShapeComponent::m_visibleInEditor);
+
+        if (auto editContext = context.GetEditContext())
+        {
+            editContext->Class<EditorBaseShapeComponent>("EditorBaseShapeComponent", "Editor base shape component")
+                ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &EditorBaseShapeComponent::m_visibleInEditor, "Visible", "Always display this shape in the editor viewport")
+                ;
+        }
+    }
 
     EditorBaseShapeComponent::EditorBaseShapeComponent()
         : m_shapeColor(s_shapeColor)
@@ -46,7 +61,7 @@ namespace LmbrCentral
 
     void EditorBaseShapeComponent::DisplayEntity(bool& handled)
     {
-        if (!IsSelected())
+        if (!IsSelected() && !m_visibleInEditor)
         {
             return;
         }
@@ -81,5 +96,10 @@ namespace LmbrCentral
     void EditorBaseShapeComponent::SetShapeWireframeColor(const AZ::Vector4& wireColor)
     {
         m_shapeWireColor = wireColor;
+    }
+
+    void EditorBaseShapeComponent::SetVisibleInEditor(bool visible)
+    {
+        m_visibleInEditor = visible;
     }
 } // namespace LmbrCentral

@@ -38,57 +38,6 @@ public:
     }
 };
 
-class DropTarget : public QObject
-{
-public:
-    DropTarget(QWidget* widget)
-        : m_widget(widget)
-    {
-        widget->installEventFilter(this);
-    }
-
-    bool eventFilter(QObject* watched, QEvent* event) override
-    {
-        if (watched == m_widget)
-        {
-            switch (event->type())
-            {
-            case QEvent::DragEnter:
-            {
-                QDragEnterEvent* e = static_cast<QDragEnterEvent*>(event);
-                e->setDropAction(OnDragEnter(m_widget, e->mimeData(), e->keyboardModifiers(), e->pos()));
-                e->setAccepted(e->dropAction() != Qt::IgnoreAction);
-                break;
-            }
-            case QEvent::DragMove:
-            {
-                QDragMoveEvent* e = static_cast<QDragMoveEvent*>(event);
-                e->setDropAction(OnDragOver(m_widget, e->mimeData(), e->keyboardModifiers(), e->pos()));
-                e->setAccepted(e->dropAction() != Qt::IgnoreAction);
-                break;
-            }
-            case QEvent::Drop:
-            {
-                QDropEvent* e = static_cast<QDropEvent*>(event);
-                e->setAccepted(OnDrop(m_widget, e->mimeData(), e->dropAction(), e->pos()));
-                break;
-            }
-            default:
-                break;
-            }
-        }
-        return QObject::eventFilter(watched, event);
-    }
-
-    virtual Qt::DropAction OnDragEnter(QWidget* pWnd, const QMimeData* pDataObject, Qt::KeyboardModifiers dwKeyState, const QPoint& point) = 0;
-    virtual Qt::DropAction OnDragOver(QWidget* pWnd, const QMimeData* pDataObject, Qt::KeyboardModifiers dwKeyState, const QPoint& point) = 0;
-    virtual bool OnDrop(QWidget* pWnd, const QMimeData* pDataObject, Qt::DropAction dropEffect, const QPoint& point) = 0;
-    virtual void OnDragLeave(QWidget* pWnd) {}
-
-private:
-    QWidget* m_widget;
-};
-
 namespace QtUtil
 {
     // From QString to CryString

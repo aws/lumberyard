@@ -80,14 +80,14 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("ShapeService"));
-            provided.push_back(AZ_CRC("CompoundShapeService"));
+            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+            provided.push_back(AZ_CRC("CompoundShapeService", 0x4f7c640a));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("ShapeService"));
-            incompatible.push_back(AZ_CRC("CompoundShapeService"));
+            incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+            incompatible.push_back(AZ_CRC("CompoundShapeService", 0x4f7c640a));
         }
 
         static void Reflect(AZ::ReflectContext* context);

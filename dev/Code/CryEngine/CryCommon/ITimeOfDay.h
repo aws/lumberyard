@@ -113,9 +113,9 @@ struct ITimeOfDay
         PARAM_SUN_RAYS_SUNCOLORINFLUENCE,
         PARAM_SUN_RAYS_CUSTOMCOLOR,
 
-        PARAM_OCEANFOG_COLOR,
-        PARAM_OCEANFOG_COLOR_MULTIPLIER,
-        PARAM_OCEANFOG_DENSITY,
+        PARAM_OCEANFOG_COLOR,            // Remove when ocean related feature toggle is removed.
+        PARAM_OCEANFOG_COLOR_MULTIPLIER, // Remove when ocean related feature toggle is removed.
+        PARAM_OCEANFOG_DENSITY,          // Remove when ocean related feature toggle is removed.
 
         PARAM_SKYBOX_MULTIPLIER,
 

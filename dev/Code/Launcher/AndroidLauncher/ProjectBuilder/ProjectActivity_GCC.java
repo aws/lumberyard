@@ -7,14 +7,12 @@ import com.amazon.lumberyard.LumberyardActivity;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 public class ${ANDROID_PROJECT_ACTIVITY} extends LumberyardActivity
 {
-    // load the required shared libraries for startup
+    // since we are using the NativeActivity, all we need to manually load is the
+    // shared c++ libray we are using
     static
     {
         Log.d("LMBR", "BootStrap: Starting Library load");
         System.loadLibrary("gnustl_shared");
-        System.loadLibrary("SDL2_Android");
-        System.loadLibrary("SDL2Ext");
-        System.loadLibrary("${ANDROID_LAUNCHER_NAME}");
         Log.d("LMBR", "BootStrap: Finished Library load");
     }
 }

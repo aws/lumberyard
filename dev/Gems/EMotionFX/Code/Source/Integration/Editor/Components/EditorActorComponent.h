@@ -41,6 +41,7 @@ namespace EMotionFX
             , private LmbrCentral::MeshComponentRequestBus::Handler
             , private LmbrCentral::RenderNodeRequestBus::Handler
             , private ActorComponentRequestBus::Handler
+            , private EditorActorComponentRequestBus::Handler
         {
         public:
 
@@ -60,7 +61,12 @@ namespace EMotionFX
             // ActorComponentRequestBus::Handler
             //////////////////////////////////////////////////////////////////////////
             EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance.get(); }
-            void RequestLaunchAnimationEditor() override;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            // EditorActorComponentRequestBus::Handler
+            //////////////////////////////////////////////////////////////////////////
+            const AZ::Data::AssetId& GetActorAssetId() override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -86,6 +92,11 @@ namespace EMotionFX
                 ActorComponent::GetProvidedServices(provided);
             }
 
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+            {
+                ActorComponent::GetIncompatibleServices(incompatible);
+            }
+
             static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
             {
                 ActorComponent::GetDependentServices(dependent);
@@ -109,6 +120,7 @@ namespace EMotionFX
             void OnMaterialChanged();
             void OnDebugDrawFlagChanged();
             void OnSkinningMethodChanged();
+            AZ::Crc32 OnAttachmentTypeChanged();
             AZ::Crc32 OnAttachmentTargetChanged();
             AZ::Crc32 OnAttachmentTargetJointSelect();
             bool AttachmentTargetVisibility();

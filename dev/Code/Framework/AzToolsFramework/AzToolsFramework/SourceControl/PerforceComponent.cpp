@@ -558,7 +558,7 @@ namespace AzToolsFramework
     SourceControlFileInfo PerforceComponent::GetFileInfo(const char* filePath)
     {
         SourceControlFileInfo newInfo;
-        newInfo.m_status = SCS_ProviderError;
+        newInfo.m_status = SCS_OpSuccess;
         newInfo.m_filePath = filePath;
 
         if (AZ::IO::SystemFile::IsWritable(filePath) || !AZ::IO::SystemFile::Exists(filePath))
@@ -578,9 +578,10 @@ namespace AzToolsFramework
             if (!sourceAwareFile)
             {
                 AZ_TracePrintf(SCC_WINDOW, "Perforce - File is not tracked\n");
-                newInfo.m_status = SCS_NotTracked;
+                return newInfo;
             }
-
+            
+            newInfo.m_status = SCS_ProviderError;
             return newInfo;
         }
 
@@ -609,7 +610,7 @@ namespace AzToolsFramework
 
         if (s_perforceConn->m_command.IsOpenByCurrentUser())
         {
-            newInfo.m_status = SCS_OpenByUser;
+            newInfo.m_flags |= SCF_OpenByUser;
             if (s_perforceConn->m_command.CurrentActionIsAdd())
             {
                 newInfo.m_flags |= SCF_PendingAdd;
@@ -631,17 +632,16 @@ namespace AzToolsFramework
         }
         else if (openByOthers)
         {
-            newInfo.m_status = SCS_Tracked;
+            newInfo.m_flags |= SCF_Tracked;
             AZ_TracePrintf(SCC_WINDOW, "Perforce - File is opened by %s\n", newInfo.m_StatusUser.c_str());
         }
         else if (deletedAtHeadRev && !hasRevision)
         {
-            newInfo.m_status = SCS_NotTracked;
             AZ_TracePrintf(SCC_WINDOW, "Perforce - File is deleted at head revision\n");
         }
         else
         {
-            newInfo.m_status = SCS_Tracked;
+            newInfo.m_flags |= SCF_Tracked;
             AZ_TracePrintf(SCC_WINDOW, "Perforce - File is Checked In\n");
         }
 
@@ -1379,7 +1379,7 @@ namespace AzToolsFramework
         case PerforceJobRequest::PJR_Stat:
         {
             resp.m_fileInfo = AZStd::move(GetFileInfo(request.m_requestPath.c_str()));
-            resp.m_succeeded = resp.m_fileInfo.m_status > SCS_NUM_ERRORS;
+            resp.m_succeeded = resp.m_fileInfo.m_status == SCS_OpSuccess;
         }
         break;
         case PerforceJobRequest::PJR_Edit:
@@ -1428,16 +1428,16 @@ namespace AzToolsFramework
         switch (request.m_requestType)
         {
         case PerforceJobRequest::PJR_Stat:
-            m_nullSCComponent.GetFileInfo(request.m_requestPath.c_str(), request.m_callback);
+            m_localFileSCComponent.GetFileInfo(request.m_requestPath.c_str(), request.m_callback);
             break;
         case PerforceJobRequest::PJR_Edit:
-            m_nullSCComponent.RequestEdit(request.m_requestPath.c_str(), request.m_allowMultiCheckout, request.m_callback);
+            m_localFileSCComponent.RequestEdit(request.m_requestPath.c_str(), request.m_allowMultiCheckout, request.m_callback);
             break;
         case PerforceJobRequest::PJR_Delete:
-            m_nullSCComponent.RequestDelete(request.m_requestPath.c_str(), request.m_callback);
+            m_localFileSCComponent.RequestDelete(request.m_requestPath.c_str(), request.m_callback);
             break;
         case PerforceJobRequest::PJR_Revert:
-            m_nullSCComponent.RequestRevert(request.m_requestPath.c_str(), request.m_callback);
+            m_localFileSCComponent.RequestRevert(request.m_requestPath.c_str(), request.m_callback);
             break;
         default:
             AZ_Assert(false, "Invalid type of perforce job request.");

@@ -38,6 +38,7 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMeshAdvancedRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IPhysicsRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
+#include <SceneAPI/SceneCore/DataTypes/Rules/ILodRule.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
 #include <SceneAPI/SceneCore/Events/ExportEventContext.h>
@@ -288,6 +289,57 @@ namespace AZ
                                         info.m_usesVertexColoring = UsesVertexColoring(sceneNodeGroup, scene, it.GetHierarchyIterator());
                                         info.m_physicalize = false;
                                         m_materialGroup.m_materials.push_back(info);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // create materials for LOD nodes
+                    AZStd::shared_ptr<const DataTypes::ILodRule> lodRule = rules.FindFirstByType<DataTypes::ILodRule>();
+                    if (lodRule)
+                    {
+                        for (int lodIndex = 0; lodIndex < lodRule->GetLodCount(); ++lodIndex)
+                        {
+                            auto& lodSceneNodeList = lodRule->GetSceneNodeSelectionList(lodIndex);
+
+                            AZStd::vector<AZStd::string> lodNodes = 
+                                Utilities::SceneGraphSelector::GenerateTargetNodes(sceneGraph, lodSceneNodeList, Utilities::SceneGraphSelector::IsMesh);
+
+                            for (const AZStd::string& nodeName : lodNodes)
+                            {
+                                Containers::SceneGraph::NodeIndex index = sceneGraph.Find(nodeName);
+                                if (!index.IsValid())
+                                {
+                                    continue;
+                                }
+                                    
+                                auto view = Containers::Views::MakeSceneGraphChildView<Containers::Views::AcceptEndPointsOnly>(sceneGraph, index,
+                                    sceneGraph.GetContentStorage().begin(), true);
+                                for (auto it = view.begin(); it != view.end(); ++it)
+                                {
+                                    if ((*it) && (*it)->RTTI_IsTypeOf(DataTypes::IMaterialData::TYPEINFO_Uuid()))
+                                    {
+                                        const Containers::SceneGraph::Name& name =
+                                            sceneGraph.GetNodeName(sceneGraph.ConvertToNodeIndex(it.GetHierarchyIterator()));
+                                            
+                                        auto material = AZStd::find_if(
+                                            m_materialGroup.m_materials.begin(), 
+                                            m_materialGroup.m_materials.end(), 
+                                            [&name](const MaterialInfo& info) -> bool
+                                        {
+                                            return info.m_name == name.GetName();
+                                        });
+
+                                        if (material == m_materialGroup.m_materials.end())
+                                        {
+                                            AZStd::string nodeName = name.GetName();
+                                            MaterialInfo info;
+                                            info.m_name = nodeName;
+                                            info.m_materialData = azrtti_cast<const DataTypes::IMaterialData*>(*it);
+                                            info.m_usesVertexColoring = UsesVertexColoring(sceneNodeGroup, scene, it.GetHierarchyIterator());
+                                            info.m_physicalize = false;
+                                            m_materialGroup.m_materials.push_back(info);
+                                        }
                                     }
                                 }
                             }

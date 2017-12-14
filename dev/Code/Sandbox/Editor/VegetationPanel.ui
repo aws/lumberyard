@@ -343,6 +343,9 @@
          <height>22</height>
         </size>
        </property>
+       <property name="toolTip">
+        <string>Export Vegetation</string>
+       </property>
        <property name="text">
         <string/>
        </property>

@@ -15,6 +15,8 @@
 
 #include <AzCore/base.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/functional.h>
 
 #include <QObject>
 #include <QPointer>
@@ -56,7 +58,6 @@ namespace AzToolsFramework
         void ReadStateFrom(QSet<QString>& source);
 
         void ApplySnapshot() const;
-        void SetExpandedFunction(AZStd::function<bool(const QModelIndex&)> expandedFunction);
 
         static void Reflect(AZ::ReflectContext* context);
         
@@ -87,7 +88,6 @@ namespace AzToolsFramework
         QPointer<QAbstractItemModel> m_dataModel;
         QPointer<QItemSelectionModel> m_selectionModel;
         AZStd::intrusive_ptr<QTreeViewStateSaverData> m_data;
-        AZStd::function<bool(const QModelIndex&)> m_expandedFunction;
 
         Q_DISABLE_COPY(QTreeViewStateSaver)
     };
@@ -118,8 +118,6 @@ namespace AzToolsFramework
 
         void WriteTreeViewStateTo(QSet<QString>& target);
         void ReadTreeViewStateFrom(QSet<QString>& source);
-
-        void SetTreeViewExpandedFunction(AZStd::function<bool(const QModelIndex&)> expandedFunction);
 
         void PauseTreeViewSaving();
         void UnpauseTreeViewSaving();

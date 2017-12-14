@@ -22,19 +22,19 @@ namespace AZ
             // PreExportEventContext
             /////////////
 
-            PreExportEventContext::PreExportEventContext(ExportProductList& productList, const AZStd::string& outputDirectory, const Containers::Scene& scene, u32 platformId)
+            PreExportEventContext::PreExportEventContext(ExportProductList& productList, const AZStd::string& outputDirectory, const Containers::Scene& scene, const char* platformIdentifier)
                 : m_outputDirectory(outputDirectory)
                 , m_productList(productList)
                 , m_scene(scene)
-                , m_platformId(platformId)
+                , m_platformIdentifier(platformIdentifier)
             {
             }
 
-            PreExportEventContext::PreExportEventContext(ExportProductList& productList, AZStd::string&& outputDirectory, const Containers::Scene& scene, u32 platformId)
+            PreExportEventContext::PreExportEventContext(ExportProductList& productList, AZStd::string&& outputDirectory, const Containers::Scene& scene, const char* platformIdentifier)
                 : m_outputDirectory(AZStd::move(outputDirectory))
                 , m_productList(productList)
                 , m_scene(scene)
-                , m_platformId(platformId)
+                , m_platformIdentifier(platformIdentifier)
             {
             }
 
@@ -58,28 +58,28 @@ namespace AZ
                 return m_scene;
             }
 
-            u32 PreExportEventContext::GetPlatformId() const
+            const char* PreExportEventContext::GetPlatformIdentifier() const
             {
-                return m_platformId;
+                return m_platformIdentifier;
             }
 
             /////////////
             // ExportEventContext
             /////////////
 
-            ExportEventContext::ExportEventContext(ExportProductList& productList, const AZStd::string& outputDirectory, const Containers::Scene& scene, u32 platformId)
+            ExportEventContext::ExportEventContext(ExportProductList& productList, const AZStd::string& outputDirectory, const Containers::Scene& scene, const char* platformIdentifier)
                 : m_outputDirectory(outputDirectory)
                 , m_productList(productList)
                 , m_scene(scene)
-                , m_platformId(platformId)
+                , m_platformIdentifier(platformIdentifier)
             {
             }
 
-            ExportEventContext::ExportEventContext(ExportProductList& productList, AZStd::string&& outputDirectory, const Containers::Scene& scene, u32 platformId)
+            ExportEventContext::ExportEventContext(ExportProductList& productList, AZStd::string&& outputDirectory, const Containers::Scene& scene, const char* platformIdentifier)
                 : m_outputDirectory(AZStd::move(outputDirectory))
                 , m_productList(productList)
                 , m_scene(scene)
-                , m_platformId(platformId)
+                , m_platformIdentifier(platformIdentifier)
             {
             }
 
@@ -103,26 +103,26 @@ namespace AZ
                 return m_scene;
             }
 
-            u32 ExportEventContext::GetPlatformId() const
+            const char* ExportEventContext::GetPlatformIdentifier() const
             {
-                return m_platformId;
+                return m_platformIdentifier;
             }
 
             /////////////
             // PostExportEventContext
             /////////////
 
-            PostExportEventContext::PostExportEventContext(ExportProductList& productList, const AZStd::string& outputDirectory, u32 platformId)
+            PostExportEventContext::PostExportEventContext(ExportProductList& productList, const AZStd::string& outputDirectory, const char* platformIdentifier)
                 : m_outputDirectory(outputDirectory)
                 , m_productList(productList)
-                , m_platformId(platformId)
+                , m_platformIdentifier(platformIdentifier)
             {
             }
 
-            PostExportEventContext::PostExportEventContext(ExportProductList& productList, AZStd::string&& outputDirectory, u32 platformId)
+            PostExportEventContext::PostExportEventContext(ExportProductList& productList, AZStd::string&& outputDirectory, const char* platformIdentifier)
                 : m_outputDirectory(AZStd::move(outputDirectory))
+                , m_platformIdentifier(platformIdentifier)
                 , m_productList(productList)
-                , m_platformId(platformId)
             {
             }
 
@@ -141,9 +141,9 @@ namespace AZ
                 return m_productList;
             }
 
-            u32 PostExportEventContext::GetPlatformId() const
+            const char* PostExportEventContext::GetPlatformIdentifier() const
             {
-                return m_platformId;
+                return m_platformIdentifier;
             }
         } // Events
     } // SceneAPI

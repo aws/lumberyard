@@ -62,6 +62,7 @@ public: // member functions
     void InitUiContext() override;
     void DestroyUiContext() override;
     bool SaveToStreamForGame(AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType) override;
+    bool SaveCanvasEntityToStreamForGame(AZ::Entity* canvasEntity, AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType) override;
     // ~UiEntityContext
 
     // UiEntityContextRequestBus
@@ -87,6 +88,7 @@ public: // member functions
                                 AZ::Entity* commonParent, AZ::Entity* insertBefore) override;
     void DeleteElements(AzToolsFramework::EntityIdList elements) override;
     bool HasPendingRequests() override;
+    bool IsInstantiatingSlices() override;
     void DetachSliceEntities(const AzToolsFramework::EntityIdList& entities) override;
     // ~UiEditorEntityContextRequestBus
 
@@ -99,6 +101,10 @@ public: // member functions
     // AssetCatalogEventBus::Handler
     void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
     // ~AssetCatalogEventBus::Handler
+
+    // EntityContextRequestBus
+    void ResetContext() override;
+    // ~EntityContextRequestBus
 
 protected: // member functions
 

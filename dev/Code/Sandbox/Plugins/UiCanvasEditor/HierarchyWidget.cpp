@@ -23,6 +23,7 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
     , m_inDragStartState(false)
     , m_selectionChangedBeforeDrag(false)
     , m_signalSelectionChange(true)
+    , m_inited(false)
 {
     setMouseTracking(true);
 
@@ -148,6 +149,8 @@ void HierarchyWidget::CreateItems(const LyShine::EntityArray& elements)
             parent->insertChild(index, child);
         }
     }
+
+    m_inited = true;
 }
 
 void HierarchyWidget::RecreateItems(const LyShine::EntityArray& elements)
@@ -156,10 +159,7 @@ void HierarchyWidget::RecreateItems(const LyShine::EntityArray& elements)
     EntityHelpers::EntityIdList selectedEntityIds = SelectionHelpers::GetSelectedElementIds(this,
         selectedItems(), false);
 
-    ClearAllHierarchyItemEntityIds();
-
-    // Remove all the items from the list (doesn't delete Entities since we cleared the EntityIds)
-    clear();
+    ClearItems();
 
     CreateItems(elements);
 
@@ -167,6 +167,19 @@ void HierarchyWidget::RecreateItems(const LyShine::EntityArray& elements)
     ApplyElementIsExpanded();
 
     HierarchyHelpers::SetSelectedItems(this, &selectedEntityIds);
+}
+
+void HierarchyWidget::ClearItems()
+{
+    ClearAllHierarchyItemEntityIds();
+
+    // Remove all the items from the list (doesn't delete Entities since we cleared the EntityIds)
+    clear();
+
+    // The map needs to be cleared here since HandleItemRemove won't remove the map entry due to the entity Ids being cleared above
+    m_entityItemMap.clear();
+
+    m_inited = false;
 }
 
 AZ::Entity* HierarchyWidget::CurrentSelectedElement() const
@@ -179,6 +192,7 @@ AZ::Entity* HierarchyWidget::CurrentSelectedElement() const
 void HierarchyWidget::contextMenuEvent(QContextMenuEvent* ev)
 {
     // The context menu.
+    if (m_inited)
     {
         HierarchyMenu contextMenu(this,
             (HierarchyMenu::Show::kCutCopyPaste |
@@ -198,7 +212,7 @@ void HierarchyWidget::contextMenuEvent(QContextMenuEvent* ev)
     QTreeWidget::contextMenuEvent(ev);
 }
 
-void HierarchyWidget::SignalUserSelectionHasChanged(QTreeWidgetItemRawPtrQList& selectedItems)
+void HierarchyWidget::SignalUserSelectionHasChanged(const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     HierarchyItemRawPtrList items = SelectionHelpers::GetSelectedHierarchyItems(this,
             selectedItems);
@@ -260,8 +274,8 @@ void HierarchyWidget::HandleItemRemove(HierarchyItem* item)
 }
 
 void HierarchyWidget::ReparentItems(bool onCreationOfElement,
-    QTreeWidgetItemRawPtrList& baseParentItems,
-    HierarchyItemRawPtrList& childItems)
+    const QTreeWidgetItemRawPtrList& baseParentItems,
+    const HierarchyItemRawPtrList& childItems)
 {
     CommandHierarchyItemReparent::Push(onCreationOfElement,
         m_editorWindow->GetActiveStack(),
@@ -423,7 +437,7 @@ void HierarchyWidget::dropEvent(QDropEvent* ev)
     m_signalSelectionChange = false;
 
     // Get a list of selected items
-    QTreeWidgetItemRawPtrQList& selection = selectedItems();
+    QTreeWidgetItemRawPtrQList selection = selectedItems();
 
     // Change current selection to only contain top level items. This avoids
     // the default drop behavior from changing the internal hierarchy of 
@@ -664,8 +678,6 @@ void HierarchyWidget::leaveEvent(QEvent* ev)
     // In this case, perform the dragLeaveEvent here
     if (m_inDragStartState)
     {
-        QTreeWidgetItemRawPtrQList& selection = selectedItems();
-
         if (m_selectionChangedBeforeDrag)
         {
             m_signalSelectionChange = false;
@@ -703,7 +715,7 @@ void HierarchyWidget::DeleteSelectedItems()
     DeleteSelectedItems(selectedItems());
 }
 
-void HierarchyWidget::DeleteSelectedItems(QTreeWidgetItemRawPtrQList& selectedItems)
+void HierarchyWidget::DeleteSelectedItems(const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     CommandHierarchyItemDelete::Push(m_editorWindow->GetActiveStack(),
         this,
@@ -719,7 +731,7 @@ void HierarchyWidget::DeleteSelectedItems(QTreeWidgetItemRawPtrQList& selectedIt
 
 void HierarchyWidget::Cut()
 {
-    QTreeWidgetItemRawPtrQList& selection = selectedItems();
+    QTreeWidgetItemRawPtrQList selection = selectedItems();
 
     HierarchyClipboard::CopySelectedItemsToClipboard(this,
         selection);
@@ -746,7 +758,7 @@ void HierarchyWidget::PasteAsChild()
         true);
 }
 
-void HierarchyWidget::AddElement(QTreeWidgetItemRawPtrQList& selectedItems, const QPoint* optionalPos)
+void HierarchyWidget::AddElement(const QTreeWidgetItemRawPtrQList& selectedItems, const QPoint* optionalPos)
 {
     CommandHierarchyItemCreate::Push(m_editorWindow->GetActiveStack(),
         this,

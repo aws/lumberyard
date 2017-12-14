@@ -1,6 +1,16 @@
 {
     "none":
     {
+        "testdata":
+        [
+            "unittests.qrc",
+            "testdata/config_broken_badplatform.ini",
+            "testdata/config_broken_noplatform.ini",
+            "testdata/config_broken_noscans.ini",
+            "testdata/config_broken_recognizers.ini",
+            "testdata/config_regular.ini",
+            "testdata/config_overrides.ini"
+        ],
         "tests":
         [
             "native/tests/AssetProcessorTest.h",
@@ -14,7 +24,11 @@
             "native/tests/assetBuilderSDK/assetBuilderSDKTest.cpp",
             "native/tests/assetmanager/AssetProcessorManagerTest.cpp",
             "native/tests/assetmanager/AssetProcessorManagerTest.h",
-            "native/tests/utilities/assetUtilsTest.cpp"
+            "native/tests/utilities/assetUtilsTest.cpp",
+            "native/tests/platformconfiguration/platformconfigurationtests.cpp",
+            "native/tests/platformconfiguration/platformconfigurationtests.h",
+            "native/tests/utilities/JobModelTest.cpp",
+            "native/tests/utilities/JobModelTest.h"
         ]
     }
 }

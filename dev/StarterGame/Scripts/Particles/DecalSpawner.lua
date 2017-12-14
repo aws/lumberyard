@@ -38,10 +38,10 @@ function decalspawner:OnTick(deltaTime, timePoint)
 
 	if (self.performedFirstUpdate == false) then
 		-- Find our parent that will hold the pool of decals.
-		self.parent = StarterGameUtility.GetParentEntity(self.entityId);
+		self.parent = StarterGameEntityUtility.GetParentEntity(self.entityId);
 		
 		-- Set the surface index.
-		self.surfaceIndex = StarterGameUtility.GetSurfaceIndexFromString(self.Properties.SurfaceName);
+		self.surfaceIndex = StarterGameMaterialUtility.GetSurfaceIndexFromName(self.Properties.SurfaceName);
 		
 		-- Only try to create the pool if we found an entity that will hold them.
 		for i = 1, self.Properties.PoolSize do

@@ -14,6 +14,8 @@
 #define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERCAPABILITIES_H
 #pragma once
 
+#include <XRenderD3D9/DeviceManager/Enums.h>
+
 namespace RenderCapabilities
 {
     // GPU Vendor ID list
@@ -41,6 +43,9 @@ namespace RenderCapabilities
 
     // Tests to see if GMEM 256bpp path is supported.
     bool Supports256bppGmemPath();
+
+    // Tests to see if the device can support enough renderTargets.
+    bool SupportsRenderTargets(int numRTs);
 #endif
 
 #if defined(OPENGL_ES)
@@ -65,6 +70,8 @@ namespace RenderCapabilities
     bool SupportsPLSExtension();
 
     bool SupportsDualSourceBlending();
+
+    bool SupportsStructuredBuffer(EShaderStage stage);
 }
 
 #endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERCAPABILITIES_H

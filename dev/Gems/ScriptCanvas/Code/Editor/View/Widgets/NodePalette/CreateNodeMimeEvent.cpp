@@ -13,8 +13,9 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
+#include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
-#include <GraphCanvas/Components/Nodes/NodeUIBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
 
 #include "CreateNodeMimeEvent.h"
 
@@ -53,11 +54,17 @@ namespace ScriptCanvasEditor
         if (m_nodeIdPair.m_graphCanvasId.IsValid() && m_nodeIdPair.m_scriptCanvasId.IsValid())
         {
             GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, m_nodeIdPair.m_graphCanvasId, sceneDropPosition);
-            GraphCanvas::NodeUIRequestBus::Event(m_nodeIdPair.m_graphCanvasId, &GraphCanvas::NodeUIRequests::SetSelected, true);
+            GraphCanvas::SceneMemberUIRequestBus::Event(m_nodeIdPair.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
 
             ScriptCanvasEditor::NodeCreationNotificationBus::Event(sceneId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, m_nodeIdPair.m_graphCanvasId);
 
-            sceneDropPosition += AZ::Vector2( 20, 20 );
+            AZ::EntityId gridId;
+            GraphCanvas::SceneRequestBus::EventResult(gridId, sceneId, &GraphCanvas::SceneRequests::GetGrid);
+
+            AZ::Vector2 offset;
+            GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
+
+            sceneDropPosition += offset;
             return true;
         }
         else

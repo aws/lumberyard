@@ -90,14 +90,14 @@ namespace LyShine
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
-                ec->Class<LyShineSystemComponent>("LyShine", "In-game User Interface System")
-                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "UI")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(0, &LyShineSystemComponent::m_cursorImagePathname, "CursorImagePath", "The cursor image path.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &LyShineSystemComponent::BroadcastCursorImagePathname);
-                    ;
+                auto editInfo = ec->Class<LyShineSystemComponent>("LyShine", "In-game User Interface System");
+                editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::Category, "UI")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+
+                editInfo->DataElement(0, &LyShineSystemComponent::m_cursorImagePathname, "CursorImagePath", "The cursor image path.")
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &LyShineSystemComponent::BroadcastCursorImagePathname);
             }
         }
 
@@ -109,6 +109,15 @@ namespace LyShine
                 ->Event("LoadCanvas", &UiCanvasManagerBus::Events::LoadCanvas)
                 ->Event("UnloadCanvas", &UiCanvasManagerBus::Events::UnloadCanvas)
                 ->Event("FindLoadedCanvasByPathName", &UiCanvasManagerBus::Events::FindLoadedCanvasByPathName)
+            ;
+
+            behaviorContext->EBus<UiCursorBus>("UiCursorBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Event("IncrementVisibleCounter", &UiCursorBus::Events::IncrementVisibleCounter)
+                ->Event("DecrementVisibleCounter", &UiCursorBus::Events::DecrementVisibleCounter)
+                ->Event("IsUiCursorVisible", &UiCursorBus::Events::IsUiCursorVisible)
+                ->Event("SetUiCursor", &UiCursorBus::Events::SetUiCursor)
+                ->Event("GetUiCursorPosition", &UiCursorBus::Events::GetUiCursorPosition)
                 ;
         }
     }
@@ -207,7 +216,7 @@ namespace LyShine
     {
         // Not sure if this is still required
         gEnv->pSystem->GetISystemEventDispatcher()->RegisterListener(&g_system_event_listener_ui);
-        
+
         m_pLyShine = new CLyShine(gEnv->pSystem);
         gEnv->pLyShine = m_pLyShine;
         BroadcastCursorImagePathname();
@@ -244,11 +253,18 @@ namespace LyShine
         UiCanvasFileObject::SaveCanvasToStream(stream, canvasFileObject);
     }
 
-
-     AZ::Entity* LyShineSystemComponent::GetRootSliceEntity(CanvasAssetHandle* canvas)
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    AZ::Entity* LyShineSystemComponent::GetRootSliceEntity(CanvasAssetHandle* canvas)
     {
         UiCanvasFileObject* canvasFileObject = static_cast<UiCanvasFileObject*>(canvas);
         return canvasFileObject->m_rootSliceEntity;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    AZ::Entity* LyShineSystemComponent::GetCanvasEntity(CanvasAssetHandle* canvas)
+    {
+        UiCanvasFileObject* canvasFileObject = static_cast<UiCanvasFileObject*>(canvas);
+        return canvasFileObject->m_canvasEntity;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -279,6 +295,13 @@ namespace LyShine
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void LyShineSystemComponent::ReplaceCanvasEntity(UiSystemToolsInterface::CanvasAssetHandle* canvas, AZ::Entity* newCanvasEntity)
+    {
+        UiCanvasFileObject* canvasFileObject = static_cast<UiCanvasFileObject*>(canvas);
+        canvasFileObject->m_canvasEntity = newCanvasEntity;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     void LyShineSystemComponent::DestroyCanvas(CanvasAssetHandle* canvas)
     {
         UiCanvasFileObject* canvasFileObject = static_cast<UiCanvasFileObject*>(canvas);
@@ -292,5 +315,4 @@ namespace LyShine
     {
         UiCursorBus::Broadcast(&UiCursorInterface::SetUiCursor, m_cursorImagePathname.GetAssetPath().c_str());
     }
-
 }

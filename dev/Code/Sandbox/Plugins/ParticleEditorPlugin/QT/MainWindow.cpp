@@ -149,10 +149,12 @@ CMainWindow::CMainWindow()
     m_undoManager = new EditorUIPlugin::EditorLibraryUndoManager(GetIEditor()->GetParticleManager());
 
     LibraryItemUIRequests::Bus::Handler::BusConnect();
+    LibraryChangeEvents::Bus::Handler::BusConnect();
 }
 
 CMainWindow::~CMainWindow(void)
 {
+    LibraryChangeEvents::Bus::Handler::BusDisconnect();
     LibraryItemUIRequests::Bus::Handler::BusDisconnect();
 
     CRY_ASSERT(GetIEditor());
@@ -486,13 +488,10 @@ void CMainWindow::OnActionViewDocumentation()
 
 void CMainWindow::OnRefreshViewMenu()
 {
-    for (int i = 0; i < m_viewMenu->children().size(); i++)
+    QList<QAction*> viewActions = m_viewMenu->actions();
+    for (int i = 0, numActions = viewActions.size(); i < numActions; i++)
     {
-        QAction* action = qobject_cast<QAction*>(m_viewMenu->children()[i]);
-        if (action == nullptr)
-        {
-            continue;
-        }
+        QAction* action = viewActions[i];
         if (action->text().contains("attribute"))
         {
             if (m_attributeViewDock->isHidden())
@@ -553,15 +552,12 @@ void CMainWindow::OnAddNewLayout(QString location, bool loading)
     if (m_layoutMenu)
     {
         bool isAdded = false;
-        int menu_size = m_layoutMenu->children().size();
+
+        QList<QAction*> menuActions = m_layoutMenu->actions();
+        int menu_size = menuActions.size();
         for (int i = 0; i < menu_size; i++)
         {
-            QAction* action = qobject_cast<QAction*>(m_layoutMenu->children()[i]);
-            if (!action)
-            {
-                continue;
-            }
-
+            QAction* action = menuActions[i];
             if (action->text().contains(location))
             {
                 action->setChecked(true);
@@ -884,15 +880,24 @@ void CMainWindow::StateSave_layoutMenu()
             //REMOVE OLD SETTINGS
             settings.remove("");
             settings.sync();
-            int menu_size = m_layoutMenu->children().size();
+            QList<QAction*> menuActions = m_layoutMenu->actions();
+            int menu_size = menuActions.size();
             QString tag;
             QString path;
-            settings.setValue(SETTINGS_LAYOUT_MENU_SIZE_KEY, m_layoutMenu->children().size());
+            settings.setValue(SETTINGS_LAYOUT_MENU_SIZE_KEY, menu_size);
+
+            
             for (int i = 0; i < menu_size; i++)
             {
-                tag = QString::number(i);
-                path = qobject_cast<QAction*>(m_layoutMenu->children()[i])->text();
-                settings.setValue(tag, path);
+                QAction* childAction = menuActions[i];
+                CRY_ASSERT(childAction);
+                
+                if (childAction)
+                {
+                    tag = QString::number(i);
+                    path = childAction->text();
+                    settings.setValue(tag, path);
+                }
             }
         }
         settings.endGroup();
@@ -1588,10 +1593,11 @@ void CMainWindow::View_PopulateMenu()
         action->setToolTip(tr(tooltip));                                                          \
         connect(action, &QAction::triggered, this, &CMainWindow::callback, Qt::QueuedConnection); \
     }
-    int i = 0;
-    while (i < m_layoutMenu->children().size())
+
+    QList<QAction*> menuActions = m_layoutMenu->actions();
+    for (int i = 0, numActions = menuActions.size(); i < numActions; ++i)
     {
-        action = qobject_cast<QAction*>(m_layoutMenu->children()[i]);
+        action = menuActions[i];
         QFileInfo fileInfo(action->text());
         if (!fileInfo.exists())
         {
@@ -1599,20 +1605,14 @@ void CMainWindow::View_PopulateMenu()
             action->setParent(NULL);
             delete action;
         }
-        else
-        {
-            i++;
-        }
     }
     StateSave_layoutMenu();
 
-    for (int i = 1; i <= MAX_NUMBER_OF_LAYOUT_MENU; i++)
+
+    menuActions = m_layoutMenu->actions();
+    for (int i = 1, numActions = menuActions.size(); i <= MAX_NUMBER_OF_LAYOUT_MENU && i <= numActions; i++)
     {
-        if (m_layoutMenu->children().size() - i < 0)
-        {
-            break;
-        }
-        action = qobject_cast<QAction*>(m_layoutMenu->children()[m_layoutMenu->children().size() - i]);
+        action = menuActions[numActions - i];
         m_showLayoutMenu->addAction(action);
     }
 
@@ -2240,7 +2240,7 @@ void CMainWindow::Library_ItemDragged(CLibraryTreeViewItem* item)
         //create an entity with EditorParticleComponent; modified from ComponentDataModel::DragDropHandler
         AzToolsFramework::ScopedUndoBatch undo("Create entity from particle effect");
 
-        const AZStd::string name = AZStd::string::format("Entity%d", GetIEditor()->GetObjectManager()->GetObjectCount());
+        const AZStd::string name = AZStd::string::format("Particle_%s", parItem->GetEffect()->GetFullName().c_str());
 
         AZ::Entity* newEntity = aznew AZ::Entity(name.c_str());
         if (newEntity)
@@ -2496,6 +2496,22 @@ void CMainWindow::UpdateItemUI(const AZStd::string& itemId, bool selected, int l
             titem->setCheckState(LIBRARY_TREEVIEW_INDICATOR_COLUMN, enable? Qt::CheckState::Checked:Qt::CheckState::Unchecked);
             m_libraryTreeViewDock->UpdateIconStyle(item->GetLibrary()->GetName(), itemId.c_str());
             m_LoDDock->RefreshGUI();
+        }
+    }
+}
+
+void CMainWindow::LibraryChangedInManager(const char* libraryName)
+{
+    if (GetIEditor()->GetParticleManager()->FindLibrary(QString::fromUtf8(libraryName)))
+    {
+        m_needLibraryRefresh = true;
+        RefreshLibraries();
+        
+        CParticleItem* item = static_cast<CParticleItem*>(GetIEditor()->GetParticleManager()->GetSelectedItem());
+        if (item)
+        {
+            AZStd::string itemFullName = item->GetFullName().toUtf8().data();
+            UpdateItemUI(itemFullName, true, 0);
         }
     }
 }

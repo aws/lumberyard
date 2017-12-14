@@ -15,6 +15,13 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/ComponentBus.h>
 
+#include <random>
+
+namespace AZ
+{
+    class BehaviorContext;
+    enum class RandomDistributionType : AZ::u32;
+}
 namespace LmbrCentral
 {
     /*
@@ -46,7 +53,10 @@ namespace LmbrCentral
 
         AZ_INLINE void SetCacheStatus(CacheStatus newStatus)
         {
-            m_cacheStatus = newStatus;
+            if (newStatus > m_cacheStatus)
+            {
+                m_cacheStatus = newStatus;
+            }
         }
 
     protected:
@@ -101,6 +111,8 @@ namespace LmbrCentral
         * \return float indicating square distance point is from shape
         */
         virtual float DistanceSquaredFromPoint(const AZ::Vector3& point) = 0;
+
+        virtual AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) { return AZ::Vector3::CreateZero(); }
 
         virtual ~ShapeComponentRequests() = default;
     };

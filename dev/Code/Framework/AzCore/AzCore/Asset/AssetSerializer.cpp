@@ -25,7 +25,6 @@ namespace AZ {
     }
     //-------------------------------------------------------------------------
     AssetSerializer AssetSerializer::s_serializer;
-    AssetEventHandler AssetEventHandler::s_handler;
     //-------------------------------------------------------------------------
 
     size_t AssetSerializer::DataToText(IO::GenericStream& in, IO::GenericStream& out, bool isDataBigEndian /*= false*/)
@@ -101,7 +100,8 @@ namespace AZ {
         asset->m_assetId = assetId;
         asset->m_assetType = assetType;
         asset->m_assetHint = assetHint;
-
+        asset->UpgradeAssetInfo();
+   
         return true;
     }
 
@@ -174,33 +174,6 @@ namespace AZ {
         return SerializeContext::EqualityCompareHelper<Data::Asset<Data::AssetData>>::CompareValues(lhs, rhs);
     }
 
-    void AssetEventHandler::OnWriteEnd(void* assetAddress)
-    {
-        // Once the asset is read, if possible, resolve the asset data
-        Data::Asset<Data::AssetData>* asset = reinterpret_cast<decltype(asset)>(assetAddress);
-        
-        AZ::Data::AssetInfo assetInfo;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, asset->GetId());
-        if (assetInfo.m_assetId.IsValid())
-        {
-            asset->m_assetId = assetInfo.m_assetId;
-            asset->m_assetHint = assetInfo.m_relativePath;
-        }
-
-        Data::AssetId assetId = asset->GetId();
-        if (assetId.IsValid() && asset->GetType() != Data::s_invalidAssetType)
-        {
-            // Valid populated asset pointer. If the asset has already been constructed and/or loaded, acquire a pointer.
-            if (Data::AssetManager::IsReady())
-            {
-                Data::Asset<Data::AssetData> existingAsset = Data::AssetManager::Instance().FindAsset(assetId);
-                if (existingAsset)
-                {
-                    asset->SetData(existingAsset.Get());
-                }
-            }
-        }
-    }
 
     //-------------------------------------------------------------------------
 }   // namespace AZ

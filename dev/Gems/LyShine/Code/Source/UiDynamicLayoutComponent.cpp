@@ -53,6 +53,8 @@ void UiDynamicLayoutComponent::SetNumChildElements(int numChildren)
         {
             if (curNumChildren < numChildren)
             {
+                SetPrototypeElementActive(true);
+
                 AZ::EntityId canvasEntityId;
                 EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
 
@@ -62,6 +64,8 @@ void UiDynamicLayoutComponent::SetNumChildElements(int numChildren)
                     AZ::Entity* clonedElement = nullptr;
                     EBUS_EVENT_ID_RESULT(clonedElement, canvasEntityId, UiCanvasBus, CloneElement, prototypeEntity, GetEntity());
                 }
+
+                SetPrototypeElementActive(false);
             }
             else // curNumChildren > numChildren
             {
@@ -128,6 +132,8 @@ void UiDynamicLayoutComponent::InGamePostActivate()
 
             // Remove the prototype element
             elementComponent->RemoveChild(prototypeEntity);
+
+            SetPrototypeElementActive(false);
 
             // Listen for canvas space rect changes
             UiTransformChangeNotificationBus::Handler::BusConnect(GetEntityId());
@@ -230,6 +236,48 @@ void UiDynamicLayoutComponent::Deactivate()
         UiTransformChangeNotificationBus::Handler::BusDisconnect();
     }
     UiElementNotificationBus::Handler::BusDisconnect();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiDynamicLayoutComponent::SetPrototypeElementActive(bool active)
+{
+    AZ::Entity* prototypeEntity = nullptr;
+    EBUS_EVENT_RESULT(prototypeEntity, AZ::ComponentApplicationBus, FindEntity, m_prototypeElement);
+    if (prototypeEntity)
+    {
+        LyShine::EntityArray descendantElements;
+
+        if (active)
+        {
+            prototypeEntity->Activate();
+
+            // Have to get children after it is Activated since it will not be connected to bus before that
+            EBUS_EVENT_ID(prototypeEntity->GetId(), UiElementBus, FindDescendantElements,
+                [](const AZ::Entity*) { return true; },
+                descendantElements);
+        }
+        else
+        {
+            // Have to get children before it is Deactivated since it will not be connected to bus after that
+            EBUS_EVENT_ID(prototypeEntity->GetId(), UiElementBus, FindDescendantElements,
+                [](const AZ::Entity*) { return true; },
+                descendantElements);
+
+            prototypeEntity->Deactivate();
+        }
+
+        for (AZ::Entity* child : descendantElements)
+        {
+            if (active)
+            {
+                child->Activate();
+            }
+            else
+            {
+                child->Deactivate();
+            }
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

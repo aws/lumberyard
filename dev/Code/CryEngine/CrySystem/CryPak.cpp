@@ -128,23 +128,38 @@ namespace
     // it is assumed that the path is already converted to forward slashes, lowcased, and normalized
     string ConvertAbsolutePathToAliasedPath(const char* sourcePath, const char* aliasToLookFor = "@devassets@", const char* aliasToReplaceWith = "@assets@")
     {
-        if ((aliasToLookFor) && (aliasToReplaceWith) && (sourcePath) && (sourcePath[0] != '@') && (AZ::IO::FileIOBase::GetDirectInstance()))
+        if ((aliasToLookFor) && (aliasToReplaceWith) && (sourcePath) && (AZ::IO::FileIOBase::GetDirectInstance()))
         {
             char unaliasedPath[AZ_MAX_PATH_LEN] = { 0 };
 
-            const char* alias = AZ::IO::FileIOBase::GetDirectInstance()->GetAlias(aliasToLookFor);
-            if ((alias) && (strnicmp(sourcePath, alias, strlen(alias)) == 0)) // check to see if it starts with the absolute path that the alias resolves to
+            if (sourcePath[0] != '@')
             {
-                cry_strcpy(unaliasedPath, AZ_MAX_PATH_LEN, aliasToReplaceWith);
-                cry_strcat(unaliasedPath, AZ_MAX_PATH_LEN, CRY_NATIVE_PATH_SEPSTR);
-                cry_strcat(unaliasedPath, AZ_MAX_PATH_LEN, sourcePath + (strlen(alias) + 1));
-                return unaliasedPath;
+                const char* alias = AZ::IO::FileIOBase::GetDirectInstance()->GetAlias(aliasToLookFor);
+                if ((alias) && (azstrnicmp(sourcePath, alias, strlen(alias)) == 0)) // check to see if it starts with the absolute path that the alias resolves to
+                {
+                    azstrcpy(unaliasedPath, AZ_MAX_PATH_LEN, aliasToReplaceWith);
+                    azstrcat(unaliasedPath, AZ_MAX_PATH_LEN, CRY_NATIVE_PATH_SEPSTR);
+
+                    if (strlen(sourcePath) == strlen(alias))
+                    {
+                        return unaliasedPath;
+                    }
+
+                    azstrcat(unaliasedPath, AZ_MAX_PATH_LEN, sourcePath + (strlen(alias) + 1));
+                    return unaliasedPath;
+                }
             }
-            else if (strnicmp(sourcePath, aliasToLookFor, strlen(aliasToLookFor)) == 0)  // we also check to see if it starts with the alias instead of its absolute path
+            else if (azstrnicmp(sourcePath, aliasToLookFor, strlen(aliasToLookFor)) == 0)  // we also check to see if it starts with the alias instead of its absolute path
             {
-                cry_strcpy(unaliasedPath, AZ_MAX_PATH_LEN, aliasToReplaceWith);
-                cry_strcat(unaliasedPath, AZ_MAX_PATH_LEN, CRY_NATIVE_PATH_SEPSTR);
-                cry_strcat(unaliasedPath, AZ_MAX_PATH_LEN, sourcePath + (strlen(aliasToLookFor) + 1));
+                azstrcpy(unaliasedPath, AZ_MAX_PATH_LEN, aliasToReplaceWith);
+                azstrcat(unaliasedPath, AZ_MAX_PATH_LEN, CRY_NATIVE_PATH_SEPSTR);
+
+                if (strlen(sourcePath) == strlen(aliasToLookFor))
+                {
+                    return unaliasedPath;
+                }
+
+                azstrcat(unaliasedPath, AZ_MAX_PATH_LEN, sourcePath + (strlen(aliasToLookFor) + 1));
                 return unaliasedPath;
             }
         }
@@ -169,6 +184,12 @@ public:
             return ".";
         }
         stack_string filename = sResourceFile;
+        // Ideally the convert to alias call would be unnecessary - if we use aliases in all cases coming into our file open operations.
+        // This isn't currently the case, so we'll remove any that manage to get through to this point
+        AZ::IO::FileIOBase::GetInstance()->ConvertToAlias(filename.m_strBuf, filename.capacity());
+        
+        // And convert from @devassets@ to @assets@
+        filename = ConvertAbsolutePathToAliasedPath(filename.c_str());
         filename.replace('\\', '/');
 #if !defined(AZ_PLATFORM_APPLE)
         filename.MakeLower();
@@ -187,6 +208,7 @@ public:
     {
         CryAutoLock<CryCriticalSection> lock(m_lock);
         m_set.clear();
+        m_iter = m_set.begin();
     }
     virtual bool IsExist(const char* sResourceFile)
     {
@@ -915,7 +937,7 @@ char* CCryPak::BeautifyPath(char* dst, bool bMakeLowercase)
         ++q;
     }
 
-    bool bMakeLower = true; // start off making things lowercase.  If the first symbol is a percent sign, this will toggle this behavior to false
+    bool inToken = false;
 
     while (*p)
     {
@@ -931,12 +953,13 @@ char* CCryPak::BeautifyPath(char* dst, bool bMakeLowercase)
         }
         else
         {
+            // Avoid making tokens like @user@ lowercase by toggling inToken.
             if (*p == '@')
             {
-                bMakeLower = !bMakeLower; // avoid making tokens like @user@ lowercase.
+                inToken = !inToken;
             }
 
-            if (bMakeLower || bMakeLowercase)
+            if (!inToken && bMakeLowercase)
             {
                 *q = tolower(*p);
             }
@@ -1559,7 +1582,10 @@ AZ::IO::HandleType CCryPak::FOpen(const char* pName, const char* szMode, unsigne
             }
 #endif
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-            EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            if (GetISystem() && GetISystem()->GetGlobalEnvironment() && GetISystem()->GetGlobalEnvironment()->mMainThreadId == CryGetCurrentThreadId())
+            {
+                EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            }
 #endif // defined(AZ_LOADSCREENCOMPONENT_ENABLED)
 
             return fileHandle;
@@ -1584,7 +1610,10 @@ AZ::IO::HandleType CCryPak::FOpen(const char* pName, const char* szMode, unsigne
             RecordFile(fileHandle, pName);
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-            EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            if (GetISystem() && GetISystem()->GetGlobalEnvironment() && GetISystem()->GetGlobalEnvironment()->mMainThreadId == CryGetCurrentThreadId())
+            {
+                EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            }
 #endif // defined(AZ_LOADSCREENCOMPONENT_ENABLED)
 
             return fileHandle;
@@ -2457,6 +2486,7 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
         desc.strBindRoot.append(CRY_NATIVE_PATH_SEPSTR);
     }
 
+    // Note this will replace @devassets@ with @assets@ to provide a proper bind root for the paks
     desc.strBindRoot = ConvertAbsolutePathToAliasedPath(desc.strBindRoot.c_str());
 
     // hold the lock from the point we query the zip array,
@@ -2503,7 +2533,10 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
     {
         flags |= ICryArchive::FLAGS_OVERRIDE_PAK;
     }
-
+    if ((nPakFlags& FLAGS_NO_LOWCASE) != 0)
+    {
+        flags |= FLAGS_NO_LOWCASE;
+    }
     desc.pArchive = OpenArchive(szFullPath, szBindRoot, flags, pData);
     if (!desc.pArchive)
     {
@@ -3672,7 +3705,7 @@ ICryArchive* CCryPak::OpenArchive(
 
     char szFullPathBuf[CCryPak::g_nMaxPath];
 
-    const char* szFullPath = AdjustFileName(szPath, szFullPathBuf, FLAGS_PATH_REAL);
+    const char* szFullPath = AdjustFileName(szPath, szFullPathBuf, FLAGS_PATH_REAL | nFlags);
 
     // if it's simple and read-only, it's assumed it's read-only
     if (nFlags & ICryArchive::FLAGS_OPTIMIZED_READ_ONLY)
@@ -4228,7 +4261,10 @@ void CCryPak::RecordFile(AZ::IO::HandleType inFileHandle, const char* szFilename
     {
         // we only want to record ASSET access
         // assets are identified as things which start with no alias, or with the @assets@ alias
-        if ((szFilename[0] != '@') || (strnicmp(szFilename, "@assets@", 8) == 0))
+        stack_string assetPath;
+        assetPath.reserve(AZ_MAX_PATH_LEN);
+        AZ::IO::FileIOBase::GetInstance()->ConvertToAlias(assetPath.m_str, AZ_MAX_PATH_LEN);
+        if ((assetPath.c_str()[0] != '@') || (strnicmp(assetPath.c_str(), "@assets@", 8) == 0))
         {
             IResourceList* pList = GetResourceList(m_eRecordFileOpenList);
 

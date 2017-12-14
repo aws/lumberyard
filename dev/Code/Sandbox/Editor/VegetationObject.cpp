@@ -48,7 +48,7 @@ CVegetationObject::CVegetationObject(int id)
 
     // Int vars.
     mv_size = 1;
-    mv_hmin = GetIEditor()->GetHeightmap()->GetWaterLevel();
+    mv_hmin = GetIEditor()->GetHeightmap()->GetOceanLevel();
     mv_hmax = 4096;
     mv_slope_min = 0;
     mv_slope_max = 255;
@@ -109,6 +109,10 @@ CVegetationObject::CVegetationObject(int id)
 
     mv_castShadows->SetFlags(mv_castShadows->GetFlags() | IVariable::UI_INVISIBLE);
     mv_castShadowMinSpec->SetFlags(mv_castShadowMinSpec->GetFlags() | IVariable::UI_UNSORTED);
+
+    // There is a restriction internally for a max size scale of 4, so enforce
+    // that here until the vegetation system is componentized
+    mv_size->SetLimits(1, 4);
 
     AddVariable(mv_size, "Size", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_sizevar, "SizeVar", "+ - SizeVar", functor(*this, &CVegetationObject::OnVarChange));

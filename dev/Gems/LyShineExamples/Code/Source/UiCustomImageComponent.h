@@ -48,7 +48,7 @@ namespace LyShineExamples
         void ResetOverrides() override;
         void SetOverrideColor(const AZ::Color& color) override;
         void SetOverrideAlpha(float alpha) override;
-        void SetOverrideSprite(ISprite* sprite) override;
+        void SetOverrideSprite(ISprite* sprite, AZ::u32 cellIndex = 0) override;
         // ~UiVisualInterface
 
         // UiRenderInterface

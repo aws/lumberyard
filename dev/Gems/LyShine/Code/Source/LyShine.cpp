@@ -29,6 +29,7 @@
 #include "UiScrollBarComponent.h"
 #include "UiScrollBoxComponent.h"
 #include "UiFaderComponent.h"
+#include "UiFlipbookAnimationComponent.h"
 #include "UiLayoutFitterComponent.h"
 #include "UiMaskComponent.h"
 #include "UiLayoutColumnComponent.h"
@@ -176,6 +177,7 @@ CLyShine::CLyShine(ISystem* system)
         azrtti_typeid<UiScrollBarComponent>(),
         azrtti_typeid<UiScrollBoxComponent>(),
         azrtti_typeid<UiFaderComponent>(),
+        azrtti_typeid<UiFlipbookAnimationComponent>(),
         azrtti_typeid<UiMaskComponent>(),
         azrtti_typeid<UiLayoutColumnComponent>(),
         azrtti_typeid<UiLayoutRowComponent>(),
@@ -292,6 +294,12 @@ void CLyShine::ReleaseCanvas(AZ::EntityId canvas, bool forEditor)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLyShine::ReleaseCanvasDeferred(AZ::EntityId canvas)
+{
+    m_uiCanvasManager->ReleaseCanvasDeferred(canvas);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 ISprite* CLyShine::LoadSprite(const string& pathname)
 {
     return CSprite::LoadSprite(pathname);
@@ -306,7 +314,6 @@ ISprite* CLyShine::CreateSprite(const string& renderTargetName)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CLyShine::PostInit()
 {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -335,7 +342,7 @@ void CLyShine::Render()
         // then do nothing
         return;
     }
-        
+
     // we are rendering at the end of the frame, after tone mapping, so we should be writing sRGB values
     gEnv->pRenderer->SetSrgbWrite(true);
 
@@ -344,7 +351,14 @@ void CLyShine::Render()
 
     m_draw2d->RenderDeferredPrimitives();
 
-    RenderUiCursor();
+    // Don't render the UI cursor when in edit mode. For example during UI Preview mode a script could turn on the
+    // cursor. But it would draw in the wrong place. It is better to just rely on the regular editor cursor in preview
+    // since, in game, the game cursor could be turned on and off any any point, so each UI canvas is not necessarily
+    // going to turn it on.
+    if (!(gEnv->IsEditor() && gEnv->IsEditing()))
+    {
+        RenderUiCursor();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -441,10 +455,10 @@ AZ::Vector2 CLyShine::GetUiCursorPosition()
 {
     AZ::Vector2 systemCursorPositionNormalized;
     AzFramework::InputSystemCursorRequestBus::EventResult(systemCursorPositionNormalized,
-                                                          AzFramework::InputDeviceMouse::Id,
-                                                          &AzFramework::InputSystemCursorRequests::GetSystemCursorPositionNormalized);
+        AzFramework::InputDeviceMouse::Id,
+        &AzFramework::InputSystemCursorRequests::GetSystemCursorPositionNormalized);
     return AZ::Vector2(systemCursorPositionNormalized.GetX() * static_cast<float>(gEnv->pRenderer->GetOverlayWidth()),
-                       systemCursorPositionNormalized.GetY() * static_cast<float>(gEnv->pRenderer->GetOverlayHeight()));
+        systemCursorPositionNormalized.GetY() * static_cast<float>(gEnv->pRenderer->GetOverlayHeight()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

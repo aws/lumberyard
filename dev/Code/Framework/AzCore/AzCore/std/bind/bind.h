@@ -13,6 +13,7 @@
 #define AZSTD_BIND_BIND_HPP_INCLUDED
 
 #include <AzCore/std/base.h>
+#include <AzCore/std/typetraits/function_traits.h>
 
 // As of version 0.92 the BIND implementation has missing features (missing operator() const version, issues with resolving overloads, etc.)
 //#if /*defined(AZ_PLATFORM_PS4) ||*/ defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
@@ -105,13 +106,13 @@ namespace AZStd
         template<class F>
         struct result_traits<unspecified, F>
         {
-            typedef typename F::result_type type;
+            using type = typename function_traits<F>::result_type;
         };
 
         template<class F>
         struct result_traits< unspecified, AZStd::reference_wrapper<F> >
         {
-            typedef typename F::result_type type;
+            using type = typename function_traits<F>::result_type;
         };
 
         // ref_compare
@@ -142,6 +143,10 @@ namespace AZStd
         // bind_t forward declaration for listN
         template<class R, class F, class L>
         class bind_t;
+
+        // Specialize function_traits_helper for bind
+        template <class R, class F, class L>
+        struct function_traits_helper<bind_t<R, F, L>> : function_traits_helper<F> { };
 
         template<class R, class F, class L>
         bool ref_compare(bind_t<R, F, L> const& a, bind_t<R, F, L> const& b, int)

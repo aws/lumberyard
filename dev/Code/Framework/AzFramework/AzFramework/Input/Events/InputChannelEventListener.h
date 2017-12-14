@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <AzFramework/Input/Buses/Notifications/InputChannelEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputChannelNotificationBus.h>
 #include <AzFramework/Input/Events/InputChannelEventFilter.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
 #include <AzFramework/Input/Devices/InputDevice.h>
@@ -31,7 +31,7 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Class that handles input notifications by priority, and that allows events to be filtered by
     //! their channel name, device name, device index (local player) or any combination of the three.
-    class InputChannelEventListener : public InputChannelEventNotificationBus::Handler
+    class InputChannelEventListener : public InputChannelNotificationBus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +94,7 @@ namespace AzFramework
         ~InputChannelEventListener() override = default;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputChannelEventNotifications::GetPriority
+        //! \ref AzFramework::InputChannelNotifications::GetPriority
         AZ::s32 GetPriority() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +112,7 @@ namespace AzFramework
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputChannelEventNotifications::OnInputChannelEvent
+        //! \ref AzFramework::InputChannelNotifications::OnInputChannelEvent
         void OnInputChannelEvent(const InputChannel& inputChannel, bool& o_hasBeenConsumed) final;
 
         ////////////////////////////////////////////////////////////////////////////////////////////

@@ -61,6 +61,7 @@ namespace AzFramework
         void ActivateGameEntity(const AZ::EntityId&) override;
         void DeactivateGameEntity(const AZ::EntityId&) override;
         SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper) override;
+        void CancelDynamicSliceInstantiation(const SliceInstantiationTicket& ticket) override;
         bool LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds) override;
         AZStd::string GetEntityName(const AZ::EntityId& id) override;
         void MarkEntityForNoActivation(AZ::EntityId entityId) override;
@@ -102,9 +103,13 @@ namespace AzFramework
         }
 
     protected:
+        struct InstantiatingDynamicSliceInfo
+        {
+            AZ::Data::Asset<AZ::Data::AssetData> m_asset;
+            AZ::Transform m_transform;
+        };
 
-        using InstantiatingSlicePair = AZStd::pair<AZ::Data::Asset<AZ::Data::AssetData>, AZ::Transform>;
-        AZStd::vector<InstantiatingSlicePair> m_instantiatingDynamicSlices;
+        AZStd::unordered_map<SliceInstantiationTicket, InstantiatingDynamicSliceInfo> m_instantiatingDynamicSlices;
     };
 } // namespace AzFramework
 

@@ -17,10 +17,11 @@
 
 #include <AzToolsFramework/Debug/TraceContext.h>
 
-#include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
+#include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
+#include <SceneAPI/SceneCore/Events/ExportEventContext.h>
 
 #include <RC/ResourceCompilerScene/Cgf/CgfExportContexts.h>
 
@@ -30,41 +31,33 @@ namespace AZ
     {
         namespace SceneContainers = AZ::SceneAPI::Containers;
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
-        namespace SceneEvents = AZ::SceneAPI::Events;
 
         CgfExporter::CgfExporter(IConvertContext* convertContext)
-            : CallProcessorConnector()
-            , m_convertContext(convertContext)
+            : m_convertContext(convertContext)
         {
+            BindToCall(&CgfExporter::ProcessContext);
+            ActivateBindings();
         }
 
-        SceneEvents::ProcessingResult CgfExporter::Process(SceneEvents::ICallContext* context)
+        SceneEvents::ProcessingResult CgfExporter::ProcessContext(SceneEvents::ExportEventContext& context)
         {
-            SceneEvents::ExportEventContext* exportContext = azrtti_cast<SceneEvents::ExportEventContext*>(context);
-            if (exportContext)
-            {
-                AZ_TraceContext("Scene name", exportContext->GetScene().GetName());
-                AZ_TraceContext("Source file", exportContext->GetScene().GetSourceFilename());
-                AZ_TraceContext("Output path", exportContext->GetOutputDirectory());
+            AZ_TraceContext("Scene name", context.GetScene().GetName());
+            AZ_TraceContext("Source file", context.GetScene().GetSourceFilename());
+            AZ_TraceContext("Output path", context.GetOutputDirectory());
 
-                const SceneContainers::SceneManifest& manifest = exportContext->GetScene().GetManifest();
-                auto valueStorage = manifest.GetValueStorage();
-                auto view = SceneContainers::MakeDerivedFilterView<SceneDataTypes::IMeshGroup>(valueStorage);
-                
-                SceneEvents::ProcessingResultCombiner result;
-                for (const SceneDataTypes::IMeshGroup& meshGroup : view)
-                {
-                    AZ_TraceContext("Mesh group", meshGroup.GetName());
-                    result += SceneEvents::Process<CgfGroupExportContext>(*exportContext, meshGroup, Phase::Construction);
-                    result += SceneEvents::Process<CgfGroupExportContext>(*exportContext, meshGroup, Phase::Filling);
-                    result += SceneEvents::Process<CgfGroupExportContext>(*exportContext, meshGroup, Phase::Finalizing);
-                }
-                return result.GetResult();
-            }
-            else
+            const SceneContainers::SceneManifest& manifest = context.GetScene().GetManifest();
+            auto valueStorage = manifest.GetValueStorage();
+            auto view = SceneContainers::MakeDerivedFilterView<SceneDataTypes::IMeshGroup>(valueStorage);
+
+            SceneEvents::ProcessingResultCombiner result;
+            for (const SceneDataTypes::IMeshGroup& meshGroup : view)
             {
-                return SceneEvents::ProcessingResult::Ignored;
+                AZ_TraceContext("Mesh group", meshGroup.GetName());
+                result += SceneEvents::Process<CgfGroupExportContext>(context, meshGroup, Phase::Construction);
+                result += SceneEvents::Process<CgfGroupExportContext>(context, meshGroup, Phase::Filling);
+                result += SceneEvents::Process<CgfGroupExportContext>(context, meshGroup, Phase::Finalizing);
             }
+            return result.GetResult();
         }
-    } // RC
-} // AZ
+    } // namespace RC
+} // namespace AZ

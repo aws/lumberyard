@@ -65,11 +65,13 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     SourceDatabaseEntry source;
     JobDatabaseEntry job;
     ProductDatabaseEntry product;
+    ProductDependencyDatabaseEntry productDependency;
 
     ScanFolderDatabaseEntryContainer scanFolders;
     SourceDatabaseEntryContainer sources;
     JobDatabaseEntryContainer jobs;
     ProductDatabaseEntryContainer products;
+    ProductDependencyDatabaseEntryContainer productDependencies;
 
     QString outName;
     QString outPlat;
@@ -1167,6 +1169,329 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != toRemove);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_productPK == product.m_productID);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subID != removingSubID);
+
+    ////////////////////////////////////////////////////////////////
+    //Setup for product dependency tests by having a some sources and jobs
+    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
+    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source2));
+    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source3));
+    SourceDatabaseEntry source4 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource4.tif", validSourceGuid4);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source4));
+    SourceDatabaseEntry source5 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource5.tif", validSourceGuid5);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source5));
+    SourceDatabaseEntry source6 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource6.tif", validSourceGuid6);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source6));
+
+    //Add jobs
+    job = JobDatabaseEntry(source.m_sourceID, "jobkey1", validFingerprint1, "pc", validBuilderGuid1, statusCompleted, 6);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job));
+    job2 = JobDatabaseEntry(source2.m_sourceID, "jobkey2", validFingerprint2, "pc", validBuilderGuid2, statusCompleted, 7);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job2));
+    job3 = JobDatabaseEntry(source3.m_sourceID, "jobkey3", validFingerprint3, "pc", validBuilderGuid3, statusCompleted, 8);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job3));
+    JobDatabaseEntry job4 = JobDatabaseEntry(source4.m_sourceID, "jobkey4", validFingerprint4, "pc", validBuilderGuid4, statusCompleted, 9);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job4));
+    JobDatabaseEntry job5 = JobDatabaseEntry(source5.m_sourceID, "jobkey5", validFingerprint5, "pc", validBuilderGuid5, statusCompleted, 10);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job5));
+    JobDatabaseEntry job6 = JobDatabaseEntry(source6.m_sourceID, "jobkey6", validFingerprint6, "pc", validBuilderGuid6, statusCompleted, 11);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job6));
+
+    //Add products
+    product = ProductDatabaseEntry(job.m_jobID, 1, "SomeProduct1.dds", validAssetType1);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product));
+    product2 = ProductDatabaseEntry(job2.m_jobID, 2, "SomeProduct2.dds", validAssetType2);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product2));
+    product3 = ProductDatabaseEntry(job3.m_jobID, 3, "SomeProduct3.dds", validAssetType3);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product3));
+    ProductDatabaseEntry product4 = ProductDatabaseEntry(job4.m_jobID, 4, "SomeProduct4.dds", validAssetType4);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product4));
+    ProductDatabaseEntry product5 = ProductDatabaseEntry(job5.m_jobID, 5, "SomeProduct5.dds", validAssetType5);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product5));
+    ProductDatabaseEntry product6 = ProductDatabaseEntry(job6.m_jobID, 6, "SomeProduct6.dds", validAssetType6);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product6));
+
+
+    /////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    //productDependencies
+    auto ProductDependenciesContainProductDependencyID = [](const ProductDependencyDatabaseEntryContainer& productDependencies, AZ::s64 productDepdendencyId) -> bool
+    {
+        for (const auto& productDependency : productDependencies)
+        {
+            if (productDependency.m_productDependencyID == productDepdendencyId)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    auto ProductDependenciesContainProductID = [](const ProductDependencyDatabaseEntryContainer& productDependencies, AZ::s64 productId) -> bool
+    {
+        for (const auto& productDependency : productDependencies)
+        {
+            if (productDependency.m_productPK == productId)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    auto ProductDependenciesContainDependencySoureGuid = [](const ProductDependencyDatabaseEntryContainer& productDependencies, AZ::Uuid dependencySourceGuid) -> bool
+    {
+        for (const auto& productDependency : productDependencies)
+        {
+            if (productDependency.m_dependencySourceGuid == dependencySourceGuid)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    auto ProductDependenciesContainDependencySubID = [](const ProductDependencyDatabaseEntryContainer& productDependencies, AZ::u32 dependencySubID) -> bool
+    {
+        for (const auto& productDependency : productDependencies)
+        {
+            if (productDependency.m_dependencySubID == dependencySubID)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    auto ProductDependenciesContainDependencyFlags = [](const ProductDependencyDatabaseEntryContainer& productDependencies, AZStd::bitset<64> dependencyFlags) -> bool
+    {
+        for (const auto& productDependency : productDependencies)
+        {
+            if (productDependency.m_dependencyFlags == dependencyFlags)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    //there are no product dependencies yet so trying to find one should fail
+    productDependencies.clear();
+    products.clear();
+    UNIT_TEST_EXPECT_FALSE(stateData->GetProductDependencies(productDependencies));
+    UNIT_TEST_EXPECT_FALSE(stateData->GetProductDependencyByProductDependencyID(3443, productDependency));
+    UNIT_TEST_EXPECT_FALSE(stateData->GetProductDependenciesByProductID(3443, productDependencies));
+    UNIT_TEST_EXPECT_FALSE(stateData->GetDirectProductDependencies(3443, products));
+    UNIT_TEST_EXPECT_FALSE(stateData->GetAllProductDependencies(3443, products));
+
+    //trying to add a product dependency without a valid product pk should fail
+    productDependency = ProductDependencyDatabaseEntry(234234, validSourceGuid1, 1, 0);
+    {
+        UnitTestUtils::AssertAbsorber absorber;
+        UNIT_TEST_EXPECT_FALSE(stateData->SetProductDependency(productDependency));
+        UNIT_TEST_EXPECT_TRUE(absorber.m_numWarningsAbsorbed > 0);
+    }
+
+    //setting a valid product pk should allow it to be added
+    //Product -> Product2
+    productDependency = ProductDependencyDatabaseEntry(product.m_productID, validSourceGuid2, 2, 0);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
+    if (productDependency.m_productDependencyID == -1)
+    {
+        Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - SetProductDependency failed to add");
+        return;
+    }
+
+    //get all product dependencies, there should only the one we added
+    productDependencies.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetProductDependencies(productDependencies));
+    UNIT_TEST_EXPECT_TRUE(productDependencies.size() == 1);
+
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainProductDependencyID(productDependencies, productDependency.m_productDependencyID));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainProductID(productDependencies, productDependency.m_productPK));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainDependencySoureGuid(productDependencies, productDependency.m_dependencySourceGuid));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainDependencySubID(productDependencies, productDependency.m_dependencySubID));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainDependencyFlags(productDependencies, productDependency.m_dependencyFlags));
+
+    //add the same product again, should not add another because it already exists, so we should get the same id
+    ProductDependencyDatabaseEntry dupeProductDependency(productDependency);
+    dupeProductDependency.m_productDependencyID = -1;
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(dupeProductDependency));
+    if (!(dupeProductDependency == dupeProductDependency))
+    {
+        Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - SetProductDependency failed to add");
+        return;
+    }
+
+    //get all product dependencies, there should still only the one we added
+    productDependencies.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetProductDependencies(productDependencies));
+    UNIT_TEST_EXPECT_TRUE(productDependencies.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainProductDependencyID(productDependencies, productDependency.m_productDependencyID));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainProductID(productDependencies, productDependency.m_productPK));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainDependencySoureGuid(productDependencies, productDependency.m_dependencySourceGuid));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainDependencySubID(productDependencies, productDependency.m_dependencySubID));
+    UNIT_TEST_EXPECT_TRUE(ProductDependenciesContainDependencyFlags(productDependencies, productDependency.m_dependencyFlags));
+    
+    // Setup some more dependencies
+
+    //Product2 -> Product3
+    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid3, 3, 0);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
+
+    //Product2 -> Product4
+    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid4, 4, 0);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
+
+    //Product3 -> Product5
+    productDependency = ProductDependencyDatabaseEntry(product3.m_productID, validSourceGuid5, 5, 0);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
+
+    //Product5 -> Product6
+    productDependency = ProductDependencyDatabaseEntry(product5.m_productID, validSourceGuid6, 6, 0);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
+
+    /* Dependency Tree
+    *
+    * Product -> Product2 -> Product3 -> Product5 -> Product 6->
+    *                    \                          
+    *                     -> Product4
+    */
+    
+    // Direct Deps
+
+    // Product -> Product2
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetDirectProductDependencies(product.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product2.m_productID));
+
+    // Product2 -> Product3, Product4
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetDirectProductDependencies(product2.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 2);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product3.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product4.m_productID));
+
+    // Product3 -> Product5
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetDirectProductDependencies(product3.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product5.m_productID));
+
+    // Product4 ->
+    products.clear();
+    UNIT_TEST_EXPECT_FALSE(stateData->GetDirectProductDependencies(product4.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 0);
+
+    // Product5 -> Product6
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetDirectProductDependencies(product5.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product6.m_productID));
+
+    // Product6 ->
+    products.clear();
+    UNIT_TEST_EXPECT_FALSE(stateData->GetDirectProductDependencies(product6.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 0);
+
+    // All Deps
+
+    // Product -> Product2, Product3, Product4, Product5, Product6
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetAllProductDependencies(product.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 5);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product2.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product3.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product4.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product5.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product6.m_productID));
+
+    // Product2 -> Product3, Product4, Product5, Product6
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetAllProductDependencies(product2.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 4);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product3.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product4.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product5.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product6.m_productID));
+
+    // Product3 -> Product5, Product6
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetAllProductDependencies(product3.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 2);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product5.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product6.m_productID));
+
+    // Product4 ->
+    products.clear();
+    UNIT_TEST_EXPECT_FALSE(stateData->GetAllProductDependencies(product4.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 0);
+
+    // Product5 -> Product6
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetAllProductDependencies(product5.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product6.m_productID));
+
+    // Product6 -> 
+    products.clear();
+    UNIT_TEST_EXPECT_FALSE(stateData->GetAllProductDependencies(product6.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 0);
+
+    //Product6 -> Product (This creates a circular dependency)
+    productDependency = ProductDependencyDatabaseEntry(product6.m_productID, validSourceGuid1, 1, 0);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
+
+    /* Circular Dependency Tree
+    * v--------------------------------------------------------<
+    * |                                                        |
+    * Product -> Product2 -> Product3 -> Product5 -> Product 6-^
+    *                    \
+    *                     -> Product4
+    */
+
+    // Product6 -> Product
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetDirectProductDependencies(product6.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product.m_productID));
+
+    // Product3 -> Product5, Product6, Product, Product2, Product4
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetAllProductDependencies(product3.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 5);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product5.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product6.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product2.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product4.m_productID));
+
+    stateData->RemoveProductDependencyByProductId(product5.m_productID);
+    products.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetAllProductDependencies(product2.m_productID, products));
+    UNIT_TEST_EXPECT_TRUE(products.size() == 3);
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product3.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product4.m_productID));
+    UNIT_TEST_EXPECT_TRUE(ProductsContainProductID(products, product5.m_productID));
+
+    // Teardown
+    //The product dependencies should cascade delete
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSource(source.m_sourceID));
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSource(source2.m_sourceID));
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSource(source3.m_sourceID));
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSource(source4.m_sourceID));
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSource(source5.m_sourceID));
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSource(source6.m_sourceID));
+
+    productDependencies.clear();
+    products.clear();
+    UNIT_TEST_EXPECT_FALSE(stateData->GetProductDependencies(productDependencies));
+    UNIT_TEST_EXPECT_FALSE(stateData->GetDirectProductDependencies(product.m_productID, products));
+    UNIT_TEST_EXPECT_FALSE(stateData->GetAllProductDependencies(product.m_productID, products));
 }
 
 void AssetProcessingStateDataUnitTest::ExistenceTest(AssetProcessor::AssetDatabaseConnection* stateData)

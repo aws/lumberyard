@@ -41,8 +41,7 @@ def build(bld):
         win_lib         = ['psapi', 'dbghelp'],
 
         # Dependent files/folders from Bin64 to copy to any other target folder
-        win_copy_dependent_files =[ 'Bin64/libGLESv2*.dll',
-                                'Bin64/opengl32sw.dll',
+        win_copy_dependent_files =[ 'Bin64/opengl32sw.dll',
                                 'Bin64/d3dcompiler_47.dll',
                                 'Bin64/rc/rc.ini',
                                 'Bin64/rc/RCJob_*.xml',
@@ -58,8 +57,7 @@ def build(bld):
                                 'Bin64/rc/xmlfilter.txt',
                                 'Bin64/rc/PVRTexLib_License.txt',
                                 'BinMac64/rc/libfbxsdk.dylib', 
-                                'BinMac64/rc/libPVRTexLib.dylib',
-                                'BinMac64/libaws-cpp-sdk-*.dylib', # needed for the PC and slice resource compiler
+                                'BinMac64/rc/libPVRTexLib.dylib'
                                 ],
 
         darwin_rpath    = [ "@executable_path", "@executable_path/..", "@executable_path/../qtlibs/lib" ],

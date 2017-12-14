@@ -79,6 +79,7 @@ namespace AzToolsFramework
                 AZ::Edit::ElementData m_editData;   // Edit metadata (name, description, attribs, etc).
                 bool m_isAttributeOwner;            // True if this ElementInfo owns the internal attributes. We can use a single
                                                     // ElementInfo for more than one class field, but only one owns the Attributes.
+                float m_sortOrder; // Sort order of the property as defined by using the "order" attribute, by default the order is FLT_MAX which means alphabetical sort will be used
             };
 
             static void Reflect(AZ::ReflectContext* context);
@@ -88,6 +89,7 @@ namespace AzToolsFramework
             void LoadScript();
             void LoadProperties(AZ::ScriptDataContext& sdc, AzFramework::ScriptPropertyGroup& group);
             void RemovedOldProperties(AzFramework::ScriptPropertyGroup& group);
+            void SortProperties(AzFramework::ScriptPropertyGroup& group);
 
             bool LoadAttribute(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AZ::Edit::ElementData& ed, AZ::ScriptProperty* prop);
             bool LoadDefaultAsset(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AzFramework::ScriptPropertyGroup& group, ElementInfo& elementInfo);

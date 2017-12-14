@@ -75,6 +75,9 @@ public:
     //! Query whether there are pending asynchronous requests waiting on the asset system
     virtual bool HasPendingRequests() = 0;
 
+    //! Query whether there are slices being instantiated asynchronously
+    virtual bool IsInstantiatingSlices() = 0;
+
     //! Detaches entities from their current slice instance and adds them to root slice as loose entities.
     virtual void DetachSliceEntities(const AzToolsFramework::EntityIdList& entities) = 0;
 };

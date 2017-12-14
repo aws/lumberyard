@@ -11,12 +11,6 @@
 */
 #pragma once
 #include <QUuid>
-#include <STLPortConfig.h>
-
-// STL Port in debug for debug builds
-#if defined(_DEBUG)
-#  define _STLP_DEBUG 1
-#endif
 
 #pragma warning(disable: 4244) // warning C4244: 'argument' : conversion from 'float' to 'uint8', possible loss of data
 #pragma warning(disable: 4800) // 'int' : forcing value to bool 'true' or 'false' (performance warning)

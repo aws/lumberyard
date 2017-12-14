@@ -58,13 +58,13 @@ namespace RenderGL
         void SetSkyColor(const MCore::RGBAColor& color)           { mSkyColor = color; }
 
     private:
-        struct RENDERGL_API MaterialList
+        struct RENDERGL_API MaterialPrimitives
         {
             Material*               mMaterial;
             MCore::Array<Primitive> mPrimitives[3];
 
-            MaterialList()              { mMaterial = nullptr; mPrimitives[0].Reserve(64); mPrimitives[1].Reserve(64); mPrimitives[2].Reserve(64); }
-            MaterialList(Material* mat) { mMaterial = mat; mPrimitives[0].Reserve(64); mPrimitives[1].Reserve(64); mPrimitives[2].Reserve(64); }
+            MaterialPrimitives()              { mMaterial = nullptr; mPrimitives[0].Reserve(64); mPrimitives[1].Reserve(64); mPrimitives[2].Reserve(64); }
+            MaterialPrimitives(Material* mat) { mMaterial = mat; mPrimitives[0].Reserve(64); mPrimitives[1].Reserve(64); mPrimitives[2].Reserve(64); }
         };
 
         MCore::String                   mTexturePath;
@@ -85,7 +85,7 @@ namespace RenderGL
 
         EMotionFX::Mesh::EMeshType ClassifyMeshType(EMotionFX::Node* node, EMotionFX::Mesh* mesh, uint32 lodLevel);
 
-        MCore::Array2D<MaterialList>    mMaterials;
+        MCore::Array< MCore::Array<MaterialPrimitives*> >  mMaterials;
         MCore::Array2D<uint32>          mDynamicNodes;
         MCore::Array2D<Primitive>       mPrimitives[3];
         MCore::Array<bool>              mHomoMaterials;

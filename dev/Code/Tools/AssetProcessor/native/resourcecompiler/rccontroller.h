@@ -93,6 +93,8 @@ namespace AssetProcessor
         //! Pause or unpause dispatching, only necessary on startup to avoid thrashing and make sure no jobs jump the gun.
         void SetDispatchPaused(bool pause);
 
+        void RemoveJobsBySource(QString relSourceFile);
+
     private:
         void FinishJob(AssetProcessor::RCJob* rcJob);
         void CheckCompileAssetsGroup(const AssetProcessor::QueueElementID& queuedElement, AssetProcessor::RCJob::JobState state);

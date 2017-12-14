@@ -17,8 +17,9 @@
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
 namespace LmbrCentral
@@ -532,7 +533,7 @@ namespace LmbrCentral
         pe_status_dynamics dynamics;
         if (m_movesPhysically)
         {
-            EBUS_EVENT_ID(GetEntityId(), LmbrCentral::CryPhysicsComponentRequestBus, GetPhysicsStatus, dynamics);
+            EBUS_EVENT_ID(GetEntityId(), CryPhysicsComponentRequestBus, GetPhysicsStatus, dynamics);
             m_lastResponseCache.SetLastKnownAgentVelocity(LYVec3ToAZVec3(dynamics.v));
         }
 
@@ -565,23 +566,22 @@ namespace LmbrCentral
                 {
                     EBUS_EVENT_ID(GetEntityId(), LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, AZ::Vector3::CreateZero(), 0);
                 }
-                else if (LmbrCentral::CryPhysicsComponentRequestBus::FindFirstHandler(GetEntityId()))
+                else if (CryPhysicsComponentRequestBus::FindFirstHandler(GetEntityId()))
                 {
                     pe_action_set_velocity setVel;
                     setVel.v = ZERO;
-                    EBUS_EVENT_ID(GetEntityId(), LmbrCentral::CryPhysicsComponentRequestBus, ApplyPhysicsAction, setVel, false);
+                    EBUS_EVENT_ID(GetEntityId(), CryPhysicsComponentRequestBus, ApplyPhysicsAction, setVel, false);
                 }
             }
 
             // Set the status of this request
             m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalComplete);
+            // Reset the pathfinding component
+            Reset();
 
             // Inform every listener on this entity that the path has been finished
             EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
                 OnTraversalComplete, m_lastResponseCache.GetRequestId());
-
-            // Reset the pathfinding component
-            Reset();
         }
         else
         {
@@ -591,7 +591,7 @@ namespace LmbrCentral
                 {
                     EBUS_EVENT_ID(GetEntityId(), LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
                 }
-                else if (LmbrCentral::CryPhysicsComponentRequestBus::FindFirstHandler(GetEntityId()))
+                else if (CryPhysicsComponentRequestBus::FindFirstHandler(GetEntityId()))
                 {
                     float entityMass = dynamics.mass;
                     AZ::Vector3 currentVelocity = LYVec3ToAZVec3(dynamics.v);
@@ -600,7 +600,7 @@ namespace LmbrCentral
                     forceRequired.SetZ(0);
                     pe_action_impulse applyImpulse;
                     applyImpulse.impulse = AZVec3ToLYVec3(forceRequired);
-                    EBUS_EVENT_ID(GetEntityId(), LmbrCentral::CryPhysicsComponentRequestBus, ApplyPhysicsAction, applyImpulse, false);
+                    EBUS_EVENT_ID(GetEntityId(), CryPhysicsComponentRequestBus, ApplyPhysicsAction, applyImpulse, false);
                 }
                 else
                 {

@@ -21,16 +21,16 @@ namespace ScriptCanvas
 {
     namespace Nodes
     {
-        template<typename t_Node, typename t_Datum, bool s_hasProperties=false>
+        template<typename t_Node, typename t_Datum>
         class NativeDatumNode
             : public PureData
         {
         public:
-            using t_ThisType = NativeDatumNode<t_Node, t_Datum, s_hasProperties>;
+            using t_ThisType = NativeDatumNode<t_Node, t_Datum>;
 
-            AZ_RTTI(((NativeDatumNode<t_Node, t_Datum>), "{B7D8D8D6-B2F1-481A-A712-B07D1C19555F}", t_Node, t_Datum), Node, AZ::Component);
+            AZ_RTTI(((NativeDatumNode<t_Node, t_Datum>), "{B7D8D8D6-B2F1-481A-A712-B07D1C19555F}", t_Node, t_Datum), PureData, AZ::Component);
             AZ_COMPONENT_INTRUSIVE_DESCRIPTOR_TYPE(NativeDatumNode);
-            AZ_COMPONENT_BASE(NativeDatumNode, Node);
+            AZ_COMPONENT_BASE(NativeDatumNode, PureData);
 
             static void Reflect(AZ::ReflectContext* reflection) 
             {
@@ -50,135 +50,69 @@ namespace ScriptCanvas
             }
 
         protected:
-            void AddProperties() {}
-
-            template<typename t_Getter, typename t_Setter>
-            void AddProperty(t_Getter getter, t_Setter setter, const char* name)
+            void ConfigureSetters()
             {
-                AZ_STATIC_ASSERT(s_hasProperties, "AddProperties cannot be invoked on nodes without properties");
-                using t_GetterThisType = std::remove_cv_t<std::remove_reference_t< typename AZStd::function_traits<t_Getter>::class_type>>;
-                static_assert(AZStd::is_same<t_GetterThisType, std::remove_cv_t<std::remove_reference_t< typename AZStd::function_traits<t_Setter>::class_type>>>::value, "nuh-uh");
-
-                AZ::u32 slotIndex = aznumeric_caster(m_slotContainer.m_slots.size());
-                const SlotId setterSlotId = AddSetter<t_GetterThisType >(setter, name);
-                AZ::u32 getterIndex = aznumeric_caster(m_propertyAccount.m_getters.size());
-                AddGetter<t_GetterThisType>(getter, name);
-                m_propertyAccount.m_getterIndexByInputSlot.insert({ setterSlotId, getterIndex });
-                m_propertyAccount.m_getterSlotIndices.push_back(slotIndex + 1);
-            }
-
-            template<typename t_GetterThisType, typename t_Function>
-            SlotId AddGetter(t_Function function, const AZStd::string_view& slotName)
-            {
-                using t_PropertyType = std::remove_cv_t<std::remove_reference_t<typename AZStd::function_traits<t_Function>::result_type>>;
-
-                m_propertyAccount.m_getters.push_back([function](const Datum& thisDatum) -> Datum
+                Data::SetterContainer setterWrappers = Data::ExplodeToSetters(Data::FromAZType(Data::Traits<t_Datum>::GetAZType()));
+                for (const auto& setterWrapperPair : setterWrappers)
                 {
-                    return Datum::CreateInitializedCopy((thisDatum.GetAs<t_Datum>()->*function)());
-                });
-
-                Data::Type type(Data::FromAZType<t_PropertyType>());
-                return AddOutputTypeSlot(AZStd::string::format("%s: %s", slotName.begin(), Data::GetName(type)).c_str(), "", AZStd::move(type), OutputStorage::Optional);
-            }
-
-            template<typename t_SetterThisType, typename t_Function>
-            SlotId AddSetter(t_Function function, const AZStd::string_view& slotName)
-            {
-                using t_PropertyType = std::remove_cv_t<std::remove_reference_t<typename AZStd::function_traits_get_arg_t<t_Function, 0>>>;
-
-                auto setter = ([function](Datum& thisDatum, const Datum& setValue)
-                {
-                    (thisDatum.ModAs<t_Datum>()->*function)(*setValue.GetAs<t_PropertyType>());
-                });
-
-                Data::Type type(Data::FromAZType<t_PropertyType>());
-                SlotId slotId(AddInputTypeSlot(AZStd::string::format("%s: %s", Data::GetName(type), slotName.begin()).c_str(), "", AZStd::move(type), InputTypeContract::DatumType));
-                m_propertyAccount.m_settersByInputSlot.insert({ slotId, setter });
-                return slotId;
-            }
-
-            AZ_INLINE void CallGetter(AZ::u32 getterIndex)
-            {
-                AZStd::vector<AZStd::pair<Node*, const SlotId>> outputNodes(ModConnectedNodes(GetSlots()[m_propertyAccount.m_getterSlotIndices[getterIndex]]));
-
-                if (!outputNodes.empty())
-                {
-                    Datum getResult(m_propertyAccount.m_getters[getterIndex](m_inputData[k_thisDatumIndex]));
-
-                    for (auto& nodePtrSlot : outputNodes)
+                    SlotId setterSlotId;
+                    const Data::SetterWrapper& setterWrapper = setterWrapperPair.second;
+                    const AZStd::string argName = AZStd::string::format("%s: %s", Data::GetName(setterWrapper.m_propertyType), setterWrapper.m_propertyName.data());
+                    AZStd::string_view argumentTooltip;
+                    // Add the slot if it doesn't exist
+                    if (!SlotExists(argName, SlotType::DataIn, setterSlotId))
                     {
-                        if (nodePtrSlot.first)
-                        {
-                            Node::SetInput(*nodePtrSlot.first, nodePtrSlot.second, getResult);
-                        }
+                        setterSlotId = AddInputTypeSlot(argName, argumentTooltip, setterWrapper.m_propertyType, InputTypeContract::DatumType);
+                    }
+
+                    if (setterSlotId.IsValid())
+                    {
+                        m_propertyAccount.m_getterSetterIdPairs[setterWrapperPair.first].second = setterSlotId;
+                        m_propertyAccount.m_settersByInputSlot.emplace(setterSlotId, setterWrapperPair.second);
                     }
                 }
+            }
+
+            void ConfigureGetters()
+            {
+                Data::GetterContainer getterWrappers = Data::ExplodeToGetters(Data::FromAZType(Data::Traits<t_Datum>::GetAZType()));
+                for (const auto& getterWrapperPair : getterWrappers)
+                {
+                    SlotId getterSlotId;
+
+                    const Data::GetterWrapper& getterWrapper = getterWrapperPair.second;
+                    const AZStd::string resultSlotName(AZStd::string::format("%s: %s", getterWrapper.m_propertyName.data(), Data::GetName(getterWrapper.m_propertyType)));
+                    // Add the slot if it doesn't exist
+                    if (!SlotExists(resultSlotName, SlotType::DataOut, getterSlotId))
+                    {
+                        getterSlotId = AddOutputTypeSlot(resultSlotName, {}, getterWrapper.m_propertyType, OutputStorage::Optional);
+                    }
+
+                    if (getterSlotId.IsValid())
+                    {
+                        m_propertyAccount.m_getterSetterIdPairs[getterWrapperPair.first].first = getterSlotId;
+                        m_propertyAccount.m_gettersByInputSlot.emplace(getterSlotId, getterWrapperPair.second);
+                    }
+                }
+            }
+
+            virtual void ConfigureProperties()
+            {
+                if (IsConfigured())
+                {
+                    return;
+                }
+
+                ConfigureGetters();
+                ConfigureSetters();
+                m_configured = true;
             }
 
             void OnInit() override
             {
                 AddInputAndOutputTypeSlot(Data::FromAZType<t_Datum>());
-                static_cast<t_Node*>(this)->AddProperties();
+                ConfigureProperties();
             }
-
-            template<typename t_NativeDatumNodeType = NativeDatumNode, bool = s_hasProperties>
-            struct SetInputHelper
-            {
-                AZ_INLINE static void Help(t_NativeDatumNodeType& node, const Datum& input, const SlotId& id)
-                {
-                    node.Node::SetInput(input, id);
-                }
-            };
-
-            template<typename t_NativeDatumNodeType>
-            struct SetInputHelper<t_NativeDatumNodeType, true>
-            {
-                AZ_INLINE static void Help(t_NativeDatumNodeType& node, const Datum& input, const SlotId& id)
-                {
-                    if (node.IsSetThisSlot(id))
-                    {
-                        // push this value, as usual
-                        node.Node::SetInput(input, id);
-
-                        // push the (possibly new) value to all the connected getters
-                        for (AZ::u32 getterIndex(0), sentinel(aznumeric_caster(node.m_propertyAccount.m_getters.size())); getterIndex != sentinel; ++getterIndex)
-                        {
-                            node.CallGetter(getterIndex);
-                        }
-                    }
-                    else
-                    {
-                        node.SetProperty(input, id);
-                    }
-                }
-            };
-
-            void SetInput(const Datum& input, const SlotId& id) override
-            {
-                SetInputHelper<t_ThisType, s_hasProperties>::Help(*this, input, id);
-            }
-
-            AZ_INLINE void SetProperty(const Datum& input, const SlotId& id)
-            {
-                auto methodBySlotIter = m_propertyAccount.m_settersByInputSlot.find(id);
-                if (methodBySlotIter != m_propertyAccount.m_settersByInputSlot.end())
-                {
-                    if (methodBySlotIter->second)
-                    {
-                        methodBySlotIter->second(m_inputData[k_thisDatumIndex], input);
-                        PushThis();
-
-                        auto getterIndexIter = m_propertyAccount.m_getterIndexByInputSlot.find(id);
-                        if (getterIndexIter != m_propertyAccount.m_getterIndexByInputSlot.end())
-                        {
-                            CallGetter(getterIndexIter->second);
-                        }
-                    }
-                }
-            }
-
-        private:
-            PropertyAccount<GetterFunction, SetterFunction, s_hasProperties> m_propertyAccount;
         };
     }
 }

@@ -18,7 +18,7 @@
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Animation/CharacterAnimationBus.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
 
 #include <LmbrCentral/Animation/MotionExtraction.h>
 
@@ -80,7 +80,7 @@ namespace LmbrCentral
         class CharacterInstanceEntry
             : private AZ::TransformNotificationBus::Handler
             , private CharacterAnimationRequestBus::Handler
-            , private PhysicsSystemEventBus::Handler
+            , private AzFramework::PhysicsSystemEventBus::Handler
             , private AimIKComponentRequestBus::Handler
         {
         public:

@@ -15,6 +15,7 @@
 #include "Core/SmoothingGroupManager.h"
 #include "DesignerSubPanel.h"
 #include "Tools/BaseTool.h"
+#include "Objects/DesignerObject.h"
 
 #include <QBoxLayout>
 #include <QTabWidget>
@@ -40,7 +41,7 @@ public:
             CD::GetSelectedObjectList(selections);
             bool bExpandPanel = selections.size() > 1;
 
-            SubEditTool::s_nMFCWrapperPanelId = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, _T("Settings"), SubEditTool::s_pSubBrushDesignerPanel, -1, bExpandPanel);
+            SubEditTool::s_nMFCWrapperPanelId = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, QObject::tr("Settings"), SubEditTool::s_pSubBrushDesignerPanel, -1, bExpandPanel);
         }
 
         return SubEditTool::s_pSubBrushDesignerPanel;
@@ -207,7 +208,7 @@ void DesignerSubPanel::OnEditorNotifyEvent(EEditorNotifyEvent event)
     }
 }
 
-void DesignerSubPanel::UpdateBackFaceFlag(CD::SMainContext& mc)
+void DesignerSubPanel::UpdateBackFaceFlag(const CD::SMainContext& mc)
 {
     int modelFlag = mc.pModel->GetModeFlag();
     bool bDesignerDisplayBackFace = modelFlag & CD::eDesignerMode_DisplayBackFace;

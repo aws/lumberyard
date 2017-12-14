@@ -84,12 +84,12 @@ protected:
     void OnBnClickedSetVector();
     void OnUpdateMoveSpeed();
     void OnBnClickedTerrainCollision();
-    void OnBnClickedPhysics();
-    void OnBnClickedSingleStepPhys();
-    void OnBnClickedDoStepPhys();
     void OnBnClickedMuteAudio();
     void OnBnClickedEnableVR();
     void OnInitDialog();
+
+    void OnEnableIdleUpdate();
+    void OnDisableIdleUpdate();
 
     //////////////////////////////////////////////////////////////////////////
     /// VR Event Bus Implementation
@@ -125,6 +125,8 @@ protected:
     Audio::SAudioManagerRequestData<Audio::eAMRT_UNMUTE_ALL> m_oUnmuteAudioRequestData;
 
     QScopedPointer<Ui::CInfoBar> ui;
+
+    bool m_idleUpdateEnabled = true;
 };
 
 //{{AFX_INSERT_LOCATION}}

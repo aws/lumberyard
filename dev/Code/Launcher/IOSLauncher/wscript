@@ -27,7 +27,7 @@ def build(bld):
         # Common
         #==============================
         includes        = [ bld.Path('Code/CryEngine/CrySystem'),
-                            bld.Path('Code/Launcher/AppleLaunchersCommon') ],
+                            bld.Path('Code/Launcher') ],
 
         lib     = [ 'tommath',
                     'tomcrypt',

@@ -44,6 +44,16 @@ ICryFont * CreateCryFontInterface(ISystem * pSystem);
 typedef ICryFont*(* PFNCREATECRYFONTINTERFACE)(ISystem* pSystem);
 typedef std::shared_ptr<FontFamily> FontFamilyPtr;
 
+namespace IFFontConstants
+{
+    //! The default scale applied to individual glyphs when rendering to the font texture.
+    //!
+    //! This is a "best guess" to try and fit all glyphs of a font within the
+    //! bounds of a font texture slot. This value can be defined on a per-font
+    //! basis via the "sizeratio" *.font XML attribute.
+    const float defaultSizeRatio = 0.8f;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 struct ICryFont
 {
@@ -52,10 +62,10 @@ struct ICryFont
     //
     virtual void Release() = 0;
     // Summary:
-    //   Creates a named font (case sensitive)
+    //   Creates a named font (case insensitive)
     virtual IFFont* NewFont(const char* pFontName) = 0;
     // Summary:
-    //   Gets a named font (case sensitive)
+    //   Gets a named font (case insensitive)
     virtual IFFont* GetFont(const char* pFontName) const = 0;
 
     //! \brief Loads and initializes a Font Family from a *.fontfamily file
@@ -63,7 +73,7 @@ struct ICryFont
     virtual FontFamilyPtr LoadFontFamily(const char* pFontFamilyName) = 0;
 
     // Summary:
-    //   Gets font family (case sensitive)
+    //   Gets font family (case insensitive)
     virtual FontFamilyPtr GetFontFamily(const char* pFontFamilyName) = 0;
 
     //! \brief Adds the characters in the given string to all of the font textures within the font family.
@@ -207,7 +217,8 @@ struct IFFont
     //! \param widthNumSlots Number of character slots across the width (X-axis) of the font texture
     //! \param heightNumSlots Number of character slots across the height (Y-axis) of the font texture
     //! \param flags Flags governing font, such as smoothness (see TTFFLAG_CREATE).
-    virtual bool Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags) = 0;
+    //! \param sizeRatio Scale to apply to the font size when storing glyphs in font texture slots.
+    virtual bool Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags, float sizeRatio) = 0;
 
     //! \brief Loads a font from a XML file.
     //! \param pXMLFile Path to font XML file
@@ -259,6 +270,9 @@ struct IFFont
     //! possible combination of characters. Zero values will be returned for those
     //! cases.
     virtual Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const = 0;
+
+    //! \brief Returns the scaling applied to glyphs before being rendered to the font texture from FreeType.
+    virtual float GetSizeRatio() const = 0;
 
     // </interfuscator:shuffle>
 };

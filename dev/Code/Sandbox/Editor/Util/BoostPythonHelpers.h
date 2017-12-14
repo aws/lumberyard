@@ -132,9 +132,9 @@ public:
     // An index to CAutoRegisterPythonModuleHelper::s_modules
     const char* m_pModuleName;
     int m_moduleIndex;
-    string m_name;
-    string m_description;
-    string m_example;
+    QString m_name;
+    QString m_description;
+    QString m_example;
     void (* m_registerFunc)();
 
     CAutoRegisterPythonCommandHelper* m_pNext;
@@ -237,12 +237,12 @@ public:
     QString GetShader() const { return m_matShader; }
     QString GetSurfaceType() const { return m_matSurfaceType; }
     std::map<QString, pSPyWrappedProperty> GetMatParams() const { return m_matParams; }
-    std::vector<pPyGameTexture> GetTextures() const { return m_matTextures; }
+    AZStd::unordered_map<ResourceSlotIndex, pPyGameTexture> GetTextures() const { return m_matTextures; }
 
     void SetName(QString name) { m_matName = name; }
     void SetShader(QString shader) { m_matShader = shader; }
     void SetSurfaceType(QString surface) { m_matSurfaceType = surface; }
-    void SetTextures(std::vector<pPyGameTexture> textures) { m_matTextures = textures; }
+    void SetTextures(AZStd::unordered_map<ResourceSlotIndex, pPyGameTexture> textures) { m_matTextures = textures; }
     void SetMatParams(std::map<QString, pSPyWrappedProperty> params) { m_matParams = params; }
 
     void UpdateSubMaterial();
@@ -254,8 +254,8 @@ private:
     QString m_matPath;
     QString m_matShader;
     QString m_matSurfaceType;
-    std::vector<pPyGameTexture> m_matTextures;
-    std::map<QString, pSPyWrappedProperty> m_matParams;
+    AZStd::unordered_map<ResourceSlotIndex, pPyGameTexture>	m_matTextures;  // map by texture slot id
+    std::map<QString, pSPyWrappedProperty>  m_matParams;
 };
 typedef boost::shared_ptr<PyGameSubMaterial> pPyGameSubMaterial;
 
@@ -760,7 +760,7 @@ namespace PyScript
     };
 
     // Initialize python for use in sandbox
-    void InitializePython();
+    void InitializePython(const QString& rootEngineDir);
 
     // Shutdown python
     void ShutdownPython();

@@ -20,6 +20,10 @@
 #include "AzToLyInputDeviceMouse.h"
 #include "AzToLyInputDeviceTouch.h"
 #include "AzToLyInputDeviceVirtualKeyboard.h"
+#include "InputCVars.h"
+#include "SynergyContext.h"
+#include "SynergyKeyboard.h"
+#include "SynergyMouse.h"
 
 #include <ILog.h>
 #include <IRenderer.h>
@@ -30,6 +34,10 @@
 #include <AzFramework/Input/Devices/Motion/InputDeviceMotion.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 #include <AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h>
+
+#if !defined(_RELEASE) && !defined(WIN32) && !defined(DEDICATED_SERVER)
+#   define SYNERGY_INPUT_ENABLED
+#endif // !defined(_RELEASE) && !defined(WIN32) && !defined(DEDICATED_SERVER)
 
 using namespace AzFramework;
 
@@ -108,7 +116,27 @@ bool AzToLyInput::Init()
     }
 
 
-    InputTextEventNotificationBus::Handler::BusConnect();
+#if defined(SYNERGY_INPUT_ENABLED)
+    const char* pServer = g_pInputCVars->i_synergyServer->GetString();
+    if (pServer && pServer[0] != '\0')
+    {
+        // Create an instance of SynergyClient that will broadcast RawInputNotificationBusSynergy events.
+        m_synergyContext = AZStd::make_unique<SynergyInput::SynergyClient>(g_pInputCVars->i_synergyScreenName->GetString(), pServer);
+
+        // Create the custom synergy keyboard implementation.
+        AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceKeyboard>::Bus::Broadcast(
+            &AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceKeyboard>::CreateCustomImplementation,
+            SynergyInput::InputDeviceKeyboardSynergy::Create);
+
+        // Create the custom synergy mouse implementation.
+        AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceMouse>::Bus::Broadcast(
+            &AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceMouse>::CreateCustomImplementation,
+            SynergyInput::InputDeviceMouseSynergy::Create);
+    }
+#endif // defined(SYNERGY_INPUT_ENABLED)
+
+    InputTextNotificationBus::Handler::BusConnect();
+    AZ::TickBus::Handler::BusConnect();
 
     return true;
 }
@@ -118,7 +146,9 @@ void AzToLyInput::ShutDown()
 {
     gEnv->pLog->Log("AzToLyInput Shutdown");
 
-    InputTextEventNotificationBus::Handler::BusDisconnect();
+    m_synergyContext.reset();
+    AZ::TickBus::Handler::BusDisconnect();
+    InputTextNotificationBus::Handler::BusDisconnect();
 
     CBaseInput::ShutDown();
 }
@@ -159,6 +189,21 @@ bool AzToLyInput::AddAzToLyInputDevice(EInputDeviceType cryInputDeviceType,
         return false;
     }
     return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+int AzToLyInput::GetTickOrder()
+{
+    return AZ::ComponentTickBus::TICK_INPUT + 1; // Right after AzFramework input
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void AzToLyInput::OnTick(float deltaTime, AZ::ScriptTimePoint scriptTimePoint)
+{
+    if (!gEnv->IsEditor() || gEnv->IsEditorGameMode())
+    {
+        Update(true);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

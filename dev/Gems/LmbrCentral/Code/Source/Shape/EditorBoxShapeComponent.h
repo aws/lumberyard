@@ -9,12 +9,15 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include "BoxShape.h"
 #include "EditorBaseShapeComponent.h"
-
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Manipulators/LinearManipulator.h>
 
 namespace LmbrCentral
 {
@@ -29,25 +32,23 @@ namespace LmbrCentral
         AZ_EDITOR_COMPONENT(EditorBoxShapeComponent, EditorBoxShapeComponentTypeId, EditorBaseShapeComponent);
         static void Reflect(AZ::ReflectContext* context);
 
-        ~EditorBoxShapeComponent() override = default;
-        
+        EditorBoxShapeComponent() = default;
+
         // AZ::Component interface implementation
         void Activate() override;
-        void Deactivate() override;        
-        
+        void Deactivate() override;
+
         // EditorComponentBase implementation
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-        
+
         // AZ::TransformNotificationBus::Handler
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-        ////////////////////////////////////////////////////////////////////////
-        void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;       
+        void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;
 
         BoxShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
@@ -55,31 +56,24 @@ namespace LmbrCentral
         }
 
     private:
+        AZ_DISABLE_COPY_MOVE(EditorBoxShapeComponent);
 
         void ConfigurationChanged();
 
-        //////////////////////////////////////////////////////////////////////////
         /// AzToolsFramework::EntitySelectionEvents::Bus::Handler
         void OnSelected() override;
         void OnDeselected() override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //! Stores configuration of a Box for this component
-        BoxShapeConfig m_configuration;
+        BoxShapeConfig m_configuration; ///< Stores configuration of a Box for this component
 
-        /* Linear Manipulators */
-
+        // Linear Manipulators
         void RegisterManipulators();
         void UnregisterManipulators();
         void UpdateManipulators();
 
-        void OnMouseDownManipulator(const AzToolsFramework::LinearManipulationData& manipulationData);
-        void OnMouseMoveManipulator(const AzToolsFramework::LinearManipulationData& manipulationData, AzToolsFramework::LinearManipulator* manipulator);
+        void OnMouseMoveManipulator(
+            const AzToolsFramework::LinearManipulator::Action& action, const AZ::Vector3& axis);
 
-        const static int s_manipulatorCount = 6;
-        AzToolsFramework::LinearManipulator* m_linearManipulators[s_manipulatorCount] = {};
-        AZ::Vector3 m_worldScale = AZ::Vector3(1.0f, 1.0f, 1.0f);
-
-        AZ::Vector3 m_dimensionAtMouseDown; ///< The initial dimension when a manipulator is first being selected.
+        AZStd::array<AZStd::unique_ptr<AzToolsFramework::LinearManipulator>, 6> m_linearManipulators;
     };
 } // namespace LmbrCentral

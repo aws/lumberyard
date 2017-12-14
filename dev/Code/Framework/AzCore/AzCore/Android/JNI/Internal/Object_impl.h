@@ -275,12 +275,18 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature = "(" + SigGen::Generate(AZStd::forward<Args>(parameters)...) + ")V";
-                if (signature.compare(constructorSignature) != 0)
                 {
-                    AZ_Error("JNI::Object", false, "Invalid constructor signature supplied for class %s.  Expecting %s, was given %s", m_className.c_str(), constructorSignature, signature.c_str());
-                    HANDLE_JNI_EXCEPTION(jniEnv);
-                    return false;
+                    JMethodCachePtr newMethod = AZStd::allocate_shared<JMethodCache>(m_stdAllocator);
+                    SetMethodSignature(newMethod, "<inti>", constructorSignature);
+
+                    SignatureOutcome outcome = ValidateSignature(newMethod->m_argumentSignature, AZStd::forward<Args>(parameters)...);
+                    if (!outcome.IsSuccess())
+                    {
+                        const string_type& errorMessage = outcome.GetError();
+                        AZ_Error("JNI::Object", false, "Invalid constructor signature supplied for class %s. %s", m_className.c_str(), errorMessage.c_str());
+                        HANDLE_JNI_EXCEPTION(jniEnv);
+                        return false;
+                    }
                 }
             #endif
 
@@ -353,10 +359,20 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type argumentSignature = SigGen::Generate(AZStd::forward<Args>(parameters)...);
-                if (!ValidateSignature(methodCache, argumentSignature, "V"))
+                SignatureOutcome outcome = ValidateSignature(methodCache->m_argumentSignature, AZStd::forward<Args>(parameters)...);
+                if (!outcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate method signature for %s on class %s", methodName, m_className.c_str());
+                    const string_type& errorMessage = outcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
+                    return;
+                }
+
+                if (methodCache->m_returnSignature.compare("V") != 0)
+                {
+                    AZ_Error("JNI::Object", false, "Invalid return signature supplied for method call %s on class %s.\nExpecting: %s\nActual: V",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), methodCache->m_returnSignature.c_str());
                     return;
                 }
             #endif
@@ -519,25 +535,23 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type argumentSignature = SigGen::Generate(AZStd::forward<Args>(parameters)...);
-
-                string_type returnSignature;
-                if (AZStd::is_same<ReturnType, jobject>::value)
+                SignatureOutcome argsOutcome = ValidateSignature(methodCache->m_argumentSignature, AZStd::forward<Args>(parameters)...);
+                if (!argsOutcome.IsSuccess())
                 {
-                    returnSignature = "L";
-                }
-                else if (AZStd::is_same<ReturnType, jobjectArray>::value)
-                {
-                    returnSignature = "[L";
-                }
-                else
-                {
-                    returnSignature = SigGen::Generate(defaultValue);
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
+                    return defaultValue;
                 }
 
-                if (!ValidateSignature(methodCache, argumentSignature, returnSignature))
+                SignatureOutcome returnOutcome = ValidateSignaturePartial(methodCache->m_returnSignature, defaultValue);
+                if (!returnOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate method signature for %s on class %s", methodName, m_className.c_str());
+                    const string_type& errorMessage = returnOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid return signature supplied for method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif
@@ -583,10 +597,20 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type argumentSignature = SigGen::Generate(AZStd::forward<Args>(parameters)...);
-                if (!ValidateSignature(methodCache, argumentSignature, "V"))
+                SignatureOutcome outcome = ValidateSignature(methodCache->m_argumentSignature, AZStd::forward<Args>(parameters)...);
+                if (!outcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate static method signature for %s on class %s", methodName, m_className.c_str());
+                    const string_type& errorMessage = outcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for static method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
+                    return;
+                }
+
+                if (methodCache->m_returnSignature.compare("V") != 0)
+                {
+                    AZ_Error("JNI::Object", false, "Invalid return signature supplied for static method call %s on class %s.\nExpecting: %s\nActual: V",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), methodCache->m_returnSignature.c_str());
                     return;
                 }
             #endif
@@ -744,25 +768,23 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type argumentSignature = SigGen::Generate(AZStd::forward<Args>(parameters)...);
-
-                string_type returnSignature;
-                if (AZStd::is_same<ReturnType, jobject>::value)
+                SignatureOutcome argsOutcome = ValidateSignature(methodCache->m_argumentSignature, AZStd::forward<Args>(parameters)...);
+                if (!argsOutcome.IsSuccess())
                 {
-                    returnSignature = "L";
-                }
-                else if (AZStd::is_same<ReturnType, jobjectArray>::value)
-                {
-                    returnSignature = "[L";
-                }
-                else
-                {
-                    returnSignature = SigGen::Generate(defaultValue);
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for static method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
+                    return defaultValue;
                 }
 
-                if (!ValidateSignature(methodCache, argumentSignature, returnSignature))
+                SignatureOutcome returnOutcome = ValidateSignaturePartial(methodCache->m_returnSignature, defaultValue);
+                if (!returnOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate method signature for %s on class %s", methodName, m_className.c_str());
+                    const string_type& errorMessage = returnOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid return signature supplied for static method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif
@@ -935,11 +957,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature = SigGen::Generate(value);
-
-                if (!ValidateSignature(fieldCache, signature))
+                SignatureOutcome argsOutcome = ValidateSignature(fieldCache->m_signature, value);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return;
                 }
             #endif
@@ -1087,23 +1111,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature;
-                if (AZStd::is_same<ReturnType, jobject>::value)
+                SignatureOutcome argsOutcome = ValidateSignaturePartial(fieldCache->m_signature, defaultValue);
+                if (!argsOutcome.IsSuccess())
                 {
-                    signature = "L";
-                }
-                else if (AZStd::is_same<ReturnType, jobjectArray>::value)
-                {
-                    signature = "[L";
-                }
-                else
-                {
-                    signature = SigGen::Generate(defaultValue);
-                }
-
-                if (!ValidateSignature(fieldCache, signature))
-                {
-                    AZ_Error("JNI::Object", false, "Failed to validate field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif
@@ -1271,11 +1285,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature = SigGen::Generate(value);
-
-                if (!ValidateSignature(fieldCache, signature))
+                SignatureOutcome argsOutcome = ValidateSignature(fieldCache->m_signature, value);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate static field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for static field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return;
                 }
             #endif
@@ -1417,23 +1433,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature;
-                if (AZStd::is_same<ReturnType, jobject>::value)
+                SignatureOutcome argsOutcome = ValidateSignaturePartial(fieldCache->m_signature, defaultValue);
+                if (!argsOutcome.IsSuccess())
                 {
-                    signature = "L";
-                }
-                else if (AZStd::is_same<ReturnType, jobjectArray>::value)
-                {
-                    signature = "[L";
-                }
-                else
-                {
-                    signature = SigGen::Generate(defaultValue);
-                }
-
-                if (!ValidateSignature(fieldCache, signature))
-                {
-                    AZ_Error("JNI::Object", false, "Failed to validate static field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for static field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif
@@ -1553,57 +1559,47 @@ namespace AZ { namespace Android
 
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
-            bool Object<Allocator>::ValidateSignature(JMethodCachePtr methodCache, const string_type& argumentSignature, const string_type& returnSignature)
+            template<typename... Args>
+            typename Object<Allocator>::SignatureOutcome Object<Allocator>::ValidateSignature(const string_type& baseSignature, Args&&... parameters)
             {
-                bool hasValidSignature = (methodCache->m_argumentSignature.compare(argumentSignature) == 0);
-                AZ_Error("JNI::Object",
-                         hasValidSignature,
-                         "Invalid argument signature supplied for method call %s on class %s.  Expecting %s, was given %s",
-                         methodCache->m_methodName.c_str(),
-                         m_className.c_str(),
-                         methodCache->m_argumentSignature.c_str(),
-                         argumentSignature.c_str());
-
-                // This is a bit harder to validate, specifically when it comes from InvokeObjectMethod.
-                // The best we can do is validate the prefix of the signature is correct.
-                if (methodCache->m_returnSignature[0] == 'L')
+                bool validSignature = SigUtil::Validate(baseSignature, AZStd::forward<Args>(parameters)...);
+                if (!validSignature)
                 {
-                    hasValidSignature = (returnSignature[0] == 'L');
+                    string_type paramSignature = SigUtil::Generate(AZStd::forward<Args>(parameters)...);
+                    return AZ::Failure<string_type>(string_type::format("Expecting: %s\nActual: %s", baseSignature.c_str(), paramSignature.c_str()));
                 }
-                else if (methodCache->m_returnSignature.compare(0, 2, "[L", 2) == 0)
-                {
-                    hasValidSignature = (returnSignature.compare(0, 2, "[L", 2) == 0);
-                }
-                else
-                {
-                    hasValidSignature = (methodCache->m_returnSignature.compare(returnSignature) == 0);
-                }
-
-                AZ_Error("JNI::Object",
-                         hasValidSignature,
-                         "Invalid return signature supplied for method call %s on class %s.  Expecting %s, was given %s",
-                         methodCache->m_methodName.c_str(),
-                         m_className.c_str(),
-                         methodCache->m_returnSignature.c_str(),
-                         returnSignature.c_str());
-
-                return hasValidSignature;
+                return AZ::Success();
             }
 
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
-            bool Object<Allocator>::ValidateSignature(JFieldCachePtr fieldCache, const string_type& signature)
+            template<typename Type>
+            typename Object<Allocator>::SignatureOutcome Object<Allocator>::ValidateSignaturePartial(const string_type& baseSignature, Type param)
             {
-                bool hasValidSignature = (fieldCache->m_signature.compare(signature) == 0);
-                AZ_Error("JNI::Object",
-                         hasValidSignature,
-                         "Invalid argument signature supplied for field call %s on class %s.  Expecting %s, was given %s",
-                         fieldCache->m_fieldName.c_str(),
-                         m_className.c_str(),
-                         fieldCache->m_signature.c_str(),
-                         signature.c_str());
+                bool validSignature;
+                bool isParamValid;
+                if (AZStd::is_same<Type, jobject>::value)
+                {
+                    isParamValid = (param != nullptr);
+                    validSignature = (baseSignature.compare(0, 1, "L") == 0);
+                }
+                else if (AZStd::is_same<Type, jobjectArray>::value)
+                {
+                    isParamValid = (param != nullptr);
+                    validSignature = (baseSignature.compare(0, 2, "[L") == 0);
+                }
+                else
+                {
+                    isParamValid = true;
+                    validSignature = SigUtil::Validate(baseSignature, param);
+                }
 
-                return hasValidSignature;
+                if (!validSignature)
+                {
+                    string_type paramSignature = (isParamValid ? SigUtil::Generate(param).c_str() : "Unknown");
+                    return AZ::Failure<string_type>(string_type::format("Expecting: %s\nActual: %s", baseSignature.c_str(), paramSignature.c_str()));
+                }
+                return AZ::Success();
             }
         #endif // defined(JNI_SIGNATURE_VALIDATION)
 
@@ -1635,12 +1631,23 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type argumentSignature = SigGen::Generate(AZStd::forward<Args>(parameters)...);
-                string_type returnSignature = SigGen::Generate(defaultValue);
-
-                if (!ValidateSignature(methodCache, argumentSignature, returnSignature))
+                SignatureOutcome argsOutcome = ValidateSignature(methodCache->m_argumentSignature, AZStd::forward<Args>(parameters)...);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate method signature for %s on class %s", methodName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
+                    return defaultValue;
+                }
+
+                SignatureOutcome returnOutcome = ValidateSignature(methodCache->m_returnSignature, defaultValue);
+                if (!returnOutcome.IsSuccess())
+                {
+                    const string_type& errorMessage = returnOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid return signature supplied for method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif
@@ -1677,12 +1684,23 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type argumentSignature = SigGen::Generate(AZStd::forward<Args>(parameters)...);
-                string_type returnSignature = SigGen::Generate(defaultValue);
-
-                if (!ValidateSignature(methodCache, argumentSignature, returnSignature.c_str()))
+                SignatureOutcome argsOutcome = ValidateSignature(methodCache->m_argumentSignature, AZStd::forward<Args>(parameters)...);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate static method signature for %s on class %s", methodName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for static method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
+                    return defaultValue;
+                }
+
+                SignatureOutcome returnOutcome = ValidateSignature(methodCache->m_returnSignature, defaultValue);
+                if (!returnOutcome.IsSuccess())
+                {
+                    const string_type& errorMessage = returnOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid return signature supplied for static method call %s on class %s. %s",
+                            methodCache->m_methodName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif
@@ -1724,11 +1742,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature = SigGen::Generate(value);
-
-                if (!ValidateSignature(fieldCache, signature))
+                SignatureOutcome argsOutcome = ValidateSignature(fieldCache->m_signature, value);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return;
                 }
             #endif
@@ -1768,11 +1788,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature = SigGen::Generate(defaultValue);
-
-                if (!ValidateSignature(fieldCache, signature))
+                SignatureOutcome argsOutcome = ValidateSignature(fieldCache->m_signature, defaultValue);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif
@@ -1808,11 +1830,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature = SigGen::Generate(value);
-
-                if (!ValidateSignature(fieldCache, signature))
+                SignatureOutcome argsOutcome = ValidateSignature(fieldCache->m_signature, value);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate static field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for static field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return;
                 }
             #endif
@@ -1846,11 +1870,13 @@ namespace AZ { namespace Android
                 }
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                string_type signature = SigGen::Generate(defaultValue);
-
-                if (!ValidateSignature(fieldCache, signature))
+                SignatureOutcome argsOutcome = ValidateSignature(fieldCache->m_signature, defaultValue);
+                if (!argsOutcome.IsSuccess())
                 {
-                    AZ_Error("JNI::Object", false, "Failed to validate field signature for %s on class %s", fieldName, m_className.c_str());
+                    const string_type& errorMessage = argsOutcome.GetError();
+                    AZ_Error("JNI::Object", false, "Invalid argument signature supplied for static field %s on class %s. %s",
+                            fieldCache->m_fieldName.c_str(), m_className.c_str(), errorMessage.c_str());
+                    HANDLE_JNI_EXCEPTION(jniEnv);
                     return defaultValue;
                 }
             #endif

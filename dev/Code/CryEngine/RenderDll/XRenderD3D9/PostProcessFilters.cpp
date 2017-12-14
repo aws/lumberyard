@@ -16,6 +16,7 @@
 #include "I3DEngine.h"
 #include "D3DPostProcess.h"
 #include "D3DStereo.h"
+#include "../Common/Textures/TextureManager.h"
 
 #pragma warning(disable: 4244)
 
@@ -48,7 +49,6 @@ void CFilterBlurring::Render()
 {
     PROFILE_LABEL_SCOPE("BLURRING");
 
-    float fType = m_pType->GetParam();
     float fAmount = m_pAmount->GetParam();
     fAmount = clamp_tpl<float>(fAmount, 0.0f, 1.0f);
 
@@ -310,7 +310,7 @@ void CUberGamePostProcess::Render()
 
     Vec4 vParamsPS[6] =
     {
-        Vec4(m_pVSyncAmount->GetParam(), m_pInterlationAmount->GetParam(), m_pInterlationTilling->GetParam(), m_pInterlationRotation->GetParam()),
+        Vec4(m_pVSyncAmount->GetParam(), m_pInterlationAmount->GetParam(), m_pInterlationTiling->GetParam(), m_pInterlationRotation->GetParam()),
         //Vec4(m_pVSyncFreq->GetParam(), 1.0f + max(0.0f, m_pPixelationScale->GetParam()*0.25f), m_pNoise->GetParam()*0.25f, m_pChromaShiftAmount->GetParam() + m_pFilterChromaShiftAmount->GetParam()),
         Vec4(m_pVSyncFreq->GetParam(), 1.0f, m_pNoise->GetParam() * 0.25f, m_pChromaShiftAmount->GetParam() + m_pFilterChromaShiftAmount->GetParam()),
         Vec4(min(1.0f, m_pGrainAmount->GetParam() * 0.1f * 0.25f), m_pGrainTile->GetParam(), m_pSyncWavePhase->GetParam(), m_pSyncWaveFreq->GetParam()),
@@ -328,7 +328,7 @@ void CUberGamePostProcess::Render()
 
 
     GetUtils().SetTexture(CTexture::s_ptexBackBuffer, 0, FILTER_LINEAR);
-    GetUtils().SetTexture(CTexture::s_ptexScreenNoiseMap, 1, FILTER_LINEAR, 0);
+    GetUtils().SetTexture(CTextureManager::Instance()->GetDefaultTexture("ScreenNoiseMap"), 1, FILTER_LINEAR, 0);
 
     if (pMaskTex)
     {
@@ -336,7 +336,7 @@ void CUberGamePostProcess::Render()
     }
     else
     {
-        GetUtils().SetTexture(CTexture::s_ptexWhite, 2, FILTER_LINEAR);
+        GetUtils().SetTexture(CTextureManager::Instance()->GetWhiteTexture(), 2, FILTER_LINEAR);
     }
 
     GetUtils().DrawFullScreenTri(CTexture::s_ptexBackBuffer->GetWidth(), CTexture::s_ptexBackBuffer->GetHeight(), 0.0f, &gcpRendD3D->m_FullResRect);

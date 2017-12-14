@@ -81,7 +81,7 @@ namespace MCommon
          * @param directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                       you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderGrid(AZ::Vector2 start, AZ::Vector2 end, const MCore::Vector3& normal, float scale = 25.0f, const MCore::RGBAColor& mainAxisColor = MCore::RGBAColor(0.0f, 0.01f, 0.04f), const MCore::RGBAColor& gridColor = MCore::RGBAColor(0.3242f, 0.3593f, 0.40625f), const MCore::RGBAColor& subStepColor = MCore::RGBAColor(0.2460f, 0.2851f, 0.3320f), bool directlyRender = false);
+        void RenderGrid(AZ::Vector2 start, AZ::Vector2 end, const AZ::Vector3& normal, float scale = 25.0f, const MCore::RGBAColor& mainAxisColor = MCore::RGBAColor(0.0f, 0.01f, 0.04f), const MCore::RGBAColor& gridColor = MCore::RGBAColor(0.3242f, 0.3593f, 0.40625f), const MCore::RGBAColor& subStepColor = MCore::RGBAColor(0.2460f, 0.2851f, 0.3320f), bool directlyRender = false);
 
         /**
          * Render wireframe mesh.
@@ -249,7 +249,7 @@ namespace MCommon
          * @param radius The size of the sphere.
          * @param color The desired sphere color.
          */
-        void RenderSphere(const MCore::Vector3& position, float radius, const MCore::RGBAColor& color);
+        void RenderSphere(const AZ::Vector3& position, float radius, const MCore::RGBAColor& color);
 
         /**
          * Render a sphere.
@@ -265,7 +265,7 @@ namespace MCommon
          * @param radius The radius of the circle.
          * @param color The color of the circle.
          */
-        void RenderCircle(const MCore::Matrix& rotation, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle = 0.0f, float endAngle = MCore::Math::twoPi, bool fillCircle = false, const MCore::RGBAColor& fillColor = MCore::RGBAColor(), bool cullFaces = false, const MCore::Vector3& camRollAxis = MCore::Vector3(0.0f, 0.0f, 0.0f));
+        void RenderCircle(const MCore::Matrix& rotation, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle = 0.0f, float endAngle = MCore::Math::twoPi, bool fillCircle = false, const MCore::RGBAColor& fillColor = MCore::RGBAColor(), bool cullFaces = false, const AZ::Vector3& camRollAxis = AZ::Vector3::CreateZero());
 
         /**
          * Render a cube.
@@ -293,7 +293,7 @@ namespace MCommon
          * @param direction The direction towards the cylinder will be oriented.
          * @param color The desired cylinder color.
          */
-        void RenderCylinder(float baseRadius, float topRadius, float length, const MCore::Vector3& position, const MCore::Vector3& direction, const MCore::RGBAColor& color);
+        void RenderCylinder(float baseRadius, float topRadius, float length, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color);
 
         /**
          * Render a cube.
@@ -301,7 +301,7 @@ namespace MCommon
          * @param position The position of the center of the cube.
          * @param color The desired cube color.
          */
-        void RenderCube(const MCore::Vector3& size, const MCore::Vector3& position, const MCore::RGBAColor& color);
+        void RenderCube(const AZ::Vector3& size, const AZ::Vector3& position, const MCore::RGBAColor& color);
 
         /**
          * Render a triangle (CCW).
@@ -309,7 +309,7 @@ namespace MCommon
          * @param v2 The second corner of the triangle.
          * @param v3 The third corner of the triangle.
          */
-        virtual void RenderTriangle(const MCore::Vector3& v1, const MCore::Vector3& v2, const MCore::Vector3& v3, const MCore::RGBAColor& color) = 0;
+        virtual void RenderTriangle(const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3, const MCore::RGBAColor& color) = 0;
 
         /**
          * Render a 2D quad defined by four values.
@@ -337,7 +337,7 @@ namespace MCommon
          * @param direction The direction towards the arrow head will be oriented.
          * @param color The desired arrow head color.
          */
-        void RenderArrowHead(float height, float radius, const MCore::Vector3& position, const MCore::Vector3& direction, const MCore::RGBAColor& color);
+        void RenderArrowHead(float height, float radius, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color);
 
         /**
          * Render a solid mesh based orientated axis. This can be used to visualize coordinate systems for example a node orientation in global space.
@@ -347,7 +347,7 @@ namespace MCommon
          * @param up The normalized up axis.
          * @param forward The normalized forward axis.
          */
-        void RenderAxis(float size, const MCore::Vector3& position, const MCore::Vector3& right, const MCore::Vector3& up, const MCore::Vector3& forward);
+        void RenderAxis(float size, const AZ::Vector3& position, const AZ::Vector3& right, const AZ::Vector3& up, const AZ::Vector3& forward);
 
         /**
          * Axis rendering settings.
@@ -362,8 +362,8 @@ namespace MCommon
             AxisRenderingSettings();
 
             MCore::Matrix   mGlobalTM;          /**< The global transformation matrix to visualize. */
-            MCore::Vector3  mCameraRight;       /**< The inverse of the camera's right vector used for billboarding the axis names. */
-            MCore::Vector3  mCameraUp;          /**< The inverse of the camera's up vector used for billboarding the axis names. */
+            AZ::Vector3     mCameraRight;       /**< The inverse of the camera's right vector used for billboarding the axis names. */
+            AZ::Vector3     mCameraUp;          /**< The inverse of the camera's up vector used for billboarding the axis names. */
             float           mSize;              /**< The size value in units is used to control the scaling of the axis. */
             bool            mRenderXAxis;       /**< Set to true if you want to render the x axis, false if the x axis should be skipped. */
             bool            mRenderYAxis;       /**< Set to true if you want to render the y axis, false if the y axis should be skipped. */
@@ -395,7 +395,7 @@ namespace MCommon
         struct MCOMMON_API LineVertex
         {
             MCORE_MEMORYOBJECTCATEGORY(RenderUtil::LineVertex, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MCOMMON);
-            MCore::Vector3      mPosition;  /**< The position of the vertex. */
+            AZ::PackedVector3f  mPosition;  /**< The position of the vertex. */
             MCore::RGBAColor    mColor;     /**< The vertex color. */
         };
 
@@ -405,10 +405,10 @@ namespace MCommon
          * @param v2 The ending point of the line.
          * @param color The color of the line.
          */
-        MCORE_INLINE void RenderLine(const MCore::Vector3& v1, const MCore::Vector3& v2, const MCore::RGBAColor& color)
+        MCORE_INLINE void RenderLine(const AZ::Vector3& v1, const AZ::Vector3& v2, const MCore::RGBAColor& color)
         {
-            mVertexBuffer[mNumVertices].mPosition = v1;
-            mVertexBuffer[mNumVertices + 1].mPosition = v2;
+            mVertexBuffer[mNumVertices].mPosition = AZ::PackedVector3f(v1);
+            mVertexBuffer[mNumVertices + 1].mPosition = AZ::PackedVector3f(v2);
             mVertexBuffer[mNumVertices].mColor = color;
             mVertexBuffer[mNumVertices + 1].mColor = color;
             mNumVertices += 2;
@@ -512,9 +512,9 @@ namespace MCommon
              */
             void Allocate(uint32 numVertices, uint32 numIndices, bool hasNormals);
 
-            MCore::Vector3*     mPositions;     /**< The vertex buffer. */
+            AZ::PackedVector3f* mPositions;     /**< The vertex buffer. */
             uint32*             mIndices;       /**< The index buffer. */
-            MCore::Vector3*     mNormals;       /**< The normal buffer. */
+            AZ::PackedVector3f* mNormals;       /**< The normal buffer. */
             uint32              mNumVertices;   /**< The number of vertices in this mesh. */
             uint32              mNumIndices;    /**< The number of indices in this mesh. */
         };
@@ -525,10 +525,10 @@ namespace MCommon
         struct UtilMeshVertex
         {
             MCORE_MEMORYOBJECTCATEGORY(RenderUtil::UtilMeshVertex, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MCOMMON);
-            MCore::Vector3 mPosition;   /**< The position of the vertex. */
-            MCore::Vector3 mNormal;     /**< The vertex normal. */
+            AZ::PackedVector3f mPosition;   /**< The position of the vertex. */
+            AZ::PackedVector3f mNormal;     /**< The vertex normal. */
 
-            UtilMeshVertex(const MCore::Vector3& pos, const MCore::Vector3& normal)
+            UtilMeshVertex(const AZ::Vector3& pos, const AZ::Vector3& normal)
                 : mPosition(pos)
                 , mNormal(normal) {}
         };
@@ -563,18 +563,18 @@ namespace MCommon
         {
             MCORE_MEMORYOBJECTCATEGORY( RenderUtil::Triangle, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MCOMMON );
 
-            MCore::Vector3  mPosA;
-            MCore::Vector3  mPosB;
-            MCore::Vector3  mPosC;
+            AZ::Vector3  mPosA;
+            AZ::Vector3  mPosB;
+            AZ::Vector3  mPosC;
 
-            MCore::Vector3  mNormalA;
-            MCore::Vector3  mNormalB;
-            MCore::Vector3  mNormalC;
+            AZ::Vector3  mNormalA;
+            AZ::Vector3  mNormalB;
+            AZ::Vector3  mNormalC;
 
             uint32          mColor;
 
             Triangle() {}
-            Triangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color) : mPosA(posA), mPosB(posB), mPosC(posC), mNormalA(normalA), mNormalB(normalB), mNormalC(normalC), mColor(color) {}
+            Triangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color) : mPosA(posA), mPosB(posB), mPosC(posC), mNormalA(normalA), mNormalB(normalB), mNormalC(normalC), mColor(color) {}
         };*/
 
         /**
@@ -583,17 +583,17 @@ namespace MCommon
         struct TriangleVertex
         {
             MCORE_MEMORYOBJECTCATEGORY(RenderUtil::TriangleVertex, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MCOMMON);
-            MCore::Vector3  mPosition;      /**< The position of the vertex. */
-            MCore::Vector3  mNormal;        /**< The vertex normal. */
-            uint32          mColor;
+            AZ::PackedVector3f  mPosition;      /**< The position of the vertex. */
+            AZ::PackedVector3f  mNormal;        /**< The vertex normal. */
+            uint32              mColor;
 
-            MCORE_INLINE TriangleVertex(const MCore::Vector3& pos, const MCore::Vector3& normal, uint32 color)
+            MCORE_INLINE TriangleVertex(const AZ::Vector3& pos, const AZ::Vector3& normal, uint32 color)
                 : mPosition(pos)
                 , mNormal(normal)
                 , mColor(color) {}
         };
 
-        MCORE_INLINE void AddTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)
+        MCORE_INLINE void AddTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)
         {
             mTriangleVertices.Add(TriangleVertex(posA, normalA, color));
             mTriangleVertices.Add(TriangleVertex(posB, normalB, color));
@@ -674,7 +674,7 @@ namespace MCommon
          * @param[in] screenHeight The screen height in pixels.
          * @param[in] color The text color.
          */
-        void RenderText(const char* text, uint32 textSize, const MCore::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color);
+        void RenderText(const char* text, uint32 textSize, const AZ::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color);
 
         virtual void EnableCulling(bool cullingEnabled) = 0;
         virtual bool GetCullingEnabled() = 0;
@@ -811,7 +811,7 @@ namespace MCommon
         };
 
         EMotionFX::Mesh*                mCurrentMesh;           /**< A pointer to the mesh whose global space positions are in the pre-calculated positions buffer. NULL in case we haven't pre-calculated any positions yet. */
-        MCore::Array<MCore::Vector3>    mGlobalPositions;       /**< The buffer used to store global space positions for rendering normals, tangents and the wireframe. */
+        MCore::Array<AZ::Vector3>    mGlobalPositions;       /**< The buffer used to store global space positions for rendering normals, tangents and the wireframe. */
 
         LineVertex*                     mVertexBuffer;          /**< Array of line vertices. */
         uint32                          mNumVertices;           /**< The current number of vertices in the array. */

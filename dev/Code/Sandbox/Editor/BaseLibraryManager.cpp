@@ -226,6 +226,7 @@ void CBaseLibraryManager::SplitFullItemName(const QString& fullItemName, QString
 //////////////////////////////////////////////////////////////////////////
 IDataBaseItem* CBaseLibraryManager::FindItemByName(const QString& fullItemName)
 {
+    AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
     return stl::find_in_map(m_itemsNameMap, fullItemName, 0);
 }
 
@@ -239,7 +240,8 @@ IDataBaseItem* CBaseLibraryManager::LoadItemByName(const QString& fullItemName)
     {
         LoadLibrary(MakeFilename(libraryName));
     }
-    return stl::find_in_map(m_itemsNameMap, fullItemName, 0);
+
+    return FindItemByName(fullItemName);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -549,7 +551,7 @@ QString CBaseLibraryManager::MakeUniqueItemName(const QString& srcName, const QS
         const QString& name = pItem->GetName();
         if (name.startsWith(srcName, Qt::CaseInsensitive))
         {
-            possibleDuplicates.push_back(std::move(string(name.toUtf8().data())));
+            possibleDuplicates.push_back(string(name.toUtf8().data()));
         }
     }
     pEnum->Release();
@@ -638,7 +640,7 @@ void CBaseLibraryManager::RegisterItem(CBaseLibraryItem* pItem, REFGUID newGuid)
         QString fullName = pItem->GetFullName();
         if (!pItem->GetName().isEmpty())
         {
-            CBaseLibraryItem* pOldItem = stl::find_in_map(m_itemsNameMap, fullName, (CBaseLibraryItem*)0);
+            CBaseLibraryItem* pOldItem = static_cast<CBaseLibraryItem*>(FindItemByName(fullName));
             if (!pOldItem)
             {
                 AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
@@ -697,7 +699,7 @@ void CBaseLibraryManager::RegisterItem(CBaseLibraryItem* pItem)
         QString fullName = pItem->GetFullName();
         if (!fullName.isEmpty())
         {
-            CBaseLibraryItem* pOldItem = stl::find_in_map(m_itemsNameMap, fullName, (CBaseLibraryItem*)0);
+            CBaseLibraryItem* pOldItem = static_cast<CBaseLibraryItem*>(FindItemByName(fullName));
             if (!pOldItem)
             {
                 AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
@@ -759,10 +761,10 @@ void CBaseLibraryManager::UnregisterItem(CBaseLibraryItem* pItem)
     }
     if (m_bUniqNameMap && !pItem->GetFullName().isEmpty())
     {
+        AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
         auto findIter = m_itemsNameMap.find(pItem->GetFullName());
         if (findIter != m_itemsNameMap.end())
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
             _smart_ptr<CBaseLibraryItem> item = findIter->second;
             m_itemsNameMap.erase(findIter);
         }
@@ -834,7 +836,7 @@ void CBaseLibraryManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
 //////////////////////////////////////////////////////////////////////////
 void CBaseLibraryManager::OnRenameItem(CBaseLibraryItem* pItem, const QString& oldName)
 {
-    AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
+    m_itemsNameMapMutex.lock();
     if (!oldName.isEmpty())
     {
         m_itemsNameMap.erase(oldName);
@@ -843,6 +845,8 @@ void CBaseLibraryManager::OnRenameItem(CBaseLibraryItem* pItem, const QString& o
     {
         m_itemsNameMap[pItem->GetFullName()] = pItem;
     }
+    m_itemsNameMapMutex.unlock();
+
     OnItemChanged(pItem);
 }
 

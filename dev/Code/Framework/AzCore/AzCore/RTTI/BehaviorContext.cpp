@@ -455,14 +455,14 @@ namespace AZ
             AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
             if (!behaviorContext)
             {
-                AZ_Error("Script Canvas", false, "A behavior context is required!");
+                AZ_Error("Behavior Context", false, "A behavior context is required!");
                 return nullptr;
             }
 
             const auto classIter(behaviorContext->m_classes.find(className));
             if (classIter == behaviorContext->m_classes.end())
             {
-                AZ_Warning("Script Canvas", false, "No class by name of %s in the behavior context!", className);
+                AZ_Warning("Behavior Context", false, "No class by name of %s in the behavior context!", className);
                 return nullptr;
             }
 
@@ -476,14 +476,14 @@ namespace AZ
             AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
             if (!behaviorContext)
             {
-                AZ_Error("Script Canvas", false, "A behavior context is required!");
+                AZ_Error("Behavior Context", false, "A behavior context is required!");
                 return nullptr;
             }
 
             const auto classIter(behaviorContext->m_typeToClassMap.find(typeID));
             if (classIter == behaviorContext->m_typeToClassMap.end())
             {
-                AZ_Warning("Script Canvas", false, "No class by typeID of %s in the behavior context!", typeID.ToString<AZStd::string>().c_str());
+                AZ_Warning("Behavior Context", false, "No class by typeID of %s in the behavior context!", typeID.ToString<AZStd::string>().c_str());
                 return nullptr;
             }
 
@@ -498,14 +498,14 @@ namespace AZ
             AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
             if (!behaviorContext)
             {
-                AZ_Error("Script Canvas", false, "A behavior context is required!");
+                AZ_Error("Behavior Context", false, "A behavior context is required!");
                 return AZ::Uuid::CreateNull();
             }
 
             const auto classIter(behaviorContext->m_classes.find(className));
             if (classIter == behaviorContext->m_classes.end())
             {
-                AZ_Error("Script Canvas", false, "No class by name of %s in the behavior context!", className);
+                AZ_Error("Behavior Context", false, "No class by name of %s in the behavior context!", className);
                 return AZ::Uuid::CreateNull();
             }
 

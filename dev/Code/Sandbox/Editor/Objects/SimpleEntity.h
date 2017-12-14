@@ -29,7 +29,7 @@ public:
 
     void BeginEditParams(IEditor* ie, int flags);
 
-    void Validate(CErrorReport* report);
+    void Validate(IErrorReport* report);
     bool IsSimilarObject(CBaseObject* pObject);
 
     QString GetGeometryFile() const;

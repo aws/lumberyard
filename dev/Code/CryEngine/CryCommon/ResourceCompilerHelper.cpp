@@ -924,10 +924,8 @@ IResourceCompilerHelper::RCProcessHandle CResourceCompilerHelper::AsyncCallResou
         execv(path, argv);
         assert(false);
     }
-    else
-    {
-        return RCProcessHandle(new LocalResourceCompilerProcess(pid), [](IResourceCompilerProcess* proc) { delete proc; });
-    }
+
+    return RCProcessHandle(new LocalResourceCompilerProcess(pid), [](IResourceCompilerProcess* proc) { delete proc; });
 #endif
 }
 

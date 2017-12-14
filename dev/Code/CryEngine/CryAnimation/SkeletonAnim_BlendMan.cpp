@@ -286,18 +286,21 @@ void CSkeletonAnim::UpdateParameters(CAnimation* arrAnimFiFo, uint32 nMaxActiveI
                     CryFatalError("CryAnimation: negative");
                 }
                 const ModelAnimationHeader* pAnimPS = pAnimationSet->GetModelAnimationHeader(nAnimIDPS);
-                GlobalAnimationHeaderCAF& rCAF = g_AnimationManager.m_arrGlobalCAF[pAnimPS->m_nGlobalAnimId];
-                int32 segcount = pParametric->m_nSegmentCounter[0][i];
-                f32 fSegDuration = rCAF.GetSegmentDuration(segcount);
-                fSegDuration = max(fSegDuration, 1.0f / rCAF.GetSampleRate());
-                fTWDuration       += pParametric->m_fBlendWeight[i] * fSegDuration;
-
-                const uint32 totSegs = rCAF.GetTotalSegments();
-                for (uint32 s = 0; s < totSegs; s++)
+                if (pAnimPS)
                 {
-                    f32 fCurSegDuration = rCAF.GetSegmentDuration(s);
-                    fCurSegDuration = max(fCurSegDuration, 1.0f / rCAF.GetSampleRate());
-                    totalTime         += pParametric->m_fBlendWeight[i] * fCurSegDuration;
+                    GlobalAnimationHeaderCAF& rCAF = g_AnimationManager.m_arrGlobalCAF[pAnimPS->m_nGlobalAnimId];
+                    int32 segcount = pParametric->m_nSegmentCounter[0][i];
+                    f32 fSegDuration = rCAF.GetSegmentDuration(segcount);
+                    fSegDuration = max(fSegDuration, 1.0f / rCAF.GetSampleRate());
+                    fTWDuration += pParametric->m_fBlendWeight[i] * fSegDuration;
+
+                    const uint32 totSegs = rCAF.GetTotalSegments();
+                    for (uint32 s = 0; s < totSegs; s++)
+                    {
+                        f32 fCurSegDuration = rCAF.GetSegmentDuration(s);
+                        fCurSegDuration = max(fCurSegDuration, 1.0f / rCAF.GetSampleRate());
+                        totalTime += pParametric->m_fBlendWeight[i] * fCurSegDuration;
+                    }
                 }
             }
             if (rCurAnim.m_fCurrentDeltaTime > 0.0f)
@@ -313,24 +316,26 @@ void CSkeletonAnim::UpdateParameters(CAnimation* arrAnimFiFo, uint32 nMaxActiveI
         {
             //this is a regular CAF
             const ModelAnimationHeader* pAnim = pAnimationSet->GetModelAnimationHeader(rCurAnim.GetAnimationId());
-            assert(pAnim);
-            if (pAnim->m_nAssetType == CAF_File)
+            if (pAnim)
             {
-                GlobalAnimationHeaderCAF& rGAH = g_AnimationManager.m_arrGlobalCAF[pAnim->m_nGlobalAnimId];
-                const int32 segcount = rCurAnim.m_currentSegmentIndex[0];
-                f32 fSegTime = rGAH.GetSegmentDuration(segcount);
-                fSegTime = max(fSegTime, 1.0f / rGAH.GetSampleRate());
-                rCurAnim.SetCurrentSegmentExpectedDurationSeconds(fSegTime);
-                rCurAnim.m_fCurrentDeltaTime = (rCurAnim.m_fPlaybackScale * fFrameDeltaTime) / fSegTime;
-            }
-            if (pAnim->m_nAssetType == AIM_File)
-            {
-                GlobalAnimationHeaderAIM& rAIM = g_AnimationManager.m_arrGlobalAIM[pAnim->m_nGlobalAnimId];
-                const int32 segcount = rCurAnim.m_currentSegmentIndex[0];
-                f32 fSegTime = max(rAIM.m_fTotalDuration, 1.0f / rAIM.GetSampleRate());
-                fSegTime = max(fSegTime, 1.0f / rAIM.GetSampleRate());
-                rCurAnim.SetCurrentSegmentExpectedDurationSeconds(fSegTime);
-                rCurAnim.m_fCurrentDeltaTime = (rCurAnim.m_fPlaybackScale * fFrameDeltaTime) / fSegTime;
+                if (pAnim->m_nAssetType == CAF_File)
+                {
+                    GlobalAnimationHeaderCAF& rGAH = g_AnimationManager.m_arrGlobalCAF[pAnim->m_nGlobalAnimId];
+                    const int32 segcount = rCurAnim.m_currentSegmentIndex[0];
+                    f32 fSegTime = rGAH.GetSegmentDuration(segcount);
+                    fSegTime = max(fSegTime, 1.0f / rGAH.GetSampleRate());
+                    rCurAnim.SetCurrentSegmentExpectedDurationSeconds(fSegTime);
+                    rCurAnim.m_fCurrentDeltaTime = (rCurAnim.m_fPlaybackScale * fFrameDeltaTime) / fSegTime;
+                }
+                if (pAnim->m_nAssetType == AIM_File)
+                {
+                    GlobalAnimationHeaderAIM& rAIM = g_AnimationManager.m_arrGlobalAIM[pAnim->m_nGlobalAnimId];
+                    const int32 segcount = rCurAnim.m_currentSegmentIndex[0];
+                    f32 fSegTime = max(rAIM.m_fTotalDuration, 1.0f / rAIM.GetSampleRate());
+                    fSegTime = max(fSegTime, 1.0f / rAIM.GetSampleRate());
+                    rCurAnim.SetCurrentSegmentExpectedDurationSeconds(fSegTime);
+                    rCurAnim.m_fCurrentDeltaTime = (rCurAnim.m_fPlaybackScale * fFrameDeltaTime) / fSegTime;
+                }
             }
         }
     }

@@ -14,6 +14,7 @@
 #include <AzCore/Component/Component.h>
 #include <LyShine/Bus/World/UiCanvasRefBus.h>
 #include <LyShine/Bus/World/UiCanvasOnMeshBus.h>
+#include <LyShine/Bus/UiCanvasManagerBus.h>
 #include <AzCore/Math/Vector3.h>
 
 struct IPhysicalEntity;
@@ -23,6 +24,7 @@ class UiCanvasOnMeshComponent
     : public AZ::Component
     , public UiCanvasOnMeshBus::Handler
     , public UiCanvasAssetRefNotificationBus::Handler
+    , public UiCanvasManagerNotificationBus::Handler
 {
 public: // member functions
 
@@ -38,6 +40,10 @@ public: // member functions
     // UiCanvasAssetRefListener
     void OnCanvasLoadedIntoEntity(AZ::EntityId uiCanvasEntity) override;
     // ~UiCanvasAssetRefListener
+
+    // UiCanvasManagerNotification
+    void OnCanvasReloaded(AZ::EntityId canvasEntityId) override;
+    // ~UiCanvasManagerNotification
 
 public: // static member functions
 
@@ -75,7 +81,4 @@ protected: // data
 
     //! Render target name to use (overrides the render target name in the UI canvas)
     AZStd::string m_renderTargetOverride;
-
-    //! The UI Canvas that this component provides mesh collision input services for
-    AZ::EntityId m_canvasEntityId;
 };

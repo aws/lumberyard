@@ -21,18 +21,13 @@
 #include "GLResource.hpp"
 #include <Common/RenderCapabilities.h>
 
-#if defined(DXGL_ANDROID_GL)
-#include <EGL/egl.h>
-#endif
-#if defined(APPLE)
-#include "AppleGPUInfoUtils.h"
-#endif
-
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/Module/DynamicModuleHandle.h>
 
-#if defined(DXGL_USE_SDL)
-#define HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(result) if (result < 0) {DXGL_ERROR("Failed to set GL attribute: %s", SDL_GetError()); return false; }
-#endif //defined(DXGL_USE_SDL)
+#if defined(ANDROID)
+#include <AzCore/Android/Utils.h>
+#include <android/native_window.h>
+#endif
 
 #if defined(DEBUG) && !defined(MAC)
 #define DXGL_DEBUG_CONTEXT 1
@@ -53,11 +48,6 @@
 // Used when checking the capabilities of an adapter.
 static const int MIN_UNIFORM_BUFFERS_REQUIRED = 8;
 
-#if DXGL_USE_ES_EMULATOR
-extern PFNGLDEBUGMESSAGECONTROLKHRPROC   glDebugMessageControl  = NULL;
-extern PFNGLDEBUGMESSAGECALLBACKKHRPROC  glDebugMessageCallback = NULL;
-#endif //DXGL_USE_ES_EMULATOR
-
 #if defined(DXGLES_LOAD_EXTENSIONS)
 // Declare the function pointers for the gles extensions.
 #undef EXTENSION_FUNC
@@ -76,9 +66,7 @@ namespace NCryOpenGL
     // bones to 512.
     static const int BASE_UNIFORM_BUFFER_SIZE = 24 * 1024;
 
-#if defined(DXGL_SINGLEWINDOW)
-    SMainWindow SMainWindow::ms_kInstance = {NULL, 0, 0, "", true};
-#endif
+    CDevice::WindowSizeList CDevice::m_windowSizes;
 
 #if DXGL_DEBUG_OUTPUT_VERBOSITY
     #if defined(WIN32)
@@ -89,37 +77,84 @@ namespace NCryOpenGL
     void DXGL_DEBUG_CALLBACK_CONVENTION DebugCallback(GLenum eSource, GLenum eType, GLuint uId, GLenum eSeverity, GLsizei uLength, const GLchar* szMessage, void* pUserParam);
 #endif //DXGL_DEBUG_OUTPUT_VERBOSITY
 
-#if DXGL_USE_ES_EMULATOR
-
-    _smart_ptr<SDisplayConnection> CreateDisplayConnection(
-        const SPixelFormatSpec& kPixelFormatSpec,
-        const TNativeDisplay& kDefaultNativeDisplay)
+    SVersion GetRequiredGLVersion()
     {
-        _smart_ptr<SDisplayConnection> spDisplayConnection(new SDisplayConnection());
+#if defined(OPENGL_ES)
+        uint32 version = DXGLES_REQUIRED_VERSION;
+#else
+        uint32 version = DXGL_REQUIRED_VERSION;
+#endif
+        return SVersion(version);
+    }
 
-        spDisplayConnection->m_kDisplay = eglGetDisplay(kDefaultNativeDisplay);
-        if (spDisplayConnection->m_kDisplay == EGL_NO_DISPLAY)
+#if defined(DXGL_USE_EGL)
+    SDisplayConnection::SDisplayConnection()
+        : m_display(EGL_NO_DISPLAY)
+        , m_surface(EGL_NO_SURFACE)
+        , m_config(nullptr)
+        , m_window(nullptr)
+        , m_dirtyFlag(false)
+    {}
+
+    SDisplayConnection::~SDisplayConnection()
+    {
+        if (m_display != EGL_NO_DISPLAY)
+        {
+            if (m_surface != EGL_NO_SURFACE)
+            {
+                eglDestroySurface(m_display, m_surface);
+            }
+            eglTerminate(m_display);
+        }
+    }
+
+    SDisplayConnection* SDisplayConnection::Create(const SPixelFormatSpec& pixelFormatSpec, const TNativeDisplay& defaultNativeDisplay)
+    {
+        SDisplayConnection* displayConnection = new SDisplayConnection();
+        if (!displayConnection->Init(pixelFormatSpec, defaultNativeDisplay))
+        {
+            delete displayConnection;
+            return nullptr;
+        }
+
+        return displayConnection;
+    }
+
+    bool SDisplayConnection::Init(const SPixelFormatSpec& kPixelFormatSpec, const TNativeDisplay& kDefaultNativeDisplay)
+    {
+#   if defined(OPENGL_ES)
+        EGLenum api = EGL_OPENGL_ES_API;
+        EGLint renderableType = EGL_OPENGL_ES3_BIT;
+#   else
+        EGLenum api = EGL_OPENGL_API;
+        EGLint renderableType = EGL_OPENGL_BIT;
+#   endif
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+        m_window = kDefaultNativeDisplay->second;
+        if (eglBindAPI(api) == EGL_FALSE)
         {
             DXGL_ERROR("eglGetDisplay failed");
-            return NULL;
+            return false;
         }
 
-        if (eglBindAPI(EGL_OPENGL_ES_API) == EGL_FALSE)
+        m_display = eglGetDisplay(kDefaultNativeDisplay->first);
+        if (m_display == EGL_NO_DISPLAY)
         {
             DXGL_ERROR("eglBindAPI failed");
-            return NULL;
+            return false;
         }
 
-        if (eglInitialize(spDisplayConnection->m_kDisplay, NULL, NULL) != EGL_TRUE)
+        if (eglInitialize(m_display, NULL, NULL) != EGL_TRUE)
         {
             DXGL_ERROR("eglInitialize failed");
             return false;
         }
 
+        bool usePbuffer = m_window == nullptr;
         EGLint aiAttributes[] =
         {
-            EGL_RENDERABLE_TYPE,          EGL_OPENGL_ES3_BIT,
-            EGL_SURFACE_TYPE,             EGL_WINDOW_BIT,
+            EGL_RENDERABLE_TYPE,          renderableType,
+            EGL_SURFACE_TYPE,             usePbuffer ? EGL_PBUFFER_BIT : EGL_WINDOW_BIT,
             EGL_RED_SIZE,                 kPixelFormatSpec.m_pLayout->m_uRedBits,
             EGL_GREEN_SIZE,               kPixelFormatSpec.m_pLayout->m_uGreenBits,
             EGL_BLUE_SIZE,                kPixelFormatSpec.m_pLayout->m_uBlueBits,
@@ -133,355 +168,108 @@ namespace NCryOpenGL
         };
 
         EGLint iFoundConfigs;
-        if (eglChooseConfig(spDisplayConnection->m_kDisplay, aiAttributes, &spDisplayConnection->m_kConfig, 1, &iFoundConfigs) != EGL_TRUE || iFoundConfigs < 1)
+        if (eglChooseConfig(m_display, aiAttributes, &m_config, 1, &iFoundConfigs) != EGL_TRUE || iFoundConfigs < 1)
         {
             DXGL_ERROR("eglChooseConfig failed");
-            return NULL;
-        }
-
-#if defined(WIN32) && !defined(DXGL_USE_SDL)
-        EGLNativeWindowType kWindow(WindowFromDC(kDefaultNativeDisplay));
-#else
-#error "Not implemented on this platform"
-#endif
-        spDisplayConnection->m_kSurface = eglCreateWindowSurface(spDisplayConnection->m_kDisplay, spDisplayConnection->m_kConfig, kWindow, NULL);
-        if (spDisplayConnection->m_kSurface == EGL_NO_SURFACE)
-        {
-            DXGL_ERROR("eglCreateWindowSurface failed");
-            return NULL;
-        }
-
-        return spDisplayConnection;
-    }
-
-#elif defined(DXGL_USE_SDL)
-
-    bool InitializeSDLAttributes()
-    {
-        int iResult = 0;
-
-        // Setup context versions
-#if defined(MAC)
-        // Mac OS X only supports 4.1, but forcing values to 4.1 causes a significant
-        // drop in perforamance. Requesting a 3.2 context gives us a 4.1 context
-        // on capable hardware anyhow.
-        SVersion kVersion = {3, 2};
-#elif defined(DXGL_ANDROID_GL)
-        SVersion kVersion = {4, 4};
-#elif defined(OPENGL_ES)
-        // For OpenGL ES we have to request a 2.0 context as SDL has a bug in it
-        // that it fails on some devices to create a GL context if a version
-        // greater than 2.0 is specified
-        SVersion kVersion = {2, 0};
-#else
-        SVersion kVersion = {4, 3};
-#endif
-
-        iResult = SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, kVersion.m_uMajorVersion);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-        iResult = SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, kVersion.m_uMinorVersion);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-#if defined(DXGL_ANDROID_GL)
-        if (!eglBindAPI(EGL_OPENGL_API))
-        {
-            iResult = SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-        }
-        else
-#endif
-#if defined(OPENGL_ES) && !defined(DXGL_ANDROID_GL)
-        iResult = SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-#else
-        {
-            iResult = SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-        }
-#endif
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-        iResult = SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-        iResult = SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-        return true;
-    }
-
-    bool SetSDLAttributes(const SFeatureSpec& kFeatureSpec, const SPixelFormatSpec& kPixelFormatSpec)
-    {
-        int iResult = 0;
-
-        InitializeSDLAttributes();
-
-        // setup up number of bits per field
-        iResult = SDL_GL_SetAttribute(SDL_GL_RED_SIZE, kPixelFormatSpec.m_pLayout->m_uRedBits);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-        iResult = SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, kPixelFormatSpec.m_pLayout->m_uGreenBits);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-        iResult = SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, kPixelFormatSpec.m_pLayout->m_uBlueBits);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-        iResult = SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, kPixelFormatSpec.m_pLayout->m_uAlphaBits);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-        iResult = SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, kPixelFormatSpec.m_pLayout->m_uDepthBits);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-        iResult = SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, kPixelFormatSpec.m_pLayout->m_uStencilBits);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-        iResult = SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, kPixelFormatSpec.m_pLayout->GetColorBits());
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-        iResult = SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-#if defined(MAC)
-        iResult = SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, kPixelFormatSpec.m_bSRGB ? 1 : 0);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-#endif
-
-#if DXGL_DEBUG_CONTEXT
-        iResult = SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-#endif //DXGL_DEBUG_CONTEXT
-
-        // setup multisampling
-        if (kPixelFormatSpec.m_uNumSamples > 1)
-        {
-            iResult = SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-            HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-            iResult = SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, kPixelFormatSpec.m_uNumSamples);
-            HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-        }
-        else
-        {
-            iResult = SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
-            HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-            iResult = SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
-            HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-        }
-
-        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
-
-        return true;
-    }
-
-    //  Confetti BEGIN: Igor Lobanchikov
-#if defined(ANDROID)
-    //  Igor: this function is declared in SDL2/Android build.
-    extern "C"
-    {
-        void Android_JNI_setSurfaceFixedSize(int vertResolution, int horizResolution);
-    }
-#endif
-    //  Confetti End: Igor Lobanchikov
-
-    bool CreateSDLWindowContext(TWindowContext& kWindowContext, const char* szTitle, uint32 uWidth, uint32 uHeight, bool bFullScreen)
-    {
-        uint32 uWindowFlags = SDL_WINDOW_OPENGL;
-        if (bFullScreen)
-        {
-#if defined(LINUX)
-            // SDL2 does not handle correctly fullscreen windows with non-native display mode on Linux.
-            // It is easier to render offscreen at internal resolution and blit-scale it to native resolution at the end.
-            // There is a bug with fullscreen on Linux: https://bugzilla.libsdl.org/show_bug.cgi?id=2373, which makes
-            // the fullscreen window leave a black spot in the top.
-            uWindowFlags |= SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE;
-#else
-            uWindowFlags |= SDL_WINDOW_FULLSCREEN;
-#endif
-        }
-
-        SDL_Window* sdlWindow = SDL_CreateWindow(szTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, uWidth, uHeight, uWindowFlags);
-
-        //  Confetti BEGIN: Igor Lobanchikov
-#if defined(ANDROID)
-        //  Igor: this does not change the screen resolution but rather changes the back buffer size.
-        //  Back buffer is upscaled by android to fill the screen.
-        Android_JNI_setSurfaceFixedSize(uWidth, uHeight);
-#endif
-        //  Confetti End: Igor Lobanchikov
-
-#if !defined(_DEBUG)
-        SDL_SetWindowGrab(sdlWindow, SDL_TRUE);
-#endif
-        if (!sdlWindow)
-        {
-            DXGL_ERROR("Failed to create SDL Window %s", SDL_GetError());
             return false;
         }
 
-        // These calls fail, check SDL source (must be >0)
-        //SDL_SetWindowMinimumSize(kWindowContext, 0, 0);
-        //SDL_SetWindowMaximumSize(kWindowContext, 0, 0);
+        CreateSurface();
 
-        if (bFullScreen)
-        {
-            SDL_DisplayMode kDisplayMode;
-            SDL_zero(kDisplayMode);
-
-            if (SDL_SetWindowDisplayMode(sdlWindow, &kDisplayMode) != 0)
-            {
-                DXGL_ERROR("Failed to set display mode: %s", SDL_GetError());
-                return false;
-            }
-
-            SDL_ShowWindow(sdlWindow);
-        }
-
-        kWindowContext = AZStd::make_shared<SDLWindowContext>(sdlWindow);
-        return true;
-    }
-
-    SDLWindowContext::SDLWindowContext(SDL_Window* window)
-        : m_window(window)
-    {
-        AZ_Assert(m_window, "Null SDL_Window");
-    }
-
-    SDLWindowContext::~SDLWindowContext()
-    {
-        if (m_window)
-        {
-            SDL_DestroyWindow(m_window);
-        }
-    }
-
-    bool SDLWindowContext::MakeCurrent(const TRenderingContext context) const
-    {
-        if (!m_window)
-        {
-            return false;
-        }
-
-        return SDL_GL_MakeCurrent(m_window, context) == 0;
-    }
-
-    bool SDLWindowContext::SwapBuffers() const 
-    { 
-        if (!m_window)
-        {
-            return false;
-        }
-
-        // Check to see if the EGL surface has changed. This could mean that the windows was destroyed/recreated or it changed dimensions.
-        // Either way we need to bind the surface again before swapping it.
-        if (SDL_HasEvent(SDL_RENDER_TARGETS_RESET))
-        {
-            SDL_GLContext currentContext = SDL_GL_GetCurrentContext();
-            // SDL has an internal cache that compares the SDL_Window and the SDL_GLContext before calling EGL.
-            // Because both of them are the same (only the EGL surface changed), SDL will not process this call.
-            // So we set to NULL first and then back to the window and context to force the binding of the new surface.
-            SDL_GL_MakeCurrent(nullptr, nullptr);
-            SDL_GL_MakeCurrent(m_window, currentContext);
-            // Remove the event because we already process it.
-            SDL_FlushEvent(SDL_RENDER_TARGETS_RESET);
-        }
-
-        SDL_GL_SwapWindow(m_window); 
-        return true;
-    }
-
-    TRenderingContext SDLWindowContext::CreateGLContext(const TRenderingContext sharedContext) const
-    {
-        if (!m_window)
-        {
-            return nullptr;
-        }
-
-        SDL_GL_MakeCurrent(m_window, sharedContext);
-        return SDL_GL_CreateContext(m_window);
-    }
-
-#ifdef AZ_PLATFORM_ANDROID
-    EGLPBufferWindowContext::EGLPBufferWindowContext(EGLint width, EGLint height, const SPixelFormatSpec& pixelFormat)
-        : m_surface(EGL_NO_SURFACE)
-        , m_display(EGL_NO_DISPLAY)
-        , m_config(nullptr)
-    {
-        const EGLint surfaceAttributes[] = {
-            EGL_WIDTH, width,
-            EGL_HEIGHT, height,
-            EGL_NONE
-        };
-
-        m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-        if (m_display == EGL_NO_DISPLAY || !eglInitialize(m_display, NULL, NULL))
-        {
-            AZ_Assert(false, "Failed to initialize display");
-            return;
-        }
-
-        // Use the same attributes as the SDL context so the surface is compatible.
-        EGLint aiAttributes[] =
-        {
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, // SDL context creation uses openGLES 2.0 because of a bug in the library, so we use the same.
-            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-            EGL_RED_SIZE, pixelFormat.m_pLayout->m_uRedBits,
-            EGL_GREEN_SIZE, pixelFormat.m_pLayout->m_uGreenBits,
-            EGL_BLUE_SIZE, pixelFormat.m_pLayout->m_uBlueBits,
-            EGL_ALPHA_SIZE, pixelFormat.m_pLayout->m_uAlphaBits,
-            EGL_BUFFER_SIZE, pixelFormat.m_pLayout->GetColorBits(),
-            EGL_DEPTH_SIZE, pixelFormat.m_pLayout->m_uDepthBits,
-            EGL_STENCIL_SIZE, pixelFormat.m_pLayout->m_uStencilBits,
-            EGL_SAMPLE_BUFFERS, pixelFormat.m_uNumSamples > 1 ? 1 : 0,
-            EGL_SAMPLES, pixelFormat.m_uNumSamples > 1 ? pixelFormat.m_uNumSamples : 0,
-            EGL_NONE
-        };
-
-        EGLint iNumConfigs;
-        if (!eglChooseConfig(m_display, aiAttributes, &m_config, 1, &iNumConfigs) || iNumConfigs == 0 || !m_config)
-        {
-            eglTerminate(m_display);
-            m_display = EGL_NO_DISPLAY;
-            AZ_Assert(false, "Failed to choose EGL config");
-            return;
-        }
-
-        m_surface = eglCreatePbufferSurface(m_display, m_config, surfaceAttributes);
         if (m_surface == EGL_NO_SURFACE)
         {
-            eglTerminate(m_display);
-            m_display = EGL_NO_DISPLAY;
-            AZ_Assert(false, "Failed to create PBuffer surface");
-            return;
+            DXGL_ERROR("Failed to create EGL surface");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool SDisplayConnection::CreateSurface()
+    {
+        if (m_display == EGL_NO_DISPLAY || m_config == nullptr)
+        {
+            return false;
+        }
+
+        if (m_window)
+        {
+            m_surface = eglCreateWindowSurface(m_display, m_config, m_window, NULL);
+        }
+        else
+        {
+            const EGLint surfaceAttributes[] = {
+                EGL_WIDTH, 1,
+                EGL_HEIGHT, 1,
+                EGL_NONE
+            };
+            m_surface = eglCreatePbufferSurface(m_display, m_config, surfaceAttributes);
+        }
+
+        return m_surface != EGL_NO_SURFACE;
+    }
+
+    bool SDisplayConnection::DestroySurface()
+    {
+        if (m_display == EGL_NO_DISPLAY || m_surface == EGL_NO_SURFACE)
+        {
+            return false;
+        }
+
+        EGLBoolean result = eglDestroySurface(m_display, m_surface);
+        m_surface = EGL_NO_SURFACE;
+        return result == EGL_TRUE;
+    }
+
+    void SDisplayConnection::SetWindow(EGLNativeWindowType window)
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+        if (window != m_window)
+        {
+            if (m_window)
+            {
+                DestroySurface();
+            }
+
+            m_window = window;
+
+            if (window)
+            {
+                CreateSurface();
+                m_dirtyFlag = true;
+            }
         }
     }
 
-    EGLPBufferWindowContext::~EGLPBufferWindowContext()
+    bool SDisplayConnection::MakeCurrent(const TRenderingContext context) const
     {
-        if (m_surface != EGL_NO_SURFACE)
-        {
-            eglDestroySurface(m_display, m_surface);
-        }
-
-        if (m_display != EGL_NO_DISPLAY)
-        {
-            eglTerminate(m_display);
-        }
-    }
-
-    bool EGLPBufferWindowContext::MakeCurrent(const TRenderingContext context) const
-    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
         EGLSurface surface = context ? m_surface : EGL_NO_SURFACE;
         return eglMakeCurrent(m_display, surface, surface, context) == EGL_TRUE;
     }
 
-    bool EGLPBufferWindowContext::SwapBuffers() const
+    bool SDisplayConnection::SwapBuffers(const TRenderingContext context)
     {
+        if (m_dirtyFlag)
+        {
+            // The surface was recreated so we need to make current again before doing the swap.
+            if (!MakeCurrent(context))
+            {
+                return false;
+            }
+        }
+
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+        m_dirtyFlag = false;
+        if (m_surface == EGL_NO_SURFACE)
+        {
+            return false;
+        }
+
         return eglSwapBuffers(m_display, m_surface) == EGL_TRUE;
     }
 
-    TRenderingContext EGLPBufferWindowContext::CreateGLContext(const TRenderingContext sharedContext) const
-    {
-        static const EGLint aiContextAttributes[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
-        return eglCreateContext(m_display, m_config, sharedContext, aiContextAttributes);
-    }
-
-#endif // AZ_PLATFORM_ANDROID
-
-#elif defined(WIN32)
+#elif defined(DXGL_USE_WGL)
 
     bool SetWindowPixelFormat(const TWindowContext& kWindowContext, const SPixelFormatSpec* pPixelFormatSpec)
     {
@@ -702,10 +490,9 @@ namespace NCryOpenGL
 
 #endif
 
-#if !defined(DXGL_USE_SDL)
+#if defined(WIN32)
     SOutput* GetWindowOutput(SAdapter* pAdapter, const TNativeDisplay& kNativeDisplay)
     {
-#if defined(WIN32)
         RECT kWindowRect;
         HWND kWindowHandle(WindowFromDC(kNativeDisplay));
         if (kWindowHandle == NULL || GetWindowRect(kWindowHandle, &kWindowRect) != TRUE)
@@ -747,84 +534,10 @@ namespace NCryOpenGL
         }
 
         return pMinDistOutput;
-#else
-#error "Not implemented on this platform"
-#endif
     }
-#endif
+#endif // defined(WIN32)
 
-#if defined(DXGL_USE_SDL)
-
-    EGIFormat SDLPixelFormatToGIFormat(uint32 uPixelFormat)
-    {
-        switch (uPixelFormat)
-        {
-        case SDL_PIXELFORMAT_ABGR1555:
-        case SDL_PIXELFORMAT_RGBA5551:
-        case SDL_PIXELFORMAT_ARGB1555:
-        case SDL_PIXELFORMAT_BGRA5551:
-            return eGIF_B5G5R5A1_UNORM;
-        case SDL_PIXELFORMAT_RGB565:
-        case SDL_PIXELFORMAT_BGR565:
-            return eGIF_B5G6R5_UNORM;
-        case SDL_PIXELFORMAT_RGB24:
-        case SDL_PIXELFORMAT_BGR24:
-        case SDL_PIXELFORMAT_BGR888:
-        case SDL_PIXELFORMAT_BGRX8888:
-        case SDL_PIXELFORMAT_RGB888:
-            return eGIF_B8G8R8X8_UNORM;
-        case SDL_PIXELFORMAT_ARGB8888:
-        case SDL_PIXELFORMAT_RGBA8888:
-            return eGIF_R8G8B8A8_UNORM;
-        case SDL_PIXELFORMAT_ABGR8888:
-        case SDL_PIXELFORMAT_BGRA8888:
-            return eGIF_B8G8R8A8_UNORM;
-        default:
-            DXGL_ERROR("Unsupported SDL pixel format as GI format");
-            return eGIF_NUM;
-        }
-    }
-
-    uint32 GIFormatToSDLPixelFormat(EGIFormat eGIFormat)
-    {
-        switch (eGIFormat)
-        {
-        case eGIF_B5G5R5A1_UNORM:
-            return SDL_PIXELFORMAT_BGRA5551;
-        case eGIF_B5G6R5_UNORM:
-            return SDL_PIXELFORMAT_BGR565;
-        case eGIF_B8G8R8X8_UNORM:
-            return SDL_PIXELFORMAT_BGRX8888;
-        case eGIF_R8G8B8A8_UNORM:
-            return SDL_PIXELFORMAT_RGBA8888;
-        case eGIF_B8G8R8A8_UNORM:
-            return SDL_PIXELFORMAT_BGRA8888;
-        default:
-            DXGL_ERROR("Unsupported GI format as SDL pixel format");
-            return SDL_PIXELFORMAT_UNKNOWN;
-        }
-    }
-
-    bool SDLDisplayModeToDisplayMode(SDisplayMode* pDisplayMode, const SDL_DisplayMode& kSDLDisplayMode)
-    {
-        pDisplayMode->m_uHeight      = kSDLDisplayMode.h;
-        pDisplayMode->m_uWidth       = kSDLDisplayMode.w;
-        pDisplayMode->m_uFrequency   = kSDLDisplayMode.refresh_rate;
-        pDisplayMode->m_ePixelFormat = SDLPixelFormatToGIFormat(kSDLDisplayMode.format);
-        return pDisplayMode->m_ePixelFormat != eGIF_NUM;
-    }
-
-    bool DisplayModeToSDLDisplayMode(SDL_DisplayMode* pSDLDisplayMode, const SDisplayMode& kDisplayMode)
-    {
-        SDL_zero(*pSDLDisplayMode);
-        pSDLDisplayMode->h            = kDisplayMode.m_uHeight;
-        pSDLDisplayMode->w            = kDisplayMode.m_uWidth;
-        pSDLDisplayMode->refresh_rate = kDisplayMode.m_uFrequency;
-        pSDLDisplayMode->format       = GIFormatToSDLPixelFormat(kDisplayMode.m_ePixelFormat);
-        return pSDLDisplayMode->format != SDL_PIXELFORMAT_UNKNOWN;
-    }
-
-#elif defined(WIN32)
+#if defined(WIN32)
 
     void DevModeToDisplayMode(SDisplayMode* pDisplayMode, const DEVMODEA& kDevMode)
     {
@@ -834,14 +547,12 @@ namespace NCryOpenGL
         pDisplayMode->m_uFrequency    = kDevMode.dmDisplayFrequency;
     }
 
-#endif
-
-#if defined(DXGL_USE_SDL) || defined(WIN32)
+#endif // defined(WIN32)
 
     struct SDummyWindow
     {
         TNativeDisplay m_kNativeDisplay;
-#if !defined(DXGL_USE_SDL)
+#if defined(WIN32)
         HWND m_kWndHandle;
         ATOM m_kWndClassAtom;
 
@@ -849,33 +560,22 @@ namespace NCryOpenGL
         {
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
         }
-#endif //!defined(DXGL_USE_SDL)
+#endif //defined(WIN32)
 
         SDummyWindow()
             : m_kNativeDisplay(NULL)
-#if !defined(DXGL_USE_SDL)
+#if defined(WIN32)
             , m_kWndHandle(NULL)
             , m_kWndClassAtom(0)
-#endif //!defined(DXGL_USE_SDL)
+#endif //defined(WIN32)
         {
         }
 
         bool Initialize(const SPixelFormatSpec* pPixelFormatSpec)
         {
-#if defined(DXGL_USE_SDL)
-            if (!InitializeSDLAttributes())
-            {
-                return false;
-            }
-
-            SDL_Window* pWindow = SDL_CreateWindow("Dummy DXGL window", 100, 100, 0, 0, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
-            if (pWindow == NULL)
-            {
-                DXGL_ERROR("Creation of the dummy DXGL window failed (%s)", SDL_GetError());
-                return false;
-            }
-
-            m_kNativeDisplay = new TWindowContext(new SDLWindowContext(pWindow));
+#if defined(DXGL_USE_EGL)
+            // No need to create a window because we are going to use an EGL pixel buffer surface.
+            m_kNativeDisplay = AZStd::make_shared<EGLNativePlatform>(EGL_DEFAULT_DISPLAY, nullptr);
 #elif defined(WIN32)
             WNDCLASSW kWndClass;
             kWndClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -897,25 +597,19 @@ namespace NCryOpenGL
                 return false;
             }
 
-    #if !DXGL_USE_ES_EMULATOR
+    #if defined(DXGL_USE_WGL)
             if (!SetWindowPixelFormat(m_kNativeDisplay, pPixelFormatSpec))
             {
                 return false;
             }
-    #endif //!DXGL_USE_ES_EMULATOR
+    #endif //DXGL_USE_WGL
 #endif
-
             return true;
         }
 
         void Shutdown()
         {
-#if defined(DXGL_USE_SDL)
-            if (m_kNativeDisplay)
-            {
-                delete m_kNativeDisplay;
-            }
-#elif defined(WIN32)
+#if defined(WIN32)
             if (m_kWndHandle != NULL)
             {
                 DestroyWindow(m_kWndHandle);
@@ -927,8 +621,6 @@ namespace NCryOpenGL
 #endif
         }
     };
-
-#endif //defined(DXGL_USE_SDL) || defined(WIN32)
 
     ////////////////////////////////////////////////////////////////////////////
     // CDevice implementation
@@ -948,94 +640,94 @@ namespace NCryOpenGL
         , m_kFeatureSpec(kFeatureSpec)
         , m_kPixelFormatSpec(kPixelFormatSpec)
         , m_kContextFenceIssued(false)
-#if DXGL_FULL_EMULATION
-        , m_pDummyWindow(NULL)
-#endif //DXGL_FULL_EMULATION
     {
         if (ms_pCurrentDevice == NULL)
         {
             ms_pCurrentDevice = this;
         }
         m_pCurrentContextTLS = CreateTLS();
+        AzFramework::ApplicationLifecycleEvents::Bus::Handler::BusConnect();
     }
 
     CDevice::~CDevice()
     {
         Shutdown();
         DestroyTLS(m_pCurrentContextTLS);
-#if DXGL_FULL_EMULATION
-        if (m_pDummyWindow != NULL)
-        {
-            delete m_pDummyWindow;
-        }
-#endif //DXGL_FULL_EMULATION
         if (ms_pCurrentDevice == this)
         {
             ms_pCurrentDevice = NULL;
         }
+        AzFramework::ApplicationLifecycleEvents::Bus::Handler::BusDisconnect();
     }
 
-#if !DXGL_FULL_EMULATION
+#if !defined(WIN32)
+    bool CDevice::CreateWindow(const char* title, uint32 width, uint32 height, bool fullscreen, HWND * handle)
+    {
+#if defined(ANDROID)
+        // Windows is already created by the Native Activity. We just return a pointer to the ANativeWindow.
+        ANativeWindow* nativeWindow = AZ::Android::Utils::GetWindow();
+        *handle = reinterpret_cast<HWND>(nativeWindow);
+#else
+#error "Not implemented for this platform"
+#endif
+        InitWindow(*handle, width, height);
+        m_windowSizes[handle] = std::make_pair(width, height);
+        return true;
+    }
+
+    void CDevice::DestroyWindow(HWND handle)
+    {
+#if defined(ANDROID)
+        // Nothing to do since the window is destroyed by the OS when the Native Activity is destroyed
+#else
+#error "Not implemented for this platform"
+#endif
+        m_windowSizes.erase(handle);
+    }
+
+    void CDevice::InitWindow(HWND handle, uint32 width, uint32 height)
+    {
+#if defined(ANDROID)
+        ANativeWindow* nativeWindow = reinterpret_cast<ANativeWindow*>(handle);
+        // We need to set the windows size to match the engine width and height. The Android compositor will upscale it to fullscreen.
+        ANativeWindow_setBuffersGeometry(nativeWindow, width, height, WINDOW_FORMAT_RGBA_8888);
+#endif
+    }
+#endif // !defined(WIN32)
+
+    void CDevice::OnApplicationWindowCreated()
+    {
+#if defined(ANDROID)
+        uint32 width, height;
+        if (m_windowSizes.empty())
+        {
+            AZ_Error("OpenGL", false, "Could not find window size. Using backbuffer size.");
+            width = gcpRendD3D->GetBackbufferWidth();
+            height = gcpRendD3D->GetBackbufferHeight();
+        }
+        else
+        {
+            // Android only uses one screen. Just use the first one in the list.
+            std::pair<uint32, uint32> windowSize = m_windowSizes.begin()->second;
+            width = windowSize.first;
+            height = windowSize.second;
+        }
+
+        HWND window = reinterpret_cast<HWND>(AZ::Android::Utils::GetWindow());
+        CDevice::InitWindow(window, width, height);
+#endif
+    }
+
     void CDevice::Configure(uint32 uNumSharedContexts)
     {
         ms_uNumContextsPerDevice = min((uint32)MAX_NUM_CONTEXT_PER_DEVICE, 1 + uNumSharedContexts);
     }
-#endif //!DXGL_FULL_EMULATION
-
-#if defined(DXGL_USE_SDL)
-
-    bool CDevice::CreateSDLWindow(const char* szTitle, uint32 uWidth, uint32 uHeight, bool bFullScreen, HWND* pHandle)
-    {
-#if defined(DXGL_SINGLEWINDOW)
-        SMainWindow::ms_kInstance.m_strTitle    = szTitle;
-        SMainWindow::ms_kInstance.m_uWidth      = uWidth;
-        SMainWindow::ms_kInstance.m_uHeight     = uHeight;
-        SMainWindow::ms_kInstance.m_bFullScreen = bFullScreen;
-        SMainWindow::ms_kInstance.m_pSDLWindow  = NULL;
-        *pHandle = reinterpret_cast<HWND>(&SMainWindow::ms_kInstance.m_pSDLWindow);
-        return true;
-#else
-        TWindowContext* pWindowContext = new TWindowContext();
-        if (!CreateSDLWindowContext(*pWindowContext, szTitle, uWidth, uHeight, bFullScreen))
-        {
-            delete pWindowContext;
-            return false;
-        }
-        *pHandle = reinterpret_cast<HWND>(pWindowContext);
-        return true;
-#endif
-    }
-
-    void CDevice::DestroySDLWindow(HWND kHandle)
-    {
-        TWindowContext* pWindowContext = reinterpret_cast<TWindowContext*>(kHandle);
-        if (pWindowContext)
-        {
-            *pWindowContext = nullptr;
-#ifndef DXGL_SINGLEWINDOW
-            delete pWindowContext;
-#endif // !DXGL_SINGLEWINDOW
-        }
-    }
-
-#endif //defined(DXGL_USE_SDL)
 
     bool CDevice::Initialize(const TNativeDisplay& kDefaultNativeDisplay)
     {
         if (kDefaultNativeDisplay == NULL)
         {
-#if DXGL_FULL_EMULATION
-            SDummyWindow* pDummyWindow(new SDummyWindow());
-            if (!pDummyWindow->Initialize(&m_kPixelFormatSpec))
-            {
-                delete pDummyWindow;
-                return false;
-            }
-            m_pDummyWindow = pDummyWindow;
-            m_kDefaultNativeDisplay = pDummyWindow->m_kNativeDisplay;
-#else
             return false;
-#endif
         }
         else
         {
@@ -1055,11 +747,11 @@ namespace NCryOpenGL
             const TRenderingContext& kRenderingContext(kRenderingContexts.at(uContext));
             TWindowContext windowContext = m_kDefaultWindowContext;
             CContext::ContextType type = uContext == 0 ? CContext::RenderingType : CContext::ResourceType;
-#ifdef AZ_PLATFORM_ANDROID
+#if defined(DXGL_USE_EGL)
             // We use the window's surface for the context that will do the actual rendering and 1x1 PBuffer surfaces for the loading threads.
-            if (uContext > 0)
+            if (type == CContext::ResourceType)
             {
-                windowContext = AZStd::make_shared<EGLPBufferWindowContext>(1, 1, m_kPixelFormatSpec);
+                windowContext.reset(SDisplayConnection::Create(m_kPixelFormatSpec, AZStd::make_shared<EGLNativePlatform>(EGL_DEFAULT_DISPLAY, nullptr)));
             }
 #endif // ANDROID
 
@@ -1098,11 +790,9 @@ namespace NCryOpenGL
             delete *kContextIter;
             // Delete context after all resources have been released. Avoids memory
             // leaks an crashes with non-nvidia drivers
-#if DXGL_USE_ES_EMULATOR
-            eglDestroyContext(m_kDefaultWindowContext->m_kDisplay, kRenderingContext);
-#elif defined(DXGL_USE_SDL)
-            SDL_GL_DeleteContext(kRenderingContext);
-#elif defined(WIN32)
+#if defined(DXGL_USE_EGL)
+            eglDestroyContext(m_kDefaultWindowContext->GetDisplay(), kRenderingContext);
+#elif defined(DXGL_USE_WGL)
             wglDeleteContext(kRenderingContext);
 #else
 #error "Not supported on this platform"
@@ -1115,18 +805,13 @@ namespace NCryOpenGL
         {
             ReleaseWindowContext(m_kDefaultWindowContext);
         }
-
-#if defined(DXGL_USE_SDL)
-        SDL_Quit();
-#endif //defined(DXGL_USE_SDL)
     }
 
     bool CDevice::Present(const TWindowContext& kTargetWindowContext)
     {
-#if DXGL_USE_ES_EMULATOR
-        return eglSwapBuffers(kTargetWindowContext->m_kDisplay, kTargetWindowContext->m_kSurface) == EGL_TRUE;
-#elif defined(DXGL_USE_SDL)
-        return kTargetWindowContext->SwapBuffers();
+#if defined(DXGL_USE_EGL)
+        CContext* currentContext = GetCurrentContext();
+        return kTargetWindowContext->SwapBuffers(currentContext ? currentContext->GetRenderingContext() : nullptr);
 #elif defined(WIN32)
         return SwapBuffers(kTargetWindowContext) == TRUE;
 #else
@@ -1268,9 +953,15 @@ namespace NCryOpenGL
             return false;
         }
 
-#if DXGL_USE_ES_EMULATOR
-        EGLint aiContextAttributes[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
-#elif defined(WIN32) && !defined(DXGL_USE_SDL)
+#if defined(DXGL_USE_EGL)
+        SVersion version = GetRequiredGLVersion();
+        EGLint aiContextAttributes[] = 
+        {
+            EGL_CONTEXT_MAJOR_VERSION, version.m_uMajorVersion,
+            EGL_CONTEXT_MINOR_VERSION, version.m_uMinorVersion,
+            EGL_NONE
+        };
+#elif defined(DXGL_USE_WGL)
         int32 aiAttributes[] =
         {
             WGL_CONTEXT_MAJOR_VERSION_ARB, kFeatureSpec.m_kVersion.m_uMajorVersion,
@@ -1286,23 +977,12 @@ namespace NCryOpenGL
         kRenderingContexts.reserve(ms_uNumContextsPerDevice);
         for (uint32 uContext = 0; uContext < ms_uNumContextsPerDevice; ++uContext)
         {
-#if DXGL_USE_ES_EMULATOR
-            EGLContext kSharedRenderingContext(EGL_NO_CONTEXT);
-            if (uContext > 0)
-            {
-                MakeCurrent(kWindowContext, kSharedRenderingContext);
-            }
-            TRenderingContext kRenderingContext(eglCreateContext(kWindowContext->m_kDisplay, kWindowContext->m_kConfig, kSharedRenderingContext, aiContextAttributes));
-#elif defined(DXGL_USE_SDL)
-            TRenderingContext kRenderingContext(kWindowContext->CreateGLContext(uContext == 0 ? nullptr : kRenderingContexts.at(0)));
-    #if !(defined(IOS) || defined(APPLETV))
-            // Cannot override vsync in iOS
-            if (SDL_GL_SetSwapInterval(0) != 0)
-            {
-                DXGL_ERROR("Failed to set swap interval: %s", SDL_GetError());
-            }
-    #endif
-#elif defined(WIN32)
+#if defined(DXGL_USE_EGL)
+            TRenderingContext kRenderingContext(eglCreateContext(kWindowContext->GetDisplay(), 
+                                                                kWindowContext->GetConfig(), 
+                                                                uContext > 0 ? kRenderingContexts.at(0) : EGL_NO_CONTEXT,
+                                                                aiContextAttributes));
+#elif defined(DXGL_USE_WGL)
             TRenderingContext kSharedRenderingContext(NULL);
             if (uContext > 0)
             {
@@ -1342,10 +1022,12 @@ namespace NCryOpenGL
                 {
                     glDebugMessageCallback((GLDEBUGPROC)&DebugCallback, NULL);
                 }
+#if defined(OPENGL_ES)
                 else
                 {
                     glDebugMessageCallbackKHR((GLDEBUGPROC)&DebugCallback, NULL);
                 }
+#endif //defined(OPENGL_ES)
 
                 for (uint32 uSeverityLevel = 0; uSeverityLevel < DXGL_ARRAY_SIZE(aeSeverityLevels); ++uSeverityLevel)
                 {
@@ -1353,10 +1035,12 @@ namespace NCryOpenGL
                     {
                         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, aeSeverityLevels[uSeverityLevel], 0, NULL, (uSeverityLevel <= DXGL_DEBUG_OUTPUT_VERBOSITY) ? GL_TRUE : GL_FALSE);
                     }
+#if defined(OPENGL_ES)
                     else
                     {
                         glDebugMessageControlKHR(GL_DONT_CARE, GL_DONT_CARE, aeSeverityLevels[uSeverityLevel], 0, NULL, (uSeverityLevel <= DXGL_DEBUG_OUTPUT_VERBOSITY) ? GL_TRUE : GL_FALSE);
                     }
+#endif //defined(OPENGL_ES)
                 }
             }
             MakeCurrent(kWindowContext, NULL);
@@ -1368,16 +1052,7 @@ namespace NCryOpenGL
 
     bool CDevice::SetFullScreenState(const SFrameBufferSpec& kFrameBufferSpec, bool bFullScreen, SOutput* pOutput)
     {
-#if defined(DXGL_USE_SDL)
-        if (pOutput != NULL)
-        {
-            DXGL_NOT_IMPLEMENTED;
-            return false;
-        }
-        SDL_Window* window = AZStd::static_pointer_cast<SDLWindowContext>(m_kDefaultWindowContext)->GetWindow();
-        SDL_SetWindowFullscreen(window, bFullScreen ? SDL_WINDOW_FULLSCREEN : 0);
-        return true;
-#elif defined(WIN32)
+#if defined(WIN32)
         if (bFullScreen)
         {
             if (pOutput == NULL)
@@ -1421,6 +1096,9 @@ namespace NCryOpenGL
             }
         }
         return true;
+#elif defined(ANDROID)
+        // Android is always full screen.
+        return true;
 #else
         DXGL_NOT_IMPLEMENTED;
         return false;
@@ -1429,41 +1107,13 @@ namespace NCryOpenGL
 
     bool CDevice::ResizeTarget(const SDisplayMode& kTargetMode)
     {
-#if defined(DXGL_USE_SDL)
-        const SGIFormatInfo* pPixelFormatInfo(GetGIFormatInfo(kTargetMode.m_ePixelFormat));
-        if (pPixelFormatInfo == NULL || pPixelFormatInfo->m_pUncompressed == m_kPixelFormatSpec.m_pLayout)
-#elif defined(WIN32)
+#if defined(WIN32)
         if (kTargetMode.m_uBitsPerPixel != m_kPixelFormatSpec.m_pLayout->GetPixelBits())
-#else
-#error "Not implemented on this platform"
-        if (false)
-#endif
         {
             DXGL_WARNING("ResizeTarget does not support changing the window pixel format");
+            return false;
         }
 
-#if defined(DXGL_USE_SDL)
-        SDL_Window* window = AZStd::static_pointer_cast<SDLWindowContext>(m_kDefaultWindowContext)->GetWindow();
-        if (m_spFullScreenOutput != NULL)
-        {
-            SDL_DisplayMode kSDLTargetMode;
-            if (!DisplayModeToSDLDisplayMode(&kSDLTargetMode, kTargetMode))
-            {
-                return false;
-            }
-
-            // SDL2 does not update the display mode of a window that is already fullscreen
-            // we have to make it windowed, change and then fullscreen again
-            SDL_SetWindowFullscreen(window, 0);
-            SDL_SetWindowDisplayMode(window, &kSDLTargetMode);
-            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-        }
-        else
-        {
-            SDL_SetWindowSize(window, kTargetMode.m_uWidth, kTargetMode.m_uHeight);
-        }
-        return true;
-#elif defined(WIN32)
         if (m_spFullScreenOutput != NULL)
         {
             DEVMODEA kDevMode;
@@ -1485,28 +1135,20 @@ namespace NCryOpenGL
         {
             return NWin32Helper::ResizeWindowContext(m_kDefaultNativeDisplay, kTargetMode.m_uWidth, kTargetMode.m_uHeight);
         }
-#else
-    #error "Not implemented on this platform"
+#elif defined(ANDROID)
+        DXGL_WARNING("ResizeTarget is not supported on this platform");
         return false;
+#else
+#error "Not implemented on this platform"
 #endif
+        return false;
     }
 
     bool CDevice::MakeCurrent(const TWindowContext& kWindowContext, TRenderingContext kRenderingContext)
     {
-#if DXGL_USE_ES_EMULATOR
-        EGLSurface kSurface(kRenderingContext == EGL_NO_CONTEXT ? EGL_NO_SURFACE : kWindowContext->m_kSurface);
-        return eglMakeCurrent(kWindowContext->m_kDisplay, kSurface, kSurface, kRenderingContext) == EGL_TRUE;
-#elif defined(DXGL_USE_SDL)
-        // SDL has an internal cache that saves the current window and context per thread. Because of this we need
-        // to "clear" that cache before setting a new window/context (that may not be of the SDL type) or SDL will think that 
-        // the current one is still bound in that thread. This is not ideal, but this call only happens a couple of times at initialization.
-        bool result = SDL_GL_MakeCurrent(nullptr, nullptr) == 0;
-        if (kWindowContext)
-        {
-            result &= kWindowContext->MakeCurrent(kRenderingContext);
-        }
-        return result;
-#elif defined(WIN32)
+#if defined(DXGL_USE_EGL)
+        return kWindowContext->MakeCurrent(kRenderingContext);
+#elif defined(DXGL_USE_WGL)
         return wglMakeCurrent(kRenderingContext == NULL ? NULL : kWindowContext, kRenderingContext) == TRUE;
 #else
         DXGL_NOT_IMPLEMENTED;
@@ -1687,25 +1329,17 @@ namespace NCryOpenGL
         }
     }
 
-#if defined(DXGL_USE_SDL) || defined(WIN32)
-
     struct SDummyContext
     {
         SDummyWindow m_kDummyWindow;
         TRenderingContext m_kRenderingContext;
-#if DXGL_USE_ES_EMULATOR
-        EGLDisplay m_kDisplay;
-        EGLSurface m_kWindowSurface;
-        EGLConfig m_kConfig;
-#endif //DXGL_USE_ES_EMULATOR
+#if defined(DXGL_USE_EGL)
+        TWindowContext m_kDisplayConnection;
+#endif //DXGL_USE_EGL
         bool m_kIsInitialized;
 
         SDummyContext()
             : m_kRenderingContext(NULL)
-#if DXGL_USE_ES_EMULATOR
-            , m_kDisplay(EGL_NO_DISPLAY)
-            , m_kWindowSurface(EGL_NO_SURFACE)
-#endif //DXGL_USE_ES_EMULATOR
             , m_kIsInitialized(false)
         {
         }
@@ -1726,47 +1360,37 @@ namespace NCryOpenGL
             {
                 return false;
             }
-#if DXGL_USE_ES_EMULATOR
-            EGLint iNumConfigs;
-            EGLint aiSurfaceAttributes[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT, EGL_SURFACE_TYPE, EGL_WINDOW_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_NONE};
-    #if defined(WIN32)
-            EGLNativeWindowType kNativeWindow = m_kDummyWindow.m_kWndHandle;
-    #else
-    #error "Not implemented on this platform"
-    #endif
-            if ((m_kDisplay = eglGetDisplay(m_kDummyWindow.m_kNativeDisplay)) == EGL_NO_DISPLAY ||
-                eglInitialize(m_kDisplay, NULL, NULL) != EGL_TRUE ||
-                eglBindAPI(EGL_OPENGL_ES_API) != EGL_TRUE ||
-                eglChooseConfig(m_kDisplay, aiSurfaceAttributes, &m_kConfig, 1, &iNumConfigs) != EGL_TRUE || iNumConfigs < 1 ||
-                (m_kWindowSurface = eglCreateWindowSurface(m_kDisplay, m_kConfig, kNativeWindow, NULL)) == EGL_NO_SURFACE)
+#if defined(DXGL_USE_EGL)
+            SPixelFormatSpec pixelFormat;
+            SUncompressedLayout layout;
+            ZeroMemory(&pixelFormat, sizeof(pixelFormat));
+            ZeroMemory(&layout, sizeof(layout));
+            pixelFormat.m_pLayout = &layout;
+
+            m_kDisplayConnection.reset(SDisplayConnection::Create(pixelFormat, m_kDummyWindow.m_kNativeDisplay));
+            if (!m_kDisplayConnection)
             {
                 DXGL_ERROR("Creation of the dummy DXGL window failed");
                 return false;
             }
-            EGLint aiContextAttributes[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
-            m_kRenderingContext = eglCreateContext(m_kDisplay, m_kConfig, EGL_NO_CONTEXT, aiContextAttributes);
-            if (m_kRenderingContext == NULL ||
-                eglBindAPI(EGL_OPENGL_ES_API) != EGL_TRUE ||
-                eglMakeCurrent(m_kDisplay, m_kWindowSurface, m_kWindowSurface, m_kRenderingContext) != EGL_TRUE)
+
+            SVersion version = GetRequiredGLVersion();
+            EGLint aiContextAttributes[] = {
+                EGL_CONTEXT_MAJOR_VERSION, version.m_uMajorVersion,
+                EGL_CONTEXT_MINOR_VERSION, version.m_uMinorVersion,
+                EGL_NONE};
+
+            m_kRenderingContext = eglCreateContext(m_kDisplayConnection->GetDisplay(),
+                                                    m_kDisplayConnection->GetConfig(), 
+                                                    EGL_NO_CONTEXT, 
+                                                    aiContextAttributes);
+            if (m_kRenderingContext == EGL_NO_CONTEXT ||
+                !m_kDisplayConnection->MakeCurrent(m_kRenderingContext))
             {
                 DXGL_ERROR("Dummy DXGL context creation failed");
                 return false;
             }
-#elif defined(DXGL_USE_SDL)
-            TWindowContext windowContext = (*m_kDummyWindow.m_kNativeDisplay);
-            m_kRenderingContext = windowContext->CreateGLContext(nullptr);
-            if (m_kRenderingContext == NULL)
-            {
-                DXGL_ERROR("Dummy DXGL context creation failed %s", SDL_GetError());
-                return false;
-            }
-
-            if (!windowContext->MakeCurrent(m_kRenderingContext))
-            {
-                DXGL_ERROR("Failed to set DXGL dummy context as current");
-                return false;
-            }
-#else
+#elif defined(DXGL_USE_WGL)
             m_kRenderingContext = wglCreateContext(m_kDummyWindow.m_kNativeDisplay);
             if (m_kRenderingContext == NULL ||
                 wglMakeCurrent(m_kDummyWindow.m_kNativeDisplay, m_kRenderingContext) != TRUE)
@@ -1774,6 +1398,8 @@ namespace NCryOpenGL
                 DXGL_ERROR("Dummy DXGL context creation failed");
                 return false;
             }
+#else
+#   error "Not Implemented"
 #endif
             m_kIsInitialized = true;
             return true;
@@ -1786,37 +1412,25 @@ namespace NCryOpenGL
                 return;
             }
 
-#if DXGL_USE_ES_EMULATOR
-            eglMakeCurrent(m_kDisplay, NULL, NULL, NULL);
+#if defined(DXGL_USE_EGL)
+            m_kDisplayConnection->MakeCurrent(nullptr);
             if (m_kRenderingContext != NULL)
             {
-                eglDestroyContext(m_kDisplay, m_kRenderingContext);
+                eglDestroyContext(m_kDisplayConnection->GetDisplay(), m_kRenderingContext);
             }
-            if (m_kDisplay != EGL_NO_DISPLAY)
-            {
-                if (m_kWindowSurface != EGL_NO_SURFACE)
-                {
-                    eglDestroySurface(m_kDisplay, m_kWindowSurface);
-                }
-                eglTerminate(m_kDisplay);
-            }
-#elif defined(DXGL_USE_SDL)
-            if (m_kRenderingContext != NULL)
-            {
-                SDL_GL_DeleteContext(m_kRenderingContext);
-            }
-#else
+#elif defined(DXGL_USE_WGL)
             wglMakeCurrent(NULL, NULL);
             if (m_kRenderingContext != 0)
             {
                 wglDeleteContext(m_kRenderingContext);
             }
+#else
+#   error "Not Implemented"
 #endif
             m_kDummyWindow.Shutdown();
             m_kIsInitialized = false;
         }
     };
-#endif //defined(DXGL_USE_SDL) || defined(WIN32)
 
     bool FeatureLevelToFeatureSpec(SFeatureSpec& kFeatureSpec, D3D_FEATURE_LEVEL eFeatureLevel, NCryOpenGL::SAdapter* pGLAdapter)
     {
@@ -1902,16 +1516,27 @@ namespace NCryOpenGL
 
     bool GetNativeDisplay(TNativeDisplay& kNativeDisplay, HWND kWindowHandle)
     {
-#if defined(DXGL_USE_SDL)
-        kNativeDisplay = reinterpret_cast<const NCryOpenGL::TNativeDisplay>(kWindowHandle);
-        return true;
-#elif defined(WIN32)
-        kNativeDisplay = GetDC(kWindowHandle);
-        if (kNativeDisplay == NULL)
+#if defined(WIN32)
+        HDC deviceContext = GetDC(kWindowHandle);
+        if (deviceContext == NULL)
         {
             DXGL_ERROR("Could not retrieve the DC of the swap chain output window");
             return false;
         }
+#   if defined(DXGL_USE_EGL)
+        HWND nativeWindow = WindowFromDC(deviceContext);
+        if (!nativeWindow)
+        {
+            DXGL_ERROR("Could not retrieve window from device context");
+            return false;
+        }
+        kNativeDisplay = AZStd::make_shared<EGLNativePlatform>(deviceContext, nativeWindow);
+#   else
+        kNativeDisplay = deviceContext;
+#   endif // defined(DXGL_USE_EGL)
+        return true;
+#elif defined(ANDROID)
+        kNativeDisplay = AZStd::make_shared<EGLNativePlatform>(static_cast<EGLNativeDisplayType>(EGL_DEFAULT_DISPLAY), static_cast<EGLNativeWindowType>(kWindowHandle));
         return true;
 #else
 #error "Not supported on this platform"
@@ -1924,25 +1549,12 @@ namespace NCryOpenGL
         const SPixelFormatSpec& kPixelFormatSpec,
         const TNativeDisplay& kNativeDisplay)
     {
-#if DXGL_USE_ES_EMULATOR
-        kWindowContext = CreateDisplayConnection(kPixelFormatSpec, kNativeDisplay);
+#if defined(DXGL_USE_EGL)
+        kWindowContext.reset(SDisplayConnection::Create(kPixelFormatSpec, kNativeDisplay));
         if (kWindowContext == NULL)
         {
             return false;
         }
-#elif defined(DXGL_USE_SDL)
-        if (!SetSDLAttributes(kFeatureSpec, kPixelFormatSpec))
-        {
-            return false;
-        }
-#  if defined(DXGL_SINGLEWINDOW)
-        SMainWindow& kMainWindow = SMainWindow::ms_kInstance;
-        if (!CreateSDLWindowContext(*kNativeDisplay, kMainWindow.m_strTitle.c_str(), kMainWindow.m_uWidth, kMainWindow.m_uHeight, kMainWindow.m_bFullScreen))
-        {
-            return false;
-        }
-#  endif
-        kWindowContext = *kNativeDisplay;
 #elif defined(WIN32)
         kWindowContext = kNativeDisplay;
         if (!SetWindowPixelFormat(kWindowContext, &kPixelFormatSpec))
@@ -1956,12 +1568,9 @@ namespace NCryOpenGL
 
     void ReleaseWindowContext(TWindowContext& kWindowContext)
     {
-#if DXGL_USE_ES_EMULATOR
-        eglDestroySurface(kWindowContext->m_kDisplay, kWindowContext->m_kSurface);
-        eglTerminate(kWindowContext->m_kDisplay);
-#elif defined(DXGL_USE_SDL)
+#if defined(DXGL_USE_EGL)
         kWindowContext = nullptr;
-#endif //DXGL_USE_ES_EMULATOR
+#endif //DXGL_USE_EGL
     }
 
 #if DXGL_SUPPORT_QUERY_INTERNAL_FORMAT_SUPPORT
@@ -2373,8 +1982,8 @@ namespace NCryOpenGL
 #elif defined(IOS) || defined(APPLETV)
         DXGL_TODO("Not yet implemented for iOS")
         return 0;
-#elif DXGL_USE_ES_EMULATOR
-        DXGL_TODO("Not yet implemented for GLES emulation");
+#elif defined(DXGL_USE_EGL)
+        DXGL_TODO("Not yet implemented for EGL");
         return 0;
 #else
 #error "Not implemented on this platform"
@@ -2426,29 +2035,119 @@ namespace NCryOpenGL
     }
 #endif // defined(DXGLES_LOAD_EXTENSIONS)
 
+#if defined(OPENGL_ES) && defined(DXGL_USE_LOADER_GLAD)
+    namespace FunctionLoaderHelper
+    {
+        AZStd::unique_ptr<AZ::DynamicModuleHandle> s_moduleHandle;
+
+        bool LoadModule()
+        {
+            s_moduleHandle = AZ::DynamicModuleHandle::Create("libGLESv2");
+            return s_moduleHandle->Load(false);
+        }
+        
+        bool UnloadModule()
+        {
+            if (s_moduleHandle)
+            {
+                return s_moduleHandle->Unload();
+            }
+
+            return false;
+        }
+
+        void* GetGLProcAddress(const char* funcName)
+        {
+             AZStd::function<void*(const char*)> libLoader;
+ #if defined(DXGL_USE_WGL)
+             libLoader = wglGetProcAddress;
+ #elif defined(DXGL_USE_EGL)
+             typedef void* (*funcLoader)(const char *name);
+             libLoader = reinterpret_cast<funcLoader>(eglGetProcAddress);
+ #endif
+             // First try to load the function address using the library function
+             if (libLoader)
+             {
+                 void* function = libLoader(funcName);
+                 if (function)
+                 {
+                     return function;
+                 }
+             }
+
+            // Now try to load the function symbol directly from the library.
+            // This is needed because some implementations only load extensions and not core functions.
+            if (!s_moduleHandle)
+            {
+                if (!LoadModule())
+                {
+                    AZ_Assert(false, "Failed to load module");
+                    return nullptr;
+                }
+            }
+
+            return s_moduleHandle->GetFunction<void*>(funcName);
+        }
+    };
+#endif //defined(OPENGL_ES) && defined(DXGL_USE_LOADER_GLAD)
+
     bool LoadGLEntryPoints(SDummyContext& kDummyContext)
     {
-#if defined(DXGL_USE_GLAD)
-        if (gladLoadGL() != 1)
+#if defined(DXGL_USE_LOADER_GLAD)
+#if defined(OPENGL_ES)
+        int ret = gladLoadGLES2Loader(FunctionLoaderHelper::GetGLProcAddress);
+        // Unload library if needed
+        FunctionLoaderHelper::UnloadModule();
+#else
+        int ret = gladLoadGL();
+#endif //defined(OPENGL_ES)
+        if (ret != 1)
         {
             DXGL_ERROR("Failed to retrieve GL entry points");
             return false;
         }
 
-#if defined(WIN32)
+#   if defined(DXGL_USE_WGL)
         if (gladLoadWGL(kDummyContext.m_kDummyWindow.m_kNativeDisplay) != 1)
         {
             DXGL_ERROR("Failed to retrieve WGL entry points");
             return false;
         }
-#elif defined(ANDROID)
-        gladLoadEGL();
-#elif defined(LINUX)
+#   elif defined(DXGL_USE_EGL)
+        if (gladLoadEGL() != 1)
+        {
+            DXGL_ERROR("Failed to retrieve EGL entry points");
+            return false;
+        }
+#   elif defined(DXGL_USE_GLX)
         if (gladLoadGLX(NULL, 0) != 1)
         {
             DXGL_ERROR("Failed to retrieve GLX entry points");
             return false;
         }
+#   endif
+#elif defined(DXGL_USE_LOADER_GLEW)
+        GLenum err = glewInit();
+        if (GLEW_OK != err)
+        {
+            DXGL_ERROR("Failed to init GLEW. Error %s", glewGetErrorString(err));
+            return false;
+        }
+#   if defined(DXGL_USE_WGL)
+        err = wglewInit();
+        if (GLEW_OK != err)
+        {
+            DXGL_ERROR("Failed to init WGL GLEW. Error %s", glewGetErrorString(err));
+            return false;
+        }
+#   elif defined(DXGL_USE_GLX)
+        err = glxewInit();
+        if (GLEW_OK != err)
+        {
+            DXGL_ERROR("Failed to init WGL GLEW. Error %s", glewGetErrorString(err));
+            return false;
+        }
+#   endif
 #else
 #error "Not implemented on this platform"
 #endif
@@ -2456,44 +2155,10 @@ namespace NCryOpenGL
 #if defined(DXGLES_LOAD_EXTENSIONS)
         LoadDXGLESExtensionEntryPoints();
 #endif // defined(DXGLES_LOAD_EXTENSIONS)
-
-#else
-#error "Not implemented on this configuration"
-#endif
         return true;
     }
 
 #endif //DXGL_EXTENSION_LOADER
-
-#if DXGL_USE_ES_EMULATOR
-
-    template <typename FunctionPtr>
-    bool GetEntryPoint(FunctionPtr& pEntryPoint, const char* szName)
-    {
-        if ((pEntryPoint = (FunctionPtr)eglGetProcAddress(szName)) != NULL)
-        {
-            return true;
-        }
-
-#if defined(WIN32)
-        if ((pEntryPoint = (FunctionPtr)wglGetProcAddress(szName)) != NULL)
-        {
-            return true;
-        }
-#endif //defined(WIN32)
-
-        DXGL_WARNING("Could not load entry point for \"%s\"", szName);
-        return false;
-    }
-
-    bool LoadGLESExtensionEntryPoints()
-    {
-        return
-            GetEntryPoint(glDebugMessageCallback, "glDebugMessageCallback") &&
-            GetEntryPoint(glDebugMessageControl,  "glDebugMessageControl");
-    }
-
-#endif //DXGL_USE_ES_EMULATOR
 
     bool GetGLVersion(SAdapterPtr& pAdapter)
     {
@@ -2544,53 +2209,37 @@ namespace NCryOpenGL
     bool DetectAdapters(std::vector<SAdapterPtr>& kAdapters)
     {
         SDummyContext kDummyContext;
-        bool bSuccess(kDummyContext.Initialize());
-        if (bSuccess)
+        if (!kDummyContext.Initialize())
         {
-            SAdapterPtr spAdapter(new SAdapter);
-#if DXGL_EXTENSION_LOADER
-            if (!LoadGLEntryPoints(kDummyContext))
-            {
-                bSuccess = false;
-            }
-            else
-#elif DXGL_USE_ES_EMULATOR
-            if (!LoadGLESExtensionEntryPoints())
-            {
-                return false;
-            }
-            else
-#elif defined(ANDROID) && defined(OPENGL_ES)
-            if (!android_gles_3_0_init())
-            {
-                DXGL_ERROR("Current device does not have a valid OpenGL ES 3 driver");
-                bSuccess = false;
-            }
-            else
-#endif //DXGL_EXTENSION_LOADER
-            {
-                spAdapter->m_strRenderer   = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-                spAdapter->m_strVendor     = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-                spAdapter->m_strVersion    = reinterpret_cast<const char*>(glGetString(GL_VERSION));
-                spAdapter->m_uVRAMBytes    = DetectVideoMemory();
-                spAdapter->m_eDriverVendor = DetectDriverVendor(spAdapter->m_strVendor.c_str());
-                spAdapter->m_sVersion.m_uMajorVersion = 0;
-                spAdapter->m_sVersion.m_uMinorVersion = 0;
-                bool result = GetGLVersion(spAdapter);
-                AZ_Warning("Renderer", result, "Failed to get the OpenGL version for adapter %s %s", spAdapter->m_strVendor.c_str(), spAdapter->m_strRenderer.c_str());
-                result = ParseExtensions(spAdapter);
-                AZ_Warning("Renderer", result, "Failed to parse OpenGL Extensions for adapter %s %s", spAdapter->m_strVendor.c_str(), spAdapter->m_strRenderer.c_str());
-
-                if (!DetectFeaturesAndCapabilities(spAdapter->m_kFeatures, spAdapter->m_kCapabilities, spAdapter->m_sVersion, spAdapter->m_eDriverVendor))
-                {
-                    return false;
-                }
-                kAdapters.push_back(spAdapter);
-            }
+            return false;
         }
 
-        kDummyContext.Shutdown();
-        return bSuccess;
+#if DXGL_EXTENSION_LOADER
+        if (!LoadGLEntryPoints(kDummyContext))
+        {
+            return false;
+        }
+#endif // DXGL_EXTENSION_LOADER
+
+        SAdapterPtr spAdapter(new SAdapter);
+        spAdapter->m_strRenderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+        spAdapter->m_strVendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+        spAdapter->m_strVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+        spAdapter->m_uVRAMBytes = DetectVideoMemory();
+        spAdapter->m_eDriverVendor = DetectDriverVendor(spAdapter->m_strVendor.c_str());
+        spAdapter->m_sVersion.m_uMajorVersion = 0;
+        spAdapter->m_sVersion.m_uMinorVersion = 0;
+        bool result = GetGLVersion(spAdapter);
+        AZ_Warning("Renderer", result, "Failed to get the OpenGL version for adapter %s %s", spAdapter->m_strVendor.c_str(), spAdapter->m_strRenderer.c_str());
+        result = ParseExtensions(spAdapter);
+        AZ_Warning("Renderer", result, "Failed to parse OpenGL Extensions for adapter %s %s", spAdapter->m_strVendor.c_str(), spAdapter->m_strRenderer.c_str());
+
+        if (!DetectFeaturesAndCapabilities(spAdapter->m_kFeatures, spAdapter->m_kCapabilities, spAdapter->m_sVersion, spAdapter->m_eDriverVendor))
+        {
+            return false;
+        }
+        kAdapters.push_back(spAdapter);
+        return true;
     }
 
     bool CheckAdapterCapabilities(const SAdapter& kAdapter, AZStd::string* pErrorMsg /*=nullptr*/)
@@ -2631,57 +2280,7 @@ namespace NCryOpenGL
 
     bool DetectOutputs(const SAdapter& kAdapter, std::vector<SOutputPtr>& kOutputs)
     {
-#if defined(DXGL_USE_SDL)
-        int uNumDisplays = SDL_GetNumVideoDisplays();
-        if (uNumDisplays <= 0)
-        {
-            DXGL_ERROR("Failed to retrieve number of displays: %s", SDL_GetError());
-            return false;
-        }
-        uint32 uDisplay;
-        for (uDisplay = 0; uDisplay < (uint32)uNumDisplays; ++uDisplay)
-        {
-            int uNumDisplayModes = SDL_GetNumDisplayModes(uDisplay);
-            if (uNumDisplayModes < 0)
-            {
-                DXGL_ERROR("Failed to retrieve number of display modes for display %d: %s", uDisplay, SDL_GetError());
-                return false;
-            }
-            SOutputPtr spOutput(new SOutput);
-            char acBuffer[32];
-            sprintf_s(acBuffer, "SDL Screen %d", uDisplay);
-            spOutput->m_strDeviceName = acBuffer;
-            spOutput->m_strDeviceID = spOutput->m_strDeviceName;
-            uint32 uDisplayMode;
-            for (uDisplayMode = 0; uDisplayMode < (uint32)uNumDisplayModes; ++uDisplayMode)
-            {
-                SDL_DisplayMode kSDLDisplayMode;
-                if (0 != SDL_GetDisplayMode(uDisplay, uDisplayMode, &kSDLDisplayMode))
-                {
-                    DXGL_ERROR("Failed to retrieve display mode info for output %d: %s", uDisplay, SDL_GetError());
-                    return false;
-                }
-
-                SDisplayMode kDisplayMode;
-                if (SDLDisplayModeToDisplayMode(&kDisplayMode, kSDLDisplayMode))
-                {
-                    spOutput->m_kModes.push_back(kDisplayMode);
-                }
-            }
-
-            SDL_DisplayMode kSDLDesktopDisplayMode;
-            if (SDL_GetDesktopDisplayMode(uDisplay, &kSDLDesktopDisplayMode) != 0 ||
-                !SDLDisplayModeToDisplayMode(&spOutput->m_kDesktopMode, kSDLDesktopDisplayMode))
-            {
-                DXGL_ERROR("Could not retrieve the desktop display mode for display %d", uDisplay);
-                return false;
-            }
-
-            kOutputs.push_back(spOutput);
-        }
-
-        return true;
-#elif defined(WIN32)
+#if defined(WIN32)
         uint32 uDisplay(0);
         DISPLAY_DEVICEA kDisplayDevice;
         ZeroMemory(&kDisplayDevice, sizeof(kDisplayDevice));
@@ -2720,6 +2319,34 @@ namespace NCryOpenGL
             ++uDisplay;
         }
         return true;
+#elif defined(ANDROID)
+        ANativeWindow* nativeWindow = AZ::Android::Utils::GetWindow();
+        if (!nativeWindow)
+        {
+            DXGL_ERROR("Failed to get native window");
+            return false;
+        }
+
+        int widthPixels, heightPixels;
+        if (!AZ::Android::Utils::GetWindowSize(widthPixels, heightPixels))
+        {
+            DXGL_ERROR("Failed to get window size");
+            return false;
+        }
+
+        SDisplayMode mode;
+        mode.m_uWidth = static_cast<uint32>(widthPixels);
+        mode.m_uHeight = static_cast<uint32>(heightPixels);
+        mode.m_uFrequency = 0;
+        mode.m_nativeFormat = ANativeWindow_getFormat(nativeWindow);
+
+        SOutputPtr output(new SOutput());
+        output->m_strDeviceID = "0";
+        output->m_strDeviceName = "Main Output";
+        output->m_kModes.push_back(mode);
+        output->m_kDesktopMode = mode;
+        kOutputs.push_back(output);
+        return true;
 #else
         DXGL_NOT_IMPLEMENTED;
         return false;
@@ -2739,9 +2366,7 @@ namespace NCryOpenGL
         pDXGIModeDesc->RefreshRate.Numerator = kDisplayMode.m_uFrequency;
         pDXGIModeDesc->RefreshRate.Denominator = 1;
 
-#if defined(DXGL_USE_SDL)
-        pDXGIModeDesc->Format = GetDXGIFormat(kDisplayMode.m_ePixelFormat);
-#elif defined(WIN32)
+#if defined(WIN32)
         DXGL_TODO("Check if there is a better way of mapping GL display modes to formats")
         switch (kDisplayMode.m_uBitsPerPixel)
         {
@@ -2755,6 +2380,24 @@ namespace NCryOpenGL
             pDXGIModeDesc->Format = DXGI_FORMAT_UNKNOWN;
             break;
         }
+#elif defined(ANDROID)
+        switch (kDisplayMode.m_nativeFormat)
+        {
+        case WINDOW_FORMAT_RGBA_8888:
+            pDXGIModeDesc->Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            break;
+        case WINDOW_FORMAT_RGBX_8888:
+            pDXGIModeDesc->Format = DXGI_FORMAT_B8G8R8X8_UNORM;
+            break;
+        case WINDOW_FORMAT_RGB_565:
+            pDXGIModeDesc->Format = DXGI_FORMAT_B5G6R5_UNORM;
+            break;
+        default:
+            pDXGIModeDesc->Format = DXGI_FORMAT_UNKNOWN;
+            break;
+        }
+#else
+        DXGL_NOT_IMPLEMENTED;
 #endif
 
         pDXGIModeDesc->ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -2773,9 +2416,7 @@ namespace NCryOpenGL
         {
             pDisplayMode->m_uFrequency = 0;
         }
-#if defined(DXGL_USE_SDL)
-        pDisplayMode->m_ePixelFormat = GetGIFormat(kDXGIModeDesc.Format);
-#elif defined(WIN32)
+#if defined(WIN32)
         switch (kDXGIModeDesc.Format)
         {
         case DXGI_FORMAT_R8G8B8A8_UNORM:
@@ -2798,6 +2439,22 @@ namespace NCryOpenGL
             pDisplayMode->m_uBitsPerPixel = pFormatInfo->m_pUncompressed->GetPixelBits();
         }
         break;
+        }
+#elif defined(ANDROID)
+        switch (kDXGIModeDesc.Format)
+        {
+        case DXGI_FORMAT_R8G8B8A8_UNORM:
+            pDisplayMode->m_nativeFormat = WINDOW_FORMAT_RGBA_8888;
+            break;
+        case DXGI_FORMAT_B8G8R8X8_UNORM:
+            pDisplayMode->m_nativeFormat = WINDOW_FORMAT_RGBX_8888;
+            break;
+        case DXGI_FORMAT_B5G6R5_UNORM:
+            pDisplayMode->m_nativeFormat = WINDOW_FORMAT_RGB_565;
+            break;
+        default:
+            AZ_Assert(false, "Invalid DXGI_MODE_DESC format %d", kDXGIModeDesc.Format);
+            return false;
         }
 #endif
         DXGL_TODO("Consider scanline order and scaling if possible");

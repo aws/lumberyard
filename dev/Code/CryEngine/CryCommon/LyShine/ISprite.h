@@ -12,6 +12,7 @@
 #pragma once
 
 #include <SerializeFwd.h>
+#include <LyShine/Bus/UiTransformBus.h>
 #include <AzCore/Math/Vector2.h>
 
 // forward declarations
@@ -47,6 +48,17 @@ public: // types
         float   m_bottom;
     };
 
+    //! \brief Defines the UV-extents of a particular "cell" in a sprite-sheet.
+    //! 9-slice information for the cell is also stored.
+    struct SpriteSheetCell
+    {
+        AZStd::string alias;
+        UiTransformInterface::RectPoints uvCellCoords;
+        Borders borders;
+    };
+
+    using SpriteSheetCellContainer = AZStd::vector<SpriteSheetCell>;
+
 public: // member functions
 
     //! Deleting a sprite will release its texture
@@ -64,6 +76,9 @@ public: // member functions
     //! Set the borders of this sprite
     virtual void SetBorders(Borders borders) = 0;
 
+    //! Set the borders of a given cell within the sprite-sheet.
+    virtual void SetCellBorders(int cellIndex, Borders borders) = 0;
+
     //! Get the texture for this sprite
     virtual ITexture* GetTexture() const = 0;
 
@@ -76,7 +91,55 @@ public: // member functions
     //! Test if this sprite has any borders
     virtual bool AreBordersZeroWidth() const = 0;
 
+    //! Tests if the sprite-sheet cell has borders
+    virtual bool AreCellBordersZeroWidth(int cellIndex) const = 0;
+
     //! Get the dimensions of the sprite
     virtual AZ::Vector2 GetSize() const = 0;
+
+    //! Gets the dimensions of a specific cell texture within a sprite-sheet
+    virtual AZ::Vector2 GetCellSize(int cellIndex) const = 0;
+
+    //! Gets cell info for each of the cells within the sprite-sheet.
+    virtual const SpriteSheetCellContainer& GetSpriteSheetCells() const = 0;
+
+    //! Sets the sprite's sprite-sheet cells.
+    virtual void SetSpriteSheetCells(const SpriteSheetCellContainer& cells) = 0;
+
+    //! Removes all sprite-sheet cell info for this sprite.
+    virtual void ClearSpriteSheetCells() = 0;
+
+    //! Defines a new SpriteSheetCell for this sprite.
+    virtual void AddSpriteSheetCell(const SpriteSheetCell& spriteSheetCell) = 0;
+
+    //! Gets the dimensions of a specific cell (in a sprite-sheet) in UV coords (UV range).
+    virtual AZ::Vector2 GetCellUvSize(int cellIndex) const = 0;
+
+    //! Gets the UV coords associated for a given cell in a sprite-sheet.
+    virtual const UiTransformInterface::RectPoints& GetCellUvCoords(int cellIndex) const = 0;
+
+    //! Gets the sliced border info for a given cell within a sprite-sheet.
+    //!
+    //! The returned UV borders are in "cell space" relative to the given indexed spell. For example,
+    //! a top-left border of (0.5, 0.5) would be the center of the given cell.
+    virtual Borders GetCellUvBorders(int cellIndex) const = 0;
+
+    //! Gets the sliced border UV coordinates in texture space for a given cell within a sprite-sheet.
+    //!
+    //! The returned UV border coordinates are in texture space. For example, a top-left border of (0.5, 0.5) 
+    //! would be the center of the sprite-sheet.
+    virtual Borders GetTextureSpaceCellUvBorders(int cellIndex) const = 0;
+
+    //! Gets the string alias associated with the given cell in a sprite-sheet.
+    virtual const AZStd::string& GetCellAlias(int cellIndex) const = 0;
+
+    //! Sets the string alias associated with the given cell in a sprite-sheet.
+    virtual void SetCellAlias(int cellIndex, const AZStd::string& cellAlias) = 0;
+
+    //! Returns the sprite-sheet cell index that corresponds to the given string alias.
+    virtual int GetCellIndexFromAlias(const AZStd::string& cellAlias) const = 0;
+    
+    //! Returns true if this sprite is configured as a sprite-sheet, false otherwise
+    virtual bool IsSpriteSheet() const = 0;
 };
 

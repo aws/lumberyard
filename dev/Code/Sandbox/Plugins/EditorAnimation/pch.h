@@ -13,15 +13,7 @@
 
 #pragma once
 
-#pragma warning(disable: 4103) // '...\stlport\stl\_cprolog.h' : alignment changed after including header, may be due to missing #pragma pack(pop)
-
 //#define NOT_USE_CRY_MEMORY_MANAGER
-
-// STL Port in debug for debug builds
-#if defined(_DEBUG)
-//#  define _STLP_DEBUG 1
-#endif
-#include <STLPortConfig.h>
 
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN        // Exclude rarely-used stuff from Windows headers
@@ -44,9 +36,10 @@
 #endif
 
 #include <stdlib.h>
-#include <afxwin.h>
-#include <afxext.h>
-
+#include <AzCore/PlatformDef.h>
+#if defined(AZ_PLATFORM_WINDOWS)
+#include "Windows.h"
+#endif
 
 #define INCLUDE_SAVECGF
 

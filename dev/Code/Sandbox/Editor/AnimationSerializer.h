@@ -29,23 +29,24 @@ public:
     ~CAnimationSerializer();
 
     /** Save all animation sequences to files in given directory.
-    */
+     */
     void SerializeSequences(XmlNodeRef& xmlNode, bool bLoading);
 
     /** Saves single animation sequence to file in given directory.
-    */
+     */
     void SaveSequence(IAnimSequence* seq, const char* szFilePath, bool bSaveEmpty = true);
 
     /** Load sequence from file.
-    */
+     */
     IAnimSequence* LoadSequence(const char* szFilePath);
 
-    /** Save all animation sequences to files in given directory.
-    */
-    void SaveAllSequences(const char* szPath, CPakFile& pakFile);
+    /** @deprecated Save all Legacy animation sequences to files in given directory, for legacy object sequences only
+     * Sequence Components use AZ::Serialization
+     */
+    void SaveAllLegacySequences(const char* szPath, CPakFile& pakFile);
 
     /** Load all animation sequences from given directory.
-    */
+     */
     void LoadAllSequences(const char* szPath);
 };
 

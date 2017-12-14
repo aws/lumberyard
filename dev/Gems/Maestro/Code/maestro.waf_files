@@ -81,6 +81,7 @@
             "Source/Cinematics/AnimLightNode.cpp",
             "Source/Cinematics/AnimCameraNode.cpp",
             "Source/Cinematics/AnimNode.cpp",
+            "Source/Cinematics/AnimNodeGroup.cpp",
             "Source/Cinematics/AnimPostFXNode.cpp",
             "Source/Cinematics/AnimScreenFaderNode.cpp",
             "Source/Cinematics/CommentNode.cpp",
@@ -113,7 +114,9 @@
             "Source/Components/SequenceAgent.h",
             "Source/Components/SequenceAgent.cpp",
             "Source/Components/SequenceAgentComponent.h",
-            "Source/Components/SequenceAgentComponent.cpp"
+            "Source/Components/SequenceAgentComponent.cpp",
+            "Source/Components/SequenceAgentExternalCreator.h",
+            "Source/Components/SequenceAgentExternalCreator.cpp"
         ]
     }
 }

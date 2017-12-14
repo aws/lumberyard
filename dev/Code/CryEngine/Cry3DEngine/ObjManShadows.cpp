@@ -132,7 +132,9 @@ void CObjManager::MakeShadowCastersList(CVisArea* pArea, const AABB& aabbReceive
             }
         }
 
-        bool bNeedRenderTerrain = (GetTerrain() && GetCVars()->e_GsmCastFromTerrain && (pLight->m_Flags & DLF_SUN) != 0) != 0;
+        bool bNeedRenderTerrain = GetCVars()->e_GsmCastFromTerrain && (pLight->m_Flags & DLF_SUN);      // Sunlight with terrain shadows
+        bNeedRenderTerrain = bNeedRenderTerrain || (pLight->m_Flags & DLF_CAST_TERRAIN_SHADOWS);        // Light with terrain shadow flag
+        bNeedRenderTerrain = bNeedRenderTerrain && GetTerrain();                                        // Terrain has to exist to cast shadows
 
         if (bNeedRenderTerrain && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface)
         {

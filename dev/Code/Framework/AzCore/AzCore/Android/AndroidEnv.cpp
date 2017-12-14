@@ -12,6 +12,7 @@
 #include <AzCore/Debug/Trace.h>
 
 #include <AzCore/Android/AndroidEnv.h>
+#include <AzCore/Android/APKFileHandler.h>
 #include <AzCore/Android/JNI/Object.h>
 
 
@@ -181,6 +182,7 @@ namespace AZ
             , m_getSimpleClassNameMethod(nullptr)
 
             , m_assetManager(nullptr)
+            , m_window(nullptr)
 
             , m_appPrivateStoragePath()
             , m_appPublicStoragePath()
@@ -193,8 +195,9 @@ namespace AZ
             , m_appVersionCode(0)
 
             , m_ownsActivityRef(false)
-            , m_isRunning(false)
             , m_isReady(false)
+
+            , m_isRunning(false)
         {
         }
 
@@ -272,7 +275,6 @@ namespace AZ
 
             if (!CacheActivityData(jniEnv))
             {
-                AZ_Error("AndroidEnv", false, "Failed to construct a global reference to the activity class");
                 return false;
             }
 
@@ -296,6 +298,12 @@ namespace AZ
             AZ_TracePrintf("AndroidEnv", "Main OBB file name                 = %s", m_mainObbFileName.c_str());
             AZ_TracePrintf("AndroidEnv", "Patch OBB file name                = %s", m_patchObbFileName.c_str());
 
+            if (!APKFileHandler::Create())
+            {
+                AZ_Error("AndroidEnv", false, "Failed to construct the global APK file handler");
+                return false;
+            }
+
             m_isReady = true;
             return true;
         }
@@ -308,6 +316,8 @@ namespace AZ
                 JNI::DeleteRef(m_activityRef);
             }
             JNI::DeleteRef(m_activityClass);
+
+            APKFileHandler::Destroy();
         }
 
         ////////////////////////////////////////////////////////////////
@@ -391,11 +401,9 @@ namespace AZ
             jniEnv->DeleteLocalRef(localClassLoaderClass);
 
             m_classLoader.reset(aznew JniObject(classLoaderClass, classLoaderRef, true));
-
             m_classLoader->RegisterMethod(s_loadClassMethodName, "(Ljava/lang/String;)Ljava/lang/Class;");
+
             return true;
         }
-
-
     }
 }

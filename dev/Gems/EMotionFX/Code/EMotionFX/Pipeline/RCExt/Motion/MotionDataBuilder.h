@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -11,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#pragma once
 
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
@@ -41,5 +41,5 @@ namespace EMotionFX
             MotionDataBuilder(const MotionDataBuilder&) = delete;
 #endif
         };
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

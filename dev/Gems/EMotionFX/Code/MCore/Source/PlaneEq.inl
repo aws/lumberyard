@@ -14,11 +14,11 @@
 // check if the box is partially above the plane
 MCORE_INLINE bool PlaneEq::PartiallyAbove(const AABB& box) const
 {
-    const Vector3 minVec = box.GetMin();
-    const Vector3 maxVec = box.GetMax();
-    const Vector3 testPoint(IsNegative(mNormal.x) ? minVec.x : maxVec.x,
-        IsNegative(mNormal.y) ? minVec.y : maxVec.y,
-        IsNegative(mNormal.z) ? minVec.z : maxVec.z);
+    const AZ::Vector3 minVec = box.GetMin();
+    const AZ::Vector3 maxVec = box.GetMax();
+    const AZ::Vector3 testPoint(IsNegative(float(mNormal.GetX())) ? minVec.GetX() : maxVec.GetX(),
+        IsNegative(static_cast<float>(mNormal.GetY())) ? minVec.GetY() : maxVec.GetY(),
+        IsNegative(static_cast<float>(mNormal.GetZ())) ? minVec.GetZ() : maxVec.GetZ());
 
     return IsPositive(mNormal.Dot(testPoint) + mDist);
 }
@@ -27,11 +27,11 @@ MCORE_INLINE bool PlaneEq::PartiallyAbove(const AABB& box) const
 // check if the box is completely above the plane
 MCORE_INLINE bool PlaneEq::CompletelyAbove(const AABB& box) const
 {
-    const Vector3 minVec = box.GetMin();
-    const Vector3 maxVec = box.GetMax();
-    const Vector3 testPoint(IsPositive(mNormal.x) ? minVec.x : maxVec.x,
-        IsPositive(mNormal.y) ? minVec.y : maxVec.y,
-        IsPositive(mNormal.z) ? minVec.z : maxVec.z);
+    const AZ::Vector3 minVec = box.GetMin();
+    const AZ::Vector3 maxVec = box.GetMax();
+    const AZ::Vector3 testPoint(IsPositive(mNormal.GetX()) ? minVec.GetX() : maxVec.GetX(),
+        IsPositive(mNormal.GetY()) ? minVec.GetY() : maxVec.GetY(),
+        IsPositive(mNormal.GetZ()) ? minVec.GetZ() : maxVec.GetZ());
 
     return IsPositive(mNormal.Dot(testPoint) + mDist);
 }

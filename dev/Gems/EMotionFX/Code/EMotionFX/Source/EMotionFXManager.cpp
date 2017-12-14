@@ -16,7 +16,6 @@
 #include "Importer/Importer.h"
 #include "ActorManager.h"
 #include "MotionManager.h"
-#include "LODGenerator.h"
 #include "EventManager.h"
 #include "SoftSkinManager.h"
 #include "Importer/Importer.h"
@@ -70,7 +69,6 @@ namespace EMotionFX
         gEMFX.Get()->SetImporter              (Importer::Create());
         gEMFX.Get()->SetActorManager          (ActorManager::Create());
         gEMFX.Get()->SetMotionManager         (MotionManager::Create());
-        gEMFX.Get()->SetLODGenerator          (LODGenerator::Create());
         gEMFX.Get()->SetEventManager          (EventManager::Create());
         gEMFX.Get()->SetSoftSkinManager       (SoftSkinManager::Create());
         gEMFX.Get()->SetWaveletCache          (WaveletCache::Create());
@@ -103,7 +101,7 @@ namespace EMotionFX
     {
         // delete the global object and reset it to nullptr
         gEMFX.Get()->Destroy();
-        gEMFX.Set(nullptr);
+        gEMFX.Reset();
     }
 
     //-----------------------------------------------------------------------------
@@ -124,7 +122,6 @@ namespace EMotionFX
         mImporter               = nullptr;
         mActorManager           = nullptr;
         mMotionManager          = nullptr;
-        mLODGenerator           = nullptr;
         mEventManager           = nullptr;
         mSoftSkinManager        = nullptr;
         mWaveletCache           = nullptr;
@@ -150,7 +147,6 @@ namespace EMotionFX
         mMotionManager->Destroy();
         mAnimGraphManager->Destroy();
         mImporter->Destroy();
-        mLODGenerator->Destroy();   // destroy the LOD generator before the actor manager as the generator destructs some temporary actor
         mActorManager->Destroy();
         mMotionInstancePool->Destroy();
         mEventManager->Destroy();
@@ -279,13 +275,6 @@ namespace EMotionFX
     void EMotionFXManager::SetMotionManager(MotionManager* manager)
     {
         mMotionManager = manager;
-    }
-
-
-    // set the LOD generator
-    void EMotionFXManager::SetLODGenerator(LODGenerator* generator)
-    {
-        mLODGenerator = generator;
     }
 
 
@@ -579,8 +568,6 @@ namespace EMotionFX
     // register the EMotion FX memory categories
     void EMotionFXManager::RegisterMemoryCategories(MCore::MemoryTracker& memTracker)
     {
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_LOCALCONTROLLERS,                         "EMFX_MEMCATEGORY_LOCALCONTROLLERS");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_GLOBALCONTROLLERS,                        "EMFX_MEMCATEGORY_GLOBALCONTROLLERS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_GEOMETRY_MATERIALS,                       "EMFX_MEMCATEGORY_GEOMETRY_MATERIALS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_GEOMETRY_MESHES,                          "EMFX_MEMCATEGORY_GEOMETRY_MESHES");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS,                       "EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS");
@@ -589,7 +576,6 @@ namespace EMotionFX
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES,                  "EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MOTIONS_MOTIONSYSTEMS,                    "EMFX_MEMCATEGORY_MOTIONS_MOTIONSYSTEMS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MOTIONS_SKELETALMOTIONS,                  "EMFX_MEMCATEGORY_MOTIONS_SKELETALMOTIONS");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_MOTIONS_CONTROLLEDMOTIONS,                "EMFX_MEMCATEGORY_MOTIONS_CONTROLLEDMOTIONS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MOTIONS_INTERPOLATORS,                    "EMFX_MEMCATEGORY_MOTIONS_INTERPOLATORS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MOTIONS_KEYTRACKS,                        "EMFX_MEMCATEGORY_MOTIONS_KEYTRACKS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MOTIONS_MOTIONLINKS,                      "EMFX_MEMCATEGORY_MOTIONS_MOTIONLINKS");
@@ -610,8 +596,6 @@ namespace EMotionFX
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_NODEMAP,                                  "EMFX_MEMCATEGORY_NODEMAP");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_RIGSYSTEM,                                "EMFX_MEMCATEGORY_RIGSYSTEM");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_TRANSFORMDATA,                            "EMFX_MEMCATEGORY_TRANSFORMDATA");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_LOCALPOSES,                               "EMFX_MEMCATEGORY_LOCALPOSES");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_GLOBALPOSES,                              "EMFX_MEMCATEGORY_GLOBALPOSES");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_POSE,                                     "EMFX_MEMCATEGORY_POSE");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_TRANSFORM,                                "EMFX_MEMCATEGORY_TRANSFORM");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_SKELETON,                                 "EMFX_MEMCATEGORY_SKELETON");
@@ -645,7 +629,6 @@ namespace EMotionFX
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_WAVELETSKELETONMOTION,                    "EMFX_MEMCATEGORY_WAVELETSKELETONMOTION");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_IMPORTER,                                 "EMFX_MEMCATEGORY_IMPORTER");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_IDGENERATOR,                              "EMFX_MEMCATEGORY_IDGENERATOR");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_LODGENERATOR,                             "EMFX_MEMCATEGORY_LODGENERATOR");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ACTORMANAGER,                             "EMFX_MEMCATEGORY_ACTORMANAGER");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_UPDATESCHEDULERS,                         "EMFX_MEMCATEGORY_UPDATESCHEDULERS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_ATTACHMENTS,                              "EMFX_MEMCATEGORY_ATTACHMENTS");
@@ -653,14 +636,12 @@ namespace EMotionFX
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_FILEPROCESSORS,                           "EMFX_MEMCATEGORY_FILEPROCESSORS");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_EMSTUDIODATA,                             "EMFX_MEMCATEGORY_EMSTUDIODATA");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_RECORDER,                                 "EMFX_MEMCATEGORY_RECORDER");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_RETARGET,                                 "EMFX_MEMCATEGORY_RETARGET");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_IK,                                       "EMFX_MEMCATEGORY_IK");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MESHBUILDER,                              "EMFX_MEMCATEGORY_MESHBUILDER");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MESHBUILDER_SKINNINGINFO,                 "EMFX_MEMCATEGORY_MESHBUILDER_SKINNINGINFO");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MESHBUILDER_SUBMESH,                      "EMFX_MEMCATEGORY_MESHBUILDER_SUBMESH");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MESHBUILDER_VERTEXLOOKUP,                 "EMFX_MEMCATEGORY_MESHBUILDER_VERTEXLOOKUP");
         memTracker.RegisterCategory(EMFX_MEMCATEGORY_MESHBUILDER_VERTEXATTRIBUTELAYER,         "EMFX_MEMCATEGORY_MESHBUILDER_VERTEXATTRIBUTELAYER");
-        memTracker.RegisterCategory(EMFX_MEMCATEGORY_VISUALIZATION_LIMITS,                     "EMFX_MEMCATEGORY_VISUALIZATION_LIMITS");
 
         // actor group
         std::vector<uint32> idValues;
@@ -671,14 +652,10 @@ namespace EMotionFX
         idValues.push_back(EMFX_MEMCATEGORY_NODESMISC);
         idValues.push_back(EMFX_MEMCATEGORY_ACTORINSTANCES);
         idValues.push_back(EMFX_MEMCATEGORY_TRANSFORMDATA);
-        idValues.push_back(EMFX_MEMCATEGORY_LOCALPOSES);
-        idValues.push_back(EMFX_MEMCATEGORY_GLOBALPOSES);
         idValues.push_back(EMFX_MEMCATEGORY_POSE);
         idValues.push_back(EMFX_MEMCATEGORY_TRANSFORM);
         idValues.push_back(EMFX_MEMCATEGORY_SKELETON);
         idValues.push_back(EMFX_MEMCATEGORY_CONSTRAINTS);
-        idValues.push_back(EMFX_MEMCATEGORY_LOCALCONTROLLERS);
-        idValues.push_back(EMFX_MEMCATEGORY_GLOBALCONTROLLERS);
         idValues.push_back(EMFX_MEMCATEGORY_GEOMETRY_MATERIALS);
         idValues.push_back(EMFX_MEMCATEGORY_GEOMETRY_MESHES);
         idValues.push_back(EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS);
@@ -687,7 +664,6 @@ namespace EMotionFX
         idValues.push_back(EMFX_MEMCATEGORY_EVENTHANDLERS);
         idValues.push_back(EMFX_MEMCATEGORY_EYEBLINKER);
         idValues.push_back(EMFX_MEMCATEGORY_ATTACHMENTS);
-        idValues.push_back(EMFX_MEMCATEGORY_RETARGET);
         idValues.push_back(EMFX_MEMCATEGORY_MESHBUILDER);
         idValues.push_back(EMFX_MEMCATEGORY_MESHBUILDER_SKINNINGINFO);
         idValues.push_back(EMFX_MEMCATEGORY_MESHBUILDER_SUBMESH);
@@ -729,7 +705,6 @@ namespace EMotionFX
         idValues.push_back(EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
         idValues.push_back(EMFX_MEMCATEGORY_MOTIONS_MOTIONSYSTEMS);
         idValues.push_back(EMFX_MEMCATEGORY_MOTIONS_SKELETALMOTIONS);
-        idValues.push_back(EMFX_MEMCATEGORY_MOTIONS_CONTROLLEDMOTIONS);
         idValues.push_back(EMFX_MEMCATEGORY_MOTIONS_INTERPOLATORS);
         idValues.push_back(EMFX_MEMCATEGORY_MOTIONS_KEYTRACKS);
         idValues.push_back(EMFX_MEMCATEGORY_MOTIONS_MOTIONLINKS);

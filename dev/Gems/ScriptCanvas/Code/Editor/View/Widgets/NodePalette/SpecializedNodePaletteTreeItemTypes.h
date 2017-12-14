@@ -77,4 +77,33 @@ namespace ScriptCanvasEditor
         GraphCanvas::GraphCanvasMimeEvent* CreateMimeEvent() const override;
     };    
     // </CommentNode>
+
+    // <BlockCommentNode>
+    class CreateBlockCommentNodeMimeEvent
+        : public SpecializedCreateNodeMimeEvent
+    {
+    public:
+        AZ_RTTI(CreateBlockCommentNodeMimeEvent, "{FD969A58-404E-4B97-8A62-57C2B5EAC686}", SpecializedCreateNodeMimeEvent);
+        AZ_CLASS_ALLOCATOR(CreateBlockCommentNodeMimeEvent, AZ::SystemAllocator, 0);
+
+        static void Reflect(AZ::ReflectContext* reflectContext);
+
+        CreateBlockCommentNodeMimeEvent() = default;
+        ~CreateBlockCommentNodeMimeEvent() = default;
+
+        NodeIdPair ConstructNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition);
+        bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId) override;
+    };
+
+    class BlockCommentNodePaletteTreeItem
+        : public DraggableNodePaletteTreeItem
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(BlockCommentNodePaletteTreeItem, AZ::SystemAllocator, 0);
+        BlockCommentNodePaletteTreeItem(const QString& nodeName, const QString& iconPath);
+        ~BlockCommentNodePaletteTreeItem() = default;
+
+        GraphCanvas::GraphCanvasMimeEvent* CreateMimeEvent() const override;
+    };
+    // </BlockCommentNode>
 }

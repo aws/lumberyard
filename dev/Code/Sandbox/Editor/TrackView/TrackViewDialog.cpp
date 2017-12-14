@@ -53,6 +53,9 @@
 
 #include "Util/EditorUtils.h"
 #include "FBXExporterDialog.h"
+#include "Maestro/Types/AnimParamType.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/SequenceType.h"
 
 #include <QFileDialog>
 #include <QSplitter>
@@ -146,7 +149,7 @@ CTrackViewDialog::CTrackViewDialog(QWidget* pParent /*=NULL*/)
     {
         CAnimParamType paramType = pMovieSystem->GetEntityNodeParamType(i);
 
-        if (paramType == eAnimParamType_Position || paramType == eAnimParamType_Rotation || paramType == eAnimParamType_Event)
+        if (paramType == AnimParamType::Position || paramType == AnimParamType::Rotation || paramType == AnimParamType::Event)
         {
             // Pos,Rot and Event tracks are on by very default.
             m_defaultTracksForEntityNode[i] = 1;
@@ -180,7 +183,7 @@ CTrackViewDialog::~CTrackViewDialog()
     s_pTrackViewDialog = 0;
 
     const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-    CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(m_currentSequenceName);
+    CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
     if (pSequence)
     {
         pSequence->RemoveListener(this);
@@ -323,7 +326,7 @@ void CTrackViewDialog::FillAddSelectedEntityMenu()
     QMenu* menu = qobject_cast<QMenu*>(sender());
     menu->clear();
     CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-    ESequenceType sequenceType = pSequence ? pSequence->GetSequenceType() : eSequenceType_Legacy;
+    SequenceType sequenceType = pSequence ? pSequence->GetSequenceType() : SequenceType::Legacy;
 
     IMovieSystem* pMovieSystem = GetIEditor()->GetMovieSystem();
     for (int i = 0; i < pMovieSystem->GetEntityNodeParamCount(); ++i)
@@ -344,12 +347,12 @@ void CTrackViewDialog::FillAddSelectedEntityMenu()
         }
 
         bool enabled = true;
-        if (sequenceType == eSequenceType_SequenceComponent)
+        if (sequenceType == SequenceType::SequenceComponent)
         {
             // For AZ::Entities with components, we can't assume there will be any particular component available, save for the Transform component (most of the time)
             // So we only support default tracks of Pos/Rot/Scale
 
-            if (!(paramType.GetType() == eAnimParamType_Position || paramType.GetType() == eAnimParamType_Rotation || paramType.GetType() == eAnimParamType_Scale))
+            if (!(paramType.GetType() == AnimParamType::Position || paramType.GetType() == AnimParamType::Rotation || paramType.GetType() == AnimParamType::Scale))
             {
                 // disable and uncheck everything but pos/rot/scale
                 enabled = false;
@@ -510,7 +513,6 @@ void CTrackViewDialog::InitToolbar()
         }
         buttonMenu->addSeparator();
         qaction = buttonMenu->addAction("Sequence Camera");
-        qaction->setCheckable(true);
         connect(qaction, &QAction::triggered, this, &CTrackViewDialog::OnPlayToggleCamera);
         ag->addAction(qaction);
     }
@@ -810,7 +812,7 @@ void CTrackViewDialog::UpdateActions()
     CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
     if (pSequence)
     {
-        bool bLightAnimationSetActive = (m_currentSequenceName == LIGHT_ANIMATION_SET_NAME)
+        bool bLightAnimationSetActive = (QString(pSequence->GetName()) == LIGHT_ANIMATION_SET_NAME)
             && (pSequence->GetFlags() & IAnimSequence::eSeqFlags_LightAnimationSet);
 
         if (m_bEditLock || bLightAnimationSetActive)
@@ -904,10 +906,10 @@ void CTrackViewDialog::UpdateActions()
     if (pSequence != nullptr)
     {
         // enable the Create Light Animation Set button only for legacy sequences
-        if (pSequence->GetSequenceType() == eSequenceType_Legacy)
+        if (pSequence->GetSequenceType() == SequenceType::Legacy)
         {
-            IAnimSequence* pAnimSequence = GetIEditor()->GetMovieSystem()->FindSequence(LIGHT_ANIMATION_SET_NAME);
-            if (pAnimSequence && pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+            IAnimSequence* pAnimSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(LIGHT_ANIMATION_SET_NAME);
+            if (pAnimSequence && pAnimSequence->GetSequenceType() == SequenceType::Legacy)
             {
                 m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setDisabled(pAnimSequence->GetFlags() & IAnimSequence::eSeqFlags_LightAnimationSet);
             }
@@ -952,7 +954,7 @@ void CTrackViewDialog::Update()
     {
         m_bNeedReloadSequence = false;
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(m_currentSequenceName);
+        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
 
         CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
         pAnimationContext->SetSequence(pSequence, true, false);
@@ -1116,7 +1118,7 @@ void CTrackViewDialog::OnAddSequence()
 
         if (sequenceName != s_kNoSequenceComboBoxEntry)
         {
-            ESequenceType sequenceType = dlg.GetSequenceType();
+            SequenceType sequenceType = dlg.GetSequenceType();
 
             CUndo undo("Add Sequence");
             // add sequence
@@ -1160,10 +1162,10 @@ void CTrackViewDialog::ReloadSequences()
 
     SaveZoomScrollSettings();
 
-    if (!m_currentSequenceName.isEmpty())
+    if (m_currentSequenceEntityId.IsValid())
     {
         CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        pSequence = pSequenceManager->GetSequenceByName(m_currentSequenceName);
+        pSequence = pSequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
 
         const float prevTime = pAnimationContext->GetTime();
         pAnimationContext->SetSequence(pSequence, true, true);
@@ -1201,17 +1203,19 @@ void CTrackViewDialog::ReloadSequencesComboBox()
         {
             CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByIndex(k);
             QString fullname = QtUtil::ToQString(pSequence->GetName());
-            m_sequencesComboBox->addItem(fullname);
+            QString entityIdString = GetEntityIdAsString(pSequence->GetSequenceComponentEntityId());
+            m_sequencesComboBox->addItem(fullname, entityIdString);
         }
     }
 
-    if (m_currentSequenceName.isEmpty())
+    if (!m_currentSequenceEntityId.IsValid())
     {
         m_sequencesComboBox->setCurrentIndex(0);
     }
     else
     {
-        m_sequencesComboBox->setCurrentIndex(m_sequencesComboBox->findText(m_currentSequenceName));
+        QString entityIdString = GetEntityIdAsString(m_currentSequenceEntityId);
+        m_sequencesComboBox->setCurrentIndex(m_sequencesComboBox->findData(entityIdString));
     }
     m_sequencesComboBox->blockSignals(false);
 }
@@ -1273,13 +1277,25 @@ void CTrackViewDialog::OnDelSequence()
     if (QMessageBox::question(this, LyViewPane::TrackView, "Delete current sequence?") == QMessageBox::Yes)
     {
         int sel = m_sequencesComboBox->currentIndex();
-        QString seq = m_sequencesComboBox->currentText();
-        m_sequencesComboBox->removeItem(sel);
-        m_sequencesComboBox->setCurrentIndex(0);
+        if (sel != -1)
+        {
+            QString entityIdString = m_sequencesComboBox->currentData().toString();
+            m_sequencesComboBox->removeItem(sel);
+            m_sequencesComboBox->setCurrentIndex(0);
 
-        OnSequenceComboBox();
-        GetIEditor()->ExecuteCommand("trackview.delete_sequence '%s'", seq.toLatin1().data());
-        UpdateActions();
+            OnSequenceComboBox();
+
+            if (!entityIdString.isEmpty())
+            {
+                AZ::EntityId entityId = AZ::EntityId(entityIdString.toULongLong());
+                if (entityId.IsValid())
+                {
+                    GetIEditor()->ExecuteCommand("trackview.delete_sequence '%s'", entityIdString.toLatin1().data());
+                }
+            }
+
+            UpdateActions();
+        }
     }
 }
 
@@ -1311,13 +1327,10 @@ void CTrackViewDialog::OnSequenceComboBox()
         GetIEditor()->GetAnimation()->SetSequence(nullptr, false, false);
         return;
     }
-    QString name = m_sequencesComboBox->currentText();
 
     // Display current sequence.
-    CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-    CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(name);
-    QString pName = pSequence ? pSequence->GetName() : "";
-    GetIEditor()->ExecuteCommand("trackview.set_current_sequence '%s'", pName.toLatin1().data());
+    QString entityIdString = m_sequencesComboBox->currentData().toString();
+    GetIEditor()->ExecuteCommand("trackview.set_current_sequence '%s'", entityIdString.toLatin1().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1330,7 +1343,7 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
 
     // Remove listeners from previous sequence
     CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-    CTrackViewSequence* pPrevSequence = pSequenceManager->GetSequenceByName(m_currentSequenceName);
+    CTrackViewSequence* pPrevSequence = pSequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
     if (pPrevSequence)
     {
         pPrevSequence->RemoveListener(this);
@@ -1342,7 +1355,7 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
 
     if (pSequence)
     {
-        m_currentSequenceName = QtUtil::ToQString(pSequence->GetName());
+        m_currentSequenceEntityId = pSequence->GetSequenceComponentEntityId();
 
         pSequence->Reset(true);
         SaveZoomScrollSettings();
@@ -1363,7 +1376,9 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
         }
 
         m_sequencesComboBox->blockSignals(true);
-        m_sequencesComboBox->setCurrentText(m_currentSequenceName);
+        QString entityIdString = GetEntityIdAsString(m_currentSequenceEntityId);
+        int sequenceIndex = m_sequencesComboBox->findData(entityIdString);
+        m_sequencesComboBox->setCurrentIndex(sequenceIndex);
         m_sequencesComboBox->blockSignals(false);
 
         pSequence->ClearSelection();
@@ -1376,7 +1391,7 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
     }
     else
     {
-        m_currentSequenceName = "";
+        m_currentSequenceEntityId.SetInvalid();
         m_sequencesComboBox->setCurrentIndex(0);
         m_wndCurveEditor->GetSplineCtrl().SetEditLock(true);
     }
@@ -1610,7 +1625,7 @@ void CTrackViewDialog::OnAddSelectedNode()
         // Try to paste to a selected group node, otherwise to sequence
         CTrackViewAnimNodeBundle selectedNodes = pSequence->GetSelectedAnimNodes();
         CTrackViewAnimNode* pAnimNode = (selectedNodes.GetCount() == 1) ? selectedNodes.GetNode(0) : pSequence;
-        pAnimNode = (pAnimNode->IsGroupNode() && pAnimNode->GetType() != eAnimNodeType_AzEntity) ? pAnimNode : pSequence;
+        pAnimNode = (pAnimNode->IsGroupNode() && pAnimNode->GetType() != AnimNodeType::AzEntity) ? pAnimNode : pSequence;
 
         CUndo undo("Add Entities to TrackView");
         CTrackViewAnimNodeBundle addedNodes = pAnimNode->AddSelectedEntities(m_defaultTracksForEntityNode);
@@ -1646,7 +1661,7 @@ void CTrackViewDialog::OnAddDirectorNode()
         CUndo undo("Create TrackView Director Node");
         AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Director Node");
         QString name = pSequence->GetAvailableNodeNameStartingWith("Director");
-        pSequence->CreateSubNode(name, eAnimNodeType_Director);
+        pSequence->CreateSubNode(name, AnimNodeType::Director);
         UpdateActions();
         undoBatch.MarkEntityDirty(pSequence->GetSequenceComponentEntityId());
     }
@@ -1701,9 +1716,9 @@ bool CTrackViewDialog::event(QEvent* e)
     return QMainWindow::event(e);
 }
 
+#if defined(AZ_PLATFORM_WINDOWS)
 bool CTrackViewDialog::nativeEvent(const QByteArray &eventType, void *message, long *result)
 {
-#ifdef Q_OS_WIN
     /* On Windows, eventType is set to "windows_generic_MSG" for messages sent to toplevel windows, and "windows_dispatcher_MSG" for
     system - wide messages such as messages from a registered hot key.In both cases, the message can be casted to a MSG pointer.
     The result pointer is only used on Windows, and corresponds to the LRESULT pointer.*/
@@ -1712,12 +1727,10 @@ bool CTrackViewDialog::nativeEvent(const QByteArray &eventType, void *message, l
         MSG* pMsg = static_cast<MSG*>(message);
         return processRawInput(pMsg);
     }
-#endif
 
     return false;
 }
 
-#ifdef Q_OS_WIN
 bool CTrackViewDialog::processRawInput(MSG* pMsg)
 {
     if (pMsg->message == WM_INPUT)
@@ -2035,7 +2048,7 @@ void CTrackViewDialog::UpdateTracksToolBar()
             {
                 CAnimParamType paramType = pAnimNode->GetParamType(i);
 
-                if (paramType.GetType() == eAnimParamType_Invalid)
+                if (paramType.GetType() == AnimParamType::Invalid)
                 {
                     continue;
                 }
@@ -2090,7 +2103,7 @@ void CTrackViewDialog::OnTracksToolBar()
 
     if (paramTypeToolBarID < m_toolBarParamTypes.size())
     {
-        if (m_pNodeForTracksToolBar && m_toolBarParamTypes[paramTypeToolBarID].GetType() != eAnimParamType_Invalid)
+        if (m_pNodeForTracksToolBar && m_toolBarParamTypes[paramTypeToolBarID].GetType() != AnimParamType::Invalid)
         {
             CUndo undo("Create TrackView Track");
             m_pNodeForTracksToolBar->CreateTrack(m_toolBarParamTypes[paramTypeToolBarID]);
@@ -2202,13 +2215,13 @@ void CTrackViewDialog::SaveZoomScrollSettings()
 void CTrackViewDialog::OnCreateLightAnimationSet()
 {
     const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-    assert(pSequenceManager && pSequenceManager->GetSequenceByName(LIGHT_ANIMATION_SET_NAME) == NULL);
+    assert(pSequenceManager && pSequenceManager->GetLegacySequenceByName(LIGHT_ANIMATION_SET_NAME) == NULL);
 
     CUndo undo("Add Sequence");
-    // LightAnimationSequences are for animating legacy lights, so it's implied that the sequence type is  eSequenceType_Legacy
-    GetIEditor()->ExecuteCommand("trackview.new_sequence '%s' %d", LIGHT_ANIMATION_SET_NAME, eSequenceType_Legacy);
+    // LightAnimationSequences are for animating legacy lights, so it's implied that the sequence type is  SequenceType::Legacy
+    GetIEditor()->ExecuteCommand("trackview.new_sequence '%s' %d", LIGHT_ANIMATION_SET_NAME, SequenceType::Legacy);
 
-    CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(LIGHT_ANIMATION_SET_NAME);
+    CTrackViewSequence* pSequence = pSequenceManager->GetLegacySequenceByName(LIGHT_ANIMATION_SET_NAME);
     assert(pSequence);
     pSequence->SetFlags(IAnimSequence::eSeqFlags_LightAnimationSet);
     pSequence->MarkAsModified();
@@ -2222,7 +2235,7 @@ void CTrackViewDialog::OnAddLightAnimation()
 
     if (pSequence)
     {
-        assert((m_currentSequenceName == LIGHT_ANIMATION_SET_NAME)
+        assert((QString(pSequence->GetName()) == LIGHT_ANIMATION_SET_NAME)
             && (pSequence->GetFlags() & IAnimSequence::eSeqFlags_LightAnimationSet));
 
         StringDlg dlg(tr("New Light Animation"));
@@ -2246,14 +2259,14 @@ void CTrackViewDialog::OnAddLightAnimation()
         }
 
         CUndo undo("Add Node");
-        CTrackViewAnimNode* pLightNode = pSequence->CreateSubNode(dlg.GetString(), eAnimNodeType_Light);
+        CTrackViewAnimNode* pLightNode = pSequence->CreateSubNode(dlg.GetString(), AnimNodeType::Light);
 
         if (pLightNode)
         {
-            pLightNode->CreateTrack(eAnimParamType_Position);
-            pLightNode->CreateTrack(eAnimParamType_Rotation);
-            pLightNode->CreateTrack(eAnimParamType_LightDiffuse);
-            pLightNode->CreateTrack(eAnimParamType_LightRadius);
+            pLightNode->CreateTrack(AnimParamType::Position);
+            pLightNode->CreateTrack(AnimParamType::Rotation);
+            pLightNode->CreateTrack(AnimParamType::LightDiffuse);
+            pLightNode->CreateTrack(AnimParamType::LightRadius);
 
             pLightNode->SetSelected(true);
 
@@ -2280,11 +2293,6 @@ void CTrackViewDialog::OnNodeRenamed(CTrackViewNode* pNode, const char* pOldName
     // React to sequence name changes
     if (pNode->GetNodeType() == eTVNT_Sequence)
     {
-        if (m_currentSequenceName == QString(pOldName))
-        {
-            m_currentSequenceName = QtUtil::ToQString(pNode->GetName());
-        }
-
         ReloadSequencesComboBox();
     }
 }
@@ -2323,6 +2331,19 @@ void CTrackViewDialog::OnSequenceRemoved(CTrackViewSequence* pSequence)
 {
     ReloadSequencesComboBox();
     UpdateActions();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewDialog::OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo)
+{
+    // If this happened as the result of an undo, the id of the legacy entity might change.
+    // That id is used to select sequences in the in the combo box. So we need to refresh the
+    // combo box here to make sure all the id's are valid. This code can be deleted
+    // with legacy sequences.
+    if (undo)
+    {
+        ReloadSequencesComboBox();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

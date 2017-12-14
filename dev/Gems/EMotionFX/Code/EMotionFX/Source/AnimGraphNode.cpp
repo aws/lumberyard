@@ -380,6 +380,22 @@ namespace EMotionFX
     }
 
 
+    bool AnimGraphNode::HasChildNodeOfType(const AZ::Uuid& uuid) const
+    {
+        const uint32 numChildNodes = mChildNodes.GetLength();
+        for (uint32 i = 0; i < numChildNodes; ++i)
+        {
+            const AnimGraphNode* childNode = mChildNodes[i];
+            if (azrtti_typeid(childNode) == uuid)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
     // does this node has a specific incoming connection?
     bool AnimGraphNode::GetHasConnection(AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort) const
     {
@@ -452,7 +468,7 @@ namespace EMotionFX
 
 
     // find a given connection
-    BlendTreeConnection* AnimGraphNode::FindConnection(AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort)
+    BlendTreeConnection* AnimGraphNode::FindConnection(const AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort) const
     {
         const uint32 numConnections = mConnections.GetLength();
         for (uint32 i = 0; i < numConnections; ++i)

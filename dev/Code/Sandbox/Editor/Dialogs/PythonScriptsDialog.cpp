@@ -49,7 +49,7 @@ CPythonScriptsDialog::CPythonScriptsDialog()
     QStringList scriptFolders;
 
     const auto editorEnvStr = gSettings.strEditorEnv.toLocal8Bit();
-    AZStd::string actualPath = AZStd::string::format("@devroot@/%s", editorEnvStr.constData());
+    AZStd::string actualPath = AZStd::string::format("@engroot@/%s", editorEnvStr.constData());
 
 
     XmlNodeRef envNode = XmlHelpers::LoadXmlFromFile(actualPath.c_str());

@@ -17,7 +17,6 @@
 
 #include "IConvertor.h"
 #include "GeomCache.h"
-#include "StealingThreadPool.h"
 #include "../ResourceCompilerPC/PhysWorld.h"
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/mutex.h>
@@ -147,35 +146,24 @@ namespace std
     };
 }
 
-namespace
-{
-    struct CompileMeshJobData;
-}
-
 class GeomCacheEncoder;
 
 class AlembicCompiler
     : public ICompiler
 {
-    friend struct CompileMeshJobData;
-
-    struct FrameJobGroupData
+    struct FrameData
     {
-        FrameJobGroupData()
-            : m_bFinished(false)
-            , m_errorCount(0)
+        FrameData()
+            : m_errorCount(0)
             , m_pAlembicCompiler(nullptr) {}
 
-        FrameJobGroupData(const FrameJobGroupData& toBeCopied)
-            : m_bFinished(toBeCopied.m_bFinished)
-            , m_errorCount(0)
+        FrameData(const FrameData& toBeCopied)
+            : m_errorCount(0)
             , m_pAlembicCompiler(toBeCopied.m_pAlembicCompiler)
         {
             m_errorCount.store(toBeCopied.m_errorCount);
         }
 
-        volatile bool m_bFinished;
-        volatile bool m_bWritten;
         uint m_jobIndex;
         uint m_frameIndex;
         AZStd::atomic_uint m_errorCount;
@@ -219,23 +207,20 @@ private:
     void PrintNodeTreeRec(GeomCache::Node& node, string padding);
 
     // Compile stream of frames and  send them to the cache writer
-    bool CompileAnimationData(Alembic::Abc::IArchive& archive, GeomCacheEncoder& geomCacheEncoder, ThreadUtils::StealingThreadPool& threadPool);
+    bool CompileAnimationData(Alembic::Abc::IArchive& archive, GeomCacheEncoder& geomCacheEncoder);
 
     // Pushes the completed frames in order to the encoder
-    void PushCompletedFrames(GeomCacheEncoder& geomCacheEncoder, const uint numJobGroups);
+    void PushCompletedFrames(GeomCacheEncoder& geomCacheEncoder);
 
     // Update transforms
-    static void UpdateTransformsJob(FrameJobGroupData* pData);
+    void UpdateTransformsWithErrorHandling();
     typedef std::unordered_map<std::string, Alembic::AbcGeom::M44d> TMatrixMap;
     typedef std::unordered_map<std::string, Alembic::AbcGeom::ObjectVisibility> TVisibilityMap;
-    void UpdateTransformsRec(GeomCache::Node& node, const uint bufferIndex, const Alembic::Abc::chrono_t frameTime,
+    void UpdateTransformsRec(GeomCache::Node& node, const Alembic::Abc::chrono_t frameTime,
         AABB& frameAABB, QuatTNS currentTransform, TMatrixMap& matrixMap, TVisibilityMap& visibilityMap, std::string& currentObjectPath);
 
     // Compiles a mesh or update its vertices in a job
-    static void UpdateVertexDataJob(CompileMeshJobData* pData);
-
-    // Called when frame group has finished
-    static void FrameGroupFinished(FrameJobGroupData* pData);
+    void UpdateVertexDataWithErrorHandling(GeomCache::Mesh* mesh);
 
     // Gets mapping from alembic face Id to material ids
     std::unordered_map<uint32, uint16> GetMeshMaterialMap(const Alembic::AbcGeom::IPolyMesh& mesh, const Alembic::Abc::chrono_t frameTime);
@@ -249,10 +234,10 @@ private:
     bool CompileFullMesh(GeomCache::Mesh& mesh, const size_t currentFrame, const QuatTNS& transform);
 
     // Update vertex data according to the mapping table produced by CompileFullMesh at frameTime. Used for homogeneous meshes.
-    bool UpdateVertexData(GeomCache::Mesh& mesh, const uint bufferIndex, const size_t currentFrame);
+    bool UpdateVertexData(GeomCache::Mesh& mesh, const size_t currentFrame);
 
     // Calculate smoothed normals
-    bool CalculateSmoothNormals(std::vector<AlembicCompilerVertex>& vertices, GeomCache::Mesh& mesh,
+    void CalculateSmoothNormals(std::vector<AlembicCompilerVertex>& vertices, GeomCache::Mesh& mesh,
         const Alembic::Abc::Int32ArraySample& faceCounts, const Alembic::Abc::Int32ArraySample& faceIndices,
         const Alembic::Abc::P3fArraySample& positions);
 
@@ -311,23 +296,8 @@ private:
     // For detecting cloned meshes
     std::unordered_map<AlembicMeshDigest, std::shared_ptr<GeomCache::Mesh> > m_digestToMeshMap;
 
-    // The next job group hat will be used
-    uint m_nextJobGroupIndex;
-
-    // Index of frame that needs to be written next
-    size_t m_nextFrameToWrite;
-
-    // Number of frame job groups running
-    uint m_numJobGroupsRunning;
-    AZStd::atomic_uint m_numJobsFinished;
-    AZStd::mutex m_jobFinishedCS;
-    AZStd::condition_variable m_jobFinishedCV;
-
-    // Data for each frame job group
-    std::vector<FrameJobGroupData> m_jobGroupData;
-
-    // Transform update lock (ABC library is sometimes not thread safe)
-    AZStd::mutex m_abcLock;
+    // Data for each frame processing
+    FrameData m_jobGroupData;
 
     // Error count
     AZStd::atomic_uint m_errorCount;

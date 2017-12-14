@@ -19,6 +19,7 @@
 #include <ISplines.h>
 #include <IRemoteCommand.h>
 #include "EnvironmentPreset.h"
+#include <Environment/OceanEnvironmentBus.h>
 
 class CBezierSplineFloat
     : public spline::CBaseSplineInterpolator<float, spline::BezierSpline<float> >
@@ -762,13 +763,19 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
         p3DEngine->SetGlobalParameter(E3DPARAM_CLOUDSHADING_SUNCOLOR, cloudShadingSunColor + (cloudShadingCustomSunColor - cloudShadingSunColor) * cloudShadingCustomSunColorInfluence);
     }
 
-    // set ocean fog color multiplier
-    const float oceanFogColorMultiplier = GetVar(PARAM_OCEANFOG_COLOR_MULTIPLIER).fValue[0];
-    const Vec3 oceanFogColor = Vec3(GetVar(PARAM_OCEANFOG_COLOR).fValue[0], GetVar(PARAM_OCEANFOG_COLOR).fValue[1], GetVar(PARAM_OCEANFOG_COLOR).fValue[2]);
-    p3DEngine->SetGlobalParameter(E3DPARAM_OCEANFOG_COLOR, oceanFogColor * oceanFogColorMultiplier);
+    bool bHasOceanFeature = false;
+    AZ::OceanFeatureToggleBus::BroadcastResult(bHasOceanFeature, &AZ::OceanFeatureToggleBus::Events::OceanComponentEnabled);
+    if (!bHasOceanFeature)
+    {
+        // set ocean fog color multiplier
+        const float oceanFogColorMultiplier = GetVar(PARAM_OCEANFOG_COLOR_MULTIPLIER).fValue[0];
+        const Vec3 oceanFogColor = Vec3(GetVar(PARAM_OCEANFOG_COLOR).fValue[0], GetVar(PARAM_OCEANFOG_COLOR).fValue[1], GetVar(PARAM_OCEANFOG_COLOR).fValue[2]);
+        p3DEngine->SetGlobalParameter(E3DPARAM_OCEANFOG_COLOR, oceanFogColor * oceanFogColorMultiplier);
 
-    const float oceanFogColorDensity = GetVar(PARAM_OCEANFOG_DENSITY).fValue[0];
-    p3DEngine->SetGlobalParameter(E3DPARAM_OCEANFOG_DENSITY, Vec3(oceanFogColorDensity, 0, 0));
+        // legacy style: set ocean color density
+        const float oceanFogColorDensity = GetVar(PARAM_OCEANFOG_DENSITY).fValue[0];
+        p3DEngine->SetGlobalParameter(E3DPARAM_OCEANFOG_DENSITY, Vec3(oceanFogColorDensity, 0, 0));
+    }
 
     // set skybox multiplier
     float skyBoxMulitplier(GetVar(PARAM_SKYBOX_MULTIPLIER).fValue[ 0 ] * m_fHDRMultiplier);

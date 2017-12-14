@@ -53,8 +53,6 @@ public:
 
     CWaterSim()
         : m_fA(1.0f)
-        , m_fWind(0.0f)
-        , m_fWindScale(1.0f)
         , m_fWorldSizeX(1.0f)
         , m_fWorldSizeY(1.0f)
         , m_fWorldSizeXInv(1.f)
@@ -88,11 +86,9 @@ public:
     /////////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    virtual void Create(float fA, float fWind, float fWindScale, float fWorldSizeX, float fWorldSizeY)     // Create/Initialize water simulation
+    virtual void Create(float fA, float fWorldSizeX, float fWorldSizeY)     // Create/Initialize water simulation
     {
         m_fA = fA;
-        m_fWind = 0.0f; //fWind; assume constant direction
-        m_fWindScale = fWindScale;
         m_fWorldSizeX = fWorldSizeX;
         m_fWorldSizeY = fWorldSizeY;
         m_fWorldSizeXInv = 1.f / m_fWorldSizeX;
@@ -402,13 +398,11 @@ public:
     {
         const float recipSqrt2 = 1.0f / sqrt_fast_tpl(2.0f);
 
-        Vec2 pW(cosf(m_fWind), sinf(m_fWind));
-        pW = -pW; // meh - match with regular water animation
-        //pW *= m_fWindScale;
+        Vec2 vecWind = { cosf(0.0f), sinf(0.0f) }; // assume constant direction
+        vecWind = -vecWind; // meh - match with regular water animation
 
         for (int y(0); y < m_nGridSize; ++y)
         {
-            //float fKy=GetIndexToWorldY(y);
             for (int x(0); x < m_nGridSize; ++x)
             {
                 complexF e(frand_gaussian(), frand_gaussian());
@@ -417,11 +411,8 @@ public:
                 Vec4 pLookupK = m_pLUTK[nGridOffset];
                 Vec2 pK = Vec2(pLookupK.x, pLookupK.y);
 
-                //float fKx=GetIndexToWorldX(x);
-                //Vec2 pK(fKx, fKy);
-
                 // reference: "Simulating Ocean Water" - by Jerry Tessendorf (3.4)
-                e *= recipSqrt2 * sqrt_fast_tpl(ComputePhillipsSpec(pK, pW));
+                e *= recipSqrt2 * sqrt_fast_tpl(ComputePhillipsSpec(pK, vecWind));
                 m_pFourierAmps[nGridOffset] = e;
             }
         }
@@ -467,7 +458,6 @@ public:
                 if (!bOnlyHeight && fKLen)
                 {
                     m_pDisplaceFieldX[offset] = currWaveField * ((fKLen == 0) ? complexF(0) : complexF(0, (-pK.x - pK.y) / fKLen));
-                    //m_pDisplaceFieldX[offset] =  complexF( (fimag * pK.x + freal * pK.y)/fKLen, (-freal * pK.x + fimag * pK.y)/fKLen );
                     m_pDisplaceFieldY[offset] = currWaveField * ((fKLen == 0) ? complexF(0) : complexF(0, -pK.y / fKLen));
                 }
                 else
@@ -512,7 +502,6 @@ public:
 
                 m_pDisplaceGrid[m_nWorkerThreadID][offset] = Vec4(m_pDisplaceFieldX[offset].real(),
                         m_pDisplaceFieldY[offset].real(),
-                        //m_pDisplaceFieldX[offset].real(), //imag(),
                         -m_pHeightField[offset].real(),
                         0.0f);                                                                                                     // store encoded normal ?
             }
@@ -608,8 +597,6 @@ protected:
     bool    m_bQuit;
 
     float m_fA; // constant value
-    float m_fWind; // window direction angle
-    float m_fWindScale; // wind scale
     float m_fWorldSizeX; // world dimensions
     float m_fWorldSizeY; // world dimensions
 
@@ -637,12 +624,12 @@ void WaterAsyncUpdate(CWaterSim* pWaterSim, int nFrameID, float fTime, bool bOnl
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CWater::Create(float fA, float fWind, float fWindScale, float fWorldSizeX, float fWorldSizeY)
+void CWater::Create(float fA, float fWorldSizeX, float fWorldSizeY)
 {
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Water Sim");
     Release();
     m_pWaterSim = CryAlignedNew<CWaterSim>(); //::GetInstance();
-    m_pWaterSim->Create(fA, fWind, fWindScale, fWorldSizeX, fWorldSizeY);
+    m_pWaterSim->Create(fA, fWorldSizeX, fWorldSizeY);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -656,7 +643,6 @@ void CWater::Release()
     }
 
     CryAlignedDelete(m_pWaterSim);
-    //m_pWaterSim = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////

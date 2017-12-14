@@ -62,8 +62,12 @@ namespace GraphCanvas
         // SceneMemberRequestBus
         void SetScene(const AZ::EntityId& sceneId) override;
         void ClearScene(const AZ::EntityId& oldSceneId) override;
+        void SignalMemberSetupComplete() override;
 
         AZ::EntityId GetScene() const override;
+
+        bool LockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
+        void UnlockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
         ////
 
         // SceneMemberNotificationBus
@@ -75,13 +79,13 @@ namespace GraphCanvas
         const AZ::EntityId& GetNode() const override;
         void SetNode(const AZ::EntityId&) override;
 
-        const AZStd::string& GetName() const  override { return m_slotConfiguration.m_name.m_fallback; }
+        const AZStd::string& GetName() const  override { return m_slotConfiguration.m_name.GetDisplayString(); }
         void SetName(const AZStd::string& name) override;
 
         TranslationKeyedString GetTranslationKeyedName() const override { return m_slotConfiguration.m_name; }
         void SetTranslationKeyedName(const TranslationKeyedString&) override;
 
-        const AZStd::string& GetTooltip() const override { return m_slotConfiguration.m_tooltip.m_fallback; }
+        const AZStd::string& GetTooltip() const override { return m_slotConfiguration.m_tooltip.GetDisplayString(); }
         void SetTooltip(const AZStd::string& tooltip)  override;
 
         TranslationKeyedString GetTranslationKeyedTooltip() const override { return m_slotConfiguration.m_tooltip; }

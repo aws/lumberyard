@@ -21,6 +21,12 @@
 
 namespace AssetProcessor
 {
+#ifdef AZ_PLATFORM_WINDOWS
+    const char* const s_assetBuilderRelativePath = "AssetBuilder.exe";
+#else
+    const char* const s_assetBuilderRelativePath = "AssetBuilder";
+#endif
+
     ExternalModuleAssetBuilderInfo::ExternalModuleAssetBuilderInfo(const QString& modulePath)
         : m_builderName(modulePath)
         , m_entity(nullptr)
@@ -31,10 +37,6 @@ namespace AssetProcessor
         , m_uninitializeModuleFunction(nullptr)
         , m_modulePath(modulePath)
         , m_library(modulePath)
-    {
-    }
-
-    ExternalModuleAssetBuilderInfo::~ExternalModuleAssetBuilderInfo()
     {
     }
 
@@ -87,8 +89,7 @@ namespace AssetProcessor
 
         for (AZ::ComponentDescriptor* componentDesc : this->m_componentDescriptorList)
         {
-            EBUS_EVENT(AssetBuilderRegistrationBus, UnRegisterComponentDescriptor, componentDesc);
-            delete componentDesc;
+            componentDesc->ReleaseDescriptor();
         }
         this->m_componentDescriptorList.clear();
 
@@ -140,7 +141,7 @@ namespace AssetProcessor
         else
         {
             // Not a valid builder module
-            QString errorMessage = QString("Builder library %1 is missing one or more exported functions: %2").arg(QString(this->GetName())).arg(missingFunctionsList.join(','));
+            QString errorMessage = QString("Builder library %1 is missing one or more exported functions: %2").arg(QString(this->GetName()), missingFunctionsList.join(','));
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "One or more builder functions is missing in the library: %s\n", errorMessage.toUtf8().data());
             this->m_library.unload();
             return false;

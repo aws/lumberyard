@@ -18,23 +18,48 @@
 #include "Controls/PickObjectButton.h"
 #include "Controls/ToolButton.h"
 
+#include "EditTool.h"
+
 #include <QWidget>
 #include <QScopedPointer>
 
 class CGravityVolumeObject;
+class CViewport;
 namespace Ui {
     class CGravityVolumePanel;
 }
 
-#ifdef Q_MOC_RUN
 class CEditGravityVolumeObjectTool
     : public CEditTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CEditGravityVolumeObjectTool();
+    CEditGravityVolumeObjectTool();
+
+    // Ovverides from CEditTool
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
+    virtual void SetUserData(const char* key, void* userData);
+
+    virtual void BeginEditParams(IEditor* ie, int flags) {};
+    virtual void EndEditParams() {};
+
+    virtual void Display(DisplayContext& dc) {};
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+    virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) { return false; };
+
+protected:
+    virtual ~CEditGravityVolumeObjectTool();
+    // Delete itself.
+    void DeleteThis() { delete this; };
+
+private:
+    CGravityVolumeObject* m_GravityVolume;
+    int m_currPoint;
+    bool m_modifying;
+    QPoint m_mouseDownPos;
+    Vec3 m_pointPos;
 };
-#endif
 
 // CGravityVolumePanel dialog
 class CGravityVolumePanel

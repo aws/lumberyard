@@ -61,7 +61,7 @@ def get_common_inputs():
         'copy_dependent_files',
         'copyright_org',  # optional keyword to tag the file's originator company
         'dx12_only',         # Option to build only if dx12 was detected on the host machine
-        'additional_manifests'
+        'additional_manifests',
     ]
     return inputs
 
@@ -91,20 +91,6 @@ def get_platform_list(self, platform):
     """
     Util-function to find valid platform aliases for the current platform
     """
-    if platform in ['win_x86', 'win_x64', 'win_x64_vs2015', 'win_x64_vs2013', 'win_x64_vs2012', 'win_x64_vs2010']:
-        return [platform, 'win']
-    if platform in ['linux_x64']:
-        return [platform, 'linux']
-    if platform in ['darwin_x86', 'darwin_x64']:
-        return [platform, 'darwin']
-    if platform in ['durango']: # ACCEPTED_USE
-        return ['durango'] # ACCEPTED_USE
-    if platform in ['ios']:
-        return ['ios']
-    if platform in ['appletv']:
-        return ['appletv']
-    if platform in ['android_armv7_gcc', 'android_armv7_clang']:
-        return [platform, 'android']
     if platform in ('project_generator', []):
         # check the build context current target
         if hasattr(self, 'get_target_platforms'):
@@ -113,11 +99,18 @@ def get_platform_list(self, platform):
         else:
             return get_all_supported_platforms(self)
 
-    # Always return a list, even if there is no alias
-    if platform == []:
-        return []
-    return [ platform ]
+    # Traverse alises list to find usages of platform
+    results = [platform]
 
+    for alias, platforms in PLATFORM_SHORTCUT_ALIASES.iteritems():
+        if platform in platforms:
+            results.append(alias)
+
+    return results
+
+@conf
+def is_cxx_file(self, file_name):
+    return file_name.endswith(('.c', '.C', '.cc', '.CC', '.cpp', '.CPP'))
 
 @conf
 def is_windows_platform(self, platform):
@@ -138,6 +131,14 @@ def is_mac_platform(self, platform):
             return True
 
     return False
+
+@conf
+def is_android_platform(self, platform):
+    '''Safely checks to see if a platform is an explicit android platform. Returns true if it is, otherwise false'''
+    if isinstance(platform, str): 
+        return platform.startswith('android')
+    return False
+
 
 ###############################################################################
 # DX12 detection and configuration.  DX12_INCLUDES and DX12_LIBPATH are set in compile_rules_win_x64_host
@@ -357,7 +358,9 @@ def LoadFileLists(ctx, kw, file_lists):
                 for (filter_name, file_entries) in project_filter_list.items():
                     relative_file_entries = []
                     for file in file_entries:
-                        if os.path.isabs(file):
+                        if file.startswith('@ENGINE@'):
+                            relative_file_entries.append(ctx.engine_node.make_node(file[len('@ENGINE@'):]).abspath())
+                        elif os.path.isabs(file):
                             relative_file_entries.append(file)
                         else:
                             relative_file_entries.append(os.path.join(file_list_relative_dir, file))
@@ -408,8 +411,14 @@ def LoadFileLists(ctx, kw, file_lists):
                 file_to_project_filter[uber_file_node.abspath()] = 'Uber Files'
 
             for (filter_name, file_entries) in project_filter_list.items():
-                for file in file_entries:
-                    file_node = ctx.path.make_node(file)
+                for file_entry in file_entries:
+
+                    if file_entry.startswith('@ENGINE@'):
+                        file_node = ctx.engine_node.make_node(file_entry[len('@ENGINE@'):])
+                        file = file_node.abspath()
+                    else:
+                        file_node = ctx.path.make_node(file_entry)
+                        file = file_entry
 
                     filenode_abs_path = file_node.abspath().lower()
 
@@ -427,7 +436,7 @@ def LoadFileLists(ctx, kw, file_lists):
                         # PCHs are not compiled with the normal compilation, hence don't collect them
                         found_pch = True
 
-                    elif file.endswith(('.c', '.C', '.cpp', '.CPP')):
+                    elif ctx.is_cxx_file(file):
                         source_files.add(file)
                         if not generate_uber_file:
                             no_uber_file_files.add(file)
@@ -701,14 +710,14 @@ def ConfigureTaskGenerator(ctx, kw):
         kw['name'] = target
 
     # Provide the module name to the test framework.
-    if 'test' in ctx.env['CONFIGURATION']:
+    if 'test' in ctx.env['CONFIGURATION'] and not ctx.is_mac_platform(ctx.env['PLATFORM']):
         module_define = 'AZ_MODULE_NAME="{}"'.format(target.upper())
         append_kw_entry(kw, 'defines', module_define)
 
     # Special case:  Only non-android launchers can use required gems
     apply_required_gems = kw.get('use_required_gems', False)
     if kw.get('is_launcher', False):
-        if apply_required_gems and ctx.env['PLATFORM'] not in ('android_armv7_gcc', 'android_armv7_clang'):
+        if apply_required_gems and not ctx.is_android_platform(ctx.env['PLATFORM']):
             ctx.apply_required_gems_to_context(target, kw)
     else:
         if apply_required_gems:
@@ -742,10 +751,15 @@ def ConfigureTaskGenerator(ctx, kw):
     # If uselib is set, validate them
     uselib_names = kw.get('uselib', None)
     if uselib_names is not None:
+        processed_dependencies = []
         for uselib_name in uselib_names:
             if not is_third_party_uselib_configured(ctx, uselib_name):
                 Logs.warn("[WARN] Invalid uselib '{}' declared in project {}.  This may cause compilation or linker errors".format(uselib_name,target))
-
+            else:
+                if not uselib_name in processed_dependencies and not uselib_name in kw.get('no_inherit_config', []):
+                    ctx.append_dependency_configuration_settings(uselib_name, kw)
+                    processed_dependencies.append(uselib_name)
+                    
     # Make sure we have a 'use' list
     if not kw.get('use', None):
         kw['use'] = []
@@ -825,7 +839,11 @@ def RunTaskGenerator(ctx, build_type, *k, **kw ):
 
     if build_type not in process_table:
         ctx.fatal('[ERROR] Unsupported build type: {}'.format(build_type))
-        return
+        return None
+
+    if build_type in ('program', 'shlib'):
+        # Make it so that this kind of module can link even if the program is currently running.
+        append_kw_entry(kw, 'features', ['link_running_program'])
 
     platform = ctx.env['PLATFORM']
     configuration = ctx.env['CONFIGURATION']
@@ -833,25 +851,23 @@ def RunTaskGenerator(ctx, build_type, *k, **kw ):
 
     # If this is a non-build or project_generator (msvs, uber_file, etc), do the normal processing
     if platform == 'project_generator':
-        getattr(ctx,process_table[build_type][CTX_TYPE_INDEX])(*k,**kw)
-        return
+        return getattr(ctx,process_table[build_type][CTX_TYPE_INDEX])(*k,**kw)
 
-    # Only process if the engine is not local
+    is_gem = kw.get('is_gem', False)
+
+    # Only process if the engine is not local or its a game or a game-gem
     always_build_engine_from_source = ctx.is_option_true('always_build_engine_and_tools')
-    if ctx.is_engine_local() or always_build_engine_from_source or getattr(ctx,'is_game_gem',False):
-        getattr(ctx, process_table[build_type][CTX_TYPE_INDEX])(*k, **kw)
-        return
+    if ctx.is_engine_local() or always_build_engine_from_source or getattr(ctx,'is_game_gem',False) or is_gem:
+        return getattr(ctx, process_table[build_type][CTX_TYPE_INDEX])(*k, **kw)
 
     # If this target is marked as 'suppress_external_copy' and this is not a local engine build, then dont process or copy to the target.
     if kw.get('suppress_external_copy',False) and not ctx.is_engine_local():
-        return
+        return None
 
     # Determine the output name and whether or not this is a GEM
     output_name = kw['output_file_name'] if 'output_file_name' in kw and len(kw['output_file_name'])>0 else kw['target']
 
     output_sub_folder = kw.get('output_sub_folder', None)
-
-    is_gem = kw.get('is_gem', False)
 
     # The source and destination folders will be based on the root directory for the project, engine, and list of
     # relative paths within the engine.
@@ -871,9 +887,8 @@ def RunTaskGenerator(ctx, build_type, *k, **kw ):
     source_folder = os.path.realpath(os.path.join(engine_root_abs, output_folder))
     target_folder = os.path.realpath(os.path.join(project_root_abs, output_folder))
     if not os.path.exists(source_folder):
-        Logs.warn('[WARN] Lumberyard Engine Binary folder {0} is missing for ({1}/{2}).  '
-                  'Re-install or rebuild the Lumberyard for ({1}/{2}).'.format(source_folder, platform, configuration))
-        return
+        # If the source path doest exist, then force a build to the current root folder
+        return getattr(ctx, process_table[build_type][CTX_TYPE_INDEX])(*k, **kw)
 
     if not os.path.exists(target_folder):
         target_node = ctx.srcnode.make_node(output_folder)
@@ -890,8 +905,7 @@ def RunTaskGenerator(ctx, build_type, *k, **kw ):
         else:
             Logs.warn('[WARN] Lumberyard Engine Module {0} is missing for ({1}/{2}).  '
                       'The module will be built from source in the current project folder..'.format(target, platform, configuration))
-            getattr(ctx, process_table[build_type][CTX_TYPE_INDEX])(*k, **kw)
-            return
+            return getattr(ctx, process_table[build_type][CTX_TYPE_INDEX])(*k, **kw)
 
     # Collect any use or uselib reference to a 3rd party shared library
     dep_keys = [key for key in kw.get('use',[]) + kw.get('uselib',[])]
@@ -933,8 +947,14 @@ def RunTaskGenerator(ctx, build_type, *k, **kw ):
     ctx_type = 'gem' if is_gem else process_table[build_type][CTX_TYPE_INDEX]
 
     extern_features = ['fake_extern_engine_lib'] + list(set(kw['features']).intersection(['copy_module_dependent_files','copy_external_files']))
+    # Special case, if the feature 'EmbeddedPython' is present, then we need to apply a featgure that will copy any necessary python dependency
+    if 'EmbeddedPython' in kw.get('features',[]):
+        extern_features += ['ApplyEmbeddedPythonDependency']
 
-    ctx(name=target,
+    extern_use = kw.get('use',None)
+    extern_uselib = kw.get('uselib',None)
+
+    return ctx(name=target,
         target=target,
         output_name=output_name,
         output_sub_folder=output_sub_folder,
@@ -945,6 +965,8 @@ def RunTaskGenerator(ctx, build_type, *k, **kw ):
         source_artifacts_include=extern_source_artifacts_include,
         source_artifacts_exclude=extern_source_artifacts_exclude,
         output_sub_folder_copy=extern_output_sub_folder_copy,
+        use=extern_use,
+        uselib=extern_uselib,
         copy_external=extern_copy_external,
         export_includes=extern_export_includes,
         export_defines=extern_export_defines)
@@ -1052,18 +1074,20 @@ def MonolithicBuildModule(ctx, *k, **kw):
             ctx.monolithic_build_settings[key] = []
         ctx.monolithic_build_settings[key] += values
 
+    def _append_linker_options():
+        for setting in ['lib', 'libpath', 'linkflags', 'framework']:
+            _append(prefix + setting, kw[setting] )
+            _append(prefix + setting, ctx.GetPlatformSpecificSettings(kw, setting, ctx.env['PLATFORM'], ctx.env['CONFIGURATION']))
+
     # If this is a cryengine module, then it is marked to be included in all monolithic applications implicitly
     is_cryengine_module = kw.get('is_cryengine_module', False)
     if is_cryengine_module:
         _append(prefix + 'use',         [ kw['target'] ] )
-        _append(prefix + 'lib',           kw['lib'] )
-        _append(prefix + 'libpath',       kw['libpath'] )
-        _append(prefix + 'linkflags',     kw['linkflags'] )
-        _append(prefix + 'framework',     kw['framework'] )
-
-    # iOS needs gems to be able to specify frameworks because the IAP gem uses the StoreKit framework
-    elif ctx.env['PLATFORM'] in ('ios'):
-        _append(prefix + 'framework',     kw['framework'] )
+        _append_linker_options()
+    # If this is a gem we need to be sure the linker options apply to the monolithic application, but do not want to reapply use
+    # because it can duplicate symbols
+    elif kw.get('is_gem', False):
+        _append_linker_options()
 
     if 'uselib' in kw:
         _append(prefix + 'uselib',        kw['uselib'] )
@@ -1222,7 +1246,7 @@ def CryEngineModule(ctx, *k, **kw):
 
     if hasattr(ctx, 'game_project'):
 
-        if ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang') and ctx.game_project is not None:
+        if ctx.is_android_platform(ctx.env['PLATFORM']) and ctx.game_project is not None:
             if ctx.get_android_settings(ctx.game_project) == None:
                 Logs.warn('[WARN] Game project - %s - not configured for Android.  Skipping...' % ctx.game_project)
                 return
@@ -1239,12 +1263,11 @@ def CryEngineModule(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if is_monolithic_build(ctx): # For monolithic builds, simply collect all build settings
         kw['is_cryengine_module'] = True
-        MonolithicBuildModule(ctx, getattr(ctx, 'game_project', None), *k, **kw)
-        return
+        return MonolithicBuildModule(ctx, getattr(ctx, 'game_project', None), *k, **kw)
 
     # Determine if we need to generate an rc file (for versioning) based on this being a windows platform and
     # there exists a resource.h file in the file list content.
@@ -1259,7 +1282,7 @@ def CryEngineModule(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1286,17 +1309,16 @@ def CryEngineSharedLibrary(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if is_monolithic_build(ctx): # For monolithic builds, simply collect all build settings
         kw['is_cryengine_module'] = False
-        MonolithicBuildModule(ctx, getattr(ctx, 'game_project', None), *k, **kw)
-        return
+        return MonolithicBuildModule(ctx, getattr(ctx, 'game_project', None), *k, **kw)
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1320,15 +1342,14 @@ def CryEngineStaticLibrary(ctx, *k, **kw):
     kw['stlib'] = True
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.cmd == 'generate_uber_files':
-        ctx(features='generate_uber_file', uber_file_list=kw['file_list_content'], target=kw['target'], pch=os.path.basename( kw.get('pch', '') ))
-        return
+        return ctx(features='generate_uber_file', uber_file_list=kw['file_list_content'], target=kw['target'], pch=os.path.basename( kw.get('pch', '') ))
 
     append_kw_entry(kw,'features',['c', 'cxx', 'cstlib', 'cxxstlib', 'use'])
-
-    ctx.stlib(*k, **kw)
+    
+    return RunTaskGenerator(ctx, 'stlib', *k, **kw)
 
 
 ###############################################################################
@@ -1372,15 +1393,14 @@ def CryEngine3rdPartyStaticLibrary(ctx, *k, **kw):
         kw['stlib'] = True
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.cmd == 'generate_uber_files':
-        ctx(features='generate_uber_file', uber_file_list=kw['file_list_content'], target=kw['target'], pch=os.path.basename( kw.get('pch', '') ))
-        return
+        return ctx(features='generate_uber_file', uber_file_list=kw['file_list_content'], target=kw['target'], pch=os.path.basename( kw.get('pch', '') ))
 
     append_kw_entry(kw,'features',['c', 'cxx', 'cstlib', 'cxxstlib', 'use','generate_3p_static_lib_config'])
 
-    ctx.stlib(*k, **kw)
+    return RunTaskGenerator(ctx, 'stlib', *k, **kw)
 
 
 @conf
@@ -1434,7 +1454,13 @@ def codegen_static_modules_cpp_for_launcher(ctx, project, k, kw):
     static_modules_json = {'modules' : static_modules}
     static_modules_json_node = ctx.path.find_or_declare(kw['target'] + 'StaticModules.json')
     static_modules_json_node.write(json.dumps(static_modules_json))
-    
+
+    # get the full path of static_modules_json to extract out its path, and then set that path
+    # as the input dir
+    static_modules_json_node_abs_path = static_modules_json_node.abspath()
+    static_modules_json_node_dir = os.path.dirname(static_modules_json_node_abs_path)
+    kw['az_code_gen_input_dir'] = static_modules_json_node_dir
+
     # LMBR-30070: We should be generating this file with a waf task. Until then,
     # we need to manually set the cached signature.
     static_modules_json_node.sig = static_modules_json_node.cache_sig = Utils.h_file(static_modules_json_node.abspath())
@@ -1445,7 +1471,7 @@ def codegen_static_modules_cpp_for_launcher(ctx, project, k, kw):
         {
             'files' : [static_modules_json_node],
             'scripts' : ['../CodeGen/StaticModules.py'],
-            'arguments' : ['-JSON'],
+            'arguments' : ['-JSON']
         }
     ]
 
@@ -1496,12 +1522,12 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     append_kw_entry(kw_per_launcher, 'defines', 'LY_GAMEDLL="{}"'.format(game_dll))
 
     if not BuildTaskGenerator(ctx, kw_per_launcher):
-        return
+        return None
 
-    if ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang'):
+    if ctx.is_android_platform(ctx.env['PLATFORM']):
         if ctx.get_android_settings(project) == None:
             Logs.warn('[WARN] Game project - %s - not configured for Android.  Skipping...' % ctx.game_project)
-            return
+            return None
 
     kw_per_launcher['idx']              = kw_per_launcher['idx'] + (1000 * (ctx.project_idx(project) + 1));
     # Setup values for Launcher Projects
@@ -1516,7 +1542,7 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     # For some odd reason applying the gems to the Android launcher causes a build order issue where
     # the launcher is built/linked prior to the required gems being built/linked resulting in a missing
     # node signature error.  I suspect it has to do with being compiled into a library instead of a program.
-    if ctx.env['PLATFORM'] not in ('android_armv7_gcc', 'android_armv7_clang'):
+    if not ctx.is_android_platform(ctx.env['PLATFORM']):
         ctx.apply_gems_to_context(project, k, kw_per_launcher)
 
     codegen_static_modules_cpp_for_launcher(ctx, project, k, kw_per_launcher)
@@ -1536,11 +1562,11 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     	append_kw_entry(kw_per_launcher, 'features', ['apply_non_monolithic_launcher_settings'])
 
     # android doesn't have the concept of native executables so we need to build it as a lib
-    if ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang'):
-        ctx.shlib(*k, **kw_per_launcher)
+    if ctx.is_android_platform(ctx.env['PLATFORM']):
+        return RunTaskGenerator(ctx, 'shlib', *k, **kw_per_launcher)
     else:
         append_kw_entry(kw_per_launcher,'features', ['copy_3rd_party_binaries'])
-        ctx.program(*k, **kw_per_launcher)
+        return RunTaskGenerator(ctx, 'program', *k, **kw_per_launcher)
 
 ###############################################################################
 @conf
@@ -1573,7 +1599,7 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
 
     if ctx.env['PLATFORM'] != 'project_generator': # if we're making project files for an IDE, then don't quit early
         if not ctx.is_building_dedicated_server():
-            return # only build this launcher in dedicated mode.
+            return None # only build this launcher in dedicated mode.
 
     # Initialize the Task Generator
     InitializeTaskGenerator(ctx, kw_per_launcher)
@@ -1596,7 +1622,7 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
     append_kw_entry(kw_per_launcher, 'defines', 'LY_GAMEDLL="{}"'.format(game_dll))
 
     if not BuildTaskGenerator(ctx, kw_per_launcher):
-        return
+        return None
 
     kw_per_launcher['idx']          = kw_per_launcher['idx'] + (1000 * (ctx.project_idx(project) + 1));
 
@@ -1621,7 +1647,7 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
 
     append_kw_entry(kw_per_launcher, 'features', ['copy_3rd_party_binaries'])
 
-    ctx.program(*k, **kw_per_launcher)
+    return RunTaskGenerator(ctx, 'program', *k, **kw_per_launcher)
 
 
 ###############################################################################
@@ -1654,11 +1680,11 @@ def CryConsoleApplication(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    RunTaskGenerator(ctx, 'program', *k, **kw)
+    return RunTaskGenerator(ctx, 'program', *k, **kw)
 
 
 ###############################################################################
@@ -1682,11 +1708,11 @@ def CryBuildUtility(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    RunTaskGenerator(ctx, 'program', *k, **kw)
+    return RunTaskGenerator(ctx, 'program', *k, **kw)
 
 
 ###############################################################################
@@ -1740,11 +1766,11 @@ def CryEditor(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    RunTaskGenerator(ctx, 'program', *k, **kw)
+    return RunTaskGenerator(ctx, 'program', *k, **kw)
 
 
 ###############################################################################
@@ -1766,11 +1792,47 @@ def LumberyardApp(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    RunTaskGenerator(ctx, 'program', *k, **kw)
+    return RunTaskGenerator(ctx, 'program', *k, **kw)
+
+###############################################################################
+@conf
+def CryEditorLib(ctx, *k, **kw):
+    """
+    Wrapper for CryEngine Editor Library component
+    """
+    # Initialize the Task Generator
+    InitializeTaskGenerator(ctx, kw)
+
+    # Append common modules
+    AppendCommonModules(ctx,kw)
+
+    # Additional Editor-specific settings
+    append_kw_entry(kw,'features',[ 'generate_rc_file' ])
+    append_kw_entry(kw,'defines',[ 'SANDBOX_EXPORTS' ])
+
+    kw['enable_rtti'] = [ True ]
+
+    # Setup TaskGenerator specific settings
+    ctx.set_editor_flags(kw)
+    apply_cryengine_module_defines(ctx, kw)
+
+    SetupRunTimeLibraries(ctx,kw)
+    append_kw_entry(kw,'win_cxxflags',['/EHsc'])
+    append_kw_entry(kw,'win_cflags', ['/EHsc'])
+    append_kw_entry(kw,'defines',['USE_MEM_ALLOCATOR', 'EDITOR', 'DONT_BAN_STD_STRING', 'FBXSDK_NEW_API=1' ])
+
+    LoadSharedSettings(ctx,k,kw)
+
+    ConfigureTaskGenerator(ctx, kw)
+
+    if not BuildTaskGenerator(ctx, kw):
+        return None
+
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 ###############################################################################
 @conf
@@ -1799,12 +1861,12 @@ def CryEditorCore(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1841,12 +1903,12 @@ def CryEditorUiQt(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1878,25 +1940,25 @@ def CryPlugin(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
     ###############################################################################
 @conf
 def BuilderPlugin(ctx, *k, **kw):
     """
-    Wrapper for CryEngine Editor Plugins
+    Wrapper for Asset Builder SDK Builders
     """
     kw['output_sub_folder']='Builders'
     append_kw_entry(kw, 'win_cxxflags', ['/EHsc'])
     append_kw_entry(kw, 'win_cflags', ['/EHsc'])
     append_kw_entry(kw, 'win_defines', ['UNICODE'])
     append_kw_entry(kw, 'use', ['AzToolsFramework', 'AssetBuilderSDK'])
-    append_kw_entry(kw, 'features', ['link_running_program'])
+    append_kw_entry(kw, 'uselib', ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'])
     defines = []
     
     append_kw_entry(kw, 'defines', defines)
@@ -1918,12 +1980,12 @@ def BuilderPlugin(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1959,7 +2021,7 @@ def CryStandAlonePlugin(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     kw['enable_rtti'] = [ True ]
     kw['remove_release_define'] = [ True ]
@@ -1967,7 +2029,7 @@ def CryStandAlonePlugin(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -2002,14 +2064,14 @@ def CryPluginModule(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     kw['remove_release_define'] = [ True ]
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -2039,14 +2101,21 @@ def CryEditorCommon(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     kw['remove_release_define'] = [ True ]
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    # Determine if we need to generate an rc file (for versioning) based on this being a windows platform and
+    # there exists a resource.h file in the file list content.
+    if ctx.env['PLATFORM'].startswith('win') and 'file_list_content' in kw:
+        has_resource_h = find_file_in_content_dict(kw['file_list_content'],'resource.h')
+        if has_resource_h:
+            append_kw_entry(kw,'features',['generate_rc_file'])     # Always Generate RC files for Engine DLLs
+
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -2082,11 +2151,11 @@ def CryResourceCompiler(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    RunTaskGenerator(ctx, 'program', *k, **kw)
+    return RunTaskGenerator(ctx, 'program', *k, **kw)
 
 
 ###############################################################################
@@ -2120,7 +2189,7 @@ def CryResourceCompilerModule(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.is_windows_platform(ctx.env['PLATFORM']):
         append_kw_entry(kw,'win_linkflags',[ '/SUBSYSTEM:CONSOLE' ])
@@ -2128,7 +2197,7 @@ def CryResourceCompilerModule(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -2158,12 +2227,12 @@ def CryPipelineModule(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+    return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -2190,11 +2259,11 @@ def CryQtApplication(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    RunTaskGenerator(ctx, 'program', *k, **kw)
+    return RunTaskGenerator(ctx, 'program', *k, **kw)
 
 
 ###############################################################################
@@ -2220,11 +2289,11 @@ def CryQtConsoleApplication(ctx, *k, **kw):
     ConfigureTaskGenerator(ctx, kw)
 
     if not BuildTaskGenerator(ctx, kw):
-        return
+        return None
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    RunTaskGenerator(ctx, 'program', *k, **kw)
+    return RunTaskGenerator(ctx, 'program', *k, **kw)
 
 
 ###############################################################################

@@ -34,7 +34,7 @@ bool CNULLRenderer::ChangeResolution(int nNewWidth, int nNewHeight, int nNewColD
     return false;
 }
 
-WIN_HWND CNULLRenderer::Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, WIN_HINSTANCE hinst, WIN_HWND Glhwnd, bool bReInit, const SCustomRenderInitArgs* pCustomArgs, bool bShaderCacheGen)
+WIN_HWND CNULLRenderer::Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, bool isEditor, WIN_HINSTANCE hinst, WIN_HWND Glhwnd, bool bReInit, const SCustomRenderInitArgs* pCustomArgs, bool bShaderCacheGen)
 {
     //=======================================
     // Add init code here

@@ -109,7 +109,7 @@ namespace AzFramework
                     carrierDesc.m_driverIsFullPackets = true;
                     //carrierDesc.m_threadInstantResponse = true;
                     carrierDesc.m_driverReceiveBufferSize = 1 * 1024 * 1024;
-                    
+
                     // Until an authentication connection can be established between peers only supporting
                     // local connections (i.e. binding to localhost).
                     carrierDesc.m_address = "127.0.0.1";
@@ -166,8 +166,8 @@ namespace AzFramework
         {
             Neighborhood::NeighborCaps capabilities = node.GetCapabilities();
             GridMate::MemberIDCompact memberId = node.GetTargetMemberId();
-            AZ::u32 persistentId = AZ::Crc32(node.GetPersistentName());
-            AZ_TracePrintf("Neighborhood", "Discovered node with 0x%x from member %s.\n", capabilities, m_session->GetMemberById(memberId)->GetId().ToString().c_str());
+            const AZ::u32 persistentId = AZ::Crc32(node.GetPersistentName());
+            AZ_TracePrintf("Neighborhood", "Discovered node with 0x%x from member %d.\n", capabilities, static_cast<int>(memberId));
 
             TargetContainer::pair_iter_bool ret = m_component->m_availableTargets.insert_key(static_cast<AZ::u32>(memberId));
             TargetInfo& ti = ret.first->second;
@@ -199,7 +199,7 @@ namespace AzFramework
 
         void OnNodeLeft(const Neighborhood::NeighborReplica& node) override
         {
-            AZ_TracePrintf("Neighborhood", "Lost contact with node from member %s.\n", m_session->GetMemberById(node.GetTargetMemberId())->GetId().ToString().c_str());
+            AZ_TracePrintf("Neighborhood", "Lost contact with node from member %d.\n", static_cast<int>(node.GetTargetMemberId()));
 
             // If our desired target has left the network, flag it and notify listeners
             if (node.GetTargetMemberId() == m_component->m_settings->m_lastTarget.m_networkId)
@@ -227,7 +227,8 @@ namespace AzFramework
     };
 
     TargetManagementComponent::TargetManagementComponent()
-        : m_networkImpl(nullptr)
+        : m_serializeContext(nullptr)
+        , m_networkImpl(nullptr)
     {
     }
 
@@ -257,11 +258,11 @@ namespace AzFramework
         if (m_settings->m_persistentName.empty())
         {
             char procPath[256];
-            DWORD ret = GetModuleFileName(NULL, procPath, 256);
+            const DWORD ret = GetModuleFileName(nullptr, procPath, 256);
             if (ret > 0)
             {
                 char procName[256];
-                ::_splitpath_s(procPath, 0, 0, 0, 0, procName, 256, 0, 0);
+                ::_splitpath_s(procPath, nullptr, 0, nullptr, 0, procName, 256, nullptr, 0);
                 m_settings->m_persistentName = procName;
             }
             else
@@ -379,7 +380,7 @@ namespace AzFramework
 
         if (!GridMate::ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(GridMate::ReplicaChunkClassId(Neighborhood::NeighborReplica::GetChunkName())))
         {
-            GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<Neighborhood::NeighborReplica>();
+            GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<Neighborhood::NeighborReplica, Neighborhood::NeighborReplica::Desc>();
         }
     }
 
@@ -445,7 +446,7 @@ namespace AzFramework
         searchParams.m_listenAddress = "127.0.0.1";
         searchParams.m_serverAddress = "127.0.0.1";
 
-        EBUS_EVENT_ID_RESULT(m_networkImpl->m_gridSearch,m_networkImpl->m_gridMate,GridMate::LANSessionServiceBus,StartGridSearch,searchParams);        
+        EBUS_EVENT_ID_RESULT(m_networkImpl->m_gridSearch,m_networkImpl->m_gridMate,GridMate::LANSessionServiceBus,StartGridSearch,searchParams);
         if (m_networkImpl->m_gridSearch)
         {
             m_reconnectionTime = AZStd::chrono::system_clock::now() + AZStd::chrono::milliseconds(m_settings->m_reconnectionIntervalMS);
@@ -542,7 +543,7 @@ namespace AzFramework
             TmMsg* inboxMessage = static_cast<TmMsg*>(m_serializeContext->CloneObject(&msg, msg.RTTI_GetType()));
             AZ_Assert(inboxMessage, "Failed to clone local loopback message.");
             inboxMessage->m_senderTargetId = target.GetNetworkId();
-            
+
             if (msg.GetCustomBlobSize() > 0)
             {
                 void* blob = azmalloc(msg.GetCustomBlobSize(), 16, AZ::OSAllocator);

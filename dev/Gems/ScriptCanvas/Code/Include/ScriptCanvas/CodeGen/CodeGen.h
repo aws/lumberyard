@@ -136,7 +136,21 @@
 *
 *
 * ---------------------------------------------------------------------------------------------------------- */
-#define Property(Type, Name, ...) Type Name;
+#define ScriptCanvas_SerializeProperty(Type, Name, ...) Type Name;
+
+/*
+*----------------------------------------------------------------------------------------------------------
+*
+* Property
+* This is the same as ScriptCanvas_SerializeProperty, but allows a user to provide a default value for the property
+*
+* Examples:
+*
+*     ScriptCanvas_SerializePropertyWithDefaults(bool, m_autoConnect, false);
+*
+*
+* ---------------------------------------------------------------------------------------------------------- */
+#define ScriptCanvas_SerializePropertyWithDefaults(Type, Name, DefaultVal, ...) Type Name{ DefaultVal };
 
 /*
 *----------------------------------------------------------------------------------------------------------
@@ -150,7 +164,20 @@
 *     EditProperty(bool, m_autoConnect, EditProperty::Name("Auto Connect", "When true it will auto connect to the graph entity."));
 *
 * ---------------------------------------------------------------------------------------------------------- */
-#define EditProperty(Type, Name, ...) Type Name;
+#define ScriptCanvas_EditProperty(Type, Name, ...) Type Name;
+
+/*
+*----------------------------------------------------------------------------------------------------------
+*
+* EditProperty
+* This is the same tag as ScriptCanvas_EditProperty, but allows the user to provide a default value to the property
+*
+* Examples:
+*
+*     ScriptCanvas_EditPropertyWithDefaults(bool, m_autoConnect, false EditProperty::Name("Auto Connect", "When true it will auto connect to the graph entity."));
+*
+* ---------------------------------------------------------------------------------------------------------- */
+#define ScriptCanvas_EditPropertyWithDefaults(Type, Name, DefaultVal, ...) Type Name{ DefaultVal };
 
 /*
 *----------------------------------------------------------------------------------------------------------
@@ -181,8 +208,10 @@
 #define ScriptCanvas_Property(Type, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Property, Identifier(Property), ValueType(Type), __VA_ARGS__) Type AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 #define ScriptCanvas_PropertyWithDefaults(Type, Default, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Property, Identifier(Property), ValueType(Type), DefaultValue(AZ_STRINGIZE(Default)), __VA_ARGS__) Type AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 
-#define Property(Type, Name, ...) AZCG_CreateArgumentAnnotation(Property, SerializedProperty, __VA_ARGS__) Type Name;
-#define EditProperty(Type, Name, ...) AZCG_CreateArgumentAnnotation(Property, SerializedProperty, EditProperty, __VA_ARGS__) Type Name;
+#define ScriptCanvas_SerializeProperty(Type, Name, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, __VA_ARGS__) Type Name;
+#define ScriptCanvas_EditProperty(Type, Name, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, EditProperty, __VA_ARGS__) Type Name;
+#define ScriptCanvas_SerializePropertyWithDefaults(Type, Name, DefaultVal, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, (__VA_ARGS__) Type Name{ DefaultVal };
+#define ScriptCanvas_EditPropertyWithDefaults(Type, Name, DefaultVal, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, EditProperty, __VA_ARGS__) Type Name{ DefaultVal };
 
 #endif
 

@@ -59,7 +59,7 @@ namespace EMotionFX
 
 
     // update the mesh deformer stack
-    void MeshDeformerStack::Update(ActorInstance* actorInstance, Node* node, float timeDelta)
+    void MeshDeformerStack::Update(ActorInstance* actorInstance, Node* node, float timeDelta, bool forceUpdateDisabledDeformers)
     {
         // if we have deformers in the stack
         const uint32 numDeformers = mDeformers.GetLength();
@@ -71,7 +71,7 @@ namespace EMotionFX
             for (uint32 i = 0; i < numDeformers; ++i)
             {
                 // if the deformer is enabled
-                if (mDeformers[i]->GetIsEnabled())
+                if (mDeformers[i]->GetIsEnabled() || forceUpdateDisabledDeformers)
                 {
                     // if this is the first enabled deformer
                     if (firstEnabled)

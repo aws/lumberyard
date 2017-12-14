@@ -44,7 +44,7 @@ struct IDisplayViewport
     virtual QPoint WorldToView(const Vec3& worldPoint) const = 0;
     virtual QPoint WorldToViewParticleEditor(const Vec3& worldPoint, int width, int height) const = 0;
     virtual Vec3 WorldToView3D(const Vec3& worldPoint, int flags = 0) const = 0;
-    virtual Vec3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = 0, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false) const = 0;
+    virtual Vec3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const = 0;
     virtual void ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const = 0;
     virtual float GetGridStep() const = 0;
     virtual void setRay(QPoint& vp, Vec3& raySrc, Vec3& rayDir) = 0;

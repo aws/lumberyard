@@ -98,7 +98,7 @@ private:
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::ToolsApplicationEvents::Bus::Handler overrides
     void OnBeginUndo(const char* label) override;
-    void OnEndUndo(const char* label) override;
+    void OnEndUndo(const char* label, bool changed) override;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -107,6 +107,7 @@ private:
     void RegisterViewPane(const char* name, const char* category, const AzToolsFramework::ViewPaneOptions& viewOptions, const WidgetCreationFunc& widgetCreationFunc) override;
     void UnregisterViewPane(const char* name) override;
     void OpenViewPane(const char* paneName) override;
+    QDockWidget* InstanceViewPane(const char* paneName) override;
     void CloseViewPane(const char* paneName) override;
     void BrowseForAssets(AzToolsFramework::AssetBrowser::AssetSelectionModel& selection) override;
     void GenerateAllCubemaps() override;
@@ -124,6 +125,7 @@ private:
     AZ::EntityId CreateNewEntityAtPosition(const AZ::Vector3& /*pos*/, AZ::EntityId parentId = AZ::EntityId()) override;
     QWidget* GetMainWindow() override;
     IEditor* GetEditor() override;
+    void SetEditTool(const char* tool) override;
     void LaunchLuaEditor(const char* files) override;
     bool IsLevelDocumentOpen() override;
     AZStd::string SelectResource(const AZStd::string& resourceType, const AZStd::string& previousValue) override;
@@ -177,6 +179,7 @@ private:
     void DrawArc(const AZ::Vector3& pos, float radius, float startAngleDegrees, float sweepAngleDegrees, float angularStepDegrees, const AZ::Vector3& fixedAxis) override;
     void DrawCone(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius, float height) override;
     void DrawCircle(const AZ::Vector3& pos, float radius, int nUnchangedAxis) override;
+    void DrawHalfDottedCircle(const AZ::Vector3& pos, float radius, const AZ::Vector3& viewPos, int nUnchangedAxis) override;
     void DrawWireCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) override;
     void DrawSolidCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) override;
     void DrawWireCapsule(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) override;
@@ -260,7 +263,7 @@ private:
         return m_defaultEntityIconLocation;
     }
 
-    AZStd::string GetComponentEditorIcon(const AZ::Uuid& componentType) override;
+    AZStd::string GetComponentEditorIcon(const AZ::Uuid& componentType, AZ::Component* component) override;
     AZStd::string GetComponentIconPath(const AZ::Uuid& componentType, AZ::Crc32 componentIconAttrib, AZ::Component* component) override;
 
     //////////////////////////////////////////////////////////////////////////
@@ -271,7 +274,7 @@ private:
 private:
     void SetupFileExtensionMap();
     void SetupSliceContextMenu(QMenu* menu);
-    void SetupSliceContextMenu_Push(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32 numEntitiesInSlices);
+    void SetupSliceContextMenu_Push(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::u32 numEntitiesInSlices);
     void SetupFlowGraphContextMenu(QMenu* menu);
     void SetupScriptCanvasContextMenu(QMenu* menu);
 
@@ -288,8 +291,6 @@ private:
     short m_startedUndoRecordingNestingLevel;   // used in OnBegin/EndUndo to ensure we only accept undo's we started recording
 
     DisplayContext* m_dc;
-
-    AZStd::unordered_map<AZStd::string, AZStd::string> m_componentIconRelativePathToFullPathCache;
 
     const AZStd::string m_defaultComponentIconLocation = "Editor/Icons/Components/Component_Placeholder.png";
     const AZStd::string m_defaultComponentViewportIconLocation = "Editor/Icons/Components/Viewport/Component_Placeholder.png";

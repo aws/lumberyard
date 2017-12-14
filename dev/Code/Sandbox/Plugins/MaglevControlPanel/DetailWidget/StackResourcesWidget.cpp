@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "StackResourcesWidget.h"
 
 #include <QHBoxLayout>

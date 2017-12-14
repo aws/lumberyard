@@ -13,8 +13,6 @@
 
 #include "EditorCommon.h"
 
-#define UICANVASEDITOR_QTOOLBAR_SEPARATOR_STYLESHEET    "QToolBar::separator { background-color: rgb(90, 90, 90); }"
-
 MainToolbar::MainToolbar(EditorWindow* parent)
     : QToolBar("Main Toolbar", parent)
     , m_newElementToolbarSection(new NewElementToolbarSection(this, true))
@@ -24,8 +22,6 @@ MainToolbar::MainToolbar(EditorWindow* parent)
 {
     setObjectName("MainToolbar");    // needed to save state
     setFloatable(false);
-
-    setStyleSheet(UICANVASEDITOR_QTOOLBAR_SEPARATOR_STYLESHEET);
 
     // Zoom factor.
     addWidget(m_zoomFactorLabel);

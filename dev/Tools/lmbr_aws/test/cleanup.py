@@ -30,6 +30,7 @@ class Cleaner:
         self.cognito_idp = session.client('cognito-idp')
         self.logs = session.client('logs')
         self.apigateway = session.client('apigateway')
+        self.dynamodb = session.client('dynamodb')
 
     def cleanup(self, prefixes, exceptions):
         self.__prefixes = prefixes
@@ -41,6 +42,7 @@ class Cleaner:
         self._delete_users()
         self._delete_roles()
         self._delete_policies()
+        self._delete_dynamodb_tables()
         self._delete_log_groups()
         self._delete_api_gateway()
 
@@ -60,6 +62,28 @@ class Cleaner:
 
     def __describe_prefixes(self):
         return str(self.__prefixes) + ' but not ' + str(self.__exceptions)
+
+    def _delete_dynamodb_tables(self):
+        print '\n\nlooking for dynamo tables with names starting with one of', self.__describe_prefixes()
+        res = self.dynamodb.list_tables()        
+        for table in res['TableNames']:
+            if not self._has_prefix(table):                
+                continue
+            print '  found table', table
+            while True:
+                try:
+                    print '    deleting table', table
+                    self.dynamodb.delete_table(
+                                    TableName=table
+                                )
+                    break
+                except ClientError as e:
+                    if e.response["Error"]["Code"] == "LimitExceededException":
+                        print '    too many requests, sleeping...'                        
+                        time.sleep(15)
+                    else:
+                        print '      ERROR:', e
+                        break               
 
     def _delete_buckets(self):
 

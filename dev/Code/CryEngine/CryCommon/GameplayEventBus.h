@@ -36,7 +36,7 @@ namespace AZ
         GameplayNotificationId(const AZ::EntityId& entityChannel, AZ::Crc32 actionNameCrc)
             : GameplayNotificationId(entityChannel, actionNameCrc, AZ::Uuid::CreateNull())
         {
-            AZ_WarningOnce(AZStd::string::format("GameplayNotificationId %s", ToString().c_str()).c_str(), false, "You are using a deprecated constructor.  You must now create the bus id with the type you are expecting to send/receive");
+            AZ_Warning("GameplayNotificationId", false, "You are using a deprecated constructor.  You must now create the bus id with the type you are expecting to send/recieve");
         }
         GameplayNotificationId(const AZ::EntityId&  entityChannel, const char* actionName)
             : GameplayNotificationId(entityChannel, AZ::Crc32(actionName)) { }

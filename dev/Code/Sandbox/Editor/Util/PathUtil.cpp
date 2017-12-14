@@ -18,7 +18,7 @@
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h> // for ebus events
 #include <AzFramework/StringFunc/StringFunc.h>
-#include <QDir>
+#include <AzToolsFramework/Engine/EngineUtilities.h>
 
 namespace
 {
@@ -268,12 +268,18 @@ namespace Path
     //////////////////////////////////////////////////////////////////////////
     QString GetUserSandboxFolder()
     {
+        return QString::fromUtf8("@user@/Sandbox/");
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    QString GetResolvedUserSandboxFolder()
+    {
         char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
-        gEnv->pFileIO->ResolvePath("@user@/Sandbox/", resolvedPath, AZ_MAX_PATH_LEN);
+        gEnv->pFileIO->ResolvePath(GetUserSandboxFolder().toUtf8().data(), resolvedPath, AZ_MAX_PATH_LEN);
         return QString::fromLatin1(resolvedPath);
     }
 
-    // internal function, yous hould use GetEditingGameDataFolder instead.
+    // internal function, you should use GetEditingGameDataFolder instead.
     AZStd::string GetGameAssetsFolder()
     {
         const char* resultValue = nullptr;
@@ -429,7 +435,9 @@ namespace Path
         srcPathNormalized.replace('/', '\\');
 
         // Create relative path
-        QByteArray path = QDir(rootPathNormalized).relativeFilePath(srcPathNormalized).toLatin1();
+        char resolvedSrcPath[AZ_MAX_PATH_LEN] = { 0 };
+        AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(srcPathNormalized.toUtf8().data(), resolvedSrcPath, AZ_MAX_PATH_LEN);
+        QByteArray path = QDir(rootPathNormalized).relativeFilePath(resolvedSrcPath).toUtf8();
         if (path.isEmpty())
         {
             return fullPath;
@@ -473,7 +481,7 @@ namespace Path
             // first, adjust the file name for mods:
             bool fullPathfound = false;
             AZStd::string assetFullPath;
-            AZStd::string adjustedFilePath = path.toLatin1().data();
+            AZStd::string adjustedFilePath = path.toUtf8().data();
             AssetSystemRequestBus::BroadcastResult(fullPathfound, &AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, adjustedFilePath, assetFullPath);
             if (fullPathfound)
             {
@@ -484,11 +492,13 @@ namespace Path
             // if the bus message didn't succeed, 'guess' the source assets:
             else
             {
-                // Not all systems have been converted to use local paths. Some editor files save XML files directly, and a full path is already passed in.
-                // If the path passed in was already a full path, then we can just return it.
+                // Not all systems have been converted to use local paths. Some editor files save XML files directly, and a full or correctly aliased path is already passed in.
+                // If the path passed in exists already, then return the resolved filepath
                 if (AZ::IO::FileIOBase::GetDirectInstance()->Exists(adjustedFilePath.c_str()))
                 {
-                    return path;
+                    char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
+                    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(adjustedFilePath.c_str(), resolvedPath, AZ_MAX_PATH_LEN);
+                    return QString::fromUtf8(resolvedPath);
                 }
                 // if we get here it means that the Asset Processor does not know about this file.  most of the time we should never get here
                 // the rest of this code just does a bunch of heuristic guesses in case of missing files or if the user has hand-edited
@@ -500,7 +510,7 @@ namespace Path
                 }
 
                 char szAdjustedFile[AZ_MAX_PATH_LEN] = { 0 };
-                gEnv->pCryPak->AdjustFileName(adjustedFilePath.c_str(), szAdjustedFile, 0);
+                gEnv->pCryPak->AdjustFileName(adjustedFilePath.c_str(), szAdjustedFile, ICryPak::FLAGS_NO_LOWCASE);
 
                 if ((strnicmp(szAdjustedFile, "@devassets@", 11) == 0) && ((szAdjustedFile[11] == '/') || (szAdjustedFile[11] == '\\')))
                 {

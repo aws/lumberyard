@@ -29,37 +29,6 @@
 #include <QItemSelectionModel>
 
 //////////////////////////////////////////////////////////////////////////
-class CEditShapeObjectTool
-    : public CEditTool
-{
-    Q_OBJECT
-public:
-    CEditShapeObjectTool();
-
-    // Ovverides from CEditTool
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-
-    virtual void SetUserData(const char* key, void* userData);
-
-    virtual void BeginEditParams(IEditor* ie, int flags) {};
-    virtual void EndEditParams() {};
-
-    virtual void Display(DisplayContext& dc) {};
-    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    bool IsNeedToSkipPivotBoxForObjects()   override {  return true; }
-
-protected:
-    virtual ~CEditShapeObjectTool();
-    void DeleteThis() { delete this; };
-
-private:
-    CShapeObject* m_shape;
-    bool m_modifying;
-    QPoint m_mouseDownPos;
-    Vec3 m_pointPos;
-};
-
-//////////////////////////////////////////////////////////////////////////
 CEditShapeObjectTool::CEditShapeObjectTool()
 {
     m_shape = 0;
@@ -390,31 +359,6 @@ bool CEditShapeObjectTool::MouseCallback(CViewport* view, EMouseEvent event, QPo
 //////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////
-class CSplitShapeObjectTool
-    : public CEditTool
-{
-    Q_OBJECT
-public:
-    CSplitShapeObjectTool();
-
-    // Ovverides from CEditTool
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    virtual void SetUserData(const char* key, void* userData);
-    virtual void BeginEditParams(IEditor* ie, int flags) {};
-    virtual void EndEditParams() {};
-    virtual void Display(DisplayContext& dc) {};
-    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-
-protected:
-    virtual ~CSplitShapeObjectTool();
-    void DeleteThis() { delete this; };
-
-private:
-    CShapeObject* m_shape;
-    int m_curPoint;
-};
-
-//////////////////////////////////////////////////////////////////////////
 CSplitShapeObjectTool::CSplitShapeObjectTool()
 {
     m_shape = 0;
@@ -739,34 +683,6 @@ void CShapePanel::OnEntitySelectionChanged(const QItemSelection& selected, const
     m_ui->removeButton->setEnabled(selection);
     m_ui->selectButton->setEnabled(selection);
 }
-
-//////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////
-class CMergeShapeObjectsTool
-    : public CEditTool
-{
-    Q_OBJECT
-public:
-    CMergeShapeObjectsTool();
-
-    // Ovverides from CEditTool
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    virtual void SetUserData(const char* key, void* userData);
-    virtual void BeginEditParams(IEditor* ie, int flags) {};
-    virtual void EndEditParams() {};
-    virtual void Display(DisplayContext& dc) {};
-    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-
-protected:
-    virtual ~CMergeShapeObjectsTool();
-    void DeleteThis() { delete this; };
-
-    int m_curPoint;
-    CShapeObject* m_shape;
-
-private:
-};
 
 //////////////////////////////////////////////////////////////////////////
 CMergeShapeObjectsTool::CMergeShapeObjectsTool()

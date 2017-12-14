@@ -73,7 +73,7 @@ namespace LyShineExamples
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    void UiCustomImageComponent::SetOverrideSprite(ISprite* sprite)
+    void UiCustomImageComponent::SetOverrideSprite(ISprite* sprite, AZ::u32 /* cellIndex */)
     {
         m_overrideSprite = sprite;
     }

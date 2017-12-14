@@ -10,63 +10,128 @@
 *
 */
 
-#include "ApplicationAPI.h"
-#include "ApplicationAPI_darwin.h"
+#include <AzFramework/API/ApplicationAPI_darwin.h>
+#include <AzFramework/Application/Application.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
 
+#include <AppKit/AppKit.h>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    class ApplicationLifecycleEventsHandler::Pimpl
-        : public DarwinLifecycleEvents::Bus::Handler
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    class ApplicationDarwin
+        : public Application::Implementation
+        , public DarwinLifecycleEvents::Bus::Handler
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_CLASS_ALLOCATOR(ApplicationDarwin, AZ::SystemAllocator, 0);
+        ApplicationDarwin();
+        ~ApplicationDarwin() override;
 
-        Pimpl()
-            : m_lastEvent(ApplicationLifecycleEvents::Event::None)
-        {
-            DarwinLifecycleEvents::Bus::Handler::BusConnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // DarwinLifecycleEvents
+        void OnWillResignActive() override;
+        void OnDidBecomeActive() override;
+        void OnDidResignActive() override;
+        void OnWillBecomeActive() override;
 
-        ~Pimpl() override
-        {
-            DarwinLifecycleEvents::Bus::Handler::BusDisconnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Application::Implementation
+        void PumpSystemEventLoopOnce() override;
+        void PumpSystemEventLoopUntilEmpty() override;
 
-        void OnWillResignActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
-        }
-
-        void OnDidBecomeActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
-        }
-
-        void OnDidResignActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
-        }
-
-        void OnWillBecomeActive() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
-        }
+    protected:
+        bool ProcessNextSystemEvent(); // Returns true if an event was processed, false otherwise
 
     private:
         ApplicationLifecycleEvents::Event m_lastEvent;
     };
 
-    ApplicationLifecycleEventsHandler::ApplicationLifecycleEventsHandler()
-        : m_pimpl(aznew Pimpl())
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    Application::Implementation* Application::Implementation::Create()
     {
+        return aznew ApplicationDarwin();
     }
 
-    ApplicationLifecycleEventsHandler::~ApplicationLifecycleEventsHandler()
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationDarwin::ApplicationDarwin()
+        : m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
-        delete m_pimpl;
+        DarwinLifecycleEvents::Bus::Handler::BusConnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationDarwin::~ApplicationDarwin()
+    {
+        DarwinLifecycleEvents::Bus::Handler::BusDisconnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationDarwin::OnWillResignActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationDarwin::OnDidBecomeActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationDarwin::OnDidResignActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationDarwin::OnWillBecomeActive()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationDarwin::PumpSystemEventLoopOnce()
+    {
+        ProcessNextSystemEvent();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationDarwin::PumpSystemEventLoopUntilEmpty()
+    {
+        bool eventProcessed = false;
+        do
+        {
+            eventProcessed = ProcessNextSystemEvent();
+        }
+        while (eventProcessed);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool ApplicationDarwin::ProcessNextSystemEvent()
+    {
+        @autoreleasepool
+        {
+            NSEvent* event = [NSApp nextEventMatchingMask: NSAnyEventMask
+                                    untilDate: [NSDate distantPast]
+                                    inMode: NSDefaultRunLoopMode
+                                    dequeue: YES];
+            if (event != nil)
+            {
+                RawInputNotificationBusOsx::Broadcast(&RawInputNotificationsOsx::OnRawInputEvent, event);
+                [NSApp sendEvent: event];
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
     }
 } // namespace AzFramework

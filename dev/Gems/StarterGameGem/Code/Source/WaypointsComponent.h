@@ -10,8 +10,9 @@
 *
 */
 
-
 #pragma once
+
+#include "WaypointsComponentBus.h"
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/EntityId.h>
@@ -21,96 +22,69 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/EBus/EBus.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
+
 
 namespace AZ
 {
-	class ReflectContext;
+    class ReflectContext;
 }
 
 namespace StarterGameGem
 {
 
-	typedef AZStd::vector<AZ::EntityId> VecOfEntityIds;
+    class WaypointsComponent
+        : public AZ::Component
+        , private AZ::TickBus::Handler
+        , private WaypointsComponentRequestsBus::Handler
+    {
+    public:
+        friend class EditorWaypointsComponent;
 
-	/*!
-	* WaypointsComponentRequests
-	* Messages serviced by the WaypointsComponent
-	*/
-	class WaypointsComponentRequests
-		: public AZ::ComponentBus
-	{
-	public:
-		virtual ~WaypointsComponentRequests() {}
+        AZ_COMPONENT(WaypointsComponent, "{D3830430-7D36-4BC5-8E91-11CA817A366B}");
 
-		//! Gets the first waypoint in the list.
-		virtual AZ::EntityId GetFirstWaypoint() = 0;
-		//! Gets the current waypoint in the list.
-		virtual AZ::EntityId GetCurrentWaypoint() { return AZ::EntityId(); }
-		//! Gets the next waypoint in the list.
-		virtual AZ::EntityId GetNextWaypoint() = 0;
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Component interface implementation
+        void Activate() override;
+        void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
 
-		//! Gets the number of waypoints in the list.
-		virtual int GetWaypointCount() = 0;
+        // Required Reflect function.
+        static void Reflect(AZ::ReflectContext* context);
 
-		//! Gets whether or not the owner of this component should be a sentry.
-		virtual bool IsSentry() = 0;
-		//! Gets whether or not the owner of this component should be a lazy sentry.
-		virtual bool IsLazySentry() = 0;
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("WaypointsService"));
+        }
 
-		//! Clones the waypoints from the specified entity into this component.
-		virtual void CloneWaypoints(const AZ::EntityId& srcEntityId) = 0;
-		//! Get the waypoint component.
-		virtual VecOfEntityIds* GetWaypoints() { return nullptr; }
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC("WaypointsService"));
+        }
 
-	};
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::TickBus interface implementation
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        //////////////////////////////////////////////////////////////////////////
 
-	using WaypointsComponentRequestsBus = AZ::EBus<WaypointsComponentRequests>;
+        //////////////////////////////////////////////////////////////////////////
+        // WaypointsComponentRequestsBus::Handler
+        AZ::EntityId GetFirstWaypoint() override;
+        AZ::EntityId GetCurrentWaypoint() override;
+        AZ::EntityId GetNextWaypoint() override;
 
+        int GetWaypointCount() override;
 
-	class WaypointsComponent
-		: public AZ::Component
-		, private AZ::TickBus::Handler
-		, private WaypointsComponentRequestsBus::Handler
-	{
-	public:
-		AZ_COMPONENT(WaypointsComponent, "{3259A366-D177-4B5B-B047-2DD3CE93F984}");
+        bool IsSentry() override;
+        bool IsLazySentry() override;
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::Component interface implementation
-		void Init() override;
-		void Activate() override;
-		void Deactivate() override;
-		//////////////////////////////////////////////////////////////////////////
+        void CloneWaypoints(const AZ::EntityId& srcEntityId) override;
+        VecOfEntityIds* GetWaypoints() override;
+        //////////////////////////////////////////////////////////////////////////
 
-		// Required Reflect function.
-		static void Reflect(AZ::ReflectContext* context);
+    private:
+        WaypointsConfiguration m_config;
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::TickBus interface implementation
-		void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-		//////////////////////////////////////////////////////////////////////////
-
-		//////////////////////////////////////////////////////////////////////////
-		// WaypointsComponentRequestsBus::Handler
-		AZ::EntityId GetFirstWaypoint() override;
-		AZ::EntityId GetCurrentWaypoint() override;
-		AZ::EntityId GetNextWaypoint() override;
-
-		int GetWaypointCount() override;
-
-		bool IsSentry() override;
-		bool IsLazySentry() override;
-
-		void CloneWaypoints(const AZ::EntityId& srcEntityId) override;
-		VecOfEntityIds* GetWaypoints() override;
-
-	private:
-		bool m_isSentry;
-		bool m_isLazySentry;
-		VecOfEntityIds m_waypoints;
-		AZ::u32 m_currentWaypoint;
-
-	};
+    };
 
 } // namespace StarterGameGem

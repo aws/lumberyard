@@ -181,8 +181,8 @@ namespace UnitTest
 
                 int m = 0;
                 void* deleted = nullptr;
-                AZ::u32 m_xInstances = 0;
-                AZ::u32 m_yInstances = 0;
+                AZ::s32 m_xInstances = 0;
+                AZ::s32 m_yInstances = 0;
             };
 
             template <class P, class T>
@@ -264,6 +264,7 @@ namespace UnitTest
     void SmartPtr::TearDown()
     {
         delete m_sharedPtr;
+        AllocatorsFixture::TearDown();
     }
 
     TEST_F(SmartPtr, SharedPtrCtorInt)

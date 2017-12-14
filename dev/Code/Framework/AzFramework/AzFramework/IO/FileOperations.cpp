@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <AzCore/IO/FileIO.h>
 #include "FileOperations.h"
+#include <AzFramework/StringFunc/StringFunc.h>
 
 namespace AZ
 {
@@ -69,6 +70,124 @@ namespace AZ
         }
 
 
+
+        AZ::IO::Result SmartMove(const char* sourceFilePath, const char* destinationFilePath)
+        {
+            FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+            AZ_Assert(fileIO, "AZ::IO::SmartMove: No FileIO instance");
+            if (!fileIO->Exists(sourceFilePath))
+            {
+                AZ_Warning("AZ::IO::SmartMove", false, "Source file does not exist (%s)", sourceFilePath);
+                return ResultCode::Error;
+            }
+            AZStd::string tmpDestFile;
+            bool destFileMoved = false;
+            if (fileIO->Exists(destinationFilePath))
+            {
+                if (CreateTempFileName(destinationFilePath, tmpDestFile))
+                {
+                    if (!fileIO->Rename(destinationFilePath, tmpDestFile.c_str()))
+                    {
+                        //if the rename fails try deleting the destination file
+                        if (!fileIO->Remove(destinationFilePath))
+                        {
+                            AZ_Warning("AZ::IO::SmartMove", false, "Unable to move/delete the destination file (%s)", destinationFilePath);
+                            return ResultCode::Error;
+                        }
+                    }
+                    else
+                    {
+                        destFileMoved = true;
+                    }
+                }
+                else
+                {
+                    if (!fileIO->Remove(destinationFilePath))
+                    {
+                        AZ_Warning("AZ::IO::SmartMove", false, "Unable to remove the destination file (%s)", destinationFilePath);
+                        return ResultCode::Error;
+                    }
+                }
+
+                //Now try renaming the source file with the destination file
+                if (!fileIO->Rename(sourceFilePath, destinationFilePath))
+                {
+                    // if the move fails, try copying instead
+                    if (!fileIO->Copy(sourceFilePath, destinationFilePath))
+                    {
+                        AZ_Warning("AZ::IO::SmartMove", false, "Unable to move/copy the source file (%s)", sourceFilePath);
+                        if (destFileMoved)
+                        {
+                            // if we were unable to move/copy the source file to the dest file, 
+                            // we will try to revert back the destination file from the temp file.
+                            if (!fileIO->Rename(tmpDestFile.c_str(), destinationFilePath))
+                            {
+                                AZ_Warning("AZ::IO::SmartMove", false, "Unable to rename back the destination file (%s)", destinationFilePath);
+                            }
+                        }
+
+                        return ResultCode::Error;
+                    }
+                    // removing the source file if copy succeeds 
+                    if (!fileIO->Remove(sourceFilePath))
+                    {
+                        AZ_Warning("AZ::IO::SmartMove", false, "Unable to delete the source file (%s)", sourceFilePath);
+                    }
+                }
+
+                if (destFileMoved)
+                {
+                    // Remove the temp file the destination file was moved to
+                    if (!fileIO->Remove(tmpDestFile.c_str()))
+                    {
+                        AZ_Warning("AZ::IO::SmartMove", false, "Unable to move/delete the destination file (%s)", destinationFilePath);
+                        return ResultCode::Error;
+                    }
+                }
+                
+                return ResultCode::Success;
+
+            }
+            else
+            {
+                return Move(sourceFilePath, destinationFilePath);
+            }
+
+        }
+
+        bool CreateTempFileName(const char* file, AZStd::string& tempFile)
+        {
+            FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+            AZ_Assert(fileIO, "AZ::IO::CreateTempFileName: No FileIO instance");
+            const int s_MaxCreateTempFileTries = 16;
+            AZStd::string fullPath, fileName;
+            tempFile.clear();
+            
+            if (!AzFramework::StringFunc::Path::GetFullPath(file, fullPath))
+            {
+                AZ_Warning("AZ::IO::CreateTempFileName", false, " Filepath needs to be an absolute path: '%s'", file);
+                return false;
+            }
+
+            if (!AzFramework::StringFunc::Path::GetFullFileName(file, fileName))
+            {
+                AZ_Warning("AZ::IO::CreateTempFileName", false, " Filepath needs to be an absolute path: '%s'", file);
+                return false;
+            }
+           
+            for (int idx = 0; idx < s_MaxCreateTempFileTries; idx++)
+            {
+                AzFramework::StringFunc::Path::ConstructFull(fullPath.c_str(), AZStd::string::format("$tmp%d_%s", rand(), fileName.c_str()).c_str(), tempFile, true);
+                //Ensure that the file does not exist
+                if (!fileIO->Exists(tempFile.c_str()))
+                {
+                    return true;
+                }
+            }
+            AZ_Warning("AZ::IO::CreateTempFileName", false, "Unable to create temp file for (%s). Please check the folder and clear any temp files.", file);
+            tempFile.clear();
+            return false;
+        }
 
         int GetC(HandleType fileHandle)
         {

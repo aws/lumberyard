@@ -22,6 +22,7 @@
 
 
 struct AAssetManager;
+struct ANativeWindow;
 
 
 namespace AZ
@@ -94,6 +95,12 @@ namespace AZ
             //! Get the global pointer to the Android asset manager, which is used for APK file i/o.
             AAssetManager* GetAssetManager() const { return m_assetManager; }
 
+            //! Set the global pointer to the Android window surface.
+            void SetWindow(ANativeWindow* window) { m_window = window; }
+
+            //! Get the global pointer to the Android window surface
+            ANativeWindow* GetWindow() const { return m_window; }
+
             //! Get the hidden internal storage, typically this is where the application is installed on the device.
             //! e.g. /data/data/<package_name/files
             const char* GetAppPrivateStoragePath() const { return m_appPrivateStoragePath.c_str(); }
@@ -116,14 +123,14 @@ namespace AZ
             //! Get the filename of the obb. This doesn't include the path to the obb folder.
             const char* GetObbFileName(bool mainFile) const;
 
-            //! Check to see if the application should be running, e.g. not paused.
-            bool IsRunning() const { return m_isRunning; }
-
-            //! Set whether or not the application should be running
-            void SetIsRunning(bool isRunning) { m_isRunning = isRunning; }
+            //! Check if the AndroidEnv has been initialized
+            bool IsReady() const { return m_isReady; }
 
             //! Set wheather or not the application should be running
-            bool IsReady() const { return m_isReady; }
+            void SetIsRunning(bool isRunning) { m_isRunning = isRunning; }
+
+            //! Check if the application has been backgrounded (false) or not (true)
+            bool IsRunning() const { return m_isRunning; }
 
             //! Loads a Java class as opposed to attempting to find a loaded class from the call stack.
             //! \param classPath The fully qualified forward slash separated Java class path.
@@ -204,10 +211,7 @@ namespace AZ
             AndroidEnv();
             ~AndroidEnv();
 
-            AndroidEnv(const AndroidEnv&) = delete;
-            AndroidEnv(const AndroidEnv&&) = delete;
-            AndroidEnv& operator=(const AndroidEnv&) = delete;
-            AndroidEnv& operator=(const AndroidEnv&&) = delete;
+            AZ_DISABLE_COPY_MOVE(AndroidEnv);
 
             //! Public global accessor to the android application environment
             //! \param descriptor
@@ -242,6 +246,7 @@ namespace AZ
             jmethodID m_getSimpleClassNameMethod; //!< Method ID for getSimpleName from java/lang/Class which returns just the class name from a Java class path
 
             AAssetManager* m_assetManager; //!< Used for file i/o from the APK
+            ANativeWindow* m_window; //!< Global pointer to the window surface created by Android, used for creating GL contexts
 
             AZ::OSString m_appPrivateStoragePath; //!< Access restricted location. E.G. /data/data/<package_name>/files
             AZ::OSString m_appPublicStoragePath; //!< Public storage specifically for the application. E.G. <public_storage>/Android/data/<package_name>/files
@@ -254,8 +259,9 @@ namespace AZ
             int m_appVersionCode; //!< The version code of the app (android:versionCode in the AndroidManifest.xml)
 
             bool m_ownsActivityRef; //!< For when a local activity ref is passed into the construction and needs to be cleaned up
-            bool m_isRunning; //!< Used to pause the main loop (lumberyard code)
             bool m_isReady; //!< Set only once the object has been successfully constructed
+
+            bool m_isRunning; //!< Internal flag indicating if the application is running, mainly used to determine if we shoudl be blocking on the event pump while paused 
         };
     } // namespace Android
 } // namespace AZ

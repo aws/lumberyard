@@ -12,7 +12,7 @@
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_win.h>
+#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 
 #include <Windows.h>
 
@@ -24,6 +24,18 @@ namespace
     // - https://msdn.microsoft.com/en-us/library/ff543440.aspx
     const USHORT RAW_INPUT_MOUSE_USAGE_PAGE = 0x01;
     const USHORT RAW_INPUT_MOUSE_USAGE = 0x02;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Get the focus window that should be used to clip and/or normalize the system cursor.
+    //! \return The HWND that should currently be considered the applictaion's focus window.
+    HWND GetSystemCursorFocusWindow()
+    {
+        void* systemCursorFocusWindow = nullptr;
+        AzFramework::InputSystemCursorConstraintRequestBus::BroadcastResult(
+            systemCursorFocusWindow,
+            &AzFramework::InputSystemCursorConstraintRequests::GetSystemCursorConstraintWindow);
+        return systemCursorFocusWindow ? static_cast<HWND>(systemCursorFocusWindow) : ::GetFocus();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +108,14 @@ namespace AzFramework
         //! Does the window attached to the input (main) thread's message queue have focus?
         // https://msdn.microsoft.com/en-us/library/windows/desktop/ms646294(v=vs.85).aspx
         bool m_hasFocus;
+
+        //! The flags sent with the last received MOUSE_MOVE_RELATIVE or MOUSE_MOVE_ABSOLUTE event.
+        USHORT m_lastMouseMoveEventFlags;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! The last absolute mouse position, reported by a MOUSE_MOVE_ABSOLUTE raw input API event,
+        //! which will more than likely only ever be received when running a remote desktop session.
+        AZ::Vector2 m_lastMouseMoveEventAbsolutePosition;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +132,8 @@ namespace AzFramework
         : InputDeviceMouse::Implementation(inputDevice)
         , m_systemCursorState(SystemCursorState::Unknown)
         , m_hasFocus(false)
+        , m_lastMouseMoveEventFlags(0)
+        , m_lastMouseMoveEventAbsolutePosition()
     {
         if (s_instanceCount++ == 0)
         {
@@ -195,10 +217,7 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceMouseWin::SetSystemCursorPositionNormalized(AZ::Vector2 positionNormalized)
     {
-        // Check if the application wants to use a different focus window for the system cursor
-        void* systemCursorFocusWindow = nullptr;
-        RawInputRequestBusWin::BroadcastResult(systemCursorFocusWindow, &RawInputRequestsWin::GetSystemCursorFocusWindow);
-        HWND focusWindow = systemCursorFocusWindow ? static_cast<HWND>(systemCursorFocusWindow) : ::GetFocus();
+        HWND focusWindow = GetSystemCursorFocusWindow();
         if (!focusWindow)
         {
             return;
@@ -221,10 +240,7 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     AZ::Vector2 InputDeviceMouseWin::GetSystemCursorPositionNormalized() const
     {
-        // Check if the application wants to use a different focus window for the system cursor
-        void* systemCursorFocusWindow = nullptr;
-        RawInputRequestBusWin::BroadcastResult(systemCursorFocusWindow, &RawInputRequestsWin::GetSystemCursorFocusWindow);
-        HWND focusWindow = systemCursorFocusWindow ? static_cast<HWND>(systemCursorFocusWindow) : ::GetFocus();
+        HWND focusWindow = GetSystemCursorFocusWindow();
         if (!focusWindow)
         {
             return AZ::Vector2::CreateZero();
@@ -259,13 +275,11 @@ namespace AzFramework
         m_hasFocus = ::GetFocus() != nullptr;
         if (m_hasFocus)
         {
-            if (!hadFocus)
-            {
-                // We have to refresh the system cursor clip rect each time this application gains
-                // focus to combat the cursor being unclipped by the system or another application,
-                // which can happen in a variety of ways due to the cursor being a shared resource.
-                RefreshSystemCursorClippingConstraint();
-            }
+            // We have to refresh the system cursor clip rect each frame this application has focus
+            // to combat the cursor being unclipped by the system or another application (which can
+            // happen in a variety of ways due to the cursor being a shared resource), and also for
+            // when this application transitions between fullscreen and windowed mode.
+            RefreshSystemCursorClippingConstraint();
 
             // Process raw event queues once each frame while this thread's message queue has focus
             ProcessRawEventQueues();
@@ -351,20 +365,37 @@ namespace AzFramework
         {
             QueueRawMovementEvent(InputDeviceMouse::Movement::X, static_cast<float>(rawMouseData.lLastX));
             QueueRawMovementEvent(InputDeviceMouse::Movement::Y, static_cast<float>(rawMouseData.lLastY));
+            m_lastMouseMoveEventFlags = rawMouseData.usFlags;
         }
-        else if (rawMouseData.usFlags == MOUSE_MOVE_ABSOLUTE)
+        else if (rawMouseData.usFlags & MOUSE_MOVE_ABSOLUTE)
         {
-            // This doesn't seem to ever get get hit, but may when running through VPN...
+            const bool isVirtualDesktop = (rawMouseData.usFlags & MOUSE_VIRTUAL_DESKTOP) != 0;
+            const int screenWidth = GetSystemMetrics(isVirtualDesktop ? SM_CXVIRTUALSCREEN : SM_CXSCREEN);
+            const int screenHeight = GetSystemMetrics(isVirtualDesktop ? SM_CYVIRTUALSCREEN : SM_CYSCREEN);
+            const float absoluteX = (static_cast<float>(rawMouseData.lLastX) / static_cast<float>(USHRT_MAX)) * static_cast<float>(screenWidth);
+            const float absoluteY = (static_cast<float>(rawMouseData.lLastY) / static_cast<float>(USHRT_MAX)) * static_cast<float>(screenHeight);
+
+            if (m_lastMouseMoveEventFlags & MOUSE_MOVE_ABSOLUTE)
+            {
+                // Only calculate and send the delta if we have previously cached a valid position
+                const float deltaX = absoluteX - m_lastMouseMoveEventAbsolutePosition.GetX();
+                const float deltaY = absoluteY - m_lastMouseMoveEventAbsolutePosition.GetY();
+                QueueRawMovementEvent(InputDeviceMouse::Movement::X, deltaX);
+                QueueRawMovementEvent(InputDeviceMouse::Movement::Y, deltaY);
+            }
+
+            m_lastMouseMoveEventFlags = rawMouseData.usFlags;
+            m_lastMouseMoveEventAbsolutePosition.SetX(absoluteX);
+            m_lastMouseMoveEventAbsolutePosition.SetY(absoluteY);
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceMouseWin::RefreshSystemCursorClippingConstraint()
     {
-        HWND focusWindow = ::GetFocus();
+        HWND focusWindow = GetSystemCursorFocusWindow();
         if (!focusWindow)
         {
-            // Do nothing if this application's main window does not have focus
             return;
         }
 
@@ -375,14 +406,6 @@ namespace AzFramework
             // Unconstrain the cursor
             ::ClipCursor(NULL);
             return;
-        }
-
-        // Check if the application wants to use a different focus window for the system cursor
-        void* systemCursorFocusWindow = nullptr;
-        RawInputRequestBusWin::BroadcastResult(systemCursorFocusWindow, &RawInputRequestsWin::GetSystemCursorFocusWindow);
-        if (systemCursorFocusWindow)
-        {
-            focusWindow = static_cast<HWND>(systemCursorFocusWindow);
         }
 
         // Constrain the cursor to the client (content) rect of the focus window

@@ -11,31 +11,33 @@
 */
 
 #include "TranslationManipulator.h"
-#include "LinearManipulator.h"
-#include "PlanarManipulator.h"
+
+#include <AzToolsFramework/Manipulators/ManipulatorView.h>
+#include <AzCore/Math/VectorConversions.h>
 
 namespace AzToolsFramework
 {
     TranslationManipulator::TranslationManipulator(AZ::EntityId entityId, Dimensions dimensions)
-        : m_manipulatorIndices(dimensions)
-        , m_dimensions(dimensions)
+        : m_dimensions(dimensions)
     {
         switch (dimensions)
         {
         case Dimensions::Two:
-            m_manipulators.reserve(3);
-            m_manipulators.emplace_back(aznew LinearManipulator(entityId));
-            m_manipulators.emplace_back(aznew LinearManipulator(entityId));
-            m_manipulators.emplace_back(aznew PlanarManipulator(entityId));
+            m_linearManipulators.reserve(2);
+            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
+            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
+            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
             break;
         case Dimensions::Three:
-            m_manipulators.reserve(6);
-            m_manipulators.emplace_back(aznew LinearManipulator(entityId));
-            m_manipulators.emplace_back(aznew LinearManipulator(entityId));
-            m_manipulators.emplace_back(aznew LinearManipulator(entityId));
-            m_manipulators.emplace_back(aznew PlanarManipulator(entityId));
-            m_manipulators.emplace_back(aznew PlanarManipulator(entityId));
-            m_manipulators.emplace_back(aznew PlanarManipulator(entityId));
+            m_linearManipulators.reserve(3);
+            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
+            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
+            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
+            m_planarManipulators.reserve(3);
+            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
+            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
+            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
+            m_surfaceManipulator = AZStd::make_unique<SurfaceManipulator>(entityId);
             break;
         default:
             AZ_Assert(false, "Invalid dimensions provided");
@@ -43,219 +45,225 @@ namespace AzToolsFramework
         }
     }
 
-    TranslationManipulator::~TranslationManipulator()
+    void TranslationManipulator::ProcessManipulators(AZStd::function<void(BaseManipulator*)> manipulatorFn)
     {
-        for (AZStd::unique_ptr<BaseManipulator>& manipulatorPtr : m_manipulators)
+        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
         {
-            if (manipulatorPtr->IsRegistered())
-            {
-                manipulatorPtr->Unregister();
-            }
+            manipulatorFn(manipulator.get());
+        }
+
+        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        {
+            manipulatorFn(manipulator.get());
+        }
+
+        if (m_surfaceManipulator)
+        {
+            manipulatorFn(m_surfaceManipulator.get());
         }
     }
 
-    void TranslationManipulator::Register(AzToolsFramework::ManipulatorManagerId manipulatorManagerId)
+    TranslationManipulator::~TranslationManipulator()
     {
-        for (AZStd::unique_ptr<BaseManipulator>& manipulatorPtr : m_manipulators)
+        ProcessManipulators([](BaseManipulator* manipulator)
         {
-            manipulatorPtr->Register(manipulatorManagerId);
-        }
+            if (manipulator->Registered())
+            {
+                manipulator->Unregister();
+            }
+        });
+    }
+
+    void TranslationManipulator::Register(ManipulatorManagerId manipulatorManagerId)
+    {
+        ProcessManipulators([manipulatorManagerId](BaseManipulator* manipulator)
+        {
+            manipulator->Register(manipulatorManagerId);
+        });
     }
 
     void TranslationManipulator::Unregister()
     {
-        for (AZStd::unique_ptr<BaseManipulator>& manipulatorPtr : m_manipulators)
+        ProcessManipulators([](BaseManipulator* manipulator)
         {
-            manipulatorPtr->Unregister();
+            manipulator->Unregister();
+        });
+    }
+
+    void TranslationManipulator::InstallLinearManipulatorMouseDownCallback(LinearManipulator::MouseActionCallback onMouseDownCallback)
+    {
+        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        {
+            manipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
         }
     }
 
-    void TranslationManipulator::InstallLinearManipulatorMouseDownCallback(LinearManipulatorMouseActionCallback onMouseDownCallback)
+    void TranslationManipulator::InstallLinearManipulatorMouseMoveCallback(LinearManipulator::MouseActionCallback onMouseMoveCallback)
     {
-        for (size_t i = m_manipulatorIndices.m_linearBeginIndex; i < m_manipulatorIndices.m_linearEndIndex; ++i)
+        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
         {
-            if (LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get()))
-            {
-                linearManipulator->InstallMouseDownCallback(onMouseDownCallback);
-            }
+            manipulator->InstallMouseMoveCallback(onMouseMoveCallback);
         }
     }
 
-    void TranslationManipulator::InstallLinearManipulatorMouseMoveCallback(LinearManipulatorMouseActionCallback onMouseMoveCallback)
+    void TranslationManipulator::InstallLinearManipulatorMouseUpCallback(LinearManipulator::MouseActionCallback onMouseUpCallback)
     {
-        for (size_t i = m_manipulatorIndices.m_linearBeginIndex; i < m_manipulatorIndices.m_linearEndIndex; ++i)
+        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
         {
-            if (LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get()))
-            {
-                linearManipulator->InstallMouseMoveCallback(onMouseMoveCallback);
-            }
+            manipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
         }
     }
 
-    void TranslationManipulator::InstallLinearManipulatorMouseUpCallback(LinearManipulatorMouseActionCallback onMouseUpCallback)
+    void TranslationManipulator::InstallPlanarManipulatorMouseDownCallback(PlanarManipulator::MouseActionCallback onMouseDownCallback)
     {
-        for (size_t i = m_manipulatorIndices.m_linearBeginIndex; i < m_manipulatorIndices.m_linearEndIndex; ++i)
+        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
         {
-            if (LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get()))
-            {
-                linearManipulator->InstallMouseUpCallback(onMouseUpCallback);
-            }
+            manipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
         }
     }
 
-    void TranslationManipulator::InstallPlanarManipulatorMouseDownCallback(PlanarManipulatorMouseActionCallback onMouseDownCallback)
+    void TranslationManipulator::InstallPlanarManipulatorMouseMoveCallback(PlanarManipulator::MouseActionCallback onMouseMoveCallback)
     {
-        for (size_t i = m_manipulatorIndices.m_planarBeginIndex; i < m_manipulatorIndices.m_planarEndIndex; ++i)
+        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
         {
-            if (PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[i].get()))
-            {
-                planarManipulator->InstallMouseDownCallback(onMouseDownCallback);
-            }
+            manipulator->InstallMouseMoveCallback(onMouseMoveCallback);
         }
     }
 
-    void TranslationManipulator::InstallPlanarManipulatorMouseMoveCallback(PlanarManipulatorMouseActionCallback onMouseMoveCallback)
+    void TranslationManipulator::InstallPlanarManipulatorMouseUpCallback(PlanarManipulator::MouseActionCallback onMouseUpCallback)
     {
-        for (size_t i = m_manipulatorIndices.m_planarBeginIndex; i < m_manipulatorIndices.m_planarEndIndex; ++i)
+        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
         {
-            if (PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[i].get()))
-            {
-                planarManipulator->InstallMouseMoveCallback(onMouseMoveCallback);
-            }
+            manipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
         }
     }
 
-    void TranslationManipulator::InstallPlanarManipulatorMouseUpCallback(PlanarManipulatorMouseActionCallback onMouseUpCallback)
+    void TranslationManipulator::InstallSurfaceManipulatorMouseDownCallback(SurfaceManipulator::MouseActionCallback onMouseDownCallback)
     {
-        for (size_t i = m_manipulatorIndices.m_planarBeginIndex; i < m_manipulatorIndices.m_planarEndIndex; ++i)
+        if (m_surfaceManipulator)
         {
-            if (PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[i].get()))
-            {
-                planarManipulator->InstallMouseUpCallback(onMouseUpCallback);
-            }
+            m_surfaceManipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
+        }
+    }
+
+    void TranslationManipulator::InstallSurfaceManipulatorMouseUpCallback(SurfaceManipulator::MouseActionCallback onMouseUpCallback)
+    {
+        if (m_surfaceManipulator)
+        {
+            m_surfaceManipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
+        }
+    }
+
+    void TranslationManipulator::InstallSurfaceManipulatorMouseMoveCallback(SurfaceManipulator::MouseActionCallback onMouseMoveCallback)
+    {
+        if (m_surfaceManipulator)
+        {
+            m_surfaceManipulator->InstallMouseMoveCallback(onMouseMoveCallback);
         }
     }
 
     void TranslationManipulator::SetBoundsDirty()
     {
-        for (AZStd::unique_ptr<BaseManipulator>& manipulatorPtr : m_manipulators)
+        ProcessManipulators([](BaseManipulator* manipulator)
         {
-            manipulatorPtr->SetBoundsDirty();
+            manipulator->SetBoundsDirty();
+        });
+    }
+
+    void TranslationManipulator::SetPosition(const AZ::Vector3& position)
+    {
+        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        {
+            manipulator->SetPosition(position);
+        }
+
+        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        {
+            manipulator->SetPosition(position);
+        }
+
+        if (m_surfaceManipulator)
+        {
+            m_surfaceManipulator->SetPosition(position);
+        }
+
+        m_position = position;
+    }
+
+    void TranslationManipulator::SetAxes(
+        const AZ::Vector3& axis1, const AZ::Vector3& axis2, const AZ::Vector3& axis3 /*= AZ::Vector3::CreateAxisZ()*/)
+    {
+        AZ::Vector3 axes[] = { axis1, axis2, axis3 };
+
+        for (size_t i = 0; i < m_linearManipulators.size(); ++i)
+        {
+            m_linearManipulators[i]->SetAxis(axes[i]);
+        }
+
+        for (size_t i = 0; i < m_planarManipulators.size(); ++i)
+        {
+            m_planarManipulators[i]->SetAxes(axes[i], axes[(i + 1) % 3]);
         }
     }
 
-    void TranslationManipulator::SetPosition(const AZ::Vector3& origin)
+    void TranslationManipulator::ConfigureLinearView(
+        float axisLength,
+        const AZ::Color& axis1Color, const AZ::Color& axis2Color,
+        const AZ::Color& axis3Color /*= AZ::Color(0.0f, 0.0f, 1.0f, 0.5f)*/)
     {
-        for (size_t i = m_manipulatorIndices.m_linearBeginIndex; i < m_manipulatorIndices.m_linearEndIndex; ++i)
+        const float coneLength = 0.28f;
+        const float coneRadius = 0.07f;
+        const float lineWidth = 0.05f;
+
+        const AZ::Color axesColor[] = { axis1Color, axis2Color, axis3Color };
+
+        auto configureLinearView = [lineWidth, coneLength, axisLength, coneRadius](LinearManipulator* linearManipulator, const AZ::Color& color)
         {
-            if (LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get()))
-            {
-                linearManipulator->SetPosition(origin);
-            }
-        }
+            ManipulatorViews views;
+            views.emplace_back(CreateManipulatorViewLine(
+                *linearManipulator, color, axisLength, lineWidth));
+            views.emplace_back(CreateManipulatorViewCone(
+                *linearManipulator, color, linearManipulator->GetAxis() * (axisLength - coneLength),
+                coneLength, coneRadius));
+            linearManipulator->SetViews(AZStd::move(views));
+        };
 
-        for (size_t i = m_manipulatorIndices.m_planarBeginIndex; i < m_manipulatorIndices.m_planarEndIndex; ++i)
+        for (size_t i = 0; i < m_linearManipulators.size(); ++i)
         {
-            if (PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[i].get()))
-            {
-                planarManipulator->SetPosition(origin);
-            }
-        }
-
-        m_origin = origin;
-    }
-
-    void TranslationManipulator::SetAxes(const AZ::Vector3& axis1, const AZ::Vector3& axis2, const AZ::Vector3& axis3 /*= AZ::Vector3::CreateAxisZ()*/)
-    {
-        if (LinearManipulator* linearManipulator1 = azdynamic_cast<LinearManipulator*>(m_manipulators[m_manipulatorIndices.m_linearBeginIndex].get()))
-        {
-            linearManipulator1->SetDirection(axis1);
-        }
-
-        if (LinearManipulator* linearManipulator2 = azdynamic_cast<LinearManipulator*>(m_manipulators[m_manipulatorIndices.m_linearBeginIndex + 1].get()))
-        {
-            linearManipulator2->SetDirection(axis2);
-        }
-
-        if (PlanarManipulator* planarManipulator1 = azdynamic_cast<PlanarManipulator*>(m_manipulators[m_manipulatorIndices.m_planarBeginIndex].get()))
-        {
-            planarManipulator1->SetAxes(axis1, axis2);
-        }
-
-        if (m_dimensions == Dimensions::Three)
-        {
-            if (LinearManipulator* linearManipulator3 = azdynamic_cast<LinearManipulator*>(m_manipulators[m_manipulatorIndices.m_linearBeginIndex + 2].get()))
-            {
-                linearManipulator3->SetDirection(axis3);
-            }
-
-            if (PlanarManipulator* planarManipulator2 = azdynamic_cast<PlanarManipulator*>(m_manipulators[m_manipulatorIndices.m_planarBeginIndex + 1].get()))
-            {
-                planarManipulator2->SetAxes(axis2, axis3);
-            }
-            if (PlanarManipulator* planarManipulator3 = azdynamic_cast<PlanarManipulator*>(m_manipulators[m_manipulatorIndices.m_planarBeginIndex + 2].get()))
-            {
-                planarManipulator3->SetAxes(axis3, axis1);
-            }
+            configureLinearView(m_linearManipulators[i].get(), axesColor[i]);
         }
     }
 
-    void TranslationManipulator::SetAxesColor(const AZ::Color& axis1Color, const AZ::Color& axis2Color, const AZ::Color& axis3Color /*= AZ::Color(0.0f, 0.0f, 1.0f, 0.5f)*/)
+    void TranslationManipulator::ConfigurePlanarView(
+        const AZ::Color& plane1Color, const AZ::Color& plane2Color /*= AZ::Color(0.0f, 1.0f, 0.0f, 0.5f)*/,
+        const AZ::Color& plane3Color /*= AZ::Color(0.0f, 0.0f, 1.0f, 0.5f)*/)
     {
-        if (LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[m_manipulatorIndices.m_linearBeginIndex].get()))
-        {
-            linearManipulator->SetColor(axis1Color);
-        }
-        
-        if (LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[m_manipulatorIndices.m_linearBeginIndex + 1].get()))
-        {
-            linearManipulator->SetColor(axis2Color);
-        }
+        const float planeSize = 0.6f;
+        const AZ::Color planesColor[] = { plane1Color, plane2Color, plane3Color };
 
-        if (m_dimensions == Dimensions::Three)
-        {   
-            if (LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[m_manipulatorIndices.m_linearBeginIndex + 2].get()))
-            {
-                linearManipulator->SetColor(axis3Color);
-            }
+        for (size_t i = 0; i < m_planarManipulators.size(); ++i)
+        {
+            m_planarManipulators[i]->SetView(
+                CreateManipulatorViewQuad(
+                    *m_planarManipulators[i], planesColor[i], planesColor[(i + 1) % 3], planeSize));
         }
     }
 
-    void TranslationManipulator::SetAxisLength(float axisLength)
+    void TranslationManipulator::ConfigureSurfaceView(
+        float radius, const AZ::Color& color)
     {
-        for (size_t i = m_manipulatorIndices.m_linearBeginIndex; i < m_manipulatorIndices.m_linearEndIndex; ++i)
+        if (m_surfaceManipulator)
         {
-            LinearManipulator* linearManipulator = azdynamic_cast<LinearManipulator*>(m_manipulators[i].get());
-            linearManipulator->SetLength(axisLength);
-        }
-    }
-
-    void TranslationManipulator::SetPlanesColor(const AZ::Color& plane1Color, const AZ::Color& plane2Color /*= AZ::Color(0.0f, 1.0f, 0.0f, 0.5f)*/, const AZ::Color& plane3Color /*= AZ::Color(0.0f, 0.0f, 1.0f, 0.5f)*/)
-    {
-        if (PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[m_manipulatorIndices.m_planarBeginIndex].get()))
-        {
-            planarManipulator->SetColor(plane1Color);
-        }
-
-        if (m_dimensions == Dimensions::Three)
-        {
-            if (PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[m_manipulatorIndices.m_planarBeginIndex + 1].get()))
+            m_surfaceManipulator->SetView(CreateManipulatorViewSphere(color, radius,
+                [](const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, 
+                    bool mouseOver, const AZ::Color& defaultColor) -> AZ::Color
             {
-                planarManipulator->SetColor(plane2Color);
-            }
-            if (PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[m_manipulatorIndices.m_planarBeginIndex + 2].get()))
-            {
-                planarManipulator->SetColor(plane3Color);
-            }
-        }
-    }
-
-    void TranslationManipulator::SetPlaneSize(float size)
-    {
-        for (size_t i = m_manipulatorIndices.m_planarBeginIndex; i < m_manipulatorIndices.m_planarEndIndex; ++i)
-        {
-            PlanarManipulator* planarManipulator = azdynamic_cast<PlanarManipulator*>(m_manipulators[i].get());
-            planarManipulator->SetAxesLength(size, size);
+                const AZ::Color color[2] =
+                { 
+                    defaultColor, Vector3ToVector4(BaseManipulator::s_defaultMouseOverColor.GetAsVector3(), 0.75f)
+                };
+                return color[mouseOver];
+            }));
         }
     }
 } // namespace AzToolsFramework

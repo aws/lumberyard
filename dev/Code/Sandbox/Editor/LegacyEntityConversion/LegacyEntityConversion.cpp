@@ -32,8 +32,11 @@
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/ParticleComponentBus.h>
 #include <LmbrCentral/Rendering/FogVolumeComponentBus.h>
+#include <LmbrCentral/Rendering/GeomCacheComponentBus.h>
+#include <LmbrCentral/Rendering/MeshAsset.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
+#include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
 
 // crycommon
 #include "MathConversion.h"
@@ -51,7 +54,10 @@
 #include "Objects/ShapeObject.h"
 #include "Objects/TagPoint.h"
 #include "Objects/DecalObject.h"
+#include "Objects/MiscEntities.h" //Has CGeomCacheEntity
 #include "Material/Material.h"
+
+#include <AzCore/Math/VectorConversions.h>
 
 namespace LegacyConversionInternal
 {
@@ -147,13 +153,6 @@ namespace LegacyConversionInternal
         AZ::ComponentTypeList componentsToAdd {
             meshComponentId
         };
-
-        // do we have physics?
-        if (physics)
-        {
-            componentsToAdd.push_back("{2D559EB0-F6FE-46E0-9FCE-E8F375177724}"); // rigid body collider (mesh) shape
-            componentsToAdd.push_back("{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}"); // editor static physics component.
-        }
 
         AZ::Outcome<AZ::EntityId, LegacyConversionResult> conversionResult = CreateEntityForConversion(entityToConvert, componentsToAdd);
         if (!conversionResult.IsSuccess())
@@ -334,7 +333,7 @@ namespace LegacyConversionInternal
 
             // convert all relevant env probe properties to new component
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, int, AZ::u32>("SortPriority", varBlock, &LmbrCentral::EditorLightComponentRequests::SetProbeSortPriority, newEntityId);
-            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, Vec3, AZ::Color>("clrDiffuse", varBlock, &LmbrCentral::EditorLightComponentRequests::SetColor, newEntityId, LYVec3ToAZColor);
+            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, Vec3, AZ::Color>("clrDiffuse", varBlock, &LmbrCentral::EditorLightComponentRequests::SetColor, newEntityId, LegacyColorConverter);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, float>("fDiffuseMultiplier", varBlock, &LmbrCentral::EditorLightComponentRequests::SetDiffuseMultiplier, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, float>("fSpecularMultiplier", varBlock, &LmbrCentral::EditorLightComponentRequests::SetSpecularMultiplier, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bAffectsVolumetricFogOnly", varBlock, &LmbrCentral::EditorLightComponentRequests::SetVolumetricFogOnly, newEntityId);
@@ -488,7 +487,7 @@ namespace LegacyConversionInternal
 
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bActive", varBlock, &LmbrCentral::EditorLightComponentRequests::SetOnInitially, newEntityId);
 
-            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, Vec3, AZ::Color>("clrDiffuse", varBlock, &LmbrCentral::EditorLightComponentRequests::SetColor, newEntityId, LYVec3ToAZColor);
+            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, Vec3, AZ::Color>("clrDiffuse", varBlock, &LmbrCentral::EditorLightComponentRequests::SetColor, newEntityId, LegacyColorConverter);
 
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, float>("fShadowBias", varBlock, &LmbrCentral::EditorLightComponentRequests::SetShadowBias, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, float>("fShadowSlopeBias", varBlock, &LmbrCentral::EditorLightComponentRequests::SetShadowSlopeBias, newEntityId);
@@ -533,7 +532,7 @@ namespace LegacyConversionInternal
             }
 
             if (CVarBlock* varBlock = entityToConvert->GetVarBlock())
-            {   
+            {
                 conversionSuccess &= ConvertVarHierarchy<float>(newEntity, editorLensFlareComponentId, { AZ_CRC("ViewDistanceMultiplier", 0x86a77124), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, "ViewDistanceMultiplier", varBlock);
             }
 
@@ -549,7 +548,7 @@ namespace LegacyConversionInternal
             conversionSuccess &= SetVarHierarchy<AZ::Vector3>(newEntity, editorLensFlareComponentId, { AZ_CRC("Tint", 0x2e09eb74), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, tint);
             conversionSuccess &= SetVarHierarchy<AZ::u32>(newEntity, editorLensFlareComponentId, { AZ_CRC("TintAlpha", 0xd91a8bff), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, static_cast<AZ::u32>(opticsParams.m_color.a * 255.0f));
             conversionSuccess &= SetVarHierarchy<float>(newEntity, editorLensFlareComponentId, { AZ_CRC("Size", 0xf7c0246a), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, opticsParams.m_size);
-            
+
             // configuration.m_syncAnimWithLight is default to false, and only when it's true we need to set LightEntity property
             conversionSuccess &= SetVarHierarchy<AZ::u32>(newEntity, editorLensFlareComponentId, { AZ_CRC("AnimIndex", 0x8465b66e), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, static_cast<AZ::u32>(lightParams->m_nLightStyle));
             conversionSuccess &= SetVarHierarchy<float>(newEntity, editorLensFlareComponentId, { AZ_CRC("AnimSpeed", 0x0b302f99), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, lightParams->GetAnimSpeed());
@@ -562,7 +561,7 @@ namespace LegacyConversionInternal
             conversionSuccess &= SetVarHierarchy<bool>(newEntity, editorLensFlareComponentId, { AZ_CRC("IndoorOnly", 0xc8ab6ddb), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, DLF_INDOOR_ONLY & lightParams->m_Flags);
             conversionSuccess &= SetVarHierarchy<bool>(newEntity, editorLensFlareComponentId, { AZ_CRC("AttachToSun", 0x2b6a82fa), AZ_CRC("EditorLensFlareConfiguration", 0x1293eec5) }, DLF_ATTACH_TO_SUN & lightParams->m_Flags);
 
-            AZStd::string lensFlareName = entityObject->GetOpticsElement()->GetName();
+            AZStd::string lensFlareName = entityObject->GetOpticsElement()->GetName().c_str();
             AZStd::string::size_type firstDotPosition = lensFlareName.find_first_of('.');
             AZStd::string lensFlareLibName = lensFlareName.substr(0, firstDotPosition) + ".xml";
             AZStd::string lensFlareEffectName = lensFlareName.substr(firstDotPosition + 1, lensFlareName.length() - firstDotPosition - 1);
@@ -981,9 +980,17 @@ namespace LegacyConversionInternal
         {
             return LegacyConversionResult::Ignored;
         }
+        bool isSphereShape = static_cast<CEntityObject*>(entityToConvert)->GetEntityPropertyBool("bEllipsoidal");
 
+        auto shapeComponentId = isSphereShape
+            ? "{2EA56CBF-63C8-41D9-84D5-0EC2BECE748E}" //EditorSphereShapeComponent
+            : "{2ADD9043-48E8-4263-859A-72E0024372BF}"; //EditorBoxShapeComponent
         auto windComponentId = "{61E5864D-F553-4A37-9A03-B9F836F1D3DC}"; // WindVolumeComponent
-        auto conversionResult = CreateEntityForConversion(entityToConvert, { windComponentId });
+        auto conversionResult = CreateEntityForConversion(entityToConvert, {
+            shapeComponentId,
+            windComponentId
+        });
+
         if (!conversionResult.IsSuccess())
         {
             return conversionResult.GetError();
@@ -995,13 +1002,22 @@ namespace LegacyConversionInternal
 
         auto varBlock = static_cast<CEntityObject*>(entityToConvert)->GetProperties();
         auto success = true;
-        success &= ConvertVarHierarchy<bool>(newEntity, windComponentId, { AZ_CRC("Ellipsoidal", 0xbf824570) }, "bEllipsoidal", varBlock);
+        Vec3 size;
         success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("Air Density", 0xadc8eb2f) }, "AirDensity", varBlock);
         success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("Air Resistance", 0xec64bb06) }, "AirResistance", varBlock);
         success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("Speed", 0x0f26fef6) }, "Speed", varBlock);
         success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("FalloffInner", 0xc87f0b6a) }, "FalloffInner", varBlock);
         success &= ConvertVarHierarchy<Vec3, AZ::Vector3>(newEntity, windComponentId, { AZ_CRC("Direction", 0x3e4ad1b3) }, "Dir", varBlock, LYVec3ToAZVec3);
-        success &= ConvertVarHierarchy<Vec3, AZ::Vector3>(newEntity, windComponentId, { AZ_CRC("Size", 0xf7c0246a) }, "Size", varBlock, LYVec3ToAZVec3);
+        success &= GetVec3("Size", varBlock, size);
+        if (isSphereShape)
+        {
+            // NOTE: 0.577 is a magic number from windarea.lua for converting box size to radius.
+            LmbrCentral::SphereShapeComponentRequestsBus::Event(newEntity->GetId(), &LmbrCentral::SphereShapeComponentRequestsBus::Events::SetRadius, size.len() * 0.577f);
+        }
+        else
+        {
+            LmbrCentral::BoxShapeComponentRequestsBus::Event(newEntity->GetId(), &LmbrCentral::BoxShapeComponentRequestsBus::Events::SetBoxDimensions, LYVec3ToAZVec3(size * 2.f));
+        }
 
         if (!success)
         {
@@ -1024,9 +1040,9 @@ namespace LegacyConversionInternal
             return LegacyConversionResult::Failed;
         }
 
-        auto navigationAreaComponentId = "{8391FF77-7F4E-4576-9617-37793F88C5DA}"; // EditorNavigationAreaComponent
-        auto polygonPrismComponentId = "{5368F204-FE6D-45C0-9A4F-0F933D90A785}"; // EditorPolygonPrismComponent
-        auto conversionResult = CreateEntityForConversion(entityToConvert, { navigationAreaComponentId, polygonPrismComponentId });
+        const auto navigationAreaComponentId = "{8391FF77-7F4E-4576-9617-37793F88C5DA}"; // EditorNavigationAreaComponent
+        const auto polygonPrismComponentId = "{5368F204-FE6D-45C0-9A4F-0F933D90A785}"; // EditorPolygonPrismComponent
+        const auto conversionResult = CreateEntityForConversion(entityToConvert, { navigationAreaComponentId, polygonPrismComponentId });
         if (!conversionResult.IsSuccess())
         {
             return conversionResult.GetError();
@@ -1036,7 +1052,7 @@ namespace LegacyConversionInternal
         AZ::Entity* newEntity = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(newEntity, &AZ::ComponentApplicationBus::Events::FindEntity, newEntityId);
 
-        float height = navigationAreaObject->GetHeight();
+        const float height = navigationAreaObject->GetHeight();
         AZStd::vector<AZ::Vector2> vertices;
         vertices.resize(navigationAreaObject->GetPointCount());
 
@@ -1050,7 +1066,7 @@ namespace LegacyConversionInternal
         conversionSuccess &= SetVarHierarchy<AZStd::vector<AZ::Vector2> >(newEntity, polygonPrismComponentId, { AZ_CRC("Vertices", 0x4112bc6d), AZ_CRC("VertexContainer", 0xe359981a), AZ_CRC("Configuration", 0xa5e2a5d7) }, vertices);
         conversionSuccess &= SetVarHierarchy<float>(newEntity, polygonPrismComponentId, { AZ_CRC("Height", 0xf54de50f), AZ_CRC("Configuration", 0xa5e2a5d7) }, height);
 
-        auto varBlock = entityToConvert->GetVarBlock();
+        const auto varBlock = entityToConvert->GetVarBlock();
         conversionSuccess &= ConvertVarHierarchy<bool>(newEntity, navigationAreaComponentId, { AZ_CRC("Exclusion", 0x0df1686c) }, "Exclusion", varBlock);
 
         // find all agent types, for the ones that are enabled, add them to the agent types for this navigation area
@@ -1063,7 +1079,7 @@ namespace LegacyConversionInternal
                 {
                     bool enabled;
                     agentType->Get(enabled);
-                    
+
                     if (enabled)
                     {
                         agentTypeNames.push_back(AZStd::string(agentType->GetName().toUtf8().constData()));
@@ -1154,7 +1170,17 @@ namespace LegacyConversionInternal
             conversionSuccess &= ConvertVarHierarchy<float>(newEntity, editorDecalComponentId, { AZ_CRC("Depth", 0xfaa31c69), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, "ProjectionDepth", varBlock);
         }
 
-        AZ::u32 engineSpec = static_cast<AZ::u32>(SpecConversion(static_cast<ESystemConfigSpec>(entityToConvert->GetMinSpec())));
+        AZ::u32 engineSpec;
+        if (static_cast<ESystemConfigSpec>(entityToConvert->GetMinSpec()) == CONFIG_AUTO_SPEC)
+        {
+            // LY Engine Spec doesn't have AUTO option, and by default, SpecConversion() converts Cry Engine Spec AUTO to LY Engine Spec NEVER.
+            // We are doing a special case here to convert Cry Engine Spec AUTO to LY Engine Spec LOW for Decal Component.
+            engineSpec = static_cast<AZ::u32>(EngineSpec::Low);
+        }
+        else
+        {
+            engineSpec = static_cast<AZ::u32>(SpecConversion(static_cast<ESystemConfigSpec>(entityToConvert->GetMinSpec())));
+        }
         conversionSuccess &= SetVarHierarchy<AZ::u32>(newEntity, editorDecalComponentId, { AZ_CRC("Min Spec", 0x2297ea39), AZ_CRC("EditorDecalConfiguration", 0x912ed516) }, engineSpec);
 
         if (!conversionSuccess)
@@ -1208,7 +1234,7 @@ namespace LegacyConversionInternal
         success &= ConvertVarHierarchy<Vec3, AZ::Vector3>(newEntity, boxShapeComponent, { AZ_CRC("Dimensions", 0xe27d8ba5) }, "Size", varBlock, LYVec3ToAZVec3);
 
         success &= ConvertVarHierarchy<int, AZ::s32>(newEntity, fogVolumeComponent, { AZ_CRC("VolumeType", 0xea31f528) }, "eiVolumeType", varBlock);
-        success &= ConvertVarHierarchy<Vec3, AZ::Color>(newEntity, fogVolumeComponent, { AZ_CRC("Color", 0x665648e9) }, "color_Color", varBlock, LYVec3ToAZColor);
+        success &= ConvertVarHierarchy<Vec3, AZ::Color>(newEntity, fogVolumeComponent, { AZ_CRC("Color", 0x665648e9) }, "color_Color", varBlock, LegacyColorConverter);
         success &= ConvertVarHierarchy<float>(newEntity, fogVolumeComponent, { AZ_CRC("HdrDynamic", 0x1887bf7d) }, "fHDRDynamic", varBlock);
         success &= ConvertVarHierarchy<bool>(newEntity, fogVolumeComponent, { AZ_CRC("UseGlobalFogColor", 0xab48bdd5) }, "bUseGlobalFogColor", varBlock);
         success &= ConvertVarHierarchy<float>(newEntity, fogVolumeComponent, { AZ_CRC("SoftEdges", 0x27b19509) }, "SoftEdges", varBlock);
@@ -1242,6 +1268,240 @@ namespace LegacyConversionInternal
         LmbrCentral::FogVolumeComponentRequestBus::Event(newEntityId, &LmbrCentral::FogVolumeComponentRequestBus::Events::RefreshFog);
         AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, newEntityId);
         return LegacyConversionResult::HandledDeleteEntity;
+    }
+
+    LegacyConversionResult ConvertDistanceClouds(CBaseObject* entityToConvert)
+    {
+        if (!((AZStd::string(entityToConvert->metaObject()->className()) == "CDistanceCloudObject" && AZStd::string(entityToConvert->metaObject()->className()) != "CEntityObject") ||
+            (entityToConvert->inherits("CEntityObject") && static_cast<CEntityObject *>(entityToConvert)->GetEntityClass() == "DistanceCloud")))
+        {
+            // We don't know how to convert this entity, whatever it is
+            return AZ::LegacyConversion::LegacyConversionResult::Ignored;
+        }
+
+        auto staticMeshComponentId = "{FC315B86-3280-4D03-B4F0-5553D7D08432}"; // Editor Static Mesh Component
+        auto conversionResult = CreateEntityForConversion(entityToConvert, { staticMeshComponentId });
+        if (!conversionResult.IsSuccess())
+        {
+            return conversionResult.GetError();
+        }
+
+        auto newEntityId = conversionResult.GetValue();
+        AZ::Entity* newEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(newEntity, &AZ::ComponentApplicationBus::Events::FindEntity, newEntityId);
+
+        //Set mesh
+        AZ::Data::AssetId assetId;
+        AZStd::string meshFileName = "objects/default/primitive_plane.cgf";
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, meshFileName.c_str(), AZ::Data::s_invalidAssetType, false);
+
+        if (!assetId.IsValid())
+        {
+            return LegacyConversionResult::Failed;
+        }
+
+        LmbrCentral::MeshComponentRequestBus::Event(newEntityId, &LmbrCentral::MeshComponentRequestBus::Events::SetMeshAsset, assetId);
+
+        //Set material
+        CMaterial* distanceCloudMat = entityToConvert->GetMaterial();
+
+        if (distanceCloudMat == nullptr || distanceCloudMat->GetMatInfo() == nullptr)
+        {
+            return LegacyConversionResult::Failed;
+        }
+
+        LmbrCentral::MaterialOwnerRequestBus::Event(newEntityId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, distanceCloudMat->GetMatInfo());
+
+        //Multiply X and Y scale by 2!
+        //This is needed because the distance cloud scale is used as "size" which goes positive and negative
+        //So a scale of 100 on Distance Clouds results in a width of 200
+        //The plane we use is a unit plane which has a width of 1 at scale 1 and would have a
+        //width of 100 at scale 100. Distance clouds use a scale of 100 by default
+
+        AZ::Transform transform = AZ::Transform::CreateIdentity();
+        AZ::Transform scaleModifier = AZ::Transform::CreateScale(AZ::Vector3(2.0f, 2.0f, 1.0f));
+
+        AZ::TransformBus::EventResult(transform, newEntityId, &AZ::TransformBus::Events::GetWorldTM);
+
+        transform = transform * scaleModifier;
+
+        AZ::TransformBus::Event(newEntityId, &AZ::TransformBus::Events::SetWorldTM, transform);
+
+        return LegacyConversionResult::HandledDeleteEntity;
+    }
+
+    AZ::EntityId CreateStandin(AZ::EntityId parentId, CBaseObject* entityToConvert, IStatObj* standinObj, const AZStd::string& standinName)
+    {
+        if (standinObj == nullptr)
+        {
+            //Return invalid ID
+            return AZ::EntityId();
+        }
+
+        AZStd::string filePath = standinObj->GetFilePath();
+        if (filePath.empty())
+        {
+            //Return invalid ID
+            return AZ::EntityId();
+        }
+
+        //Try to get the base mesh asset
+        AZ::Data::AssetId meshAssetId;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(meshAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, filePath.c_str(), AZ::Data::s_invalidAssetType, false);
+
+        if (!meshAssetId.IsValid())
+        {
+            //Return invalid ID
+            return AZ::EntityId();
+        }
+
+        //This might be a material override or the base material, we have no way to know
+        _smart_ptr<IMaterial> material = standinObj->GetMaterial();
+
+        //Create the base entity
+        //We use a CBaseObj so that we don't have to worry about transforms
+        AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> result(nullptr);
+        AZ::ComponentTypeList componentList = { "{FC315B86-3280-4D03-B4F0-5553D7D08432}" }; //EditorMeshComponent
+        AZ::LegacyConversion::LegacyConversionRequestBus::BroadcastResult(result, &AZ::LegacyConversion::LegacyConversionRequests::CreateConvertedEntity, entityToConvert, true, componentList);
+
+        AZ::Entity *entity = result.GetValue();
+        AZ::EntityId entityId = entity->GetId();
+
+        //Change name to something reasonable like "GeomCache2_FirstFrameStandin"
+        AZStd::string name = entity->GetName();
+        name += "_" + standinName;
+        entity->SetName(name);
+
+        LmbrCentral::MeshComponentRequestBus::Event(entityId, &LmbrCentral::MeshComponentRequestBus::Events::SetMeshAsset, meshAssetId);
+
+        //Invisible by default
+        LmbrCentral::MeshComponentRequestBus::Event(entityId, &LmbrCentral::MeshComponentRequestBus::Events::SetVisibility, false);
+
+        if (material)
+        {
+            LmbrCentral::MaterialOwnerRequestBus::Event(entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, material);
+        }
+
+        AZ::TransformBus::Event(entityId, &AZ::TransformBus::Events::SetParent, parentId);
+
+        return entityId;
+    }
+
+    LegacyConversionResult ConvertGeomCache(CBaseObject* entityToConvert)
+    {
+        if (!((AZStd::string(entityToConvert->metaObject()->className()) == "CEntityObject" &&
+            AZStd::string(entityToConvert->metaObject()->className()) != "CEntityObject") ||
+            (entityToConvert->inherits("CEntityObject") &&
+                static_cast<CEntityObject*>(entityToConvert)->GetEntityClass() == "GeomCache")))
+        {
+            // We don't know how to convert this entity, whatever it is
+            return AZ::LegacyConversion::LegacyConversionResult::Ignored;
+        }
+
+        //Get the underlying entity object
+        CGeomCacheEntity* geomCacheEntity = static_cast<CGeomCacheEntity*>(entityToConvert);
+        if (!geomCacheEntity)
+        {
+            //Object was not a geom cache object but we did not ignore the object
+            return AZ::LegacyConversion::LegacyConversionResult::Failed;
+        }
+
+        IEntity* legacyEntity = geomCacheEntity->GetIEntity();
+        if (!legacyEntity)
+        {
+            return AZ::LegacyConversion::LegacyConversionResult::Failed;
+        }
+
+        IGeomCacheRenderNode* renderNode = legacyEntity->GetGeomCacheRenderNode(0);
+        if (!renderNode)
+        {
+            return AZ::LegacyConversion::LegacyConversionResult::Failed;
+        }
+
+        // if we have a parent, and the parent is not yet converted, we ignore this entity!
+        // this is not ALWAYS the case - there may be types you wish to create anyway and just put them in the world, so we cannot enforce this
+        // inside the CreateConvertedEntity function.
+        AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> result(nullptr);
+        AZ::ComponentTypeList componentList = { "{045C0C58-C13E-49B0-A471-D4AC5D3FC6BD}" }; //EditorGeomCacheComponent
+        AZ::LegacyConversion::LegacyConversionRequestBus::BroadcastResult(result, &AZ::LegacyConversion::LegacyConversionRequests::CreateConvertedEntity, entityToConvert, true, componentList);
+
+        if (!result.IsSuccess())
+        {
+            // if we failed due to no parent, we keep processing
+            return (result.GetError() == AZ::LegacyConversion::CreateEntityResult::FailedNoParent) ? AZ::LegacyConversion::LegacyConversionResult::Ignored : AZ::LegacyConversion::LegacyConversionResult::Failed;
+        }
+
+        AZ::Entity *entity = result.GetValue();
+        AZ::EntityId entityId = entity->GetId();
+
+        //Retrieve geom cache asset
+        AZ::Data::AssetId geomCacheAssetId;
+        AZStd::string geomCacheFilePath = renderNode->GetGeomCache()->GetFilePath();
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(geomCacheAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, geomCacheFilePath.c_str(), AZ::Data::s_invalidAssetType, false);
+
+        AZ::Data::Asset<LmbrCentral::GeomCacheAsset> geomCacheAsset;
+        //If the asset isn't valid, just don't send anything to the component
+        //This shouldn't happen unless the legacy entity is setup incorrectly
+        if (geomCacheAssetId.IsValid())
+        {
+            geomCacheAsset.Create(geomCacheAssetId);
+        }
+
+        AZ::u32 renderFlags = renderNode->m_dwRndFlags;
+
+        bool visible = (renderFlags & ERF_HIDDEN) == 0; //Visible if not hidden
+        EngineSpec minSpec = SpecConversion(static_cast<ESystemConfigSpec>(renderNode->GetMinSpec()));
+        _smart_ptr<IMaterial> materialOverride = renderNode->GetMaterialOverride();
+        bool loop = renderNode->IsLooping();
+        bool playOnStart = true; //We have no way to retrieve this from Lua
+        float startTime = 0.0f; //Also no way to retrieve from Lua
+        float standinDistance = renderNode->GetStandInDistance();
+        float streamInDistance = renderNode->GetStreamInDistance();
+        float viewDistanceMultiplier = renderNode->GetViewDistanceMultiplier();
+        //We want the base max view dist. GetMaxViewDist from the node gets us the base max view dist * view dist multiplier;
+        float maxViewDistance = renderNode->GetMaxViewDist() / viewDistanceMultiplier;
+        AZ::u32 lodDistanceRatio = static_cast<AZ::u32>(renderNode->GetLodRatio());
+        //The geom cache casts shadows if it has these two flags
+        bool castShadows = (renderFlags & (ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS)) != 0;
+        //The geom cache uses vis areas if it's not outdoor only
+        bool useVisAreas = (renderFlags & (ERF_OUTDOORONLY)) == 0;
+
+        //Get stand-ins
+        //We have to create new entities but only if a stand-in was actually applied
+        //We have no data about if the material is a material override so we will always
+        //apply the material as an override to the new mesh component
+        AZ::EntityId firstFrameStandin = CreateStandin(entityId, entityToConvert, renderNode->GetFirstFrameStandIn(), "FirstFrameStandin");
+        AZ::EntityId lastFrameStandin = CreateStandin(entityId, entityToConvert, renderNode->GetLastFrameStandIn(), "LastFrameStandin");
+        AZ::EntityId standin = CreateStandin(entityId, entityToConvert, renderNode->GetStandIn(), "Standin");
+
+        //Actually apply everything to the object
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetVisible, visible);
+        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetMinSpec, minSpec);
+
+        if (materialOverride)
+        {
+            LmbrCentral::MaterialOwnerRequestBus::Event(entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, materialOverride);
+        }
+
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetLoop, loop);
+        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetPlayOnStart, playOnStart);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetStartTime, startTime);
+
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetFirstFrameStandIn, firstFrameStandin);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetLastFrameStandIn, lastFrameStandin);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetStandIn, standin);
+
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetStandInDistance, standinDistance);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetStreamInDistance, streamInDistance);
+        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetMaxViewDistance, maxViewDistance);
+        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetViewDistanceMultiplier, viewDistanceMultiplier);
+        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetLODDistanceRatio, lodDistanceRatio);
+        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetCastShadows, castShadows);
+        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetUseVisAreas, useVisAreas);
+
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetGeomCacheAsset, geomCacheAssetId);
+
+        return AZ::LegacyConversion::LegacyConversionResult::HandledDeleteEntity;
     }
 }
 
@@ -1277,15 +1537,17 @@ namespace AZ
                 ConvertTagCommentEntity,
                 ConvertParticleEntity,
                 ConvertProximityTriggerEntity,
-                //ConvertAreaShapeEntity, Disabled for v1.11
+                ConvertAreaShapeEntity,
                 ConvertAreaBoxEntity,
                 ConvertAreaSphereEntity,
-                //ConvertNavigationSeed, // Disabled for v1.11 
-                //ConvertWindVolumeEntity, Disabled for v1.11
-                //ConvertNavigationAreaEntity, Disabled for v1.11
+                //ConvertNavigationSeed, Disabled for v1.12
+                //ConvertWindVolumeEntity, Disabled for v1.12
+                //ConvertNavigationAreaEntity, Disabled for v1.12
                 ConvertTagPointEntity,
                 ConvertDecalEntity,
-                //ConvertFogVolumeEntity, // Disabled for v1.11
+                ConvertFogVolumeEntity,
+                ConvertDistanceClouds,
+                ConvertGeomCache,
             };
 
             for (EntityConvertFunc convertFunc : entityConvertFuncs)

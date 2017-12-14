@@ -359,7 +359,7 @@ class FileApproverTests(unittest.TestCase):
 
         whitelisted = file_approver.is_whitelisted(test_filename)
 
-        mock_in_list.assert_called_with(test_filename, test_whitelist)
+        mock_in_list.assert_called_with(test_filename, test_whitelist, "whitelist")
         self.assertFalse(whitelisted)
 
     def test_IsBlacklisted_BlacklistIsNone_ReturnTrue(self):
@@ -379,7 +379,7 @@ class FileApproverTests(unittest.TestCase):
 
         blacklisted = file_approver.is_blacklisted(test_filename)
 
-        mock_in_list.assert_called_with(test_filename, test_blacklist)
+        mock_in_list.assert_called_with(test_filename, test_blacklist, "blacklist")
         self.assertTrue(blacklisted)
 
     def test_GetPatternsFromFile_FilenameIsNone_ThrowsError(self):
@@ -429,7 +429,7 @@ class FileApproverTests(unittest.TestCase):
         mock_match.return_value = True
         test_filename = "testModule.dll"
         test_patterns = ['testModule']
-        expected_pattern = r"^.*\\testModule(\.dll|\.exe|\.dylib)?$"
+        expected_pattern = r"^.*[/\\]testModule(\.dll|\.exe|\.dylib)?$"
 
         in_list = FileApprover.is_in_list(test_filename, test_patterns)
 

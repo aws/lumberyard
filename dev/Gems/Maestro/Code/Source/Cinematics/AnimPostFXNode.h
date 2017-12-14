@@ -31,13 +31,13 @@ public:
     //-----------------------------------------------------------------------------
     //!
     static void Initialize();
-    static CFXNodeDescription* GetFXNodeDescription(EAnimNodeType nodeType);
-    static CAnimNode* CreateNode(const int id, EAnimNodeType nodeType);
+    static CFXNodeDescription* GetFXNodeDescription(AnimNodeType nodeType);
+    static CAnimNode* CreateNode(const int id, AnimNodeType nodeType);
 
     //-----------------------------------------------------------------------------
     //!
     CAnimPostFXNode();
-    CAnimPostFXNode(const int id, EAnimNodeType nodeType, CFXNodeDescription* pDesc);
+    CAnimPostFXNode(const int id, AnimNodeType nodeType, CFXNodeDescription* pDesc);
 
     //-----------------------------------------------------------------------------
     //!
@@ -68,7 +68,7 @@ public:
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
 
-    typedef std::map< EAnimNodeType, _smart_ptr<CFXNodeDescription> > FxNodeDescriptionMap;
+    typedef std::map< AnimNodeType, _smart_ptr<CFXNodeDescription> > FxNodeDescriptionMap;
     static FxNodeDescriptionMap s_fxNodeDescriptions;
     static bool s_initialized;
 

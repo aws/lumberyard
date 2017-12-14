@@ -32,7 +32,7 @@ public:
 
     CBoolTrack();
 
-    virtual EAnimValue GetValueType() { return eAnimValue_Bool; };
+    virtual AnimValueType GetValueType();
 
 
     virtual void GetValue(float time, bool& value);

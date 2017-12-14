@@ -1,0 +1,37 @@
+{
+    "name": "benchmark",
+    "source": "@ROOT@/Code/SDKs/benchmark",
+    "description": "Google benchmark library",
+    "includes": [
+        "include"
+    ],
+    "defines": [
+        "HAVE_BENCHMARK"
+    ],
+    "lib_required": "True",
+    "shared_required": "False",
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath_debug": [
+                "build/win_x64/vc120/debug"
+            ],
+            "libpath_release": [
+                "build/win_x64/vc120/release"
+            ],
+            "lib": [
+                "benchmark.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath_debug": [
+                "build/win_x64/vc140/debug"
+            ],
+            "libpath_release": [
+                "build/win_x64/vc140/release"
+            ],
+            "lib": [
+                "benchmark.lib"
+            ]
+        }
+    }
+}

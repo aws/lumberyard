@@ -14,29 +14,32 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-namespace LmbrCentral
+namespace AzFramework
 {
     void StaticPhysicsConfig::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<StaticPhysicsConfig>()
+            serializeContext->Class<AzFramework::StaticPhysicsConfig>()
                 ->Version(1)
-                ->Field("EnabledInitially", &StaticPhysicsConfig::m_enabledInitially)
+                ->Field("EnabledInitially", &AzFramework::StaticPhysicsConfig::m_enabledInitially)
                 ;
         }
 
-        if(auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->Class<StaticPhysicsConfig>()
-                ->Property("EnabledInitially", BehaviorValueProperty(&StaticPhysicsConfig::m_enabledInitially))
+            behaviorContext->Class<AzFramework::StaticPhysicsConfig>()
+                ->Property("EnabledInitially", BehaviorValueProperty(&AzFramework::StaticPhysicsConfig::m_enabledInitially))
                 ;
         }
     }
+}
 
+namespace LmbrCentral
+{
     void StaticPhysicsComponent::Reflect(AZ::ReflectContext* context)
     {
-        StaticPhysicsConfig::Reflect(context);
+        AzFramework::StaticPhysicsConfig::Reflect(context);
 
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
@@ -48,13 +51,13 @@ namespace LmbrCentral
 
         if(auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->Constant("StaticPhysicsComponentTypeId", BehaviorConstant(StaticPhysicsComponentTypeId));
+            behaviorContext->Constant("StaticPhysicsComponentTypeId", BehaviorConstant(AzFramework::StaticPhysicsComponentTypeId));
         }
     }
 
     bool StaticPhysicsComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        if (auto config = azrtti_cast<const StaticPhysicsConfig*>(baseConfig))
+        if (auto config = azrtti_cast<const AzFramework::StaticPhysicsConfig*>(baseConfig))
         {
             m_configuration = *config;
             return true;
@@ -64,7 +67,7 @@ namespace LmbrCentral
 
     bool StaticPhysicsComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
     {
-        if (auto outConfig = azrtti_cast<StaticPhysicsConfig*>(outBaseConfig))
+        if (auto outConfig = azrtti_cast<AzFramework::StaticPhysicsConfig*>(outBaseConfig))
         {
             *outConfig = m_configuration;
             return true;

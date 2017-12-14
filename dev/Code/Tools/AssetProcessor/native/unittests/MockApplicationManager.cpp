@@ -67,7 +67,7 @@ namespace AssetProcessor
             m_initialize++;
             return m_initializeResult;
         }
-        bool Execute(const QString& inputFile, const QString& watchFolder, int platformId, const QString& params, const QString& dest, 
+        bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest, 
             const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const override
         {
             m_execute++;
@@ -356,13 +356,13 @@ namespace AssetProcessor
         {
             for (int idx = 0; idx < m_numberOfJobsToCreate; idx++)
             {
-                if (request.m_platformFlags & AssetBuilderSDK::Platform_PC)
+                if (request.HasPlatform("pc"))
                 {
                     AssetBuilderSDK::JobDescriptor descriptor;
                     AZStd::string indexString;
                     AZStd::to_string(indexString, idx);
                     descriptor.m_jobKey = "RandomJobKey" + indexString;
-                    descriptor.m_platform = AssetBuilderSDK::Platform_PC;
+                    descriptor.SetPlatformIdentifier("pc");
                     response.m_createJobOutputs.push_back(descriptor);
                 }
             }

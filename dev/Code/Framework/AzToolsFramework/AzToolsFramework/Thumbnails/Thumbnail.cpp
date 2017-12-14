@@ -19,9 +19,9 @@ namespace AzToolsFramework
     {
         Thumbnail::Thumbnail(SharedThumbnailKey key, int thumbnailSize)
             : QObject()
-            , m_key(key)
-            , m_thumbnailSize(thumbnailSize)
             , m_state(State::Unloaded)
+            , m_thumbnailSize(thumbnailSize)
+            , m_key(key)
         {
             connect(&m_watcher, &QFutureWatcher<void>::finished, [this]()
                 {

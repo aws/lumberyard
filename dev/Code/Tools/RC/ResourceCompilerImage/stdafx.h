@@ -17,9 +17,6 @@
 
 #pragma once
 
-// Include Configuration settings for Standard Template Library
-#include <STLPortConfig.h>
-
 #include <cassert>
 
 // Define this to prevent including CryAssert (there is no proper hook for turning this off).

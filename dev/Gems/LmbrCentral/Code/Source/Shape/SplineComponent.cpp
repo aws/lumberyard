@@ -20,7 +20,7 @@
 
 namespace LmbrCentral
 {
-    using SplineComboBoxVec = AZStd::vector<AZStd::pair<size_t, AZStd::string> >;
+    using SplineComboBoxVec = AZStd::vector<AZStd::pair<size_t, AZStd::string>>;
     static SplineComboBoxVec PopulateSplineTypeList()
     {
         return SplineComboBoxVec
@@ -37,17 +37,17 @@ namespace LmbrCentral
         {
             return AZStd::make_shared<AZ::LinearSpline>();
         }
-        
+
         if (splineType == AZ::BezierSpline::RTTI_Type().GetHash())
         {
             return AZStd::make_shared<AZ::BezierSpline>();
         }
-        
+
         if (splineType == AZ::CatmullRomSpline::RTTI_Type().GetHash())
         {
             return AZStd::make_shared<AZ::CatmullRomSpline>();
         }
-        
+
         AZ_Assert(false, "Unhandled spline type %d in %s", splineType, __FUNCTION__);
 
         return nullptr;
@@ -59,12 +59,12 @@ namespace LmbrCentral
         {
             return AZStd::make_shared<AZ::LinearSpline>(*spline);
         }
-        
+
         if (splineType == AZ::BezierSpline::RTTI_Type().GetHash())
         {
             return AZStd::make_shared<AZ::BezierSpline>(*spline);
         }
-        
+
         if (splineType == AZ::CatmullRomSpline::RTTI_Type().GetHash())
         {
             return AZStd::make_shared<AZ::CatmullRomSpline>(*spline);
@@ -95,10 +95,11 @@ namespace LmbrCentral
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &SplineCommon::m_splineType, "Spline Type", "Interpolation style to use between points.")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &SplineCommon::m_splineType, "Spline Type", "Interpolation type to use between vertices.")
                     ->Attribute(AZ::Edit::Attributes::EnumValues, &PopulateSplineTypeList)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SplineCommon::OnChangeSplineType)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SplineCommon::m_spline, "Spline", "Data representing the path, in the entity's local coordinate space.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SplineCommon::m_spline, "Spline", "Data representing the spline.")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
             }
@@ -111,12 +112,20 @@ namespace LmbrCentral
         OnChangeSplineType();
     }
 
-    void SplineCommon::SetCallbacks(const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer)
+    void SplineCommon::SetCallbacks(
+        const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
+        const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
+        const AZStd::function<void()>& OnClearVertices, const AZStd::function<void()>& OnChangeType)
     {
-        m_onChangeElement = OnChangeElement;
-        m_onChangeContainer = OnChangeContainer;
+        m_onAddVertex = OnAddVertex;
+        m_onRemoveVertex = OnRemoveVertex;
+        m_onUpdateVertex = OnUpdateVertex;
+        m_onSetVertices = OnSetVertices;
+        m_onClearVertices = OnClearVertices;
 
-        m_spline->SetCallbacks(OnChangeElement, OnChangeContainer);
+        m_onChangeType = OnChangeType;
+
+        m_spline->SetCallbacks(OnAddVertex, OnRemoveVertex, OnUpdateVertex, OnSetVertices, OnClearVertices);
     }
 
     AZ::u32 SplineCommon::OnChangeSplineType()
@@ -126,9 +135,16 @@ namespace LmbrCentral
         if (m_spline->RTTI_GetType().GetHash() != m_splineType)
         {
             m_spline = CopySplinePtr(m_splineType, m_spline);
-            m_spline->SetCallbacks(m_onChangeElement, m_onChangeContainer);
+            m_spline->SetCallbacks(
+                m_onAddVertex, m_onRemoveVertex, m_onUpdateVertex,
+                m_onSetVertices, m_onClearVertices);
 
             ret = AZ::Edit::PropertyRefreshLevels::EntireTree;
+
+            if (m_onChangeType)
+            {
+                m_onChangeType();
+            }
         }
 
         return ret;
@@ -175,9 +191,7 @@ namespace LmbrCentral
                 ->Event("UpdateVertex", &SplineComponentRequestBus::Events::UpdateVertex)
                 ->Event("InsertVertex", &SplineComponentRequestBus::Events::InsertVertex)
                 ->Event("RemoveVertex", &SplineComponentRequestBus::Events::RemoveVertex)
-                ->Event("SetVertices", &SplineComponentRequestBus::Events::SetVertices)
-                ->Event("ClearVertices", &SplineComponentRequestBus::Events::ClearVertices)
-                ;
+                ->Event("ClearVertices", &SplineComponentRequestBus::Events::ClearVertices);
         }
     }
 
@@ -188,6 +202,16 @@ namespace LmbrCentral
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         SplineComponentRequestBus::Handler::BusConnect(GetEntityId());
+
+        auto splineChanged = [this]()
+        {
+            SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        };
+        
+        m_splineCommon.SetCallbacks(
+            [splineChanged](size_t) { splineChanged(); },
+            [splineChanged](size_t) { splineChanged(); }, 
+            splineChanged, splineChanged, splineChanged, splineChanged);
     }
 
     void SplineComponent::Deactivate()
@@ -203,54 +227,62 @@ namespace LmbrCentral
 
     AZ::ConstSplinePtr SplineComponent::GetSpline()
     {
-        return m_splineCommon.GetSpline();
+        return m_splineCommon.m_spline;
     }
 
     void SplineComponent::ChangeSplineType(AZ::u64 splineType)
     {
         m_splineCommon.ChangeSplineType(splineType);
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
     }
 
-    void SplineComponent::UpdateVertex(size_t index, const AZ::Vector3& vertex)
+    bool SplineComponent::UpdateVertex(size_t index, const AZ::Vector3& vertex)
     {
-        m_splineCommon.GetSpline()->m_vertexContainer.UpdateVertex(index, vertex);
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        return m_splineCommon.m_spline->m_vertexContainer.UpdateVertex(index, vertex);
+    }
+
+    bool SplineComponent::GetVertex(size_t index, AZ::Vector3& vertex) const
+    {
+        return m_splineCommon.m_spline->m_vertexContainer.GetVertex(index, vertex);
     }
 
     void SplineComponent::AddVertex(const AZ::Vector3& vertex)
     {
-        m_splineCommon.GetSpline()->m_vertexContainer.AddVertex(vertex);
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        m_splineCommon.m_spline->m_vertexContainer.AddVertex(vertex);
     }
 
-    void SplineComponent::InsertVertex(size_t index, const AZ::Vector3& vertex)
+    bool SplineComponent::InsertVertex(size_t index, const AZ::Vector3& vertex)
     {
-        m_splineCommon.GetSpline()->m_vertexContainer.InsertVertex(index, vertex);
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        return m_splineCommon.m_spline->m_vertexContainer.InsertVertex(index, vertex);
     }
 
-    void SplineComponent::RemoveVertex(size_t index)
+    bool SplineComponent::RemoveVertex(size_t index)
     {
-        m_splineCommon.GetSpline()->m_vertexContainer.RemoveVertex(index);
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        return m_splineCommon.m_spline->m_vertexContainer.RemoveVertex(index);
     }
 
     void SplineComponent::SetVertices(const AZStd::vector<AZ::Vector3>& vertices)
     {
-        m_splineCommon.GetSpline()->m_vertexContainer.SetVertices(vertices);
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        m_splineCommon.m_spline->m_vertexContainer.SetVertices(vertices);
     }
 
     void SplineComponent::ClearVertices()
     {
-        m_splineCommon.GetSpline()->m_vertexContainer.Clear();
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        m_splineCommon.m_spline->m_vertexContainer.Clear();
+    }
+
+    bool SplineComponent::Empty() const
+    {
+        return m_splineCommon.m_spline->m_vertexContainer.Empty();
+    }
+
+    size_t SplineComponent::Size() const
+    {
+        return m_splineCommon.m_spline->m_vertexContainer.Size();
     }
 
     void SplineComponent::SetClosed(bool closed)
     {
-        m_splineCommon.GetSpline()->SetClosed(closed);
+        m_splineCommon.m_spline->SetClosed(closed);
         SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
     }
 } // namespace LmbrCentral

@@ -10,7 +10,7 @@
 *
 */
 
-// include the required headers
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/Recorder.h>
@@ -34,52 +34,49 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandAdjustActor
     //--------------------------------------------------------------------------------
-
-    // constructor
     CommandAdjustActor::CommandAdjustActor(MCore::Command* orgCommand)
         : MCore::Command("AdjustActor", orgCommand)
     {
     }
 
 
-    // destructor
     CommandAdjustActor::~CommandAdjustActor()
     {
     }
 
 
-    // execute
     bool CommandAdjustActor::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         const uint32 actorID = parameters.GetValueAsInt("actorID", MCORE_INVALIDINDEX32);
 
-        // find the actor intance based on the given id
+        // Find the actor based on the given id.
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
-        if (actor == nullptr)
+        if (!actor)
         {
             outResult.Format("Cannot adjust actor. Actor ID %i is not valid.", actorID);
             return false;
         }
 
-        MCore::String valueString;
+        const EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
 
-        // set motion extraction node
+        // Set motion extraction node.
         if (parameters.CheckIfHasParameter("motionExtractionNodeName"))
         {
             mOldMotionExtractionNodeIndex = actor->GetMotionExtractionNodeIndex();
 
-            parameters.GetValue("motionExtractionNodeName", this, &valueString);
-            if (valueString.GetIsEmpty() || valueString == "$NULL$")
+            AZStd::string motionExtractionNodeName;
+            parameters.GetValue("motionExtractionNodeName", this, motionExtractionNodeName);
+            if (motionExtractionNodeName.empty() || motionExtractionNodeName == "$NULL$")
             {
                 actor->SetMotionExtractionNode(nullptr);
             }
             else
             {
-                EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(valueString.AsChar());
+                EMotionFX::Node* node = skeleton->FindNodeByName(motionExtractionNodeName.c_str());
                 actor->SetMotionExtractionNode(node);
             }
 
-            // inform all animgraph nodes about this
+            // Inform all animgraph nodes about this.
             const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
             for (uint32 i = 0; i < numAnimGraphs; ++i)
             {
@@ -96,211 +93,208 @@ namespace CommandSystem
             }
         }
 
-        // set actor name
+        // Set actor name.
         if (parameters.CheckIfHasParameter("name"))
         {
             mOldName = actor->GetName();
-            parameters.GetValue("name", this, &valueString);
-            actor->SetName(valueString.AsChar());
+
+            AZStd::string actorName;
+            parameters.GetValue("name", this, actorName);
+            actor->SetName(actorName.c_str());
         }
 
-        // adjust the attachment nodes
+        // Adjust the attachment nodes.
         if (parameters.CheckIfHasParameter("attachmentNodes"))
         {
-            // store old attachment nodes for undo
+            // Store old attachment nodes for undo.
             mOldAttachmentNodes = "";
-            const uint32 numOriginalNodes = actor->GetNumNodes();
-            for (uint32 i = 0; i < numOriginalNodes; ++i)
+            const uint32 numNodes = actor->GetNumNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
             {
-                // get the current node
-                EMotionFX::Node* node = actor->GetSkeleton()->GetNode(i);
-                if (node == nullptr)
+                EMotionFX::Node* node = skeleton->GetNode(i);
+                if (!node)
                 {
                     continue;
                 }
 
-                // add node to the old attachment node list
+                // Check if the node has the attachment flag enabled and add it.
                 if (node->GetIsAttachmentNode())
                 {
-                    mOldAttachmentNodes.FormatAdd("%s;", node->GetName());
+                    mOldAttachmentNodes += node->GetName();
+                    mOldAttachmentNodes += ";";
                 }
             }
 
-            // get the node names and split the string
-            parameters.GetValue("nodeAction", "select", &valueString);
+            AZStd::string nodeAction;
+            parameters.GetValue("nodeAction", "select", nodeAction);
 
-            MCore::String attachmentNodes;
-            parameters.GetValue("attachmentNodes", this, &attachmentNodes);
+            AZStd::string attachmentNodes;
+            parameters.GetValue("attachmentNodes", this, attachmentNodes);
 
-            MCore::Array<MCore::String> nodeNames = attachmentNodes.Split(MCore::UnicodeCharacter(';'));
+            AZStd::vector<AZStd::string> nodeNames;
+            AzFramework::StringFunc::Tokenize(attachmentNodes.c_str(), nodeNames, ";", false, true);
+            const size_t numNodeNames = nodeNames.size();
 
-            // get the number of nodes
-            const uint32 numNodes = nodeNames.GetLength();
-
-            // remove the selected nodes from the node group
-            if (valueString.CheckIfIsEqualNoCase("remove"))
+            // Remove the given nodes from the attachment node list by unsetting the flag.
+            if (AzFramework::StringFunc::Equal(nodeAction.c_str(), "remove"))
             {
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodeNames; ++i)
                 {
-                    // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
-                    if (node == nullptr)
+                    EMotionFX::Node* node = skeleton->FindNodeByName(nodeNames[i].c_str());
+                    if (!node)
                     {
                         continue;
                     }
 
-                    // remove the node
                     node->SetIsAttachmentNode(false);
                 }
             }
-            else if (valueString.CheckIfIsEqualNoCase("add")) // add the selected nodes to the node group
+            // Add the given nodes to the attachment node list by setting attachment flag.
+            else if (AzFramework::StringFunc::Equal(nodeAction.c_str(), "add"))
             {
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodeNames; ++i)
                 {
-                    // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
-                    if (node == nullptr)
+                    EMotionFX::Node* node = skeleton->FindNodeByName(nodeNames[i].c_str());
+                    if (!node)
                     {
                         continue;
                     }
 
-                    // add the node
                     node->SetIsAttachmentNode(true);
                 }
             }
-            else // selected nodes form the new node group
+            else
             {
-                // disable attachment node flag for all nodes of the actor
+                // Disable attachment node flag for all nodes.
                 SetIsAttachmentNode(actor, false);
 
-                // set attachment node flag for the selected nodes
-                for (uint32 i = 0; i < numNodes; ++i)
+                // Set attachment node flag based on selection list.
+                for (size_t i = 0; i < numNodeNames; ++i)
                 {
-                    // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
-                    if (node == nullptr)
+                    EMotionFX::Node* node = skeleton->FindNodeByName(nodeNames[i].c_str());
+                    if (!node)
                     {
                         continue;
                     }
 
-                    // add the node
                     node->SetIsAttachmentNode(true);
                 }
             }
         }
 
-        // adjust the nodes that are excluded from the bounding volume calculations
+        // Adjust the nodes that are excluded from the bounding volume calculations.
         if (parameters.CheckIfHasParameter("nodesExcludedFromBounds"))
         {
-            // store old attachment nodes for undo
+            // Store old nodes for undo.
             mOldExcludedFromBoundsNodes = "";
-            const uint32 numOriginalNodes = actor->GetNumNodes();
-            for (uint32 i = 0; i < numOriginalNodes; ++i)
+            const uint32 numNodes = actor->GetNumNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
             {
-                // get the current node
-                EMotionFX::Node* node = actor->GetSkeleton()->GetNode(i);
-                if (node == nullptr)
+                EMotionFX::Node* node = skeleton->GetNode(i);
+                if (!node)
                 {
                     continue;
                 }
 
-                // add node to the old node list
-                if (node->GetIncludeInBoundsCalc() == false)
+                // Check if the node has the attachment flag enabled and add it.
+                if (!node->GetIncludeInBoundsCalc())
                 {
-                    mOldExcludedFromBoundsNodes.FormatAdd("%s;", node->GetName());
+                    mOldExcludedFromBoundsNodes += node->GetName();
+                    mOldExcludedFromBoundsNodes += ";";
                 }
             }
 
-            // get the node names and split the string
-            parameters.GetValue("nodeAction", "select", &valueString);
+            AZStd::string nodeAction;
+            parameters.GetValue("nodeAction", "select", nodeAction);
 
-            MCore::String nodesExcludedFromBounds;
-            parameters.GetValue("nodesExcludedFromBounds", this, &nodesExcludedFromBounds);
+            AZStd::string nodesExcludedFromBounds;
+            parameters.GetValue("nodesExcludedFromBounds", this, nodesExcludedFromBounds);
 
-            MCore::Array<MCore::String> nodeNames = nodesExcludedFromBounds.Split(MCore::UnicodeCharacter(';'));
+            AZStd::vector<AZStd::string> nodeNames;
+            AzFramework::StringFunc::Tokenize(nodesExcludedFromBounds.c_str(), nodeNames, ";", false, true);
+            const size_t numNodeNames = nodeNames.size();
 
-            // get the number of nodes
-            const uint32 numNodes = nodeNames.GetLength();
-
-            // remove the selected nodes from the node group
-            if (valueString.CheckIfIsEqualNoCase("remove"))
+            // Remove the selected nodes from the bounding volume calculations.
+            if (AzFramework::StringFunc::Equal(nodeAction.c_str(), "remove"))
             {
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodeNames; ++i)
                 {
-                    // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
-                    if (node == nullptr)
+                    EMotionFX::Node* node = skeleton->FindNodeByName(nodeNames[i].c_str());
+                    if (!node)
                     {
                         continue;
                     }
 
-                    // remove the node
                     node->SetIncludeInBoundsCalc(true);
                 }
             }
-            else if (valueString.CheckIfIsEqualNoCase("add")) // add the selected nodes to the node group
+            // Add the given nodes to the bounding volume calculations.
+            if (AzFramework::StringFunc::Equal(nodeAction.c_str(), "add"))
             {
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodeNames; ++i)
                 {
-                    // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
-                    if (node == nullptr)
+                    EMotionFX::Node* node = skeleton->FindNodeByName(nodeNames[i].c_str());
+                    if (!node)
                     {
                         continue;
                     }
 
-                    // add the node
                     node->SetIncludeInBoundsCalc(false);
                 }
             }
-            else // selected nodes form the new node group
+            else
             {
-                // disable attachment node flag for all nodes of the actor
+                // Remove all nodes from bounding volume calculations.
                 SetIsExcludedFromBoundsNode(actor, false);
 
-                // set attachment node flag for the selected nodes
-                for (uint32 i = 0; i < numNodes; ++i)
+                // Remove the nodes from bounding volume calculation based on the selection.
+                for (size_t i = 0; i < numNodeNames; ++i)
                 {
-                    // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
-                    if (node == nullptr)
+                    EMotionFX::Node* node = skeleton->FindNodeByName(nodeNames[i].c_str());
+                    if (!node)
                     {
                         continue;
                     }
 
-                    // add the node
                     node->SetIncludeInBoundsCalc(false);
                 }
             }
         }
 
-        // adjust the mirror setup
+        // Adjust the mirror setup.
         if (parameters.CheckIfHasParameter("mirrorSetup"))
         {
             mOldMirrorSetup = actor->GetNodeMirrorInfos();
 
-            MCore::String mirrorSetupString;
-            parameters.GetValue("mirrorSetup", this, &mirrorSetupString);
+            AZStd::string mirrorSetupString;
+            parameters.GetValue("mirrorSetup", this, mirrorSetupString);
 
-            if (mirrorSetupString.GetLength() > 0)
+            if (mirrorSetupString.empty())
             {
-                // allocate the node mirror info table
+                actor->RemoveNodeMirrorInfos();
+            }
+            else
+            {
+                // Allocate the node mirror info table.
                 actor->AllocateNodeMirrorInfos();
 
-                // parse the mirror setup string, which is like "nodeA,nodeB;nodeC,nodeD;"
-                MCore::Array<MCore::String> pairs = mirrorSetupString.Split(MCore::UnicodeCharacter::semiColon); // split on ;
-                MCore::Array<MCore::String> pairValues;
-                for (uint32 p = 0; p < pairs.GetLength(); ++p)
+                AZStd::vector<AZStd::string> pairs;
+                AzFramework::StringFunc::Tokenize(mirrorSetupString.c_str(), pairs, ";", false, true);
+
+                // Parse the mirror setup string, which is like "nodeA,nodeB;nodeC,nodeD;".
+                const size_t numPairs = pairs.size();
+                for (size_t p = 0; p < numPairs; ++p)
                 {
-                    // split the pairs
-                    pairValues = pairs[p].Split(MCore::UnicodeCharacter::comma);
-                    if (pairValues.GetLength() != 2)
+                    // Split the pairs into the node names.
+                    AZStd::vector<AZStd::string> pairValues;
+                    AzFramework::StringFunc::Tokenize(pairs[p].c_str(), pairValues, ",", false, true);
+                    if (pairValues.size() != 2)
                     {
                         continue;
                     }
 
-                    EMotionFX::Node* nodeA = actor->GetSkeleton()->FindNodeByName(pairValues[0].AsChar());
-                    EMotionFX::Node* nodeB = actor->GetSkeleton()->FindNodeByName(pairValues[1].AsChar());
+                    EMotionFX::Node* nodeA = actor->GetSkeleton()->FindNodeByName(pairValues[0].c_str());
+                    EMotionFX::Node* nodeB = actor->GetSkeleton()->FindNodeByName(pairValues[1].c_str());
                     if (nodeA && nodeB)
                     {
                         actor->GetNodeMirrorInfo(nodeA->GetNodeIndex()).mSourceNode = static_cast<uint16>(nodeB->GetNodeIndex());
@@ -308,45 +302,37 @@ namespace CommandSystem
                     }
                 }
 
-                // update the mirror axes
+                // Update the mirror axes.
                 actor->AutoDetectMirrorAxes();
-            } // if mirror string > 0 length
-            else
-            {
-                actor->RemoveNodeMirrorInfos();
             }
-        } // if has mirrorSetup parameter
+        }
 
-        // save the current dirty flag and tell the actor that something got changed
         mOldDirtyFlag = actor->GetDirtyFlag();
         actor->SetDirtyFlag(true);
         return true;
     }
 
 
-    // undo the command
     bool CommandAdjustActor::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         const uint32 actorID = parameters.GetValueAsInt("actorID", MCORE_INVALIDINDEX32);
 
-        // find the actor intance based on the given id
+        // Find the actor based on the given id.
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
-        if (actor == nullptr)
+        if (!actor)
         {
             outResult.Format("Cannot adjust actor. Actor ID %i is not valid.", actorID);
             return false;
         }
 
-        // set motion extraction node
         if (parameters.CheckIfHasParameter("motionExtractionNodeName"))
         {
             actor->SetMotionExtractionNodeIndex(mOldMotionExtractionNodeIndex);
         }
 
-        // actor name
         if (parameters.CheckIfHasParameter("name"))
         {
-            actor->SetName(mOldName.AsChar());
+            actor->SetName(mOldName.c_str());
         }
 
         if (parameters.CheckIfHasParameter("mirrorSetup"))
@@ -355,37 +341,36 @@ namespace CommandSystem
             actor->AutoDetectMirrorAxes();
         }
 
-        // set the attachment nodes
+        // Set the attachment nodes.
         if (parameters.CheckIfHasParameter("attachmentNodes"))
         {
-            MCore::String command;
-            command.Format("AdjustActor -actorID %i -nodeAction \"select\" -attachmentNodes \"%s\"", actorID, mOldAttachmentNodes.AsChar());
-            if (GetCommandManager()->ExecuteCommandInsideCommand(command.AsChar(), outResult) == false)
+            const AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -nodeAction \"select\" -attachmentNodes \"%s\"", actorID, mOldAttachmentNodes.c_str());
+
+            if (!GetCommandManager()->ExecuteCommandInsideCommand(command, outResult))
             {
-                MCore::LogError(outResult.AsChar());
+                AZ_Error("EMotionFX", false, outResult.AsChar());
                 return false;
             }
         }
 
-        // set the nodes that are not taken into account in the bounding volume calculations
+        // Set the nodes that are not taken into account in the bounding volume calculations.
         if (parameters.CheckIfHasParameter("nodesExcludedFromBounds"))
         {
-            MCore::String command;
-            command.Format("AdjustActor -actorID %i -nodeAction \"select\" -nodesExcludedFromBounds \"%s\"", actorID, mOldExcludedFromBoundsNodes.AsChar());
-            if (GetCommandManager()->ExecuteCommandInsideCommand(command.AsChar(), outResult) == false)
+            const AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -nodeAction \"select\" -nodesExcludedFromBounds \"%s\"", actorID, mOldExcludedFromBoundsNodes.c_str());
+
+            if (!GetCommandManager()->ExecuteCommandInsideCommand(command, outResult))
             {
-                MCore::LogError(outResult.AsChar());
+                AZ_Error("EMotionFX", false, outResult.AsChar());
                 return false;
             }
         }
 
-        // set the dirty flag back to the old value
+        // Set the dirty flag back to the old value.
         actor->SetDirtyFlag(mOldDirtyFlag);
         return true;
     }
 
 
-    // init the syntax of the command
     void CommandAdjustActor::InitSyntax()
     {
         GetSyntax().ReserveParameters(7);
@@ -399,43 +384,37 @@ namespace CommandSystem
     }
 
 
-    // get the description
     const char* CommandAdjustActor::GetDescription() const
     {
         return "This command can be used to adjust the attributes of the given actor.";
     }
 
 
-    // static function to set all IsAttachmentNode flags of the actor to one value
+    // Static function to set all IsAttachmentNode flags of the actor to the given value.
     void CommandAdjustActor::SetIsAttachmentNode(EMotionFX::Actor* actor, bool isAttachmentNode)
     {
-        // iterate over all nodes and set attachmentNode flag
         const uint32 numNodes = actor->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            // get the current node
             EMotionFX::Node* node = actor->GetSkeleton()->GetNode(i);
-            if (node == nullptr)
+            if (!node)
             {
                 continue;
             }
 
-            // set the attachment node flag
             node->SetIsAttachmentNode(isAttachmentNode);
         }
     }
 
 
-    // static function to set all IsAttachmentNode flags of the actor to one value
+    // Static function to set all IsAttachmentNode flags of the actor to the given value.
     void CommandAdjustActor::SetIsExcludedFromBoundsNode(EMotionFX::Actor* actor, bool excludedFromBounds)
     {
-        // iterate over all nodes and set attachmentNode flag
         const uint32 numNodes = actor->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            // get the current node
             EMotionFX::Node* node = actor->GetSkeleton()->GetNode(i);
-            if (node == nullptr)
+            if (!node)
             {
                 continue;
             }
@@ -448,148 +427,113 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandActorSetCollisionMeshes
     //--------------------------------------------------------------------------------
-
-    // constructor
     CommandActorSetCollisionMeshes::CommandActorSetCollisionMeshes(MCore::Command* orgCommand)
         : MCore::Command("ActorSetCollisionMeshes", orgCommand)
     {
     }
 
 
-    // destructor
     CommandActorSetCollisionMeshes::~CommandActorSetCollisionMeshes()
     {
     }
 
 
-    // execute
     bool CommandActorSetCollisionMeshes::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
-        // get the actor ID
         const uint32 actorID = parameters.GetValueAsInt("actorID", MCORE_INVALIDINDEX32);
 
-        // find the actor based on the given id
+        // Find the actor based on the given id.
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
-        if (actor == nullptr)
+        if (!actor)
         {
             outResult.Format("Cannot set collision meshes. Actor ID %i is not valid.", actorID);
             return false;
         }
 
-        // get the lod
+        // Get the LOD level and check if it is valid.
         const uint32 lod = parameters.GetValueAsInt("lod", MCORE_INVALIDINDEX32);
-
-        // check if the lod is invalid
         if (lod > (actor->GetNumLODLevels() - 1))
         {
             outResult.Format("Cannot set collision meshes. LOD %i is not valid.", lod);
             return false;
         }
 
-        // store the old nodes for the undo
-        mOldNodeList = "";
         const uint32 numNodes = actor->GetNumNodes();
+        EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+
+        // Store the old nodes for the undo.
+        mOldNodeList = "";
         for (uint32 i = 0; i < numNodes; ++i)
         {
             EMotionFX::Mesh* mesh = actor->GetMesh(lod, i);
             if (mesh && mesh->GetIsCollisionMesh())
             {
-                mOldNodeList.FormatAdd("%s;", actor->GetSkeleton()->GetNode(i)->GetName());
+                if (!mOldNodeList.empty())
+                {
+                    mOldNodeList += ";";
+                }
+
+                mOldNodeList += skeleton->GetNode(i)->GetName();
             }
         }
 
-        // make sure there is no semicolon at the end
-        mOldNodeList.TrimRight(MCore::UnicodeCharacter(';'));
+        // Get the list of nodes that shall act as collision meshes.
+        AZStd::string nodeList;
+        parameters.GetValue("nodeList", this, nodeList);
 
-        // get the node list
-        MCore::String nodeList;
-        parameters.GetValue("nodeList", this, &nodeList);
+        // Split the string containing the list of nodes.
+        AZStd::vector<AZStd::string> nodeNames;
+        AzFramework::StringFunc::Tokenize(nodeList.c_str(), nodeNames, ";", false, true);
 
-        // split the node list
-        const MCore::Array<MCore::String> nodeNames = nodeList.Split(MCore::UnicodeCharacter(';'));
-
-        // update the collision flag of each mesh
+        // Update the collision mesh flags.
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            // get the mesh
+            const EMotionFX::Node* node = skeleton->GetNode(i);
             EMotionFX::Mesh* mesh = actor->GetMesh(lod, i);
-            if (mesh == nullptr)
+            if (!node || !mesh)
             {
                 continue;
             }
 
-            // update the collision mesh flag
-            const bool isCollisionMesh = nodeNames.Contains(actor->GetSkeleton()->GetNode(i)->GetNameString());
+            const bool isCollisionMesh = AZStd::find(nodeNames.begin(), nodeNames.end(), node->GetName()) != nodeNames.end();
             mesh->SetIsCollisionMesh(isCollisionMesh);
         }
 
-        // save the current dirty flag and tell the actor that something got changed
+        // Save the current dirty flag and tell the actor that something changed.
         mOldDirtyFlag = actor->GetDirtyFlag();
         actor->SetDirtyFlag(true);
 
-        // reinit the renderable actors
+        // Reinit the renderable actors.
         MCore::String reinitResult;
         GetCommandManager()->ExecuteCommandInsideCommand("ReInitRenderActors -resetViewCloseup false", reinitResult);
-
-        // done
         return true;
     }
 
 
-    // undo the command
     bool CommandActorSetCollisionMeshes::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
-        // get the actor ID
         const uint32 actorID = parameters.GetValueAsInt("actorID", MCORE_INVALIDINDEX32);
 
-        // find the actor based on the given id
+        // Find the actor based on the given id.
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
-        if (actor == nullptr)
+        if (!actor)
         {
-            outResult.Format("Cannot undo set collision meshes. Actor ID %i is not valid.", actorID);
+            outResult.Format("Cannot set collision meshes. Actor ID %i is not valid.", actorID);
             return false;
         }
 
-        // get the lod
         const uint32 lod = parameters.GetValueAsInt("lod", MCORE_INVALIDINDEX32);
-        if (lod > (actor->GetNumLODLevels() - 1))
-        {
-            outResult.Format("Cannot undo set collision meshes. LOD %i is not valid.", lod);
-            return false;
-        }
 
-        // split the node list
-        const MCore::Array<MCore::String> nodeNames = mOldNodeList.Split(MCore::UnicodeCharacter(';'));
-
-        // update the collision flag of each mesh
-        const uint32 numNodes = actor->GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            // get the mesh
-            EMotionFX::Mesh* mesh = actor->GetMesh(lod, i);
-            if (mesh == nullptr)
-            {
-                continue;
-            }
-
-            // update the collision mesh flag
-            const bool isCollisionMesh = nodeNames.Contains(actor->GetSkeleton()->GetNode(i)->GetNameString());
-            mesh->SetIsCollisionMesh(isCollisionMesh);
-        }
-
-        // set the dirty flag back to the old value
+        // Undo command.
+        const AZStd::string command = AZStd::string::format("ActorSetCollisionMeshes -actorID %i -lod %i -nodeList %s", actorID, lod, mOldNodeList.c_str());
+        GetCommandManager()->ExecuteCommandInsideCommand(command, outResult);
+        
+        // Set the dirty flag back to the old value
         actor->SetDirtyFlag(mOldDirtyFlag);
-
-        // reinit the renderable actors
-        MCore::String reinitResult;
-        GetCommandManager()->ExecuteCommandInsideCommand("ReInitRenderActors -resetViewCloseup false", reinitResult);
-
-        // done
         return true;
     }
 
 
-    // init the syntax of the command
     void CommandActorSetCollisionMeshes::InitSyntax()
     {
         GetSyntax().ReserveParameters(3);
@@ -599,7 +543,6 @@ namespace CommandSystem
     }
 
 
-    // get the description
     const char* CommandActorSetCollisionMeshes::GetDescription() const
     {
         return "This command can be used to set the collision meshes of the given actor.";
@@ -609,36 +552,32 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandResetToBindPose
     //--------------------------------------------------------------------------------
-
-    // execute
     bool CommandResetToBindPose::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
 
-        // iterate through all selected actor instances
         const uint32 numSelectedActorInstances = GetCommandManager()->GetCurrentSelection().GetNumSelectedActorInstances();
-        for (uint32 i = 0; i < numSelectedActorInstances; ++i)
-        {
-            EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetActorInstance(i);
-
-            actorInstance->GetTransformData()->ResetToBindPoseTransformations();
-            actorInstance->SetLocalPosition(MCore::Vector3(0.0f, 0.0f, 0.0f));
-            actorInstance->SetLocalRotation(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
-            actorInstance->SetLocalScale(MCore::Vector3(1.0f, 1.0f, 1.0f));
-        }
-
-        // verify if we actually have selected an actor instance
         if (numSelectedActorInstances == 0)
         {
             outResult = "Cannot reset actor instances to bind pose. No actor instance selected.";
             return false;
         }
 
+        // Iterate through all selected actor instances and reset them to bind pose.
+        for (uint32 i = 0; i < numSelectedActorInstances; ++i)
+        {
+            EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetActorInstance(i);
+
+            actorInstance->GetTransformData()->ResetToBindPoseTransformations();
+            actorInstance->SetLocalPosition(AZ::Vector3::CreateZero());
+            actorInstance->SetLocalRotation(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+            actorInstance->SetLocalScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
+        }
+
         return true;
     }
 
 
-    // undo the command
     bool CommandResetToBindPose::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
@@ -647,13 +586,11 @@ namespace CommandSystem
     }
 
 
-    // init the syntax of the command
     void CommandResetToBindPose::InitSyntax()
     {
     }
 
 
-    // get the description
     const char* CommandResetToBindPose::GetDescription() const
     {
         return "This command can be used to reset the actor instance back to the bind pose.";
@@ -663,8 +600,6 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandReInitRenderActors
     //--------------------------------------------------------------------------------
-
-    // execute
     bool CommandReInitRenderActors::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
@@ -673,7 +608,6 @@ namespace CommandSystem
     }
 
 
-    // undo the command
     bool CommandReInitRenderActors::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
@@ -682,7 +616,6 @@ namespace CommandSystem
     }
 
 
-    // init the syntax of the command
     void CommandReInitRenderActors::InitSyntax()
     {
         GetSyntax().ReserveParameters(1);
@@ -690,7 +623,6 @@ namespace CommandSystem
     }
 
 
-    // get the description
     const char* CommandReInitRenderActors::GetDescription() const
     {
         return "This command will be automatically called by the system in case all render actors need to get removed and reconstructed completely.";
@@ -700,8 +632,6 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandUpdateRenderActors
     //--------------------------------------------------------------------------------
-
-    // execute
     bool CommandUpdateRenderActors::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
@@ -710,7 +640,6 @@ namespace CommandSystem
     }
 
 
-    // undo the command
     bool CommandUpdateRenderActors::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
@@ -719,13 +648,11 @@ namespace CommandSystem
     }
 
 
-    // init the syntax of the command
     void CommandUpdateRenderActors::InitSyntax()
     {
     }
 
 
-    // get the description
     const char* CommandUpdateRenderActors::GetDescription() const
     {
         return "This command will be automatically called by the system in case an actor got removed and we have to remove a render actor or in case there is a new actor we need to create a render actor for, all current render actors won't get touched.";
@@ -735,8 +662,6 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandRemoveActor
     //--------------------------------------------------------------------------------
-
-    // constructor
     CommandRemoveActor::CommandRemoveActor(MCore::Command* orgCommand)
         : MCore::Command("RemoveActor", orgCommand)
     {
@@ -744,13 +669,11 @@ namespace CommandSystem
     }
 
 
-    // destructor
     CommandRemoveActor::~CommandRemoveActor()
     {
     }
 
 
-    // execute
     bool CommandRemoveActor::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         EMotionFX::Actor* actor;
@@ -760,7 +683,7 @@ namespace CommandSystem
 
             // find the actor based on the given id
             actor = EMotionFX::GetActorManager().FindActorByID(actorID);
-            if (actor == nullptr)
+            if (!actor)
             {
                 outResult.Format("Cannot create actor instance. Actor ID %i is not valid.", actorID);
                 return false;
@@ -780,23 +703,8 @@ namespace CommandSystem
             actor = selection.GetActor(0);
         }
 
-        // get rid of all actor instances which belong to the given filename
-        /*for (i=0; i<EMotionFX::GetActorManager().GetNumActorInstances();)
-        {
-            // get the actor instance and its corresponding actor
-            ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(i);
-            Actor* actor = actorInstance->GetActor();
-
-            // get rid of the actor instance in case the given filename equals to the actor's one
-            if (filename.CheckIfIsEqual( actor->GetName() ))
-                delete actorInstance;
-            else
-                i++;
-        }*/
-
         // store the previously used id and the actor filename
         mPreviouslyUsedID   = actor->GetID();
-        mData               = actor->GetName();
         mOldFileName        = actor->GetFileName();
         mOldDirtyFlag       = actor->GetDirtyFlag();
         mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
@@ -814,18 +722,22 @@ namespace CommandSystem
     }
 
 
-    // undo the command
     bool CommandRemoveActor::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
 
-        MCore::String commandString;
-        commandString.Format("ImportActor -filename \"%s\" -actorID %i", mOldFileName.AsChar(), mPreviouslyUsedID);
-        GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult);
+        const AZStd::string command = AZStd::string::format("ImportActor -filename \"%s\" -actorID %i", mOldFileName.c_str(), mPreviouslyUsedID);
+        if (!GetCommandManager()->ExecuteCommandInsideCommand(command, outResult))
+        {
+            return false;
+        }
 
-        // update our render actors
+        // Update our render actors.
         MCore::String updateRenderActorsResult;
-        GetCommandManager()->ExecuteCommandInsideCommand("UpdateRenderActors", updateRenderActorsResult);
+        if (!GetCommandManager()->ExecuteCommandInsideCommand("UpdateRenderActors", updateRenderActorsResult))
+        {
+            return false;
+        }
 
         // restore the workspace dirty flag
         GetCommandManager()->SetWorkspaceDirtyFlag(mOldWorkspaceDirtyFlag);
@@ -834,7 +746,6 @@ namespace CommandSystem
     }
 
 
-    // init the syntax of the command
     void CommandRemoveActor::InitSyntax()
     {
         GetSyntax().ReserveParameters(1);
@@ -842,7 +753,6 @@ namespace CommandSystem
     }
 
 
-    // get the description
     const char* CommandRemoveActor::GetDescription() const
     {
         return "This command can be used to destruct an actor and all the corresponding actor instances.";
@@ -864,17 +774,15 @@ namespace CommandSystem
         const uint32 numActorInstances  = EMotionFX::GetActorManager().GetNumActorInstances();
 
         // create the command group
-        MCore::String valueString;
         MCore::CommandGroup internalCommandGroup("Clear scene");
 
-        valueString.Format("RecorderClear");
-        if (commandGroup == nullptr)
+        if (!commandGroup)
         {
-            internalCommandGroup.AddCommandString(valueString.AsChar());
+            internalCommandGroup.AddCommandString("RecorderClear");
         }
         else
         {
-            commandGroup->AddCommandString(valueString.AsChar());
+            commandGroup->AddCommandString("RecorderClear");
         }
 
         // get rid of all actor instances in the scene
@@ -899,16 +807,16 @@ namespace CommandSystem
                 }
 
                 // generate command to remove the actor instance
-                valueString.Format("RemoveActorInstance -actorInstanceID %i", actorInstance->GetID());
+                const AZStd::string command = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", actorInstance->GetID());
 
                 // add the command to the command group
-                if (commandGroup == nullptr)
+                if (!commandGroup)
                 {
-                    internalCommandGroup.AddCommandString(valueString.AsChar());
+                    internalCommandGroup.AddCommandString(command);
                 }
                 else
                 {
-                    commandGroup->AddCommandString(valueString.AsChar());
+                    commandGroup->AddCommandString(command);
                 }
             }
         }
@@ -935,37 +843,38 @@ namespace CommandSystem
                 }
 
                 // create the command to remove the actor
-                valueString.Format("RemoveActor -actorID %i", actor->GetID());
+                const AZStd::string command = AZStd::string::format("RemoveActor -actorID %i", actor->GetID());
 
                 // add the command to the command group
-                if (commandGroup == nullptr)
+                if (!commandGroup)
                 {
-                    internalCommandGroup.AddCommandString(valueString.AsChar());
+                    internalCommandGroup.AddCommandString(command);
                 }
                 else
                 {
-                    commandGroup->AddCommandString(valueString.AsChar());
+                    commandGroup->AddCommandString(command);
                 }
             }
         }
 
         // clear the existing selection
-        valueString.Format("Unselect -actorID SELECT_ALL -actorInstanceID SELECT_ALL");
+        const AZStd::string command = AZStd::string::format("Unselect -actorID SELECT_ALL -actorInstanceID SELECT_ALL");
         if (commandGroup == nullptr)
         {
-            internalCommandGroup.AddCommandString(valueString);
+            internalCommandGroup.AddCommandString(command);
         }
         else
         {
-            commandGroup->AddCommandString(valueString);
+            commandGroup->AddCommandString(command);
         }
 
         // execute the command or add it to the given command group
-        if (commandGroup == nullptr)
+        if (!commandGroup)
         {
-            if (GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, valueString) == false)
+            AZStd::string result;
+            if (!GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, result))
             {
-                MCore::LogError(valueString.AsChar());
+                AZ_Error("EMotionFX", false, result.c_str());
             }
         }
     }
@@ -1040,8 +949,6 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandScaleActorData
     //--------------------------------------------------------------------------------
-
-    // constructor
     CommandScaleActorData::CommandScaleActorData(MCore::Command* orgCommand)
         : MCore::Command("ScaleActorData", orgCommand)
     {
@@ -1052,13 +959,11 @@ namespace CommandSystem
     }
 
 
-    // destructor
     CommandScaleActorData::~CommandScaleActorData()
     {
     }
 
 
-    // execute
     bool CommandScaleActorData::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         EMotionFX::Actor* actor;
@@ -1068,7 +973,7 @@ namespace CommandSystem
 
             // find the actor based on the given id
             actor = EMotionFX::GetActorManager().FindActorByID(actorID);
-            if (actor == nullptr)
+            if (!actor)
             {
                 outResult.Format("Cannot find actor with ID %d.", actorID);
                 return false;
@@ -1154,22 +1059,19 @@ namespace CommandSystem
     }
 
 
-    // undo the command
     bool CommandScaleActorData::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
         MCORE_UNUSED(parameters);
 
-        if (mUseUnitType == false)
+        if (!mUseUnitType)
         {
-            MCore::String commandString;
-            commandString.Format("ScaleActorData -id %d -scaleFactor %.8f", mActorID, 1.0f / mScaleFactor);
-            GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult);
+            const AZStd::string command = AZStd::string::format("ScaleActorData -id %d -scaleFactor %.8f", mActorID, 1.0f / mScaleFactor);
+            GetCommandManager()->ExecuteCommandInsideCommand(command, outResult);
         }
         else
         {
-            MCore::String commandString;
-            commandString.Format("ScaleActorData -id %d -unitType \"%s\"", mActorID, mOldUnitType.AsChar());
-            GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult);
+            const AZStd::string command = AZStd::string::format("ScaleActorData -id %d -unitType \"%s\"", mActorID, mOldUnitType.AsChar());
+            GetCommandManager()->ExecuteCommandInsideCommand(command, outResult);
         }
 
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(mActorID);
@@ -1182,7 +1084,6 @@ namespace CommandSystem
     }
 
 
-    // init the syntax of the command
     void CommandScaleActorData::InitSyntax()
     {
         GetSyntax().ReserveParameters(3);
@@ -1192,7 +1093,6 @@ namespace CommandSystem
     }
 
 
-    // get the description
     const char* CommandScaleActorData::GetDescription() const
     {
         return "This command can be used to scale all internal actor data. This includes vertex positions, morph targets, bounding volumes, bind pose transforms, etc.";

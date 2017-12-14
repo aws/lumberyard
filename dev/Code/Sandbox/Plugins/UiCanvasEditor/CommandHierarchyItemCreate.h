@@ -23,14 +23,14 @@ public:
 
     static void Push(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         PostCreationCallback postCreationCB = [](AZ::Entity* element){});
 
 private:
 
     CommandHierarchyItemCreate(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        EntityHelpers::EntityIdList& parents,
+        const EntityHelpers::EntityIdList& parents,
         PostCreationCallback postCreationCB);
 
     UndoStack* m_stack;

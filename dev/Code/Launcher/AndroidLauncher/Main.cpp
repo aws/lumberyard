@@ -9,39 +9,36 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-// Original file Copyright Crytek GMBH or its affiliates, used under license.
-
-// Description : Launcher implementation for Android.
 #include "StdAfx.h"
 
 #include <platform_impl.h>
-#include <AndroidSpecific.h>
-#include <android/log.h>
-#include <jni.h>
 
-#include <AzGameFramework/Application/GameApplication.h>
-#include <AzFramework/API/ApplicationAPI_android.h>
+#include <AndroidSpecific.h>
+#include <IConsole.h>
+#include <IEditorGame.h>
+#include <IGameStartup.h>
+#include <ITimer.h>
+#include <LumberyardLauncher.h>
+#include <ParseEngineConfig.h>
 
 #include <AzCore/Android/AndroidEnv.h>
 #include <AzCore/Android/Utils.h>
-#include <AzCore/Android/JNI/Object.h>
 
-#include <SDL.h>
-#include <SDL_Extension.h>
+#include <AzFramework/API/ApplicationAPI_android.h>
+#include <AzGameFramework/Application/GameApplication.h>
 
-#include <IGameStartup.h>
-#include <IEntity.h>
-#include <IGameFramework.h>
-#include <IConsole.h>
-#include <IEditorGame.h>
+#include <android/asset_manager_jni.h>
+#include <android/log.h>
+#include <android/native_activity.h>
+#include <android/native_window.h>
+#include <android_native_app_glue.h>
 
-#include <netdb.h>
-#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/types.h>
-#include <ParseEngineConfig.h>
-#include "android_descriptor.h"
+
+#if !defined(_RELEASE) || defined(RELEASE_LOGGING)
+    #define ENABLE_LOGGING
+#endif
 
 #if defined(AZ_MONOLITHIC_BUILD)
     #include "Common_TypeInfo.h"
@@ -62,16 +59,10 @@
     // from the game library
     extern "C" DLL_IMPORT IGameStartup * CreateGameStartup(); // from the game library
     extern "C" void CreateStaticModules(AZStd::vector<AZ::Module*>&);
-
-    // from CrySystem
-    extern "C" DLL_IMPORT void OnEngineRendererTakeover(bool engineSplashActive);
-#else
-    // from CrySystem
-    typedef const void (* OnEngineRendererTakeoverFunc)(bool);
 #endif //  defined(AZ_MONOLITHIC_BUILD)
 
 
-#if !defined(_RELEASE)
+#if defined(ENABLE_LOGGING)
     #define LOG_TAG "LMBR"
     #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__))
     #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__))
@@ -92,155 +83,263 @@
 #endif // !defined(_RELEASE)
 
 
-#define RunGame_EXIT(exitCode) (exit(exitCode))
-
-void RunGame();
+#define MAIN_EXIT_FAILURE() exit(1)
 
 
-//////////////////////////////////////////////////////////////////////////
-bool GetDefaultThreadStackSize(size_t* pStackSize)
+namespace
 {
-    pthread_attr_t kDefAttr;
-    pthread_attr_init(&kDefAttr);   // Required on Mac OS or pthread_attr_getstacksize will fail
-    int iRes(pthread_attr_getstacksize(&kDefAttr, pStackSize));
-    if (iRes != 0)
-    {
-        fprintf(stderr, "error: pthread_attr_getstacksize returned %d\n", iRes);
-        return false;
-    }
-    return true;
-}
+    bool g_windowInitialized = false;
 
-//////////////////////////////////////////////////////////////////////////
-bool IncreaseResourceMaxLimit(int iResource, rlim_t uMax)
-{
-    struct rlimit kLimit;
-    if (getrlimit(iResource, &kLimit) != 0)
+    //////////////////////////////////////////////////////////////////////////
+    bool IncreaseResourceToMaxLimit(int resource)
     {
-        fprintf(stderr, "error: getrlimit (%d) failed\n", iResource);
-        return false;
-    }
+        const rlim_t maxLimit = RLIM_INFINITY;
 
-    if (uMax != kLimit.rlim_max)
-    {
-        //if (uMax == RLIM_INFINITY || uMax > kLimit.rlim_max)
+        struct rlimit limit;
+        if (getrlimit(resource, &limit) != 0)
         {
-            kLimit.rlim_max = uMax;
-            if (setrlimit(iResource, &kLimit) != 0)
+            LOGE("[ERROR] Failed to get limit for resource %d", resource);
+            return false;
+        }
+
+        if (limit.rlim_max != maxLimit)
+        {
+            limit.rlim_max = maxLimit;
+            if (setrlimit(resource, &limit) != 0)
             {
-                fprintf(stderr, "error: setrlimit (%d, %lu) failed\n", iResource, uMax);
+                LOGE("[ERROR] Failed to update limit for resource %d with value %ld", resource, maxLimit);
                 return false;
             }
         }
+
+        return true;
     }
 
-    return true;
+    //////////////////////////////////////////////////////////////////////////
+    void RegisterSignalHandler(int sig, void (*handler)(int))
+    {
+        struct sigaction action;
+        sigaction(sig, NULL, &action);
+        if (action.sa_handler == SIG_DFL && action.sa_sigaction == (void*)SIG_DFL)
+        {
+            action.sa_handler = handler;
+            sigaction(sig, &action, NULL);
+        }
+    }
+
+    // ----
+    // System handlers
+    // ----
+
+    //////////////////////////////////////////////////////////////////////////
+    void HandleSignal(int sig)
+    {
+        LOGE("[ERROR] Signal (%d) was just raised", sig);
+        signal(sig, HandleSignal);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // this callback is triggered on the same thread the events are pumped
+    void HandleApplicationLifecycleEvents(android_app* appState, int32_t command)
+    {
+    #if !defined(_RELEASE)
+        const char* commandNames[] = {
+            "APP_CMD_INPUT_CHANGED",
+            "APP_CMD_INIT_WINDOW",
+            "APP_CMD_TERM_WINDOW",
+            "APP_CMD_WINDOW_RESIZED",
+            "APP_CMD_WINDOW_REDRAW_NEEDED",
+            "APP_CMD_CONTENT_RECT_CHANGED",
+            "APP_CMD_GAINED_FOCUS",
+            "APP_CMD_LOST_FOCUS",
+            "APP_CMD_CONFIG_CHANGED",
+            "APP_CMD_LOW_MEMORY",
+            "APP_CMD_START",
+            "APP_CMD_RESUME",
+            "APP_CMD_SAVE_STATE",
+            "APP_CMD_PAUSE",
+            "APP_CMD_STOP",
+            "APP_CMD_DESTROY",
+        };
+        LOGI("Engine command received: %s", commandNames[command]);
+    #endif
+
+        AZ::Android::AndroidEnv* androidEnv = static_cast<AZ::Android::AndroidEnv*>(appState->userData);
+        switch (command)
+        {
+            case APP_CMD_PAUSE:
+            {
+                EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnPause);
+                androidEnv->SetIsRunning(false);
+            }
+            break;
+
+            case APP_CMD_RESUME:
+            {
+                androidEnv->SetIsRunning(true);
+                EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnResume);
+            }
+            break;
+
+            case APP_CMD_DESTROY:
+            {
+                EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnDestroy);
+            }
+            break;
+
+            case APP_CMD_INIT_WINDOW:
+            {
+                g_windowInitialized = true;
+                androidEnv->SetWindow(appState->window);
+
+                EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnWindowInit);
+            }
+            break;
+
+            case APP_CMD_TERM_WINDOW:
+            {
+                EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnWindowDestroy);
+
+                androidEnv->SetWindow(nullptr);
+            }
+            break;
+
+            case APP_CMD_LOW_MEMORY:
+            {
+                EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnLowMemory);
+            }
+            break;
+        }
+    }
 }
 
-//////////////////////////////////////////////////////////////////////////
-void HandleSignal(int sig)
-{
-    LOGE("Signal (%d) was just raised", sig);
-    signal(sig, HandleSignal);
-}
 
-///////////////////////////////////////////////////////////////
-void RunGame()
+////////////////////////////////////////////////////////////////
+// This is the main entry point of a native application that is using android_native_app_glue.  
+// It runs in its own thread, with its own event loop for receiving input events and doing other things.
+void android_main(android_app* appState)
 {
-    //Adding a start up banner so you can see when the game is starting up in amongst the logcat spam
+    // Adding a start up banner so you can see when the game is starting up in amongst the logcat spam
     LOGI("******************************************************");
     LOGI("*         Amazon Lumberyard - Launching Game....     *");
     LOGI("******************************************************");
 
-    char absPath[MAX_PATH];
-    memset(absPath, 0, sizeof(char) * MAX_PATH);
-
-    if (!getcwd(absPath, sizeof(char) * MAX_PATH))
+    if (    !IncreaseResourceToMaxLimit(RLIMIT_CORE) 
+        ||  !IncreaseResourceToMaxLimit(RLIMIT_STACK))
     {
-        LOGE("[ERROR] Unable to get current working path!");
-        RunGame_EXIT(1);
-    }
-    LOGI("CWD = %s", absPath);
-
-    size_t uDefStackSize;
-    if (!IncreaseResourceMaxLimit(RLIMIT_CORE, RLIM_INFINITY)
-        || !GetDefaultThreadStackSize(&uDefStackSize)
-        || !IncreaseResourceMaxLimit(RLIMIT_STACK, RLIM_INFINITY * uDefStackSize))
-    {
-        RunGame_EXIT(1);
+        MAIN_EXIT_FAILURE();
     }
 
-    // SDL intenally will register to handle the SIGINT and SIGTERM signals.
-    // When either of these signals are captured by SDL, it will push SDL_QUIT
-    // into the event queue.  The problem is we don't do anything with that
-    // quit event so it will linger in the SDL event queue.  When the application
-    // is paused/backgrounded and resumed, SDL will skip the restore process if
-    // it sees the quit event in the queue.  Since our custom assert macros
-    // will raise SIGINT, it's not ideal for us to consume the SDL_QUIT event
-    // so we are going to override their handlers.
-    signal(SIGINT, HandleSignal);
-    signal(SIGTERM, HandleSignal);
+    // register our signal handlers
+    RegisterSignalHandler(SIGINT, HandleSignal);
+    RegisterSignalHandler(SIGTERM, HandleSignal);
+
+    // setup the system command handler
+    appState->onAppCmd = HandleApplicationLifecycleEvents;
 
     // setup the android environment
     AZ::AllocatorInstance<AZ::OSAllocator>::Create();
-
-    if (JNIEnv* jniEnv = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv()))
     {
-        JavaVM* javaVm = nullptr;
-        jniEnv->GetJavaVM(&javaVm);
-
-        jobject activityObject = static_cast<jobject>(SDL_AndroidGetActivity());
-
         AZ::Android::AndroidEnv::Descriptor descriptor;
 
-        descriptor.m_jvm = javaVm;
-        descriptor.m_activityRef = activityObject;
-        descriptor.m_assetManager = SDLExt_GetAssetManager();
-        descriptor.m_appPrivateStoragePath = SDL_AndroidGetInternalStoragePath();
-        descriptor.m_appPublicStoragePath = SDL_AndroidGetExternalStoragePath();
+        descriptor.m_jvm = appState->activity->vm;
+        descriptor.m_activityRef = appState->activity->clazz;
+        descriptor.m_assetManager = appState->activity->assetManager;
+
+        descriptor.m_appPrivateStoragePath = appState->activity->internalDataPath;
+        descriptor.m_appPublicStoragePath = appState->activity->externalDataPath;
+        descriptor.m_obbStoragePath = appState->activity->obbPath;
 
         if (!AZ::Android::AndroidEnv::Create(descriptor))
         {
-            jniEnv->DeleteLocalRef(activityObject);
             AZ::Android::AndroidEnv::Destroy();
+
+            LOGE("[ERROR] Failed to create the AndroidEnv\n");
+            MAIN_EXIT_FAILURE();
         }
 
-        jniEnv->DeleteLocalRef(activityObject);
+        AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
+        appState->userData = androidEnv;
+        androidEnv->SetIsRunning(true);
     }
 
-#if !defined(AZ_MONOLITHIC_BUILD)
-    HMODULE systemlib = CryLoadLibrary("libCrySystem.so");
-    if (!systemlib)
+    // sync the window creation
     {
-        LOGE("[ERROR] Failed to load CrySystem: %s", dlerror());
-        RunGame_EXIT(1);
+        // While not ideal to have the event pump code duplicated here and in AzFramework, this 
+        // at least solves the splash screen issues when the window creation sync happened later
+        // in initialization.  It's also the lesser of 2 evils, the other requiring a change in
+        // how the platform specific private Application implementation is created for ALL 
+        // platforms
+        while (!g_windowInitialized)
+        {
+            int events;
+            android_poll_source* source;
+
+            while (ALooper_pollAll(0, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
+            {
+                if (source != NULL)
+                {
+                    source->process(appState, source);
+                }
+            }
+        }
+
+        // Now that the window has been created we can show the java splash screen.  We need
+        // to do it here and not in the window init event because every time the app is 
+        // backgrounded/foregrounded the window is destroyed/created, respectively.  So, we
+        // don't want to show the splash screen when we resumed from a paused state.
+        AZ::Android::Utils::ShowSplashScreen();
     }
 
-    OnEngineRendererTakeoverFunc OnEngineRendererTakeover = (OnEngineRendererTakeoverFunc)CryGetProcAddress(systemlib, "OnEngineRendererTakeover");
-    if (!OnEngineRendererTakeover)
-    {
-        LOGE("[ERROR] OnEngineRendererTakeover could not be found in CrySystem!\n");
-        CryFreeLibrary(systemlib);
-        RunGame_EXIT(1);
-    }
-
-#endif // !defined(AZ_MONOLITHIC_BUILD)
-
+    // Engine Config (bootstrap.cfg)
     const char* assetsPath = AZ::Android::Utils::FindAssetsDirectory();
     if (!assetsPath)
     {
         LOGE("#################################################");
         LOGE("[ERROR] Unable to locate bootstrap.cfg - Exiting!");
         LOGE("#################################################");
-        RunGame_EXIT(1);
+        MAIN_EXIT_FAILURE();
     }
 
-    const char* searchPaths[] = {
-        assetsPath
-    };
-
+    const char* searchPaths[] = { assetsPath };
     CEngineConfig engineCfg(searchPaths, 1);
+    const char* gameName = engineCfg.m_gameDLL.c_str();
 
+    // Game Application (AzGameFramework)
+    AzGameFramework::GameApplication gameApp;
+    AzGameFramework::GameApplication::StartupParameters gameAppParams;
+    gameAppParams.m_allocator = &AZ::AllocatorInstance<AZ::OSAllocator>::Get();
+#ifdef AZ_MONOLITHIC_BUILD
+    gameAppParams.m_createStaticModulesCallback = CreateStaticModules;
+    gameAppParams.m_loadDynamicModules = false;
+#endif
+
+    {
+        // The path returned if assets are in the APK has to have a trailing slash other wise it causes 
+        // issues later on when parsing directories.  When they are on the sdcard, no trailing slash is 
+        // returned.  This patches the problem specifically for the descriptor only (it's not needed 
+        // elsewhere).
+        const char* pathSep = (AZ::Android::Utils::IsApkPath(assetsPath) ? "" : "/"); 
+
+        char descriptorRelativePath[AZ_MAX_PATH_LEN] = { 0 };
+        AzGameFramework::GameApplication::GetGameDescriptorPath(descriptorRelativePath, engineCfg.m_gameFolder);
+
+        char descriptorFullPath[AZ_MAX_PATH_LEN] = { 0 };
+        azsnprintf(descriptorFullPath, AZ_MAX_PATH_LEN, "%s%s%s", assetsPath, pathSep, descriptorRelativePath);
+
+        if (!AZ::IO::SystemFile::Exists(descriptorFullPath))
+        {
+            LOGE("Application descriptor file not found: %s\n", descriptorFullPath);
+            MAIN_EXIT_FAILURE();
+        }
+
+        gameApp.Start(descriptorFullPath, gameAppParams);
+    }
+
+    // set the native app state with the application framework
+    AzFramework::AndroidAppRequests::Bus::Broadcast(&AzFramework::AndroidAppRequests::SetAppState, appState);
+
+    // System Init Params ("Legacy" Lumberyard)
     SSystemInitParams startupParams;
     memset(&startupParams, 0, sizeof(SSystemInitParams));
     engineCfg.CopyToStartupParams(startupParams);
@@ -278,27 +377,9 @@ void RunGame()
         LOGI("**** LOG path set to   : %s ****", startupParams.logPath);
     }
 
-
-#if !defined(_RELEASE)
+#if defined(ENABLE_LOGGING)
     startupParams.pPrintSync = &g_androidPrintSink;
 #endif
-
-    chdir(assetsPath);
-
-    // Init AzGameFramework
-    AzGameFramework::GameApplication gameApp;
-    AzGameFramework::GameApplication::StartupParameters gameAppParams;
-    gameAppParams.m_allocator = &AZ::AllocatorInstance<AZ::OSAllocator>::Get();
-#ifdef AZ_MONOLITHIC_BUILD
-    gameAppParams.m_createStaticModulesCallback = CreateStaticModules;
-    gameAppParams.m_loadDynamicModules = false;
-#endif
-
-    const char* gameName = engineCfg.m_gameDLL.c_str();
-
-    AZ::ComponentApplication::Descriptor androidDescriptor;
-    SetupAndroidDescriptor(gameName, androidDescriptor);
-    gameApp.Start(androidDescriptor, gameAppParams);
 
     // If there are no handlers for the editor game bus, attempt to load the legacy gamedll instead
     bool legacyGameDllStartup = (EditorGameRequestBus::GetTotalNumOfEventHandlers() == 0);
@@ -316,8 +397,7 @@ void RunGame()
         if (!gameDll)
         {
             LOGE("[ERROR] Failed to load GAME DLL (%s)\n", dlerror());
-            CryFreeLibrary(systemlib);
-            RunGame_EXIT(1);
+            MAIN_EXIT_FAILURE();
         }
 
         // get address of startup function
@@ -326,8 +406,7 @@ void RunGame()
         {
             LOGE("[ERROR] CreateGameStartup could not be found in %s!\n", gameName);
             CryFreeLibrary(gameDll);
-            CryFreeLibrary(systemlib);
-            RunGame_EXIT(1);
+            MAIN_EXIT_FAILURE();
         }
     }
 #endif //!AZ_MONOLITHIC_BUILD
@@ -351,108 +430,37 @@ void RunGame()
         {
             CryFreeLibrary(gameDll);
         }
-        CryFreeLibrary(systemlib);
     #endif
-        RunGame_EXIT(1);
+        MAIN_EXIT_FAILURE();
     }
 
     // run the game
-    int exitCode = 0;
     IGame* game = gameStartup->Init(startupParams);
     if (game)
     {
-        // passing false because this would be the point where the engine renderer takes over if no engine splash screen was supplied
-        OnEngineRendererTakeover(false);
-        exitCode = gameStartup->Run(nullptr);
+        AZ::Android::Utils::DismissSplashScreen();
+
+#if !defined(SYS_ENV_AS_STRUCT)
+        gEnv = startupParams.pSystem->GetGlobalEnvironment();
+#endif
+
+        // Execute autoexec.cfg to load the initial level
+        gEnv->pConsole->ExecuteString("exec autoexec.cfg");
+
+        // Run the main loop
+        LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
     }
     else
     {
         LOGE("[ERROR] Failed to initialize the GameStartup Interface!\n");
     }
 
+    // Shutdown
     AZ::Android::AndroidEnv::Destroy();
 
     gameStartup->Shutdown();
     gameStartup = 0;
 
     gameApp.Stop();
-
-    RunGame_EXIT(exitCode);
 }
 
-// An unreferenced function.  This function is needed to make sure that
-// unneeded functions don't make it into the final executable.  The function
-// section for this function should be removed in the final linking.
-void this_function_is_not_used(void)
-{
-}
-
-//-------------------------------------------------------------------------------------
-int HandleApplicationLifecycleEvents(void* userdata, SDL_Event* event)
-{
-    switch (event->type)
-    {
-    // SDL2 generates two events when the native onPause is called:
-    // SDL_APP_WILLENTERBACKGROUND and SDL_APP_DIDENTERBACKGROUND.
-    case SDL_APP_DIDENTERBACKGROUND:
-    {
-        EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnPause);
-        return 0;
-    }
-    break;
-
-    // SDL2 generates two events when the native onResume is called:
-    // SDL_APP_WILLENTERFOREGROUND and SDL_APP_DIDENTERFOREGROUND.
-    case SDL_APP_DIDENTERFOREGROUND:
-    {
-        EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnResume);
-        return 0;
-    }
-    break;
-    case SDL_APP_TERMINATING:
-    {
-        EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnDestroy);
-        return 0;
-    }
-    break;
-    case SDL_APP_LOWMEMORY:
-    {
-        EBUS_EVENT(AzFramework::AndroidLifecycleEvents::Bus, OnLowMemory);
-        return 0;
-    }
-    break;
-    default:
-    {
-        // No special handling, add event to the queue
-        return 1;
-    }
-    break;
-    }
-}
-
-/**
- * Entry point when running in SDL framework.
- */
-extern "C" int SDL_main(int argc, char* argv[])
-{
-    // Initialize SDL.
-    SDL_SetEventFilter(HandleApplicationLifecycleEvents, NULL);
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER) < 0)
-    {
-        fprintf(stderr, "ERROR: SDL initialization failed: %s\n", SDL_GetError());
-        exit(EXIT_FAILURE);
-    }
-    atexit(SDL_Quit);
-
-#if CAPTURE_REPLAY_LOG
-    // Since Android doesn't support native command line argument, please
-    // uncomment the following line if -memreplay is needed.
-    // CryGetIMemReplay()->StartOnCommandLine("-memreplay");
-    CryGetIMemReplay()->StartOnCommandLine("");
-#endif // CAPTURE_REPLAY_LOG
-
-    RunGame();
-    return 0;
-}
-
-// vim:sw=4:ts=4:si:noet

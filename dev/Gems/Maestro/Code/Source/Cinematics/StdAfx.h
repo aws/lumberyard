@@ -26,9 +26,6 @@
 #include <map>
 #include <algorithm>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Movie
-
 #define CRYMOVIE_EXPORTS
 
 #include <platform.h>

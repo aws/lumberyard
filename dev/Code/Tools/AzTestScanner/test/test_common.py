@@ -8,8 +8,10 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+import datetime
+import mock
 import unittest
-from aztest.common import clean_timestamp, to_list
+from aztest.common import clean_timestamp, get_output_dir, to_list
 from aztest.errors import InvalidUseError
 
 
@@ -143,3 +145,41 @@ class ToListTests(unittest.TestCase):
         gen_list = [x for x in to_list(test_obj)]
 
         self.assertEquals([test_obj], gen_list)
+
+
+class GetOutputDirTests(unittest.TestCase):
+
+    @mock.patch('os.path.join')
+    def test_GetOutputDir_TimestampIsNoneDefaultPrefix_ReturnsNoTimestampDefaultPrefix(self, mock_join):
+        prefix_dir = "TestResults"
+        get_output_dir(None, prefix_dir)
+
+        mock_join.assert_called_with(prefix_dir, "NO_TIMESTAMP")
+
+    @mock.patch('os.path.join')
+    def test_GetOutputDir_TimestampIsNoneCustomPrefix_ReturnsNoTimestampCustomPrefix(self, mock_join):
+        test_prefix = "CustomPrefix"
+
+        get_output_dir(None, test_prefix)
+
+        mock_join.assert_called_with(test_prefix, "NO_TIMESTAMP")
+
+    @mock.patch('os.path.join')
+    def test_GetOutputDir_TimestampGivenDefaultPrefix_ReturnsTimestampedDirDefaultPrefix(self, mock_join):
+        prefix_dir = "TestResults"
+        timestamp = datetime.datetime(2016, 1, 1, 12, 0, 0, 123456)
+
+        get_output_dir(timestamp, prefix_dir)
+
+        expected_timestamp = "2016-01-01T12_00_00_123456"
+        mock_join.assert_called_with("TestResults", expected_timestamp)
+
+    @mock.patch('os.path.join')
+    def test_GetOutputDir_TimestampGivenCustomPrefix_ReturnsTimestampedDirCustomPrefix(self, mock_join):
+        timestamp = datetime.datetime(2016, 1, 1, 12, 0, 0, 123456)
+        test_prefix = "CustomPrefix"
+
+        get_output_dir(timestamp, test_prefix)
+
+        expected_timestamp = "2016-01-01T12_00_00_123456"
+        mock_join.assert_called_with(test_prefix, expected_timestamp)

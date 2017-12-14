@@ -18,15 +18,6 @@ SUBFOLDERS = [
 
 def build(bld):
 
-    msvc_cxx_flags = [
-        '/W4', # warning level
-    ]
-
-    clang_flags = [
-        '-Werror',  # warnings as errors
-        '-Wall'     # warning level
-    ]
-
     bld.CryEngineStaticLibrary(
         target          = 'GridMateForTools',
         vs_filter       = 'Network',
@@ -38,17 +29,17 @@ def build(bld):
         use             = ['AzCore'],
         export_includes = ['../GridMate'],
 
-		defines = ['GRIDMATE_FOR_TOOLS'],
+        defines         = ['GRIDMATE_FOR_TOOLS'],
 
-        win_cxxflags=msvc_cxx_flags,
+        msvc_cxxflags   = [
+                           '/W4', # warning level
+                          ],
 
-       
-       
-        android_cxxflags=clang_flags,
-        
-        ios_cxxflags=clang_flags,
-        
-        appletv_cxxflags=clang_flags,
-        
-        darwin_cxxflags=clang_flags
+        clang_cxxflags  = [
+                           '-Werror',  # warnings as errors
+                           '-Wall'     # warning level
+                          ],
+
+        darwin_enable_rtti = True
+
     )

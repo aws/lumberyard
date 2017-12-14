@@ -54,16 +54,6 @@ namespace AZ {
         static AssetSerializer  s_serializer;
     };
 
-    class AssetEventHandler
-        : public SerializeContext::IEventHandler
-    {
-    public:
-        /// Called after we are done writing to the instance pointed by classPtr.
-        void OnWriteEnd(void* classPtr) override;
-
-        static AssetEventHandler s_handler;
-    };
-
     /*
      * Generic serialization descriptor for all Assets of all types.
      */
@@ -96,7 +86,6 @@ namespace AZ {
             GenericClassGenericAsset()
             {
                 m_classData = SerializeContext::ClassData::Create<ThisType>("Asset", GetAssetClassId(), &m_factory, &AssetSerializer::s_serializer);
-                m_classData.m_eventHandler = &AssetEventHandler::s_handler;
                 m_classData.m_version = 1;
             }
 
@@ -116,9 +105,18 @@ namespace AZ {
                 return SerializeGenericTypeInfo<T>::GetClassTypeId();
             }
 
-            const Uuid& GetSpecializedTypeId() override
+            const Uuid& GetSpecializedTypeId() const override
             {
-                return azrtti_typeid<ThisType>();
+                return GetAssetClassId();
+            }
+
+            const Uuid& GetGenericTypeId() const override
+            {
+                return GetAssetClassId();
+            }
+
+            void Reflect(SerializeContext*)
+            {
             }
 
             static GenericClassGenericAsset* Instance()

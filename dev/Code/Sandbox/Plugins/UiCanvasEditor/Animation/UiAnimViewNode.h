@@ -17,6 +17,7 @@
 
 class CUiAnimViewTrack;
 class CUiAnimViewSequence;
+class CUiAnimViewAnimNode;
 
 class CUiAnimViewKeyConstHandle
 {

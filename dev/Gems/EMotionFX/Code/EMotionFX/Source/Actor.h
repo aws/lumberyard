@@ -24,10 +24,12 @@
 #include <MCore/Source/OBB.h>
 #include <MCore/Source/Distance.h>
 
+//
+#include <AzCore/Math/Vector3.h>
+
 // include required headers
 #include "BaseObject.h"
 #include "Pose.h"
-#include "LODGenerator.h"
 #include "Skeleton.h"
 
 // forward declare MCore classes
@@ -40,9 +42,7 @@ namespace EMotionFX
     class ActorInstance;
     class NodeMap;
     class AnimGraph;
-    class RetargetSetup;
     class Node;
-    class LocalSpaceController;
     class Material;
     class MorphSetup;
     class NodeGroup;
@@ -95,30 +95,6 @@ namespace EMotionFX
             uint8   mFlags;             // bitfield with MIRRORFLAG_ prefix
         };
 
-        // settings used when generating LODs
-        struct EMFX_API LODCreationData
-        {
-            MCORE_MEMORYOBJECTCATEGORY(Actor::LODCreationData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_EMSTUDIODATA);
-
-            enum EPreviewMode
-            {
-                PREVIEWMODE_NONE            = 0,
-                PREVIEWMODE_AUTOMATICLOD    = 1,
-                PREVIEWMODE_MANUALLOD       = 2
-            };
-
-            LODCreationData();
-            ~LODCreationData();
-
-            LODGenerator::InitSettings      mInitSettings;
-            LODGenerator::GenerateSettings  mGenerateSettings;
-            MCore::Array<uint32>            mEnabledMorphTargets;   /**< Array of integers which holds the morph target IDs of the enabled morph targets. */
-            MCore::Array<uint32>            mEnabledNodes;          /**< Array of integers which holds the node IDs of the enabled nodes. */
-            MCore::String                   mActorFileName;
-            EPreviewMode                    mPreviewMode;
-            EPreviewMode                    mMode;
-        };
-
         //------------------------------------------------
 
         /**
@@ -156,13 +132,6 @@ namespace EMotionFX
          * Remove all nodes from memory.
          */
         void DeleteAllNodes();
-
-        /**
-         * Update all mesh deformers. This performs things such as soft-skinning and mesh morph target processing.
-         * @param actorInstance The actor instance that is updating the mesh deformers.
-         * @param timePassedInSeconds The passed time since the last call, in seconds.
-         */
-        void UpdateMeshDeformers(ActorInstance* actorInstance, float timePassedInSeconds);
 
         /**
          * Clones this actor.
@@ -380,9 +349,8 @@ namespace EMotionFX
          * @param[in] replaceLODLevel The LOD level to which we copy the data to.
          * @param[in] copySkeletalLODFlags Copy over the skeletal LOD flags in case of true, skip them in case of false.
          * @param[in] delLODActorFromMem When set to true, the method will automatically delete the given copyActor from memory.
-         * @param[in] copyLODCreationData When true the LOD creation data will be copied as well, when false not. This is only used by EMStudio.
          */
-        void CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags, bool delLODActorFromMem = true, bool copyLODCreationData = false);
+        void CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags, bool delLODActorFromMem = true);
 
         /**
          * Insert LOD level at the given position.
@@ -799,8 +767,6 @@ namespace EMotionFX
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
         bool GetIsOwnedByRuntime() const;
 
-        LODCreationData* GetLODCreationData(uint32 lodLevel);
-
         /**
          * Recursively find the parent bone that is enabled in a given LOD, starting from a given node.
          * For example if you have a finger bone, while the finger bones are disabled in the skeletal LOD, this function will return the index to the hand bone.
@@ -822,8 +788,6 @@ namespace EMotionFX
         MCORE_INLINE MCore::AttributeSet* GetAttributeSet() const               { return mAttributeSet; }
 
         void RenderSkeleton(const Transform* globalTransforms, uint32 color);
-
-        RetargetSetup* GetRetargetSetup() const;
 
         void ReinitializeMeshDeformers();
         void PostCreateInit(bool makeGeomLodsCompatibleWithSkeletalLODs = true, bool generateOBBs = true, bool convertUnitType = true);
@@ -972,14 +936,13 @@ namespace EMotionFX
         Skeleton*                       mSkeleton;              /**< The skeleton, containing the nodes and bind pose. */
         MCore::Array<LODLevel>          mLODs;
         MCore::Array<Dependency>        mDependencies;          /**< The dependencies on other actors (shared meshes and transforms). */
-        MCore::Array<NodeInfo>          mNodeInfos;             /**< The per node info, shared between lods. */
+        AZStd::vector<NodeInfo>         mNodeInfos;             /**< The per node info, shared between lods. */
         MCore::String                   mName;                  /**< The name of the actor. */
         MCore::String                   mFileName;              /**< The filename of the actor. */
         MCore::Array<NodeMirrorInfo>    mNodeMirrorInfos;       /**< The array of node mirror info. */
         MCore::Array< MCore::Array< Material* > >   mMaterials; /**< A collection of materials (for each lod). */
         MCore::Array< MorphSetup* >     mMorphSetups;           /**< A  morph setup for each geometry LOD. */
         MCore::SmallArray<NodeGroup*>   mNodeGroups;            /**< The set of node groups. */
-        RetargetSetup*                  mRetargetSetup;         /**< The retarget setup. */
         MCore::Distance::EUnitType      mUnitType;              /**< The unit type used on export. */
         MCore::Distance::EUnitType      mFileUnitType;          /**< The unit type used on export. */
 
@@ -994,7 +957,6 @@ namespace EMotionFX
 
         bool                            mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to the actor since the last file save operation. */
         bool                            mUsedForVisualization;  /**< Indicates if the actor is used for visualization specific things and is not used as a normal in-game actor. */
-        MCore::Array<LODCreationData*>  mLODCreationData;
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                            mIsOwnedByRuntime;      /**< Set if the actor is used/owned by the engine runtime. */

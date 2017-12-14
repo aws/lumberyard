@@ -774,7 +774,7 @@ namespace UnitTest
 
                         EXPECT_FALSE(rd.m_frames.empty());
                         const FrameProfiler::FrameData& fd = rd.m_frames.back();
-                        EXPECT_GT(fd.m_frameId, 0U);
+                        EXPECT_GT(fd.m_frameId, 0u);
                         EXPECT_GT(fd.m_timeData.m_time, 0);
                         EXPECT_GT(fd.m_timeData.m_calls, 0);
                     }

@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "ProjectStatusWidget.h"
 #include "StackWidget.h"
 

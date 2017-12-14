@@ -42,7 +42,7 @@ public:
     virtual CHyperNode* Clone();
     virtual QString GetDescription() const;
     virtual void Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar);
-    virtual void SetName(const char* sName);
+    virtual void SetName(const QString& sName);
     virtual void OnInputsChanged();
     virtual void OnEnteringGameMode();
     virtual void Unlinked(bool bInput);

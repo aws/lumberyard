@@ -16,6 +16,7 @@
 #pragma once
 
 #include "ICryAnimation.h"
+#include "IEditor.h"
 
 #define COLOR_GREYED_OUT 0x999999
 #define COLOR_BLACK 0x000000

@@ -10,7 +10,6 @@
 *
 */
 
-// include the required headers
 #include "MotionCommands.h"
 #include "CommandManager.h"
 
@@ -35,15 +34,12 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // CommandPlayMotion
     //--------------------------------------------------------------------------------
-
-    // constructor
     CommandPlayMotion::CommandPlayMotion(MCore::Command* orgCommand)
         : MCore::Command("PlayMotion", orgCommand)
     {
     }
 
 
-    // destructor
     CommandPlayMotion::~CommandPlayMotion()
     {
     }
@@ -76,67 +72,64 @@ namespace CommandSystem
     }
 
 
-    // fill the playback info based on the input parameters
+    // Fill the playback info based on the input parameters.
     void CommandPlayMotion::CommandParametersToPlaybackInfo(Command* command, const MCore::CommandLine& parameters, EMotionFX::PlayBackInfo* outPlaybackInfo)
     {
-        //if (parameters.CheckIfHasParameter( "mirrorPlaneNormal" ))    outPlaybackInfo->mMirrorPlaneNormal     = parameters.GetValueAsVector3( "mirrorPlaneNormal", command );
-        if (parameters.CheckIfHasParameter("blendInTime"))
+        if (parameters.CheckIfHasParameter("blendInTime") == true)
         {
-            outPlaybackInfo->mBlendInTime           = parameters.GetValueAsFloat("blendInTime", command);
+            outPlaybackInfo->mBlendInTime = parameters.GetValueAsFloat("blendInTime", command);
         }
         if (parameters.CheckIfHasParameter("blendOutTime"))
         {
-            outPlaybackInfo->mBlendOutTime          = parameters.GetValueAsFloat("blendOutTime", command);
+            outPlaybackInfo->mBlendOutTime = parameters.GetValueAsFloat("blendOutTime", command);
         }
         if (parameters.CheckIfHasParameter("playSpeed"))
         {
-            outPlaybackInfo->mPlaySpeed             = parameters.GetValueAsFloat("playSpeed", command);
+            outPlaybackInfo->mPlaySpeed = parameters.GetValueAsFloat("playSpeed", command);
         }
         if (parameters.CheckIfHasParameter("targetWeight"))
         {
-            outPlaybackInfo->mTargetWeight          = parameters.GetValueAsFloat("targetWeight", command);
+            outPlaybackInfo->mTargetWeight = parameters.GetValueAsFloat("targetWeight", command);
         }
         if (parameters.CheckIfHasParameter("eventWeightThreshold"))
         {
-            outPlaybackInfo->mEventWeightThreshold  = parameters.GetValueAsFloat("eventWeightThreshold", command);
+            outPlaybackInfo->mEventWeightThreshold = parameters.GetValueAsFloat("eventWeightThreshold", command);
         }
         if (parameters.CheckIfHasParameter("maxPlayTime"))
         {
-            outPlaybackInfo->mMaxPlayTime           = parameters.GetValueAsFloat("maxPlayTime", command);
+            outPlaybackInfo->mMaxPlayTime = parameters.GetValueAsFloat("maxPlayTime", command);
         }
-        //if (parameters.CheckIfHasParameter( "retargetRootOffset" ))   outPlaybackInfo->mRetargetRootOffset    = parameters.GetValueAsFloat( "retargetRootOffset", command );
         if (parameters.CheckIfHasParameter("numLoops"))
         {
-            outPlaybackInfo->mNumLoops              = parameters.GetValueAsInt("numLoops", command);
+            outPlaybackInfo->mNumLoops = parameters.GetValueAsInt("numLoops", command);
         }
         if (parameters.CheckIfHasParameter("priorityLevel"))
         {
-            outPlaybackInfo->mPriorityLevel         = parameters.GetValueAsInt("priorityLevel", command);
+            outPlaybackInfo->mPriorityLevel = parameters.GetValueAsInt("priorityLevel", command);
         }
         if (parameters.CheckIfHasParameter("startNodeIndex"))
         {
-            outPlaybackInfo->mStartNodeIndex        = parameters.GetValueAsInt("startNodeIndex", command);
+            outPlaybackInfo->mStartNodeIndex = parameters.GetValueAsInt("startNodeIndex", command);
         }
-        //if (parameters.CheckIfHasParameter( "retargetRootIndex" ))    outPlaybackInfo->mRetargetRootIndex     = parameters.GetValueAsInt( "retargetRootIndex", command );
         if (parameters.CheckIfHasParameter("blendMode"))
         {
-            outPlaybackInfo->mBlendMode             = (EMotionFX::EMotionBlendMode)parameters.GetValueAsInt("blendMode", command);
+            outPlaybackInfo->mBlendMode = (EMotionFX::EMotionBlendMode)parameters.GetValueAsInt("blendMode", command);
         }
         if (parameters.CheckIfHasParameter("playMode"))
         {
-            outPlaybackInfo->mPlayMode              = (EMotionFX::EPlayMode)parameters.GetValueAsInt("playMode", command);
+            outPlaybackInfo->mPlayMode = (EMotionFX::EPlayMode)parameters.GetValueAsInt("playMode", command);
         }
         if (parameters.CheckIfHasParameter("mirrorMotion"))
         {
-            outPlaybackInfo->mMirrorMotion          = parameters.GetValueAsBool("mirrorMotion", command);
+            outPlaybackInfo->mMirrorMotion = parameters.GetValueAsBool("mirrorMotion", command);
         }
         if (parameters.CheckIfHasParameter("mix"))
         {
-            outPlaybackInfo->mMix                   = parameters.GetValueAsBool("mix", command);
+            outPlaybackInfo->mMix = parameters.GetValueAsBool("mix", command);
         }
         if (parameters.CheckIfHasParameter("playNow"))
         {
-            outPlaybackInfo->mPlayNow               = parameters.GetValueAsBool("playNow", command);
+            outPlaybackInfo->mPlayNow = parameters.GetValueAsBool("playNow", command);
         }
         if (parameters.CheckIfHasParameter("motionExtraction"))
         {
@@ -144,27 +137,27 @@ namespace CommandSystem
         }
         if (parameters.CheckIfHasParameter("retarget"))
         {
-            outPlaybackInfo->mRetarget              = parameters.GetValueAsBool("retarget", command);
+            outPlaybackInfo->mRetarget = parameters.GetValueAsBool("retarget", command);
         }
         if (parameters.CheckIfHasParameter("freezeAtLastFrame"))
         {
-            outPlaybackInfo->mFreezeAtLastFrame     = parameters.GetValueAsBool("freezeAtLastFrame", command);
+            outPlaybackInfo->mFreezeAtLastFrame = parameters.GetValueAsBool("freezeAtLastFrame", command);
         }
         if (parameters.CheckIfHasParameter("enableMotionEvents"))
         {
-            outPlaybackInfo->mEnableMotionEvents    = parameters.GetValueAsBool("enableMotionEvents", command);
+            outPlaybackInfo->mEnableMotionEvents = parameters.GetValueAsBool("enableMotionEvents", command);
         }
         if (parameters.CheckIfHasParameter("blendOutBeforeEnded"))
         {
-            outPlaybackInfo->mBlendOutBeforeEnded   = parameters.GetValueAsBool("blendOutBeforeEnded", command);
+            outPlaybackInfo->mBlendOutBeforeEnded = parameters.GetValueAsBool("blendOutBeforeEnded", command);
         }
         if (parameters.CheckIfHasParameter("canOverwrite"))
         {
-            outPlaybackInfo->mCanOverwrite          = parameters.GetValueAsBool("canOverwrite", command);
+            outPlaybackInfo->mCanOverwrite = parameters.GetValueAsBool("canOverwrite", command);
         }
         if (parameters.CheckIfHasParameter("deleteOnZeroWeight"))
         {
-            outPlaybackInfo->mDeleteOnZeroWeight    = parameters.GetValueAsBool("deleteOnZeroWeight", command);
+            outPlaybackInfo->mDeleteOnZeroWeight = parameters.GetValueAsBool("deleteOnZeroWeight", command);
         }
     }
 
@@ -389,7 +382,7 @@ namespace CommandSystem
         //  if (parameters.CheckIfHasParameter( "retargetRootIndex" ))      motionInstance->SetRetargetRootIndex( parameters.GetValueAsInt( "retargetRootIndex", command ) );
         if (parameters.CheckIfHasParameter("blendMode"))
         {
-            motionInstance->SetBlendMode((EMotionFX::EMotionBlendMode)parameters.GetValueAsInt("blendMode", command));
+            motionInstance->SetBlendMode(static_cast<EMotionFX::EMotionBlendMode>(parameters.GetValueAsInt("blendMode", command)));
         }
         if (parameters.CheckIfHasParameter("playMode"))
         {
@@ -887,25 +880,25 @@ namespace CommandSystem
     // execute
     bool CommandRemoveMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
     {
-        // get the filename
-        MCore::String filename;
-        parameters.GetValue("filename", "", &filename);
-
-        AZStd::string azFilename = filename.AsChar();
-        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, azFilename);
-        filename = azFilename.c_str();
+        AZStd::string filename;
+        parameters.GetValue("filename", "", filename);
+        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // find the corresponding motion
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.AsChar());
-        if (motion == nullptr)
+        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.c_str());
+        if (!motion)
         {
-            outResult.Format("Cannot remove motion. Motion with filename '%s' is not part of the motion manager.", filename.AsChar());
-            return false;
+            // Make sure potential dangling motions are removed from the selection list. This can happen in a command group where we remove a motion set,
+            // which internally destroys the motions, followed by a remove motion command that has been part of the motion set.
+            const AZStd::string commandString = AZStd::string::format("Unselect -motionName \"%s\"", filename.c_str());
+            GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult);
+
+            return true;
         }
 
         if (motion->GetIsOwnedByRuntime())
         {
-            outResult.Format("Cannot remove motion. Motion with filename '%s' is being used by the engine runtime.", filename.AsChar());
+            outResult.Format("Cannot remove motion. Motion with filename '%s' is being used by the engine runtime.", filename.c_str());
             return false;
         }
 
@@ -923,10 +916,9 @@ namespace CommandSystem
             }
         }
 
-        // remove the motion from the selection and the motion library
-        MCore::String commandString;
-        commandString.Format("Unselect -motionName \"%s\"", motion->GetFileName());
-        GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult);
+        // Remove motion from selection list.
+        const AZStd::string commandString = AZStd::string::format("Unselect -motionName \"%s\"", motion->GetFileName());
+        GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult);
 
         // store the previously used id and remove the motion
         mOldIndex           = EMotionFX::GetMotionManager().FindMotionIndex(motion);

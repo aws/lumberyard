@@ -39,6 +39,7 @@ namespace EMStudio
         void LoadPluginsFromDirectory(const char* directory);
         EMStudioPlugin* CreateWindowOfType(const char* pluginType, const char* objectName = nullptr);
         uint32 FindPluginByTypeString(const char* pluginType) const;
+        EMStudioPlugin* GetActivePluginByTypeString(const char* pluginType) const;
 
         EMStudioPlugin* FindActivePlugin(uint32 classID);   // find first active plugin, or nullptr when not found
 

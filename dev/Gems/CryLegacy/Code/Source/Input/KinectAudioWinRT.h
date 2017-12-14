@@ -14,3 +14,5 @@
 
 #pragma once
 
+#include <IInput.h>
+

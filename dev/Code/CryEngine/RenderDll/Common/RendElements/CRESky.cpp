@@ -11,11 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include <StdAfx.h>
 #include "RendElement.h"
 #include "CRESky.h"
 #include "Stars.h"
 #include "I3DEngine.h"
+#include <Common/RenderCapabilities.h>
 
 #if !defined(NULL_RENDERER)
 #include "../../XRenderD3D9/DriverD3D.h"
@@ -101,7 +102,15 @@ void CREHDRSky::GenerateSkyDomeTextures(int32 width, int32 height)
 
 void CREHDRSky::Init()
 {
-    if (!m_pStars)
+    bool drawStars = true;
+#if defined(OPENGL_ES)
+    // The drivers in Qualcomm devices running Android 4.4 and OpenGL ES 3.0 crash
+    // when running the "Stars" vertex shader. The problem is a combination of using gl_VertexID 
+    // and accessing global arrays. Disabling it for GLES 3.0 devices for now. 
+    uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
+    drawStars = glVersion != DXGLES_VERSION_30;
+#endif
+    if (drawStars && !m_pStars)
     {
         m_pStars = new CStars;
     }

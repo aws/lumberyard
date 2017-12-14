@@ -61,7 +61,7 @@ PropertySpriteCtrl::PropertySpriteCtrl(QWidget* parent)
 
         slicerButton->setFocusPolicy(Qt::StrongFocus);
 
-        slicerButton->setIcon(QIcon(":/Icons/Gear.tif"));
+        slicerButton->setIcon(QIcon("Editor/Icons/PropertyEditor/open_in.png"));
 
         // The icon size needs to be smaller than the fixed size to make sure it visually aligns properly.
         QSize iconSize = QSize(fixedSize.width() - 2, fixedSize.height() - 2);
@@ -80,10 +80,11 @@ PropertySpriteCtrl::PropertySpriteCtrl(QWidget* parent)
                 AZStd::string assetPath;
                 EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, m_propertyAssetCtrl->GetCurrentAssetID());
 
-                SpriteBorderEditor sbe(assetPath.c_str(), this);
+                SpriteBorderEditor sbe(assetPath.c_str(), this->window());
                 if (sbe.GetHasBeenInitializedProperly())
                 {
                     sbe.exec();
+                    AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
                     return;
                 }
                 else

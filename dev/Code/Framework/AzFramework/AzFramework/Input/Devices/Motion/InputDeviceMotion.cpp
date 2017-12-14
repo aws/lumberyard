@@ -21,6 +21,12 @@ namespace AzFramework
     const InputDeviceId InputDeviceMotion::Id("motion");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceMotion::IsMotionDevice(const InputDeviceId& inputDeviceId)
+    {
+        return (inputDeviceId.GetNameCrc32() == Id.GetNameCrc32());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputChannelId InputDeviceMotion::Acceleration::Gravity("motion_acceleration_gravity");
     const InputChannelId InputDeviceMotion::Acceleration::Raw("motion_acceleration_raw");
     const InputChannelId InputDeviceMotion::Acceleration::User("motion_acceleration_user");

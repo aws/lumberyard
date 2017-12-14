@@ -16,6 +16,7 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Outcome/Outcome.h>
 
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
 #include <ScriptCanvas/Bus/NodeIdPair.h>
@@ -40,11 +41,11 @@ namespace ScriptCanvasEditor
 
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        //! Creates a new graph and returns the entity Id for the owning entity.
-        //! \param Id of host entity
+        //! Opens an existing graph and returns the tab index in which it was open in.
         //! \param Asset structure used for holding ScriptCanvas Graph
-        virtual int OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1) = 0;
-        virtual int UpdateScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>&) = 0;
+        //! \param hostId of optional entity id of entity used to open the ScriptCanvas Asset. This will be used to track the Entity Context in which the graph was loaded in
+        //! \return index of open tab if the asset was able to be open successfully or error message of why the open failed
+        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1, AZ::EntityId hostId = AZ::EntityId()) = 0;
         virtual int CloseScriptCanvasAsset(const AZ::Data::AssetId&) = 0;
 
         virtual void OnChangeActiveGraphTab(const Widget::GraphTabMetadata&) {}

@@ -15,9 +15,6 @@
 
 //////////////////////////////////////////////////////////////////////////
 // CCheckOutDialog dialog
-#ifndef CRYINCLUDE_EDITOR_CHECKOUTDIALOG_H
-#define CRYINCLUDE_EDITOR_CHECKOUTDIALOG_H
-
 #include <QDialog>
 
 namespace Ui
@@ -36,7 +33,6 @@ public:
     {
         CHECKOUT = QDialog::Accepted,
         OVERWRITE,
-        OVERWRITE_ALL,
         CANCEL = QDialog::Rejected
     };
 
@@ -51,22 +47,26 @@ public:
     static bool EnableForAll(bool isEnable);
     static bool IsForAll() { return InstanceIsForAll(); }
 
+    static int LastResult() { return m_lastResult; }
+
 protected:
+    void OnBnClickedCancel();
     void OnBnClickedCheckout();
-    void OnBnClickedOverwriteAll();
-    void OnBnClickedOk();
+    void OnBnClickedOverwrite();
 
 private:
     static bool& InstanceEnableForAll();
     static bool& InstanceIsForAll();
 
-    QString m_file;
+    void HandleResult(int result);
 
+    QString m_file;
     QScopedPointer<Ui::CheckOutDialog> m_ui;
+
+    static int m_lastResult;
 };
 
-
-
+//////////////////////////////////////////////////////////////////////////
 class CAutoCheckOutDialogEnableForAll
 {
 public:
@@ -83,4 +83,3 @@ public:
 private:
     bool m_bPrevState;
 };
-#endif // CRYINCLUDE_EDITOR_CHECKOUTDIALOG_H

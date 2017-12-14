@@ -1,0 +1,36 @@
+{
+    "auto": {
+        "Include": [
+            "Include/PhysX/PhysXBus.h",
+            "Include/PhysX/PhysXSystemComponentBus.h",
+            "Include/PhysX/PhysXColliderComponentBus.h",
+            "Include/PhysX/PhysXNativeTypeIdentifiers.h",
+            "Include/PhysX/PhysXMeshShapeComponentBus.h"
+        ],
+        "Source/Components": [
+            "Source/PhysXSystemComponent.cpp",
+            "Source/PhysXSystemComponent.h",
+            "Source/PhysXRigidBodyComponent.cpp",
+            "Source/PhysXRigidBodyComponent.h",
+            "Source/PhysXColliderComponent.cpp",
+            "Source/PhysXColliderComponent.h",
+            "Source/PhysXMeshShapeComponent.cpp",
+            "Source/PhysXMeshShapeComponent.h"
+        ],
+        "Source/Pipeline": [
+            "Source/Pipeline/PhysXMeshAsset.cpp",
+            "Source/Pipeline/PhysXMeshAsset.h"
+        ],
+        "Source": [
+            "Source/PhysXMathConversion.h",
+            "Source/PhysXWorld.cpp",
+            "Source/PhysXWorld.h",
+            "Source/PhysXRigidBody.cpp",
+            "Source/PhysXRigidBody.h",
+            "Source/AzPhysXCpuDispatcher.cpp",
+            "Source/AzPhysXCpuDispatcher.h",
+            "Source/AzPhysXJob.cpp",
+            "Source/AzPhysXJob.h"
+        ]
+    }
+}

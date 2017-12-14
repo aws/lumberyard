@@ -109,7 +109,13 @@ public:
     void Debug();
     void DebugGBuffer();
 
+    //! Adds a light to the list of lights to be rendered.
+    //! \param pDL               Light to be rendered
+    //! \param fMult             Multiplier that will be applied to the light's intensity. For example, use this to fade out lights as they exceed distance thresholds.
+    //! \param passInfo          Standard SRenderingPassInfo, send to EF_AddEf()
+    //! \param rendItemSorter    Standard SRendItemSorter, send to EF_AddEf()
     uint32 AddLight(const CDLight& pDL, float fMult, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter);
+
     inline uint8 AddClipVolume(const IClipVolume* pClipVolume);
     inline bool SetClipVolumeBlendData(const IClipVolume* pClipVolume, const SClipVolumeBlendInfo& blendInfo);
 

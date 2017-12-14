@@ -29,7 +29,7 @@ class UiTooltipDisplayComponent
 {
 public: //types
 
-    using EntityComboBoxVec = AZStd::vector<AZStd::pair<AZ::EntityId, AZStd::string>>;
+    using EntityComboBoxVec = AZStd::vector<AZStd::pair<AZ::EntityId, AZStd::string> >;
     using SequenceComboBoxVec = AZStd::vector<AZStd::string>;
 
 public: // member functions

@@ -123,7 +123,7 @@ bool UiEditorEntityContext::SaveToStreamForGame(AZ::IO::GenericStream& stream, A
     AZ::SliceComponent::EntityList targetEntities;
     targetSlice->GetEntities(targetEntities);
 
-    // Export runtime slice representing the level, which is a completely flat list of entities.
+    // Export runtime slice representing the entities in this canvas, which is a completely flat list of entities.
     AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, &targetSliceEntity);
 
     AZ_Assert(targetEntities.size() == sourceEntities.size(),
@@ -139,6 +139,29 @@ bool UiEditorEntityContext::SaveToStreamForGame(AZ::IO::GenericStream& stream, A
             *(*sourceIter),
             *(*targetIter));
     }
+
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiEditorEntityContext::SaveCanvasEntityToStreamForGame(AZ::Entity* canvasEntity, AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType)
+{
+    AZ::Entity* sourceCanvasEntity = canvasEntity;
+    AZ::Entity* exportCanvasEntity = aznew AZ::Entity(sourceCanvasEntity->GetName().c_str());
+    exportCanvasEntity->SetId(sourceCanvasEntity->GetId());
+    AZ_Assert(exportCanvasEntity, "Failed to create target entity \"%s\" for export.",
+        sourceCanvasEntity->GetName().c_str());
+
+    EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, PreExportEntity,
+        *sourceCanvasEntity,
+        *exportCanvasEntity);
+
+    // Export entity representing the canvas, which has only runtime components.
+    AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, exportCanvasEntity);
+
+    EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, PostExportEntity,
+        *sourceCanvasEntity,
+        *exportCanvasEntity);
 
     return true;
 }
@@ -219,7 +242,7 @@ bool UiEditorEntityContext::CloneUiEntities(const AZStd::vector<AZ::EntityId>& s
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiEditorEntityContext::DestroyUiEntity(AZ::EntityId entityId)
 {
-    return DestroyEntity(entityId);
+    return DestroyEntityById(entityId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -296,7 +319,7 @@ void UiEditorEntityContext::DeleteElements(AzToolsFramework::EntityIdList elemen
 
         // Get the list of currently selected entities so that we can attempt to restore that
         // after the delete (the undoable command currently only works on selected entities)
-        QTreeWidgetItemRawPtrQList& selection = hierarchy->selectedItems();
+        QTreeWidgetItemRawPtrQList selection = hierarchy->selectedItems();
         EntityHelpers::EntityIdList selectedEntities = SelectionHelpers::GetSelectedElementIds(hierarchy, selection, false);
 
         // Use an undoable command to delete the entities
@@ -327,6 +350,17 @@ void UiEditorEntityContext::DeleteElements(AzToolsFramework::EntityIdList elemen
 bool UiEditorEntityContext::HasPendingRequests()
 {
     if (!m_queuedSliceEntityRestores.empty())
+    {
+        return true;
+    }
+
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiEditorEntityContext::IsInstantiatingSlices()
+{    
+    if (!m_instantiatingSlices.empty())
     {
         return true;
     }
@@ -387,6 +421,30 @@ void UiEditorEntityContext::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId
             m_queuedSliceReplacement.m_ticket = InstantiateEditorSlice(asset, viewportPosition);
         }
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiEditorEntityContext::ResetContext()
+{
+    // First deactivate all the entities, before calling the base class ResetContext which will
+    // delete them all.
+    // This helps us know that we do not need to maintain the cached pointers between the UiElementComponents
+    // as individual elements are destroyed.
+    AZ::SliceComponent::EntityList entities;
+    bool result = GetRootSlice()->GetEntities(entities);
+    if (result)
+    {
+        for (AZ::Entity* entity : entities)
+        {
+            if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+            {
+                entity->Deactivate();
+            }
+        }
+    }
+
+    // Now reset the context which will destroy all the entities
+    EntityContext::ResetContext();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -597,40 +655,54 @@ void UiEditorEntityContext::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> as
 // Root slice (or its dependents) has been reloaded.
 void UiEditorEntityContext::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
 {
-    HierarchyWidget* hierarchy = m_editorWindow->GetHierarchy();
-    QTreeWidgetItemRawPtrQList& selection = hierarchy->selectedItems();
-    EntityHelpers::EntityIdList selectedEntities = SelectionHelpers::GetSelectedElementIds(hierarchy, selection, false);
+    bool isActive = false;
+    if (m_editorWindow->GetEntityContext() && m_editorWindow->GetEntityContext()->GetContextId() == GetContextId())
+    {
+        isActive = true;
+    }
 
-    // This ensures there's no "current item".
-    hierarchy->SetUniqueSelectionHighlight((QTreeWidgetItem*)nullptr);
+    HierarchyWidget* hierarchy = nullptr;
+    EntityHelpers::EntityIdList selectedEntities;
+    if (isActive)
+    {
+        hierarchy = m_editorWindow->GetHierarchy();
+        const QTreeWidgetItemRawPtrQList& selection = hierarchy->selectedItems();
+        selectedEntities = SelectionHelpers::GetSelectedElementIds(hierarchy, selection, false);
 
-    // IMPORTANT: This is necessary to indirectly trigger detach()
-    // in the PropertiesWidget.
-    hierarchy->SetUserSelection(nullptr);
+        // This ensures there's no "current item".
+        hierarchy->SetUniqueSelectionHighlight((QTreeWidgetItem*)nullptr);
+
+        // IMPORTANT: This is necessary to indirectly trigger detach()
+        // in the PropertiesWidget.
+        hierarchy->SetUserSelection(nullptr);
+    }
 
     EntityContext::OnAssetReloaded(asset);
 
-    EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, ReinitializeElements);
+    EBUS_EVENT_ID(m_editorWindow->GetCanvasForEntityContext(GetContextId()), UiCanvasBus, ReinitializeElements);
 
-    // Ensure selection set is preserved after applying the new level slice.
-    // But make sure we don't add any EntityId to selection that no longer exists as that cause a crash later
-    selectedEntities.erase(
-        std::remove_if(
-            selectedEntities.begin(), selectedEntities.end(),
-            [](AZ::EntityId entityId)
-            {
-                AZ::Entity* entity = nullptr;
-                EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
-                return !entity;
-            }),
-        selectedEntities.end());
+    if (isActive)
+    {
+        // Ensure selection set is preserved after applying the new level slice.
+        // But make sure we don't add any EntityId to selection that no longer exists as that cause a crash later
+        selectedEntities.erase(
+            std::remove_if(
+                selectedEntities.begin(), selectedEntities.end(),
+                [](AZ::EntityId entityId)
+                {
+                    AZ::Entity* entity = nullptr;
+                    EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+                    return !entity;
+                }),
+            selectedEntities.end());
     
-    // Refresh the Hierarchy pane
-    LyShine::EntityArray childElements;
-    EBUS_EVENT_ID_RESULT(childElements, m_editorWindow->GetCanvas(), UiCanvasBus, GetChildElements);
-    hierarchy->RecreateItems(childElements);
+        // Refresh the Hierarchy pane
+        LyShine::EntityArray childElements;
+        EBUS_EVENT_ID_RESULT(childElements, m_editorWindow->GetCanvas(), UiCanvasBus, GetChildElements);
+        hierarchy->RecreateItems(childElements);
 
-    HierarchyHelpers::SetSelectedItems(hierarchy, &selectedEntities);
+        HierarchyHelpers::SetSelectedItems(hierarchy, &selectedEntities);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

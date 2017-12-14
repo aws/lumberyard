@@ -17,13 +17,13 @@
 #include <InAppPurchases/InAppPurchasesResponseBus.h>
 #include <NativeUIRequests.h>
 
+#include <AzCore/Android/JNI/JNI.h>
+#include <AzCore/Android/Utils.h>
+#include <AzCore/EBus/BusImpl.h>
 #include <AzCore/JSON/document.h>
 #include <AzCore/JSON/error/en.h>
 #include <AzCore/IO/FileIO.h>
-#include <SDL_system.h>
 
-#include <android/log.h>
-#include <AzCore/EBus/BusImpl.h>
 
 namespace InAppPurchases
 {
@@ -148,10 +148,10 @@ namespace InAppPurchases
 
     void InAppPurchasesAndroid::Initialize()
     {
-        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
-        jobject activityObject = static_cast<jobject>(SDL_AndroidGetActivity());
+        JNIEnv* env = AZ::Android::JNI::GetEnv();
+        jobject activityObject = AZ::Android::Utils::GetActivityRef();
 
-        jclass billingClass = env->FindClass("com/amazon/lumberyard/iap/LumberyardInAppBilling");
+        jclass billingClass = AZ::Android::JNI::LoadClass("com/amazon/lumberyard/iap/LumberyardInAppBilling");
         jmethodID mid = env->GetMethodID(billingClass, "<init>", "(Landroid/app/Activity;)V");
 
         jobject billingInstance = env->NewObject(billingClass, mid, activityObject);
@@ -171,14 +171,13 @@ namespace InAppPurchases
             EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, "Kindle Device Detected", "IAP currently unsupported on Kindle devices", false);
         }
 
-        env->DeleteLocalRef(billingClass);
+        env->DeleteGlobalRef(billingClass);
         env->DeleteLocalRef(billingInstance);
-        env->DeleteLocalRef(activityObject);
     }
 
     InAppPurchasesAndroid::~InAppPurchasesAndroid()
     {
-        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        JNIEnv* env = AZ::Android::JNI::GetEnv();
         jclass billingClass = env->GetObjectClass(m_billingInstance);
         jmethodID mid = env->GetMethodID(billingClass, "UnbindService", "()V");
         env->CallVoidMethod(m_billingInstance, mid);
@@ -189,7 +188,7 @@ namespace InAppPurchases
 
     void InAppPurchasesAndroid::QueryProductInfo(AZStd::vector<AZStd::string>& productIds) const
     {
-        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        JNIEnv* env = AZ::Android::JNI::GetEnv();
 
         jobjectArray jproductIds = static_cast<jobjectArray>(env->NewObjectArray(productIds.size(), env->FindClass("java/lang/String"), env->NewStringUTF("")));
         for (int i = 0; i < productIds.size(); i++)
@@ -258,7 +257,7 @@ namespace InAppPurchases
 
     void InAppPurchasesAndroid::PurchaseProduct(const AZStd::string& productId, const AZStd::string& developerPayload) const
     {
-        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        JNIEnv* env = AZ::Android::JNI::GetEnv();
 
         const AZStd::vector <AZStd::unique_ptr<ProductDetails const> >& cachedProductDetails = InAppPurchasesInterface::GetInstance()->GetCache()->GetCachedProductDetails();
         AZStd::string productType = "";
@@ -301,7 +300,7 @@ namespace InAppPurchases
 
     void InAppPurchasesAndroid::QueryPurchasedProducts() const
     {
-        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        JNIEnv* env = AZ::Android::JNI::GetEnv();
 
         jclass billingClass = env->GetObjectClass(m_billingInstance);
         jmethodID mid = env->GetMethodID(billingClass, "QueryPurchasedProducts", "()V");
@@ -317,7 +316,7 @@ namespace InAppPurchases
 
     void InAppPurchasesAndroid::ConsumePurchase(const AZStd::string& purchaseToken) const
     {
-        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        JNIEnv* env = AZ::Android::JNI::GetEnv();
 
         jclass billingClass = env->GetObjectClass(m_billingInstance);
         jmethodID mid = env->GetMethodID(billingClass, "ConsumePurchase", "(Ljava/lang/String;)V");

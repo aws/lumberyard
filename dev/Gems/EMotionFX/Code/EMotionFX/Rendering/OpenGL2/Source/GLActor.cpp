@@ -18,6 +18,7 @@
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/SubMesh.h>
+#include <EMotionFX/Source/MeshDeformerStack.h>
 #include "GraphicsManager.h"
 #include "GLActor.h"
 #include "StandardMaterial.h"
@@ -94,13 +95,14 @@ namespace RenderGL
         }
 
         // delete all materials
-        const uint32 numLOD = mMaterials.GetNumRows();
+        const uint32 numLOD = mMaterials.GetLength();
         for (uint32 l = 0; l < numLOD; l++)
         {
-            const uint32 numMaterials = mMaterials.GetNumElements(l);
+            const uint32 numMaterials = mMaterials[l].GetLength();
             for (uint32 n = 0; n < numMaterials; n++)
             {
-                delete mMaterials.GetElement(l, n).mMaterial;
+                delete mMaterials[l][n]->mMaterial;
+                delete mMaterials[l][n];
             }
         }
     }
@@ -110,7 +112,7 @@ namespace RenderGL
     EMotionFX::Mesh::EMeshType GLActor::ClassifyMeshType(EMotionFX::Node* node, EMotionFX::Mesh* mesh, uint32 lodLevel)
     {
         MCORE_ASSERT(node && mesh);
-        return mesh->ClassifyMeshType(lodLevel, mActor, node->GetNodeIndex(), !mEnableGPUSkinning, 4, 50);
+        return mesh->ClassifyMeshType(lodLevel, mActor, node->GetNodeIndex(), !mEnableGPUSkinning, 4, 200);
     }
 
 
@@ -129,7 +131,6 @@ namespace RenderGL
         const uint32 numNodes               = actor->GetNumNodes();
 
         // set the pre-allocation amount for the number of materials
-        mMaterials.SetNumPreCachedElements(mActor->GetNumMaterials(0));
         mMaterials.Resize(numGeometryLODLevels);
 
         // resize the vertex and index buffers
@@ -209,8 +210,8 @@ namespace RenderGL
                     mPrimitives[meshType].Add(lodLevel, newPrimitive);
 
                     // add to material list
-                    MaterialList& material = mMaterials.GetElement(lodLevel, newPrimitive.mMaterialIndex);
-                    material.mPrimitives[meshType].Add(newPrimitive);
+                    MaterialPrimitives* materialPrims = mMaterials[lodLevel][newPrimitive.mMaterialIndex];
+                    materialPrims->mPrimitives[meshType].Add(newPrimitive);
 
                     totalNumIndices[meshType] += newPrimitive.mNumTriangles * 3;
                 }
@@ -218,21 +219,21 @@ namespace RenderGL
                 totalNumVerts[meshType] += mesh->GetNumVertices();
 
                 // add dynamic meshes to the dynamic node list
-                if (meshType == EMotionFX::Mesh::MESHTYPE_DYNAMIC)
+                if (meshType == EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED)
                 {
                     mDynamicNodes.Add(lodLevel, node->GetNodeIndex());
                 }
             }
 
             // create the dynamic vertex buffers
-            const uint32 numDynamicBytes = sizeof(StandardVertex) * totalNumVerts[EMotionFX::Mesh::MESHTYPE_DYNAMIC];
+            const uint32 numDynamicBytes = sizeof(StandardVertex) * totalNumVerts[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED];
             if (numDynamicBytes > 0)
             {
-                mVertexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel] = new VertexBuffer();
-                mIndexBuffers [EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel] = new IndexBuffer();
+                mVertexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel] = new VertexBuffer();
+                mIndexBuffers [EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel] = new IndexBuffer();
 
-                const bool vbSuccess = mVertexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel]->Init(sizeof(StandardVertex), totalNumVerts[EMotionFX::Mesh::MESHTYPE_DYNAMIC], USAGE_DYNAMIC);
-                const bool ibSuccess = mIndexBuffers [EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel]->Init(IndexBuffer::INDEXSIZE_32BIT, totalNumIndices[EMotionFX::Mesh::MESHTYPE_DYNAMIC], USAGE_STATIC);
+                const bool vbSuccess = mVertexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel]->Init(sizeof(StandardVertex), totalNumVerts[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED], USAGE_DYNAMIC);
+                const bool ibSuccess = mIndexBuffers [EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel]->Init(IndexBuffer::INDEXSIZE_32BIT, totalNumIndices[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED], USAGE_STATIC);
 
                 // check if the vertex and index buffers are valid
                 if (vbSuccess == false || ibSuccess == false)
@@ -261,14 +262,14 @@ namespace RenderGL
             }
 
             // create the skinned vertex buffers
-            const uint32 numSkinnedBytes = sizeof(SkinnedVertex) * totalNumVerts[EMotionFX::Mesh::MESHTYPE_GPUSKINNED];
+            const uint32 numSkinnedBytes = sizeof(SkinnedVertex) * totalNumVerts[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED];
             if (numSkinnedBytes > 0)
             {
-                mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel] = new VertexBuffer();
-                mIndexBuffers [EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel] = new IndexBuffer();
+                mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel] = new VertexBuffer();
+                mIndexBuffers [EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel] = new IndexBuffer();
 
-                const bool vbSuccess = mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel]->Init(sizeof(SkinnedVertex), totalNumVerts[EMotionFX::Mesh::MESHTYPE_GPUSKINNED], USAGE_STATIC);
-                const bool ibSuccess = mIndexBuffers [EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel]->Init(IndexBuffer::INDEXSIZE_32BIT, totalNumIndices[EMotionFX::Mesh::MESHTYPE_GPUSKINNED], USAGE_STATIC);
+                const bool vbSuccess = mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel]->Init(sizeof(SkinnedVertex), totalNumVerts[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED], USAGE_STATIC);
+                const bool ibSuccess = mIndexBuffers [EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel]->Init(IndexBuffer::INDEXSIZE_32BIT, totalNumIndices[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED], USAGE_STATIC);
 
                 // check if the vertex and index buffers are valid
                 if (vbSuccess == false || ibSuccess == false)
@@ -283,19 +284,9 @@ namespace RenderGL
             FillStaticVertexBuffers(lodLevel);
             FillGPUSkinnedVertexBuffers(lodLevel);
         }
-        /*
-            // shrink the memory usage of the dynamic 2D arrays
-            mDynamicNodes.Shrink();
-            mMaterials.Shrink();
-            for (uint32 a=0; a<3; ++a)
-            {
-                mPrimitives[a].Shrink();
-                mVertexBuffers[a].Shrink();
-                mIndexBuffers[a].Shrink();
-            }*/
 
         // remove the meshes that are skinned by the GPU in case the flag is set
-        if (gpuSkinning && removeGPUSkinnedMeshes)
+        if (gpuSkinning)
         {
             // iterate through all geometry LOD levels
             for (uint32 lodLevel = 0; lodLevel < numGeometryLODLevels; ++lodLevel)
@@ -323,16 +314,33 @@ namespace RenderGL
                     EMotionFX::Mesh::EMeshType meshType = ClassifyMeshType(node, mesh, lodLevel);
 
                     // remove the meshes
-                    if (meshType != EMotionFX::Mesh::MESHTYPE_DYNAMIC)
+                    if (meshType != EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED)
                     {
-                        actor->RemoveNodeMeshForLOD(lodLevel, n);
-                    }
+                        if (removeGPUSkinnedMeshes)
+                        {
+                            actor->RemoveNodeMeshForLOD(lodLevel, n);
+                        }
+                        else
+                        {
+                            // Disable all deformers for this mesh, rather than deleting it.
+                            EMotionFX::MeshDeformerStack* stack = actor->GetMeshDeformerStack(lodLevel, n);
+                            if (stack)
+                            {
+                                const uint32 numDeformers = stack->GetNumDeformers();
+                                for (uint32 d=0; d<numDeformers; ++d)
+                                {
+                                    EMotionFX::MeshDeformer* deformer = stack->GetDeformer(d);
+                                    deformer->SetIsEnabled(false);
+                                }
+                            } // if stack
+                        }
+                    } // if mesh is cpu deformed
                 }
             }
         }
 
         const float initTime = initTimer.GetDeltaTimeInSeconds();
-        MCore::LogInfo("[OpenGL] Initializing the OpenGL actor took %.2f ms.", initTime*1000.0f);
+        MCore::LogInfo("[OpenGL] Initializing the OpenGL actor took %.2f ms.", initTime * 1000.0f);
 
         return true;
     }
@@ -370,7 +378,7 @@ namespace RenderGL
         {
             EMotionFX::Material* emfxMaterial = mActor->GetMaterial(lodLevel, m);
             Material* material = InitMaterial(emfxMaterial);
-            mMaterials.Add(lodLevel, MaterialList(material));
+            mMaterials[lodLevel].Add( new MaterialPrimitives(material) );
         }
     }
 
@@ -391,9 +399,9 @@ namespace RenderGL
         // render actor meshes
         //  glPushAttrib( GL_ALL_ATTRIB_BITS );
         glPushAttrib(GL_TEXTURE_BIT);
-        RenderMeshes(actorInstance, EMotionFX::Mesh::MESHTYPE_DYNAMIC, renderFlags);
+        RenderMeshes(actorInstance, EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED, renderFlags);
         RenderMeshes(actorInstance, EMotionFX::Mesh::MESHTYPE_STATIC, renderFlags);
-        RenderMeshes(actorInstance, EMotionFX::Mesh::MESHTYPE_GPUSKINNED, renderFlags);
+        RenderMeshes(actorInstance, EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED, renderFlags);
         glPopAttrib();
 
         //glDisable(GL_CULL_FACE);
@@ -404,7 +412,7 @@ namespace RenderGL
     void GLActor::RenderMeshes(EMotionFX::ActorInstance* actorInstance, EMotionFX::Mesh::EMeshType meshType, uint32 renderFlags)
     {
         const uint32 lodLevel     = actorInstance->GetLODLevel();
-        const uint32 numMaterials = mMaterials.GetNumElements(lodLevel);
+        const uint32 numMaterials = mMaterials[lodLevel].GetLength();
 
         if (numMaterials == 0)
         {
@@ -428,16 +436,14 @@ namespace RenderGL
         // render all the primitives in each material
         for (uint32 n = 0; n < numMaterials; n++)
         {
-            MaterialList&   materialList    = mMaterials.GetElement(lodLevel, n);
-            const uint32    numPrimitives   = materialList.mPrimitives[meshType].GetLength();
-
+            const MaterialPrimitives* materialPrims = mMaterials[lodLevel][n];
+            const uint32 numPrimitives = materialPrims->mPrimitives[meshType].GetLength();
             if (numPrimitives == 0)
             {
                 continue;
             }
 
-            // set material attributes
-            Material* material = materialList.mMaterial;
+            Material* material = materialPrims->mMaterial;
             if (material == nullptr)
             {
                 continue;
@@ -445,7 +451,7 @@ namespace RenderGL
 
             material->SetAttribute(Material::LIGHTING,      (renderFlags & RENDER_LIGHTING) != 0);
             material->SetAttribute(Material::TEXTURING,     (renderFlags & RENDER_TEXTURING) != 0);
-            material->SetAttribute(Material::SKINNING,      (meshType == EMotionFX::Mesh::MESHTYPE_GPUSKINNED));
+            material->SetAttribute(Material::SKINNING,      (meshType == EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED));
             material->SetAttribute(Material::SHADOWS,       false);     // self-shadowing disabled
 
             // if the materials are homogenous, activate globally
@@ -455,7 +461,7 @@ namespace RenderGL
             // render all primitives
             for (uint32 i = 0; i < numPrimitives; ++i)
             {
-                material->Render(actorInstance, &materialList.mPrimitives[meshType][i]);
+                material->Render(actorInstance, &materialPrims->mPrimitives[meshType][i]);
             }
 
             material->Deactivate();
@@ -474,13 +480,13 @@ namespace RenderGL
             return;
         }
 
-        if (mVertexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel] == nullptr)
+        if (mVertexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel] == nullptr)
         {
             return;
         }
 
         // lock the dynamic vertex buffer
-        StandardVertex* dynamicVertices = (StandardVertex*)mVertexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel]->Lock(LOCK_WRITEONLY);
+        StandardVertex* dynamicVertices = (StandardVertex*)mVertexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel]->Lock(LOCK_WRITEONLY);
         if (dynamicVertices == nullptr)
         {
             return;
@@ -503,8 +509,8 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            MCore::Vector3* positions   = (MCore::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
-            MCore::Vector3* normals     = (MCore::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+            AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
+            AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
             AZ::Vector4* tangents       = static_cast<AZ::Vector4*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
             AZ::Vector2* uvsA           = (AZ::Vector2*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0);  // first UV set
 
@@ -513,8 +519,8 @@ namespace RenderGL
             {
                 for (uint32 v = 0; v < numVertices; ++v)
                 {
-                    dynamicVertices[globalVert].mPosition   = positions[v];
-                    dynamicVertices[globalVert].mNormal     = normals[v];
+                    dynamicVertices[globalVert].mPosition   = AZ::Vector3(positions[v]);
+                    dynamicVertices[globalVert].mNormal     = AZ::Vector3(normals[v]);
                     dynamicVertices[globalVert].mUV         = uvsA[v];
                     dynamicVertices[globalVert].mTangent    = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -524,8 +530,8 @@ namespace RenderGL
             {
                 for (uint32 v = 0; v < numVertices; ++v)
                 {
-                    dynamicVertices[globalVert].mPosition   = positions[v];
-                    dynamicVertices[globalVert].mNormal     = normals[v];
+                    dynamicVertices[globalVert].mPosition   = AZ::Vector3(positions[v]);
+                    dynamicVertices[globalVert].mNormal     = AZ::Vector3(normals[v]);
                     dynamicVertices[globalVert].mUV         = AZ::Vector2(0.0f, 0.0f);
                     dynamicVertices[globalVert].mTangent    = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -534,7 +540,7 @@ namespace RenderGL
         }
 
         // unlock the vertex buffer
-        mVertexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel]->Unlock();
+        mVertexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel]->Unlock();
     }
 
 
@@ -551,19 +557,19 @@ namespace RenderGL
         {
             staticIndices = (uint32*)mIndexBuffers[EMotionFX::Mesh::MESHTYPE_STATIC][lodLevel]->Lock(LOCK_WRITEONLY);
         }
-        if (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel])
+        if (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel])
         {
-            dynamicIndices = (uint32*)mIndexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel]->Lock(LOCK_WRITEONLY);
+            dynamicIndices = (uint32*)mIndexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel]->Lock(LOCK_WRITEONLY);
         }
-        if (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel])
+        if (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel])
         {
-            skinnedIndices = (uint32*)mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel]->Lock(LOCK_WRITEONLY);
+            skinnedIndices = (uint32*)mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel]->Lock(LOCK_WRITEONLY);
         }
 
         //if (staticIndices == nullptr || dynamicIndices == nullptr || skinnedIndices == nullptr)
         if ((mIndexBuffers[EMotionFX::Mesh::MESHTYPE_STATIC][lodLevel] && staticIndices == nullptr) ||
-            (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel] && dynamicIndices == nullptr) ||
-            (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel] && skinnedIndices == nullptr))
+            (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel] && dynamicIndices == nullptr) ||
+            (mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel] && skinnedIndices == nullptr))
         {
             MCore::LogWarning("[OpenGL] Cannot lock index buffers in GLActor::FillIndexBuffers.");
             return;
@@ -608,7 +614,7 @@ namespace RenderGL
             // NOTE: this method triangulates polygons when needed internally
             switch (meshType)
             {
-            case EMotionFX::Mesh::MESHTYPE_DYNAMIC:
+            case EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED:
             {
                 uint32 polyStartIndex = 0;
                 const uint32 numPolys = mesh->GetNumPolygons();
@@ -655,7 +661,7 @@ namespace RenderGL
                 break;
             }
 
-            case EMotionFX::Mesh::MESHTYPE_GPUSKINNED:
+            case EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED:
             {
                 uint32 polyStartIndex = 0;
                 const uint32 numPolys = mesh->GetNumPolygons();
@@ -688,11 +694,11 @@ namespace RenderGL
         }
         if (dynamicIndices)
         {
-            mIndexBuffers[EMotionFX::Mesh::MESHTYPE_DYNAMIC][lodLevel]->Unlock();
+            mIndexBuffers[EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED][lodLevel]->Unlock();
         }
         if (skinnedIndices)
         {
-            mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel]->Unlock();
+            mIndexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel]->Unlock();
         }
     }
 
@@ -751,8 +757,8 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            MCore::Vector3* positions   = (MCore::Vector3*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
-            MCore::Vector3* normals     = (MCore::Vector3*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+            AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
+            AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
             AZ::Vector4* tangents       = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
             AZ::Vector2* uvsA           = (AZ::Vector2*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0);  // first UV set
 
@@ -761,8 +767,8 @@ namespace RenderGL
                 const uint32 numVerts = mesh->GetNumVertices();
                 for (uint32 v = 0; v < numVerts; ++v)
                 {
-                    staticVertices[globalVert].mPosition    = positions[v];
-                    staticVertices[globalVert].mNormal      = normals[v];
+                    staticVertices[globalVert].mPosition    = AZ::Vector3(positions[v]);
+                    staticVertices[globalVert].mNormal      = AZ::Vector3(normals[v]);
                     staticVertices[globalVert].mUV          = uvsA[v];
                     staticVertices[globalVert].mTangent     = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -773,8 +779,8 @@ namespace RenderGL
                 const uint32 numVerts = mesh->GetNumVertices();
                 for (uint32 v = 0; v < numVerts; ++v)
                 {
-                    staticVertices[globalVert].mPosition    = positions[v];
-                    staticVertices[globalVert].mNormal      = normals[v];
+                    staticVertices[globalVert].mPosition    = AZ::Vector3(positions[v]);
+                    staticVertices[globalVert].mNormal      = AZ::Vector3(normals[v]);
                     staticVertices[globalVert].mUV          = AZ::Vector2(0.0f, 0.0f);
                     staticVertices[globalVert].mTangent     = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -790,7 +796,7 @@ namespace RenderGL
     // fill the GPU skinned vertex buffer
     void GLActor::FillGPUSkinnedVertexBuffers(uint32 lodLevel)
     {
-        if (mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel] == nullptr)
+        if (mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel] == nullptr)
         {
             return;
         }
@@ -805,7 +811,7 @@ namespace RenderGL
         EMotionFX::Skeleton* skeleton = mActor->GetSkeleton();
 
         // lock the GPU skinned vertex buffer
-        SkinnedVertex* skinnedVertices = (SkinnedVertex*)mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel]->Lock(LOCK_WRITEONLY);
+        SkinnedVertex* skinnedVertices = (SkinnedVertex*)mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel]->Lock(LOCK_WRITEONLY);
         if (skinnedVertices == nullptr)
         {
             return;
@@ -835,14 +841,14 @@ namespace RenderGL
 
             // get the mesh type and only do gpu skinned buffers
             EMotionFX::Mesh::EMeshType meshType = ClassifyMeshType(node, mesh, lodLevel);
-            if (meshType != EMotionFX::Mesh::MESHTYPE_GPUSKINNED)
+            if (meshType != EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED)
             {
                 continue;
             }
 
             // get the mesh data buffers
-            MCore::Vector3* positions   = (MCore::Vector3*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
-            MCore::Vector3* normals     = (MCore::Vector3*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+            AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
+            AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
             uint32*         orgVerts    = (uint32*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS);
             AZ::Vector4* tangents       = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
             AZ::Vector2* uvsA           = (AZ::Vector2*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0);  // first UV set
@@ -867,8 +873,8 @@ namespace RenderGL
                     const uint32 orgVertex = orgVerts[meshVertexNr];
 
                     // copy position and normal
-                    skinnedVertices[globalVert].mPosition   = positions[meshVertexNr];
-                    skinnedVertices[globalVert].mNormal     = normals[meshVertexNr];
+                    skinnedVertices[globalVert].mPosition   = AZ::Vector3(positions[meshVertexNr]);
+                    skinnedVertices[globalVert].mNormal     = AZ::Vector3(normals[meshVertexNr]);
                     skinnedVertices[globalVert].mTangent    = (tangents) ? tangents[meshVertexNr] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     skinnedVertices[globalVert].mUV         = (uvsA == nullptr) ? AZ::Vector2(0.0f, 0.0f) : uvsA[meshVertexNr];
 
@@ -898,6 +904,6 @@ namespace RenderGL
         }
 
         // unlock the vertex buffer
-        mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPUSKINNED][lodLevel]->Unlock();
+        mVertexBuffers[EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED][lodLevel]->Unlock();
     }
 }

@@ -39,10 +39,10 @@ public:
 
     CAnimNode();
     CAnimNode(const CAnimNode& other);
-    CAnimNode(const int id, EAnimNodeType nodeType);
+    CAnimNode(const int id, AnimNodeType nodeType);
     ~CAnimNode();
 
-    EAnimNodeType GetType() const override { return m_nodeType; }
+    AnimNodeType GetType() const override { return m_nodeType; }
 
     //////////////////////////////////////////////////////////////////////////
     void add_ref() override;
@@ -69,13 +69,13 @@ public:
 
     // CAnimNode's aren't bound to AZ::Entities, CAnimAzEntityNodes are. return InvalidEntityId by default
     void         SetAzEntityId(const AZ::EntityId& id) override {}
-    AZ::EntityId GetAzEntityId() override { return AZ::EntityId(); }
+    AZ::EntityId GetAzEntityId() const override { return AZ::EntityId(); }
 
     void SetFlags(int flags) override;
     int GetFlags() const override;
     bool AreFlagsSetOnNodeOrAnyParent(EAnimNodeFlags flagsToCheck) const override;
 
-    IMovieSystem*   GetMovieSystem() { return gEnv->pMovieSystem; };
+    IMovieSystem*   GetMovieSystem() const { return gEnv->pMovieSystem; };
 
     virtual void OnStart() {}
     void OnReset() override {}
@@ -94,6 +94,7 @@ public:
 
     Vec3 GetPos() override { return Vec3(0, 0, 0); };
     Quat GetRotate() override { return Quat(0, 0, 0, 0); };
+    Quat GetRotate(float /*time*/) override { return Quat(0, 0, 0, 0); };
     Vec3 GetScale() override { return Vec3(0, 0, 0); };
 
     virtual Matrix34 GetReferenceMatrix() const;
@@ -101,7 +102,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     bool IsParamValid(const CAnimParamType& paramType) const;
     virtual const char* GetParamName(const CAnimParamType& param) const;
-    virtual EAnimValue GetParamValueType(const CAnimParamType& paramType) const;
+    virtual AnimValueType GetParamValueType(const CAnimParamType& paramType) const;
     virtual IAnimNode::ESupportedParamFlags GetParamFlags(const CAnimParamType& paramType) const;
     virtual unsigned int GetParamCount() const { return 0; };
 
@@ -175,11 +176,11 @@ protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramType, SParamInfo& info) const { return false; };
 
     int  NumTracks() const { return (int)m_tracks.size(); }
-    IAnimTrack* CreateTrackInternal(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType);
+    IAnimTrack* CreateTrackInternal(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType);
 
     IAnimTrack* CreateTrackInternalVector4(const CAnimParamType& paramType) const;
     IAnimTrack* CreateTrackInternalQuat(EAnimCurveType trackType, const CAnimParamType& paramType) const;
-    IAnimTrack* CreateTrackInternalVector(EAnimCurveType trackType, const CAnimParamType& paramType, const EAnimValue animValue) const;
+    IAnimTrack* CreateTrackInternalVector(EAnimCurveType trackType, const CAnimParamType& paramType, const AnimValueType animValue) const;
     IAnimTrack* CreateTrackInternalFloat(int trackType) const;
 
     // sets track animNode pointer to this node and sorts tracks
@@ -200,7 +201,7 @@ protected:
     //////////////////////////////////////////////////////////////////////////
 
     int m_refCount;
-    EAnimNodeType m_nodeType = eAnimNodeType_Invalid;
+    AnimNodeType m_nodeType;
     int m_id;
     AZStd::string m_name;
     IAnimSequence* m_pSequence;
@@ -221,28 +222,6 @@ private:
     static bool TrackOrder(const AZStd::intrusive_ptr<IAnimTrack>& left, const AZStd::intrusive_ptr<IAnimTrack>& right);
 
     AZStd::mutex m_updateDynamicParamsLock;
-};
-
-//////////////////////////////////////////////////////////////////////////
-class CAnimNodeGroup
-    : public CAnimNode
-{
-public:
-    AZ_CLASS_ALLOCATOR(CAnimNodeGroup, AZ::SystemAllocator, 0);
-    AZ_RTTI(CAnimNodeGroup, "{6BDA5C06-7C15-4622-9550-68368E84D653}", CAnimNode);
-
-    CAnimNodeGroup()
-        : CAnimNodeGroup(0) {}
-
-    CAnimNodeGroup(const int id)
-        : CAnimNode(id, eAnimNodeType_Group) 
-    { 
-        SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
-    }
-
-    virtual CAnimParamType GetParamType(unsigned int nIndex) const { return eAnimParamType_Invalid; }
-
-    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_ANIMNODE_H

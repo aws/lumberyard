@@ -148,8 +148,8 @@ private:
     MacroTexture(const MacroTexture& other) AZ_DELETE_METHOD;
     MacroTexture& operator=(const MacroTexture& other) AZ_DELETE_METHOD;
 	
-    void InitNodeTree(Morton::Key key, Region region, uint32 depth, const int16*& indices, uint16& elementsLeft);
 
+    void InitNodeTree(Morton::Key key, Region region, uint32 depth, const int16*& indices, uint16& elementsLeft);
     struct Node
     {
         Node(const Region& region_, uint32 mortonKey_, uint32 treeLevel_, uint32 textureFileOffset_)

@@ -14,15 +14,9 @@
 
 #if defined(DYNAMIC_CONTENT_EDITOR)
 
-#include <STLPortConfig.h>
-
 #include <AzCore/PlatformDef.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
-// STL Port in debug for debug builds
-#if defined(_DEBUG)
-#  define _STLP_DEBUG 1
-#endif
 
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN        // Exclude rarely-used stuff from Windows headers

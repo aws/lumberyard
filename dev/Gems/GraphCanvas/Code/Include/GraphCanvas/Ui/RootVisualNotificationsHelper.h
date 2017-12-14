@@ -38,7 +38,8 @@ namespace GraphCanvas
         using GraphicsItem::setAcceptHoverEvents;
 
         RootVisualNotificationsHelper(AZ::EntityId itemId)
-            : m_snapToGrid(false)
+            : m_resizeToGrid(false)
+            , m_snapToGrid(false)
             , m_gridX(1)
             , m_gridY(1)
             , m_itemId(itemId)
@@ -63,6 +64,11 @@ namespace GraphCanvas
             return m_snapToGrid;
         }
 
+        bool IsResizedToGrid() const
+        {
+            return m_resizeToGrid;
+        }
+
         int GetGridXStep() const
         {
             return m_gridX;
@@ -76,6 +82,11 @@ namespace GraphCanvas
         void SetSnapToGridEnabled(bool enabled)
         {
             m_snapToGrid = enabled;
+        }
+
+        void SetResizeToGridEnabled(bool enabled)
+        {
+            m_resizeToGrid = enabled;
         }
 
         void SetGridSize(const AZ::Vector2& gridSize)
@@ -169,11 +180,6 @@ namespace GraphCanvas
 
         QVariant itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value) override
         {
-            // leaving this here for now because it's useful                
-#if 0
-            qDebug() << (AZ::Component*)this << GetEntityId() << change << value;
-#endif                
-
             if (m_snapToGrid && change == QAbstractGraphicsShapeItem::ItemPositionChange)
             {
                 QPointF rawPoint = value.toPointF();
@@ -225,11 +231,14 @@ namespace GraphCanvas
             return Type;
         }
         ////
-        
     private:
+
+        bool m_resizeToGrid;
         bool m_snapToGrid;
+
         unsigned int m_gridX;
         unsigned int m_gridY;
+
         AZ::EntityId m_itemId;
     };
 }

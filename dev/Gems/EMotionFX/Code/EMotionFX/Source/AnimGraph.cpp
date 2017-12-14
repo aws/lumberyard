@@ -884,6 +884,13 @@ namespace EMotionFX
             result->mGameControllerSettings = mGameControllerSettings->Clone();
         }
 
+        // Call the post clone operation, now that we cloned all objects.
+        const uint32 numObjects = result->mObjects.GetLength();
+        for (uint32 i = 0; i < numObjects; ++i)
+        {
+            result->mObjects[i]->PostClone(mObjects[i], this);
+        }
+
         // we modified the parameter values, handle that
         result->RecursiveUpdateAttributes();
 

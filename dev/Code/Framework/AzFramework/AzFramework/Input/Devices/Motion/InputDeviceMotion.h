@@ -31,8 +31,14 @@ namespace AzFramework
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! The id used to identify any motion input device
+        //! The id used to identify the primary motion input device
         static const InputDeviceId Id;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Check whether an input device id identifies a motion device (regardless of index)
+        //! \param[in] inputDeviceId The input device id to check
+        //! \return True if the input device id identifies a motion device, false otherwise
+        static bool IsMotionDevice(const InputDeviceId& inputDeviceId);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! All the input channel ids that identify different types of acceleration data. Note that

@@ -9,12 +9,13 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
+
+class QGraphicsView;
 
 namespace GraphCanvas
 {
@@ -42,19 +43,24 @@ namespace GraphCanvas
         virtual void SetScene(const AZ::EntityId&) = 0;
 
         //! Get the scene the view is displaying.
-        virtual AZ::EntityId GetScene() const { return AZ::EntityId(); }
+        virtual AZ::EntityId GetScene() const = 0;
 
         //! Clear the scene that the view is rendering, so it will be empty.
         virtual void ClearScene() = 0;
 
         //! Map a view coordinate to the scene coordinate space.
-        virtual AZ::Vector2 MapToScene(const AZ::Vector2& view) { return view; }
+        virtual AZ::Vector2 MapToScene(const AZ::Vector2& /*viewPoint*/) = 0;
 
         //! Map a scene coordinate to the view coordinate space.
-        virtual AZ::Vector2 MapFromScene(const AZ::Vector2& scene) { return scene; }
+        virtual AZ::Vector2 MapFromScene(const AZ::Vector2& /*scenePoint*/) = 0;
         
         //! Sets the View params of the view
-        virtual void SetViewParams(const ViewParams& viewParams) { (void)viewParams; }
+        virtual void SetViewParams(const ViewParams& /*viewParams*/) = 0;
+
+        //! Frame the selection into view.
+        virtual void FrameSelectionIntoView() = 0;
+
+        virtual QGraphicsView* AsQGraphicsView() = 0;
     };
 
     using ViewRequestBus = AZ::EBus<ViewRequests>;

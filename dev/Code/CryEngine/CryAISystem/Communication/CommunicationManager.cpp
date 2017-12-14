@@ -147,25 +147,25 @@ void CCommunicationManager::LoadGlobalConfiguration(const XmlNodeRef& rootNode)
                 const char* prefixForPlayTriggerAttribute = "prefixForPlayTrigger";
                 if (childNode->haveAttr(prefixForPlayTriggerAttribute))
                 {
-                    m_wiseConfiguration.prefixForPlayTrigger = childNode->getAttr(prefixForPlayTriggerAttribute);
+                    m_audioConfiguration.prefixForPlayTrigger = childNode->getAttr(prefixForPlayTriggerAttribute);
                 }
 
                 const char* prefixForStopTriggerAttribute = "prefixForStopTrigger";
                 if (childNode->haveAttr(prefixForStopTriggerAttribute))
                 {
-                    m_wiseConfiguration.prefixForStopTrigger = childNode->getAttr(prefixForStopTriggerAttribute);
+                    m_audioConfiguration.prefixForStopTrigger = childNode->getAttr(prefixForStopTriggerAttribute);
                 }
 
                 const char* switchNameForCharacterVoiceAttribute = "switchNameForCharacterVoice";
                 if (childNode->haveAttr(switchNameForCharacterVoiceAttribute))
                 {
-                    m_wiseConfiguration.switchNameForCharacterVoice = childNode->getAttr(switchNameForCharacterVoiceAttribute);
+                    m_audioConfiguration.switchNameForCharacterVoice = childNode->getAttr(switchNameForCharacterVoiceAttribute);
                 }
 
                 const char* switchNameForCharacterTypeAttribute = "switchNameForCharacterType";
                 if (childNode->haveAttr(switchNameForCharacterTypeAttribute))
                 {
-                    m_wiseConfiguration.switchNameForCharacterType = childNode->getAttr(switchNameForCharacterTypeAttribute);
+                    m_audioConfiguration.switchNameForCharacterType = childNode->getAttr(switchNameForCharacterTypeAttribute);
                 }
             }
         }

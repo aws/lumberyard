@@ -23,27 +23,49 @@ namespace LmbrCentral
     class EditorWindVolumeComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private AzFramework::EntityDebugDisplayEventBus::Handler
+        , public WindVolume
     {
     public:
         AZ_EDITOR_COMPONENT(EditorWindVolumeComponent, "{61E5864D-F553-4A37-9A03-B9F836F1D3DC}", EditorComponentBase);
         static void Reflect(AZ::ReflectContext* context);
 
         EditorWindVolumeComponent() = default;
-        explicit EditorWindVolumeComponent(const WindVolumeConfiguration& configuration);
         ~EditorWindVolumeComponent() override = default;
 
-        ////////////////////////////////////////////////////////////////////////
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-        ////////////////////////////////////////////////////////////////////////
 
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
+        WindVolumeConfiguration& GetConfiguration() override { return m_configuration; }
+
+    protected:
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+        {
+            required.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+        }
+
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
+            incompatible.push_back(AZ_CRC("CylinderShapeService", 0x507c688e));
+            incompatible.push_back(AZ_CRC("CompoundShapeService", 0x4f7c640a));
+            incompatible.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
+        }
+
     private:
-        AZ::Vector3 GetLocalWindDirection(const AZ::Vector3& point) const;
+        // EditorComponentBase
         void DisplayEntity(bool& handled) override;
 
-        WindVolumeConfiguration m_configuration;
+        void DrawBox(AzFramework::EntityDebugDisplayRequests* displayContext);
+        void DrawSphere(AzFramework::EntityDebugDisplayRequests* displayContext);
+        void DrawArrow(AzFramework::EntityDebugDisplayRequests* displayContext, const AZ::Vector3& point);
+        void OnConfigurationChanged();
+        AZ::Vector3 GetLocalWindDirection(const AZ::Vector3& point) const;
+
+        bool m_visibleInEditor = true;              ///< Visible in the editor viewport
+        WindVolumeConfiguration m_configuration;    ///< Configuration of the wind volume
     };
 } // namespace LmbrCentral

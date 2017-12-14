@@ -510,6 +510,11 @@ bool CSkin::LoadNewSKIN(const char* szFilePath, uint32 nLoadingFlags)
         const bool lodExists = gEnv->pCryPak->IsFileExist(lodName);
         if (!lodExists)
         {
+            if (lodCount != 0)
+            {
+                g_pISystem->Warning(VALIDATOR_MODULE_ANIMATION, VALIDATOR_ERROR, VALIDATOR_FLAG_FILE, szFilePath, "CryAnimation (%s): Failed to load SKIN (Can't find LOD File while higher level LOD exist) '%s'", __FUNCTION__, lodName.c_str());
+                return 0;
+            }
             continue; //continue until we find the first valid LOD
         }
         CContentCGF* pChunkFile = g_pI3DEngine->CreateChunkfileContent(lodName);

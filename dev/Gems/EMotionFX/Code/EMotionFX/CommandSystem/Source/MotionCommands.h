@@ -25,35 +25,34 @@
 
 namespace CommandSystem
 {
-    // adjust motion command
+    // Adjust motion command.
     MCORE_DEFINECOMMAND_START(CommandAdjustMotion, "Adjust motion", true)
-    bool                                mOldDirtyFlag;
-    EMotionFX::EMotionExtractionFlags   mOldExtractionFlags;
-    MCore::String                       mOldName;
-    MCore::String                       mOldMotionExtractionNodeName;
-
-private:
+    private:
+        bool                                mOldDirtyFlag;
+        EMotionFX::EMotionExtractionFlags   mOldExtractionFlags;
+        MCore::String                       mOldName;
+        MCore::String                       mOldMotionExtractionNodeName;
     MCORE_DEFINECOMMAND_END
 
 
-    // remove motion command
+    // Remove motion command.
     MCORE_DEFINECOMMAND_START(CommandRemoveMotion, "Remove motion", true)
-public:
-    uint32          mOldMotionID;
-    MCore::String   mOldFileName;
-    uint32          mOldIndex;
-    bool            mOldWorkspaceDirtyFlag;
+    public:
+        uint32          mOldMotionID;
+        MCore::String   mOldFileName;
+        uint32          mOldIndex;
+        bool            mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
 
-    // scale motion data
+    // Scale motion data.
     MCORE_DEFINECOMMAND_START(CommandScaleMotionData, "Scale motion data", true)
-public:
-    MCore::String   mOldUnitType;
-    uint32          mMotionID;
-    float           mScaleFactor;
-    bool            mOldDirtyFlag;
-    bool            mUseUnitType;
+    public:
+        MCore::String   mOldUnitType;
+        uint32          mMotionID;
+        float           mScaleFactor;
+        bool            mOldDirtyFlag;
+        bool            mUseUnitType;
     MCORE_DEFINECOMMAND_END
 
 
@@ -61,38 +60,40 @@ public:
     // EMotionFX::Motion* Playback
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // play motion command
+    // Play motion command.
     MCORE_DEFINECOMMAND_START(CommandPlayMotion, "Play motion", true)
-    struct UndoObject
-    {
-        EMotionFX::ActorInstance*   mActorInstance;     /**< The old selected actor on which the motion got started. */
-        EMotionFX::MotionInstance*  mMotionInstance;    /**< The old motion instance to be stopped by the undo process. */
-    };
-    MCore::Array<UndoObject> mOldData;      /**< Array of undo items. Each item means we started a motion on an actor and have to stop it again in the undo process. */
-public:
-    static void CommandParametersToPlaybackInfo(MCore::Command* command, const MCore::CommandLine& parameters, EMotionFX::PlayBackInfo* outPlaybackInfo);
-    static AZStd::string PlayBackInfoToCommandParameters(EMotionFX::PlayBackInfo* playbackInfo);
+    public:
+        struct UndoObject
+        {
+            EMotionFX::ActorInstance*   mActorInstance;     /**< The old selected actor on which the motion got started. */
+            EMotionFX::MotionInstance*  mMotionInstance;    /**< The old motion instance to be stopped by the undo process. */
+        };
+        
+        MCore::Array<UndoObject> mOldData;      /**< Array of undo items. Each item means we started a motion on an actor and have to stop it again in the undo process. */
+    
+        static void CommandParametersToPlaybackInfo(MCore::Command* command, const MCore::CommandLine& parameters, EMotionFX::PlayBackInfo* outPlaybackInfo);
+        static AZStd::string PlayBackInfoToCommandParameters(EMotionFX::PlayBackInfo* playbackInfo);
     MCORE_DEFINECOMMAND_END
 
 
-    // adjust motion instance command
+    // Adjust motion instance command.
     MCORE_DEFINECOMMAND_START(CommandAdjustMotionInstance, "Adjust motion instance", true)
     void AdjustMotionInstance(MCore::Command* command, const MCore::CommandLine& parameters, EMotionFX::MotionInstance* motionInstance);
     MCORE_DEFINECOMMAND_END
 
 
-    // adjust default playback info command
+    // Adjust default playback info command.
     MCORE_DEFINECOMMAND_START(CommandAdjustDefaultPlayBackInfo, "Adjust default playback info", true)
     EMotionFX::PlayBackInfo mOldPlaybackInfo;
     bool                    mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
 
-    // stop motion instances command
+    // Stop motion instances command.
     MCORE_DEFINECOMMAND(CommandStopMotionInstances, "StopMotionInstances", "Stop motion instances", false)
 
 
-    // stop all motion instances command
+    // Stop all motion instances command.
     MCORE_DEFINECOMMAND(CommandStopAllMotionInstances, "StopAllMotionInstances", "Stop all motion instances", false)
 
 

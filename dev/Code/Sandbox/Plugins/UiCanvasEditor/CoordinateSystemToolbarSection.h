@@ -11,6 +11,13 @@
 */
 #pragma once
 
+#include <QObject>
+
+class EditorWindow;
+class QComboBox;
+class QCheckBox;
+class QToolBar;
+
 class CoordinateSystemToolbarSection
     : public QObject
 {
@@ -37,6 +44,8 @@ private slots:
 private:
 
     int CycleSelectedItem();
+
+    void UpdateCanvasSnapEnabled();
 
     EditorWindow* m_editorWindow;
     QComboBox* m_combobox;

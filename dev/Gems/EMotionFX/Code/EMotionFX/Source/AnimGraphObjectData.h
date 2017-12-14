@@ -22,7 +22,6 @@
 #include <MCore/Source/AttributeBool.h>
 #include <MCore/Source/AttributeColor.h>
 #include <MCore/Source/AttributeQuaternion.h>
-#include <MCore/Source/AttributeMatrix.h>
 #include <MCore/Source/AttributeVector2.h>
 #include <MCore/Source/AttributeVector3.h>
 #include <MCore/Source/AttributeVector4.h>
@@ -38,18 +37,18 @@ namespace EMotionFX
     class AnimGraphPose;
 
     // implement standard load and save
-#define EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE                     \
+#define EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE                      \
 public:                                                                  \
     virtual uint32 Save(uint8 * outputBuffer) const override             \
     {                                                                    \
-        if (outputBuffer) {                                   \
+        if (outputBuffer) {                                              \
             MCore::MemCopy(outputBuffer, (uint8*)this, sizeof(*this)); } \
         return sizeof(*this);                                            \
     }                                                                    \
                                                                          \
     virtual uint32 Load(const uint8 * dataBuffer) override               \
     {                                                                    \
-        if (dataBuffer) {                                     \
+        if (dataBuffer) {                                                \
             MCore::MemCopy((uint8*)this, dataBuffer, sizeof(*this)); }   \
         return sizeof(*this);                                            \
     }

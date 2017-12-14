@@ -1,10 +1,10 @@
 ﻿import { Component, OnInit, ViewContainerRef } from '@angular/core';
 import { AwsService, Deployment } from 'app/aws/aws.service';
 import { Clipboard } from 'ts-clipboard';
-import { InnerRouterService } from "app/view/game/module/shared/service/index";
-import { UrlService, LyMetricService } from "app/shared/service/index"
+import { UrlService, LyMetricService, GemService } from "app/shared/service/index"
 import { Authentication } from "app/aws/authentication/authentication.class";
 import { ToastsManager } from 'ng2-toastr';
+import { Router } from '@angular/router';
 import * as environment from 'app/shared/class/index';
 
 @Component({
@@ -21,9 +21,9 @@ export class NavComponent {
         "username": ""
     }
     public isCollapsed: boolean = true;
-    
-    public constructor(private aws: AwsService, private router: InnerRouterService, private urlService: UrlService, private lymetrics: LyMetricService, 
-        private toastr: ToastsManager, vcr: ViewContainerRef) {
+
+    public constructor(private aws: AwsService, private urlService: UrlService, private lymetrics: LyMetricService,
+        private toastr: ToastsManager, vcr: ViewContainerRef, private router: Router, private gems: GemService) {
         this.toastr.setRootViewContainerRef(vcr);
         var username = this.aws.context.authentication.user.username;
         this.nav = {
@@ -34,9 +34,12 @@ export class NavComponent {
         }
 
         // Listen for the active deployment and the name when the nav is loaded.
-        this.aws.context.project.activeDeployment.subscribe(activeDeployment => {
+        this.aws.context.project.activeDeploymentSubscription.subscribe(activeDeployment => {
             if (activeDeployment) {
-                this.nav.deploymentName = activeDeployment.settings.name;
+                this.router.navigateByUrl('/game/cloudgems').then(() => {
+                    this.gems.clearCurrentGems();
+                    this.nav.deploymentName = activeDeployment.settings.name;
+                });
                 lymetrics.recordEvent('DeploymentChanged', {}, {
                     'NumberOfDeployments': this.aws.context.project.deployments.length
                 })
@@ -46,7 +49,7 @@ export class NavComponent {
         });
 
         this.aws.context.project.settings.subscribe(settings => {
-            if(settings)    
+            if(settings)
                 lymetrics.recordEvent('ProjectSettingsInitialized', {}, {
                     'NumberOfDeployments': Object.keys(settings.deployment).length
                 })
@@ -57,15 +60,9 @@ export class NavComponent {
     }
 
     public onDeploymentClick(deployment: Deployment) {
-        this.aws.context.project.setDeployment(deployment);
+        this.gems.isLoading = true;
+        this.aws.context.project.activeDeployment = deployment;
         this.nav.deploymentName = deployment.settings.name;
-    }
-
-    public raiseRouteEvent(route: string): void {
-        this.lymetrics.recordEvent('FeatureOpened', {
-            "Name": route
-        })
-        this.router.change(route);
     }
 
     signOut(): void {

@@ -18,6 +18,8 @@
 #include <AzCore/Casting/numeric_cast.h>
 #include "PropertyEditorAPI.h"
 
+#include <QWidget>
+
 #pragma once
 
 class QComboBox;

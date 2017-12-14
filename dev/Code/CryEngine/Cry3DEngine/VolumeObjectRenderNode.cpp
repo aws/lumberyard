@@ -16,6 +16,7 @@
 #include "VolumeObjectRenderNode.h"
 #include "VolumeObjectDataCreate.h"
 #include "MatMan.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #include <map>
 
@@ -808,7 +809,7 @@ void CVolumeObjectRenderNode::Render(const SRendParams& rParam, const SRendering
 
     // add to renderer
     SShaderItem& shaderItem(m_pMaterial->GetShaderItem(0));
-    int afterWater(GetObjManager()->IsAfterWater(m_pos, passInfo.GetCamera().GetPosition(), passInfo, Get3DEngine()->GetWaterLevel()) ? 1 : 0);
+    int afterWater(GetObjManager()->IsAfterWater(m_pos, passInfo));
     pRenderer->EF_AddEf(m_pRE[fillThreadID], shaderItem, pRO, passInfo, EFSLIST_TRANSP, afterWater, SRendItemSorter(rParam.rendItemSorter));
 
 #if 0

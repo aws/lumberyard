@@ -21,13 +21,11 @@ namespace ScriptCanvas
     {
         namespace Entity
         {
-            const bool k_EntityRefNodeHasProperties = false;
-
             class EntityRef
-                : public NativeDatumNode<EntityRef, Data::EntityIDType, k_EntityRefNodeHasProperties>
+                : public NativeDatumNode<EntityRef, Data::EntityIDType>
             {
             public:
-                using ParentType = NativeDatumNode<EntityRef, Data::EntityIDType, k_EntityRefNodeHasProperties>;
+                using ParentType = NativeDatumNode<EntityRef, Data::EntityIDType>;
                 AZ_COMPONENT(EntityRef, "{0EE5782F-B241-4127-AE53-E6746B00447F}", ParentType);
                 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -42,7 +40,7 @@ namespace ScriptCanvas
                         {
                             // EntityRef node is special in that it's only created when we drag in an entity from the main scene.
                             // And is unmodifiable(essentially an external constant). As such, we hide it from the node palette.
-                            editContext->Class<EntityRef>("EntityRef", "Stores a reference to an entity")
+                            editContext->Class<EntityRef>("EntityID", "Stores a reference to an entity")
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/EntityRef.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)

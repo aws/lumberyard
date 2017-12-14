@@ -1493,15 +1493,6 @@ void CVegetationPanel::SendToControls()
         // Add variable blocks of all objects.
         m_ui->objectPropertiesControl->AddVarBlock(m_varBlock);
         m_ui->objectPropertiesControl->ExpandAll();
-
-        if (objects.size() > 1)
-        {
-            m_ui->objectPropertiesControl->SetDisplayOnlyModified(true);
-        }
-        else
-        {
-            m_ui->objectPropertiesControl->SetDisplayOnlyModified(false);
-        }
     }
     if (objects.size() == 1)
     {

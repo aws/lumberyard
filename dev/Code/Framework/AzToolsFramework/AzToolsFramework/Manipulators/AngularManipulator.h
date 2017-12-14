@@ -11,21 +11,21 @@
 */
 #pragma once
 
-#include <AzCore/Math/Vector2.h>
+#include "BaseManipulator.h"
+
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#include <AzToolsFramework/Picking/ContextBoundAPI.h>
-
-#include "BaseManipulator.h"
+#include <AzToolsFramework/Manipulators/ManipulatorView.h>
 
 namespace AzToolsFramework
 {
     /**
-    * AngularManipulator serves as a visual tool for users to change a component's property based on rotation
-    * around an axis. The rotation angle increases if the rotation goes counter clock-wise when looking
-    * in the opposite direction the rotation axis points to.
-    */
+     * AngularManipulator serves as a visual tool for users to change a component's property based on rotation
+     * around an axis. The rotation angle increases if the rotation goes counter clock-wise when looking
+     * in the opposite direction the rotation axis points to.
+     */
     class AngularManipulator
         : public BaseManipulator
     {
@@ -37,76 +37,112 @@ namespace AzToolsFramework
         ~AngularManipulator();
 
         /**
-        * This is the function signature of callbacks that will be invoked whenever a manipulator
-        * is being clicked on or dragged.
-        */
-        using MouseActionCallback = AZStd::function<void(const AngularManipulationData&)>;
+         * The state of the manipulator at the start of an interaction.
+         */
+        struct Start
+        {
+            AZ::Quaternion m_localOrientation; ///< Starting orientation of manipulator.
+        };
 
-        void InstallMouseDownCallback(MouseActionCallback onMouseDownCallback);
-        void InstallMouseMoveCallback(MouseActionCallback onMouseDownCallback);
-        void InstallMouseUpCallback(MouseActionCallback onMouseDownCallback);
+        /**
+         * The state of the manipulator during an interaction.
+         */
+        struct Current
+        {
+            AZ::Quaternion m_localRotation; ///< Amount of rotation to apply to manipulator during action.
+        };
 
-        void SetBoundsDirty() override;
+        /**
+         * Mouse action data used by MouseActionCallback (wraps Start and Current manipulator state).
+         */
+        struct Action
+        {
+            Start m_start;
+            Current m_current;
+        };
 
-        void OnMouseDown(const ViewportInteraction::MouseInteraction& interaction, float t) override;
-        void OnMouseMove(const ViewportInteraction::MouseInteraction& interaction) override;
-        void OnMouseUp(const ViewportInteraction::MouseInteraction& interaction) override;
-        void OnMouseOver(ManipulatorId manipulatorId)  override;
+        using MouseActionCallback = AZStd::function<void(const Action&)>;
 
-        void Draw(AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState) override;
+        void InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback);
+        void InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback);
+        void InstallMouseMoveCallback(MouseActionCallback onMouseMoveCallback);
 
-        void SetPosition(const AZ::Vector3& pos) { m_centerPosition = pos; }
-        void SetRotationAxis(const AZ::Vector3& axis);
-        void SetRadius(float radius) { m_radius = radius; }
-        void SetColor(const AZ::Color& color) { m_color = color; }
-        void SetMouseOverColor(const AZ::Color& color) { m_mouseOverColor = color; }
+        void Draw(
+            AzFramework::EntityDebugDisplayRequests& display,
+            const ViewportInteraction::CameraState& cameraState,
+            const ViewportInteraction::MouseInteraction& mouseInteraction) override;
 
-    protected:
+        void SetTransform(const AZ::Transform& transform) { m_localTransform = transform; }
+        void SetAxis(const AZ::Vector3& axis) { m_fixed.m_axis = axis; }
 
-        void Invalidate() override;
+        const AZ::Transform& GetTransform() const { return m_localTransform; }
+        const AZ::Vector3& GetAxis() const { return m_fixed.m_axis; }
+
+        void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
 
     private:
+        void OnLeftMouseDownImpl(
+            const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance) override;
+        void OnLeftMouseUpImpl(
+            const ViewportInteraction::MouseInteraction& interaction) override;
+        void OnMouseMoveImpl(
+            const ViewportInteraction::MouseInteraction& interaction) override;
 
-        void CalcManipulationData(const AZ::Vector2& mouseScreenPosition);
-        AngularManipulationData GetManipulationData();
+        void SetBoundsDirtyImpl() override;
+        void InvalidateImpl() override;
 
-    private:
+        /**
+         * Unchanging data set once for the angular manipulator.
+         */
+        struct Fixed
+        {
+            AZ::Vector3 m_axis = AZ::Vector3::CreateAxisX(); ///< Axis for this angular manipulator to rotate around.
+        };
 
-        /* Shape and Color */
+        /**
+         * Initial data recorded when a press first happens with an angular manipulator.
+         */
+        struct StartInternal
+        {
+            AZ::Transform m_worldFromLocal; ///< Initial transform when pressed.
+            AZ::Transform m_localTransform; ///< Additional transform (offset) to apply to manipulator.
+        };
 
-        // in entity's local space
-        AZ::Vector3 m_centerPosition = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_rotationAxis = AZ::Vector3(1.0f, 0.0f, 0.0f);
-        AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
-        AZ::Color m_mouseOverColor = BaseManipulator::s_defaultMouseOverColor;
-        bool m_isSizeFixedInScreen = true;
-        float m_radius = 80.0f;
-        float m_screenToWorldMultiplier = 1.0f; ///< The closer the manipulator is shown in the camera, the smaller this number is.
+        /**
+         * Current data recorded each frame during an interaction with an angular manipulator.
+         */
+        struct CurrentInternal
+        {
+            float m_radians; ///< Amount of rotation about the axis for this action.
+            AZ::Vector3 m_worldHitPosition; ///< Initial world space hit position.
+        };
 
-        /* Hit Detection */
+        /**
+         * Wrap start and current internal data during an interaction with an angular manipulator.
+         */
+        struct ActionInternal
+        {
+            StartInternal m_start;
+            CurrentInternal m_current;
+        };
 
-        Picking::RegisteredBoundId m_torusBoundId = Picking::InvalidBoundId;
+        AZ::Transform m_localTransform; ///< Local position and orientation of manipulator relative to entity.
 
-        /* Mouse Actions */
+        Fixed m_fixed;
+        ActionInternal m_actionInternal;
 
-        bool m_isRotationAxisWorldTowardsCamera = true;
-        float m_lastTotalScreenRotationDelta = 0.0f;
-        float m_totalScreenRotationDelta = 0.0f;
-        float m_lastTotalWorldRotationDelta = 0.0f;
-        float m_totalWorldRotationDelta = 0.0f;
-        AZ::Vector2 m_rotationCenterScreenPosition = AZ::Vector2::CreateZero();
-        AZ::Vector2 m_startMouseScreenPosition = AZ::Vector2::CreateZero();
-        AZ::Vector2 m_lastMouseScreenPosition = AZ::Vector2::CreateZero();
-        AZ::Vector2 m_currentMouseScreenPosition = AZ::Vector2::CreateZero();
-        AZ::Vector2 m_startRadiusVector = AZ::Vector2::CreateOne(); ///< in screen space, from rotation center to current mouse pointer
-
-        AZ::Vector3 m_centerPositionWorld = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_rotationAxisWorld = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_startRadiusVectorWorld = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_startRadiusSideVectorWorld = AZ::Vector3::CreateZero();
-
-        MouseActionCallback m_onMouseDownCallback = nullptr;
+        MouseActionCallback m_onLeftMouseDownCallback = nullptr;
+        MouseActionCallback m_onLeftMouseUpCallback = nullptr;
         MouseActionCallback m_onMouseMoveCallback = nullptr;
-        MouseActionCallback m_onMouseUpCallback = nullptr;
+
+        AZStd::unique_ptr<ManipulatorView> m_manipulatorView; ///< Look of manipulator.
+
+        static ActionInternal CalculateManipulationDataStart(
+            const Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
+            const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, ManipulatorSpace manipulatorSpace);
+
+        static Action CalculateManipulationDataAction(
+            const Fixed& fixed, ActionInternal& actionInternal, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransforma,
+            const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, ManipulatorSpace manipulatorSpace);
     };
 }

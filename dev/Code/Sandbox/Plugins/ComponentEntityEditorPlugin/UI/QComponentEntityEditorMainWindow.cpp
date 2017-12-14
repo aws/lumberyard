@@ -13,9 +13,6 @@
 #include "StdAfx.h"
 #include "UI/QComponentEntityEditorMainWindow.h"
 
-#include <ISourceControl.h>
-#include <IEditor.h>
-
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 
@@ -25,15 +22,9 @@
 
 QComponentEntityEditorInspectorWindow::QComponentEntityEditorInspectorWindow(QWidget* parent)
     : QMainWindow(parent)
-    , m_sourceControl(nullptr)
     , m_propertyEditor(nullptr)
 {
     gEnv->pSystem->GetISystemEventDispatcher()->RegisterListener(this);
-
-    if (GetIEditor()->IsSourceControlAvailable())
-    {
-        m_sourceControl = GetIEditor()->GetSourceControl();
-    }
 
     Init();
 }

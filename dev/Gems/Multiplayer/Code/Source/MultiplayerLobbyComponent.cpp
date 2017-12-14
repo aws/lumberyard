@@ -1280,6 +1280,22 @@ namespace Multiplayer
         return "";
     }
 
+    bool MultiplayerLobbyComponent::GetGameLiftBoolParam(const char* param)
+    {
+        bool value = false;
+        ICVar* cvar = gEnv->pConsole->GetCVar(param);
+
+        if (cvar)
+        {
+            if( cvar->GetI64Val() )
+            {
+                value = true;
+            }
+        }
+
+        return value;
+    }
+
     void MultiplayerLobbyComponent::SetGameLiftParam(const char* param, const char* value)
     {
         ICVar* cvar = gEnv->pConsole->GetCVar(param);
@@ -1386,6 +1402,8 @@ namespace Multiplayer
             serviceDesc.m_region = GetGameLiftParam("gamelift_aws_region");
             serviceDesc.m_aliasId = GetGameLiftParam("gamelift_alias_id");
             serviceDesc.m_playerId = GetGameLiftParam("gamelift_player_id");
+            serviceDesc.m_useGameLiftLocalServer = GetGameLiftBoolParam("gamelift_uselocalserver");
+
             EBUS_EVENT(GameLift::GameLiftRequestBus, StartClientService, serviceDesc);
         }
 
@@ -1462,6 +1480,7 @@ namespace Multiplayer
         DismissBusyScreen();
 
         m_hasGameliftSession = false;
+
         m_unregisterGameliftServiceOnErrorDismiss = true;
 
         AZStd::string errorMessage("GameLift Error: ");

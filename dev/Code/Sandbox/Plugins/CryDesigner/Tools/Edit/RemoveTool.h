@@ -37,7 +37,7 @@ public:
 
     void Enter();
 
-    static bool RemoveSelectedElements(CD::SMainContext& mc, bool bEraseMirrored);
+    static bool RemoveSelectedElements(const CD::SMainContext& mc, bool bEraseMirrored);
 
 private:
 

@@ -14,12 +14,6 @@
 #if defined(LMBR_CENTRAL_EDITOR)
 
 #include <AzCore/PlatformDef.h>
-#include <STLPortConfig.h>
-
-// STL Port in debug for debug builds
-#if defined(_DEBUG)
-#  define _STLP_DEBUG 1
-#endif
 
 #if defined(AZ_PLATFORM_WINDOWS)
 

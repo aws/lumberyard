@@ -18,8 +18,6 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
-#include <QHostAddress>
-
 #include <QByteArray>
 
 //This EBUS broadcasts the platform of the connection the AssetProcessor connected or disconnected with
@@ -78,7 +76,7 @@ namespace AssetProcessor
 
         virtual ~ConnectionBusTraits() {}
 
-        // Sends a message to the connection
+        // Sends an unsolicited message to the connection
         virtual size_t Send(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message) = 0;
         // Sends a raw buffer to the connection
         virtual size_t SendRaw(unsigned int type, unsigned int serial, const QByteArray& data) = 0;
@@ -87,6 +85,17 @@ namespace AssetProcessor
         virtual size_t SendPerPlatform(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const QString& platform) = 0;
         // Sends a raw buffer to the connection if the platform match
         virtual size_t SendRawPerPlatform(unsigned int type, unsigned int serial, const QByteArray& data, const QString& platform) = 0;
+
+        using ResponseCallback = AZStd::function<void(AZ::u32, QByteArray)>;
+
+        // Sends a message to the connection which expects a response.
+        virtual unsigned int SendRequest(const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const ResponseCallback& callback) = 0;
+
+        // Sends a response to the connection
+        virtual size_t SendResponse(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message) = 0;
+
+        // Removes a response handler that is no longer needed
+        virtual void RemoveResponseHandler(unsigned int serial) = 0;
     };
 
     using ConnectionBus = AZ::EBus<ConnectionBusTraits>;
@@ -102,27 +111,10 @@ namespace AssetProcessor
         virtual ~MessageInfoBusTraits() {}
         //Show a message window to the user
         virtual void NegotiationFailed() {}
-        //Shows a message window to the user indicating that proxy settings are wrong
-        virtual void ProxyConnectFailed() {}
     };
 
     using MessageInfoBus = AZ::EBus<MessageInfoBusTraits>;
 
-    class IncomingConnectionInfoBusTraits
-        : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single; // single listener
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single; //single bus
-        // this is actually called from multiple threads.
-        typedef AZStd::recursive_mutex MutexType;
-
-        virtual ~IncomingConnectionInfoBusTraits() {}
-        //Broadcasts the IP address of the incoming connection
-        virtual void OnNewIncomingConnection(QHostAddress hostAddress) = 0;
-    };
-
-    using IncomingConnectionInfoBus = AZ::EBus<IncomingConnectionInfoBusTraits>;
 
     typedef AZStd::vector <AssetBuilderSDK::AssetBuilderDesc> BuilderInfoList;
 
@@ -193,4 +185,21 @@ namespace AssetProcessor
     };
 
     using AssetRegistryNotificationBus = AZ::EBus<AssetRegistryNotifications>;
+
+    // This EBUS is used to check if there is sufficient disk space
+    class DiskSpaceInfoBusTraits
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        typedef AZStd::recursive_mutex MutexType;
+
+        // Returns true if there is at least `requiredSpace` bytes plus 256kb free disk space at the specified path
+        // savePath must be a folder path, not a file path
+        // If shutdownIfInsufficient is true, an error will be displayed and the application will be shutdown
+        virtual bool CheckSufficientDiskSpace(const QString& savePath, qint64 requiredSpace, bool shutdownIfInsufficient) { return true; }
+    };
+
+    using DiskSpaceInfoBus = AZ::EBus<DiskSpaceInfoBusTraits>;
 } // namespace AssetProcessor

@@ -157,7 +157,7 @@ namespace MCore
 
 
     // get the value as a three component vector
-    Vector3 CommandLine::GetValueAsVector3(const char* paramName, const Vector3& defaultValue) const
+    AZ::Vector3 CommandLine::GetValueAsVector3(const char* paramName, const AZ::Vector3& defaultValue) const
     {
         // try to find the parameter index
         const uint32 paramIndex = FindParameterIndex(paramName);
@@ -173,7 +173,7 @@ namespace MCore
         }
 
         // return the parameter value
-        return mParameters[paramIndex].mValue.ToVector3();
+        return AZ::Vector3(mParameters[paramIndex].mValue.ToVector3());
     }
 
 
@@ -299,7 +299,7 @@ namespace MCore
 
 
     // get the value as three component vector
-    Vector3 CommandLine::GetValueAsVector3(const char* paramName, Command* command) const
+    AZ::Vector3 CommandLine::GetValueAsVector3(const char* paramName, Command* command) const
     {
         // try to find the parameter index
         const uint32 paramIndex = FindParameterIndex(paramName);
@@ -308,16 +308,16 @@ namespace MCore
             MCore::String result;
             if (command->GetOriginalCommand()->GetSyntax().GetDefaultValue(paramName, result))
             {
-                return result.ToVector3();
+                return AZ::Vector3(result.ToVector3());
             }
             else
             {
-                return Vector3(0.0f, 0.0f, 0.0);
+                return AZ::Vector3(0.0f, 0.0f, 0.0);
             }
         }
 
         // return the parameter value
-        return mParameters[paramIndex].mValue.ToVector3();
+        return AZ::Vector3(mParameters[paramIndex].mValue.ToVector3());
     }
 
 

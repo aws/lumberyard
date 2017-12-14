@@ -38,3 +38,29 @@ public:
     virtual CanvasEntityList GetLoadedCanvases() = 0;
 };
 typedef AZ::EBus<UiCanvasManagerInterface> UiCanvasManagerBus;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//! Interface class that listeners need to implement to be notified of canvas manager changes
+class UiCanvasManagerNotification
+    : public AZ::EBusTraits
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+    //////////////////////////////////////////////////////////////////////////
+
+    virtual ~UiCanvasManagerNotification() {}
+
+    //! Called when a canvas has been loaded
+    virtual void OnCanvasLoaded(AZ::EntityId canvasEntityId) {}
+
+    //! Called when a canvas has been unloaded/destroyed
+    virtual void OnCanvasUnloaded(AZ::EntityId canvasEntityId) {}
+
+    //! Called when a canvas has been reloaded (due to hot-loading)
+    //! For a hot-load, the OnCanvasLoaded/OnCanvasUnloaded notifications are not sent - only this one is
+    virtual void OnCanvasReloaded(AZ::EntityId canvasEntityId) {}
+};
+
+typedef AZ::EBus<UiCanvasManagerNotification> UiCanvasManagerNotificationBus;
+

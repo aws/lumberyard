@@ -390,7 +390,11 @@ void UiLayoutRowComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetSpacing", &UiLayoutRowBus::Events::GetSpacing)
             ->Event("SetSpacing", &UiLayoutRowBus::Events::SetSpacing)
             ->Event("GetOrder", &UiLayoutRowBus::Events::GetOrder)
-            ->Event("SetOrder", &UiLayoutRowBus::Events::SetOrder);
+            ->Event("SetOrder", &UiLayoutRowBus::Events::SetOrder)
+            ->VirtualProperty("Padding", "GetPadding", "SetPadding")
+            ->VirtualProperty("Spacing", "GetSpacing", "SetSpacing");
+
+        behaviorContext->Class<UiLayoutRowComponent>()->RequestBus("UiLayoutRowBus");
     }
 }
 
@@ -484,7 +488,7 @@ void UiLayoutRowComponent::ApplyLayoutWidth(float availableWidth)
         int childIndex = 0;
         for (auto child : childEntityIds)
         {
-            // Set the anchors        
+            // Set the anchors
             EBUS_EVENT_ID(child, UiTransform2dBus, SetAnchors, anchors, false, false);
 
             // Set the offsets
@@ -540,7 +544,7 @@ void UiLayoutRowComponent::ApplyLayoutHeight(float availableHeight)
             // Set the offsets
             UiTransform2dInterface::Offsets offsets;
             EBUS_EVENT_ID_RESULT(offsets, child, UiTransform2dBus, GetOffsets);
-            
+
             offsets.m_top = m_padding.m_top + alignmentOffset;
             offsets.m_bottom = offsets.m_top + height;
 
@@ -564,7 +568,7 @@ bool UiLayoutRowComponent::VersionConverter(AZ::SerializeContext& context,
     if (classElement.GetVersion() < 2)
     {
         // Add a flag and set it to a value that's different from the default value for new components
-        const char *subElementName = "IgnoreDefaultLayoutCells";
+        const char* subElementName = "IgnoreDefaultLayoutCells";
         int newElementIndex = classElement.AddElement<bool>(context, subElementName);
         if (newElementIndex == -1)
         {

@@ -31,7 +31,7 @@ void SeparateTool::Enter()
     CD::GetDesigner()->SwitchTool(CD::eDesigner_Object);
 }
 
-DesignerObject* SeparateTool::Separate(CD::SMainContext& mc)
+DesignerObject* SeparateTool::Separate(const CD::SMainContext& mc)
 {
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
 

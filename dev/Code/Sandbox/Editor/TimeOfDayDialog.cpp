@@ -38,12 +38,16 @@
 #include <QSignalBlocker>
 #include "QtUtilWin.h"
 
-namespace {
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+
+#define PANE_LAYOUT_SECTION _T("DockingPaneLayouts\\TimeOfDay")
+#define PANE_LAYOUT_VERSION_ENTRY _T("PaneLayoutVersion")
+
+namespace TimeOfDayDetails
+{
     const float kEpsilon = 0.00001f;
 
     const int kTimeOfDayDialogLayoutVersion = 0x0002; // bump this up on every substantial pane layout change
-#define PANE_LAYOUT_SECTION _T("DockingPaneLayouts\\TimeOfDay")
-#define PANE_LAYOUT_VERSION_ENTRY _T("PaneLayoutVersion")
 
     static void SetKeyTangentType(ISplineInterpolator* pSpline, int key, ESplineKeyTangentType type)
     {
@@ -53,14 +57,36 @@ namespace {
 
     static QTime qTimeFromFloat(float time)
     {
-        int h = std::floor(time);
-        int m = std::floor((time - floor(time)) * 60.0f + 0.5f);
-        return QTime(h, m);
+        // The float time goes from 0.0 - 23.98 (since max time is 23:59), so
+        // convert this to seconds so we can construct a QTime object from that
+        int seconds = (time * 60.0f) * 60;
+        return QTime(0, 0).addSecs(seconds);
     }
 
     static float floatFromQTime(const QTime& time)
     {
         return static_cast<float>(time.msecsSinceStartOfDay() / 60000) / 60.0;
+    }
+
+    // Is the ocean component feature toggle enabled?
+    AZ_INLINE static bool HasOceanFeatureToggle()
+    {
+        bool bHasOceanFeature = false;
+        AZ::OceanFeatureToggleBus::BroadcastResult(bHasOceanFeature, &AZ::OceanFeatureToggleBus::Events::OceanComponentEnabled);
+        return bHasOceanFeature;
+    }
+
+    AZ_INLINE static bool SkipUserInterface(int value)
+    {
+        if (!HasOceanFeatureToggle())
+        {
+            return false;
+        }
+        const ITimeOfDay::ETimeOfDayParamID enumValue = static_cast<ITimeOfDay::ETimeOfDayParamID>(value);
+        return (enumValue == ITimeOfDay::PARAM_OCEANFOG_COLOR) || 
+               (enumValue == ITimeOfDay::PARAM_OCEANFOG_COLOR_MULTIPLIER) ||
+               (enumValue == ITimeOfDay::PARAM_OCEANFOG_DENSITY)
+            ;
     }
 }
 
@@ -129,6 +155,10 @@ bool CHDRPane::GetFilmCurveParams(float& shoulderScale, float& midScale, float& 
         {
             continue;
         }
+        if (TimeOfDayDetails::SkipUserInterface(varInfo.nParamId))
+        {
+            continue;
+        }
 
         switch (varInfo.nParamId)
         {
@@ -161,7 +191,7 @@ bool CHDRPane::GetFilmCurveParams(float& shoulderScale, float& midScale, float& 
 
 static float EvalFilmCurve(float x, float ss, float ms, float ts)
 {
-    return (x * (ss * 6.2f * x + 0.5f * ms)) / max<float>((x * (ss * 6.2f * x + 1.7f) + ts * 0.06f), kEpsilon);
+    return (x * (ss * 6.2f * x + 0.5f * ms)) / max<float>((x * (ss * 6.2f * x + 1.7f) + ts * 0.06f), TimeOfDayDetails::kEpsilon);
 }
 
 void CHDRPane::UpdateFilmCurve()
@@ -181,7 +211,7 @@ void CHDRPane::UpdateFilmCurve()
         float x = powf(10.0f, logX); // Conventionally, the x domain is logarithmic.
 
         float v = EvalFilmCurve(x, shoulderScale, midScale, toeScale) /
-            max<float>(EvalFilmCurve(whitePoint, shoulderScale, midScale, toeScale), kEpsilon);
+            max<float>(EvalFilmCurve(whitePoint, shoulderScale, midScale, toeScale), TimeOfDayDetails::kEpsilon);
         v = powf(v, 2.2f); // converting to a linear space
 
         // Update the maximum Y so that a proper domain can be set later.
@@ -362,6 +392,9 @@ CTimeOfDayDialog::CTimeOfDayDialog(QWidget* parent /* = nullptr */)
     m_ui->parameters->Setup();
     splitDockWidget(m_ui->hdrPaneDock, m_ui->tasksDock, Qt::Horizontal);
 
+    // Calculate our maximum time from the slider (23:59)
+    m_maxTime = m_ui->timelineSlider->maximum() / 60.0f;
+
     Init();
 }
 
@@ -391,7 +424,7 @@ const GUID& CTimeOfDayDialog::GetClassID()
 void CTimeOfDayDialog::RegisterViewClass()
 {
     AzToolsFramework::ViewPaneOptions options;
-    options.paneRect = QRect(100, 100, 1000, 800);
+    options.paneRect = QRect(100, 100, 1500, 800);
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
@@ -468,23 +501,6 @@ void CTimeOfDayDialog::Init()
     m_ui->nextKeyButton->setIcon(QIcon(":/Common/spline_edit-15.png"));
     m_ui->removeAllExceptSelectedButton->setIcon(QIcon(":/Common/spline_edit-16.png"));
 
-    // these properties will be shown when Basic properties for Time Of Day will be enabled
-    m_basicPropertyDisplayNames.insert("Sun color");
-    m_basicPropertyDisplayNames.insert("Sun color multiplier");
-    m_basicPropertyDisplayNames.insert("Sky color");
-    m_basicPropertyDisplayNames.insert("Sky color multiplier");
-    m_basicPropertyDisplayNames.insert("Fog color");
-    m_basicPropertyDisplayNames.insert("Fog color multiplier");
-    m_basicPropertyDisplayNames.insert("Global density");
-    m_basicPropertyDisplayNames.insert("Sun intensity");
-    m_basicPropertyDisplayNames.insert("Sun intensity multiplier");
-    m_basicPropertyDisplayNames.insert("Star intensity");
-    m_basicPropertyDisplayNames.insert("Moon color");
-    m_basicPropertyDisplayNames.insert("Sun rays visibility");
-    m_basicPropertyDisplayNames.insert("Saturation");
-    m_basicPropertyDisplayNames.insert("Contrast");
-    m_basicPropertyDisplayNames.insert("Brightness");
-
     m_timelineCtrl->SetTicksTextScale(24.0f);
     m_timelineCtrl->SetTimeRange(Range(0, 1));
 
@@ -512,18 +528,17 @@ void CTimeOfDayDialog::Init()
         restoreState(state);
     }
 
-    // by default show only basic properties
-    m_bShowOnlyBasicProperties = gSettings.bShowBasicPropertiesInTimeOfDay;
-    OnToggleBasicAdvancedProperties();
     ResetSpline(0);
 
     m_ui->hdrPaneDock->setWidget(m_pHDRPane);
     m_pHDRPane->UpdateFilmCurve();
 
-    m_ui->parameters->AddCustomPopupMenuItem("Copy All Panes", functor(*this, &CTimeOfDayDialog::CopyAllProperties));
-    m_ui->parameters->AddCustomPopupMenuItem("Paste All Panes", functor(*this, &CTimeOfDayDialog::PasteAllProperties));
-    m_pHDRPane->properties().AddCustomPopupMenuItem("Copy All Panes", functor(*this, &CTimeOfDayDialog::CopyAllProperties));
-    m_pHDRPane->properties().AddCustomPopupMenuItem("Paste All Panes", functor(*this, &CTimeOfDayDialog::PasteAllProperties));
+    QString copyAllLabel(tr("Copy All Parameters"));
+    QString pasteAllLabel(tr("Paste All Parameters"));
+    m_ui->parameters->AddCustomPopupMenuItem(copyAllLabel, functor(*this, &CTimeOfDayDialog::CopyAllProperties));
+    m_ui->parameters->AddCustomPopupMenuItem(pasteAllLabel, functor(*this, &CTimeOfDayDialog::PasteAllProperties));
+    m_pHDRPane->properties().AddCustomPopupMenuItem(copyAllLabel, functor(*this, &CTimeOfDayDialog::CopyAllProperties));
+    m_pHDRPane->properties().AddCustomPopupMenuItem(pasteAllLabel, functor(*this, &CTimeOfDayDialog::PasteAllProperties));
 
     m_ui->parameters->SetSelChangeCallback(functor(*this, &CTimeOfDayDialog::OnPropertySelected));
     connect(m_pHDRPane, &CHDRPane::propertySelected, this, &CTimeOfDayDialog::HdrPropertySelected);
@@ -535,9 +550,8 @@ void CTimeOfDayDialog::Init()
     connect(m_ui->resetValuesClickable, &QLabel::linkActivated, this, &CTimeOfDayDialog::OnResetToDefaultValues);
     connect(m_ui->expandAllClickable, &QLabel::linkActivated, this, &CTimeOfDayDialog::OnExpandAll);
     connect(m_ui->collapseAllClickable, &QLabel::linkActivated, this, &CTimeOfDayDialog::OnCollapseAll);
-    connect(m_ui->toggleAdvancedPropertiesClickable, &QLabel::linkActivated, this, &CTimeOfDayDialog::ToggleAdvancedProperties);
 
-    connect(m_ui->currentTimeEdit, &QTimeEdit::timeChanged, [=](const QTime& time) { SetTime(floatFromQTime(time)); });
+    connect(m_ui->currentTimeEdit, &QTimeEdit::timeChanged, [=](const QTime& time) { SetTime(TimeOfDayDetails::floatFromQTime(time)); });
     connect(m_ui->startTimeEdit, &QTimeEdit::timeChanged, this, &CTimeOfDayDialog::StartTimeChanged);
     connect(m_ui->endTimeEdit, &QTimeEdit::timeChanged, this, &CTimeOfDayDialog::EndTimeChanged);
     auto doubleValueChanged = static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged);
@@ -557,7 +571,7 @@ void CTimeOfDayDialog::Init()
     connect(m_ui->actionSetTimeTo0600, &QAction::triggered, [=]() { SetTime(6); });
     connect(m_ui->actionSetTimeTo1200, &QAction::triggered, [=]() { SetTime(12); });
     connect(m_ui->actionSetTimeTo1800, &QAction::triggered, [=]() { SetTime(18); });
-    connect(m_ui->actionSetTimeTo2400, &QAction::triggered, [=]() { SetTime(24); });
+    connect(m_ui->actionSetTimeTo2400, &QAction::triggered, [=]() { SetTime(m_maxTime); });
 
     connect(m_ui->actionHold, &QAction::triggered, this, &CTimeOfDayDialog::OnHold);
     connect(m_ui->actionFetch, &QAction::triggered, this, &CTimeOfDayDialog::OnFetch);
@@ -608,7 +622,7 @@ void CTimeOfDayDialog::HdrPropertySelected(IVariable* v)
 
 void CTimeOfDayDialog::StartTimeChanged(const QTime& time)
 {
-    float converted = floatFromQTime(m_ui->startTimeEdit->time());
+    float converted = TimeOfDayDetails::floatFromQTime(m_ui->startTimeEdit->time());
     ITimeOfDay* pTimeOfDay = gEnv->p3DEngine->GetTimeOfDay();
     ITimeOfDay::SAdvancedInfo advInfo;
     pTimeOfDay->GetAdvancedInfo(advInfo);
@@ -618,19 +632,12 @@ void CTimeOfDayDialog::StartTimeChanged(const QTime& time)
 
 void CTimeOfDayDialog::EndTimeChanged(const QTime& time)
 {
-    float converted = floatFromQTime(m_ui->endTimeEdit->time());
+    float converted = TimeOfDayDetails::floatFromQTime(m_ui->endTimeEdit->time());
     ITimeOfDay* pTimeOfDay = gEnv->p3DEngine->GetTimeOfDay();
     ITimeOfDay::SAdvancedInfo advInfo;
     pTimeOfDay->GetAdvancedInfo(advInfo);
     advInfo.fEndTime = converted;
     pTimeOfDay->SetAdvancedInfo(advInfo);
-}
-
-void CTimeOfDayDialog::ToggleAdvancedProperties()
-{
-    m_bShowOnlyBasicProperties = !m_bShowOnlyBasicProperties;
-    gSettings.bShowBasicPropertiesInTimeOfDay = m_bShowOnlyBasicProperties;
-    OnToggleBasicAdvancedProperties();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -645,6 +652,11 @@ void CTimeOfDayDialog::CreateProperties()
     {
         ITimeOfDay::SVariableInfo varInfo;
         if (!pTimeOfDay->GetVariableInfo(i, varInfo))
+        {
+            continue;
+        }
+
+        if (TimeOfDayDetails::SkipUserInterface(varInfo.nParamId))
         {
             continue;
         }
@@ -723,6 +735,11 @@ void CTimeOfDayDialog::OnSplineChange(const QWidget* source)
 
     if (source == m_ui->spline)
     {
+        // Update the time of day settings on spline changes (e.g. keys being moved)
+        ITimeOfDay* pTimeOfDay = gEnv->p3DEngine->GetTimeOfDay();
+        bool bForceUpdate = m_ui->forceSkyUpdateCheckBox->isChecked();
+        pTimeOfDay->Update(true, bForceUpdate);
+
         m_timelineCtrl->update();
         m_ui->colorGradient->update();
     }
@@ -798,7 +815,7 @@ void CTimeOfDayDialog::SetTimeFromActiveKey(bool useColorGradient)
         return;
     }
 
-    SetTime(pSpline->GetKeyTime(activeKey) * 24.0f);
+    SetTime(pSpline->GetKeyTime(activeKey) * m_maxTime);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -817,8 +834,8 @@ float CTimeOfDayDialog::GetTime() const
 //////////////////////////////////////////////////////////////////////////
 void CTimeOfDayDialog::SetTimeRange(float fTimeStart, float fTimeEnd, float fSpeed)
 {
-    m_ui->startTimeEdit->setTime(qTimeFromFloat(fTimeStart));
-    m_ui->endTimeEdit->setTime(qTimeFromFloat(fTimeEnd));
+    m_ui->startTimeEdit->setTime(TimeOfDayDetails::qTimeFromFloat(fTimeStart));
+    m_ui->endTimeEdit->setTime(TimeOfDayDetails::qTimeFromFloat(fTimeEnd));
 
     m_ui->playSpeedDoubleSpinBox->setValue(fSpeed);
 
@@ -846,6 +863,11 @@ void CTimeOfDayDialog::RefreshPropertiesValues()
         {
             continue;
         }
+        if (TimeOfDayDetails::SkipUserInterface(varInfo.nParamId))
+        {
+            continue;
+        }
+
         IVariable* pVar = FindVariable(varInfo.name);
 
         if (!pVar)
@@ -877,7 +899,7 @@ void CTimeOfDayDialog::UpdateUI(bool updateProperties)
     float timeOfDayInHours = GetTime();
 
     // update the Current Time edit field and Time Of Day Time Slider
-    QTime qTime = qTimeFromFloat(timeOfDayInHours);
+    QTime qTime = TimeOfDayDetails::qTimeFromFloat(timeOfDayInHours);
 
     QSignalBlocker sliderBlocker(m_ui->timelineSlider);
     QSignalBlocker editBlocker(m_ui->currentTimeEdit);
@@ -887,8 +909,8 @@ void CTimeOfDayDialog::UpdateUI(bool updateProperties)
     m_ui->timelineSlider->setValue(v);
     m_ui->currentTimeEdit->setTime(qTime);
 
-    m_ui->spline->SetTimeMarker(timeOfDayInHours / 24.0f);
-    m_ui->colorGradient->SetTimeMarker(timeOfDayInHours / 24.0f);
+    m_ui->spline->SetTimeMarker(timeOfDayInHours / m_maxTime);
+    m_ui->colorGradient->SetTimeMarker(timeOfDayInHours / m_maxTime);
 
     if (updateProperties)
     {
@@ -914,81 +936,6 @@ void CTimeOfDayDialog::SetTime(float time)
 
     // pTimeOfDay->SetTime will trigger a ESYSTEM_EVENT_TIME_OF_DAY_SET, which in turn will result in UpdateUI() being called
     pTimeOfDay->SetTime(time, bForceUpdate);
-}
-
-void CTimeOfDayDialog::OnToggleBasicAdvancedProperties()
-{
-    ITimeOfDay* pTimeOfDay = gEnv->p3DEngine->GetTimeOfDay();
-
-    //
-    // show / hide advanced properties
-    //
-    for (int i = 0, numVars = pTimeOfDay->GetVariableCount(); i < numVars; i++)
-    {
-        ITimeOfDay::SVariableInfo varInfo;
-
-        if (!pTimeOfDay->GetVariableInfo(i, varInfo))
-        {
-            continue;
-        }
-
-        IVariable* pVar = FindVariable(varInfo.name);
-
-        if (!pVar)
-        {
-            continue;
-        }
-
-        bool bPropIsVisible = true;
-
-        // skip advanced properties
-        if (m_bShowOnlyBasicProperties && !stl::find(m_basicPropertyDisplayNames, varInfo.displayName))
-        {
-            bPropIsVisible = false;
-        }
-
-        int flags = pVar->GetFlags();
-        flags = bPropIsVisible ? (flags & (~IVariable::UI_INVISIBLE)) : (flags | IVariable::UI_INVISIBLE);
-        pVar->SetFlags(flags);
-    }
-
-    //
-    // show / hide empty property groups ( with all children hidden )
-    //
-    for (int i = 0, numVars = m_pVars->GetNumVariables(); i < numVars; i++)
-    {
-        IVariable* pVar = m_pVars->GetVariable(i);
-
-        if (!pVar || IVariable::ARRAY != pVar->GetType())
-        {
-            continue;
-        }
-
-        // if this is a group
-        CVariableArray* pVarGroup = (CVariableArray*)pVar;
-        bool bGroupIsVisible = false;
-
-        // check all its children to see if we have any one of them visible
-        for (int j = 0; j < pVarGroup->GetNumVariables(); ++j)
-        {
-            if (!(pVarGroup->GetVariable(j)->GetFlags() & IVariable::UI_INVISIBLE))
-            {
-                bGroupIsVisible = true;
-                break;
-            }
-        }
-
-        int flags = pVarGroup->GetFlags();
-        flags = bGroupIsVisible ? (flags & (~IVariable::UI_INVISIBLE)) : (flags | IVariable::UI_INVISIBLE);
-        pVarGroup->SetFlags(flags);
-    }
-
-    // refresh properties
-    m_ui->parameters->ReplaceRootVarBlock(m_pVars);
-    m_ui->parameters->EnableNotifyWithoutValueChange(true);
-
-    m_pHDRPane->properties().ReplaceRootVarBlock(m_pHDRPane->variables());
-    m_pHDRPane->properties().EnableNotifyWithoutValueChange(true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1051,7 +998,7 @@ void CTimeOfDayDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
 void CTimeOfDayDialog::OnTimelineCtrlChange()
 {
     float fTime = m_timelineCtrl->GetTimeMarker();
-    SetTime(fTime * 24.0f);
+    SetTime(fTime * m_maxTime);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1183,7 +1130,7 @@ void CTimeOfDayDialog::OnUpdateProperties(IVariable* pVar)
         if (pTimeOfDay->GetVariableInfo(nIndex, varInfo))
         {
             float fTime = GetTime();
-            float fSplineTime = fTime / 24;
+            float fSplineTime = fTime / m_maxTime;
 
             const float cNearestKeySearchEpsilon = 0.00001f;
             int nKey = varInfo.pInterpolator->FindKey(fSplineTime, cNearestKeySearchEpsilon);
@@ -1220,7 +1167,7 @@ void CTimeOfDayDialog::OnUpdateProperties(IVariable* pVar)
                     }
                     if (m_ui->spline && m_ui->spline->GetDefaultKeyTangentType() != SPLINE_KEY_TANGENT_NONE)
                     {
-                        SetKeyTangentType(varInfo.pInterpolator, nKey, m_ui->spline->GetDefaultKeyTangentType());
+                        TimeOfDayDetails::SetKeyTangentType(varInfo.pInterpolator, nKey, m_ui->spline->GetDefaultKeyTangentType());
                     }
                 }
 
@@ -1253,7 +1200,7 @@ void CTimeOfDayDialog::OnUpdateProperties(IVariable* pVar)
                     }
                     if (m_ui->spline && m_ui->spline->GetDefaultKeyTangentType() != SPLINE_KEY_TANGENT_NONE)
                     {
-                        SetKeyTangentType(varInfo.pInterpolator, nKey, m_ui->spline->GetDefaultKeyTangentType());
+                        TimeOfDayDetails::SetKeyTangentType(varInfo.pInterpolator, nKey, m_ui->spline->GetDefaultKeyTangentType());
                     }
                 }
                 pTimeOfDay->SetVariableValue(nIndex, v3);
@@ -1264,7 +1211,9 @@ void CTimeOfDayDialog::OnUpdateProperties(IVariable* pVar)
             }
 
             if (m_ui->spline)
+            {
                 m_ui->spline->update();
+            }
 
             if (varInfo.nParamId == ITimeOfDay::PARAM_HDR_FILMCURVE_SHOULDER_SCALE
                 || varInfo.nParamId == ITimeOfDay::PARAM_HDR_FILMCURVE_LINEAR_SCALE
@@ -1356,13 +1305,13 @@ void CTimeOfDayDialog::OnHold()
 {
     XmlNodeRef node = XmlHelpers::CreateXmlNode("TimeOfDay");
     GetIEditor()->Get3DEngine()->GetTimeOfDay()->Serialize(node, false);
-    node->saveToFile("@user@/Sandbox/TimeOfDayHold.xml");
+    node->saveToFile((Path::GetUserSandboxFolder() + "TimeOfDayHold.xml").toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTimeOfDayDialog::OnFetch()
 {
-    XmlNodeRef node = GetISystem()->LoadXmlFromFile("@user@/Sandbox/TimeOfDayHold.xml");
+    XmlNodeRef node = XmlHelpers::LoadXmlFromFile((Path::GetUserSandboxFolder() + "TimeOfDayHold.xml").toUtf8().data());
     if (node)
     {
         GetIEditor()->Get3DEngine()->GetTimeOfDay()->Serialize(node, true);
@@ -1440,35 +1389,11 @@ void CTimeOfDayDialog::PasteAllProperties()
     {
         // Main properties
         XmlNodeRef rootNode = collectionNode->getChild(0);
-        for (int i = 0; i < rootNode->getChildCount(); ++i)
-        {
-            XmlNodeRef node = rootNode->getChild(i);
-            QString value;
-            QString name;
-            node->getAttr("Name", name);
-            node->getAttr("Value", value);
-            ReflectedPropertyItem* pItem = m_ui->parameters->GetRootItem()->FindItemByFullName(name);
-            if (pItem)
-            {
-                pItem->SetValue(value);
-            }
-        }
+        m_ui->parameters->SetValuesFromNode(rootNode);
 
         // HDR properties
         rootNode = collectionNode->getChild(1);
-        for (int i = 0; i < rootNode->getChildCount(); ++i)
-        {
-            XmlNodeRef node = rootNode->getChild(i);
-            QString value;
-            QString name;
-            node->getAttr("Name", name);
-            node->getAttr("Value", value);
-            ReflectedPropertyItem* pItem = m_pHDRPane->properties().GetRootItem()->FindItemByFullName(name);
-            if (pItem)
-            {
-                pItem->SetValue(value);
-            }
-        }
+        m_pHDRPane->properties().SetValuesFromNode(rootNode);
     }
 }
 

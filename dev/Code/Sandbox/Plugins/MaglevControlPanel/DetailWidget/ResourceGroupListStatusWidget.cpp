@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "ResourceGroupListStatusWidget.h"
 
 #include <ResourceManagementView.h>

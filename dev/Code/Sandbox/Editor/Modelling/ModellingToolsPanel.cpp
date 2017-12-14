@@ -89,7 +89,7 @@ void CModellingToolsPanel::CreateButtons()
             button->setCheckable(true);
             button->setProperty("tool", tool);
             m_pushButtons.append(button);
-            qDebug("button: %d", button);
+            qDebug("button: %p", button);
             qDebug("button: %s", button->text());
             qDebug("button: %s", button->objectName());
 

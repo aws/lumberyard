@@ -246,7 +246,8 @@ namespace EMStudio
         parameters.GetValue("filename", this, filename);
 
         // Avoid saving to asset cache folder.
-        if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
+        const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
+        if (sourceControl && !GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
             outResult.Format("Motion set cannot be saved. Unable to find source asset path for (%s)", filename);
             return false;
@@ -258,11 +259,10 @@ namespace EMStudio
         AZStd::vector<EMotionFX::MotionSet*> motionSets;
         RecursiveAddMotionSets(motionSet, motionSets);
 
-
         const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
 
         // Source Control: Checkout file.
-        if (fileExisted)
+        if (sourceControl && fileExisted)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
@@ -287,7 +287,7 @@ namespace EMStudio
 
 
         // Source Control: Add file in case it did not exist before (when saving it the first time).
-        if (saveResult && !fileExisted)
+        if (saveResult && !fileExisted && sourceControl)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
@@ -325,6 +325,7 @@ namespace EMStudio
         GetSyntax().AddRequiredParameter("motionSetID", "The id of the motion set to save.",                MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("updateFilename",      "True to update the filename of the motion set.",   MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    "true");
         GetSyntax().AddParameter("updateDirtyFlag",     "True to update the dirty flag of the motion set.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    "true");
+        GetSyntax().AddParameter("sourceControl",       "Enable or disable source control auto checkout and add for this file (perforce etc).", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -362,7 +363,8 @@ namespace EMStudio
         parameters.GetValue("filename", this, filename);
 
         // Avoid saving to asset cache folder.
-        if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
+        const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
+        if (sourceControl && !GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
             outResult.Format("Animation graph cannot be saved. Unable to find source asset path for (%s)", filename);
             return false;
@@ -380,7 +382,7 @@ namespace EMStudio
         const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
 
         // Source Control: Checkout file.
-        if (fileExisted)
+        if (sourceControl && fileExisted)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
@@ -412,7 +414,7 @@ namespace EMStudio
 
 
         // Source Control: Add file in case it did not exist before (when saving it the first time).
-        if (saveResult && !fileExisted)
+        if (saveResult && !fileExisted && sourceControl)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
@@ -439,7 +441,8 @@ namespace EMStudio
         GetSyntax().AddRequiredParameter("index",       "The index inside the anim graph manager of the anim graph to save.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("updateFilename",      "True to update the filename of the anim graph.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
         GetSyntax().AddParameter("updateDirtyFlag",     "True to update the dirty flag of the anim graph.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
-        GetSyntax().AddParameter("companyName",        "The company name to which this anim graph belongs to.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("companyName",         "The company name to which this anim graph belongs to.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("sourceControl",       "Enable or disable source control auto checkout and add for this file (perforce etc).", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 

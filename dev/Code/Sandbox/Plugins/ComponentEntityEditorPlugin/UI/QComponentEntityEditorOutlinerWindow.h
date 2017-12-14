@@ -16,7 +16,6 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
-struct ISourceControl;
 class QObjectPropertyModel;
 class PropertyInfo;
 
@@ -25,10 +24,7 @@ namespace AZ
     class Entity;
 }
 
-namespace AzToolsFramework
-{
-    class OutlinerWidget;
-}
+class OutlinerWidget;
 
 // This is the shell class to interface between Qt and the Sandbox.  All Sandbox implementation is retained in an inherited class.
 class QComponentEntityEditorOutlinerWindow
@@ -60,7 +56,5 @@ public:
     }
 
 private:
-    ISourceControl* m_sourceControl;
-
-    AzToolsFramework::OutlinerWidget* m_outlinerWidget;
+    OutlinerWidget* m_outlinerWidget;
 };

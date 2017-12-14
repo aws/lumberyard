@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#ifdef ENABLE_LEGACY_ANIMATION
 #pragma once
 
 #include "Include/IPreferencesPage.h"
@@ -25,6 +26,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_MannequinGeneral();
+    virtual ~CEditorPreferencesPage_MannequinGeneral() = default;
 
     virtual const char* GetCategory() override { return "Mannequin"; }
     virtual const char* GetTitle() override { return "General"; }
@@ -46,4 +48,4 @@ private:
 
     General m_general;
 };
-
+#endif //ENABLE_LEGACY_ANIMATION

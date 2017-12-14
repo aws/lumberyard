@@ -13,6 +13,8 @@
 #pragma once
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/string/string_view.h>
 
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 
@@ -39,6 +41,8 @@ namespace ScriptCanvasEditor
         AZ_TYPE_INFO(ScriptCanvasAssetFileInfo, "{81F6B390-7CF3-4A97-B5A6-EC09330F184E}");
         AZ_CLASS_ALLOCATOR(ScriptCanvasAssetFileInfo, AZ::SystemAllocator, 0);
         ScriptCanvasFileState m_fileModificationState = ScriptCanvasFileState::INVALID;
+        bool m_reloadable = false;
+        AZStd::string m_absolutePath;
     };
 
     //! Bus for handling transactions involving ScriptCanvas Assets, such as graph Saving, graph modification state, etc
@@ -48,13 +52,15 @@ namespace ScriptCanvasEditor
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        //! Creates a ScriptCanvas asset with the supplied AssetId and registers it with the AssetCatalog
-        virtual AZ::Data::Asset<ScriptCanvasAsset> CreateScriptCanvasAsset(const AZ::Data::AssetId& assetId) = 0;
+        //! Creates a new ScriptCanvas asset and registers it with the document context
+        virtual AZ::Data::Asset<ScriptCanvasAsset> CreateScriptCanvasAsset(AZStd::string_view relativeAssetPath) = 0;
 
-        //! Saves a ScriptCanvas asset using the supplied AssetInfo structure
-        //! \param assetInfo AssetInfo structure which supplies the filename to save to and the asset id to register with the asset catalog
-        using SaveCB = AZStd::function<void(const AZ::Data::AssetId& assetId, bool saveSuccess)>;
-        virtual void SaveScriptCanvasAsset(const AZ::Data::AssetInfo& /*assetInfo*/, AZ::Data::Asset<ScriptCanvasAsset>, const SaveCB& saveCB) = 0;
+        using SaveCB = AZStd::function<void(bool saveSuccess)>;
+        // !Callback will fire when a new in-memory Script Canvas asset is saved to disk for the first time and a new AssetId is generated for it
+        using SourceFileChangedCB = AZStd::function<void(AZStd::string relPath, AZStd::string scanFolder, const AZ::Data::AssetId& newAssetId)>;
+        //! Saves a ScriptCanvas asset using the supplied AssetPath structure
+        //! \param assetAbsolutePath path where ScriptCanvas asset will be saved on disk
+        virtual void SaveScriptCanvasAsset(AZStd::string_view/*assetAbsolutePath*/, AZ::Data::Asset<ScriptCanvasAsset>, const SaveCB&, const SourceFileChangedCB&) = 0;
 
         //! Loads a ScriptCanvas asset by looking up the assetPath in the AssetCatalog
         //! \param assetPath filepath to asset that will be looked up in the AssetCatalog for the AssetId
@@ -72,6 +78,10 @@ namespace ScriptCanvasEditor
 
         virtual ScriptCanvasFileState GetScriptCanvasAssetModificationState(const AZ::Data::AssetId& assetId) = 0;
         virtual void SetScriptCanvasAssetModificationState(const AZ::Data::AssetId& assetId, ScriptCanvasFileState) = 0;
+
+        //! Retrieves the file information for the registered ScriptCanvas asset
+        virtual AZ::Outcome<ScriptCanvasAssetFileInfo, AZStd::string> GetFileInfo(const AZ::Data::AssetId& assetId) const = 0;
+        virtual AZ::Outcome<void, AZStd::string> SetFileInfo(const AZ::Data::AssetId& assetId, const ScriptCanvasAssetFileInfo& fileInfo) = 0;
     };
 
     using DocumentContextRequestBus = AZ::EBus<DocumentContextRequests>;
@@ -83,49 +93,26 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::Data::AssetId;
 
-        /**
-        * Custom connection policy to force OnScriptCanvasAssetReady to fire if the asset is already loaded
-        * See AssetConnectionPolicy
-        */
-        template<class Bus>
-        struct DocumentContextConnectionPolicy
-            : public AZ::EBusConnectionPolicy<Bus>
-        {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
-            {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
-
-                AZ::Data::Asset<AZ::Data::AssetData> asset(AZ::Data::AssetInternal::GetAssetData(id));
-                if (asset)
-                {
-                    if (asset.Get()->GetStatus() == AZ::Data::AssetData::AssetStatus::Ready)
-                    {
-                        handler->OnScriptCanvasAssetReady(asset);
-                    }
-                }
-            }
-        };
-        template<typename Bus>
-        using ConnectionPolicy = DocumentContextConnectionPolicy<Bus>;
-
         virtual void OnAssetModificationStateChanged(ScriptCanvasFileState) {}
 
         //! Notification which fires after an ScriptCanvasDocumentContext has received it's on AssetReady callback
         //! \param scriptCanvasAsset Script Canvas asset which is now ready for use in the Editor
-        virtual void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/) {};
+        virtual void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/) {}
 
         //! Notification which fires after an ScriptCanvasDocumentContext has received it's on AssetReloaded callback
         //! \param scriptCanvasAsset Script Canvas asset which is now ready for use in the Editor
-        virtual void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvaAsset */) {};
+        virtual void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvaAsset */) {}
 
         //! Notification which fires after an ScriptCanvasDocumentContext has received it's on AssetReady callback
         //! \param AssetId AssetId of unloaded ScriptCanvas
-        virtual void OnScriptCanvasAssetUnloaded(const AZ::Data::AssetId& /*assetId*/) {};
+        virtual void OnScriptCanvasAssetUnloaded(const AZ::Data::AssetId& /*assetId*/) {}
 
         //! Notification which fires after an ScriptCanvasDocumentContext has received an onAssetSaved callback
         //! \param scriptCanvasAsset Script Canvas asset which was attempted to be saved
         //! \param isSuccessful specified where the Script Canvas asset was successfully saved
-        virtual void OnScriptCanvasAssetSaved(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/, bool /*isSuccessful*/) {};
+        virtual void OnScriptCanvasAssetSaved(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/, bool /*isSuccessful*/) {}
+
+        
     };
 
     using DocumentContextNotificationBus = AZ::EBus<DocumentContextNotifications>;

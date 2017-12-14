@@ -142,11 +142,12 @@ namespace Gems
         /**
          * Initializes the ProjectSettings with a project name to load the settings from.
          *
-         * \param[in] projectFolder   The folder in which the project's assets reside (and the configuration file)
+         * \param[in] appRootFolder     The application root folder where the project sub folder resides
+         * \param[in] projectSubFolder  The folder in which the project's assets reside (and the configuration file)
          *
          * \returns                 True on success, false on failure.
          */
-        virtual AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& projectFolder) = 0;
+        virtual AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& appRootFolder, const AZStd::string& projectSubFolder) = 0;
 
         /**
          * Enables the specified instance of a Gem.
@@ -237,6 +238,20 @@ namespace Gems
          */
         virtual AZ::Outcome<void, AZStd::string> Save() const = 0;
 
+        /**
+         * Get the project name that this project settings represents
+
+         * \returns             The project name.
+         */
+        virtual const AZStd::string& GetProjectName() const = 0;
+
+        /**
+        * Get the app root folder for the project
+
+        * \returns             The project root path.
+        */
+        virtual const AZStd::string& GetProjectRootPath() const = 0;
+
         virtual ~IProjectSettings() = default;
     };
 
@@ -309,11 +324,12 @@ namespace Gems
          * Loads Gems for the specified project.
          * May be called for multiple projects.
          *
-         * \param[in] settings      The project to load Gems for.
+         * \param[in] settings              The project to load Gems for.
+         * \param[in] resetPreviousProjects If true, reset any setting/gem descriptors that any previous calls to LoadProject may have added
          *
          * \returns                 Void on success, error message on failure.
          */
-        virtual AZ::Outcome<void, AZStd::string> LoadProject(const IProjectSettings& settings) = 0;
+        virtual AZ::Outcome<void, AZStd::string> LoadProject(const IProjectSettings& settings, bool resetPreviousProjects) = 0;
 
         /**
          * Gets the description for a Gem.

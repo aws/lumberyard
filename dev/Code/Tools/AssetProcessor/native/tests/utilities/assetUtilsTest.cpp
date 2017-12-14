@@ -47,10 +47,5 @@ TEST_F(AssetUtilitiesTest, NormlizeFilePath_NormalizedValidDirFullPath_Valid)
     ASSERT_TRUE(result.compare("c:/a/b/c/d", Qt::CaseSensitive) == 0);
 }
 
-TEST_F(AssetUtilitiesTest, GetBranchToken_Basic_Valid)
-{
-    QString branchToken = GetBranchToken();
-    ASSERT_GT(branchToken.size(), 0);
-}
 
 

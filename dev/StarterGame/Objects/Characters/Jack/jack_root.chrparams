@@ -91,6 +91,7 @@
   <AimIK_Definition>
    <DirectionalBlends>
     <Joint AnimToken="jack_aim_all" ParameterJoint="Bip01 CustomAim" StartJoint="Bip01 CustomStart" ReferenceJoint="jack_root"/>
+    <Joint AnimToken="jack_aim_aimstrafe" ParameterJoint="Bip01 CustomAim" StartJoint="Bip01 CustomStart" ReferenceJoint="jack_root"/>
    </DirectionalBlends>
    <RotationList>
     <Rotation Additive="1" Primary="1" JointName="Bip01 pelvis"/>

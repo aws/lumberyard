@@ -15,61 +15,53 @@
 #include "AboutDialog.h"
 #include <ui_AboutDialog.h>
 
+#include <QLabel>
 #include <QDesktopServices>
 #include <QPainter>
+#include <QPixmap>
 #include <QMouseEvent>
 #include <QDesktopServices>
+#include <QFont>
 
-CAboutDialog* CAboutDialog::s_pAboutWindow = 0;
-
-CAboutDialog::CAboutDialog(QWidget* pParent /*=NULL*/)
+CAboutDialog::CAboutDialog(QString versionText, QWidget* pParent /*=NULL*/)
     : QDialog(pParent)
-    , ui(new Ui::CAboutDialog)
+    , m_ui(new Ui::CAboutDialog)
 {
-    ui->setupUi(this);
+    m_ui->setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-    m_version = GetIEditor()->GetFileVersion();
+    connect(m_ui->m_transparentAgreement, &QLabel::linkActivated, this, &CAboutDialog::OnCustomerAgreement);
+    connect(m_ui->m_transparentNotice, &QLabel::linkActivated, this, &CAboutDialog::OnPrivacyNotice);
 
-    connect(ui->m_transparentAgreement, &QLabel::linkActivated, this, &CAboutDialog::OnCustomerAgreement);
-    connect(ui->m_transparentNotice, &QLabel::linkActivated, this, &CAboutDialog::OnPrivacyNotice);
+    m_ui->m_transparentTrademarks->setText(versionText);
 
-    OnInitDialog();
+    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/sandbox_dark.png"));
+
+    QFont smallFont(QStringLiteral("MS Shell Dlg 2"));
+    smallFont.setPointSizeF(7.5);
+    m_ui->m_transparentAllRightReserved->setFont(smallFont);
+
+    // Prevent re-sizing
+    setFixedSize(width(), height());
 }
 
 CAboutDialog::~CAboutDialog()
 {
-    s_pAboutWindow = 0;
 }
 
 void CAboutDialog::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
-    painter.drawPixmap(rect(), m_hBitmap);
-}
-
-void CAboutDialog::OnInitDialog()
-{
-    s_pAboutWindow = this;
-
-    SetVersion(m_version);
-
-    m_hBitmap = QPixmap(QStringLiteral(":/StartupLogoDialog/sandbox_dark.png"));
-
-    QFont smallFont(QStringLiteral("MS Shell Dlg 2"));
-    smallFont.setPointSizeF(7.5);
-    ui->m_transparentAllRightReserved->setFont(smallFont);
-
-    // Prevent re-sizing
-    this->setFixedSize(this->width(), this->height());
+    painter.drawPixmap(rect(), m_backgroundImage);
 }
 
 void CAboutDialog::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton)
     {
-        s_pAboutWindow->accept();
+        accept();
     }
+
     QDialog::mouseReleaseEvent(event);
 }
 
@@ -81,15 +73,6 @@ void CAboutDialog::OnCustomerAgreement()
 void CAboutDialog::OnPrivacyNotice()
 {
     QDesktopServices::openUrl(QUrl(QStringLiteral("http://aws.amazon.com/privacy/")));
-}
-
-void CAboutDialog::SetVersion(const SFileVersion& v)
-{
-#if defined(LY_BUILD)
-    ui->m_transparentTrademarks->setText(tr("Version %1.%2.%3.%4 - Build %5").arg(v[3]).arg(v[2]).arg(v[1]).arg(v[0]).arg(LY_BUILD));
-#else
-    ui->m_transparentTrademarks->setText(tr("Version %1.%2.%3.%4").arg(v[3]).arg(v[2]).arg(v[1]).arg(v[0]));
-#endif
 }
 
 #include <AboutDialog.moc>

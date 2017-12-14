@@ -13,6 +13,8 @@ local uimissionsuccess =
 		
 		ShowScreenEvent = { default = "ShowMissionSuccessEvent", description = "The event used to show this screen." },
 		
+		MissionSuccessSndEvent = "",
+		
 		--ShowScreenSndEvent = "",
 		--CloseScreenSndEvent = "",
 	},
@@ -25,6 +27,8 @@ function uimissionsuccess:OnActivate()
 	self.ShowScreenEventId = GameplayNotificationId(EntityId(), self.Properties.ShowScreenEvent, "float");
 	self.ShowScreenHandler = GameplayNotificationBus.Connect(self, self.ShowScreenEventId);	
 	self.FirstUpdate = true;
+	-- AUDIO
+	varMissionSuccessSndEvent = self.Properties.MissionSuccessSndEvent;
 end
 
 function uimissionsuccess:OnDeactivate()
@@ -134,7 +138,7 @@ function uimissionsuccess:OnTick(deltaTime, timePoint)
 		-- Hide the mouse cursor.
 		LyShineLua.ShowMouseCursor(false);
 	
-		StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.FaderID, 1.0, 0.25);
+		StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.FaderID, 1.0, 0.25);
 	
 		-- Disable the player controls so that they can be re-enabled once the player has started.
 		self:SetControls("PlayerCharacter", self.Properties.EnableControlsEvent, 0.0);
@@ -190,6 +194,8 @@ function uimissionsuccess:OnEventBegin(value)
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.ShowScreenEventId) then
 		--Debug.Log("Show screen");
 		self:ShowScreen();
+		-- Audio
+		AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, varMissionSuccessSndEvent);	
 	end
 
 end

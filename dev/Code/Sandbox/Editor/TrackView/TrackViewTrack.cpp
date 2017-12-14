@@ -12,11 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <MathConversion.h>
 #include "TrackViewTrack.h"
 #include "TrackViewAnimNode.h"
 #include "TrackViewSequence.h"
 #include "TrackViewUndo.h"
 #include "TrackViewNodeFactories.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewTrackBundle::AppendTrack(CTrackViewTrack* pTrack)
@@ -276,6 +278,13 @@ void CTrackViewTrack::OffsetKeyPosition(const Vec3& offset)
 {
     CUndo::Record(new CUndoTrackObject(this, GetSequence()));
     m_pAnimTrack->OffsetKeyPosition(offset);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewTrack::UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM)
+{
+    CUndo::Record(new CUndoTrackObject(this, GetSequence()));
+    m_pAnimTrack->UpdateKeyDataAfterParentChanged(oldParentWorldTM, newParentWorldTM);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -621,27 +630,61 @@ void CTrackViewTrack::OnStartPlayInEditor()
     // remap any AZ::EntityId's used in tracks
     if (m_pAnimTrack)
     {
-        CAnimParamType trackParamType = m_pAnimTrack->GetParameterType();
-        if (trackParamType.GetType() == eAnimParamType_Camera)
-        {
-            // OnStopPlayInEditor clears this as well, but we clear it here in case OnStartPlayInEditor() is called multiple times before OnStopPlayInEditor()
-            m_paramTypeToStashedEntityIdMap.clear();
+        // OnStopPlayInEditor clears this as well, but we clear it here in case OnStartPlayInEditor() is called multiple times before OnStopPlayInEditor()
+        m_paramTypeToStashedEntityIdMap.clear();
 
-            ISelectKey key;
+        CAnimParamType trackParamType = m_pAnimTrack->GetParameterType();
+        const AnimParamType paramType = trackParamType.GetType();
+        if (paramType == AnimParamType::Camera || paramType == AnimParamType::Sequence)
+        {
+            ISelectKey selectKey;
+            ISequenceKey sequenceKey;
+            IKey* key = nullptr;
+
             for (int i = 0; i < m_pAnimTrack->GetNumKeys(); i++)
-            {    
-                m_pAnimTrack->GetKey(i, &key);
+            {
+                AZ::EntityId entityIdToRemap;
+
+                if (paramType == AnimParamType::Camera)
+                {
+                    m_pAnimTrack->GetKey(i, &selectKey);
+                    entityIdToRemap = selectKey.cameraAzEntityId;
+                    key = &selectKey;
+                }
+                else if (paramType == AnimParamType::Sequence)
+                {
+                    m_pAnimTrack->GetKey(i, &sequenceKey);
+                    entityIdToRemap = sequenceKey.sequenceEntityId;    
+                    key = &sequenceKey;
+                }
 
                 // stash the entity Id for restore in OnStopPlayInEditor
-                m_paramTypeToStashedEntityIdMap[trackParamType].push_back(key.cameraAzEntityId);
+                m_paramTypeToStashedEntityIdMap[trackParamType].push_back(entityIdToRemap);
 
-                AZ::EntityId remappedId;
-                if (key.cameraAzEntityId.IsValid())
+                if (entityIdToRemap.IsValid())
                 {
-                    AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::MapEditorIdToRuntimeId, key.cameraAzEntityId, remappedId);
+                    AZ::EntityId remappedId;
+
+                    // for legacy sequences, sequenceEntityId will return true for IsLegacyEntityId() - don't remap these (i.e. leave them as is)
+                    if (IsLegacyEntityId(entityIdToRemap))
+                    {
+                        remappedId = entityIdToRemap;
+                    }
+                    else
+                    {
+                        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::MapEditorIdToRuntimeId, entityIdToRemap, remappedId);
+                    }
+
                     // remap
-                    key.cameraAzEntityId = remappedId;
-                    m_pAnimTrack->SetKey(i, &key);
+                    if (paramType == AnimParamType::Camera)
+                    {
+                        selectKey.cameraAzEntityId = remappedId;
+                    }
+                    else if (paramType == AnimParamType::Sequence)
+                    {
+                        sequenceKey.sequenceEntityId = remappedId;
+                    }
+                    m_pAnimTrack->SetKey(i, key);
                 }                
             }
         }
@@ -654,16 +697,30 @@ void CTrackViewTrack::OnStopPlayInEditor()
     if (m_pAnimTrack && m_paramTypeToStashedEntityIdMap.size())
     {
         CAnimParamType trackParamType = m_pAnimTrack->GetParameterType();
-        if (trackParamType.GetType() == eAnimParamType_Camera)
+        const AnimParamType paramType = trackParamType.GetType();
+
+        if (paramType == AnimParamType::Camera || paramType == AnimParamType::Sequence)
         {
-            ISelectKey key;
             for (int i = 0; i < m_pAnimTrack->GetNumKeys(); i++)
             {
-                m_pAnimTrack->GetKey(i, &key);
+                ISelectKey selectKey;
+                ISequenceKey sequenceKey;
+                IKey* key = nullptr;
 
-                // restore
-                key.cameraAzEntityId = m_paramTypeToStashedEntityIdMap[trackParamType][i];
-                m_pAnimTrack->SetKey(i, &key);
+                // restore entityIds
+                if (paramType == AnimParamType::Camera)
+                {
+                    m_pAnimTrack->GetKey(i, &selectKey);
+                    selectKey.cameraAzEntityId = m_paramTypeToStashedEntityIdMap[trackParamType][i];
+                    key = &selectKey;
+                }
+                else if (paramType == AnimParamType::Sequence)
+                {
+                    m_pAnimTrack->GetKey(i, &sequenceKey);
+                    sequenceKey.sequenceEntityId = m_paramTypeToStashedEntityIdMap[trackParamType][i];
+                    key = &sequenceKey;
+                }
+                m_pAnimTrack->SetKey(i, key);
             }
         }
         // clear the StashedEntityIdMap now that we've consumed it
@@ -696,7 +753,7 @@ void CTrackViewTrack::CopyKeysToClipboard(XmlNodeRef& xmlNode, const bool bOnlyS
     XmlNodeRef childNode = xmlNode->newChild("Track");
     childNode->setAttr("name", GetName());
     GetParameterType().SaveToXml(childNode);
-    childNode->setAttr("valueType", GetValueType());
+    childNode->setAttr("valueType", static_cast<int>(GetValueType()));
 
     m_pAnimTrack->SerializeSelection(childNode, false, bOnlySelectedKeys);
 }

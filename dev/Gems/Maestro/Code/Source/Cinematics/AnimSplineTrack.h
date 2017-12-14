@@ -175,7 +175,7 @@ public:
     }
 
     virtual EAnimCurveType GetCurveType() { assert(0); return eAnimCurveType_Unknown; }
-    virtual EAnimValue GetValueType() { assert(0); return eAnimValue_Unknown; }
+    virtual AnimValueType GetValueType() { assert(0); return static_cast<AnimValueType>(0xFFFFFFFF); }
 
     virtual void GetValue(float time, float& value, bool applyMultiplier = false) { assert(0); }
     virtual void GetValue(float time, Vec3& value, bool applyMultiplier = false) { assert(0); }
@@ -190,6 +190,7 @@ public:
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); }
 
     virtual void OffsetKeyPosition(const Vec3& value) { assert(0); };
+    virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM) { assert(0); };
 
     bool Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
     bool SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected, float fTimeOffset);

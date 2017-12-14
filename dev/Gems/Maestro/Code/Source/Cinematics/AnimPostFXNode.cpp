@@ -18,6 +18,9 @@
 #include "CompoundSplineTrack.h"
 #include "BoolTrack.h"
 #include "IPostEffectGroup.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimParamType.h"
+#include "Maestro/Types/AnimValueType.h"
 
 #include <I3DEngine.h>
 
@@ -77,11 +80,11 @@ public:
     //-----------------------------------------------------------------------------
     //!
     template<typename T>
-    void AddSupportedParam(const char* sName, EAnimValue eValueType, const char* sControlName, T defaultValue)
+    void AddSupportedParam(const char* sName, AnimValueType eValueType, const char* sControlName, T defaultValue)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
-        param.paramType = eAnimParamType_User + (int)m_nodeParams.size();
+        param.paramType = static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + static_cast<int>(m_nodeParams.size()));
         param.valueType = eValueType;
         m_nodeParams.push_back(param);
 
@@ -137,12 +140,12 @@ bool CAnimPostFXNode::s_initialized = false;
 
 //-----------------------------------------------------------------------------
 CAnimPostFXNode::CAnimPostFXNode()
-    : CAnimPostFXNode(0, eAnimNodeType_Invalid, nullptr)
+    : CAnimPostFXNode(0, AnimNodeType::Invalid, nullptr)
 {
 }
 
 //-----------------------------------------------------------------------------
-CAnimPostFXNode::CAnimPostFXNode(const int id, EAnimNodeType nodeType, CFXNodeDescription* pDesc)
+CAnimPostFXNode::CAnimPostFXNode(const int id, AnimNodeType nodeType, CFXNodeDescription* pDesc)
     : CAnimNode(id, nodeType)
     , m_pDescription(pDesc)
 {
@@ -159,30 +162,30 @@ void CAnimPostFXNode::Initialize()
         //! Radial Blur
         {
             CFXNodeDescription* pDesc = new CFXNodeDescription();
-            s_fxNodeDescriptions[eAnimNodeType_RadialBlur] = pDesc;
+            s_fxNodeDescriptions[AnimNodeType::RadialBlur] = pDesc;
             pDesc->m_nodeParams.reserve(4);
             pDesc->m_controlParams.reserve(4);
-            pDesc->AddSupportedParam<float>("Amount", eAnimValue_Float, "FilterRadialBlurring_Amount", 0.0f);
-            pDesc->AddSupportedParam<float>("ScreenPosX", eAnimValue_Float, "FilterRadialBlurring_ScreenPosX", 0.5f);
-            pDesc->AddSupportedParam<float>("ScreenPosY", eAnimValue_Float, "FilterRadialBlurring_ScreenPosY", 0.5f);
-            pDesc->AddSupportedParam<float>("BlurringRadius", eAnimValue_Float, "FilterRadialBlurring_Radius", 1.0f);
+            pDesc->AddSupportedParam<float>("Amount", AnimValueType::Float, "FilterRadialBlurring_Amount", 0.0f);
+            pDesc->AddSupportedParam<float>("ScreenPosX", AnimValueType::Float, "FilterRadialBlurring_ScreenPosX", 0.5f);
+            pDesc->AddSupportedParam<float>("ScreenPosY", AnimValueType::Float, "FilterRadialBlurring_ScreenPosY", 0.5f);
+            pDesc->AddSupportedParam<float>("BlurringRadius", AnimValueType::Float, "FilterRadialBlurring_Radius", 1.0f);
         }
 
         //////////////////////////////////////////////////////////////////////////
         //! Color Correction
         {
             CFXNodeDescription* pDesc = new CFXNodeDescription();
-            s_fxNodeDescriptions[eAnimNodeType_ColorCorrection] = pDesc;
+            s_fxNodeDescriptions[AnimNodeType::ColorCorrection] = pDesc;
             pDesc->m_nodeParams.reserve(8);
             pDesc->m_controlParams.reserve(8);
-            pDesc->AddSupportedParam<float>("Cyan", eAnimValue_Float, "Global_User_ColorC", 0.0f);
-            pDesc->AddSupportedParam<float>("Magenta", eAnimValue_Float, "Global_User_ColorM", 0.0f);
-            pDesc->AddSupportedParam<float>("Yellow", eAnimValue_Float, "Global_User_ColorY", 0.0f);
-            pDesc->AddSupportedParam<float>("Luminance", eAnimValue_Float, "Global_User_ColorK", 0.0f);
-            pDesc->AddSupportedParam<float>("Brightness", eAnimValue_Float, "Global_User_Brightness", 1.0f);
-            pDesc->AddSupportedParam<float>("Contrast", eAnimValue_Float, "Global_User_Contrast", 1.0f);
-            pDesc->AddSupportedParam<float>("Saturation", eAnimValue_Float, "Global_User_Saturation", 1.0f);
-            pDesc->AddSupportedParam<float>("Hue", eAnimValue_Float, "Global_User_ColorHue", 0.0f);
+            pDesc->AddSupportedParam<float>("Cyan", AnimValueType::Float, "Global_User_ColorC", 0.0f);
+            pDesc->AddSupportedParam<float>("Magenta", AnimValueType::Float, "Global_User_ColorM", 0.0f);
+            pDesc->AddSupportedParam<float>("Yellow", AnimValueType::Float, "Global_User_ColorY", 0.0f);
+            pDesc->AddSupportedParam<float>("Luminance", AnimValueType::Float, "Global_User_ColorK", 0.0f);
+            pDesc->AddSupportedParam<float>("Brightness", AnimValueType::Float, "Global_User_Brightness", 1.0f);
+            pDesc->AddSupportedParam<float>("Contrast", AnimValueType::Float, "Global_User_Contrast", 1.0f);
+            pDesc->AddSupportedParam<float>("Saturation", AnimValueType::Float, "Global_User_Saturation", 1.0f);
+            pDesc->AddSupportedParam<float>("Hue", AnimValueType::Float, "Global_User_ColorHue", 0.0f);
         }
 
 
@@ -190,29 +193,29 @@ void CAnimPostFXNode::Initialize()
         //! Depth of Field
         {
             CFXNodeDescription* pDesc = new CFXNodeDescription();
-            s_fxNodeDescriptions[eAnimNodeType_DepthOfField] = pDesc;
+            s_fxNodeDescriptions[AnimNodeType::DepthOfField] = pDesc;
             pDesc->m_nodeParams.reserve(4);
             pDesc->m_controlParams.reserve(4);
-            pDesc->AddSupportedParam<bool>("Enable", eAnimValue_Bool, "Dof_User_Active", false);
-            pDesc->AddSupportedParam<float>("FocusDistance", eAnimValue_Float, "Dof_User_FocusDistance", 3.5f);
-            pDesc->AddSupportedParam<float>("FocusRange", eAnimValue_Float, "Dof_User_FocusRange", 5.0f);
-            pDesc->AddSupportedParam<float>("BlurAmount", eAnimValue_Float, "Dof_User_BlurAmount", 1.0f);
+            pDesc->AddSupportedParam<bool>("Enable", AnimValueType::Bool, "Dof_User_Active", false);
+            pDesc->AddSupportedParam<float>("FocusDistance", AnimValueType::Float, "Dof_User_FocusDistance", 3.5f);
+            pDesc->AddSupportedParam<float>("FocusRange", AnimValueType::Float, "Dof_User_FocusRange", 5.0f);
+            pDesc->AddSupportedParam<float>("BlurAmount", AnimValueType::Float, "Dof_User_BlurAmount", 1.0f);
         }
 
         //////////////////////////////////////////////////////////////////////////
         //! Shadow setup - expose couple shadow controls to cinematics
         {
             CFXNodeDescription* pDesc = new CFXNodeDescription();
-            s_fxNodeDescriptions[eAnimNodeType_ShadowSetup] = pDesc;
+            s_fxNodeDescriptions[AnimNodeType::ShadowSetup] = pDesc;
             pDesc->m_nodeParams.reserve(1);
             pDesc->m_controlParams.reserve(1);
-            pDesc->AddSupportedParam<float>("GSMCache", eAnimValue_Bool, "GSMCacheParam", true);
+            pDesc->AddSupportedParam<float>("GSMCache", AnimValueType::Bool, "GSMCacheParam", true);
         }
     }
 }
 
 //-----------------------------------------------------------------------------
-/*static*/ CFXNodeDescription* CAnimPostFXNode::GetFXNodeDescription(EAnimNodeType nodeType)
+/*static*/ CFXNodeDescription* CAnimPostFXNode::GetFXNodeDescription(AnimNodeType nodeType)
 {
     CFXNodeDescription* retDescription = nullptr;
 
@@ -229,7 +232,7 @@ void CAnimPostFXNode::Initialize()
 }
 
 //-----------------------------------------------------------------------------
-CAnimNode* CAnimPostFXNode::CreateNode(const int id, EAnimNodeType nodeType)
+CAnimNode* CAnimPostFXNode::CreateNode(const int id, AnimNodeType nodeType)
 {
     CAnimNode* retNode = nullptr;
 
@@ -281,7 +284,7 @@ void CAnimPostFXNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bL
                 // Don't use APARAM_USER because it could change in newer versions
                 // CAnimNode::SerializeAnims will then take care of that
                 static const unsigned int OLD_APARAM_USER = 100;
-                paramType = paramType.GetType() + OLD_APARAM_USER;
+                paramType = static_cast<AnimParamType>(static_cast<int>(paramType.GetType()) + OLD_APARAM_USER);
                 paramType.Serialize(trackNode, false);
             }
         }
@@ -304,7 +307,7 @@ CAnimParamType CAnimPostFXNode::GetParamType(unsigned int nIndex) const
         return m_pDescription->m_nodeParams[nIndex].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //-----------------------------------------------------------------------------
@@ -330,22 +333,22 @@ void CAnimPostFXNode::CreateDefaultTracks()
                 eAnimCurveType_BezierFloat, m_pDescription->m_nodeParams[i].valueType);
 
         //Setup default value
-        EAnimValue valueType = m_pDescription->m_nodeParams[i].valueType;
-        if (valueType == eAnimValue_Float)
+        AnimValueType valueType = m_pDescription->m_nodeParams[i].valueType;
+        if (valueType == AnimValueType::Float)
         {
             C2DSplineTrack* pFloatTrack = static_cast<C2DSplineTrack*>(pTrack);
             float val(0);
             m_pDescription->m_controlParams[i]->GetDefault(val);
             pFloatTrack->SetDefaultValue(Vec2(0, val));
         }
-        else if (valueType == eAnimValue_Bool)
+        else if (valueType == AnimValueType::Bool)
         {
             CBoolTrack* pBoolTrack = static_cast<CBoolTrack*>(pTrack);
             bool val = false;
             m_pDescription->m_controlParams[i]->GetDefault(val);
             pBoolTrack->SetDefaultValue(val);
         }
-        else if (valueType == eAnimValue_Vector4)
+        else if (valueType == AnimValueType::Vector4)
         {
             CCompoundSplineTrack* pCompoundTrack = static_cast<CCompoundSplineTrack*>(pTrack);
             Vec4 val(0.0f, 0.0f, 0.0f, 0.0f);
@@ -362,7 +365,7 @@ void CAnimPostFXNode::Animate(SAnimContext& ac)
     {
         IAnimTrack* pTrack = m_tracks[i].get();
         assert(pTrack);
-        size_t paramIndex = (size_t)m_tracks[i]->GetParameterType().GetType() - eAnimParamType_User;
+        size_t paramIndex = (size_t)static_cast<int>(m_tracks[i]->GetParameterType().GetType()) - static_cast<int>(AnimParamType::User);
         assert(paramIndex < m_pDescription->m_nodeParams.size());
 
         if (pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled)
@@ -375,29 +378,29 @@ void CAnimPostFXNode::Animate(SAnimContext& ac)
             continue;
         }
 
-        EAnimValue valueType = m_pDescription->m_nodeParams[paramIndex].valueType;
+        AnimValueType valueType = m_pDescription->m_nodeParams[paramIndex].valueType;
 
         // sorry: quick & dirty solution for c2 shipping - custom type handling for shadows - make this properly after shipping
-        if (GetType() == eAnimNodeType_ShadowSetup && valueType == eAnimValue_Bool)
+        if (GetType() == AnimNodeType::ShadowSetup && valueType == AnimValueType::Bool)
         {
             bool val(false);
             pTrack->GetValue(ac.time, val);
             gEnv->p3DEngine->SetShadowsGSMCache(val);
         }
         else
-        if (valueType == eAnimValue_Float)
+        if (valueType == AnimValueType::Float)
         {
             float val(0);
             pTrack->GetValue(ac.time, val);
             gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam(m_pDescription->m_controlParams[paramIndex]->m_name.c_str(), val);
         }
-        else if (valueType == eAnimValue_Bool)
+        else if (valueType == AnimValueType::Bool)
         {
             bool val(false);
             pTrack->GetValue(ac.time, val);
             gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam(m_pDescription->m_controlParams[paramIndex]->m_name.c_str(), (val ? 1.f : 0.f));
         }
-        else if (valueType == eAnimValue_Vector4)
+        else if (valueType == AnimValueType::Vector4)
         {
             Vec4 val(0.0f, 0.0f, 0.0f, 0.0f);
             static_cast<CCompoundSplineTrack*>(pTrack)->GetValue(ac.time, val);
@@ -416,32 +419,32 @@ void CAnimPostFXNode::OnReset()
     {
         IAnimTrack* pTrack = m_tracks[i].get();
         assert(pTrack);
-        size_t paramIndex = (size_t)m_tracks[i]->GetParameterType().GetType() - eAnimParamType_User;
+        size_t paramIndex = (size_t)static_cast<int>(m_tracks[i]->GetParameterType().GetType()) - static_cast<int>(AnimParamType::User);
         assert(paramIndex < m_pDescription->m_nodeParams.size());
 
-        EAnimValue valueType = m_pDescription->m_nodeParams[paramIndex].valueType;
+        AnimValueType valueType = m_pDescription->m_nodeParams[paramIndex].valueType;
 
         // sorry: quick & dirty solution for c2 shipping - custom type handling for shadows - make this properly after shipping
-        if (GetType() == eAnimNodeType_ShadowSetup && valueType == eAnimValue_Bool)
+        if (GetType() == AnimNodeType::ShadowSetup && valueType == AnimValueType::Bool)
         {
             bool val(false);
             m_pDescription->m_controlParams[paramIndex]->GetDefault(val);
             gEnv->p3DEngine->SetShadowsGSMCache(val);
         }
         else
-        if (valueType == eAnimValue_Float)
+        if (valueType == AnimValueType::Float)
         {
             float val(0);
             m_pDescription->m_controlParams[paramIndex]->GetDefault(val);
             gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam(m_pDescription->m_controlParams[paramIndex]->m_name.c_str(), val);
         }
-        else if (valueType == eAnimValue_Bool)
+        else if (valueType == AnimValueType::Bool)
         {
             bool val(false);
             m_pDescription->m_controlParams[paramIndex]->GetDefault(val);
             gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam(m_pDescription->m_controlParams[paramIndex]->m_name.c_str(), (val ? 1.f : 0.f));
         }
-        else if (valueType == eAnimValue_Vector4)
+        else if (valueType == AnimValueType::Vector4)
         {
             Vec4 val(0.0f, 0.0f, 0.0f, 0.0f);
             m_pDescription->m_controlParams[paramIndex]->GetDefault(val);

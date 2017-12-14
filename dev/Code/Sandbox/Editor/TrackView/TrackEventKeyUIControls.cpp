@@ -16,6 +16,7 @@
 #include "TVEventsDialog.h"
 #include "TrackViewSequence.h"
 #include "TrackViewTrack.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CTrackEventKeyUIControls
@@ -35,9 +36,9 @@ public:
         AddVariable(mv_table, mv_value, "Value");
         AddVariable(mv_table, mv_editEvents, "Edit Track Events...");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_TrackEvent;
+        return paramType == AnimParamType::TrackEvent;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -72,7 +73,7 @@ bool CTrackEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selecte
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_TrackEvent)
+        if (paramType == AnimParamType::TrackEvent)
         {
             mv_event.SetEnumList(NULL);
 
@@ -130,7 +131,7 @@ void CTrackEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& 
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_TrackEvent)
+        if (paramType == AnimParamType::TrackEvent)
         {
             IEventKey eventKey;
             keyHandle.GetKey(&eventKey);

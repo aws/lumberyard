@@ -89,15 +89,15 @@ namespace AZ
         if (sceneSourceGuid.IsNull())
         {
             bool result = false;
-            AzToolsFramework::AssetSystem::SourceFileInfo info;
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceFileInfoByPath,
-                info, cleanPath.c_str());
+            AZ::Data::AssetInfo info;
+            AZStd::string watchFolder;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, cleanPath.c_str(), info, watchFolder);
             if (!result)
             {
                 AZ_TracePrintf(Utilities::ErrorWindow, "Failed to retrieve file info needed to determine the uuid of the source file.");
                 return nullptr;
             }
-            sceneSourceGuid = info.m_sourceGuid;
+            sceneSourceGuid = info.m_assetId.m_guid;
         }
 
         AZStd::shared_ptr<SceneAPI::Containers::Scene> scene = 

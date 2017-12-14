@@ -50,177 +50,171 @@
 #include <QtWidgets/QVBoxLayout>
 #include <QtCore/QThread>
 
-namespace
-{
-    /**
-    * \brief Checks if the entities in the provided asset have a common root, if not, prompts the user to add one or
-    *        cancel the slice creation operation.
-    *        Slices inherently do not care if a slice has a single root or multiple roots. We have decided that single
-    *        rooted slices are easier for users to understand so we do not allows users to create a slice with multiples
-    *        entities at the root level.
-    *        This method helps users by interactively adding a new slice root during slice creation IF it is required,
-    *        it takes a slice asset and during the pre save step for a slice, inspects this asset for a common root.
-    *        If the slice asset has only one common root, then the slice can be created as is.
-    *        If the slice has multiple entities at root level [X,Y,Z] and the parents of all these entities is the same [A] (even if that same parent is null).
-    *        Then the user is presented with a dialog box that allows them to inject a parent entity [P] that is parent of [X,Y,Z] Child of [A] and is the root
-    *        of this new slice.
-    * \param selectedEntities Entities that are about to be added to slice
-    * \param sliceRootName IF a slice root is added, the slice root entity is set to this name (Currently, the name of the slice)
-    * \param sliceRootParentEntityId [OUT] If the common root of all entities in selection is not null then that common root is to be set as the parent of the newly created slice root
-    * \param sliceRootPositionAfterReplacement [OUT] Position of the slice root entity wrt its parent after the slice has replaced live entities in the editor
-    * \param wasRootAutoCreated [OUT] indicates if a root was auto created and added
-    */
-    void CheckAndAddSliceRoot(const AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset, 
-                              AZStd::string sliceRootName,
-                              AZ::EntityId& sliceRootParentEntityId, 
-                              AZ::Vector3& sliceRootPositionAfterReplacement,
-                              bool& wasRootAutoCreated,
-                              QWidget* activeWindow)
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        AzFramework::EntityContext::EntityList sliceEntities;
-        asset.Get()->GetComponent()->GetEntities(sliceEntities);
-
-        //////////////////////////////////////////////////////////////////////////
-
-        // Find common root for all selected and referenced entities
-        AZStd::unordered_map<AZ::EntityId, AZ::Entity*> sliceEntityMap;
-        AzToolsFramework::EntityIdList sliceEntityIdsList;
-        for (AZ::Entity* entity : sliceEntities)
-        {
-            sliceEntityIdsList.push_back(entity->GetId());
-            sliceEntityMap.insert(AZStd::make_pair(entity->GetId(), entity));
-        }
-
-        AZ::EntityId commonRoot;
-        AzToolsFramework::EntityList selectionRootEntities;
-
-        bool result = false;
-        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequests::FindCommonRootInactive, sliceEntities, commonRoot, &selectionRootEntities);
-
-        // The translation of the new slice root
-        AZ::Vector3 sliceRootTranslation(AZ::Vector3::CreateZero());
-        wasRootAutoCreated = false;
-
-        if (result)
-        {
-            if (selectionRootEntities.size() > 1)
-            {
-                int response;
-                {
-                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::CheckAndAddSliceRoot:SingleRootUserQuery");
-                    response = QMessageBox::warning(activeWindow,
-                                                      QStringLiteral("Cannot Create Slice"),
-                                                      QString("The slice cannot be created because no single transform root is defined. "
-                                                      "Please make sure your slice contains only one root entity.\r\n\r\n"
-                                                      "Do you want to create a Transform root entity ?"),
-                                                      QMessageBox::Yes | QMessageBox::Cancel);
-                }
-
-                if (response == QMessageBox::Cancel)
-                {
-                    result = false;
-                }
-                else
-                {
-                    // Create a new slice root entity
-                    AZ::Entity* sliceRootEntity = aznew AZ::Entity();
-                    sliceRootEntity->SetName(sliceRootName);
-
-                    wasRootAutoCreated = true;
-
-                    // Add all required editor components
-                    AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::AddRequiredComponents, *sliceRootEntity);
-
-                    // Reposition everything so that the new slice root is at the centroid bottom of the top level entities in user selection
-                    AZ::VectorFloat sliceZmin = FLT_MAX;
-
-                    int count = 0;
-                    for (AZ::Entity* selectionRootEntity : selectionRootEntities)
-                    {
-                        if (selectionRootEntity)
-                        {
-                            AzToolsFramework::Components::TransformComponent* transformComponent =
-                                selectionRootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-                            if (transformComponent)
-                            {
-                                count++;
-                                AZ::Vector3 currentPosition;
-                                if (commonRoot.IsValid())
-                                {
-                                    currentPosition = transformComponent->GetLocalTranslation();
-                                }
-                                else
-                                {
-                                    currentPosition = transformComponent->GetWorldTranslation();
-                                }
-
-                                sliceRootTranslation += currentPosition;
-                                sliceZmin = sliceZmin.GetMin(currentPosition.GetZ());
-                            }
-                        }
-                    }
-
-                    sliceRootTranslation = (sliceRootTranslation / count);
-
-                    sliceRootTranslation.SetZ(sliceZmin);
-
-                    // Re root entities so that the new slice root is the parent of all selection root entities 
-                    // and reposition top level entities so that the slice root is at 0,0,0 in the slice
-                    for (AZ::Entity* selectionRootEntity : selectionRootEntities)
-                    {
-                        if (selectionRootEntity)
-                        {
-                            AzToolsFramework::Components::TransformComponent* transformComponent =
-                                selectionRootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-                            if (transformComponent)
-                            {
-                                transformComponent->SetLocalTranslation(transformComponent->GetLocalTranslation() - sliceRootTranslation);
-                                transformComponent->SetParent(sliceRootEntity->GetId());
-                            }
-                        }
-                    }
-
-                    // Add new slice root entity to the final asset
-                    asset.Get()->GetComponent()->AddEntity(sliceRootEntity);
-                }
-            }
-            else if (selectionRootEntities.size() == 1)
-            {
-                AzToolsFramework::Components::TransformComponent* transformComponent = 
-                    selectionRootEntities.at(0)->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-                if (transformComponent)
-                {
-                    sliceRootTranslation = transformComponent->GetWorldTranslation();
-                }
-            }
-            else
-            {
-                QMessageBox::warning(activeWindow, QStringLiteral("Cannot Save Slice"),
-                                     QString("Failed to write slice \"%1\" because transforms could not be rooted."),
-                                     QMessageBox::Ok);
-            }
-        }
-        else
-        {
-            QMessageBox::warning(activeWindow, QStringLiteral("Cannot Save Slice"),
-                                 QString("Failed to write slice \"%1\" because transforms could not be rooted."),
-                                 QMessageBox::Ok);
-        }
-
-        sliceRootParentEntityId = commonRoot;
-        sliceRootPositionAfterReplacement = sliceRootTranslation;
-    }
-}
-
 namespace AzToolsFramework
 {
     namespace SliceUtilities
     {
+        /**
+        * \brief Checks if the entities in the provided asset have a common root, if not, prompts the user to add one or
+        *        cancel the slice creation operation.
+        *        Slices inherently do not care if a slice has a single root or multiple roots. We have decided that single
+        *        rooted slices are easier for users to understand so we do not allows users to create a slice with multiples
+        *        entities at the root level.
+        *        This method helps users by interactively adding a new slice root during slice creation IF it is required,
+        *        it takes a slice asset and during the pre save step for a slice, inspects this asset for a common root.
+        *        If the slice asset has only one common root, then the slice can be created as is.
+        *        If the slice has multiple entities at root level [X,Y,Z] and the parents of all these entities is the same [A] (even if that same parent is null).
+        *        Then the user is presented with a dialog box that allows them to inject a parent entity [P] that is parent of [X,Y,Z] Child of [A] and is the root
+        *        of this new slice.
+        * \param selectedEntities Entities that are about to be added to slice
+        * \param sliceRootName IF a slice root is added, the slice root entity is set to this name (Currently, the name of the slice)
+        * \param sliceRootParentEntityId [OUT] If the common root of all entities in selection is not null then that common root is to be set as the parent of the newly created slice root
+        * \param sliceRootPositionAfterReplacement [OUT] Position of the slice root entity wrt its parent after the slice has replaced live entities in the editor
+        * \param wasRootAutoCreated [OUT] indicates if a root was auto created and added
+        */
+        SliceTransaction::Result CheckAndAddSliceRoot(const AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset, 
+                                  AZStd::string sliceRootName,
+                                  AZ::EntityId& sliceRootParentEntityId, 
+                                  AZ::Vector3& sliceRootPositionAfterReplacement,
+                                  bool& wasRootAutoCreated,
+                                  QWidget* activeWindow)
+        {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+            AzFramework::EntityContext::EntityList sliceEntities;
+            asset.Get()->GetComponent()->GetEntities(sliceEntities);
+
+            //////////////////////////////////////////////////////////////////////////
+
+            // Find common root for all selected and referenced entities
+            AZStd::unordered_map<AZ::EntityId, AZ::Entity*> sliceEntityMap;
+            AzToolsFramework::EntityIdList sliceEntityIdsList;
+            for (AZ::Entity* entity : sliceEntities)
+            {
+                sliceEntityIdsList.push_back(entity->GetId());
+                sliceEntityMap.insert(AZStd::make_pair(entity->GetId(), entity));
+            }
+
+            AZ::EntityId commonRoot;
+            AzToolsFramework::EntityList selectionRootEntities;
+
+            bool result = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequests::FindCommonRootInactive, sliceEntities, commonRoot, &selectionRootEntities);
+
+            // The translation of the new slice root
+            AZ::Vector3 sliceRootTranslation(AZ::Vector3::CreateZero());
+            wasRootAutoCreated = false;
+
+            if (result)
+            {
+                if (selectionRootEntities.size() > 1)
+                {
+                    int response;
+                    {
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::CheckAndAddSliceRoot:SingleRootUserQuery");
+                        response = QMessageBox::warning(activeWindow,
+                                                          QStringLiteral("Cannot Create Slice"),
+                                                          QString("The slice cannot be created because no single transform root is defined. "
+                                                          "Please make sure your slice contains only one root entity.\r\n\r\n"
+                                                          "Do you want to create a Transform root entity ?"),
+                                                          QMessageBox::Yes | QMessageBox::Cancel);
+                    }
+
+                    if (response == QMessageBox::Cancel)
+                    {
+                        return AZ::Failure(AZStd::string::format("No single root entity."));
+                    }
+                    else
+                    {
+                        // Create a new slice root entity
+                        AZ::Entity* sliceRootEntity = aznew AZ::Entity();
+                        sliceRootEntity->SetName(sliceRootName);
+
+                        wasRootAutoCreated = true;
+
+                        // Add all required editor components
+                        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::AddRequiredComponents, *sliceRootEntity);
+
+                        // Reposition everything so that the new slice root is at the centroid bottom of the top level entities in user selection
+                        AZ::VectorFloat sliceZmin = FLT_MAX;
+
+                        int count = 0;
+                        for (AZ::Entity* selectionRootEntity : selectionRootEntities)
+                        {
+                            if (selectionRootEntity)
+                            {
+                                AzToolsFramework::Components::TransformComponent* transformComponent =
+                                    selectionRootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+
+                                if (transformComponent)
+                                {
+                                    count++;
+                                    AZ::Vector3 currentPosition;
+                                    if (commonRoot.IsValid())
+                                    {
+                                        currentPosition = transformComponent->GetLocalTranslation();
+                                    }
+                                    else
+                                    {
+                                        currentPosition = transformComponent->GetWorldTranslation();
+                                    }
+
+                                    sliceRootTranslation += currentPosition;
+                                    sliceZmin = sliceZmin.GetMin(currentPosition.GetZ());
+                                }
+                            }
+                        }
+
+                        sliceRootTranslation = (sliceRootTranslation / count);
+
+                        sliceRootTranslation.SetZ(sliceZmin);
+
+                        // Re root entities so that the new slice root is the parent of all selection root entities 
+                        // and reposition top level entities so that the slice root is at 0,0,0 in the slice
+                        for (AZ::Entity* selectionRootEntity : selectionRootEntities)
+                        {
+                            if (selectionRootEntity)
+                            {
+                                AzToolsFramework::Components::TransformComponent* transformComponent =
+                                    selectionRootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+
+                                if (transformComponent)
+                                {
+                                    transformComponent->SetLocalTranslation(transformComponent->GetLocalTranslation() - sliceRootTranslation);
+                                    transformComponent->SetParent(sliceRootEntity->GetId());
+                                }
+                            }
+                        }
+
+                        // Add new slice root entity to the final asset
+                        asset.Get()->GetComponent()->AddEntity(sliceRootEntity);
+                    }
+                }
+                else if (selectionRootEntities.size() == 1)
+                {
+                    AzToolsFramework::Components::TransformComponent* transformComponent = 
+                        selectionRootEntities.at(0)->FindComponent<AzToolsFramework::Components::TransformComponent>();
+
+                    if (transformComponent)
+                    {
+                        sliceRootTranslation = transformComponent->GetWorldTranslation();
+                    }
+                }
+                else
+                {
+                    return AZ::Failure(AZStd::string::format("Transforms could not be rooted."));
+                }
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string::format("Could not find common transform root between selected entities."));
+            }
+
+            sliceRootParentEntityId = commonRoot;
+            sliceRootPositionAfterReplacement = sliceRootTranslation;
+            return AZ::Success();
+        }
+
         //=========================================================================
         void PushEntitiesModal(const EntityIdList& entities, 
                                AZ::SerializeContext* serializeContext)
@@ -396,6 +390,15 @@ namespace AzToolsFramework
             }
 
             const AZStd::string targetPath = saveAs.toUtf8().constData();
+            if (AzFramework::StringFunc::Utf8::CheckNonAsciiChar(targetPath))
+            {
+                QMessageBox::warning(activeWindow,
+                    QStringLiteral("Slice Creation Failed."),
+                    QString("Unicode file name is not supported. \r\n"
+                            "Please use ASCII characters to name your slice."),
+                    QMessageBox::Ok);
+                return false;
+            }
 
             // If the slice already exists, we instead want to *push* the entities to the existing
             // asset, as opposed to creating a new one.
@@ -414,6 +417,32 @@ namespace AzToolsFramework
                 return false;
             }
 
+            // We prevent users from creating a new slice with the same relative path that's already
+            // been used by an existing slice in other places (e.g. Gems) because the AssetProcessor 
+            // generates asset ids based on relative paths. This is unnecessary once AssetProcessor
+            // starts to generate UUID to every asset regardless of paths.
+            {
+                AZStd::string sliceRelativeName;
+                bool relativePathFound;
+                AssetSystemRequestBus::BroadcastResult(relativePathFound, &AssetSystemRequestBus::Events::GetRelativeProductPathFromFullSourceOrProductPath, targetPath, sliceRelativeName);
+
+                AZ::Data::AssetId sliceAssetId;
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, sliceRelativeName.c_str(), AZ::Data::s_invalidAssetType, false);
+                if (sliceAssetId.IsValid())
+                {
+                    const AZStd::string message = AZStd::string::format(
+                        "A slice with the relative path \"%s\" already exists in the Asset Database. \r\n\r\n"
+                        "Overriding it will damage instances or cascades of this slice. \r\n\r\n"
+                        "Instead, either push entities/fields to the slice, or save to a different location.",
+                        sliceRelativeName.c_str());
+
+                    QMessageBox::warning(activeWindow, QStringLiteral("Unable to Overwrite Slice"),
+                        QString(message.c_str()), QMessageBox::Ok, QMessageBox::Ok);
+
+                    return false;
+                }
+            }
+
             AZStd::string saveDir(fi.absoluteDir().absolutePath().toUtf8().constData());
             SetSliceSaveLocation(saveDir);
 
@@ -430,10 +459,22 @@ namespace AzToolsFramework
                 // PreSaveCallback for slice creation: Before saving slice, we ensure it has a single root by optionally auto-creating one for the user
                 SliceTransaction::PreSaveCallback preSaveCallback =
                     [&sliceName, &parentAfterReplacement, &positionAfterReplacement, &selectedHierarchyEntities, &wasRootAutoCreated, &activeWindow]
-                    (SliceTransaction::TransactionPtr transaction, const char* /*fullPath*/, const SliceTransaction::SliceAssetPtr& asset) -> SliceTransaction::Result
+                    (SliceTransaction::TransactionPtr transaction, const char* fullPath, SliceTransaction::SliceAssetPtr& asset) -> SliceTransaction::Result
                     {
                         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:PreSaveCallback");
-                        CheckAndAddSliceRoot(asset, sliceName.toUtf8().constData(), parentAfterReplacement, positionAfterReplacement, wasRootAutoCreated, activeWindow);
+                        auto addRootResult = CheckAndAddSliceRoot(asset, sliceName.toUtf8().constData(), parentAfterReplacement, positionAfterReplacement, wasRootAutoCreated, activeWindow);
+                        if (!addRootResult)
+                        {
+                            return addRootResult;
+                        }
+
+                        // Enforce/check default rules
+                        auto defaultRulesResult = SliceUtilities::SlicePreSaveCallbackForWorldEntities(transaction, fullPath, asset);
+                        if (!defaultRulesResult)
+                        {
+                            return defaultRulesResult;
+                        }
+
                         return AZ::Success();
                     };
 
@@ -467,7 +508,10 @@ namespace AzToolsFramework
                     }
                 }
 
-                SliceTransaction::Result result = transaction->Commit(targetPath.c_str(), preSaveCallback, postSaveCallback, SliceTransaction::SliceCommitFlags::ApplyWorldSliceTransformRules);
+                SliceTransaction::Result result = transaction->Commit(
+                    targetPath.c_str(), 
+                    preSaveCallback, 
+                    postSaveCallback);
 
                 if (!result)
                 {
@@ -497,18 +541,10 @@ namespace AzToolsFramework
                 }
             };
 
-            // Seed with all provided entity Ids and their transform descendants.
-            AZStd::vector<AZ::EntityId> children;
+            // Seed with all provided entity Ids
             for (const AZ::EntityId& entityId : entitiesWithReferences)
             {
                 floodQueue.push_back(entityId);
-
-                children.clear();
-                EBUS_EVENT_ID_RESULT(children, entityId, AZ::TransformBus, GetAllDescendants);
-                for (const AZ::EntityId& child : children)
-                {
-                    visitChild(child);
-                }
             }
 
             // Flood-fill via outgoing entity references and gather all unique visited entities.
@@ -643,8 +679,8 @@ namespace AzToolsFramework
 
                 const SliceTransaction::Result result = transaction->Commit(
                     sliceAsset.GetId(),
-                    nullptr, nullptr,
-                    SliceTransaction::ApplyWorldSliceTransformRules);
+                    SliceUtilities::SlicePreSaveCallbackForWorldEntities, 
+                    nullptr);
 
                 if (!result)
                 {
@@ -655,6 +691,76 @@ namespace AzToolsFramework
                         sliceAssetPath.c_str(),
                         result.GetError().c_str()));
                 }
+            }
+
+            return AZ::Success();
+        }
+
+        /**
+        * \brief Applies standard root entity transform logic to slice, used for PreSave callbacks on world entity slices
+        * \param targetSliceAsset Slice asset to check/modify
+        */
+        SliceTransaction::Result VerifyAndApplySliceWorldTransformRules(SliceTransaction::SliceAssetPtr& targetSliceAsset)
+        {
+            AZ::SliceComponent::EntityList sliceEntities;
+            targetSliceAsset.Get()->GetComponent()->GetEntities(sliceEntities);
+
+            AZ::EntityId commonRoot;
+            AzToolsFramework::EntityList sliceRootEntities;
+
+            bool entitiesHaveCommonRoot = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(entitiesHaveCommonRoot, &AzToolsFramework::ToolsApplicationRequests::FindCommonRootInactive,
+                                                                             sliceEntities, commonRoot, &sliceRootEntities);
+
+            // Slices must have a single root entity
+            if (!entitiesHaveCommonRoot)
+            {
+                return AZ::Failure(AZStd::string::format("No common root for entities"));
+            }
+
+            if (sliceRootEntities.size() != 1)
+            {
+                return AZ::Failure(AZStd::string::format("Must have single root entity"));
+            }
+
+            // Root entities cannot have a parent and must be located at the origin
+            for (AZ::Entity* rootEntity : sliceRootEntities)
+            {
+                AzToolsFramework::Components::TransformComponent* transformComponent = rootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+                if (transformComponent)
+                {
+                    transformComponent->SetParent(AZ::EntityId());
+                    AZ::Transform transform = transformComponent->GetWorldTM();
+                    transform.SetTranslation(AZ::Vector3::CreateZero());
+                    transformComponent->SetWorldTM(transform);
+                }
+            }
+
+            // Clear cached world transforms for all asset entities
+            // Not a hard requirement, just they don't make too much sense without context (slices can be instantiated anywhere)
+            // and the cached world transform isn't pushable (so once it's set, it won't be changed in assets)
+            for (AZ::Entity* entity : sliceEntities)
+            {
+                AzToolsFramework::Components::TransformComponent* transformComponent = entity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+                if (transformComponent)
+                {
+                    transformComponent->ClearCachedWorldTransform();
+                }
+            }
+
+            return AZ::Success();
+        }
+
+        //=========================================================================
+        SliceTransaction::Result SlicePreSaveCallbackForWorldEntities(SliceTransaction::TransactionPtr transaction, const char* fullPath, SliceTransaction::SliceAssetPtr& asset)
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::SlicePreSaveCallbackForWorldEntities");
+
+            // Apply standard root transform rules. Zero out root entity translation, ensure single root, ensure slice root has no parent in slice.
+            SliceTransaction::Result worldTransformRulesResult = VerifyAndApplySliceWorldTransformRules(asset);
+            if (!worldTransformRulesResult)
+            {
+                return AZ::Failure(AZStd::string::format("Transform root entity rules for slice save to asset\n\"%s\"\ncould not be enforced:\n%s", fullPath, worldTransformRulesResult.GetError().c_str()));
             }
 
             return AZ::Success();
@@ -840,6 +946,10 @@ namespace AzToolsFramework
             }
 
             if (sliceName.size() == 0)
+            {
+                sliceName = "NewSlice";
+            }
+            else if (AzFramework::StringFunc::Utf8::CheckNonAsciiChar(sliceName))
             {
                 sliceName = "NewSlice";
             }

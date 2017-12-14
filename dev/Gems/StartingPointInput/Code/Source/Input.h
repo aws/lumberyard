@@ -62,6 +62,9 @@ namespace Input
         // AzFramework::InputChannelEventListener
         bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
 
+        using InputEventType = void(AZ::InputEventNotificationBus::Events::*)(float);
+        void SendEventsInternal(const AzFramework::InputChannel& inputChannel, const AZ::InputEventNotificationId busId, InputEventType eventType);
+
         //////////////////////////////////////////////////////////////////////////
         // Non Reflected Data
         AZ::InputEventNotificationId m_outgoingBusId;

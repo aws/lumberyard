@@ -84,7 +84,7 @@ void ProcessLifeManagementGem::OnApplicationUnconstrained(ApplicationLifecycleEv
     if (m_pausedCanvasId.IsValid())
     {
         // Exclusively capture all input.
-        InputChannelEventNotificationBus::Handler::BusConnect();
+        InputChannelNotificationBus::Handler::BusConnect();
     }
 }
 
@@ -97,12 +97,12 @@ void ProcessLifeManagementGem::OnInputChannelEvent(const InputChannel& inputChan
     bool shouldUnpause = false;
     const InputChannelId inputChannelId = inputChannel.GetInputChannelId();
     const InputDeviceId inputDeviceId = inputChannel.GetInputDevice().GetInputDeviceId();
-    if (inputDeviceId == InputDeviceKeyboard::Id ||
-        inputDeviceId == InputDeviceTouch::Id)
+    if (InputDeviceKeyboard::IsKeyboardDevice(inputDeviceId) ||
+        InputDeviceTouch::IsTouchDevice(inputDeviceId))
     {
         shouldUnpause = true;
     }
-    else if (inputDeviceId == InputDeviceMouse::Id)
+    else if (InputDeviceMouse::IsMouseDevice(inputDeviceId))
     {
         shouldUnpause = AZStd::find(InputDeviceMouse::Button::All.begin(),
                                     InputDeviceMouse::Button::All.end(),
@@ -121,7 +121,7 @@ void ProcessLifeManagementGem::OnInputChannelEvent(const InputChannel& inputChan
         gEnv->pGame->GetIGameFramework()->PauseGame(false, false);
 
         // Stop exclusively capturing input.
-        InputChannelEventNotificationBus::Handler::BusDisconnect();
+        InputChannelNotificationBus::Handler::BusDisconnect();
 
         // Unload/hide the modal pause screen.
         gEnv->pLyShine->ReleaseCanvas(m_pausedCanvasId, false);

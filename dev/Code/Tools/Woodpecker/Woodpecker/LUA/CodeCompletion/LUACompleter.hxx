@@ -13,8 +13,9 @@
 #ifndef LUAEDITOR_LUACOMPLETER_H
 #define LUAEDITOR_LUACOMPLETER_H
 
-#include <AzCore\base.h>
-#include <QtWidgets\qcompleter.h>
+#include <AzCore/base.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <QCompleter>
 
 #pragma once
 

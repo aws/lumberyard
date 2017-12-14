@@ -22,7 +22,6 @@
 
 #include "Core/Model.h"
 #include "Core/ModelCompiler.h"
-#include "Objects/DesignerObject.h"
 #include "Tools/ToolCommon.h"
 #include "ToolFactory.h"
 #include "IDataBaseManager.h"
@@ -122,7 +121,7 @@ public:
 
     void UpdateSelectionMesh(CD::PolygonPtr pPolygon, CD::ModelCompiler* pCompiler, CBaseObject* pObj,  bool bForce = false);
     void ClearPolygonSelections(){m_pSelectionMesh = NULL; }
-    void UpdateSelectionMeshFromSelectedElements(CD::SMainContext& mc);
+    void UpdateSelectionMeshFromSelectedElements(const CD::SMainContext& mc);
     _smart_ptr<CD::PolygonMesh> GetSelectionMesh(){return m_pSelectionMesh; }
     void ReleaseSelectionMesh();
 

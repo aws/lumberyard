@@ -55,7 +55,7 @@ public:
     virtual QPoint WorldToViewParticleEditor(const Vec3& wp, int width, int height) const; //Eric@conffx
 
     //! Map viewport position to world space position.
-    virtual Vec3        ViewToWorld(const QPoint& vp, bool* collideWithTerrain = 0, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false) const override;
+    virtual Vec3        ViewToWorld(const QPoint& vp, bool* collideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override;
     //! Map viewport position to world space ray from camera.
     virtual void        ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const;
 

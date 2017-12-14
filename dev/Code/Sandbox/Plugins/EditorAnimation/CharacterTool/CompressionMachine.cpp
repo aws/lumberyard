@@ -885,28 +885,28 @@ namespace CharacterTool
 
                     switch (animation.type)
                     {
-                    case animation.AIMPOSE:
+                    case Animation::AIMPOSE:
                     {
                         line.animation = animation.name;
                         line.text = "AIM/Look Pose";
                         lines->push_back(line);
                         break;
                     }
-                    case animation.BLEND_SPACE:
+                    case Animation::BLEND_SPACE:
                     {
                         line.animation = animation.name;
                         line.text = "BlendSpace";
                         lines->push_back(line);
                         break;
                     }
-                    case animation.ANM:
+                    case Animation::ANM:
                     {
                         line.animation = animation.name;
                         line.text = "ANM format does not support compression";
                         lines->push_back(line);
                         break;
                     }
-                    case animation.CAF:
+                    case Animation::CAF:
                     {
                         if (m_showOriginalAnimation)
                         {

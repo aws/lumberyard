@@ -21,6 +21,8 @@
 #include <random>
 #include "LinearInterpolation.h"
 
+#pragma warning (disable:4503) // decorated name length exceeded, name was truncated
+
 namespace ScriptCanvas
 {
     namespace MathRandom
@@ -144,38 +146,57 @@ namespace ScriptCanvas
             AddNodeToRegistry<Math, Vector3>(nodeRegistry);
             AddNodeToRegistry<Math, Vector4>(nodeRegistry);
             MathRegistrar::AddToRegistry<Math>(nodeRegistry);
-
-            // AddNodeToRegistry<Math, Xor>(nodeRegistry);
-            //AddNodeToRegistry<Math, LinearInterpolation>(nodeRegistry);
+            AABBNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            ColorNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            CrcNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            Matrix3x3Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            Matrix4x4Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            OBBNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            PlaneNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            RotationNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            TransformNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            Vector2Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            Vector3Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            Vector4Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
         }
         
         AZStd::vector<AZ::ComponentDescriptor*> Math::GetComponentDescriptors()
         {
             AZStd::vector<AZ::ComponentDescriptor*> descriptors = 
                 {
+                    ScriptCanvas::Nodes::Math::AABB::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::CRC::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::Color::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Divide::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::Matrix3x3::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::Matrix4x4::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Multiply::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Number::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::OBB::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::Plane::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Random::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Rotation::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Subtract::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Sum::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Transform::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::Vector3::CreateDescriptor(),                
-                    ScriptCanvas::Nodes::Math::AABB::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::CRC::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::Color::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::Matrix3x3::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::Matrix4x4::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::OBB::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::Plane::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Vector2::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::Vector3::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Vector4::CreateDescriptor(),
-                    //ScriptCanvas::Nodes::Math::Xor::CreateDescriptor(),
-                    //ScriptCanvas::Nodes::Math::LinearInterpolation::CreateDescriptor(),
-                };
+            };
 
             MathRegistrar::AddDescriptors(descriptors);
+            AABBNodes::Registrar::AddDescriptors(descriptors);
+            ColorNodes::Registrar::AddDescriptors(descriptors);
+            CrcNodes::Registrar::AddDescriptors(descriptors);
+            Matrix3x3Nodes::Registrar::AddDescriptors(descriptors);
+            Matrix4x4Nodes::Registrar::AddDescriptors(descriptors);
+            OBBNodes::Registrar::AddDescriptors(descriptors);
+            PlaneNodes::Registrar::AddDescriptors(descriptors);
+            RotationNodes::Registrar::AddDescriptors(descriptors);
+            TransformNodes::Registrar::AddDescriptors(descriptors);
+            Vector2Nodes::Registrar::AddDescriptors(descriptors);
+            Vector3Nodes::Registrar::AddDescriptors(descriptors);
+            Vector4Nodes::Registrar::AddDescriptors(descriptors);
             return descriptors;
         }
     

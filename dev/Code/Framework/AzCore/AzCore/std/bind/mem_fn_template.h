@@ -77,6 +77,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf0)<R, T>> : function_traits_helper<R(T::*)()> { };
 
 // cmf0
 
@@ -131,6 +133,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf0)<R, T>> : function_traits_helper<R(T::*)()> { };
 
 // mf1
 
@@ -197,6 +201,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf1)<R, T, A1>> : function_traits_helper<R(T::*)(A1)> { };
 
 // cmf1
 
@@ -252,6 +258,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf1)<R, T, A1>> : function_traits_helper<R(T::*)(A1)> { };
 
 // mf2
 
@@ -316,6 +324,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf2)<R, T, A1, A2>> : function_traits_helper<R(T::*)(A1, A2)> { };
 
 // cmf2
 
@@ -369,6 +379,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf2)<R, T, A1, A2>> : function_traits_helper<R(T::*)(A1, A2)> { };
 
 // mf3
 
@@ -433,6 +445,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf3)<R, T, A1, A2, A3>> : function_traits_helper<R(T::*)(A1, A2, A3)> { };
 
 // cmf3
 
@@ -486,6 +500,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf3)<R, T, A1, A2, A3>> : function_traits_helper<R(T::*)(A1, A2, A3)> { };
 
 // mf4
 
@@ -550,6 +566,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf4)<R, T, A1, A2, A3, A4>> : function_traits_helper<R(T::*)(A1, A2, A3, A4)> { };
 
 // cmf4
 
@@ -603,6 +621,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf4)<R, T, A1, A2, A3, A4>> : function_traits_helper<R(T::*)(A1, A2, A3, A4)> { };
 
 // mf5
 
@@ -667,6 +687,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf5)<R, T, A1, A2, A3, A4, A5>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5)> { };
 
 // cmf5
 
@@ -720,6 +742,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf5)<R, T, A1, A2, A3, A4, A5>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5)> { };
 
 // mf6
 
@@ -784,6 +808,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf6)<R, T, A1, A2, A3, A4, A5, A6>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5, A6)> { };
 
 // cmf6
 
@@ -837,6 +863,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf6)<R, T, A1, A2, A3, A4, A5, A6>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5, A6)> { };
 
 // mf7
 
@@ -901,6 +929,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf7)<R, T, A1, A2, A3, A4, A5, A6, A7>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5, A6, A7)> { };
 
 // cmf7
 
@@ -954,6 +984,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf7)<R, T, A1, A2, A3, A4, A5, A6, A7>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5, A6, A7)> { };
 
 // mf8
 
@@ -1018,6 +1050,8 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7, typename A8>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(mf8)<R, T, A1, A2, A3, A4, A5, A6, A7, A8>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5, A6, A7, A8)> { };
 
 // cmf8
 
@@ -1076,5 +1110,7 @@ public:
         return f_ != rhs.f_;
     }
 };
+template <typename R, typename T, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7, typename A8>
+struct function_traits_helper<AZSTD_MEM_FN_NAME(cmf8)<R, T, A1, A2, A3, A4, A5, A6, A7, A8>> : function_traits_helper<R(T::*)(A1, A2, A3, A4, A5, A6, A7, A8)> { };
 
 #undef AZSTD_MEM_FN_ENABLE_CONST_OVERLOADS

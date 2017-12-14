@@ -6,7 +6,7 @@
     "Version": "0.1.0",
     "LinkType": "Dynamic",
     "EditorModule": true,
-    "Summary": "A library of diagnostic nodes for use in Script Canvas, Logging, Debug Text, etc.",
+    "Summary": "The Script Canvas Diagnostic Library comes with a library of diagnostic nodes for use in Script Canvas such as logging, debug text, etc.",
     "Tags": ["Scripting", "Game"],
     "IconPath": "preview.png",
     "Dependencies" : [

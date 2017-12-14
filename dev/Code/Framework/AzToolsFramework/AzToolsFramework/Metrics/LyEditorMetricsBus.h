@@ -34,6 +34,14 @@ namespace AzToolsFramework
         Count
     };
 
+    enum class AssetBrowserActionType
+    {
+        SourceExpanded,
+        SourceCollapsed,
+        SourceDragged,
+        ProductDragged
+    };
+
     // Bus that can have messages sent when metrics related events occur (user triggered), and can be connected to in order to collect said metrics
     // Note that this bus should be called from the main, UI thread only
     class EditorMetricsEventsBusTraits
@@ -109,6 +117,9 @@ namespace AzToolsFramework
 
         // Called when a menu is triggered
         virtual void MenuTriggered(const char* /*menuIdentifier*/, AzToolsFramework::MetricsActionTriggerType /* triggerType */ = AzToolsFramework::MetricsActionTriggerType::Unknown) {}
+
+        // Action is performed in Asset Browser
+        virtual void AssetBrowserAction(AssetBrowserActionType /*actionType*/, const AZ::Uuid& /*sourceUuid*/, const char* /*extension*/, int /*numberOfProducts*/) {}
 
         virtual void RegisterAction(QAction* /*action*/, const QString& /*metricsText*/) {}
         virtual void UnregisterAction(QAction* /*action*/) {}

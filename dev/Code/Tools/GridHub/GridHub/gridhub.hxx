@@ -25,6 +25,10 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Component/TickBus.h>
 
+#if defined(AZ_PLATFORM_WINDOWS)
+#include <windows.h>
+#endif
+
 namespace AZ
 {
     class ComponentApplication;

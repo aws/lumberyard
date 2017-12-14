@@ -23,7 +23,6 @@ namespace GraphCanvas
 {
     class SlotLayoutComponent
         : public AZ::Component
-        , public RootVisualRequestBus::Handler
         , public VisualRequestBus::Handler
     {
     public:
@@ -60,9 +59,9 @@ namespace GraphCanvas
         void Init();
         void Activate();
         void Deactivate();
-        ////   
-		
-		// VisualRequestBus
+        ////
+        
+        // VisualRequestBus
         QGraphicsItem* AsGraphicsItem() override;
         QGraphicsLayoutItem* AsGraphicsLayoutItem() override;
 
@@ -71,15 +70,10 @@ namespace GraphCanvas
         bool GetVisibility() const override;
         ////
     
-        // RootVisualRequestBus
-        virtual QGraphicsItem* GetRootGraphicsItem();
-        virtual QGraphicsLayoutItem* GetRootGraphicsLayoutItem();
-        ////
-    
     protected:
     
         void SetLayout(QGraphicsLayout* layout);
-        QGraphicsLayout* GetLayout();        
+        QGraphicsLayout* GetLayout();
         
     private:
         QGraphicsWidget* m_layoutWidget;

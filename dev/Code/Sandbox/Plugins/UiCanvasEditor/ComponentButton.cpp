@@ -19,8 +19,6 @@ ComponentButton::ComponentButton(HierarchyWidget* hierarchy,
 {
     setText("Add Component...");
 
-    setEnabled(false);
-
     QObject::connect(this,
         &QPushButton::clicked,
         [ this, hierarchy ](bool checked)
@@ -40,7 +38,7 @@ ComponentButton::ComponentButton(HierarchyWidget* hierarchy,
 
 void ComponentButton::UserSelectionChanged(HierarchyItemRawPtrList* items)
 {
-    setEnabled(items && (!items->empty()));
+     // no longer need to enable/disable because we always show the button, if nothing is selected it adds to the canvas entity
 }
 
 #include <ComponentButton.moc>

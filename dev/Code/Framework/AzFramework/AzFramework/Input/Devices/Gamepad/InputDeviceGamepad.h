@@ -50,7 +50,7 @@ namespace AzFramework
         //! Check whether an input device id identifies a gamepad (regardless of index)
         //! \param[in] inputDeviceId The input device id to check
         //! \return True if the input device id identifies a gamepad, false otherwise
-        static bool IsGamepad(const InputDeviceId& inputDeviceId);
+        static bool IsGamepadDevice(const InputDeviceId& inputDeviceId);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! All the input channel ids that identify game-pad digital button input

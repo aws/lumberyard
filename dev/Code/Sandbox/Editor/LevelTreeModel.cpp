@@ -52,7 +52,7 @@ bool LevelTreeModelFilter::filterAcceptsRow(int source_row, const QModelIndex& s
     }
 
     const QString text = idx.data(Qt::DisplayRole).toString();
-    if (text.toLower().contains(m_filterText))
+    if (text.contains(m_filterText, Qt::CaseInsensitive))
     {
         return true;
     }

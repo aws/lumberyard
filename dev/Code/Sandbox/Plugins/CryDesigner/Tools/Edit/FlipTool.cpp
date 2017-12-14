@@ -36,7 +36,7 @@ void FlipTool::Leave()
     pSelected->Set(m_FlipedSelectedElements);
 }
 
-void FlipTool::FlipPolygons(CD::SMainContext& mc, ElementManager& outFlipedElements)
+void FlipTool::FlipPolygons(const CD::SMainContext& mc, ElementManager& outFlipedElements)
 {
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
 

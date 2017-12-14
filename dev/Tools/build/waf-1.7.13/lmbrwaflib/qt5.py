@@ -74,7 +74,7 @@ except ImportError:
 else:
     has_xml = True
 
-import os, sys, re, time, shutil, stat
+import os, sys, re, time, shutil, stat, hashlib
 from waflib.Tools import cxx
 from waflib import Task, Utils, Options, Errors, Context
 from waflib.TaskGen import feature, after_method, extension, before_method
@@ -157,16 +157,9 @@ INCLUDE_SRC_RE = re.compile(r'\s*\#include\s+[\"<](.*.(cpp|cxx|cc))[\">]',flags=
 RESTRICT_BINTEMP_QT_PATH=True
 
 # Derive a specific moc_files.<idx> folder name based on the base bldnode and idx
-def get_target_qt5_root(ctx, project_path, target_name, idx):
+def get_target_qt5_root(ctx, target_name, idx):
 
-    # Test if the project path is local to the current build path
-    is_project_local = project_path.is_child_of(ctx.path)
-    if is_project_local:
-        base_qt_node = ctx.bldnode.make_node('qt5/{}.{}'.format(target_name,idx))
-    else:
-        # If the project is not local to the current build path, manually create it
-        base_qt_node = project_path.get_bld()
-
+    base_qt_node = ctx.bldnode.make_node('qt5/{}.{}'.format(target_name,idx))
     return base_qt_node
 
 # Change a target node from a changed extension to one marked as QT code generated
@@ -178,13 +171,33 @@ def change_target_qt5_node(ctx, project_path, target_name, target_node,idx):
     if RESTRICT_BINTEMP_QT_PATH:
         relpath_target = target_node.relpath()
         relpath_project = project_path.relpath()
-        restricted_path = relpath_target.replace(relpath_project,'')
+
+        if relpath_target.startswith(relpath_project):
+            # Strip out the project relative path and use that as the target_qt5 relative path
+            restricted_path = relpath_target.replace(relpath_project,'')
+
+        elif relpath_target.startswith('..'):
+
+            # Special case.  If the target and project rel paths dont align, then the target node is outside of the
+            # project folder.  (ie there is a qt-related file in the waf_files that is outside the project's context
+            # path)
+
+            # If the file is an include or moc file, it must reside inside the project context, because it will be
+            # included based on an expected project relative path
+            target_node_name_lower = target_node.name.lower()
+            if target_node_name_lower.endswith(".moc") or target_node_name_lower.endswith(".h"):
+                ctx.fatal("QT target {} for project {} cannot exist outside of its source folder context.".format(target_node.name, target_name))
+
+            restricted_path = "__/{}.{}/{}".format(target_name, idx, target_node.name)
+        else:
+            restricted_path = relpath_target
+
         target_node_subdir = os.path.dirname(restricted_path)
     else:
         target_node_subdir = target_node.bld_dir()
 
     # Change the output target to the specific moc file folder
-    output_qt_dir = get_target_qt5_root(ctx, project_path, target_name, idx).make_node(target_node_subdir)
+    output_qt_dir = get_target_qt5_root(ctx, target_name, idx).make_node(target_node_subdir)
     output_qt_dir.mkdir()
 
     output_qt_node = output_qt_dir.make_node(target_node.name)
@@ -212,6 +225,17 @@ class qxx(Task.classes['cxx']):
 
         self.dep_moc_files = {}
 
+    def __str__(self):
+        "string to display to the user"
+        env = self.env
+        src_str = ' '.join([a.nice_path() for a in self.inputs])
+        tgt_str = ' '.join([a.nice_path() for a in self.outputs])
+        if self.outputs and self.inputs:
+            sep = ' -> '
+        else:
+            sep = ''
+        name = self.__class__.__name__.replace('_task', '') + ' (' + env['PLATFORM'] + '|' + env['CONFIGURATION'] + ')'
+        return '%s: %s%s%s\n' % (name, src_str, sep, tgt_str)
 
     def runnable_status(self):
         """
@@ -338,12 +362,16 @@ class qxx(Task.classes['cxx']):
         moctasks = []
         include_source_rel_paths = INCLUDE_SRC_RE.findall(node_contents)
         for include_source_rel_path, include_source_extension in include_source_rel_paths:
-            source_node = self.generator.path.find_node(include_source_rel_path)
+            source_node = node.parent.find_node(include_source_rel_path)
+
+            if source_node is None:
+                source_node = self.generator.path.find_node(include_source_rel_path)
+
             if source_node is not None:
                 source_node_contents = source_node.read()
                 moctasks += self.scan_node_contents_for_moc_tasks(source_node_contents)
-
                 del source_node_contents #free up the text as soon as possible
+
 
         # simple scheduler dependency: run the moc task before others
         self.run_after.update(set(moctasks))
@@ -503,7 +531,6 @@ def apply_qt5_includes(self):
         return
 
     base_moc_node = get_target_qt5_root(self.bld,
-                                        self.path,
                                         self.name,
                                         self.idx)
     if not hasattr(self, 'includes'):
@@ -1277,6 +1304,8 @@ WINDOWS_LMBRSETUP_QT_DLLS = [
     "Qt5Widgets",
     "Qt5Concurrent",
     "Qt5WinExtras",
+    "libEGL",
+    "libGLESv2"
 ]
 
 WINDOWS_MAIN_QT_DLLS = [
@@ -1314,7 +1343,9 @@ WINDOWS_MAIN_QT_DLLS = [
     "Qt5WebKitWidgets",
     "Qt5WinExtras",
     "Qt5XmlPatterns",
-    "Qt5Xml"
+    "Qt5Xml",
+    "libEGL",
+    "libGLESv2"
 ]
 
 @conf
@@ -1459,13 +1490,15 @@ def qtlib_bootstrap(self, platform, configuration):
         # Copy all the dlls required by Qt
         # Copy to the current configuration's BinXXX folder
         files_copied = _copy_qt_dlls(self, output_path, WINDOWS_MAIN_QT_DLLS)
-        # Copy to the current configuration's BinXXX/rc folder
-        files_copied += _copy_qt_dlls(self, os.path.join(output_path, 'rc'), WINDOWS_RC_QT_DLLS)
-        # Copy to the LmbrSetup folder
-        import lmbr_setup_tools
-        files_copied += _copy_qt_dlls(self,
-            self.Path(self.get_lmbr_setup_tools_output_folder()),
-            WINDOWS_LMBRSETUP_QT_DLLS)
+
+        # Copy specific files if we are building from the engine folder
+        if self.is_engine_local():
+            # Copy to the current configuration's BinXXX/rc folder
+            files_copied += _copy_qt_dlls(self, os.path.join(output_path, 'rc'), WINDOWS_RC_QT_DLLS)
+
+            # Copy to the LmbrSetup folder
+            files_copied += _copy_qt_dlls(self,
+                self.Path(self.get_lmbr_setup_tools_output_folder()), WINDOWS_LMBRSETUP_QT_DLLS)
 
         # Report the sync job, but only report the number of files if any were actually copied
         if files_copied > 0:

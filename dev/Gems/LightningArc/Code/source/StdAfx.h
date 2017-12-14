@@ -12,8 +12,6 @@
 #ifndef AFX_STDAFX_H__8ECCF081_FF02_476F_B8EC_7C4C20CC603C__INCLUDED_
 #define AFX_STDAFX_H__8ECCF081_FF02_476F_B8EC_7C4C20CC603C__INCLUDED_
 
-#define eCryModule eCryM_Game
-
 #include <platform.h>
 #include <CryName.h>
 #include <I3DEngine.h>

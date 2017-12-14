@@ -11,6 +11,7 @@
 */
 #include "StdAfx.h"
 #include "WelcomeScreenDialog.h"
+#include <AzFramework/API/ApplicationAPI.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <WelcomeScreen/ui_WelcomeScreenDialog.h>
@@ -74,44 +75,54 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
     ui->recentLevelList->setContextMenuPolicy(Qt::CustomContextMenu);
 
     auto currentProjectButtonMenu = new QMenu();
-    auto switchProjAction = currentProjectButtonMenu->addAction("Switch project...");
-    auto openSAAction = currentProjectButtonMenu->addAction("Setup Assistant...");
 
-    QObject::connect(switchProjAction, &QAction::triggered, [this] {
-        // close this dialog first before attempting to close the editor
-        CCryEditApp* cryEdit = CCryEditApp::instance();
-        const char * closeMsg = "You must use the Project Configurator to set a new default project. \nDo you want to save your changes and close the editor before continuing to the Project Configurator?";
-        if (cryEdit->ToExternalToolPrompt(closeMsg, "Editor"))
-        {
-            // close the dialog box before closing the editor
-            accept();
-            if (cryEdit->ToExternalToolSave() && cryEdit->OpenProjectConfigurator("Project Selection"))
+    // If the current project is external to the engine folder, then do not add options to launch AP or Project Configurator
+    // because this feature is in preview mode.
+    bool isProjectExternal = false;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(isProjectExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
+
+    if (!isProjectExternal)
+    {
+
+        auto switchProjAction = currentProjectButtonMenu->addAction("Switch project...");
+        auto openSAAction = currentProjectButtonMenu->addAction("Setup Assistant...");
+
+        QObject::connect(switchProjAction, &QAction::triggered, [this] {
+            // close this dialog first before attempting to close the editor
+            CCryEditApp* cryEdit = CCryEditApp::instance();
+            const char * closeMsg = "You must use the Project Configurator to set a new default project. \nDo you want to save your changes and close the editor before continuing to the Project Configurator?";
+            if (cryEdit->ToExternalToolPrompt(closeMsg, "Editor"))
             {
-                // close the window at the end of the qt event loop
-                QTimer::singleShot(0, [](){MainWindow::instance()->close();});
+                // close the dialog box before closing the editor
+                accept();
+                if (cryEdit->ToExternalToolSave() && cryEdit->OpenProjectConfigurator("Project Selection"))
+                {
+                    // close the window at the end of the qt event loop
+                    QTimer::singleShot(0, []() {MainWindow::instance()->close(); });
+                }
+
+                SendMetricsEvent("SwitchProjectButtonClicked");
             }
+        });
 
-            SendMetricsEvent("SwitchProjectButtonClicked");
-        }
-    });
-
-    QObject::connect(openSAAction, &QAction::triggered, [this] {
-        // close this dialog first before attempting to close the editor
-        CCryEditApp* cryEdit = CCryEditApp::instance();
-        const char * closeMsg = "You must close the Editor before opening Setup Assistant. \nDo you want to save your changes?";
-        if (cryEdit->ToExternalToolPrompt(closeMsg, "Editor"))
-        {
-            // close the dialog box before closing the editor
-            accept();
-            if (cryEdit->ToExternalToolSave() && cryEdit->OpenSetupAssistant())
+        QObject::connect(openSAAction, &QAction::triggered, [this] {
+            // close this dialog first before attempting to close the editor
+            CCryEditApp* cryEdit = CCryEditApp::instance();
+            const char * closeMsg = "You must close the Editor before opening Setup Assistant. \nDo you want to save your changes?";
+            if (cryEdit->ToExternalToolPrompt(closeMsg, "Editor"))
             {
-                // close the window at the end of the qt event loop
-                QTimer::singleShot(0, [](){MainWindow::instance()->close();});
-            }
+                // close the dialog box before closing the editor
+                accept();
+                if (cryEdit->ToExternalToolSave() && cryEdit->OpenSetupAssistant())
+                {
+                    // close the window at the end of the qt event loop
+                    QTimer::singleShot(0, []() {MainWindow::instance()->close(); });
+                }
 
-            SendMetricsEvent("SetupAssistantButtonClicked");
-        }
-    });
+                SendMetricsEvent("SetupAssistantButtonClicked");
+            }
+        });
+    }
 
     ui->currentProjectButton->setMenu(currentProjectButtonMenu);
     ui->currentProjectButton->setText(gEnv->pConsole->GetCVar("sys_game_folder")->GetString());

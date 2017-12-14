@@ -67,6 +67,9 @@ public:
     //! Deletes a file using source control API.  Blocks until completed.
     bool DeleteFromSourceControl(const char* filename, QWidget* parentWindow = nullptr) override;
 
+    //! Gather information about a file using the source control API.  Blocks until completed
+    bool GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr) override;
+
     //! Creates this directory.
     void CreateDirectory(const char* dir) override;
 
@@ -108,7 +111,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // @param LPPROGRESS_ROUTINE pfnProgress - called by the system to notify of file copy progress
     // @param LPBOOL pbCancel - when the contents of this BOOL are set to TRUE, the system cancels the copy operation
-    ECopyTreeResult CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false, void* pfnProgress = NULL, bool* pbCancel = NULL) override;
+    ECopyTreeResult CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false, ProgressRoutine pfnProgress = NULL, bool* pbCancel = NULL) override;
 
     // As we don't have a FileUtil interface here, we have to duplicate some code :-( in order to keep
     // function calls clean.

@@ -764,19 +764,7 @@ void DockableLODPanel::OnAddLod(CLibraryTreeViewItem* item)
     CRY_ASSERT(pParticle);
     CRY_ASSERT(pParticle->GetEffect());
     
-    if (pParticle->GetEffect()->GetParent() == nullptr)
-    {
-        OnAddLod(pParticle);
-    }
-    else if (!pParticle->GetEffect()->GetParent()->HasLevelOfDetail())
-    {
-        OnAddLod(pParticle);
-    }
-    else
-    {
-        pParticle->GetEffect()->AddParentLodsToEffect();
-        OnLodUndoPoint();
-    }
+    OnAddLod(pParticle);
 
     EmitIconChangeRecursive(item);
 }

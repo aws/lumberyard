@@ -21,19 +21,19 @@ public:
 
     static void Push(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         bool createAsChildOfSelection,
         HierarchyHelpers::Creator creator,
-        QString dataSource);
+        const QString& dataSource);
 
 private:
 
     CommandHierarchyItemCreateFromData(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        EntityHelpers::EntityIdList& parents,
+        const EntityHelpers::EntityIdList& parents,
         bool createAsChildOfSelection,
         HierarchyHelpers::Creator creator,
-        QString& dataSource);
+        const QString& dataSource);
 
 
     UndoStack* m_stack;

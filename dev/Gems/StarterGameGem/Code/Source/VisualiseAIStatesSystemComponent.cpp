@@ -10,17 +10,6 @@
 *
 */
 
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #include "StdAfx.h"
 #include "VisualiseAIStatesSystemComponent.h"
 
@@ -41,16 +30,16 @@ namespace StarterGameGem
     // Keep this enum in sync with the 'g_aiStateColours' array.
     enum AIStates
     {
-        Unknown = 0,
+        AI_Unknown = 0,
         // DO NOT MODIFY ABOVE HERE
 
-        Idle,
-        Suspicious,
-        Combat,
-        Tracking,
+        AI_Idle,
+        AI_Suspicious,
+        AI_Combat,
+        AI_Tracking,
 
         // DO NOT MODIFY BELOW HERE
-        Count,
+        AI_Count,
     };
 
     // Keep this array in sync with the 'AIStates' enum.
@@ -106,11 +95,11 @@ namespace StarterGameGem
             // IMPORTANT: requires an empty class 'AIStatesHolder'
             behaviorContext->Class<AIStatesHolder>("AIStates")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                ->Constant("Unknown", BehaviorConstant(AIStates::Unknown))
-                ->Constant("Idle", BehaviorConstant(AIStates::Idle))
-                ->Constant("Suspicious", BehaviorConstant(AIStates::Suspicious))
-                ->Constant("Combat", BehaviorConstant(AIStates::Combat))
-                ->Constant("Tracking", BehaviorConstant(AIStates::Tracking))
+                ->Constant("Unknown", BehaviorConstant(AIStates::AI_Unknown))
+                ->Constant("Idle", BehaviorConstant(AIStates::AI_Idle))
+                ->Constant("Suspicious", BehaviorConstant(AIStates::AI_Suspicious))
+                ->Constant("Combat", BehaviorConstant(AIStates::AI_Combat))
+                ->Constant("Tracking", BehaviorConstant(AIStates::AI_Tracking))
                 ;
 
 			behaviorContext->EBus<VisualiseAIStatesSystemRequestBus>("VisualiseAIStatesSystemRequestBus")
@@ -166,9 +155,9 @@ namespace StarterGameGem
     void VisualiseAIStatesSystemComponent::SetAIState(const AZ::EntityId& entityId, int state)
     {
         // Clamp the state so we can correctly colour it.
-        if (state >= AIStates::Count || state < AIStates::Unknown)
+        if (state >= AIStates::AI_Count || state < AIStates::AI_Unknown)
         {
-            state = AIStates::Unknown;
+            state = AIStates::AI_Unknown;
         }
 
         AIState* const aiState = FindState(entityId);

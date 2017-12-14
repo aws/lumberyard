@@ -183,11 +183,11 @@ namespace EMotionFX
 
         struct EMFX_API TransformTracks
         {
-            KeyTrackLinearDynamic<MCore::Vector3, MCore::Vector3>                           mPositions;
+            KeyTrackLinearDynamic<AZ::PackedVector3f, AZ::PackedVector3f>                   mPositions;
             KeyTrackLinearDynamic<MCore::Quaternion, MCore::Compressed16BitQuaternion>      mRotations;
 
             #ifndef EMFX_SCALE_DISABLED
-            KeyTrackLinearDynamic<MCore::Vector3, MCore::Vector3>                       mScales;
+            KeyTrackLinearDynamic<AZ::PackedVector3f, AZ::PackedVector3f>                   mScales;
             #endif
         };
 
@@ -370,7 +370,7 @@ namespace EMotionFX
         void UpdateNodeHistoryItems();
         void OptimizeTransforms();
         void OptimizeAnimGraphStates();
-        void AddTransformKey(TransformTracks& track, const MCore::Vector3& pos, const MCore::Quaternion rot, const MCore::Vector3& scale);
+        void AddTransformKey(TransformTracks& track, const AZ::Vector3& pos, const MCore::Quaternion rot, const AZ::Vector3& scale);
         void SampleAndApplyTransforms(float timeInSeconds, uint32 actorInstanceIndex) const;
         void SampleAndApplyMainTransform(float timeInSeconds, uint32 actorInstanceIndex) const;
         void SampleAndApplyAnimGraphStates(float timeInSeconds, const AnimGraphInstanceData& animGraphInstanceData) const;

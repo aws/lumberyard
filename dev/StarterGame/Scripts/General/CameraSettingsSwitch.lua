@@ -7,6 +7,10 @@ camerasettingsswitch =
 		EventOnEnter = { default = "OnEnter", description = "The name of the event that activates the settings." },
 		EventOnExit = { default = "OnExit", description = "The name of the event that deactivates the settings." },
 		
+		TransitionTimeEnter = { default = 0.25, description = "Time to change to new camera settings when activated"},
+		TransitionTimeExit = { default = 0.25, description = "Time to change to new camera settings when deactivated"},
+		
+		
 		CameraSettings = { default = "", description = "The name of the camera settings preset." },
 	},
 }
@@ -58,11 +62,13 @@ function camerasettingsswitch:OnEventBegin(value)
 		local settings = CameraSettingsEventArgs();
 		settings.name = self.Properties.CameraSettings;
 		settings.entityId = self.entityId;
+		settings.transitionTime = self.Properties.TransitionTimeEnter;		
 		GameplayNotificationBus.Event.OnEventBegin(self.pushNotificationId, settings);
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.onExitEventId) then
 		local settings = CameraSettingsEventArgs();
 		settings.name = self.Properties.CameraSettings;
 		settings.entityId = self.entityId;
+		settings.transitionTime = self.Properties.TransitionTimeExit;		
 		GameplayNotificationBus.Event.OnEventBegin(self.popNotificationId, settings);
 	end
 	

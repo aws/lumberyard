@@ -15,13 +15,13 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <QtGUI/QWidget>
+#include <QWidget>
 
 #pragma once
 
 class QDoubleSpinBox;
 class QLineEdit;
-class QPushButton;
+class QToolButton;
 
 namespace AzToolsFramework
 {

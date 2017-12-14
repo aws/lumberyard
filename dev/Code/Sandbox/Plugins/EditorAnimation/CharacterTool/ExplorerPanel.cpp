@@ -29,7 +29,6 @@
 #include <QFocusEvent>
 #include <ICryAnimation.h>
 #include "CharacterDocument.h"
-#include "Explorer.h"
 #include "ExplorerModel.h"
 #include "ExplorerPanel.h"
 #include "Expected.h"
@@ -39,10 +38,6 @@
 #include "SceneContent.h"
 #include "AnimationList.h"
 #include "PlaybackPanel.h"
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <shellapi.h>
 
 namespace CharacterTool {
     TreeViewWithClickOnSelectedItem::TreeViewWithClickOnSelectedItem()

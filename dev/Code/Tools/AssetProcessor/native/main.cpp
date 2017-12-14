@@ -42,6 +42,7 @@ namespace AssetProcessor
 
 int main(int argc, char* argv[])
 {
+    qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
 #if defined(AZ_TESTS_ENABLED)
     // If "--unittest" is present on the command line, run unit testing
     // and return immediately. Otherwise, continue as normal.
@@ -49,9 +50,9 @@ int main(int argc, char* argv[])
 #endif
 
 #if defined(BATCH_MODE)
-    BatchApplicationManager applicationManager(argc, argv);
+    BatchApplicationManager applicationManager(&argc, &argv);
 #else
-    GUIApplicationManager applicationManager(argc, argv);
+    GUIApplicationManager applicationManager(&argc, &argv);
 #endif
 
     ApplicationManager::BeforeRunStatus status = applicationManager.BeforeRun();

@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #include "StdAfx.h"
 #include "CameraSettingsComponent.h"
 
@@ -218,7 +216,8 @@ namespace StarterGameGem
 				->Property("FOV", BehaviorValueProperty(&CameraSettings::m_fov))
 				->Property("NearClip", BehaviorValueProperty(&CameraSettings::m_nearClip))
 				->Property("FarClip", BehaviorValueProperty(&CameraSettings::m_farClip))
-			;
+                ->Property("TransitionTime", BehaviorValueProperty(&CameraSettings::m_transitionTime))
+            ;
 		}
 	}
 
@@ -280,7 +279,8 @@ namespace StarterGameGem
 				->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
 				->Property("name", BehaviorValueProperty(&CameraSettingsEventArgs::m_name))
 				->Property("entityId", BehaviorValueProperty(&CameraSettingsEventArgs::m_entityId))
-			;
+                ->Property("transitionTime", BehaviorValueProperty(&CameraSettingsEventArgs::m_transitionTime))
+            ;
 
 			behavior->EBus<CameraSettingsComponentRequestsBus>("CameraSettingsComponentRequestsBus")
 				->Event("PushSettings", &CameraSettingsComponentRequestsBus::Events::PushSettings)

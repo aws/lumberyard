@@ -14,19 +14,23 @@
 // Description : interface for the CViewport class.
 
 
-#ifndef CRYINCLUDE_EDITOR_VIEWPORT_H
-#define CRYINCLUDE_EDITOR_VIEWPORT_H
 #pragma once
 
 #include <Cry_Color.h>
 #include "IPostRenderer.h"
 #include "Include/IDisplayViewport.h"
+#include "Include/SandboxAPI.h"
 
 #include <QMenu>
 #include <QUuid>
 #if defined(Q_OS_WIN)
 #include <QtWinExtras/qwinfunctions.h>
 #endif
+
+namespace AzQtComponents
+{
+    class ViewportDragContext;
+}
 
 // forward declarations.
 class CBaseObject;
@@ -38,7 +42,6 @@ class CEditTool;
 class CBaseObjectsCache;
 struct HitContext;
 struct IRenderListener;
-class ViewportDropTarget;
 class CImageEx;
 class QMenu;
 
@@ -122,7 +125,7 @@ public:
     //! Resets current selection region.
     virtual void ResetSelectionRegion() = 0;
     //! Set 2D selection rectangle.
-    virtual void SetSelectionRectangle(const QRect &rect) = 0;
+    virtual void SetSelectionRectangle(const QRect& rect) = 0;
     inline void SetSelectionRectangle(const QPoint& startMousePosition, const QPoint& currentMousePosition)
     {
         // QRect's bottom/right are width - 1, height - 1, so when specifying the right position
@@ -132,7 +135,7 @@ public:
     //! Return 2D selection rectangle.
     virtual QRect GetSelectionRectangle() const = 0;
     //! Called when dragging selection rectangle.
-    virtual void OnDragSelectRectangle(const QRect &rect, bool bNormalizeRect = false) = 0;
+    virtual void OnDragSelectRectangle(const QRect& rect, bool bNormalizeRect = false) = 0;
     void OnDragSelectRectangle(const QPoint& startMousePosition, const QPoint& currentMousePosition, bool bNormalizeRect = false)
     {
         // QRect's bottom/right are width - 1, height - 1, so when specifying the right position
@@ -173,7 +176,7 @@ public:
     virtual Vec3 MapViewToCP(const QPoint& point) = 0;
 
     //! Map viewport position to world space position.
-    virtual Vec3        ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = 0, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false) const = 0;
+    virtual Vec3        ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const = 0;
     //! Convert point on screen to world ray.
     virtual void        ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const = 0;
     //! Get normal for viewport position
@@ -202,7 +205,7 @@ public:
 
     /** Get ID of this viewport
     */
-    int GetViewportId() { return m_nCurViewportID; };
+    int GetViewportId() const { return m_nCurViewportID; };
 
     //////////////////////////////////////////////////////////////////////////
     // Drag and drop support on viewports.
@@ -267,7 +270,6 @@ protected:
     int m_nCurViewportID;
 
     // Custom drop callback (Leroy@Conffx)
-    friend class ViewportDropTarget;
     DropCallback m_dropCallback;
     void* m_dropCallbackCustom;
 };
@@ -359,7 +361,7 @@ public:
     virtual Vec3    WorldToView3D(const Vec3& wp, int nFlags = 0) const;
 
     //! Map viewport position to world space position.
-    virtual Vec3 ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = 0, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false) const override;
+    virtual Vec3 ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override;
     //! Convert point on screen to world ray.
     virtual void        ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const override;
     //! Get normal for viewport position
@@ -394,12 +396,12 @@ public:
     //! Resets current selection region.
     virtual void ResetSelectionRegion();
     //! Set 2D selection rectangle.
-    void SetSelectionRectangle(const QRect &rect) override;
+    void SetSelectionRectangle(const QRect& rect) override;
 
     //! Return 2D selection rectangle.
     QRect GetSelectionRectangle() const override { return m_selectedRect; };
     //! Called when dragging selection rectangle.
-    void OnDragSelectRectangle(const QRect &rect, bool bNormalizeRect = false) override;
+    void OnDragSelectRectangle(const QRect& rect, bool bNormalizeRect = false) override;
     //! Get selection procision tollerance.
     float GetSelectionTolerance() const { return m_selectionTolerance; }
     //! Center viewport on selection.
@@ -507,8 +509,9 @@ protected:
     void resizeEvent(QResizeEvent* event) override;
     void leaveEvent(QEvent* event) override;
 
-    virtual void OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons, const QPoint& point);
     void paintEvent(QPaintEvent* event) override;
+
+    virtual void OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons, const QPoint& point);
     virtual void OnMouseWheel(Qt::KeyboardModifiers modifiers, short zDelta, const QPoint& pt);
     virtual void OnLButtonDown(Qt::KeyboardModifiers modifiers, const QPoint& point);
     virtual void OnLButtonUp(Qt::KeyboardModifiers modifiers, const QPoint& point);
@@ -521,14 +524,20 @@ protected:
     virtual void OnRButtonDblClk(Qt::KeyboardModifiers modifiers, const QPoint& point);
     virtual void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
     virtual void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
     void OnRawInput(UINT wParam, HRAWINPUT lParam);
-#endif // KDAB_MAC_PORT
+#endif
     void OnSetCursor();
 
+    void BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QDropEvent* dropEvent);
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dragMoveEvent(QDragMoveEvent* event) override;
+    void dragLeaveEvent(QDragLeaveEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+
     //Child classes can override these to provide extra logic that wraps
-    //widget rendering. Needed by the RenderViewport to handle raycasts 
-    //from screen-space to world-space. 
+    //widget rendering. Needed by the RenderViewport to handle raycasts
+    //from screen-space to world-space.
     virtual void PreWidgetRendering() {}
     virtual void PostWidgetRendering() {}
 
@@ -577,8 +586,6 @@ protected:
     // Same construction matrix is shared by all viewports.
     Matrix34 m_constructionMatrix[LAST_COORD_SYSTEM];
 
-    ViewportDropTarget* m_pViewportDropTarget;
-
     QPointer<CEditTool> m_pLocalEditTool;
 
     std::vector<IRenderListener*>           m_cRenderListeners;
@@ -592,5 +599,3 @@ protected:
 private:
     QWidget m_renderOverlay;
 };
-
-#endif // CRYINCLUDE_EDITOR_VIEWPORT_H

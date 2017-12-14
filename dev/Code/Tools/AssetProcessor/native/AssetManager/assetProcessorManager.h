@@ -65,9 +65,6 @@ namespace AzToolsFramework
 
         class AssetJobsInfoRequest;
         class AssetJobsInfoResponse;
-
-        class SourceFileInfoRequest;
-        class SourceFileInfoResponse;
     } // namespace AssetSystem
 } // namespace AzToolsFramework
 
@@ -84,18 +81,14 @@ namespace AssetProcessor
     class AssetProcessorManager
         : public QObject
         , public AssetProcessor::ProcessingJobInfoBus::Handler
-        , public AzToolsFramework::AssetSystemRequestBus::Handler
     {
         using BaseAssetProcessorMessage = AzFramework::AssetSystem::BaseAssetProcessorMessage;
-        using ToolsSourceFileInfo = AzToolsFramework::AssetSystem::SourceFileInfo;
         using AssetJobsInfoRequest = AzToolsFramework::AssetSystem::AssetJobsInfoRequest;
         using AssetJobsInfoResponse = AzToolsFramework::AssetSystem::AssetJobsInfoResponse;
         using JobInfo = AzToolsFramework::AssetSystem::JobInfo;
         using JobStatus = AzToolsFramework::AssetSystem::JobStatus;
         using AssetJobLogRequest = AzToolsFramework::AssetSystem::AssetJobLogRequest;
         using AssetJobLogResponse = AzToolsFramework::AssetSystem::AssetJobLogResponse;
-        using SourceFileInfoRequest = AzToolsFramework::AssetSystem::SourceFileInfoRequest;
-        using SourceFileInfoResponse = AzToolsFramework::AssetSystem::SourceFileInfoResponse;
         using GetRelativeProductPathFromFullSourceOrProductPathRequest = AzFramework::AssetSystem::GetRelativeProductPathFromFullSourceOrProductPathRequest;
         using GetRelativeProductPathFromFullSourceOrProductPathResponse = AzFramework::AssetSystem::GetRelativeProductPathFromFullSourceOrProductPathResponse;
         using GetFullSourcePathFromRelativeProductPathRequest = AzFramework::AssetSystem::GetFullSourcePathFromRelativeProductPathRequest;
@@ -171,17 +164,6 @@ namespace AssetProcessor
         void StopIgnoringCacheFileDelete(const AZStd::string productPath, bool queueAgainForProcessing) override;
         //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        //AzToolsFramework::AssetSystem::AssetSystemRequestBus::Handler overrides
-        const char* GetAbsoluteDevGameFolderPath() override;
-        const char* GetAbsoluteDevRootFolderPath() override;
-        bool GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullPath, AZStd::string& relativeProductPath) override;
-        bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullSourcePath) override;
-        void UpdateQueuedEvents() override;
-        bool GetSourceAssetInfoById(const AZ::Uuid& guid, AZStd::string& watchFolder, AZStd::string& relativePath) override;
-        bool GetSourceFileInfoByPath(ToolsSourceFileInfo& result, const char* sourcePath) override;
-        ////////////////////////////////////////////////////////////////////////////////
-
         AZStd::shared_ptr<AssetDatabaseConnection> GetDatabaseConnection() const;
 
         //! Internal structure that will hold all the necessary information to process jobs later.
@@ -221,6 +203,11 @@ Q_SIGNALS:
 
         void EscalateJobs(AssetProcessor::JobIdEscalationList jobIdEscalationList);
 
+        void SourceDeleted(QString relSourceFile);
+        void SourceQueued(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid, QString rootPath, QString relativeFilePath);
+        void SourceFinished(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid);
+        void JobRemoved(AzToolsFramework::AssetSystem::JobInfo jobInfo);
+
     public Q_SLOTS:
         void AssetProcessed(JobEntry jobEntry, AssetBuilderSDK::ProcessJobResponse response);
         void AssetProcessed_Impl();
@@ -242,19 +229,7 @@ Q_SIGNALS:
 
         //! A network request came in, Given a JOB ID (from the above Job Request), asking for the actual log for that job.
         void ProcessGetAssetJobLogRequest(NetworkRequestID requestId, BaseAssetProcessorMessage* message, bool fencingFailed = false);
-
-        //! A network request came in, given a source file path/guid asking for the file information.
-        void ProcessSourceFileInfoRequest(NetworkRequestID requestId, BaseAssetProcessorMessage* message, bool fencingFailed = false);
-
-        // given some absolute path, please respond with its relative product path.  For now, this will be a
-        // string like 'textures/blah.tif' (we don't care about extensions), but eventually, this will
-        // be an actual asset UUID.
-        void ProcessGetRelativeProductPathFromFullSourceOrProductPathRequest(const AZStd::string& fullPath, AZStd::string& relativeProductPath);
-
-        // This function helps in determining the full product path of an relative product path.
-        //In the future we will be sending an asset UUID to this function to request for full path.
-        void ProcessGetFullSourcePathFromRelativeProductPathRequest(const AZStd::string& relPath, AZStd::string& fullSourcePath);
-
+        
         //! This request comes in and is expected to do whatever heuristic is required in order to determine if an asset actually exists in the database.
         void OnRequestAssetExists(NetworkRequestID requestId, QString platform, QString searchTerm);
 
@@ -268,7 +243,6 @@ Q_SIGNALS:
         void CheckMissingFiles();
         void ProcessGetAssetJobsInfoRequest(AssetJobsInfoRequest& request, AssetJobsInfoResponse& response);
         void ProcessGetAssetJobLogRequest(const AssetJobLogRequest& request, AssetJobLogResponse& response);
-        void ProcessGetAssetJobLogRequest(const SourceFileInfoRequest& request, SourceFileInfoResponse& response);
         void ScheduleNextUpdate();
 
     private:
@@ -282,7 +256,7 @@ Q_SIGNALS:
         void CheckModifiedSourceFile(QString normalizedPath, QString relativeSourceFile);
         bool AnalyzeJob(JobDetails& details, const ScanFolderInfo* scanFolder, bool& sentSourceFileChangedMessage);
         void CheckDeletedCacheFolder(QString normalizedPath);
-        void CheckDeletedSourceFolder(QString normalizedPath, QString relativePath, QString scanFolderPath);
+        void CheckDeletedSourceFolder(QString normalizedPath, QString relativePath, const ScanFolderInfo* scanFolderInfo);
         void CheckCreatedSourceFolder(QString normalizedPath);
         void CheckMetaDataRealFiles(QString relativePath);
         bool DeleteProducts(const AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& products);
@@ -296,8 +270,6 @@ Q_SIGNALS:
         // to the list of known folders.
         void AddKnownFoldersRecursivelyForFile(QString file, QString root);
         void CleanEmptyFoldersForFile(QString file, QString root);
-
-        QString GuessProductNameInDatabase(QString path);
 
         void ProcessBuilders(QString normalizedPath, QString relativePathToFile, const ScanFolderInfo* scanFolder, const AssetProcessor::BuilderInfoList& builderInfoList);
 
@@ -387,7 +359,7 @@ Q_SIGNALS:
         bool m_quitRequested = false;
         bool m_processedQueued = false;
         bool m_AssetProcessorIsBusy = false;
-        int m_platformFlags = 0;
+
         bool m_alreadyScheduledUpdate = false;
         QMutex m_processingJobMutex;
         AZStd::unordered_set<AZStd::string> m_processingProductInfoList;

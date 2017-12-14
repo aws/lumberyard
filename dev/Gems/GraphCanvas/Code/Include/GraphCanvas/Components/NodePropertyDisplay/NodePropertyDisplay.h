@@ -17,6 +17,7 @@
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
 
 #include <QGraphicsScene>
 #include <QGraphicsView>
@@ -68,12 +69,12 @@ namespace GraphCanvas
         void TryAndSelectNode() const
         {
             bool isSelected = false;
-            NodeUIRequestBus::EventResult(isSelected, m_nodeId, &NodeUIRequests::IsSelected);
+            SceneMemberUIRequestBus::EventResult(isSelected, m_nodeId, &SceneMemberUIRequests::IsSelected);
 
             if (!isSelected)
             {
                 SceneRequestBus::Event(GetSceneId(), &SceneRequests::ClearSelection);
-                NodeUIRequestBus::Event(GetNodeId(), &NodeUIRequests::SetSelected, true);
+                SceneMemberUIRequestBus::Event(GetNodeId(), &SceneMemberUIRequests::SetSelected, true);
             }
         }
 

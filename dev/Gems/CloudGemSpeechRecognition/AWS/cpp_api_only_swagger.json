@@ -1,0 +1,215 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/service/postaudio": {
+            "post": {
+                "description": "Send audio to a specified AWS Lex bot for processing",
+                "parameters": [
+                    {
+                        "name": "post_audio",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PostAudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Intent information returned from AWS Lex bot for sent audio",
+                        "schema": {
+                            "$ref" : "#/definitions/PostAudioResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/service/posttext": {
+            "post": {
+                "description": "Send text to a specified AWS Lex bot for processing, useful for testing intents without the need for audio.",
+                "parameters": [
+                    {
+                        "name": "post_text",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PostTextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Intent information returned from AWS Lex bot for sent audio",
+                        "schema": {
+                            "$ref" : "#/definitions/PostAudioResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "PostAudioRequest": {
+            "description": "Parameters for the Amazon Lex PostContent function, used to send an utterance to Amazon Lex",
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "description": "The ID of the client application user. Amazon Lex uses this to identify a user's conversation with your bot. Example would be a GUID for your user or unique user name.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Amazon Lex bot that will process the utterance. Example: MapPingBot",
+                    "type": "string"
+                },
+                "bot_alias": {
+                    "description": "Alias of the Amazon Lex bot that will process the utterance, typical examples would be PROD, DEV, etc.",
+                    "type": "string"
+                },
+                "audio": {
+                    "description": "PCM audio data, must include a WAV header and be in 16 bit, 16000 Hz, 1 channel format. This is binary data stored as a string with base64 encoding.",
+                    "type": "string",
+                    "format": "byte"
+                },
+                "session_attributes": {
+                    "description": "A JSON string which will be passed untouched as a return value from PostContent. This allows passing in user specific context in the request. ",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "user_id",
+                "name",
+                "bot_alias",
+                "audio"
+            ]
+        },
+        "PostTextRequest": {
+            "description": "Parameters for the Amazon Lex PostText function, used to send an utterance to Amazon Lex in text form, usually for intent debugging",
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "description": "The ID of the client application user. Amazon Lex uses this to identify a user's conversation with your bot. Example would be a GUID for your user or unique user name.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Amazon Lex bot that will process the utterance. Example: MapPingBot",
+                    "type": "string"
+                },
+                "bot_alias": {
+                    "description": "Alias of the Amazon Lex bot that will process the utterance, typical examples would be PROD, DEV, etc.",
+                    "type": "string"
+                },
+                "text": {
+                    "description": "The text utterance to be processed",
+                    "type": "string"
+                },
+                "session_attributes": {
+                    "description": "A JSON string which will be passed untouched as a return value from PostText. This allows passing in user specific context in the request",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "user_id",
+                "name",
+                "bot_alias",
+                "text"
+            ]
+        },
+        "PostAudioResponse": {
+            "description": "Parameters returned from either PostContent or PostText",
+            "type": "object",
+            "properties": {
+
+                "intent": {
+                    "description": "Current user intent that Amazon Lex is aware of, if one has been identified from the utterance",
+                    "type": "string"
+                },
+                "dialog_state": {
+                    "description": "Identifies the current state of the user interaction. Please see http://docs.aws.amazon.com/lex/latest/dg/API_runtime_PostContent.html#API_runtime_PostContent_ResponseSyntax for more information",
+                    "type": "string"
+                },
+                "input_transcript": {
+                    "description": "If the input was an audio stream, contains the literal words recognized by Amazon Lex (rather than the intent)",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message to convey to the user if any (typically set with one of the dialog states)",
+                    "type": "string"
+                },
+                "session_attributes": {
+                    "description": "The JSON string passed through the function to provide user specific context",
+                    "type": "string"
+                },
+                "slots": {
+                    "description": "JSON map of slot names and values detected by Amazon Lex",
+                    "type": "string"
+                },
+                "slot_to_elicit": {
+                    "description": "If the dialogState value is ElicitSlot, returns the name of the slot for which Amazon Lex is eliciting a value",
+                    "type": "string"
+                }
+            }
+        },
+
+        "ServiceStatus": {
+            "description": "",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "If the service is live, returns the string 'online'",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "description": "",
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "description": "HTTP status code of the error",
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "description": "Descriptive string of the error",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        }
+    }
+}

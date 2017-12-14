@@ -1,4 +1,4 @@
-#
+########################################################################################
 # All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
@@ -8,10 +8,38 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-
+########################################################################################
 
 def build(bld):
     bld.DefineGem(
         # Add custom build options here
-        includes    = [bld.Path('Code/CryEngine/CryAction'), bld.Path('Gems/LyShine/Code/Source'), bld.Path('Gems/Camera/Code/Source'), bld.Path('Gems/LmbrCentral/Code/Source')],
+		use	        	= [ 'AzGameFramework', 'EMotionFXStaticLib'],
+		
+        includes    	= [ bld.Path('Code/CryEngine/CryAction'),
+							bld.Path('Gems/LmbrCentral/Code/Source'),
+							bld.Path('Gems/LyShine/Code/Source'),
+							bld.Path('Gems/Camera/Code/Source'),
+							bld.Path('Gems/EMotionFX/Code'),
+							bld.Path('Gems/EMotionFX/Code/Source'),
+							],
+		
+		editor = dict(
+			defines		= [ 'STARTER_GAME_EDITOR' ],
+			use	        = [ 'AzToolsFramework', 'EMotionFXStaticLib', 'SceneCore', 'SceneData' ],
+			uselib		= [ 'QT5CORE',
+							'QT5GUI',
+							'QT5WIDGETS',
+							],
+			includes	= [ './Include',
+							bld.Path('Code/CryEngine/CryAction'),
+							bld.Path('Gems/LmbrCentral/Code/Source'),
+							bld.Path('Gems/LyShine/Code/Source'),
+							bld.Path('Gems/Camera/Code/Source'),
+							bld.Path('Gems/EMotionFX/Code'),
+							bld.Path('Gems/EMotionFX/Code/Source'),
+							bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+							bld.Path('Code/Sandbox/Editor'),
+							bld.Path('Code/Sandbox/Editor/Include'),
+							],
+		)
     )

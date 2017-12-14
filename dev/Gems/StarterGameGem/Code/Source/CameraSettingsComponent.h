@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -72,9 +70,12 @@ namespace StarterGameGem
 		float m_nearClip;
 		float m_farClip;
 
+        // transition time is only used when changing settings,
+        // so it is not exposed in editor, copied, blended or serialized
+        float m_transitionTime;
 	};
 
-	class CameraSettingsEventArgs
+	class CameraSettingsEventArgs final
 	{
 	public:
 		AZ_RTTI(CameraSettingsEventArgs, "{EF120303-86A3-448B-BEAD-C76415FCFD0C}");
@@ -82,6 +83,7 @@ namespace StarterGameGem
 
 		AZStd::string m_name;
 		AZ::EntityId m_entityId;
+        float m_transitionTime;
 	};
 	
 

@@ -47,6 +47,10 @@
 #include "Components/IComponentEntityNode.h"
 #include "Components/IComponentAudio.h"
 #include "Components/IComponentPhysics.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
+
 
 #define s_nodeParamsInitialized s_nodeParamsInitializedEnt
 #define s_nodeParams s_nodeParamsEnt
@@ -85,7 +89,7 @@ namespace
     bool s_nodeParamsInitialized = false;
     std::vector<CAnimNode::SParamInfo> s_nodeParams;
 
-    void AddSupportedParam(std::vector<CAnimNode::SParamInfo>& nodeParams, const char* sName, int paramId, EAnimValue valueType, int flags = 0)
+    void AddSupportedParam(std::vector<CAnimNode::SParamInfo>& nodeParams, const char* sName, AnimParamType paramId, AnimValueType valueType, int flags = 0)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -107,12 +111,12 @@ namespace
 
 //////////////////////////////////////////////////////////////////////////
 CAnimEntityNode::CAnimEntityNode()
-    : CAnimEntityNode(0, eAnimNodeType_Entity)
+    : CAnimEntityNode(0, AnimNodeType::Entity)
 {
 }
 
 //////////////////////////////////////////////////////////////////////////
-CAnimEntityNode::CAnimEntityNode(const int id, EAnimNodeType nodeType)
+CAnimEntityNode::CAnimEntityNode(const int id, AnimNodeType nodeType)
     : CAnimNode(id, nodeType)
 {
     m_EntityId = 0;
@@ -165,19 +169,19 @@ void CAnimEntityNode::Initialize()
     {
         s_nodeParamsInitialized = true;
         s_nodeParams.reserve(14);
-        AddSupportedParam(s_nodeParams, "Position", eAnimParamType_Position, eAnimValue_Vector);
-        AddSupportedParam(s_nodeParams, "Rotation", eAnimParamType_Rotation, eAnimValue_Quat);
-        AddSupportedParam(s_nodeParams, "Scale", eAnimParamType_Scale, eAnimValue_Vector);
-        AddSupportedParam(s_nodeParams, "Visibility", eAnimParamType_Visibility, eAnimValue_Bool);
-        AddSupportedParam(s_nodeParams, "Event", eAnimParamType_Event, eAnimValue_Unknown);
-        AddSupportedParam(s_nodeParams, "Sound", eAnimParamType_Sound, eAnimValue_Unknown, eSupportedParamFlags_MultipleTracks);
-        AddSupportedParam(s_nodeParams, "Animation", eAnimParamType_Animation, eAnimValue_CharacterAnim, eSupportedParamFlags_MultipleTracks);
-        AddSupportedParam(s_nodeParams, "Mannequin", eAnimParamType_Mannequin, eAnimValue_Unknown, eSupportedParamFlags_MultipleTracks);
-        AddSupportedParam(s_nodeParams, "LookAt", eAnimParamType_LookAt, eAnimValue_Unknown);
-        AddSupportedParam(s_nodeParams, "Noise", eAnimParamType_TransformNoise, eAnimValue_Vector4);
-        AddSupportedParam(s_nodeParams, "Physicalize", eAnimParamType_Physicalize, eAnimValue_Bool);
-        AddSupportedParam(s_nodeParams, "PhysicsDriven", eAnimParamType_PhysicsDriven, eAnimValue_Bool);
-        AddSupportedParam(s_nodeParams, "Procedural Eyes", eAnimParamType_ProceduralEyes, eAnimValue_Bool);
+        AddSupportedParam(s_nodeParams, "Position", AnimParamType::Position, AnimValueType::Vector);
+        AddSupportedParam(s_nodeParams, "Rotation", AnimParamType::Rotation, AnimValueType::Quat);
+        AddSupportedParam(s_nodeParams, "Scale", AnimParamType::Scale, AnimValueType::Vector);
+        AddSupportedParam(s_nodeParams, "Visibility", AnimParamType::Visibility, AnimValueType::Bool);
+        AddSupportedParam(s_nodeParams, "Event", AnimParamType::Event, AnimValueType::Unknown);
+        AddSupportedParam(s_nodeParams, "Sound", AnimParamType::Sound, AnimValueType::Unknown, eSupportedParamFlags_MultipleTracks);
+        AddSupportedParam(s_nodeParams, "Animation", AnimParamType::Animation, AnimValueType::CharacterAnim, eSupportedParamFlags_MultipleTracks);
+        AddSupportedParam(s_nodeParams, "Mannequin", AnimParamType::Mannequin, AnimValueType::Unknown, eSupportedParamFlags_MultipleTracks);
+        AddSupportedParam(s_nodeParams, "LookAt", AnimParamType::LookAt, AnimValueType::Unknown);
+        AddSupportedParam(s_nodeParams, "Noise", AnimParamType::TransformNoise, AnimValueType::Vector4);
+        AddSupportedParam(s_nodeParams, "Physicalize", AnimParamType::Physicalize, AnimValueType::Bool);
+        AddSupportedParam(s_nodeParams, "PhysicsDriven", AnimParamType::PhysicsDriven, AnimValueType::Bool);
+        AddSupportedParam(s_nodeParams, "Procedural Eyes", AnimParamType::ProceduralEyes, AnimValueType::Bool);
 
         REGISTER_CVAR(movie_physicalentity_animation_lerp, 0.85f, 0, "Lerp value for animation-driven physical entities");
     }
@@ -188,12 +192,12 @@ void CAnimEntityNode::AddTrack(IAnimTrack* pTrack)
 {
     const CAnimParamType& paramType = pTrack->GetParameterType();
 
-    if (paramType == eAnimParamType_PhysicsDriven)
+    if (paramType == AnimParamType::PhysicsDriven)
     {
         CBoolTrack* pPhysicsDrivenTrack = static_cast<CBoolTrack*>(pTrack);
         pPhysicsDrivenTrack->SetDefaultValue(false);
     }
-    else if (paramType == eAnimParamType_ProceduralEyes)
+    else if (paramType == AnimParamType::ProceduralEyes)
     {
         CBoolTrack* pProceduralEyesTrack = static_cast<CBoolTrack*>(pTrack);
         pProceduralEyesTrack->SetDefaultValue(false);
@@ -270,7 +274,7 @@ void CAnimEntityNode::UpdateDynamicParams_PureGame()
     {
         AZStd::intrusive_ptr<IAnimTrack> pTrack = m_tracks[i];
         CAnimParamType paramType(pTrack->GetParameterType());
-        if (paramType.GetType() != eAnimParamType_ByString)
+        if (paramType.GetType() != AnimParamType::ByString)
         {
             continue;
         }
@@ -291,7 +295,7 @@ void CAnimEntityNode::UpdateDynamicParams_PureGame()
         {
             SScriptPropertyParamInfo paramInfo;
             bool isUnknownTable = ObtainPropertyTypeInfo(propertyName.c_str(), propertyScriptTable, paramInfo);
-            if (paramInfo.animNodeParamInfo.valueType == eAnimValue_Unknown)
+            if (paramInfo.animNodeParamInfo.valueType == AnimValueType::Unknown)
             {
                 return;
             }
@@ -349,7 +353,7 @@ void CAnimEntityNode::FindDynamicPropertiesRec(IScriptTable* pScriptTable, const
             continue;
         }
 
-        if (paramInfo.animNodeParamInfo.valueType != eAnimValue_Unknown)
+        if (paramInfo.animNodeParamInfo.valueType != AnimValueType::Unknown)
         {
             AddPropertyToParamInfoMap(iter.sKey, currentPath, paramInfo);
         }
@@ -367,7 +371,7 @@ bool CAnimEntityNode::ObtainPropertyTypeInfo(const char* pKey, IScriptTable* pSc
     pScriptTable->GetValueAny(pKey, value);
     paramInfo.scriptTable = pScriptTable;
     paramInfo.isVectorTable = false;
-    paramInfo.animNodeParamInfo.valueType = eAnimValue_Unknown;
+    paramInfo.animNodeParamInfo.valueType = AnimValueType::Unknown;
     bool isUnknownTable = false;
 
     switch (value.type)
@@ -376,21 +380,21 @@ bool CAnimEntityNode::ObtainPropertyTypeInfo(const char* pKey, IScriptTable* pSc
     {
         const bool hasBoolPrefix = (strlen(pKey) > 1) && (pKey[0] == 'b')
             && (pKey[1] != tolower(pKey[1]));
-        paramInfo.animNodeParamInfo.valueType = hasBoolPrefix ? eAnimValue_Bool : eAnimValue_Float;
+        paramInfo.animNodeParamInfo.valueType = hasBoolPrefix ? AnimValueType::Bool : AnimValueType::Float;
     }
     break;
     case ANY_TVECTOR:
-        paramInfo.animNodeParamInfo.valueType = eAnimValue_Vector;
+        paramInfo.animNodeParamInfo.valueType = AnimValueType::Vector;
         break;
     case ANY_TBOOLEAN:
-        paramInfo.animNodeParamInfo.valueType = eAnimValue_Bool;
+        paramInfo.animNodeParamInfo.valueType = AnimValueType::Bool;
         break;
     case ANY_TTABLE:
         // Threat table as vector if it contains x, y & z
         paramInfo.scriptTable = value.table;
         if (value.table->HaveValue("x") && value.table->HaveValue("y") && value.table->HaveValue("z"))
         {
-            paramInfo.animNodeParamInfo.valueType = eAnimValue_Vector;
+            paramInfo.animNodeParamInfo.valueType = AnimValueType::Vector;
             paramInfo.scriptTable = value.table;
             paramInfo.isVectorTable = true;
         }
@@ -432,12 +436,12 @@ void CAnimEntityNode::AddPropertyToParamInfoMap(const char* pKey, const string& 
     strippedName = foundPrefix ? strippedName : pKey;
 
     // If it is a vector check if we need to create a color track
-    if (paramInfo.animNodeParamInfo.valueType == eAnimValue_Vector)
+    if (paramInfo.animNodeParamInfo.valueType == AnimValueType::Vector)
     {
         if ((prefixLength == 3 && memcmp(pKey, "clr", 3) == 0)
             || (prefixLength == 5 && memcmp(pKey, "color", 5) == 0))
         {
-            paramInfo.animNodeParamInfo.valueType = eAnimValue_RGB;
+            paramInfo.animNodeParamInfo.valueType = AnimValueType::RGB;
         }
     }
 
@@ -456,7 +460,7 @@ void CAnimEntityNode::AddPropertyToParamInfoMap(const char* pKey, const string& 
 void CAnimEntityNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAnimParamType& paramType)
 {
     // Initialize new track to property value
-    if (paramType.GetType() == eAnimParamType_ByString && pTrack && (strncmp(paramType.GetName(), kScriptTablePrefix, strlen(kScriptTablePrefix)) == 0))
+    if (paramType.GetType() == AnimParamType::ByString && pTrack && (strncmp(paramType.GetName(), kScriptTablePrefix, strlen(kScriptTablePrefix)) == 0))
     {
         IEntity* pEntity = GetEntity();
         if (!pEntity)
@@ -475,13 +479,13 @@ void CAnimEntityNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAni
 
             switch (pTrack->GetValueType())
             {
-            case eAnimValue_Float:
+            case AnimValueType::Float:
                 param.scriptTable->GetValue(param.variableName, fValue);
                 pTrack->SetValue(0, fValue, true);
                 break;
-            case eAnimValue_Vector:
+            case AnimValueType::Vector:
             // fall through
-            case eAnimValue_RGB:
+            case AnimValueType::RGB:
                 if (param.isVectorTable)
                 {
                     param.scriptTable->GetValue("x", vecValue.x);
@@ -493,7 +497,7 @@ void CAnimEntityNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAni
                     param.scriptTable->GetValue(param.variableName, vecValue);
                 }
 
-                if (pTrack->GetValueType() == eAnimValue_RGB)
+                if (pTrack->GetValueType() == AnimValueType::RGB)
                 {
                     vecValue.x = clamp_tpl(vecValue.x, 0.0f, 1.0f);
                     vecValue.y = clamp_tpl(vecValue.y, 0.0f, 1.0f);
@@ -504,7 +508,7 @@ void CAnimEntityNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAni
 
                 pTrack->SetValue(0, vecValue, true);
                 break;
-            case eAnimValue_Bool:
+            case AnimValueType::Bool:
                 param.scriptTable->GetValue(param.variableName, boolValue);
                 pTrack->SetValue(0, boolValue, true);
                 break;
@@ -552,7 +556,7 @@ CAnimParamType CAnimEntityNode::GetParamType(unsigned int nIndex) const
             return m_entityScriptPropertiesParamInfos[nIndex - scriptParamsOffset].animNodeParamInfo.paramType;
         }
 
-        return eAnimParamType_Invalid;
+        return AnimParamType::Invalid;
     }
 
     return info.paramType;
@@ -609,7 +613,7 @@ const char* CAnimEntityNode::GetParamName(const CAnimParamType& param) const
     }
 
     const char* pName = param.GetName();
-    if (param.GetType() == eAnimParamType_ByString && pName && strncmp(pName, kScriptTablePrefix, strlen(kScriptTablePrefix)) == 0)
+    if (param.GetType() == AnimParamType::ByString && pName && strncmp(pName, kScriptTablePrefix, strlen(kScriptTablePrefix)) == 0)
     {
         return pName + strlen(kScriptTablePrefix);
     }
@@ -671,7 +675,7 @@ void CAnimEntityNode::StillUpdate()
 
         switch (m_tracks[paramIndex]->GetParameterType().GetType())
         {
-        case eAnimParamType_LookAt:
+        case AnimParamType::LookAt:
         {
             SAnimContext ec;
             ec.time = m_time;
@@ -743,7 +747,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
         IAnimTrack* pTrack = m_tracks[paramIndex].get();
         // always evaluate Boolean or interpolated camera tracks, even if it has no keys. Boolean tracks may differ from their
         // non-animate state, and interpolated cameras may have animation depsite having no keys.
-        bool alwaysEvaluateTrack = pTrack->GetValueType() == eAnimValue_Bool || IsSkipInterpolatedCameraNodeEnabled();
+        bool alwaysEvaluateTrack = pTrack->GetValueType() == AnimValueType::Bool || IsSkipInterpolatedCameraNodeEnabled();
         if ((pTrack->HasKeys() == false && !alwaysEvaluateTrack)
             || (pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled)
             || pTrack->IsMasked(ec.trackMask))
@@ -753,7 +757,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
 
         switch (paramType.GetType())
         {
-        case eAnimParamType_Position:
+        case AnimParamType::Position:
             pPosTrack = pTrack;
             if (!IsSkipInterpolatedCameraNodeEnabled())
             {
@@ -773,7 +777,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
             }
 
             break;
-        case eAnimParamType_Rotation:
+        case AnimParamType::Rotation:
             pRotTrack = pTrack;
             if (!IsSkipInterpolatedCameraNodeEnabled())
             {
@@ -793,7 +797,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
             }
 
             break;
-        case eAnimParamType_TransformNoise:
+        case AnimParamType::TransformNoise:
             static_cast<CCompoundSplineTrack*>(pTrack)->GetValue(ec.time, noiseParam);
             m_posNoise.m_amp = noiseParam.x;
             m_posNoise.m_freq = noiseParam.y;
@@ -801,7 +805,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
             m_rotNoise.m_freq = noiseParam.w;
             bApplyNoise = true;
             break;
-        case eAnimParamType_Scale:
+        case AnimParamType::Scale:
             sclTrack = pTrack;
             sclTrack->GetValue(ec.time, scale);
             // Check whether the scale value is valid.
@@ -817,7 +821,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                 bScaleModified = true;
             }
             break;
-        case eAnimParamType_Event:
+        case AnimParamType::Event:
             if (!ec.bResetting)
             {
                 CEventTrack* pEntityTrack = (CEventTrack*)pTrack;
@@ -851,7 +855,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                 }
             }
             break;
-        case eAnimParamType_Visibility:
+        case AnimParamType::Visibility:
             if (!ec.bResetting)
             {
                 IAnimTrack* visTrack = pTrack;
@@ -862,7 +866,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                     pEntity->Hide(!visible);
                     if (visible)
                     {
-                        IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(eAnimParamType_Physicalize);
+                        IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(AnimParamType::Physicalize);
                         if (pPhysicalizeTrack)
                         {
                             bool bUsePhysics = false;
@@ -878,7 +882,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                 }
             }
             break;
-        case eAnimParamType_ProceduralEyes:
+        case AnimParamType::ProceduralEyes:
         {
             if (!ec.bResetting)
             {
@@ -890,7 +894,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
 
             break;
         }
-        case eAnimParamType_Sound:
+        case AnimParamType::Sound:
             ++nNumAudioTracks;
             if (nNumAudioTracks > m_SoundInfo.size())
             {
@@ -901,7 +905,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
 
             break;
 
-        case eAnimParamType_Mannequin:
+        case AnimParamType::Mannequin:
             if (!ec.bResetting)
             {
                 CMannequinTrack* pMannequinTrack = (CMannequinTrack*)pTrack;
@@ -979,7 +983,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
             break;
 
         //////////////////////////////////////////////////////////////////////////
-        case eAnimParamType_Animation:
+        case AnimParamType::Animation:
             if (!ec.bResetting)
             {
                 if (!m_characterTrackAnimator)
@@ -1010,7 +1014,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
             }
             break;
 
-        case eAnimParamType_LookAt:
+        case AnimParamType::LookAt:
             if (!ec.bResetting)
             {
                 CLookAtTrack* pSelTrack = (CLookAtTrack*)pTrack;
@@ -1018,7 +1022,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
             }
             break;
 
-        case eAnimParamType_ByString:
+        case AnimParamType::ByString:
             if (!ec.bResetting)
             {
                 bScriptPropertyModified = AnimateScriptTableProperty(pTrack, ec, paramType.GetName()) || bScriptPropertyModified;
@@ -1068,7 +1072,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
     }
 
     // Update physics status if needed.
-    IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(eAnimParamType_Physicalize);
+    IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(AnimParamType::Physicalize);
     if (pPhysicalizeTrack)
     {
         bool bUsePhysics = false;
@@ -1204,7 +1208,7 @@ void CAnimEntityNode::PrepareAnimations()
         {
             switch (trackType.GetType())
             {
-            case eAnimParamType_Animation:
+            case AnimParamType::Animation:
             {
                 int numKeys = pTrack->GetNumKeys();
                 for (int i = 0; i < numKeys; i++)
@@ -1316,7 +1320,7 @@ void CAnimEntityNode::ResetSounds()
 
 void CAnimEntityNode::OnStart()
 {
-    IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(eAnimParamType_Physicalize);
+    IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(AnimParamType::Physicalize);
     if (pPhysicalizeTrack)
     {
         m_bInitialPhysicsStatus = false;
@@ -1361,7 +1365,7 @@ void CAnimEntityNode::UpdateEntityPosRotVel(const Vec3& targetPos, const Quat& t
         return;
     }
 
-    IAnimTrack* pPhysicsDrivenTrack = GetTrackForParameter(eAnimParamType_PhysicsDriven);
+    IAnimTrack* pPhysicsDrivenTrack = GetTrackForParameter(AnimParamType::PhysicsDriven);
     bool bPhysicsDriven = false;
     if (pPhysicsDrivenTrack)
     {
@@ -1423,7 +1427,7 @@ void CAnimEntityNode::SetPos(float time, const Vec3& pos)
 
     bool bDefault = !(gEnv->pMovieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
 
-    IAnimTrack* pPosTrack = GetTrackForParameter(eAnimParamType_Position);
+    IAnimTrack* pPosTrack = GetTrackForParameter(AnimParamType::Position);
     if (pPosTrack)
     {
         pPosTrack->SetValue(time, pos, bDefault);
@@ -1442,7 +1446,7 @@ void CAnimEntityNode::SetRotate(float time, const Quat& quat)
 
     bool bDefault = !(gEnv->pMovieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
 
-    IAnimTrack* rotTrack = GetTrackForParameter(eAnimParamType_Rotation);
+    IAnimTrack* rotTrack = GetTrackForParameter(AnimParamType::Rotation);
     if (rotTrack)
     {
         rotTrack->SetValue(time, m_rotate, bDefault);
@@ -1460,7 +1464,7 @@ void CAnimEntityNode::SetScale(float time, const Vec3& scale)
     m_scale = scale;
     bool bDefault = !(gEnv->pMovieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
 
-    IAnimTrack* sclTrack = GetTrackForParameter(eAnimParamType_Scale);
+    IAnimTrack* sclTrack = GetTrackForParameter(AnimParamType::Scale);
     if (sclTrack)
     {
         sclTrack->SetValue(time, scale, bDefault);
@@ -1479,7 +1483,7 @@ IAnimTrack* CAnimEntityNode::CreateTrack(const CAnimParamType& paramType)
 
     if (retTrack)
     {
-        if (paramType.GetType() == eAnimParamType_Animation && !m_characterTrackAnimator)
+        if (paramType.GetType() == AnimParamType::Animation && !m_characterTrackAnimator)
         {
             m_characterTrackAnimator = new CCharacterTrackAnimator();
         }
@@ -1492,13 +1496,33 @@ IAnimTrack* CAnimEntityNode::CreateTrack(const CAnimParamType& paramType)
 //////////////////////////////////////////////////////////////////////////
 bool CAnimEntityNode::RemoveTrack(IAnimTrack* pTrack)
 {
-    if (pTrack && pTrack->GetParameterType().GetType() == eAnimParamType_Animation && m_characterTrackAnimator)
+    if (pTrack && pTrack->GetParameterType().GetType() == AnimParamType::Animation && m_characterTrackAnimator)
     {
         delete m_characterTrackAnimator;
         m_characterTrackAnimator = nullptr;
     }
 
     return CAnimNode::RemoveTrack(pTrack);
+}
+
+//////////////////////////////////////////////////////////////////////////
+Quat CAnimEntityNode::GetRotate(float time)
+{
+    Quat worldRot;
+
+    // If there is rotation track data, get the rotation from there.
+    // Otherwise just use the current entity rotation value.
+    IAnimTrack* rotTrack = GetTrackForParameter(AnimParamType::Rotation);
+    if (rotTrack != nullptr && rotTrack->GetNumKeys() > 0)
+    {
+        rotTrack->GetValue(time, worldRot);
+    }
+    else
+    {
+        worldRot = GetRotate();
+    }
+
+    return worldRot;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1626,15 +1650,6 @@ void CAnimEntityNode::ApplyAudioKey(char const* const sTriggerName, bool const b
                 pAudioComponent->StopTrigger(nAudioControlID);
             }
         }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CAnimEntityNode::OnEndAnimation(const char* sAnimation)
-{
-    if (m_characterTrackAnimator)
-    {
-        m_characterTrackAnimator->OnEndAnimation(sAnimation, GetEntity());
     }
 }
 
@@ -1819,7 +1834,7 @@ bool CAnimEntityNode::AnimateScriptTableProperty(IAnimTrack* pTrack, SAnimContex
 
         switch (pTrack->GetValueType())
         {
-        case eAnimValue_Float:
+        case AnimValueType::Float:
             pTrack->GetValue(ec.time, fValue);
             param.scriptTable->GetValue(param.variableName, currfValue);
             // this check actually fails much more often than it should. There is some kind of lack of precision in the trackview interpolation calculations, and often a value that should
@@ -1831,12 +1846,12 @@ bool CAnimEntityNode::AnimateScriptTableProperty(IAnimTrack* pTrack, SAnimContex
                 propertyChanged = true;
             }
             break;
-        case eAnimValue_Vector:
+        case AnimValueType::Vector:
         // fall through
-        case eAnimValue_RGB:
+        case AnimValueType::RGB:
             pTrack->GetValue(ec.time, vecValue);
 
-            if (pTrack->GetValueType() == eAnimValue_RGB)
+            if (pTrack->GetValueType() == AnimValueType::RGB)
             {
                 vecValue /= 255.0f;
 
@@ -1866,7 +1881,7 @@ bool CAnimEntityNode::AnimateScriptTableProperty(IAnimTrack* pTrack, SAnimContex
                 }
             }
             break;
-        case eAnimValue_Bool:
+        case AnimValueType::Bool:
             pTrack->GetValue(ec.time, boolValue);
             if (param.scriptTable->GetValueType(param.variableName) == svtNumber)
             {
@@ -1975,7 +1990,7 @@ void CAnimEntityNode::PrecacheStatic(float time)
         CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
         IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
-        if (paramType == eAnimParamType_Sound)
+        if (paramType == AnimParamType::Sound)
         {
             // Pre-cache audio data from all tracks
             CSoundTrack const* const pSoundTrack = static_cast<CSoundTrack const* const>(pTrack);
@@ -2017,7 +2032,7 @@ void CAnimEntityNode::PrecacheDynamic(float time)
         CAnimParamType trackType = m_tracks[paramIndex]->GetParameterType();
         IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
-        if (trackType == eAnimParamType_Animation)
+        if (trackType == AnimParamType::Animation)
         {
             int numKeys = pTrack->GetNumKeys();
             for (int i = 0; i < numKeys; i++)
@@ -2106,10 +2121,10 @@ void CAnimEntityNode::StopEntity()
                 CAnimParamType paramType = pTrack->GetParameterType();
                 switch (paramType.GetType())
                 {
-                case eAnimParamType_Position:
+                case AnimParamType::Position:
                     entityUpdateFlags |= eUpdateEntity_Position;
                     break;
-                case eAnimParamType_Rotation:
+                case AnimParamType::Rotation:
                     entityUpdateFlags |= eUpdateEntity_Rotation;
                     break;
                 }
@@ -2125,7 +2140,7 @@ void CAnimEntityNode::StopEntity()
         }
     }
 
-    IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(eAnimParamType_Physicalize);
+    IAnimTrack* pPhysicalizeTrack = GetTrackForParameter(AnimParamType::Physicalize);
     if (pPhysicalizeTrack)
     {
         EnableEntityPhysics(m_bInitialPhysicsStatus);

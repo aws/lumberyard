@@ -20,13 +20,13 @@
 namespace AZ
 {
     class Aabb;
-    class SerializeContext;
-    void PolygonPrismReflect(SerializeContext& context);
+    class ReflectContext;
+    void PolygonPrismReflect(ReflectContext* context);
 
     /**
      * Formal Definition: A (right) polygonal prism is a 3-dimensional prism made from two translated polygons connected by rectangles. Parallelogram sides are not allowed.
      * Here the representation is defined by one polygon (internally represented as a vertex container - list of vertices) and a height (extrusion) property.
-     * All points lie on the local plane Z = 0.
+     * All vertices lie on the local plane Z = 0.
      */
     class PolygonPrism
     {
@@ -37,26 +37,44 @@ namespace AZ
         PolygonPrism() = default;
         virtual ~PolygonPrism() = default;
 
+        /**
+         * Set the height of the polygon prism.
+         */
         void SetHeight(float height);
+        /**
+         * Return the height of the polygon prism.
+         */
         float GetHeight() const { return m_height; }
 
         /**
-         * Override callbacks to be used when polygon prism changes/is modified.
+         * Override callbacks to be used when polygon prism changes/is modified (general).
          */
-        void SetCallbacks(const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer);
+        void SetCallbacks(
+            const AZStd::function<void()>& OnChangeElement,
+            const AZStd::function<void()>& OnChangeContainer,
+            const AZStd::function<void()>& OnChangeHeight);
 
-        static void Reflect(SerializeContext& context);
+        /**
+         * Override callbacks to be used when spline changes/is modified (specific).
+         * (use if you need more fine grained control over modifications to the container)
+         */
+        void SetCallbacks(
+            const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
+            const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
+            const AZStd::function<void()>& OnClearVertices, const AZStd::function<void()>& OnChangeHeight);
+
+        static void Reflect(ReflectContext* context);
 
         VertexContainer<Vector2> m_vertexContainer; ///< Reference to underlying vertex data.
 
     private:
-        AZStd::function<void()> m_onChangeCallback = nullptr; ///< Callback for when height is changed.
+        AZStd::function<void()> m_onChangeHeightCallback = nullptr; ///< Callback for when height is changed.
         float m_height = 1.0f; ///< Height of polygon prism (about local Z) - default to 1m.
 
         /**
-         * Internally used to call OnChangeCallback when values are modified in the property grid.
+         * Internally used to call OnChangeCallback when height values are modified in the property grid.
          */
-        void OnChange() const;
+        void OnChangeHeight() const;
     };
 
     using PolygonPrismPtr = AZStd::shared_ptr<PolygonPrism>;

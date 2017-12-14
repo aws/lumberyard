@@ -120,21 +120,27 @@ namespace GridMate
         bool IsSyncStage() const { return !!(m_flags & Rep_SyncStage); }
         bool IsMigratable() const { return !!(m_flags & Rep_CanMigrate); }
         bool IsDirty() const { return m_dirtyHook.m_prev || m_dirtyHook.m_next; }
-
-
         bool IsBroadcast() const;
-
-
         bool IsUpdateFromReplicaEnabled() const;
 
         ReplicaPriority GetPriority() const { return m_priority; } // returns replica's priority aggregated across all its chunks
 
-        size_t GetNumChunks() { return m_chunks.size(); }
+        size_t GetNumChunks() const { return m_chunks.size(); }
         ReplicaChunkPtr GetChunkByIndex(size_t index);
 
         template<class R>
         inline AZStd::intrusive_ptr<R> FindReplicaChunk();
 
+        AZ::u64 GetRevision() const { return m_revision; };
+
+        //---------------------------------------------------------------------
+        // DEBUG and Test Interface. Do not use in production code.
+        //---------------------------------------------------------------------
+        const ReplicaTargetList&    DebugGetTargets() const { return m_targets; }
+        PrepareDataResult           DebugPrepareData(EndianType endian, AZ::u32 marshalFlags) { return PrepareData(endian, marshalFlags); }
+        void                        DebugMarshal(MarshalContext& mc) { Marshal(mc); }
+        void                        DebugPreDestruct() { PreDestruct(); }
+        //---------------------------------------------------------------------
     protected:
         explicit Replica(const char* replicaName);
         ~Replica();
@@ -170,7 +176,7 @@ namespace GridMate
 
         void InternalCreateInitialChunks(const char* replicaName);
 
-        PrepareDataResult PrepareData(EndianType endianType, AZ::u32 marshalFlags = ReplicaMarshalFlags::ForceDirty);
+        PrepareDataResult PrepareData(EndianType endianType, AZ::u32 marshalFlags = 0);
         void Marshal(MarshalContext& mc);
         bool Unmarshal(UnmarshalContext& mc);
 
@@ -182,27 +188,28 @@ namespace GridMate
         //---------------------------------------------------------------------
         // RPC handlers
         //---------------------------------------------------------------------
-        bool RequestOwnershipFn(PeerId requestor, const RpcContext& rpcContext);
-        bool MigrationSuspendUpstreamFn(PeerId ownerId, AZ::u32 requestTime, const RpcContext& rpcContext);
-        bool MigrationRequestDownstreamAckFn(PeerId ownerId, AZ::u32 requestTime, const RpcContext& rpcContext);
+        bool RequestOwnershipFn(PeerId requestor, const RpcContext& rpcContext) override;
+        bool MigrationSuspendUpstreamFn(PeerId ownerId, AZ::u32 requestTime, const RpcContext& rpcContext) override;
+        bool MigrationRequestDownstreamAckFn(PeerId ownerId, AZ::u32 requestTime, const RpcContext& rpcContext) override;
         //---------------------------------------------------------------------
 
-        ReplicaId m_myId;
-        AZ::u32 m_flags;
-        unsigned int m_createTime;
-        ReplicaManager* m_manager;
+        ReplicaId           m_myId;
+        AZ::u32             m_flags;
+        unsigned int        m_createTime;
+        ReplicaManager*     m_manager;
 
-        ReplicaPeer* m_upstreamHop;
+        ReplicaPeer*        m_upstreamHop;
 
-        ChunkListType m_chunks;
+        ChunkListType       m_chunks;
 
         typedef unordered_set<ReplicaTask*> PendingTasks;
-        PendingTasks m_marshalingTasks;
-        PendingTasks m_updateTasks;
+        PendingTasks        m_marshalingTasks;
+        PendingTasks        m_updateTasks;
         AZStd::intrusive_list_node<Replica> m_dirtyHook;
-        ReplicaChunkPtr m_replicaStatus;
-        ReplicaTargetList m_targets;
-        ReplicaPriority m_priority;
+        ReplicaChunkPtr     m_replicaStatus;
+        ReplicaTargetList   m_targets;
+        ReplicaPriority     m_priority;
+        AZ::u64             m_revision;              ///< Change stamp. Increases every time a data set changes. Start at 1 to send initial value.
     };
     //-----------------------------------------------------------------------------
 } // namespace GridMate

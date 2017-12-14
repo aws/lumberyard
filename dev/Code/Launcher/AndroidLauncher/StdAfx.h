@@ -18,9 +18,6 @@
 
 #define _LAUNCHER  // should be defined in launcher, because launcher has to have every symbols in platform_impl.h
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Launcher
-
 #include <platform.h>
 //#include <algorithm>
 //#include <string>

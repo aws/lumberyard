@@ -10,7 +10,6 @@
 *
 */
 
-
 #include "StdAfx.h"
 #include "StarterGameNavigationComponent.h"
 
@@ -23,6 +22,7 @@
 
 namespace StarterGameGem
 {
+    typedef StarterGameNavigationComponentNotifications::StarterGameNavPath StarterGameNavPath;
 
 	// Behavior Context forwarder for StarterGameNavigationComponentNotificationBus
 	class StarterGameBehaviorNavigationComponentNotificationBusHandler
@@ -33,10 +33,10 @@ namespace StarterGameGem
 		AZ_EBUS_BEHAVIOR_BINDER(StarterGameBehaviorNavigationComponentNotificationBusHandler,"{467912F0-F099-442A-ADC8-EAE8CDE29633}", AZ::SystemAllocator,
             OnPathFoundFirstPoint);
 
-		bool OnPathFoundFirstPoint(LmbrCentral::PathfindRequest::NavigationRequestId requestId, AZ::Vector3 firstPoint) override
+		bool OnPathFoundFirstPoint(LmbrCentral::PathfindRequest::NavigationRequestId requestId, StarterGameNavPath path) override
 		{
 			bool traverse = true;
-			CallResult(traverse, FN_OnPathFoundFirstPoint, requestId, firstPoint);
+			CallResult(traverse, FN_OnPathFoundFirstPoint, requestId, path);
 			return traverse;
 		}
 
@@ -66,27 +66,17 @@ namespace StarterGameGem
 			return false;
 
 		bool traverse = true;
-		Vec3 firstPos;
-		currentPath->GetPosAlongPath(firstPos, 1.0f, false, false);
-		AZ::Vector3 AZFirstPos = LYVec3ToAZVec3(firstPos);
-		EBUS_EVENT_ID_RESULT(traverse, GetEntityId(), StarterGameNavigationComponentNotificationBus, OnPathFoundFirstPoint, requestId, AZFirstPos);
+        size_t pathSize = currentPath->GetPath().size();
+        StarterGameNavPath path;
+        path.m_points.reserve(pathSize);
+        for (TPathPoints::const_iterator it = currentPath->GetPath().begin(); it != currentPath->GetPath().end(); ++it)
+        {
+            path.m_points.push_back(LYVec3ToAZVec3(it->vPos));
+        }
 
-		if (traverse)
-		{
-			VisualisePathSystemComponent::GetInstance()->SetPath(GetEntityId(), currentPath);
-		}
+		EBUS_EVENT_ID_RESULT(traverse, GetEntityId(), StarterGameNavigationComponentNotificationBus, OnPathFoundFirstPoint, requestId, path);
 
 		return traverse;
-	}
-
-	void StarterGameNavigationComponent::OnTraversalComplete(LmbrCentral::PathfindRequest::NavigationRequestId requestId)
-	{
-		VisualisePathSystemComponent::GetInstance()->ClearPath(GetEntityId());
-	}
-
-	void StarterGameNavigationComponent::OnTraversalCancelled(LmbrCentral::PathfindRequest::NavigationRequestId requestId)
-	{
-		VisualisePathSystemComponent::GetInstance()->ClearPath(GetEntityId());
 	}
 
 	void StarterGameNavigationComponent::Reflect(AZ::ReflectContext* reflection)
@@ -115,7 +105,16 @@ namespace StarterGameGem
 		if (behaviorContext)
 		{
 			behaviorContext->EBus<StarterGameNavigationComponentNotificationBus>("StarterGameNavigationComponentNotificationBus")
-				->Handler<StarterGameBehaviorNavigationComponentNotificationBusHandler>();
+				->Handler<StarterGameBehaviorNavigationComponentNotificationBusHandler>()
+            ;
+
+            behaviorContext->Class<StarterGameNavPath>("StarterGameNavPath")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Method("GetSize", &StarterGameNavPath::GetSize)
+                ->Method("IsLastPoint", &StarterGameNavPath::IsLastPoint)
+                ->Method("GetCurrentPoint", &StarterGameNavPath::GetCurrentPoint)
+                ->Method("ProgressToNextPoint", &StarterGameNavPath::ProgressToNextPoint)
+            ;
 		}
 	}
 

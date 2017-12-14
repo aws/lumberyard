@@ -16,8 +16,8 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzFramework/Entity/EntityContextBus.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
-#include <LmbrCentral/Physics/ConstraintComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/ConstraintComponentBus.h>
 #include <AzCore/Component/TickBus.h>
 
 namespace LmbrCentral
@@ -158,8 +158,8 @@ namespace LmbrCentral
     */
     class ConstraintComponent
         : public AZ::Component
-        , private PhysicsComponentNotificationBus::MultiHandler
-        , private ConstraintComponentRequestBus::Handler
+        , private AzFramework::PhysicsComponentNotificationBus::MultiHandler
+        , private AzFramework::ConstraintComponentRequestBus::Handler
         , private AZ::TickBus::Handler
     {
     public:

@@ -32,6 +32,7 @@ namespace AssetProcessor
     const char* const ConsoleChannel = "AssetProcessor";// Use this channel name if you want to write the message to both the console and the log file.
     const char* const FENCE_FILE_EXTENSION = "fence"; //fence file extension
     const char* const AutoFailReasonKey = "failreason"; // the key to look in for auto-fail reason.
+    const char* const AutoFailLogFile = "faillogfile"; // if this is provided, this is a complete log of the failure and will be added after the failreason.
     const char* const AutoFailOmitFromDatabaseKey = "failreason_omitFromDatabase"; // if set in your job info hash, your job will not be tracked by the database.
     const unsigned int g_RetriesForFenceFile = 5; // number of retries for fencing
     // Even though AP can handle files with path length greater than window's legacy path length limit, we have some 3rdparty sdk's
@@ -87,6 +88,12 @@ namespace AssetProcessor
         Processing_Jobs,
     };
 
+    enum AssetCatalogStatus
+    {
+        RequiresSaving, 
+        UpToDate
+    };
+
     //! AssetProcessorStatusEntry stores all the necessary information related to AssetProcessorStatus
     struct AssetProcessorStatusEntry
     {
@@ -114,14 +121,14 @@ namespace AssetProcessor
     public:
         // note that QStrings are ref-counted copy-on-write, so a move operation will not be beneficial unless this struct gains considerable heap allocated fields.
 
-        QString m_relativePathToFile;     ///< contains relative path (relative to watch folder), used to identify input file and database name
-        QString m_absolutePathToFile;     ///< contains the actual absolute path to the file, including watch folder.
+        QString m_relativePathToFile;     //! contains relative path (relative to watch folder), used to identify input file and database name
+        QString m_absolutePathToFile;     //! contains the actual absolute path to the file, including watch folder.
+        AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();     //! the builder that will perform the job
+        AssetBuilderSDK::PlatformInfo m_platformInfo;
         AZ::Uuid m_sourceFileUUID = AZ::Uuid::CreateNull(); ///< The actual UUID of the source being processed
-        AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();     ///< the builder that will perform the job
-        QString m_platform;     ///< the platform that the job will operate for
-        QString m_jobKey;    ///< JobKey is used when a single input file, for a single platform, for a single builder outputs many separate jobs
-        AZ::u32 m_computedFingerprint = 0;     ///< what the fingerprint was at the time of job creation.
-        qint64 m_computedFingerprintTimeStamp = 0; ///< stores the number of milliseconds since the universal coordinated time when the fingerprint was computed.
+        QString m_jobKey;     // JobKey is used when a single input file, for a single platform, for a single builder outputs many separate jobs
+        AZ::u32 m_computedFingerprint = 0;     // what the fingerprint was at the time of job creation.
+        qint64 m_computedFingerprintTimeStamp = 0; // stores the number of milliseconds since the universal coordinated time when the fingerprint was computed.
         AZ::u64 m_jobRunKey = 0;
         bool m_checkExclusiveLock = false;      ///< indicates whether we need to check the input file for exclusive lock before we process this job
         bool m_addToDatabase = true; ///< If false, this is just a UI job, and should not affect the database.
@@ -129,23 +136,50 @@ namespace AssetProcessor
         AZ::u32 GetHash() const
         {
             AZ::Crc32 crc(m_relativePathToFile.toUtf8().constData());
-            crc.Add(m_platform.toUtf8().constData());
+            crc.Add(m_platformInfo.m_identifier.c_str());
             crc.Add(m_jobKey.toUtf8().constData());
             crc.Add(m_builderGuid.ToString<AZStd::string>().c_str());
             return crc;
         }
 
-        JobEntry()
+        JobEntry() = default;
+        JobEntry(const JobEntry& other) = default;
+        
+        JobEntry& operator=(const JobEntry& other) = default;
+
+        // vs2013 compat:  No auto-generation of move operations
+        JobEntry(JobEntry&& other)
         {
+            if (this != &other)
+            {
+                *this = std::move(other);
+            }
+        }
+        
+        JobEntry& operator=(JobEntry&& other)
+        {
+            if (this != &other)
+            {
+                m_relativePathToFile = std::move(other.m_relativePathToFile);
+                m_absolutePathToFile = std::move(other.m_absolutePathToFile);
+                m_builderGuid = std::move(other.m_builderGuid);
+                m_platformInfo = std::move(other.m_platformInfo);
+                m_sourceFileUUID = std::move(other.m_sourceFileUUID);
+                m_jobKey = std::move(other.m_jobKey);
+                m_computedFingerprint = std::move(other.m_computedFingerprint);
+                m_computedFingerprintTimeStamp = std::move(other.m_computedFingerprintTimeStamp);
+                m_jobRunKey = std::move(other.m_jobRunKey);
+                m_checkExclusiveLock = std::move(other.m_checkExclusiveLock);
+                m_addToDatabase = std::move(other.m_addToDatabase);
+            }
+            return *this;
         }
 
-        JobEntry(const JobEntry& other) = default;
-
-        JobEntry(const QString& absolutePathToFile, const QString& relativePathToFile, const AZ::Uuid& builderGuid, const QString& platform, const QString& jobKey, AZ::u32 computedFingerprint, AZ::u64 jobRunKey, const AZ::Uuid &sourceUuid, bool addToDatabase=true)
+        JobEntry(const QString& absolutePathToFile, const QString& relativePathToFile, const AZ::Uuid& builderGuid, const AssetBuilderSDK::PlatformInfo& platformInfo, const QString& jobKey, AZ::u32 computedFingerprint, AZ::u64 jobRunKey, const AZ::Uuid &sourceUuid, bool addToDatabase=true)
             : m_absolutePathToFile(absolutePathToFile)
             , m_relativePathToFile(relativePathToFile)
             , m_builderGuid(builderGuid)
-            , m_platform(platform)
+            , m_platformInfo(platformInfo)
             , m_jobKey(jobKey)
             , m_computedFingerprint(computedFingerprint)
             , m_jobRunKey(jobRunKey)
@@ -214,3 +248,4 @@ Q_DECLARE_METATYPE(AssetProcessor::AssetProcessorStatusEntry)
 Q_DECLARE_METATYPE(AssetProcessor::JobDetails)
 Q_DECLARE_METATYPE(AssetProcessor::NetworkRequestID)
 Q_DECLARE_METATYPE(AssetProcessor::AssetScanningStatus)
+Q_DECLARE_METATYPE(AssetProcessor::AssetCatalogStatus)

@@ -50,7 +50,7 @@
       <bool>false</bool>
      </property>
      <property name="lineWrapMode">
-      <enum>QTextEdit::NoWrap</enum>
+      <enum>QPlainTextEdit::NoWrap</enum>
      </property>
      <property name="readOnly">
       <bool>false</bool>
@@ -156,7 +156,7 @@
   </customwidget>
   <customwidget>
    <class>ConsoleTextEdit</class>
-   <extends>QTextEdit</extends>
+   <extends>QPlainTextEdit</extends>
    <header>ConsoleSCB.h</header>
   </customwidget>
  </customwidgets>

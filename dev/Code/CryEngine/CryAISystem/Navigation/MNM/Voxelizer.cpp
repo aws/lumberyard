@@ -15,6 +15,7 @@
 #include "Voxelizer.h"
 #include "HashComputer.h"
 
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 //#pragma optimize("", off)
 //#pragma inline_depth(0)
@@ -486,7 +487,7 @@ namespace MNM
     {
         const size_t width = m_spanGrid.GetWidth();
         const size_t height = m_spanGrid.GetHeight();
-        const float oceanLevel = gEnv->p3DEngine->GetWaterLevel();
+        const float oceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : gEnv->p3DEngine->GetWaterLevel();
 
         const size_t MaxAreaCount = 64;
         IPhysicalEntity* areas[MaxAreaCount];

@@ -25,7 +25,7 @@
 #include <SceneAPIExt/Rules/MotionScaleRule.h>
 #include <SceneAPIExt/Rules/MotionCompressionSettingsRule.h>
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
-
+#include <SceneAPIExt/Rules/MotionRangeRule.h>
 
 namespace EMotionFX
 {
@@ -94,6 +94,10 @@ namespace EMotionFX
                     {
                         modifiers.push_back(Rule::CoordinateSystemRule::TYPEINFO_Uuid());
                     }
+                    if (existingRules.find(Rule::MotionRangeRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        modifiers.push_back(Rule::MotionRangeRule::TYPEINFO_Uuid());
+                    }
                 }
             }
 
@@ -133,16 +137,6 @@ namespace EMotionFX
                     }
                 }
                 group->SetSelectedRootBone(shallowestRootBoneName);
-
-                auto animationData = AZStd::find_if(contentStorage.begin(), contentStorage.end(), AZ::SceneAPI::Containers::DerivedTypeFilter<AZ::SceneAPI::DataTypes::IAnimationData>());
-                if (animationData == contentStorage.end())
-                {
-                    return;
-                }
-                const AZ::SceneAPI::DataTypes::IAnimationData* animation = azrtti_cast<const AZ::SceneAPI::DataTypes::IAnimationData*>(animationData->get());
-                AZ::u32 frameCount = aznumeric_caster(animation->GetKeyFrameCount());
-                group->SetStartFrame(0);
-                group->SetEndFrame((frameCount > 0) ? frameCount - 1 : 0);
             }
 
             AZ::SceneAPI::Events::ProcessingResult MotionGroupBehavior::UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action,

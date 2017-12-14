@@ -93,7 +93,7 @@ int CScriptBind_Movie::AbortSequence(IFunctionHandler* pH, const char* sSequence
         pH->GetParam(2, bLeaveTime);
     }
     //
-    IAnimSequence* seq = m_pMovieSystem->FindSequence(sSequenceName);
+    IAnimSequence* seq = m_pMovieSystem->FindLegacySequenceByName(sSequenceName);
     if (seq)
     {
         if (m_pMovieSystem != NULL)

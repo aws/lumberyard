@@ -52,7 +52,7 @@ public:
     void SetDescription(const QString& dsc) { m_description = dsc; }
     const QString& GetDescription() const { return m_description; }
 
-    XmlNodeRef GetEnvironemnt() { return m_environment; };
+    XmlNodeRef GetEnvironment() { return m_environment; };
 
     //! Return weapons ammo definitions for this mission.
     XmlNodeRef GetWeaponsAmmo() { return m_weaponsAmmo; };
@@ -104,7 +104,7 @@ public:
     void Export(XmlNodeRef& root, XmlNodeRef& objectsNode);
 
     //! Export mission-animations to game.
-    void ExportAnimations(XmlNodeRef& root);
+    void ExportLegacyAnimations(XmlNodeRef& root);
 
     //! Add shared objects to mission objects.
     void AddObjectsNode(XmlNodeRef& node);

@@ -49,7 +49,6 @@ namespace EMStudio
         void mouseMoveEvent(QMouseEvent* event) override;
 
     private:
-        void OnNodeDataChange();
         void PrepareForDrawing(EMotionFX::BlendSpace2DNode::UniqueData* uniqueData);
 
         void DrawGrid(QPainter& painter);
@@ -65,6 +64,7 @@ namespace EMStudio
         void DrawInfoText(QPainter& painter, const QPointF& loc, const AZStd::vector<QString>& strArray, int flags);
 
         void DrawBlendSpaceInfoText(QPainter& painter, const char* infoText) const;
+        void DrawBlendSpaceWarningText(QPainter& painter, const char* warningText);
 
         void SetCurrentSamplePoint(int windowX, int windowY);
 
@@ -90,13 +90,13 @@ namespace EMStudio
         EMotionFX::BlendSpace2DNode*                m_currentNode;
         AnimGraphPlugin*                            m_animGraphPlugin;
         bool                                        m_registeredForPerFrameCallback;
-        AZ::u32                                     m_lastUniqueDataUpdateCounter;
         AZStd::vector<QPointF>                      m_renderPoints;
         AZ::Vector2                                 m_scale;
         AZ::Vector2                                 m_shift;
         float                                       m_zoomFactor;// 0 for farthest zoom, 1 for closest zoom
         float                                       m_zoomScale;
         QRect                                       m_drawRect; // Rectangle where parameter space is displayed
+        QRect                                       m_warningBoundRect; // Rectangle where the warning is displayed
         int                                         m_drawCenterX;
         int                                         m_drawCenterY;
 

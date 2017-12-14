@@ -169,7 +169,8 @@ void ScrollSelectionDialog::OnOK()
     QAbstractButton* checkedButton = m_buttonGroup.checkedButton();
     if (checkedButton)
     {
-        SetCurrentSelection(checkedButton->text());
+        QString text = checkedButton->text();
+        SetCurrentSelection(text);
     }
     CloseWindow();
 }

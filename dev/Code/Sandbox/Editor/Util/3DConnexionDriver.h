@@ -41,7 +41,8 @@ struct S3DConnexionMessage
     };
 };
 
-class C3DConnexionDriver
+#if defined(AZ_PLATFORM_WINDOWS)
+class SANDBOX_API C3DConnexionDriver
     : public IPlugin
 {
 public:
@@ -61,11 +62,10 @@ public:
 
 private:
     class C3DConnexionDriverImpl* m_pImpl;
-#ifdef KDAB_MAC_PORT
     PRAWINPUTDEVICELIST m_pRawInputDeviceList;
     PRAWINPUTDEVICE m_pRawInputDevices;
-#endif // KDAB_MAC_PORT
     int m_nUsagePage1Usage8Devices;
     float m_fMultiplier;
 };
+#endif
 #endif // CRYINCLUDE_EDITOR_UTIL_3DCONNEXIONDRIVER_H

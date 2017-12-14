@@ -21,26 +21,6 @@
 // prevent inclusion of conflicting definitions of INT8_MIN etc
 #define _INTSAFE_H_INCLUDED_
 
-#include <afxcontrolbars.h>
-#include <afxwin.h>         // MFC core and standard components
-#include <afxext.h>         // MFC extensions
-#include <afxdlgs.h>
-
-// MFC text conversions.
-#include <afxconv.h>
-
-#ifndef _AFX_NO_AFXCMN_SUPPORT
-#include <afxcmn.h>         // MFC support for Windows Common Controls
-#endif // _AFX_NO_AFXCMN_SUPPORT
-
-// Shell Extensions.
-#include <Shlwapi.h>
-
-#ifdef WIN64
-//#include <ObjBase.h>
-#include <atlbase.h>
-#endif
-
 // ----- End UI_ANIMATION_REVISIT
 
 #include "EditorDefs.h"
@@ -104,10 +84,6 @@
 //////////////////////////////////////////////////////////////////////////
 namespace
 {
-    const int s_kKeysPaneID = AFX_IDW_CONTROLBAR_FIRST + 10;
-    const int s_kTrackGraphePaneID = AFX_IDW_CONTROLBAR_FIRST + 12;
-    const int s_kTrackSequencePaneID = AFX_IDW_CONTROLBAR_FIRST + 13;
-
     const char* s_kUiAnimViewLayoutSection = "UiAnimViewLayout";
     const char* s_kUiAnimViewSection = "DockingPaneLayouts\\UiAnimView";
     const char* s_kSplitterEntry = "Splitter";
@@ -152,6 +128,7 @@ CUiAnimViewDialog::CUiAnimViewDialog(QWidget* pParent /*=NULL*/)
 
     m_currentToolBarParamTypeId = 0;
 
+    UiEditorAnimationStateBus::Handler::BusConnect();
     UiEditorAnimListenerBus::Handler::BusConnect();
 
     GetIEditor()->RegisterNotifyListener(this);
@@ -177,6 +154,11 @@ CUiAnimViewDialog::CUiAnimViewDialog(QWidget* pParent /*=NULL*/)
 
     // update the status of the actions
     UpdateActions();
+
+    if (!m_animationSystem)
+    {
+        setEnabled(false);
+    }
 }
 
 CUiAnimViewDialog::~CUiAnimViewDialog()
@@ -211,6 +193,7 @@ CUiAnimViewDialog::~CUiAnimViewDialog()
     delete m_wndCurveEditor;
     delete m_wndCurveEditorDock;
 
+    UiEditorAnimationStateBus::Handler::BusDisconnect();
     UiEditorAnimListenerBus::Handler::BusDisconnect();
 }
 
@@ -873,7 +856,7 @@ void CUiAnimViewDialog::OnAddSequence()
                 CUiAnimViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceName);
                 if (pSequence)
                 {
-                    throw std::exception("A sequence with this name already exists");
+                    throw std::runtime_error("A sequence with this name already exists");
                 }
 
                 UiAnimUndo undo("Create UiAnimView sequence");
@@ -1028,7 +1011,7 @@ void CUiAnimViewDialog::OnDelSequence()
                 return;
             }
 
-            throw std::exception("Could not find sequence");
+            throw std::runtime_error("Could not find sequence");
         }
 
         UpdateActions();
@@ -1178,7 +1161,7 @@ void CUiAnimViewDialog::OnPlay()
                 EBUS_EVENT_RESULT(pAnimationContext, UiEditorAnimationBus, GetAnimationContext);
                 if (pAnimationContext->IsPlaying())
                 {
-                    throw std::exception("A sequence is already playing");
+                    throw std::runtime_error("A sequence is already playing");
                 }
 
                 pAnimationContext->SetPlaying(true);
@@ -1192,7 +1175,7 @@ void CUiAnimViewDialog::OnPlay()
             EBUS_EVENT_RESULT(pAnimationContext, UiEditorAnimationBus, GetAnimationContext);
             if (!pAnimationContext->IsPlaying())
             {
-                throw std::exception("No sequence is playing");
+                throw std::runtime_error("No sequence is playing");
             }
 
             pAnimationContext->SetPlaying(false);
@@ -1355,48 +1338,6 @@ void CUiAnimViewDialog::keyPressEvent(QKeyEvent* event)
     }
     return QMainWindow::keyPressEvent(event);
 }
-
-#ifdef KDAB_PORT
-BOOL CUiAnimViewDialog::PreTranslateMessage(MSG* pMsg)
-{
-    if (pMsg->message == WM_INPUT)
-    {
-        static C3DConnexionDriver* p3DConnexionDriver = 0;
-
-        if (!p3DConnexionDriver)
-        {
-            p3DConnexionDriver = (C3DConnexionDriver*)GetIEditor()->GetPluginManager()->GetPluginByGUID("{AD109901-9128-4ffd-8E67-137CB2B1C41B}");
-        }
-        if (p3DConnexionDriver)
-        {
-            S3DConnexionMessage msg;
-            if (p3DConnexionDriver->GetInputMessageData(pMsg->lParam, msg))
-            {
-                if (msg.bGotRotation)
-                {
-                    float fTime = m_animationContext->GetTime();
-                    float fDelta2 = msg.vRotate[2] * 0.1f;
-                    fTime += fDelta2;
-
-                    m_animationContext->SetTime(fTime);
-                }
-            }
-        }
-    }
-    else if (pMsg->message == WM_KEYDOWN)
-    {
-        UINT nChar = pMsg->wParam;
-
-        if (nChar == VK_SPACE)
-        {
-            m_animationContext->TogglePlay();
-            return TRUE;
-        }
-    }
-
-    return __super::PreTranslateMessage(pMsg);
-}
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewDialog::OnModeDopeSheet()
@@ -1571,6 +1512,56 @@ void CUiAnimViewDialog::SaveLayouts()
     settings.endGroup();
     settings.sync();
 }
+
+//////////////////////////////////////////////////////////////////////////
+#if defined(AZ_PLATFORM_WINDOWS)
+bool CUiAnimViewDialog::nativeEvent(const QByteArray &eventType, void *message, long *result)
+{
+    /* On Windows, eventType is set to "windows_generic_MSG" for messages sent to toplevel windows, and "windows_dispatcher_MSG" for
+    system - wide messages such as messages from a registered hot key.In both cases, the message can be casted to a MSG pointer.
+    The result pointer is only used on Windows, and corresponds to the LRESULT pointer.*/
+
+    if (eventType == "windows_generic_MSG")
+    {
+        MSG* pMsg = static_cast<MSG*>(message);
+        if (pMsg->message == WM_INPUT)
+        {
+            return processRawInput(pMsg);
+        }
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+bool CUiAnimViewDialog::processRawInput(MSG* pMsg)
+{
+    static C3DConnexionDriver* p3DConnexionDriver = 0;
+
+    if (!p3DConnexionDriver)
+    {
+        p3DConnexionDriver = (C3DConnexionDriver*)GetIEditor()->GetPluginManager()->GetPluginByGUID("{AD109901-9128-4ffd-8E67-137CB2B1C41B}");
+    }
+    if (p3DConnexionDriver)
+    {
+        S3DConnexionMessage msg;
+        if (p3DConnexionDriver->GetInputMessageData(pMsg->lParam, msg))
+        {
+            if (msg.bGotRotation)
+            {
+                float fTime = m_animationContext->GetTime();
+                float fDelta2 = msg.vRotate[2] * 0.1f;
+                fTime += fDelta2;
+
+                m_animationContext->SetTime(fTime);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewDialog::ReadLayouts()
@@ -1769,22 +1760,36 @@ void CUiAnimViewDialog::OnSequenceSettingsChanged(CUiAnimViewSequence* pSequence
 }
 
 //////////////////////////////////////////////////////////////////////////
+UiEditorAnimationStateInterface::UiEditorAnimationEditState CUiAnimViewDialog::GetCurrentEditState()
+{
+    UiEditorAnimationStateInterface::UiEditorAnimationEditState animEditState;
+
+    animEditState.m_sequenceName = m_animationContext->GetSequence() ? m_animationContext->GetSequence()->GetName() : "";
+    animEditState.m_time = m_animationContext->GetTime();
+    animEditState.m_timelineScale = m_wndDopeSheet->GetTimeScale();
+    animEditState.m_timelineScrollOffset = m_wndDopeSheet->GetScrollOffset();
+
+    return animEditState;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimViewDialog::RestoreCurrentEditState(const UiEditorAnimationStateInterface::UiEditorAnimationEditState& animEditState)
+{
+    CUiAnimViewSequence* pSequence = animEditState.m_sequenceName.empty() ? nullptr : m_sequenceManager->GetSequenceByName(animEditState.m_sequenceName.c_str());
+    m_animationContext->SetSequence(pSequence, true, false);
+
+    m_animationContext->SetTime(animEditState.m_time);
+
+    m_wndDopeSheet->SetTimeScale(animEditState.m_timelineScale, 0.0f);
+    m_wndDopeSheet->SetScrollOffset(animEditState.m_timelineScrollOffset);
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CUiAnimViewDialog::OnActiveCanvasChanged()
 {
     m_animationSystem = CUiAnimViewSequenceManager::GetSequenceManager()->GetAnimationSystem();
-}
 
-//////////////////////////////////////////////////////////////////////////
-void CUiAnimViewDialog::OnCanvasLoaded()
-{
-    // nothing to do here, OnActiveCanvasChanged will get called after this when more is set up
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CUiAnimViewDialog::OnCanvasUnloading()
-{
-    // Until a canvas is loaded there is no animation system
-    m_animationSystem = nullptr;
+    setEnabled(m_animationSystem ? true : false);
 }
 
 //////////////////////////////////////////////////////////////////////////

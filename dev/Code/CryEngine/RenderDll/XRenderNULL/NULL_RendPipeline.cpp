@@ -16,10 +16,7 @@
 
 #include "StdAfx.h"
 #include "NULL_Renderer.h"
-#include "CompiledRenderObject.h"
 #include "Common/RenderView.h"
-
-CRenderObjectsPools* CCompiledRenderObject::s_pPools = 0;
 
 //============================================================================================
 // Init Shaders rendering
@@ -175,9 +172,6 @@ void CNULLRenderer::EF_EndEf3D(const int nFlags, const int nPrecacheUpdateId, co
 void CNULLRenderer::EF_EndEf2D(const bool bSort)
 {
 }
-
-void CCompiledRenderObject::Release()
-{}
 
 void CRenderView::PrepareForRendering() {}
 

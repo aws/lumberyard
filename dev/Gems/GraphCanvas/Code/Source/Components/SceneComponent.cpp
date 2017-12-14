@@ -28,13 +28,14 @@
 #include <AzCore/std/sort.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
 #include <Components/SceneComponent.h>
 
 #include <Components/ColorPaletteManager/ColorPaletteManagerBus.h>
+#include <Components/Connections/ConnectionComponent.h>
 #include <Components/GridComponent.h>
 #include <Components/Nodes/NodeComponent.h>
-#include <Components/Connections/ConnectionComponent.h>
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/Nodes/Variable/VariableNodeBus.h>
 #include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeLayoutBus.h>
@@ -211,11 +212,14 @@ namespace GraphCanvas
     }
 
     SceneComponent::SceneComponent()
-        : m_deleteCount(0)
+        : m_allowReset(false)
+        , m_deleteCount(0)
         , m_dragSelectionType(DragSelectionType::OnRelease)
         , m_activateScene(true)
         , m_isDragSelecting(false)
         , m_ignoreSelectionChanges(false)
+        , m_originalPosition(0,0)
+        , m_isDraggingEntity(false)
     {
     }
 
@@ -243,6 +247,7 @@ namespace GraphCanvas
 
         // Need to register this before activating saved nodes. Otherwise data is not properly setup.
         SceneRequestBus::Handler::BusConnect(GetEntityId());
+        SceneMimeDelegateRequestBus::Handler::BusConnect(GetEntityId());
 
         // Make the QGraphicsScene Ui element for managing Qt scene items
         m_graphicsSceneUi = AZStd::make_unique<GraphCanvasGraphicsScene>(*this);
@@ -262,7 +267,7 @@ namespace GraphCanvas
 
         DeactivateItems(m_sceneData.m_connections);
         DeactivateItems(m_sceneData.m_nodes);
-        DeactivateItems(AZStd::initializer_list<AZ::Entity*>{ AzFramework::EntityReference(m_grid).GetEntity() });
+        DeactivateItems(AZStd::initializer_list<AZ::Entity*>{ AzToolsFramework::GetEntity(m_grid) });
         SceneMemberRequestBus::Event(m_grid, &SceneMemberRequests::ClearScene, GetEntityId());
 
         // Reset GraphicsSceneUi
@@ -288,27 +293,20 @@ namespace GraphCanvas
     {
         AZ_Assert(nodeId.IsValid(), "Node ID %s is not valid!", nodeId.ToString().data());
 
-        AzFramework::EntityReference nodeRef(nodeId);
-        AZ_Assert(nodeRef.GetEntity(), "Node (ID: %s) Entity not found!", nodeId.ToString().data());
-        AZ_Assert(nodeRef.GetEntity()->GetState() == AZ::Entity::ES_ACTIVE, "Only active node entities can be added to a scene");
+        AZ::Entity* nodeEntity(AzToolsFramework::GetEntity(nodeId));
+        AZ_Assert(nodeEntity, "Node (ID: %s) Entity not found!", nodeId.ToString().data());
+        AZ_Assert(nodeEntity->GetState() == AZ::Entity::ES_ACTIVE, "Only active node entities can be added to a scene");
 
         QGraphicsItem* item = nullptr;
-        RootVisualRequestBus::EventResult(item, nodeId, &RootVisualRequests::GetRootGraphicsItem);
+        SceneMemberUIRequestBus::EventResult(item, nodeId, &SceneMemberUIRequests::GetRootGraphicsItem);
         AZ_Assert(item && !item->parentItem(), "Nodes must have a \"root\", unparented visual/QGraphicsItem");
 
-        auto foundIt = AZStd::find_if(m_sceneData.m_nodes.begin(), m_sceneData.m_nodes.end(), [&nodeRef](const AZ::Entity* node) { return node->GetId() == nodeRef.GetEntityId(); });
+        auto foundIt = AZStd::find_if(m_sceneData.m_nodes.begin(), m_sceneData.m_nodes.end(), [&nodeEntity](const AZ::Entity* node) { return node->GetId() == nodeEntity->GetId(); });
         if (foundIt == m_sceneData.m_nodes.end())
         {
-            if (m_graphicsSceneUi)
-            {
-                m_graphicsSceneUi->addItem(item);
-            }
-            m_itemLookup[item] = nodeId;
-            m_sceneData.m_nodes.emplace(nodeRef.GetEntity());
-            SceneMemberRequestBus::Event(nodeId, &SceneMemberRequests::SetScene, GetEntityId());
-            GeometryCommandBus::Event(nodeId, &GeometryCommands::SetPosition, position);
+            m_sceneData.m_nodes.emplace(nodeEntity);
+            AddSceneMember(nodeId, true, position);
             SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnNodeAdded, nodeId);
-            GeometryNotificationBus::MultiHandler::BusConnect(nodeId);
 
             return true;
         }
@@ -337,13 +335,14 @@ namespace GraphCanvas
             m_sceneData.m_nodes.erase(foundIt);
 
             QGraphicsItem* item = nullptr;
-            RootVisualRequestBus::EventResult(item, nodeId, &RootVisualRequests::GetRootGraphicsItem);
+            SceneMemberUIRequestBus::EventResult(item, nodeId, &SceneMemberUIRequests::GetRootGraphicsItem);
 
             if (item && item->scene() == m_graphicsSceneUi.get())
             {
                 m_graphicsSceneUi->removeItem(item);
             }
-            m_itemLookup.erase(item);
+
+            UnregisterSelectionItem(nodeId);            
             SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnNodeRemoved, nodeId);
             SceneMemberRequestBus::Event(nodeId, &SceneMemberRequests::ClearScene, GetEntityId());
 
@@ -395,8 +394,8 @@ namespace GraphCanvas
     {
         AZ_Assert(connectionId.IsValid(), "Connection ID %s is not valid!", connectionId.ToString().data());
 
-        AzFramework::EntityReference connectionRef(connectionId);
-        auto connection = connectionRef.GetEntity() ? AZ::EntityUtils::FindFirstDerivedComponent<ConnectionComponent>(connectionRef.GetEntity()) : nullptr;
+        AZ::Entity* connectionEntity(AzToolsFramework::GetEntity(connectionId));
+        auto connection = connectionEntity ? AZ::EntityUtils::FindFirstDerivedComponent<ConnectionComponent>(connectionEntity) : nullptr;
         AZ_Warning("Graph Canvas", connection->GetEntity()->GetState() == AZ::Entity::ES_ACTIVE, "Only active connection entities can be added to a scene");
         AZ_Warning("Graph Canvas", connection, "Couldn't find the connection's component (ID: %s)!", connectionId.ToString().data());
 
@@ -405,14 +404,7 @@ namespace GraphCanvas
             auto foundIt = AZStd::find_if(m_sceneData.m_connections.begin(), m_sceneData.m_connections.end(), [&connection](const AZ::Entity* connectionEntity) { return connectionEntity->GetId() == connection->GetEntityId(); });
             if (foundIt == m_sceneData.m_connections.end())
             {
-                QGraphicsItem* item{};
-                RootVisualRequestBus::EventResult(item, connectionId, &RootVisualRequests::GetRootGraphicsItem);
-                AZ_Assert(item, "Connections must have a visual/QGraphicsItem");
-                if (m_graphicsSceneUi)
-                {
-                    m_graphicsSceneUi->addItem(item);
-                }
-                m_itemLookup[item] = connectionId;
+                AddSceneMember(connectionId);
 
                 m_sceneData.m_connections.emplace(connection->GetEntity());
                 Endpoint sourceEndpoint;
@@ -422,13 +414,8 @@ namespace GraphCanvas
                 m_sceneData.m_endpointMap.emplace(sourceEndpoint, targetEndpoint);
                 m_sceneData.m_endpointMap.emplace(targetEndpoint, sourceEndpoint);
 
-                SceneMemberRequestBus::Event(connectionId, &SceneMemberRequests::SetScene, GetEntityId());
-                SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnConnectionAdded, connectionId);
-
                 SlotRequestBus::Event(sourceEndpoint.GetSlotId(), &SlotRequests::AddConnectionId, connectionId, targetEndpoint);
                 SlotRequestBus::Event(targetEndpoint.GetSlotId(), &SlotRequests::AddConnectionId, connectionId, sourceEndpoint);
-
-                GeometryNotificationBus::MultiHandler::BusConnect(connectionId);
 
                 return true;
             }
@@ -463,16 +450,16 @@ namespace GraphCanvas
             m_sceneData.m_connections.erase(foundIt);
 
             QGraphicsItem* item{};
-            RootVisualRequestBus::EventResult(item, connectionId, &RootVisualRequests::GetRootGraphicsItem);
+            SceneMemberUIRequestBus::EventResult(item, connectionId, &SceneMemberUIRequests::GetRootGraphicsItem);
             AZ_Assert(item, "Connections must have a visual/QGraphicsItem");
             if (m_graphicsSceneUi)
             {
                 m_graphicsSceneUi->removeItem(item);
             }
-            m_itemLookup.erase(item);
+
+            UnregisterSelectionItem(connectionId);
 
             SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnConnectionRemoved, connectionId);
-
             SlotRequestBus::Event(targetEndpoint.GetSlotId(), &SlotRequests::RemoveConnectionId, connectionId, sourceEndpoint);
             SlotRequestBus::Event(sourceEndpoint.GetSlotId(), &SlotRequests::RemoveConnectionId, connectionId, targetEndpoint);
 
@@ -738,6 +725,27 @@ namespace GraphCanvas
         return m_graphicsSceneUi ? !m_graphicsSceneUi->selectedItems().isEmpty() : false;
     }
 
+    bool SceneComponent::HasEntitiesAt(const AZ::Vector2& scenePoint) const
+    {
+        bool retVal = false;
+
+        if (m_graphicsSceneUi)
+        {
+            QList<QGraphicsItem*> itemsThere = m_graphicsSceneUi->items(QPointF(scenePoint.GetX(), scenePoint.GetY()));
+            for (QGraphicsItem* item : itemsThere)
+            {
+                auto entry = m_itemLookup.find(item);
+                if (entry != m_itemLookup.end() && entry->second != m_grid)
+                {
+                    retVal = true;
+                    break;
+                }
+            }
+        }
+
+        return retVal;
+    }
+
     AZStd::vector<AZ::EntityId> SceneComponent::GetSelectedItems() const
     {
         AZStd::vector<AZ::EntityId> result;
@@ -797,7 +805,17 @@ namespace GraphCanvas
 
     void SceneComponent::Paste()
     {
-        PasteAt(GetViewCenterScenePoint());
+        m_allowReset = false;
+        QPointF pasteCenter = GetViewCenterScenePoint() + m_pasteOffset;
+        PasteAt(pasteCenter);
+
+        AZ::Vector2 minorPitch;
+        GridRequestBus::EventResult(minorPitch, m_grid, &GridRequests::GetMinorPitch);
+
+        // Don't want to shift it diagonally, because we also shift things diagonally when we drag/drop in stuff
+        // So we'll just move it straight down.
+        m_pasteOffset += QPointF(0, minorPitch.GetY() * 2);
+        m_allowReset = true;
     }
 
     void SceneComponent::PasteAt(const QPointF& scenePos)
@@ -851,15 +869,19 @@ namespace GraphCanvas
         for (const auto& nodeRef : nodes)
         {
             NodeNotificationBus::Event(nodeRef, &NodeNotifications::OnNodeAboutToSerialize, serializationTarget);
-            serializedEntities.m_nodes.emplace(AzFramework::EntityReference(nodeRef).GetEntity());
+            serializedEntities.m_nodes.emplace(AzToolsFramework::GetEntity(nodeRef));
         }
+
+        AZStd::unordered_set< AZ::EntityId > serializedNodes;
 
         // Can't do this with the above listing. Because when nodes get serialized, they may add other nodes to the list.
         // So once we are fully added in, we can figure out our positions.
         for (AZ::Entity* entity : serializedEntities.m_nodes)
         {
+            serializedNodes.insert(entity->GetId());
+
             QGraphicsItem* graphicsItem = nullptr;
-            RootVisualRequestBus::EventResult(graphicsItem, entity->GetId(), &RootVisualRequests::GetRootGraphicsItem);
+            SceneMemberUIRequestBus::EventResult(graphicsItem, entity->GetId(), &SceneMemberUIRequests::GetRootGraphicsItem);
 
             AZ::Vector2 itemPos = AZ::Vector2::CreateZero();
 
@@ -873,19 +895,14 @@ namespace GraphCanvas
             aggregatePos += itemPos;
         }
 
-        AZStd::unordered_set< AZ::EntityId > serializedNodes;
 
-        for (AZ::Entity* entity : serializedEntities.m_nodes)
-        {
-            serializedNodes.insert(entity->GetId());
-        }
 
         // This copies only connections among nodes in the copied node set
         connections = FindConnections(serializedNodes, true);
 
         for (const auto& connection : connections)
         {
-            serializedEntities.m_connections.emplace(AzFramework::EntityReference(connection).GetEntity());
+            serializedEntities.m_connections.emplace(AzToolsFramework::GetEntity(connection));
         }
 
         AZ::Vector2 averagePos = aggregatePos / serializedEntities.m_nodes.size();
@@ -911,10 +928,10 @@ namespace GraphCanvas
 
             AZ::Vector2 prevNodePos;
             GeometryRequestBus::EventResult(prevNodePos, entity->GetId(), &GeometryRequests::GetPosition);
-            GeometryCommandBus::Event(entity->GetId(), &GeometryCommands::SetPosition, (prevNodePos - averagePos) + deserializePoint);
+            GeometryRequestBus::Event(entity->GetId(), &GeometryRequests::SetPosition, (prevNodePos - averagePos) + deserializePoint);
             NodeNotificationBus::Event(entity->GetId(), &NodeNotifications::OnNodeDeserialized, serializationSource);
 
-            NodeUIRequestBus::Event(entity->GetId(), &NodeUIRequests::SetSelected, true);
+            SceneMemberUIRequestBus::Event(entity->GetId(), &SceneMemberUIRequests::SetSelected, true);
 
             if (Add(entity->GetId()))
             {
@@ -1047,11 +1064,10 @@ namespace GraphCanvas
                 QGraphicsItem* item = nullptr;
                 if (!isWrappedNode)
                 {
-                    RootVisualRequestBus::EventResult(item, node, &RootVisualRequests::GetRootGraphicsItem);
+                    SceneMemberUIRequestBus::EventResult(item, node, &SceneMemberUIRequests::GetRootGraphicsItem);
                 }
 
                 AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::DeleteEntity, node);
-                delete item;
             }
         }
 
@@ -1125,13 +1141,13 @@ namespace GraphCanvas
         return result;
     }
 
-    AZStd::vector<AZ::EntityId> SceneComponent::GetEntitiesInRect(const QRectF& rect) const
+    AZStd::vector<AZ::EntityId> SceneComponent::GetEntitiesInRect(const QRectF& rect, Qt::ItemSelectionMode mode) const
     {
         AZStd::vector<AZ::EntityId> result;
 
         if (m_graphicsSceneUi)
         {
-            QList<QGraphicsItem*> itemsThere = m_graphicsSceneUi->items(rect);
+            QList<QGraphicsItem*> itemsThere = m_graphicsSceneUi->items(rect, mode);
             for (QGraphicsItem* item : itemsThere)
             {
                 auto entry = m_itemLookup.find(item);
@@ -1149,7 +1165,7 @@ namespace GraphCanvas
     {
         AZStd::vector<Endpoint> result;
 
-        AZStd::vector<AZ::EntityId> entitiesThere = GetEntitiesInRect(rect);
+        AZStd::vector<AZ::EntityId> entitiesThere = GetEntitiesInRect(rect, Qt::ItemSelectionMode::IntersectsItemShape);
         for (AZ::EntityId nodeId : entitiesThere)
         {
             if (NodeRequestBus::FindFirstHandler(nodeId) != nullptr)
@@ -1188,15 +1204,13 @@ namespace GraphCanvas
 
             SceneMemberRequestBus::Event(m_grid, &SceneMemberRequests::SetScene, GetEntityId());
 
-            ActivateItems(AZStd::initializer_list<AZ::Entity*>{ AzFramework::EntityReference(m_grid).GetEntity() });
+            ActivateItems(AZStd::initializer_list<AZ::Entity*>{ AzToolsFramework::GetEntity(m_grid) });
             ActivateItems(m_sceneData.m_nodes);
             ActivateItems(m_sceneData.m_connections);
             NotifyConnectedSlots();
 
             ColorPaletteManagerRequestBus::Event(GetEntityId(), &ColorPaletteManagerRequests::RefreshColorPalette);
             SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnStyleSheetChanged); // Forces activated elements to refresh their visual elements.
-
-            SceneMimeDelegateRequestBus::Handler::BusConnect(GetEntityId());
 
             m_mimeDelegate.SetSceneId(GetEntityId());
             m_mimeDelegate.Activate();
@@ -1260,7 +1274,7 @@ namespace GraphCanvas
                     itemRef->Activate();
                 }
 
-                success = Add(AzFramework::EntityReference(itemRef)) && success;
+                success = Add(itemRef->GetId()) && success;
             }
         }
 
@@ -1273,7 +1287,7 @@ namespace GraphCanvas
         {
             for (AZ::Entity* itemRef : itemContainer)
             {
-                Remove(AzFramework::EntityReference(itemRef));
+                Remove(itemRef->GetId());
             }
         }
     }
@@ -1286,24 +1300,67 @@ namespace GraphCanvas
     void SceneComponent::SignalDragSelectStart()
     {
         m_isDragSelecting = true;
+        SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnDragSelectStart);
     }
 
     void SceneComponent::SignalDragSelectEnd()
     {
+        SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnDragSelectEnd);
         m_isDragSelecting = false;
+    }
+
+    bool SceneComponent::OnMousePress(const AZ::EntityId& sourceId, const QGraphicsSceneMouseEvent* event)
+    {
+        if (event->button() == Qt::LeftButton && sourceId != m_grid)
+        {
+            m_pressedEntity = sourceId;
+            GeometryRequestBus::EventResult(m_originalPosition, m_pressedEntity, &GeometryRequests::GetPosition);
+        }
+
+        return false;
+    }
+
+    bool SceneComponent::OnMouseRelease(const AZ::EntityId& sourceId, const QGraphicsSceneMouseEvent* event)
+    {
+        if (m_isDraggingEntity)
+        {
+            m_isDraggingEntity = false;
+
+            AZ::Vector2 finalPosition;
+            GeometryRequestBus::EventResult(finalPosition, m_pressedEntity, &GeometryRequests::GetPosition);
+        
+            SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnSceneMemberDragComplete, sourceId);
+
+            if (!finalPosition.IsClose(m_originalPosition))
+            {
+                SceneUIRequestBus::Event(GetEntityId(), &SceneUIRequests::RequestUndoPoint);
+            }
+        }
+
+        m_pressedEntity.SetInvalid();
+        return false;
     }
 
     void SceneComponent::OnPositionChanged(const AZ::EntityId& itemId, const AZ::Vector2& position)
     {
-        AZ::Entity* actual = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(actual, &AZ::ComponentApplicationRequests::FindEntity, itemId);
-
-        if (AZ::EntityUtils::FindFirstDerivedComponent<NodeComponent>(actual))
+        if (m_pressedEntity.IsValid() && !m_isDraggingEntity)
         {
-            SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnNodePositionChanged, itemId, position);
+            m_isDraggingEntity = true;
+            SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnSceneMemberDragBegin, m_pressedEntity);
         }
 
-        SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnPositionChanged, itemId, position);
+        if (NodeRequestBus::FindFirstHandler(itemId) != nullptr)
+        {
+            SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnNodePositionChanged, itemId, position);
+
+            if (m_allowReset)
+            {
+                m_pasteOffset.setX(0);
+                m_pasteOffset.setY(0);
+            }
+        }
+
+        SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnSceneMemberPositionChanged, itemId, position);
         if (m_graphicsSceneUi)
         {
             m_graphicsSceneUi->update();
@@ -1312,6 +1369,9 @@ namespace GraphCanvas
 
     void SceneComponent::OnViewParamsChanged(const ViewParams& viewParams)
     {
+        m_pasteOffset.setX(0);
+        m_pasteOffset.setY(0);
+        
         m_viewParams = viewParams;
     }
 
@@ -1389,19 +1449,7 @@ namespace GraphCanvas
                     entity->Activate();
                 }
 
-                QGraphicsItem* item = nullptr;
-                RootVisualRequestBus::EventResult(item, entity->GetId(), &RootVisualRequests::GetRootGraphicsItem);
-                if (item && !item->parentItem())
-                {
-                    // We add it if it doesn't have a parent - nodes in groups have parents
-                    if (m_graphicsSceneUi)
-                    {
-                        m_graphicsSceneUi->addItem(item);
-                    }
-                    m_itemLookup[item] = entity->GetId();
-                }
-                SceneMemberRequestBus::Event(entity->GetId(), &SceneMemberRequests::SetScene, GetEntityId());
-                GeometryNotificationBus::MultiHandler::BusConnect(entity->GetId());
+                AddSceneMember(entity->GetId());
             }
         }
     }
@@ -1418,7 +1466,7 @@ namespace GraphCanvas
                 {
                     GeometryNotificationBus::MultiHandler::BusDisconnect(entity->GetId());
                     QGraphicsItem* item = nullptr;
-                    RootVisualRequestBus::EventResult(item, entity->GetId(), &RootVisualRequests::GetRootGraphicsItem);
+                    SceneMemberUIRequestBus::EventResult(item, entity->GetId(), &SceneMemberUIRequests::GetRootGraphicsItem);
                     SceneMemberRequestBus::Event(entity->GetId(), &SceneMemberRequests::ClearScene, GetEntityId());
                     if (m_graphicsSceneUi)
                     {
@@ -1472,6 +1520,51 @@ namespace GraphCanvas
         SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnSelectionChanged);
     }
 
+    void SceneComponent::RegisterSelectionItem(const AZ::EntityId& itemId)
+    {
+        QGraphicsItem* selectionItem = nullptr;
+        SceneMemberUIRequestBus::EventResult(selectionItem, itemId, &SceneMemberUIRequests::GetSelectionItem);
+
+        m_itemLookup[selectionItem] = itemId;
+    }
+
+    void SceneComponent::UnregisterSelectionItem(const AZ::EntityId& itemId)
+    {
+        QGraphicsItem* selectionItem = nullptr;
+        SceneMemberUIRequestBus::EventResult(selectionItem, itemId, &SceneMemberUIRequests::GetSelectionItem);
+
+        m_itemLookup.erase(selectionItem);
+    }
+
+    void SceneComponent::AddSceneMember(const AZ::EntityId& sceneMemberId, bool positionItem, const AZ::Vector2& position)
+    {
+        QGraphicsItem* graphicsItem = nullptr;
+        SceneMemberUIRequestBus::EventResult(graphicsItem, sceneMemberId, &SceneMemberUIRequests::GetRootGraphicsItem);
+
+        if (graphicsItem)
+        {
+            if (m_graphicsSceneUi)
+            {
+                m_graphicsSceneUi->addItem(graphicsItem);
+            }
+
+            RegisterSelectionItem(sceneMemberId);
+            
+            SceneMemberRequestBus::Event(sceneMemberId, &SceneMemberRequests::SetScene, GetEntityId());
+
+            if (positionItem)
+            {
+                GeometryRequestBus::Event(sceneMemberId, &GeometryRequests::SetPosition, position);
+            }
+
+            SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnSceneMemberAdded, sceneMemberId);
+            GeometryNotificationBus::MultiHandler::BusConnect(sceneMemberId);
+            VisualNotificationBus::MultiHandler::BusConnect(sceneMemberId);
+
+            SceneMemberRequestBus::Event(sceneMemberId, &SceneMemberRequests::SignalMemberSetupComplete);
+        }
+    }
+
     AZStd::unordered_set<AZ::EntityId> SceneComponent::FindConnections(const AZStd::unordered_set<AZ::EntityId>& nodeIds, bool internalConnectionsOnly) const
     {
         AZStd::unordered_set<AZ::EntityId> foundConnections;
@@ -1512,47 +1605,6 @@ namespace GraphCanvas
         auto sourceFound = AZStd::find_if(nodeRefs.begin(), nodeRefs.end(), [&source](const AZ::Entity* node) { return node->GetId() == source.GetNodeId(); }) != nodeRefs.end();
         auto targetFound = AZStd::find_if(nodeRefs.begin(), nodeRefs.end(), [&target](const AZ::Entity* node) { return node->GetId() == target.GetNodeId(); }) != nodeRefs.end();
         return sourceFound != 0 && targetFound != 0;
-    }
-
-    void SceneComponent::FilterItems(const AZStd::unordered_set<AzFramework::EntityReference>& itemRefs, AZStd::unordered_set<AzFramework::EntityReference>& nodeRefs,
-        AZStd::unordered_set<AzFramework::EntityReference>& connections) const
-    {
-        AZStd::unordered_set< AZ::EntityId > wrapperNodes;
-
-        for (const auto& node : m_sceneData.m_nodes)
-        {
-            if (itemRefs.find(AzFramework::EntityReference(node)) != itemRefs.end())
-            {
-                nodeRefs.emplace(node);
-
-                if (WrapperNodeRequestBus::FindFirstHandler(node->GetId()) != nullptr)
-                {
-                    wrapperNodes.insert(node->GetId());
-                }
-            }
-        }
-
-        // Wrapper nodes handle copying/deleting everything internal to themselves. 
-        // So we need to sanitize our filtering to avoid things that are wrapped when the wrapper
-        // is also copied.
-        for (const auto& wrapperNode : wrapperNodes)
-        {
-            AZStd::vector< AZ::EntityId > wrappedNodes;
-            WrapperNodeRequestBus::EventResult(wrappedNodes, wrapperNode, &WrapperNodeRequests::GetWrappedNodeIds);
-
-            for (const auto& wrappedNode : wrappedNodes)
-            {
-                nodeRefs.erase(AzFramework::EntityReference(wrappedNode));
-            }
-        }
-
-        for (const auto& connection : m_sceneData.m_connections)
-        {
-            if (itemRefs.find(AzFramework::EntityReference(connection)) != itemRefs.end())
-            {
-                connections.emplace(connection);
-            }
-        }
     }
 
     void SceneComponent::FilterItems(const AZStd::unordered_set<AZ::EntityId>& itemIds, AZStd::unordered_set<AZ::EntityId>& nodeIds, AZStd::unordered_set<AZ::EntityId>& connectionIds) const

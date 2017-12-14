@@ -17,6 +17,8 @@
 namespace AZStd
 {
     using std::remove_cv;
+    template<class T>
+    using remove_cv_t = std::remove_cv_t<T>;
 }
 
 #endif // AZSTD_TYPE_TRAITS_REMOVE_CV_INCLUDED

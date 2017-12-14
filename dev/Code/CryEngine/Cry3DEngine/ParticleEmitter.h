@@ -175,8 +175,6 @@ public:
     }
     void SetEmitterFlags(uint32 flags) override;
 
-    void ForceShowLod(SLodInfo* lod = nullptr) override;
-    SLodInfo* GetForcedLod() override;
     bool GetPreviewMode() const override;
     //////////////////////////////////////////////////////////////////////////
     // Other methods.
@@ -397,9 +395,7 @@ private:
 
     SPhysEnviron                                    m_PhysEnviron;          // Common physical environment (uniform forces only) for emitter.
     SVisEnviron                                     m_VisEnviron;
-
-    _smart_ptr<CLodInfo> m_selectedLod; //This lod is used for the preview viewer.
-
+    
     bool                                            m_isPrimed;             // Indicates that Prime() was called on this frame.
 
 #ifdef SHARED_GEOM

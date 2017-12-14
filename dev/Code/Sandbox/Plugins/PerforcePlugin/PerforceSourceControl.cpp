@@ -21,6 +21,8 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+#include <QApplication>
+#include <QTimer>
 
 #include <Util/PathUtil.h>
 #include <AzCore/base.h>
@@ -29,31 +31,6 @@ namespace
 {
     CryCriticalSection g_cPerforceValues;
 }
-
-struct CPerforceThread
-    : CrySimpleThread < >
-{
-    const char* m_filename;
-    CPerforceSourceControl* m_pSourceControl;
-
-    CPerforceThread(CPerforceSourceControl* pSourceControl, const char* filename)
-    {
-        m_pSourceControl = pSourceControl;
-        m_filename = filename;
-    }
-
-    virtual ~CPerforceThread()
-    {
-        Stop();
-    }
-
-protected:
-    virtual void Run()
-    {
-        CryThreadSetName(-1, "PerforcePlugin");
-        m_pSourceControl->GetFileAttributesThread(m_filename);
-    }
-};
 
 void CMyClientUser::HandleError(Error* e)
 {
@@ -315,13 +292,11 @@ void CMyClientApi::Run(const char* func, ClientUser* ui)
 CPerforceSourceControl::CPerforceSourceControl()
     : m_ref(0)
 {
-    m_thread = 0;
     m_bIsWorkOffline = true;
     m_bIsWorkOfflineBecauseOfConnectionLoss = true;
     m_bIsFailConnectionLogged = false;
     m_configurationInvalid = false;
     m_dwLastAccessTime = 0;
-    m_isSecondThread = false;
     m_client = nullptr;
     m_nextHandle = 0;
     m_lastWorkOfflineResult = true;
@@ -346,11 +321,6 @@ ULONG STDMETHODCALLTYPE CPerforceSourceControl::Release()
 
 CPerforceSourceControl::~CPerforceSourceControl()
 {
-    if (m_thread)
-    {
-        m_thread->WaitForThread();
-        delete m_thread;
-    }
     delete m_client;
 }
 
@@ -578,117 +548,6 @@ void CPerforceSourceControl::ConvertFileNameCS(char* sDst, const char* sSrcFilen
     if (bFinded)
     {
         strcpy(sDst, szAdjustedFile);
-    }
-}
-
-void CPerforceSourceControl::MakePathCS(char* sDst, const char* sSrcFilename)
-{
-    char szAdjustedFile[ICryPak::g_nMaxPath];
-    char szCheckedPath[ICryPak::g_nMaxPath];
-    cry_strcpy(szAdjustedFile, sSrcFilename);
-
-    char* ch = &szAdjustedFile[0];
-
-    while (ch)
-    {
-        char* ch1 = strchr(ch, '/');
-        ch = strchr(ch, '\\');
-
-        if (ch1 && ch > ch1)
-        {
-            ch = ch1;
-        }
-
-        if (ch)
-        {
-            cry_strcpy(szCheckedPath, szAdjustedFile, ch - szAdjustedFile + 1);
-
-            if (strlen(szCheckedPath) == 3 && szCheckedPath[1] == ':')
-            {
-                ch++;
-                continue;
-            }
-
-            if (IsFileManageable(szCheckedPath, false))
-            {
-                strcpy(szAdjustedFile, szCheckedPath);
-                break;
-            }
-            ch++;
-        }
-    }
-
-    if (strlen(szAdjustedFile) < strlen(sSrcFilename))
-    {
-        if (IsFileManageable(szAdjustedFile))
-        {
-            char file[MAX_PATH];
-            char clienFile[MAX_PATH] = { 0 };
-
-            bool bCont = true;
-            while (bCont)
-            {
-                strcpy(file, &sSrcFilename[strlen(szAdjustedFile)]);
-                char* ch = strchr(file, '/');
-                char* ch1 = strchr(file, '\\');
-                if (ch < ch1)
-                {
-                    ch = ch1;
-                }
-
-                bool bFinded = false;
-
-                if (ch)
-                {
-                    *ch = 0;
-                    bFinded = bCont = FindDir(clienFile, szAdjustedFile, file);
-                }
-
-                if (!bFinded)
-                {
-                    strcpy(&szAdjustedFile[strlen(szAdjustedFile)], &sSrcFilename[strlen(szAdjustedFile)]);
-                    break;
-                }
-
-                strcpy(szAdjustedFile, clienFile);
-                if (bCont && strlen(clienFile) >= strlen(sSrcFilename))
-                {
-                    bCont = false;
-                }
-            }
-        }
-    }
-
-    if (strlen(szAdjustedFile) == strlen(sSrcFilename))
-    {
-        strcpy(sDst, szAdjustedFile);
-    }
-    else
-    {
-        strcpy(sDst, sSrcFilename);
-    }
-}
-
-void CPerforceSourceControl::RenameFolders(const char* path, const char* pathOld)
-{
-    const char* ch = strchr(pathOld, '\\');
-    if (ch)
-    {
-        ch = strchr(ch + 1, '\\');
-    }
-    while (ch)
-    {
-        ch++;
-        const char* const ch1 = strchr(ch, '\\');
-        if (ch1 && strncmp(ch, &path[ch - pathOld], ch1 - ch))
-        {
-            char newpath[ICryPak::g_nMaxPath];
-            char newpathOld[ICryPak::g_nMaxPath];
-            cry_strcpy(newpath, path, (size_t)(ch1 - pathOld));
-            cry_strcpy(newpathOld, pathOld, (size_t)(ch1 - pathOld));
-            QFile::rename(newpathOld, newpath);
-        }
-        ch = ch1;
     }
 }
 
@@ -1070,39 +929,6 @@ uint32 CPerforceSourceControl::GetFileAttributesAndFileName(const char* filename
     return attributes ? attributes : SCC_FILE_ATTRIBUTE_INVALID;
 }
 
-void CPerforceSourceControl::GetFileAttributesThread(const char* filename)
-{
-    uint32 unRetValue = GetFileAttributesAndFileName(filename, 0);
-    m_unRetValue = unRetValue;
-    m_isSetuped = true;
-}
-
-uint32 CPerforceSourceControl::GetFileAttributes(const char* filename)
-{
-    AUTO_LOCK(g_cPerforceValues);
-    uint32 unRetValue = SCC_FILE_ATTRIBUTE_INVALID;
-
-    if ((m_bIsWorkOffline) && (m_bIsWorkOfflineBecauseOfConnectionLoss))
-    {
-        // avoid using perforce if we're offline because of a connection loss.
-        // we automatically retry periodically, AND whenever the user alters the settings in the settings dialog
-        // so don't retry every file!
-        return unRetValue;
-    }
-
-    Reconnect();
-
-    //if SourceControl status is not connected than return
-    if (GetConnectivityState() != ISourceControl::Connected)
-    {
-        return unRetValue;
-    }
-    // if Source Control status is connected than get file attributes
-    unRetValue = GetFileAttributesAndFileName(filename, 0);
-
-    return unRetValue;
-}
-
 bool CPerforceSourceControl::IsFolder(const char* filename, char* FullFileName)
 {
     Reconnect();
@@ -1136,197 +962,6 @@ bool CPerforceSourceControl::IsFolder(const char* filename, char* FullFileName)
     }
 
     return bFolder;
-}
-
-bool CPerforceSourceControl::DoesChangeListExist(const char* pDesc, char* changeid, int nLen)
-{
-    AUTO_LOCK(g_cPerforceValues);
-    if (!Reconnect())
-    {
-        return false;
-    }
-
-    bool ret = false;
-
-    const char* argv[] = { "-c", m_client->GetClient().Text(), "-s", "pending", "-l" };
-    m_ui.Init();
-    m_client->SetArgv(5, const_cast<char**>(argv));
-    m_client->Run("changes", &m_ui);
-
-    QString id("");
-    bool foundChange = false;
-    QString changes(m_ui.m_output);
-    QString token("\r\n");
-
-    for (auto item : changes.split(token))
-    {
-        int idx = item.indexOf("Change ");
-        if (idx != -1)
-        {
-            int last = item.indexOf(" on ");
-            int first = item.indexOf(" ");
-            id = item.left(last);
-            id = id.right(id.length() - (first + 1));
-        }
-        idx = item.indexOf(pDesc);
-        if (idx != -1)
-        {
-            foundChange = true;
-            break;
-        }
-    }
-
-    m_ui.m_output.clear();
-    m_ui.m_input.clear();
-
-    if (!m_ui.m_e.Test() && !id.isEmpty() && foundChange)
-    {
-        QByteArray tempString = id.toUtf8();
-        azsnprintf(changeid, nLen, "%s", tempString.data());
-        ret = true;
-    }
-
-    return ret;
-}
-
-bool CPerforceSourceControl::CreateChangeList(const char* pDesc, char* changeid, int nLen)
-{
-    AUTO_LOCK(g_cPerforceValues);
-    if (!Reconnect())
-    {
-        return false;
-    }
-
-    bool ret = false;
-
-    const char* argv[] = { "-o" };
-    m_ui.Init();
-    m_client->SetArgv(1, const_cast<char**>(argv));
-    m_client->Run("change", &m_ui);
-
-    QString change(m_ui.m_output);
-    QString description = pDesc;
-    change.replace("<enter description here>", description);
-
-    QString files("Files:");
-    int end = change.indexOf(files) + files.length();
-    int iFiles = change.indexOf(files, end);
-    if (iFiles >= 0)
-    {
-        end = iFiles;
-        if (change.length() > end)
-        {
-            change = change.left(end);
-        }
-    }
-
-    m_ui.Init();
-    m_ui.m_input = change;
-    m_ui.m_bIsCreatingChangelist = true;
-    const char* argv2[] = { "-i" };
-    m_client->SetArgv(1, const_cast<char**>(argv2));
-    m_client->Run("change", &m_ui);
-    m_ui.m_bIsCreatingChangelist = false;
-
-    QString changeId(m_ui.m_output);
-    int lastIdx = changeId.lastIndexOf(' ');
-    int firstIdx = changeId.indexOf(' ');
-    QString left = changeId.left(lastIdx);
-    QString id(left.right(left.length() - (firstIdx + 1)));
-
-    QByteArray tempString = id.toUtf8();
-    azsnprintf(changeid, nLen, "%s", tempString.data());
-
-    if (!m_ui.m_e.Test())
-    {
-        ret = true;
-    }
-
-    return ret;
-}
-
-bool CPerforceSourceControl::Add(const char* filename, const char* desc, int nFlags, char* changelistId)
-{
-    AUTO_LOCK(g_cPerforceValues);
-    if (!Reconnect())
-    {
-        return false;
-    }
-
-    bool bRet = false;
-
-    char FullFileName[MAX_PATH];
-    QString files = filename;
-
-    for (auto file : files.split(";", QString::SkipEmptyParts))
-    {
-        file = file.trimmed();
-        if (file.isEmpty())
-        {
-            continue;
-        }
-        uint32 attrib = GetFileAttributesAndFileName(file.toUtf8().data(), FullFileName);
-        char sFullFilename[ICryPak::g_nMaxPath];
-        if (attrib & SCC_FILE_ATTRIBUTE_FOLDER)
-        {
-            cry_strcpy(sFullFilename, filename);
-            cry_strcat(sFullFilename, "*");
-        }
-        else
-        {
-            MakePathCS(sFullFilename, FullFileName);
-            if (strcmp(sFullFilename, FullFileName))
-            {
-                RenameFolders(sFullFilename, FullFileName);
-            }
-        }
-
-        if ((attrib & SCC_FILE_ATTRIBUTE_FOLDER) || ((attrib != SCC_FILE_ATTRIBUTE_INVALID) && !(attrib & SCC_FILE_ATTRIBUTE_MANAGED) && IsFileManageable(sFullFilename)))
-        {
-            if (nFlags & ADD_CHANGELIST && changelistId)
-            {
-                const char* argv[] = { "-c", changelistId, sFullFilename };
-                m_ui.Init();
-                m_client->SetArgv(3, const_cast<char**>(argv));
-                m_client->Run("add", &m_ui);
-
-                if (desc && !(nFlags & ADD_WITHOUT_SUBMIT))
-                {
-                    // m_ui should call Init() first then str_copy the description.
-                    // Otherwise the description will be overwritten.  -- Vera, Confetti.
-                    m_ui.Init();
-                    cry_strcpy(m_ui.m_desc, desc);
-                    m_client->SetArgv(2, const_cast<char**>(argv));
-                    m_client->Run("submit", &m_ui);
-                }
-            }
-            else
-            {
-                char* argv[] = { sFullFilename };
-                m_ui.Init();
-                m_client->SetArgv(1, argv);
-                m_client->Run("add", &m_ui);
-
-                if (desc && !(nFlags & ADD_WITHOUT_SUBMIT))
-                {
-                    // m_ui should call Init() first then str_copy the description.
-                    // Otherwise the description will be overwritten.  -- Vera, Confetti.
-                    m_ui.Init();
-                    cry_strcpy(m_ui.m_desc, desc);
-                    m_client->SetArgv(1, argv);
-                    m_client->Run("submit", &m_ui);
-                }
-            }
-
-
-            if (!m_ui.m_e.Test())
-            {
-                bRet = true;
-            }
-        }
-    }
-
-    return bRet;
 }
 
 bool CPerforceSourceControl::CheckOut(const char* filename, int nFlags, char* changelistId)
@@ -1473,7 +1108,6 @@ bool CPerforceSourceControl::Rename(const char* filename, const char* newname, c
 void CPerforceSourceControl::ShowSettings()
 {
     AUTO_LOCK(g_cPerforceValues);
-    m_isSkipThread = true;
     bool workOffline = (m_bIsWorkOffline && !m_bIsWorkOfflineBecauseOfConnectionLoss);
 
     if (PerforceConnection::OpenPasswordDlg())
@@ -1604,9 +1238,15 @@ bool CPerforceSourceControl::Run(const char* func, int nArgs, char* argv[], bool
                 GetIEditor()->GetSystem()->GetILog()->LogError("Perforce plugin: %s", m.Text());
             }
 
-            if ((!m_client) || (m_client->Dropped()))
+            if (!m_client || m_client->Dropped())
             {
-                GetIEditor()->GetMainStatusBar()->SetItem("source_control", "", GetErrorByGenericCode(nGeneric), m_p4ErrorIcon);
+                IMainStatusBar* statusBar = GetIEditor()->GetMainStatusBar();
+                const QPixmap p4ErrorIcon = m_p4ErrorIcon; // Playing safe and copying instead of capturing 'this', no idea about its lifetime.
+                QTimer::singleShot(0, qApp, [statusBar, p4ErrorIcon, nGeneric] {
+                    // SetItem must be called on the main thread, otherwise we get "Cannot send events to objects owned by a different thread" and asserts in debug mode
+                    // By using a singleShot with context object it calls the lambda on the thread of the context
+                    statusBar->SetItem("source_control", "", CPerforceSourceControl::GetErrorByGenericCode(nGeneric), p4ErrorIcon);
+                });
             }
 
             nGenericPrev = nGeneric;
@@ -1615,57 +1255,6 @@ bool CPerforceSourceControl::Run(const char* func, int nArgs, char* argv[], bool
 
     m_ui.m_e.Clear();
     return bRet;
-}
-
-void  CPerforceSourceControl::NotifyListeners()
-{
-    AUTO_LOCK(g_cPerforceValues);
-    if (m_lastWorkOfflineResult == m_bIsWorkOffline && m_lastWorkOfflineBecauseOfConnectionLossResult == m_bIsWorkOfflineBecauseOfConnectionLoss)
-    {
-        //no change just return
-        return;
-    }
-
-    CacheData();
-
-    //get Source control State
-    ConnectivityState state = GetConnectivityState();
-
-    //Call Callback
-    for (auto iter = m_callbacks.begin(); iter != m_callbacks.end(); iter++)
-    {
-        iter->second(state);
-    }
-}
-
-void CPerforceSourceControl::CacheData()
-{
-    AUTO_LOCK(g_cPerforceValues);
-    m_lastWorkOfflineResult = m_bIsWorkOffline;
-    m_lastWorkOfflineBecauseOfConnectionLossResult = m_bIsWorkOfflineBecauseOfConnectionLoss;
-}
-
-uint CPerforceSourceControl::RegisterCallback(connectivityChangedFunction func)
-{
-    if (func == nullptr)
-    {
-        return 0; // invalid
-    }
-    // returning 1 as the first handle
-    uint handle = ++m_nextHandle;
-
-    m_callbacks[handle] = func;
-    return handle;
-}
-
-void CPerforceSourceControl::UnRegisterCallback(uint handle)
-{
-    if (handle == 0)
-    {
-        return;
-    }
-
-    m_callbacks.erase(handle);
 }
 
 void CPerforceSourceControl::SetSourceControlState(SourceControlState state)
@@ -1682,8 +1271,6 @@ void CPerforceSourceControl::SetSourceControlState(SourceControlState state)
         QString disableMsg("Perforce plugin disabled");
         GetIEditor()->GetSystem()->GetILog()->Log(disableMsg.toUtf8().data());
         GetIEditor()->GetMainStatusBar()->SetItem("source_control", "", disableMsg.toUtf8().data(), m_p4ErrorIcon);
-
-        NotifyListeners();
         break;
     }
     case SourceControlState::Active:
@@ -1700,8 +1287,6 @@ void CPerforceSourceControl::SetSourceControlState(SourceControlState state)
 
         GetIEditor()->GetSystem()->GetILog()->Log("Perforce settings invalid!");
         GetIEditor()->GetMainStatusBar()->SetItem("source_control", "", "Perforce configuration invalid", m_p4ErrorIcon);
-
-        NotifyListeners();
         break;
 
     default:
@@ -1750,7 +1335,6 @@ bool CPerforceSourceControl::CheckConnectionAndNotifyListeners()
             const char* tooltip = m_bIsWorkOffline ? "Perforce is offline" : "Perforce configuration invalid";
             statusBar->SetItem("source_control", "", tooltip, m_p4ErrorIcon);
         }
-        NotifyListeners();
         return false;
     }
 
@@ -1758,7 +1342,6 @@ bool CPerforceSourceControl::CheckConnectionAndNotifyListeners()
     {
         GetIEditor()->GetMainStatusBar()->SetItem("source_control", "", "Perforce is online", m_p4Icon);
     }
-    NotifyListeners();
 
     return bRet;
 }
@@ -1823,24 +1406,6 @@ bool CPerforceSourceControl::GetLatestVersion(const char* filename, int nFlags)
     }
 
     return bRet;
-}
-
-bool CPerforceSourceControl::GetOtherUser(const char* filename, char* outUser, int nOutUserSize)
-{
-    AUTO_LOCK(g_cPerforceValues);
-    if (!filename || !outUser)
-    {
-        return false;
-    }
-
-    uint32 attrib = GetFileAttributesAndFileName(filename, 0);
-
-    if (attrib & SCC_FILE_ATTRIBUTE_MANAGED && *m_ui.m_otherUser)
-    {
-        cry_strcpy(outUser, nOutUserSize, m_ui.m_otherUser);
-        return true;
-    }
-    return false;
 }
 
 bool CPerforceSourceControl::IsSomeTimePassed()

@@ -434,9 +434,9 @@ namespace EMStudio
     {
         if (showDialog)
         {
-            GetMainWindow()->StopRendering();
+            GetManager()->SetAvoidRendering(true);
             const QString filename = QFileDialog::getOpenFileName(this, "Open", GetEventPresetManager()->GetFileName(), "EMStudio Config Files (*.cfg);;All Files (*)");
-            GetMainWindow()->StartRendering();
+            GetManager()->SetAvoidRendering(false);
 
             if (filename.isEmpty() == false)
             {
@@ -458,13 +458,13 @@ namespace EMStudio
     {
         if (showSaveDialog)
         {
-            GetMainWindow()->StopRendering();
+            GetManager()->SetAvoidRendering(true);
 
             AZStd::string defaultFolder;
             AzFramework::StringFunc::Path::GetFullPath(GetEventPresetManager()->GetFileName(), defaultFolder);
 
             const QString filename = QFileDialog::getSaveFileName(this, "Save", defaultFolder.c_str(), "EMotionFX Event Preset Files (*.cfg);;All Files (*)");
-            GetMainWindow()->StartRendering();
+            GetManager()->SetAvoidRendering(false);
 
             if (!filename.isEmpty())
             {

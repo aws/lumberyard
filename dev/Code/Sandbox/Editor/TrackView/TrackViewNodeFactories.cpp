@@ -18,16 +18,18 @@
 #include "TrackViewEventNode.h"
 #include "TrackViewTrack.h"
 #include "TrackViewGeomCacheAnimationTrack.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 CTrackViewAnimNode* CTrackViewAnimNodeFactory::BuildAnimNode(IAnimSequence* pSequence, IAnimNode* pAnimNode, CTrackViewNode* pParentNode)
 {
     CTrackViewAnimNode* retNode = nullptr;
 
-    if (pAnimNode->GetType() == eAnimNodeType_Camera)
+    if (pAnimNode->GetType() == AnimNodeType::Camera)
     {
         retNode = new CTrackViewCameraNode(pSequence, pAnimNode, pParentNode);
     }
-    else if (pAnimNode->GetType() == eAnimNodeType_Event)
+    else if (pAnimNode->GetType() == AnimNodeType::Event)
     {
         retNode = new CTrackViewEventNode(pSequence, pAnimNode, pParentNode);
     }
@@ -43,7 +45,7 @@ CTrackViewTrack* CTrackViewTrackFactory::BuildTrack(IAnimTrack* pTrack, CTrackVi
     CTrackViewNode* pParentNode, bool bIsSubTrack, unsigned int subTrackIndex)
 {
 #if defined(USE_GEOM_CACHES)
-    if (pTrack->GetParameterType() == eAnimParamType_TimeRanges && pTrackAnimNode->GetType() == eAnimNodeType_GeomCache)
+    if (pTrack->GetParameterType() == AnimParamType::TimeRanges && pTrackAnimNode->GetType() == AnimNodeType::GeomCache)
     {
         return new CTrackViewGeomCacheAnimationTrack(pTrack, pTrackAnimNode, pParentNode, bIsSubTrack, subTrackIndex);
     }

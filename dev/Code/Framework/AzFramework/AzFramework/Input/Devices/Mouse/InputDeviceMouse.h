@@ -31,8 +31,14 @@ namespace AzFramework
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! The id used to identify any mouse input device
+        //! The id used to identify the primary mouse input device
         static const InputDeviceId Id;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Check whether an input device id identifies a mouse (regardless of index)
+        //! \param[in] inputDeviceId The input device id to check
+        //! \return True if the input device id identifies a mouse, false otherwise
+        static bool IsMouseDevice(const InputDeviceId& inputDeviceId);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! All the input channel ids that identify standard mouse buttons. Though some mice support

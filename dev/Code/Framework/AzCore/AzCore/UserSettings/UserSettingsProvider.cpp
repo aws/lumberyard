@@ -102,13 +102,18 @@ namespace AZ
         AZ_Error("UserSettings", settingsFile.IsOpen(), "UserSettingsProvider cannot write to temp file %s. Settings were not saved!", tmpFullPath.c_str());
         if (settingsFile.IsOpen())
         {
-            IO::SystemFileStream settingsFileStream(&settingsFile, false);
-            ObjectStream* objStream = ObjectStream::Create(&settingsFileStream, *sc, ObjectStream::ST_XML);
+            AZStd::vector<char> saveBuffer;
+            AZ::IO::ByteContainerStream<AZStd::vector<char>> byteStream(&saveBuffer);
+            
+            ObjectStream* objStream = ObjectStream::Create(&byteStream, *sc, ObjectStream::ST_XML);
             bool writtenOk = objStream->WriteClass(&m_settings);
             bool streamOk = objStream->Finalize();
+
+            IO::SystemFileStream settingsFileStream(&settingsFile, false);
+            AZ::u64 bytesWritten = settingsFile.Write(saveBuffer.data(), saveBuffer.size());
             settingsFile.Close();
 
-            if (writtenOk && streamOk)
+            if (writtenOk && streamOk && bytesWritten == saveBuffer.size())
             {
                 settingsSaved = IO::SystemFile::Rename(tmpFullPath.c_str(), settingsPath, true);
                 AZ_Error("UserSettings", settingsSaved, "UserSettingsProvider cannot write to settings file %s. Settings were not saved!", settingsPath);

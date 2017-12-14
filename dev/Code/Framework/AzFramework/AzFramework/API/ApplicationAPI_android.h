@@ -15,6 +15,8 @@
 
 #include <AzCore/EBus/EBus.h>
 
+struct android_app;
+
 namespace AzFramework
 {
     class AndroidLifecycleEvents
@@ -34,16 +36,32 @@ namespace AzFramework
         // suspend/resume events. However there is no guarantee of
         // either these methods being called, and the behavior of
         // onPause/onResume more closely matches that of suspend/
-        // resume on our other platforms. However we still want to
-        // generate constrain/unconstrain events, so we'll use the
-        // same technique as the underlying SDL2 implementation by
-        // sending both constrain/suspend events from onPause, and
-        // resume/unconstrain events from onResume.
+        // resume on our other platforms. 
 
         virtual void OnPause() {}       // Constrain -> Suspend
         virtual void OnResume() {}      // Resume -> Unconstrain
 
         virtual void OnDestroy() {}     // Terminate
         virtual void OnLowMemory() {}   // Low memory
+
+        virtual void OnWindowInit() {}     // Application window was created
+        virtual void OnWindowDestroy() {}   // Application window is going to be destoryed
+    };
+
+
+    class AndroidAppRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        using Bus = AZ::EBus<AndroidAppRequests>;
+
+        // Bus Configuration
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual ~AndroidAppRequests() {}
+
+        //! Sets the Android application state required to pumping the event loop
+        virtual void SetAppState(android_app* appState) = 0;
     };
 } // namespace AzFramework

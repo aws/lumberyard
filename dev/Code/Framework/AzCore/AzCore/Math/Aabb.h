@@ -154,6 +154,13 @@ namespace AZ
             return p.GetDistance(closest);
         }
 
+        ///Calculates distance from the AABB to specified point, a point inside the AABB will return zero
+        AZ_MATH_FORCE_INLINE const VectorFloat GetDistanceSq(const Vector3& p) const
+        {
+            Vector3 closest = p.GetClamp(m_min, m_max);
+            return p.GetDistanceSq(closest);
+        }
+
         ///Clamps the AABB to be contained within the specified AABB
         AZ_MATH_FORCE_INLINE const Aabb GetClamped(const Aabb& clamp) const
         {

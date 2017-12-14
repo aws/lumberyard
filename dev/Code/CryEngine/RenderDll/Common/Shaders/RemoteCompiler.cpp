@@ -20,6 +20,7 @@
 #include <AzCore/Socket/AzSocket.h>
 #include <NativeUIRequests.h>
 #include <AzFramework/Network/SocketConnection.h>
+#include <AzFramework/Asset/AssetSystemTypes.h>
 
 namespace NRemoteCompiler
 {
@@ -77,7 +78,7 @@ namespace NRemoteCompiler
                     // (AddTypeCallback is assumed to be thread safe.)
 
                     m_engineConnectionCallbackInstalled = true;
-                    engineConnection->AddMessageHandler(m_remoteResponseCRC, std::bind(&RemoteProxyState::OnReceiveRemoteResponse, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                    engineConnection->AddMessageHandler(m_remoteResponseCRC, std::bind(&RemoteProxyState::OnReceiveRemoteResponse, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
                 }
             }
 
@@ -168,7 +169,7 @@ namespace NRemoteCompiler
                 SwapEndian(swappedToken);
                 memcpy(newData.data() + newData.size() - 4, &swappedToken, 4);
 
-                OnReceiveRemoteResponse(m_remoteResponseCRC, newData.data(), newData.size());
+                OnReceiveRemoteResponse(m_remoteResponseCRC, AzFramework::AssetSystem::DEFAULT_SERIAL, newData.data(), newData.size());
             }
             else // note:  This else is inside the endif so that it only takes the second branch if UNIT TEST MODE is present.
 #endif // AZ_TESTS_ENABLED
@@ -206,7 +207,7 @@ namespace NRemoteCompiler
         CryMutex m_mapProtector;
         std::unordered_map<unsigned int, TResponseCallback> m_responsesAwaitingCallback;
 
-        void OnReceiveRemoteResponse(unsigned int messageID, const void* payload, unsigned int payloadSize)
+        void OnReceiveRemoteResponse(unsigned int messageID, unsigned int /*serial*/, const void* payload, unsigned int payloadSize)
         {
             // peel back to inner payload:
             if (payloadSize < 4)

@@ -40,7 +40,13 @@
 #define SIGC_PLAYERHIDEABLE_MASK   BIT(13) | BIT(14)
 
 #define SIGC_CASTSHADOW_MINSPEC_SHIFT (15)
-#define SIGC_CASTSHADOW_MINSPEC_MASK  ((END_CONFIG_SPEC_ENUM - 1) << SIGC_CASTSHADOW_MINSPEC_SHIFT)
+
+// Get the number of bits needed for the maximum spec level
+#define SIGC_CASTSHADOW_MINSPEC_MASK_NUM_BITS_NEEDED (IntegerLog2(uint32(END_CONFIG_SPEC_ENUM - 1)) + 1)
+
+// Create a mask based on the number of bits needed
+#define SIGC_CASTSHADOW_MINSPEC_MASK_BITS ((1 << SIGC_CASTSHADOW_MINSPEC_MASK_NUM_BITS_NEEDED) - 1)
+#define SIGC_CASTSHADOW_MINSPEC_MASK  (SIGC_CASTSHADOW_MINSPEC_MASK_BITS << SIGC_CASTSHADOW_MINSPEC_SHIFT)
 
 void CTerrain::GetVegetationMaterials(std::vector<_smart_ptr<IMaterial> >*& pMatTable)
 {
@@ -833,6 +839,9 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
     }
 
     Get3DEngine()->m_bAreaActivationInUse = (pTerrainChunkHeader->nFlags2 & TCH_FLAG2_AREA_ACTIVATION_IN_USE) != 0;
+
+    int numTiles = CTerrain::m_NodePyramid[0].GetSize();
+    SendLegacyTerrainUpdateNotifications(0, 0, numTiles, numTiles);
 
     assert(nNodesLoaded && nDataSize == 0);
     return (nNodesLoaded && nDataSize == 0);

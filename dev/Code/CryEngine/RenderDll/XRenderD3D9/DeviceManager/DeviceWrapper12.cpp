@@ -594,21 +594,36 @@ bool CDeviceResourceSet::Fill(CShader* pShader, CShaderResources* pResources, ES
 
     for (EEfResTextures texType = EFTT_DIFFUSE; texType < EFTT_MAX; texType = EEfResTextures(texType + 1))
     {
-        CTexture* pTex = TextureHelpers::LookupTexDefault(texType);
-        if (pResources->m_Textures[texType])
+        CTexture*       pTex = TextureHelpers::LookupTexDefault(texType);
+        SEfResTexture*  pRTextureRes = pResources->GetTextureResource(texType);
+        if (pRTextureRes && pRTextureRes->m_Sampler.m_pTex)
         {
-            const STexSamplerRT& smp = pResources->m_Textures[texType]->m_Sampler;
-            pTex = smp.m_pTex;
+            pTex = pRTextureRes->m_Sampler.m_pTex;
         }
-
-        AZ_Warning("Graphics", pTex, "Texture is Null in CDeviceResourceSet.");
+        else if (pRTextureRes)
+        {
+            AZ_Warning("Graphics", pRTextureRes->m_Sampler.m_pTex, "Texture at slot %d is Null", (uint16)texType );
+        }
 
         auto bindSlot = IShader::GetTextureSlot(texType);
         SetTexture(bindSlot, pTex, SResourceView::DefaultView, shaderStages);
     }
+/*
+	[Shader System TO DO] - replace with the following optimized slots set code 
+    for (auto iter = pResources->m_TexturesResourcesMap.begin(); iter != pResources->m_TexturesResourcesMap.end(); ++iter)
+    {
+        SEfResTexture*  	    pTexture = &iter->second;
+        CTexture*               pTex = pTexture->m_Sampler.m_pTex;
+        uint16                  texSlot = iter->first;
+        const STexSamplerRT&    smp = pTexture->m_Sampler;
 
+        AZ_Warning("Graphics", pTex, "Texture is Null in CDeviceResourceSet.");
+
+        SetTexture(texSlot, pTex, SResourceView::DefaultView, shaderStages);
+    }
+*/
     // Eventually we should only have one constant buffer for all shader stages. for now just pick the one from the pixel shader
-    m_ConstantBuffers[eConstantBufferShaderSlot_PerMaterial]  = SConstantBufferData(pResources->m_ConstantBuffer, shaderStages);
+    m_ConstantBuffers[eConstantBufferShaderSlot_PerMaterial]  = SConstantBufferData(pResources->GetConstantBuffer(), shaderStages);
     return true;
 }
 

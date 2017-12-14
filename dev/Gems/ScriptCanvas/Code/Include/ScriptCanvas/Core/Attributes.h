@@ -28,6 +28,18 @@ namespace ScriptCanvas
             const static AZ::Crc32 GraphEntryPoint = AZ_CRC("ScriptCanvasGraphEntryPoint", 0xa3702458);
         }
 
+        namespace UIHandlers
+        {
+            const static AZ::Crc32 GenericLineEdit = AZ_CRC("GenericLineEdit", 0xf6133796);
+            const static AZ::Crc32 GenericComboBox = AZ_CRC("GenericComboBox", 0x4c8bc9c5);
+        }
+
+        const static AZ::Crc32 GenericValue = AZ_CRC("GenericValue", 0x7a28c4bc);
+        const static AZ::Crc32 GenericValueList = AZ_CRC("GenericValueList", 0x6847012e);
+        const static AZ::Crc32 StringToProperty = AZ_CRC("StringToProperty", 0x3e76c0a2);
+        const static AZ::Crc32 PropertyToString = AZ_CRC("PropertyToString", 0x323fc400);
+        const static AZ::Crc32 PostChangeNotify = AZ_CRC("PostChangeNotify", 0x456e84c8);
+
         const static AZ::Crc32 Input = AZ_CRC("Input", 0xd82832d7);
         const static AZ::Crc32 Output = AZ_CRC("Output", 0xccde149e);
         const static AZ::Crc32 Setter = AZ_CRC("Setter", 0x7c825e44);

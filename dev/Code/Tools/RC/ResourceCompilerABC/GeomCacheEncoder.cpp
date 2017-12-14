@@ -22,9 +22,6 @@
 
 namespace
 {
-    // Maximum number of frames buffered before the encoder waits
-    const uint g_kMaxBufferedFrames = 60;
-
     // Helper to add blob data to std::vector<uint8>
     template<class T>
     void PushData(std::vector<uint8>& v, const T& d)
@@ -54,21 +51,15 @@ namespace
 }
 
 GeomCacheEncoder::GeomCacheEncoder(GeomCacheWriter& geomCacheWriter, GeomCache::Node& rootNode,
-    const std::vector<GeomCache::Mesh*>& meshes, ThreadUtils::StealingThreadPool& threadPool, const bool bUseBFrames,
-    const uint indexFrameDistance)
+    const std::vector<GeomCache::Mesh*>& meshes, const bool bUseBFrames, const uint indexFrameDistance)
     : m_rootNode(rootNode)
     , m_meshes(meshes)
     , m_geomCacheWriter(geomCacheWriter)
-    , m_threadPool(threadPool)
     , m_nextFrameIndex(0)
     , m_firstInfoFrameIndex(0)
-    , m_jobGroupDone(true)
     , m_bUseBFrames(bUseBFrames)
     , m_indexFrameDistance(indexFrameDistance)
 {
-    STATIC_ASSERT(g_kMaxBufferedFrames >= GeomCacheFile::kMaxIFrameDistance,
-        "g_kMaxBufferedFrames needs to be >= GeomCacheFile::kMaxIFrameDistance");
-
     if (m_indexFrameDistance > GeomCacheFile::kMaxIFrameDistance)
     {
         RCLogWarning("Index frame distance clamped to %d", GeomCacheFile::kMaxIFrameDistance);
@@ -95,25 +86,6 @@ void GeomCacheEncoder::CountNodesRec(GeomCache::Node& currentNode)
 
 void GeomCacheEncoder::AddFrame(const Alembic::Abc::chrono_t frameTime, const AABB& aabb, const bool bIsLastFrame)
 {
-    // Wait for last frame job group to finish
-    {
-        AZStd::unique_lock<AZStd::mutex> uniqueJobLock(m_jobGroupDoneCS);
-
-        while (!m_jobGroupDone)
-        {
-            m_jobGroupDoneCV.wait(uniqueJobLock);
-        }
-
-        m_jobGroupDone = false;
-    }
-
-    // Check if there is enough space left in frames deque, otherwise wait until there is again
-    AZStd::unique_lock<AZStd::mutex> uniqueFrameLock(m_framesCS);
-    while (m_frames.size() > g_kMaxBufferedFrames)
-    {
-        m_frameRemovedCV.wait(uniqueFrameLock);
-    }
-
     GeomCacheEncoderFrameInfo* pFrame = new GeomCacheEncoderFrameInfo(this, m_nextFrameIndex, frameTime, aabb, bIsLastFrame);
 
     if (!m_bUseBFrames || bIsLastFrame || (m_nextFrameIndex % m_indexFrameDistance) == 0)
@@ -127,42 +99,31 @@ void GeomCacheEncoder::AddFrame(const Alembic::Abc::chrono_t frameTime, const AA
 
     ++m_nextFrameIndex;
 
-    CreateFrameJobGroup(pFrame);
+    EncodeFrame(pFrame);
 }
 
 GeomCacheEncoderFrameInfo& GeomCacheEncoder::GetInfoFromFrameIndex(const uint index)
 {
-    AZStd::lock_guard<AZStd::mutex> lock(m_framesCS);
     const uint frameInfoOffset = index - m_firstInfoFrameIndex;
     return *m_frames[frameInfoOffset].get();
 }
 
-void GeomCacheEncoder::Flush()
-{
-    AZStd::unique_lock<AZStd::mutex> lock(m_framesCS);
-    while (m_frames.size() > 0)
-    {
-        m_frameRemovedCV.wait(lock);
-    }
-}
-
-void GeomCacheEncoder::CreateFrameJobGroup(GeomCacheEncoderFrameInfo* pFrame)
+void GeomCacheEncoder::EncodeFrame(GeomCacheEncoderFrameInfo* pFrame)
 {
     m_frames.push_back(std::unique_ptr<GeomCacheEncoderFrameInfo>(pFrame));
 
-    ThreadUtils::JobGroup* pJobGroup = m_threadPool.CreateJobGroup<>(&FrameJobGroupFinishedCallback, pFrame);
-
     pFrame->m_encodeCountdown += m_numNodes;
-    pJobGroup->Add<>(&EncodeNodesJob, pFrame);
 
-    CreateMeshJobs(pFrame, pJobGroup);
-    pFrame->m_doneCountdown.store(pFrame->m_encodeCountdown);
-    pJobGroup->Submit();
+    EncodeNodesRec(m_rootNode, pFrame);
+    EncodeAllMeshes(pFrame);
+
+    FrameEncodeFinished(pFrame);
 }
 
-void GeomCacheEncoder::CreateMeshJobs(GeomCacheEncoderFrameInfo* pFrame, ThreadUtils::JobGroup* pJobGroup)
+void GeomCacheEncoder::EncodeAllMeshes(GeomCacheEncoderFrameInfo* pFrame)
 {
     const uint numMeshes = m_meshes.size();
+    int numAnimatedMeshes = 0;
     for (uint i = 0; i < numMeshes; ++i)
     {
         GeomCache::Mesh* pCurrentMesh = m_meshes[i];
@@ -170,62 +131,41 @@ void GeomCacheEncoder::CreateMeshJobs(GeomCacheEncoderFrameInfo* pFrame, ThreadU
         if (pCurrentMesh->m_animatedStreams != 0)
         {
             ++pFrame->m_encodeCountdown;
-            pJobGroup->Add<>(&EncodeMeshJob, new std::pair<GeomCache::Mesh*, GeomCacheEncoderFrameInfo*>(pCurrentMesh, pFrame));
-        }
-    }
-}
+            EncodeMesh(pCurrentMesh, pFrame);
 
-void GeomCacheEncoder::FrameJobGroupFinishedCallback(GeomCacheEncoderFrameInfo* pFrame)
-{
-    GeomCacheEncoder* pSelf = pFrame->m_pEncoder;
-    pSelf->FrameGroupFinished(pFrame);
-}
-
-void GeomCacheEncoder::FrameGroupFinished(GeomCacheEncoderFrameInfo* pFrame)
-{
-    bool bFramePopped = false;
-
-    {
-        AZStd::lock_guard<AZStd::mutex> framesLock(m_framesCS);
-
-        // Write ready frames
-        const uint numFrames = m_frames.size();
-        for (uint i = 0; i < numFrames; ++i)
-        {
-            GeomCacheEncoderFrameInfo& frame = *m_frames[i].get();
-            if (frame.m_encodeCountdown == 0 && !frame.m_bWritten)
+            // Only need to track the animated meshes we process if we are not the last frame. If we
+            // are processing the last frame then we can set the doneCountdown to 0 since we have by
+            // this point have encoded all the frames, including the current one.
+            if (!pFrame->m_bIsLastFrame)
             {
-                m_geomCacheWriter.WriteFrame(frame.m_frameIndex, frame.m_frameAABB, frame.m_frameType, m_meshes, m_rootNode);
-                frame.m_bWritten = true;
+                numAnimatedMeshes++;
             }
         }
-
-        // Remove frames that are not needed anymore
-        while (m_frames.size() > 0 && m_frames.front()->m_doneCountdown == 0)
-        {
-            bFramePopped = true;
-            m_frames.pop_front();
-            ++m_firstInfoFrameIndex;
-        }
     }
-
-    {
-        AZStd::lock_guard<AZStd::mutex> jobLock(m_jobGroupDoneCS);
-        m_jobGroupDone = true;
-    }
-
-    m_jobGroupDoneCV.notify_one();
-
-    if (bFramePopped)
-    {
-        m_frameRemovedCV.notify_all();
-    }
+    
+    pFrame->m_doneCountdown = numAnimatedMeshes;
 }
 
-void GeomCacheEncoder::EncodeNodesJob(GeomCacheEncoderFrameInfo* pFrame)
+void GeomCacheEncoder::FrameEncodeFinished(GeomCacheEncoderFrameInfo* pFrame)
 {
-    GeomCacheEncoder* pEncoder = pFrame->m_pEncoder;
-    pEncoder->EncodeNodesRec(pEncoder->m_rootNode, pFrame);
+    // Write ready frames
+    const uint numFrames = m_frames.size();
+    for (uint i = 0; i < numFrames; ++i)
+    {
+        GeomCacheEncoderFrameInfo& frame = *m_frames[i].get();
+        if (frame.m_encodeCountdown == 0 && !frame.m_bWritten)
+        {
+            m_geomCacheWriter.WriteFrame(frame.m_frameIndex, frame.m_frameAABB, frame.m_frameType, m_meshes, m_rootNode);
+            frame.m_bWritten = true;
+        }
+    }
+    
+    // Remove frames that are not needed anymore
+    while (m_frames.size() > 0 && m_frames.front()->m_doneCountdown == 0)
+    {
+        m_frames.pop_front();
+        ++m_firstInfoFrameIndex;
+    }
 }
 
 void GeomCacheEncoder::EncodeNodesRec(GeomCache::Node& currentNode, GeomCacheEncoderFrameInfo* pFrame)
@@ -233,9 +173,7 @@ void GeomCacheEncoder::EncodeNodesRec(GeomCache::Node& currentNode, GeomCacheEnc
     const uint frameIndex = pFrame->m_frameIndex;
 
     // Get frame to process
-    currentNode.m_animatedNodeDataCS.lock();
     GeomCache::NodeData& rawFrame = currentNode.m_animatedNodeData.front();
-    currentNode.m_animatedNodeDataCS.unlock();
 
     // Add encoded frame
     currentNode.m_encodedFramesCS.lock();
@@ -251,9 +189,7 @@ void GeomCacheEncoder::EncodeNodesRec(GeomCache::Node& currentNode, GeomCacheEnc
     --pFrame->m_doneCountdown;
 
     // Remove processed raw frame
-    currentNode.m_animatedNodeDataCS.lock();
     currentNode.m_animatedNodeData.pop_front();
-    currentNode.m_animatedNodeDataCS.unlock();
 
     const uint numChildren = currentNode.m_children.size();
     for (uint i = 0; i < numChildren; ++i)
@@ -278,16 +214,6 @@ void GeomCacheEncoder::EncodeNodeIFrame(const GeomCache::Node& currentNode, cons
 
         PushData(output, transform);
     }
-}
-
-void GeomCacheEncoder::EncodeMeshJob(std::pair<GeomCache::Mesh*, GeomCacheEncoderFrameInfo*>* pData)
-{
-    GeomCache::Mesh* pMesh = pData->first;
-    GeomCacheEncoderFrameInfo* pFrame = pData->second;
-    GeomCacheEncoder* pEncoder = pFrame->m_pEncoder;
-    delete pData;
-
-    pEncoder->EncodeMesh(pMesh, pFrame);
 }
 
 void GeomCacheEncoder::EncodeMesh(GeomCache::Mesh* pMesh, GeomCacheEncoderFrameInfo* pFrame)
@@ -332,7 +258,6 @@ void GeomCacheEncoder::EncodeMesh(GeomCache::Mesh* pMesh, GeomCacheEncoderFrameI
     {
         const uint frameDelta = frameIndex - pLastIFrameInfo->m_frameIndex;
         const Alembic::Abc::chrono_t timeDelta = frameTime - pLastIFrameInfo->m_frameTime;
-        const bool bIsLastFrame = pFrame->m_bIsLastFrame;
 
         if (pFrame->m_frameType == GeomCacheFile::eFrameType_IFrame)
         {
@@ -373,12 +298,6 @@ void GeomCacheEncoder::EncodeMesh(GeomCache::Mesh* pMesh, GeomCacheEncoderFrameI
             EncodeMeshIFrame(*pMesh, rawMeshFrame, output);
             GeomCacheEncoderFrameInfo& frameInfo = GetInfoFromFrameIndex(frameIndex);
             --frameInfo.m_encodeCountdown;
-
-            // If this is the last frame, then it's also done
-            if (pFrame->m_bIsLastFrame)
-            {
-                --frameInfo.m_doneCountdown;
-            }
 
             // Remove unneeded frames. Don't remove last frame, because we might still need it for velocity vectors.
             // Don't need to care if there are frames left in the end, it will be killed with the mesh data structure.

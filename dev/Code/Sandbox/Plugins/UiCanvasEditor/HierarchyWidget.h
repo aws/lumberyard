@@ -11,6 +11,10 @@
 */
 #pragma once
 
+#include "EditorCommon.h"
+
+#include <QTreeWidget>
+
 class HierarchyWidget
     : public QTreeWidget
 {
@@ -27,19 +31,20 @@ public:
 
     void CreateItems(const LyShine::EntityArray& elements);
     void RecreateItems(const LyShine::EntityArray& elements);
+    void ClearItems();
 
     AZ::Entity* CurrentSelectedElement() const;
 
     void SetUniqueSelectionHighlight(QTreeWidgetItem* item);
     void SetUniqueSelectionHighlight(AZ::Entity* element);
 
-    void AddElement(QTreeWidgetItemRawPtrQList& selectedItems, const QPoint* optionalPos);
+    void AddElement(const QTreeWidgetItemRawPtrQList& selectedItems, const QPoint* optionalPos);
 
-    void SignalUserSelectionHasChanged(QTreeWidgetItemRawPtrQList& selectedItems);
+    void SignalUserSelectionHasChanged(const QTreeWidgetItemRawPtrQList& selectedItems);
 
     void ReparentItems(bool onCreationOfElement,
-        QTreeWidgetItemRawPtrList& baseParentItems,
-        HierarchyItemRawPtrList& childItems);
+        const QTreeWidgetItemRawPtrList& baseParentItems,
+        const HierarchyItemRawPtrList& childItems);
 
     //! When we delete the Editor window we call this. It avoid the element Entities
     //! being deleted when the HierarchyItem is deleted
@@ -86,7 +91,7 @@ protected:
 
 private:
 
-    void DeleteSelectedItems(QTreeWidgetItemRawPtrQList& selectedItems);
+    void DeleteSelectedItems(const QTreeWidgetItemRawPtrQList& selectedItems);
     bool AcceptsMimeData(const QMimeData *mimeData);
 
     bool m_isDeleting;
@@ -102,4 +107,6 @@ private:
     bool m_inDragStartState;
     bool m_selectionChangedBeforeDrag;
     bool m_signalSelectionChange;
+
+    bool m_inited;
 };

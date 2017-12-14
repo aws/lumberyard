@@ -91,6 +91,7 @@ namespace AssetProcessor
 
         void EraseFailedJobs(const QueueElementID& target);
         int FailedJobsCount();
+        void EraseJobs(QString sourceFile);
 
     private:
 

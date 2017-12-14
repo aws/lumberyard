@@ -16,6 +16,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Network/SocketConnection.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
 
 namespace AzToolsFramework
 {
@@ -31,6 +32,8 @@ namespace AzToolsFramework
             : public AZ::Component
             , private AzToolsFramework::AssetSystemRequestBus::Handler
             , private AzToolsFramework::AssetSystemJobRequestBus::Handler
+            , private AzToolsFramework::AssetSystemBus::Handler
+            , private AzToolsFramework::ToolsAssetSystemBus::Handler
         {
         public:
             AZ_COMPONENT(AssetSystemComponent, "{B1352D59-945B-446A-A7E1-B2D3EB717C6D}")
@@ -59,8 +62,8 @@ namespace AzToolsFramework
             bool GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullPath, AZStd::string& outputPath) override;
             bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullPath) override;
             void UpdateQueuedEvents() override;
-            bool GetSourceAssetInfoById(const AZ::Uuid& guid, AZStd::string& watchFolder, AZStd::string& relativePath) override;
-            bool GetSourceFileInfoByPath(SourceFileInfo& result, const char* sourcePath) override;
+            bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) override;
+            bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -72,7 +75,22 @@ namespace AzToolsFramework
             virtual AZ::Outcome<AZStd::string> GetJobLog(AZ::u64 jobrunkey) override;
             //////////////////////////////////////////////////////////////////////////
 
+            //////////////////////////////////////////////////////////////////////////
+            // AzToolsFramework::::AssetSystemBus::Handler overrides
+            void SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
+            void SourceFileRemoved(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
+            void SourceFileFailed(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            // AzToolsFramework::ToolsAssetSystemBus::Handler overrides
+            void RegisterSourceAssetType(const AZ::Data::AssetType& assetType, const char* assetFileFilter) override;
+            void UnregisterSourceAssetType(const AZ::Data::AssetType& assetType) override;
+            //////////////////////////////////////////////////////////////////////////
+
             AzFramework::SocketConnection::TMessageCallbackHandle m_cbHandle = 0;
+
+            AZStd::unordered_map<AZStd::string, AZStd::string> m_assetSourceRelativePathToFullPathCache;
         };
 
 

@@ -17,6 +17,8 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include "PropertyEditorAPI.h"
 
+#include <QWidget>
+
 #pragma once
 
 class QComboBox;

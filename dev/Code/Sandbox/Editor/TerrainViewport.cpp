@@ -275,12 +275,6 @@ void CTerrainViewport::UpdateContent(int flags)
     ASSERT(pSurfaceData);
 
     bReturn = GetIEditor()->GetHeightmap()->GetPreviewBitmap((DWORD*)pSurfaceData, m_heightmapSize.cx, false, false);
-    /*
-    // Fill in the surface data into the array. Apply lighting and water, use
-    // the settings from the document
-    bReturn = cSurfaceTexture.GenerateSurface(pSurfaceData, SURFACE_TEXTURE_WIDTH,
-        SURFACE_TEXTURE_WIDTH, true, true, GLOBAL_GET_DOC->GetWaterLevel(), true);
-        */
 
     if (bReturn)
     {

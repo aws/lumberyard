@@ -1,5 +1,3 @@
-
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -32,15 +30,13 @@ namespace AZ
 {
     namespace RC
     {
-        namespace SceneEvents = AZ::SceneAPI::Events;
         namespace SceneUtil = AZ::SceneAPI::Utilities;
         namespace SceneContainer = AZ::SceneAPI::Containers;
 
         const AZStd::string SkinGroupExporter::s_fileExtension = "skin";
 
         SkinGroupExporter::SkinGroupExporter(IAssetWriter* writer, IConvertContext* convertContext)
-            : CallProcessorBinder()
-            , m_assetWriter(writer)
+            : m_assetWriter(writer)
             , m_convertContext(convertContext)
         {
             BindToCall(&SkinGroupExporter::ProcessContext);
@@ -93,5 +89,5 @@ namespace AZ
             }
             return result.GetResult();
         }
-    }
-}
+    } // namespace RC
+} // namespace AZ

@@ -1,76 +1,639 @@
-﻿<facet-generator [context]="context"
-                 [tabs]="['Bots', 'Settings']"
-                 (tabClicked)="getSubNavItem($event)" [metricIdentifier]="context.identifier"></facet-generator>
-
-<div *ngIf="subNavActiveIndex == 0">
-    <button class="btn l-primary basic-button" (click)="clickUploadButton()">
-        Create Bot
-    </button>
-    <i class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="right" triggers="click" [ngbTooltip]="createBotTip"></i>
-    <input #upload class="upload" type="file" (change)="uploadBotDefinition($event)" accept=".json"/>
-
-    <div [ngSwitch]="isLoadingBots">
-        <div *ngSwitchCase="true">
-            <div class="loading-spinner-container">
-                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
-            </div>
-        </div>
-        <div class="content-container" *ngSwitchCase="false">
-            <div *ngIf="!bots || bots.length == 0">
-                No bot
-            </div>
-            <div *ngIf="bots.length > 0">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th class="name-column" (click)="sortTable()">
-                                BOT NAME
-                                <i *ngIf="sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
-                                <i *ngIf="sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
-                            </th>
-                            <th class="version-column"> CURRENT VERSION </th>
-                            <th class="status-column"> STATUS </th>
-                            <th class="updated-column"> UPDATED </th>
-                            <th class="created-column"> CREATED </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let bot of botsOnCurrentPage">
-                            <td class="name-column">
-                                {{bot.bot_name}}
-                            </td>
-                            <td class="version-column">
-                                {{bot.current_version}}
-                            </td>
-                            <td class="status-column">
-                                <i *ngIf="bot.status == 'PUBLISHING'" class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="left" [ngbTooltip]="publishBotTip"></i>
-                                {{bot.status}}
-                                <i *ngIf="bot.status == 'PUBLISHING'" class="fa fa-refresh fa-spin" aria-hidden="true"></i>
-                            </td>
-                            <td class="updated-column">
-                                {{bot.updated}}
-                            </td>
-                            <td class="created-column">
-                                {{bot.created}}
-                            </td>
-                            <td>
-                                <div class="float-right">
-                                    <action-stub-items *ngIf="bot.status != 'PUBLISHED'" [model]="bot" [custom]="unpublishedBotActions"></action-stub-items>
-                                    <action-stub-items *ngIf="bot.status == 'PUBLISHED'" [model]="bot" [custom]="publishedBotActions"></action-stub-items>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <pagination [pages]="botPages"
-                    (pageChanged)="updateBots($event)"></pagination>
+﻿<div [ngSwitch]="showBotEditor">
+    <div *ngSwitchCase="false">
+        <facet-generator [context]="context"
+                         [tabs]="['Bots', 'Intents', 'Slot Types', 'Settings']"
+                         (tabClicked)="getMainPageSubNavItem($event)" [metricIdentifier]="context.identifier"></facet-generator>
+    </div>
+    <div *ngSwitchCase="true">
+        <facet-generator [context]="context"
+                         [tabs]="['Editor', 'Settings']"
+                         (tabClicked)="getBotSubNavItem($event)" [metricIdentifier]="context.identifier"></facet-generator>
     </div>
 </div>
-<div *ngIf="subNavActiveIndex == 1">
+<div *ngIf="mainPageSubNavActiveIndex == 0">
+    <div *ngIf="!showBotEditor">
+        <button class="btn l-primary basic-button" (click)="createModal('bot')">
+            Create Bot
+        </button>
+        <button class="btn btn-outline-primary basic-button" (click)="clickUploadButton()">
+            Import Bot
+        </button>
+        <input #upload class="upload-input" type="file" (change)="uploadBotDefinition($event)" accept=".json"/>
+        <i class="fa fa-question-circle-o upload-tooltip" aria-hidden="true" placement="right" triggers="click" [ngbTooltip]="createBotTip"></i>
+        <label class="number float-right">{{selectedBotsNum}} Selected</label>
+        
+        <div [ngSwitch]="isLoadingBots">
+            <div *ngSwitchCase="true">
+                <div class="loading-spinner-container">
+                    <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                </div>
+            </div>
+            <div class="content-container" *ngSwitchCase="false">
+                <div *ngIf="!bots || bots.length == 0">
+                    No bot
+                </div>
+                <div *ngIf="bots.length > 0">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th class="arrow-column"></th>
+                                <th class="select-column">
+                                    <input #selectAllBots type="checkbox" [id]="'select-all-bots'" name="'select-all-bots'" (change)="selectAll($event)">
+                                    <label [attr.for]="'select-all-bots'"></label>
+                                </th>
+                                <th class="name-column" (click)="sortTable()">
+                                    NAME
+                                    <i *ngIf="sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Sort by name"></i>
+                                    <i *ngIf="sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Sort by name"></i>
+                                </th>
+                                <th class="version-column"> VERSION </th>
+                                <th class="status-column"> STATUS </th>
+                                <th class="updated-column"> UPDATED </th>
+                                <th class="created-column"> CREATED </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <ng-container *ngFor="let bot of botsOnCurrentPage let i = index">
+                                <tr>
+                                    <td class="arrow-column">
+                                        <span *ngIf="bot.version == '$LATEST'" (click)="expandAllVersions(bot, i)">
+                                            <i [ngClass]="bot.expandAllVersions &&  bot.expandAllVersions ? 'fa fa-angle-down' : 'fa fa-angle-right'" aria-hidden="true" data-toggle="tooltip" data-placement="top" [title]="bot.expandAllVersions ? 'Hide all versions' : 'Expand all versions'"></i>
+                                        </span>
+                                    </td>
+                                    <td class="select-column">
+                                        <span *ngIf="bot.version == '$LATEST'">
+                                            <input type="checkbox" [id]="bot.name" [(ngModel)]="bot.isSelected" (click)="updateSelectedEntriesNum(bot)">
+                                            <label [attr.for]="bot.name"></label>
+                                        </span>
+                                    </td>
+                                    <td class="name-column" (click)="showBot(bot)">
+                                        <span *ngIf="bot.version == '$LATEST'">{{bot.name}}</span>
+                                    </td>
+                                    <td class="version-column" (click)="showBot(bot)">
+                                        <div *ngIf="bot.version != '$LATEST'">
+                                            {{bot.version}}
+                                        </div>
+                                        <div *ngIf="bot.version == '$LATEST'">
+                                            Latest
+                                        </div>
+                                    </td>
+                                    <td class="status-column" (click)="showBot(bot)">
+                                        <span *ngIf="bot.version == '$LATEST'">
+                                            <i *ngIf="bot.status == 'PUBLISHING'" class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="left" [ngbTooltip]="publishBotTip"></i>
+                                            {{bot.status}}
+                                            <i *ngIf="bot.status == 'PUBLISHING' || bot.status == 'BUILDING'" class="fa fa-refresh fa-spin" aria-hidden="true"></i>
+                                        </span>
+                                        <span *ngIf="bot.version != '$LATEST'">
+                                            {{bot.status}}
+                                        </span>
+                                    </td>
+                                    <td class="updated-column" (click)="showBot(bot)">
+                                        {{bot.update}}
+                                    </td>
+                                    <td class="created-column" (click)="showBot(bot)">
+                                        {{bot.created}}
+                                    </td>
+                                    <td>
+                                        <div class="float-right">
+                                            <action-stub-items *ngIf="bot.version == '$LATEST'" class="float-right" [model]="bot" [delete]="deleteModal" [custom]="botActions"></action-stub-items>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="bot.expandAllVersions && bot.isLoading">
+                                    <td colspan="8">
+                                        <div class="loading-spinner-container">
+                                            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-container>                           
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <pagination [pages]="botPages"
+                        (pageChanged)="updateCurrentPage($event)"></pagination>
+        </div>
+    </div>
+</div>
+<!--Template for viewing bot editor-->
+<div *ngIf="showBotEditor">
+    <div *ngIf="botEditorSubNavItemIndex == 0">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="add-intent">
+                    <h2 class="inline-header">Intents</h2>
+                    <button *ngIf="currentBot.version == '$LATEST'" class="btn l-primary basic-button float-right add-button" (click)="addIntentToCurrentBotModal()" data-toggle="tooltip" data-placement="top" title="Add an intent to the bot">Add</button>
+                </div>
+                <p *ngIf="intentsUsedByCurrentBot.length == 0">No intents created</p>
+            </div>
+            <div *ngFor="let intent of intentsUsedByCurrentBot let i = index">
+                <button [ngClass]="sidebarIndex == i ? 'active option-button' : 'option-button'" (click)="switchSideBarTabs(i)">
+                    {{intent["intentName"]}}
+                    <i *ngIf="currentBot.version == '$LATEST'" class="fa fa-times-circle float-right remove-intent" aria-hidden="true" (click)="removeIntentFromBot(intent, i)" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                </button>
+            </div>
+            <hr>
+            <div class="sidebar-section">
+                <h2>Slot types</h2>
+                <p *ngIf="intentsUsedByCurrentBot.length == 0">No slots created</p>
+            </div> 
+            <button *ngFor="let slotType of slotTypesUsedByCurrentBot let i = index" [ngClass]="sidebarIndex == intentsUsedByCurrentBot.length + i ? 'active option-button' : 'option-button'" (click)="switchSideBarTabs(intentsUsedByCurrentBot.length + i)">{{slotType["name"]}}</button>
+            <hr>
+            <button [ngClass]="sidebarIndex == intentsUsedByCurrentBot.length + slotTypesUsedByCurrentBot.length ? 'active option-button' : 'option-button'" (click)="switchSideBarTabs(intentsUsedByCurrentBot.length + slotTypesUsedByCurrentBot.length)"><h2>Error handling</h2></button>
+        </div>
+        <fieldset [disabled]="currentBot.version != '$LATEST'">
+            <div *ngIf="intentsUsedByCurrentBot.length > 0">
+                <div *ngIf="sidebarIndex < intentsUsedByCurrentBot.length && !isLoadingSlotTypes" class="sidebar-content">
+                    <edit-intent *ngIf="currentBot.version == '$LATEST'" [context]="context" [originalIntent]="currentIntent" (originalIntentChange)="saveIntentChangesToCurrentBot($event)" oldVersionWarning="Editing of this intent is disabled because this is an older version. To update this bot to use the latest version of the intent, use the dropdown below and switch the version &#34;Latest&#34;."></edit-intent>
+                    <edit-intent *ngIf="currentBot.version != '$LATEST'" [context]="context" [originalIntent]="currentIntent" (originalIntentChange)="saveIntentChangesToCurrentBot($event)" oldVersionWarning="Editing of this bot is disabled because this is an older version. To update this bot, switch back to the main page and select the latest version."></edit-intent>
+                </div>
+                <div *ngIf="sidebarIndex >= intentsUsedByCurrentBot.length && sidebarIndex < intentsUsedByCurrentBot.length + slotTypesUsedByCurrentBot.length" class="sidebar-content">
+                    <edit-slot-type *ngIf="currentBot.version == '$LATEST'" [context]="context" [originalSlotType]="currentSlotType" oldVersionWarning="Editing of this slot type is disabled because this is an older version. To update the latest version of this slot type, use the dropdown below and switch the version &#34;Latest&#34;."></edit-slot-type>
+                    <edit-slot-type *ngIf="currentBot.version != '$LATEST'" [context]="context" [originalSlotType]="currentSlotType" oldVersionWarning="Editing of this bot is disabled because this is an older version. To update this bot, switch back to the main page and select the latest version."></edit-slot-type>
+                </div>
+            </div>
+            <div *ngIf="sidebarIndex == intentsUsedByCurrentBot.length + slotTypesUsedByCurrentBot.length" class="sidebar-content">
+                <div *ngIf="currentBot.version != '$LATEST'" class="boxed">
+                    <span class="boxed-content">Editing of this bot is disabled because this is an older version. To update this bot, switch back to the main page and select the latest version.</span>
+                </div>
+                <h2>Error handling</h2>
+                <prompt-configuration [context]="context" [(promptContent)]="currentBot['clarificationPrompt']" [showMaxAttempts]="true" title="Clarification prompts" [editable]="currentBot.version == '$LATEST'"></prompt-configuration>
+                <prompt-configuration [context]="context" [(promptContent)]="currentBot['abortStatement']" [showMaxAttempts]="false" title="Hang-up phrase"></prompt-configuration>
+                <hr>
+                <div>
+                    <button class="btn l-primary basic-button" (click)="currentBot.save('SAVE')">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+    <div *ngIf="botEditorSubNavItemIndex == 1">
+        <div class="sidebar">
+            <h2>Settings</h2>
+            <button [ngClass]="sidebarIndex == 0 ? 'active option-button' : 'option-button'" (click)="switchSideBarTabs(0)">Aliases</button>
+            <button [ngClass]="sidebarIndex == 1 ? 'active option-button' : 'option-button'" (click)="switchSideBarTabs(1)">General</button>
+        </div>
+        <fieldset [disabled]="currentBot.version != '$LATEST'">
+            <div *ngIf="sidebarIndex == 0" class="sidebar-content">
+                <h2>Aliases</h2>
+                <div [ngSwitch]="isLoadingBotAliases || isLoadingBotVersions">
+                    <div *ngSwitchCase="true">
+                        <div class="loading-spinner-container">
+                            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                    <div class="content-container" *ngSwitchCase="false">
+                        <div *ngIf="!currentBot['aliases'] || currentBot['aliases'].length == 0">
+                            No alias
+                        </div>
+                        <div *ngIf="currentBot['aliases'].length > 0">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="alias-name-column">
+                                            ALIAS NAME
+                                        </th>
+                                        <th class="bot-version-column"> Bot version </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="alias-name-column">
+                                            <input class="setting-box" type="text" [(ngModel)]="newAlias['name']" />
+                                        </td>
+                                        <td class="bot-version-column">
+                                            <select class="setting-box" [(ngModel)]="newAlias['botVersion']">
+                                                <option *ngFor="let bot of currentBot['versions']" [ngValue]="bot.version">{{bot.version}}</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <div class="float-right">
+                                                <i class="fa fa-plus-circle" aria-hidden="true" (click)="addBotAlias()"></i>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr *ngFor="let alias of aliasesOnCurrentPage let i = index">
+                                        <td class="alias-name-column">
+                                            {{alias["name"]}}
+                                        </td>
+                                        <td class="bot-version-column">
+                                            <select class="setting-box" [(ngModel)]="alias['botVersion']" (ngModelChange)="currentBot.updateAlias(alias)">
+                                                <option *ngFor="let bot of currentBot['versions']" [ngValue]="bot.version">{{bot.version}}</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <div class="float-right">
+                                                <i class="fa fa-trash-o" aria-hidden="true" (click)="deleteBotAlias(alias)"></i>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <pagination [pages]="aliasPages"
+                                        (pageChanged)="updateCurrentPage($event)"></pagination>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div *ngIf="sidebarIndex == 1" class="sidebar-content">
+                <h2>General</h2>
+                <div class="bot-info-row">
+                    <label class="bot-info-name">Bot name</label>
+                    <label class="label-content">{{currentBot.name}}</label>
+                </div>
+                <div class="bot-info-row">
+                    <label class="bot-info-name">Description</label>
+                    <input class="bot-info-content form-control" type="text" [(ngModel)]="currentBot.description">
+                </div>
+                <div class="bot-info-row">
+                    <label class="bot-info-name">Language</label>
+                    <label class="label-content">{{currentBot.locale}}</label>
+                </div>
+                <div class="bot-info-row">
+                    <label class="bot-info-name">Session timeout</label>
+                    <input class="bot-info-content form-control" type="number" min="60" [(ngModel)]="currentBot.idleSessionTTLInSeconds"> seconds
+                    <i class="fa fa-info-circle" aria-hidden="true" placement="right" [ngbTooltip]="'How long your bot should retain context'"></i>
+                </div>
+                <div class="bot-info-row">
+                    <label class="bot-info-name">COPPA</label>
+                    <label class="label-content">
+                        Please indicate if your use of this bot is subject to the Children's Online Privacy Protection Act (COPPA).
+                        <i class="fa fa-info-circle" aria-hidden="true" placement="right" [ngbTooltip]="'Why are we asking this? You can use Amazon Lex in connection with websites, programs or other applications that are subject to COPPA, but you need to let us know by answering this question. For more information, please see the Amazon Lex FAQs. Amazon Lex does not store or retain voice or text utterance information from bots that you identify as subject to COPPA, which can limit improvement of bot performance over time.'"></i>
+                    </label>
+                    <div>
+                        <label class="bot-info-name"></label>
+                        <label class="label-content">
+                            <a href="https://aws.amazon.com/lex/faqs/" target="_blank">learn more</a>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="bot-info-name"></label>
+                        <span class="bot-info-content">
+                            <label class="radio-btn-label">
+                                <input type="radio" [value]="true" [(ngModel)]="currentBot['childDirected']" name="coppa" />
+                                <span></span> Yes
+                            </label>
+                            <label class="radio-btn-label">
+                                <input type="radio" [value]="false" [(ngModel)]="currentBot['childDirected']" name="coppa" />
+                                <span></span> No
+                            </label>
+                        </span>
+                    </div>
+                </div>
+                <hr>
+                <div>
+                    <button class="btn l-primary basic-button" (click)="saveGeneralBotInfo()">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+</div>
+<div *ngIf="mainPageSubNavActiveIndex == 1">
+    <div *ngIf="!showBotEditor">
+        <div [ngSwitch]="showIntentEditor">
+            <div *ngSwitchCase="false">
+                <button class="btn l-primary  basic-button" (click)="createModal('intent')">
+                    Create Intent
+                </button>
+                <button class="btn l-primary  basic-button float-right" [hidden]="!selectedIntentsNum > 0" (click)="addIntentsToSelectedBotModal()">
+                    Add to bot
+                </button>
+                <label *ngIf="intentCategory=='Custom'" class="number float-right">{{selectedIntentsNum}} Selected</label>
+                <span class="category-selection">
+                    <label class="radio-btn-label">
+                        <input type="radio" value="Custom" name="intent" [(ngModel)]="intentCategory" (ngModelChange)="switchCategory()" />
+                        <span></span> Custom
+                    </label>
+                    <label class="radio-btn-label">
+                        <input type="radio" value="Builtin" name="intent" [(ngModel)]="intentCategory" (ngModelChange)="switchCategory()" />
+                        <span></span> Built-in
+                    </label>
+                </span>
+            </div>
+            <div *ngIf="!showIntentEditor" [ngSwitch]="isLoadingIntents">
+                <div *ngSwitchCase="true">
+                    <div class="loading-spinner-container">
+                        <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="content-container" *ngSwitchCase="false">
+                    <div *ngIf="!intentsOnCurrentPage || intentsOnCurrentPage.length == 0">
+                        No Intents
+                    </div>
+                    <div *ngIf="intentsOnCurrentPage.length > 0">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th class="arrow-column"></th>
+                                    <th class="select-column">
+                                        <span *ngIf="intentCategory=='Custom'">
+                                            <input #selectAllIntents type="checkbox" [id]="'select-all-intents'" name="'select-all-intents'" (change)="selectAll($event, intentCategory)">
+                                            <label [attr.for]="'select-all-intents'"></label>
+                                        </span>
+                                    </th>
+                                    <th class="name-column" (click)="sortTable()">
+                                        NAME
+                                        <i *ngIf="sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Sort by name"></i>
+                                        <i *ngIf="sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Sort by name"></i>
+                                    </th>
+                                    <th *ngIf="intentCategory == 'Custom'" class="bots-column"> USED IN BOTS </th>
+                                    <th class="version-column"> VERSION </th>
+                                    <th class="updated-column"> UPDATED </th>
+                                    <th class="created-column"> CREATED </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <ng-container *ngFor="let intent of intentsOnCurrentPage let i = index">
+                                    <tr>
+                                        <td class="arrow-column">
+                                            <span *ngIf="intentCategory=='Custom' && intent.version == '$LATEST'" (click)="expandAllVersions(intent, i)">
+                                                <i [ngClass]="intent.expandAllVersions ? 'fa fa-angle-down' : 'fa fa-angle-right'" aria-hidden="true" data-toggle="tooltip" data-placement="top" [title]="intent.expandAllVersions ? 'Hide all versions' : 'Expand all versions'"></i>
+                                            </span>
+                                        </td>
+                                        <td class="select-column">
+                                            <span *ngIf="intentCategory=='Custom' && intent.version == '$LATEST'">
+                                                <input type="checkbox" [id]="intent.name" [(ngModel)]="intent.isSelected" (click)="updateSelectedEntriesNum(intent)">
+                                                <label [attr.for]="intent.name"></label>
+                                            </span>
+                                            <span *ngIf="intentCategory=='Builtin'">
+                                                <label class="radio-btn-label">
+                                                    <input type="radio" [value]="intent" name="builtinIntent" [(ngModel)]="newIntent" (ngModelChange)="selectedIntentsNum = 1"/>
+                                                    <span></span>
+                                                </label>
+                                            </span>
+                                        </td>
+                                        <td class="name-column" (click)="showIntent(intent)">
+                                            <span *ngIf="intentCategory =='Builtin' || intent.version == '$LATEST'">{{intent.name}}</span>
+                                        </td>
+                                        <td *ngIf="intentCategory == 'Custom'" class="bots-column" (click)="showIntentDependencyModal(intent)"><a>View Bots</a></td>
+                                        <td class="version-column" (click)="showIntent(intent)">
+                                            <div *ngIf="intent.version != '$LATEST'">
+                                                {{intent.version}}
+                                            </div>
+                                            <div *ngIf="intent.version == '$LATEST'">
+                                                Latest
+                                            </div>
+                                        </td>
+                                        <td class="updated-column" (click)="showIntent(intent)">{{intent.update}}</td>
+                                        <td class="created-column" (click)="showIntent(intent)">{{intent.created}}</td>
+                                        <td>
+                                            <div *ngIf="intentCategory=='Custom'" class="float-right">
+                                                <i *ngIf="intent.version == '$LATEST'" (click)="deleteModal(intent)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr *ngIf="intent.expandAllVersions && intent.isLoading">
+                                        <td colspan="8">
+                                            <div class="loading-spinner-container">
+                                                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </ng-container>
+                            </tbody>
+                        </table>
+                    </div>
+                    <pagination [pages]="intentPages"
+                                (pageChanged)="updateCurrentPage($event)"></pagination>
+                </div>
+            </div>
+            <div *ngIf="showIntentEditor">
+                <edit-intent [context]="context" [originalIntent]="currentIntent" oldVersionWarning="Editing of this intent is disabled because this is an older version. To update the latest version of the intent, use the dropdown below and switch the version &#34;Latest&#34;."></edit-intent>
+            </div>
+        </div>
+    </div>
+</div>
+<div *ngIf="mainPageSubNavActiveIndex == 2">
+    <div [ngSwitch]="showSlotTypeEditor">
+        <div *ngSwitchCase="false">
+            <button class="btn l-primary basic-button" (click)="createModal('slotType')">
+                Create Slot Type
+            </button>
+            <label *ngIf="slotTypeCategory == 'Custom'" class="number float-right">{{selectedSlotTypesNum}} Selected</label>
+            <span class="category-selection">
+                <label class="radio-btn-label">
+                    <input type="radio" value="Custom" name="slotType" [(ngModel)]="slotTypeCategory" (ngModelChange)="switchCategory()" />
+                    <span></span> Custom
+                </label>
+                <label class="radio-btn-label">
+                    <input type="radio" value="Builtin" name="slotType" [(ngModel)]="slotTypeCategory" (ngModelChange)="switchCategory()" />
+                    <span></span> Built-in
+                </label>
+            </span>
+        </div>
+        <div *ngIf="!showSlotTypeEditor" [ngSwitch]="isLoadingSlotTypes">
+            <div *ngSwitchCase="true">
+                <div class="loading-spinner-container">
+                    <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                </div>
+            </div>
+            <div class="content-container" *ngSwitchCase="false">
+                <div *ngIf="!slotTypesOnCurrentPage || slotTypesOnCurrentPage.length == 0">
+                    No Slot Types
+                </div>
+                <div *ngIf="slotTypesOnCurrentPage.length > 0">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th *ngIf="slotTypeCategory=='Custom'" class="arrow-column"></th>
+                                <th *ngIf="slotTypeCategory == 'Custom'" class="select-column">
+                                    <input #selectAllSlotTypes type="checkbox" [id]="'select-all-slot-types'" name="'select-all-slot-types'" (change)="selectAll($event, slotTypeCategory)">
+                                    <label [attr.for]="'select-all-slot-types'"></label>
+                                </th>
+                                <th class="name-column" (click)="sortTable()">
+                                    NAME
+                                    <i *ngIf="sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Sort by name"></i>
+                                    <i *ngIf="sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Sort by name"></i>
+                                </th>
+                                <th class="version-column"> VERSION </th>
+                                <th class="updated-column"> UPDATED </th>
+                                <th class="created-column"> CREATED </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <ng-container *ngFor="let slotType of slotTypesOnCurrentPage let i = index">
+                                <tr>
+                                    <td *ngIf="slotTypeCategory=='Custom'" class="arrow-column">
+                                        <span *ngIf="slotType.version == '$LATEST'" (click)="expandAllVersions(slotType, i)">
+                                            <i [ngClass]="slotType.expandAllVersions ? 'fa fa-angle-down' : 'fa fa-angle-right'" aria-hidden="true" data-toggle="tooltip" data-placement="top" [title]="slotType.expandAllVersions ? 'Hide all versions' : 'Expand all versions'"></i>
+                                        </span>
+                                    </td>
+                                    <td *ngIf="slotTypeCategory == 'Custom'" class="select-column">
+                                        <span *ngIf="slotType.version == '$LATEST'">
+                                            <input type="checkbox" [id]="slotType.name" [(ngModel)]="slotType.isSelected" (click)="updateSelectedEntriesNum(slotType)">
+                                            <label [attr.for]="slotType.name"></label>
+                                        </span>
+                                    </td>
+                                    <td class="name-column" (click)="showSlotType(slotType)">
+                                        <span *ngIf="slotTypeCategory == 'Builtin' || slotType.version == '$LATEST'">{{slotType.name}}</span>
+                                    </td>
+                                    <td class="version-column" (click)="showSlotType(slotType)">
+                                        <div *ngIf="slotType.version != '$LATEST'">
+                                            {{slotType.version}}
+                                        </div>
+                                        <div *ngIf="slotType.version == '$LATEST'">
+                                            Latest
+                                        </div>
+                                    </td>
+                                    <td class="updated-column" (click)="showslotType(slotType)">
+                                        {{slotType.update}}
+                                    </td>
+                                    <td class="created-column" (click)="showslotType(slotType)">
+                                        {{slotType.created}}
+                                    </td>
+                                    <td>
+                                        <div *ngIf="slotTypeCategory=='Custom'" class="float-right">
+                                            <i *ngIf="slotType.version == '$LATEST'" (click)="deleteModal(slotType)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="slotType.expandAllVersions && slotType.isLoading">
+                                    <td colspan="8">
+                                        <div class="loading-spinner-container">
+                                            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-container>
+                        </tbody>
+                    </table>
+                </div>
+                <pagination [pages]="slotTypePages"
+                            (pageChanged)="updateCurrentPage($event)"></pagination>
+            </div>
+        </div>
+
+        <div *ngIf="showSlotTypeEditor">
+            <edit-slot-type [context]="context" [originalSlotType]="currentSlotType" oldVersionWarning="Editing of this slot type is disabled because this is an older version. To update the latest version of the slot type, use the dropdown below and switch the version &#34;Latest&#34;."></edit-slot-type>
+        </div>
+    </div>
+</div>
+<div *ngIf="mainPageSubNavActiveIndex == 3">
     <span class="col-md-10"> Additional settings can be configured through the <a #consoleLink href="" (click)="openAWSConsole()" target="_blank">Amazon Lex Console <i class="fa fa-external-link"></i></a>.</span>
 </div>
+
+<!-- Create modal -->
+<modal *ngIf="mode == sttModes.Create"
+       [title]="createModalTitle()"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Add'"
+       (modalSubmitted)="create()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div [ngSwitch]="createModalType">
+            <div *ngSwitchCase="'bot'">
+                <form>
+                    <div class="form-group row" [class.has-danger]="!currentBot.name.valid">
+                        <label class="col-3 col-form-label affix">Bot name</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" [(ngModel)]="currentBot.name.value" name="new-bot-name" placeholder="Enter your new bot name here">
+                            <div *ngIf="!currentBot.name.valid" class="form-control-feedback">{{currentBot.name.message}}</div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-3 col-form-label affix">Bot description</label>
+                        <div class="col-9">
+                            <textarea class="form-control" [(ngModel)]="currentBot.description" name="new-bot-description" placeholder="Enter your new bot description here" cols="100" rows="5"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group row" [class.has-danger]="!currentBot.idleSessionTTLInSeconds.valid" (focusout)="validateTimeout(currentBot)">
+                        <label class="col-3 col-form-label affix">Session timeout</label>
+                        <div class="col-9">
+                            <input  class="col-6 form-control" type="number" min="60" [(ngModel)]="currentBot.idleSessionTTLInSeconds.value" name="new-bot-timeout" placeholder="Enter your session timeout here"> seconds
+                            <i class="fa fa-info-circle" aria-hidden="true" placement="right" [ngbTooltip]="'How long your bot should retain context'"></i>
+                            <div *ngIf="!currentBot.idleSessionTTLInSeconds.valid" class="form-control-feedback">{{currentBot.idleSessionTTLInSeconds.message}}</div>
+                        </div>
+                    </div>
+                    <div class="form-group row" [class.has-danger]="!currentBot.childDirected.valid">
+                        <label class="col-3 col-form-label affix">COPPA</label>
+                        <div class="col-9">
+                            Please indicate if your use of this bot is subject to the Children's Online Privacy Protection Act (COPPA).
+                            <label class="bot-info-name"></label>
+                            <label class="label-content">
+                                <a href="https://aws.amazon.com/lex/faqs/" target="_blank">learn more</a>
+                            </label>
+                            <div>
+                                <label class="radio-btn-label">
+                                    <input type="radio" [value]="true" [(ngModel)]="currentBot.childDirected.value" name="coppa" />
+                                    <span></span> Yes
+                                </label>
+                                <label class="radio-btn-label">
+                                    <input type="radio" [value]="false" [(ngModel)]="currentBot.childDirected.value" name="coppa" />
+                                    <span></span> No
+                                </label>
+                                <div *ngIf="!currentBot.childDirected.valid" class="form-control-feedback">{{currentBot.childDirected.message}}</div>
+                            </div>
+                        </div>
+                    </div>
+                </form>               
+            </div>
+            <div *ngSwitchCase="'intent'">
+                <form>
+                    <div class="form-group row" [class.has-danger]="!currentIntent.name.valid">
+                        <label class="col-3 col-form-label affix">Intent name</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" [(ngModel)]="currentIntent.name.value" name="new-intent" placeholder="Give a unique name for the new intent">
+                            <div *ngIf="!currentIntent.name.valid" class="form-control-feedback">{{currentIntent.name.message}}</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div *ngSwitchCase="'slotType'">
+                <form>
+                    <div class="form-group row" [class.has-danger]="!currentSlotType.name.valid">
+                        <label class="col-3 col-form-label affix">Slot type name</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" [(ngModel)]="currentSlotType.name.value" name="new-slot-type" placeholder="Give a unique name for the new slot type">
+                            <div *ngIf="!currentSlotType.name.valid" class="form-control-feedback">{{currentSlotType.name.message}}</div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-3 col-form-label affix">Description</label>
+                        <div class="col-9">
+                            <textarea class="form-control" [(ngModel)]="currentSlotType.description" name="new-slot-type-description" placeholder="Enter your new slot type description here" cols="100" rows="5"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group row" [class.has-danger]="!currentSlotType.enumerationValues.valid">
+                        <label class="col-3 col-form-label affix">Value</label>
+                        <div class="col-9">
+                            <div class="slot-type-input">
+                                <input name="new-slot-type-value" class="col-10 form-control" type="text" [(ngModel)]="newSlotTypeValue" placeholder="Enter your new slot type value here" />
+                                <button class="btn l-primary basic-button add-value-button" (click)="addNewValueToSlotType()" data-toggle="tooltip" data-placement="top" title="Add a new value">Add</button>
+                            </div>
+                            <div *ngFor="let enumerationValue of currentSlotType.enumerationValues.value let i = index" class="slot-type-input">
+                                <input [name]="'slot-value' + i" class="col-10 form-control" type="text" [(ngModel)]="currentSlotType.enumerationValues.value[i]['value']" (ngModelChange)="slotTypeValueChange($event, i)"/>
+                                <i class="fa fa-trash-o" aria-hidden="true" (click)="removeEntry(currentSlotType.enumerationValues.value, enumerationValue)"></i>
+                            </div>
+                            <div *ngIf="!currentSlotType.enumerationValues.valid" class="form-control-feedback">{{currentSlotType.enumerationValues.message}}</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</modal>
+
+<!-- Build modal -->
+<modal *ngIf="mode == sttModes.Build"
+       [title]="'Build your bot'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Build'"
+       (modalSubmitted)="build()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        You can start testing the Bot once the build completes successfully.
+    </div>
+</modal>
 
 <!-- Publish modal -->
 <modal *ngIf="mode == sttModes.Publish"
@@ -82,19 +645,233 @@
        [submitButtonText]="'Publish Bot'"
        (modalSubmitted)="publish()"
        [metricIdentifier]="context.identifier">
-    <div class="modal-body">
         <div class="modal-body">
             <form>
                 <div class="form-group row">
                     <label class="col-3 col-form-label affix">Alias</label>
-                    <span class="col-8">
-                        <input type="text" class="form-control" [(ngModel)]="alias" name="alias" placeholder="MyBotAlias">
-                    </span>
+                    <div class="col-8">
+                        <input type="text" class="form-control" [(ngModel)]="newAlias.name" name="alias" placeholder="MyBotAlias">
+                    </div>
                 </div>
             </form>
+            <p>
+                For more information on Lex versioning and aliases, see the documentation <a href="http://docs.aws.amazon.com/lex/latest/dg/versioning-aliases.html" target="_blank">here</a>.
+            </p>
         </div>
-        <p>
-            For more information on Lex versioning and aliases, see the documentation <a href="http://docs.aws.amazon.com/lex/latest/dg/versioning-aliases.html" target="_blank">here</a>.
-        </p>
+</modal>
+
+<!-- Delete modal -->
+<modal *ngIf="mode == sttModes.Delete"
+       [title]="deleteModalTitle()"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Delete'"
+       (modalSubmitted)="delete()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div *ngIf="mainPageSubNavActiveIndex == 0">
+            <p> Are you sure you want to delete the selected bot?</p>
+            <!--<pre>{{currentBot | json | devonly}}</pre>-->
+        </div>
+        <div *ngIf="mainPageSubNavActiveIndex == 1">
+            <p> Are you sure you want to delete the selected intent?</p>
+            <!--<pre>{{currentIntent | json | devonly}}</pre>-->
+        </div>
+        <div *ngIf="mainPageSubNavActiveIndex == 2">
+            <p> Are you sure you want to delete the selected slot type?</p>
+            <!--<pre>{{currentSlotType | json | devonly}}</pre>-->
+        </div>
+    </div>
+</modal>
+
+<!-- ShowIntentDependency modal -->
+<modal *ngIf="mode == sttModes.ShowIntentDependency"
+       [title]="currentIntent.name"
+       [autoOpen]="true"
+       [hasSubmit]="false"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Close'"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div [ngSwitch]="isLoadingIntentDependency">
+            <div *ngSwitchCase="true">
+                <div class="loading-spinner-container">
+                    <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                </div>
+            </div>
+            <div class="content-container" *ngSwitchCase="false">
+                <div *ngIf="!intentDependency[currentIntent.name] || !intentDependency[currentIntent.name][currentIntent.version]">
+                    No bot
+                </div>
+                <div *ngIf="intentDependency[currentIntent.name] && intentDependency[currentIntent.name][currentIntent.version]">
+                    <div class="table-scroll">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th class="name-column">BOT NAME</th>
+                                    <th class="version-column"> VERSION </th>
+                                    <th class="updated-column"> UPDATED </th>
+                                    <th class="created-column"> CREATED </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let bot of intentDependency[currentIntent.name][currentIntent.version]">
+                                    <td class="name-column" (click)="showBot(bot)">
+                                        {{bot.name}}
+                                    </td>
+                                    <td class="version-column" (click)="showBot(bot)">
+                                        <div *ngIf="bot.version != '$LATEST'">
+                                            {{bot.version}}
+                                        </div>
+                                        <div *ngIf="bot.version == '$LATEST'">
+                                            Latest
+                                        </div>
+                                    </td>
+                                    <td class="updated-column" (click)="showBot(bot)">
+                                        {{bot.update}}
+                                    </td>
+                                    <td class="created-column" (click)="showBot(bot)">
+                                        {{bot.created}}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</modal>
+
+<!-- AddIntentsToSelectedBot modal -->
+<modal *ngIf="mode == sttModes.AddIntentsToSelectedBot"
+       [title]="'Add to bot'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Add'"
+       (modalSubmitted)="addIntentsToCurrentBot()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <p>You are going to add the selected intent(s) to the following Bot:</p>
+        <div *ngIf="intentCategory == 'Builtin'" class="form-group row">
+            <label class="col-3 col-form-label affix">Intent Name</label>
+            <div class="col-9">
+                <input class="form-control full-width" type="text" [(ngModel)]="newIntentName['value']" placeholder="e.g. TodaysWeather, GetDrinkOrder">
+                <div *ngIf="!newIntentName.valid" class="form-control-feedback">{{newIntentName.message}}</div>
+            </div>
+        </div>
+        <div [ngSwitch]="isLoadingBots">
+            <div *ngSwitchCase="true">
+                <div class="loading-spinner-container">
+                    <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+                </div>
+            </div>
+            <div class="content-container" *ngSwitchCase="false">
+                <div *ngIf="!bots || bots.length == 0">
+                    No bot
+                </div>
+                <div *ngIf="bots.length > 0">
+                    <div class="table-scroll">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th class="radio-button-column"></th>
+                                    <th class="name-column">BOT NAME</th>
+                                    <th class="status-column"> STATUS </th>
+                                    <th class="updated-column"> UPDATED </th>
+                                    <th class="created-column"> CREATED </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let bot of bots">
+                                    <td class="radio-button-column">
+                                        <label class="radio-btn-label">
+                                            <input type="radio" [value]="bot" name="bot" [(ngModel)]="currentBot"/>
+                                            <span></span>
+                                        </label>
+                                    </td>
+                                    <td class="name-column">
+                                        {{bot.name}}
+                                    </td>
+                                    <td class="status-column">
+                                        {{bot.status}}
+                                    </td>
+                                    <td class="updated-column">
+                                        {{bot.update}}
+                                    </td>
+                                    <td class="created-column">
+                                        {{bot.created}}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</modal>
+
+<!-- AddIntentToCurrentBot modal -->
+<modal *ngIf="mode == sttModes.AddIntentToCurrentBot"
+       [title]="'Add Intent'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Add'"
+       (modalSubmitted)="addIntentsToCurrentBot()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div *ngIf="intentCategory == 'Custom'">
+            <div>
+                <button class="btn l-primary basic-button" (click)="selectNewIntent()">
+                    Create new intent
+                </button>
+            </div>
+            <div>
+                <hr class="col-5 float-left">
+                <span class="col-2"> Or </span>
+                <hr class="col-5 float-right">
+            </div>
+            <h2>Select existing intent</h2>
+            <div class="available-intents">
+                <h3>Custom intents</h3>
+                <ul>
+                    <ng-container *ngFor="let intent of customIntents">
+                        <li *ngIf="!intentExistsInCurrentBot(intent)" (click)="selectCustomIntent(intent)" [ngClass]="intent['isSelected'] ? 'selected existing-intents' : 'existing-intents'">
+                            <a>{{intent.name}}</a>
+                        </li>
+                    </ng-container>
+                </ul>
+                <h3>Built-in intents</h3>
+                <ul>
+                    <li *ngFor="let intent of builtinIntents" (click)="selectBuiltinIntent(intent)" class="existing-intents">
+                        <a class="intent-name">{{intent.name}}</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div *ngIf="intentCategory == 'Builtin'">
+            <div  class="form-group" [class.has-danger]="!newIntentName.valid">
+                <p class="description">Give a new name for the built-in intent</p>
+                <input class="form-control" type="text" [(ngModel)]="newIntentName['value']" placeholder="e.g. TodaysWeather, GetDrinkOrder">
+                <div *ngIf="!newIntentName.valid" class="form-control-feedback">{{newIntentName.message}}</div>
+            </div>
+        </div>
+        <div *ngIf="intentCategory == 'New'">
+            <div class="form-group row" [class.has-danger]="!newIntent.name.valid">
+                <label class="col-3 col-form-label affix">Intent name</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" [(ngModel)]="newIntent.name.value" name="new-intent" placeholder="e.g. TodaysWeather, GetDrinkOrder">
+                    <div *ngIf="!newIntent.name.valid" class="form-control-feedback">{{newIntent.name.message}}</div>
+                </div>
+            </div>
+        </div>
     </div>
 </modal>

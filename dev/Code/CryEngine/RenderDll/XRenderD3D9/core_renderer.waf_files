@@ -36,7 +36,6 @@
             "D3DTexturesStreaming.cpp",
             "D3DTextureStreamPool.cpp",
             "D3DTiledShading.cpp",
-            "CompiledRenderObject.cpp",
             "DriverD3D.cpp",
             "GPUTimer.cpp",
             "PipelineProfiler.cpp",
@@ -91,6 +90,13 @@
             "../Common/CommonRender.cpp",
             "../Common/DeferredRenderUtils.cpp",
             "../../CryCommon/EngineSettingsManager.cpp",
+            "../../CryCommon/EngineSettingsManager.h",
+            "../../CryCommon/EngineSettingsBackend.cpp",
+            "../../CryCommon/EngineSettingsBackend.h",
+            "../../CryCommon/EngineSettingsBackendApple.cpp",
+            "../../CryCommon/EngineSettingsBackendApple.h",
+            "../../CryCommon/EngineSettingsBackendWin32.cpp",
+            "../../CryCommon/EngineSettingsBackendWin32.h",
             "../Common/RenderAuxGeom.cpp",
             "../Common/Renderer.cpp",
             "../Common/RenderPipeline.cpp",
@@ -100,7 +106,6 @@
             "../Common/ShadowUtils.cpp",
             "../Common/TextMessages.cpp",
             "../Common/WaterUtils.cpp",
-            "../../CryCommon/EngineSettingsManager.h",
             "../Common/ResFileLookupDataMan.h",
             "../Common/TextMessages.h",
             "../Common/PerInstanceConstantBufferPool.cpp",
@@ -159,7 +164,8 @@
             "../Common/Shaders/ShaderComponents.h",
             "../Common/Shaders/ShaderSerialize.h",
             "../Common/Shaders/ShaderResources.h",
-            "../Common/Shaders/Vertex.h"
+            "../Common/Shaders/Vertex.h",
+            "../Common/Shaders/ShadersResourcesGroups/PerFrame.h"
         ],
         "Common/PostProcess":
         [
@@ -354,12 +360,14 @@
 			"GraphicsPipeline/Bloom.cpp",
 			"GraphicsPipeline/DepthOfField.h",
 			"GraphicsPipeline/DepthOfField.cpp",
+			"GraphicsPipeline/FurBendData.h",
+			"GraphicsPipeline/FurBendData.cpp",
+			"GraphicsPipeline/FurPasses.h",
+			"GraphicsPipeline/FurPasses.cpp",
 			"GraphicsPipeline/MotionBlur.h",
 			"GraphicsPipeline/MotionBlur.cpp",
 			"GraphicsPipeline/PostAA.h",
 			"GraphicsPipeline/PostAA.cpp",
-			"GraphicsPipeline/SceneGBuffer.h",
-			"GraphicsPipeline/SceneGBuffer.cpp",
 			"GraphicsPipeline/ScreenSpaceObscurance.h",
 			"GraphicsPipeline/ScreenSpaceObscurance.cpp",
 			"GraphicsPipeline/ScreenSpaceReflections.h",
@@ -367,9 +375,7 @@
 			"GraphicsPipeline/ScreenSpaceSSS.h",
 			"GraphicsPipeline/ScreenSpaceSSS.cpp",
 			"GraphicsPipeline/StandardGraphicsPipeline.h",
-			"GraphicsPipeline/StandardGraphicsPipeline.cpp",
-			"GraphicsPipeline/ShadowMap.h",
-			"GraphicsPipeline/ShadowMap.cpp"
+			"GraphicsPipeline/StandardGraphicsPipeline.cpp"
 		]
 	},
 

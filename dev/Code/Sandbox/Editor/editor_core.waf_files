@@ -49,9 +49,6 @@
         [
             "BaseLibraryItem.cpp",
             "BaseLibrary.cpp",
-            "SourceControlAddDlg.cpp",
-            "SourceControlAddDlg.h",
-            "SourceControlAddDlg.ui",
             "UsedResources.cpp",
             "UIEnumsDatabase.cpp",
             "fancydocking.cpp",

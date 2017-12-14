@@ -15,6 +15,7 @@
 #include "TrackViewAnimNode.h"
 #include "TrackViewTrack.h"
 #include "TrackViewSequence.h"
+#include "Maestro/Types/AnimNodeType.h"
 
 ////////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyConstHandle::GetKey(IKey* pKey) const
@@ -500,6 +501,24 @@ CTrackViewSequence* CTrackViewNode::GetSequence()
 }
 
 //////////////////////////////////////////////////////////////////////////
+const CTrackViewSequence* CTrackViewNode::GetSequenceConst() const
+{
+    for (const CTrackViewNode* pCurrentNode = this; pCurrentNode; pCurrentNode = pCurrentNode->GetParentNode())
+    {
+        if (pCurrentNode->GetNodeType() == eTVNT_Sequence)
+        {
+            return static_cast<const CTrackViewSequence*>(pCurrentNode);
+        }
+    }
+
+    AZ_Assert(false, "Every node belongs to a sequence");
+
+    return nullptr;
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////
 void CTrackViewNode::SetExpanded(bool bExpanded)
 {
     if (bExpanded != m_bExpanded)
@@ -545,35 +564,35 @@ void CTrackViewNode::SortNodes()
 
 namespace
 {
-    static int GetNodeOrder(EAnimNodeType nodeType)
+    static int GetNodeOrder(AnimNodeType nodeType)
     {
-        assert(nodeType < eAnimNodeType_Num);
+        assert(nodeType < AnimNodeType::Num);
 
         // note: this array gets over-allocated and is sparsely populated because the eAnimNodeType enums are not sequential in IMovieSystem.h
         // I wonder if the original authors intended this? Not a big deal, just some trivial memory wastage.
-        static int nodeOrder[eAnimNodeType_Num];
-        nodeOrder[eAnimNodeType_Invalid] = 0;
-        nodeOrder[eAnimNodeType_Director] = 1;
-        nodeOrder[eAnimNodeType_Camera] = 2;
-        nodeOrder[eAnimNodeType_Entity] = 3;
-        nodeOrder[eAnimNodeType_Alembic] = 4;
-        nodeOrder[eAnimNodeType_GeomCache] = 5;
-        nodeOrder[eAnimNodeType_CVar] = 6;
-        nodeOrder[eAnimNodeType_ScriptVar] = 7;
-        nodeOrder[eAnimNodeType_Material] = 8;
-        nodeOrder[eAnimNodeType_Event] = 9;
-        nodeOrder[eAnimNodeType_Layer] = 10;
-        nodeOrder[eAnimNodeType_Comment] = 11;
-        nodeOrder[eAnimNodeType_RadialBlur] = 12;
-        nodeOrder[eAnimNodeType_ColorCorrection] = 13;
-        nodeOrder[eAnimNodeType_DepthOfField] = 14;
-        nodeOrder[eAnimNodeType_ScreenFader] = 15;
-        nodeOrder[eAnimNodeType_Light] = 16;
-        nodeOrder[eAnimNodeType_ShadowSetup] = 17;
-        nodeOrder[eAnimNodeType_Environment] = 18;
-        nodeOrder[eAnimNodeType_Group] = 19;
+        static int nodeOrder[static_cast<int>(AnimNodeType::Num)];
+        nodeOrder[static_cast<int>(AnimNodeType::Invalid)] = 0;
+        nodeOrder[static_cast<int>(AnimNodeType::Director)] = 1;
+        nodeOrder[static_cast<int>(AnimNodeType::Camera)] = 2;
+        nodeOrder[static_cast<int>(AnimNodeType::Entity)] = 3;
+        nodeOrder[static_cast<int>(AnimNodeType::Alembic)] = 4;
+        nodeOrder[static_cast<int>(AnimNodeType::GeomCache)] = 5;
+        nodeOrder[static_cast<int>(AnimNodeType::CVar)] = 6;
+        nodeOrder[static_cast<int>(AnimNodeType::ScriptVar)] = 7;
+        nodeOrder[static_cast<int>(AnimNodeType::Material)] = 8;
+        nodeOrder[static_cast<int>(AnimNodeType::Event)] = 9;
+        nodeOrder[static_cast<int>(AnimNodeType::Layer)] = 10;
+        nodeOrder[static_cast<int>(AnimNodeType::Comment)] = 11;
+        nodeOrder[static_cast<int>(AnimNodeType::RadialBlur)] = 12;
+        nodeOrder[static_cast<int>(AnimNodeType::ColorCorrection)] = 13;
+        nodeOrder[static_cast<int>(AnimNodeType::DepthOfField)] = 14;
+        nodeOrder[static_cast<int>(AnimNodeType::ScreenFader)] = 15;
+        nodeOrder[static_cast<int>(AnimNodeType::Light)] = 16;
+        nodeOrder[static_cast<int>(AnimNodeType::ShadowSetup)] = 17;
+        nodeOrder[static_cast<int>(AnimNodeType::Environment)] = 18;
+        nodeOrder[static_cast<int>(AnimNodeType::Group)] = 19;
 
-        return nodeOrder[nodeType];
+        return nodeOrder[static_cast<int>(nodeType)];
     }
 }
 
@@ -676,7 +695,7 @@ CTrackViewAnimNode* CTrackViewNode::GetDirector()
         {
             CTrackViewAnimNode* pParentAnimNode = static_cast<CTrackViewAnimNode*>(pCurrentNode);
 
-            if (pParentAnimNode->GetType() == eAnimNodeType_Director)
+            if (pParentAnimNode->GetType() == AnimNodeType::Director)
             {
                 return pParentAnimNode;
             }

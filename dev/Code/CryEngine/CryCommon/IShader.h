@@ -28,8 +28,8 @@
 #include <IFlares.h> // <> required for Interfuscator
 #include "VertexFormats.h"
 #include <../RenderDll/Common/Shaders/Vertex.h>
-#include <CryEngineAPI.h>
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/containers/map.h>
 
 #include "Cry_XOptimise.h"
 #include <CrySizer.h>
@@ -60,6 +60,8 @@ struct SShaderSerializeContext;
 struct IAnimNode;
 struct SSkinningData;
 struct SSTexSamplerFX;
+struct SShaderTextureSlot;
+
 namespace JobManager {
     struct SJobState;
 }
@@ -73,7 +75,6 @@ namespace AZ
 }
 
 //================================================================
-
 // Summary:
 //   Geometry Culling type.
 enum ECull
@@ -686,7 +687,7 @@ struct SDeformInfo
 enum ERenderObjectFlags
 {
     FOB_VERTEX_VELOCITY             = BIT(0),
-    //Unused                        = BIT(1),
+    FOB_RENDER_TRANS_AFTER_DOF      = BIT(1),  //transparencies rendered after depth of field
     //Unused                        = BIT(2),
     FOB_RENDER_AFTER_POSTPROCESSING = BIT(3),
     FOB_OWNER_GEOMETRY              = BIT(4),
@@ -853,7 +854,7 @@ struct SRenderObjData
         m_BendingPrev = nullptr;
         m_pShaderParams = nullptr;
 
-        // The following should be changed to be something like 0xac to indicate invalid data so that by default
+        // The following should be changed to be something like 0xac to indicate invalid data so that by default 
         // data that was not set will break render features and will be traced (otherwise, default 0 just might pass)
         memset(m_fTempVars, 0, 10 * sizeof(float));
     }
@@ -879,7 +880,6 @@ struct SRenderObjData
 
 struct ShadowMapFrustum;
 
-class CCompiledRenderObject;
 //////////////////////////////////////////////////////////////////////
 ///
 /// Objects using in shader pipeline
@@ -956,21 +956,13 @@ public:
 
     PerInstanceConstantBufferKey m_PerInstanceConstantBufferKey;
 
-    // Linked list of compiled objects, one per mesh subset (Chunk).
-    CCompiledRenderObject*     m_pCompiled;
-
     // Common flags
     uint32                     m_bWasDeleted : 1; //!< Object was deleted and in unusable state
     uint32                     m_bHasShadowCasters : 1; //!< Has non-empty list of lights casting shadows in render object data
-    uint32                     m_bPermanent : 1; //!< Object is permanent and persistent across multiple frames
-    uint32                     m_bInstanceDataDirty : 1; //!< Object per instance data dirty and needs to be recompiled, (When only the instance data need recompilation)
-    uint32                     m_bCompiledValid : 1; //!< Set to true when compiled successfully.
 
     //! Embedded SRenderObjData, optional data carried by CRenderObject
     SRenderObjData             m_data;
 
-    // Array of instances
-    DynArray<SInstanceData>     m_Instances;
 private:
     int16               m_nObjDataId;
 public:
@@ -984,7 +976,6 @@ public:
     //////////////////////////////////////////////////////////////////////////
     CRenderObject()
         : m_Id(~0u)
-        , m_pCompiled(0)
     {
         Init();
     }
@@ -999,9 +990,6 @@ public:
     inline void Init()
     {
         m_ObjFlags = 0;
-        m_bInstanceDataDirty = false;
-        m_bPermanent = false;
-        m_bHasShadowCasters = false;
         m_nRenderQuality = 65535;
 
         m_RState = 0;
@@ -1026,9 +1014,7 @@ public:
 
         m_pNextSubObject = NULL;
         m_bWasDeleted = false;
-        m_bCompiledValid = false;
-
-        m_Instances.clear();
+        m_bHasShadowCasters = false;
 
         m_data.Init();
     }
@@ -1054,10 +1040,8 @@ protected:
 
     void CloneObject(CRenderObject* srcObj)
     {
-        CCompiledRenderObject* prev = m_pCompiled;
         CRenderObject* prevObj = m_pNextSubObject;
         *this = *srcObj;
-        m_pCompiled = prev; // Prevent compiled pointer to be cloned.
         m_pNextSubObject = prevObj; // Prevent next render object pointer from copying
     }
 
@@ -1313,6 +1297,20 @@ struct SEfTexModificator
     {
         return memcmp(this, &m, sizeof(*this)) != 0;
     }
+
+    inline bool isModified()
+    {
+        return ( m_eMoveType[0] != ETMM_NoChange ||
+                 m_eMoveType[1] != ETMM_NoChange ||
+                 m_eRotType != ETMR_NoChange ||
+                 m_Offs[0] != 0.0f ||
+                 m_Offs[1] != 0.0f ||
+                 m_Tiling[0] != 1.0f ||
+                 m_Tiling[1] != 1.0f ||
+                 m_Rot[0] != 0.0f ||
+                 m_Rot[1] != 0.0f ||
+                 m_Rot[2] != 0.0f );
+    }
 };
 
 inline bool IsTextureModifierSupportedForTextureMap(EEfResTextures texture)
@@ -1343,6 +1341,8 @@ inline bool IsTextureModifierSupportedForTextureMap(EEfResTextures texture)
 #define TADDR_MIRROR      2
 #define TADDR_BORDER      3
 
+//==============================================================================
+//------------------------------------------------------------------------------
 struct STexState
 {
     struct
@@ -1409,16 +1409,12 @@ struct STexState
         padding = 0;
         m_bPAD = 0;
     }
-#ifdef _RENDERER
-    ~STexState();
-    STexState (const STexState& src);
-#else
-    ~STexState(){}
-    STexState (const STexState& src)
-    {
-        memcpy(this, &src, sizeof(STexState));
-    }
-#endif
+
+    ENGINE_API void Destroy();
+    ENGINE_API void Init(const STexState& src);
+
+    ~STexState() { Destroy(); }
+    STexState(const STexState& src) { Init(src); }
     STexState& operator = (const STexState& src)
     {
         this->~STexState();
@@ -1428,8 +1424,8 @@ struct STexState
     _inline friend bool operator == (const STexState& m1, const STexState& m2)
     {
         return (*(uint64*)&m1 == *(uint64*)&m2 && m1.m_dwBorderColor == m2.m_dwBorderColor &&
-                m1.m_bActive == m2.m_bActive && m1.m_bComparison == m2.m_bComparison && m1.m_bSRGBLookup == m2.m_bSRGBLookup &&
-                m1.m_MipBias == m2.m_MipBias);
+            m1.m_bActive == m2.m_bActive && m1.m_bComparison == m2.m_bComparison && m1.m_bSRGBLookup == m2.m_bSRGBLookup &&
+            m1.m_MipBias == m2.m_MipBias);
     }
     void Release()
     {
@@ -1451,29 +1447,30 @@ struct IRenderTarget
     virtual void AddRef() = 0;
 };
 
-//==================================================================================================================
-
+//==============================================================================
 // FX shader texture sampler (description)
+//------------------------------------------------------------------------------
 struct STexSamplerFX
 {
 #if SHADER_REFLECT_TEXTURE_SLOTS
-    string m_szUIName;
-    string m_szUIDescription;
+    string      m_szUIName;
+    string      m_szUIDescription;
 #endif
 
-    string m_szName;
-    string m_szTexture;
+    string      m_szName;
+    string      m_szTexture;
 
     union
     {
-        struct SHRenderTarget* m_pTarget;
-        IRenderTarget* m_pITarget;
+        struct SHRenderTarget*  m_pTarget;
+        IRenderTarget*          m_pITarget;
     };
 
-    int16 m_nTexState;
-    byte m_eTexType;                    // ETEX_Type e.g. eTT_2D or eTT_Cube
-    byte m_nSlotId;             // EFTT_ index if it references one of the material texture slots, EFTT_MAX otherwise
-    uint32 m_nTexFlags;
+    int16       m_nTexState;
+    byte        m_eTexType;                    // ETEX_Type e.g. eTT_2D or eTT_Cube
+    byte        m_nSlotId;             // EFTT_ index if it references one of the material texture slots, EFTT_MAX otherwise
+    uint32      m_nTexFlags;
+
     STexSamplerFX()
     {
         m_nTexState = -1;
@@ -1482,6 +1479,7 @@ struct STexSamplerFX
         m_nTexFlags = 0;
         m_pTarget = NULL;
     }
+
     ~STexSamplerFX()
     {
         SAFE_RELEASE(m_pITarget);
@@ -1549,7 +1547,9 @@ struct STexSamplerFX
 };
 
 
+//==============================================================================
 // Resource texture sampler (runtime)
+//------------------------------------------------------------------------------
 struct STexSamplerRT
 {
     union
@@ -1564,15 +1564,16 @@ struct STexSamplerRT
         IRenderTarget* m_pITarget;
     };
 
-    STexAnim* m_pAnimInfo;
+    STexAnim*   m_pAnimInfo;
 
-    uint32 m_nTexFlags;
-    int16 m_nTexState;
+    uint32      m_nTexFlags;
+    int16       m_nTexState;
 
-    uint8 m_eTexType;                       // ETEX_Type e.g. eTT_2D or eTT_Cube
-    int8 m_nSamplerSlot;
-    int8 m_nTextureSlot;
-    bool m_bGlobal;
+    uint8       m_eTexType;                       // ETEX_Type e.g. eTT_2D or eTT_Cube
+    int8        m_nSamplerSlot;
+    int8        m_nTextureSlot;
+
+    bool        m_bGlobal;
 
     STexSamplerRT()
     {
@@ -1611,6 +1612,7 @@ struct STexSamplerRT
     uint32 GetTexFlags() const { return m_nTexFlags; }
     void Update();
     void PostLoad();
+
     NO_INLINE STexSamplerRT (const STexSamplerRT& src)
     {
         m_pITex = src.m_pITex;
@@ -1667,8 +1669,8 @@ struct STexSamplerRT
     }
 };
 
-//===============================================================================================================================
-
+//==============================================================================
+//------------------------------------------------------------------------------
 struct SEfResTextureExt
 {
     int32 m_nFrameUpdated;
@@ -1681,7 +1683,7 @@ struct SEfResTextureExt
         m_nFrameUpdated = -1;
         m_nUpdateFlags = 0;
         m_nLastRecursionLevel = 0;
-        m_pTexModifier = NULL;
+        m_pTexModifier = nullptr;
     }
     ~SEfResTextureExt ()
     {
@@ -1736,7 +1738,12 @@ struct SEfResTextureExt
             pTo->m_nFrameUpdated = -1;
             pTo->m_nUpdateFlags = m_nUpdateFlags;
             pTo->m_nLastRecursionLevel = -1;
-            pTo->m_pTexModifier = NULL;
+            pTo->m_pTexModifier = nullptr;
+            if (m_pTexModifier)
+            {
+                pTo->m_pTexModifier = new SEfTexModificator;
+                *(pTo->m_pTexModifier) = *m_pTexModifier;
+            }
         }
     }
     inline int Size() const
@@ -1749,18 +1756,20 @@ struct SEfResTextureExt
         return nSize;
     }
 };
-// Description:
-//   In order to facilitate the memory allocation tracking, we're using here this class;
-//   if you don't like it, please write a substitute for all string within the project and use them everywhere.
+
+//==============================================================================
+// SEfResTexture - holds the actual data representing a texture and its associated 
+// sampler and modulator properties.
+//------------------------------------------------------------------------------
 struct SEfResTexture
 {
-    string m_Name;
-    bool m_bUTile;
-    bool m_bVTile;
-    signed char m_Filter;
+    string              m_Name;
+    bool                m_bUTile;
+    bool                m_bVTile;
+    signed char         m_Filter;
 
-    STexSamplerRT m_Sampler;
-    SEfResTextureExt m_Ext;
+    STexSamplerRT       m_Sampler;
+    SEfResTextureExt    m_Ext;
 
     void UpdateForCreate();
     void Update(int nTSlot);
@@ -1779,11 +1788,13 @@ struct SEfResTexture
         }
         return false;
     }
+
     inline bool IsHasModificators() const
     {
         return (m_Ext.m_pTexModifier != NULL);
     }
 
+    //! Find out if the texture has modulator and if it requires per frame computation change
     bool IsNeedTexTransform() const
     {
         if (!m_Ext.m_pTexModifier)
@@ -1796,6 +1807,7 @@ struct SEfResTexture
         }
         return false;
     }
+
     bool IsNeedTexGen() const
     {
         if (!m_Ext.m_pTexModifier)
@@ -1808,6 +1820,7 @@ struct SEfResTexture
         }
         return false;
     }
+
     inline float GetTiling(int n) const
     {
         if (!m_Ext.m_pTexModifier)
@@ -1816,6 +1829,7 @@ struct SEfResTexture
         }
         return m_Ext.m_pTexModifier->m_Tiling[n];
     }
+
     inline float GetOffset(int n) const
     {
         if (!m_Ext.m_pTexModifier)
@@ -1824,6 +1838,7 @@ struct SEfResTexture
         }
         return m_Ext.m_pTexModifier->m_Offs[n];
     }
+
     inline SEfTexModificator* AddModificator()
     {
         if (!m_Ext.m_pTexModifier)
@@ -1832,6 +1847,7 @@ struct SEfResTexture
         }
         return m_Ext.m_pTexModifier;
     }
+
     inline SEfTexModificator* GetModificator() const
     {
         if (!m_Ext.m_pTexModifier)
@@ -1843,6 +1859,7 @@ struct SEfResTexture
 
         return m_Ext.m_pTexModifier;
     }
+
     int Size() const
     {
         int nSize = sizeof(SEfResTexture) - sizeof(STexSamplerRT) - sizeof(SEfResTextureExt);
@@ -1859,6 +1876,7 @@ struct SEfResTexture
         pSizer->AddObject(m_Name);
         pSizer->AddObject(m_Sampler);
     }
+
     void Cleanup()
     {
         m_Sampler.Cleanup();
@@ -1878,6 +1896,7 @@ struct SEfResTexture
         SAFE_DELETE(m_Ext.m_pTexModifier);
         m_Ext.m_nFrameUpdated = -1;
     }
+
     SEfResTexture (const SEfResTexture& src)
     {
         if (&src != this)
@@ -1891,6 +1910,7 @@ struct SEfResTexture
             m_Filter = src.m_Filter;
         }
     }
+
     SEfResTexture& operator = (const SEfResTexture& src)
     {
         if (&src != this)
@@ -1902,7 +1922,7 @@ struct SEfResTexture
     }
     void CopyTo(SEfResTexture* pTo) const
     {
-        if (pTo && pTo != this)
+        if (pTo && (pTo != this))
         {
             pTo->Cleanup();
             pTo->m_Sampler = m_Sampler;
@@ -1920,18 +1940,20 @@ struct SEfResTexture
     }
 };
 
+//==============================================================================
+//------------------------------------------------------------------------------
 struct SBaseShaderResources
 {
-    DynArray<SShaderParam> m_ShaderParams;
-    string m_TexturePath;
-    const char* m_szMaterialName;
+    DynArray<SShaderParam>  m_ShaderParams;
+    string                  m_TexturePath;
+    const char*             m_szMaterialName;
 
-    float m_AlphaRef;
-    uint32 m_ResFlags;
+    float                   m_AlphaRef;
+    uint32                  m_ResFlags;
 
-    uint16 m_SortPrio;
+    uint16                  m_SortPrio;
 
-    uint8 m_VoxelCoverage;
+    uint8                   m_VoxelCoverage;
 
     int Size() const
     {
@@ -1943,6 +1965,7 @@ struct SBaseShaderResources
     {
         pSizer->AddObject(m_ShaderParams);
     }
+
     SBaseShaderResources& operator=(const SBaseShaderResources& src)
     {
         if (&src != this)
@@ -1971,11 +1994,18 @@ struct SBaseShaderResources
     {
         m_ShaderParams.clear();
     }
+
     virtual ~SBaseShaderResources()
     {
         ReleaseParams();
     }
 };
+
+//------------------------------------------------------------------------------
+typedef uint16                                                          ResourceSlotIndex;
+typedef AZStd::unordered_map<ResourceSlotIndex, SEfResTexture>          TexturesResourcesMap;
+typedef AZStd::unordered_map<ResourceSlotIndex, SShaderTextureSlot*>    TexturesSlotsUsageMap;
+//------------------------------------------------------------------------------
 
 struct IRenderShaderResources
 {
@@ -2003,10 +2033,11 @@ struct IRenderShaderResources
     virtual void SetMtlLayerNoDrawFlags(uint8 nFlags) = 0;
     virtual uint8 GetMtlLayerNoDrawFlags() const = 0;
     virtual SSkyInfo* GetSkyInfo() = 0;
-    virtual CCamera* GetCamera() = 0;
-    virtual void SetCamera(CCamera* pCam) = 0;
     virtual void SetMaterialName(const char* szName) = 0;
-    virtual SEfResTexture* GetTexture(int nSlot) const = 0;
+
+    virtual bool TextureSlotExists(ResourceSlotIndex slotId) const = 0;
+    virtual SEfResTexture* GetTextureResource(ResourceSlotIndex slotId) = 0;
+    virtual TexturesResourcesMap* GetTexturesResourceMap() = 0;
     virtual DynArrayRef<SShaderParam>& GetParameters() = 0;
 
     virtual ColorF GetFinalEmittance() = 0;
@@ -2037,7 +2068,7 @@ struct IRenderShaderResources
     }
     inline bool IsAlphaTested() const
     {
-        return GetAlphaRef() > 0.01f /*0.0f*/;
+        return GetAlphaRef() > 0.0f;
     }
     inline bool IsInvisible() const
     {
@@ -2052,46 +2083,38 @@ struct IRenderShaderResources
 struct SInputShaderResources
     : public SBaseShaderResources
 {
-    CInputLightMaterial m_LMaterial;
-    SEfResTexture m_Textures[EFTT_MAX];
-    SDeformInfo m_DeformInfo;
+    CInputLightMaterial                 m_LMaterial;
+    TexturesResourcesMap                m_TexturesResourcesMap;      // a map of all textures resources used by the shader by name
+    SDeformInfo                         m_DeformInfo;
 
     int Size() const
     {
-        int nSize = SBaseShaderResources::Size() - sizeof(SEfResTexture) * EFTT_MAX;
+        int nSize = SBaseShaderResources::Size();// -sizeof(SEfResTexture) * m_TexturesResourcesMap.size();
         nSize += m_TexturePath.size();
-        for (int i = 0; i < EFTT_MAX; i++)
+        nSize += sizeof(SDeformInfo);
+
+        for (auto& iter : m_TexturesResourcesMap)
         {
-            nSize += m_Textures[i].Size();
+            nSize += iter.second.Size();
         }
         return nSize;
     }
+
     SInputShaderResources& operator=(const SInputShaderResources& src)
     {
         if (&src != this)
         {
-            Cleanup();
+            Cleanup();  // this will also remove all texture slots
             SBaseShaderResources::operator = (src);
             m_TexturePath = src.m_TexturePath;
             m_DeformInfo = src.m_DeformInfo;
-            int i;
-            for (i = 0; i < EFTT_MAX; i++)
-            {
-                m_Textures[i] = src.m_Textures[i];
-            }
+            m_TexturesResourcesMap = src.m_TexturesResourcesMap;
             m_LMaterial = src.m_LMaterial;
         }
         return *this;
     }
 
-    SInputShaderResources()
-    {
-        for (int i = 0; i < EFTT_MAX; i++)
-        {
-            m_Textures[i].Reset();
-        }
-    }
-
+    SInputShaderResources()    {}
     SInputShaderResources(struct IRenderShaderResources* pSrc)
     {
         pSrc->ConvertToInputResource(this);
@@ -2100,18 +2123,29 @@ struct SInputShaderResources
 
     void Cleanup()
     {
-        for (int i = 0; i < EFTT_MAX; i++)
-        {
-            m_Textures[i].Cleanup();
-        }
+        m_TexturesResourcesMap.clear();
     }
+
     virtual ~SInputShaderResources()
     {
         Cleanup();
     }
-    bool IsEmpty(int nTSlot) const
+
+    bool IsEmpty(ResourceSlotIndex nTSlot) const
     {
-        return m_Textures[nTSlot].m_Name.empty();
+        auto    iter = m_TexturesResourcesMap.find(nTSlot);
+        return (iter != m_TexturesResourcesMap.end()) ? iter->second.m_Name.empty() : true;
+    }
+
+    SEfResTexture* GetTextureResource(ResourceSlotIndex slotId)
+    {
+        auto    iter = m_TexturesResourcesMap.find(slotId);
+        return (iter != m_TexturesResourcesMap.end()) ? &iter->second : nullptr;
+    }
+
+    inline TexturesResourcesMap* GetTexturesResourceMap()
+    {
+        return &m_TexturesResourcesMap;
     }
 };
 
@@ -2153,11 +2187,14 @@ struct SInputShaderResources
 #define SHGD_HW_SILHOUETTE_POM      0x2000000
 // Confetti Nicholas Baldwin: adding metal shader language support
 #define SHGD_HW_METAL               0x4000000
-#define SHGD_TEX_MASK       (SHGD_TEX_DETAIL | SHGD_TEX_NORMALS | SHGD_TEX_ENVCM | SHGD_TEX_SPECULAR | SHGD_TEX_SECOND_SMOOTHNESS | \
-                             SHGD_TEX_HEIGHT | SHGD_TEX_SUBSURFACE | SHGD_TEX_CUSTOM | SHGD_TEX_CUSTOM_SECONDARY | SHGD_TEX_DECAL | \
-                             SHGD_TEX_OCC | SHGD_TEX_SPECULAR_2 | SHGD_TEX_EMITTANCE)
+#define SHGD_TEX_MASK       (   SHGD_TEX_DETAIL | SHGD_TEX_NORMALS | SHGD_TEX_ENVCM | SHGD_TEX_SPECULAR | SHGD_TEX_SECOND_SMOOTHNESS | \
+                                SHGD_TEX_HEIGHT | SHGD_TEX_SUBSURFACE | SHGD_TEX_CUSTOM | SHGD_TEX_CUSTOM_SECONDARY | SHGD_TEX_DECAL | \
+                                SHGD_TEX_OCC | SHGD_TEX_SPECULAR_2 | SHGD_TEX_EMITTANCE)
 
 
+//------------------------------------------------------------------------------
+// Texture slot descriptor for shader 
+//------------------------------------------------------------------------------
 struct SShaderTextureSlot
 {
     SShaderTextureSlot()
@@ -2165,9 +2202,9 @@ struct SShaderTextureSlot
         m_TexType = eTT_MaxTexType;
     }
 
-    string m_Name;
-    string m_Description;
-    byte m_TexType;
+    string  m_Name;
+    string  m_Description;
+    byte    m_TexType;      // 2D, 3D, Cube etc..
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
@@ -2177,21 +2214,66 @@ struct SShaderTextureSlot
     }
 };
 
+//------------------------------------------------------------------------------
+// Shader's used texture slots
+//------------------------------------------------------------------------------
+/* [Shader System] - To Do: bring that back to life after testing
 struct SShaderTexSlots
 {
-    uint32 m_nRefCount;
-    SShaderTextureSlot* m_UsedSlots[EFTT_MAX];
+    uint32                      m_nRefCount;
+    TexturesSlotsUsageMap       m_UsedTextureSlots;
+
     SShaderTexSlots()
     {
         m_nRefCount = 1;
-        memset(m_UsedSlots, 0, sizeof(m_UsedSlots));
+    }
+
+    ~SShaderTexSlots()
+    {
+        for (auto& iter : m_UsedTextureSlots )
+        {
+            SAFE_DELETE( iter.second );
+        }
+        m_UsedTextureSlots.clear();
+    }
+    void Release()
+    {
+        m_nRefCount--;
+        if (!m_nRefCount)
+        {
+            delete this;
+        }
+    }
+
+    void GetMemoryUsage(ICrySizer* pSizer) const
+    {
+        pSizer->AddObject(m_UsedTextureSlots);
+    }
+
+    SShaderTextureSlot* GetUsedTextureSlot(uint16 slotId)
+    {
+        auto    iter = m_UsedTextureSlots.find(slotId);
+        return (iter != m_UsedTextureSlots.end()) ? iter->second : nullptr;
+    }
+};
+*/
+
+// [Shader System] - To Do: replace this with the code above after testing
+struct SShaderTexSlots
+{
+    uint32 m_nRefCount;
+    SShaderTextureSlot* m_UsedTextureSlots[EFTT_MAX];
+    SShaderTexSlots()
+    {
+        m_nRefCount = 1;
+        memset(m_UsedTextureSlots, 0, sizeof(m_UsedTextureSlots));
     }
     ~SShaderTexSlots()
     {
         uint32 i;
         for (i = 0; i < EFTT_MAX; i++)
         {
-            SShaderTextureSlot* pSlot = m_UsedSlots[i];
+            SShaderTextureSlot* pSlot = m_UsedTextureSlots[i];
             SAFE_DELETE(pSlot);
         }
     }
@@ -2206,7 +2288,7 @@ struct SShaderTexSlots
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
-        pSizer->AddObject(m_UsedSlots);
+        pSizer->AddObject(m_UsedTextureSlots);
     }
 };
 
@@ -2299,6 +2381,21 @@ enum EShaderType
     eST_Particle,
     eST_Compute,
     eST_Max                     // To define array size.
+};
+
+enum EShaderDrawType
+{
+    eSHDT_General,
+    eSHDT_Light,
+    eSHDT_Shadow,
+    eSHDT_Terrain,
+    eSHDT_Overlay,
+    eSHDT_OceanShore,
+    eSHDT_Fur,
+    eSHDT_NoDraw,
+    eSHDT_CustomDraw,
+    eSHDT_Sky,
+    eSHDT_Volume
 };
 
 enum EShaderQuality
@@ -2557,6 +2654,7 @@ public:
     virtual bool FXEnd() = 0;
 
     virtual EShaderType GetShaderType() = 0;
+    virtual EShaderDrawType GetShaderDrawType() const = 0;
     virtual uint32      GetVertexModificator() = 0;
 
     virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
@@ -2720,6 +2818,7 @@ enum eDynamicLightFlags
     DLF_DEFERRED_LIGHT              = BIT(27), // DEPRECATED. Remove once deferred shading by default
     DLF_SPECULAROCCLUSION           = BIT(28), // DEPRECATED. Remove all dependencies editor side, etc
     DLF_DIFFUSEOCCLUSION            = BIT(29),
+    DLF_CAST_TERRAIN_SHADOWS        = BIT(30), // Include terrain in shadow casters
 
     DLF_LIGHTTYPE_MASK              = (DLF_DIRECTIONAL | DLF_POINT | DLF_PROJECT | DLF_AREA_LIGHT)
 };
@@ -2758,11 +2857,11 @@ protected:
 
 struct SOpticsInstanceParameters
 {
-    SOpticsInstanceParameters(float brightness = 0.0f, float size = 0.0f, const ColorF& color = ColorF(), bool valid = false)
-        : m_brightness(brightness)
-        , m_size(size)
-        , m_color(color)
-        , m_isValid(valid) {}
+    SOpticsInstanceParameters(float brightness = 0.0f, float size = 0.0f, const ColorF& color = ColorF(), bool valid = false) : 
+        m_brightness(brightness), 
+        m_size(size), m_color(color), 
+        m_isValid(valid) {}
+
     float m_brightness;
     float m_size;
     ColorF m_color;
@@ -2803,6 +2902,7 @@ struct SRenderLight
         m_LensOpticsFrustumAngle = 255;
         m_nAttenFalloffMax = 255;
         m_fAttenuationBulbSize = 0.1f;
+        m_fProbeAttenuation = 1.0f;
     }
 
     const Vec3& GetPosition() const
@@ -2966,6 +3066,7 @@ struct SRenderLight
     float m_fBoxWidth;
     float m_fBoxHeight;
     float m_fBoxLength;
+    float m_fProbeAttenuation;                      // Can be used fade out distant probes, or to manually blend between multiple co-located probes 
     uint8 m_nAttenFalloffMax;
     uint8 m_nSortPriority;
 
@@ -3000,7 +3101,7 @@ struct SRenderLight
     Matrix34 m_BaseObjMatrix;
     float m_fTimeScrubbed;
     Vec3 m_BaseOrigin;                              // World space position.
-    float m_fBaseRadius;                            // Base radius
+    float m_fBaseRadius;                            // Base radius 
     ColorF m_BaseColor;                             // w component unused..
     float m_BaseSpecMult;
 
@@ -3121,6 +3222,7 @@ public:
         m_nAnimSpeed = dl.m_nAnimSpeed;
         m_nSortPriority = dl.m_nSortPriority;
         m_nAttenFalloffMax = dl.m_nAttenFalloffMax;
+        m_fProbeAttenuation = dl.m_fProbeAttenuation;
         m_fAttenuationBulbSize = dl.m_fAttenuationBulbSize;
         m_fFogRadialLobe = dl.m_fFogRadialLobe;
         m_nEntityId = dl.m_nEntityId;

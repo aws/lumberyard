@@ -20,13 +20,12 @@ namespace ScriptCanvas
     {
         namespace Core
         {
-            const bool k_StringNodeHasProperties = false;
 
             class String 
-                : public NativeDatumNode<String, Data::StringType, k_StringNodeHasProperties>
+                : public NativeDatumNode<String, Data::StringType>
             {
             public:
-                using ParentType = NativeDatumNode<String, Data::StringType, k_StringNodeHasProperties>;
+                using ParentType = NativeDatumNode<String, Data::StringType>;
                 AZ_COMPONENT(String, "{9C9B9D96-1838-4493-A14D-40C77B4DB5DD}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* context)

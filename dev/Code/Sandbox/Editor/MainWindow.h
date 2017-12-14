@@ -168,6 +168,8 @@ public:
     void ResetAutoSaveTimers(bool bForceInit = false);
     void ResetBackgroundUpdateTimer();
 
+    void UpdateToolsMenu();
+
     int ViewPaneVersion() const;
     void MatEditSend(int param);
 
@@ -278,7 +280,6 @@ private:
 
     static MainWindow* m_instance;
 
-    bool m_useNewDocking;
     bool m_enableLegacyCryEntities;
 
     QMainWindow* m_viewPaneHost;
@@ -289,6 +290,7 @@ private:
 
     bool m_connectedToAssetProcessor = false;
     bool m_showAPDisconnectDialog = false;
+    bool m_projectExternal = false;
 
     friend class ToolbarManager;
     friend class WidgetAction;

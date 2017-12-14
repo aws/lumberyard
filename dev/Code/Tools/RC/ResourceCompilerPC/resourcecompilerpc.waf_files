@@ -122,10 +122,16 @@
         "CryCommon":
         [
             "../../../CryEngine/CryCommon/EngineSettingsManager.cpp",
+            "../../../CryEngine/CryCommon/EngineSettingsManager.h",
+            "../../../CryEngine/CryCommon/EngineSettingsBackend.cpp",
+            "../../../CryEngine/CryCommon/EngineSettingsBackend.h",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendWin32.cpp",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendWin32.h",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendApple.cpp",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendApple.h",
             "../../../CryEngine/CryCommon/ResourceCompilerHelper.cpp",
             "../../../CryEngine/CryCommon/SettingsManagerHelpers.cpp",
             "../../../CryEngine/CryCommon/SettingsManagerHelpers.h",
-            "../../../CryEngine/CryCommon/EngineSettingsManager.h",
             "../../../CryEngine/CryCommon/ResourceCompilerHelper.h"
         ],
         "CryCommonTools":
@@ -210,7 +216,6 @@
             "../ResourceCompiler/TextFileReader.cpp",
             "PhysWorld.h",
             "../../CryCommonTools/StealingThreadPool.h",
-            "ResourceCompilerPlugin.def",
             "../ResourceCompiler/TextFileReader.h"
         ],
         "Wavelet":

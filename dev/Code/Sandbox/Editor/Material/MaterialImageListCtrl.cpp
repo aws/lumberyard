@@ -451,6 +451,7 @@ void CMaterialImageListCtrl::LoadModel()
 void CMaterialImageListCtrl::updateGeometries()
 {
     ClearItemGeometries();
+    m_updatingGeometries = true;
 
     if (!model())
     {
@@ -551,6 +552,14 @@ void CMaterialImageListCtrl::setModel(QAbstractItemModel* model)
 
 void CMaterialImageListCtrl::ModelDataChanged(const QModelIndex& index)
 {
+    // Prevent the hundreads of resize calls done in a row
+    // to trigger a new image computation that we already have
+    if (m_updatingGeometries)
+    {
+        m_updatingGeometries = false;
+        return;
+    }
+
     GenerateImage(index);
 }
 

@@ -13,6 +13,7 @@
 
 #include "StdAfx.h"
 #include "TextureHelpers.h"
+#include "TextureManager.h"
 #include "StringUtils.h"
 
 /* -----------------------------------------------------------------------
@@ -21,94 +22,43 @@
   */
 
 //////////////////////////////////////////////////////////////////////////
-namespace
-{
-    static struct
-    {
-        EEfResTextures slot;
-        int8 priority;
-        CTexture** def;
-        CTexture** neutral;
-        const char* suffix;
-    }
-    s_TexSlotSemantics[] =
-    {
-        // NOTE: must be in order with filled holes to allow direct lookup
-        { EFTT_DIFFUSE,          4, &CTexture::s_ptexNoTexture, &CTexture::s_ptexWhite,    "_diff"   },
-        { EFTT_NORMALS,          2, &CTexture::s_ptexFlatBump,  &CTexture::s_ptexFlatBump, "_ddn"    },
-        { EFTT_SPECULAR,         1, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    "_spec"   },
-        { EFTT_ENV,              0, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    "_cm"     },
-        { EFTT_DETAIL_OVERLAY,   3, &CTexture::s_ptexGray,      &CTexture::s_ptexWhite,    "_detail" },
-        { EFTT_SECOND_SMOOTHNESS, 2, &CTexture::s_ptexWhite,    &CTexture::s_ptexWhite,    "" },
-        { EFTT_HEIGHT,           2, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    "_displ"  },
-        { EFTT_DECAL_OVERLAY,    3, &CTexture::s_ptexGray,      &CTexture::s_ptexWhite,    ""        },
-        { EFTT_SUBSURFACE,       3, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    "_sss"    },
-        { EFTT_CUSTOM,           4, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    ""        },
-        { EFTT_CUSTOM_SECONDARY, 2, &CTexture::s_ptexFlatBump,  &CTexture::s_ptexFlatBump, ""        },
-        { EFTT_OPACITY,          4, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    ""        },
-        { EFTT_SMOOTHNESS,       2, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    "_ddna"   },
-        { EFTT_EMITTANCE,        1, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    "_em"     },
-        { EFTT_OCCLUSION,        4, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    ""        },
-        { EFTT_SPECULAR_2,       4, &CTexture::s_ptexWhite,     &CTexture::s_ptexWhite,    "_spec" },
-
-        // This is the terminator for the name-search
-        { EFTT_UNKNOWN,          0, &CTexture::s_pTexNULL,      &CTexture::s_pTexNULL,     ""        },
-    };
-
-#if 0
-    static class Verify
-    {
-    public:
-        Verify()
-        {
-            for (int i = 0; s_TexSlotSemantics[i].def; i++)
-            {
-                if (s_TexSlotSemantics[i].slot != i)
-                {
-                    throw std::runtime_error("Invalid texture slot lookup array.");
-                }
-            }
-        }
-    }
-    s_VerifyTexSlotSemantics;
-#endif
-}
-
 namespace  TextureHelpers
 {
+    // [Shader System TO DO] - to support data driven the following must support texture handling differently
     bool VerifyTexSuffix(EEfResTextures texSlot, const char* texPath)
     {
-        assert((texSlot >= 0) && (texSlot < EFTT_MAX));
-        return (strlen(texPath) > strlen(s_TexSlotSemantics[texSlot].suffix) && (CryStringUtils::stristr(texPath, s_TexSlotSemantics[texSlot].suffix)));
+        MaterialTextureSemantic&    texSemantic = CTextureManager::Instance()->GetTextureSemantic(texSlot);
+        return (strlen(texPath) > strlen(texSemantic.suffix) && (CryStringUtils::stristr(texPath, texSemantic.suffix)));
     }
 
     bool VerifyTexSuffix(EEfResTextures texSlot, const string& texPath)
     {
-        assert((texSlot >= 0) && (texSlot < EFTT_MAX));
-        return (texPath.size() > strlen(s_TexSlotSemantics[texSlot].suffix) && (CryStringUtils::stristr(texPath, s_TexSlotSemantics[texSlot].suffix)));
+        MaterialTextureSemantic&    texSemantic = CTextureManager::Instance()->GetTextureSemantic(texSlot);
+        return (texPath.size() > strlen(texSemantic.suffix) && (CryStringUtils::stristr(texPath, texSemantic.suffix)));
     }
 
     const char* LookupTexSuffix(EEfResTextures texSlot)
     {
-        assert((texSlot >= 0) && (texSlot < EFTT_MAX));
-        return s_TexSlotSemantics[texSlot].suffix;
+        MaterialTextureSemantic&    texSemantic = CTextureManager::Instance()->GetTextureSemantic(texSlot);
+        return texSemantic.suffix;
     }
 
     int8 LookupTexPriority(EEfResTextures texSlot)
     {
-        assert((texSlot >= 0) && (texSlot < EFTT_MAX));
-        return s_TexSlotSemantics[texSlot].priority;
+        MaterialTextureSemantic&    texSemantic = CTextureManager::Instance()->GetTextureSemantic(texSlot);
+        return texSemantic.priority;
     }
 
     CTexture* LookupTexDefault(EEfResTextures texSlot)
     {
-        assert((texSlot >= 0) && (texSlot < EFTT_MAX));
-        return *s_TexSlotSemantics[texSlot].def;
+        MaterialTextureSemantic&    texSemantic = CTextureManager::Instance()->GetTextureSemantic(texSlot);
+        return texSemantic.def;
     }
 
+    // [Shader System] - To do: replace as part of data driven texture slots 
     CTexture* LookupTexNeutral(EEfResTextures texSlot)
     {
-        assert((texSlot >= 0) && (texSlot < EFTT_MAX));
-        return *s_TexSlotSemantics[texSlot].neutral;
+        MaterialTextureSemantic&    texSemantic = CTextureManager::Instance()->GetTextureSemantic(texSlot);
+        return texSemantic.neutral;
     }
 }

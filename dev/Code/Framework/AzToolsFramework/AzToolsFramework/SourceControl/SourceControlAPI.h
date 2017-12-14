@@ -20,15 +20,13 @@ namespace AzToolsFramework
 {
     enum SourceControlStatus
     {
-        SCS_ProviderIsDown,     // source control provider is down
+        SCS_OpSuccess,          // No errors reported
+        SCS_OpNotSupported,     // Operation not supported by the source control provider
         SCS_CertificateInvalid, // Trust certificate is invalid
+        SCS_ProviderIsDown,     // source control provider is down
+        SCS_ProviderNotFound,   // source control provider not found
         SCS_ProviderError,      // there was an error processing your request
         SCS_NUM_ERRORS,         // add errors above this enum
-
-        SCS_Tracked,            // file is under source control
-        SCS_NotTracked,         // source control unaware of file
-        SCS_OpenByUser,         // currently open for checkout / staging
-        SCS_NUM_STATUSES,       // add success statuses above this enum
     };
 
     enum SourceControlFlags
@@ -39,6 +37,8 @@ namespace AzToolsFramework
         SCF_OtherOpen       = (1 << 3), // someone else has this file open
         SCF_PendingAdd      = (1 << 4), // file marked for add
         SCF_PendingDelete   = (1 << 5), // file marked for removal
+        SCF_OpenByUser      = (1 << 6), // currently open for checkout / staging
+        SCF_Tracked         = (1 << 7), // file is under source control
     };
 
     struct SourceControlFileInfo
@@ -85,8 +85,10 @@ namespace AzToolsFramework
         }
 
         bool CompareStatus(SourceControlStatus status) const { return m_status == status; }
+
         bool IsReadOnly() const { return !HasFlag(SCF_Writeable); }
         bool IsLockedByOther() const { return HasFlag(SCF_OtherOpen) && !HasFlag(SCF_MultiCheckOut); }
+        bool IsManaged() const { return HasFlag(SCF_Tracked); }
 
         bool HasFlag(SourceControlFlags flag) const { return ((m_flags & flag) != 0); }
     };
@@ -152,6 +154,9 @@ namespace AzToolsFramework
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single; // there's only one source control listener right now
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;  // theres only one source control listener right now
+        typedef AZStd::recursive_mutex MutexType;
+        static const bool LocklessDispatch = true;
+
         virtual ~SourceControlCommands() {}
 
         //! Get information on the file state
@@ -177,6 +182,7 @@ namespace AzToolsFramework
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        typedef AZStd::recursive_mutex MutexType;
 
         virtual ~SourceControlConnectionRequests() {}
 
@@ -188,9 +194,6 @@ namespace AzToolsFramework
 
         //! Enable or disable trust of an SSL connection
         virtual void EnableTrust(bool enable, AZStd::string fingerprint) = 0;
-
-        //! Returns if we are connecting to an SSL server without a valid key
-        virtual bool HasTrustIssue() const = 0;
 
         //! Attempt to set connection setting 'key' to 'value'
         virtual void SetConnectionSetting(const char* key, const char* value, const SourceControlSettingCallback& respCallBack) = 0;
@@ -212,6 +215,7 @@ namespace AzToolsFramework
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        typedef AZStd::recursive_mutex MutexType;
 
         virtual ~SourceControlNotifications() {}
 

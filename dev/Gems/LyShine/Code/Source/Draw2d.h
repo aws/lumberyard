@@ -184,5 +184,5 @@ protected: // attributes
     std::stack<bool> m_deferCallsFlagStack;
 
 private:
-    TransformationMatrices m_backupSceneMatrices; 
+    TransformationMatrices m_backupSceneMatrices;
 };

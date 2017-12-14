@@ -9,10 +9,6 @@
         [
             "Tests/GraphData/MeshDataTests.cpp",
             "Tests/GraphData/MeshDataPrimitiveUtilsTests.cpp"
-        ],
-        "Tests/Behaviors":
-        [
-            "Tests/Behaviors/SoftNameTypesTests.cpp"
         ]
     }
 }

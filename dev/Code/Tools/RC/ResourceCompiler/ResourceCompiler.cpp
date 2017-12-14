@@ -77,8 +77,10 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <QSettings>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #if defined(AZ_PLATFORM_APPLE)
 #include <mach-o/dyld.h>  // Needed for _NSGetExecutablePath
@@ -176,10 +178,9 @@ ResourceCompiler::~ResourceCompiler()
     delete m_pPakManager;
 
     {
-        AssertInterceptor interceptor;
-
         if (m_pSystem)
         {
+            AssertInterceptor interceptor;
             m_pSystem.reset();
         }
 
@@ -192,6 +193,7 @@ ResourceCompiler::~ResourceCompiler()
 
             if (pfnModuleShutdownISystem)
             {
+                AssertInterceptor interceptor;
                 pfnModuleShutdownISystem(nullptr);
             }
 
@@ -421,7 +423,7 @@ static void CompileFilesMultiThreaded(
             initContext.config = &pRC->GetMultiplatformConfig().getConfig();
             initContext.inputFiles = a_files.m_inputFiles.empty() ? 0 : &a_files.m_inputFiles[0];
             initContext.inputFileCount = a_files.m_inputFiles.size();
-
+            initContext.appRootPath = pRC->GetAppRoot();
             convertor->Init(initContext);
         }
 
@@ -440,7 +442,7 @@ static void CompileFilesMultiThreaded(
             threadData[threadIndex].bErrorHeaderLine = false;
             threadData[threadIndex].logHeaderLine = "";
         }
-
+        AZStd::binary_semaphore waiter;
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
         // Spawn the threads.
         QVector<QThread*> threads(threadCount);
@@ -454,8 +456,14 @@ static void CompileFilesMultiThreaded(
                     0,                           //unsigned initflag,
                     0);                          //unsigned *thrdaddr
 
-            QObject::connect(threads[threadIndex], &QThread::finished, [threadIndex, &threads]() {
+            QObject::connect(threads[threadIndex], &QThread::finished, [&waiter, threadIndex, &threads]()
+            {
                 threads.remove(threadIndex);
+                if (threads.isEmpty())
+                {
+                    // this makes the app break out of its event loop (below) ASAP.
+                    waiter.release();
+                }
             });
         }
 
@@ -463,7 +471,14 @@ static void CompileFilesMultiThreaded(
         while (!threads.isEmpty())
         {
             // Show progress
-            qApp->processEvents();
+
+            // unfortunately the below call to processEvents(...), 
+            // even with a 'wait for more events' flag applied, causes it to still use up an entire CPU core
+            // on windows platforms due to implementation details.
+            // To avoid this, we will periodically pump events, but we will also wait on a semaphore to be raised to let us quit instantly
+            // this allows us to spend most of our time with a sleeping main thread, but still instantly exit once the job(s) are done.
+            waiter.try_acquire_for(AZStd::chrono::milliseconds(50));
+            qApp->processEvents(QEventLoop::AllEvents);
 
             a_files.lock();
 
@@ -589,6 +604,7 @@ void ResourceCompiler::GetSourceRootsReversed(const IConfig* config, std::vector
     for (size_t i = 0; i < sourceRootCount; ++i)
     {
         sourceRootsReversed[i] = PathHelpers::GetAbsoluteAsciiPath(sourceRoots[sourceRootCount - 1 - i]);
+        sourceRootsReversed[i] = PathHelpers::ToPlatformPath(sourceRootsReversed[i]);
 
         if (verbosityLevel >= 3)
         {
@@ -625,12 +641,12 @@ bool ResourceCompiler::CollectFilesToCompile(const string& filespec, std::vector
 
     // Determine the target output path (may be a different directory structure).
     // If none is specified, the target path is the same as the <source left path>.
-    const string targetLeftPath = PathHelpers::CanonicalizePath(config->GetAsString("targetroot", "", ""));
+    const string targetLeftPath = PathHelpers::ToPlatformPath(PathHelpers::CanonicalizePath(config->GetAsString("targetroot", "", "")));
 
     std::vector<string> sourceRootsReversed;
     GetSourceRootsReversed(config, sourceRootsReversed);
 
-    const string listFile = config->GetAsString("listfile", "", "");
+    const string listFile = PathHelpers::ToPlatformPath(config->GetAsString("listfile", "", ""));
 
     TStringSet addedFiles;
     if (!listFile.empty())
@@ -1121,6 +1137,12 @@ const char* ResourceCompiler::GetInitialCurrentDir() const
 {
     return m_initialCurrentDir.c_str();
 }
+
+const char* ResourceCompiler::GetAppRoot() const
+{
+    return m_appRoot.c_str();
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 bool ResourceCompiler::CompileFile(
@@ -2060,20 +2082,11 @@ int AzMainUnitTests();
 #endif // AZ_TESTS_ENABLED
 
 //////////////////////////////////////////////////////////////////////////
-int __cdecl main(int argc, char** argv, char** envp)
-{
-    if (!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
-    {
-    	AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-    }
-    
-#ifdef AZ_TESTS_ENABLED
-    if (argc == 2 && 0 == stricmp(argv[1], "--unittest"))
-    {
-        return AzMainUnitTests();
-    }
-#endif // AZ_TESTS_ENABLED
+// this is a wrapped version of main, so that we can freely create things on the stack like unique_ptrs
+// and know that the actual main() can clean up memory since no objects will be in scope upon return of this main.
 
+int __cdecl main_impl(int argc, char** argv, char** envp)
+{
     std::unique_ptr<QCoreApplication> qApplication = CreateQApplication(argc, argv);
 
 #if 0
@@ -2193,6 +2206,8 @@ int __cdecl main(int argc, char** argv, char** envp)
     rc.RegisterKey("unattended", "Prevents RC from opening any dialogs or message boxes");
     rc.RegisterKey("createjobs", "Instructs RC to read the specified input file (a CreateJobsRequest) and output a CreateJobsResponse");
     rc.RegisterKey("port", "Specifies the port that should be used to connect to the asset processor.  If not set, the default from the bootstrap cfg will be used instead");
+    rc.RegisterKey("approot", "Specifies a custom directory for the engine root path. This path should contain bootstrap.cfg.");
+    rc.RegisterKey("branchtoken", "Specifies a branchtoken that should be used by the RC to negotiate with the asset processor. if not set it will be set from the bootstrap file.");
 
     string fileSpec;
     bool bUnitTestMode = false;
@@ -2434,18 +2449,25 @@ int __cdecl main(int argc, char** argv, char** envp)
         // and because we're a tool, add the tool folders:
         if ((gEnv) && (gEnv->pFileIO))
         {
-            gEnv->pFileIO->SetAlias("@devroot@", cfg.m_rootFolder.c_str());
-
-            string gamePath = config.GetAsString("gameroot", "", "");
-            if (gamePath.empty())
+            const char* engineRoot = nullptr;
+            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+            if (engineRoot != nullptr)
             {
-                string devAssetsFolder = cfg.m_rootFolder + "/" + cfg.m_gameFolder;
-                gEnv->pFileIO->SetAlias("@devassets@", devAssetsFolder.c_str());
+                gEnv->pFileIO->SetAlias("@engroot@", engineRoot);
             }
             else
             {
-                gEnv->pFileIO->SetAlias("@devassets@", gamePath.c_str());
+                gEnv->pFileIO->SetAlias("@engroot@", cfg.m_rootFolder.c_str());
             }
+            gEnv->pFileIO->SetAlias("@devroot@", cfg.m_rootFolder.c_str());
+
+            string gamePath = config.GetAsString("gameroot", "", "");
+            string devAssets = (!gamePath.empty()) ? gamePath : string(cfg.m_rootFolder + "/" + cfg.m_gameFolder);
+            gEnv->pFileIO->SetAlias("@devassets@", devAssets.c_str());
+
+            string appRootInput = config.GetAsString("approot", "", "");
+            string appRoot = (!appRootInput.empty()) ? appRootInput : ResourceCompiler::GetAppRootPathFromGameRoot(devAssets);
+            rc.SetAppRootPath(appRoot);
         }
         RCLog("");
 
@@ -2568,11 +2590,6 @@ int __cdecl main(int argc, char** argv, char** envp)
         break;
     }
 
-    if (AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
-    {
-    	AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-    }
-
     return exitCode;
 }
 
@@ -2605,6 +2622,55 @@ void ResourceCompiler::PostBuild()
         m_inputOutputFileList.RemoveDuplicates();
         m_inputOutputFileList.Save(dependenciesFilename.c_str());
     }
+}
+void ResourceCompiler::SetAppRootPath(const string& appRootPath)
+{
+    m_appRoot = appRootPath;
+}
+
+string ResourceCompiler::GetAppRootPathFromGameRoot(const string& gameRootPath)
+{
+    // Since we cannot rely on the current exe path or engine path to determine the app root path since
+    // the RC request could be coming in from an external game, we need to calculate it from the game root path.
+    // Typically, the game root path is one level above the app root (the app root and the engine path is the same
+    // if the game project resides in the engine folder).  If its external, we need the app root for that external
+    // project in order to negotiate communications back to the AP with the right branch token
+    //
+    // Example:
+    // Game root path        :   /LyEngine/MyGame/
+    // Derived app root path :   /LyEngine
+
+    size_t index = gameRootPath.length();
+    if (index == 0)
+    {
+        // Empty string, skip
+        return "";
+    }
+
+    char lastChar = gameRootPath.at(--index);
+    // Skip over any initial path delimiters or spaces (Reduce all trailing '/' for example:  c:\foo\bar\\\ -> c:\foo\bar)
+    while (((lastChar == AZ_CORRECT_FILESYSTEM_SEPARATOR) || (lastChar == AZ_WRONG_FILESYSTEM_SEPARATOR) || (lastChar == ' ')) && index>0)
+    {
+        lastChar = gameRootPath.at(--index);
+    }
+    // Invalid path (may have been '\\\\\\\\')
+    if (index == 0)
+    {
+        return "";
+    }
+
+    // Go to the next path delimeter
+    while (((lastChar != AZ_CORRECT_FILESYSTEM_SEPARATOR) && (lastChar != AZ_WRONG_FILESYSTEM_SEPARATOR)) && index>0)
+    {
+        lastChar = gameRootPath.at(--index);
+    }
+
+    // Invalid path (no path delimiter found after the first group, ie:  c:root\ would not resolve a parent )
+    if (index == 0)
+    {
+        return "";
+    }
+    return gameRootPath.substr(0, index);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3283,14 +3349,14 @@ void ResourceCompiler::FilterExcludedFiles(std::vector<RcFile>& files)
         string excludeStr = config->GetAsString("exclude", "", "", eCP_PriorityAll & ~eCP_PriorityJob);
         if (!excludeStr.empty())
         {
-            excludeStr.replace('/', '\\');
+            excludeStr = PathHelpers::ToPlatformPath(excludeStr);
             StringHelpers::Split(excludeStr, ";", false, excludes);
         }
 
         excludeStr = config->GetAsString("exclude", "", "", eCP_PriorityJob);
         if (!excludeStr.empty())
         {
-            excludeStr.replace('/', '\\');
+            excludeStr = PathHelpers::ToPlatformPath(excludeStr);
             StringHelpers::Split(excludeStr, ";", false, excludes);
         }
 
@@ -3320,7 +3386,7 @@ void ResourceCompiler::FilterExcludedFiles(std::vector<RcFile>& files)
         for (size_t i = 0; i < filenameCount; ++i)
         {
             string& name = excludedStrings[i].second;
-            name.replace('/', '\\');
+            name = PathHelpers::ToPlatformPath(name);
             excludedFiles.insert(name.c_str());
         }
     }
@@ -3334,7 +3400,7 @@ void ResourceCompiler::FilterExcludedFiles(std::vector<RcFile>& files)
     for (size_t nFile = 0; nFile < files.size(); ++nFile)
     {
         name = files[nFile].m_sourceInnerPathAndName;
-        name.replace('/', '\\');
+        name = PathHelpers::ToPlatformPath(name);
 
         if (excludedFiles.find(name.c_str()) != excludedFiles.end())
         {
@@ -4474,4 +4540,31 @@ int ResourceCompiler::RunUnitTests()
     }
     RCLog("Unit testing complete. %u out of %u passed", unitTestHelper.GetTestsSucceededCount(), unitTestHelper.GetTestsPerformedCount());
     return unitTestHelper.AllUnitTestsPassed() ? eRcExitCode_Success : eRcExitCode_Error;
+}
+
+// here we wrap main(...) so that we can absolutely ensure any objects created on the stack during the actual main are gone by the time
+// we leave it and memory can be freed.
+int __cdecl main(int argc, char** argv, char** envp)
+{
+#ifdef AZ_TESTS_ENABLED
+    if (argc == 2 && 0 == stricmp(argv[1], "--unittest"))
+    {
+        return AzMainUnitTests();
+    }
+#endif // AZ_TESTS_ENABLED
+
+    // here we are wrapping main to handle memory management around it.
+    if (!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+    {
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+    }
+
+    int exitCode = main_impl(argc, argv, envp);
+
+    if (AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+    {
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+    }
+
+    return exitCode;
 }

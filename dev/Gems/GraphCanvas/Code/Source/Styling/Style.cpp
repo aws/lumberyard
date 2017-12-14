@@ -308,306 +308,312 @@ QDataStream& operator>>(QDataStream& in, GraphCanvas::Styling::Curves& curve)
     return in;
 }
 
-using namespace GraphCanvas;
-using namespace GraphCanvas::Styling;
-
-void Style::Reflect(AZ::ReflectContext* context)
+namespace GraphCanvas
 {
-    static bool reflected = false;
-
-    AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-    if (!serializeContext || reflected)
+    namespace Styling
     {
-        return;
-    }
-
-    qRegisterMetaTypeStreamOperators<Qt::PenStyle>();
-    qRegisterMetaTypeStreamOperators<Qt::PenCapStyle>();
-    qRegisterMetaTypeStreamOperators<Qt::AlignmentFlag>();
-    qRegisterMetaTypeStreamOperators<Styling::Curves>();
-
-    // Allow QVectors to be serialized
-    serializeContext->Class<QVariant>()
-        ->Serializer<QVariantSerializer>();
-
-    //TODO port collection class away from QHash so it can be serialized
-    serializeContext->Class<Style>()
-        ->Version(4, &StyleVersionConverter)
-        ->Field("Selectors", &Style::m_selectors)
-        ->Field("SelectorsAsString", &Style::m_selectorsAsString)
-        ->Field("Attributes", &Style::m_values)
-        ;
-
-    reflected = true;
-}
-
-Style::Style(const SelectorVector& selectors)
-    : m_selectors(selectors)
-    , m_selectorsAsString(SelectorsToString(selectors))
-{
-}
-
-Style::Style(std::initializer_list<Selector> selectors)
-    : m_selectors(selectors)
-    , m_selectorsAsString(SelectorsToString(m_selectors))
-{
-}
-
-int Style::Matches(const AZ::EntityId& object) const
-{
-    for (const Selector& selector : m_selectors)
-    {
-        if (selector.Matches(object))
+        //////////
+        // Style
+        //////////
+        void Style::Reflect(AZ::ReflectContext* context)
         {
-            return selector.GetComplexity();
+            static bool reflected = false;
+
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (!serializeContext || reflected)
+            {
+                return;
+            }
+
+            qRegisterMetaTypeStreamOperators<Qt::PenStyle>();
+            qRegisterMetaTypeStreamOperators<Qt::PenCapStyle>();
+            qRegisterMetaTypeStreamOperators<Qt::AlignmentFlag>();
+            qRegisterMetaTypeStreamOperators<Styling::Curves>();
+
+            // Allow QVectors to be serialized
+            serializeContext->Class<QVariant>()
+                ->Serializer<QVariantSerializer>();
+
+            //TODO port collection class away from QHash so it can be serialized
+            serializeContext->Class<Style>()
+                ->Version(4, &StyleVersionConverter)
+                ->Field("Selectors", &Style::m_selectors)
+                ->Field("SelectorsAsString", &Style::m_selectorsAsString)
+                ->Field("Attributes", &Style::m_values)
+                ;
+    
+            reflected = true;
         }
-    }
-    return 0;
-}
 
-bool Style::HasAttribute(Attribute attribute) const
-{
-    return m_values.find(attribute) != m_values.end();
-}
-
-inline QVariant Style::GetAttribute(Attribute attribute) const
-{
-    return HasAttribute(attribute) ? m_values.at(attribute) : QVariant();
-}
-
-void Style::SetAttribute(Attribute attribute, const QVariant& value)
-{
-    m_values[attribute] = value;
-}
-
-void Style::MakeSelectorsDefault()
-{
-    for (auto& selector : m_selectors)
-    {
-        selector.MakeDefault();
-    }
-}
-
-void Style::Dump() const
-{
-    qDebug() << SelectorsToString(m_selectors).c_str();
-
-    for (auto& entry : m_values)
-    {
-        qDebug() << AttributeName(entry.first) << entry.second;
-    }
-
-    qDebug() << "";
-}
-
-void ComputedStyle::Reflect(AZ::ReflectContext * context)
-{
-    AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-    if (!serializeContext)
-    {
-        return;
-    }
-
-    Style::Reflect(context);
-
-    serializeContext->Class<ComputedStyle>()
-        ->Version(2)
-        ->Field("ObjectSelectors", &ComputedStyle::m_objectSelectors)
-        ->Field("ObjectSelectorsAsString", &ComputedStyle::m_objectSelectorsAsString)
-        ->Field("Styles", &ComputedStyle::m_styles)
-        ;
-}
-
-ComputedStyle::ComputedStyle(const SelectorVector& objectSelectors, StyleVector&& styles)
-    : m_objectSelectors(objectSelectors)
-    , m_objectSelectorsAsString(SelectorsToString(m_objectSelectors))
-    , m_styles(std::move(styles))
-{
-}
-
-ComputedStyle::ComputedStyle(ComputedStyle&& other)
-    : m_objectSelectors(std::move(other.m_objectSelectors))
-    , m_objectSelectorsAsString(SelectorsToString(m_objectSelectors))
-    , m_styles(std::move(other.m_styles))
-{
-}
-
-ComputedStyle::ComputedStyle(const ComputedStyle& other)
-    : m_objectSelectors(other.m_objectSelectors)
-    , m_objectSelectorsAsString(other.m_objectSelectorsAsString)
-    , m_styles(other.m_styles)
-{
-}
-
-void ComputedStyle::Activate()
-{
-    StyleRequestBus::Handler::BusConnect(GetEntityId());
-}
-
-void ComputedStyle::Deactivate()
-{
-    StyleRequestBus::Handler::BusDisconnect();
-}
-
-AZStd::string ComputedStyle::GetDescription() const
-{
-    AZStd::string result("Computed:\n");
-    result += "\tObject selectors: " + m_objectSelectorsAsString + "\n";
-    result += "\tStyles:\n";
-    for (const Style* style : m_styles)
-    {
-        result += "\t\t" + style->GetSelectorsAsString() + "\n";
-    }
-
-    result += "\n";
-    return result;
-}
-
-bool ComputedStyle::HasAttribute(AZ::u32 attribute) const
-{
-    Attribute typedAttribute = static_cast<Attribute>(attribute);
-    return std::any_of(m_styles.cbegin(), m_styles.cend(), [=](const Style* s) {
-        return s->HasAttribute(typedAttribute);
-    });
-}
-
-QVariant ComputedStyle::GetAttribute(AZ::u32 attribute) const
-{
-    Attribute typedAttribute = static_cast<Attribute>(attribute);
-    for (const Style* style : m_styles)
-    {
-        if (style->HasAttribute(typedAttribute))
+        Style::Style(const SelectorVector& selectors)
+            : m_selectors(selectors)
+            , m_selectorsAsString(SelectorsToString(selectors))
         {
-            return style->GetAttribute(typedAttribute);
         }
-    }
 
-    return QVariant();
-}
+        Style::Style(std::initializer_list<Selector> selectors)
+            : m_selectors(selectors)
+            , m_selectorsAsString(SelectorsToString(m_selectors))
+        {
+        }
+
+        int Style::Matches(const AZ::EntityId& object) const
+        {
+            for (const Selector& selector : m_selectors)
+            {
+                if (selector.Matches(object))
+                {
+                    return selector.GetComplexity();
+                }
+            }
+            return 0;
+        }
+
+        bool Style::HasAttribute(Attribute attribute) const
+        {
+            return m_values.find(attribute) != m_values.end();
+        }
+
+        inline QVariant Style::GetAttribute(Attribute attribute) const
+        {
+            return HasAttribute(attribute) ? m_values.at(attribute) : QVariant();
+        }
+
+        void Style::SetAttribute(Attribute attribute, const QVariant& value)
+        {
+            m_values[attribute] = value;
+        }
+
+        void Style::MakeSelectorsDefault()
+        {
+            for (auto& selector : m_selectors)
+            {
+                selector.MakeDefault();
+            }
+        }
+
+        void Style::Dump() const
+        {
+            qDebug() << SelectorsToString(m_selectors).c_str();
+
+            for (auto& entry : m_values)
+            {
+                qDebug() << AttributeName(entry.first) << entry.second;
+            }
+
+            qDebug() << "";
+        }
+
+        //////////////////
+        // ComputedStyle
+        //////////////////
+
+        void ComputedStyle::Reflect(AZ::ReflectContext * context)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (!serializeContext)
+            {
+                return;
+            }
+
+            Style::Reflect(context);
+
+            serializeContext->Class<ComputedStyle>()
+                ->Version(2)
+                ->Field("ObjectSelectors", &ComputedStyle::m_objectSelectors)
+                ->Field("ObjectSelectorsAsString", &ComputedStyle::m_objectSelectorsAsString)
+                ->Field("Styles", &ComputedStyle::m_styles)
+                ;
+        }
+
+        ComputedStyle::ComputedStyle(const SelectorVector& objectSelectors, StyleVector&& styles)
+            : m_objectSelectors(objectSelectors)
+            , m_objectSelectorsAsString(SelectorsToString(m_objectSelectors))
+            , m_styles(std::move(styles))
+        {
+        }
+
+        void ComputedStyle::SetStyleSheetId(const AZ::EntityId& sheetId)
+        {
+            StyleSheetNotificationBus::Handler::BusDisconnect();
+            StyleSheetNotificationBus::Handler::BusConnect(sheetId);
+        }
+
+        void ComputedStyle::Activate()
+        {
+            StyleRequestBus::Handler::BusConnect(GetEntityId());
+        }
+
+        void ComputedStyle::Deactivate()
+        {
+            StyleRequestBus::Handler::BusDisconnect();
+        }
+
+        AZStd::string ComputedStyle::GetDescription() const
+        {
+            AZStd::string result("Computed:\n");
+            result += "\tObject selectors: " + m_objectSelectorsAsString + "\n";
+            result += "\tStyles:\n";
+            for (const Style* style : m_styles)
+            {
+                result += "\t\t" + style->GetSelectorsAsString() + "\n";
+            }
+
+            result += "\n";
+            return result;
+        }
+
+        bool ComputedStyle::HasAttribute(AZ::u32 attribute) const
+        {
+            Attribute typedAttribute = static_cast<Attribute>(attribute);
+            return std::any_of(m_styles.cbegin(), m_styles.cend(), [=](const Style* s) {
+                return s->HasAttribute(typedAttribute);
+            });
+        }
+
+        QVariant ComputedStyle::GetAttribute(AZ::u32 attribute) const
+        {
+            Attribute typedAttribute = static_cast<Attribute>(attribute);
+            for (const Style* style : m_styles)
+            {
+                if (style->HasAttribute(typedAttribute))
+                {
+                    return style->GetAttribute(typedAttribute);
+                }
+            }
+
+            return QVariant();
+        }
+
+        void ComputedStyle::OnStyleSheetUnloaded()
+        {
+            m_styles.clear();
+        }
 
 #if 0
-void ComputedStyle::Dump() const
-{
-    for (const auto& style : m_styles)
-    {
-        style->Dump();
-    }
-}
+        void ComputedStyle::Dump() const
+        {
+            for (const auto& style : m_styles)
+            {
+                style->Dump();
+            }
+        }
 #endif
 
-StyleSheet::StyleSheet()
-{
-}
+        ///////////////
+        // StyleSheet
+        ///////////////
 
-void StyleSheet::Activate()
-{
-    StyleSheetRequestBus::Handler::BusConnect(GetEntityId());
-}
-
-void StyleSheet::Deactivate()
-{
-    StyleSheetRequestBus::Handler::BusDisconnect();
-}
-
-void StyleSheet::Reflect(AZ::ReflectContext* context)
-{
-    AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-    if (!serializeContext)
-    {
-        return;
-    }
-
-    Style::Reflect(context);
-
-    serializeContext->Class<StyleSheet>()
-        ->Version(2)
-        ->Field("Styles", &StyleSheet::m_styles)
-        ;
-}
-
-AZ::EntityId StyleSheet::Create()
-{
-    AZ::Entity* entity = new AZ::Entity;
-    entity->AddComponent(new StyleSheet);
-    return entity->GetId();
-}
-
-StyleSheet::~StyleSheet()
-{
-    for (auto style : m_styles)
-    {
-        delete style;
-    }
-    m_styles.clear();
-}
-
-StyleSheet& GraphCanvas::Styling::StyleSheet::operator=(const StyleSheet& other)
-{
-    for (Style* style : m_styles)
-    {
-        delete style;
-    }
-    m_styles.clear();
-
-    m_styles.reserve(other.m_styles.size());
-    for (Style* style : other.m_styles)
-    {
-        m_styles.push_back(aznew Style(*style));
-    }
-    return *this;
-}
-
-StyleSheet& GraphCanvas::Styling::StyleSheet::operator=(StyleSheet&& other)
-{
-    for (Style* style : m_styles)
-    {
-        delete style;
-    }
-    m_styles.clear();
-
-    m_styles = std::move(other.m_styles);
-    return *this;
-}
-
-void StyleSheet::MakeStylesDefault()
-{
-    for (auto& style : m_styles)
-    {
-        style->MakeSelectorsDefault();
-        SelectorVector updated = style->GetSelectors();
-    }
-}
-
-AZ::EntityId StyleSheet::ResolveStyles(const AZ::EntityId& object) const
-{
-    SelectorVector selectors;
-    StyledEntityRequestBus::EventResult(selectors, object, &StyledEntityRequests::GetStyleSelectors);
-
-    QVector<StyleMatch> matches;
-    for (const auto& style : m_styles)
-    {
-        int complexity = style->Matches(object);
-        if (complexity != 0)
+        void StyleSheet::Reflect(AZ::ReflectContext* context)
         {
-            matches.push_back({ style, complexity });
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (!serializeContext)
+            {
+                return;
+            }
+
+            Style::Reflect(context);
+
+            serializeContext->Class<StyleSheet>()
+                ->Version(2)
+                ->Field("Styles", &StyleSheet::m_styles)
+                ;
+        }
+
+        StyleSheet::StyleSheet()
+        {
+        }
+
+        StyleSheet::~StyleSheet()
+        {
+            ClearStyles();
+        }
+
+        void StyleSheet::Activate()
+        {
+            StyleSheetRequestBus::Handler::BusConnect(GetEntityId());
+        }
+
+        void StyleSheet::Deactivate()
+        {
+            StyleSheetRequestBus::Handler::BusDisconnect();
+        }
+
+        void StyleSheet::ClearStyles()
+        {
+            StyleSheetNotificationBus::Event(GetEntityId(), &StyleSheetNotifications::OnStyleSheetUnloaded);
+            for (auto style : m_styles)
+            {
+                delete style;
+            }
+            m_styles.clear();
+        }
+        
+        StyleSheet& GraphCanvas::Styling::StyleSheet::operator=(const StyleSheet& other)
+        {
+            ClearStyles();
+
+            m_styles.reserve(other.m_styles.size());
+            for (Style* style : other.m_styles)
+            {
+                m_styles.push_back(aznew Style(*style));
+            }
+            StyleSheetNotificationBus::Event(GetEntityId(), &StyleSheetNotifications::OnStyleSheetLoaded);
+
+            return *this;
+        }
+
+        StyleSheet& GraphCanvas::Styling::StyleSheet::operator=(StyleSheet&& other)
+        {
+            ClearStyles();
+
+            m_styles = std::move(other.m_styles);
+            return *this;
+        }
+
+        void StyleSheet::MakeStylesDefault()
+        {
+            for (auto& style : m_styles)
+            {
+                style->MakeSelectorsDefault();
+                SelectorVector updated = style->GetSelectors();
+            }
+        }
+
+        AZ::EntityId StyleSheet::ResolveStyles(const AZ::EntityId& object) const
+        {
+            SelectorVector selectors;
+            StyledEntityRequestBus::EventResult(selectors, object, &StyledEntityRequests::GetStyleSelectors);
+
+            QVector<StyleMatch> matches;
+            for (const auto& style : m_styles)
+            {
+                int complexity = style->Matches(object);
+                if (complexity != 0)
+                {
+                    matches.push_back({ style, complexity });
+                }
+            }
+
+            std::stable_sort(matches.begin(), matches.end());
+            StyleVector result;
+            result.reserve(matches.size());
+            const auto& constMatches = matches;
+            for (auto& match : constMatches)
+            {
+                result.push_back(match.style);
+            }
+
+            auto computed = new ComputedStyle(selectors, std::move(result));
+
+            computed->SetStyleSheetId(GetEntityId());
+
+            AZ::Entity* entity = new AZ::Entity;
+            entity->AddComponent(computed);
+            entity->Init();
+            entity->Activate();
+
+            return entity->GetId();
         }
     }
-
-    std::stable_sort(matches.begin(), matches.end());
-    StyleVector result;
-    result.reserve(matches.size());
-    const auto& constMatches = matches;
-    for (auto& match : constMatches)
-    {
-        result.push_back(match.style);
-    }
-
-    auto computed = new ComputedStyle(selectors, std::move(result));
-
-    AZ::Entity* entity = new AZ::Entity;
-    entity->AddComponent(computed);
-    entity->Init();
-    entity->Activate();
-
-    return entity->GetId();
 }

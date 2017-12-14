@@ -15,7 +15,6 @@
 #include "CommandManager.h"
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/Actor.h>
-#include <EMotionFX/Source/LODGenerator.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <AzFramework/API/ApplicationAPI.h>
@@ -26,29 +25,6 @@ namespace CommandSystem
     // 22 parameters
 #define SYNTAX_LODCOMMANDS                                                                                                                                                                                                                                  \
     GetSyntax().AddRequiredParameter("actorID",        "The actor identification number of the actor to work on.", MCore::CommandSyntax::PARAMTYPE_INT);                                                                                                    \
-    GetSyntax().AddParameter("curvatureFactor",        "",                                                         MCore::CommandSyntax::PARAMTYPE_FLOAT,      MCore::String(EMotionFX::LODGenerator::InitSettings().mCurvatureFactor).AsChar());           \
-    GetSyntax().AddParameter("edgeLengthFactor",       "",                                                         MCore::CommandSyntax::PARAMTYPE_FLOAT,      MCore::String(EMotionFX::LODGenerator::InitSettings().mEdgeLengthFactor).AsChar());          \
-    GetSyntax().AddParameter("skinningFactor",         "",                                                         MCore::CommandSyntax::PARAMTYPE_FLOAT,      MCore::String(EMotionFX::LODGenerator::InitSettings().mSkinningFactor).AsChar());            \
-    GetSyntax().AddParameter("aabbThreshold",          "",                                                         MCore::CommandSyntax::PARAMTYPE_FLOAT,      MCore::String(EMotionFX::LODGenerator::InitSettings().mAABBThreshold).AsChar());             \
-    GetSyntax().AddParameter("colorStrength",          "",                                                         MCore::CommandSyntax::PARAMTYPE_FLOAT,      MCore::String(EMotionFX::LODGenerator::InitSettings().mColorStrength).AsChar());             \
-    GetSyntax().AddParameter("inputLOD",               "",                                                         MCore::CommandSyntax::PARAMTYPE_INT,        MCore::String(EMotionFX::LODGenerator::InitSettings().mInputLOD).AsChar());                  \
-    GetSyntax().AddParameter("colorLayerSetIndex",     "",                                                         MCore::CommandSyntax::PARAMTYPE_INT,        MCore::String(EMotionFX::LODGenerator::InitSettings().mColorLayerSetIndex).AsChar());        \
-    GetSyntax().AddParameter("useVertexColors",        "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::InitSettings().mUseVertexColors).AsChar());           \
-    GetSyntax().AddParameter("preserveBorderEdges",    "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::InitSettings().mPreserveBorderEdges).AsChar());       \
-    GetSyntax().AddParameter("randomizeSameCostVerts", "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::InitSettings().mRandomizeSameCostVerts).AsChar());    \
-    GetSyntax().AddParameter("detailPercentage",       "",                                                         MCore::CommandSyntax::PARAMTYPE_FLOAT,      MCore::String(EMotionFX::LODGenerator::GenerateSettings().mDetailPercentage).AsChar());      \
-    GetSyntax().AddParameter("maxBonesPerSubMesh",     "",                                                         MCore::CommandSyntax::PARAMTYPE_INT,        MCore::String(EMotionFX::LODGenerator::GenerateSettings().mMaxBonesPerSubMesh).AsChar());    \
-    GetSyntax().AddParameter("maxVertsPerSubMesh",     "",                                                         MCore::CommandSyntax::PARAMTYPE_INT,        MCore::String(EMotionFX::LODGenerator::GenerateSettings().mMaxVertsPerSubMesh).AsChar());    \
-    GetSyntax().AddParameter("maxSkinInfluences",      "",                                                         MCore::CommandSyntax::PARAMTYPE_INT,        MCore::String(EMotionFX::LODGenerator::GenerateSettings().mMaxSkinInfluences).AsChar());     \
-    GetSyntax().AddParameter("weightRemoveThreshold",  "",                                                         MCore::CommandSyntax::PARAMTYPE_FLOAT,      MCore::String(EMotionFX::LODGenerator::GenerateSettings().mWeightRemoveThreshold).AsChar()); \
-    GetSyntax().AddParameter("generateNormals",        "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::GenerateSettings().mGenerateNormals).AsChar());       \
-    GetSyntax().AddParameter("smoothNormals",          "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::GenerateSettings().mSmoothNormals).AsChar());         \
-    GetSyntax().AddParameter("generateTangents",       "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::GenerateSettings().mGenerateTangents).AsChar());      \
-    GetSyntax().AddParameter("optimizeTriList",        "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::GenerateSettings().mOptimizeTriList).AsChar());       \
-    GetSyntax().AddParameter("dualQuatSkinning",       "",                                                         MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    MCore::String(EMotionFX::LODGenerator::GenerateSettings().mDualQuatSkinning).AsChar());      \
-    GetSyntax().AddParameter("excludedMorphTargets",   "",                                                         MCore::CommandSyntax::PARAMTYPE_STRING,     "");
-
-
 
     //--------------------------------------------------------------------------------
     // CommandAddLOD
@@ -82,8 +58,6 @@ namespace CommandSystem
         // get the LOD level to insert at
         const uint32 lodLevel = MCore::Clamp<uint32>(parameters.GetValueAsInt("lodLevel", this), 1, actor->GetNumLODLevels());
 
-        EMotionFX::Actor::LODCreationData*  lodData = nullptr;
-
         // manual LOD mode?
         if (parameters.CheckIfHasParameter("actorFileName"))
         {
@@ -101,12 +75,6 @@ namespace CommandSystem
 
             // replace the given LOD level with the lod actor and remove the LOD actor object from memory afterwards
             actor->CopyLODLevel(lodActor, 0, lodLevel, false);
-
-            // set the mode to manual LOD
-            lodData                 = actor->GetLODCreationData(lodLevel);
-            lodData->mActorFileName = lodFileName;
-            lodData->mMode          = EMotionFX::Actor::LODCreationData::PREVIEWMODE_MANUALLOD;
-            lodData->mPreviewMode   = EMotionFX::Actor::LODCreationData::PREVIEWMODE_NONE;
         }
         // add a copy of the last LOD level to the end?
         else if (parameters.CheckIfHasParameter("addLastLODLevel"))
@@ -116,11 +84,6 @@ namespace CommandSystem
             {
                 actor->AddLODLevel();
             }
-
-            // set the mode to none as we added an empty or a copy of the last LOD
-            lodData                 = actor->GetLODCreationData(actor->GetNumLODLevels() - 1);
-            lodData->mMode          = EMotionFX::Actor::LODCreationData::PREVIEWMODE_NONE;
-            lodData->mPreviewMode   = EMotionFX::Actor::LODCreationData::PREVIEWMODE_NONE;
         }
         // move/insert/copy a LOD level
         else if (parameters.CheckIfHasParameter("insertAt"))
@@ -136,7 +99,7 @@ namespace CommandSystem
                 copyFrom++;
             }
 
-            actor->CopyLODLevel(actor, copyFrom, insertAt, true, false, true);
+            actor->CopyLODLevel(actor, copyFrom, insertAt, true, false);
 
             // enable or disable nodes based on the skeletal LOD flags
             const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
@@ -144,65 +107,6 @@ namespace CommandSystem
             {
                 EMotionFX::GetActorManager().GetActorInstance(j)->UpdateSkeletalLODFlags();
             }
-        }
-        // automatic LOD generation
-        else
-        {
-            // get the init settings from the parameters
-            EMotionFX::LODGenerator::InitSettings initSettings = ConstructInitSettings(this, parameters);
-
-            // get the morph setup based on the input LOD level set in the init settings
-            EMotionFX::MorphSetup* morphSetup = actor->GetMorphSetup(initSettings.mInputLOD);
-
-            // get the generate settings from the parameters
-            EMotionFX::LODGenerator::GenerateSettings generateSettings = ConstructGenerateSettings(this, parameters, morphSetup);
-
-            // always optimize the triangle list when baking the LOD to the actor
-            generateSettings.mOptimizeTriList = true;
-
-            // initialize the LOD generator
-            EMotionFX::LODGenerator* lodGenerator = EMotionFX::LODGenerator::Create();
-            lodGenerator->Init(actor, initSettings);
-
-            // generate the meshes
-            lodGenerator->GenerateMeshes(generateSettings);
-
-            // replace the lod Level with the newly generated one
-            lodGenerator->ReplaceLODLevelWithLastGeneratedActor(actor, lodLevel);
-
-            // set the mode to automatic LOD
-            lodData                     = actor->GetLODCreationData(lodLevel);
-            lodData->mInitSettings      = initSettings;
-            lodData->mGenerateSettings  = generateSettings;
-            lodData->mMode              = EMotionFX::Actor::LODCreationData::PREVIEWMODE_AUTOMATICLOD;
-            lodData->mPreviewMode       = EMotionFX::Actor::LODCreationData::PREVIEWMODE_NONE;
-
-            // get the enabled morph targets and add them to the LOD data
-            if (morphSetup)
-            {
-                // get the number of morph targets
-                const uint32 numMorphTargets = morphSetup->GetNumMorphTargets();
-
-                // clear the enabled morph targets array
-                lodData->mEnabledMorphTargets.Clear();
-                lodData->mEnabledMorphTargets.Reserve(numMorphTargets);
-
-                // iterate through the morph targets and add the enabled ones to the LOD data
-                for (uint32 i = 0; i < numMorphTargets; ++i)
-                {
-                    // get the current morph target and its id
-                    EMotionFX::MorphTarget* morphTarget = morphSetup->GetMorphTarget(i);
-                    const uint32    morphTargetID       = morphTarget->GetID();
-
-                    // in case it is not in the exluded array, add it to the enabled morph targets array
-                    if (lodData->mGenerateSettings.mMorphTargetIDsToRemove.Find(morphTargetID) == MCORE_INVALIDINDEX32)
-                    {
-                        lodData->mEnabledMorphTargets.Add(morphTargetID);
-                    }
-                }
-            }
-
-            lodGenerator->Destroy();
         }
 
         // check if parametes skeletal LOD node names is set
@@ -233,13 +137,6 @@ namespace CommandSystem
             // get the individual node names
             MCore::Array<MCore::String> nodeNames = skeletalLODString.Split(MCore::UnicodeCharacter(';'));
 
-            // reset the enabled nodes in the LOD data
-            if (lodData)
-            {
-                lodData->mEnabledNodes.Clear();
-                lodData->mEnabledNodes.Reserve(numNodes);
-            }
-
             // iterate through the nodes and set the skeletal LOD flag based on the input parameter
             for (uint32 i = 0; i < numNodes; ++i)
             {
@@ -255,12 +152,6 @@ namespace CommandSystem
                 if (/*parendLODEnabled && */ nodeNames.Find(node->GetName()) != MCORE_INVALIDINDEX32)
                 {
                     node->SetSkeletalLODStatus(lodLevel, true);
-
-                    // add the enabled node to the LOD data
-                    if (lodData)
-                    {
-                        lodData->mEnabledNodes.Add(node->GetID());
-                    }
                 }
                 else
                 {
@@ -318,7 +209,7 @@ namespace CommandSystem
     {
         GetSyntax().ReserveParameters(22 + 4);
         SYNTAX_LODCOMMANDS
-            GetSyntax().AddParameter("actorFileName",   "",                                                                 MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("actorFileName",   "",                                                                 MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("lodLevel",        "",                                                                 MCore::CommandSyntax::PARAMTYPE_INT, "-1");
         GetSyntax().AddParameter("insertAt",        "",                                                                 MCore::CommandSyntax::PARAMTYPE_INT, "-1");
         GetSyntax().AddParameter("copyFrom",        "",                                                                 MCore::CommandSyntax::PARAMTYPE_INT, "-1");
@@ -440,191 +331,6 @@ namespace CommandSystem
     // Helper functions
     //--------------------------------------------------------------------------------
 
-    // get the init settings from the command parameters
-    EMotionFX::LODGenerator::InitSettings ConstructInitSettings(MCore::Command* command, const MCore::CommandLine& parameters)
-    {
-        EMotionFX::LODGenerator::InitSettings initSettings;
-
-        if (parameters.CheckIfHasParameter("curvatureFactor"))
-        {
-            initSettings.mCurvatureFactor = parameters.GetValueAsFloat("curvatureFactor", command);
-        }
-        if (parameters.CheckIfHasParameter("edgeLengthFactor"))
-        {
-            initSettings.mEdgeLengthFactor = parameters.GetValueAsFloat("edgeLengthFactor", command);
-        }
-        if (parameters.CheckIfHasParameter("skinningFactor"))
-        {
-            initSettings.mSkinningFactor = parameters.GetValueAsFloat("skinningFactor", command);
-        }
-        if (parameters.CheckIfHasParameter("aabbThreshold"))
-        {
-            initSettings.mAABBThreshold = parameters.GetValueAsFloat("aabbThreshold", command);
-        }
-        if (parameters.CheckIfHasParameter("colorStrength"))
-        {
-            initSettings.mColorStrength = parameters.GetValueAsFloat("colorStrength", command);
-        }
-        if (parameters.CheckIfHasParameter("inputLOD"))
-        {
-            initSettings.mInputLOD = parameters.GetValueAsInt("inputLOD", command);
-        }
-        if (parameters.CheckIfHasParameter("colorLayerSetIndex"))
-        {
-            initSettings.mColorLayerSetIndex = parameters.GetValueAsInt("colorLayerSetIndex", command);
-        }
-        if (parameters.CheckIfHasParameter("useVertexColors"))
-        {
-            initSettings.mUseVertexColors = parameters.GetValueAsBool("useVertexColors", command);
-        }
-        if (parameters.CheckIfHasParameter("preserveBorderEdges"))
-        {
-            initSettings.mPreserveBorderEdges = parameters.GetValueAsBool("preserveBorderEdges", command);
-        }
-        if (parameters.CheckIfHasParameter("randomizeSameCostVerts"))
-        {
-            initSettings.mRandomizeSameCostVerts = parameters.GetValueAsBool("randomizeSameCostVerts", command);
-        }
-
-        return initSettings;
-    }
-
-
-    // get the generate settings from the command parameters
-    EMotionFX::LODGenerator::GenerateSettings ConstructGenerateSettings(MCore::Command* command, const MCore::CommandLine& parameters, EMotionFX::MorphSetup* morphSetup)
-    {
-        EMotionFX::LODGenerator::GenerateSettings generateSettings;
-
-        if (parameters.CheckIfHasParameter("detailPercentage"))
-        {
-            generateSettings.mDetailPercentage = parameters.GetValueAsFloat("detailPercentage", command);
-        }
-        if (parameters.CheckIfHasParameter("maxBonesPerSubMesh"))
-        {
-            generateSettings.mMaxBonesPerSubMesh = parameters.GetValueAsInt("maxBonesPerSubMesh", command);
-        }
-        if (parameters.CheckIfHasParameter("maxVertsPerSubMesh"))
-        {
-            generateSettings.mMaxVertsPerSubMesh = parameters.GetValueAsInt("maxVertsPerSubMesh", command);
-        }
-        if (parameters.CheckIfHasParameter("maxSkinInfluences"))
-        {
-            generateSettings.mMaxSkinInfluences = parameters.GetValueAsInt("maxSkinInfluences", command);
-        }
-        if (parameters.CheckIfHasParameter("weightRemoveThreshold"))
-        {
-            generateSettings.mWeightRemoveThreshold = parameters.GetValueAsFloat("weightRemoveThreshold", command);
-        }
-        if (parameters.CheckIfHasParameter("generateNormals"))
-        {
-            generateSettings.mGenerateNormals = parameters.GetValueAsBool("generateNormals", command);
-        }
-        if (parameters.CheckIfHasParameter("smoothNormals"))
-        {
-            generateSettings.mSmoothNormals = parameters.GetValueAsBool("smoothNormals", command);
-        }
-        if (parameters.CheckIfHasParameter("generateTangents"))
-        {
-            generateSettings.mGenerateTangents = parameters.GetValueAsBool("generateTangents", command);
-        }
-        if (parameters.CheckIfHasParameter("optimizeTriList"))
-        {
-            generateSettings.mOptimizeTriList = parameters.GetValueAsBool("optimizeTriList", command);
-        }
-        if (parameters.CheckIfHasParameter("dualQuatSkinning"))
-        {
-            generateSettings.mDualQuatSkinning = parameters.GetValueAsBool("dualQuatSkinning", command);
-        }
-
-        // special handling for the excluded morph targets
-        if (parameters.CheckIfHasParameter("excludedMorphTargets"))
-        {
-            // get the parameter as string
-            MCore::String excludedMTString;
-            parameters.GetValue("excludedMorphTargets", command, &excludedMTString);
-
-            // split the morph target names
-            MCore::Array<MCore::String> excludedMTNames = excludedMTString.Split(MCore::UnicodeCharacter(';'));
-
-            // iterate the morph target names and convert them to ids
-            const uint32 numMorphTargets = excludedMTNames.GetLength();
-            for (uint32 i = 0; i < numMorphTargets; ++i)
-            {
-                EMotionFX::MorphTarget* morphTarget = morphSetup->FindMorphTargetByName(excludedMTNames[i].AsChar());
-                if (morphTarget == nullptr)
-                {
-                    MCore::LogWarning("Cannot get generate settings from command parameter. Morph target '%s' not found in the given morph setup.", excludedMTNames[i].AsChar());
-                    continue;
-                }
-
-                // add the morph target to the excluded morph targets array in the generate settings
-                generateSettings.mMorphTargetIDsToRemove.Add(morphTarget->GetID());
-            }
-        }
-
-        return generateSettings;
-    }
-
-
-    // construct command parameters from the given init settings
-    void ConstructInitSettingsCommandParameters(const EMotionFX::LODGenerator::InitSettings& initSettings, MCore::String* outString)
-    {
-        outString->Reserve(16384);
-        outString->FormatAdd(" -curvatureFactor %f",    initSettings.mCurvatureFactor);
-        outString->FormatAdd(" -edgeLengthFactor %f",   initSettings.mEdgeLengthFactor);
-        outString->FormatAdd(" -skinningFactor %f",     initSettings.mSkinningFactor);
-        outString->FormatAdd(" -aabbThreshold %f",      initSettings.mAABBThreshold);
-        outString->FormatAdd(" -colorStrength %f",      initSettings.mColorStrength);
-        outString->FormatAdd(" -inputLOD %d",           initSettings.mInputLOD);
-        outString->FormatAdd(" -colorLayerSetIndex %d", initSettings.mColorLayerSetIndex);
-        outString->FormatAdd(" -useVertexColors %s",    initSettings.mUseVertexColors ? "true" : "false");
-        outString->FormatAdd(" -preserveBorderEdges %s", initSettings.mPreserveBorderEdges ? "true" : "false");
-        outString->FormatAdd(" -randomizeSameCostVerts %s", initSettings.mRandomizeSameCostVerts ? "true" : "false");
-    }
-
-
-    // construct command parameters from the given generate settings
-    void ConstructGenerateSettingsCommandParameters(const EMotionFX::LODGenerator::GenerateSettings& generateSettings, MCore::String* outString, EMotionFX::MorphSetup* morphSetup)
-    {
-        outString->Reserve(16384);
-        outString->FormatAdd(" -detailPercentage %f",       generateSettings.mDetailPercentage);
-        outString->FormatAdd(" -maxBonesPerSubMesh %d",     generateSettings.mMaxBonesPerSubMesh);
-        outString->FormatAdd(" -maxVertsPerSubMesh %d",     generateSettings.mMaxVertsPerSubMesh);
-        outString->FormatAdd(" -maxSkinInfluences %d",      generateSettings.mMaxSkinInfluences);
-        outString->FormatAdd(" -weightRemoveThreshold %f",  generateSettings.mWeightRemoveThreshold);
-        outString->FormatAdd(" -generateNormals %s",        generateSettings.mGenerateNormals ? "true" : "false");
-        outString->FormatAdd(" -smoothNormals %s",          generateSettings.mSmoothNormals ? "true" : "false");
-        outString->FormatAdd(" -generateTangents %s",       generateSettings.mGenerateTangents ? "true" : "false");
-        outString->FormatAdd(" -optimizeTriList %s",        generateSettings.mOptimizeTriList ? "true" : "false");
-        outString->FormatAdd(" -dualQuatSkinning %s",       generateSettings.mDualQuatSkinning ? "true" : "false");
-
-        // only add the excluded morph targets parameter in case the array is not empty
-        if (generateSettings.mMorphTargetIDsToRemove.GetIsEmpty() == false)
-        {
-            outString->FormatAdd(" -excludedMorphTargets \"");
-
-            // get the number of excluded morph targets and iterate through them
-            const uint32 numExcludedMorphTargets = generateSettings.mMorphTargetIDsToRemove.GetLength();
-            for (uint32 i = 0; i < numExcludedMorphTargets; ++i)
-            {
-                const uint32 morphTargetID = generateSettings.mMorphTargetIDsToRemove[i];
-                EMotionFX::MorphTarget* morphTarget = morphSetup->FindMorphTargetByID(morphTargetID);
-                if (morphTarget)
-                {
-                    outString->FormatAdd("%s;", morphTarget->GetName());
-                }
-                else
-                {
-                    MCore::LogWarning("Cannot construct parameter for LOD command. Morph target with id %d not found in the given morph setup.", morphTargetID);
-                }
-            }
-
-            outString->TrimRight(MCore::UnicodeCharacter(';'));
-            outString->FormatAdd("\"");
-        }
-    }
-
-
     // remove all LOD levels from an actor
     void ClearLODLevels(EMotionFX::Actor* actor, MCore::CommandGroup* commandGroup)
     {
@@ -687,42 +393,6 @@ namespace CommandSystem
             outString->FormatAdd("%s;", node->GetName());
         }
         outString->FormatAdd("\"");
-    }
-
-
-    // construct the replace LOD command using the automatic LOD generation
-    void ConstructReplaceAutomaticLODCommand(EMotionFX::Actor* actor, uint32 lodLevel, const EMotionFX::LODGenerator::InitSettings& initSettings, const EMotionFX::LODGenerator::GenerateSettings& generateSettings, const MCore::Array<uint32>& enabledNodeIDs, MCore::String* outString, bool useForMetaData)
-    {
-        // clear the command string, reserve space and start filling it
-        outString->Clear();
-        outString->Reserve(16384);
-
-        if (useForMetaData == false)
-        {
-            outString->Format("AddLOD -actorID %i -lodLevel %i", actor->GetID(), lodLevel);
-        }
-        else
-        {
-            outString->Format("AddLOD -actorID $(ACTORID) -lodLevel %i", lodLevel);
-        }
-
-        // construct the init settings command parameters
-        ConstructInitSettingsCommandParameters(initSettings, outString);
-
-        // get the morph setup based on the input LOD level set in the init settings
-        EMotionFX::MorphSetup* morphSetup = actor->GetMorphSetup(initSettings.mInputLOD);
-
-        // construct the init settings command parameters
-        ConstructGenerateSettingsCommandParameters(generateSettings, outString, morphSetup);
-
-        // skeletal LOD
-        PrepareSkeletalLODParameter(actor, lodLevel, enabledNodeIDs, outString);
-
-        // add a new line for meta data usage
-        if (useForMetaData)
-        {
-            outString->FormatAdd("\n");
-        }
     }
 
 

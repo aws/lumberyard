@@ -57,6 +57,15 @@ public: // member functions
     //! Decrement the current stencil reference value
     virtual void DecrementStencilRef() = 0;
 
+    //! Push an alpha fade, this is multiplied with any existing alpha fade from parents
+    virtual void PushAlphaFade(float alphaFadeValue) = 0;
+
+    //! Pop an alpha fade off the stack
+    virtual void PopAlphaFade() = 0;
+
+    //! Get the current alpha fade value
+    virtual float GetAlphaFade() const = 0;
+
 public: // static member functions
 
     //! Helper function to get the singleton UiRenderer

@@ -19,6 +19,9 @@
 #include "PNoise3.h"
 #include "AnimSplineTrack.h"
 #include "IPostEffectGroup.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 #include <ISystem.h>
 #include <I3DEngine.h>
@@ -38,7 +41,7 @@ namespace
     bool s_nodeParamsInitialized = false;
     std::vector<CAnimNode::SParamInfo> s_nodeParams;
 
-    void AddSupportedParam(const char* sName, int paramId, EAnimValue valueType)
+    void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -49,7 +52,7 @@ namespace
 };
 
 CAnimCameraNode::CAnimCameraNode(const int id)
-    : CAnimEntityNode(id, eAnimNodeType_Camera)
+    : CAnimEntityNode(id, AnimNodeType::Camera)
     , m_fFOV(60.0f)
     , m_fDOF(ZERO)
     , m_fNearZ(DEFAULT_NEAR)
@@ -73,14 +76,14 @@ void CAnimCameraNode::Initialize()
     {
         s_nodeParamsInitialized = true;
         s_nodeParams.reserve(8);
-        AddSupportedParam("Position", eAnimParamType_Position, eAnimValue_Vector);
-        AddSupportedParam("Rotation", eAnimParamType_Rotation, eAnimValue_Quat);
-        AddSupportedParam("Fov", eAnimParamType_FOV, eAnimValue_Float);
-        AddSupportedParam("Event", eAnimParamType_Event, eAnimValue_Unknown);
-        AddSupportedParam("Shake", eAnimParamType_ShakeMultiplier, eAnimValue_Vector4);
-        AddSupportedParam("Depth of Field", eAnimParamType_DepthOfField, eAnimValue_Vector);
-        AddSupportedParam("Near Z", eAnimParamType_NearZ, eAnimValue_Float);
-        AddSupportedParam("Shutter Speed", eAnimParamType_ShutterSpeed, eAnimValue_Float);
+        AddSupportedParam("Position", AnimParamType::Position, AnimValueType::Vector);
+        AddSupportedParam("Rotation", AnimParamType::Rotation, AnimValueType::Quat);
+        AddSupportedParam("Fov", AnimParamType::FOV, AnimValueType::Float);
+        AddSupportedParam("Event", AnimParamType::Event, AnimValueType::Unknown);
+        AddSupportedParam("Shake", AnimParamType::ShakeMultiplier, AnimValueType::Vector4);
+        AddSupportedParam("Depth of Field", AnimParamType::DepthOfField, AnimValueType::Vector);
+        AddSupportedParam("Near Z", AnimParamType::NearZ, AnimValueType::Float);
+        AddSupportedParam("Shutter Speed", AnimParamType::ShutterSpeed, AnimValueType::Float);
     }
 }
 
@@ -98,7 +101,7 @@ CAnimParamType CAnimCameraNode::GetParamType(unsigned int nIndex) const
         return s_nodeParams[nIndex].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -118,9 +121,9 @@ bool CAnimCameraNode::GetParamInfoFromType(const CAnimParamType& paramId, SParam
 //////////////////////////////////////////////////////////////////////////
 void CAnimCameraNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_Position);
-    CreateTrack(eAnimParamType_Rotation);
-    CreateTrack(eAnimParamType_FOV);
+    CreateTrack(AnimParamType::Position);
+    CreateTrack(AnimParamType::Rotation);
+    CreateTrack(AnimParamType::FOV);
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -135,7 +138,7 @@ void CAnimCameraNode::Animate(SAnimContext& ec)
     ///Depth of field track
     IEntity* pEntity = GetEntity();
 
-    IAnimTrack* pDOFTrack = GetTrackForParameter(eAnimParamType_DepthOfField);
+    IAnimTrack* pDOFTrack = GetTrackForParameter(AnimParamType::DepthOfField);
 
     Vec3 dof = Vec3(ZERO);
     if (pDOFTrack)
@@ -143,7 +146,7 @@ void CAnimCameraNode::Animate(SAnimContext& ec)
         pDOFTrack->GetValue(ec.time, dof);
     }
 
-    IAnimTrack* pFOVTrack = GetTrackForParameter(eAnimParamType_FOV);
+    IAnimTrack* pFOVTrack = GetTrackForParameter(AnimParamType::FOV);
     float fov = m_fFOV;
 
     bool bFOVTrackEnabled = false;
@@ -157,7 +160,7 @@ void CAnimCameraNode::Animate(SAnimContext& ec)
         pFOVTrack->GetValue(ec.time, fov);
     }
 
-    IAnimTrack* pNearZTrack = GetTrackForParameter(eAnimParamType_NearZ);
+    IAnimTrack* pNearZTrack = GetTrackForParameter(AnimParamType::NearZ);
     float nearZ = m_fNearZ;
 
     bool bNearZTrackEnabled = false;
@@ -224,7 +227,7 @@ void CAnimCameraNode::Animate(SAnimContext& ec)
             static_cast<CMovieSystem*>(GetMovieSystem())->OnCameraCut();
         }
 
-        IAnimTrack* pShutterSpeedTrack = GetTrackForParameter(eAnimParamType_ShutterSpeed);
+        IAnimTrack* pShutterSpeedTrack = GetTrackForParameter(AnimParamType::ShutterSpeed);
         if (pShutterSpeedTrack)
         {
             float shutterSpeed;
@@ -297,7 +300,7 @@ bool CAnimCameraNode::GetShakeRotation(const float& time, Quat& rotation)
 {
     Vec4 shakeMult = Vec4(m_shakeParam[0].amplitudeMult, m_shakeParam[1].amplitudeMult,
             m_shakeParam[0].frequencyMult, m_shakeParam[1].frequencyMult);
-    CCompoundSplineTrack* pShakeMultTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(eAnimParamType_ShakeMultiplier));
+    CCompoundSplineTrack* pShakeMultTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(AnimParamType::ShakeMultiplier));
     C2DSplineTrack* pFreqTrack[SHAKE_COUNT];
     memset(pFreqTrack, 0, sizeof(pFreqTrack));
 
@@ -331,9 +334,9 @@ bool CAnimCameraNode::GetShakeRotation(const float& time, Quat& rotation)
 
     if (pEntity != NULL && bShakeMultTrackEnabled && (shakeOn[0] || shakeOn[1]))
     {
-        if (GetTrackForParameter(eAnimParamType_Rotation))
+        if (GetTrackForParameter(AnimParamType::Rotation))
         {
-            IAnimTrack* rotTrack = GetTrackForParameter(eAnimParamType_Rotation);
+            IAnimTrack* rotTrack = GetTrackForParameter(AnimParamType::Rotation);
             rotTrack->GetValue(time, rotation);
         }
 
@@ -376,12 +379,12 @@ bool CAnimCameraNode::SetParamValue(float time, CAnimParamType param, float valu
         return true;
     }
 
-    if (param == eAnimParamType_FOV)
+    if (param == AnimParamType::FOV)
     {
         // Set default value.
         m_fFOV = value;
     }
-    else if (param == eAnimParamType_NearZ)
+    else if (param == AnimParamType::NearZ)
     {
         m_fNearZ = value;
     }
@@ -397,19 +400,19 @@ bool CAnimCameraNode::SetParamValue(float time, CAnimParamType param, const Vec3
         return true;
     }
 
-    if (param == eAnimParamType_ShakeAmplitudeA)
+    if (param == AnimParamType::ShakeAmplitudeA)
     {
         m_shakeParam[0].amplitude = value;
     }
-    else if (param == eAnimParamType_ShakeAmplitudeB)
+    else if (param == AnimParamType::ShakeAmplitudeB)
     {
         m_shakeParam[1].amplitude = value;
     }
-    else if (param == eAnimParamType_ShakeFrequencyA)
+    else if (param == AnimParamType::ShakeFrequencyA)
     {
         m_shakeParam[0].frequency = value;
     }
-    else if (param == eAnimParamType_ShakeFrequencyB)
+    else if (param == AnimParamType::ShakeFrequencyB)
     {
         m_shakeParam[1].frequency = value;
     }
@@ -425,21 +428,21 @@ bool CAnimCameraNode::SetParamValue(float time, CAnimParamType param, const Vec4
         return true;
     }
 
-    if (param == eAnimParamType_ShakeMultiplier)
+    if (param == AnimParamType::ShakeMultiplier)
     {
         m_shakeParam[0].amplitudeMult = value.x;
         m_shakeParam[1].amplitudeMult = value.y;
         m_shakeParam[0].frequencyMult = value.z;
         m_shakeParam[1].frequencyMult = value.w;
     }
-    else if (param == eAnimParamType_ShakeNoise)
+    else if (param == AnimParamType::ShakeNoise)
     {
         m_shakeParam[0].noiseAmpMult = value.x;
         m_shakeParam[1].noiseAmpMult = value.y;
         m_shakeParam[0].noiseFreqMult = value.z;
         m_shakeParam[1].noiseFreqMult = value.w;
     }
-    else if (param == eAnimParamType_ShakeWorking)
+    else if (param == AnimParamType::ShakeWorking)
     {
         m_shakeParam[0].timeOffset = value.x;
         m_shakeParam[1].timeOffset = value.y;
@@ -451,12 +454,12 @@ bool CAnimCameraNode::SetParamValue(float time, CAnimParamType param, const Vec4
 //////////////////////////////////////////////////////////////////////////
 bool CAnimCameraNode::GetParamValue(float time, CAnimParamType param, float& value)
 {
-    if (param == eAnimParamType_FOV)
+    if (param == AnimParamType::FOV)
     {
         value = m_fFOV;
         return true;
     }
-    else if (param == eAnimParamType_NearZ)
+    else if (param == AnimParamType::NearZ)
     {
         value = m_fNearZ;
         return true;
@@ -473,22 +476,22 @@ bool CAnimCameraNode::GetParamValue(float time, CAnimParamType param, float& val
 //////////////////////////////////////////////////////////////////////////
 bool CAnimCameraNode::GetParamValue(float time, CAnimParamType param, Vec3& value)
 {
-    if (param == eAnimParamType_ShakeAmplitudeA)
+    if (param == AnimParamType::ShakeAmplitudeA)
     {
         value = m_shakeParam[0].amplitude;
         return true;
     }
-    else if (param == eAnimParamType_ShakeAmplitudeB)
+    else if (param == AnimParamType::ShakeAmplitudeB)
     {
         value = m_shakeParam[1].amplitude;
         return true;
     }
-    else if (param == eAnimParamType_ShakeFrequencyA)
+    else if (param == AnimParamType::ShakeFrequencyA)
     {
         value = m_shakeParam[0].frequency;
         return true;
     }
-    else if (param == eAnimParamType_ShakeFrequencyB)
+    else if (param == AnimParamType::ShakeFrequencyB)
     {
         value = m_shakeParam[1].frequency;
         return true;
@@ -505,19 +508,19 @@ bool CAnimCameraNode::GetParamValue(float time, CAnimParamType param, Vec3& valu
 //////////////////////////////////////////////////////////////////////////
 bool CAnimCameraNode::GetParamValue(float time, CAnimParamType param, Vec4& value)
 {
-    if (param == eAnimParamType_ShakeMultiplier)
+    if (param == AnimParamType::ShakeMultiplier)
     {
         value = Vec4(m_shakeParam[0].amplitudeMult, m_shakeParam[1].amplitudeMult,
                 m_shakeParam[0].frequencyMult, m_shakeParam[1].frequencyMult);
         return true;
     }
-    else if (param == eAnimParamType_ShakeNoise)
+    else if (param == AnimParamType::ShakeNoise)
     {
         value = Vec4(m_shakeParam[0].noiseAmpMult, m_shakeParam[1].noiseAmpMult,
                 m_shakeParam[0].noiseFreqMult, m_shakeParam[1].noiseFreqMult);
         return true;
     }
-    else if (param == eAnimParamType_ShakeWorking)
+    else if (param == AnimParamType::ShakeWorking)
     {
         value = Vec4(m_shakeParam[0].timeOffset, m_shakeParam[1].timeOffset,
                 0.0f, 0.0f);
@@ -535,21 +538,21 @@ bool CAnimCameraNode::GetParamValue(float time, CAnimParamType param, Vec4& valu
 //////////////////////////////////////////////////////////////////////////
 void CAnimCameraNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAnimParamType& paramType)
 {
-    if (paramType.GetType() == eAnimParamType_FOV)
+    if (paramType.GetType() == AnimParamType::FOV)
     {
         if (pTrack)
         {
             pTrack->SetValue(0, m_fFOV, true);
         }
     }
-    else if (paramType.GetType() == eAnimParamType_NearZ)
+    else if (paramType.GetType() == AnimParamType::NearZ)
     {
         if (pTrack)
         {
             pTrack->SetValue(0, m_fNearZ, true);
         }
     }
-    else if (paramType.GetType() == eAnimParamType_ShakeMultiplier)
+    else if (paramType.GetType() == AnimParamType::ShakeMultiplier)
     {
         if (pTrack)
         {

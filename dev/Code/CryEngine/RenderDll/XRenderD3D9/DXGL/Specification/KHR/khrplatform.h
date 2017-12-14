@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-// Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #ifndef __khrplatform_h_
 #define __khrplatform_h_
@@ -39,7 +38,7 @@
 
 /* Khronos platform-specific types and definitions.
  *
- * $Revision: 23298 $ on $Date: 2013-09-30 17:07:13 -0700 (Mon, 30 Sep 2013) $
+ * $Revision: 32517 $ on $Date: 2016-03-11 02:41:19 -0800 (Fri, 11 Mar 2016) $
  *
  * Adopters may modify this file to suit their platform. Adopters are
  * encouraged to submit platform specific modifications to the Khronos
@@ -114,6 +113,8 @@
 #   define KHRONOS_APICALL __declspec(dllimport)
 #elif defined (__SYMBIAN32__)
 #   define KHRONOS_APICALL IMPORT_C
+#elif defined(__ANDROID__)
+#   define KHRONOS_APICALL __attribute__((visibility("default")))
 #else
 #   define KHRONOS_APICALL
 #endif
@@ -125,7 +126,7 @@
  * name in the function prototype.
  */
 #if defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__SCITECH_SNAP__)
-/* Win32 but not WinCE */
+    /* Win32 but not WinCE */
 #   define KHRONOS_APIENTRY __stdcall
 #else
 #   define KHRONOS_APIENTRY
@@ -159,7 +160,7 @@ typedef uint64_t                khronos_uint64_t;
 #define KHRONOS_SUPPORT_INT64   1
 #define KHRONOS_SUPPORT_FLOAT   1
 
-#elif defined(__VMS) || defined(__sgi)
+#elif defined(__VMS ) || defined(__sgi)
 
 /*
  * Using <inttypes.h>
@@ -286,8 +287,7 @@ typedef khronos_int64_t        khronos_stime_nanoseconds_t;
  * Values other than zero should be considered to be true.  Therefore
  * comparisons should not be made against KHRONOS_TRUE.
  */
-typedef enum
-{
+typedef enum {
     KHRONOS_FALSE = 0,
     KHRONOS_TRUE  = 1,
     KHRONOS_BOOLEAN_ENUM_FORCE_SIZE = KHRONOS_MAX_ENUM

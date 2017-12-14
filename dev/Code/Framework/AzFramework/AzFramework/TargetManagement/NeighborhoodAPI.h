@@ -29,6 +29,7 @@
 #include <GridMate/Session/Session.h>
 #include <GridMate/Replica/Replica.h>
 #include <AzCore/EBus/EBus.h>
+#include <GridMate/Replica/ReplicaChunkDescriptor.h>
 
 // neighborhood common
 namespace Neighborhood {
@@ -84,6 +85,18 @@ namespace Neighborhood {
         const char*                 GetPersistentName() const;
         void                        SetDisplayName(const char* displayName);
         const char*                 GetDisplayName() const;
+
+        class Desc
+            : public GridMate::ReplicaChunkDescriptor
+        {
+        public:
+            Desc();
+
+            ReplicaChunkBase* CreateFromStream(GridMate::UnmarshalContext& mc) override;
+            void DiscardCtorStream(GridMate::UnmarshalContext& mc) override;
+            void DeleteReplicaChunk(ReplicaChunkBase* chunkInstance) override;
+            void MarshalCtorData(ReplicaChunkBase* chunkInstance, GridMate::WriteBuffer& wb) override;
+        };
 
     protected:
         GridMate::DataSet<NeighborCaps>                 m_capabilities;

@@ -11,8 +11,6 @@
 */
 
 #include "DefaultContextBoundManager.h"
-#include <AzCore/Math/VectorFloat.h>
-
 
 namespace AzToolsFramework
 {
@@ -20,7 +18,7 @@ namespace AzToolsFramework
     {
         RegisteredBoundId DefaultContextBoundManager::m_boundsGlobalId = 1;
 
-        DefaultContextBoundManager::DefaultContextBoundManager(AZ::u32 manipulatorManagerId)
+        DefaultContextBoundManager::DefaultContextBoundManager(ManipulatorManagerId manipulatorManagerId)
         {
             ContextBoundManagerRequestBus::Handler::BusConnect(manipulatorManagerId);
         }
@@ -30,7 +28,7 @@ namespace AzToolsFramework
             ContextBoundManagerRequestBus::Handler::BusDisconnect();
         }
 
-        RegisteredBoundId DefaultContextBoundManager::UpdateOrRegisterBound(const BoundRequestShapeBase& requestData, RegisteredBoundId boundId, AZ::u64 userContext)
+        RegisteredBoundId DefaultContextBoundManager::UpdateOrRegisterBound(const BoundRequestShapeBase& shapeData, RegisteredBoundId boundId, AZ::u64 userContext)
         {
             if (boundId == InvalidBoundId)
             {
@@ -41,11 +39,11 @@ namespace AzToolsFramework
             auto result = m_boundIdToShapeMap.find(boundId);
             if (result == m_boundIdToShapeMap.end())
             {
-                AZStd::shared_ptr<BoundShapeInterface> pCreatedShape = CreateShape(requestData, boundId, userContext);
-                if (pCreatedShape)
+                AZStd::shared_ptr<BoundShapeInterface> createdShape = CreateShape(shapeData, boundId, userContext);
+                if (createdShape)
                 {
-                    m_boundIdToShapeMap[boundId] = pCreatedShape;
-                    pCreatedShape->SetValidity(true);
+                    m_boundIdToShapeMap[boundId] = createdShape;
+                    createdShape->SetValidity(true);
                 }
                 else
                 {
@@ -54,7 +52,7 @@ namespace AzToolsFramework
             }
             else
             {
-                result->second->SetShapeData(requestData);
+                result->second->SetShapeData(shapeData);
                 result->second->SetValidity(true);
             }
 
@@ -63,7 +61,7 @@ namespace AzToolsFramework
 
         void DefaultContextBoundManager::UnregisterBound(RegisteredBoundId boundId)
         {
-            auto findIter = m_boundIdToShapeMap.find(boundId);
+            const auto findIter = m_boundIdToShapeMap.find(boundId);
             if (findIter != m_boundIdToShapeMap.end())
             {
                 DeleteShape(findIter->second);
@@ -71,27 +69,25 @@ namespace AzToolsFramework
             }
         }
 
-        AZStd::shared_ptr<BoundShapeInterface> DefaultContextBoundManager::CreateShape(const BoundRequestShapeBase& /*ptrShape*/, RegisteredBoundId /*id*/, AZ::u64 /*userContext*/)
+        AZStd::shared_ptr<BoundShapeInterface> DefaultContextBoundManager::CreateShape(const BoundRequestShapeBase& /*shapeData*/, RegisteredBoundId /*id*/, AZ::u64 /*userContext*/)
         {
             return nullptr;
         }
 
-        void DefaultContextBoundManager::DeleteShape(AZStd::shared_ptr<BoundShapeInterface> pShape)
+        void DefaultContextBoundManager::DeleteShape(AZStd::shared_ptr<BoundShapeInterface> /*shape*/)
         {
-            (void)pShape;
         }
 
-        void DefaultContextBoundManager::RaySelect(RaySelectInfo &rayInfo)
+        void DefaultContextBoundManager::RaySelect(RaySelectInfo& /*rayInfo*/)
         {
-            (void)rayInfo;
         }
 
-        void DefaultContextBoundManager::SetBoundValidity(RegisteredBoundId boundId, bool isValid)
+        void DefaultContextBoundManager::SetBoundValidity(RegisteredBoundId boundId, bool valid)
         {
             auto found = m_boundIdToShapeMap.find(boundId);
             if (found != m_boundIdToShapeMap.end())
             {
-                found->second->SetValidity(isValid);
+                found->second->SetValidity(valid);
             }
         }
     } // namespace Picking

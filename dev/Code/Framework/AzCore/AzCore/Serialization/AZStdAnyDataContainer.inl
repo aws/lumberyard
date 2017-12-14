@@ -41,7 +41,7 @@ namespace AZ
                     classElement.m_dataSize = sizeof(void*);
                     classElement.m_offset = 0;
                     classElement.m_azRtti = nullptr;
-                    classElement.m_genericClassInfo = m_serializeContext->FindGenericClassInfo(dataElement.m_specializedId);
+                    classElement.m_genericClassInfo = m_serializeContext->FindGenericClassInfo(dataElement.m_id);
                     classElement.m_editData = nullptr;
                     classElement.m_flags = SerializeContext::ClassElement::FLG_DYNAMIC_FIELD;
                     return true;

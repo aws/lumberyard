@@ -113,13 +113,14 @@ namespace EMStudio
                     continue;
                 }
 
-                const MCore::Vector3&       pos     = actorInstance->GetLocalPosition();
-                const MCore::Vector3&       scale   = actorInstance->GetLocalScale();
+                const AZ::Vector3&          pos     = actorInstance->GetLocalPosition();
+                const AZ::Vector3&          scale   = actorInstance->GetLocalScale();
                 const MCore::Quaternion&    rot     = actorInstance->GetLocalRotation();
 
                 // We need to add it here because if we dont do the last result will be the id of the actor instance and then it won't work anymore.
                 AddFile(&commands, "ImportActor", actor->GetFileName());
-                commandString = AZStd::string::format("CreateActorInstance -actorID %%LASTRESULT%% -xPos %f -yPos %f -zPos %f -xScale %f -yScale %f -zScale %f -rot %s\n", pos.x, pos.y, pos.z, scale.x, scale.y, scale.z, MCore::String(AZ::Vector4(rot.x, rot.y, rot.z, rot.w)).AsChar());
+                commandString = AZStd::string::format("CreateActorInstance -actorID %%LASTRESULT%% -xPos %f -yPos %f -zPos %f -xScale %f -yScale %f -zScale %f -rot %s\n",
+                        static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()), static_cast<float>(pos.GetZ()), static_cast<float>(scale.GetX()), static_cast<float>(scale.GetY()), static_cast<float>(scale.GetZ()), MCore::String(AZ::Vector4(rot.x, rot.y, rot.z, rot.w)).AsChar());
                 commands += commandString;
             }
         }
@@ -225,7 +226,7 @@ namespace EMStudio
             const uint32 motionSetIndex = EMotionFX::GetMotionManager().FindMotionSetIndex(motionSet);
 
             // only activate the saved anim graph
-            if (!animGraph->GetFileNameString().GetIsEmpty())
+            if (!animGraph->GetFileNameString().GetIsEmpty() && animGraphIndex != MCORE_INVALIDINDEX32 && motionSetIndex != MCORE_INVALIDINDEX32)
             {
                 commandString = AZStd::string::format("ActivateAnimGraph -actorInstanceIndex %d -animGraphIndex %d -motionSetIndex %d -visualizeScale %f\n", i, animGraphIndex, motionSetIndex, animGraphInstance->GetVisualizeScale());
                 commands += commandString;

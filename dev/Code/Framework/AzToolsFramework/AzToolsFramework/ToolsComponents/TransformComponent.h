@@ -19,6 +19,7 @@
 #include "TransformComponentBus.h"
 #include "EditorComponentBase.h"
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Slice/SliceBus.h>
 #include <AzFramework/Components/TransformComponent.h>
 
 #pragma once
@@ -35,6 +36,7 @@ namespace AzToolsFramework
         class TransformComponent
             : public EditorComponentBase
             , public AZ::TransformBus::Handler
+            , public AZ::SliceEntityHierarchyRequestBus::Handler
             , private TransformComponentMessages::Bus::Handler
             , private AZ::EntityBus::Handler
             , private AZ::TransformNotificationBus::MultiHandler
@@ -43,7 +45,7 @@ namespace AzToolsFramework
         public:
             friend class TransformComponentFactory;
 
-            AZ_COMPONENT(TransformComponent, AZ::EditorTransformComponentTypeId, EditorComponentBase)
+            AZ_COMPONENT(TransformComponent, AZ::EditorTransformComponentTypeId, EditorComponentBase, AZ::SliceEntityHierarchyInterface)
 
             TransformComponent();
             virtual ~TransformComponent();
@@ -204,6 +206,12 @@ namespace AzToolsFramework
 
             bool IsPositionInterpolated() override;
             bool IsRotationInterpolated() override;
+
+            //////////////////////////////////////////////////////////////////////////
+            // SliceEntityHierarchyRequestBus
+            AZ::EntityId GetSliceEntityParentId() override;
+            AZStd::vector<AZ::EntityId> GetSliceEntityChildren() override;
+            //////////////////////////////////////////////////////////////////////////
 
         private:
 

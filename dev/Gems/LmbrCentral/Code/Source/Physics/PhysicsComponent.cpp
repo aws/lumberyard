@@ -19,6 +19,12 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::ColliderComponentEventBus;
+    using AzFramework::ColliderComponentRequestBus;
+    using AzFramework::PhysicsComponentRequestBus;
+    using AzFramework::PhysicsComponentNotificationBus;
+    using AzFramework::PhysicsSystemEventBus;
+
     extern bool PhysicsComponentV1Converter(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
 
     class PhysicsComponentNotificationBusHandler
@@ -57,7 +63,7 @@ namespace LmbrCentral
                 ->Version(2)
             ;
 
-            using Collision = PhysicsComponentNotifications::Collision;
+            using Collision = AzFramework::PhysicsComponentNotifications::Collision;
             serializeContext->Class<Collision>()
                 ->Field("entity", &Collision::m_entity)
                 ->Field("position", &Collision::m_position)
@@ -70,7 +76,7 @@ namespace LmbrCentral
         }
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            using Collision = PhysicsComponentNotifications::Collision;
+            using Collision = AzFramework::PhysicsComponentNotifications::Collision;
             // Info about a collision event
             behaviorContext->Class<Collision>()
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
@@ -90,27 +96,47 @@ namespace LmbrCentral
                 ->Event("AddImpulse", &PhysicsComponentRequestBus::Events::AddImpulse)
                 ->Event("AddImpulseAtPoint", &PhysicsComponentRequestBus::Events::AddImpulseAtPoint)
                 ->Event("AddAngularImpulse", &PhysicsComponentRequestBus::Events::AddAngularImpulse)
-                ->Event("AddAngularImpulseAtPoint", &PhysicsComponentRequestBus::Events::AddAngularImpulseAtPoint)
                 ->Event("GetVelocity", &PhysicsComponentRequestBus::Events::GetVelocity)
                 ->Event("SetVelocity", &PhysicsComponentRequestBus::Events::SetVelocity)
-                ->Event("GetAcceleration", &PhysicsComponentRequestBus::Events::GetAcceleration)
                 ->Event("GetAngularVelocity", &PhysicsComponentRequestBus::Events::GetAngularVelocity)
                 ->Event("SetAngularVelocity", &PhysicsComponentRequestBus::Events::SetAngularVelocity)
-                ->Event("GetAngularAcceleration", &PhysicsComponentRequestBus::Events::GetAngularAcceleration)
                 ->Event("GetMass", &PhysicsComponentRequestBus::Events::GetMass)
                 ->Event("SetMass", &PhysicsComponentRequestBus::Events::SetMass)
-                ->Event("GetDensity", &PhysicsComponentRequestBus::Events::GetDensity)
-                ->Event("SetDensity", &PhysicsComponentRequestBus::Events::SetDensity)
+                ->Event("GetLinearDamping", &PhysicsComponentRequestBus::Events::GetLinearDamping)
+                ->Event("SetLinearDamping", &PhysicsComponentRequestBus::Events::SetLinearDamping)
+                ->Event("GetSleepThreshold", &PhysicsComponentRequestBus::Events::GetSleepThreshold)
+                ->Event("SetSleepThreshold", &PhysicsComponentRequestBus::Events::SetSleepThreshold)
+                 
+                 // Deprecated methods
                 ->Event("GetDamping", &PhysicsComponentRequestBus::Events::GetDamping)
                 ->Event("SetDamping", &PhysicsComponentRequestBus::Events::SetDamping)
                 ->Event("GetMinEnergy", &PhysicsComponentRequestBus::Events::GetMinEnergy)
                 ->Event("SetMinEnergy", &PhysicsComponentRequestBus::Events::SetMinEnergy)
+                ->Event("AddAngularImpulseAtPoint", &PhysicsComponentRequestBus::Events::AddAngularImpulseAtPoint)
+                ->Event("GetAcceleration", &PhysicsComponentRequestBus::Events::GetAcceleration)
+                ->Event("GetAngularAcceleration", &PhysicsComponentRequestBus::Events::GetAngularAcceleration)
+                ->Event("GetDensity", &PhysicsComponentRequestBus::Events::GetDensity)
+                ->Event("SetDensity", &PhysicsComponentRequestBus::Events::SetDensity)
                 ->Event("GetWaterDamping", &PhysicsComponentRequestBus::Events::GetWaterDamping)
                 ->Event("SetWaterDamping", &PhysicsComponentRequestBus::Events::SetWaterDamping)
                 ->Event("GetWaterDensity", &PhysicsComponentRequestBus::Events::GetWaterDensity)
                 ->Event("SetWaterDensity", &PhysicsComponentRequestBus::Events::SetWaterDensity)
                 ->Event("GetWaterResistance", &PhysicsComponentRequestBus::Events::GetWaterResistance)
                 ->Event("SetWaterResistance", &PhysicsComponentRequestBus::Events::SetWaterResistance)
+                ;
+
+            behaviorContext->EBus<CryPhysicsComponentRequestBus>("CryPhysicsComponentRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetAcceleration", &CryPhysicsComponentRequestBus::Events::GetAcceleration)
+                ->Event("GetAngularAcceleration", &CryPhysicsComponentRequestBus::Events::GetAngularAcceleration)
+                ->Event("GetDensity", &CryPhysicsComponentRequestBus::Events::GetDensity)
+                ->Event("SetDensity", &CryPhysicsComponentRequestBus::Events::SetDensity)
+                ->Event("GetWaterDamping", &CryPhysicsComponentRequestBus::Events::GetWaterDamping)
+                ->Event("SetWaterDamping", &CryPhysicsComponentRequestBus::Events::SetWaterDamping)
+                ->Event("GetWaterDensity", &CryPhysicsComponentRequestBus::Events::GetWaterDensity)
+                ->Event("SetWaterDensity", &CryPhysicsComponentRequestBus::Events::SetWaterDensity)
+                ->Event("GetWaterResistance", &CryPhysicsComponentRequestBus::Events::GetWaterResistance)
+                ->Event("SetWaterResistance", &CryPhysicsComponentRequestBus::Events::SetWaterResistance)
                 ;
 
             behaviorContext->EBus<PhysicsComponentNotificationBus>("PhysicsComponentNotificationBus")
@@ -125,6 +151,9 @@ namespace LmbrCentral
 
     void PhysicsComponent::Activate()
     {
+        // Make sure the BusForwarder is connected first so that the new bus takes precedence when returning results for getter functions
+        m_busForwarder.Connect(GetEntityId());
+
         PhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
         CryPhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
 
@@ -136,6 +165,7 @@ namespace LmbrCentral
 
     void PhysicsComponent::Deactivate()
     {
+        m_busForwarder.Disconnect();
         PhysicsComponentRequestBus::Handler::BusDisconnect();
         CryPhysicsComponentRequestBus::Handler::BusDisconnect();
         DisablePhysics();
@@ -173,18 +203,6 @@ namespace LmbrCentral
         {
             pe_action_impulse action;
             action.angImpulse = AZVec3ToLYVec3(impulse);
-            action.iApplyTime = 0;
-            m_physicalEntity->Action(&action);
-        }
-    }
-    
-    void PhysicsComponent::AddAngularImpulseAtPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePivot)
-    {
-        if (IsPhysicsEnabled())
-        {
-            pe_action_impulse action;
-            action.angImpulse = AZVec3ToLYVec3(impulse);
-            action.point = AZVec3ToLYVec3(worldSpacePivot);
             action.iApplyTime = 0;
             m_physicalEntity->Action(&action);
         }
@@ -315,7 +333,7 @@ namespace LmbrCentral
         }
     }
 
-    float PhysicsComponent::GetDamping()
+    float PhysicsComponent::GetLinearDamping()
     {
         float damping = 0.0f;
 
@@ -329,7 +347,7 @@ namespace LmbrCentral
         return damping;
     }
 
-    void PhysicsComponent::SetDamping(float damping)
+    void PhysicsComponent::SetLinearDamping(float damping)
     {
         if (IsPhysicsEnabled())
         {
@@ -339,7 +357,7 @@ namespace LmbrCentral
         }
     }
 
-    float PhysicsComponent::GetMinEnergy()
+    float PhysicsComponent::GetSleepThreshold()
     {
         float minEnergy = 0.0f;
 
@@ -353,12 +371,12 @@ namespace LmbrCentral
         return minEnergy;
     }
 
-    void PhysicsComponent::SetMinEnergy(float minEnergy)
+    void PhysicsComponent::SetSleepThreshold(float threshold)
     {
         if (IsPhysicsEnabled())
         {
             pe_simulation_params params;
-            params.minEnergy = minEnergy;
+            params.minEnergy = threshold;
             m_physicalEntity->SetParams(&params);
         }
     }
@@ -610,10 +628,10 @@ namespace LmbrCentral
         AZ_Assert(m_physicalEntity, "Shouldn't be adding colliders while physics is disabled.");
         AZ_Assert(m_contributingColliders.find(entityId) == m_contributingColliders.end(), "Physics already has colliders from this entity.");
 
-        int finalPartId = ColliderComponentRequests::NoPartsAdded;
+        int finalPartId = AzFramework::ColliderComponentRequests::NoPartsAdded;
         EBUS_EVENT_ID_RESULT(finalPartId, entityId, ColliderComponentRequestBus, AddColliderToPhysicalEntity, *m_physicalEntity, m_nextPartId);
 
-        if (finalPartId == ColliderComponentRequests::NoPartsAdded)
+        if (finalPartId == AzFramework::ColliderComponentRequests::NoPartsAdded)
         {
             return;
         }
@@ -750,5 +768,4 @@ namespace LmbrCentral
             ProximityTriggerSystemRequestBus::Broadcast(&ProximityTriggerSystemRequests::MoveEntity, m_proximityTriggerProxy, Vec3(0), lyAabb);
         }
     }
-
 } // namespace LmbrCentral

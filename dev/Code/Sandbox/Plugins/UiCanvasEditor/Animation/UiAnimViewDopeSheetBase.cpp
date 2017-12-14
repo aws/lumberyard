@@ -492,7 +492,7 @@ void CUiAnimViewDopeSheetBase::OnLButtonDown(Qt::KeyboardModifiers modifiers, co
     }
 
     bool bStart = false;
-    CUiAnimViewKeyHandle& keyHandle = CheckCursorOnStartEndTimeAdjustBar(point, bStart);
+    CUiAnimViewKeyHandle keyHandle = CheckCursorOnStartEndTimeAdjustBar(point, bStart);
     if (keyHandle.IsValid())
     {
         return LButtonDownOnTimeAdjustBar(point, keyHandle, bStart);
@@ -581,7 +581,7 @@ void CUiAnimViewDopeSheetBase::OnLButtonDblClk(Qt::KeyboardModifiers modifiers, 
         return;
     }
 
-    CUiAnimViewKeyHandle& keyHandle = FirstKeyFromPoint(point);
+    CUiAnimViewKeyHandle keyHandle = FirstKeyFromPoint(point);
 
     if (!keyHandle.IsValid())
     {
@@ -678,7 +678,7 @@ void CUiAnimViewDopeSheetBase::OnRButtonDown(Qt::KeyboardModifiers modifiers, co
         return;
     }
 
-    CUiAnimViewKeyHandle& keyHandle = FirstKeyFromPoint(point);
+    CUiAnimViewKeyHandle keyHandle = FirstKeyFromPoint(point);
     if (!keyHandle.IsValid())
     {
         keyHandle = DurationKeyFromPoint(point);
@@ -940,7 +940,7 @@ void CUiAnimViewDopeSheetBase::SelectAllKeysWithinTimeFrame(const QRect& rc, con
         // Check which keys we intersect.
         for (int j = 0; j < pTrack->GetKeyCount(); j++)
         {
-            CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(j);
+            CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(j);
             const float time = keyHandle.GetTime();
 
             if (selTime.IsInside(time))
@@ -1280,7 +1280,7 @@ void CUiAnimViewDopeSheetBase::RecordTrackUndo(CUiAnimViewTrack* pTrack)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CUiAnimViewDopeSheetBase::ShowKeyTooltip(CUiAnimViewKeyHandle& keyHandle, const QPoint& point)
+void CUiAnimViewDopeSheetBase::ShowKeyTooltip(const CUiAnimViewKeyHandle& keyHandle, const QPoint& point)
 {
     if (m_lastTooltipPos == point)
     {
@@ -1322,7 +1322,7 @@ bool CUiAnimViewDopeSheetBase::IsOkToAddKeyHere(const CUiAnimViewTrack* pTrack, 
 
     for (int i = 0; i < pTrack->GetKeyCount(); ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = const_cast<CUiAnimViewTrack*>(pTrack)->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = const_cast<CUiAnimViewTrack*>(pTrack)->GetKey(i);
 
         if (keyHandle.GetTime() == time)
         {
@@ -1441,7 +1441,7 @@ void CUiAnimViewDopeSheetBase::MouseMoveMove(const QPoint& p, Qt::KeyboardModifi
         }
     }
 
-    CUiAnimViewKeyHandle& keyHandle = FirstKeyFromPoint(m_mouseDownPos);
+    CUiAnimViewKeyHandle keyHandle = FirstKeyFromPoint(m_mouseDownPos);
     if (!keyHandle.IsValid())
     {
         keyHandle = DurationKeyFromPoint(m_mouseDownPos);
@@ -1585,7 +1585,7 @@ void CUiAnimViewDopeSheetBase::MouseMoveOver(const QPoint& point)
     SetMouseCursor(Qt::ArrowCursor);
 
     bool bStart = false;
-    CUiAnimViewKeyHandle& keyHandle = CheckCursorOnStartEndTimeAdjustBar(point, bStart);
+    CUiAnimViewKeyHandle keyHandle = CheckCursorOnStartEndTimeAdjustBar(point, bStart);
     if (keyHandle.IsValid())
     {
         SetMouseCursor(m_crsAdjustLR);
@@ -1669,6 +1669,12 @@ void CUiAnimViewDopeSheetBase::SetScrollOffset(int hpos)
     m_scrollBar->setValue(hpos);
     m_scrollOffset.setX(hpos);
     update();
+}
+
+//////////////////////////////////////////////////////////////////////////
+int CUiAnimViewDopeSheetBase::GetScrollOffset()
+{
+    return m_scrollOffset.x();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2191,7 +2197,7 @@ void CUiAnimViewDopeSheetBase::DrawSelectTrack(const Range& timeRange, QPainter*
     const int numKeys = pTrack->GetKeyCount();
     for (int i = 0; i < numKeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         ISelectKey selectKey;
         keyHandle.GetKey(&selectKey);
@@ -2254,7 +2260,7 @@ void CUiAnimViewDopeSheetBase::DrawBoolTrack(const Range& timeRange, QPainter* p
     const int numKeys = pTrack->GetKeyCount();
     for (int i = 0; i < numKeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         const float time = keyHandle.GetTime();
         if (time < timeRange.start)
@@ -2294,51 +2300,6 @@ void CUiAnimViewDopeSheetBase::DrawBoolTrack(const Range& timeRange, QPainter* p
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CUiAnimViewDopeSheetBase::DrawSequenceTrack(const Range& timeRange, QPainter* painter, CUiAnimViewTrack* pTrack, const QRect& rc)
-{
-    int x0 = TimeToClient(timeRange.start);
-    float t0 = timeRange.start;
-    CRect trackRect;
-
-    const QBrush prevBrush = painter->brush();
-    painter->setBrush(m_selectTrackBrush);
-
-    const int numKeys = pTrack->GetKeyCount();
-    for (int i = 0; i < numKeys - 1; ++i)
-    {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
-
-        ISequenceKey sequenceKey;
-        keyHandle.GetKey(&sequenceKey);
-        if (!sequenceKey.szSelection.empty())
-        {
-            float time = keyHandle.GetTime();
-            float nextTime = timeRange.end;
-            if (i < numKeys - 1)
-            {
-                nextTime = pTrack->GetKey(i + 1).GetTime();
-            }
-            time = clamp_tpl(time, timeRange.start, timeRange.end);
-            nextTime = clamp_tpl(nextTime, timeRange.start, timeRange.end);
-
-            int x0 = TimeToClient(time);
-            int x = TimeToClient(nextTime);
-
-            if (x != x0)
-            {
-                const QColor startColour(100, 190, 255);
-                const QColor endColour(250, 250, 250);
-                QLinearGradient gradient(x0, rc.top() + 1, x0, rc.bottom());
-                gradient.setColorAt(0, startColour);
-                gradient.setColorAt(1, endColour);
-                painter->fillRect(QRect(QPoint(x0, rc.top() + 1), QPoint(x, rc.bottom())), gradient);
-            }
-        }
-    }
-    painter->setBrush(prevBrush);
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CUiAnimViewDopeSheetBase::DrawKeys(CUiAnimViewTrack* pTrack, QPainter* painter, QRect& rect, Range& timeRange)
 {
     int numKeys = pTrack->GetKeyCount();
@@ -2358,7 +2319,7 @@ void CUiAnimViewDopeSheetBase::DrawKeys(CUiAnimViewTrack* pTrack, QPainter* pain
     // Draw keys.
     for (int i = 0; i < numKeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         const float time = keyHandle.GetTime();
         if (!stl::push_back_unique(drawnKeyTimes, time))
@@ -2540,7 +2501,7 @@ CUiAnimViewKeyHandle CUiAnimViewDopeSheetBase::FirstKeyFromPoint(const QPoint& p
     int numKeys = pTrack->GetKeyCount();
     for (int i = 0; i < numKeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         float time = keyHandle.GetTime();
         if (time >= t1 && time <= t2)
@@ -2567,7 +2528,7 @@ CUiAnimViewKeyHandle CUiAnimViewDopeSheetBase::DurationKeyFromPoint(const QPoint
     // Iterate in a reverse order to prioritize later nodes.
     for (int i = numKeys - 1; i >= 0; --i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         const float time = keyHandle.GetTime();
         const float duration = keyHandle.GetDuration();
@@ -2594,7 +2555,7 @@ CUiAnimViewKeyHandle CUiAnimViewDopeSheetBase::CheckCursorOnStartEndTimeAdjustBa
     int numKeys = pTrack->GetKeyCount();
     for (int i = 0; i < numKeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         if (!keyHandle.IsSelected())
         {
@@ -2642,7 +2603,7 @@ int CUiAnimViewDopeSheetBase::NumKeysFromPoint(const QPoint& point)
     int numKeys = pTrack->GetKeyCount();
     for (int i = 0; i < numKeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         const float time = keyHandle.GetTime();
         if (time >= t1 && time <= t2)
@@ -2692,7 +2653,7 @@ void CUiAnimViewDopeSheetBase::SelectKeys(const QRect& rc, const bool bMultiSele
             // Check which keys we intersect.
             for (int j = 0; j < pTrack->GetKeyCount(); j++)
             {
-                CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(j);
+                CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(j);
 
                 const float time = keyHandle.GetTime();
                 if (selTime.IsInside(time))
@@ -2759,7 +2720,7 @@ void CUiAnimViewDopeSheetBase::DrawSelectedKeyIndicators(QPainter* painter)
     CUiAnimViewKeyBundle keys = pSequence->GetSelectedKeys();
     for (int i = 0; i < keys.GetKeyCount(); ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = keys.GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = keys.GetKey(i);
         int x = TimeToClient(keyHandle.GetTime());
         painter->drawLine(x, m_rcClient.top(), x, m_rcClient.bottom());
     }
@@ -3011,7 +2972,7 @@ void CUiAnimViewDopeSheetBase::DrawSummary(QPainter* painter, const QRect& rcUpd
     CUiAnimViewKeyBundle keys = pSequence->GetAllKeys();
     for (int i = 0; i < keys.GetKeyCount(); ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = keys.GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = keys.GetKey(i);
         int x = TimeToClient(keyHandle.GetTime());
         painter->drawLine(x, rc.bottom() - 2, x, rc.top() + 2);
     }
@@ -3063,7 +3024,7 @@ void CUiAnimViewDopeSheetBase::DrawGoToTrackArrow(CUiAnimViewTrack* pTrack, QPai
 
     for (int i = 0; i < numKeys; ++i)
     {
-        CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+        CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
         IDiscreteFloatKey discreteFloatKey;
         keyHandle.GetKey(&discreteFloatKey);
@@ -3097,7 +3058,7 @@ void CUiAnimViewDopeSheetBase::DrawGoToTrackArrow(CUiAnimViewTrack* pTrack, QPai
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewDopeSheetBase::DrawKeyDuration(CUiAnimViewTrack* pTrack, QPainter* painter, const QRect& rc, int keyIndex)
 {
-    CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(keyIndex);
+    CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(keyIndex);
 
     const float time = keyHandle.GetTime();
     const float duration = keyHandle.GetDuration();

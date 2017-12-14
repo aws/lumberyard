@@ -18,7 +18,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Math/Transform.h>
-#include <AzCore/Serialization/Utils.h>
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/string/string.h>
@@ -32,7 +32,6 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
-#include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
@@ -41,11 +40,12 @@
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <MathConversion.h>
 
 #include "Objects/ComponentEntityObject.h"
-#include "IIconManager.h"
 #include "ISourceControl.h"
+#include "UI/QComponentEntityEditorMainWindow.h"
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
 #include <LmbrCentral/Scripting/FlowGraphSerialization.h>
@@ -161,9 +161,9 @@ AZ::u32 CountDifferencesVersusSlice(AZ::EntityId entityId, AZ::Entity* compareTo
 
 //////////////////////////////////////////////////////////////////////////
 SandboxIntegrationManager::SandboxIntegrationManager()
-    : m_dc(nullptr)
-    , m_inObjectPickMode(false)
+    : m_inObjectPickMode(false)
     , m_startedUndoRecordingNestingLevel(0)
+    , m_dc(nullptr)
 {
     // Required to receive events from the Cry Engine undo system
     GetIEditor()->GetUndoManager()->AddListener(this);
@@ -232,15 +232,22 @@ void SandboxIntegrationManager::OnBeginUndo(const char* label)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void SandboxIntegrationManager::OnEndUndo(const char* label)
+void SandboxIntegrationManager::OnEndUndo(const char* label, bool changed)
 {
     if (m_startedUndoRecordingNestingLevel)
     {
         m_startedUndoRecordingNestingLevel--;
         if (m_startedUndoRecordingNestingLevel == 0)
         {
-            // only accept the undo batch that we initially started undo recording on
-            GetIEditor()->AcceptUndo(label);
+            if (changed)
+            {
+                // only accept the undo batch that we initially started undo recording on
+                GetIEditor()->AcceptUndo(label);
+            }
+            else
+            {
+                GetIEditor()->CancelUndo();
+            }
         }
     }
 }
@@ -294,6 +301,7 @@ void SandboxIntegrationManager::PopulateEditorGlobalContextMenu(QMenu* menu, con
         action = menu->addAction(QObject::tr("Create child entity"));
         QObject::connect(action, &QAction::triggered, [this, selected]
         {
+            AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::RightClickMenu);
             EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, CreateNewEntityAsChild, selected.front());
         });
     }
@@ -423,9 +431,33 @@ void SandboxIntegrationManager::SetupSliceContextMenu(QMenu* menu)
 
 
 //////////////////////////////////////////////////////////////////////////
-void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32 numEntitiesInSlices)
+void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::u32 numEntitiesInSlices)
 {
     using namespace AzToolsFramework;
+
+    // Gather the set of relevant entities from the selected entities and all descendants
+    AzToolsFramework::EntityIdSet relevantEntitiesSet;
+    EBUS_EVENT_RESULT(relevantEntitiesSet, AzToolsFramework::ToolsApplicationRequests::Bus, GatherEntitiesAndAllDescendents, selectedEntities);
+    AzToolsFramework::EntityIdList relevantEntities;
+    relevantEntities.reserve(relevantEntitiesSet.size());
+
+    // Need to calculate the number of relevantEntitiesInSlices to properly construct the context menu option since it can be different from numEntitiesInSlices
+    AZ::u32 relevantEntitiesInSlices = 0;
+    for (AZ::EntityId& id : relevantEntitiesSet)
+    {
+        relevantEntities.push_back(id);
+
+        for (const AZ::EntityId& entityId : selectedEntities)
+        {
+            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+            EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+            if (sliceAddress.first)
+            {
+                ++relevantEntitiesInSlices;
+            }
+        }
+    }
 
     AZ::Data::AssetManager& assetManager = AZ::Data::AssetManager::Instance();
     AZStd::string sliceAssetPath, sliceAssetName;
@@ -444,7 +476,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
     AZStd::vector<AZ::Data::AssetId> sliceDisplayOrder;
     AZ::SliceComponent::EntityAncestorList tempAncestors;
 
-    for (AZ::EntityId entityId : selectedEntities)
+    for (AZ::EntityId entityId : relevantEntities)
     {
         AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
         EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
@@ -469,25 +501,15 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
         }
     }
 
-    QString saveSliceOptionText;
-    if (numEntitiesInSlices == 1)
-    {
-        saveSliceOptionText = QObject::tr("Save slice overrides");
-    }
-    else
-    {
-        saveSliceOptionText = QObject::tr("Save slice overrides for %1 entities").arg(numEntitiesInSlices);
-    }
-    QMenu* pushMenu = menu->addMenu(saveSliceOptionText);
-
     // Loop through all potential target slice assets for the selected entity set.
     // Any asset that acts as a valid target for all selected slice-instance-owned entities can be shown.
+    QMenu* quickPushMenu = nullptr;
     AZ::u32 indendation = 0;
     for (const AZ::Data::AssetId& sliceAssetId : sliceDisplayOrder)
     {
         // Skip if the asset is not a valid target for all selected entities.
         AZStd::vector<EntityAncestorPair>& entityAncestors = assetEntityAncestorMap[sliceAssetId];
-        if (entityAncestors.size() != numEntitiesInSlices)
+        if (entityAncestors.size() != relevantEntitiesInSlices)
         {
             continue;
         }
@@ -533,7 +555,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
 
         AZ::u32 totalDifferences = 0;
 
-        if (!targetConflict && numEntitiesInSlices <= kMaxEntitiesForOverrideCalculation)
+        if (!targetConflict && relevantEntitiesInSlices <= kMaxEntitiesForOverrideCalculation)
         {
             for (const EntityAncestorPair& entityAncestor : entityAncestors)
             {
@@ -550,21 +572,26 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
 
         // Each quick push option UI is a collection of up to four separate widgets:
         // [indentation by depth] [icon] [slice name] [# overrides]
-        QWidgetAction* widgetAction = new QWidgetAction(pushMenu);
+        if (!quickPushMenu)
+        {
+            quickPushMenu = new QMenu();
+        }
+
+        QWidgetAction* widgetAction = new QWidgetAction(quickPushMenu);
         QWidget* widget = new QWidget();
         widget->setObjectName("QuickPushOption");
         widget->setLayout(new QHBoxLayout());
 
-        QLabel* indentLabel = new QLabel(pushMenu);
+        QLabel* indentLabel = new QLabel(quickPushMenu);
         indentLabel->setFixedSize(indendation * kPixelIndentationPerLevel, 16);
         widget->layout()->addWidget(indentLabel);
 
-        QLabel* iconLabel = new QLabel(pushMenu);
+        QLabel* iconLabel = new QLabel(quickPushMenu);
         iconLabel->setPixmap(sliceItemIcon);
         iconLabel->setFixedSize(20, 16);
         widget->layout()->addWidget(iconLabel);
 
-        QLabel* sliceLabel = new QLabel(sliceText, pushMenu);
+        QLabel* sliceLabel = new QLabel(sliceText, quickPushMenu);
         sliceLabel->setMinimumWidth(200 - indendation * kPixelIndentationPerLevel);
         widget->layout()->addWidget(sliceLabel);
 
@@ -572,7 +599,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
         if (totalDifferences)
         {
             const QString overridesText = QString(" %1 override(s)").arg(totalDifferences);
-            QLabel* overridesLabel = new QLabel(overridesText, pushMenu);
+            QLabel* overridesLabel = new QLabel(overridesText, quickPushMenu);
             overridesLabel->setObjectName("NumOverrides");
             widget->layout()->addWidget(overridesLabel);
         }
@@ -591,7 +618,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
             widget->setToolTip(QString("Save overrides to: %1").arg(sliceAssetPath.c_str()));
         }
 
-        pushMenu->addAction(widgetAction);
+        quickPushMenu->addAction(widgetAction);
         pushAction = widgetAction;
 
         ++indendation;
@@ -623,22 +650,43 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
 
     } // for each unique target asset
 
-      // "Advanced" push option, which displays the modal push UI.
-    pushMenu->addSeparator();
-    QAction* pushAdvancedAction = pushMenu->addAction(QObject::tr("Advanced..."));
+    // Setup slice push options - quickpush submenu if there are available quick pushes, otherwise single Advanced option
+    QAction* pushAdvancedAction = nullptr;
+    if (quickPushMenu)
+    {
+        QString saveSliceOptionText;
+        if (numEntitiesInSlices == 1)
+        {
+            saveSliceOptionText = QObject::tr("Save slice overrides");
+        }
+        else
+        {
+            saveSliceOptionText = QObject::tr("Save slice overrides for %1 entities").arg(numEntitiesInSlices);
+        }
+        quickPushMenu->setTitle(saveSliceOptionText);
+        menu->addMenu(quickPushMenu);
+
+        // "Advanced" push option, which displays the modal push UI.
+        quickPushMenu->addSeparator();
+        pushAdvancedAction = quickPushMenu->addAction(QObject::tr("Advanced..."));
+    }
+    else
+    {
+        pushAdvancedAction = menu->addAction(QObject::tr("Save slice overrides..."));
+    }
     pushAdvancedAction->setToolTip(QObject::tr("Allows selection of individual overrides, as well as the target slice asset to which each override is saved."));
 
-    QObject::connect(pushAdvancedAction, &QAction::triggered, [this, selectedEntities]
+    QObject::connect(pushAdvancedAction, &QAction::triggered, [this, relevantEntities]
     {
-        AzToolsFramework::SliceUtilities::PushEntitiesModal(selectedEntities, nullptr);
+        AzToolsFramework::SliceUtilities::PushEntitiesModal(relevantEntities, nullptr);
     });
 
     QAction* revertAction = menu->addAction(QObject::tr("Revert overrides"));
     revertAction->setToolTip(QObject::tr("Reverts any overrides back to slice defaults on the selected entities"));
 
-    QObject::connect(revertAction, &QAction::triggered, [this, selectedEntities]
+    QObject::connect(revertAction, &QAction::triggered, [this, relevantEntities]
     {
-        ContextMenu_ResetToSliceDefaults(selectedEntities);
+        ContextMenu_ResetToSliceDefaults(relevantEntities);
     });
 }
 
@@ -1110,6 +1158,11 @@ QWidget* SandboxIntegrationManager::GetMainWindow()
 IEditor* SandboxIntegrationManager::GetEditor()
 {
     return GetIEditor();
+}
+
+void SandboxIntegrationManager::SetEditTool(const char* tool)
+{
+    GetIEditor()->SetEditTool(tool);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1861,9 +1914,9 @@ void SandboxIntegrationManager::GetSelectedOrHighlightedEntities(AzToolsFramewor
 }
 
 //////////////////////////////////////////////////////////////////////////
-AZStd::string SandboxIntegrationManager::GetComponentEditorIcon(const AZ::Uuid& componentType)
+AZStd::string SandboxIntegrationManager::GetComponentEditorIcon(const AZ::Uuid& componentType, AZ::Component* component)
 {
-    AZStd::string iconPath = GetComponentIconPath(componentType, AZ::Edit::Attributes::Icon, nullptr);
+    AZStd::string iconPath = GetComponentIconPath(componentType, AZ::Edit::Attributes::Icon, component);
     return iconPath;
 }
 
@@ -1924,28 +1977,34 @@ AZStd::string SandboxIntegrationManager::GetComponentIconPath(const AZ::Uuid& co
                             iconPath = AZStd::move(iconAttributeValue);
                         }
                     }
+                    
+                    auto iconOverrideAttribute = editorElementData->FindAttribute(AZ::Edit::Attributes::DynamicIconOverride);
+
+                    // If it has an override and we're given an instance, then get any potential override from the instance here
+                    if (component && 
+                        (componentIconAttrib == AZ::Edit::Attributes::Icon || componentIconAttrib == AZ::Edit::Attributes::ViewportIcon) && 
+                        iconOverrideAttribute)
+                    {
+                        AZStd::string iconValue;
+                        AZ::AttributeReader iconReader(const_cast<AZ::Component*>(component), iconOverrideAttribute);
+                        iconReader.Read<AZStd::string>(iconValue);
+
+                        if (!iconValue.empty())
+                        {
+                            iconPath = AZStd::move(iconValue);
+                        }
+                    }
                 }
             }
 
-            // use absolute path if possible - first check cache, otherwise fallback to requesting path from asset processor (costly)
-            auto foundIt = m_componentIconRelativePathToFullPathCache.find(iconPath);
-            if (foundIt != m_componentIconRelativePathToFullPathCache.end())
+            // use absolute path if possible
+            AZStd::string iconFullPath;
+            bool pathFound = false;
+            using AssetSysReqBus = AzToolsFramework::AssetSystemRequestBus;
+            AssetSysReqBus::BroadcastResult(pathFound, &AssetSysReqBus::Events::GetFullSourcePathFromRelativeProductPath, iconPath, iconFullPath);
+            if (pathFound)
             {
-                iconPath = foundIt->second;
-            }
-            else
-            {
-                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SandboxIntegrationManager::GetComponentIconPath:GetFullPath");
-                AZStd::string iconFullPath;
-                bool pathFound = false;
-                using AssetSysReqBus = AzToolsFramework::AssetSystemRequestBus;
-                AssetSysReqBus::BroadcastResult(pathFound, &AssetSysReqBus::Events::GetFullSourcePathFromRelativeProductPath, iconPath, iconFullPath);
-
-                if (pathFound)
-                {
-                    m_componentIconRelativePathToFullPathCache[iconPath] = iconFullPath; // Cache for future requests
-                    iconPath = AZStd::move(iconFullPath);
-                }
+                iconPath = AZStd::move(iconFullPath);
             }
         }
     }
@@ -2013,12 +2072,17 @@ void SandboxIntegrationManager::UnregisterViewPane(const char* name)
 //////////////////////////////////////////////////////////////////////////
 void SandboxIntegrationManager::OpenViewPane(const char* paneName)
 {
-    const QtViewPane* pane = GetIEditor()->OpenView(paneName);
+    const QtViewPane* pane = QtViewPaneManager::instance()->OpenPane(paneName);
     if (pane)
     {
         pane->m_dockWidget->raise();
         pane->m_dockWidget->activateWindow();
     }
+}
+
+QDockWidget* SandboxIntegrationManager::InstanceViewPane(const char* paneName)
+{
+    return QtViewPaneManager::instance()->InstancePane(paneName);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2344,6 +2408,18 @@ void SandboxIntegrationManager::DrawCircle(const AZ::Vector3& pos, float radius,
     }
 }
 
+void SandboxIntegrationManager::DrawHalfDottedCircle(const AZ::Vector3& pos, float radius, const AZ::Vector3& viewPos, int nUnchangedAxis)
+{
+    if (m_dc)
+    {
+        m_dc->DrawHalfDottedCircle(
+            AZVec3ToLYVec3(pos),
+            radius,
+            AZVec3ToLYVec3(viewPos),
+            nUnchangedAxis);
+    }
+}
+
 void SandboxIntegrationManager::DrawCone(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius, float height)
 {
     if (m_dc)
@@ -2501,6 +2577,7 @@ void SandboxIntegrationManager::DrawTextureLabel(ITexture* texture, const AZ::Ve
             {
                 sizeX = sizeY * (textureWidth / textureHeight);
             }
+
             m_dc->DrawTextureLabel(AZVec3ToLYVec3(pos), sizeX, sizeY, texture->GetTextureID(), texIconFlags);
         }
     }

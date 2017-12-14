@@ -41,6 +41,7 @@ namespace GridMate
         , m_nUpstreamUnreliableRPCs(0)
         , m_dirtiedDataSets(0xFFFFFFFF)
         , m_priority(k_replicaPriorityNormal)
+        , m_revision(1)
     {
         ReplicaChunkInitContext* initContext = ReplicaChunkDescriptorTable::Get().GetCurrentReplicaChunkInitContext();
         AZ_Assert(initContext, "Replica's descriptor is NOT pushed on the stack! Call Replica::Desriptor::Push() before construction!");
@@ -122,7 +123,7 @@ namespace GridMate
         return !IsMaster();
     }
     //-----------------------------------------------------------------------------
-    bool ReplicaChunkBase::IsDirty(AZ::u32 marshalFlags)
+    bool ReplicaChunkBase::IsDirty(AZ::u32 marshalFlags) const
     {
         if (marshalFlags & ReplicaMarshalFlags::IncludeDatasets)
         {
@@ -282,7 +283,32 @@ namespace GridMate
         }
         else if ((mc.m_marshalFlags & ReplicaMarshalFlags::IncludeDatasets))
         {
-            dataSetMask = (mc.m_marshalFlags & ReplicaMarshalFlags::Reliable) ? (*m_reliableDirtyBits.data()) : (*m_unreliableDirtyBits.data());
+            if (mc.m_marshalFlags & ReplicaMarshalFlags::Reliable)
+            {
+                dataSetMask = (*m_reliableDirtyBits.data());
+            }
+            else
+            {
+                dataSetMask = (*m_unreliableDirtyBits.data());
+                //Handle additional unAck'd for specific peer
+                if (ReplicaTarget::IsAckEnabled()
+                    && mc.m_peerLatestVersionAckd != 0)
+                {
+                    AZStd::bitset<GM_MAX_DATASETS_IN_CHUNK> dirtyDataSets;
+                    ReplicaChunkDescriptor* descriptor = GetDescriptor();
+                    for (size_t i = 0; i < descriptor->GetDataSetCount(); ++i)
+                    {
+                        const DataSetBase* dataSet = descriptor->GetDataSet(this, i);
+                        auto rev = dataSet->GetRevision();
+                        const bool isOld = rev > mc.m_peerLatestVersionAckd;
+                        if (isOld)
+                        {
+                            dirtyDataSets.set(i, isOld);
+                        }
+                    }
+                    dataSetMask |= *dirtyDataSets.data();   //Add additional un-ack'd data sets for this target
+                }
+            }
         }
 
         return dataSetMask;
@@ -291,14 +317,15 @@ namespace GridMate
     void ReplicaChunkBase::MarshalDataSets(MarshalContext& mc, AZ::u32 chunkIndex)
     {
         //AZ_PROFILE_TIMER("GridMate");
-
-        ReplicaChunkDescriptor* descriptor = GetDescriptor();
-
         AZ::u32 dirtyDataSetMask = CalculateDirtyDataSetMask(mc);
         AZStd::bitset<GM_MAX_DATASETS_IN_CHUNK> changebits(dirtyDataSetMask);
-
+        ReplicaChunkDescriptor* descriptor = GetDescriptor();
+        bool wroteDataSet = false;
         mc.m_outBuffer->Write(changebits.to_ulong(), VlqU32Marshaler());
-
+        if (dirtyDataSetMask == 0)
+        {
+            return;
+        }
         for (size_t i = 0; i < descriptor->GetDataSetCount(); ++i)
         {
             if (changebits[i])
@@ -312,6 +339,7 @@ namespace GridMate
 
                 ReadBuffer data = dataset->GetMarshalData();
                 mc.m_outBuffer->WriteRaw(data.Get(), data.Size());
+                wroteDataSet = true;
 
                 EBUS_EVENT(Debug::ReplicaDrillerBus, OnSendDataSet,
                     this,
@@ -321,6 +349,15 @@ namespace GridMate
                     mc.m_peer->GetId(),
                     data.Get(),
                     data.Size().GetSizeInBytesRoundUp());
+            }
+        }
+        if(wroteDataSet)
+        {
+            //Add callback here
+            CallbackBuffer* callbackBuffer = mc.m_callbackBuffer;
+            if(mc.m_target && callbackBuffer && ReplicaTarget::IsAckEnabled())
+            {
+                callbackBuffer->push_back(mc.m_target->CreateCallback(m_replica->m_revision));
             }
         }
     }
@@ -363,7 +400,7 @@ namespace GridMate
                  * Whenever we get a dataset from the network, we assume it was modified and thus
                  * no longer has the default value.
                  */
-                dataset->MarkNonDefaultValue();
+                dataset->MarkAsNonDefaultValue();
                 m_nonDefaultValueBits.set(i);
 
                 const char* readPtr = mc.m_iBuf->GetCurrent();

@@ -223,21 +223,7 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
     bool bUseTerrainColor((vegetGroup.bUseTerrainColor && GetCVars()->e_VegetationUseTerrainColor) || GetCVars()->e_VegetationUseTerrainColor == 2);
     CRNTmpData::SRNUserData& userData = m_pRNTmpData->userData;
 
-    CRenderObject* pRenderObject = 0;
-    if (GetObjManager()->CheckCreateRenderObject(
-            userData.m_arrPermanentRenderObjects,
-            MAX_STATOBJ_LODS_NUM,
-            pRenderObject,
-            &lodValue,
-            passInfo,
-            rendItemSorter,
-            m_pInstancingInfo ? m_pInstancingInfo->GetElements() : 0,
-            m_pInstancingInfo ? m_pInstancingInfo->Count() : 0))
-    {
-        return;
-    }
-
-    pRenderObject->m_pRenderNode = const_cast<IRenderNode*>(static_cast<const IRenderNode*>(this));
+    CRenderObject* pRenderObject = gEnv->pRenderer->EF_GetObject_Temp(passInfo.ThreadID());
     pRenderObject->m_pRenderNode = const_cast<IRenderNode*>(static_cast<const IRenderNode*>(this));
     pRenderObject->m_II.m_Matrix = m_pRNTmpData->userData.objMat;
     pRenderObject->m_fAlpha = 1.f;
@@ -366,7 +352,7 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
     }
 
     // check the object against the water level
-    if (GetObjManager()->IsAfterWater(vObjCenter, vCamPos, passInfo, Get3DEngine()->GetWaterLevel()))
+    if (GetObjManager()->IsAfterWater(vObjCenter, passInfo))
     {
         pRenderObject->m_ObjFlags |= FOB_AFTER_WATER;
     }
@@ -405,7 +391,7 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
     {
         pRenderObject->m_ObjFlags &= ~FOB_ALLOW_TESSELLATION;
     }
-    pStatObj->RenderInternal(pRenderObject, 0, lodValue, passInfo, rendItemSorter);
+    pStatObj->RenderInternal(pRenderObject, 0, lodValue, passInfo, rendItemSorter, false);
 
     if (m_pDeformable)
     {
@@ -869,7 +855,7 @@ void CVegetation::CheckCreateDeformable()
             Matrix34A tm;
             CalcMatrix(tm);
             SAFE_DELETE(m_pDeformable);
-            m_pDeformable = new CDeformableNode(0);
+            m_pDeformable = new CDeformableNode();
             m_pDeformable->SetStatObj(pStatObj);
             m_pDeformable->CreateDeformableSubObject(true, tm, NULL);
         }
@@ -958,4 +944,11 @@ IStatObj* CVegetation::GetStatObj()
 uint8 CVegetation::GetMaterialLayers() const
 {
     return GetObjManager()->GetListStaticTypes()[0][m_nObjectTypeIndex].nMaterialLayers;
+}
+
+float CVegetation::GetFirstLodDistance() const
+{
+    StatInstGroup& vegetGroup = GetStatObjGroup();
+    CStatObj* pStatObj = static_cast<CStatObj*>(vegetGroup.GetStatObj());
+    return pStatObj ? pStatObj->GetLodDistance() : FLT_MAX;
 }

@@ -90,8 +90,6 @@ def build(bld):
         ios_framework = gem_ios_framework,
         appletv_framework = gem_appletv_framework,
 
-        android_armv7_clang_features= ["find_android_api_libs"],
-
         StaticLibrary = dict(
             file_list = static_lib_file_list,
 

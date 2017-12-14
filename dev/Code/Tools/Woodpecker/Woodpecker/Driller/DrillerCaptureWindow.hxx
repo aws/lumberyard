@@ -31,10 +31,10 @@
 class QMenu;
 class QAction;
 class QToolbar;
-class QDockWidget;
 class QSettings;
 
-#include <QtWidgets/QMainWindow>
+#include <QMainWindow>
+#include <QDockWidget>
 #include <Woodpecker/Driller/DrillerMainWindowMessages.h>
 
 namespace Ui

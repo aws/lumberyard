@@ -20,7 +20,6 @@
 #define CRYINCLUDE_EDITOR_ASSET_BROWSER_ASSET_TYPES_TEXTURE_ASSETTEXTUREITEM_H
 #pragma once
 #include "AssetBrowser/AssetBrowserCommon.h"
-#include "Util/GdiUtil.h"
 
 class ITexture;
 

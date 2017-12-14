@@ -18,6 +18,7 @@
 #include "Core/BrushHelper.h"
 #include "Objects/AreaSolidObject.h"
 #include "Objects/ClipVolumeObject.h"
+#include "Objects/DesignerObject.h"
 #include "Objects/Group.h"
 #include "Material/Material.h"
 #include "CryArray.h"

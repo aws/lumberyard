@@ -15,6 +15,8 @@
 
 #include "RendElement.h"
 #include "CRECloud.h"
+#include "../Textures/TextureManager.h"
+
 #include <I3DEngine.h>
 
 uint32  CRECloud::m_siShadeResolution = 32;
@@ -313,7 +315,7 @@ bool CRECloud::mfLoadCloud(const string& name, float fScale, bool bLocal)
         SAFE_DELETE_ARRAY(pParticleRadii);
         SAFE_DELETE_ARRAY(pParticlePositions);
 
-        m_pTexParticle = CTexture::s_ptexWhite;
+        m_pTexParticle = CTextureManager::Instance()->GetWhiteTexture();
     }
 
     gEnv->pCryPak->FClose(fileHandle);

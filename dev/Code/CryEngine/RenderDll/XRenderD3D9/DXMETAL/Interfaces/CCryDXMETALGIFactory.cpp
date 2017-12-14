@@ -92,7 +92,6 @@ HRESULT CCryDXGLGIFactory::GetWindowAssociation(HWND* pWindowHandle)
 
 HRESULT CCryDXGLGIFactory::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc, IDXGISwapChain** ppSwapChain)
 {
-#if DXGL_FULL_EMULATION
     void* pvD3D11Device;
     if (FAILED(pDevice->QueryInterface(__uuidof(ID3D11Device), &pvD3D11Device)) || pvD3D11Device == NULL)
     {
@@ -110,10 +109,6 @@ HRESULT CCryDXGLGIFactory::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CHAIN_DE
     spSwapChain->AddRef();
 
     return S_OK;
-#else
-    DXGL_ERROR("CCryDXGLGIFactory::CreateSwapChain is not supported, use D3D11CreateDeviceAndSwapChain");
-    return E_FAIL;
-#endif
 }
 
 HRESULT CCryDXGLGIFactory::CreateSoftwareAdapter(HMODULE Module, IDXGIAdapter** ppAdapter)

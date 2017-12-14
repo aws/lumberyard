@@ -10,35 +10,54 @@
 *
 */
 
-#include "ApplicationAPI.h"
-#include "ApplicationAPI_linux.h"
+#include <AzFramework/API/ApplicationAPI_linux.h>
+#include <AzFramework/Application/Application.h>
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    class ApplicationLifecycleEventsHandler::Pimpl
-        : public LinuxLifecycleEvents::Bus::Handler
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    class ApplicationLinux
+        : public Application::Implementation
+        , public LinuxLifecycleEvents::Bus::Handler
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_CLASS_ALLOCATOR(ApplicationLinux, AZ::SystemAllocator, 0);
+        ApplicationLinux();
+        ~ApplicationLinux() override;
 
-        Pimpl()
-        {
-            LinuxLifecycleEvents::Bus::Handler::BusConnect();
-        }
-
-        ~Pimpl() override
-        {
-            LinuxLifecycleEvents::Bus::Handler::BusDisconnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Application::Implementation
+        void PumpSystemEventLoopOnce() override;
+        void PumpSystemEventLoopUntilEmpty() override;
     };
 
-    ApplicationLifecycleEventsHandler::ApplicationLifecycleEventsHandler()
-        : m_pimpl(aznew Pimpl())
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    Application::Implementation* Application::Implementation::Create()
+    {
+        return aznew ApplicationLinux();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationLinux::ApplicationLinux()
+    {
+        LinuxLifecycleEvents::Bus::Handler::BusConnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationLinux::~ApplicationLinux()
+    {
+        LinuxLifecycleEvents::Bus::Handler::BusDisconnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationLinux::PumpSystemEventLoopOnce()
     {
     }
 
-    ApplicationLifecycleEventsHandler::~ApplicationLifecycleEventsHandler()
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationLinux::PumpSystemEventLoopUntilEmpty()
     {
-        delete m_pimpl;
     }
 } // namespace AzFramework

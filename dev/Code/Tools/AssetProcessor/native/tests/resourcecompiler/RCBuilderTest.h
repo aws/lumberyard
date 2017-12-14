@@ -39,7 +39,7 @@ public:
         m_initialize++;
         return m_initializeResult;
     }
-    bool Execute(const QString& inputFile, const QString& watchFolder, int platformId, const QString& params, const QString& dest, 
+    bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest, 
         const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const override
     {
         m_execute++;
@@ -110,6 +110,11 @@ struct TestInternalRecognizerBasedBuilder
         }
     }
 
+    bool FindRC(QString& systemRootOut, QString& rcPathOut) override
+    {
+        return true;
+    }
+
     QFileInfoList GetFilesInDirectory(const QString& directoryPath) override
     {
         QFileInfoList   mockFileInfoList;
@@ -162,7 +167,7 @@ struct TestInternalRecognizerBasedBuilder
         return *this;
     }
 
-    AZ::u32 AddTestRecognizer(QString builderID, QString extraRCParam, AssetBuilderSDK::Platform platform)
+    AZ::u32 AddTestRecognizer(QString builderID, QString extraRCParam, QString platformString)
     {
         // Create a dummy test recognizer
         AssetUtilities::FilePatternMatcher patternMatcher;
@@ -171,24 +176,6 @@ struct TestInternalRecognizerBasedBuilder
 
         AssetRecognizer baseAssetRecognizer(QString("test-").append(extraRCParam), false, 1, false, false, patternMatcher, versionZero, productAssetType);
 
-        QString platformString;
-        switch (platform)
-        {
-        case AssetBuilderSDK::Platform::Platform_NONE:
-        case AssetBuilderSDK::Platform::Platform_PC:
-        default:
-            platformString = "pc";
-            break;
-        case AssetBuilderSDK::Platform::Platform_ES3:
-            platformString = "es3";
-            break;
-        case AssetBuilderSDK::Platform::Platform_IOS:
-            platformString = "ios";
-            break;
-        case AssetBuilderSDK::Platform::Platform_OSX:
-            platformString = "osx_gl";
-            break;
-        }
         QHash<QString, AssetPlatformSpec> assetPlatformSpecByPlatform;
         AssetPlatformSpec   assetSpec;
         assetSpec.m_extraRCParams = extraRCParam;
@@ -246,7 +233,7 @@ public:
         return AssetProcessor::BUILDER_ID_RC.GetId();
     }
 
-    AssetBuilderSDK::ProcessJobRequest CreateTestJobRequest(const AZStd::string& testFileName, bool critical, AssetBuilderSDK::Platform platform, AZ::s64 jobId = 0)
+    AssetBuilderSDK::ProcessJobRequest CreateTestJobRequest(const AZStd::string& testFileName, bool critical, QString platform, AZ::s64 jobId = 0)
     {
         AssetBuilderSDK::ProcessJobRequest request;
         request.m_builderGuid = this->GetBuilderUUID();
@@ -254,7 +241,7 @@ public:
         request.m_fullPath = AZStd::string("c:\\temp\\") + testFileName;
         request.m_tempDirPath = "c:\\temp";
         request.m_jobDescription.m_critical = critical;
-        request.m_jobDescription.m_platform = platform;
+        request.m_jobDescription.SetPlatformIdentifier(platform.toUtf8().constData());
         request.m_jobId = jobId;
         return request;
     }

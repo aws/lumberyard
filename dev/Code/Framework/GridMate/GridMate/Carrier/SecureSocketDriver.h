@@ -42,11 +42,13 @@ typedef struct x509_st X509;
 namespace GridMate
 {
     static const int COOKIE_SECRET_LENGTH = 16; //128 bit key
+    static const int MAX_COOKIE_LENGTH = 255; // largest length that will fit in one byte
     struct SecureSocketDesc
     {
         SecureSocketDesc()
             : m_connectionTimeoutMS(5000)
             , m_authenticateClient(false)
+            , m_maxDTLSConnectionsPerIP(~0u)
             , m_privateKeyPEM(nullptr)
             , m_certificatePEM(nullptr)
             , m_certificateAuthorityPEM(nullptr) {};
@@ -54,6 +56,7 @@ namespace GridMate
         AZ::u64     m_connectionTimeoutMS;
         bool        m_authenticateClient;          // Ensure that a client must be authenticated (the server is
                                                    // always authenticated). Only required to be set on the server!
+        unsigned int m_maxDTLSConnectionsPerIP;    // Max number of DTLS connections that can be accepted per ip
         const char* m_privateKeyPEM;               // A base-64 encoded PEM format private key.
         const char* m_certificatePEM;              // A base-64 encoded PEM format certificate.
         const char* m_certificateAuthorityPEM;     // A base-64 encoded PEM format CA root certificate.
@@ -101,11 +104,17 @@ namespace GridMate
         enum ConnectionState
         {
             CS_TOP,
-                CS_ACCEPT,          // Perform TLS/DTLS handshake for an incoming connection.
-                CS_CONNECT,         // Perform TLS/DTLS handshake for an outgoing connection.
-                CS_ESTABLISHED,     // SSL handshake succeeded.
-                CS_DISCONNECTED,    // Normal disconnect.
-                CS_ERROR,           // Error.
+                CS_ACTIVE,                              // Processing datagrams
+                    CS_ACCEPT,                          // Performing TLS/DTLS handshake for an incoming connection.
+                        CS_WAIT_FOR_STATEFUL_HANDSHAKE, // Waiting for client to restart handshake
+                        CS_SSL_HANDSHAKE_ACCEPT,        // SSL handshake
+                    CS_CONNECT,                         // Performing TLS/DTLS handshake for an outgoing connection.
+                        CS_COOKIE_EXCHANGE,             // Waiting for cookie verification
+                        CS_SSL_HANDSHAKE_CONNECT,       // SSL handshake
+                        CS_HANDSHAKE_RETRY,             // Restart handshake
+                    CS_ESTABLISHED,                     // SSL handshake succeeded.
+                CS_DISCONNECTED,                        // Disconnected.
+                CS_SSL_ERROR,                           // Error.
             CS_MAX
         };
 
@@ -142,15 +151,22 @@ namespace GridMate
             AZ::u32 GetDTLSDgram(char* data, AZ::u32 dataSize);
             bool    IsDisconnected() const;
 
-            const SSL* GetSSLContext() { return m_ssl; }
+            bool CreateSSL(SSL_CTX* sslContext);
+            bool DestroySSL();
+            const SSL* GetSSL() { return m_ssl; }
 
         private:
-            bool OnStateTop(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateActive(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateAccept(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateWaitForStatefulHandshake(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateSslHandshakeAccept(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateConnect(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateCookieExchange(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateSslHandshakeConnect(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateHandshakeRetry(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateEstablished(AZ::HSM& sm, const AZ::HSM::Event& event);
             bool OnStateDisconnected(AZ::HSM& sm, const AZ::HSM::Event& event);
-            bool OnStateError(AZ::HSM& sm, const AZ::HSM::Event& event);
+            bool OnStateSSLError(AZ::HSM& sm, const AZ::HSM::Event& event);
 
             // Read a DTLS record (datagram) from a BIO buffer. Return true if records were read and stored
             // in outDgramList, or false if nothing was found.
@@ -159,10 +175,12 @@ namespace GridMate
             enum ConnectionEvents
             {
                 CE_UPDATE = 1,
+                CE_STATEFUL_HANDSHAKE,
+                CE_COOKIE_EXCHANGE_COMPLETED
             };
 
             bool m_isInitialized;
-            TimeStamp m_establishedTime;    // The time the connection reached the established state.
+            TimeStamp m_creationTime;    // The time the connection reached the established state.
             AZ::u64 m_timeoutMS;
             BIO* m_inDTLSBuffer;
             BIO* m_outDTLSBuffer;
@@ -171,18 +189,26 @@ namespace GridMate
             AZStd::queue<DatagramAddr>* m_outPlainQueue; // Plaintext datagrams output by the connection.
             AZ::HSM m_sm;
             SSL* m_ssl;
+            SSL_CTX* m_sslContext;
             AddrPtr m_addr;
             char* m_tempBIOBuffer;
             AZ::u32 m_maxTempBufferSize;
             AZ::s32 m_sslError;
             AZ::u32 m_mtu;
+
+            AZStd::chrono::system_clock::time_point m_nextHelloRequestResend;
+            AZStd::chrono::milliseconds m_helloRequestResendInterval;
+            AZStd::chrono::system_clock::time_point m_nextHandshakeRetry;
+
+        public:
+            int m_dbgDgramsSent;
+            int m_dbgDgramsReceived;
         };
 
-        bool GetPeerAddress(SSL* ssl, string& addr) const;
         bool RotateCookieSecret(bool bForce = false);
         static int VerifyCertificate(int ok, X509_STORE_CTX* ctx);
-        int GenerateCookie(SSL* ssl, unsigned char* cookie, unsigned int* cookieLen);
-        int VerifyCookie(SSL* ssl, unsigned char* cookie, unsigned int cookieLen);
+        int GenerateCookie(AddrPtr endpoint, unsigned char* cookie, unsigned int* cookieLen);
+        int VerifyCookie(AddrPtr endpoint, unsigned char* cookie, unsigned int cookieLen);
 
         void FlushSocketToConnectionBuffer();
         void UpdateConnections();
@@ -210,12 +236,7 @@ namespace GridMate
         AZ::u32 m_maxTempBufferSize;
         AZStd::queue<DatagramAddr> m_globalInQueue;
         AZStd::unordered_map<SocketDriverAddress, Connection*, SocketDriverAddress::Hasher> m_connections;
-        AZStd::unordered_map<const SSL*, string> m_sslToAddress;
-        static const AZ::u32 kSSLContextDriverPtrArg;
-        static const AZ::u32 kDTLSSecretExpirationTime;
-
-
-
+        AZStd::unordered_map<string, int> m_ipToNumConnections;
         SecureSocketDesc m_desc;
     };
 }

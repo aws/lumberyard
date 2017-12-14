@@ -57,6 +57,8 @@ namespace ScriptCanvas
 
             // Triggered by the execution signal
             void OnInputSignal(const SlotId& slot) override;
+
+            void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
                 
         class ArithmeticExpression
@@ -73,6 +75,7 @@ namespace ScriptCanvas
 
             void OnInputSignal(const SlotId& slot) override;
 
+            void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
         
         class BooleanExpression
@@ -88,6 +91,7 @@ namespace ScriptCanvas
             void OnInit() override;
             virtual void InitializeBooleanExpression();
             void OnInputSignal(const SlotId& slot) override;
+            void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
 
         // accepts any type, checks for type equality, and then value equality or pointer equality
@@ -102,6 +106,7 @@ namespace ScriptCanvas
         protected:
             // adds any required input types
             void InitializeBooleanExpression() override;
+            void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
 
         // accepts numbers only
@@ -116,6 +121,7 @@ namespace ScriptCanvas
         protected:
             // adds number types
             void InitializeBooleanExpression() override;
+            void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
 
 #if defined(EXPRESSION_TEMPLATES_ENABLED)

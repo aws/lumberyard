@@ -217,6 +217,7 @@ namespace EMStudio
         TrackHeaderWidget*  mTrackHeaderWidget;
         TimeInfoWidget*     mTimeInfoWidget;
         QScrollBar*         mVerticalScrollBar;
+        QMainWindow*        mMainWindow;
         QBasicTimer         mTimer;
 
         EMotionFX::Motion*                  mMotion;

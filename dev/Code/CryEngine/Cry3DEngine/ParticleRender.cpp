@@ -641,6 +641,11 @@ void CParticleContainer::RenderDecals(const SRenderingPassInfo& passInfo)
 
         pPart->ComputeRenderData(RenderData, Context);
 
+        if (RenderData.fSize < FLT_EPSILON)
+        {
+            continue;
+        }
+
         Vec3 av[4];
         pPart->GetRenderMatrix(av[0], av[1], av[2], av[3], pPart->GetLocation(), RenderData, Context);
         decal.projMatrix.SetFromVectors(av[0], av[2], av[1], av[3]);
@@ -877,16 +882,15 @@ void CParticle::GetRenderMatrix(Vec3& vX, Vec3& vY, Vec3& vZ, Vec3& vT, const Qu
     float aspect = 1.0f;
     if (!(params.nEnvFlags & REN_GEOMETRY))
     {
-        aspect = params.fSizeX.GetValueFromMod(m_BaseMods.SizeX, fRelativeAge) / params.fSizeY.GetValueFromMod(m_BaseMods.SizeY, fRelativeAge);
-        
-        //aspect change from spawn parameter
-        if (m_sizeScale.x == 0.f || m_sizeScale.y < 0.0001f)
+        float sizeX = params.fSizeX.GetValueFromMod(m_BaseMods.SizeX, fRelativeAge);
+        float sizeY = params.fSizeY.GetValueFromMod(m_BaseMods.SizeY, fRelativeAge);
+        if (abs(sizeY) < 0.0001f || abs(m_sizeScale.y) < 0.0001f)
         {
             aspect = 0;
         }
         else
         {
-            aspect *= m_sizeScale.x / m_sizeScale.y;
+            aspect = (sizeX / sizeY) * (m_sizeScale.x / m_sizeScale.y);
         }
     }
 
@@ -1283,7 +1287,10 @@ Vec2 CParticle::CalculateConnectedTextureCoords(SParticleVertexContext& context)
         }
     }
     texOffset.y += (GetRelativeAge() * context.m_Params.fTextureShift);
-    texOffset.y *= context.m_Params.Connection.fTextureFrequency;
+    if (context.m_Params.GetEmitterShape() == ParticleParams::EEmitterShapeType::TRAIL)
+    {
+        texOffset.y *= context.m_Params.Connection.fTextureFrequency;
+    }
     //transfer the y to [0, multiplier]
     texOffset.y = fmod(texOffset.y, multiplier);
 
@@ -1298,6 +1305,7 @@ Vec2 CParticle::CalculateConnectedTextureCoords(SParticleVertexContext& context)
     }
 
     texOffset.y +=  context.m_fTextureYAdjust;
+    texOffset.y = fmod(texOffset.y, multiplier);
     texOffset.y /= multiplier;
 
     return texOffset;
@@ -1435,7 +1443,7 @@ void CParticle::CalculateTrailEmitterFade(SParticleVertexContext& Context)
 
 void CParticle::SetTailVertices(const SVF_Particle& BaseVert, SParticleRenderData RenderData, SLocalRenderVertices& alloc, SParticleVertexContext const& Context) const
 {
-    if (Context.m_nMaxParticleIndices == 0 || Context.m_nMaxParticleVertices == 0)
+    if (Context.m_nMaxParticleIndices == 0 || Context.m_nMaxParticleVertices == 0 || RenderData.fSize < FLT_EPSILON)
     {
         // If there has been no space allocated for the particle tail then that means there are no tail particles to render.
         return;
@@ -1596,7 +1604,7 @@ PREFAST_SUPPRESS_WARNING(6262)     // Function uses '33724' bytes of stack: exce
     //have to check if particle belongs to spawned emitter
     for (ParticleList<CParticle>::const_iterator pPart(m_Particles); pPart; ++pPart, ++auParticleAlpha)
     {
-        if (!(*auParticleAlpha > 0 || Context.m_Params.IsConnectedParticles()))
+        if (!(*auParticleAlpha > 0 || Context.m_Params.IsConnectedParticles()) || pPart->GetLocation().s < FLT_EPSILON)
         {
             // Culled from previous pass
             continue;

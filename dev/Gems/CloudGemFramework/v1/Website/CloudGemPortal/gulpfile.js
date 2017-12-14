@@ -310,7 +310,7 @@ gulp.task('inline-template-gem', function () {
         .pipe(gulp.dest('dist/external'))
 });
 
-gulp.task('bundle-gems', gulp.series('npm:link', 'inline-template-gem', 'gem-ts', function (cb) {    
+gulp.task('bundle-gems', gulp.series('npm:link', 'sass', 'inline-template-gem', 'gem-ts', function (cb) {    
     var builder = new Builder('', systemjs_config);    
 	return cloudGems()	
     .pipe(through.obj(function bundle(file, encoding, done) {	
@@ -399,9 +399,10 @@ gulp.task('build-deploy',
     gulp.series('clean:www',
         'clean:dist',
         'set:test-define-off',        
-        'set:prod-define', 
+        'set:prod-define',
+        'sass', 
         'inline-template-app',        
-		'bundle-gems',
+        'bundle-gems',
         gulp.parallel(bundleDependencies, bundleApp),
         'copy:assets',
         'set:dev-define'));
@@ -572,7 +573,11 @@ gulp.task('package:uninstall', function () {
 })
 
 function globalDefines() {
-    replaceOrAppend(environment_file, /export const metricWhiteListedCloudGem = \[.*\]/g, "export const metricWhiteListedCloudGem = ['CloudGemAWSScriptBehaviors','CloudGemDynamicContent','CloudGemFramework','CloudGemInGameSurvey','CloudGemLeaderboard','CloudGemLoadTest','CloudGemMessageOfTheDay','CloudGemPlayerAccount','CloudGemPolly','CloudGemTextToSpeech']")
+    replaceOrAppend(environment_file, /export const metricWhiteListedCloudGem = \[.*\]/g, "export const metricWhiteListedCloudGem = []")        
+    if (argv.builtByAmazon) {
+        console.log("Whitelisting: " + getCloudGemFolderNames(true))         
+        replaceOrAppend(environment_file, /export const metricWhiteListedCloudGem = \[.*\]/g, "export const metricWhiteListedCloudGem = [" + getCloudGemFolderNames(true) + "]")        
+    }
     replaceOrAppend(environment_file, /export const metricWhiteListedFeature = \[.*\]/g, "export const metricWhiteListedFeature = ['Cloud Gems', 'Support', 'Analytics', 'Admin']")
     replaceOrAppend(environment_file, /export const metricAdminIndex = 3/g, "export const metricAdminIndex = 3")
 }
@@ -591,6 +596,24 @@ function getFolders(dir) {
         return fs.statSync(path.join(dir, file)).isDirectory();
     });
 }
+
+function getCloudGemFolderNames(addquotes, asrelative) {
+    var relativePathPrefix = path.join(path.join(path.join("..", ".."), ".."), "..");
+    var folders = getFolders(relativePathPrefix)
+    var cloudGems = []
+    folders.map(function (folder) {
+        if (folder.toLowerCase().startsWith("cloudgem")) {
+            if (addquotes)
+                cloudGems.push("\"" + folder + "\"")
+            else if (asrelative)
+                cloudGems.push(path.join(relativePathPrefix, folder))
+            else
+                cloudGems.push(folder)
+        }
+    })
+    return cloudGems
+}
+
 
 function cloudGems(addquotes, asrelative) {
     //We are looking for any gem with a node project.  There could potentially be other Cloud Gems without node projects but they are not loaded by the CGP.

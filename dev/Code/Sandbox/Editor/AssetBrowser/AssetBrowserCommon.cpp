@@ -1164,9 +1164,9 @@ void    CAssetItem::SetDrawingRectangle(const QRect& crstDrawingRectangle)
 
 bool CAssetItem::Cache()
 {
-    QString strUserFolder = Path::GetUserSandboxFolder();
+    QString strUserFolder = Path::GetResolvedUserSandboxFolder();
 
-    const QString str = QString::fromLatin1("%1%2%3.jpg").arg(strUserFolder).arg(AssetBrowser::kThumbnailsRoot).arg(m_hash);
+    const QString str = QString::fromUtf8("%1%2%3.jpg").arg(strUserFolder, QString(AssetBrowser::kThumbnailsRoot), QString::number(m_hash));
 
     return m_cachedThumbBmp.save(str);
 }
@@ -1185,9 +1185,9 @@ bool CAssetItem::LoadThumbnail()
         return true;
     }
 
-    QString strUserFolder = Path::GetUserSandboxFolder();
+    QString strUserFolder = Path::GetResolvedUserSandboxFolder();
 
-    const QString str = QString::fromLatin1("%1%2%3.jpg").arg(strUserFolder).arg(AssetBrowser::kThumbnailsRoot).arg(m_hash);
+    const QString str = QString::fromUtf8("%1%2%3.jpg").arg(strUserFolder, QString(AssetBrowser::kThumbnailsRoot), QString::number(m_hash));
 
     if (m_cachedThumbBmp.load(str))
     {

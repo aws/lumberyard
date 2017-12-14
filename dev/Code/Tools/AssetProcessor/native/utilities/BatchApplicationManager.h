@@ -25,6 +25,13 @@
 #include "native/utilities/assetUtils.h"
 
 #include "AssetBuilderInfo.h"
+#include "BuilderManager.h"
+
+namespace AzToolsFramework
+{
+    class ProcessWatcher;
+    class Ticker;
+}
 
 namespace AssetProcessor
 {
@@ -42,11 +49,6 @@ class ConnectionManager;
 class FolderWatchCallbackEx;
 //! This class is the Application manager for Batch Mode
 
-namespace AzToolsFramework
-{
-    class Ticker;
-}
-
 
 class BatchApplicationManager
     : public ApplicationManager
@@ -55,10 +57,11 @@ class BatchApplicationManager
     , public AssetProcessor::AssetBuilderRegistrationBus::Handler
     , public AZ::Debug::TraceMessageBus::Handler
     , protected AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler
+    , public AssetProcessor::DiskSpaceInfoBus::Handler
 {
     Q_OBJECT
 public:
-    explicit BatchApplicationManager(int argc, char** argv, QObject* parent = 0);
+    explicit BatchApplicationManager(int* argc, char*** argv, QObject* parent = 0);
     virtual ~BatchApplicationManager();
     ApplicationManager::BeforeRunStatus BeforeRun() override;
     void Destroy() override;
@@ -91,7 +94,6 @@ public:
     void BuilderLogV(const AZ::Uuid& builderId, const char* message, va_list list) override;
 
     //! AssetBuilderSDK::InternalAssetBuilderBus Interface
-    void UnRegisterComponentDescriptor(const AZ::ComponentDescriptor* componentDescriptor) override;
     void UnRegisterBuilderDescriptor(const AZ::Uuid& builderId) override;
 
     //! AssetProcessor::AssetBuilderInfoBus Interface
@@ -99,6 +101,10 @@ public:
 
     //! TraceMessageBus Interface
     bool OnError(const char* window, const char* message) override;
+
+
+    //! DiskSpaceInfoBus::Handler
+    bool CheckSufficientDiskSpace(const QString& savePath, qint64 requiredSpace, bool shutdownIfInsufficient) override;
 
 Q_SIGNALS:
     void CheckAssetProcessorManagerIdleState();
@@ -126,6 +132,8 @@ protected:
 
     bool InitializeInternalBuilders();
     bool InitializeExternalBuilders();
+    void InitBuilderManager();
+    void ShutdownBuilderManager();
     bool InitAssetDatabase();
     void ShutDownAssetDatabase();
 
@@ -134,6 +142,8 @@ protected:
     // ------------------------------------------------------------
 
     AssetProcessor::AssetCatalog* GetAssetCatalog() const { return m_assetCatalog; }
+
+    static bool WaitForBuilderExit(AzToolsFramework::ProcessWatcher* processWatcher, AssetBuilderSDK::JobCancelListener* jobCancelListener, AZ::u32 processTimeoutLimitInSeconds);
 
     ApplicationServer* m_applicationServer = nullptr;
     ConnectionManager* m_connectionManager = nullptr;
@@ -165,6 +175,7 @@ private:
     AssetProcessor::RCController* m_rcController = nullptr;
     AssetProcessor::AssetDatabaseConnection* m_assetDatabaseConnection = nullptr;
     AssetProcessor::AssetRequestHandler* m_assetRequestHandler = nullptr;
+    AssetProcessor::BuilderManager* m_builderManager = nullptr;
 
     // The internal builder
     AZStd::shared_ptr<AssetProcessor::InternalRecognizerBasedBuilder> m_internalBuilder;
@@ -180,7 +191,22 @@ private:
 
     // Collection of all the external module builders
     AZStd::list<AssetProcessor::ExternalModuleAssetBuilderInfo*>    m_externalAssetBuilders;
-    AssetProcessor::ExternalModuleAssetBuilderInfo*                 m_currentExternalAssetBuilder;
+
+    struct ExternalAssetBuilderRegistration
+    {
+        ExternalAssetBuilderRegistration() = default;
+        ExternalAssetBuilderRegistration(AssetProcessor::ExternalModuleAssetBuilderInfo* builderInfo, AZStd::string builderFilePath)
+            : m_builderInfo(builderInfo),
+            m_builderFilePath(builderFilePath)
+        {
+
+        }
+
+        AssetProcessor::ExternalModuleAssetBuilderInfo* m_builderInfo = nullptr;
+        AZStd::string m_builderFilePath;
+    };
+
+    ExternalAssetBuilderRegistration m_currentExternalAssetBuilder;
     
     QAtomicInt m_connectionsAwaitingAssetCatalogSave = 0;
     int m_remainingAPMJobs = 0;

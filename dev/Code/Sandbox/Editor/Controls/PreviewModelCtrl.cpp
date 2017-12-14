@@ -114,11 +114,9 @@ void CPreviewModelCtrl::OnCreate()
     m_aabb = AABB(2);
     FitToScreen();
 
-#ifdef KDAB_MAC_PORT
     setAttribute(Qt::WA_NativeWindow);
     setAttribute(Qt::WA_PaintOnScreen);
     setAttribute(Qt::WA_OpaquePaintEvent);
-#endif
 
     GetIEditor()->RegisterNotifyListener(this);
 }
@@ -431,8 +429,14 @@ void CPreviewModelCtrl::SetCamera(CCamera& cam)
 {
     m_camera.SetPosition(cam.GetPosition());
 
-    const int w = width() * m_tileSizeX;
-    const int h = height() * m_tileSizeY;
+#if defined(AZ_PLATFORM_WINDOWS)
+    // Needed for high DPI mode on windows
+    const qreal ratio = devicePixelRatioF();
+#else
+    const qreal ratio = 1.0f;
+#endif
+    const int w = width() * ratio * m_tileSizeX;
+    const int h = height() * ratio * m_tileSizeY;
     m_camera.SetFrustum(w, h, DEG2RAD(m_fov), m_camera.GetNearPlane(), m_camera.GetFarPlane());
 
     if (m_cameraChangeCallback)
@@ -952,6 +956,17 @@ void CPreviewModelCtrl::OnEditorNotifyEvent(EEditorNotifyEvent event)
 
 void CPreviewModelCtrl::GetImageOffscreen(CImageEx& image, const QSize& customSize)
 {
+    // hiding a window can cause this to be dropped, since it no longer associates with
+    // an actual operating system window handle.
+    if (!m_hWnd)
+    {
+        return;
+    }
+    if (!m_pRenderer)
+    {
+        return;
+    }
+
     m_pRenderer->EnableSwapBuffers(false);
     Render();
     m_pRenderer->EnableSwapBuffers(true);
@@ -1288,7 +1303,14 @@ void CPreviewModelCtrl::SetCurrentContext()
     StorePreviousContext();
 
     m_pRenderer->SetCurrentContext(m_hWnd);
-    m_pRenderer->ChangeViewport(0, 0, width(), height());
+
+#if defined(AZ_PLATFORM_WINDOWS)
+    // Needed for high DPI mode on windows
+    const qreal ratio = devicePixelRatioF();
+#else
+    const qreal ratio = 1.0f;
+#endif
+    m_pRenderer->ChangeViewport(0, 0, width() * ratio, height() * ratio);
     m_pRenderer->SetCamera(m_camera);
     gEnv->pSystem->SetViewCamera(m_camera);
 }

@@ -626,6 +626,7 @@ void CMannequinModelViewport::mouseMoveEvent(QMouseEvent* event)
         }
         else
         {
+            PreWidgetRendering();
             HitContext hc;
             hc.view = this;
             hc.point2d = point;
@@ -633,6 +634,7 @@ void CMannequinModelViewport::mouseMoveEvent(QMouseEvent* event)
             Vec3 raySrc(0, 0, 0), rayDir(1, 0, 0);
             ViewToWorldRay(point, hc.raySrc, hc.rayDir);
             HitTest(hc, false);
+            PostWidgetRendering();
         }
     }
 }

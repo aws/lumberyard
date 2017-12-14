@@ -74,6 +74,7 @@ protected:
     //////////////////////////////////////////////////////////////////////////
     // Some functions can be overriden to modify standart functionality.
     //////////////////////////////////////////////////////////////////////////
+    using CBaseLibraryDialog::InitToolbar;
     virtual void InitToolbar(/*UINT nToolbarResID */);
     virtual void InitItemToolbar();
     virtual void ReloadItems();

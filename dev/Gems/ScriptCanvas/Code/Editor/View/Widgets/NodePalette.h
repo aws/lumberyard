@@ -53,31 +53,6 @@ namespace ScriptCanvasEditor
     {        
         class NodeTreeView;
 
-        // This class will provide a label that auto truncates itself to the size that it is given.
-        class AutoElidedText
-            : public QLabel
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(AutoElidedText, AZ::SystemAllocator, 0);
-
-            AutoElidedText(QWidget* parent = nullptr, Qt::WindowFlags flags = 0);
-            ~AutoElidedText();
-
-            QString fullText() const;
-            void setFullText(const QString& text);
-
-            void resizeEvent(QResizeEvent* resizeEvent) override;
-
-            QSize minimumSizeHint() const override;
-            QSize sizeHint() const override;
-
-            void RefreshLabel();
-
-        private:
-
-            QString m_fullText;
-        };
-
         class NodePaletteTreeDelegate : public QStyledItemDelegate
         {
         public:
@@ -105,12 +80,15 @@ namespace ScriptCanvasEditor
             void ResetDisplay();
             GraphCanvas::GraphCanvasMimeEvent* GetContextMenuEvent() const;
 
+            void ResetSourceSlotFilter();
+            void FilterForSourceSlot(const AZ::EntityId& sceneId, const AZ::EntityId& sourceSlotId);
+
             // MainWindowNotificationBus
             void PreOnActiveSceneChanged() override;
             void PostOnActiveSceneChanged() override;
             ////
 
-            // GraphCanvas::GraphCavnasTreeModelRequestBus::Handler
+            // GraphCanvas::GraphCanvasTreeModelRequestBus::Handler
             void ClearSelection() override;
             ////
 
@@ -123,29 +101,21 @@ namespace ScriptCanvasEditor
 
         private:
 
-            bool eventFilter(QObject* object, QEvent* event) override;
-
             void RefreshFloatingHeader();
             void OnQuickFilterChanged();
             void UpdateFilter();
             void ClearFilter();
 
-            bool m_sliding;
+            // Will try and spawn the item specified by the QCompleter
+            void TrySpawnItem();
 
-            qreal m_scrollRange;
-            qreal m_scrollbarHeight;
-
-            QPointF m_topRight;
-            QPointF m_bottomRight;
-            QPointF m_lastPosition;
-            qreal m_offsetCounter;
+            void HandleSelectedItem(const GraphCanvas::GraphCanvasTreeItem* treeItem);
 
             AZStd::unique_ptr<Ui::NodePalette> ui;
             
             GraphCanvas::GraphCanvasMimeEvent* m_contextMenuCreateEvent;
 
-            QTimer        m_filterTimer;
-            AZStd::vector< AutoElidedText* > m_floatingLabels;
+            QTimer        m_filterTimer;;
             NodeTreeView* m_view;
             Model::NodePaletteSortFilterProxyModel* m_model;
         };

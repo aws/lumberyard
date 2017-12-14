@@ -26,6 +26,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_ViewportMovement();
+    virtual ~CEditorPreferencesPage_ViewportMovement() = default;
 
     virtual const char* GetCategory() override { return "Viewports"; }
     virtual const char* GetTitle() override { return "Movement"; }

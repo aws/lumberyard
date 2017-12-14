@@ -14,6 +14,9 @@
 #include "StdAfx.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include "LayerNode.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 namespace
@@ -21,7 +24,7 @@ namespace
     bool s_nodeParamsInitialized = false;
     std::vector<CAnimNode::SParamInfo> s_nodeParams;
 
-    void AddSupportedParam(const char* sName, int paramId, EAnimValue valueType)
+    void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -38,7 +41,7 @@ CLayerNode::CLayerNode()
 }
 
 CLayerNode::CLayerNode(const int id)
-    : CAnimNode(id, eAnimNodeType_Layer)
+    : CAnimNode(id, AnimNodeType::Layer)
     , m_bInit(false)
     , m_bPreVisibility(true)
 {
@@ -52,7 +55,7 @@ void CLayerNode::Initialize()
     {
         s_nodeParamsInitialized = true;
         s_nodeParams.reserve(1);
-        AddSupportedParam("Visibility", eAnimParamType_Visibility, eAnimValue_Bool);
+        AddSupportedParam("Visibility", AnimParamType::Visibility, AnimValueType::Bool);
     }
 }
 
@@ -83,7 +86,7 @@ void CLayerNode::Animate(SAnimContext& ec)
 
         switch (paramType.GetType())
         {
-        case eAnimParamType_Visibility:
+        case AnimParamType::Visibility:
             if (!ec.bResetting)
             {
                 IAnimTrack* visTrack = pTrack;
@@ -123,7 +126,7 @@ void CLayerNode::Animate(SAnimContext& ec)
 //-----------------------------------------------------------------------------
 void CLayerNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_Visibility);
+    CreateTrack(AnimParamType::Visibility);
 }
 
 //-----------------------------------------------------------------------------
@@ -161,7 +164,7 @@ CAnimParamType CLayerNode::GetParamType(unsigned int nIndex) const
         return s_nodeParams[nIndex].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //-----------------------------------------------------------------------------

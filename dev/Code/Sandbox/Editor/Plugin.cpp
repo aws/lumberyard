@@ -75,9 +75,9 @@ void CClassFactory::RegisterClass(IClassDesc* pClassDesc)
             "Error registering class '%s' -  UUID of that class already exists (%s), and belongs to class named '%s.'\n"
             "You may not have duplicate class identifiers.\n"
             "Check for duplicate plugins or copy and pasted code for plugins that duplicates UUIDs returned.",
-            pClassDesc->ClassName(),
+            pClassDesc->ClassName().toUtf8().data(),
             existingUUIDString,
-            findByGuid->second->ClassName());
+            findByGuid->second->ClassName().toUtf8().data());
 
         CryMessageBox(errorMessageBuffer, "Invalid class registration - Duplicate UUID", MB_OK);
         return;

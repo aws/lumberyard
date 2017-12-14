@@ -58,8 +58,6 @@ namespace AzToolsFramework
 
         void Setup(AZ::SerializeContext* context, IPropertyEditorNotify* ptrNotify, bool enableScrollbars, int propertyLabelWidth = 200);
 
-        void SetReadOnly(bool readOnly);
-
         // allows disabling display of root container property widgets
         void SetHideRootProperties(bool hideRootProperties);
 
@@ -72,7 +70,7 @@ namespace AzToolsFramework
             return AddInstance(instance, AZ::AzTypeInfo<T>().Uuid(), aggregateInstance, compareInstance);
         }
 
-        void InvalidateAll(); // recreates the entire tree of properties.
+        void InvalidateAll(const char* filter = nullptr); // recreates the entire tree of properties.
         void InvalidateAttributesAndValues(); // re-reads all attributes, and all values.
         void InvalidateValues(); // just updates the values inside properties.
 
@@ -107,6 +105,9 @@ namespace AzToolsFramework
         void EnumerateInstances(InstanceDataHierarchyCallBack enumerationCallback);
 
         void SetValueComparisonFunction(const InstanceDataHierarchy::ValueComparisonFunction& valueComparisonFunction);
+
+        bool HasFilteredOutNodes() const { return m_hasFilteredOutNodes; }
+        bool HasVisibleNodes() const { return m_widgetsInDisplayOrder.size() > 0; }
 
         // if you want it to save its state, you need to give it a user settings label:
         //void SetSavedStateLabel(AZ::u32 label);
@@ -178,7 +179,12 @@ namespace AzToolsFramework
         PropertyModificationRefreshLevel m_queuedRefreshLevel;
         virtual void paintEvent(QPaintEvent* event) override;
 
-        bool m_readOnly;
+        bool FilterNode(InstanceDataNode* node, const char* filter);
+        bool IsFilteredOut(InstanceDataNode* node);
+        bool m_hasFilteredOutNodes = false;
+
+        AZStd::unordered_map<InstanceDataNode*, bool> m_nodeFilteredOutState;
+
         bool m_hideRootProperties;
         bool m_queuedTabOrderRefresh;
         int m_expansionDepth;

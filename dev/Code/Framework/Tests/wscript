@@ -11,6 +11,10 @@
 #
 ########################################################################################
 
+SUBFOLDERS = [
+    "Physics"
+]
+
 def build(bld):
 
     bld.CryEngineSharedLibrary(
@@ -24,5 +28,8 @@ def build(bld):
         uselib              = [ 'QT5CORE',
                                 'QT5GUI',
                                 'QT5WIDGETS'],
-        win_cxxflags        = ['/W4']
+        msvc_cxxflags       = ['/W4'],
+        clang_cxxflags      = ['-Wall', '-Werror'],
     )
+    
+    bld.recurse(SUBFOLDERS)

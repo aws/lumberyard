@@ -26,8 +26,10 @@
 #include <ITimer.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiScrollerNotificationBus Behavior context handler class 
-class BehaviorUiScrollerNotificationBusHandler : public UiScrollerNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiScrollerNotificationBus Behavior context handler class
+class BehaviorUiScrollerNotificationBusHandler
+    : public UiScrollerNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiScrollerNotificationBusHandler, "{77A20EE4-EB8D-431A-B4B1-798805801C4D}", AZ::SystemAllocator,
@@ -735,7 +737,9 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetMinHandlePixelSize", &UiScrollBarBus::Events::GetMinHandlePixelSize)
             ->Event("SetMinHandlePixelSize", &UiScrollBarBus::Events::SetMinHandlePixelSize)
             ->Event("GetHandleEntity", &UiScrollBarBus::Events::GetHandleEntity)
-            ->Event("SetHandleEntity", &UiScrollBarBus::Events::SetHandleEntity);
+            ->Event("SetHandleEntity", &UiScrollBarBus::Events::SetHandleEntity)
+            ->VirtualProperty("HandleSize", "GetHandleSize", "SetHandleSize")
+            ->VirtualProperty("MinHandlePixelSize", "GetMinHandlePixelSize", "SetMinHandlePixelSize");
 
         behaviorContext->Enum<(int)UiScrollerInterface::Orientation::Horizontal>("eUiScrollerOrientation_Horizontal")
             ->Enum<(int)UiScrollerInterface::Orientation::Vertical>("eUiScrollerOrientation_Vertical");
@@ -749,11 +753,16 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetValueChangingActionName", &UiScrollerBus::Events::GetValueChangingActionName)
             ->Event("SetValueChangingActionName", &UiScrollerBus::Events::SetValueChangingActionName)
             ->Event("GetValueChangedActionName", &UiScrollerBus::Events::GetValueChangedActionName)
-            ->Event("SetValueChangedActionName", &UiScrollerBus::Events::SetValueChangedActionName);
+            ->Event("SetValueChangedActionName", &UiScrollerBus::Events::SetValueChangedActionName)
+            ->VirtualProperty("Value", "GetValue", "SetValue");
 
         behaviorContext->EBus<UiScrollerNotificationBus>("UiScrollerNotificationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiScrollerNotificationBusHandler>();
+
+        behaviorContext->Class<UiScrollBarComponent>()
+            ->RequestBus("UiScrollBarBus")
+            ->RequestBus("UiScrollerBus");
     }
 }
 

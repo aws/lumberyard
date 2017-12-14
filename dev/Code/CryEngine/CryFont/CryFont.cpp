@@ -367,13 +367,13 @@ IFFont* CCryFont::NewFont(const char* pFontName)
 
 IFFont* CCryFont::GetFont(const char* pFontName) const
 {
-    FontMapConstItor it = m_fonts.find(CONST_TEMP_STRING(pFontName));
+    FontMapConstItor it = m_fonts.find(CONST_TEMP_STRING(string(pFontName).MakeLower()));
     return it != m_fonts.end() ? it->second : 0;
 }
 
 FontFamilyPtr CCryFont::LoadFontFamily(const char* pFontFamilyName)
 {
-    std::shared_ptr<FontFamily> fontFamily(nullptr);
+    FontFamilyPtr fontFamily(nullptr);
     string fontFamilyPath;
     string fontFamilyFullPath;
     
@@ -447,6 +447,11 @@ FontFamilyPtr CCryFont::LoadFontFamily(const char* pFontFamilyName)
                     // families to also be referenced simply by name.
                     if (!AddFontFamilyToMaps(fontFamilyFullPath, xmlData.m_fontFamilyName, fontFamily))
                     {
+                        SAFE_RELEASE(normal);
+                        SAFE_RELEASE(bold);
+                        SAFE_RELEASE(italic);
+                        SAFE_RELEASE(boldItalic);
+
                         return nullptr;
                     }
 
@@ -455,6 +460,13 @@ FontFamilyPtr CCryFont::LoadFontFamily(const char* pFontFamilyName)
                     fontFamily->bold = bold;
                     fontFamily->italic = italic;
                     fontFamily->boldItalic = boldItalic;
+                }
+                else
+                {
+                    SAFE_RELEASE(normal);
+                    SAFE_RELEASE(bold);
+                    SAFE_RELEASE(italic);
+                    SAFE_RELEASE(boldItalic);
                 }
             }
         }
@@ -481,6 +493,8 @@ FontFamilyPtr CCryFont::LoadFontFamily(const char* pFontFamilyName)
             fontFamily->familyName = PathUtil::GetFileName(pFontFamilyName);
             if (!AddFontFamilyToMaps(pFontFamilyName, fontFamily->familyName, fontFamily))
             {
+                SAFE_RELEASE(pFont);
+
                 return nullptr;
             }
 
@@ -596,14 +610,44 @@ void CCryFont::OnLanguageChanged()
 void CCryFont::UnregisterFont(const char* pFontName)
 {
     FontMapItor it = m_fonts.find(CONST_TEMP_STRING(pFontName));
+
+#if defined(AZ_ENABLE_TRACING)
+    IFFont* fontPtr = it->second;
+#endif
+
     if (it != m_fonts.end())
     {
         m_fonts.erase(it);
     }
+
+#if defined(AZ_ENABLE_TRACING)
+    // Make sure the font being released isn't currently in use by a font family.
+    // If it is, the FontFamily will have a dangling pointer and will cause a
+    // crash when the FontFamily eventually gets released.
+    for (auto reverseMapEntry : m_fontFamilyReverseLookup)
+    {
+        FontFamily* fontFamily = reverseMapEntry.first;
+        AZ_Assert(fontFamily->normal != fontPtr, 
+            "The following font is being freed but still in use by a FontFamily: %s",
+            pFontName);
+        AZ_Assert(fontFamily->italic != fontPtr,
+            "The following font is being freed but still in use by a FontFamily: %s",
+            pFontName);
+        AZ_Assert(fontFamily->bold != fontPtr,
+            "The following font is being freed but still in use by a FontFamily: %s",
+            pFontName);
+        AZ_Assert(fontFamily->boldItalic != fontPtr,
+            "The following font is being freed but still in use by a FontFamily: %s",
+            pFontName);
+    }
+#endif
 }
 
-IFFont* CCryFont::LoadFont(const char* fontName)
+IFFont* CCryFont::LoadFont(const char* pFontName)
 {
+    string fontName = pFontName;
+    fontName.MakeLower();
+
     IFFont* font = GetFont(fontName);
     if (font)
     {
@@ -640,11 +684,6 @@ IFFont* CCryFont::LoadFont(const char* fontName)
 
 void CCryFont::ReleaseFontFamily(FontFamily* pFontFamily)
 {
-    SAFE_RELEASE(pFontFamily->normal);
-    SAFE_RELEASE(pFontFamily->bold);
-    SAFE_RELEASE(pFontFamily->italic);
-    SAFE_RELEASE(pFontFamily->boldItalic);
-
     // Ensure that Font Family was mapped prior to destruction
     const bool isMapped = m_fontFamilyReverseLookup.find(pFontFamily) != m_fontFamilyReverseLookup.end();
     if (!isMapped)
@@ -661,6 +700,11 @@ void CCryFont::ReleaseFontFamily(FontFamily* pFontFamily)
     // Reverse lookup is used to avoid needing to store filename path with
     // the font family, so we need to remove that entry also.
     m_fontFamilyReverseLookup.erase(pFontFamily);
+
+    SAFE_RELEASE(pFontFamily->normal);
+    SAFE_RELEASE(pFontFamily->bold);
+    SAFE_RELEASE(pFontFamily->italic);
+    SAFE_RELEASE(pFontFamily->boldItalic);
 }
 
 bool CCryFont::AddFontFamilyToMaps(const char* pFontFamilyFilename, const char* pFontFamilyName, FontFamilyPtr fontFamily)

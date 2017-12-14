@@ -195,7 +195,8 @@ namespace UnitTest
 
             EXPECT_TRUE(sysAlloc.NumAllocatedBytes()>=100000); // we requested 100 * 1000 so we should have at least this much allocated
 
-#ifdef AZCORE_ENABLE_MEMORY_TRACKING
+// If tracking and recording is enabled, we can verify that the alloc info is valid
+#if defined(AZCORE_ENABLE_MEMORY_TRACKING) && defined(AZ_DEBUG_BUILD)
             sysAlloc.GetRecords()->lock();
             EXPECT_TRUE(sysAlloc.GetRecords());
             const Debug::AllocationRecordsType& records = sysAlloc.GetRecords()->GetMap();
@@ -221,7 +222,7 @@ namespace UnitTest
 #   endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) // ACCEPTED_USE
             }
             sysAlloc.GetRecords()->unlock();
-#endif //#ifdef AZCORE_ENABLE_MEMORY_TRACKING
+#endif //#if defined(AZCORE_ENABLE_MEMORY_TRACKING) && defined(AZ_DEBUG_BUILD)
 
             // Free all memory
             for (int i = 0; i < 100; ++i)
@@ -2684,79 +2685,4 @@ namespace UnitTest
 #endif // AZ_PLATFORM_WINDOWS
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Overload global new and delete for the unit test
-// GlobalNewDeleteTest-Begin
-
-// this is a workaround for the fact that on iOS _dyld_start calls llvm::object_creator<llvm::PassRegistry>()
-// and also google test, which likes to new up each test fixture (which rather defeats the point of fixtures)
-// which calls the global operator new before our SystemAllocator is setup.
-// It is somewhat unsafe because something could be newer before the system allocator is ready and then
-// deleted when it is ready. This would get an assert in debug code though so should be spotted.
-#define AZ_CHECK_SYSTEM_ALLOCATOR_READY
-
-void* operator new(std::size_t size, const char* fileName, int lineNum, const AZ::Internal::AllocatorDummy&)
-{
-    return AZ::OperatorNew(size, fileName, lineNum);
-}
-void* operator new[](std::size_t size, const char* fileName, int lineNum, const AZ::Internal::AllocatorDummy&)
-{
-    return AZ::OperatorNewArray(size, fileName, lineNum);
-}
-void* operator new(std::size_t size)
-{
-#ifdef AZ_CHECK_SYSTEM_ALLOCATOR_READY
-    if (AllocatorInstance<AZ::SystemAllocator>::IsReady())
-    {
-        // Avoid the assert in AZ::OperatorNew()
-        return AllocatorInstance<AZ::SystemAllocator>::Get().Allocate(size, AZCORE_GLOBAL_NEW_ALIGNMENT, 0, "operator new", 0, 0);
-    }
-    else
-    {
-        return malloc(size);
-    }
-#else
-    return AZ::OperatorNew(size);
-#endif
-}
-#if !defined(AZ_CHECK_SYSTEM_ALLOCATOR_READY)
-void* operator new[](std::size_t size)
-{
-    return AZ::OperatorNewArray(size);
-}
-#endif
-#if defined(AZ_COMPILER_CLANG)
-#               pragma clang diagnostic push
-#               pragma clang diagnostic ignored "-Wimplicit-exception-spec-mismatch"
-#endif
-void operator delete(void* ptr)
-{
-    if (ptr)
-    {
-#ifdef AZ_CHECK_SYSTEM_ALLOCATOR_READY
-        if (AllocatorInstance<AZ::SystemAllocator>::IsReady())
-        {
-            AZ::OperatorDelete(ptr);
-        }
-        else
-        {
-            free(ptr);
-        }
-#else
-        AZ::OperatorDelete(ptr);
-#endif
-    }
-}
-#if !defined(AZ_CHECK_SYSTEM_ALLOCATOR_READY)
-void operator delete[](void* ptr)
-{
-    if (ptr)
-    {
-        AZ::OperatorDeleteArray(ptr);
-    }
-}
-#endif
-#if defined(AZ_COMPILER_CLANG)
-#               pragma clang diagnostic pop
-#endif
 // GlobalNewDeleteTest-End

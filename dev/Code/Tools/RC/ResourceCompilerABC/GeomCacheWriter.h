@@ -25,27 +25,21 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/thread.h>
 
-// This contains the position of an asynchronous
-// write after it was completed
-class DiskWriteFuture
+// This contains the position and size of a disk write
+struct DataBlockFileInfo
 {
-    friend class GeomCacheDiskWriteThread;
-
-public:
-    DiskWriteFuture()
+    DataBlockFileInfo()
         : m_position(0)
-        , m_size(0) {};
-
-    uint64 GetPosition() const
+        , m_size(0) 
     {
-        return m_position;
-    }
-    uint32 GetSize() const
-    {
-        return m_size;
     }
 
-private:
+    DataBlockFileInfo(uint64 position, uint32 size)
+        : m_position(position)
+        , m_size(size) 
+    {
+    }
+
     uint64 m_position;
     uint32 m_size;
 };
@@ -54,48 +48,24 @@ private:
 // not run in the thread pool, because it requires almost no CPU.
 class GeomCacheDiskWriteThread
 {
-    static const unsigned int m_kNumBuffers = 8;
-
 public:
     GeomCacheDiskWriteThread(const string& fileName);
     ~GeomCacheDiskWriteThread();
-
-    // Flushes the buffers to disk
-    void Flush();
 
     // Flushes the buffers to disk and exits the thread
     void EndThread();
 
     // Write with FIFO buffering. This will acquire ownership of the buffer.
-    void Write(std::vector<char>& buffer, DiskWriteFuture* pFuture = 0, long offset = 0, int origin = SEEK_CUR);
+    void Write(std::vector<char>& buffer, long offset = 0, int origin = SEEK_CUR);
 
     size_t GetBytesWritten() { return m_bytesWritten; }
 
+    uint64 GetCurrentPosition() const;
+
 private:
-    static unsigned int __stdcall ThreadFunc(void* pParam);
-    void Run();
-
-    bool IsReadyToExit();
-
-    AZStd::thread m_thread;
-    string m_fileName;
+    FILE* m_fileHandle;
 
     bool m_bExit;
-
-    AZStd::condition_variable m_dataAvailableCV;
-    AZStd::condition_variable m_dataWrittenCV;
-
-    unsigned int m_currentReadBuffer;
-    unsigned int m_currentWriteBuffer;
-
-    AZStd::mutex m_outstandingWritesCS;
-    AZStd::atomic_long m_outstandingWrites;
-
-    AZStd::mutex m_criticalSections[m_kNumBuffers];
-    std::vector<char> m_buffers[m_kNumBuffers];
-    DiskWriteFuture* m_futures[m_kNumBuffers];
-    long m_offsets[m_kNumBuffers];
-    int m_origins[m_kNumBuffers];
 
     // Stats
     size_t m_bytesWritten;
@@ -104,73 +74,32 @@ private:
 // This class will receive the data from the GeomCacheWriter.
 class GeomCacheBlockCompressionWriter
 {
-    struct JobData
-    {
-        JobData()
-            : m_bFinished(false) {}
-
-        volatile bool m_bFinished;
-        volatile bool m_bWritten;
-        uint m_blockIndex;
-        uint m_dataIndex;
-        long m_offset;
-        long m_origin;
-        JobData* m_pPrevJobData;
-        GeomCacheBlockCompressionWriter* m_pCompressionWriter;
-        DiskWriteFuture* m_pWriteFuture;
-        std::vector<char> m_data;
-    };
-
 public:
-    GeomCacheBlockCompressionWriter(ThreadUtils::StealingThreadPool& threadPool,
-        IGeomCacheBlockCompressor* pBlockCompressor, GeomCacheDiskWriteThread& diskWriteThread);
+    GeomCacheBlockCompressionWriter(IGeomCacheBlockCompressor* pBlockCompressor, GeomCacheDiskWriteThread& diskWriteThread);
     ~GeomCacheBlockCompressionWriter();
 
-    // This adds to the current buffer.
+    // This adds data to the current buffer.
     void PushData(const void* data, size_t size);
 
-    // Create job to compress data and write it to disk. Returns size of block.
-    uint64 WriteBlock(bool bCompress, DiskWriteFuture* pFuture, long offset = 0, int origin = SEEK_CUR);
+    // Compresses data in the current buffer and writes it to disk. Returns information about the disk write
+    DataBlockFileInfo WriteBlock(bool bCompress, long offset = 0, int origin = SEEK_CUR);
 
-    // Flush to write thread
-    void Flush();
+    // Returns the total number of bytes written to disk. This can be less than 
+    // the data pushed to the writer because the data written to disk may have
+    // been compressed
+    uint64 GetTotalBytesWritten() const { return m_totalBytesWritten; }
+    size_t GetCurrentDataSize() const { return m_data.size(); }
 
 private:
-    static unsigned int __stdcall ThreadFunc(void* pParam);
-    void Run();
 
-    void PushCompletedBlocks();
-    static void RunJob(JobData* pJobData);
-    void CompressJob(JobData* pJobData);
+    void CompressData();
 
-    // Write thread handle
-    AZStd::thread m_thread;
-
-    // Flag to exit write thread
-    bool m_bExit;
-
-    ThreadUtils::StealingThreadPool& m_threadPool;
-    IGeomCacheBlockCompressor* m_pBlockCompressor;
-    GeomCacheDiskWriteThread& m_diskWriteThread;
     std::vector<char> m_data;
 
-    AZStd::mutex m_lockWriter;
+    GeomCacheDiskWriteThread& m_diskWriteThread;
+    IGeomCacheBlockCompressor* m_pBlockCompressor;
 
-    // Next block index hat will be used
-    uint m_nextBlockIndex;
-
-    // Next job that will be used in the job array
-    uint m_nextJobIndex;
-
-    // Index of frame that needs to be written next
-    uint m_nextBlockToWrite;
-
-    AZStd::atomic_uint m_numJobsRunning;
-    AZStd::mutex m_jobFinishedCS;
-    AZStd::condition_variable m_jobFinishedCV;
-
-    // The job data
-    std::vector<JobData> m_jobData;
+    uint64 m_totalBytesWritten;
 };
 
 struct GeomCacheWriterStats
@@ -185,7 +114,7 @@ class GeomCacheWriter
 {
 public:
     GeomCacheWriter(const string& filename, GeomCacheFile::EBlockCompressionFormat compressionFormat,
-        ThreadUtils::StealingThreadPool& threadPool, const uint numFrames, const bool bPlaybackFromMemory,
+        const uint numFrames, const bool bPlaybackFromMemory,
         const bool b32BitIndices);
 
     void WriteStaticData(const std::vector<Alembic::Abc::chrono_t>& frameTimes, const std::vector<GeomCache::Mesh*>& meshes, const GeomCache::Node& rootNode);
@@ -208,26 +137,26 @@ private:
     void WriteMeshFrameData(GeomCache::Mesh& meshData);
     void WriteMeshStaticData(const GeomCache::Mesh& meshData, GeomCacheFile::EStreams streamMask);
 
+    std::vector<DataBlockFileInfo> m_diskInfoForFrames;
+    std::vector<Alembic::Abc::chrono_t> m_frameTimes;
+    std::vector<uint> m_frameTypes;
+
     GeomCacheFile::EBlockCompressionFormat m_compressionFormat;
 
     GeomCacheFile::SHeader m_fileHeader;
     AABB m_animationAABB;
     static const uint m_kNumProgressStatusReports = 10;
     bool m_bShowedStatus[m_kNumProgressStatusReports];
-    FILE* m_pFileHandle;
-    uint64 m_totalUncompressedAnimationSize;
 
     std::unique_ptr<IGeomCacheBlockCompressor> m_pBlockCompressor;
     std::unique_ptr<GeomCacheDiskWriteThread> m_pDiskWriteThread;
     std::unique_ptr<GeomCacheBlockCompressionWriter> m_pCompressionWriter;
 
-    DiskWriteFuture m_headerWriteFuture;
-    DiskWriteFuture m_frameInfosWriteFuture;
-    DiskWriteFuture m_staticNodeDataFuture;
-    DiskWriteFuture m_staticMeshDataFuture;
-    std::vector<std::unique_ptr<DiskWriteFuture> > m_frameWriteFutures;
+    DataBlockFileInfo m_placeholderForFrameInfos;
 
-    std::vector<Alembic::Abc::chrono_t> m_frameTimes;
-    std::vector<uint> m_frameTypes;
+    uint64 m_headerWriteSize;
+    uint64 m_staticNodeDataSize;
+    uint64 m_staticMeshDataSize;
+    uint64 m_totalUncompressedAnimationSize;
 };
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERABC_GEOMCACHEWRITER_H

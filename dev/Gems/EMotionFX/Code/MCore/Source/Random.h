@@ -45,13 +45,13 @@ namespace MCore
          * Generates a uniform random normalized direction vector, using floats.
          * @result A uniform random direction vector with a length of 1.
          */
-        static Vector3 RandDirVecF();
+        static AZ::Vector3 RandDirVecF();
 
         /**
          * Generates a uniform random vector where (x,y,z) are in range of [-1..+1] using floats.
          * @result A uniform random vector in range of [-1..+1].
          */
-        static MCORE_INLINE Vector3 RandomVecF()                                                    { return Vector3(RandF(-1, 1), RandF(-1, 1), RandF(-1, 1)); }
+        static MCORE_INLINE AZ::Vector3 RandomVecF()                                                 { return AZ::Vector3(RandF(-1, 1), RandF(-1, 1), RandF(-1, 1)); }
 
         /**
          * Generates a uniform random direction vector from a given direction and cone angle.
@@ -61,7 +61,7 @@ namespace MCore
          * @param coneAngle The maximum spread angle in radians, which together with the base direction creates a cone, in which a random vector is generated and returned.
          * @result A random vector in the cone defined by the direction and cone angle.
          */
-        static Vector3 RandomDirVec(const Vector3& dir, float coneAngle);
+        static AZ::Vector3 RandomDirVec(const AZ::Vector3& dir, float coneAngle);
 
         /**
          * Generates a uniform random direction vector inside a patch on a cone.
@@ -76,7 +76,7 @@ namespace MCore
          * @result A random vector on the defined cone, which is split up into <gridSizeX * gridSizeY> grid cells, and where the random vector is a random vector
          * within grid cell number (xGridPos, yGridPos].
          */
-        static Vector3 RandomDirVec(const Vector3& dir, float coneAngle, uint32 gridSizeX, uint32 gridSizeY, uint32 xGridPos, uint32 yGridPos);
+        static AZ::Vector3 RandomDirVec(const AZ::Vector3& dir, float coneAngle, uint32 gridSizeX, uint32 gridSizeY, uint32 xGridPos, uint32 yGridPos);
 
         /**
          * Generates a uniform random vector inside a given area on a cone.
@@ -89,7 +89,7 @@ namespace MCore
          *                 a random sample will be taken inside the specified area.
          * @result A random vector pointing towards a random (or the center) position in the specified area on the cone.
          */
-        static Vector3 RandomDirVec(const Vector3& dir, float startPhi, float endPhi, float startTheta, float endTheta, bool midPoint = false); // returns a random direction vector, using <dir> as basis vector with a cone of <coneAngle>, sampled between the given phi and theta values. If <midPoint> is true the centerpoint of the given region will be returned
+        static AZ::Vector3 RandomDirVec(const AZ::Vector3& dir, float startPhi, float endPhi, float startTheta, float endTheta, bool midPoint = false); // returns a random direction vector, using <dir> as basis vector with a cone of <coneAngle>, sampled between the given phi and theta values. If <midPoint> is true the centerpoint of the given region will be returned
 
         /**
          * Convert an u, v [0..1] to a uniform (so area corrected) direction vector on a specified cone.
@@ -99,7 +99,7 @@ namespace MCore
          * @param v The value for theta, in range of [0..1].
          * @result The direction vector.
          */
-        static Vector3 UVToVector(const Vector3& dir, float coneAngle, float u, float v);   // convert uv [0..1] to a vector on the sphere or hemisphere
+        static AZ::Vector3 UVToVector(const AZ::Vector3& dir, float coneAngle, float u, float v);   // convert uv [0..1] to a vector on the sphere or hemisphere
 
         /**
          * Generate a given number of stratisfied uniform random samples on a cone.
@@ -108,7 +108,7 @@ namespace MCore
          * @param numVectors The number of direction vectors to generate. This might not be the number of vectors returned by this method!
          * @result The array containing the random vectors. The length of the array will be equal to (Sqrt(numVectors) * Sqrt(numVectors)).
          */
-        static Array<Vector3> RandomDirVectorsStratisfied(const Vector3& dir, float coneAngle, uint32 numVectors);
+        static Array<AZ::Vector3> RandomDirVectorsStratisfied(const AZ::Vector3& dir, float coneAngle, uint32 numVectors);
 
         /**
          * Generate a given amount of uniform direction vectors using Hammersley sets.
@@ -117,7 +117,7 @@ namespace MCore
          * @param numVectors The number of vectors to generate.
          * @result An array containing the generated vectors.
          */
-        static Array<Vector3> RandomDirVectorsHammersley(const Vector3& dir, float coneAngle, uint32 numVectors);
+        static Array<AZ::Vector3> RandomDirVectorsHammersley(const AZ::Vector3& dir, float coneAngle, uint32 numVectors);
 
         /**
          * Generate a given amount of uniform direction vectors using Hammersley sets.
@@ -127,7 +127,7 @@ namespace MCore
          * @param base The base number of the sequence (values of 2 or 3 are nice (must be ap rime value))
          * @result An array containing the generated vectors.
          */
-        static Array<Vector3> RandomDirVectorsHammersley2(const Vector3& dir, float coneAngle, uint32 numVectors, uint32 base);
+        static Array<AZ::Vector3> RandomDirVectorsHammersley2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 base);
 
         /**
          * Generate a given amount of uniform direction vectors using Halton sequences.
@@ -137,7 +137,7 @@ namespace MCore
          * @param p2 The base of the halton sequence (must be a prime value).
          * @result An array containing the generated vectors.
          */
-        static Array<Vector3> RandomDirVectorsHalton(const Vector3& dir, float coneAngle, uint32 numVectors, uint32 p2 = 3);
+        static Array<AZ::Vector3> RandomDirVectorsHalton(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 p2 = 3);
 
         /**
          * Generate a given amount of uniform direction vectors using hammersley sets.
@@ -148,7 +148,7 @@ namespace MCore
          * @param baseB The second base value (must be a prime value).
          * @result An array containing the generated vectors.
          */
-        static Array<Vector3> RandomDirVectorsHalton2(const Vector3& dir, float coneAngle, uint32 numVectors, uint32 baseA = 2, uint32 baseB = 3);
+        static Array<AZ::Vector3> RandomDirVectorsHalton2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 baseA = 2, uint32 baseB = 3);
 
         /**
          * Generates a set of Halton numbers, which are pseudo random numbers.

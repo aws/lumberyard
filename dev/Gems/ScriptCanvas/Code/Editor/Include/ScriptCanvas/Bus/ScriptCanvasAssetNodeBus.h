@@ -21,11 +21,6 @@ namespace AZ
     class Vector2;
 }
 
-namespace AzFramework
-{
-    class EntityReference;
-}
-
 namespace GraphCanvas
 {
     class SceneSliceInstance;

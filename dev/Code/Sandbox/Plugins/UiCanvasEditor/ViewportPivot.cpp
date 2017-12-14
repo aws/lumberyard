@@ -12,6 +12,7 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "ViewportPivot.h"
 
 ViewportPivot::ViewportPivot()
     : m_pivot(new ViewportIcon("Editor/Plugins/UiCanvasEditor/CanvasIcons/Pivot.tif"))

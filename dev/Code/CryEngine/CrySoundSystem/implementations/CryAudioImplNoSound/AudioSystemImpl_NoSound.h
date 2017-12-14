@@ -139,10 +139,8 @@ namespace Audio
         void DeleteAudioEventData(IATLEventData* const pOldEventData) override;
         void ResetAudioEventData(IATLEventData* const pEventData) override;
 
+        const char* const GetImplSubPath() const override;
         void SetLanguage(const char* const sLanguage) override;
-
-
-        const char* const GetImplSubPath() const override { return s_nosoundImplSubPath; }
 
         // Below data is only used when INCLUDE_AUDIO_PRODUCTION_CODE is defined!
         const char* const GetImplementationNameString() const override { return s_nosoundLongName; }

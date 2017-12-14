@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/Memory/SystemAllocator.h>
 #include <MCore/Source/CommandGroup.h>
 #include "EMStudioConfig.h"
 #include <QString>
@@ -31,8 +32,9 @@ namespace EMStudio
 
 
     // OutlinerCategoryItem struct
-    struct EMSTUDIO_API OutlinerCategoryItem
+    struct OutlinerCategoryItem
     {
+        AZ_CLASS_ALLOCATOR(OutlinerCategoryItem, AZ::SystemAllocator, 0);
         OutlinerCategoryItem()
         {
             mID         = MCORE_INVALIDINDEX32;
@@ -69,7 +71,7 @@ namespace EMStudio
         ~OutlinerCategory();
 
         // item
-        void AddItem(OutlinerCategoryItem* item);
+        void AddItem(uint32 mID, void* mUserData);
         void RemoveItem(uint32 ID);
         OutlinerCategoryItem* FindItemByID(uint32 ID);
         OutlinerCategoryItem* GetItem(size_t index)                                                         { return mItems[index]; }
@@ -99,7 +101,7 @@ namespace EMStudio
         virtual void OnAddItem(OutlinerCategoryItem* item) = 0;
         virtual void OnRemoveItem(OutlinerCategoryItem* item) = 0;
         virtual void OnItemModified() = 0;
-        virtual void OnRegisterCategory(const QString& name) = 0;
+        virtual void OnRegisterCategory(OutlinerCategory* category) = 0;
         virtual void OnUnregisterCategory(const QString& name) = 0;
     };
 
@@ -115,7 +117,6 @@ namespace EMStudio
         // category
         OutlinerCategory* RegisterCategory(const QString& name, OutlinerCategoryCallback* callback);
         void UnregisterCategory(const QString& name);
-        OutlinerCategory* FindCategoryByName(const QString& name);
         OutlinerCategory* GetCategory(size_t index)                                                 { return mCategories[index]; }
         size_t GetNumCategories() const                                                             { return mCategories.size(); }
 
@@ -128,7 +129,11 @@ namespace EMStudio
         // fire the item modified event
         void FireItemModifiedEvent();
 
+        void AddItemToCategory(const QString& name, uint32 mID, void* userData);
+        void RemoveItemFromCategory(const QString& categoryName, uint32 mID);
     private:
+        OutlinerCategory* FindCategoryByName(const QString& name) const;
+
         AZStd::vector<OutlinerCategory*> mCategories;
         AZStd::vector<OutlinerCallback*> mCallbacks;
     };

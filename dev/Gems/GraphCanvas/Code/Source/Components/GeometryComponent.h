@@ -14,6 +14,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Math/Vector2.h>
 
+#include <GraphCanvas/Components/EntitySaveDataBus.h>
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
@@ -24,12 +25,25 @@ namespace GraphCanvas
     class GeometryComponent 
         : public AZ::Component
         , public GeometryRequestBus::Handler
-        , public GeometryCommandBus::Handler
         , public VisualNotificationBus::Handler
         , public SceneMemberNotificationBus::Handler
+        , public EntitySaveDataRequestBus::Handler
     {
     public:
         static const float IS_CLOSE_TOLERANCE;
+
+        class GeometryComponentSaveData
+            : public ComponentSaveData
+        {
+        public:
+            AZ_RTTI(GeometryComponentSaveData, "{7CC444B1-F9B3-41B5-841B-0C4F2179F111}", ComponentSaveData);
+            AZ_CLASS_ALLOCATOR(GeometryComponentSaveData, AZ::SystemAllocator, 0);
+
+            GeometryComponentSaveData();
+            ~GeometryComponentSaveData() = default;
+
+            AZ::Vector2 m_position;
+        };
 
         AZ_COMPONENT(GeometryComponent, "{DFD3FDE1-9856-41C9-AEF1-DD5B647A2B92}");
         static void Reflect(AZ::ReflectContext*);
@@ -59,28 +73,27 @@ namespace GraphCanvas
         void Deactivate() override;
         ////
 
-        // SceneMemberNotificationBus::Handler
+        // SceneMemberNotificationBus
         void OnSceneSet(const AZ::EntityId& scene) override;
         ////
         
-        // GeometryRequestBus::Handler
+        // GeometryRequestBus
+        AZ::Vector2 GetPosition() const override;
         void SetPosition(const AZ::Vector2& position) override;
         ////
 
-        // GeometryRequestBus::Handler
-        AZ::Vector2 GetPosition() const override;
+        // VisualNotificationBus
+        void OnItemChange(const AZ::EntityId& entityId, QGraphicsItem::GraphicsItemChange, const QVariant&) override;
         ////
 
-        // VisualNotificationBus::Handler
-        void OnItemChange(const AZ::EntityId& entityId, QGraphicsItem::GraphicsItemChange, const QVariant&) override;
-
-        bool OnMousePress(const AZ::EntityId& entityId, const QGraphicsSceneMouseEvent* event) override;
-        bool OnMouseRelease(const AZ::EntityId& entityId, const QGraphicsSceneMouseEvent* event) override;
+        // EntitySaveDataRequestBus
+        void WriteSaveData(EntitySaveDataContainer& saveDataContainer) const override;
+        void ReadSaveData(const EntitySaveDataContainer& saveDataContainer) override;
         ////
 
     private:
 
-        AZ::Vector2 m_position;
+        GeometryComponentSaveData m_saveData;
         AZ::Vector2 m_oldPosition;
     };
 }

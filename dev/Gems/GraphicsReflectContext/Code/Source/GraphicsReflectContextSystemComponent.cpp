@@ -19,41 +19,51 @@
 #include "GraphicsReflectContextSystemComponent.h"
 #include "GraphicsNodeLibrary.h"
 #include "Environment.h"
+#include "TimeOfDay.h"
 #include "Shadows.h"
 #include "SetColorChartNode.h"
 #include "ScreenFaderNode.h"
 
 #include "PostEffects.h"
+#include "Utilities.h"
 
 namespace GraphicsReflectContext
 {
 
     void GraphicsReflectContextSystemComponent::Reflect(AZ::ReflectContext* context)
     {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<GraphicsReflectContextSystemComponent, AZ::Component>()
+                ->Version(0)
+                ;
+        }
         if (AZ::BehaviorContext* behavior = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             PostEffects::ReflectBehaviorContext(behavior);
+            Utilities::ReflectBehaviorContext(behavior);
             ReflectScreenFaderBus(behavior);
         }
         
         GraphicsNodeLibrary::Reflect(context);
         Environment::Reflect(context);
         Shadows::Reflect(context);
+        TimeOfDay::Reflect(context);
     }
 
     void GraphicsReflectContextSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("GraphicsReflectContextService"));
+        provided.push_back(AZ_CRC("GraphicsReflectContextService", 0x244c237b));
     }
 
     void GraphicsReflectContextSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("GraphicsReflectContextService"));
+        incompatible.push_back(AZ_CRC("GraphicsReflectContextService", 0x244c237b));
     }
 
     void GraphicsReflectContextSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        (void)required;
+        required.push_back(AZ_CRC("LmbrCentralService", 0xc3a02410));
     }
 
     void GraphicsReflectContextSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)

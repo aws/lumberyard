@@ -97,7 +97,12 @@ namespace EMotionFX
         }
 
         // otherwise get the real final node
-        return (mFinalNode->GetNumConnections() > 0) ? mFinalNode : nullptr;
+        if (mFinalNode)
+        {
+            return (mFinalNode->GetNumConnections() > 0) ? mFinalNode : nullptr;
+        }
+
+        return nullptr;
     }
 
 

@@ -211,6 +211,16 @@ namespace AZ
 
             void        DispatchEvents();
 
+            /**
+            * Old 'legacy' assetIds and asset hints can be automatically replaced  with new ones during deserialize / assignment.
+            * This operation can be somewhat costly, and its only useful if the program subsequently re-saves the files its loading so that
+            * the asset hints and assetIds actually persist.  Thus, it can be disabled in situations where you know you are not going to be 
+            * saving over or creating new source files (for example builders/background apps)
+            * By default, it is enabled.
+            */
+            void        SetAssetInfoUpgradingEnabled(bool enable);
+            bool        GetAssetInfoUpgradingEnabled() const;
+
         protected:
             AssetManager(const Descriptor& desc);
             ~AssetManager();
@@ -255,6 +265,8 @@ namespace AZ
 
             typedef AZStd::intrusive_list<AssetDatabaseJob, AZStd::list_base_hook<AssetDatabaseJob> > ActiveJobList;
             ActiveJobList           m_activeJobs;
+
+            bool m_assetInfoUpgradingEnabled = true;
 
             static EnvironmentVariable<AssetManager*>  s_assetDB;
         };

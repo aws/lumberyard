@@ -1,0 +1,10 @@
+{
+    "auto": {
+        "Source": [
+            "Source/WaterOceanEditor.cpp",
+            "Source/WaterOceanEditor.h",
+            "Source/EditorWaterVolumeComponent.h",
+            "Source/EditorWaterVolumeComponent.cpp"
+        ]
+    }
+}

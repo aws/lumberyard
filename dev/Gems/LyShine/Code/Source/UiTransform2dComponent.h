@@ -20,6 +20,9 @@
 
 #include <AzCore/Component/Component.h>
 
+class UiCanvasComponent;
+class UiElementComponent;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiTransform2dComponent
     : public AZ::Component
@@ -39,50 +42,63 @@ public: // member functions
     void SetZRotation(float rotation) override;
     AZ::Vector2 GetScale() override;
     void SetScale(AZ::Vector2 scale) override;
+    float GetScaleX() override;
+    void SetScaleX(float scale) override;
+    float GetScaleY() override;
+    void SetScaleY(float scale) override;
     AZ::Vector2 GetPivot() override;
     void SetPivot(AZ::Vector2 pivot) override;
+    float GetPivotX() override;
+    void SetPivotX(float pivot) override;
+    float GetPivotY() override;
+    void SetPivotY(float pivot) override;
     bool GetScaleToDevice() override;
     void SetScaleToDevice(bool scaleToDevice) override;
 
-    void GetViewportSpacePoints(RectPoints& points) override;
-    AZ::Vector2 GetViewportSpacePivot() override;
-    void GetTransformToViewport(AZ::Matrix4x4& mat) override;
-    void GetTransformFromViewport(AZ::Matrix4x4& mat) override;
-    void RotateAndScalePoints(RectPoints& points) override;
+    void GetViewportSpacePoints(RectPoints& points) final;
+    AZ::Vector2 GetViewportSpacePivot() final;
+    void GetTransformToViewport(AZ::Matrix4x4& mat) final;
+    void GetTransformFromViewport(AZ::Matrix4x4& mat) final;
+    void RotateAndScalePoints(RectPoints& points) final;
 
-    void GetCanvasSpacePoints(RectPoints& points) override;
-    AZ::Vector2 GetCanvasSpacePivot() override;
-    void GetTransformToCanvasSpace(AZ::Matrix4x4& mat) override;
-    void GetTransformFromCanvasSpace(AZ::Matrix4x4& mat) override;
+    void GetCanvasSpacePoints(RectPoints& points) final;
+    AZ::Vector2 GetCanvasSpacePivot() final;
+    void GetTransformToCanvasSpace(AZ::Matrix4x4& mat) final;
+    void GetTransformFromCanvasSpace(AZ::Matrix4x4& mat) final;
 
-    void GetCanvasSpaceRectNoScaleRotate(Rect& rect) override;
-    void GetCanvasSpacePointsNoScaleRotate(RectPoints& points) override;
-    AZ::Vector2 GetCanvasSpaceSizeNoScaleRotate() override;
-    AZ::Vector2 GetCanvasSpacePivotNoScaleRotate() override;
+    void GetCanvasSpaceRectNoScaleRotate(Rect& rect) final;
+    void GetCanvasSpacePointsNoScaleRotate(RectPoints& points) final;
+    AZ::Vector2 GetCanvasSpaceSizeNoScaleRotate() final;
+    AZ::Vector2 GetCanvasSpacePivotNoScaleRotate() final;
 
-    void GetLocalTransform(AZ::Matrix4x4& mat) override;
-    void GetLocalInverseTransform(AZ::Matrix4x4& mat) override;
-    bool HasScaleOrRotation() override;
+    void GetLocalTransform(AZ::Matrix4x4& mat) final;
+    void GetLocalInverseTransform(AZ::Matrix4x4& mat) final;
+    bool HasScaleOrRotation() final;
 
-    AZ::Vector2 GetViewportPosition() override;
-    void SetViewportPosition(const AZ::Vector2& position) override;
-    AZ::Vector2 GetCanvasPosition() override;
-    void SetCanvasPosition(const AZ::Vector2& position) override;
-    AZ::Vector2 GetLocalPosition() override;
-    void SetLocalPosition(const AZ::Vector2& position) override;
-    void MoveViewportPositionBy(const AZ::Vector2& offset) override;
-    void MoveCanvasPositionBy(const AZ::Vector2& offset) override;
-    void MoveLocalPositionBy(const AZ::Vector2& offset) override;
+    AZ::Vector2 GetViewportPosition() final;
+    void SetViewportPosition(const AZ::Vector2& position) final;
+    AZ::Vector2 GetCanvasPosition() final;
+    void SetCanvasPosition(const AZ::Vector2& position) final;
+    AZ::Vector2 GetLocalPosition() final;
+    void SetLocalPosition(const AZ::Vector2& position) final;
+    float GetLocalPositionX() final;
+    void SetLocalPositionX(float position) final;
+    float GetLocalPositionY() final;
+    void SetLocalPositionY(float position) final;
+    void MoveViewportPositionBy(const AZ::Vector2& offset) final;
+    void MoveCanvasPositionBy(const AZ::Vector2& offset) final;
+    void MoveLocalPositionBy(const AZ::Vector2& offset) final;
 
-    bool IsPointInRect(AZ::Vector2 point) override;
-    bool BoundsAreOverlappingRect(const AZ::Vector2& bound0, const AZ::Vector2& bound1) override;
+    bool IsPointInRect(AZ::Vector2 point) final;
+    bool BoundsAreOverlappingRect(const AZ::Vector2& bound0, const AZ::Vector2& bound1) final;
 
-    void SetRecomputeTransformFlag() override;
+    void SetRecomputeTransformFlag() final;
 
-    bool HasCanvasSpaceRectChanged() override;
-    bool HasCanvasSpaceSizeChanged() override;
-    bool HasCanvasSpaceRectChangedByInitialization() override;
-    void NotifyAndResetCanvasSpaceRectChange() override;
+    bool HasCanvasSpaceRectChanged() final;
+    bool HasCanvasSpaceSizeChanged() final;
+    bool HasCanvasSpaceRectChangedByInitialization() final;
+    void NotifyAndResetCanvasSpaceRectChange() final;
+    void RecomputeTransformsAndSendNotifications() final;
     // ~UiTransformInterface
 
     // UiTransform2dInterface
@@ -91,6 +107,10 @@ public: // member functions
     Offsets GetOffsets() override;
     void SetOffsets(Offsets offsets) override;
     void SetPivotAndAdjustOffsets(AZ::Vector2 pivot) override;
+    void SetLocalWidth(float width) override;
+    float GetLocalWidth() override;
+    void SetLocalHeight(float height) override;
+    float GetLocalHeight() override;
     // ~UiTransform2dInterface
 
     // UiAninmateEntityInterface
@@ -133,12 +153,18 @@ protected: // member functions
     bool IsNotControlledByParent() const;
 
     //! This is used to dynamically change the label for the Anchor property in the properties pane
-    //! as a way to display a "disabled" stated for this component when the tranform is controlled by the
+    //! as a way to display a "disabled" stated for this component when the transform is controlled by the
     //! parent.
     const char* GetAnchorPropertyLabel() const;
 
     //! Helper function to get the canvas entity ID for canvas containing this element
     AZ::EntityId GetCanvasEntityId();
+
+    //! Helper function to get the canvas component for canvas containing this element
+    UiCanvasComponent* GetCanvasComponent() const;
+
+    //! If m_recomputeTransform is true then recompute the transform and clear it
+    void RecomputeTransformIfNeeded();
 
 private: // member functions
 
@@ -152,6 +178,21 @@ private: // member functions
 
     //! Get the position of the element's anchors in canvas space
     AZ::Vector2 GetCanvasSpaceAnchorsCenterNoScaleRotate();
+
+    // Get a pointer to this entity's UiElementComponent.
+    UiElementComponent* GetElementComponent() const;
+
+    // Get a pointer to the parent element's transform component. Returns nullptr if no parent.
+    UiTransform2dComponent* GetParentTransformComponent() const;
+
+    // Get a pointer to the given child element's transform component. Returns nullptr if no parent.
+    UiTransform2dComponent* GetChildTransformComponent(int index) const;
+
+    // Used to check that FixupPostLoad has been called
+    bool IsFullyInitialized() const;
+
+    // Display a warning that the component is not yet fully initialized
+    void EmitNotInitializedWarning() const;
 
 private: // static member functions
 
@@ -192,4 +233,7 @@ private: // data
     bool m_recomputeTransform;
 
     bool m_recomputeCanvasSpaceRect;
+
+    //! Pointer directly to the UiElementComponent for this entity. Cached for performance after profiling.
+    UiElementComponent* m_elementComponent = nullptr;
 };

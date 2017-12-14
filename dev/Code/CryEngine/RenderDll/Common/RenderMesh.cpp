@@ -1248,7 +1248,7 @@ size_t CRenderMesh::SetMesh_Int(CMesh& mesh, int nSecColorsSetOffset, uint32 fla
             size_t vtxEnd(pChunk->nFirstVertId + pChunk->nNumVerts);
             size_t curIndex0(mesh.m_pIndices[ j ]);   // absolute indexing
             size_t curIndex1(mesh.m_pIndices[ j ] + vtxStart);   // relative indexing using base vertex index
-            assert((curIndex0 >= vtxStart && curIndex0 < vtxEnd) || (curIndex1 >= vtxStart && curIndex1 < vtxEnd));
+            AZ_Assert((curIndex0 >= vtxStart && curIndex0 < vtxEnd) || (curIndex1 >= vtxStart && curIndex1 < vtxEnd), "Index is out of mesh vertices' range!");
         }
 #endif
     }
@@ -3390,7 +3390,7 @@ void CRenderMesh::AddRenderElements(_smart_ptr<IMaterial> pIMatInfo, CRenderObje
             pIMatInfo = gRenDev->m_pTerrainDefaultMaterial;
 
             // modify m_CustomTexBind settings to overwrite terrain textures.
-            SEfResTexture* pResDiffTex = pIMatInfo->GetShaderItem().m_pShaderResources->GetTexture(EFTT_DIFFUSE);
+            SEfResTexture* pResDiffTex = pIMatInfo->GetShaderItem().m_pShaderResources->GetTextureResource(EFTT_DIFFUSE);
             if (pResDiffTex)
             {
                 ITexture* pTexture = pResDiffTex->m_Sampler.m_pITex;
@@ -3627,7 +3627,7 @@ int CRenderMesh::GetTextureMemoryUsage(const _smart_ptr<IMaterial> pMaterial, IC
     }
 
     int textureSize = 0;
-    std::set<const CTexture*> used;
+    std::set<const CTexture*>   used;
     for (int a = 0; a < m_Chunks.size(); a++)
     {
         const CRenderChunk* pChunk = &m_Chunks[a];
@@ -3639,16 +3639,10 @@ int CRenderMesh::GetTextureMemoryUsage(const _smart_ptr<IMaterial> pMaterial, IC
             continue;
         }
 
-        const CShaderResources* pRes = ( const CShaderResources*)shaderItem.m_pShaderResources;
-
-        for (int i = 0; i < EFTT_MAX; i++)
+        const CShaderResources*     pRes = (const CShaderResources*)shaderItem.m_pShaderResources;
+        for (auto iter = pRes->m_TexturesResourcesMap.begin(); iter != pRes->m_TexturesResourcesMap.end(); ++iter)
         {
-            if (!pRes->m_Textures[i])
-            {
-                continue;
-            }
-
-            const CTexture* pTexture = pRes->m_Textures[i]->m_Sampler.m_pTex;
+            const CTexture*     pTexture = iter->second.m_Sampler.m_pTex;
             if (!pTexture)
             {
                 continue;
@@ -3669,7 +3663,6 @@ int CRenderMesh::GetTextureMemoryUsage(const _smart_ptr<IMaterial> pMaterial, IC
             }
         }
     }
-
     return textureSize;
 }
 

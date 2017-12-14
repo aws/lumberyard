@@ -25,8 +25,12 @@ CAutoDirectoryRestoreFileDialog::CAutoDirectoryRestoreFileDialog(
     QFileDialog::Options options /* = {} */,
     const QString& caption /* = {} */,
     QWidget* parent /* = nullptr */)
-    : QFileDialog(parent, caption, directory, filter)
+    : QFileDialog(parent, caption, QString(""), filter)
 {
+    char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(directory.toUtf8().data(), resolvedPath, AZ_MAX_PATH_LEN);
+    setDirectory(QString::fromUtf8(resolvedPath));
+
     setAcceptMode(acceptMode);
     setDefaultSuffix(defaultSuffix);
     setFileMode(fileMode);

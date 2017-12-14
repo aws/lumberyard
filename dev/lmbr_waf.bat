@@ -12,9 +12,11 @@ REM
 REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 REM
 
+pushd %~dp0%
 
 REM search for the engine root from the engine.json if possible
 IF NOT EXIST engine.json GOTO noSetupConfig
+
 
 FOR /F "tokens=1,2*" %%A in ('findstr /I /N "ExternalEnginePath" engine.json') do SET ENGINE_ROOT=%%C
 
@@ -39,7 +41,7 @@ ECHO [WAF] Engine Root: %BASE_PATH%
 
 :pythonPathSet
 
-SET WAF_SCRIPT="%BASE_PATH%Tools\build\waf-1.7.13\lmbr_waf"
+SET WAF_SCRIPT="%BASE_PATH%\Tools\build\waf-1.7.13\lmbr_waf"
 
 REM Locate Python. We will force the use of our version of Python by setting 
 REM PYTHONHOME (done by win\python.cmd) and clearing any PYTHONPATH
@@ -64,7 +66,7 @@ IF DEFINED BUILD_TAG (
         SET COMMAND_ID="%BUILD_TAG%.%P4_CHANGELIST%-%TIME%"
     )
 )
-pushd %BASE_PATH%
+
 REM call is required here otherwise control won't be returned to lmbr_waf.bat and the rest of the file doesn't execute
 CALL "%PYTHON_EXECUTABLE%" %WAF_SCRIPT% %*
 
@@ -110,3 +112,4 @@ EXIT /b 1
 
 :end
 popd
+

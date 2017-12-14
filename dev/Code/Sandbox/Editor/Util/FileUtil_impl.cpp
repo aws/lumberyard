@@ -79,6 +79,11 @@ bool CFileUtil_impl::DeleteFromSourceControl(const char* filename, QWidget* pare
     return CFileUtil::DeleteFromSourceControl(filename, parentWindow);
 }
 
+bool CFileUtil_impl::GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow)
+{
+    return CFileUtil::GetSccFileInfo(filename, fileInfo, parentWindow);
+}
+
 void CFileUtil_impl::CreateDirectory(const char* dir)
 {
     CFileUtil::CreateDirectory(dir);
@@ -144,7 +149,7 @@ IFileUtil::ECopyTreeResult CFileUtil_impl::CopyTree(const QString& strSourceDire
     return CFileUtil::CopyTree(strSourceDirectory, strTargetDirectory, boRecurse, boConfirmOverwrite);
 }
 
-IFileUtil::ECopyTreeResult CFileUtil_impl::CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite, void* pfnProgress, bool* pbCancel)
+IFileUtil::ECopyTreeResult CFileUtil_impl::CopyFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite, ProgressRoutine pfnProgress, bool* pbCancel)
 {
     return CFileUtil::CopyFile(strSourceFile, strTargetFile, boConfirmOverwrite, pfnProgress, pbCancel);
 }

@@ -34,7 +34,7 @@ void SelectGrowTool::Enter()
     CD::GetDesigner()->SwitchToPrevTool();
 }
 
-void SelectGrowTool::GrowSelection(CD::SMainContext& mc)
+void SelectGrowTool::GrowSelection(const CD::SMainContext& mc)
 {
     std::set<CD::PolygonPtr> selectedSet = MakeInitialSelectedSet(mc);
     SelectAdjacentPolygonsFromEdgeVertex(mc, selectedSet, false);
@@ -44,7 +44,7 @@ void SelectGrowTool::GrowSelection(CD::SMainContext& mc)
     }
 }
 
-std::set<CD::PolygonPtr> SelectGrowTool::MakeInitialSelectedSet(CD::SMainContext& mc)
+std::set<CD::PolygonPtr> SelectGrowTool::MakeInitialSelectedSet(const CD::SMainContext& mc)
 {
     std::set<CD::PolygonPtr> selectedSet;
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
@@ -65,7 +65,7 @@ std::set<CD::PolygonPtr> SelectGrowTool::MakeInitialSelectedSet(CD::SMainContext
     return selectedSet;
 }
 
-void SelectGrowTool::SelectAdjacentPolygonsFromEdgeVertex(CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections)
+void SelectGrowTool::SelectAdjacentPolygonsFromEdgeVertex(const CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections)
 {
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
     if (pSelected->IsEmpty())
@@ -103,7 +103,7 @@ void SelectGrowTool::SelectAdjacentPolygonsFromEdgeVertex(CD::SMainContext& mc, 
     }
 }
 
-bool SelectGrowTool::SelectAdjacentPolygons(CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections)
+bool SelectGrowTool::SelectAdjacentPolygons(const CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections)
 {
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
     bool bAddedNewAdjacent = false;

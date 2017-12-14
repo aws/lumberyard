@@ -27,27 +27,29 @@ class QGraphicsLayout;
 
 namespace GraphCanvas
 {
-
-    //! RootVisualRequests
-    //! Each entity that is going to be rendered in the scene (nodes, connections, etc.) must provide a "root" visual.
-    //! Root visuals must be QGraphicsItems or QGraphicsLayoutItems so that they can be added to the QGraphicsScene
-    //! that lies at the core of the Scene component.
-    class RootVisualRequests : public AZ::EBusTraits
+    class SceneMemberUIRequests : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-
-        //! If the entity provides a root visual that's directly a QGraphicsItem, this will return a pointer to it.
+        //! Returns the root graphics item that represents the element that should be added to the QGraphicsScene
         virtual QGraphicsItem* GetRootGraphicsItem() = 0;
-        //! If the entity provides a root visual that's a QGraphicsLayoutItem, this will return a pointer to it.
-        //! This generally would apply to slot visuals and those will often need to be subordinate to a node's
-        //! layout.
+
+        //! Returns the QGraphicsItem that represents the element that is selectectable for the visual item.
+        virtual QGraphicsItem* GetSelectionItem() { return GetRootGraphicsItem(); }
+
+        // Returns the root graphics item that represents the element as a QGraphicsLayoutItem
         virtual QGraphicsLayoutItem* GetRootGraphicsLayoutItem() = 0;
+
+        //! Returns whether or not the Visual Entity should allow itself to be selected via drag selection.
+        virtual bool AllowDragSelection() const { return true; }
+        
+        virtual void SetSelected(bool selected) = 0;
+        virtual bool IsSelected() const = 0;
     };
 
-    using RootVisualRequestBus = AZ::EBus<RootVisualRequests>;
+    using SceneMemberUIRequestBus = AZ::EBus<SceneMemberUIRequests>;
 
     //! VisualRequests
     //! Similar to the root visual, which is just the top-level one that will be parented by an owning entity (such as

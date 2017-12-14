@@ -318,7 +318,7 @@ void CToolBoxManager::Load(ActionManager* actionManager)
     if (actionManager)
     {
         QByteArray array = gSettings.strEditorEnv.toLatin1();
-        AZStd::string actualPath = AZStd::string::format("@devroot@/%s", array.constData());
+        AZStd::string actualPath = AZStd::string::format("@engroot@/%s", array.constData());
         XmlNodeRef envNode = XmlHelpers::LoadXmlFromFile(actualPath.c_str());
         if (envNode)
         {
@@ -421,7 +421,7 @@ void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolb
         }
 
         pMacro->Load(macroNode);
-        pMacro->SetShortcutName(shortcutName.toLatin1().data());
+        pMacro->SetShortcutName(shortcutName);
         pMacro->SetIconPath(iconPath.toLatin1().data());
         pMacro->SetToolbarId(-1);
 
@@ -677,7 +677,7 @@ void CToolBoxManager::RemoveMacroShortcut(int index, bool bToolbox)
 //////////////////////////////////////////////////////////////////////////
 void CToolBoxManager::GetSaveFilePath(QString& outPath) const
 {
-    outPath = Path::GetUserSandboxFolder();
+    outPath = Path::GetResolvedUserSandboxFolder();
     outPath += "Macros.xml";
 }
 

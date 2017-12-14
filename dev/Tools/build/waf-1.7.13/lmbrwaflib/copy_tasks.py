@@ -11,7 +11,7 @@
 from waflib.Task import Task, RUN_ME, SKIP_ME
 from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
 from cry_utils import flatten_list
-from utils import fast_copy2, should_overwrite_file
+from utils import fast_copy2, should_overwrite_file, calculate_file_hash
 from waflib import Logs, Utils, Errors
 import os
 import glob
@@ -55,7 +55,7 @@ def h_file(filename):
 Utils.h_file = h_file
 
 
-def copy_tree2(src, dst, overwrite_existing_file=False, ignore_paths=None, fail_on_error=True):
+def copy_tree2(src, dst, overwrite_existing_file=False, pattern_paths=None, is_pattern_required=False, fail_on_error=True):
     """
     Copy a tree from a source folder to a destination folder.  If the destination does not exist, then create
     a copy automatically.  If a destination does exist, then either overwrite based on the owerwrite_existing_file
@@ -64,48 +64,104 @@ def copy_tree2(src, dst, overwrite_existing_file=False, ignore_paths=None, fail_
     :param src:     The source tree to copy from
     :param dst:     The target tree to copy to
     :param overwrite_existing_file:     Flag to always overwrite (otherwise follow the copy rule)
-    :param ignore_paths:    Any particular file/pattern to ignore
+    :param is_pattern_required: Tells the function how to interpret the pattern_paths, pattern_paths are required
+     paths if is_pattern_required is True, it will be the ignore paths if it is False
+    :param pattern_paths:    Any particular file/pattern to ignore
     :return:  The number of files actually copied
     """
+
+    if os.path.isdir(src) is False:
+        Logs.warn('[WARN] Unable to copy {} to destination {} using copy_tree2. {} is not a directory.'.format(src, dst, src))
+        return 0
+
+    src = os.path.normpath(src)
+    dst = os.path.normpath(dst)
+
+    # get all non ignored paths/files in dir based on ignore path input
+    def _get_non_ignored_paths_in_dir_recursively(src, ignore_paths):
+        non_ignored_paths = []
+        paths = os.listdir(src)
+
+        for item in paths:
+            ignore = False
+            src_path = os.path.join(src, item)
+
+            if any(path in src_path for path in ignore_paths):
+                continue
+
+            if os.path.isdir(src_path):
+                non_ignored_paths.extend(_get_non_ignored_paths_in_dir_recursively(src_path, ignore_paths))
+            else:
+                non_ignored_paths.append(src_path)
+        return non_ignored_paths
+
+    # copy everything if pattern_path is none
+    paths_to_copy = os.listdir(src)
     copied_files = 0
-    try:
-        os.makedirs(dst)
-    except:
-        pass
-    if not os.path.exists(dst):
-        raise shutil.Error("Unable to create target folder `{}`".format(dst))
 
-    items = os.listdir(src)
-    for item in items:
-        srcname = os.path.join(src, item)
-        dstname = os.path.join(dst, item)
+    if pattern_paths is not None:
+        filtered_paths = []
+        if is_pattern_required is True:
+            for path in pattern_paths:
+                filtered_paths.extend(glob.glob(os.path.join(src, path)))
 
-        ignore = False
-        if ignore_paths is not None:
-            for ignore_path in ignore_paths:
-                if ignore_path in srcname:
-                    ignore = True
-                    break
-        if ignore:
-            continue
+        else:
+            filtered_paths = _get_non_ignored_paths_in_dir_recursively(src, pattern_paths)
+
+        # sanitize the paths in filtered_paths for further consumption (we only want relative path from src)
+        for idx, item in enumerate(filtered_paths):
+            item = os.path.normpath(item)
+            sep = src + os.path.sep
+            filtered_paths[idx] = item.replace(sep, "")
+
+        paths_to_copy = filtered_paths
+
+    # now we copy all files specified from the paths in paths_to_copy
+    for path in paths_to_copy:
+        srcname = os.path.join(src, path)
+        dstname = os.path.join(dst, path)
 
         if os.path.isdir(srcname):
-            copied_files += copy_tree2(srcname, dstname, overwrite_existing_file, ignore_paths, fail_on_error)
+            # if we encounter a srcname that is a folder, we assume that we want the entire folder
+            # pattern_paths to None tells this function that we want to copy the entire folder
+            copied_files += copy_tree2(srcname, dstname, overwrite_existing_file, None, fail_on_error=fail_on_error)
+
         else:
-            copy = overwrite_existing_file or should_overwrite_file(srcname,dstname)
-            if copy:
-                Logs.debug('lumberyard: Copying file {} to {}'.format(srcname, dstname))
+            # check to see if we should copy the file
+            copy = overwrite_existing_file or should_overwrite_file(srcname, dstname)
+            if copy is False:
+                continue
+            file_copied = 0
+
+            Logs.debug('lumberyard: Copying file {} to {}'.format(srcname, dstname))
+            try:
+                # In case the file is readonly, we'll remove the existing file first
+                if os.path.exists(dstname):
+                    os.chmod(dstname, stat.S_IWRITE)
+
+                # In the case where the path doesn't exist
+                elif os.path.exists(os.path.dirname(dstname)) is False:
+                    try:
+                        os.makedirs(os.path.dirname(dstname))
+                    except:
+                        pass
+                    if not os.path.exists(dst):
+                        raise shutil.Error("Unable to create target folder `{}`".format(dst))
+
                 try:
-                    # In case the file is readonly, we'll remove the existing file first
-                    if os.path.exists(dstname):
-                        os.chmod(dstname, stat.S_IWRITE)
-                    fast_copy2(srcname, dstname)
-                except Exception as err:
-                    if fail_on_error:
-                        raise err
-                    else:
-                        Logs.warn('[WARN] Unable to copy {} to destination {}.  Check the file permissions or any process that may be locking it.'.format(srcname,dstname))
-                copied_files += 1
+                    file_copied = fast_copy2(srcname, dstname)
+                except:
+                    # Second try with detail hash check
+                    file_copied = fast_copy2(srcname, dstname, True)
+
+            except Exception as err:
+                if fail_on_error:
+                    raise err
+                else:
+                    Logs.warn(
+                        '[WARN] Unable to copy {} to destination {}.  Check the file permissions or any process that may be locking it.'.format(
+                            srcname, dstname))
+            copied_files += file_copied
 
     return copied_files
 
@@ -152,6 +208,16 @@ class copy_outputs(Task):
                 result = 0
                 self.err_msg = None
             except Exception as why:
+
+                # If copy failed, maybe due to a permission issue, run an deeper check and compare the file's
+                # finger prints, because the default check will compare size and timestamp only
+                if os.path.exists(src) and os.path.exists(tgt):
+                    src_hash = calculate_file_hash(src)
+                    tgt_hash = calculate_file_hash(tgt)
+                    if src_hash == tgt_hash:
+                        result = 0
+                        break
+
                 self.err_msg = "Could not perform copy %s -> %s\n\t%s" % (src, tgt, str(why))
                 result = -1
                 time.sleep(tries)

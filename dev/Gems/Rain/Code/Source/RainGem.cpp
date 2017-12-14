@@ -11,9 +11,36 @@
 */
 #include "StdAfx.h"
 #include <platform_impl.h>
+
+#include <FlowSystem/Nodes/FlowBaseNode.h>
+
 #include "RainGem.h"
 #include "Rain.h"
-#include <FlowSystem/Nodes/FlowBaseNode.h>
+
+#include "RainComponent.h"
+#ifdef RAIN_EDITOR
+#include "EditorRainComponent.h"
+#endif // RAIN_EDITOR
+
+RainGem::RainGem()
+{
+    m_descriptors.push_back(Rain::RainComponent::CreateDescriptor());
+    
+#ifdef RAIN_EDITOR
+    m_descriptors.push_back(Rain::EditorRainComponent::CreateDescriptor());
+
+    m_rainConverter = AZStd::make_unique<Rain::RainConverter>();
+
+    m_rainConverter->BusConnect();
+#endif // RAIN_EDITOR
+}
+
+RainGem::~RainGem()
+{
+#ifdef RAIN_EDITOR
+    m_rainConverter->BusDisconnect();
+#endif
+}
 
 void RainGem::PostGameInit()
 {

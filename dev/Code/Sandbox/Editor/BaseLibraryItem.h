@@ -61,7 +61,7 @@ public:
     //! Generate new unique id for this item.
     void GenerateId();
     //! Returns GUID of this material.
-    REFGUID GetGUID() const { return m_guid; }
+    const GUID& GetGUID() const { return m_guid; }
 
     //! Mark library as modified.
     void SetModified(bool bModified = true);

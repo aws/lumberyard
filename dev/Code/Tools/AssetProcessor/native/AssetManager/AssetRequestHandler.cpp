@@ -21,6 +21,7 @@
 #include <QFile>
 #include <QTimer>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
 
 using namespace AssetProcessor;
 
@@ -80,7 +81,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         }
 
         GetFullSourcePathFromRelativeProductPathResponse response(fullPathfound, fullSourcePath);
-        EBUS_EVENT_ID(key.first, AssetProcessor::ConnectionBus, Send, key.second, response);
+        EBUS_EVENT_ID(key.first, AssetProcessor::ConnectionBus, SendResponse, key.second, response);
         return true;
     }
     else if (message->GetMessageType() == GetRelativeProductPathFromFullSourceOrProductPathRequest::MessageType())
@@ -102,7 +103,66 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         }
 
         GetRelativeProductPathFromFullSourceOrProductPathResponse response(relPathFound, relProductPath);
-        EBUS_EVENT_ID(key.first, AssetProcessor::ConnectionBus, Send, key.second, response);
+        EBUS_EVENT_ID(key.first, AssetProcessor::ConnectionBus, SendResponse, key.second, response);
+        return true;
+    }
+    else if (message->GetMessageType() == SourceAssetInfoRequest::MessageType())
+    {
+        SourceAssetInfoRequest* request = azrtti_cast<SourceAssetInfoRequest*>(message);
+        
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", SourceAssetInfoRequest::MessageType(), message->GetMessageType());
+            return true;
+        }
+
+        SourceAssetInfoResponse response;
+        if (request->m_assetId.IsValid())
+        {
+            AZStd::string rootFolder;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAssetInfoById, request->m_assetId, request->m_assetType, response.m_assetInfo, rootFolder );
+            response.m_rootFolder = rootFolder.c_str();
+            AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        }
+        else if (!request->m_assetPath.empty())
+        {
+            AZStd::string rootFolder;
+            // its being asked for via path instead of ID.  slightly different call.
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourcePath, request->m_assetPath.c_str(), response.m_assetInfo, rootFolder);
+            response.m_rootFolder = rootFolder.c_str();
+        }
+        // note that in the case of an invalid request, response is defaulted to false for m_found, so there is no need to
+        // populate the response in that case.
+
+        AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        return true;
+    }
+    else if (message->GetMessageType() == RegisterSourceAssetRequest::MessageType())
+    {
+        RegisterSourceAssetRequest* request = azrtti_cast<RegisterSourceAssetRequest*>(message);
+        
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", RegisterSourceAssetRequest::MessageType(), message->GetMessageType());
+            return true;
+        }
+
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, request->m_assetType, request->m_assetFileFilter.c_str());
+
+        return true;
+    }
+    else if (message->GetMessageType() == UnregisterSourceAssetRequest::MessageType())
+    {
+        UnregisterSourceAssetRequest* request = azrtti_cast<UnregisterSourceAssetRequest*>(message);
+
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", UnregisterSourceAssetRequest::MessageType(), message->GetMessageType());
+            return true;
+        }
+
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, request->m_assetType);
+
         return true;
     }
     else
@@ -223,7 +283,7 @@ void AssetRequestHandler::SendAssetStatus(NetworkRequestID groupID, unsigned int
 {
     AzFramework::AssetSystem::ResponseAssetStatus resp;
     resp.m_assetStatus = status;
-    EBUS_EVENT_ID(groupID.first, AssetProcessor::ConnectionBus, Send, groupID.second, resp);
+    EBUS_EVENT_ID(groupID.first, AssetProcessor::ConnectionBus, SendResponse, groupID.second, resp);
 }
 
 AssetRequestHandler::AssetRequestHandler()

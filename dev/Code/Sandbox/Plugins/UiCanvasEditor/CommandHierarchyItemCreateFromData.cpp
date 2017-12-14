@@ -15,10 +15,10 @@
 
 CommandHierarchyItemCreateFromData::CommandHierarchyItemCreateFromData(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    EntityHelpers::EntityIdList& parents,
+    const EntityHelpers::EntityIdList& parents,
     bool createAsChildOfSelection,
     HierarchyHelpers::Creator creator,
-    QString& dataSource)
+    const QString& dataSource)
     : QUndoCommand()
     , m_stack(stack)
     , m_hierarchy(hierarchy)
@@ -73,10 +73,10 @@ void CommandHierarchyItemCreateFromData::redo()
 
 void CommandHierarchyItemCreateFromData::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    QTreeWidgetItemRawPtrQList& selectedItems,
+    const QTreeWidgetItemRawPtrQList& selectedItems,
     bool createAsChildOfSelection,
     HierarchyHelpers::Creator creator,
-    QString dataSource)
+    const QString& dataSource)
 {
     if (stack->GetIsExecuting())
     {

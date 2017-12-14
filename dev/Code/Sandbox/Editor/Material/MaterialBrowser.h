@@ -104,6 +104,7 @@ public:
     void DeleteItem();
 
     void PopulateItems();
+    void StartRecordUpdateJobs();
 
     bool ShowCheckedOutRecursive(TMaterialBrowserRecords* pRecords);
 
@@ -125,11 +126,15 @@ public:
 public slots:
     void OnSelectionChanged();
     void OnSubMaterialSelectedInPreviewPane(const QModelIndex& current, const QModelIndex& previous);
+    void SaveCurrentMaterial();
+    void OnRefreshSelection();
+
+signals:
+    void refreshSelection();
     
 public:
     void OnUpdateShowCheckedOut();
     bool CanPaste() const;
-    void IdleSaveMaterial();
 
     void SetImageListCtrl(CMaterialImageListCtrl* pCtrl);
 
@@ -145,6 +150,7 @@ public:
 
     // MaterialBrowserWidgetBus event handlers
     void MaterialFinishedProcessing(_smart_ptr<CMaterial> material, const QPersistentModelIndex &filterModelIndex) override;
+    void MaterialRecordUpdateFinished() override;
 
 protected:
     // Item definition.
@@ -225,7 +231,6 @@ private:
     _smart_ptr<CMaterial> m_pLastActiveMultiMaterial;
     _smart_ptr<CMaterial> m_delayedSelection;
 
-    float m_fIdleSaveMaterialTime;
     bool m_bShowOnlyCheckedOut;
 
 };

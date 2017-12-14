@@ -14,7 +14,7 @@
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/Component.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
-#include <LmbrCentral/Physics/ColliderComponentBus.h>
+#include <AzFramework/Physics/ColliderComponentBus.h>
 
 namespace primitives
 {
@@ -28,12 +28,12 @@ namespace LmbrCentral
      */
     class PrimitiveColliderComponent
         : public AZ::Component
-        , public ColliderComponentRequestBus::Handler
+        , public AzFramework::ColliderComponentRequestBus::Handler
         , private ShapeComponentNotificationsBus::Handler
         , public AZ::EntityBus::MultiHandler
     {
     public:
-        AZ_COMPONENT(PrimitiveColliderComponent, PrimitiveColliderComponentTypeId);
+        AZ_COMPONENT(PrimitiveColliderComponent, AzFramework::PrimitiveColliderComponentTypeId);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
@@ -91,7 +91,7 @@ namespace LmbrCentral
             const primitives::primitive& primitive);
 
         /// Serialized configuration.
-        PrimitiveColliderConfig m_configuration;
+        AzFramework::PrimitiveColliderConfig m_configuration;
 
         /// If connecting to an active entity while harvesting colliders
         /// for a compound shape, add the colliders to this entity.

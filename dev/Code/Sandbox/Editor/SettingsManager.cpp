@@ -186,9 +186,9 @@ void CSettingsManager::SaveSetting(const QString& path, const QString& attr, int
     SaveSetting(path, attr, QString::number(iVal));
 }
 
-void CSettingsManager::SaveSetting(const QString& path, const QString& attr, COLORREF color)
+void CSettingsManager::SaveSetting(const QString& path, const QString& attr, QColor color)
 {
-    SaveSetting(path, attr, QString::number(color));
+    SaveSetting(path, attr, color.name());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -280,11 +280,11 @@ void CSettingsManager::LoadSetting(const QString& path, const QString& attr, flo
     fVal = defaultVal.toFloat();
 }
 
-void CSettingsManager::LoadSetting(const QString& path, const QString& attr, COLORREF& val)
+void CSettingsManager::LoadSetting(const QString& path, const QString& attr, QColor &val)
 {
-    QString defaultVal = QString::number(val);
+    QString defaultVal = val.name();
     LoadSetting(path, attr, defaultVal);
-    val = defaultVal.toULong();
+    val = QColor(defaultVal);
 }
 
 void CSettingsManager::AddToolVersion(const QString& toolName, const QString& toolVersion)

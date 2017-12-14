@@ -1,0 +1,14 @@
+@import "../../../styles/variables";
+
+.breadcrumb-link {
+	> * {
+		font-size: 13px;
+	}
+	> a { 
+		font-family: "AmazonEmber-Light";
+		&:hover, &:focus { 
+			text-decoration: none;
+			color: $primary-active-color;
+		}
+	}
+}

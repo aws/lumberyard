@@ -21,9 +21,6 @@
 #define NOT_USE_CRY_MEMORY_MANAGER
 #endif
 
-// Include Configuration settings for Standard Template Library
-#include <STLPortConfig.h>
-
 #include <cassert>
 
 #define CRY_ASSERT(condition) assert(condition)

@@ -35,6 +35,21 @@ namespace AssetProcessor
         return m_jobDescriptor;
     }
 
+    void QueueElementID::SetInputAssetName(QString inputAssetName)
+    {
+        m_inputAssetName = inputAssetName;
+    }
+
+    void QueueElementID::SetPlatform(QString platform)
+    {
+        m_platform = platform;
+    }
+
+    void QueueElementID::SetJobDescriptor(QString jobDescriptor)
+    {
+        m_jobDescriptor = jobDescriptor;
+    }
+
     bool QueueElementID::operator==(const QueueElementID& other) const
     {
         // if this becomes a hotspot in profile, we could use CRCs or other boost to comparison here.  These classes are constructed rarely

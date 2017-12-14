@@ -14,6 +14,8 @@
 
 #include <QStyledItemDelegate>
 
+#include <AzCore/std/string/string.h>
+
 class QWidget;
 class QPainter;
 class QStyleOptionViewItem;

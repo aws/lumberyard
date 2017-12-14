@@ -26,6 +26,9 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::ColliderComponentRequestBus;
+    using AzFramework::ColliderComponentEventBus;
+
     extern AZ::Transform GetTransformForColliderGeometry(const IPhysicalEntity& physicalEntity, const AZ::EntityId& colliderEntityId);
 
     ISurfaceTypeManager* GetSurfaceTypeManager()
@@ -72,40 +75,10 @@ namespace LmbrCentral
         return names;
     }
 
-    void PrimitiveColliderConfig::Reflect(AZ::ReflectContext* context)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
-        {
-            serializeContext->Class<PrimitiveColliderConfig>()
-                ->Version(1)
-                ->Field("SurfaceTypeName", &PrimitiveColliderConfig::m_surfaceTypeName)
-                ;
-
-            AZ::EditContext* editContext = serializeContext->GetEditContext();
-            if (editContext)
-            {
-                editContext->Class<PrimitiveColliderConfig>("Primitive Collider Configuration", "")
-                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &PrimitiveColliderConfig::m_surfaceTypeName,
-                        "Surface Type", "The collider will use this surface type in the physics simulation.")
-                        ->Attribute(AZ::Edit::Attributes::StringList, &GetSurfaceTypeNames)
-                ;
-            }
-        }
-
-        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
-        {
-            behaviorContext->Class<PrimitiveColliderConfig>()
-                ->Property("SurfaceTypeName", BehaviorValueProperty(&PrimitiveColliderConfig::m_surfaceTypeName))
-                ;
-        }
-    }
 
     void PrimitiveColliderComponent::Reflect(AZ::ReflectContext* context)
     {
-        PrimitiveColliderConfig::Reflect(context);
+        AzFramework::PrimitiveColliderConfig::Reflect(context);
 
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
@@ -119,7 +92,7 @@ namespace LmbrCentral
             if (editContext)
             {
                 editContext->Class<PrimitiveColliderComponent>(
-                    "Primitive Collider", "The Primitive Collider component specifies that the collider geometry is provided by a primitive Shape component")
+                    "Primitive Collider", "The Primitive Collider component specifies that the collider geometry is provided by a primitive shape component")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PrimitiveCollider.png")
@@ -135,7 +108,7 @@ namespace LmbrCentral
         
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->Constant("PrimitiveColliderComponentTypeId", BehaviorConstant(PrimitiveColliderComponentTypeId));
+            behaviorContext->Constant("PrimitiveColliderComponentTypeId", BehaviorConstant(AzFramework::PrimitiveColliderComponentTypeId));
         }
     }
 
@@ -331,7 +304,7 @@ namespace LmbrCentral
 
     bool PrimitiveColliderComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        if (auto config = azrtti_cast<const PrimitiveColliderConfig*>(baseConfig))
+        if (auto config = azrtti_cast<const AzFramework::PrimitiveColliderConfig*>(baseConfig))
         {
             m_configuration = *config;
             return true;
@@ -341,7 +314,7 @@ namespace LmbrCentral
 
     bool PrimitiveColliderComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
     {
-        if (auto outConfig = azrtti_cast<PrimitiveColliderConfig*>(outBaseConfig))
+        if (auto outConfig = azrtti_cast<AzFramework::PrimitiveColliderConfig*>(outBaseConfig))
         {
             *outConfig = m_configuration;
             return true;
@@ -358,3 +331,37 @@ namespace LmbrCentral
         }
     }
 } // namespace LmbrCentral
+
+namespace AzFramework
+{
+    void PrimitiveColliderConfig::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serializeContext)
+        {
+            serializeContext->Class<PrimitiveColliderConfig>()
+                ->Version(1)
+                ->Field("SurfaceTypeName", &PrimitiveColliderConfig::m_surfaceTypeName)
+                ;
+
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<PrimitiveColliderConfig>("Primitive Collider Configuration", "")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &PrimitiveColliderConfig::m_surfaceTypeName,
+                        "Surface Type", "The collider will use this surface type in the physics simulation.")
+                    ->Attribute(AZ::Edit::Attributes::StringList, &LmbrCentral::GetSurfaceTypeNames)
+                    ;
+            }
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<PrimitiveColliderConfig>()
+                ->Property("SurfaceTypeName", BehaviorValueProperty(&PrimitiveColliderConfig::m_surfaceTypeName))
+                ;
+        }
+    }
+} // namespace AzFramework

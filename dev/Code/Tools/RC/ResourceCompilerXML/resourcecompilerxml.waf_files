@@ -22,7 +22,6 @@
             "../ResourceCompiler/IConfig.cpp",
             "ResourceCompilerXML.cpp",
             "XMLConverter.cpp",
-            "ResourceCompilerPlugin.def",
             "stdafx.h",
             "XMLConverter.h"
         ]

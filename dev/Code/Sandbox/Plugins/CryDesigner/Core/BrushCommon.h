@@ -38,23 +38,6 @@
 #define DESIGNER_ASSERT(condition)  assert(1)
 #endif
 
-class CResourceHandlerReconstructor
-{
-public:
-    CResourceHandlerReconstructor()
-    {
-        g_hPrevInst = AfxGetResourceHandle();
-        AfxSetResourceHandle(g_hInst);
-    }
-    ~CResourceHandlerReconstructor()
-    {
-        AfxSetResourceHandle(g_hPrevInst);
-    }
-private:
-    HINSTANCE g_hPrevInst;
-};
-#define RESOURCEHANDLER_RECONSTRUCTOR CResourceHandlerReconstructor resourceHandlerReconstructor
-
 class ElementManager;
 
 namespace CD

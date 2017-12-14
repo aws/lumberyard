@@ -789,25 +789,15 @@ bool ResourceParticleParams::IsActive() const
         }
     }
 
-    // Get platform / config spec
-    ESystemConfigSpec config_spec = gEnv->pSystem->GetConfigSpec();
+    // Get platform spec    
+    ESystemConfigPlatform platform_spec = gEnv->pSystem->GetConfigPlatform();
 
-    if (config_spec <= CONFIG_VERYHIGH_SPEC)
+    if (!Platforms.PCDX11 && platform_spec== CONFIG_PC ||
+        !Platforms.hasMacOSMetal && platform_spec == CONFIG_OSX_METAL ||
+        !Platforms.hasAndroid && platform_spec == CONFIG_ANDROID ||
+        !Platforms.hasIOS && platform_spec == CONFIG_IOS)
     {
-        // PC platform. Match DX settings.
-        if (!Platforms.PCDX11)
-        {
-            return false;
-        }
-    }
-
-    if (config_spec > CONFIG_VERYHIGH_SPEC || !GetCVars()->e_ParticlesQuality)
-    {
-        // For consoles, or PC if e_ParticlesQuality not set, match against pure config spec
-        if (!(mConfigSpecMask & BIT(config_spec)))
-        {
-            return false;
-        }
+        return false;
     }
 
     return true;
@@ -849,7 +839,7 @@ int ResourceParticleParams::LoadResources()
         }
         else if (sGeometry.empty())
         {
-            SShaderItem shader = pMaterial->GetShaderItem();
+            SShaderItem& shader = pMaterial->GetShaderItem();
 
             bool validMaterial = shader.m_pShader != nullptr;
 
@@ -1529,14 +1519,20 @@ CLodParticle::CLodParticle(CLodInfo* lod, const CParticleEffect* originalEffect)
 
     if (originalEffect->HasParams())
     {
-        pLodParticle = new CParticleEffect(string(originalEffect->GetName()) + "Lod" + AZStd::to_string(lod->GetDistance()).c_str(),
-                originalEffect->GetParams());
+        pLodParticle = new CParticleEffect(GenerateName(originalEffect->GetName()).c_str(), originalEffect->GetParams());
     }
     else
     {
-        pLodParticle = new CParticleEffect(string(originalEffect->GetName()) + "Lod" + AZStd::to_string(lod->GetDistance()).c_str(),
-                originalEffect->GetParent()->GetDefaultParams());
+        pLodParticle = new CParticleEffect(GenerateName(originalEffect->GetName()).c_str(), originalEffect->GetParent()->GetDefaultParams());
     }
+
+    //find matching parent lod effect from parent effect and set proper parent for this lod effect.
+    IParticleEffect* parentLodEffect = nullptr;
+    if (originalEffect->GetParent())
+    {
+        parentLodEffect = originalEffect->GetParent()->GetLodParticle(pLod);
+    }
+    pLodParticle->SetParent(parentLodEffect);
 }
 
 CLodParticle::CLodParticle()
@@ -1547,11 +1543,23 @@ CLodParticle::CLodParticle()
 
 CLodParticle::~CLodParticle()
 {
+    if (pLodParticle)
+    {
+        pLodParticle->SetParent(NULL);
+    }
 }
 
-void CLodParticle::Rename(string name)
+//The name gererated in this function won't be used to identify the particle effect. It's only for debug or display in UI. 
+AZStd::string CLodParticle::GenerateName(const AZStd::string& name)
 {
-    pLodParticle->SetName(name + "Lod" + AZStd::to_string(pLod->GetDistance()).c_str());
+    // Convert the distance from float to int to avoid adding '.' to the name which could cause issue 
+    // since the particle manager is using on '.' as token for parsing particle names
+    return (name + "Lod" + AZStd::to_string((int)pLod->GetDistance()).c_str());
+}
+
+void CLodParticle::Rename(const AZStd::string& name)
+{
+    pLodParticle->SetName(GenerateName(name).c_str());
 }
 
 CParticleEffect*    CLodParticle::GetParticle()
@@ -1581,10 +1589,11 @@ void CLodParticle::Serialize(XmlNodeRef node, bool bLoading, bool bAll, CParticl
         if (parentEffect != nullptr)
         {          
             pLod = static_cast<CLodInfo*>(parentEffect->GetLevelOfDetailByDistance(distance));
-            AZ_Assert(pLod, "top effect's lod info doesn't exist");
+            AZ_Assert(pLod, "Parent effect's lod info doesn't exist");
         }
         else
-        {
+        {            
+            //the pLod may exist if the particle get re-serialized. 
             if (pLod == nullptr)
             {
                 pLod = new CLodInfo();
@@ -1593,7 +1602,9 @@ void CLodParticle::Serialize(XmlNodeRef node, bool bLoading, bool bAll, CParticl
             bool active = false;
             lodParticleChild->getAttr("Active", active);
             pLod->SetActive(active);
-            pLod->SetParticle(originalEffect);
+
+            //if the originalEffect is root effect which doesn't have parent, then it's the top particle in CLodInfo 
+            pLod->SetTopParticle(originalEffect);
         }
 
         if (pLodParticle == nullptr)
@@ -1601,7 +1612,19 @@ void CLodParticle::Serialize(XmlNodeRef node, bool bLoading, bool bAll, CParticl
             pLodParticle = new CParticleEffect();
         }
 
+        //find matching parent lod effect from parent effect and set proper parent for this lod effect.
+        IParticleEffect* parentLodEffect = nullptr;
+        if (originalEffect->GetParent())
+        {
+            parentLodEffect = originalEffect->GetParent()->GetLodParticle(pLod);
+        }
+        pLodParticle->SetParent(parentLodEffect);
+
         pLodParticle->Serialize(lodParticleChild->getChild(0), bLoading, bAll);
+
+        //lod particle always uses generated name instead name in xml. 
+        //The previous version may have generated some nonsense name due to the float number adding '.' in the name
+        Rename(originalEffect->GetBaseName());
     }
     else //Saving
     {
@@ -1654,6 +1677,7 @@ void CLodInfo::SetDistance(float distance)
     if (pTopParticle)
     {
         static_cast<CParticleEffect*>(pTopParticle.get())->SortLevelOfDetailBasedOnDistance();
+        CParticleManager::Instance()->UpdateEmitters(pTopParticle);
     }
 }
 
@@ -1678,7 +1702,7 @@ IParticleEffect* CLodInfo::GetTopParticle()
     return pTopParticle;
 }
 
-void CLodInfo::SetParticle(IParticleEffect* particleEffect)
+void CLodInfo::SetTopParticle(IParticleEffect* particleEffect)
 {
     pTopParticle = particleEffect;
 }
@@ -1930,29 +1954,21 @@ void CParticleEffect::SetParent(IParticleEffect* pParent)
         return;
     }
 
-    if (pParent == nullptr && HasLevelOfDetail())
-    {
-        for (int i = 0; i < GetLevelOfDetailCount(); i++)
-        {
-            SLodInfo* oldLod = GetLevelOfDetail(i);
-            CLodInfo* newLod = new CLodInfo(oldLod->GetDistance(), oldLod->GetActive(), this);
-
-            ReplaceLOD(newLod);
-        }
-    }
-
+    //remove this effect from its previous parent
     _smart_ptr<IParticleEffect> ref_ptr = this;
     if (m_parent)
     {
         stl::find_and_erase(m_parent->m_children, this);
-        // Note that UpdateEmitters(this) is also called at the end of this function. It is unclear whether/why UpdateEmitters(m_parent) also needs to be called here. This dates back to the original drop from Crytek.
+        //update previous parent since its modified. 
         CParticleManager::Instance()->UpdateEmitters(m_parent);
     }
+
+    //if it will become a child effect
     if (pParent)
     {
         if (!m_parent)
         {
-            // Was previously top-level effect.
+            // Was previously top-level effect. delete from particle manager
             CParticleManager::Instance()->DeleteEffect(this);
         }
         static_cast<CParticleEffect*>(pParent)->m_children.push_back(this);
@@ -1960,43 +1976,12 @@ void CParticleEffect::SetParent(IParticleEffect* pParent)
 
     m_parent = static_cast<CParticleEffect*>(pParent);
 
-    if (pParent)
-    {
-        if (pParent->HasLevelOfDetail())
-        {
-            RemoveAllLevelOfDetails();
-            for (int i = 0; i < pParent->GetLevelOfDetailCount(); i++)
-            {
-                AddLevelOfDetail(pParent->GetLevelOfDetail(i));
-            }
-        }
-        else
-        {
-            IParticleEffect* top = pParent;
-            while (top->GetParent() != nullptr)
-            {
-                top = top->GetParent();
-            }
+    //Note: the previous implementation was trying to migrate the LODs and make them work with the new parent. But there are many cases won't be 
+    // resolved in a good way. For example the amount of LODS mismatching, the distance of each LOD mismatch. After discussion with PD, 
+    // we agreed it's better we clean all LOD for good. 
 
-            for_array(i, m_levelofdetail)
-            {
-                if (m_levelofdetail[i].GetLod()->GetTopParticle() == this)
-                {
-                    static_cast<CParticleEffect*>(top)->AddLevelOfDetail(m_levelofdetail[i].GetLod());
-                    static_cast<CLodInfo*>(m_levelofdetail[i].GetLod())->SetParticle(top);
-                }
-                else
-                {
-                    CLodInfo* newLod = new CLodInfo(m_levelofdetail[i].GetLod()->GetDistance(),
-                            m_levelofdetail[i].GetLod()->GetActive(), top);
-
-                    this->RemoveLevelOfDetail(m_levelofdetail[i].GetLod());
-
-                    static_cast<CParticleEffect*>(top)->AddLevelOfDetail(newLod);
-                }
-            }
-        }
-    }
+    //Remove all lods when parent changes 
+    RemoveAllLevelOfDetails();
 
     CParticleManager::Instance()->UpdateEmitters(this);
 }
@@ -2344,12 +2329,12 @@ void CParticleEffect::PropagateParticleParams(const ParticleParams &prevParams, 
         }
         //if the particle effect was or is a group
         else if (prevParams.bGroup || prevParams.inheritedGroup.bInheritedGroupData
-            || newParams.bGroup || newParams.inheritedGroup.bInheritedGroupData)
+|| newParams.bGroup || newParams.inheritedGroup.bInheritedGroupData)
         {
-            // save the child's current parameters
-            ParticleParams childPrev = *m_children[i].m_pParticleParams;
-            UpdateGroupValues(newParams, *m_children[i].m_pParticleParams);
-            m_children[i].PropagateParticleParams(childPrev, *m_children[i].m_pParticleParams);
+        // save the child's current parameters
+        ParticleParams childPrev = *m_children[i].m_pParticleParams;
+        UpdateGroupValues(newParams, *m_children[i].m_pParticleParams);
+        m_children[i].PropagateParticleParams(childPrev, *m_children[i].m_pParticleParams);
         }
     }
     if (m_pParticleParams)
@@ -2359,45 +2344,54 @@ void CParticleEffect::PropagateParticleParams(const ParticleParams &prevParams, 
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// Particle Level of Detail - Vera, Chris Confetti
+// This function is used for particle editor to add LOD for this particle effect (root or any child)
+// if this effect doesn't have some LODs which the root effect has, then it will add all the missing lods for the effect
+// if there isn't any missing lods, then it will add a new lod with increased distance 
+// Note: when adding a lod for an effect, all its parents and children will add this lod if they don't have it (in function AddLevelOfDetail(lod, addToChildren)) .
 /////////////////////////////////////////////////////////////////////////////
 void CParticleEffect::AddLevelOfDetail()
 {
-    IParticleEffect* top = static_cast<IParticleEffect*>(this);
-    // Check if distance alreayd be added to levelofdetail or not
-    while (top->GetParent() != nullptr)
-    {
-        top = top->GetParent();
-    }
+    //Find top effect
+    IParticleEffect* top = GetRoot();
 
-
-    float distToAdd = 0;
-    for_array(i, m_levelofdetail)
+    //If this effect is a child effect and it has less lod count other than root's,
+    //add all missing lods, for both its parents and children
+    bool lodAdded = false;
+    if (top != this && top->GetLevelOfDetailCount() != GetLevelOfDetailCount())
     {
-        float currentLodDist = m_levelofdetail[i].GetLod()->GetDistance();
-        if (currentLodDist > distToAdd)
+        for (int i = 0; i < top->GetLevelOfDetailCount(); i++)
         {
-            distToAdd = currentLodDist;
+            SLodInfo* lodInfo = top->GetLevelOfDetail(i);
+            if (GetLevelOfDetailIndex(lodInfo) < 0)
+            {
+                AddLevelOfDetail(lodInfo, true);
+                lodAdded = true;
+            }
         }
     }
 
-    // New LOD distance will be set to LOD_DIST_OFFSET further than last LOD
-    distToAdd += LOD_DIST_OFFSET;
-
-    // if not found same distance, add new level of detail
-    CLodInfo* lod = new CLodInfo(distToAdd, true, top);
-
-
-    //Lod should also go up to the parents
-    IParticleEffect* parent = GetParent();
-    while (parent != nullptr)
+    //if no lod added, create new lod
+    if (!lodAdded)
     {
-        static_cast<CParticleEffect*>(parent)->AddLevelOfDetail(lod, false);
-        parent = parent->GetParent();
+        float distToAdd = 0;
+        for_array(i, m_levelofdetail)
+        {
+            float currentLodDist = m_levelofdetail[i].GetLod()->GetDistance();
+            if (currentLodDist > distToAdd)
+            {
+                distToAdd = currentLodDist;
+            }
+        }
+
+        // New LOD distance will be set to LOD_DIST_OFFSET further than last LOD
+        distToAdd += LOD_DIST_OFFSET;
+
+        CLodInfo* lod = new CLodInfo(distToAdd, true, top);
+
+        AddLevelOfDetail(lod, true);
     }
 
-
-    AddLevelOfDetail(lod);
+    static_cast<CParticleEffect*>(top)->SortLevelOfDetailBasedOnDistance();
     CParticleManager::Instance()->UpdateEmitters(top);
 }
 
@@ -2418,53 +2412,24 @@ void CParticleEffect::ReplaceLOD(SLodInfo* lod)
     }
 }
 
-void CParticleEffect::AddParentLodsToEffect()
-{
-    if (GetParent() != nullptr)
-    {
-        GetParent()->AddParentLodsToEffect();
-
-        for (int i = 0; i < GetParent()->GetLevelOfDetailCount(); i++)
-        {
-            AddLevelOfDetail(GetParent()->GetLevelOfDetail(i));
-        }
-    }
-}
-
-void CParticleEffect::PushBackLOD(_smart_ptr<CLodParticle> lod)
-{
-    m_levelofdetail.push_back(lod);
-}
-
 void CParticleEffect::AddLevelOfDetail(SLodInfo* lod, bool addToChildren)
 {
-    for_array(i, m_levelofdetail)
+    //if parent doesn't have this lod, add it for parent too
+    if (m_parent && m_parent->GetLevelOfDetailIndex(lod) < 0)
     {
-        if (m_levelofdetail[i].GetLod() == lod)
-        {
-            return;
-        }
+        m_parent->AddLevelOfDetail(lod, false);
     }
 
-    // if not found same distance, add new level of detail
-    CParticleEffect* inherit = this;
-    if (m_levelofdetail.size() > 0)
-    {
-        inherit = m_levelofdetail[m_levelofdetail.size() - 1].GetParticle();
-    }
-
-    CLodParticle* newLodParticle = new CLodParticle(static_cast<CLodInfo*>(lod), inherit);
-
+    CLodParticle* newLodParticle = new CLodParticle(static_cast<CLodInfo*>(lod), this);
     m_levelofdetail.push_back(newLodParticle);
 
     if (addToChildren)
     {
         for_array(i, m_children)
         {
-            m_children[i].AddLevelOfDetail(lod);
+            m_children[i].AddLevelOfDetail(lod, true);
         }
     }
-    SortLevelOfDetailBasedOnDistance();
 }
 
 bool CParticleEffect::HasLevelOfDetail() const
@@ -2525,7 +2490,6 @@ int CParticleEffect::GetLevelOfDetailIndex(const SLodInfo* lod) const
 void CParticleEffect::RemoveLevelOfDetail(SLodInfo* lod)
 {
     RemoveLevelOfDetailRecursive(lod);
-
     CParticleManager::Instance()->UpdateEmitters(static_cast<IParticleEffect*>(this));
 }
 
@@ -2535,29 +2499,23 @@ void CParticleEffect::RemoveAllLevelOfDetails()
     {
         RemoveLevelOfDetailRecursive(m_levelofdetail[m_levelofdetail.size() - 1].GetLod());
     }
-
-    m_levelofdetail.clear();
-
     CParticleManager::Instance()->UpdateEmitters(static_cast<IParticleEffect*>(this));
 }
 
 void CParticleEffect::RemoveLevelOfDetailRecursive(SLodInfo* lod)
 {
-    if (m_pParticleParams)
+    for_array(i, m_levelofdetail)
     {
-        for_array(i, m_levelofdetail)
+        if (m_levelofdetail[i].GetLod() == lod)
         {
-            if (m_levelofdetail[i].GetLod() == lod)
-            {
-                m_levelofdetail.erase(m_levelofdetail.begin() + i);
-                break;
-            }
+            m_levelofdetail.erase(m_levelofdetail.begin() + i);
+            break;
         }
     }
 
     for_array(i, m_children)
     {
-        m_children[i].RemoveLevelOfDetail(lod);
+        m_children[i].RemoveLevelOfDetailRecursive(lod);
     }
 }
 
@@ -2610,7 +2568,6 @@ void CParticleEffect::SortLevelOfDetailBasedOnDistance()
     {
         m_children[i].SortLevelOfDetailBasedOnDistance();
     }
-    CParticleManager::Instance()->UpdateEmitters(this);
 }
 
 IParticleEffect* CParticleEffect::GetLodParticle(SLodInfo* lod) const
@@ -2877,7 +2834,8 @@ void CParticleEffect::Serialize(XmlNodeRef node, bool bLoading, bool bAll, const
                 _smart_ptr<CLodParticle> lodParticle;
                 lodParticle = new CLodParticle();
 
-                lodParticle->Serialize(lod, bLoading, bAll, this);
+                //note: we do not save or load children of lod particles since their origin particles own them. (bAll set to false)
+                lodParticle->Serialize(lod, bLoading, false, this);
                 //If the lod particle didn't get correct lod info, don't add it to m_levelofdetail.
                 //This could happen if this is a particle with lod setting is moved to a parent particle which doesn't have lod. 
                 if (lodParticle->GetLod() == nullptr)
@@ -2926,10 +2884,6 @@ void CParticleEffect::Serialize(XmlNodeRef node, bool bLoading, bool bAll, const
             }
         }
         PropagateParticleParams(prevParam, GetParticleParams());
-        ////////////////////////////////////////////////////////////////////
-        // Serialize Level of Details
-
-        ////////////////////////////////////////////////////////////////
 
         if (!gEnv->IsEditor() && !bEnabled && m_parent)
         {
@@ -2984,7 +2938,9 @@ void CParticleEffect::Serialize(XmlNodeRef node, bool bLoading, bool bAll, const
             for_array(i, m_levelofdetail)
             {
                 XmlNodeRef lodchild = lodNode->newChild("LevelOfDetail");
-                m_levelofdetail[i].Serialize(lodchild, bLoading, bAll);
+
+                //note: we do not save or load children of lod particles since their origin particles own them. (bAll set to false)
+                m_levelofdetail[i].Serialize(lodchild, bLoading, false);
             }
         }
 

@@ -5,7 +5,7 @@
     "DisplayName": "GraphCanvas",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Gem wrapper around the GraphCanvas module",
+    "Summary": "The Graph Canvas Gem includes a C++ framework for creating custom graphical node based editors.",
     "Tags": ["GraphCanvas"],
     "IconPath": "preview.png",
     "EditorModule" : true

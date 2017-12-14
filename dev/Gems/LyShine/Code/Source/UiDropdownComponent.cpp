@@ -273,7 +273,7 @@ void UiDropdownComponent::Collapse()
     }
 
     m_expanded = false;
-    
+
     // This is for Expand to always work the same way when called by script
     m_expandedByClick = true;
 

@@ -18,6 +18,8 @@
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/std/containers/array.h>
 
+#include <Cry_Math.h>
+
 #include <cstdint>
 
 namespace AZ 
@@ -52,9 +54,22 @@ namespace AZ
             {
                 float horizontalDistance; ///< Horizontal frustum shift relative to the non-stereo frustum.
                 float verticalDistance;   ///< Vertical frustum shift relative to the non-stereo frustum.
+
+                AsymmetricFrustumPlane()
+                    : horizontalDistance(1.6f)
+                    , verticalDistance(0.9f)
+                {
+                }
             };
 
             AsymmetricFrustumPlane frustumPlane;
+
+            PerEyeCameraInfo()
+                : aspectRatio(16.0f / 9.0f)
+                , fov(DEG2RAD(1.5f))
+                , eyeOffset(0.65f, 0.0f, 0.0f)
+            {
+            }
         };
 
         ///
@@ -84,16 +99,6 @@ namespace AZ
         {
             AZ_TYPE_INFO(HMDDeviceInfo, "{DB83AF23-CF4E-491D-A346-F5DC834D1C74}")
 
-                HMDDeviceInfo()
-                : productName(nullptr)
-                , manufacturer(nullptr)
-                , renderWidth(0)
-                , renderHeight(0)
-                , fovH(0.0f)
-                , fovV(0.0f)
-            {
-            }
-
             static void Reflect(AZ::ReflectContext* context);
 
             const char* productName;
@@ -106,6 +111,16 @@ namespace AZ
             // Field of view is defined as the total field of view of the device which includes both eyes.
             float fovH;
             float fovV;
+            
+            HMDDeviceInfo()
+                : productName(nullptr)
+                , manufacturer(nullptr)
+                , renderWidth(0)
+                , renderHeight(0)
+                , fovH(0.0f)
+                , fovV(0.0f)
+            {
+            }
         };
 
         enum HMDStatus
@@ -155,16 +170,16 @@ namespace AZ
         {
             AZ_TYPE_INFO(PoseState, "{040F18D7-1163-477B-8908-47CC35737DCE}")
 
-                PoseState()
-                : orientation(AZ::Quaternion::CreateIdentity())
-                , position(AZ::Vector3::CreateZero())
-            {
-            }
-
             static void Reflect(AZ::ReflectContext* context);
 
             AZ::Quaternion orientation; ///< The current orientation of the HMD.
             AZ::Vector3 position;       ///< The current position of the HMD in local space as an offset from the centered pose.
+            
+            PoseState()
+                : orientation(AZ::Quaternion::CreateIdentity())
+                , position(AZ::Vector3::CreateZero())
+            {
+            }
         };
 
         ///
@@ -175,14 +190,6 @@ namespace AZ
         {
             AZ_TYPE_INFO(DynamicsState, "{5C5E2249-8844-4790-9F7A-88703A9C18DD}")
 
-                DynamicsState()
-                : angularVelocity(0)
-                , angularAcceleration(0)
-                , linearVelocity(0)
-                , linearAcceleration(0)
-            {
-            }
-
             static void Reflect(AZ::ReflectContext* context);
 
             /// Angular velocity/acceleration reported in local space.
@@ -192,6 +199,14 @@ namespace AZ
             /// Linear velocity/acceleration reported in local space.
             AZ::Vector3 linearVelocity;
             AZ::Vector3 linearAcceleration;
+            
+            DynamicsState()
+                : angularVelocity(0)
+                , angularAcceleration(0)
+                , linearVelocity(0)
+                , linearAcceleration(0)
+            {
+            }
         };
 
         ///
@@ -203,11 +218,6 @@ namespace AZ
         struct TrackingState
         {
             AZ_TYPE_INFO(TrackingState, "{E9CB08E8-9996-478B-AABB-EC8CCCF3B403}")
-
-            TrackingState()
-                : statusFlags(0)
-            {
-            }
 
             typedef uint32 StatusFlags;
 
@@ -222,6 +232,11 @@ namespace AZ
             PoseState pose;         ///< Current pose relating to this tracked state.
             DynamicsState dynamics; ///< Current state of the physics dynamics for this device.
             StatusFlags statusFlags;   ///< Bitfield denoting current tracking status. Flags defined in the enum HMDStatus.
+
+            TrackingState()
+                : statusFlags(0)
+            {
+            }
         };
 
         ///

@@ -95,18 +95,24 @@ DebugCamera::DebugCamera()
     , m_position(ZERO)
     , m_view(IDENTITY)
 {
-    gEnv->pSystem->GetIInput()->AddEventListener(this);
+    if (gEnv->pSystem->GetIInput())
+    {
+        gEnv->pSystem->GetIInput()->AddEventListener(this);
+    }
     REGISTER_COMMAND("debugCameraToggle", ToggleDebugCamera, VF_DEV_ONLY, "Toggle the debug camera.\n");
     REGISTER_COMMAND("debugCameraInvertY", ToggleDebugCameraInvertY, VF_DEV_ONLY, "Toggle debug camera Y-axis inversion.\n");
     REGISTER_COMMAND("debugCameraMove", DebugCameraMove, VF_DEV_ONLY, "Move the debug camera the specified distance (x y z).\n");
-    gEnv->pConsole->CreateKeyBind("ctrl_slash", "debugCameraToggle");
-    gEnv->pConsole->CreateKeyBind("alt_slash", "debugCameraInvertY");
+    gEnv->pConsole->CreateKeyBind("ctrl_keyboard_key_punctuation_backslash", "debugCameraToggle");
+    gEnv->pConsole->CreateKeyBind("alt_keyboard_key_punctuation_backslash", "debugCameraInvertY");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 DebugCamera::~DebugCamera()
 {
-    gEnv->pSystem->GetIInput()->RemoveEventListener(this);
+    if (gEnv->pSystem->GetIInput())
+    {
+        gEnv->pSystem->GetIInput()->RemoveEventListener(this);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

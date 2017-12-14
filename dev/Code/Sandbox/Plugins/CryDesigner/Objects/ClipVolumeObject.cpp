@@ -26,7 +26,7 @@
 #include <AzCore/std/parallel/atomic.h>
 
 
-AZStd::atomic_uint s_nGlobalFileClipVolumeID = 0;
+AZStd::atomic_uint s_nGlobalFileClipVolumeID = {0};
 
 ClipVolumeObject::ClipVolumeObject()
 {
@@ -443,7 +443,7 @@ void ClipVolumeObject::BeginEditParams(IEditor* ie, int flags)
     if (!m_pEditClipVolumePanel)
     {
         m_pEditClipVolumePanel = new ClipVolumeObjectPanel(this);
-        m_nEditClipVolumeRollUpID = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, _T("Edit Clipvolume"), m_pEditClipVolumePanel, false);
+        m_nEditClipVolumeRollUpID = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, tr("Edit Clipvolume"), m_pEditClipVolumePanel, false);
 
         if (GetModel()->IsEmpty())
         {
@@ -486,7 +486,7 @@ void ClipVolumeObject::ExportBspTree(IChunkFile* pChunkFile) const
             {
                 size_t nBufferSize = pBspTree->WriteToBuffer(NULL);
 
-                void* pTreeData = new uint8[nBufferSize];
+                auto pTreeData = new uint8[nBufferSize];
                 pBspTree->WriteToBuffer(pTreeData);
 
                 pChunkFile->AddChunk(ChunkType_BspTreeData, 0x1, eEndianness_Little, pTreeData, nBufferSize);

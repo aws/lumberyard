@@ -24,7 +24,6 @@
 #include <MCore/Source/AttributeVector2.h>
 
 
-
 namespace EMotionFX
 {
     // constructor
@@ -245,7 +244,7 @@ namespace EMotionFX
         // get the goal
         OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_GOALPOS));
         const MCore::AttributeVector3* inputGoalPos = GetInputVector3(animGraphInstance, INPUTPORT_GOALPOS);
-        MCore::Vector3 goal = (inputGoalPos) ? inputGoalPos->GetValue() : MCore::Vector3(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 goal = (inputGoalPos) ? AZ::Vector3(inputGoalPos->GetValue()) : AZ::Vector3::CreateZero();
 
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
 
@@ -256,12 +255,18 @@ namespace EMotionFX
         Transform globalTransform = outTransformPose.GetGlobalTransformInclusive(nodeIndex);
 
         Skeleton* skeleton = actorInstance->GetActor()->GetSkeleton();
-        const uint32 parentIndex = skeleton->GetNode(nodeIndex)->GetParentIndex();
+
+        // Prevent invalid float values inside the LookAt matrix construction when both position and goal are the same
+        const AZ::Vector3 diff = globalTransform.mPosition - goal;
+        if (diff.GetLengthSq() < AZ::g_fltEps)
+        {
+            goal += AZ::Vector3(0.0f, 0.000001f, 0.0f);
+        }
 
         // calculate the lookat transform
         // TODO: a quaternion lookat function would be nicer, so that there are no matrix operations involved
         MCore::Matrix lookAt;
-        lookAt.LookAt(globalTransform.mPosition, goal, MCore::Vector3(0.0f, 0.0f, 1.0f));
+        lookAt.LookAt(globalTransform.mPosition, goal, AZ::Vector3(0.0f, 0.0f, 1.0f));
         MCore::Quaternion destRotation = lookAt.Transposed();   // implicit matrix to quat conversion
 
         // apply the post rotation
@@ -269,45 +274,47 @@ namespace EMotionFX
         destRotation = destRotation * postRotation;
 
         // get the constraint rotation
-        const MCore::Quaternion constraintRotation = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_CONSTRAINTROTATION))->GetRotationQuaternion();      
+        const MCore::Quaternion constraintRotation = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_CONSTRAINTROTATION))->GetRotationQuaternion();
 
         if (GetAttributeFloatAsBool(ATTRIB_CONSTRAINTS))
         {
             // calculate the delta between the bind pose rotation and current target rotation and constraint that to our limits
-            const MCore::Quaternion parentRotationGlobal  = inputPose->GetPose().GetGlobalTransformInclusive(parentIndex).mRotation;
-            const MCore::Quaternion destRotationLocal     = destRotation * parentRotationGlobal.Conjugated();
-            const MCore::Quaternion bindRotationLocal     = actorInstance->GetTransformData()->GetBindPose()->GetLocalTransform(parentIndex).mRotation;
-            const MCore::Quaternion deltaRotLocal         = destRotationLocal * bindRotationLocal.Conjugated();
-            
+            const uint32 parentIndex = skeleton->GetNode(nodeIndex)->GetParentIndex();
+            MCore::Quaternion parentRotationGlobal;
+            MCore::Quaternion bindRotationLocal;
+            if (parentIndex != MCORE_INVALIDINDEX32)
+            {               
+                parentRotationGlobal = inputPose->GetPose().GetGlobalTransformInclusive(parentIndex).mRotation;
+                bindRotationLocal    = actorInstance->GetTransformData()->GetBindPose()->GetLocalTransform(parentIndex).mRotation;
+            }
+            else
+            {
+                parentRotationGlobal.Identity();
+                bindRotationLocal.Identity();
+            }
+
+            const MCore::Quaternion destRotationLocal = destRotation * parentRotationGlobal.Conjugated();
+            const MCore::Quaternion deltaRotLocal     = destRotationLocal * bindRotationLocal.Conjugated();
+
             // setup the constraint and execute it
             // the limits are relative to the bind pose in local space
-            const AZ::Vector2 minLimits = static_cast<MCore::AttributeVector2*>( GetAttribute(ATTRIB_YAWPITCHROLL_MIN) )->GetValue();
-            const AZ::Vector2 maxLimits = static_cast<MCore::AttributeVector2*>( GetAttribute(ATTRIB_YAWPITCHROLL_MAX) )->GetValue();
+            const AZ::Vector2 minLimits = static_cast<MCore::AttributeVector2*>(GetAttribute(ATTRIB_YAWPITCHROLL_MIN))->GetValue();
+            const AZ::Vector2 maxLimits = static_cast<MCore::AttributeVector2*>(GetAttribute(ATTRIB_YAWPITCHROLL_MAX))->GetValue();
             ConstraintTransformRotationAngles constraint;   // TODO: place this inside the unique data? would be faster, but takes more memory, or modify the constraint to support internal modification of a transform directly
             constraint.SetMinRotationAngles(minLimits);
             constraint.SetMaxRotationAngles(maxLimits);
-            constraint.SetMinTwistAngle( 0.0f );
-            constraint.SetMaxTwistAngle( 0.0f );
-            constraint.SetTwistAxis( static_cast<ConstraintTransformRotationAngles::EAxis>(GetAttributeFloatAsUint32(ATTRIB_TWISTAXIS)) );
+            constraint.SetMinTwistAngle(0.0f);
+            constraint.SetMaxTwistAngle(0.0f);
+            constraint.SetTwistAxis(static_cast<ConstraintTransformRotationAngles::EAxis>(GetAttributeFloatAsUint32(ATTRIB_TWISTAXIS)));
             constraint.GetTransform().mRotation = (deltaRotLocal * constraintRotation.Conjugated());
             constraint.Execute();
 
             #ifdef EMFX_EMSTUDIOBUILD
                 if (GetCanVisualize(animGraphInstance))
                 {
-                    /*
-                    if (GetCanVisualize(animGraphInstance))
-                    {
-                        const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
-                        MCore::Matrix m = deltaRotLocal.ToMatrix();
-                        GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + m.GetRow(0), MCore::RGBA(255,0,0));
-                        GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + m.GetRow(1), MCore::RGBA(0,255,0));
-                        GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + m.GetRow(2), MCore::RGBA(0,0,255));
-                    }*/
-
                     MCore::Matrix offset = (postRotation.Inversed() * bindRotationLocal * constraintRotation * parentRotationGlobal).ToMatrix();
-                    offset.SetTranslation( globalTransform.mPosition );
-                    constraint.DebugDraw( offset, GetVisualizeColor(), 0.5f );
+                    offset.SetTranslation(globalTransform.mPosition);
+                    constraint.DebugDraw(offset, GetVisualizeColor(), 0.5f);
                 }
             #endif
 
@@ -354,26 +361,26 @@ namespace EMotionFX
             outTransformPose.UpdateLocalTransform(nodeIndex);
         }
 
-            // perform some debug rendering
+        // perform some debug rendering
         #ifdef EMFX_EMSTUDIOBUILD
             if (GetCanVisualize(animGraphInstance))
             {
                 const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
 
                 const uint32 color = mVisualizeColor;
-                GetEventManager().OnDrawLine(goal - MCore::Vector3(s, 0, 0), goal + MCore::Vector3(s, 0, 0), color);
-                GetEventManager().OnDrawLine(goal - MCore::Vector3(0, s, 0), goal + MCore::Vector3(0, s, 0), color);
-                GetEventManager().OnDrawLine(goal - MCore::Vector3(0, 0, s), goal + MCore::Vector3(0, 0, s), color);
+                GetEventManager().OnDrawLine(goal - AZ::Vector3(s, 0, 0), goal + AZ::Vector3(s, 0, 0), color);
+                GetEventManager().OnDrawLine(goal - AZ::Vector3(0, s, 0), goal + AZ::Vector3(0, s, 0), color);
+                GetEventManager().OnDrawLine(goal - AZ::Vector3(0, 0, s), goal + AZ::Vector3(0, 0, s), color);
 
-                const MCore::Vector3& pos = globalTransform.mPosition;
+                const AZ::Vector3& pos = globalTransform.mPosition;
                 GetEventManager().OnDrawLine(pos, goal, mVisualizeColor);
 
-                GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + globalTransform.mRotation.CalcUpAxis()*s*50.0f, MCore::RGBA(0,0,255));
+                GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + globalTransform.mRotation.CalcUpAxis() * s * 50.0f, MCore::RGBA(0, 0, 255));
             }
         #endif
     }
 
-    
+
     // get the type string
     const char* BlendTreeLookAtNode::GetTypeString() const
     {

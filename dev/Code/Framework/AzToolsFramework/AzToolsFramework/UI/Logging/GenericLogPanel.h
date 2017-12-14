@@ -47,6 +47,9 @@ namespace AzToolsFramework
             //! calling AddLogLine consumes the given line (move operation) and updates all tabs
             void AddLogLine(Logging::LogLine& target);
 
+            //! Whether tabs will expand the row height of their current item to show the full message text
+            void SetCurrentItemsExpandToFit(bool expandToFit);
+
         protected:
             QWidget* CreateTab(const TabSettings& settings) override;
 
@@ -56,6 +59,9 @@ namespace AzToolsFramework
         private Q_SLOTS:
             // we commit any added lines after a short delay so that data that is flooding in from a file does not cause constant refreshes.
             void CommitAddedLines();
+
+        private:
+            bool m_currentItemsExpandToFit = false;
         };
 
         class GenericLogTab

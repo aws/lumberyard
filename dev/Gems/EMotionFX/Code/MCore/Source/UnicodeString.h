@@ -157,7 +157,7 @@ namespace MCore
          * Creates a string from a given Vector3.
          * @param[in] value The three component vector to convert into a string, in form of "value,value,value".
          */
-        explicit UnicodeString(const Vector3& value)
+        explicit UnicodeString(const AZ::Vector3& value)
             : mData(nullptr)
             , mLength(0)
             , mMaxLength(0) { FromVector3(value); }
@@ -265,7 +265,7 @@ namespace MCore
          * Construct the string from the given Vector3.
          * @param[in] value The three component vector which will be converted to a text version.
          */
-        void FromVector3(const Vector3& value);
+        void FromVector3(const AZ::Vector3& value);
 
         /**
          * Construct the string from the given Vector4.
@@ -307,7 +307,7 @@ namespace MCore
          * The syntax is "value1,value2,value3", for example "-1.5,3.1415,+56.7". Spaces are allowed as well.
          * @result The Vector3 object.
          */
-        Vector3 ToVector3() const;
+        AZ::PackedVector3f ToVector3() const;
 
         /**
          * Convert a string to a Vector4.
@@ -929,8 +929,14 @@ namespace MCore
             {
                 if (strB)
                 {
-                    if (strB[0] == 0) { return 0; }
-                    else { return 1; }
+                    if (strB[0] == 0)
+                    {
+                        return 0;
+                    }
+                    else
+                    {
+                        return 1;
+                    }
                 }
                 else // both strA and strB are nullptr
                 {

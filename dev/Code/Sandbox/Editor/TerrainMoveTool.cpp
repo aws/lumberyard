@@ -640,6 +640,8 @@ void CTerrainMoveTool::Select(int nBox)
         tm.SetIdentity();
         tm.SetTranslation(m_source.pos);
         pManipulator->SetTransformation(COORDS_LOCAL, tm);
+        pManipulator->SetTransformation(COORDS_PARENT, tm);
+        pManipulator->SetTransformation(COORDS_USERDEFINED, tm);
     }
 
     if (nBox == 2)
@@ -665,6 +667,8 @@ void CTerrainMoveTool::Select(int nBox)
         }
         tm.SetTranslation(m_target.pos);
         pManipulator->SetTransformation(COORDS_LOCAL, tm);
+        pManipulator->SetTransformation(COORDS_PARENT, tm);
+        pManipulator->SetTransformation(COORDS_USERDEFINED, tm);
     }
 }
 
@@ -720,6 +724,8 @@ void CTerrainMoveTool::OnManipulatorDrag(CViewport* view, ITransformManipulator*
 
         tm.SetTranslation(pos + val);
         pManipulator->SetTransformation(COORDS_LOCAL, tm);
+        pManipulator->SetTransformation(COORDS_PARENT, tm);
+        pManipulator->SetTransformation(COORDS_USERDEFINED, tm);
     }
 }
 

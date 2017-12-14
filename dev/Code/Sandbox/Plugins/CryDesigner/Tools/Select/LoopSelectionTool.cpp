@@ -23,7 +23,7 @@ namespace
 
 using namespace CD;
 
-void LoopSelectionTool::LoopSelection(SMainContext& mc)
+void LoopSelectionTool::LoopSelection(const SMainContext& mc)
 {
     ElementManager copiedSelected = *mc.pSelected;
     int nSelectedElementCount = copiedSelected.GetCount();
@@ -101,7 +101,7 @@ bool HasEdge(std::vector<PolygonPtr>& polygonList, const BrushEdge3D& edge)
     return false;
 }
 
-bool FindNextEdge(SMainContext& mc, const BrushEdge3D& edge, BrushEdge3D& outEdge)
+bool FindNextEdge(const SMainContext& mc, const BrushEdge3D& edge, BrushEdge3D& outEdge)
 {
     ModelDB* pDB = mc.pModel->GetDB();
     ModelDB::QueryResult queryResult;
@@ -153,7 +153,7 @@ bool FindNextEdge(SMainContext& mc, const BrushEdge3D& edge, BrushEdge3D& outEdg
     return false;
 }
 
-bool LoopSelectionTool::SelectLoop(SMainContext& mc, const BrushEdge3D& initialEdge)
+bool LoopSelectionTool::SelectLoop(const SMainContext& mc, const BrushEdge3D& initialEdge)
 {
     BrushEdge3D edge = initialEdge;
     ElementManager edgeElements;
@@ -192,7 +192,7 @@ bool LoopSelectionTool::SelectLoop(SMainContext& mc, const BrushEdge3D& initialE
     return true;
 }
 
-bool LoopSelectionTool::SelectBorderInOnePolygon(SMainContext& mc, const BrushEdge3D& edge)
+bool LoopSelectionTool::SelectBorderInOnePolygon(const SMainContext& mc, const BrushEdge3D& edge)
 {
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
 
@@ -258,7 +258,7 @@ bool LoopSelectionTool::SelectBorderInOnePolygon(SMainContext& mc, const BrushEd
     return false;
 }
 
-bool LoopSelectionTool::SelectBorder(SMainContext& mc, const BrushEdge3D& edge, ElementManager& outElementInfos)
+bool LoopSelectionTool::SelectBorder(const SMainContext& mc, const BrushEdge3D& edge, ElementManager& outElementInfos)
 {
     BrushEdge3D e(edge);
     int nCount = 0;
@@ -298,7 +298,7 @@ bool LoopSelectionTool::SelectBorder(SMainContext& mc, const BrushEdge3D& edge, 
     return false;
 }
 
-int LoopSelectionTool::GetPolygonCountSharingEdge(SMainContext& mc, const BrushEdge3D& edge, const BrushPlane* pPlane)
+int LoopSelectionTool::GetPolygonCountSharingEdge(const SMainContext& mc, const BrushEdge3D& edge, const BrushPlane* pPlane)
 {
     std::vector<PolygonPtr> polygons;
     mc.pModel->QueryPolygonsSharingEdge(edge, polygons);
@@ -313,7 +313,7 @@ int LoopSelectionTool::GetPolygonCountSharingEdge(SMainContext& mc, const BrushE
     return nCount;
 }
 
-int LoopSelectionTool::CountAllEdges(SMainContext& mc)
+int LoopSelectionTool::CountAllEdges(const SMainContext& mc)
 {
     int nEdgeCount = 0;
     for (int i = 0, iPolygonCount(mc.pModel->GetPolygonCount()); i < iPolygonCount; ++i)
@@ -323,7 +323,7 @@ int LoopSelectionTool::CountAllEdges(SMainContext& mc)
     return nEdgeCount;
 }
 
-bool LoopSelectionTool::SelectFaceLoop(SMainContext& mc, PolygonPtr pFirstPolygon, PolygonPtr pSecondPolygon)
+bool LoopSelectionTool::SelectFaceLoop(const SMainContext& mc, PolygonPtr pFirstPolygon, PolygonPtr pSecondPolygon)
 {
     std::vector<PolygonPtr> polygons;
     GetLoopPolygons(mc, pFirstPolygon, pSecondPolygon, polygons);
@@ -341,7 +341,7 @@ bool LoopSelectionTool::SelectFaceLoop(SMainContext& mc, PolygonPtr pFirstPolygo
     return true;
 }
 
-bool LoopSelectionTool::GetLoopPolygons(SMainContext& mc, PolygonPtr pFirstPolygon, PolygonPtr pSecondPolygon, std::vector<PolygonPtr>& outPolygons)
+bool LoopSelectionTool::GetLoopPolygons(const SMainContext& mc, PolygonPtr pFirstPolygon, PolygonPtr pSecondPolygon, std::vector<PolygonPtr>& outPolygons)
 {
     bool bAdded = false;
     int nCount = 0;
@@ -363,7 +363,7 @@ bool LoopSelectionTool::GetLoopPolygons(SMainContext& mc, PolygonPtr pFirstPolyg
     return bAdded;
 }
 
-bool LoopSelectionTool::GetLoopPolygonsInBothWays(SMainContext& mc, PolygonPtr pFirstPolygon, PolygonPtr pSecondPolygon, std::vector<PolygonPtr>& outPolygons)
+bool LoopSelectionTool::GetLoopPolygonsInBothWays(const SMainContext& mc, PolygonPtr pFirstPolygon, PolygonPtr pSecondPolygon, std::vector<PolygonPtr>& outPolygons)
 {
     std::vector<PolygonPtr> polygonOneWay;
     std::vector<PolygonPtr> polygonTheOtherWay;
@@ -407,7 +407,7 @@ bool LoopSelectionTool::GetLoopPolygonsInBothWays(SMainContext& mc, PolygonPtr p
     return true;
 }
 
-PolygonPtr LoopSelectionTool::FindAdjacentNextPolygon(SMainContext& mc, PolygonPtr pFristPolygon, PolygonPtr pSecondPolygon)
+PolygonPtr LoopSelectionTool::FindAdjacentNextPolygon(const SMainContext& mc, PolygonPtr pFristPolygon, PolygonPtr pSecondPolygon)
 {
     int nFirstEdgeCount = pFristPolygon->GetEdgeCount();
     int nSecondEdgeCount = pSecondPolygon->GetEdgeCount();

@@ -49,6 +49,7 @@ public: // member functions
     // UiRadioButtonGroupCommunicationInterface
     bool RegisterRadioButton(AZ::EntityId radioButton) override;
     void UnregisterRadioButton(AZ::EntityId radioButton) override;
+    void RequestRadioButtonStateChange(AZ::EntityId radioButton, bool newState) override;
     // ~UiRadioButtonGroupCommunicationInterface
 
 protected: // member functions
@@ -78,6 +79,9 @@ protected: // member functions
 private: // member functions
 
     AZ_DISABLE_COPY_MOVE(UiRadioButtonGroupComponent);
+
+    //! Internal function with the common code for setting the state of the radio button group
+    void SetStateCommon(AZ::EntityId radioButton, bool isOn, bool sendNotifications);
 
 private: // data
 

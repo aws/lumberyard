@@ -17,6 +17,8 @@
 #include <aws/core/http/HttpResponse.h>
 #include <aws/core/client/ClientConfiguration.h>
 
+#include <AWSNativeSDKInit/AWSNativeSDKInit.h>
+
 #include "HttpRequestManager.h"
 
 namespace HttpRequestor
@@ -28,13 +30,15 @@ namespace HttpRequestor
         AZStd::thread_desc desc;
         desc.m_name = s_loggingName;
         m_runThread = true;
-        Aws::Http::InitHttp();
+        // Shutdown will be handled by the InitializationManager - no need to call in the destructor
+        AWSNativeSDKInit::InitializationManager::InitAwsApi();
         auto function = AZStd::bind(&Manager::ThreadFunction, this);
         m_thread = AZStd::thread(function, &desc);
     }
 
     Manager::~Manager()
     {
+        // NativeSDK Shutdown does not need to be called here - will be taken care of by the InitializationManager
         m_runThread = false;
         m_requestConditionVar.notify_all();
         if (m_thread.joinable())
@@ -43,7 +47,6 @@ namespace HttpRequestor
         }
 
         m_thread.detach();
-        Aws::Http::CleanupHttp();
     }
 
     void Manager::AddRequest(Parameters && httpRequestParameters)

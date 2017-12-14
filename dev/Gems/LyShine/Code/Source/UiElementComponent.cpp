@@ -30,6 +30,8 @@
 #include <LyShine/Bus/UiEntityContextBus.h>
 #include <LyShine/Bus/UiLayoutManagerBus.h>
 
+#include "UiTransform2dComponent.h"
+
 #include "IConsole.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,24 +40,57 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiElementComponent::UiElementComponent()
-    : m_elementId(0)
-    , m_parent(nullptr)
-    , m_canvas(nullptr)
-    , m_isEnabled(true)
-    , m_isVisibleInEditor(true)
-    , m_isSelectableInEditor(true)
-    , m_isSelectedInEditor(false)
-    , m_isExpandedInEditor(true)
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiElementComponent::~UiElementComponent()
 {
+    // In normal (correct) usage we have nothing to do here.
+    // But if a user calls DeleteEntity or just deletes an entity pointer they can delete a UI element
+    // and leave its parent with a dangling child pointer.
+    // So we report an error in that case and do some recovery code.
+
+    // If we were being deleted via DestroyElement m_parentId would be invalid 
+    if (m_parentId.IsValid())
+    {
+        // Note we do not rely on the m_parent pointer because if the canvas is being unloaded for example the
+        // parent entity could already have been deleted. So we use the parent entity Id to try to find the parent.
+        AZ::Entity* parent = nullptr;
+        EBUS_EVENT_RESULT(parent, AZ::ComponentApplicationBus, FindEntity, m_parentId);
+
+        // If the parent is found and it is active that suggests something is wrong. When unloading a canvas we
+        // deactivate all of the UI elements before any are deleted
+        if (parent && parent->GetState() == AZ::Entity::ES_ACTIVE)
+        {
+            // As a final check see if this element's parent thinks that this is a child, this is almost certain to be the
+            // case if we got here but, if not, there is nothing more to do
+            UiElementComponent* parentElementComponent = parent->FindComponent<UiElementComponent>();
+            if (parentElementComponent)
+            {
+                if (parentElementComponent->FindChildByEntityId(GetEntityId()))
+                {
+                    // This is an error, report the error
+                    AZ_Error("UI", false, "Deleting a UI element entity directly rather than using DestroyElement. Element is named '%s'", m_entity->GetName().c_str());
+
+                    // Attempt to recover by removing this element from the parent's child list
+                    parentElementComponent->RemoveChild(m_entity);
+
+                    // And recursively delete any child UI elements (like DestroyElement on this element would have done)
+                    auto childElementComponents = m_childElementComponents;
+                    for (auto child : childElementComponents)
+                    {
+                        // destroy the child
+                        child->DestroyElement();
+                    }
+                }
+            }
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiElementComponent::UpdateElement()
+void UiElementComponent::UpdateElement(float deltaTime)
 {
     if (!m_isEnabled)
     {
@@ -64,18 +99,27 @@ void UiElementComponent::UpdateElement()
     }
 
     // update any components connected to the UiUpdateBus
-    EBUS_EVENT_ID(GetEntityId(), UiUpdateBus, Update);
+    EBUS_EVENT_ID(GetEntityId(), UiUpdateBus, Update, deltaTime);
 
-    // now update child elements
-    for (auto c : m_children)
+    if (AreChildPointersValid())
     {
-        EBUS_EVENT_ID(c, UiElementBus, UpdateElement);
+        // now update child elements
+        int numChildren = m_children.size();
+        for (int i = 0; i < numChildren; ++i)
+        {
+            GetChildElementComponent(i)->UpdateElement(deltaTime);
+        }
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiElementComponent::RenderElement(bool isInGame, bool displayBounds)
 {
+    if (!IsFullyInitialized())
+    {
+        return;
+    }
+
     if (!isInGame)
     {
         // We are in editing mode (not running the game)
@@ -115,9 +159,10 @@ void UiElementComponent::RenderElement(bool isInGame, bool displayBounds)
         SetupAfterRenderingComponents, UiRenderControlInterface::Pass::First);
 
     // now render child elements
-    for (auto c : m_children)
+    int numChildren = m_children.size();
+    for (int i = 0; i < numChildren; ++i)
     {
-        EBUS_EVENT_ID(c, UiElementBus, RenderElement, isInGame, displayBounds);
+        GetChildElementComponent(i)->RenderElement(isInGame, displayBounds);
     }
 
     // give any components connected to the UiRenderControlBus the opportunity to take
@@ -145,7 +190,7 @@ void UiElementComponent::RenderElement(bool isInGame, bool displayBounds)
     {
         AZ::Color white(1.0f, 1.0f, 1.0f, 1.0f);
         UiTransformInterface::RectPoints points;
-        EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetViewportSpacePoints, points);
+        GetTransform2dComponent()->GetViewportSpacePoints(points);
         // Note: because we pass true to defer these renders the outlines will draw on top of everything on the canvas
         // This is a nested call to begin 2d drawing but Draw2d supports that.
         Draw2dHelper draw2d(true);
@@ -183,7 +228,7 @@ AZ::Entity* UiElementComponent::GetParent()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiElementComponent::GetParentEntityId()
 {
-    return m_parent ? m_parent->GetId() : AZ::EntityId();
+    return m_parentId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -198,8 +243,14 @@ AZ::Entity* UiElementComponent::GetChildElement(int index)
     AZ::Entity* childEntity = nullptr;
     if (index >= 0 && index < m_children.size())
     {
-        AZ::EntityId childEntityId = m_children[index];
-        EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, childEntityId);
+        if (AreChildPointersValid())
+        {
+            childEntity = GetChildElementComponent(index)->GetEntity();
+        }
+        else
+        {
+            EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, m_children[index]);
+        }
     }
     return childEntity;
 }
@@ -235,16 +286,32 @@ int UiElementComponent::GetIndexOfChildByEntityId(AZ::EntityId childId)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 LyShine::EntityArray UiElementComponent::GetChildElements()
 {
+    int numChildren = m_children.size();
     LyShine::EntityArray children;
-    for (auto child : m_children)
+    children.reserve(numChildren);
+
+    // This is one of the rare functions that needs to work before FixupPostLoad has been called because it is called
+    // from OnSliceInstantiated, so only use m_childElementComponents if it is setup
+    if (AreChildPointersValid())
     {
-        AZ::Entity* childEntity = nullptr;
-        EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
-        if (childEntity)
+        for (int i = 0; i < numChildren; ++i)
         {
-            children.push_back(childEntity);
+            children.push_back(GetChildElementComponent(i)->GetEntity());
         }
     }
+    else
+    {
+        for (auto child : m_children)
+        {
+            AZ::Entity* childEntity = nullptr;
+            EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
+            if (childEntity)
+            {
+                children.push_back(childEntity);
+            }
+        }
+    }
+
     return children;
 }
 
@@ -270,12 +337,17 @@ AZ::Entity* UiElementComponent::CreateChildElement(const LyShine::NameType& name
     AZ_Assert(elementComponent, "Failed to create UiElementComponent");
 
     elementComponent->m_canvas = m_canvas;
-    elementComponent->m_parent = m_entity;
+    elementComponent->SetParentReferences(m_entity, this);
     elementComponent->m_elementId = m_canvas->GenerateId();
 
     child->Activate();      // re-activate
 
+    if (AreChildPointersValid())    // must test before m_children.push_back
+    {
+        m_childElementComponents.push_back(elementComponent);
+    }
     m_children.push_back(child->GetId());
+
     return child;
 }
 
@@ -290,19 +362,29 @@ void UiElementComponent::DestroyElement()
     // But, if the entities are not initialized yet the child parent pointer will be null.
     // So the child may or may not remove itself from the list.
     // So make a local copy of the list and iterate on that
-    auto children = m_children;
-    for (auto child : children)
+    if (AreChildPointersValid())
     {
-        // destroy the child
-        EBUS_EVENT_ID(child, UiElementBus, DestroyElement);
+        auto childElementComponents = m_childElementComponents;
+        for (auto child : childElementComponents)
+        {
+            // destroy the child
+            child->DestroyElement();
+        }
+    }
+    else
+    {
+        auto children = m_children;
+        for (auto child : children)
+        {
+            // destroy the child
+            EBUS_EVENT_ID(child, UiElementBus, DestroyElement);
+        }
     }
 
     // remove this element from parent
     if (m_parent)
     {
-        UiElementComponent* parentElement = m_parent->FindComponent<UiElementComponent>();
-        AZ_Assert(parentElement, "Parent entity has no UiElementComponent");
-        parentElement->RemoveChild(GetEntity());
+        GetParentElementComponent()->RemoveChild(GetEntity());
     }
 
     // Notify listeners that the element is being destroyed
@@ -316,7 +398,15 @@ void UiElementComponent::Reparent(AZ::Entity* newParent, AZ::Entity* insertBefor
 {
     if (!newParent)
     {
-        newParent = m_canvas->GetRootElement();
+        if (IsFullyInitialized())
+        {
+            newParent = GetCanvasComponent()->GetRootElement();
+        }
+        else
+        {
+            EmitNotInitializedWarning();
+            return;
+        }
     }
 
     if (newParent == GetEntity())
@@ -339,14 +429,12 @@ void UiElementComponent::Reparent(AZ::Entity* newParent, AZ::Entity* insertBefor
     if (m_parent)
     {
         // remove from parent
-        UiElementComponent* parentElement = m_parent->FindComponent<UiElementComponent>();
-        AZ_Assert(parentElement, "Parent entity has no UiElementComponent");
-        parentElement->RemoveChild(GetEntity());
+        GetParentElementComponent()->RemoveChild(GetEntity());
     }
 
     newParentElement->AddChild(GetEntity(), insertBefore);
 
-    m_parent = newParent;
+    SetParentReferences(newParent, newParentElement);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -376,7 +464,15 @@ void UiElementComponent::AddToParentAtIndex(AZ::Entity* newParent, int index)
 
     if (!newParent)
     {
-        newParent = m_canvas->GetRootElement();
+        if (IsFullyInitialized())
+        {
+            newParent = GetCanvasComponent()->GetRootElement();
+        }
+        else
+        {
+            EmitNotInitializedWarning();
+            return;
+        }
     }
 
     UiElementComponent* newParentElement = newParent->FindComponent<UiElementComponent>();
@@ -390,7 +486,7 @@ void UiElementComponent::AddToParentAtIndex(AZ::Entity* newParent, int index)
 
     newParentElement->AddChild(GetEntity(), insertBefore);
 
-    m_parent = newParent;
+    SetParentReferences(newParent, newParentElement);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -399,17 +495,20 @@ void UiElementComponent::RemoveFromParent()
     if (m_parent)
     {
         // remove from parent
-        UiElementComponent* parentElement = m_parent->FindComponent<UiElementComponent>();
-        AZ_Assert(parentElement, "Parent entity has no UiElementComponent");
-        parentElement->RemoveChild(GetEntity());
+        GetParentElementComponent()->RemoveChild(GetEntity());
 
-        m_parent = nullptr;
+        SetParentReferences(nullptr, nullptr);
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::Entity* UiElementComponent::FindFrontmostChildContainingPoint(AZ::Vector2 point, bool isInGame)
 {
+    if (!IsFullyInitialized())
+    {
+        return nullptr;
+    }
+
     AZ::Entity* matchElem = nullptr;
 
     // this traverses all of the elements in reverse hierarchy order and returns the first one that
@@ -432,9 +531,11 @@ AZ::Entity* UiElementComponent::FindFrontmostChildContainingPoint(AZ::Vector2 po
             }
         }
 
+        UiElementComponent* childElementComponent = GetChildElementComponent(i);
+
         // Check children of this child first
         // child elements do not have to be contained in the parent element's bounds
-        EBUS_EVENT_ID_RESULT(matchElem, child, UiElementBus, FindFrontmostChildContainingPoint, point, isInGame);
+        matchElem = childElementComponent->FindFrontmostChildContainingPoint(point, isInGame);
 
         if (!matchElem)
         {
@@ -450,11 +551,10 @@ AZ::Entity* UiElementComponent::FindFrontmostChildContainingPoint(AZ::Vector2 po
             if (isSelectable)
             {
                 // if no children of this child matched then check if point is in bounds of this child element
-                bool isPointInRect = false;
-                EBUS_EVENT_ID_RESULT(isPointInRect, child, UiTransformBus, IsPointInRect, point);
+                bool isPointInRect = childElementComponent->GetTransform2dComponent()->IsPointInRect(point);
                 if (isPointInRect)
                 {
-                    EBUS_EVENT_RESULT(matchElem, AZ::ComponentApplicationBus, FindEntity, child);
+                    matchElem = childElementComponent->GetEntity();
                 }
             }
         }
@@ -467,6 +567,11 @@ AZ::Entity* UiElementComponent::FindFrontmostChildContainingPoint(AZ::Vector2 po
 LyShine::EntityArray UiElementComponent::FindAllChildrenIntersectingRect(const AZ::Vector2& bound0, const AZ::Vector2& bound1, bool isInGame)
 {
     LyShine::EntityArray result;
+
+    if (!IsFullyInitialized())
+    {
+        return result;
+    }
 
     // this traverses all of the elements in hierarchy order
     for (int i = 0; i < m_children.size(); ++i)
@@ -486,10 +591,11 @@ LyShine::EntityArray UiElementComponent::FindAllChildrenIntersectingRect(const A
             }
         }
 
+        UiElementComponent* childElementComponent = GetChildElementComponent(i);
+
         // Check children of this child first
         // child elements do not have to be contained in the parent element's bounds
-        LyShine::EntityArray childMatches;
-        EBUS_EVENT_ID_RESULT(childMatches, child, UiElementBus, FindAllChildrenIntersectingRect, bound0, bound1, isInGame);
+        LyShine::EntityArray childMatches = childElementComponent->FindAllChildrenIntersectingRect(bound0, bound1, isInGame);
         result.push_back(childMatches);
 
         bool isSelectable = true;
@@ -504,16 +610,10 @@ LyShine::EntityArray UiElementComponent::FindAllChildrenIntersectingRect(const A
         if (isSelectable)
         {
             // check if point is in bounds of this child element
-            bool isInRect = false;
-            EBUS_EVENT_ID_RESULT(isInRect, child, UiTransformBus, BoundsAreOverlappingRect, bound0, bound1);
+            bool isInRect = childElementComponent->GetTransform2dComponent()->BoundsAreOverlappingRect(bound0, bound1);
             if (isInRect)
             {
-                AZ::Entity* childEntity = nullptr;
-                EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
-                if (childEntity)
-                {
-                    result.push_back(childEntity);
-                }
+                result.push_back(childElementComponent->GetEntity());
             }
         }
     }
@@ -526,7 +626,7 @@ AZ::EntityId UiElementComponent::FindInteractableToHandleEvent(AZ::Vector2 point
 {
     AZ::EntityId result;
 
-    if (!m_isEnabled)
+    if (!IsFullyInitialized() || !m_isEnabled)
     {
         // Nothing to do
         return result;
@@ -541,8 +641,7 @@ AZ::EntityId UiElementComponent::FindInteractableToHandleEvent(AZ::Vector2 point
         {
             for (int i = m_children.size() - 1; !result.IsValid() && i >= 0; i--)
             {
-                AZ::EntityId child = m_children[i];
-                EBUS_EVENT_ID_RESULT(result, child, UiElementBus, FindInteractableToHandleEvent, point);
+                result = GetChildElementComponent(i)->FindInteractableToHandleEvent(point);
             }
         }
     }
@@ -553,8 +652,7 @@ AZ::EntityId UiElementComponent::FindInteractableToHandleEvent(AZ::Vector2 point
         // if this element has an interactable component and the point is in this element's rect
         if (UiInteractableBus::FindFirstHandler(GetEntityId()))
         {
-            bool isInRect = false;
-            EBUS_EVENT_ID_RESULT(isInRect, GetEntityId(), UiTransformBus, IsPointInRect, point);
+            bool isInRect = GetTransform2dComponent()->IsPointInRect(point);
             if (isInRect)
             {
                 // check if this interactable component is in a state where it can handle an event at the given point
@@ -591,7 +689,7 @@ AZ::EntityId UiElementComponent::FindParentInteractableSupportingDrag(AZ::Vector
         else
         {
             // else keep going up the parent links
-            EBUS_EVENT_ID_RESULT(result, parentEntity, UiElementBus, FindParentInteractableSupportingDrag, point);
+            result = GetParentElementComponent()->FindParentInteractableSupportingDrag(point);
         }
     }
 
@@ -603,15 +701,30 @@ AZ::Entity* UiElementComponent::FindChildByName(const LyShine::NameType& name)
 {
     AZ::Entity* matchElem = nullptr;
 
-    for (auto child : m_children)
+    if (AreChildPointersValid())
     {
-        // TODO: Update when there is a bus to get name from entity
-        AZ::Entity* childEntity = nullptr;
-        EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
-        if (childEntity && name == childEntity->GetName())
+        int numChildren = m_childElementComponents.size();
+        for (int i = 0; i < numChildren; ++i)
         {
-            matchElem = childEntity;
-            break;
+            AZ::Entity* childEntity = GetChildElementComponent(i)->GetEntity();
+            if (name == childEntity->GetName())
+            {
+                matchElem = childEntity;
+                break;
+            }
+        }
+    }
+    else
+    {
+        for (auto child : m_children)
+        {
+            AZ::Entity* childEntity = nullptr;
+            EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
+            if (childEntity && name == childEntity->GetName())
+            {
+                matchElem = childEntity;
+                break;
+            }
         }
     }
 
@@ -623,21 +736,45 @@ AZ::Entity* UiElementComponent::FindDescendantByName(const LyShine::NameType& na
 {
     AZ::Entity* matchElem = nullptr;
 
-    for (auto child : m_children)
+    if (AreChildPointersValid())
     {
-        AZ::Entity* childEntity = nullptr;
-        EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
-
-        if (childEntity && name == childEntity->GetName())
+        int numChildren = m_childElementComponents.size();
+        for (int i = 0; i < numChildren; ++i)
         {
-            matchElem = childEntity;
-            break;
+            UiElementComponent* childElementComponent = GetChildElementComponent(i);
+            AZ::Entity* childEntity = childElementComponent->GetEntity();
+
+            if (name == childEntity->GetName())
+            {
+                matchElem = childEntity;
+                break;
+            }
+
+            matchElem = childElementComponent->FindDescendantByName(name);
+            if (matchElem)
+            {
+                break;
+            }
         }
-
-        EBUS_EVENT_ID_RESULT(matchElem, child, UiElementBus, FindDescendantByName, name);
-        if (matchElem)
+    }
+    else
+    {
+        for (auto child : m_children)
         {
-            break;
+            AZ::Entity* childEntity = nullptr;
+            EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
+
+            if (childEntity && name == childEntity->GetName())
+            {
+                matchElem = childEntity;
+                break;
+            }
+
+            EBUS_EVENT_ID_RESULT(matchElem, child, UiElementBus, FindDescendantByName, name);
+            if (matchElem)
+            {
+                break;
+            }
         }
     }
 
@@ -647,15 +784,14 @@ AZ::Entity* UiElementComponent::FindDescendantByName(const LyShine::NameType& na
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiElementComponent::FindChildEntityIdByName(const LyShine::NameType& name)
 {
-    AZ::Entity *childEntity = FindChildByName(name);
+    AZ::Entity* childEntity = FindChildByName(name);
     return childEntity ? childEntity->GetId() : AZ::EntityId();
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiElementComponent::FindDescendantEntityIdByName(const LyShine::NameType& name)
 {
-    AZ::Entity *childEntity = FindDescendantByName(name);
+    AZ::Entity* childEntity = FindDescendantByName(name);
     return childEntity ? childEntity->GetId() : AZ::EntityId();
 }
 
@@ -664,11 +800,19 @@ AZ::Entity* UiElementComponent::FindChildByEntityId(AZ::EntityId id)
 {
     AZ::Entity* matchElem = nullptr;
 
-    for (auto child : m_children)
+    int numChildren = m_children.size();
+    for (int i = 0; i < numChildren; ++i)
     {
-        if (id == child)
+        if (id == m_children[i])
         {
-            EBUS_EVENT_RESULT(matchElem, AZ::ComponentApplicationBus, FindEntity, child);
+            if (AreChildPointersValid())
+            {
+                matchElem = GetChildElementComponent(i)->GetEntity();
+            }
+            else
+            {
+                EBUS_EVENT_RESULT(matchElem, AZ::ComponentApplicationBus, FindEntity, id);
+            }
             break;
         }
     }
@@ -685,9 +829,21 @@ AZ::Entity* UiElementComponent::FindDescendantById(LyShine::ElementId id)
     }
 
     AZ::Entity* match = nullptr;
-    for (auto iter = m_children.begin(); !match && iter != m_children.end(); iter++)
+
+    if (AreChildPointersValid())
     {
-        EBUS_EVENT_ID_RESULT(match, *iter, UiElementBus, FindDescendantById, id);
+        int numChildren = m_children.size();
+        for (int i = 0; !match && i < numChildren; ++i)
+        {
+            match = GetChildElementComponent(i)->FindDescendantById(id);
+        }
+    }
+    else
+    {
+        for (auto iter = m_children.begin(); !match && iter != m_children.end(); iter++)
+        {
+            EBUS_EVENT_ID_RESULT(match, *iter, UiElementBus, FindDescendantById, id);
+        }
     }
 
     return match;
@@ -696,38 +852,73 @@ AZ::Entity* UiElementComponent::FindDescendantById(LyShine::ElementId id)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiElementComponent::FindDescendantElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result)
 {
-    for (auto child : m_children)
+    if (AreChildPointersValid())
     {
-        AZ::Entity* childEntity = nullptr;
-        EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
-        if (childEntity && predicate(childEntity))
+        int numChildren = m_children.size();
+        for (int i = 0; i < numChildren; ++i)
         {
-            result.push_back(childEntity);
-        }
+            UiElementComponent* childElementComponent = GetChildElementComponent(i);
 
-        EBUS_EVENT_ID(child, UiElementBus, FindDescendantElements, predicate, result);
+            AZ::Entity* childEntity = childElementComponent->GetEntity();
+            if (predicate(childEntity))
+            {
+                result.push_back(childEntity);
+            }
+
+            childElementComponent->FindDescendantElements(predicate, result);
+        }
+    }
+    else
+    {
+        for (auto child : m_children)
+        {
+            AZ::Entity* childEntity = nullptr;
+            EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
+            if (childEntity && predicate(childEntity))
+            {
+                result.push_back(childEntity);
+            }
+
+            EBUS_EVENT_ID(child, UiElementBus, FindDescendantElements, predicate, result);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::CallOnDescendantElements(std::function<void(const AZ::EntityId)> callFunction)
+{
+    if (AreChildPointersValid())
+    {
+        int numChildren = m_children.size();
+        for (int i = 0; i < numChildren; ++i)
+        {
+            callFunction(m_children[i]);
+
+            GetChildElementComponent(i)->CallOnDescendantElements(callFunction);
+        }
+    }
+    else
+    {
+        for (auto child : m_children)
+        {
+            callFunction(child);
+            EBUS_EVENT_ID(child, UiElementBus, CallOnDescendantElements, callFunction);
+        }
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiElementComponent::IsAncestor(AZ::EntityId id)
 {
-    if (m_parent != nullptr)
+    UiElementComponent* parentElementComponent = GetParentElementComponent();
+    while (parentElementComponent)
     {
-        AZ::EntityId parent = m_parent->GetId();
-        while (parent.IsValid())
+        if (parentElementComponent->GetEntityId() == id)
         {
-            if (parent == id)
-            {
-                return true;
-            }
-            else
-            {
-                AZ::EntityId grandParent;
-                EBUS_EVENT_ID_RESULT(grandParent, parent, UiElementBus, GetParentEntityId);
-                parent = grandParent;
-            }
+            return true;
         }
+
+        parentElementComponent = parentElementComponent->GetParentElementComponent();
     }
     return false;
 }
@@ -795,18 +986,18 @@ void UiElementComponent::SetIsExpanded(bool isExpanded)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiElementComponent::AreAllAncestorsVisible()
 {
-    AZ::Entity* parentEntity = m_parent;
-    while (parentEntity)
+    UiElementComponent* parentElementComponent = GetParentElementComponent();
+    while (parentElementComponent)
     {
         bool isParentVisible = true;
-        EBUS_EVENT_ID_RESULT(isParentVisible, parentEntity->GetId(), UiEditorBus, GetIsVisible);
+        EBUS_EVENT_ID_RESULT(isParentVisible, parentElementComponent->GetEntityId(), UiEditorBus, GetIsVisible);
         if (!isParentVisible)
         {
             return false;
         }
 
         // Walk up the hierarchy.
-        EBUS_EVENT_ID_RESULT(parentEntity, parentEntity->GetId(), UiElementBus, GetParent);
+        parentElementComponent = parentElementComponent->GetParentElementComponent();
     }
 
     // there is no ancestor entity that is not visible
@@ -819,22 +1010,42 @@ void UiElementComponent::AddChild(AZ::Entity* child, AZ::Entity* insertBefore)
     // debug check that this element is not already a child
     AZ_Assert(FindChildByEntityId(child->GetId()) == nullptr, "Attempting to add a duplicate child");
 
+    UiElementComponent* childElementComponent = child->FindComponent<UiElementComponent>();
+    AZ_Assert(childElementComponent, "Attempting to add a child with no element component");
+    if (!childElementComponent)
+    {
+        return;
+    }
+
     bool wasInserted = false;
 
     if (insertBefore)
     {
-        auto iter = std::find(m_children.begin(), m_children.end(), insertBefore->GetId());
-
-        if (iter != m_children.end())
+        int numChildren = m_children.size();
+        for (int i = 0; i < numChildren; ++i)
         {
-            m_children.insert(iter, child->GetId());
-            wasInserted = true;
+            if (m_children[i] == insertBefore->GetId())
+            {
+                if (AreChildPointersValid())    // must test before m_children.insert
+                {
+                    m_childElementComponents.insert(m_childElementComponents.begin() + i, childElementComponent);
+                }
+
+                m_children.insert(m_children.begin() + i, child->GetId());
+
+                wasInserted = true;
+                break;
+            }
         }
     }
 
     // either insertBefore is null or it is not found, insert at end
     if (!wasInserted)
     {
+        if (AreChildPointersValid())    // must test before m_children.push_back
+        {
+            m_childElementComponents.push_back(childElementComponent);
+        }
         m_children.push_back(child->GetId());
     }
 
@@ -844,7 +1055,10 @@ void UiElementComponent::AddChild(AZ::Entity* child, AZ::Entity* insertBefore)
     EBUS_EVENT_ID(GetCanvasEntityId(), UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, GetEntityId(), false);
 
     // It will always require recomputing the transform for the child just added
-    EBUS_EVENT_ID(child->GetId(), UiTransformBus, SetRecomputeTransformFlag);
+    if (IsFullyInitialized())
+    {
+        GetTransform2dComponent()->SetRecomputeTransformFlag();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -852,10 +1066,14 @@ void UiElementComponent::RemoveChild(AZ::Entity* child)
 {
     if (stl::find_and_erase(m_children, child->GetId()))
     {
-        // Clear child's parent
         UiElementComponent* elementComponent = child->FindComponent<UiElementComponent>();
         AZ_Assert(elementComponent, "Child element has no UiElementComponent");
-        elementComponent->m_parent = nullptr;
+
+        // Also erase from m_childElementComponents
+        stl::find_and_erase(m_childElementComponents, elementComponent);
+
+        // Clear child's parent
+        elementComponent->SetParentReferences(nullptr, nullptr);
 
         // Adding or removing child elements may require recomputing the
         // transforms of all children
@@ -880,7 +1098,17 @@ bool UiElementComponent::FixupPostLoad(AZ::Entity* entity, UiCanvasComponent* ca
     }
 
     m_canvas = canvas;
-    m_parent = parent;
+
+    if (parent)
+    {
+        UiElementComponent* parentElementComponent = parent->FindComponent<UiElementComponent>();
+        AZ_Assert(parentElementComponent, "Parent element has no UiElementComponent");
+        SetParentReferences(parent, parentElementComponent);
+    }
+    else
+    {
+        SetParentReferences(nullptr, nullptr);
+    }
 
     AZStd::vector<AZ::EntityId> missingChildren;
 
@@ -923,7 +1151,30 @@ bool UiElementComponent::FixupPostLoad(AZ::Entity* entity, UiCanvasComponent* ca
         stl::find_and_erase(m_children, child);
     }
 
+    // Initialize the m_childElementComponents array that is used for performance optimization
+    m_childElementComponents.clear();
+    for (auto child : m_children)
+    {
+        AZ::Entity* childEntity = nullptr;
+        EBUS_EVENT_RESULT(childEntity, AZ::ComponentApplicationBus, FindEntity, child);
+        AZ_Assert(childEntity, "Child element not found");
+        UiElementComponent* childElementComponent = childEntity->FindComponent<UiElementComponent>();
+        AZ_Assert(childElementComponent, "Child element has no UiElementComponent");
+        m_childElementComponents.push_back(childElementComponent);
+    }
+
     return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::EntityId UiElementComponent::GetSliceEntityParentId()
+{
+    return GetParentEntityId();
+}
+
+AZStd::vector<AZ::EntityId> UiElementComponent::GetSliceEntityChildren()
+{
+    return GetChildEntityIds();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1014,6 +1265,13 @@ void UiElementComponent::Activate()
 {
     UiElementBus::Handler::BusConnect(m_entity->GetId());
     UiEditorBus::Handler::BusConnect(m_entity->GetId());
+    AZ::SliceEntityHierarchyRequestBus::Handler::BusConnect(m_entity->GetId());
+
+    // Once added the transform component is never removed
+    if (!m_transformComponent)
+    {
+        m_transformComponent = GetEntity()->FindComponent<UiTransform2dComponent>();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1021,6 +1279,25 @@ void UiElementComponent::Deactivate()
 {
     UiElementBus::Handler::BusDisconnect();
     UiEditorBus::Handler::BusDisconnect();
+    AZ::SliceEntityHierarchyRequestBus::Handler::BusDisconnect();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRIVATE MEMBER FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::EmitNotInitializedWarning() const
+{
+    AZ_Warning("UI", false, "UiElementComponent used before fully initialized, possibly on activate before FixupPostLoad was called on this element")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::SetParentReferences(AZ::Entity* parent, UiElementComponent* parentElementComponent)
+{
+    m_parent = parent;
+    m_parentId = (parent) ? parent->GetId() : AZ::EntityId();
+    m_parentElementComponent = parentElementComponent;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

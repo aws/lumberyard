@@ -59,7 +59,7 @@ namespace ScriptCanvas
         if (graphAsset && m_serializeContext)
         {
             stream->Seek(0U, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-            bool loadSuccess = AZ::Utils::LoadObjectFromStreamInPlace(*stream, graphAsset->m_scriptCanvasData, m_serializeContext, assetLoadFilterCB);
+            bool loadSuccess = AZ::Utils::LoadObjectFromStreamInPlace(*stream, graphAsset->m_graphData, m_serializeContext, assetLoadFilterCB);
             return loadSuccess;
         }
         return false;
@@ -94,7 +94,7 @@ namespace ScriptCanvas
         if (graphAsset && m_serializeContext)
         {
             AZ::ObjectStream* binaryObjStream = AZ::ObjectStream::Create(stream, *m_serializeContext, AZ::ObjectStream::ST_XML);
-            bool graphSaved = binaryObjStream->WriteClass(&graphAsset->m_scriptCanvasData);
+            bool graphSaved = binaryObjStream->WriteClass(&graphAsset->m_graphData);
             binaryObjStream->Finalize();
             return graphSaved;
         }

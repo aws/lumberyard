@@ -10,65 +10,179 @@
 *
 */
 
-#include "ApplicationAPI.h"
-#include "ApplicationAPI_android.h"
+#include <AzFramework/API/ApplicationAPI_android.h>
+#include <AzFramework/Application/Application.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
 
+#include <AzCore/Android/AndroidEnv.h>
+
+#include <android/input.h>
+#include <android/keycodes.h>
+#include <android_native_app_glue.h>
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    class ApplicationLifecycleEventsHandler::Pimpl
-        : public AndroidLifecycleEvents::Bus::Handler
+    namespace
+    {
+        // this callback is triggered on the same thread the events are pumped
+        static int32_t InputHandler(android_app* app, AInputEvent* event)
+        {
+            RawInputNotificationBusAndroid::Broadcast(&RawInputNotificationsAndroid::OnRawInputEvent, event);
+            return 0;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    class ApplicationAndroid
+        : public Application::Implementation
+        , public AndroidLifecycleEvents::Bus::Handler
+        , public AndroidAppRequests::Bus::Handler
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_CLASS_ALLOCATOR(ApplicationAndroid, AZ::SystemAllocator, 0);
+        ApplicationAndroid();
+        ~ApplicationAndroid() override;
 
-        Pimpl()
-            : m_lastEvent(ApplicationLifecycleEvents::Event::None)
-        {
-            AndroidLifecycleEvents::Bus::Handler::BusConnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // AndroidAppRequests
+        void SetAppState(android_app* appState) override;
 
-        ~Pimpl() override
-        {
-            AndroidLifecycleEvents::Bus::Handler::BusDisconnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // AndroidLifecycleEvents
+        void OnPause() override;
+        void OnResume() override;
+        void OnDestroy() override;
+        void OnLowMemory() override;
+        void OnWindowInit() override;
+        void OnWindowDestroy() override;
 
-        void OnPause() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
-        }
-
-        void OnResume() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
-            m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
-        }
-
-        void OnDestroy() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationWillTerminate);
-        }
-
-        void OnLowMemory() override
-        {
-            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationLowMemoryWarning);
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Application::Implementation
+        void PumpSystemEventLoopOnce() override;
+        void PumpSystemEventLoopUntilEmpty() override;
 
     private:
+        android_app* m_appState;
         ApplicationLifecycleEvents::Event m_lastEvent;
     };
 
-    ApplicationLifecycleEventsHandler::ApplicationLifecycleEventsHandler()
-        : m_pimpl(aznew Pimpl())
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    Application::Implementation* Application::Implementation::Create()
     {
+        return aznew ApplicationAndroid();
     }
 
-    ApplicationLifecycleEventsHandler::~ApplicationLifecycleEventsHandler()
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationAndroid::ApplicationAndroid()
+        : m_appState(nullptr)
+        , m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
-        delete m_pimpl;
+        AndroidLifecycleEvents::Bus::Handler::BusConnect();
+        AndroidAppRequests::Bus::Handler::BusConnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationAndroid::~ApplicationAndroid()
+    {
+        AndroidAppRequests::Bus::Handler::BusDisconnect();
+        AndroidLifecycleEvents::Bus::Handler::BusDisconnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::SetAppState(android_app* appState)
+    {
+        AZ_Assert(!m_appState, "Duplicate call to setting the Android application state!");
+        m_appState = appState;
+        if (m_appState)
+        {
+            m_appState->onInputEvent = InputHandler;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnPause()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnResume()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnDestroy()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationWillTerminate);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnLowMemory()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnMobileApplicationLowMemoryWarning);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnWindowInit()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationWindowCreated);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnWindowDestroy()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationWindowDestroy);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::PumpSystemEventLoopOnce()
+    {
+        AZ_ErrorOnce("ApplicationAndroid", m_appState, "The Android application state is not valid, unable to pump the event loop properly.");
+        if (m_appState)
+        {
+            int events;
+            android_poll_source* source;
+            AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
+
+            // passing a negative value will cause the function to block till it recieves an event
+            if (ALooper_pollOnce(androidEnv->IsRunning() ? 0 : -1, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
+            {
+                if (source != NULL)
+                {
+                    source->process(m_appState, source);
+                }
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::PumpSystemEventLoopUntilEmpty()
+    {
+        AZ_ErrorOnce("ApplicationAndroid", m_appState, "The Android application state is not valid, unable to pump the event loop properly.");
+        if (m_appState)
+        {
+            int events;
+            android_poll_source* source;
+            AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
+
+            // passing a negative value will cause the function to block till it recieves an event
+            while (ALooper_pollAll(androidEnv->IsRunning() ? 0 : -1, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
+            {
+                if (source != NULL)
+                {
+                    source->process(m_appState, source);
+                }
+            }
+        }
     }
 } // namespace AzFramework

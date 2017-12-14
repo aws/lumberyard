@@ -15,7 +15,8 @@
 #define CRYINCLUDE_CRYAISYSTEM_AILOG_H
 #pragma once
 
-#ifndef _DEBUG
+
+#ifndef _RELEASE
 // comment this out to remove asserts at compile time
 #define ENABLE_AI_ASSERT
 #endif

@@ -27,6 +27,9 @@
 #include <Components/Connections/DataConnections/DataConnectionVisualComponent.h>
 
 #include <Components/Nodes/NodeComponent.h>
+#include <Components/Nodes/Comment/BlockCommentNodeLayoutComponent.h>
+#include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
+#include <Components/Nodes/Comment/CommentNodeFrameComponent.h>
 #include <Components/Nodes/Comment/CommentNodeLayoutComponent.h>
 #include <Components/Nodes/Comment/CommentNodeTextComponent.h>
 #include <Components/Nodes/General/GeneralNodeFrameComponent.h>
@@ -83,7 +86,12 @@ namespace GraphCanvas
             NodeComponent::CreateDescriptor(),
             NodeLayoutComponent::CreateDescriptor(),
 
+            // BlockCommentNode
+            BlockCommentNodeLayoutComponent::CreateDescriptor(),
+            BlockCommentNodeFrameComponent::CreateDescriptor(),
+
             // CommentNode
+            CommentNodeFrameComponent::CreateDescriptor(),
             CommentNodeLayoutComponent::CreateDescriptor(),
             CommentNodeTextComponent::CreateDescriptor(),
 

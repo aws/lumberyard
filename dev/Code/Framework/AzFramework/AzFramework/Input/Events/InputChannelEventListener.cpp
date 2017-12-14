@@ -94,13 +94,13 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputChannelEventListener::Connect()
     {
-        InputChannelEventNotificationBus::Handler::BusConnect();
+        InputChannelNotificationBus::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputChannelEventListener::Disconnect()
     {
-        InputChannelEventNotificationBus::Handler::BusDisconnect();
+        InputChannelNotificationBus::Handler::BusDisconnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

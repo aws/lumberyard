@@ -377,20 +377,34 @@ IParticleEffect* CParticleManager::CreateEffect()
     {
         return NULL;
     }
-    return new CParticleEffect();
+    CParticleEffect* effect = new CParticleEffect();
+
+    //The particle created with this function is supposed to be renamed right after. Particle Editor is using it when add a new particle. 
+    AZ_Assert(m_Effects.find(effect->GetName()) == m_Effects.end(), "The previous created effect wasn't renamed");
+    m_Effects[effect->GetName()] = effect;
+    return effect;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CParticleManager::RenameEffect(CParticleEffect* pEffect, cstr sNewName)
 {
-    assert(pEffect);
-    pEffect->AddRef();
-    m_Effects.erase(pEffect->GetName());
-    if (*sNewName)
+    if (pEffect == nullptr)
     {
-        m_Effects[ sNewName ] = pEffect;
+        AZ_Assert(false, "Trying to rename nullptr particle effect");
+        return;
     }
-    pEffect->Release();
+    cstr effectName = pEffect->GetName();
+    TEffectsList::iterator it = m_Effects.find(effectName);
+    if (it != m_Effects.end())
+    {
+        pEffect->AddRef();
+        m_Effects.erase(effectName);
+        if (*sNewName)
+        {
+            m_Effects[ sNewName ] = pEffect;
+        }
+        pEffect->Release();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

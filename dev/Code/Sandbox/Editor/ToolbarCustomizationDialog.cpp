@@ -28,7 +28,8 @@
 
 enum ItemDataRole
 {
-    ToolbarRole = Qt::UserRole
+    ToolbarRole = Qt::UserRole,
+    ToolbarNameRole
 };
 
 enum Tab
@@ -243,6 +244,7 @@ void ToolbarCustomizationDialog::AddToolbarItem(const AmazonToolbar& at, bool fo
 {
     auto item = new QListWidgetItem();
     item->setData(ToolbarRole, QVariant::fromValue<QToolBar*>(at.Toolbar()));
+    item->setData(ToolbarNameRole, at.GetName());
     item->setText(at.Toolbar()->windowTitle());
     item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemNeverHasChildren);
     item->setCheckState((forceVisible || at.Toolbar()->isVisible()) ? Qt::Checked : Qt::Unchecked);
@@ -309,11 +311,12 @@ void ToolbarCustomizationDialog::ResetToolbar()
         return;
     }
 
-    QString name = selectedIndex.data(Qt::DisplayRole).toString();
+    QString displayName = selectedIndex.data(Qt::DisplayRole).toString();
 
-    if (QMessageBox::question(this, "Editor", QString("Are you sure you want to reset the changes made to the '%1' toolbar?").arg(name)) == QMessageBox::Yes)
+    if (QMessageBox::question(this, "Editor", QString("Are you sure you want to reset the changes made to the '%1' toolbar?").arg(displayName)) == QMessageBox::Yes)
     {
-        m_toolbarManager->RestoreToolbarDefaults(name);
+        QString toolbarName = selectedIndex.data(ToolbarNameRole).toString();
+        m_toolbarManager->RestoreToolbarDefaults(toolbarName);
     }
 }
 

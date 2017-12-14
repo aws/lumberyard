@@ -56,7 +56,7 @@ bool SubMaterialSearchFilter::MatchInternal(const AzToolsFramework::AssetBrowser
                     if (subMaterial)
                     {
                         // If any of the product sub-materials matches the string, return true for this entry
-                        if (subMaterial->GetName().contains(m_filterString))
+                        if (subMaterial->GetName().contains(m_filterString, Qt::CaseInsensitive))
                         {
                             return true;
                         }

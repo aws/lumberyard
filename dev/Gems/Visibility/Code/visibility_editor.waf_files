@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Source":
+        [
+            "Source/EditorOccluderAreaComponent.h",
+            "Source/EditorOccluderAreaComponent.cpp",
+            "Source/EditorPortalComponent.h",
+            "Source/EditorPortalComponent.cpp",
+            "Source/EditorVisAreaComponent.h",
+            "Source/EditorVisAreaComponent.cpp"
+        ]
+    }
+}

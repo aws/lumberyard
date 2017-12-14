@@ -91,7 +91,7 @@ public:
 public:
     virtual int32 AddRef() override;
     virtual int32 Release() override;
-    virtual bool Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags);
+    virtual bool Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags, float sizeRatio);
     virtual bool Load(const char* pXMLFile);
     virtual void Free();
     virtual void DrawString(float x, float y, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx);
@@ -106,6 +106,7 @@ public:
     virtual const char* GetEffectName(unsigned int effectId) const;
     virtual void AddCharsToFontTexture(const char* pChars) override;
     virtual Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const override;
+    virtual float GetSizeRatio() const override { return m_sizeRatio; }
 
 public:
     virtual void RenderCallback(float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx);
@@ -140,6 +141,8 @@ private:
 
     TextScaleInfoInternal CalculateScaleInternal(const STextDrawContext& ctx) const;
 
+    Vec2 GetRestoredFontSize(const STextDrawContext& ctx) const;
+
 private:
     string m_name;
     string m_curPath;
@@ -168,6 +171,8 @@ private:
     volatile int32 m_nRefCount;
 
     bool m_monospacedFont; //!< True if this font is fixed/monospaced, false otherwise (obtained from FreeType)
+
+    float m_sizeRatio = IFFontConstants::defaultSizeRatio;
 };
 
 #endif

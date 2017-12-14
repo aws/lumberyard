@@ -270,8 +270,6 @@ protected:
     QPoint m_lastToolTipPos;
     QString m_tooltipText;
 
-    CBitmap m_offscreenBitmap;
-
     QRect m_rcSelect;
 
     QRect m_TimeUpdateRect;

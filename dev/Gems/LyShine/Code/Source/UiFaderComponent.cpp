@@ -19,13 +19,16 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <LyShine/Bus/UiElementBus.h>
+#include <LyShine/IUiRenderer.h>
 
 #include <ITimer.h>
 
 #include "UiSerialize.h"
 
 // BehaviorContext UiFaderNotificationBus forwarder
-class BehaviorUiFaderNotificationBusHandler : public UiFaderNotificationBus::Handler, public AZ::BehaviorEBusHandler
+class BehaviorUiFaderNotificationBusHandler
+    : public UiFaderNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiFaderNotificationBusHandler, "{CAD44770-3D5E-4E67-8F05-D2A89E8C501A}", AZ::SystemAllocator,
@@ -70,7 +73,7 @@ UiFaderComponent::~UiFaderComponent()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiFaderComponent::Update()
+void UiFaderComponent::Update(float deltaTime)
 {
     if (!m_isFading)
     {
@@ -78,7 +81,6 @@ void UiFaderComponent::Update()
     }
 
     // Update fade
-    float deltaTime = gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI);
     m_fade += m_fadeSpeedInSeconds * deltaTime;
 
     // Check for completion
@@ -88,6 +90,26 @@ void UiFaderComponent::Update()
     {
         CompleteFade();
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::SetupBeforeRenderingComponents(Pass pass)
+{
+    if (pass == Pass::First)
+    {
+        IUiRenderer::Get()->PushAlphaFade(m_fade);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::SetupAfterRenderingComponents(Pass /* pass */)
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::SetupAfterRenderingChildren(bool& /* isSecondComponentsPassRequired */)
+{
+    IUiRenderer::Get()->PopAlphaFade();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +193,10 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetFadeValue", &UiFaderBus::Events::GetFadeValue)
             ->Event("SetFadeValue", &UiFaderBus::Events::SetFadeValue)
             ->Event("Fade", &UiFaderBus::Events::Fade)
-            ->Event("IsFading", &UiFaderBus::Events::IsFading);
+            ->Event("IsFading", &UiFaderBus::Events::IsFading)
+            ->VirtualProperty("Fade", "GetFadeValue", "SetFadeValue");
+
+        behaviorContext->Class<UiFaderComponent>()->RequestBus("UiFaderBus");
 
         behaviorContext->EBus<UiFaderNotificationBus>("UiFaderNotificationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
@@ -208,6 +233,7 @@ float UiFaderComponent::ComputeElementFadeValue(AZ::Entity* element)
 void UiFaderComponent::Activate()
 {
     UiUpdateBus::Handler::BusConnect(m_entity->GetId());
+    UiRenderControlBus::Handler::BusConnect(m_entity->GetId());
     UiFaderBus::Handler::BusConnect(m_entity->GetId());
 }
 
@@ -215,6 +241,7 @@ void UiFaderComponent::Activate()
 void UiFaderComponent::Deactivate()
 {
     UiUpdateBus::Handler::BusDisconnect();
+    UiRenderControlBus::Handler::BusDisconnect();
     UiFaderBus::Handler::BusDisconnect();
 }
 

@@ -44,6 +44,7 @@ public:
     virtual struct IStatObj* GetEntityStatObj(unsigned int nPartId = 0, unsigned int nSubPartId = 0, Matrix34A* pMatrix = NULL, bool bReturnOnlyVisible = false);
 
     virtual bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const override;
+    float GetFirstLodDistance() const override { return m_pStatObj ? m_pStatObj->GetLodDistance() : FLT_MAX; }
 
     virtual void SetEntityStatObj(unsigned int nSlot, IStatObj* pStatObj, const Matrix34A* pMatrix = NULL);
 

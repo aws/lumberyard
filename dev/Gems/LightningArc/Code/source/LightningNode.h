@@ -9,14 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef _EFFECTS_RENDERNODES_LIGHTNINGNODE_H_
-#define _EFFECTS_RENDERNODES_LIGHTNINGNODE_H_
 #pragma once
 
 #include <GameEffectSystem/IGameRenderNode.h>
 
-struct SLightningParams;
-struct SLightningStats;
+#include "LightningGameEffectCommon.h"
 
 class CLightningRenderNode
     : public IRenderNode
@@ -38,7 +35,7 @@ private:
             CRenderObject* pRenderObject, _smart_ptr<IMaterial>  pMaterial, float distanceToCamera);
         void Clear();
 
-        void AddStats(SLightningStats* pStats) const;
+        void AddStats(LightningStats* pStats) const;
 
     private:
         TVertexArray m_vertices;
@@ -56,15 +53,15 @@ private:
     class CSegment
     {
     public:
-        void Create(const SLightningParams& desc, SPointData* m_pointData, int _parentSegmentIdx, int _parentPointIdx,
+        void Create(const LightningArcParams& desc, SPointData* m_pointData, int _parentSegmentIdx, int _parentPointIdx,
             Vec3 _origin, Vec3 _destany, float _duration, float _intensity);
-        void Update(const SLightningParams& desc);
-        void Draw(const SLightningParams& desc, const SPointData& pointData, CTriStrip* strip, Vec3 cameraPosition,
+        void Update(const LightningArcParams& desc);
+        void Draw(const LightningArcParams& desc, const SPointData& pointData, CTriStrip* strip, Vec3 cameraPosition,
             float deviationMult);
-        bool IsDone(const SLightningParams& desc);
+        bool IsDone(const LightningArcParams& desc);
 
         int GetNumPoints() const { return m_numFuzzyPoints; }
-        Vec3 GetPoint(const SLightningParams& desc, const SPointData& pointData, int idx, float deviationMult) const;
+        Vec3 GetPoint(const LightningArcParams& desc, const SPointData& pointData, int idx, float deviationMult) const;
 
         void SetOrigin(Vec3 _origin);
         void SetDestany(Vec3 _destany);
@@ -118,12 +115,12 @@ public:
 
     void Reset();
     float TriggerSpark();
-    void SetLightningParams(const SLightningParams* pDescriptor);
+    void SetLightningParams(const LightningArcParams& pDescriptor);
     void SetEmiterPosition(Vec3 emiterPosition);
     void SetReceiverPosition(Vec3 receiverPosition);
     void SetSparkDeviationMult(float deviationMult);
 
-    void AddStats(SLightningStats* pStats) const;
+    void AddStats(LightningStats* pStats) const;
 
 private:
     void Update();
@@ -138,11 +135,9 @@ private:
     SPointData m_pointData;
     float m_deviationMult;
 
-    const SLightningParams* m_pLightningDesc;
+    LightningArcParams m_lightningDesc;
     _smart_ptr<IMaterial> m_pMaterial;
 
     mutable AABB m_aabb;
     mutable bool m_dirtyBBox;
 };
-
-#endif // CRYINCLUDE_GAMEDLL_EFFECTS_RENDERNODES_LIGHTNINGNODE_H

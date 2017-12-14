@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "../DefaultContextBoundManager.h"
+#include <AzToolsFramework/Picking/DefaultContextBoundManager.h>
 
 namespace AzToolsFramework
 {
@@ -20,25 +20,30 @@ namespace AzToolsFramework
     {
         class BoundShapeInterface;
 
+        /**
+         * Handle creating, destroying and storing all active manipulator
+         * bounds for performing raycasts/picking against.
+         */
         class ManipulatorBoundManager
             : public DefaultContextBoundManager
         {
         public:
             AZ_CLASS_ALLOCATOR(ManipulatorBoundManager, AZ::SystemAllocator, 0);
 
-            ManipulatorBoundManager(AZ::u32 manipulatorManagerId);
+            explicit ManipulatorBoundManager(ManipulatorManagerId manipulatorManagerId);
             ~ManipulatorBoundManager() = default;
 
+            /**
+             * Perform Raycast against bounds - store all rays hits and sort by hit distance.
+             */
             void RaySelect(RaySelectInfo &rayInfo) override;
 
         protected:
-
             AZStd::shared_ptr<BoundShapeInterface> CreateShape(const BoundRequestShapeBase& ptrShape, RegisteredBoundId id, AZ::u64 userContext) override;
             void DeleteShape(AZStd::shared_ptr<BoundShapeInterface> pShape) override;
 
         private:
-
-            AZStd::vector<AZStd::shared_ptr<BoundShapeInterface>> m_bounds;
+            AZStd::vector<AZStd::shared_ptr<BoundShapeInterface>> m_bounds; ///< All current manipulator bounds.
         };
     } // namespace Picking
 } // namespace AzToolsFramework

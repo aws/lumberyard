@@ -158,6 +158,8 @@ struct SANDBOX_API DisplayContext
     // Draw circle.
     void DrawCircle(const Vec3& pos, float radius, int nUnchangedAxis = 2 /*z axis*/);
 
+    void DrawHalfDottedCircle(const Vec3& pos, float radius, const Vec3& viewPos, int nUnchangedAxis = 2 /*z axis*/);
+
     // Vera, Confetti :
     // Draw a dotted circle.
     void DrawDottedCircle(const Vec3& pos, float radius, const Vec3& nUnchangedAxis, int numberOfArrows = 0, float stepDegree = DC_UNIT_DEGREE);
@@ -263,7 +265,6 @@ struct SANDBOX_API DisplayContext
 private:
 
     void InternalDrawLine(const Vec3& v0, const ColorB& colV0, const Vec3& v1, const ColorB& colV1);
-    float GetWaterLevelAtPos(const Vec3& vPos) const;
 
     ColorB m_color4b;
     uint32 m_renderState;

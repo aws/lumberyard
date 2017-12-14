@@ -155,7 +155,7 @@ Vec3CompNormMarshaler::Unmarshal(AZ::Vector3& vec, ReadBuffer& rb) const
         mF16.Unmarshal(z, rb);
     }
 
-    x = sqrtf(1.0f - y * y - z * z);
+	x = sqrtf(AZ::GetMax(0.0f, 1.0f - y * y - z * z));
     if (flags & X_NEG)
     {
         x = -x;

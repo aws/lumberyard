@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>410</width>
-    <height>93</height>
+    <width>451</width>
+    <height>121</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -78,6 +78,27 @@
       <number>6</number>
      </property>
      <item>
+      <widget class="QCheckBox" name="chkForAll">
+       <property name="text">
+        <string>Apply to all</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="buttonCheckout">
+       <property name="text">
+        <string>Check Out</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="buttonOverwrite">
+       <property name="text">
+        <string>Overwrite</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -91,30 +112,6 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="buttonCheckout">
-       <property name="text">
-        <string>Check Out</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="buttonOk">
-       <property name="text">
-        <string>Overwrite</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="buttonOverwriteAll">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Overwrite All</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QPushButton" name="buttonCancel">
        <property name="text">
         <string>Cancel</string>
@@ -125,23 +122,12 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>buttonCheckout</tabstop>
+  <tabstop>buttonOverwrite</tabstop>
+  <tabstop>buttonCancel</tabstop>
+ </tabstops>
  <resources/>
  <connections>
-  <connection>
-   <sender>buttonCancel</sender>
-   <signal>clicked()</signal>
-   <receiver>CheckOutDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>380</x>
-     <y>83</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>410</x>
-     <y>18</y>
-    </hint>
-   </hints>
-  </connection>
  </connections>
 </ui>

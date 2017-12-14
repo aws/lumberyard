@@ -378,6 +378,24 @@ bool CryAssert(const char* _pszCondition, const char* _pszFile, unsigned int _ui
         return false;
     }
 
+#if defined(CRY_ASSERT_DIALOG_ONLY_IN_DEBUG) && !defined(AZ_DEBUG_BUILD)
+    // we are in a non-debug build, so we should turn this into a warning instead.
+    if ((gEnv) && (gEnv->pLog))
+    {
+        if (!gEnv->bIgnoreAllAsserts)
+        {
+            gEnv->pLog->LogWarning("%s(%u): Assertion failed - \"%s\"", _pszFile, _uiLine, _pszCondition);
+        }
+    }
+    
+    if (_pbIgnore)
+    {
+        // avoid showing the same one repeatedly.
+        *_pbIgnore = true;
+    }
+    return false;
+#endif
+
     if (!gEnv->bNoAssertDialog && !gEnv->bIgnoreAllAsserts)
     {
         SCryAssertInfo assertInfo;
@@ -425,10 +443,13 @@ bool CryAssert(const char* _pszCondition, const char* _pszFile, unsigned int _ui
             break;
         }
     }
+    
     if (gEnv)
     {
+        // this also can cause fatal / shutdown behavior:
         gEnv->pSystem->OnAssert(_pszCondition, gs_szMessage, _pszFile, _uiLine);
     }
+
     return false;
 }
 

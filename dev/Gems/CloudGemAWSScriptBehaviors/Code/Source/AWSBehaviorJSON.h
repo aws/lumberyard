@@ -18,7 +18,7 @@
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/containers/stack.h>
 #include <aws/core/utils/json/JsonSerializer.h>
-#include <aws/core/utils/array.h>
+#include <aws/core/utils/Array.h>
 
 namespace AZ
 {

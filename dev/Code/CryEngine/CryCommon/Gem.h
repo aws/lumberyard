@@ -11,6 +11,13 @@
 */
 #pragma once
 
+#include <platform.h>
+
+
+#if defined(LINUX) || defined(APPLE) || defined(ANDROID)
+    #define OPENGL 1
+#endif
+
 #include <Common/RendererDefs.h>
 
 #include <Cry_Math.h>
@@ -54,6 +61,14 @@
 #include <Common/Renderer.h>
 #include <Common/Textures/Texture.h>
 #include <Common/Shaders/Parser.h>
+
+#include <RenderDll/Common/OcclQuery.h>
+#include <RenderDll/Common/DeferredRenderUtils.h>
+#include <RenderDll/Common/Textures/TextureManager.h>
+#include <RenderDll/Common/FrameProfiler.h>
+#include <RenderDll/XRenderD3D9/DeviceManager/DeviceManagerInline.h>
+#include <RenderDll/XRenderD3D9/DriverD3D.h>
+#include <RenderDll/XRenderD3D9/DeviceManager/TempDynBuffer.h>
 
 #include <AzCore/PlatformDef.h>
 #include <AzCore/Asset/AssetCommon.h>

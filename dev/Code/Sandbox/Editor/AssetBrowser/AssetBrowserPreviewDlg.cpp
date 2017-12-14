@@ -22,6 +22,7 @@
 #include <QLinearGradient>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QTimer>
 
 // CAssetBrowserPreviewDlg dialog
 
@@ -42,7 +43,16 @@ CAssetBrowserPreviewDlg::CAssetBrowserPreviewDlg(QWidget* pParent)
     m_pAssetPreviewFooterDlg = nullptr;
     m_noPreviewTextFont = QFont(QStringLiteral("Arial Bold"), 9);
 
-    OnInitDialog();
+    /*
+       In MFC OnInitDialog was delayed behind the scenes, being called at some
+       time after the constructor but just before the window is shown for the
+       first time. Using QTimer is simple way to accomplish the same thing. 
+       
+       QTimer relies on the event loop, so by calling QTimer::singleShot with 0
+       timeout, the constructor will finish immediately, followed by a call to
+       OnInitDialog shortly after, once Qt's event loop is up and running. 
+    */
+    QTimer::singleShot(0, [&]() { OnInitDialog(); });
 }
 
 CAssetBrowserPreviewDlg::~CAssetBrowserPreviewDlg()
@@ -68,8 +78,6 @@ void CAssetBrowserPreviewDlg::OnInitDialog()
     {
         m_piRenderer->MakeMainContextActive();
     }
-
-    m_canvas.Create(m_ui->m_wndAssetRender);
 }
 
 void CAssetBrowserPreviewDlg::StartPreviewAsset(IAssetItem* pAsset)
@@ -199,9 +207,7 @@ void CAssetBrowserPreviewDlg::OnDestroy()
 {
     if (m_piRenderer)
     {
-#ifdef KDAB_MAC_PORT
         m_piRenderer->DeleteContext(reinterpret_cast<HWND>(m_ui->m_wndAssetRender->winId()));
-#endif
     }
 }
 
@@ -211,11 +217,6 @@ void CAssetBrowserPreviewDlg::Render()
     {
         const QRect rc = m_ui->m_wndAssetRender->rect();
         m_pAssetItem->PreviewRender(m_ui->m_wndAssetRender, rc);
-
-        if (m_pAssetItem->IsFlagSet(IAssetItem::eFlag_UseGdiRendering))
-        {
-            m_canvas.BlitTo(m_ui->m_wndAssetRender);
-        }
     }
 }
 
@@ -228,11 +229,6 @@ bool CAssetBrowserPreviewDlg::eventFilter(QObject* object, QEvent* event)
 
     switch (event->type())
     {
-    case QEvent::Resize:
-    {
-        m_canvas.Resize(m_ui->m_wndAssetRender);
-        break;
-    }
     case QEvent::Paint:
     {
         const QRect rc = m_ui->m_wndAssetRender->rect();

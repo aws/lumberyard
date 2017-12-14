@@ -16,6 +16,7 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/Network/AssetProcessorConnection.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/Asset/AssetProcessorMessages.h>
 
 namespace AzToolsFramework
 {
@@ -73,7 +74,7 @@ namespace AzToolsFramework
             if (socketConn)
             {
                 m_cbHandle = socketConn->AddMessageHandler(AZ_CRC("AssetProcessorManager::SourceFileNotification", 0x8bfc4d1c),
-                    [this](unsigned int typeId, const void* data, unsigned int dataLength)
+                    [this](unsigned int typeId, unsigned int /*serial*/, const void* data, unsigned int dataLength)
                 {
                     OnAssetSystemMessage(typeId, data, dataLength);
                 });
@@ -81,10 +82,12 @@ namespace AzToolsFramework
 
             AssetSystemRequestBus::Handler::BusConnect();
             AssetSystemJobRequestBus::Handler::BusConnect();
+            AzToolsFramework::ToolsAssetSystemBus::Handler::BusConnect();
         }
 
         void AssetSystemComponent::Deactivate()
         {
+            AzToolsFramework::ToolsAssetSystemBus::Handler::BusDisconnect();
             AssetSystemJobRequestBus::Handler::BusDisconnect();
             AssetSystemRequestBus::Handler::BusDisconnect();
 
@@ -94,13 +97,13 @@ namespace AzToolsFramework
             {
                 socketConn->RemoveMessageHandler(AZ_CRC("AssetProcessorManager::SourceFileNotification", 0x8bfc4d1c), m_cbHandle);
             }
+            
+            AssetSystemBus::ClearQueuedEvents();
         }
 
         void AssetSystemComponent::Reflect(AZ::ReflectContext* context)
         {
             //source file
-            SourceFileInfoRequest::Reflect(context);
-            SourceFileInfoResponse::Reflect(context);
             SourceFileNotificationMessage::Reflect(context);
 
             // Requests
@@ -113,7 +116,6 @@ namespace AzToolsFramework
 
             //JobInfo
             AzToolsFramework::AssetSystem::JobInfo::Reflect(context);
-            AzToolsFramework::AssetSystem::SourceFileInfo::Reflect(context);
 
             //AssetSystemComponent
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
@@ -163,6 +165,13 @@ namespace AzToolsFramework
 
         bool AssetSystemComponent::GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullPath)
         {
+            auto foundIt = m_assetSourceRelativePathToFullPathCache.find(relPath);
+            if (foundIt != m_assetSourceRelativePathToFullPathCache.end())
+            {
+                fullPath = foundIt->second;
+                return true;
+            }
+
             AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
             if (!engineConnection || !engineConnection->IsConnected())
             {
@@ -179,8 +188,18 @@ namespace AzToolsFramework
                 return false;
             }
 
-            fullPath = response.m_fullSourcePath;
-            return response.m_resolved;
+            
+            if (response.m_resolved)
+            {
+                fullPath = response.m_fullSourcePath;
+                m_assetSourceRelativePathToFullPathCache[relPath] = fullPath;
+                return true;
+            }
+            else
+            {
+                fullPath = "";
+                return false;
+            }
         }
 
         const char* AssetSystemComponent::GetAbsoluteDevGameFolderPath()
@@ -208,38 +227,51 @@ namespace AzToolsFramework
             AssetSystemBus::ExecuteQueuedEvents();
         }
 
-        bool AssetSystemComponent::GetSourceAssetInfoById(const AZ::Uuid& /*guid*/, AZStd::string& /*watchFolder*/, AZStd::string& /*relativePath*/)
-        {
-            AZ_Assert(false, "Not implemented yet");
-            return {};
-        }
-
-        bool AssetSystemComponent::GetSourceFileInfoByPath(SourceFileInfo& result, const char* sourcePath)
+        bool AssetSystemComponent::GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath)
         {
             AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
             if (!engineConnection || !engineConnection->IsConnected())
             {
-                AZ_Error("Editor", false, "Failed to establish a SocketConnection or it hasn't been connected yet.");
                 return false;
             }
 
-            SourceFileInfoRequest request(sourcePath);
-            SourceFileInfoResponse response;
-            
+            AzFramework::AssetSystem::SourceAssetInfoRequest request(assetId, assetType);
+            AzFramework::AssetSystem::SourceAssetInfoResponse response;
+
             if (!SendRequest(request, response))
             {
-                AZ_Error("Editor", false, "Failed to send GetSourceFileInfoByPath request for search term: %s", sourcePath);
+                AZ_Error("Editor", false, "Failed to send GetAssetInfoById request for %s", assetId.ToString<AZStd::string>().c_str());
                 return false;
             }
 
-            if (response.m_infoFound)
+            assetInfo = response.m_assetInfo;
+            rootFilePath = response.m_rootFolder;
+            return true;
+        }
+
+        bool AssetSystemComponent::GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
+        {
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
             {
-                result.m_watchFolder = AZStd::move(response.m_watchFolder);
-                result.m_relativePath = AZStd::move(response.m_relativePath);
-                result.m_sourceGuid = response.m_sourceGuid;
+                return false;
             }
 
-            return response.m_infoFound;
+            AzFramework::AssetSystem::SourceAssetInfoRequest request(sourcePath);
+            AzFramework::AssetSystem::SourceAssetInfoResponse response;
+
+            if (!SendRequest(request, response))
+            {
+                AZ_Error("Editor", false, "Failed to send GetSourceInfoBySourcePath request for %s", sourcePath);
+                return false;
+            }
+
+            if (response.m_found)
+            {
+                assetInfo = response.m_assetInfo;
+                watchFolder = response.m_rootFolder;
+            }
+            return response.m_found;
         }
 
         AZ::Outcome<AssetSystem::JobInfoContainer> AssetSystemComponent::GetAssetJobsInfo(const AZStd::string& path, const bool escalateJobs)
@@ -361,5 +393,53 @@ namespace AzToolsFramework
 
             return AZ::Failure();
         }
+
+        void AssetSystemComponent::SourceFileChanged(AZStd::string relativePath, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/)
+        {
+            m_assetSourceRelativePathToFullPathCache.erase(relativePath);
+        }
+
+        void AssetSystemComponent::SourceFileRemoved(AZStd::string relativePath, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/)
+        {
+            m_assetSourceRelativePathToFullPathCache.erase(relativePath);
+        }
+
+        void AssetSystemComponent::SourceFileFailed(AZStd::string relativePath, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/)
+        {
+            m_assetSourceRelativePathToFullPathCache.erase(relativePath);
+        }
+
+        void AssetSystemComponent::RegisterSourceAssetType(const AZ::Data::AssetType& assetType, const char* assetFileFilter)
+        {
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
+            {
+                return;
+            }
+
+            AzFramework::AssetSystem::RegisterSourceAssetRequest request(assetType, assetFileFilter);
+
+            if (!SendRequest(request))
+            {
+                AZ_Error("Editor", false, "Failed to send RegisterSourceAssetType request for asset type %s", assetType.ToString<AZStd::string>().c_str());
+            }
+        }
+
+        void AssetSystemComponent::UnregisterSourceAssetType(const AZ::Data::AssetType& assetType)
+        {
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
+            {
+                return;
+            }
+
+            AzFramework::AssetSystem::UnregisterSourceAssetRequest request(assetType);
+
+            if (!SendRequest(request))
+            {
+                AZ_Error("Editor", false, "Failed to send UnregisterSourceAssetType request for asset type %s", assetType.ToString<AZStd::string>().c_str());
+            }
+        }
+
     } // namespace AssetSystem
 } // namespace AzToolsFramework

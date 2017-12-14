@@ -25,8 +25,8 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_IMPL(MotionCompressionSettingsRule, AZ::SystemAllocator, 0)
 
             MotionCompressionSettingsRule::MotionCompressionSettingsRule()
-                : m_maxTranslationError(0.000025f)
-                , m_maxRotationError(0.000025f)
+                : m_maxTranslationError(0.001f)
+                , m_maxRotationError(0.0001f)
                 , m_maxScaleError(0.0001f)
             {
             }
@@ -86,11 +86,11 @@ namespace EMotionFX
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &MotionCompressionSettingsRule::m_maxTranslationError, "Max translation error tolerance", "Maximum error allowed in translation")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 0.1f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.000001f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.0001f)
                         ->Attribute(AZ::Edit::Attributes::Decimals, 6)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &MotionCompressionSettingsRule::m_maxRotationError, "Max rotation error tolerance", "Maximum error allowed in rotation")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 0.025f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 0.001f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.000001f)
                         ->Attribute(AZ::Edit::Attributes::Decimals, 6);
                         // hide the max scale tolerance in UI as the engine does not support it yet.

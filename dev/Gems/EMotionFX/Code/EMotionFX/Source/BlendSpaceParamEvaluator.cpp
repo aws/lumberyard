@@ -90,13 +90,13 @@ namespace EMotionFX
 
         Transform transform;
         motion->CalcNodeTransform(&motionInstance, &transform, actor, node, 0, retargeting);
-        MCore::Vector3 position(transform.mPosition);
+        AZ::Vector3 position(transform.mPosition);
         float distance = 0.0f;
         float time = sampleTimeStep;
         for (uint32 i = 1; i < numSamples; ++i, time += sampleTimeStep)
         {
             motion->CalcNodeTransform(&motionInstance, &transform, actor, node, time, retargeting);
-            distance += (transform.mPosition - position).Length();
+            distance += (transform.mPosition - position).GetLength();
             position = transform.mPosition;
         }
 
@@ -175,8 +175,8 @@ namespace EMotionFX
         Transform endTransform;
         motion->CalcNodeTransform(&motionInstance, &endTransform, actor, node, duration, retargeting);
 
-        MCore::Vector3 diffVec(endTransform.mPosition - startTransform.mPosition);
-        return ::atan2f(diffVec.x, diffVec.y);
+        AZ::Vector3 diffVec(endTransform.mPosition - startTransform.mPosition);
+        return ::atan2f(diffVec.GetX(), diffVec.GetY());
     }
 
     const char* BlendSpaceTravelDirectionParamEvaluator::GetName() const
@@ -208,18 +208,18 @@ namespace EMotionFX
 
         Transform transform;
         motion->CalcNodeTransform(&motionInstance, &transform, actor, node, 0, retargeting);
-        MCore::Vector3 position(transform.mPosition);
+        AZ::Vector3 position(transform.mPosition);
         float slopeSum = 0.0f;
         float time = sampleTimeStep;
         uint32 count = 0; // number of samples added to slopeSum
         for (uint32 i = 1; i < numSamples; ++i, time += sampleTimeStep)
         {
             motion->CalcNodeTransform(&motionInstance, &transform, actor, node, time, retargeting);
-            MCore::Vector3 diffVec(transform.mPosition - position);
-            float horizontalDistance = AZ::Vector2(diffVec.x, diffVec.y).GetLength();
+            AZ::Vector3 diffVec(transform.mPosition - position);
+            float horizontalDistance = AZ::Vector2(diffVec.GetX(), diffVec.GetY()).GetLength();
             if (horizontalDistance > 0)
             {
-                slopeSum += atan2f(diffVec.z, horizontalDistance);
+                slopeSum += atan2f(diffVec.GetZ(), horizontalDistance);
                 position = transform.mPosition;
                 count++;
             }
@@ -301,7 +301,7 @@ namespace EMotionFX
         Transform endTransform;
         motion->CalcNodeTransform(&motionInstance, &endTransform, actor, node, duration, retargeting);
 
-        return (endTransform.mPosition - startTransform.mPosition).Length();
+        return (endTransform.mPosition - startTransform.mPosition).GetLength();
     }
 
     const char* BlendSpaceTravelDistanceParamEvaluator::GetName() const
@@ -325,7 +325,7 @@ namespace EMotionFX
             return 0.0f;
         }
 
-        const MCore::Vector3 xAxis(1.0f, 0, 0);
+        const AZ::Vector3 xAxis(1.0f, 0, 0);
 
         const bool retargeting = motionInstance.GetRetargetingEnabled();
         const float sampleRate = motion->GetMotionFPS();
@@ -335,13 +335,13 @@ namespace EMotionFX
 
         Transform transform;
         motion->CalcNodeTransform(&motionInstance, &transform, actor, node, 0, retargeting);
-        MCore::Vector3 position(transform.mPosition);
+        AZ::Vector3 position(transform.mPosition);
         float distance = 0.0f;
         float time = sampleTimeStep;
         for (uint32 i = 1; i < numSamples; ++i, time += sampleTimeStep)
         {
             motion->CalcNodeTransform(&motionInstance, &transform, actor, node, time, retargeting);
-            MCore::Vector3 moveVec(transform.mPosition - position);
+            AZ::Vector3 moveVec(transform.mPosition - position);
             distance += moveVec.Dot(xAxis);
             position = transform.mPosition;
         }
@@ -370,7 +370,7 @@ namespace EMotionFX
             return 0.0f;
         }
 
-        const MCore::Vector3 yAxis(0, 1.0f, 0);
+        const AZ::Vector3 yAxis(0, 1.0f, 0);
 
         const bool retargeting = motionInstance.GetRetargetingEnabled();
         const float sampleRate = motion->GetMotionFPS();
@@ -380,13 +380,13 @@ namespace EMotionFX
 
         Transform transform;
         motion->CalcNodeTransform(&motionInstance, &transform, actor, node, 0, retargeting);
-        MCore::Vector3 position(transform.mPosition);
+        AZ::Vector3 position(transform.mPosition);
         float distance = 0.0f;
         float time = sampleTimeStep;
         for (uint32 i = 1; i < numSamples; ++i, time += sampleTimeStep)
         {
             motion->CalcNodeTransform(&motionInstance, &transform, actor, node, time, retargeting);
-            MCore::Vector3 moveVec(transform.mPosition - position);
+            AZ::Vector3 moveVec(transform.mPosition - position);
             distance += moveVec.Dot(yAxis);
             position = transform.mPosition;
         }

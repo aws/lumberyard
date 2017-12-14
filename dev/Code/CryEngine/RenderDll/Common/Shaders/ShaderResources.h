@@ -13,33 +13,37 @@
 
 #pragma once
 
+#include <AzCore/std/containers/map.h>
 #include "DeviceManager/Enums.h"
 #include <CryEngineAPI.h>
 
+//==============================================================================
 //! This class provide all necessary resources to the shader extracted from material definition.
+//------------------------------------------------------------------------------
 class CShaderResources
     : public IRenderShaderResources
     , public SBaseShaderResources
 {
 private:
-    std::vector<Vec4> m_Constants;
+    // Dynamically managed vector of all required shaders constants  - 
+    // This array will be copied to the (Per Material) constant buffer when ready.
+    AZStd::vector<Vec4>                 m_Constants;
+
+    // The actual constant buffer to be binded as the Per material CB
+    AzRHI::ConstantBuffer*              m_ConstantBuffer;       
 
 public:
-    SEfResTexture* m_Textures[EFTT_MAX];        // 48 bytes
-    SDeformInfo* m_pDeformInfo;                 // 4 bytes
-    TArray<struct SHRenderTarget*> m_RTargets;  // 4
-    CCamera* m_pCamera;                         // 4
-    SSkyInfo* m_pSky;                           // 4
-    AzRHI::ConstantBuffer*  m_ConstantBuffer;
-    uint16 m_Id;                                // 2 bytes
-    uint16 m_IdGroup;                           // 2 bytes
+    TexturesResourcesMap                m_TexturesResourcesMap;          // A map of texture used by the shader
+    SDeformInfo*                        m_pDeformInfo;          // 4 bytes - Per Texture modulator info
+    TArray<struct SHRenderTarget*>      m_RTargets;             // 4
+    SSkyInfo*                           m_pSky;                 // [Shader System TO DO] - disconnect and remove!
+    uint16                              m_Id;                   // Id of the shader resource in the frame's SR list - s_ShaderResources_known
+    uint16                              m_IdGroup;              // Id of the SR group for this SR in the frame's SR list.  Starts at 20,000
 
     /////////////////////////////////////////////////////
-
-    float m_fMinMipFactorLoad;
-    int m_nRefCounter;
-    int m_nLastTexture;
-    int m_nFrameLoad;
+    float                               m_fMinMipFactorLoad;
+    int                                 m_nRefCounter;
+    int                                 m_nFrameLoad;
 
     // Compiled resource set.
     // For DX12 will prepare list of textures in the global heap.
@@ -49,21 +53,37 @@ public:
     uint8 m_nMtlLayerNoDrawFlags;
 
 public:
-    void AddTextureMap(int Id)
+
+    bool TextureSlotExists(ResourceSlotIndex slotId) const
     {
-        assert(Id >= 0 && Id < EFTT_MAX);
-        m_Textures[Id] = new SEfResTexture;
+        auto    iter = m_TexturesResourcesMap.find(slotId);
+        return (iter != m_TexturesResourcesMap.end()) ? true : false;
     }
+
+    SEfResTexture* GetTextureResource(ResourceSlotIndex slotId)
+    {
+        auto    iter = m_TexturesResourcesMap.find(slotId);
+        return (iter != m_TexturesResourcesMap.end()) ? &iter->second : nullptr;
+    }
+
+    TexturesResourcesMap* GetTexturesResourceMap()
+    {
+        return &m_TexturesResourcesMap;
+    }
+
+    inline AzRHI::ConstantBuffer* GetConstantBuffer() 
+    {
+        return m_ConstantBuffer;
+    }
+
     int Size() const
     {
-        int nSize = sizeof(CShaderResources);
-        for (int i = 0; i < EFTT_MAX; i++)
+        int     nSize = sizeof(CShaderResources);
+        for ( auto iter=m_TexturesResourcesMap.begin() ; iter != m_TexturesResourcesMap.end() ; ++iter )
         {
-            if (m_Textures[i])
-            {
-                nSize += m_Textures[i]->Size();
-            }
+            nSize += iter->second.Size();
         }
+
         nSize += sizeofVector(m_Constants);
         nSize += m_RTargets.GetMemoryUsage();
         if (m_pDeformInfo)
@@ -77,10 +97,12 @@ public:
     {
         pSizer->AddObject(this, sizeof(*this));
 
-        for (int i = 0; i < EFTT_MAX; i++)
+        for ( auto iter=m_TexturesResourcesMap.begin() ; iter != m_TexturesResourcesMap.end() ; ++iter )
         {
-            pSizer->AddObject(m_Textures[i]);
+            pSizer->AddObject(iter->second);
         }
+
+
         pSizer->AddObject(m_Constants);
         pSizer->AddObject(m_RTargets);
         pSizer->AddObject(m_pDeformInfo);
@@ -98,12 +120,10 @@ public:
     virtual void CloneConstants(const IRenderShaderResources* pSrc) final;
     virtual int GetResFlags() final { return m_ResFlags; }
     virtual void SetMaterialName(const char* szName) final { m_szMaterialName = szName; }
-    virtual CCamera* GetCamera() final { return m_pCamera; }
-    virtual void SetCamera(CCamera* pCam) final { m_pCamera = pCam; }
     virtual SSkyInfo* GetSkyInfo() final { return m_pSky; }
     virtual const float& GetAlphaRef() const final { return m_AlphaRef; }
     virtual void SetAlphaRef(float alphaRef) final { m_AlphaRef = alphaRef; }
-    virtual SEfResTexture* GetTexture(int nSlot) const final { return m_Textures[nSlot]; }
+
     virtual DynArrayRef<SShaderParam>& GetParameters() final { return m_ShaderParams; }
     virtual ColorF GetFinalEmittance() final
     {
@@ -125,14 +145,6 @@ public:
         return (m_pDeformInfo && m_pDeformInfo->m_fDividerX != 0);
     }
 
-    bool IsEmpty(int nTSlot) const
-    {
-        if (!m_Textures[nTSlot])
-        {
-            return true;
-        }
-        return false;
-    }
     bool HasLMConstants() const { return (m_Constants.size() > 0); }
     virtual void SetInputLM(const CInputLightMaterial& lm) final;
     virtual void ToInputLM(CInputLightMaterial& lm) final;

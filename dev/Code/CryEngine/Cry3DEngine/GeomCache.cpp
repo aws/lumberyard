@@ -694,7 +694,7 @@ const char* CGeomCache::GetFrameData(const uint frameIndex) const
     return pAnimationData + pFrameHeader->m_offset;
 }
 
-AABB CGeomCache::GetAABB() const
+const AABB& CGeomCache::GetAABB() const
 {
     return m_aabb;
 }
@@ -1084,6 +1084,12 @@ void CGeomCache::RemoveListener(IGeomCacheListener* pListener)
 
 void CGeomCache::UnloadData()
 {
+    //When not streaming, only allow data release if the geom cache has been processed by its render node
+    if (!m_bUseStreaming && !m_processedByRenderNode)
+    {
+        return;
+    }
+
     if (m_eStreamingStatus == ecss_NotLoaded)
     {
         CGeomCacheMeshManager& meshManager = GetGeomCacheManager()->GetMeshManager();

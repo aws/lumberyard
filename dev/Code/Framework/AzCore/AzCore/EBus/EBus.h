@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -153,6 +153,13 @@ namespace AZ
         static const bool EnableEventQueue = false;
 
         /**
+         * Specifies whether the bus should accept queued messages by default or not.
+         * If set to false, Bus::AllowFunctionQueuing(true) must be called before events are accepted.
+         * Used only when #EnableEventQueue is true.
+         */
+        static const bool EventQueueingActiveByDefault = true;
+
+        /**
          * Specifies whether the EBus supports queueing functions which take reference
          * arguments. This means that the sender is responsible for the lifetime of the
          * arguments (they should be static or class members or otherwise persistently stored).
@@ -194,13 +201,19 @@ namespace AZ
          * Specifies where EBus data is stored. 
          * This drives how many instances of this EBus exist at runtime.
          * Available storage policies include the following:
-         * - (Default) EBusEnvironmentStoragePolicy � %EBus data is stored 
+         * - (Default) EBusEnvironmentStoragePolicy - %EBus data is stored 
          * in the AZ::Environment. With this policy, a single %EBus instance 
-         * is shared across all modules (DLLs) that attach to the AZ::Environment.
-         * - EBusGlobalStoragePolicy � %EBus data is stored in a global static variable. 
+         * is shared across all modules (DLLs) that attach to the AZ::Environment. It also
+         * supports multiple EBus environments.
+         * - EBusGlobalStoragePolicy - %EBus data is stored in a global static variable. 
          * With this policy, each module (DLL) has its own instance of the %EBus.
-         * - EBusThreadLocalStoragePolicy � %EBus data is stored in a thread_local static 
+         * - EBusThreadLocalStoragePolicy - %EBus data is stored in a thread_local static 
          * variable. With this policy, each thread has its own instance of the %EBus.
+         *
+         * \note Make sure you carefully consider the implication of switching this policy. If your code use EBusEnvironments and your storage policy is not
+         * complaint in the best case you will cause contention and unintended communication across environments, separation is a goal of environments. In the worst
+         * case when you have listeners, you can receive messages when you environment is NOT active, potentially causing all kinds of havoc especially if you execute
+         * environments in parallel.
          */
         template <class Context>
         using StoragePolicy = EBusEnvironmentStoragePolicy<Context>;
@@ -443,15 +456,10 @@ namespace AZ
         using MultiHandler = Internal::EBusMultiEventHandler<ThisType>;
 
         /**
-         * Policy for the message queue.
-         */
-        using MessageQueuePolicy = EBusMessageQueuePolicy<Traits::EnableEventQueue, ThisType, EventQueueMutexType>;
-     
-        /**
          * Policy for the function queue.
          */
-        using FunctionQueuePolicy = EBusFunctionQueuePolicy<Traits::EnableEventQueue, ThisType, EventQueueMutexType>;
-       
+        using QueuePolicy = EBusQueuePolicy<Traits::EnableEventQueue, ThisType, EventQueueMutexType>;
+
         /**
          * Enables custom logic to run when a handler connects to 
          * or disconnects from the %EBus.
@@ -583,11 +591,7 @@ namespace AZ
         /**
          * @deprecated Use HasHandlers instead.
          */
-        static inline bool IsHandlers()
-        {
-            AZ_Warning("EBus", false, "EBus::IsHandlers is deprecated, please use EBus::HasHandlers instead");
-            return HasHandlers();
-        }
+        static inline bool IsHandlers();
         /// @endcond
 
         /**
@@ -595,17 +599,7 @@ namespace AZ
          * @return True if there are any handlers connected to the 
          * EBus. Otherwise, false.
          */
-        static inline bool HasHandlers()
-        {
-            bool hasHandlers = false;
-            auto findFirstHandler = [&hasHandlers](InterfaceType*) 
-            {
-                hasHandlers = true;
-                return false;
-            };
-            BaseImpl::EnumerateHandlers(findFirstHandler);
-            return hasHandlers;
-        }
+        static inline bool HasHandlers();
 
         /**
          * Gets the ID of the address that is currently receiving an event.
@@ -647,23 +641,27 @@ namespace AZ
          * Returns a unique signature for the EBus.
          * @return A unique signature for the EBus.
          */
-        static const char* GetName() { return AZ_FUNCTION_SIGNATURE; }
+        static const char* GetName();
 
         /// @cond EXCLUDE_DOCS
-        class Context
+        class Context : public Internal::ContextBase
         {
             friend ThisType;
             friend Router;
         public:
-            Context()
-                : m_callstack(nullptr)
-            {}
-
             BusesContainer          m_buses;        ///< The actual bus container, which is a static map for each bus type.
             MutexType               m_mutex;        ///< Mutex to control access to the bus.
-            MessageQueuePolicy      m_queue;
-            FunctionQueuePolicy     m_functionQueue;
+            QueuePolicy             m_queue;
             RouterPolicy            m_routing;
+
+            Context();
+            Context(EBusEnvironment* environment);
+
+            // Disallow all copying/moving
+            Context(const Context&) = delete;
+            Context(Context&&) = delete;
+            Context& operator=(const Context&) = delete;
+            Context& operator=(Context&&) = delete;
 
         private:
             CallstackEntry*         m_callstack;
@@ -674,52 +672,47 @@ namespace AZ
          * Specifies where %EBus data is stored.
          * This drives how many instances of this %EBus exist at runtime.
          * Available storage policies include the following:
-         * - (Default) EBusEnvironmentStoragePolicy � %EBus data is stored
+         * - (Default) EBusEnvironmentStoragePolicy - %EBus data is stored
          * in the AZ::Environment. With this policy, a single %EBus instance
          * is shared across all modules (DLLs) that attach to the AZ::Environment.
-         * - EBusGlobalStoragePolicy � %EBus data is stored in a global static variable.
+         * - EBusGlobalStoragePolicy - %EBus data is stored in a global static variable.
          * With this policy, each module (DLL) has its own instance of the %EBus.
-         * - EBusThreadLocalStoragePolicy � %EBus data is stored in a thread_local static
+         * - EBusThreadLocalStoragePolicy - %EBus data is stored in a thread_local static
          * variable. With this policy, each thread has its own instance of the %EBus.
          */
         typedef typename Traits::template StoragePolicy<Context> StoragePolicy;
 
         /**
-         * Returns the global bus data. 
+         * Returns the global bus data (if it was created).
          * Depending on the storage policy, there might be one or multiple instances 
          * of the bus data.
          * @return A reference to the bus context.
          */
-        static Context& GetContext()
-        {
-            return StoragePolicy::Get();
-        }
+        static Context* GetContext();
 
-        static bool IsInDispatch(Context& context=GetContext())
-        {
-            return context.m_callstack != nullptr;
-        }
+        /**
+         * Returns the global bus data. Creates it if it wasn't already created.
+         * Depending on the storage policy, there might be one or multiple instances 
+         * of the bus data.
+         * @return A reference to the bus context.
+         */
+        static Context& GetOrCreateContext();
+        
+        static bool IsInDispatch(Context* context = GetContext());
 
     private:
         struct CallstackEntry
         {
-            CallstackEntry(const BusIdType* id)
-                : m_busId(id)
-            {}
+            CallstackEntry(const BusIdType* id);
+            virtual ~CallstackEntry();
 
             virtual void OnRemoveHandler(InterfaceType* handler) = 0;
 
-            virtual void SetRouterProcessingState(typename RouterPolicy::EventProcessingState /* state */) {}
+            virtual void SetRouterProcessingState(typename RouterPolicy::EventProcessingState /* state */);
 
-            virtual bool IsRoutingQueuedEvent() const
-            {
-                return false;
-            }
+            virtual bool IsRoutingQueuedEvent() const;
 
-            virtual bool IsRoutingReverseEvent() const
-            {
-                return false;
-            }
+            virtual bool IsRoutingReverseEvent() const;
 
             virtual CallstackEntry* Next() const = 0;
 
@@ -729,28 +722,11 @@ namespace AZ
         struct CallstackEntryBasic
             : public CallstackEntry
         {
-            CallstackEntryBasic(const BusIdType* busId)
-                : CallstackEntry(busId)
-                , m_threadId(AZStd::this_thread::get_id().m_id)
-            {
-                Context& context = GetContext();
-                AZ_Assert(!context.m_callstack || static_cast<CallstackEntryBasic*>(context.m_callstack)->m_threadId == m_threadId, 
-                    "Bus has multiple threads in its callstack records. Configure MutexType on the bus, or don't send to it from multiple threads");
-                m_prevCall = context.m_callstack;
-                context.m_callstack = this;
-            }
+            CallstackEntryBasic(const BusIdType* busId);
+            
+            virtual ~CallstackEntryBasic();
 
-            virtual ~CallstackEntryBasic()
-            {
-                Context& context = GetContext();
-                context.m_callstack = m_prevCall;
-                if (context.m_callstack == nullptr && context.m_buses.IsKeepIteratorsStable())
-                {
-                    context.m_buses.AllowUnstableIterators();
-                }
-            }
-
-            CallstackEntry* Next() const override { return m_prevCall; }
+            CallstackEntry* Next() const override;
 
             CallstackEntry* m_prevCall;
             AZStd::native_thread_id_type m_threadId;
@@ -762,49 +738,13 @@ namespace AZ
         struct MultiThreadCallstackEntryIterator
             : public CallstackEntry
         {
-            MultiThreadCallstackEntryIterator(Iterator it, const BusIdType* id)
-                : CallstackEntry(id)
-                , m_iterator(it)
-                , m_prev(nullptr)
-            {
-                Context& context = GetContext();
-                AZStd::lock_guard<MutexType> lock(context.m_mutex);
-                if (context.m_callstack)
-                {
-                    static_cast<MultiThreadCallstackEntryIterator*>(context.m_callstack)->m_prev = this;
-                }
-                m_next = static_cast<MultiThreadCallstackEntryIterator*>(context.m_callstack);
-                context.m_callstack = this;
-            }
+            MultiThreadCallstackEntryIterator(Iterator it, const BusIdType* id);
 
-            virtual ~MultiThreadCallstackEntryIterator()
-            {
-                Context& context = GetContext();
-                AZStd::lock_guard<MutexType> lock(context.m_mutex);
-                if (context.m_callstack == this)
-                {
-                    context.m_callstack = m_next;
-                    if (m_next)
-                    {
-                        m_next->m_prev = nullptr;
-                    }
-                }
-                else
-                {
-                    if (m_prev)
-                    {
-                        m_prev->m_next = m_next;
-                    }
-                    if (m_next)
-                    {
-                        m_next->m_prev = m_prev;
-                    }
-                }
-            }
+            virtual ~MultiThreadCallstackEntryIterator();
+            
+            void OnRemoveHandler(InterfaceType*) override;
 
-            void OnRemoveHandler(InterfaceType*) override {}
-
-            CallstackEntry* Next() const override { return m_next; }
+            CallstackEntry* Next() const override;
 
             Iterator m_iterator;
             MultiThreadCallstackEntryIterator* m_next;
@@ -815,19 +755,9 @@ namespace AZ
         struct CallstackEntryIterator 
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(Iterator it, const BusIdType* busId)
-                : CallstackEntryBasic(busId)
-                , m_iterator(it)
-            {
-            }
+            CallstackEntryIterator(Iterator it, const BusIdType* busId);
 
-            void OnRemoveHandler(InterfaceType* handler) override
-            {
-                if (handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
-                {
-                    ++m_iterator;
-                }
-            }
+            void OnRemoveHandler(InterfaceType* handler) override;
 
             Iterator m_iterator;
         };
@@ -836,23 +766,10 @@ namespace AZ
         struct CallstackEntryIterator<AZStd::reverse_iterator<Iterator>> 
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(AZStd::reverse_iterator<Iterator> it, const BusIdType* busId)
-                : CallstackEntryBasic(busId)
-                , m_iterator(it)
-            {
-            }
-
-            void OnRemoveHandler(InterfaceType* handler) override
-            {
-                if (handler == *m_iterator.base()) // If we are removing what the current iterator is pointing to, move to the next element.
-                {
-                    // Reverse iterator points to the element after the one we are pointing to.
-                    // For example, *m_iterator does ( *(--m_interator.base()) to the counter that we need to move 
-                    // to the right in the container. This is a reverse iterator, so moving to the right is subtraction.
-                    --m_iterator;
-                }
-            }
-
+            CallstackEntryIterator(AZStd::reverse_iterator<Iterator> it, const BusIdType* busId);
+            
+            void OnRemoveHandler(InterfaceType* handler) override;
+            
             AZStd::reverse_iterator<Iterator> m_iterator;
         };
 
@@ -861,34 +778,15 @@ namespace AZ
         {
             typedef typename RouterPolicy::Container::iterator Iterator;
 
-            RouterCallstackEntry(Iterator it, const BusIdType* busId, bool isQueued, bool isReverse)
-                : CallstackEntryBasic(busId)
-                , m_iterator(it)
-                , m_processingState(RouterPolicy::EventProcessingState::ContinueProcess)
-                , m_isQueued(isQueued)
-                , m_isReverse(isReverse)
-            {
-            }
+            RouterCallstackEntry(Iterator it, const BusIdType* busId, bool isQueued, bool isReverse);
 
-            void OnRemoveHandler(InterfaceType* handler)
-            {
-                (void)handler;
-            }
+            void OnRemoveHandler(InterfaceType* handler) override;
 
-            void SetRouterProcessingState(typename RouterPolicy::EventProcessingState state) override
-            {
-                m_processingState = state;
-            }
+            void SetRouterProcessingState(typename RouterPolicy::EventProcessingState state) override;
 
-            bool IsRoutingQueuedEvent() const override
-            {
-                return m_isQueued;
-            }
-            
-            bool IsRoutingReverseEvent() const override
-            {
-                return m_isReverse;
-            }
+            bool IsRoutingQueuedEvent() const override;
+
+            bool IsRoutingReverseEvent() const override;
 
             Iterator m_iterator;
             typename RouterPolicy::EventProcessingState m_processingState;
@@ -1088,12 +986,31 @@ namespace AZ
     // EBus implementations
 
     //=========================================================================
+    // Context::Context
+    //=========================================================================
+    template<class Interface, class Traits>
+    EBus<Interface, Traits>::Context::Context()
+        : m_callstack(nullptr)
+    {
+    }
+
+    //=========================================================================
+    // Context::Context
+    //=========================================================================
+    template<class Interface, class Traits>
+    EBus<Interface, Traits>::Context::Context(EBusEnvironment* environment)
+        : Internal::ContextBase(environment)
+        , m_callstack(nullptr)
+    {
+    }
+
+    //=========================================================================
     // Bind
     //=========================================================================
     template<class Interface, class Traits>
     inline void EBus<Interface, Traits>::Bind(BusPtr& ptr, const BusIdType& id)
     {
-        Context& context = GetContext();
+        Context& context = GetOrCreateContext();
 
         // scoped lock guard in case of exception / other odd situation
         AZStd::lock_guard<MutexType> lock(context.m_mutex);
@@ -1111,12 +1028,12 @@ namespace AZ
     template<class Interface, class Traits>
     inline void EBus<Interface, Traits>::Connect(BusPtr& ptr, HandlerNode& handler, const BusIdType& id)
     {
-        Context& context = GetContext();
+        Context& context = GetOrCreateContext();
         // scoped lock guard in case of exception / other odd situation
         AZStd::lock_guard<MutexType> lock(context.m_mutex);
 
         // To call this while executing a message, you need to make sure this mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
-        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to connect during dispatch on a lockless dispatch EBus");
+        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(&context), "It is not safe to connect during dispatch on a lockless dispatch EBus");
         if (context.m_callstack) // Make sure we don't change the iterator order because we are in the middle of a message.
         {
             context.m_buses.KeepIteratorsStable();
@@ -1131,18 +1048,19 @@ namespace AZ
     inline void EBus<Interface, Traits>::Disconnect(HandlerNode& handler, BusPtr& ptr)
     {
         // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
-        Context& context = GetContext();
-
-        // scoped lock guard in case of exception / other odd situation
-        AZStd::lock_guard<MutexType> lock(context.m_mutex);
-
-        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
-        if (context.m_callstack)
+        if (Context* context = GetContext())
         {
-            DisconnectCallstackFix(handler, ptr->m_busId);
+            // scoped lock guard in case of exception / other odd situation
+            AZStd::lock_guard<MutexType> lock(context->m_mutex);
+
+            AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
+            if (context->m_callstack)
+            {
+                DisconnectCallstackFix(handler, ptr->m_busId);
+            }
+            ConnectionPolicy::Disconnect(*context, handler, ptr);
+            ptr = nullptr; // If the refcount goes to zero here, it will alter context.m_buses so it must be inside the protected section.
         }
-        ConnectionPolicy::Disconnect(context, handler, ptr);
-        ptr = nullptr; // If the refcount goes to zero here, it will alter context.m_buses so it must be inside the protected section.
     }
 
     //=========================================================================
@@ -1151,18 +1069,19 @@ namespace AZ
     template<class Interface, class Traits>
     inline void EBus<Interface, Traits>::DisconnectId(HandlerNode& handler, const BusIdType& id)
     {
-        Context& context = GetContext();
-
-        // scoped lock guard in case of exception / other odd situation
-        AZStd::lock_guard<MutexType> lock(context.m_mutex);
-            
-        // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
-        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
-        if (context.m_callstack)
+        if (Context* context = GetContext())
         {
-            DisconnectCallstackFix(handler, id);
+            // scoped lock guard in case of exception / other odd situation
+            AZStd::lock_guard<MutexType> lock(context->m_mutex);
+
+            // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
+            AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
+            if (context->m_callstack)
+            {
+                DisconnectCallstackFix(handler, id);
+            }
+            ConnectionPolicy::DisconnectId(*context, handler, id);
         }
-        ConnectionPolicy::DisconnectId(context, handler, id);
     }
 
 #ifdef AZ_COMPILER_MSVC
@@ -1177,7 +1096,9 @@ namespace AZ
     {
         // Check the call stack to see if the stack pointer is currently pointing to the element that will be removed.
         // If so, adjust the iterators.
-        CallstackEntry* entry = GetContext().m_callstack;
+        Context* context = GetContext();
+
+        CallstackEntry* entry = context ? context->m_callstack : nullptr;
         while (entry != nullptr)
         {
             if(entry->m_busId == nullptr || *entry->m_busId == id)
@@ -1195,17 +1116,44 @@ namespace AZ
     size_t  EBus<Interface, Traits>::GetTotalNumOfEventHandlers()
     {
         size_t size = 0;
-        Context& context = GetContext();
-        if (context.m_buses.size())
+        Context* context = GetContext();
+        if (context && context->m_buses.size())
         {
-            context.m_mutex.lock();
-            for (auto iter = context.m_buses.begin(); iter != context.m_buses.end(); ++iter)
+            context->m_mutex.lock();
+            for (auto iter = context->m_buses.begin(); iter != context->m_buses.end(); ++iter)
             {
                 size += iter->size();
             }
-            context.m_mutex.unlock();
+            context->m_mutex.unlock();
         }
         return size;
+    }
+
+    //=========================================================================
+    // IsHandlers
+    //=========================================================================
+    template<class Interface, class Traits>
+    inline bool EBus<Interface, Traits>::IsHandlers()
+    {
+        AZ_Warning("EBus", false, "EBus::IsHandlers is deprecated, please use EBus::HasHandlers instead");
+        return HasHandlers();
+    }
+    /// @endcond
+
+    //=========================================================================
+    // HasHandlers
+    //=========================================================================
+    template<class Interface, class Traits>
+    inline bool EBus<Interface, Traits>::HasHandlers()
+    {
+        bool hasHandlers = false;
+        auto findFirstHandler = [&hasHandlers](InterfaceType*)
+        {
+            hasHandlers = true;
+            return false;
+        };
+        BaseImpl::EnumerateHandlers(findFirstHandler);
+        return hasHandlers;
     }
 
     //=========================================================================
@@ -1214,10 +1162,10 @@ namespace AZ
     template<class Interface, class Traits>
     const typename EBus<Interface, Traits>::BusIdType * EBus<Interface, Traits>::GetCurrentBusId()
     {
-        Context& context = GetContext();
-        if (context.m_callstack)
+        Context* context = GetContext();
+        if (IsInDispatch(context))
         {
-            return context.m_callstack->m_busId;
+            return context->m_callstack->m_busId;
         }
         return nullptr;
     }
@@ -1228,10 +1176,10 @@ namespace AZ
     template<class Interface, class Traits>
     void EBus<Interface, Traits>::SetRouterProcessingState(RouterProcessingState state)
     {
-        Context& context = GetContext();
-        if (context.m_callstack)
+        Context* context = GetContext();
+        if (IsInDispatch(context))
         {
-            context.m_callstack->SetRouterProcessingState(state);
+            context->m_callstack->SetRouterProcessingState(state);
         }
     }
 
@@ -1241,10 +1189,10 @@ namespace AZ
     template<class Interface, class Traits>
     bool EBus<Interface, Traits>::IsRoutingQueuedEvent()
     {
-        Context& context = GetContext();
-        if (context.m_callstack)
+        Context* context = GetContext();
+        if (IsInDispatch(context))
         {
-            return context.m_callstack->IsRoutingQueuedEvent();
+            return context->m_callstack->IsRoutingQueuedEvent();
         }
 
         return false;
@@ -1256,13 +1204,261 @@ namespace AZ
     template<class Interface, class Traits>
     bool EBus<Interface, Traits>::IsRoutingReverseEvent()
     {
-        Context& context = GetContext();
-        if (context.m_callstack)
+        Context* context = GetContext();
+        if (IsInDispatch(context))
         {
-            return context.m_callstack->IsRoutingReverseEvent();
+            return context->m_callstack->IsRoutingReverseEvent();
         }
 
         return false;
+    }
+
+    //=========================================================================
+    // GetName
+    //=========================================================================
+    template<class Interface, class Traits>
+    const char* EBus<Interface, Traits>::GetName()
+    { 
+        return AZ_FUNCTION_SIGNATURE; 
+    }
+
+    //=========================================================================
+    // GetContext
+    //=========================================================================
+    template<class Interface, class Traits>
+    typename EBus<Interface, Traits>::Context* EBus<Interface, Traits>::GetContext()
+    {
+        return StoragePolicy::Get();
+    }
+
+    //=========================================================================
+    // GetContext
+    //=========================================================================
+    template<class Interface, class Traits>
+    typename EBus<Interface, Traits>::Context& EBus<Interface, Traits>::GetOrCreateContext()
+    {
+        return StoragePolicy::GetOrCreate();
+    }
+
+    //=========================================================================
+    // IsInDispatch
+    //=========================================================================
+    template<class Interface, class Traits>
+    bool EBus<Interface, Traits>::IsInDispatch(Context* context)
+    {
+        return context != nullptr && context->m_callstack != nullptr;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    EBus<Interface, Traits>::CallstackEntry::CallstackEntry(const BusIdType* id)
+        : m_busId(id)
+    {
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    EBus<Interface, Traits>::CallstackEntry::~CallstackEntry()
+    {
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    void EBus<Interface, Traits>::CallstackEntry::SetRouterProcessingState(typename RouterPolicy::EventProcessingState /* state */)
+    {
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    bool EBus<Interface, Traits>::CallstackEntry::IsRoutingQueuedEvent() const
+    {
+        return false;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    bool EBus<Interface, Traits>::CallstackEntry::IsRoutingReverseEvent() const
+    {
+        return false;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    EBus<Interface, Traits>::CallstackEntryBasic::CallstackEntryBasic(const BusIdType* busId)
+            : CallstackEntry(busId)
+            , m_threadId(AZStd::this_thread::get_id().m_id)
+    {
+        Context* context = GetContext();
+        AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
+        AZ_Assert(!context->m_callstack || static_cast<CallstackEntryBasic*>(context->m_callstack)->m_threadId == m_threadId,
+            "Bus has multiple threads in its callstack records. Configure MutexType on the bus, or don't send to it from multiple threads");
+        m_prevCall = context->m_callstack;
+        context->m_callstack = this;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    EBus<Interface, Traits>::CallstackEntryBasic::~CallstackEntryBasic()
+    {
+        Context* context = GetContext();
+        AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
+        context->m_callstack = m_prevCall;
+        if (context->m_callstack == nullptr && context->m_buses.IsKeepIteratorsStable())
+        {
+            context->m_buses.AllowUnstableIterators();
+        }
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    typename EBus<Interface, Traits>::CallstackEntry* EBus<Interface, Traits>::CallstackEntryBasic::Next() const
+    { 
+        return m_prevCall; 
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::MultiThreadCallstackEntryIterator(Iterator it, const BusIdType* id)
+                : CallstackEntry(id)
+                , m_iterator(it)
+                , m_prev(nullptr)
+    {
+        Context* context = GetContext();
+        AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
+        AZStd::lock_guard<MutexType> lock(context->m_mutex);
+        if (context->m_callstack)
+        {
+            static_cast<MultiThreadCallstackEntryIterator*>(context->m_callstack)->m_prev = this;
+        }
+        m_next = static_cast<MultiThreadCallstackEntryIterator*>(context->m_callstack);
+        context->m_callstack = this;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::~MultiThreadCallstackEntryIterator()
+    {
+        Context* context = GetContext();
+        AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
+        AZStd::lock_guard<MutexType> lock(context->m_mutex);
+        if (context->m_callstack == this)
+        {
+            context->m_callstack = m_next;
+            if (m_next)
+            {
+                m_next->m_prev = nullptr;
+            }
+        }
+        else
+        {
+            if (m_prev)
+            {
+                m_prev->m_next = m_next;
+            }
+            if (m_next)
+            {
+                m_next->m_prev = m_prev;
+            }
+        }
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    void EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::OnRemoveHandler(InterfaceType*) 
+    {}
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    typename EBus<Interface, Traits>::CallstackEntry* EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::Next() const
+    { 
+        return m_next; 
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::CallstackEntryIterator(Iterator it, const BusIdType* busId)
+                : CallstackEntryBasic(busId)
+                , m_iterator(it)
+    {
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    void EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::OnRemoveHandler(InterfaceType* handler)
+    {
+        if (handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
+        {
+            ++m_iterator;
+        }
+    }
+
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::CallstackEntryIterator(AZStd::reverse_iterator<Iterator> it, const BusIdType* busId)
+        : CallstackEntryBasic(busId)
+        , m_iterator(it)
+    {
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    template<class Iterator>
+    void EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::OnRemoveHandler(InterfaceType* handler)
+    {
+        if (handler == *m_iterator.base()) // If we are removing what the current iterator is pointing to, move to the next element.
+        {
+            // Reverse iterator points to the element after the one we are pointing to.
+            // For example, *m_iterator does ( *(--m_interator.base()) to the counter that we need to move 
+            // to the right in the container. This is a reverse iterator, so moving to the right is subtraction.
+            --m_iterator;
+        }
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    EBus<Interface, Traits>::RouterCallstackEntry::RouterCallstackEntry(Iterator it, const BusIdType* busId, bool isQueued, bool isReverse)
+        : CallstackEntryBasic(busId)
+        , m_iterator(it)
+        , m_processingState(RouterPolicy::EventProcessingState::ContinueProcess)
+        , m_isQueued(isQueued)
+        , m_isReverse(isReverse)
+    {
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    void EBus<Interface, Traits>::RouterCallstackEntry::OnRemoveHandler(InterfaceType* handler)
+    {
+        (void)handler;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    void EBus<Interface, Traits>::RouterCallstackEntry::SetRouterProcessingState(typename RouterPolicy::EventProcessingState state)
+    {
+        m_processingState = state;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    bool EBus<Interface, Traits>::RouterCallstackEntry::IsRoutingQueuedEvent() const
+    {
+        return m_isQueued;
+    }
+
+    //=========================================================================
+    template<class Interface, class Traits>
+    bool EBus<Interface, Traits>::RouterCallstackEntry::IsRoutingReverseEvent() const
+    {
+        return m_isReverse;
     }
 
     namespace Internal
@@ -1273,26 +1469,9 @@ namespace AZ
         {
             if (--m_refCount == 0)
             {
-                auto& context = EBus<Interface, Traits>::GetContext();
+                auto& context = EBus<Interface, Traits>::GetOrCreateContext();
                 context.m_buses.erase(*static_cast<ContainerImpl*>(this));
-                // If this is the last handler, clear all events.
-                if (context.m_buses.size() == 0)
-                {
-                    context.m_queue.Clear();
-                }
             }
-        }
-
-        template <class ContainerImpl, class Interface, class Traits>
-        void HandlerContainerBase<ContainerImpl, Interface, Traits>::lock()
-        {
-            EBus<Interface, Traits>::GetContext().m_mutex.lock();
-        }
-
-        template <class ContainerImpl, class Interface, class Traits>
-        void HandlerContainerBase<ContainerImpl, Interface, Traits>::unlock()
-        {
-            EBus<Interface, Traits>::GetContext().m_mutex.unlock();
         }
 
         /**
@@ -1309,51 +1488,19 @@ namespace AZ
         public:
             typedef EBus BusType;
 
-            EBusEventHandler()
-            {
-            }
+            EBusEventHandler();
 
-            EBusEventHandler(const EBusEventHandler& rhs)
-            {
-                *this = rhs;
-            }
+            EBusEventHandler(const EBusEventHandler& rhs);
 
-            EBusEventHandler& operator=(const EBusEventHandler& rhs)
-            {
-                BusDisconnect();
-                if (rhs.m_busPtr)
-                {
-                    BusConnect();
-                }
-                return *this;
-            }
+            EBusEventHandler& operator=(const EBusEventHandler& rhs);
 
-            virtual ~EBusEventHandler()
-            {
-                BusDisconnect();
-            }
+            virtual ~EBusEventHandler();
 
-            inline void BusConnect()
-            {
-                if (!m_busPtr)
-                {
-                    m_handlerNode = this;
-                    EBus::Connect(m_busPtr, m_handlerNode);
-                }
-            }
+            void BusConnect();
 
-            inline void BusDisconnect()
-            {
-                if (m_busPtr)
-                {
-                    EBus::Disconnect(m_handlerNode, m_busPtr);
-                }
-            }
+            void BusDisconnect();
 
-            AZ_FORCE_INLINE bool BusIsConnected() const
-            {
-                return m_busPtr;
-            }
+            bool BusIsConnected() const;
         };
 
         /// This is a specialization for when we require the bus ID to connect to a bus.
@@ -1367,76 +1514,19 @@ namespace AZ
         public:
             typedef EBus BusType;
 
-            EBusEventHandler()
-            {}
+            EBusEventHandler();
+            EBusEventHandler(const EBusEventHandler& rhs);
 
-            EBusEventHandler(const EBusEventHandler& rhs)
-            {
-                *this = rhs;
-            }
+            EBusEventHandler& operator=(const EBusEventHandler& rhs);
 
-            EBusEventHandler& operator=(const EBusEventHandler& rhs)
-            {
-                BusDisconnect();
-                if (rhs.m_busPtr)
-                {
-                    BusConnect(rhs.m_busPtr->m_busId);
-                }
-                return *this;
-            }
+            virtual ~EBusEventHandler();
 
-            virtual ~EBusEventHandler()
-            {
-                BusDisconnect();
-            }
-
-            inline void BusConnect(const typename EBus::BusIdType& id)  /// You are required to provide a bus ID.
-            {
-                if (m_busPtr)
-                {
-                    if (m_busPtr->m_busId == id)
-                    {
-                        return;
-                    }
-                    AZ_Assert(false, "Connecting to a different id on this bus without disconnecting first! Please ensure you call BusDisconnect before calling BusConnect again, or if multiple connections are desired you must use a MultiHandler instead.");
-                    EBus::Disconnect(m_handlerNode, m_busPtr);
-                }
-                m_handlerNode = this;
-                EBus::Connect(m_busPtr, m_handlerNode, id);
-            }
-
-            inline void BusDisconnect() // Since we store the ID, allow a function without an ID.
-            {
-                if (m_busPtr)
-                {
-                    EBus::Disconnect(m_handlerNode, m_busPtr);
-                }
-            }
-
-            inline void BusDisconnect(const typename EBus::BusIdType& id)
-            {
-                if (m_busPtr)
-                {
-                    if (m_busPtr->m_busId == id)
-                    {
-                        EBus::Disconnect(m_handlerNode, m_busPtr);
-                    }
-                    else
-                    {
-                        AZ_Warning("System", false, "You are not connected to this ID! Check your disconnect logic!");
-                    }
-                }
-            }
-
-            AZ_FORCE_INLINE bool BusIsConnected() const
-            {
-                return m_busPtr;
-            }
-
-            AZ_FORCE_INLINE bool BusIsConnectedId(const typename EBus::BusIdType& id) const
-            {
-                return (m_busPtr) && (m_busPtr->m_busId == id);
-            }
+            void BusConnect(const typename EBus::BusIdType& id);  /// You are required to provide a bus ID.
+            void BusDisconnect(); // Since we store the ID, allow a function without an ID.
+            void BusDisconnect(const typename EBus::BusIdType& id);
+            
+            bool BusIsConnected() const;
+            bool BusIsConnectedId(const typename EBus::BusIdType& id) const;
         };
 
         /**
@@ -1457,78 +1547,18 @@ namespace AZ
         public:
             typedef EBus BusType;
 
-            EBusMultiEventHandler()
-            {
-            }
+            EBusMultiEventHandler();
+            EBusMultiEventHandler(const EBusMultiEventHandler& rhs);
+            EBusMultiEventHandler& operator=(const EBusMultiEventHandler& rhs);
 
-            EBusMultiEventHandler(const EBusMultiEventHandler& rhs)
-            {
-                *this = rhs;
-            }
+            virtual ~EBusMultiEventHandler();
+            bool BusIsConnectedId(const typename EBus::BusIdType& id);
+            bool BusIsConnected();
+            void BusConnect(const typename EBus::BusIdType& id);
+            void BusDisconnect();
 
-            EBusMultiEventHandler& operator=(const EBusMultiEventHandler& rhs)
-            {
-                BusDisconnect();
-
-                for (typename BusPtrArray::const_iterator it = rhs.m_busArray.begin(); it != rhs.m_busArray.end(); ++it)
-                {
-                    BusConnect(it->second.m_busPtr->m_busId);
-                }
-
-                return *this;
-            }
-
-            virtual ~EBusMultiEventHandler()
-            {
-                BusDisconnect();
-            }
-
-            inline bool BusIsConnectedId(const typename EBus::BusIdType& id)
-            {
-                return m_busArray.end() != m_busArray.find(id);
-            }
-
-            inline bool BusIsConnected()
-            {
-                return !m_busArray.empty();
-            }
-
-            inline void BusConnect(const typename EBus::BusIdType& id)
-            {
-                if (!BusIsConnectedId(id))
-                {
-                    BusConnector& conn = m_busArray.insert_key(id).first->second;
-                    conn.m_handlerNode = this;
-                    EBus::Connect(conn.m_busPtr, conn.m_handlerNode, id);
-                }
-            }
-
-            inline void BusDisconnect()
-            {
-                for (typename BusPtrArray::iterator it = m_busArray.begin(); it != m_busArray.end(); ++it)
-                {
-                    EBus::Disconnect(it->second.m_handlerNode, it->second.m_busPtr);
-                }
-
-                m_busArray.clear();
-            }
-
-            inline bool BusDisconnect(const typename EBus::BusIdType& id)
-            {
-                bool isFound = false;
-
-                auto it = m_busArray.find(id);
-                if (it != m_busArray.end())
-                {
-                    EBus::Disconnect(it->second.m_handlerNode, it->second.m_busPtr);
-                    m_busArray.erase(it);
-                    isFound = true;
-                }
-
-                return isFound;
-            }
+            bool BusDisconnect(const typename EBus::BusIdType& id);
         };
-
 
         template <class EBus, class TargetEBus, class BusIdType>
         struct EBusRouterQueueEventForwarder
@@ -1537,90 +1567,19 @@ namespace AZ
             AZ_STATIC_ASSERT((AZStd::is_same<BusIdType, typename TargetEBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
 
             template<class Event, class... Args>
-            static void ForwardEvent(Event event, Args&&... args)
-            {
-                const BusIdType* busId = EBus::GetCurrentBusId();
-                if (busId == nullptr)
-                {
-                    // Broadcast
-                    if (EBus::IsRoutingQueuedEvent())
-                    {
-                        // Queue broadcast
-                        if (EBus::IsRoutingReverseEvent())
-                        {
-                            // Queue broadcast reverse
-                            TargetEBus::QueueBroadcastReverse(event, args...);
-                        }
-                        else
-                        {
-                            // Queue broadcast forward
-                            TargetEBus::QueueBroadcast(event, args...);
-                        }
-                    }
-                    else
-                    {
-                        // In place broadcast
-                        if (EBus::IsRoutingReverseEvent())
-                        {
-                            // In place broadcast reverse
-                            TargetEBus::BroadcastReverse(event, args...);
-                        }
-                        else
-                        {
-                            // In place broadcast forward
-                            TargetEBus::Broadcast(event, args...);
-                        }
-                    }
-                }
-                else
-                {
-                    // Event with an ID
-                    if (EBus::IsRoutingQueuedEvent())
-                    {
-                        // Queue event
-                        if (EBus::IsRoutingReverseEvent())
-                        {
-                            // Queue event reverse
-                            TargetEBus::QueueEventReverse(*busId, event, args...);
-                        }
-                        else
-                        {
-                            // Queue event forward
-                            TargetEBus::QueueEvent(*busId, event, args...);
-                        }
-                    }
-                    else
-                    {
-                        // In place event
-                        if (EBus::IsRoutingReverseEvent())
-                        {
-                            // In place event reverse
-                            TargetEBus::EventReverse(*busId, event, args...);
-                        }
-                        else
-                        {
-                            // In place event forward
-                            TargetEBus::Event(*busId, event, args...);
-                        }
-                    }
-                }
-            }
+            static void ForwardEvent(Event event, Args&&... args);
 
             template <class Event, class... Args>
-            static void ForwardEventResult(Event event, Args&&... args)
-            {
-
-            }
+            static void ForwardEventResult(Event event, Args&&... args);
         };
 
-        template <class EBus, class TargetEBus>
-        struct EBusRouterQueueEventForwarder<EBus, TargetEBus, NullBusId>
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus, class BusIdType>
+        template<class Event, class... Args>
+        void EBusRouterQueueEventForwarder<EBus, TargetEBus, BusIdType>::ForwardEvent(Event event, Args&&... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<NullBusId, typename EBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
-            AZ_STATIC_ASSERT((AZStd::is_same<NullBusId, typename TargetEBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
-
-            template<class Event, class... Args>
-            static void ForwardEvent(Event event, Args&&... args)
+            const BusIdType* busId = EBus::GetCurrentBusId();
+            if (busId == nullptr)
             {
                 // Broadcast
                 if (EBus::IsRoutingQueuedEvent())
@@ -1652,91 +1611,121 @@ namespace AZ
                     }
                 }
             }
+            else
+            {
+                // Event with an ID
+                if (EBus::IsRoutingQueuedEvent())
+                {
+                    // Queue event
+                    if (EBus::IsRoutingReverseEvent())
+                    {
+                        // Queue event reverse
+                        TargetEBus::QueueEventReverse(*busId, event, args...);
+                    }
+                    else
+                    {
+                        // Queue event forward
+                        TargetEBus::QueueEvent(*busId, event, args...);
+                    }
+                }
+                else
+                {
+                    // In place event
+                    if (EBus::IsRoutingReverseEvent())
+                    {
+                        // In place event reverse
+                        TargetEBus::EventReverse(*busId, event, args...);
+                    }
+                    else
+                    {
+                        // In place event forward
+                        TargetEBus::Event(*busId, event, args...);
+                    }
+                }
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus, class BusIdType>
+        template <class Event, class... Args>
+        void EBusRouterQueueEventForwarder<EBus, TargetEBus, BusIdType>::ForwardEventResult(Event event, Args&&... args)
+        {
+
+        }
+
+        template <class EBus, class TargetEBus>
+        struct EBusRouterQueueEventForwarder<EBus, TargetEBus, NullBusId>
+        {
+            AZ_STATIC_ASSERT((AZStd::is_same<NullBusId, typename EBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
+            AZ_STATIC_ASSERT((AZStd::is_same<NullBusId, typename TargetEBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
+
+            template<class Event, class... Args>
+            static void ForwardEvent(Event event, Args&&... args);
 
             template <class Event, class... Args>
-            static void ForwardEventResult(Event event, Args&&... args)
-            {
-
-            }
+            static void ForwardEventResult(Event event, Args&&... args);
         };
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus>
+        template<class Event, class... Args>
+        void EBusRouterQueueEventForwarder<EBus, TargetEBus, NullBusId>::ForwardEvent(Event event, Args&&... args)
+        {
+            // Broadcast
+            if (EBus::IsRoutingQueuedEvent())
+            {
+                // Queue broadcast
+                if (EBus::IsRoutingReverseEvent())
+                {
+                    // Queue broadcast reverse
+                    TargetEBus::QueueBroadcastReverse(event, args...);
+                }
+                else
+                {
+                    // Queue broadcast forward
+                    TargetEBus::QueueBroadcast(event, args...);
+                }
+            }
+            else
+            {
+                // In place broadcast
+                if (EBus::IsRoutingReverseEvent())
+                {
+                    // In place broadcast reverse
+                    TargetEBus::BroadcastReverse(event, args...);
+                }
+                else
+                {
+                    // In place broadcast forward
+                    TargetEBus::Broadcast(event, args...);
+                }
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus>
+        template <class Event, class... Args>
+        void EBusRouterQueueEventForwarder<EBus, TargetEBus, NullBusId>::ForwardEventResult(Event event, Args&&... args)
+        {
+        }
 
         template <class EBus, class TargetEBus, class BusIdType>
         struct EBusRouterEventForwarder
         {
             template<class Event, class... Args>
-            static void ForwardEvent(Event event, Args&&... args)
-            {
-                const BusIdType* busId = EBus::GetCurrentBusId();
-                if (busId == nullptr)
-                {
-                    // Broadcast
-                    if (EBus::IsRoutingReverseEvent())
-                    {
-                        // Broadcast reverse
-                        TargetEBus::BroadcastReverse(event, args...);
-                    }
-                    else
-                    {
-                        // Broadcast forward
-                        TargetEBus::Broadcast(event, args...);
-                    }
-                }
-                else
-                {
-                    // Event.
-                    if (EBus::IsRoutingReverseEvent())
-                    {
-                        // Event reverse
-                        TargetEBus::EventReverse(*busId, event, args...);
-                    }
-                    else
-                    {
-                        // Event forward
-                        TargetEBus::Event(*busId, event, args...);
-                    }
-                }
-            }
+            static void ForwardEvent(Event event, Args&&... args);
 
             template<class Result, class Event, class... Args>
-            static void ForwardEventResult(Result& result, Event event, Args&&... args)
-            {
-                const BusIdType* busId = EBus::GetCurrentBusId();
-                if (busId == nullptr)
-                {
-                    // Broadcast
-                    if (EBus::IsRoutingReverseEvent())
-                    {
-                        // Broadcast reverse
-                        TargetEBus::BroadcastResultReverse(result, event, args...);
-                    }
-                    else
-                    {
-                        // Broadcast forward
-                        TargetEBus::BroadcastResult(result, event, args...);
-                    }
-                }
-                else
-                {
-                    // Event
-                    if (EBus::IsRoutingReverseEvent())
-                    {
-                        // Event reverse
-                        TargetEBus::EventResultReverse(result, *busId, event, args...);
-                    }
-                    else
-                    {
-                        // Event forward
-                        TargetEBus::EventResult(result, *busId, event, args...);
-                    }
-                }
-            }
+            static void ForwardEventResult(Result& result, Event event, Args&&... args);
         };
 
-        template <class EBus, class TargetEBus>
-        struct EBusRouterEventForwarder<EBus, TargetEBus, NullBusId>
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus, class BusIdType>
+        template<class Event, class... Args>
+        void EBusRouterEventForwarder<EBus, TargetEBus, BusIdType>::ForwardEvent(Event event, Args&&... args)
         {
-            template<class Event, class... Args>
-            static void ForwardEvent(Event event, Args&&... args)
+            const BusIdType* busId = EBus::GetCurrentBusId();
+            if (busId == nullptr)
             {
                 // Broadcast
                 if (EBus::IsRoutingReverseEvent())
@@ -1750,9 +1739,29 @@ namespace AZ
                     TargetEBus::Broadcast(event, args...);
                 }
             }
+            else
+            {
+                // Event.
+                if (EBus::IsRoutingReverseEvent())
+                {
+                    // Event reverse
+                    TargetEBus::EventReverse(*busId, event, args...);
+                }
+                else
+                {
+                    // Event forward
+                    TargetEBus::Event(*busId, event, args...);
+                }
+            }
+        }
 
-            template<class Result, class Event, class... Args>
-            static void ForwardEventResult(Result& result, Event event, Args&&... args)
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus, class BusIdType>
+        template<class Result, class Event, class... Args>
+        void EBusRouterEventForwarder<EBus, TargetEBus, BusIdType>::ForwardEventResult(Result& result, Event event, Args&&... args)
+        {
+            const BusIdType* busId = EBus::GetCurrentBusId();
+            if (busId == nullptr)
             {
                 // Broadcast
                 if (EBus::IsRoutingReverseEvent())
@@ -1766,7 +1775,67 @@ namespace AZ
                     TargetEBus::BroadcastResult(result, event, args...);
                 }
             }
+            else
+            {
+                // Event
+                if (EBus::IsRoutingReverseEvent())
+                {
+                    // Event reverse
+                    TargetEBus::EventResultReverse(result, *busId, event, args...);
+                }
+                else
+                {
+                    // Event forward
+                    TargetEBus::EventResult(result, *busId, event, args...);
+                }
+            }
+        }
+
+        template <class EBus, class TargetEBus>
+        struct EBusRouterEventForwarder<EBus, TargetEBus, NullBusId>
+        {
+            template<class Event, class... Args>
+            static void ForwardEvent(Event event, Args&&... args);
+
+            template<class Result, class Event, class... Args>
+            static void ForwardEventResult(Result& result, Event event, Args&&... args);
         };
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus>
+        template<class Event, class... Args>
+        void EBusRouterEventForwarder<EBus, TargetEBus, NullBusId>::ForwardEvent(Event event, Args&&... args)
+        {
+            // Broadcast
+            if (EBus::IsRoutingReverseEvent())
+            {
+                // Broadcast reverse
+                TargetEBus::BroadcastReverse(event, args...);
+            }
+            else
+            {
+                // Broadcast forward
+                TargetEBus::Broadcast(event, args...);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus, class TargetEBus>
+        template<class Result, class Event, class... Args>
+        void EBusRouterEventForwarder<EBus, TargetEBus, NullBusId>::ForwardEventResult(Result& result, Event event, Args&&... args)
+        {
+            // Broadcast
+            if (EBus::IsRoutingReverseEvent())
+            {
+                // Broadcast reverse
+                TargetEBus::BroadcastResultReverse(result, event, args...);
+            }
+            else
+            {
+                // Broadcast forward
+                TargetEBus::BroadcastResult(result, event, args...);
+            }
+        }
 
         template<class EBus, class TargetEBus, bool allowQueueing = EBus::EnableEventQueue>
         struct EBusRouterForwarderHelper
@@ -1812,68 +1881,20 @@ namespace AZ
             EBusRouterNode<typename EBus::InterfaceType> m_routerNode;
             bool m_isConnected;
         public:
-            EBusRouter()
-                : m_isConnected(false)
-            {
-                m_routerNode.m_handler = this;
-            }
+            EBusRouter();
+            virtual ~EBusRouter();
 
-           virtual ~EBusRouter()
-            {
-                BusRouterDisconnect();
-            }
+            void BusRouterConnect(int order = 0);
 
-            void BusRouterConnect(int order = 0)
-            {
-                if (!m_isConnected)
-                {
-                    m_routerNode.m_order = order;
-                    typename EBus::Context& context = EBus::GetContext();
-                    // We could support connection/disconnection while routing a message, but it would require a call to a fix  
-                    // function because there is already a stack entry. This is typically not a good pattern because routers are 
-                    // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
-                    // on the TickBus or another safe bus.
-                    AZ_Assert(context.m_callstack == nullptr, "Current we don't allow router connect while in a message on the bus!");
-                    context.m_mutex.lock();
-                    context.m_routing.m_routers.insert(&m_routerNode);
-                    context.m_mutex.unlock();
-                    m_isConnected = true;
-                }
-            }
+            void BusRouterDisconnect();
 
-            void BusRouterDisconnect()
-            {
-                if (m_isConnected)
-                {
-                    typename EBus::Context& context = EBus::GetContext();
-                    context.m_mutex.lock();
-                    // We could support connection/disconnection while routing a message, but it would require a call to a fix  
-                    // function because there is already a stack entry. This is typically not a good pattern because routers are 
-                    // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
-                    // on the TickBus or another safe bus.
-                    AZ_Assert(context.m_callstack==nullptr,"Current we don't allow router disconnect while in a message on the bus!");
-                    context.m_routing.m_routers.erase(&m_routerNode);
-                    context.m_mutex.unlock();
-                    m_isConnected = false;
-                }
-            }
-
-            bool BusRouterIsConnected() const
-            {
-                return m_isConnected;
-            }
+            bool BusRouterIsConnected() const;
 
             template<class TargetEBus, class Event, class... Args>
-            static void ForwardEvent(Event event, Args&&... args)
-            {
-                EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEvent(event, args...);
-            }
+            static void ForwardEvent(Event event, Args&&... args);
 
             template<class Result, class TargetEBus, class Event, class... Args>
-            static void ForwardEventResult(Result& result, Event event, Args&&... args)
-            {
-                EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEventResult(result, event, args...);
-            }
+            static void ForwardEventResult(Result& result, Event event, Args&&... args);
         };
 
         /**
@@ -1888,33 +1909,373 @@ namespace AZ
             EBusRouterNode<typename EBus::InterfaceType> m_routerNode;
         public:
             template<class Container>
-            void BusRouterConnect(Container& container, int order = 0)
-            {
-                m_routerNode.m_handler = this;
-                m_routerNode.m_order = order;
-                // We don't need to worry about removing this because we  
-                // will be alive as long as the container is.
-                container.insert(&m_routerNode); 
-            }
+            void BusRouterConnect(Container& container, int order = 0);
 
             template<class Container>
-            void BusRouterDisconnect(Container& container)
-            {
-                container.erase(&m_routerNode);
-            }
+            void BusRouterDisconnect(Container& container);
 
             template<class TargetEBus, class Event, class... Args>
-            static void ForwardEvent(Event event, Args&&... args)
-            {
-                EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEvent(event, args...);
-            }
+            static void ForwardEvent(Event event, Args&&... args);
 
             template<class Result, class TargetEBus, class Event, class... Args>
-            static void ForwardEventResult(Result& result, Event event, Args&&... args)
-            {
-                EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEventResult(result, event, args...);
-            }
+            static void ForwardEventResult(Result& result, Event event, Args&&... args);
         };
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        EBusRouter<EBus>::EBusRouter()
+            : m_isConnected(false)
+        {
+            m_routerNode.m_handler = this;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        EBusRouter<EBus>::~EBusRouter()
+        {
+            BusRouterDisconnect();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        void EBusRouter<EBus>::BusRouterConnect(int order)
+        {
+            if (!m_isConnected)
+            {
+                m_routerNode.m_order = order;
+                auto& context = EBus::GetOrCreateContext();
+                // We could support connection/disconnection while routing a message, but it would require a call to a fix  
+                // function because there is already a stack entry. This is typically not a good pattern because routers are 
+                // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
+                // on the TickBus or another safe bus.
+                AZ_Assert(context.m_callstack == nullptr, "Current we don't allow router connect while in a message on the bus!");
+                context.m_mutex.lock();
+                context.m_routing.m_routers.insert(&m_routerNode);
+                context.m_mutex.unlock();
+                m_isConnected = true;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        void EBusRouter<EBus>::BusRouterDisconnect()
+        {
+            if (m_isConnected)
+            {
+                auto* context = EBus::GetContext();
+                AZ_Assert(context, "Internal error: context deleted while router attached.");
+                context->m_mutex.lock();
+                // We could support connection/disconnection while routing a message, but it would require a call to a fix  
+                // function because there is already a stack entry. This is typically not a good pattern because routers are 
+                // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
+                // on the TickBus or another safe bus.
+                AZ_Assert(context->m_callstack == nullptr, "Current we don't allow router disconnect while in a message on the bus!");
+                context->m_routing.m_routers.erase(&m_routerNode);
+                context->m_mutex.unlock();
+                m_isConnected = false;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        bool EBusRouter<EBus>::BusRouterIsConnected() const
+        {
+            return m_isConnected;
+        }
+        
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        template<class TargetEBus, class Event, class... Args>
+        void EBusRouter<EBus>::ForwardEvent(Event event, Args&&... args)
+        {
+            EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEvent(event, args...);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        template<class Result, class TargetEBus, class Event, class... Args>
+        void EBusRouter<EBus>::ForwardEventResult(Result& result, Event event, Args&&... args)
+        {
+            EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEventResult(result, event, args...);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        template<class Container>
+        void EBusNestedVersionRouter<EBus>::BusRouterConnect(Container& container, int order)
+        {
+            m_routerNode.m_handler = this;
+            m_routerNode.m_order = order;
+            // We don't need to worry about removing this because we  
+            // will be alive as long as the container is.
+            container.insert(&m_routerNode);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        template<class Container>
+        void EBusNestedVersionRouter<EBus>::BusRouterDisconnect(Container& container)
+        {
+            container.erase(&m_routerNode);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        template<class TargetEBus, class Event, class... Args>
+        void EBusNestedVersionRouter<EBus>::ForwardEvent(Event event, Args&&... args)
+        {
+            EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEvent(event, args...);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        template<class Result, class TargetEBus, class Event, class... Args>
+        void EBusNestedVersionRouter<EBus>::ForwardEventResult(Result& result, Event event, Args&&... args)
+        {
+            EBusRouterForwarderHelper<EBus, TargetEBus>::ForwardEventResult(result, event, args...);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, bool IsNotUsingId>
+        EBusEventHandler<EBus, IsNotUsingId>::EBusEventHandler()
+        {
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, bool IsNotUsingId>
+        EBusEventHandler<EBus, IsNotUsingId>::EBusEventHandler(const EBusEventHandler& rhs)
+        {
+            *this = rhs;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, bool IsNotUsingId>
+        EBusEventHandler<EBus, IsNotUsingId>& EBusEventHandler<EBus, IsNotUsingId>::operator=(const EBusEventHandler& rhs)
+        {
+            BusDisconnect();
+            if (rhs.m_busPtr)
+            {
+                BusConnect();
+            }
+            return *this;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, bool IsNotUsingId>
+        EBusEventHandler<EBus, IsNotUsingId>::~EBusEventHandler()
+        {
+            BusDisconnect();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, bool IsNotUsingId>
+        void EBusEventHandler<EBus, IsNotUsingId>::BusConnect()
+        {
+            if (!m_busPtr)
+            {
+                m_handlerNode = this;
+                EBus::Connect(m_busPtr, m_handlerNode);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, bool IsNotUsingId>
+        void EBusEventHandler<EBus, IsNotUsingId>::BusDisconnect()
+        {
+            if (m_busPtr)
+            {
+                EBus::Disconnect(m_handlerNode, m_busPtr);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, bool IsNotUsingId>
+        bool EBusEventHandler<EBus, IsNotUsingId>::BusIsConnected() const
+        {
+            return m_busPtr;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        EBusEventHandler<EBus, false>::EBusEventHandler()
+        {}
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        EBusEventHandler<EBus, false>::EBusEventHandler(const EBusEventHandler& rhs)
+        {
+            *this = rhs;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        EBusEventHandler<EBus, false>& EBusEventHandler<EBus, false>::operator=(const EBusEventHandler& rhs)
+        {
+            BusDisconnect();
+            if (rhs.m_busPtr)
+            {
+                BusConnect(rhs.m_busPtr->m_busId);
+            }
+            return *this;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        EBusEventHandler<EBus, false>::~EBusEventHandler()
+        {
+            BusDisconnect();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        void EBusEventHandler<EBus, false>::BusConnect(const typename EBus::BusIdType& id)  /// You are required to provide a bus ID.
+        {
+            if (m_busPtr)
+            {
+                if (m_busPtr->m_busId == id)
+                {
+                    return;
+                }
+                AZ_Assert(false, "Connecting to a different id on this bus without disconnecting first! Please ensure you call BusDisconnect before calling BusConnect again, or if multiple connections are desired you must use a MultiHandler instead.");
+                EBus::Disconnect(m_handlerNode, m_busPtr);
+            }
+            m_handlerNode = this;
+            EBus::Connect(m_busPtr, m_handlerNode, id);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        void EBusEventHandler<EBus, false>::BusDisconnect()
+        {
+            if (m_busPtr)
+            {
+                EBus::Disconnect(m_handlerNode, m_busPtr);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        void EBusEventHandler<EBus, false>::BusDisconnect(const typename EBus::BusIdType& id)
+        {
+            if (m_busPtr)
+            {
+                if (m_busPtr->m_busId == id)
+                {
+                    EBus::Disconnect(m_handlerNode, m_busPtr);
+                }
+                else
+                {
+                    AZ_Warning("System", false, "You are not connected to this ID! Check your disconnect logic!");
+                }
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        bool EBusEventHandler<EBus, false>::BusIsConnected() const
+        {
+            return m_busPtr;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus>
+        bool EBusEventHandler<EBus, false>::BusIsConnectedId(const typename EBus::BusIdType& id) const
+        {
+            return (m_busPtr) && (m_busPtr->m_busId == id);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        EBusMultiEventHandler<EBus>::EBusMultiEventHandler()
+        {
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        EBusMultiEventHandler<EBus>::EBusMultiEventHandler(const EBusMultiEventHandler& rhs)
+        {
+            *this = rhs;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        EBusMultiEventHandler<EBus>& EBusMultiEventHandler<EBus>::operator=(const EBusMultiEventHandler& rhs)
+        {
+            BusDisconnect();
+
+            for (typename BusPtrArray::const_iterator it = rhs.m_busArray.begin(); it != rhs.m_busArray.end(); ++it)
+            {
+                BusConnect(it->second.m_busPtr->m_busId);
+            }
+
+            return *this;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        EBusMultiEventHandler<EBus>::~EBusMultiEventHandler()
+        {
+            BusDisconnect();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        bool EBusMultiEventHandler<EBus>::BusIsConnectedId(const typename EBus::BusIdType& id)
+        {
+            return m_busArray.end() != m_busArray.find(id);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        bool EBusMultiEventHandler<EBus>::BusIsConnected()
+        {
+            return !m_busArray.empty();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        void EBusMultiEventHandler<EBus>::BusConnect(const typename EBus::BusIdType& id)
+        {
+            if (!BusIsConnectedId(id))
+            {
+                BusConnector& conn = m_busArray.insert_key(id).first->second;
+                conn.m_handlerNode = this;
+                EBus::Connect(conn.m_busPtr, conn.m_handlerNode, id);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        void EBusMultiEventHandler<EBus>::BusDisconnect()
+        {
+            for (typename BusPtrArray::iterator it = m_busArray.begin(); it != m_busArray.end(); ++it)
+            {
+                EBus::Disconnect(it->second.m_handlerNode, it->second.m_busPtr);
+            }
+
+            m_busArray.clear();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template <class EBus>
+        bool EBusMultiEventHandler<EBus>::BusDisconnect(const typename EBus::BusIdType& id)
+        {
+            bool isFound = false;
+
+            auto it = m_busArray.find(id);
+            if (it != m_busArray.end())
+            {
+                EBus::Disconnect(it->second.m_handlerNode, it->second.m_busPtr);
+                m_busArray.erase(it);
+                isFound = true;
+            }
+
+            return isFound;
+        }
 
     } // namespace Internal
 }

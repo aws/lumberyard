@@ -917,7 +917,7 @@ public:
 
     //===============================================================================
 
-    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false);
+    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, bool isEditor, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false);
 
     virtual void GetVideoMemoryUsageStats(size_t& vidMemUsedThisFrame, size_t& vidMemUsedRecently, bool bGetPoolsSizes = false);
 
@@ -1198,6 +1198,8 @@ public:
     void FX_SetupShadowsForFog();
     bool FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pRes, CRenderObject* pObj, SShaderTechnique* pTech, SHRenderTarget* pTarg, int nPreprType, CRendElementBase* pRE);
 
+    void FX_DrawShader_Fur(CShader* ef, SShaderTechnique* pTech);
+
     // hdr src texture is optional, if not specified uses default hdr destination target
     void CopyFramebufferDX11(CTexture* pDst, ID3D11Resource* pSrcResource, D3DFormat srcFormat);
     void FX_ScreenStretchRect(CTexture* pDst, CTexture* pHDRSrc = NULL);
@@ -1307,7 +1309,7 @@ public:
     bool FX_DeferredDecals();
     bool FX_DeferredDecalsEmissive();
     bool FX_SkinRendering(bool bEnable);
-    void FX_LinearizeDepth();
+    void FX_LinearizeDepth(CTexture* ptexZ);
     void FX_DepthFixupPrepare();
     void FX_DepthFixupMerge();
     void FX_SRGBConversion();
@@ -1794,9 +1796,10 @@ public:
 
 private:
     bool ScreenShotInternal(const char* filename, int width);       //Helper method for Screenshot to reduce stack usage
-    void UpdateNearestChange(int flags);                                                    //Helper method for FX_ObjectChange to avoid I-cache misses
-    void HandleDefaultObject();                                                                     //Helper method for FX_ObjectChange to avoid I-cache misses
-
+    void UpdateNearestChange(int flags);                            //Helper method for FX_ObjectChange to avoid I-cache misses
+    void HandleDefaultObject();                                     //Helper method for FX_ObjectChange to avoid I-cache misses
+    bool IsVelocityPassEnabled();                                   //Helper method to detect ifw we should enable the velocity pass. Its needed to MB and TAA
+    
     // Get pointers to current D3D11 shaders, set tessellation related RT flags and return true if tessellation is enabled for current object
     inline bool FX_SetTessellationShaders(CHWShader_D3D*& pCurHS, CHWShader_D3D*& pCurDS, const SShaderPass* pPass);
 #ifdef TESSELLATION_RENDERER
@@ -1811,6 +1814,7 @@ public:
     static void FX_DrawWire();
     static void FX_DrawNormals();
     static void FX_DrawTangents();
+    static void FX_DrawFurBending();
 
     static void FX_FlushShader_ShadowGen();
     static void FX_FlushShader_General();
@@ -1851,16 +1855,7 @@ public:
     void FX_StartBatching();
     void FX_ProcessBatchesList(int nums, int nume, uint32 nBatchFilter, uint32 nBatchExcludeFilter = 0);
 
-    // CRY DX12
-    int test(SGraphicsPiplinePassContext* a);
-    void PrepareRenderItems(const SGraphicsPiplinePassContext& passContext);
-    void DrawRenderItems(const SGraphicsPiplinePassContext& passContext);
-    void DrawCompiledRenderItems(const SGraphicsPiplinePassContext& passContext) const;
-    void CompileModifiedRenderObjects();
-    void ClearModifiedRenderObjects();
     void PerFrameValidateResourceSets();
-    void FX_ProcessRenderStates(int nums, int nume, const SGraphicsPiplinePassContext& passContext);
-
 
     void FX_ProcessZPassRenderLists();
     void FX_ProcessZPassRender_List(ERenderListID list, uint32 filter);
@@ -1871,11 +1866,11 @@ public:
     void FX_ProcessHalfResParticlesRenderList(int nList, void (* RenderFunc)(), bool bLighting);
     void FX_WaterVolumesPreprocess();
     void FX_ProcessPostRenderLists(uint32 nBatchFilter);
-    void FX_ProcessRenderList(int nList, uint32 nBatchFilter);
-    void FX_ProcessRenderList(int nums, int nume, int nList, int nAW, void (* RenderFunc)(), bool bLighting);
-    _inline void FX_ProcessRenderList(int nList, int nAW, void (* RenderFunc)(), bool bLighting)
+    void FX_ProcessRenderList(int nList, uint32 nBatchFilter, bool bSetRenderFunc = true);
+    void FX_ProcessRenderList(int nums, int nume, int nList, int nAfterWater, void (* RenderFunc)(), bool bLighting, uint32 nBatchFilter = FB_GENERAL, uint32 nBatchExcludeFilter = 0);
+    _inline void FX_ProcessRenderList(int nList, int nAfterWater, void (* RenderFunc)(), bool bLighting, uint32 nBatchFilter = FB_GENERAL, uint32 nBatchExcludeFilter = 0)
     {
-        FX_ProcessRenderList(m_RP.m_pRLD->m_nStartRI[nAW][nList], m_RP.m_pRLD->m_nEndRI[nAW][nList], nList, nAW, RenderFunc, bLighting);
+        FX_ProcessRenderList(m_RP.m_pRLD->m_nStartRI[nAfterWater][nList], m_RP.m_pRLD->m_nEndRI[nAfterWater][nList], nList, nAfterWater, RenderFunc, bLighting, nBatchFilter, nBatchExcludeFilter);
     }
 
     void FX_WaterVolumesCaustics();
@@ -2004,6 +1999,8 @@ public:
 
 private:
     void HandleDisplayPropertyChanges();
+
+    void FX_SetAlphaTestState(float alphaRef);
 
 #if defined(ENABLE_PROFILING_CODE)
 #   if defined (WIN32) || defined(DURANGO) || defined(ORBIS) || defined(OPENGL)

@@ -11,6 +11,10 @@
 */
 #pragma once
 
+#include <QMainWindow>
+
+
+class EditorWindow;
 struct IUiAnimationSystem;
 struct IUiAnimSequence;
 

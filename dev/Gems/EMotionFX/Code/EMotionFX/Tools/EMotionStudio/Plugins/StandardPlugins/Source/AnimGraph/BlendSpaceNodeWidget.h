@@ -40,6 +40,8 @@ namespace EMStudio
         static const float s_motionPointAlphaMax;
         static const QColor s_motionPointColor;
 
+        static const char* s_warningOffsetForIcon;
+
     private:
         void RenderCircle(QPainter& painter, const QPointF& point, const QColor& color, float size);
     };

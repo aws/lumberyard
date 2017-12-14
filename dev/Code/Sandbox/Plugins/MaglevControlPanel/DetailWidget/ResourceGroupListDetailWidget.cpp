@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "ResourceGroupListDetailWidget.h"
 
 #include <QVBoxLayout>

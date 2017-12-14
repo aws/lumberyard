@@ -362,13 +362,13 @@ public:
     virtual IParticleEffect* GetTopParticle();
 
     virtual void Refresh();
-    void SetParticle(IParticleEffect* particleEffect);
+    void SetTopParticle(IParticleEffect* particleEffect);
     void GetMemoryUsage(ICrySizer* pSizer) const;
 
 private:
     float fDistance;            // distance
     bool  bActive;              // if LOD of current distacne is active or not
-    _smart_ptr<IParticleEffect> pTopParticle;   // The parent or top particle in this lod.
+    _smart_ptr<IParticleEffect> pTopParticle;   // The top particle in this lod.
 };
 
 class CLodParticle
@@ -384,11 +384,13 @@ public:
     void                SetLod(SLodInfo* lod);
     bool                IsValid();
 
-    void                Rename(string name);
+    void                Rename(const AZStd::string& name);
 
     void Serialize(XmlNodeRef node, bool bLoading, bool bAll, CParticleEffect* originalEffect = nullptr);
     void GetMemoryUsage(ICrySizer* pSizer) const;
 private:
+    AZStd::string GenerateName(const AZStd::string& name);
+
     _smart_ptr<CLodInfo> pLod;
     _smart_ptr<CParticleEffect> pLodParticle;
 };
@@ -418,17 +420,17 @@ public:
     }
 
     // IParticle interface.
-    virtual IParticleEmitter* Spawn(const QuatTS& loc, uint32 uEmitterFlags = 0, const SpawnParams* pSpawnParams = NULL);
+    IParticleEmitter* Spawn(const QuatTS& loc, uint32 uEmitterFlags = 0, const SpawnParams* pSpawnParams = NULL) override;
 
-    virtual void SetName(const char* sFullName);
-    virtual const char* GetName() const
+    void SetName(const char* sFullName) override;
+    const char* GetName() const override
     {
         return m_strName.c_str();
     }
-    virtual string GetFullName() const;
+    string GetFullName() const override;
 
-    virtual void SetEnabled(bool bEnabled);
-    virtual bool IsEnabled() const
+    void SetEnabled(bool bEnabled) override;
+    bool IsEnabled() const override
     {
         return m_pParticleParams && m_pParticleParams->bEnabled;
     };
@@ -441,21 +443,18 @@ public:
     /////////////////////////////////////////////////////////////////////////////
     // Particle Level of Detail - Vera, Confetti
     /////////////////////////////////////////////////////////////////////////////
-    virtual void AddLevelOfDetail();
-    virtual bool HasLevelOfDetail() const;
-    virtual int GetLevelOfDetailCount() const;
-    virtual SLodInfo* GetLevelOfDetail(int index) const; 
+    void AddLevelOfDetail() override;
+    bool HasLevelOfDetail() const override;
+    int GetLevelOfDetailCount() const override;
+    SLodInfo* GetLevelOfDetail(int index) const override;
     int GetLevelOfDetailIndex(const SLodInfo* lod) const override;
-    virtual SLodInfo* GetLevelOfDetailByDistance(float distance) const;
-    virtual void RemoveLevelOfDetail(SLodInfo* lod);
-    virtual void RemoveAllLevelOfDetails();
-    virtual void SortLevelOfDetailBasedOnDistance();
-    virtual IParticleEffect* GetLodParticle(SLodInfo* lod) const;
-    virtual void AddParentLodsToEffect();
-    void PushBackLOD(_smart_ptr<CLodParticle> lod);
-    void ReplaceLOD(SLodInfo* lod);
+    SLodInfo* GetLevelOfDetailByDistance(float distance) const override;
+    void RemoveLevelOfDetail(SLodInfo* lod) override;
+    void RemoveAllLevelOfDetails() override;
+    IParticleEffect* GetLodParticle(SLodInfo* lod) const override;
 
-    void AddLevelOfDetail(SLodInfo* lod, bool addToChildren = true);
+    void SortLevelOfDetailBasedOnDistance();
+
     //////////////////////////////////////////////////////////////////////////
     //! Load resources, required by this particle effect (Textures and geometry).
     virtual bool LoadResources()
@@ -551,7 +550,9 @@ public:
 
     void SetFadeParticleParams(ResourceParticleParams* param);
 private:
-    virtual void RemoveLevelOfDetailRecursive(SLodInfo* lod);
+    void RemoveLevelOfDetailRecursive(SLodInfo* lod);
+    void ReplaceLOD(SLodInfo* lod);
+    void AddLevelOfDetail(SLodInfo* lod, bool addToChildren);
 
     //! Clear all child effects recursively, starting with leaf
     static void ClearChildsBottomUp(CParticleEffect* effect);

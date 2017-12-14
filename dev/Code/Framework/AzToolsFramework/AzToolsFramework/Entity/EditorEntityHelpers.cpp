@@ -160,6 +160,29 @@ namespace AzToolsFramework
         }
     }
 
+    void RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        EntityOrderArray entityOrderArray;
+        EditorEntitySortRequestBus::EventResult(entityOrderArray, GetEntityIdForSortInfo(parentId), &EditorEntitySortRequestBus::Events::GetChildEntityOrderArray);
+
+        // Make sure the child entity isn't already in order array.
+        auto sortIter = AZStd::find(entityOrderArray.begin(), entityOrderArray.end(), childId);
+        if (sortIter != entityOrderArray.end())
+        {
+            entityOrderArray.erase(sortIter);
+        }
+        // Make sure we don't overwrite the bounds of our vector.
+        if (sortIndex > entityOrderArray.size())
+        {
+            sortIndex = entityOrderArray.size();
+        }
+        entityOrderArray.insert(entityOrderArray.begin() + sortIndex, childId);
+        // Push the final array back to the sort component
+        AzToolsFramework::SetEntityChildOrder(parentId, entityOrderArray);
+    }
+
     void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -241,6 +264,29 @@ namespace AzToolsFramework
             //sort by container contents
             return locations[e1] < locations[e2];
         });
+    }
+
+    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType)
+    {
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+
+        if (entity)
+        {
+            const AZ::Entity::ComponentArrayType components = entity->GetComponents();
+            for (const AZ::Component* component : components)
+            {
+                if (component)
+                {
+                    if (GetUnderlyingComponentType(*component) == componentType)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
 } // namespace AzToolsFramework

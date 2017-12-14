@@ -51,6 +51,10 @@ namespace StartingPointInput
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
+                serializeContext->Class<StartingPointInputDummyComponent, AZ::Component>()
+                    ->Version(0)
+                    ;
+
                 serializeContext->ClassDeprecate("SingleEventToAction", "{2C93824D-D011-459C-B12B-9F4A6148730C}", &ClassConverters::BaseClassDeprecator);
                 serializeContext->ClassDeprecate("Held", "{A3F1D51B-3473-49D6-9131-98D1FBA9003A}", &ClassConverters::ConvertHeldVersion);
                 serializeContext->ClassDeprecate("Analog", "{806F21D9-11EA-47FC-8B89-FDB67AADE4FF}", &ClassConverters::ConvertAnalogVersion);

@@ -27,6 +27,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_ViewportGizmo();
+    virtual ~CEditorPreferencesPage_ViewportGizmo() = default;
 
     virtual const char* GetCategory() override { return "Viewports"; }
     virtual const char* GetTitle() override { return "Gizmos"; }

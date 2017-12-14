@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYCOMMON_CRYTHREAD_DUMMY_H
 #pragma once
 
+#include <AzCore/base.h>
 
 //////////////////////////////////////////////////////////////////////////
 CryEvent::CryEvent() {}
@@ -35,7 +36,7 @@ public:
     bool TryLock();
     void Unlock();
 
-#ifdef _DEBUG
+#if defined(AZ_DEBUG_BUILD)
     bool IsLocked();
 #endif
 };

@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include "Ghost.h"
 #include "MeshUtil.h"
+#include "../Textures/TextureManager.h"
 
 #include "../../RenderDll/XRenderD3D9/DriverD3D.h"
 
@@ -94,7 +95,7 @@ void CLensGhost::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
     ApplyOcclusionBokehFlag(shader);
     shader->FXBeginPass(0);
 
-    CTexture* tex = GetTexture() ? GetTexture() : CTexture::s_ptexBlack;
+    CTexture* tex = GetTexture() ? GetTexture() : CTextureManager::Instance()->GetBlackTexture();
     tex->Apply(0, CTexture::GetTexState(bilinearTS));
 
     const Vec4 texSizeParam((float)tex->GetWidth(), (float)tex->GetHeight(), 0, 0);
@@ -106,7 +107,7 @@ void CLensGhost::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
     }
     else
     {
-        CTexture::s_ptexBlack->Apply(5, CTexture::GetTexState(bilinearTS));
+        CTextureManager::Instance()->GetBlackTexture()->Apply(5, CTexture::GetTexState(bilinearTS));
     }
 
     shader->FXSetVSFloat(tileInfoName, &m_vTileDefinition, 1);

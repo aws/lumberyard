@@ -18,12 +18,28 @@
 #include "BaseLibraryManager.h"
 #include "Material.h"
 
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <Include/IEditorMaterialManager.h>
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/std/string/wildcard.h>
 
 class CMaterial;
 class CMaterialLibrary;
 class CMaterialHighlighter;
+
+namespace AZ
+{
+    struct Uuid;
+}
+
+namespace AzToolsFramework
+{
+    namespace AssetBrowser
+    {
+        struct SourceFileOpenerDetails;
+        typedef AZStd::vector<SourceFileOpenerDetails> SourceFileOpenerList;
+    }
+}
 
 enum EHighlightMode
 {
@@ -40,6 +56,7 @@ class CRYEDIT_API CMaterialManager
     : public IEditorMaterialManager
     , public CBaseLibraryManager
     , public IMaterialManagerListener
+    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
 {
 public:
     //! Notification callback.
@@ -148,6 +165,10 @@ public:
     void Command_SelectFromObject();
 
 protected:
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    // protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // Duplicate the source material and set it as a submaterial of the target material at subMaterialIndex. Returns true if successful.
     bool DuplicateAsSubMaterialAtIndex(CMaterial* pSourceMaterial, CMaterial* pTargetMaterial, int subMaterialIndex);
@@ -205,7 +226,7 @@ protected:
     class CMaterialSender* m_MatSender;
 
 private:
-    CMaterial* CMaterialManager::LoadMaterialInternal(const QString &sMaterialNameClear, const QString &filename, const QString &filenameWithExtension, bool bMakeIfNotFound);
+    CMaterial* LoadMaterialInternal(const QString &sMaterialNameClear, const QString &filename, const QString &filenameWithExtension, bool bMakeIfNotFound);
 
     AZ::Data::AssetType m_materialAssetType;
 };

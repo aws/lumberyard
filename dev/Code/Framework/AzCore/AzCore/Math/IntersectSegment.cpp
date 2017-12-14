@@ -1425,14 +1425,14 @@ AZ::Intersect::ClosestSegmentSegment(const Vector3& segment1Start, const Vector3
                                      Vector3& closestPointSegment1, Vector3& closestPointSegment2,
                                      VectorFloat epsilon /*= VectorFloat(1e-4f)*/)
 {
-    VectorFloat zero = VectorFloat::CreateZero();
-    VectorFloat one = VectorFloat::CreateOne();
+    const VectorFloat zero = VectorFloat::CreateZero();
+    const VectorFloat one = VectorFloat::CreateOne();
     
-    Vector3 segment1 = segment1End - segment1Start;
-    Vector3 segment2 = segment2End - segment2Start;
-    Vector3 segmentStartsVector = segment1Start - segment2Start;
-    VectorFloat segment1LengthSquared = segment1.Dot(segment1);
-    VectorFloat segment2LengthSquared = segment2.Dot(segment2);
+    const Vector3 segment1 = segment1End - segment1Start;
+    const Vector3 segment2 = segment2End - segment2Start;
+    const Vector3 segmentStartsVector = segment1Start - segment2Start;
+    const VectorFloat segment1LengthSquared = segment1.Dot(segment1);
+    const VectorFloat segment2LengthSquared = segment2.Dot(segment2);
 
     // Check if both segments degenerate into points
     if (segment1LengthSquared.IsLessEqualThan(epsilon) && segment2LengthSquared.IsLessEqualThan(epsilon))
@@ -1498,6 +1498,15 @@ AZ::Intersect::ClosestSegmentSegment(const Vector3& segment1Start, const Vector3
 
     closestPointSegment1 = segment1Start + segment1 * segment1Proportion;
     closestPointSegment2 = segment2Start + segment2 * segment2Proportion;
+}
+
+void AZ::Intersect::ClosestSegmentSegment(const Vector3& segment1Start, const Vector3& segment1End,
+                           const Vector3& segment2Start, const Vector3& segment2End,
+                           Vector3& closestPointSegment1, Vector3& closestPointSegment2,
+                           VectorFloat epsilon)
+{
+    VectorFloat proportion1, proportion2;
+    AZ::Intersect::ClosestSegmentSegment(segment1Start, segment1End, segment2Start, segment2End, proportion1, proportion2, closestPointSegment1, closestPointSegment2, epsilon);
 }
 
 void AZ::Intersect::ClosestPointSegment(const Vector3& point, const Vector3& segmentStart, const Vector3& segmentEnd, VectorFloat& proportion, Vector3& closestPointOnSegment)

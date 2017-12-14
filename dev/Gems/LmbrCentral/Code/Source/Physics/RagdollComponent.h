@@ -16,9 +16,10 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Transform.h>
 
-#include <LmbrCentral/Physics/RagdollPhysicsBus.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/RagdollPhysicsBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #include "PhysicsSystemComponent.h"
@@ -36,10 +37,10 @@ namespace LmbrCentral
      */
     class RagdollComponent
         : public AZ::Component
-        , private RagdollPhysicsRequestBus::Handler
+        , private AzFramework::RagdollPhysicsRequestBus::Handler
         , private CryPhysicsComponentRequestBus::Handler
         , private EntityPhysicsEventBus::Handler
-        , private PhysicsComponentRequestBus::Handler
+        , private AzFramework::PhysicsComponentRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
     {
     public:
@@ -52,22 +53,22 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("RagdollService"));
+            provided.push_back(AZ_CRC("RagdollService", 0xd416b0dc));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("RagdollService"));
+            incompatible.push_back(AZ_CRC("RagdollService", 0xd416b0dc));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("SkinnedMeshService"));
+            required.push_back(AZ_CRC("SkinnedMeshService", 0xac7cea96));
         }
 
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
-            dependent.push_back(AZ_CRC("PhysicsService"));
+            dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
         }
 
 

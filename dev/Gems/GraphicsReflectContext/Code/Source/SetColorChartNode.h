@@ -29,7 +29,8 @@ namespace GraphicsReflectContext
     {
         ScriptCanvas_Node(SetColorChartNode,
             ScriptCanvas_Node::Uuid("{8A37A5B8-F86C-4CD4-BCC8-306C7134A254}")
-            ScriptCanvas_Node::Name("SetColorChart")
+            ScriptCanvas_Node::Name("Set Color Chart") // The localization tool doesn't support custom SC nodes, so we have to put the spaces in here.
+            ScriptCanvas_Node::Category("Rendering/Post Effects")
             ScriptCanvas_Node::Description("Applies a color chart texture for color grading")
         );
 
@@ -37,16 +38,15 @@ namespace GraphicsReflectContext
         ScriptCanvas_In(ScriptCanvas_In::Name("In", "Activate the color grading"));
 
         ScriptCanvas_Property(AZStd::string,
-            ScriptCanvas_Property::Name("TextureName", "The name of a color chart texture")
+            ScriptCanvas_Property::Name("Texture Name", "The name of a color chart texture")
             ScriptCanvas_Property::Input);
 
         ScriptCanvas_Property(float,
-            ScriptCanvas_Property::Name("FadeTime", "Number of seconds to fade into the color grading")
+            ScriptCanvas_Property::Name("Fade Time", "Number of seconds to fade into the color grading")
             ScriptCanvas_Property::Input,
             ScriptCanvas_Property::Min(0.0f));
 
     protected:
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
         void OnActivate() override;
         void OnDeactivate() override;
         void OnInputSignal(const ScriptCanvas::SlotId& slot) override;

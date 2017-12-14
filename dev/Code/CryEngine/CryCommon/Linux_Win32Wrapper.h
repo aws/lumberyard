@@ -652,6 +652,7 @@ bool _isnan(T value)
 #define _vsnwprintf_s(BUF, SIZE, COUNT, FORMAT, ARGVLIST) vswprintf(BUF, SIZE, FORMAT, ARGVLIST)
 #define fprintf_s fprintf
 #define sscanf_s sscanf
+#define fread_s(BUF, SIZE, NMEMB, MAX, HANDLE) fread(BUF, SIZE, NMEMB, HANDLE)
 
 //////////////////////////////////////////////////////////////////////////
 

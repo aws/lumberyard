@@ -245,9 +245,9 @@ namespace CD
             creators[key] = creator;
         }
 
-        _Base* Create(_Key key, _Arg0 arg0 = NULL)
+        _Base* Create(_Key key, _Arg0 arg0 = _Arg0())
         {
-            Creators::iterator ii = creators.find(key);
+            typename Creators::iterator ii = creators.find(key);
             if (ii != creators.end())
             {
                 return ii->second->Create(ii->first, arg0);

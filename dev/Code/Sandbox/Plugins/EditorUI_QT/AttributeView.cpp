@@ -27,6 +27,7 @@
 #include <Particles/ParticleUIDefinition.h>
 #include <Include/ILogFile.h>
 #include <Include/IEditorParticleManager.h>
+#include <Util/VariablePropertyType.h>
 
 //QT
 #include <QLabel>
@@ -45,6 +46,10 @@
 #include "VariableWidgets/QColumnWidget.h"
 #include "AttributeItemLogicCallbacks.h"
 #include "DefaultViewWidget.h"
+#include "VariableWidgets/QWidgetVector.h"
+
+// AZ
+#include <AzFramework/API/ApplicationAPI.h>
 
 #define NAME_COLLAPSE_ALL       tr("Collapse All")
 #define NAME_UNCOLLAPSE_ALL     tr("Uncollapse All")
@@ -755,7 +760,10 @@ void CAttributeView::SetConfiguration(CAttributeViewConfig& configuration, CVarB
 
 void CAttributeView::CreateDefaultConfigFile(CVarBlock* vars)
 {
-    m_defaultConfig = *CreateConfigFromFile(DEFAULT_ATTRIBUTE_VIEW_LAYOUT_PATH);
+    AZStd::string defaultAttributeViewLayoutPath(DEFAULT_ATTRIBUTE_VIEW_LAYOUT_PATH);
+    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ResolveEnginePath, defaultAttributeViewLayoutPath);
+
+    m_defaultConfig = *CreateConfigFromFile(QString(defaultAttributeViewLayoutPath.c_str()));
 
     if (vars)
     {
@@ -1418,7 +1426,9 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
             {
                 value = "ANGLE";
             }
-            gpuVar->SetDisplayValue(value);            
+            gpuVar->SetDisplayValue(value);
+            
+            SetMaxParticleCount(PARTICLE_PARAMS_MAX_COUNT_GPU);
         }
         else
         {
@@ -1426,6 +1436,8 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
             IVariable* gpuVar = GetVarFromPath("Emitter.Emitter_Gpu_Shape");
             value = cpuVar->GetDisplayValue();
             cpuVar->SetDisplayValue(value);
+
+            SetMaxParticleCount(PARTICLE_PARAMS_MAX_COUNT_CPU);
         }
     }
     else if (varPath.compare("Beam.Segment_Type", Qt::CaseInsensitive) == 0)
@@ -1478,6 +1490,38 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
             varContinuous->Set(false);
         }
     }
+    else if (varPath.compare("Angles.Facing", Qt::CaseInsensitive) == 0)
+    {
+        //Grey out Advanced.Spherical_Approximation if particle facing is not camera or cameraX
+        QString value = var->GetDisplayValue();
+        bool show = ParticleParams::EFacing::TypeInfo().MatchName(ParticleParams::EFacing::Camera, value.toUtf8().data())
+            || ParticleParams::EFacing::TypeInfo().MatchName(ParticleParams::EFacing::CameraX, value.toUtf8().data());
+        SetEnabledFromPath("Advanced.Spherical_Approximation", show);
+    }
+}
+
+void CAttributeView::SetMaxParticleCount(int maxCount)
+{
+    //Get widgets of "Emitter.Count" to setup limit later.
+    CAttributeItem* item = findItemByPath("Emitter.Count");
+    //We may have more than one widgets for one cvar because of the customized panel. 
+    QVector<CAttributeItem*> items = findItemsByVar(item->getVar());
+    Prop::Description desc(item->getVar());
+    float count = 0;
+    item->getVar()->Get(count);
+
+    //Set the particle count limit all the widgets for the "fCount" variable
+    for (int i = 0; i < items.size(); i++)
+    {
+        QWidgetVector* widget = items[i]->findChild<QWidgetVector*>("");
+        if (widget)
+        {
+            widget->SetComponent(0, count,
+                desc.m_rangeMin, maxCount,
+                desc.m_bHardMin, true, desc.m_step);
+        }
+    }
+
 }
 
 void CAttributeView::InsertChildren(CAttributeItem* item)

@@ -67,7 +67,7 @@ namespace
         const IPhysicalEntity* collider,
         int partIndex,
         const Matrix34& slotWorldTM
-    )
+        )
     {
         if (collider)
         {
@@ -285,10 +285,9 @@ namespace
                 return true;
             }
         }
-        
+
         return false;
     }
-
 } // Anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -321,6 +320,16 @@ void UiCanvasOnMeshComponent::OnCanvasLoadedIntoEntity(AZ::EntityId uiCanvasEnti
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasOnMeshComponent::OnCanvasReloaded(AZ::EntityId canvasEntityId)
+{
+    if (canvasEntityId == GetCanvas())
+    {
+        // The canvas that we are using has been reloaded, we may need to override the render target
+        OnCanvasLoadedIntoEntity(canvasEntityId);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -339,14 +348,14 @@ void UiCanvasOnMeshComponent::Reflect(AZ::ReflectContext* context)
         if (editContext)
         {
             auto editInfo = editContext->Class<UiCanvasOnMeshComponent>(
-                "UI Canvas on Mesh", "The UI Canvas on Mesh component allows you to place a UI Canvas on an entity in the 3D world that a player can interact with via ray casts");
+                    "UI Canvas on Mesh", "The UI Canvas on Mesh component allows you to place a UI Canvas on an entity in the 3D world that a player can interact with via ray casts");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "UI")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiCanvasOnMesh.png")
-                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiCanvasOnMesh.png")
-                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-ui-canvas-on-mesh.html")
-                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
+                ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiCanvasOnMesh.png")
+                ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiCanvasOnMesh.png")
+                ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-ui-canvas-on-mesh.html")
+                ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
 
             editInfo->DataElement(0, &UiCanvasOnMeshComponent::m_renderTargetOverride,
                 "Render target override",
@@ -365,6 +374,7 @@ void UiCanvasOnMeshComponent::Activate()
 {
     UiCanvasOnMeshBus::Handler::BusConnect(GetEntityId());
     UiCanvasAssetRefNotificationBus::Handler::BusConnect(GetEntityId());
+    UiCanvasManagerNotificationBus::Handler::BusConnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -372,6 +382,7 @@ void UiCanvasOnMeshComponent::Deactivate()
 {
     UiCanvasAssetRefNotificationBus::Handler::BusDisconnect();
     UiCanvasOnMeshBus::Handler::BusDisconnect();
+    UiCanvasManagerNotificationBus::Handler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +408,7 @@ bool UiCanvasOnMeshComponent::ProcessCollisionInputEventInternal(const AzFramewo
                 {
                     Vec2 texCoord;
                     if (GetTexCoordFromRayHitOnIndexedMesh(triangleIndex, hitPoint, collider, partIndex,
-                        transform, indexedMesh, texCoord))
+                            transform, indexedMesh, texCoord))
                     {
                         AZ::Vector2 canvasSize;
                         EBUS_EVENT_ID_RESULT(canvasSize, canvasEntityId, UiCanvasBus, GetCanvasSize);

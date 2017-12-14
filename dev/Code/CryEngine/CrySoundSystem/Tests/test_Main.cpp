@@ -245,9 +245,11 @@ class AudioEventListenerManagerTestFixture
 public:
     AudioEventListenerManagerTestFixture()
         : m_callbackReceiver()
-        , m_addListenerData(&m_callbackReceiver, EventListenerCallbackReceiver::AudioRequestCallback, eART_AUDIO_ALL_REQUESTS, eACMRT_REPORT_STARTED_EVENT)
-        , m_addListenerRequest(&m_addListenerData)
     {
+        m_eventListener.m_callbackOwner = &m_callbackReceiver;
+        m_eventListener.m_fnOnEvent = &EventListenerCallbackReceiver::AudioRequestCallback;
+        m_eventListener.m_requestType = eART_AUDIO_ALL_REQUESTS;
+        m_eventListener.m_specificRequestMask = eACMRT_REPORT_STARTED_EVENT;
     }
 
     void SetUp() override
@@ -287,8 +289,7 @@ protected:
     EventListenerCallbackReceiver m_callbackReceiver;
     CAudioEventListenerManager m_eventListenerManager;
 
-    SAudioManagerRequestData<eAMRT_ADD_REQUEST_LISTENER> m_addListenerData;
-    SAudioManagerRequestDataInternal<eAMRT_ADD_REQUEST_LISTENER> m_addListenerRequest;
+    SAudioEventListener m_eventListener;
 };
 
 int AudioEventListenerManagerTestFixture::EventListenerCallbackReceiver::s_numCallbacksReceived = 0;
@@ -297,49 +298,95 @@ int AudioEventListenerManagerTestFixture::EventListenerCallbackReceiver::s_numCa
 TEST_F(AudioEventListenerManagerTestFixture, AudioEventListenerManager_AddListener_Succeeds)
 {
     // add request listener...
-    EAudioRequestStatus status = m_eventListenerManager.AddRequestListener(&m_addListenerRequest);
-    EXPECT_EQ(status, eARS_SUCCESS);
+    m_eventListenerManager.AddRequestListener(m_eventListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 1);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 }
 
 TEST_F(AudioEventListenerManagerTestFixture, AudioEventListenerManager_RemoveListener_Fails)
 {
     // attempt removal when no request listeners have been added yet...
-    EAudioRequestStatus status = m_eventListenerManager.RemoveRequestListener(EventListenerCallbackReceiver::AudioRequestCallback, &m_callbackReceiver);
-    EXPECT_EQ(status, eARS_FAILURE);
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
+    m_eventListenerManager.RemoveRequestListener(m_eventListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 }
 
 TEST_F(AudioEventListenerManagerTestFixture, AudioEventListenerManager_AddListenerAndRemoveListener_Succeeds)
 {
     // add a request listener, then remove it...
-    EAudioRequestStatus status = m_eventListenerManager.AddRequestListener(&m_addListenerRequest);
-    EXPECT_EQ(status, eARS_SUCCESS);
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-    status = m_eventListenerManager.RemoveRequestListener(EventListenerCallbackReceiver::AudioRequestCallback, &m_callbackReceiver);
-    EXPECT_EQ(status, eARS_SUCCESS);
+    m_eventListenerManager.AddRequestListener(m_eventListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 1);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
+    m_eventListenerManager.RemoveRequestListener(m_eventListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 }
 
-TEST_F(AudioEventListenerManagerTestFixture, AudioEventListenerManager_AddListenerAndTwiceRemoveListener_Fails)
+TEST_F(AudioEventListenerManagerTestFixture, AudioEventListenerManager_AddListenerAndTwiceRemoveListener_Succeeds)
 {
     // add a request listener, then try to remove it twice...
-    EAudioRequestStatus status = m_eventListenerManager.AddRequestListener(&m_addListenerRequest);
-    EXPECT_EQ(status, eARS_SUCCESS);
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-    status = m_eventListenerManager.RemoveRequestListener(EventListenerCallbackReceiver::AudioRequestCallback, &m_callbackReceiver);
-    EXPECT_EQ(status, eARS_SUCCESS);
+    m_eventListenerManager.AddRequestListener(m_eventListener);
 
-    status = m_eventListenerManager.RemoveRequestListener(EventListenerCallbackReceiver::AudioRequestCallback, &m_callbackReceiver);
-    EXPECT_EQ(status, eARS_FAILURE);
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 1);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
+    m_eventListenerManager.RemoveRequestListener(m_eventListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
+    m_eventListenerManager.RemoveRequestListener(m_eventListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 }
 
 TEST_F(AudioEventListenerManagerTestFixture, AudioEventListenerManager_AddListenerAndRemoveWithNullCallbackFunc_Succeeds)
 {
     // adds a request listener with a real callback function, then removes it with nullptr callback specified...
     // this should be a success...
-    EAudioRequestStatus status = m_eventListenerManager.AddRequestListener(&m_addListenerRequest);
-    EXPECT_EQ(status, eARS_SUCCESS);
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-    status = m_eventListenerManager.RemoveRequestListener(nullptr, &m_callbackReceiver);
-    EXPECT_EQ(status, eARS_SUCCESS);
+    m_eventListenerManager.AddRequestListener(m_eventListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 1);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
+    SAudioEventListener nullCallbackListener;
+    nullCallbackListener.m_callbackOwner = &m_callbackReceiver;
+    nullCallbackListener.m_fnOnEvent = nullptr;
+    m_eventListenerManager.RemoveRequestListener(nullCallbackListener);
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    EXPECT_EQ(m_eventListenerManager.GetNumEventListeners(), 0);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 }
 
 

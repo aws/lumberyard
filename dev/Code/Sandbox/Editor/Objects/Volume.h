@@ -36,8 +36,8 @@ public:
     bool Init(IEditor* ie, CBaseObject* prev, const QString& file);
     void Done();
     void Display(DisplayContext& dc);
-    bool IsScalable() { return false; }
-    bool IsRotatable() { return false; }
+    bool IsScalable() const { return false; }
+    bool IsRotatable() const { return false; }
     void GetLocalBounds(AABB& box);
     bool HitTest(HitContext& hc);
     bool HasMeasurementAxis() const {   return false;   }

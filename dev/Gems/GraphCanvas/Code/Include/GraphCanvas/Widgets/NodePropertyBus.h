@@ -52,7 +52,7 @@ namespace GraphCanvas
     
 	//! NodePropertiesRequestBus
 	//!
-    //! These are requests that will modify the display state of the enitre node.
+    //! These are requests that will modify the display state of the entire node.
     //! This will handle things like locking editing states in reaction to the mouse cursor, 
 	//! or forcing a layout state to a particular state.
     class NodePropertiesRequests

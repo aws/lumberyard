@@ -99,8 +99,6 @@ namespace GraphCanvas
         virtual void OnDescriptionChanged(const AZStd::string&) {}
         //! When the tooltip of the node is changed, this is emitted.
         virtual void OnTooltipChanged(const AZStd::string&) {}
-        //! Emitted when the position of a node changes
-        virtual void OnPositionChanged(const AZ::EntityId&, const AZ::Uuid&, const AZ::Vector2&) {};
 
         //! The addition of a slot to the node causes the emission of this event.
         //! # Parameters

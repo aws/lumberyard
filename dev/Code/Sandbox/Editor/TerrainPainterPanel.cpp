@@ -374,7 +374,7 @@ void CTerrainPainterPanel::SetLayerMaskSettingsToLayer()
 
 void CTerrainPainterPanel::OnLayersDblClk()
 {
-    GetIEditor()->OpenView("Terrain Texture Layers");
+    GetIEditor()->OpenView(LyViewPane::TerrainTextureLayers);
 }
 
 void CTerrainPainterPanel::OnLayersClick()

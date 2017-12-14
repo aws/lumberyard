@@ -12,6 +12,7 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "ViewportNudge.h"
 
 static const float slowNudgePixelDistance = 1.0f;
 static const float fastNudgePixelDistance = 10.0f;
@@ -23,7 +24,7 @@ void ViewportNudge::KeyReleaseEvent(
     ViewportInteraction::InteractionMode interactionMode,
     ViewportWidget* viewport,
     QKeyEvent* ev,
-    QTreeWidgetItemRawPtrQList& selectedItems,
+    const QTreeWidgetItemRawPtrQList& selectedItems,
     ViewportInteraction::CoordinateSystem coordinateSystem,
     const AZ::Uuid& transformComponentType)
 {

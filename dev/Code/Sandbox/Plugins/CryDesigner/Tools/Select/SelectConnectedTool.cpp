@@ -31,7 +31,7 @@ void SelectConnectedTool::Enter()
     CD::GetDesigner()->SwitchToPrevTool();
 }
 
-void SelectConnectedTool::SelectConnectedPolygons(CD::SMainContext& mc)
+void SelectConnectedTool::SelectConnectedPolygons(const CD::SMainContext& mc)
 {
     std::set<CD::PolygonPtr> selectedSet = MakeInitialSelectedSet(mc);
     SelectAdjacentPolygonsFromEdgeVertex(mc, selectedSet, true);

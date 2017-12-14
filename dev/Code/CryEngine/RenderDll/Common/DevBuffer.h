@@ -61,7 +61,6 @@ struct SDescriptorBlock
     uint32 offset;
 };
 
-class CCompiledRenderObject;
 class CDeviceBufferManager;
 struct ConstantBufferAllocator;
 
@@ -127,7 +126,6 @@ namespace AzRHI
         void UpdateBuffer(const void* data, AZ::u32 size);
 
     private:
-        friend class ::CCompiledRenderObject;
         friend class ::CDeviceBufferManager;
         friend struct ::ConstantBufferAllocator;
 

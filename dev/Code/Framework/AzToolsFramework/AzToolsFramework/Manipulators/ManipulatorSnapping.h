@@ -1,0 +1,61 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#pragma once
+
+#include <AzCore/Math/Vector3.h>
+
+namespace AzToolsFramework
+{
+    /**
+     * Calculate the offset along an axis to adjust a position
+     * to stay snapped to a given grid size.
+     */
+    AZ::Vector3 CalculateSnappedOffset(
+        const AZ::Vector3& unsnappedPosition, const AZ::Vector3& axis, float size);
+
+    /**
+     * For a given point on the terrain, calculate the closest xy position snapped to the grid
+     * (z position is aligned to terrain height, not snapped to z grid)
+     */
+    AZ::Vector3 CalculateSnappedSurfacePosition(
+        const AZ::Vector3& worldSurfacePosition, const AZ::Transform& worldFromLocal, int viewportId, float gridSize);
+
+    /**
+     * Wrapper for snapping enabled bus call.
+     */
+    bool GridSnapping(int viewportId);
+
+    /**
+     * Wrapper for grid size bus call.
+     */
+    float GridSize(int viewportId);
+
+    /**
+     * Util to return sign of floating point number.
+     * value > 0 return 1.0
+     * value < 0 return -1.0
+     * value == 0 return 0.0
+     */
+    AZ_INLINE float Sign(float value)
+    {
+        return static_cast<float>((0.0f < value) - (value < 0.0f));
+    }
+
+    /**
+     * Get largest element in Vector.
+     */
+    AZ_INLINE float MaxElement(const AZ::Vector3& vector)
+    {
+        return GetMax(vector.GetX(), GetMax(vector.GetY(), vector.GetZ()));
+    }
+}

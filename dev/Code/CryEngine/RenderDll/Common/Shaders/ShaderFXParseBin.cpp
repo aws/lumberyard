@@ -511,9 +511,9 @@ SFXParam* CShaderManBin::mfAddFXParam(SShaderFXParams& FXP, const SFXParam* pPar
         SFXParam& p = *it;
         for (int i = 0; i < n; i++)
         {
-            if (p.m_RegisterOffset[i] == 10000)
+            if (p.m_Register[i] == 10000)
             {
-                p.m_RegisterOffset[i] = pParam->m_RegisterOffset[i];
+                p.m_Register[i] = pParam->m_Register[i];
             }
         }
         //CRY_ASSERT(p == *pParam);
@@ -576,22 +576,26 @@ void CShaderManBin::mfAddFXSampler(CShader* pSH, const SFXSampler* pSamp)
     FXP.m_FXSamplers.insert(it, *pSamp);
     FXP.m_nFlags |= FXP_SAMPLERS_DIRTY;
 }
-void CShaderManBin::mfAddFXTexture(CShader* pSH, const SFXTexture* pSamp)
+
+//------------------------------------------------------------------------------
+// Add a new texture to the shader's textures array based on the texture name
+//------------------------------------------------------------------------------
+void CShaderManBin::mfAddFXTexture(CShader* pSH, const SFXTexture* pTexture)
 {
-    if (!pSamp)
+    if (!pTexture)
     {
         return;
     }
 
-    SShaderFXParams& FXP = mfGetFXParams(pSH);
+    SShaderFXParams&    FXP = mfGetFXParams(pSH);
+    FXTexturesIt        it = std::lower_bound(FXP.m_FXTextures.begin(), FXP.m_FXTextures.end(), pTexture->m_dwName[0], FXTexturesSortByName());
 
-    FXTexturesIt it = std::lower_bound(FXP.m_FXTextures.begin(), FXP.m_FXTextures.end(), pSamp->m_dwName[0], FXTexturesSortByName());
-    if (it != FXP.m_FXTextures.end() && pSamp->m_dwName[0] == (*it).m_dwName[0])
+    if (it != FXP.m_FXTextures.end() && pTexture->m_dwName[0] == (*it).m_dwName[0])
     {
-        CRY_ASSERT(*it == *pSamp);
+        CRY_ASSERT(*it == *pTexture);
         return;
     }
-    FXP.m_FXTextures.insert(it, *pSamp);
+    FXP.m_FXTextures.insert(it, *pTexture);
     FXP.m_nFlags |= FXP_TEXTURES_DIRTY;
 }
 
@@ -609,7 +613,7 @@ void CShaderManBin::mfGeneratePublicFXParams(CShader* pSH, CParserBin& Parser)
     for (i = 0; i < FXP.m_FXParams.size(); i++)
     {
         SFXParam* pr = &FXP.m_FXParams[i];
-        uint32 nFlags = pr->GetParamFlags();
+        uint32 nFlags = pr->GetFlags();
         if (nFlags & PF_AUTOMERGED)
         {
             continue;
@@ -2359,7 +2363,7 @@ bool CShaderManBin::ParseBinFX_Sampler(CParserBin& Parser, SParserFrame& Frame, 
     SParserFrame OldFrame = Parser.BeginFrame(Frame);
 
     FX_BEGIN_TOKENS
-        FX_TOKEN(string)
+    FX_TOKEN(string)
     FX_TOKEN(Texture)
     FX_TOKEN(MinFilter)
     FX_TOKEN(MagFilter)
@@ -2897,7 +2901,7 @@ void CShaderManBin::AddAffectedParameter(CParserBin& Parser, std::vector<SFXPara
         {
             if (!(Parser.m_pCurShader->m_Flags & EF_LOCALCONSTANTS))
             {
-                if (pParam->m_RegisterOffset[eSHClass] >= 0 && pParam->m_RegisterOffset[eSHClass] < 10000)
+                if (pParam->m_Register[eSHClass] >= 0 && pParam->m_Register[eSHClass] < 10000)
                 {
                     if ((pShTech->m_Flags & FHF_NOLIGHTS) && pParam->m_BindingSlot == eConstantBufferShaderSlot_PerMaterial && !(pParam->m_nFlags & PF_TWEAKABLE_MASK))
                     {
@@ -2916,19 +2920,19 @@ void CShaderManBin::AddAffectedParameter(CParserBin& Parser, std::vector<SFXPara
     else
     if (pParam->m_BindingSlot == eConstantBufferShaderSlot_PerMaterial)
     {
-        if (pParam->m_RegisterOffset[eSHClass] < 0 || pParam->m_RegisterOffset[eSHClass] >= 1000)
+        if (pParam->m_Register[eSHClass] < 0 || pParam->m_Register[eSHClass] >= 1000)
         {
             return;
         }
     }
 
-    int nFlags = pParam->GetParamFlags();
+    int nFlags = pParam->GetFlags();
     bool bCheckAffect = CParserBin::m_bParseFX ? true : false;
 
     if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL) // ACCEPTED_USE
     {
         CRY_ASSERT(eSHClass < eHWSC_Num);
-        if (((nFlags & PF_TWEAKABLE_MASK) || pParam->m_Values.c_str()[0] == '(') && pParam->m_RegisterOffset[eSHClass] >= 0 && pParam->m_RegisterOffset[eSHClass] < 1000)
+        if (((nFlags & PF_TWEAKABLE_MASK) || pParam->m_Values.c_str()[0] == '(') && pParam->m_Register[eSHClass] >= 0 && pParam->m_Register[eSHClass] < 1000)
         {
             bCheckAffect = false;
         }
@@ -3121,7 +3125,7 @@ static void sFlushRegs(CParserBin& Parser, int nReg, SFXRegisterBin* MergedRegs[
 
     int nCompMerged = 0;
     EParamType eType = eType_UNKNOWN;
-    int nCB = -1;
+    int nCB = -1; 
     for (j = 0; j < 4; j++)
     {
         if (MergedRegs[j] && MergedRegs[j]->eType != eType_UNKNOWN)
@@ -3199,10 +3203,10 @@ static void sFlushRegs(CParserBin& Parser, int nReg, SFXRegisterBin* MergedRegs[
     // Get packed name token.
     p.m_dwName.push_back(Parser.NewUserToken(eT_unknown, p.m_Name.c_str(), true)); //pass by crysting so that string references work.
     CRY_ASSERT(eSHClass < eHWSC_Num);
-    p.m_RegisterOffset[eSHClass] = nReg;
+    p.m_Register[eSHClass] = nReg;
     if (eSHClass == eHWSC_Domain || eSHClass == eHWSC_Hull || eSHClass == eHWSC_Compute)
     {
-        p.m_RegisterOffset[eHWSC_Vertex] = nReg;
+        p.m_Register[eHWSC_Vertex] = nReg;
     }
     p.m_RegisterCount = 1;
     if (eType == eType_HALF)
@@ -3404,10 +3408,10 @@ inline bool CompareVars(const SFXParam* a, const SFXParam* b)
     int16 nReg0 = 10000;
     int16 nReg1 = 10000;
     nCB0 = a->m_BindingSlot;
-    nReg0 = a->m_RegisterOffset[gRenDev->m_RP.m_FlagsShader_LT];
+    nReg0 = a->m_Register[gRenDev->m_RP.m_FlagsShader_LT];
 
     nCB1 = b->m_BindingSlot;
-    nReg1 = b->m_RegisterOffset[gRenDev->m_RP.m_FlagsShader_LT];
+    nReg1 = b->m_Register[gRenDev->m_RP.m_FlagsShader_LT];
 
     if (nCB0 != nCB1)
     {
@@ -3419,7 +3423,7 @@ inline bool CompareVars(const SFXParam* a, const SFXParam* b)
 void CShaderManBin::AddParameterToScript(CParserBin& Parser, SFXParam* pr, PodArray<uint32>& SHData, EHWShaderClass eSHClass, int nCB)
 {
     char str[256];
-    int nReg = pr->m_RegisterOffset[eSHClass];
+    int nReg = pr->m_Register[eSHClass];
     if (pr->m_eType == eType_BOOL)
     {
         SHData.push_back(eT_bool);
@@ -3501,7 +3505,7 @@ void CShaderManBin::AddParameterToScript(CParserBin& Parser, SFXParam* pr, PodAr
 void CShaderManBin::AddSamplerToScript(CParserBin& Parser, SFXSampler* pr, PodArray<uint32>& SHData, EHWShaderClass eSHClass)
 {
     char str[256];
-    int nReg = pr->m_nRegister[eSHClass];
+    int nReg = pr->m_Register[eSHClass];
     if (pr->m_eType == eSType_Sampler)
     {
         SHData.push_back(eT_SamplerState);
@@ -3534,7 +3538,7 @@ void CShaderManBin::AddSamplerToScript(CParserBin& Parser, SFXSampler* pr, PodAr
 void CShaderManBin::AddTextureToScript(CParserBin& Parser, SFXTexture* pr, PodArray<uint32>& SHData, EHWShaderClass eSHClass)
 {
     char str[256];
-    int nReg = pr->m_nRegister[eSHClass];
+    int nReg = pr->m_Register[eSHClass];
     if (pr->m_eType == eTT_2D)
     {
         SHData.push_back(eT_Texture2D);
@@ -3703,7 +3707,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_GenerateShaderData(CParserBin& Par
             if (it != FXParams.m_FXParams.end() && nParam == (*it).m_dwName[0])
             {
                 SFXParam& pr = (*it);
-                if (!(pr.GetParamFlags() & PF_AUTOMERGED))
+                if (!(pr.GetFlags() & PF_AUTOMERGED))
                 {
                     if (pr.m_Semantic.empty() && pr.m_Values.c_str()[0] == '(')
                     {
@@ -3739,7 +3743,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_GenerateShaderData(CParserBin& Par
         for (i = 0; i < FXParams.m_FXParams.size(); i++)
         {
             SFXParam* pr = &FXParams.m_FXParams[i];
-            if (!(pr->GetParamFlags() & PF_AUTOMERGED))
+            if (!(pr->GetFlags() & PF_AUTOMERGED))
             {
                 AddAffectedParameter(Parser, AffectedParams, AffectedFragments, pr, eSHClass, dwSHType, pShTech);
             }
@@ -4337,6 +4341,9 @@ bool CShaderManBin::ParseBinFX_Technique_Pass(CParserBin& Parser, SParserFrame& 
     case eCF_LEqual:
         State |= GS_DEPTHFUNC_LEQUAL;
         break;
+    case eCF_Always:
+        State |= GS_DEPTHFUNC_ALWAYS;
+        break;
     default:
         CRY_ASSERT(0);
     }
@@ -4892,7 +4899,7 @@ bool CShaderManBin::ParseBinFX(SShaderBin* pBin, CShader* ef, uint64 nMaskGen)
     Parser.BeginFrame(Frame);
 
     FX_BEGIN_TOKENS
-        FX_TOKEN(static)
+    FX_TOKEN(static)
     FX_TOKEN(half)
     FX_TOKEN(half2)
     FX_TOKEN(half3)
@@ -5243,19 +5250,19 @@ bool CShaderManBin::ParseBinFX(SShaderBin* pBin, CShader* ef, uint64 nMaskGen)
                 if (!szReg.empty())
                 {
                     CRY_ASSERT(szReg[0] == 'c');
-                    Pr.m_RegisterOffset[eHWSC_Vertex] = atoi(&szReg[1]);
-                    Pr.m_RegisterOffset[eHWSC_Pixel] = Pr.m_RegisterOffset[eHWSC_Vertex];
+                    Pr.m_Register[eHWSC_Vertex] = atoi(&szReg[1]);
+                    Pr.m_Register[eHWSC_Pixel] = Pr.m_Register[eHWSC_Vertex];
 
                     if (CParserBin::PlatformSupportsGeometryShaders())
                     {
-                        Pr.m_RegisterOffset[eHWSC_Geometry] = Pr.m_RegisterOffset[eHWSC_Vertex];
+                        Pr.m_Register[eHWSC_Geometry] = Pr.m_Register[eHWSC_Vertex];
                     }
                     if (CParserBin::PlatformSupportsDomainShaders())
                     {
-                        Pr.m_RegisterOffset[eHWSC_Domain] = Pr.m_RegisterOffset[eHWSC_Vertex];
+                        Pr.m_Register[eHWSC_Domain] = Pr.m_Register[eHWSC_Vertex];
                     }
                 }
-                uint32 prFlags = Pr.GetParamFlags();
+                uint32 prFlags = Pr.GetFlags();
                 if (prFlags & PF_TWEAKABLE_MASK)
                 {
                     Pr.m_BindingSlot = eConstantBufferShaderSlot_PerMaterial;
@@ -5416,18 +5423,31 @@ void CShaderManBin::MergeTextureSlots(SShaderTexSlots* master, SShaderTexSlots* 
     {
         return;
     }
-
+ /* [Shader System] - TO DO: switch back to the map usage and replace with this
+    for (auto& iter : overlay->m_UsedTextureSlots)
+    {
+        auto    masterIter = master->m_UsedTextureSlots.find(iter->first);
+        if (masterIter == master->m_UsedTextureSlots.end()) // slot was not found - insert the overlay one
+        {
+            // these structures are never deleted so we can safely share pointers
+            // without ref counting. See below in GetTextureSlots for the allocation
+            master->m_UsedTextureSlots[iter->first] = iter->second;
+        }
+    }
+*/
+    // [Shader System] - TO DO - replace this part with code above after testing
     for (int i = 0; i < EFTT_MAX; i++)
     {
         // these structures are never deleted so we can safely share pointers
         // without ref counting. See below in GetTextureSlots for the allocation
-        if (master->m_UsedSlots[i] == NULL && overlay->m_UsedSlots[i] != NULL)
+        if (master->m_UsedTextureSlots[i] == NULL && overlay->m_UsedTextureSlots[i] != NULL)
         {
-            master->m_UsedSlots[i] = overlay->m_UsedSlots[i];
+            master->m_UsedTextureSlots[i] = overlay->m_UsedTextureSlots[i];
         }
     }
 }
 
+// [Shader System TO DO] - this methods needs to be either removed or become full data driven
 SShaderTexSlots* CShaderManBin::GetTextureSlots(CParserBin& Parser, SShaderBin* pBin, CShader* ef, int nTech, int nPass)
 {
 #if !SHADER_REFLECT_TEXTURE_SLOTS
@@ -5591,15 +5611,15 @@ SShaderTexSlots* CShaderManBin::GetTextureSlots(CParserBin& Parser, SShaderBin* 
 
     // since we might find samplers referencing a slot more than once,
     // keep track of the priority of each sampler found.
-    int namePriority[EFTT_MAX];
+    int namePriority[EFTT_MAX];     // [Shader System TO DO] - data driven please!
     memset(namePriority, 0, sizeof(namePriority));
 
     // deliberately 'leaking', these are kept around permanently (this info is only gathered in the editor),
     // and cleaned up at shutdown when the app memory is released.
-    SShaderTexSlots* pSlots = new SShaderTexSlots;
+    SShaderTexSlots*    pSlots = new SShaderTexSlots;
 
     // Priority order:
-    // 0 = forced in because of the dependencyset as above, can be overriden if we find a better sampler
+    // 0 = forced in because of the dependency set as above, can be overridden if we find a better sampler
     // 1 = referenced from the shader but doesn't include a UIName
     // 2 = includes a UIName but isn't directly referenced. In the case we've forced the sampler because of dependency,
     //     this is probably more descriptive than a priority=1 sampler
@@ -5620,14 +5640,14 @@ SShaderTexSlots* CShaderManBin::GetTextureSlots(CParserBin& Parser, SShaderBin* 
         int slot = it->m_nSlotId;
 
         // if the slot is invalid this texture refers something else, skip it
-        if (slot == EFTT_MAX)
+        if (slot == EFTT_MAX)   // [Shader System TO DO] - data driven
         {
             continue;
         }
 
         uint32 dwName = Parser.GetCRC32(it->m_szName);
 
-        // check if this sampler must be included for dependencyset/reset reasons
+        // check if this sampler must be included for dependency set/reset reasons
         bool dependency = (dependencySlots & (1 << slot)) > 0;
 
         // check if this sampler is referenced from the shader
@@ -5636,43 +5656,40 @@ SShaderTexSlots* CShaderManBin::GetTextureSlots(CParserBin& Parser, SShaderBin* 
         if (dependency || referenced)
         {
             // calculate priority. See above.
-            int priority = (referenced ? PRIORITY_REFERENCED : 0) | (it->m_szUIName.length() ? PRIORITY_HASUINAME : 0);
+            int                     priority = (referenced ? PRIORITY_REFERENCED : 0) | (it->m_szUIName.length() ? PRIORITY_HASUINAME : 0);
+            SShaderTextureSlot*     pUsedTexSlot = pSlots->m_UsedTextureSlots[slot];
 
-            // if we don't have this slot filled already, create a new slot
-            if (pSlots->m_UsedSlots[slot] == NULL)
+            // if we don't have this slot filled yet, create a new slot
+            if (!pUsedTexSlot)
             {
                 // !!IMPORTANT!! - if these slots are deleted/cleaned instead of being allowed to live forever,
                 // MAKE SURE you refcount or refactor MergeTextureSlots above - as it will share pointers.
-                SShaderTextureSlot* pSlot = new SShaderTextureSlot;
+                pUsedTexSlot = new SShaderTextureSlot;
 
-                pSlot->m_Name =  it->m_szUIName;
-                pSlot->m_Description = it->m_szUIDescription;
-
-                pSlot->m_TexType = it->m_eTexType;
+                pUsedTexSlot->m_Name =  it->m_szUIName;
+                pUsedTexSlot->m_Description = it->m_szUIDescription;
+                pUsedTexSlot->m_TexType = it->m_eTexType;
 
                 // store current priority
                 namePriority[slot] = priority;
-
-                pSlots->m_UsedSlots[slot] = pSlot;
+                pSlots->m_UsedTextureSlots[slot] = pUsedTexSlot;   //  insertion to the map
             }
             else
             {
-                SShaderTextureSlot* pSlot = pSlots->m_UsedSlots[slot];
                 // we shouldn't encounter two samplers that are used and have a UIName for the same slot,
                 // error in this case
                 if (priority == (PRIORITY_REFERENCED | PRIORITY_HASUINAME) && priority == namePriority[slot])
                 {
                     CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_ERROR, "Encountered two samplers with UINames referenced for same slot in shader '%s': '%s' and '%s'\n",
-                        ef->GetName(), pSlot->m_Name, it->m_szUIName);
+                        ef->GetName(), pUsedTexSlot->m_Name, it->m_szUIName);
                     CRY_ASSERT(0);
                 }
                 // override if we have a higher priority
                 else if (priority > namePriority[slot])
                 {
-                    pSlot->m_Name =  it->m_szUIName;
-                    pSlot->m_Description = it->m_szUIDescription;
-
-                    pSlot->m_TexType = it->m_eTexType;
+                    pUsedTexSlot->m_Name = it->m_szUIName;
+                    pUsedTexSlot->m_Description = it->m_szUIDescription;
+                    pUsedTexSlot->m_TexType = it->m_eTexType;
 
                     namePriority[slot] = priority;
                 }
@@ -6177,6 +6194,10 @@ const char* CShaderMan::mfParseFX_Parameter (const string& script, EParamType eT
     }
 }
 
+//------------------------------------------------------------------------------
+// Searches the constant params array for a desired constant based on name.
+// Can be optimized if has performance hit.
+//------------------------------------------------------------------------------
 SFXParam* CShaderMan::mfGetFXParameter(std::vector<SFXParam>& Params, const char* param)
 {
     uint32 j;
@@ -6203,6 +6224,11 @@ SFXParam* CShaderMan::mfGetFXParameter(std::vector<SFXParam>& Params, const char
     }
     return NULL;
 }
+
+//------------------------------------------------------------------------------
+// Searches the samplers params array for a desired sampler based on name.
+// Can be optimized if has performance hit.
+//------------------------------------------------------------------------------
 SFXSampler* CShaderMan::mfGetFXSampler(std::vector<SFXSampler>& Params, const char* param)
 {
     uint32 j;
@@ -6229,6 +6255,11 @@ SFXSampler* CShaderMan::mfGetFXSampler(std::vector<SFXSampler>& Params, const ch
     }
     return NULL;
 }
+
+//------------------------------------------------------------------------------
+// Searches the texture params array for a desired texture based on name.
+// Can be optimized if has performance hit.
+//------------------------------------------------------------------------------
 SFXTexture* CShaderMan::mfGetFXTexture(std::vector<SFXTexture>& Params, const char* param)
 {
     uint32 j;
@@ -6321,3 +6352,4 @@ CTexture* CShaderMan::mfParseFXTechnique_LoadShaderTexture (STexSamplerRT* smp, 
 
     return tp;
 }
+

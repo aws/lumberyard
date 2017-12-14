@@ -18,6 +18,8 @@
 #include <AzCore/std/chrono/clocks.h>
 #include <AzCore/std/bind/bind.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #define FEATURE_TEST_LISTEN_PORT 12125
 #define WAIT_TIME_IN_MSECS 20
 // Enable this define only if you are debugging a deadlock/timing issue etc in the AssetProcessorConnection, which you are unable to reproduce otherwise.
@@ -39,10 +41,8 @@ AssetProcessorServerUnitTest::AssetProcessorServerUnitTest()
     m_connectionManager = ConnectionManager::Get();
     m_iniConfiguration.readINIConfigFile();
     m_iniConfiguration.SetListeningPort(FEATURE_TEST_LISTEN_PORT);
-    m_iniConfiguration.SetProxyInformation("localhost:45643");
 
     m_applicationServer.startListening(FEATURE_TEST_LISTEN_PORT); // a port that is not the normal port
-    m_connectionManager->ReadProxyServerInformation();
     connect(&m_applicationServer, SIGNAL(newIncomingConnection(qintptr)), m_connectionManager, SLOT(NewConnection(qintptr)));
 }
 
@@ -64,7 +64,6 @@ void AssetProcessorServerUnitTest::RunFirstPartOfUnitTestsForAssetProcessorServe
 {
     m_numberOfDisconnectionReceived = 0;
     m_connection = connect(m_connectionManager, SIGNAL(ConnectionError(unsigned int, QString)), this, SLOT(ConnectionErrorForNonProxyMode(unsigned int, QString)));
-    m_connectionManager->SetProxyConnect(false);
     m_connectionId = m_connectionManager->addConnection();
     Connection* connection = m_connectionManager->getConnection(m_connectionId);
     connection->SetPort(FEATURE_TEST_LISTEN_PORT);
@@ -74,7 +73,13 @@ void AssetProcessorServerUnitTest::RunFirstPartOfUnitTestsForAssetProcessorServe
 
 void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool failNegotiation)
 {
-    QString branchToken = AssetUtilities::GetBranchToken();
+
+    AZStd::string azAppRoot = AZStd::string(QDir::current().absolutePath().toUtf8().constData());
+    AZStd::string azBranchToken;
+    AzFramework::StringFunc::AssetPath::CalculateBranchToken(azAppRoot, azBranchToken);
+
+    QString branchToken(azBranchToken.c_str());
+
     if (failNegotiation)
     {
         branchToken = branchToken.append("invalid"); //invalid branch token will result in negotiation to fail

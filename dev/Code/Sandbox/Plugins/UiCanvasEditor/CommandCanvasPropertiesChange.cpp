@@ -63,7 +63,14 @@ void CommandCanvasPropertiesChange::Recreate(bool isUndo)
         m_editorWindow->ReplaceEntityContext(newEntityContext);
 
         // Tell the UI animation system that the active canvas has changed
-        EBUS_EVENT(UiEditorAnimationBus, CanvasLoaded);
+        EBUS_EVENT(UiEditorAnimationBus, ActiveCanvasChanged);
+
+        // Some toolbar sections display canvas properties
+        ViewportWidget* viewportWidget = m_editorWindow->GetViewport();
+        if (viewportWidget)
+        {
+            viewportWidget->GetViewportInteraction()->InitializeToolbars();
+        }
 
         // Clear any selected elements from the hierarchy widget. If an element is selected,
         // this will trigger the properties pane to refresh with the new canvas, but the

@@ -392,31 +392,31 @@ namespace LUAEditor
             {
                 statusString += tr(" Unknown: P4 SSL Certificate Invalid");
             }
-            else if (newInfo.m_sourceControlInfo.m_status == AzToolsFramework::SCS_NotTracked)
+            else if (!newInfo.m_sourceControlInfo.IsManaged())
             {
             	statusString += tr(" Not Tracked");
             }
-            else if (newInfo.m_sourceControlInfo.m_status == AzToolsFramework::SCS_OpenByUser)
+            else if (newInfo.m_sourceControlInfo.m_flags & AzToolsFramework::SCF_OpenByUser)
             {
                 if (newInfo.m_sourceControlInfo.m_flags & AzToolsFramework::SCF_PendingAdd)
-            {
-            	statusString += tr(" Adding");
-            }
+                {
+            	    statusString += tr(" Adding");
+                }
                 else if (newInfo.m_sourceControlInfo.m_flags & AzToolsFramework::SCF_PendingDelete)
-            {
-            	statusString += tr(" Deleting");
-            }
+                {
+            	    statusString += tr(" Deleting");
+                }
                 else
-            {
-            	QString msg = tr(" Checked Out");
-            	msg += QString(tr(" By You"));
-            	// m_StatusUser only has contents if someone other than you has this file checked out, too
-            	if (newInfo.m_sourceControlInfo.m_StatusUser.length())
-            	{
-            		msg += QString(tr(" and Others"));
-            	}
-            	statusString += msg;
-            }
+                {
+            	    QString msg = tr(" Checked Out");
+            	    msg += QString(tr(" By You"));
+            	    // m_StatusUser only has contents if someone other than you has this file checked out, too
+            	    if (newInfo.m_sourceControlInfo.m_StatusUser.length())
+            	    {
+            		    msg += QString(tr(" and Others"));
+            	    }
+            	    statusString += msg;
+                }
             }
             else if (newInfo.m_sourceControlInfo.m_flags & AzToolsFramework::SCF_OtherOpen)
             {

@@ -10,7 +10,7 @@
 *
 */
 
-#include <AppleLauncher.h>
+#include <AppleLaunchersCommon/AppleLauncher.h>
 
 #include <AzFramework/API/ApplicationAPI_appletv.h>
 

@@ -228,7 +228,10 @@ bool CTerrainModifyTool::MouseCallback(CViewport* view, EMouseEvent event, QPoin
         UpdateUI();
     }
 
-    if (m_nPaintingMode == ePaintMode_Ready || event == eMouseLUp)
+    // Don't invalidate the paint mode on mouse move, since they could be
+    // painting and accidentally go outside the terrain boundry but then
+    // come back without releasing the mouse
+    if ((m_nPaintingMode == ePaintMode_Ready && event != eMouseMove) || event == eMouseLUp)
     {
         if (GetIEditor()->IsUndoRecording())
         {

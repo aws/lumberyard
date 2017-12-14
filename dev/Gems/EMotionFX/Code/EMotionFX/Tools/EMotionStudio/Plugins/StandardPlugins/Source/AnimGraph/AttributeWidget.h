@@ -69,13 +69,13 @@ namespace EMStudio
             : public MCommon::ManipulatorCallback
         {
         public:
-            Callback(const MCore::Vector3& oldValue, Vector3AttributeWidget* parent = nullptr)
+            Callback(const AZ::Vector3& oldValue, Vector3AttributeWidget* parent = nullptr)
                 : MCommon::ManipulatorCallback(nullptr, oldValue)
             {
                 mParentWidget = parent;
             }
 
-            void Update(const MCore::Vector3& value) override
+            void Update(const AZ::Vector3& value) override
             {
                 // call the base class update function
                 MCommon::ManipulatorCallback::Update(value);
@@ -100,7 +100,7 @@ namespace EMStudio
         void OnDoubleSpinnerX(double value);
         void OnDoubleSpinnerY(double value);
         void OnDoubleSpinnerZ(double value);
-        void OnUpdateAttribute(const MCore::Vector3& value);
+        void OnUpdateAttribute(const AZ::Vector3& value);
         void ToggleTranslationGizmo();
 
     private:
@@ -328,16 +328,17 @@ namespace EMStudio
     //! Container for one blend space motion for the blend space attribute widget.
     class BlendSpaceMotionWidgetContainer
     {
-        public:
-            BlendSpaceMotionWidgetContainer(EMotionFX::AttributeBlendSpaceMotion* attribute, QGridLayout* layout, int row);
+    public:
+        BlendSpaceMotionWidgetContainer(EMotionFX::AttributeBlendSpaceMotion* attribute, QGridLayout* layout, int row);
 
-            void UpdateInterface(EMotionFX::BlendSpaceNode* blendSpaceNode, EMotionFX::AnimGraphInstance* animGraphInstance);
+        void UpdateInterface(EMotionFX::BlendSpaceNode* blendSpaceNode, EMotionFX::AnimGraphInstance* animGraphInstance);
 
-            EMotionFX::AttributeBlendSpaceMotion*   m_attribute;
-            MysticQt::DoubleSpinBox*                m_spinboxX;
-            MysticQt::DoubleSpinBox*                m_spinboxY;
-            QPushButton*                            m_restoreButton;
-            QPushButton*                            m_removeButton;
+        EMotionFX::AttributeBlendSpaceMotion*   m_attribute;
+        QLabel*                                 m_labelMotion;
+        MysticQt::DoubleSpinBox*                m_spinboxX;
+        MysticQt::DoubleSpinBox*                m_spinboxY;
+        QPushButton*                            m_restoreButton;
+        QPushButton*                            m_removeButton;
     };
 
 

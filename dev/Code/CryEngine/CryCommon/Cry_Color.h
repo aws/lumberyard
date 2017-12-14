@@ -18,6 +18,9 @@
 #define CRYINCLUDE_CRYCOMMON_CRY_COLOR_H
 #pragma once
 
+#include <CryHeaders.h>
+#include <platform.h>
+
 ILINE float FClamp(float X, float Min, float Max)
 {
     return X < Min ? Min : X < Max ? X : Max;

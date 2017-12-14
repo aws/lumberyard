@@ -1544,7 +1544,7 @@ int CShapeObject::InsertPoint(int index, const Vec3& point, bool const bModifyin
 
             if (fDiffX < SHAPE_POINT_MIN_DISTANCE && fDiffY < SHAPE_POINT_MIN_DISTANCE && fDiffZ < SHAPE_POINT_MIN_DISTANCE)
             {
-                CRY_ASSERT_MESSAGE(fDiffX > SHAPE_POINT_MIN_DISTANCE && fDiffY > SHAPE_POINT_MIN_DISTANCE && fDiffZ > SHAPE_POINT_MIN_DISTANCE, "The point is too close to another point!");
+                AZ_Warning("CShapeObject::InsertPoint", fDiffX > SHAPE_POINT_MIN_DISTANCE && fDiffY > SHAPE_POINT_MIN_DISTANCE && fDiffZ > SHAPE_POINT_MIN_DISTANCE, "The point is too close to another point!");
                 return nIdx;
             }
         }
@@ -2484,7 +2484,7 @@ void CAIPathObject::UpdateGameArea(bool bRemove)
 
         if (GetNavigation()->DoesNavigationShapeExists(GetName().toLatin1().data(), AREATYPE_PATH, m_bRoad))
         {
-            gEnv->pSystem->GetILog()->LogError("AI Path", "Path '%s' already exists in AIsystem, please rename the path.", GetName());
+            gEnv->pSystem->GetILog()->LogError("AI Path: Path '%s' already exists in AIsystem, please rename the path.", GetName());
             m_updateSucceed = false;
             return;
         }
@@ -2766,7 +2766,7 @@ void CAIShapeObject::UpdateGameArea(bool bRemove)
 
         if (GetNavigation()->DoesNavigationShapeExists(GetName().toLatin1().data(), AREATYPE_GENERIC))
         {
-            gEnv->pSystem->GetILog()->LogError("AI Shape", "Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
+            gEnv->pSystem->GetILog()->LogError("AI Shape: Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
             m_updateSucceed = false;
             return;
         }
@@ -2831,7 +2831,7 @@ void CAIOcclusionPlaneObject::UpdateGameArea(bool bRemove)
 
         if (GetNavigation()->DoesNavigationShapeExists(GetName().toLatin1().data(), AREATYPE_OCCLUSION_PLANE))
         {
-            gEnv->pSystem->GetILog()->LogError("OcclusionPlane", "Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
+            gEnv->pSystem->GetILog()->LogError("OcclusionPlane: Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
             m_updateSucceed = false;
             return;
         }
@@ -3973,7 +3973,7 @@ void CNavigationAreaObject::SetPoint(int index, const Vec3& pos)
     UpdateGameArea(false);
 }
 
-void CNavigationAreaObject::ChangeColor(COLORREF color)
+void CNavigationAreaObject::ChangeColor(const QColor& color)
 {
     SetModified(false);
 }

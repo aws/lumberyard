@@ -18,13 +18,20 @@
 #include <GridMate/Carrier/TrafficControl.h>
 #include <GridMate/Carrier/Driver.h>
 
-// TODO: Move driller functionality to a separate file.
 #include <AzCore/Driller/DrillerBus.h>
 #include <AzCore/Driller/Driller.h>
+#include "AzCore/std/smart_ptr/weak_ptr.h"
 
 namespace GridMate
 {
     class IGridMate;
+
+    class CarrierACKCallback
+    {
+    public:
+        virtual void Run() = 0;
+        virtual ~CarrierACKCallback() {};
+    };
 
     /**
     * Carrier Interface.
@@ -99,10 +106,21 @@ namespace GridMate
         virtual string          ConnectionToAddress(ConnectionID id) = 0;
 
         /**
-         *
-         */
+        * Sends buffer with an ACK callback. When the transport layer recieves an ACK it will run the callback.
+        * The carrier runs in the main game thread, so if the callback executes a function in another thread it is the
+        * responsibility of the callback creator to add thread safety.
+        *
+        * This adds reasonable overhead to the carrier data handling, and so should only be used when a callback is essential to operations.
+        *
+        * Note: ACK callback is not supported with broadcast targets and will assert.
+        */
+        virtual void            SendWithCallback(const char* data, unsigned int dataSize, AZStd::unique_ptr<CarrierACKCallback> ackCallback, ConnectionID target = AllConnections, DataReliability reliability = SEND_RELIABLE, DataPriority priority = PRIORITY_NORMAL, unsigned char channel = 0) = 0;
+        /**
+        * Sends a buffer to the target with the parameterized reliability, priority and channel.
+        *
+        * Note: Unreliable sends with buffers larger than the MTU will get upgraded to reliable.
+        */
         virtual void            Send(const char* data, unsigned int dataSize, ConnectionID target = AllConnections, DataReliability reliability = SEND_RELIABLE, DataPriority priority = PRIORITY_NORMAL, unsigned char channel = 0) = 0;
-
         /**
          * Receive the data for the specific connection.
          * \note Internal buffers are used make sure you periodically receive data for all connections,
@@ -190,8 +208,7 @@ namespace GridMate
         unsigned int            GetMaxSendRate() const      { return m_maxSendRateMS; }
 
         /// Return the owning instance of the gridmate.
-        inline IGridMate*       GetGridMate() const         { return m_gridMate; }
-
+        AZ_FORCE_INLINE IGridMate*       GetGridMate() const         { return m_gridMate; }
     protected:
         explicit Carrier(IGridMate* gridMate)
             : m_gridMate(gridMate)  {}
@@ -289,11 +306,11 @@ namespace GridMate
          */
         bool m_threadInstantResponse;
 
-        unsigned int m_recvPacketsLimit; ///< Maximum packets per second allowed to be received from an existing connection 
-        unsigned int m_maxConnections; ///< maximum number of connections 
+        unsigned int m_recvPacketsLimit; ///< Maximum packets per second allowed to be received from an existing connection
+        unsigned int m_maxConnections; ///< maximum number of connections
 
         unsigned int m_connectionRetryIntervalBase; ///< Base for expotential backoff of connection request retries (ie. if it's 30, will retry connection request with 30, 60, 120, 240 msec, ... delays)
-        unsigned int m_connectionRetryIntervalMax; ///< Cap for interval between connection requests 
+        unsigned int m_connectionRetryIntervalMax; ///< Cap for interval between connection requests
     };
 
     /**
@@ -441,12 +458,12 @@ namespace GridMate
         * rate peer connection, but future versions will update per-peer and add a ConnectionID
         * param.
         *
-        * carrier ptr to carrier 
+        * carrier ptr to carrier
         * id connection with rate change
         * sendLimitBytesPerSec new send rate in _bytes_ per second
         */
         virtual void OnRateChange(Carrier* carrier, ConnectionID id, AZ::u32 sendLimitBytesPerSec)
-        { 
+        {
             (void)carrier;
             (void)id;
             (void)sendLimitBytesPerSec;

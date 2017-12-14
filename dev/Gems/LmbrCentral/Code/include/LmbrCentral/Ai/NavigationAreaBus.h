@@ -24,12 +24,16 @@ namespace LmbrCentral
         : public AZ::ComponentBus
     {
     public:
-        virtual void RefreshArea() {}
         virtual ~NavigationAreaRequests() = default;
+
+        /**
+         * Update/refresh the navigation area (foe example if changes have occurred to it or its surroundings).
+         */
+        virtual void RefreshArea() {}
     };
 
     /**
-     *
+     * Bus to service requests made to the Navigation Area component.
      */
     using NavigationAreaRequestBus = AZ::EBus<NavigationAreaRequests>;
 } // namespace LmbrCentral

@@ -15,6 +15,7 @@
 #include <MCore/Source/AttributeFactory.h>
 #include <MCore/Source/AttributeSettings.h>
 #include <MCore/Source/AttributePool.h>
+#include <MCore/Source/AttributeSet.h>
 #include <MCore/Source/MCoreSystem.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphObject.h"
@@ -240,6 +241,7 @@ namespace EMotionFX
     {
         switch (interfaceType)
         {
+        // MCore Attribute types
         case MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER:
             return MCore::AttributeFloat::TYPE_ID;
         case MCore::ATTRIBUTE_INTERFACETYPE_FLOATSLIDER:
@@ -256,38 +258,56 @@ namespace EMotionFX
             return MCore::AttributeVector2::TYPE_ID;
         case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3GIZMO:
             return MCore::AttributeVector3::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3:
-            return MCore::AttributeVector3::TYPE_ID;
         case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR4:
             return MCore::AttributeVector4::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_ROTATION:
-            return AttributeRotation::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_COLOR:
-            return MCore::AttributeColor::TYPE_ID;
         case MCore::ATTRIBUTE_INTERFACETYPE_FILEBROWSE:
             return MCore::AttributeString::TYPE_ID;
+        case MCore::ATTRIBUTE_INTERFACETYPE_COLOR:
+            return MCore::AttributeColor::TYPE_ID;
         case MCore::ATTRIBUTE_INTERFACETYPE_STRING:
             return MCore::AttributeString::TYPE_ID;
+        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3:
+            return MCore::AttributeVector3::TYPE_ID;
+        case MCore::ATTRIBUTE_INTERFACETYPE_PROPERTYSET:
+            return MCore::AttributeSet::TYPE_ID;
+        
+        // EMotionFX AnimGraphAttributeTypes
+        case ATTRIBUTE_INTERFACETYPE_NODENAMES:
+            return AttributeNodeMask::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_MOTIONPICKER:
             return MCore::AttributeString::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_PARAMETERPICKER:
             return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_NODENAMES:
-            return AttributeNodeMask::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_PARAMETERNAMES:
-            return AttributeParameterMask::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_BLENDTREEMOTIONNODEPICKER:
             return MCore::AttributeString::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_MOTIONEVENTTRACKPICKER:
             return MCore::AttributeInt32::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_NODESELECTION:
             return MCore::AttributeString::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_ROTATION:
+            return AttributeRotation::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_GOALNODESELECTION:
             return AttributeGoalNode::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_MOTIONEXTRACTIONCOMPONENTS:
+            return MCore::AttributeInt32::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_PARAMETERNAMES:
+            return AttributeParameterMask::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_STATESELECTION:
+            return MCore::AttributeString::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_STATEFILTERLOCAL:
             return AttributeStateFilterLocal::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_ANIMGRAPHNODEPICKER:
+            return MCore::AttributeString::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_MULTIPLEMOTIONPICKER:
+            return MCore::AttributeArray::TYPE_ID;
         case ATTRIBUTE_INTERFACETYPE_TAG:
             return MCore::AttributeFloat::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_TAGPICKER:
+            return MCore::AttributeArray::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS:
+            return MCore::AttributeArray::TYPE_ID;
+        case ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONPICKER:
+            return MCore::AttributeString::TYPE_ID;
 
         default:
             MCore::LogWarning("Unknown data type for interface type %d.", interfaceType);
@@ -295,67 +315,6 @@ namespace EMotionFX
         }
         ;
     }
-
-
-    // get the data type for a given interface type
-    uint32 AnimGraphObject::InterfaceTypeToDataTypeLegacy(uint32 interfaceType)
-    {
-        switch (interfaceType)
-        {
-        case MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_FLOATSLIDER:
-            return MCore::AttributeFloat::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_INTSPINNER:
-            return MCore::AttributeInt32::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_INTSLIDER:
-            return MCore::AttributeInt32::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX:
-            return MCore::AttributeInt32::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX:
-            return MCore::AttributeBool::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR2:
-            return MCore::AttributeVector2::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3GIZMO:
-            return MCore::AttributeVector3::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3:
-            return MCore::AttributeVector3::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_VECTOR4:
-            return MCore::AttributeVector4::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_ROTATION:
-            return AttributeRotation::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_COLOR:
-            return MCore::AttributeColor::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_FILEBROWSE:
-            return MCore::AttributeString::TYPE_ID;
-        case MCore::ATTRIBUTE_INTERFACETYPE_STRING:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_MOTIONPICKER:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_PARAMETERPICKER:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_NODENAMES:
-            return AttributeNodeMask::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_PARAMETERNAMES:
-            return AttributeParameterMask::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_BLENDTREEMOTIONNODEPICKER:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_MOTIONEVENTTRACKPICKER:
-            return MCore::AttributeInt32::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_NODESELECTION:
-            return MCore::AttributeString::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_GOALNODESELECTION:
-            return AttributeGoalNode::TYPE_ID;
-        case ATTRIBUTE_INTERFACETYPE_STATEFILTERLOCAL:
-            return AttributeStateFilterLocal::TYPE_ID;
-
-        default:
-            MCore::LogWarning("Unknown data type for interface type %d.", interfaceType);
-            return 0;
-        }
-        ;
-    }
-
 
     // write the attributes
     bool AnimGraphObject::WriteAttributes(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const
@@ -739,7 +698,7 @@ namespace EMotionFX
         MCore::AttributeSettings* attributeInfo = RegisterAttribute("Event Filter Mode", "eventMode", "The event filter mode, which controls which events are passed further up the hierarchy.", MCore::ATTRIBUTE_INTERFACETYPE_COMBOBOX);
         attributeInfo->ResizeComboValues(4);
         attributeInfo->SetComboValue(EVENTMODE_MASTERONLY,  "Master Node Only");
-        attributeInfo->SetComboValue(EVENTMODE_SLAVEONLY,   "Slave Node Only");
+        attributeInfo->SetComboValue(EVENTMODE_SLAVEONLY,   "Servant Node Only");
         attributeInfo->SetComboValue(EVENTMODE_BOTHNODES,   "Both Nodes");
         attributeInfo->SetComboValue(EVENTMODE_MOSTACTIVE,  "Most Active");
         attributeInfo->SetDefaultValue(MCore::AttributeFloat::Create(EVENTMODE_MOSTACTIVE));

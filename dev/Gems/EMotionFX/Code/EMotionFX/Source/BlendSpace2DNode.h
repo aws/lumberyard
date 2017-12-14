@@ -43,7 +43,7 @@ namespace EMotionFX
             ATTRIB_SYNC                 = 4,
             ATTRIB_SYNC_MASTERMOTION    = 5,
             ATTRIB_EVENTMODE            = 6,
-            ATTRIB_MOTIONS              = 7 
+            ATTRIB_MOTIONS              = 7
         };
 
         enum
@@ -62,6 +62,8 @@ namespace EMotionFX
 
         struct Triangle
         {
+            Triangle(uint16_t indexA, uint16_t indexB, uint16_t indexC);
+
             uint16_t m_vertIndices[3];
         };
         using Triangles = AZStd::vector<Triangle>;
@@ -73,7 +75,7 @@ namespace EMotionFX
             bool operator==(const Edge& rhs) const
             {
                 return (m_vertIndices[0] == rhs.m_vertIndices[0]) &&
-                    (m_vertIndices[1] == rhs.m_vertIndices[1]);
+                       (m_vertIndices[1] == rhs.m_vertIndices[1]);
             }
         };
         using Edges = AZStd::vector<Edge>;
@@ -104,22 +106,22 @@ namespace EMotionFX
             EMFX_ANIMGRAPHOBJECTDATA_IMPLEMENT_LOADSAVE
         public:
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)   
+                : AnimGraphNodeData(node, animGraphInstance)
                 , m_allMotionsHaveSyncTracks(false)
-                , m_rangeMin(0,0)
-                , m_rangeMax(0,0)
+                , m_rangeMin(0, 0)
+                , m_rangeMax(0, 0)
                 , m_currentPosition(0, 0)
                 , m_normCurrentPosition(0, 0)
                 , m_masterMotionIdx(0)
-                , m_updateCounter(0)
+                , m_hasDegenerateTriangles(false)
             {
             }
             ~UniqueData();
 
             uint32 GetClassSize() const override { return sizeof(UniqueData); }
-            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override            
-            { 
-                return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance); 
+            AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override
+            {
+                return new (destMem) UniqueData(static_cast<AnimGraphNode*>(object), animGraphInstance);
             }
             AZ::Vector2 ConvertToNormalizedSpace(const AZ::Vector2& pt) const
             {
@@ -142,14 +144,16 @@ namespace EMotionFX
             AZ::Vector2                     m_normCurrentPosition; // normalized current point
             CurrentTriangleInfo             m_currentTriangle; // Info about the triangle in which the current point lies.
             CurrentEdgeInfo                 m_currentEdge; // When the point is not inside any triangle, information
-                                                // about the closest point on the outer edge
+            // about the closest point on the outer edge
             BlendInfos                      m_blendInfos;
-            AZ::u32                         m_masterMotionIdx; // index of the master motion for synching
-            AZ::u16                         m_updateCounter;
+            AZ::u32                         m_masterMotionIdx; // index of the master motion for syncing
+
+            bool                            m_hasDegenerateTriangles; // to notify the UI
         };
 
         static BlendSpace2DNode* Create(AnimGraph* animGraph);
 
+        bool GetValidCalculationMethodsAndEvaluators() const;
         const char* GetAxisLabel(int axisIndex) const;
 
         // AnimGraphNode overrides
@@ -217,5 +221,4 @@ namespace EMotionFX
 
         static const float s_epsilonForBarycentricCoords;
     };
-
 }   // namespace EMotionFX

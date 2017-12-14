@@ -19,7 +19,6 @@
 #include <IPlugin.h>
 #include "AudioSystemEditor_wwise.h"
 
-HINSTANCE g_hInstance = nullptr;
 
 AudioControls::CAudioSystemEditor_wwise* g_pWwiseInterface = nullptr;
 
@@ -54,12 +53,3 @@ extern "C" PLUGIN_API AudioControls::IAudioSystemEditor * GetAudioInterface(IEdi
     return g_pWwiseInterface;
 }
 
-//-----------------------------------------------------------------------------------------------//
-BOOL __stdcall DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
-{
-    if (fdwReason == DLL_PROCESS_ATTACH)
-    {
-        g_hInstance = hinstDLL;
-    }
-    return TRUE;
-}

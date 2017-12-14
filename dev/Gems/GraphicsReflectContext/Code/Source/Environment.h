@@ -26,12 +26,26 @@ namespace GraphicsReflectContext
     {
     public:
         AZ_TYPE_INFO(Environment, "{FBFF1A05-BD9C-4196-982B-A6F28ADBAE3C}");
-
         static void Reflect(AZ::ReflectContext* context);
 
     private:
         static void SetSkyboxMaterial(LmbrCentral::MaterialHandle material);
         static void SetSkyboxAngle(float angle);
         static void SetSkyboxStretch(float amount);
+
+        static float GetMoonLatitude();
+        static void SetMoonLatitude(float latitude, bool forceUpdate);
+
+        static float GetMoonLongitude();
+        static void SetMoonLongitude(float longitude, bool forceUpdate);
+
+        static float GetSunLatitude();
+        static void SetSunLatitude(float latitude, bool forceUpdate);
+
+        static float GetSunLongitude();
+        static void SetSunLongitude(float longitude, bool forceUpdate);
+
+        static AZ::Vector3 GetWindDirection();
+        static void SetWindDirection(const AZ::Vector3& windDir);
     };
 }

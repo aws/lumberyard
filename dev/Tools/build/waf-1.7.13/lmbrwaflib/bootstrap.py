@@ -134,7 +134,8 @@ def run_bootstrap_tool(ctx, ly_params, setup_assistant_third_party_override):
         setup_symlinks_arg.mode = "create"
         setup_symlinks_arg.singleThread = False
 
-        setup_symlinks.setup_symlinks(setup_symlinks_arg)
+        if setup_symlinks.setup_symlinks(setup_symlinks_arg) is False:
+            ctx.fatal('[ERROR] Failed to setup your symlinks.')
 
     # Cannot find setup script, run executable instead
     else:

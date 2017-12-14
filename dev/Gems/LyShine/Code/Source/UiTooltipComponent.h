@@ -35,7 +35,7 @@ public: // member functions
     ~UiTooltipComponent() override;
 
     // UiUpdateInterface
-    void Update() override;
+    void Update(float deltaTime) override;
     // ~UiUpdateInterface
 
     // UiInteractableNotifications

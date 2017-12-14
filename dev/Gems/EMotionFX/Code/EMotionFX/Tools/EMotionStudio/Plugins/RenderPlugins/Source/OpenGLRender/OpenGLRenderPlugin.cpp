@@ -160,7 +160,7 @@ namespace EMStudio
     void OpenGLRenderPlugin::RenderActorInstance(EMotionFX::ActorInstance* actorInstance, float timePassedInSeconds)
     {
         // extract the RenderGL and EMStudio actors
-        RenderGL::GLActor* renderActor = actorInstance->GetCustomData<RenderGL::GLActor>();
+        RenderGL::GLActor* renderActor = static_cast<RenderGL::GLActor*>(actorInstance->GetCustomData());
         if (renderActor == nullptr)
         {
             return;
@@ -173,7 +173,20 @@ namespace EMStudio
         // call the base class on render which renders everything else
         RenderPlugin::UpdateActorInstance(actorInstance, timePassedInSeconds);
 
-        actorInstance->UpdateMeshDeformers(timePassedInSeconds);
+        // Update the mesh deformers (perform cpu skinning and morphing) when needed.
+        if (widget->GetRenderFlag(RenderViewWidget::RENDER_AABB) ||
+            widget->GetRenderFlag(RenderViewWidget::RENDER_COLLISIONMESHES) ||
+            widget->GetRenderFlag(RenderViewWidget::RENDER_FACENORMALS) ||
+            widget->GetRenderFlag(RenderViewWidget::RENDER_TANGENTS) ||
+            widget->GetRenderFlag(RenderViewWidget::RENDER_VERTEXNORMALS) ||
+            widget->GetRenderFlag(RenderViewWidget::RENDER_WIREFRAME) )
+        {              
+            actorInstance->UpdateMeshDeformers(timePassedInSeconds, true);  // Update ALL meshes, even with disabled deformers as we need that data.
+        }
+        else
+        {
+            actorInstance->UpdateMeshDeformers(timePassedInSeconds, false); // Only update cpu deformed meshes for morphing etc, the rest can be skipped (gpu skinned parts).
+        }
 
         // solid mesh rendering
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_SOLID))

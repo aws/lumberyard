@@ -12,11 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
+#include "TrackViewDialog.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewSequence.h"
 #include "TrackViewTrack.h"
 #include "TrackViewSequenceManager.h"
 #include "TrackViewUndo.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CSequenceKeyUIControls
@@ -24,7 +26,7 @@ class CSequenceKeyUIControls
 {
 public:
     CSmartVariableArray mv_table;
-    CSmartVariableEnum<QString> mv_name;
+    CSmartVariableEnum<QString> mv_sequence;
     CSmartVariable<bool> mv_overrideTimes;
     CSmartVariable<float> mv_startTime;
     CSmartVariable<float> mv_endTime;
@@ -32,14 +34,14 @@ public:
     virtual void OnCreateVars()
     {
         AddVariable(mv_table, "Key Properties");
-        AddVariable(mv_table, mv_name, "Sequence");
+        AddVariable(mv_table, mv_sequence, "Sequence");
         AddVariable(mv_table, mv_overrideTimes, "Override Start/End Times");
         AddVariable(mv_table, mv_startTime, "Start Time");
         AddVariable(mv_table, mv_endTime, "End Time");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_Sequence;
+        return paramType == AnimParamType::Sequence;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -73,14 +75,18 @@ bool CSequenceKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedK
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Sequence)
+        if (paramType == AnimParamType::Sequence)
         {
             std::vector<CBaseObject*> objects;
             CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
 
-            // fill list with available items
-            mv_name.SetEnumList(NULL);
+            /////////////////////////////////////////////////////////////////////////////////
+            // fill sequence comboBox with available sequences
+            mv_sequence.SetEnumList(NULL);
 
+            // Insert '<None>' empty enum
+            mv_sequence->AddEnumItem(QObject::tr("<None>"), CTrackViewDialog::GetEntityIdAsString(AZ::EntityId(AZ::EntityId::InvalidEntityId)));
+            
             const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
 
             for (int i = 0; i < pSequenceManager->GetCount(); ++i)
@@ -91,18 +97,25 @@ bool CSequenceKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedK
                 if (bNotMe && bNotParent)
                 {
                     string seqName = pCurrentSequence->GetName();
-                    mv_name->AddEnumItem(seqName.c_str(), seqName.c_str());
+
+                    QString ownerIdString = CTrackViewDialog::GetEntityIdAsString(pCurrentSequence->GetSequenceComponentEntityId());
+                    mv_sequence->AddEnumItem(seqName.c_str(), ownerIdString);
                 }
             }
 
+            /////////////////////////////////////////////////////////////////////////////////
+            // fill Key Properties with selected key values
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
-
-            mv_name = sequenceKey.szSelection.c_str();
+            
+            QString entityIdString = CTrackViewDialog::GetEntityIdAsString((sequenceKey.sequenceEntityId));
+            mv_sequence = entityIdString;            
+           
             mv_overrideTimes = sequenceKey.bOverrideTimes;
             if (!sequenceKey.bOverrideTimes)
             {
-                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(sequenceKey.szSelection.c_str());
+                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(sequenceKey.sequenceEntityId);
+
                 if (pSequence)
                 {
                     sequenceKey.fStartTime = pSequence->GetTimeRange().start;
@@ -139,21 +152,24 @@ void CSequenceKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Sequence)
+        if (paramType == AnimParamType::Sequence)
         {
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
 
-            if (pVar == mv_name.GetVar())
+            AZ::EntityId seqOwnerId;
+            if (pVar == mv_sequence.GetVar())
             {
-                QString sName;
-                sName = mv_name;
-                sequenceKey.szSelection = sName.toLatin1().data();
+                QString entityIdString = mv_sequence;
+                seqOwnerId = AZ::EntityId(static_cast<AZ::u64>(entityIdString.toULongLong()));
+
+                sequenceKey.szSelection.clear();            // clear deprecated legacy data
+                sequenceKey.sequenceEntityId = seqOwnerId;
             }
 
             SyncValue(mv_overrideTimes, sequenceKey.bOverrideTimes, false, pVar);
 
-            IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(sequenceKey.szSelection.c_str());
+            IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(seqOwnerId);
 
             if (!sequenceKey.bOverrideTimes)
             {

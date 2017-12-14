@@ -319,17 +319,17 @@ void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMission::ExportAnimations(XmlNodeRef& root)
+void CMission::ExportLegacyAnimations(XmlNodeRef& root)
 {
     XmlNodeRef mission = XmlHelpers::CreateXmlNode("Mission");
     mission->setAttr("Name", m_name.toLatin1().data());
 
-    XmlNodeRef AnimNode = XmlHelpers::CreateXmlNode("MovieData");
-    GetIEditor()->GetMovieSystem()->Serialize(AnimNode, false);
+    XmlNodeRef movieDataNode = XmlHelpers::CreateXmlNode("MovieData");
+    GetIEditor()->GetMovieSystem()->Serialize(movieDataNode, false);
 
-    for (int i = 0; i < AnimNode->getChildCount(); i++)
+    for (int i = 0; i < movieDataNode->getChildCount(); i++)
     {
-        mission->addChild(AnimNode->getChild(i));
+        mission->addChild(movieDataNode->getChild(i));
     }
     root->addChild(mission);
 }

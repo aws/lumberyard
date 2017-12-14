@@ -58,7 +58,7 @@ namespace BPython
         return mc;
     }
 
-    void CompileModel(CD::SMainContext& mc, bool bForce)
+    void CompileModel(const CD::SMainContext& mc, bool bForce)
     {
         if (bForce || s_bdpc.bAutomaticUpdateMesh)
         {
@@ -66,7 +66,7 @@ namespace BPython
         }
     }
 
-    void UpdateSelection(CD::SMainContext& mc)
+    void UpdateSelection(const CD::SMainContext& mc)
     {
         CD::UpdateDrawnEdges(mc);
         if (CD::GetDesigner())

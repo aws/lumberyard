@@ -78,8 +78,6 @@ class android_manifest_merger(Task):
                     Logs.debug('android_library: Output manifest not found')
                     return RUN_ME
 
-                output.sig = Utils.h_file(output.abspath())
-
         return result
 
 
@@ -122,7 +120,9 @@ def process_aar(self):
     """
     Find the Android library and unpack it so it's resources can be used by other modules
     """
-    if self.bld.env['PLATFORM'] not in ('android_armv7_clang', 'android_armv7_gcc', 'project_generator'):
+    bld = self.bld
+    platform = bld.env['PLATFORM']
+    if not (bld.is_android_platform(platform) or platform =='project_generator'):
         Logs.debug('android_library: Skipping the reading of the aar')
         return
 

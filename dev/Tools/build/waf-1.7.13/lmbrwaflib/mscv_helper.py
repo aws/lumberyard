@@ -117,7 +117,32 @@ def exec_command_msvc(self, *k, **kw):
     Change the command-line execution for msvc programs.
     Instead of quoting all the paths and keep using the shell, we can just join the options msvc is interested in
     """
+    # If bullseye coverage tool is in the environment, and we are executing the CXX or C compiler, then
+    # we prefix with the bullseye coverage tool. Otherwise, just run the regular tools.
+    # Ideally we need a way to do this cleanly on other platforms, but this implies a post hook of some kind to change
+    # the CXX task run_str, and I could not immediately see a clean way to do that, especially conditionally as
+    # we need to do below.
+    if 'BULL_COVC' in self.env:
         
+        excluded_modules = getattr(self.generator.bld.options,'bullseye_excluded_modules',"").replace(' ', '').split(',')
+        if "" in excluded_modules:
+            excluded_modules.remove("")
+
+        # Figure out which package we are building, and check if it is in the list of packages we want coverage for
+        # If the package list is empty, then we do coverage building for the whole project.
+        # This applies to the CC/CXX steps. We must always link with coverage if we are going to get measurements.
+        included_modules = getattr(self.generator.bld.options,'bullseye_included_modules',"").replace(' ', '').split(',')
+        if "" in included_modules:
+            included_modules.remove("")
+
+        if self.generator.name not in excluded_modules and (not included_modules or self.generator.name in included_modules):
+            if k[0][0] == self.env['CXX'] or k[0][0] == self.env['CC']:
+                k = ([self.env['BULL_COVC'], '--file', self.env['BULL_COV_FILE']] + k[0],)
+
+    # We must link with bullseye regardless of which way the project is set (with or without coverage) to avoid link errors with included libraries.
+    if 'BULL_COVLINK' in self.env and (k[0][0] == self.env['LINK'] or k[0][0] == self.env['LINK_CXX'] or k[0][0] == self.env['LINK_CC']):
+        k = ([self.env['BULL_COVLINK']] + k[0],)
+
     # 1) Join options that carry no space are joined e.g. /Fo FilePath -> /FoFilePath
     # 2) Join options that carry a ':' as last character : e.g. /OUT: FilePath -> /OUT:FilePath
     if isinstance(k[0], list):
@@ -197,9 +222,9 @@ def set_pdb_flags(self):
 
     if last_debug_option in ['/Zi', '/ZI']:
         # Compute PDB file path
-        pdb_folder = self.path.get_bld()
-        pdb_file = pdb_folder.make_node(str(self.idx) + '.vc120.pdb')
-        pdb_cxxflag = '/Fd' + pdb_file.abspath() + ''
+        pdb_folder = self.path.get_bld().make_node(str(self.idx))
+        pdb_cxxflag = '/Fd{}'.format(pdb_folder.abspath())
+
 
         # Make sure the PDB folder exists
         pdb_folder.mkdir()
@@ -810,6 +835,26 @@ def find_msvc(conf):
     # c/c++ compiler
     v['CC'] = v['CXX'] = cxx[0]
     v['CC_NAME'] = v['CXX_NAME'] = 'msvc'
+
+    # Bullseye code coverage
+    if conf.is_option_true('use_bullseye_coverage'):
+        # TODO: Error handling for this is opaque. This will fail the MSVS 2015 tool check,
+        # and not say anything about bullseye being missing.
+        try:
+            covc = conf.find_program('covc',var='BULL_COVC',path_list = path, silent_output=True)
+            covlink = conf.find_program('covlink',var='BULL_COVLINK',path_list = path, silent_output=True)
+            covselect = conf.find_program('covselect',var='BULL_COVSELECT',path_list = path, silent_output=True)
+            v['BULL_COVC'] = covc
+            v['BULL_COVLINK'] = covlink
+            v['BULL_COV_FILE'] = conf.CreateRootRelativePath(conf.options.bullseye_cov_file)
+            # Update the coverage file with the region selections detailed in the settings regions parameters
+            # NOTE: should we clear other settings at this point, or allow them to accumulate?
+            # Maybe we need a flag for that in the setup?
+            regions = conf.options.bullseye_coverage_regions.replace(' ','').split(',')
+            conf.cmd_and_log(([covselect] + ['--file', v['BULL_COV_FILE'], '-a'] + regions))
+        except:
+            Logs.error('Could not find the Bullseye Coverage tools on the path, or coverage tools are not correctly installed. Coverage build disabled.')
+
 
     # linker
     if not v['LINK_CXX']:

@@ -1,10 +1,31 @@
 <div class="sidebar-container" [@sidebarState]="sidebarState" [class.sidebar-collapse]="sidebarState === 'Collapsed'">
-    <div class="sidebar-main">
+    <div class="sidebar-main" [ngClass]="(sidebarState === 'Collapsed') ? 'collapsed' : 'expanded'">
         <div class="sidebar-links">
-            <a routerLink="cloudgems" (click)="loadGemIndex(gemService.currentGem)" routerLinkActive="active">
+            <a routerLink="/game/cloudgems" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
                 <i class="fa fa-home fa-lg" aria-hidden="true"></i>
                 <span *ngIf="sidebarState === 'Expanded'"> Cloud Gems </span>
             </a>
+            <div *ngIf="sidebarState === 'Expanded'">
+                <ng-container [ngSwitch]="gemService.currentGems.length === 0 && !gemService.isLoading">
+                    <!-- Case where there aren't any gems and we're done loading -->
+                    <div *ngSwitchCase="true"> </div>
+                    <!-- Case where we might still be loading gems -->
+                    <div *ngSwitchCase="false"> 
+                        <div class="child-links" [ngSwitch]="gemService.isLoading">
+                            <div *ngSwitchCase="true">
+                                <loading-spinner></loading-spinner>
+                            </div>
+                            <div *ngSwitchCase="false">
+                                <div *ngFor="let gem of gemService.currentGems" class="sidebar-links">
+                                    <a class="child-link" [routerLink]="['/game/cloudgems/', gem.identifier]" routerLinkActive="active"> 
+                                        {{gem.displayName}} 
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
             <a routerLink="support" routerLinkActive="active">
                 <i class="fa fa-life-ring fa-lg" aria-hidden="true"></i>
                 <span *ngIf="sidebarState === 'Expanded'"> Support </span>
@@ -15,12 +36,22 @@
             </a>
         </div>
     </div>
-    <div class="sidebar-footer">
+    <div class="sidebar-footer" [ngClass]="(sidebarState === 'Collapsed') ? 'collapsed' : 'expanded'">
         <div class="sidebar-links">
-            <a class="admin-link-section" routerLink="admin" routerLinkActive="active">
+            <a class="admin-link-section" routerLink="/game/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
                 <i class="fa fa-cog fa-lg" aria-hidden="true"></i>
                 <span *ngIf="sidebarState === 'Expanded'">Administration</span>
             </a>
+            <div *ngIf="sidebarState === 'Expanded'">
+                <div class="child-links">
+                    <a class="child-link admin-user-mgt" routerLink="/game/admin/users" routerLinkActive="active">
+                        User Administration
+                    </a>
+                    <a class="child-link admin-proj-logs" routerLink="/game/admin/logs" routerLinkActive="active">
+                        Project Logs
+                    </a>
+                </div>
+            </div>
         </div>
         <div class="sidebar-close" (click)="sidebarState = (sidebarState === 'Expanded') ? 'Collapsed' : 'Expanded'">
             <i [ngClass]="sidebarState === 'Expanded' ? 'fa-angle-double-left' : 'fa-angle-double-right'" class="fa fa-angle-double-left fa-lg" aria-hidden="true"></i>

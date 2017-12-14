@@ -29,6 +29,8 @@ namespace AZ
             explicit SceneConverter(const AZStd::shared_ptr<ISceneConfig>& config);
 
             void Release() override;
+            void Init(const ConvertorInitContext& context) override;
+
             ICompiler* CreateCompiler() override;
             bool SupportsMultithreading() const override;
             const char* GetExt(int index) const override;
@@ -36,6 +38,7 @@ namespace AZ
         private:
             AZStd::shared_ptr<ISceneConfig> m_config;
             AZStd::vector<AZStd::string> m_extensions;
+            AZStd::string m_appRoot;
         };
     }
 }

@@ -620,7 +620,7 @@ namespace EMotionFX
 
 
     // draw a debug line
-    void EventManager::OnDrawLine(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)
+    void EventManager::OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)
     {
         // get the number of event handlers and iterate through them
         const uint32 numEventHandlers = mEventHandlers.GetLength();
@@ -632,7 +632,7 @@ namespace EMotionFX
 
 
     // draw a debug triangle
-    void EventManager::OnDrawTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)
+    void EventManager::OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)
     {
         // get the number of event handlers and iterate through them
         const uint32 numEventHandlers = mEventHandlers.GetLength();
@@ -832,7 +832,7 @@ namespace EMotionFX
     }
 
 
-    void EventManager::OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const MCore::Vector3& offset)
+    void EventManager::OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset)
     {
         // get the number of event handlers and iterate through them
         const uint32 numEventHandlers = mEventHandlers.GetLength();
@@ -934,7 +934,7 @@ namespace EMotionFX
 
 
     // perform a ray intersection test
-    bool EventManager::OnRayIntersectionTest(const MCore::Vector3& start, const MCore::Vector3& end, IntersectionInfo* outIntersectInfo)
+    bool EventManager::OnRayIntersectionTest(const AZ::Vector3& start, const AZ::Vector3& end, IntersectionInfo* outIntersectInfo)
     {
         // get the number of event handlers and iterate through them
         const uint32 numEventHandlers = mEventHandlers.GetLength();

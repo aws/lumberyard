@@ -33,21 +33,25 @@ namespace ScriptCanvasEditor
         AZ_RTTI(ScriptCanvasAssetHolder, "{3E80CEE3-2932-4DC1-AADF-398FDDC6DEFE}");
         AZ_CLASS_ALLOCATOR(ScriptCanvasAssetHolder, AZ::SystemAllocator, 0);
 
+        using ScriptChangedCB = AZStd::function<void(const AZ::Data::Asset<ScriptCanvasAsset>&)>;
+
         ScriptCanvasAssetHolder();
-        ScriptCanvasAssetHolder(AZ::Data::Asset<ScriptCanvasAsset> asset);
+        ScriptCanvasAssetHolder(AZ::Data::Asset<ScriptCanvasAsset> asset, const ScriptChangedCB& = {});
         ~ScriptCanvasAssetHolder() override;
         
         static void Reflect(AZ::ReflectContext* context);
-        void Init();
+        void Init(AZ::EntityId ownerId = AZ::EntityId());
 
         void SetAsset(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
         AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const;
 
         AZ::EntityId GetGraphId() const;
-        void ActivateAssetData();
 
         void LaunchScriptCanvasEditor(const AZ::Data::AssetId&, const AZ::Data::AssetType&) const;
         void OpenEditor() const;
+
+        void SetScriptChangedCB(const ScriptChangedCB&);
+        void Load(bool loadBlocking = false);
 
     protected:
 
@@ -64,8 +68,8 @@ namespace ScriptCanvasEditor
 
         AZ::Data::Asset<ScriptCanvasAsset> m_scriptCanvasAsset;
 
-        // virtual property to implement button function
-        bool m_openEditorButton = false;
+        AZ::EntityId m_ownerId; // Id of Entity which stores this AssetHolder object
+        ScriptChangedCB m_scriptNotifyCallback;
     };
 
 }

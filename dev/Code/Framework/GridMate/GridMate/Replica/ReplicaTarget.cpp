@@ -41,10 +41,13 @@ namespace
 
 namespace GridMate
 {
+    bool ReplicaTarget::k_enableAck = false;
+
     ReplicaTarget::ReplicaTarget()
         : m_peer(nullptr)
         , m_flags(0)
         , m_slotMask(0)
+        , m_replicaRevision(0)
     {
         InitNode<ReplicaTarget>(m_replicaHook);
         InitNode<ReplicaTarget>(m_peerHook);

@@ -178,7 +178,6 @@ namespace
             newTag = textTag;
 
             textTag->text = nodeContent;
-
         }
         else if (AZStd::string(node->getTag()) == "root")
         {
@@ -234,7 +233,7 @@ void TextMarkup::CopyCharData(const AZStd::string& sourceBuffer, AZStd::string& 
     {
         DumpCharData(markupRootTag, targetBuffer);
     }
-    
+
     if (targetBuffer.empty())
     {
         // If, for some reason we couldn't parse the text as XML, we simply

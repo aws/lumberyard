@@ -69,7 +69,7 @@ void DesignerBaseObject<T>::Merge(CBaseObject* pTargetObj, CD::Model* pTargetMod
     MODEL_SHELF_RECONSTRUCTOR(GetModel());
     MODEL_SHELF_RECONSTRUCTOR_POSTFIX(pTargetModel, 1);
 
-    BrushVec3 offset = pTargetObj->GetPos() - GetWorldTM().GetTranslation();
+    BrushVec3 offset = pTargetObj->GetPos() - DesignerBaseObject<T>::GetWorldTM().GetTranslation();
     Matrix34 targetTM(pTargetObj->GetWorldTM());
     targetTM.SetTranslation(offset);
 
@@ -104,11 +104,11 @@ bool DesignerBaseObject<T>::QueryNearestPos(const BrushVec3& worldPos, BrushVec3
     MODEL_SHELF_RECONSTRUCTOR(GetModel());
     GetModel()->SetShelf(0);
 
-    BrushVec3 modelPos = GetWorldTM().GetInverted().TransformPoint(worldPos);
+    BrushVec3 modelPos = DesignerBaseObject<T>::GetWorldTM().GetInverted().TransformPoint(worldPos);
     BrushVec3 outModelPos;
     if (GetModel()->QueryNearestPosFromBoundary(modelPos, outModelPos))
     {
-        outPos = GetWorldTM().TransformPoint(outModelPos);
+        outPos = DesignerBaseObject<T>::GetWorldTM().TransformPoint(outModelPos);
         return true;
     }
     return false;

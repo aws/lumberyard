@@ -47,14 +47,21 @@ namespace AzRHI
             const __m128* const __restrict sseSrc = (const __m128*)bytes;
             for (size_t i = 0; i < registerCount; i++)
             {
-                _mm_stream_ps((float*)&sseDst[i], sseSrc[i]);
+               sseDst[i] = sseSrc[i];
             }
-            _mm_sfence();
         }
         else
 #endif
         {
-            memcpy(dst, bytes, registerCount << 4);
+            const float* const __restrict copySource = (const float*)bytes;
+            float* const __restrict copyDest = (float*)dst;
+            for (size_t i = 0; i < registerCount * 4; i += 4)
+            {
+                copyDest[i] = copySource[i];
+                copyDest[i + 1] = copySource[i + 1];
+                copyDest[i + 2] = copySource[i + 2];
+                copyDest[i + 3] = copySource[i + 3];
+            }
         }
     }
 

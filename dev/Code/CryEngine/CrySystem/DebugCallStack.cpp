@@ -609,7 +609,7 @@ int DebugCallStack::handleException(EXCEPTION_POINTERS* exception_pointer)
 
     static bool firstTime = true;
 
-    if (g_cvars.sys_dump_aux_threads | g_cvars.sys_keyboard_break)
+    if (g_cvars.sys_dump_aux_threads)
     {
         for (int i = 0; i < g_nDebugThreads; i++)
         {
@@ -956,7 +956,7 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
         fwrite(errorString, strlen(errorString), 1, f);
         if (!gEnv->bIsOutOfMemory)
         {
-            if (g_cvars.sys_dump_aux_threads | g_cvars.sys_keyboard_break)
+            if (g_cvars.sys_dump_aux_threads)
             {
                 funcs.clear();
                 for (int i = 0; i < g_nDebugThreads; i++)

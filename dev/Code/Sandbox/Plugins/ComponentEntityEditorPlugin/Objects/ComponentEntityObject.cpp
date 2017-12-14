@@ -481,7 +481,7 @@ bool CComponentEntityObject::IsSandBoxObjectIsolated()
 
 bool CComponentEntityObject::SetPos(const Vec3& pos, int flags)
 {
-    if (flags & eObjectUpdateFlags_MoveTool)
+    if ((flags & eObjectUpdateFlags_MoveTool) || (flags & eObjectUpdateFlags_UserInput))
     {
         // If we have a parent also in the selection set, don't allow the move tool to manipulate our position.
         if (IsAncestorSelected())
@@ -509,7 +509,7 @@ bool CComponentEntityObject::SetRotation(const Quat& rotate, int flags)
 
 bool CComponentEntityObject::SetScale(const Vec3& scale, int flags)
 {
-    if (flags & eObjectUpdateFlags_ScaleTool)
+    if ((flags & eObjectUpdateFlags_ScaleTool) || (flags & eObjectUpdateFlags_UserInput))
     {
         // If we have a parent also in the selection set, don't allow the scale tool to manipulate our position.
         if (IsAncestorSelected())
@@ -640,14 +640,8 @@ void CComponentEntityObject::OnTransformChanged(const AZ::Transform& local, cons
     if (m_transformReentryGuard) // Ignore if action originated from Sandbox.
     {
         EditorActionScope transformChange(m_transformReentryGuard);
-
-        AZ::Transform transform = world;
-        const AZ::Vector3 scale = transform.ExtractScaleExact();
-
-        SetLocalTM(AZVec3ToLYVec3(transform.GetTranslation()),
-            AZQuaternionToLYQuaternion(AZ::Quaternion::CreateFromTransform(transform)),
-            AZVec3ToLYVec3(scale),
-            eObjectUpdateFlags_Animated /*Don't trigger undos*/);
+        Matrix34 worlTM = AZTransformToLYTransform(world);
+        SetLocalTM(worlTM, eObjectUpdateFlags_Animated);
     }
 }
 

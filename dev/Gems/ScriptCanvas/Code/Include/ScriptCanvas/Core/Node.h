@@ -29,8 +29,7 @@
 #include <ScriptCanvas/Grammar/NodeVisitor.h>
 #include <ScriptCanvas/Core/Contracts/TypeContract.h>
 
-#include <AzCore/std/typetraits/tuple_traits.h>
-#include <tuple>
+#include <AzCore/std/tuple.h>
 
 #define SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(lambdaInterior)\
     int dummy[]{ 0, ( lambdaInterior , 0)... };\
@@ -38,6 +37,20 @@
 
 namespace ScriptCanvas
 {
+    namespace Internal
+    {
+        template<typename t_Func, t_Func function, typename t_Traits, size_t NumOutputs>
+        struct MultipleOutputHelper;
+
+        template<typename ResultType, typename t_Traits, typename>
+        struct OutputSlotHelper;
+
+        template<typename ResultType, typename t_Traits, typename>
+        struct PushOutputHelper;
+
+        template<typename ResultType, typename ResultIndexSequence, typename t_Func, t_Func function, typename t_Traits>
+        struct CallHelper;
+    }
     class Graph;
 
     struct BehaviorContextMethodHelper;
@@ -99,6 +112,24 @@ namespace ScriptCanvas
         friend struct BehaviorContextMethodHelper;
 
     public:
+        template<size_t... inputDatumIndices>
+        struct SetDefaultValuesByIndex
+        {
+            template<typename... t_Args>
+            AZ_INLINE static void _(Node& node, t_Args&&... args)
+            {
+                Help(node, AZStd::make_index_sequence<sizeof...(t_Args)>(), AZStd::forward<t_Args>(args)...);
+            }
+
+        private:
+            template<AZStd::size_t... Is, typename... t_Args>
+            AZ_INLINE static void Help(Node& node, AZStd::index_sequence<Is...>, t_Args&&... args)
+            {
+                static int indices[] = { inputDatumIndices... };
+                AZ_STATIC_ASSERT(sizeof...(Is) == AZ_ARRAY_SIZE(indices), "size of default values doesn't match input datum indices for them");
+                SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(*node.ModInput(indices[Is])->template ModAs<AZStd::decay_t<t_Args>>() = AZStd::forward<t_Args>(args));
+            }
+        };
 
         AZ_COMPONENT(Node, "{52B454AE-FA7E-4FE9-87D3-A1CAB235C691}");
 
@@ -159,6 +190,7 @@ namespace ScriptCanvas
 
         //! returns a const list of nodes connected to slot(s) of the specified type
         NodePtrConstList GetConnectedNodesByType(SlotType slotType) const;
+        AZStd::vector<AZStd::pair<const Node*, SlotId>> GetConnectedNodesAndSlotsByType(SlotType slotType) const;
 
         bool IsConnected(const Slot& slot) const;
 
@@ -184,71 +216,13 @@ namespace ScriptCanvas
 
         //! Some nodes may need to initialize entity references to the entity that owns the graph.
         virtual void InitializeDefaultEntityReferences() {}
-
+        
+        bool IsTargetInDataFlowPath(const Node* targetNode) const;
+        bool IsInEventHandlingScope(const ID& possibleEventHandler) const;
+        
+        virtual void MarkDefaultableInput();
+        
     protected:
-        template<typename t_Func, t_Func function, typename t_Traits, typename t_Result>
-        struct OutputHelper
-        {
-            AZ_FORCE_INLINE static void Add(Node& node)
-            {
-                node.AddOutputTypeSlot(AZStd::string::format("Result: %s", Data::GetName(Data::FromAZType<t_Result>())).c_str(), "", Data::FromAZType<t_Result>(), OutputStorage::Optional);
-            }
-
-            template<typename... t_Args, AZStd::size_t... Is>
-            AZ_FORCE_INLINE static void Call(Node& node, AZStd::Internal::pack_traits_arg_sequence<t_Args...>, AZStd::index_sequence<Is...>)
-            {
-                node.PushOutput
-                (Datum::CreateInitializedCopy<t_Result, AZStd::is_pointer<typename AZStd::remove_reference<t_Result>::type>::value, AZStd::is_pointer<typename AZStd::remove_reference<t_Result>::type>::value || AZStd::is_reference<t_Result>::value>
-                    (function(*node.GetInput(Is)->GetAs<AZStd::decay_t<t_Args>>()...))
-                    , node.GetSlots()[t_Traits::s_resultsSlotIndicesStart]);
-            }
-        };
-
-        template<typename t_Func, t_Func function, typename t_Traits>
-        struct OutputHelper<t_Func, function, t_Traits, void>
-        {
-            AZ_FORCE_INLINE static void Add(Node&)
-            {}
-
-            template<typename... t_Args, AZStd::size_t... Is>
-            AZ_FORCE_INLINE static void Call(Node& node, AZStd::Internal::pack_traits_arg_sequence<t_Args...>, AZStd::index_sequence<Is...>)
-            {
-                function(*node.GetInput(Is)->GetAs<AZStd::decay_t<t_Args>>()...);
-            }
-        };
-
-        template<typename t_Func, t_Func function, typename t_Traits, typename t_Result>
-        struct MultipleOutputHelper
-        {
-            using ResultTypeSequence = typename AZStd::tuple_elements_sequence<t_Result>::elements_sequence;
-            using ResultIndexSequence = AZStd::make_index_sequence<AZStd::tuple_elements_sequence<t_Result>::size>;
-
-            AZ_FORCE_INLINE static void Add(Node& node)
-            {
-                AddOutputSlotHelper(node, ResultTypeSequence(), ResultIndexSequence());
-            }
-
-            template<typename... t_Args, AZStd::size_t... Is>
-            AZ_FORCE_INLINE static void Call(Node& node, AZStd::Internal::pack_traits_arg_sequence<t_Args...>, AZStd::index_sequence<Is...>)
-            {
-                t_Result tupleResult = function(*node.GetInput(Is)->GetAs<AZStd::decay_t<t_Args>>()...);
-                PushOutputHelper(node, tupleResult, ResultTypeSequence(), ResultIndexSequence());
-            }
-
-        private:
-            template<typename... t_Outputs, AZStd::size_t... Is>
-            AZ_FORCE_INLINE static void AddOutputSlotHelper(Node& node, AZStd::Internal::pack_traits_arg_sequence<t_Outputs...>, AZStd::index_sequence<Is...>)
-            {
-                SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(node.AddOutputTypeSlot(AZStd::string::format("%s: %s", t_Traits::GetResultName(Is), Data::GetName(Data::FromAZType<AZStd::decay_t<t_Outputs>>())).c_str(), "", Data::FromAZType<AZStd::decay_t<t_Outputs>>(), OutputStorage::Optional));
-            }
-
-            template<typename... t_Outputs, AZStd::size_t... Is>
-            AZ_FORCE_INLINE static void PushOutputHelper(Node& node, t_Result& tupleResult, AZStd::Internal::pack_traits_arg_sequence<t_Outputs...>, AZStd::index_sequence<Is...>)
-            {
-                SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(node.PushOutput(Datum::CreateInitializedCopy<t_Outputs, AZStd::is_pointer<typename AZStd::remove_reference<t_Outputs>::type>::value, AZStd::is_pointer<typename AZStd::remove_reference<t_Outputs>::type>::value || AZStd::is_reference<t_Outputs>::value>(std::get<Is>(tupleResult)), node.GetSlots()[t_Traits::s_resultsSlotIndicesStart + Is]));
-            }
-        };
-
         using SlotList = AZStd::vector<Slot>;
 
         static const Datum* GetInput(const Node& node, int index);
@@ -264,6 +238,7 @@ namespace ScriptCanvas
         AZStd::unordered_map<int, int> m_inputIndexBySlotIndex;
         AZStd::vector<Data::Type> m_nonDatumTypes;
         AZStd::unordered_map<int, int> m_nonDatumTypeIndexBySlotIndex;
+        AZStd::unordered_set<SlotId> m_possiblyStaleInput;
 
         // EditorNodeRequestsBus::Handler
         Datum* ModInput(const SlotId& slotID) override;
@@ -273,6 +248,7 @@ namespace ScriptCanvas
 
         Datum* ModInput(int index);
         const Datum* GetInput(int index) const;
+        virtual void SetDefault(const SlotId& slotID);
 
         // add a typed input slot, and (generic) storage for the input
         struct SlotConfiguration
@@ -304,19 +280,24 @@ namespace ScriptCanvas
         SlotId AddInputDatumUntypedSlot(AZStd::string_view name, const AZStd::vector<ContractDescriptor>* contracts = nullptr, AZStd::string_view toolTip = AZStd::string_view(), bool addUniqueSlotByNameAndType = true);
         // add a typed input slot, but do not add storage for the input
         enum class InputTypeContract { CustomType, DatumType, None };
-        SlotId AddInputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, Data::Type&& type, InputTypeContract contractType, bool addUniqueSlotByNameAndType = true);
+        SlotId AddInputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, InputTypeContract contractType, bool addUniqueSlotByNameAndType = true);
         SlotId AddInputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const AZ::BehaviorParameter& typeDesc, InputTypeContract contractType, bool addUniqueSlotByNameAndType = true);
         // add a type not associated with a stored datum
-        void AddNonDatumType(Data::Type&& type, int slotIndex);
+        void AddNonDatumType(const Data::Type& type, int slotIndex);
         // add a typed output slot
         enum class OutputStorage { Optional, Required };
-        SlotId AddOutputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, Data::Type&& type, OutputStorage outputStorage, bool addUniqueSlotByNameAndType = true);
+        SlotId AddOutputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, OutputStorage outputStorage, bool addUniqueSlotByNameAndType = true);
         // Adds or finds a slot with the corresponding name, type, contracts. This operation is idempotent only if addUniqueSlotByNameAndType is true
         SlotId AddSlot(const SlotConfiguration&);
         // Adds or finds a slot with the corresponding name, type, contracts. This operation is idempotent only if addUniqueSlotByNameAndType is true
         SlotId AddSlot(AZStd::string_view name, AZStd::string_view toolTip, SlotType type, const AZStd::vector<ContractDescriptor>& contractDescs = AZStd::vector<ContractDescriptor>{}, bool addUniqueSlotByNameAndType = true);
         // return success/failure and resulting slot index and slotID
         bool AddSlotInternal(const SlotConfiguration&, SlotId& slotIDOut, int& indexOut);
+        // restored inputs to graph defaults, if necessary and possible
+        void RefreshInput();
+        // Removes the slot on this node that matches the supplied slotId
+        bool RemoveSlot(const SlotId& slotId);
+
         // some slots change based on the input connected to them
         enum class DynamicTypeArity { Single, Multiple };
         bool DynamicSlotAcceptsType(const SlotId& slotID, const Data::Type& type, DynamicTypeArity arity, const Slot& outputSlot, const AZStd::vector<Slot*>& inputSlots) const;
@@ -366,7 +347,8 @@ namespace ScriptCanvas
         //////////////////////////////////////////////////////////////////////////
         //! The body of the node's execution, implement the node's work here.
         void PushOutput(const Datum& output, const Slot& slot) const;
-        void SetGraphId(const AZ::EntityId& id);
+        void SetGraph(Graph* graph);
+        virtual void OnGraphSet(Graph* graph) {}
         // on activate, simple expressions need to push this data
         virtual void SetInput(const Datum& input, const SlotId& id);
 
@@ -386,10 +368,14 @@ namespace ScriptCanvas
         //! to the EntityId of the entity that owns the graph (i.e. "Self")
         void ResolveSelfEntityReferences(const AZ::EntityId& graphOwnerId);
 
+        bool IsTargetInDataFlowPath(const ID& targetNodeId, AZStd::unordered_set<ID>& path) const;
+        bool IsInEventHandlingScope(const ID& eventHandler, const AZStd::vector<SlotId>& eventSlots, const SlotId& connectionSlot, AZStd::unordered_set<ID>& path) const;
+
+
         //////////////////////////////////////////////////////////////////////////
         /// VM 0.1 begin
     public:
-        virtual void Visit(NodeVisitor& visitor) const { AZ_Assert(false, "This class isn't abstract (yet), but this function must be overridden in your node"); }
+        virtual void Visit(NodeVisitor& visitor) const { AZ_Assert(false, "This class isn't abstract (yet), but this function must be overridden in your node: %s", GetDebugName()); }
         const Node* GetNextExecutableNode() const;
         /// VM 0.1 end
         //////////////////////////////////////////////////////////////////////////
@@ -419,6 +405,16 @@ namespace ScriptCanvas
             SetInput(input, GetSlotId(slotName));
         }
 
+        AZ_INLINE const Datum* GetInput_UNIT_TEST(int index) const
+        {
+            return GetInput(index);
+        }
+
+        AZ_INLINE void SetInputDatum_UNIT_TEST(int index, const Datum& input)
+        {
+            *ModInput(index) = input;
+        }
+
         // initializes the node input to the ADDRESS of the value passed in, so you get a behavior context object with a pointer to the value
         // this distinction really only applied to vectors, for now (soon for all native SC math types)
         template<typename t_Value>
@@ -428,6 +424,18 @@ namespace ScriptCanvas
             SetInput(input, GetSlotId(slotName));
         }
 #endif//defined(AZ_TESTS_ENABLED)
+
+        template<typename t_Func, t_Func, typename, size_t>
+        friend struct Internal::MultipleOutputHelper;
+
+        template<typename ResultType, typename t_Traits, typename>
+        friend struct Internal::OutputSlotHelper;
+
+        template<typename ResultType, typename t_Traits, typename>
+        friend struct Internal::PushOutputHelper;
+
+        template<typename ResultType, typename ResultIndexSequence, typename t_Func, t_Func function, typename t_Traits>
+        friend struct Internal::CallHelper;
     };
 
 
@@ -461,4 +469,138 @@ namespace ScriptCanvas
 
         return slotIDOut;
     }
+
+    namespace Internal
+    {
+        template<typename, typename = AZStd::void_t<>>
+        struct IsTupleLike : AZStd::false_type {};
+
+        /* 
+        https://blogs.msdn.microsoft.com/vcblog/2015/12/02/partial-support-for-expression-sfinae-in-vs-2015-update-1/
+        VS2013 is unable to deal with the decltype expressions in template arguments(but only in some cases)
+        // This signature would have allowed any type that specializes the std::get template function to produce multiple output slots
+        // UNCOMMENT when VS2013 is no longer supported
+        template<typename ResultType>
+        struct IsTupleLike<ResultType, AZStd::void_t<decltype(AZStd::get<0>(AZStd::declval<ResultType>()))> : AZStd::true_type {};
+        */
+        // TODO: More constrained template that should be removed when VS2013 is no longer supported
+        template<typename... Args>
+        struct IsTupleLike<AZStd::tuple<Args...>, AZStd::void_t<>> : AZStd::true_type {};
+
+        template<typename T, size_t N>
+        struct IsTupleLike<AZStd::array<T, N>, AZStd::void_t<>> : AZStd::true_type {};
+
+        template<typename T1, typename T2>
+        struct IsTupleLike<AZStd::pair<T1, T2>, AZStd::void_t<>> : AZStd::true_type {};
+
+        template<typename ResultType, typename t_Traits, typename = AZStd::void_t<>>
+        struct OutputSlotHelper
+        {
+            template<AZStd::size_t... Is>
+            static void AddOutputSlot(Node& node, AZStd::index_sequence<Is...>)
+            {
+                node.AddOutputTypeSlot(AZStd::string::format("%s: %s", t_Traits::GetResultName(0), Data::GetName(Data::FromAZType<AZStd::decay_t<ResultType>>())),
+                    AZStd::string_view(), Data::FromAZType<AZStd::decay_t<ResultType>>(), Node::OutputStorage::Optional);
+            }
+        };
+
+        template<typename t_Traits>
+        struct OutputSlotHelper<void, t_Traits, void>
+        {
+            template<size_t... Is> static void AddOutputSlot(Node& node, AZStd::index_sequence<Is...>) {}
+        };
+
+        template<typename ResultType, typename t_Traits>
+        struct OutputSlotHelper<ResultType, t_Traits, AZStd::enable_if_t<IsTupleLike<ResultType>::value>>
+        {
+            template<AZStd::size_t... Is>
+            static void AddOutputSlot(Node& node, AZStd::index_sequence<Is...>)
+            {
+                SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(
+                    node.AddOutputTypeSlot(AZStd::string::format("%s: %s", t_Traits::GetResultName(Is), Data::GetName(Data::FromAZType<AZStd::decay_t<AZStd::tuple_element_t<Is, ResultType>>>())),
+                        AZStd::string_view(), Data::FromAZType<AZStd::decay_t<AZStd::tuple_element_t<Is, ResultType>>>(), Node::OutputStorage::Optional));
+            }
+        };
+
+
+        template<typename ResultType, typename t_Traits, typename = AZStd::void_t<>>
+        struct PushOutputHelper
+        {
+            template<size_t... Is>
+            static void PushOutput(Node& node, ResultType&& result, AZStd::index_sequence<Is...>)
+            {
+                node.PushOutput(Datum::CreateInitializedCopy(AZStd::forward<ResultType>(result)), node.GetSlots()[t_Traits::s_resultsSlotIndicesStart]);
+            }
+        };
+
+        template<typename t_Traits>
+        struct PushOutputHelper<void, t_Traits, void>
+        {
+            template<size_t... Is> static void PushOutput(Node& node, AZStd::ignore_t result, AZStd::index_sequence<Is...>) {}
+        };
+
+        template<typename ResultType, typename t_Traits>
+        struct PushOutputHelper<ResultType, t_Traits, AZStd::enable_if_t<IsTupleLike<ResultType>::value>>
+        {
+            template<size_t... Is>
+            static void PushOutput(Node& node, ResultType&& tupleResult, AZStd::index_sequence<Is...>)
+            {
+                SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(node.PushOutput(
+                    Datum::CreateInitializedCopy(AZStd::get<Is>(AZStd::forward<ResultType>(tupleResult))),
+                    node.GetSlots()[t_Traits::s_resultsSlotIndicesStart + Is]));
+            }
+        };
+
+        template<typename ResultType, typename ResultIndexSequence, typename t_Func, t_Func function, typename t_Traits>
+        struct CallHelper
+        {
+            template<typename... t_Args, size_t... ArgIndices>
+            static void Call(Node& node, AZStd::Internal::pack_traits_arg_sequence<t_Args...>, AZStd::index_sequence<ArgIndices...>)
+            {
+                PushOutputHelper<ResultType, t_Traits>::PushOutput(node, AZStd::invoke(function, *node.GetInput(ArgIndices)->GetAs<AZStd::decay_t<t_Args>>()...), ResultIndexSequence());
+            }
+        };
+
+        template<typename ResultIndexSequence, typename t_Func, t_Func function, typename t_Traits>
+        struct CallHelper<void, ResultIndexSequence, t_Func, function, t_Traits>
+        {
+            template<typename... t_Args, size_t... ArgIndices>
+            static void Call(Node& node, AZStd::Internal::pack_traits_arg_sequence<t_Args...>, AZStd::index_sequence<ArgIndices...>)
+            {
+                AZStd::invoke(function, *node.GetInput(ArgIndices)->GetAs<AZStd::decay_t<t_Args>>()...);
+            }
+        };
+
+        template<typename t_Func, t_Func function, typename t_Traits, size_t NumOutputs>
+        struct MultipleOutputHelper
+        {
+            using ResultIndexSequence = AZStd::make_index_sequence<NumOutputs>;
+            using ResultType = AZStd::function_traits_get_result_t<t_Func>;
+
+            static void Add(Node& node)
+            {
+                OutputSlotHelper<ResultType, t_Traits>::AddOutputSlot(node, ResultIndexSequence());
+            }
+
+            static void Call(Node& node)
+            {
+                CallHelper<ResultType, ResultIndexSequence, t_Func, function, t_Traits>::Call(node, typename AZStd::function_traits<t_Func>::arg_sequence{}, AZStd::make_index_sequence<AZStd::function_traits<t_Func>::arity>{});
+            }
+        };
+
+        template<typename t_Func, t_Func function, typename t_Traits, typename t_Result, typename = AZStd::void_t<>>
+        struct MultipleOutputInvokeHelper
+            : MultipleOutputHelper<t_Func, function, t_Traits, 1> {};
+
+        template<typename t_Func, t_Func function, typename t_Traits>
+        struct MultipleOutputInvokeHelper<t_Func, function, t_Traits, void, void>
+            : MultipleOutputHelper<t_Func, function, t_Traits, 0> {};
+
+        template<typename t_Func, t_Func function, typename t_Traits, typename t_Result>
+        struct MultipleOutputInvokeHelper< t_Func, function, t_Traits, t_Result, AZStd::enable_if_t<IsTupleLike<t_Result>::value>>
+            : MultipleOutputHelper<t_Func, function, t_Traits, AZStd::tuple_size<t_Result>::value> {};
+    }
+
+    template<typename t_Func, t_Func function, typename t_Traits>
+    struct MultipleOutputInvoker : Internal::MultipleOutputInvokeHelper<t_Func, function, t_Traits, AZStd::decay_t<AZStd::function_traits_get_result_t<t_Func>>> {};
 }

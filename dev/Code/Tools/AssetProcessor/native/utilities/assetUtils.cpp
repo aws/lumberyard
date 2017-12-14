@@ -14,6 +14,7 @@
 #include "native/utilities/PlatformConfiguration.h"
 #include "native/AssetManager/assetScanner.h"
 #include "native/assetprocessor.h"
+#include "native/AssetDatabase/AssetDatabase.h"
 #include <QByteArray>
 #include <QString>
 #include <QStringList>
@@ -52,7 +53,8 @@
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzFramework/StringFunc/StringFunc.h>
-#include <AzToolsFramework/Engine/EngineUtilities.h>
+#include <AzFramework/API/ApplicationAPI.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <windows.h>
@@ -68,6 +70,17 @@
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+
+#if defined(AZ_PLATFORM_APPLE_IOS)
+const char* const CURRENT_PLATFORM = "ios";
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+const char* const CURRENT_PLATFORM = "osx_gl";
+#elif defined(AZ_PLATFORM_ANDROID)
+const char* const CURRENT_PLATFORM = "es3";
+#elif defined(AZ_PLATFORM_WINDOWS)
+const char* const CURRENT_PLATFORM = "pc";
+#endif
 
 
 namespace AssetUtilsInternal
@@ -78,7 +91,7 @@ namespace AssetUtilsInternal
 
     // so that even if we do init two seeds at exactly the same msec time, theres still this extra
     // changing number
-    static AZStd::atomic_int g_randomNumberSequentialSeed; 
+    static AZStd::atomic_int g_randomNumberSequentialSeed;
     // the Assert Absorber here is used to absorb asserts during regex creation.
     // it only absorbs asserts spawned by this thread;
     class AssertAbsorber
@@ -147,7 +160,7 @@ namespace AssetUtilsInternal
                 }
             }
 
-            //ensure that the output dir is present 
+            //ensure that the output dir is present
             QFileInfo outFileInfo(outputFile);
             if (!outFileInfo.absoluteDir().mkpath("."))
             {
@@ -181,7 +194,7 @@ namespace AssetUtilsInternal
         if (!operationSucceeded)
         {
             //operation failed for the given timeout
-            AZ_Warning(AssetProcessor::ConsoleChannel, false, "WARNING: Could not copy/move source %s to %s, giving up\n", outputFile.toUtf8().constData(), sourceFile.toUtf8().constData());
+            AZ_Warning(AssetProcessor::ConsoleChannel, false, "WARNING: Could not copy/move source %s to %s, giving up\n", sourceFile.toUtf8().constData(), outputFile.toUtf8().constData());
             return false;
         }
         else if (failureOccurredOnce)
@@ -235,7 +248,7 @@ namespace AssetUtilities
             {
                 //if the entry is a file than copy it but before than ensure that the destination file is not present
                 QString destinationFile = destination.absolutePath() + "/" + entry.fileName();
-                
+
                 if (QFile::exists(destinationFile))
                 {
                     if (!QFile::remove(destinationFile))
@@ -246,7 +259,7 @@ namespace AssetUtilities
                 }
 
                 QString sourceFile = source.absolutePath() + "/" + entry.fileName();
-                
+
                 if (!QFile::copy(sourceFile, destinationFile))
                 {
                     AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Unable to copy sourcefile (%s) to destination (%s).\n", sourceFile.toUtf8().data(), destinationFile.toUtf8().data());
@@ -256,18 +269,6 @@ namespace AssetUtilities
         }
 
         return true;
-    }
-
-    QString GetBranchToken()
-    {
-        QDir engineRoot;
-        ComputeAssetRoot(engineRoot);
-        QString token = engineRoot.absolutePath().toLower().replace('/', '_').replace("\\", "_");
-        const AZStd::string tokenStr(token.toUtf8().data());
-        const AZ::Crc32 branchTokenCrc(tokenStr.c_str(), tokenStr.size(), true);
-        char branchToken[12];
-        azsnprintf(branchToken, 12, "0x%08X", static_cast<AZ::u32>(branchTokenCrc));
-        return QString(branchToken);
     }
 
     bool ComputeAssetRoot(QDir& root, const QDir* startingRoot)
@@ -313,7 +314,7 @@ namespace AssetUtilities
             return true;
         }
     }
-    //! Get the external engine root folder if the engine is external to the current root folder.  
+    //! Get the external engine root folder if the engine is external to the current root folder.
     //! If the current root folder is also the engine folder, then this behaves the same as ComputeEngineRoot
     bool ComputeEngineRoot(QDir& root, const QDir* optionalStartingRoot /*= nullptr*/)
     {
@@ -328,18 +329,18 @@ namespace AssetUtilities
         {
             return false;
         }
-        
+
         root = currentRoot;
 
-		AZStd::string assetRoot(currentRoot.absolutePath().toUtf8().data());
-		AZ::Outcome<AZStd::string, AZStd::string> outcome = AzToolsFramework::EngineUtilities::ReadEngineConfigurationValue(assetRoot, AZStd::string("ExternalEnginePath"));
+        const char* engineRoot = nullptr;
+        EBUS_EVENT_RESULT(engineRoot, AzToolsFramework::ToolsApplicationRequestBus, GetEngineRootPath);
+        if (engineRoot != nullptr)
+        {
+            root = QDir(QString(engineRoot));
+            azstrcpy(s_cachedEngineRoot, AZ_MAX_PATH_LEN, root.absolutePath().toUtf8().constData());
+        }
 
-		if (outcome.IsSuccess())
-		{
-			root = QDir(QString(outcome.GetValue().c_str()));
-			azstrcpy(s_cachedEngineRoot, AZ_MAX_PATH_LEN, root.absolutePath().toUtf8().constData());
-		}
-		return true;
+        return true;
     }
 
 
@@ -352,21 +353,27 @@ namespace AssetUtilities
         const char* exedir = dirname(appPath);
         dir = exedir;
         filename = basename(appPath);
-#elif defined(_WIN32)
+#elif defined(AZ_PLATFORM_WINDOWS)
         // in windows, the qtlibs folder is always in the same folder as the exe.
         // objective: find EXE, add libs!
         // cannot use Qt because QT doesn't exist yet.
-        char currentFileName[AZ_MAX_PATH_LEN] = { 0 };
-        char driveName[AZ_MAX_PATH_LEN] = { 0 };
-        char directoryName[AZ_MAX_PATH_LEN] = { 0 };
-        char fileName[AZ_MAX_PATH_LEN] = { 0 };
-        char fileExtension[AZ_MAX_PATH_LEN] = { 0 };
-        GetModuleFileNameA(nullptr, currentFileName, AZ_MAX_PATH_LEN);
-        _splitpath_s(currentFileName, driveName, AZ_MAX_PATH_LEN, directoryName, AZ_MAX_PATH_LEN, fileName, AZ_MAX_PATH_LEN, fileExtension, AZ_MAX_PATH_LEN);
-        _makepath_s(currentFileName, driveName, directoryName, nullptr, nullptr);
-        dir = QString(currentFileName);
-        _makepath_s(currentFileName, nullptr, nullptr, fileName, fileExtension);
-        filename = QString(currentFileName);
+        wchar_t currentFileName[AZ_MAX_PATH_LEN] = { 0 };
+        wchar_t driveName[AZ_MAX_PATH_LEN] = { 0 };
+        wchar_t directoryName[AZ_MAX_PATH_LEN] = { 0 };
+        wchar_t fileName[AZ_MAX_PATH_LEN] = { 0 };
+        wchar_t fileExtension[AZ_MAX_PATH_LEN] = { 0 };
+
+        GetModuleFileNameW(nullptr, currentFileName, AZ_MAX_PATH_LEN);
+        _wsplitpath_s(currentFileName, driveName, AZ_MAX_PATH_LEN, directoryName, AZ_MAX_PATH_LEN, fileName, AZ_MAX_PATH_LEN, fileExtension, AZ_MAX_PATH_LEN);
+        _wmakepath_s(currentFileName, driveName, directoryName, nullptr, nullptr);
+        dir = QString::fromWCharArray(currentFileName);
+        _wmakepath_s(currentFileName, nullptr, nullptr, fileName, fileExtension);
+        filename = QString::fromWCharArray(currentFileName);
+
+        // There is a known bug in GetModuleFileNameX which causes the drive letter to lowercase.
+        // generally, in windows, drive letters are uppercase (in all presentations of them, such as UI, command line, etc).
+        // however, its not actually case sensitive for drive letters.  But we want to remain consistent, so we uppercase it here:
+        dir = dir.mid(0, 1).toUpper() + dir.mid(1);
 #endif
     }
 
@@ -518,7 +525,7 @@ namespace AssetUtilities
         return true;
     }
 
-    QString ComputeGameName(QString initialFolder  /*= QString()*/, bool force)
+    QString ComputeGameName(QString initialFolder /*= QString()*/, bool force)
     {
         if (force || s_gameName[0] == 0)
         {
@@ -553,56 +560,6 @@ namespace AssetUtilities
         return QString::fromUtf8(s_gameName);
     }
 
-    QString ComputePlatformName(int platform)
-    {
-        if (platform & AssetBuilderSDK::Platform_PC)
-        {
-            return "pc";
-        }
-        else if (platform & AssetBuilderSDK::Platform_ES3)
-        {
-            return "es3";
-        }
-        else if (platform & AssetBuilderSDK::Platform_IOS)
-        {
-            return "ios";
-        }
-        else if (platform & AssetBuilderSDK::Platform_OSX)
-        {
-            return "osx_gl";
-        }
-
-
-
-        return QString();
-    }
-
-    int ComputePlatformFlag(QString platform)
-    {
-        int platformFlag = AssetBuilderSDK::Platform_NONE;
-
-        if (QString::compare(platform, "pc", Qt::CaseInsensitive) == 0)
-        {
-            platformFlag = AssetBuilderSDK::Platform_PC;
-        }
-        else if (QString::compare(platform, "es3", Qt::CaseInsensitive) == 0)
-        {
-            platformFlag = AssetBuilderSDK::Platform_ES3;
-        }
-        else if (QString::compare(platform, "ios", Qt::CaseInsensitive) == 0)
-        {
-            platformFlag = AssetBuilderSDK::Platform_IOS;
-        }
-        else if (QString::compare(platform, "osx_gl", Qt::CaseInsensitive) == 0)
-        {
-            platformFlag = AssetBuilderSDK::Platform_OSX;
-        }
-
-
-
-        return platformFlag;
-    }
-
     QString ReadGameNameFromBootstrap(QString initialFolder /*= QString()*/)
     {
         if (initialFolder.isEmpty())
@@ -635,10 +592,19 @@ namespace AssetUtilities
             if (bootstrap.open(QIODevice::ReadOnly))
             {
                 QString contents(bootstrap.readAll());
-                int matchIdx = regExp.indexIn(contents);
-                if (matchIdx != -1)
+                if (contents.length() > 1) // it may just be an EOF marker or CR.
                 {
-                    return regExp.cap(2);
+                    int matchIdx = regExp.indexIn(contents);
+                    if (matchIdx != -1)
+                    {
+                        return regExp.cap(2);
+                    }
+                    else
+                    {
+                        // the file has data in it, we didn't find the key.
+                        // there's no reason to delay further.
+                        return QString();
+                    }
                 }
             }
 
@@ -735,7 +701,7 @@ namespace AssetUtilities
         fileContents = bootstrapFile.readAll();
         bootstrapFile.close();
 
-        //format the new white list 
+        //format the new white list
         QString formattedNewWhiteList = newWhiteList.join(", ");
 
         //if we didn't find a white_list entry then append one
@@ -758,7 +724,7 @@ namespace AssetUtilities
         if (!MakeFileWritable(bootstrapFilename))
         {
             AZ_Warning(AssetProcessor::ConsoleChannel, false, "Failed to make the bootstrap file writable.")
-                return false;
+            return false;
         }
         if (!bootstrapFile.open(QIODevice::WriteOnly))
         {
@@ -880,16 +846,13 @@ namespace AssetUtilities
     QString NormalizeFilePath(const QString& filePath)
     {
         // do NOT convert to absolute paths here.
-        QString copyPath = filePath;
-        copyPath.replace('\\', '/');
-        return copyPath;
+        return QDir::fromNativeSeparators(filePath);
     }
 
     QString NormalizeDirectoryPath(const QString& directoryPath)
     {
-        QString dirPath(directoryPath);
-        dirPath.replace('\\', '/');
-        while ((dirPath.endsWith('/')) && (dirPath.length() > 0))
+        QString dirPath(NormalizeFilePath(directoryPath));
+        while ((dirPath.endsWith('/')))
         {
             dirPath.resize(dirPath.length() - 1);
         }
@@ -952,7 +915,21 @@ namespace AssetUtilities
         QString fileContents;
 
         // do not alter the branch file unless we are able to obtain an exclusive lock.  Other apps (such as NPP) may actually write 0 bytes first, then slowly spool out the remainder)
-        if (!CheckCanLock(bootstrapFilename))
+        QElapsedTimer timer;
+        timer.start();
+        bool hasLock = false;
+        do
+        {
+            if (CheckCanLock(bootstrapFilename))
+            {
+                hasLock = true;
+                break;
+            }
+
+            QThread::msleep(AssetUtilsInternal::g_RetryWaitInterval);
+
+        } while (!timer.hasExpired(10 * AssetUtilsInternal::g_RetryWaitInterval));
+        if (!hasLock)
         {
             AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Unable to lock bootstrap file at: %s\n", bootstrapFilename.toUtf8().constData());
             return false;
@@ -967,7 +944,9 @@ namespace AssetUtilities
         fileContents = bootstrapFile.readAll();
         bootstrapFile.close();
 
-        QString currentBranchToken = GetBranchToken();
+        AZStd::string appBranchToken;
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::CalculateBranchTokenForAppRoot, appBranchToken);
+        QString currentBranchToken(appBranchToken.c_str());
         QString readBranchToken;
 
         // regexp that matches either the beginning of the file, some whitespace, and assetProcessor_branch_token, or,
@@ -1084,6 +1063,55 @@ namespace AssetUtilities
     AZStd::string ComputeJobLogFileName(const AssetBuilderSDK::CreateJobsRequest& createJobsRequest)
     {
         return AZStd::string::format("%s-%s_createJobs.log", createJobsRequest.m_sourceFile.c_str(), createJobsRequest.m_builderid.ToString<AZStd::string>(false).c_str());
+    }
+
+    void ReadJobLog(AzToolsFramework::AssetSystem::JobInfo& jobInfo, AzToolsFramework::AssetSystem::AssetJobLogResponse& response)
+    {
+        AZStd::string logFile = AssetUtilities::ComputeJobLogFolder() + "/" + AssetUtilities::ComputeJobLogFileName(jobInfo);
+        ReadJobLog(logFile.c_str(), response);
+    }
+
+    void ReadJobLog(const char* absolutePath, AzToolsFramework::AssetSystem::AssetJobLogResponse& response)
+    {
+        response.m_isSuccess = false;
+        AZ::IO::HandleType handle = AZ::IO::InvalidHandle;
+        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+        if (!fileIO)
+        {
+            AZ_TracePrintf("AssetProcessorManager", "Error: AssetProcessorManager: FileIO is unavailable\n", absolutePath);
+            response.m_jobLog = "FileIO is unavailable";
+            response.m_isSuccess = false;
+            return;
+        }
+
+        if (!fileIO->Open(absolutePath, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, handle))
+        {
+            AZ_TracePrintf("AssetProcessorManager", "Error: AssetProcessorManager: Failed to find the log file %s for a request.\n", absolutePath);
+
+            response.m_jobLog.append(AZStd::string::format("Error: No log file found for the given log (%s)", absolutePath).c_str());
+            response.m_isSuccess = false;
+
+            return;
+        }
+
+        AZ::u64 actualSize = 0;
+        fileIO->Size(handle, actualSize);
+
+        if (actualSize == 0)
+        {
+            AZ_TracePrintf("AssetProcessorManager", "Error: AssetProcessorManager: Log File %s is empty.\n", absolutePath);
+            response.m_jobLog.append(AZStd::string::format("Error: Log is empty (%s)", absolutePath).c_str());
+            response.m_isSuccess = false;
+            fileIO->Close(handle);
+            return;
+        }
+
+        size_t currentResponseSize = response.m_jobLog.size();
+        response.m_jobLog.resize(currentResponseSize + actualSize + 1);
+
+        fileIO->Read(handle, response.m_jobLog.data() + currentResponseSize, actualSize);
+        fileIO->Close(handle);
+        response.m_isSuccess = true;
     }
 
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail)
@@ -1203,6 +1231,67 @@ namespace AssetUtilities
         return false;
     }
 
+    QString GuessProductNameInDatabase(QString path, AssetProcessor::AssetDatabaseConnection* databaseConnection)
+    {
+        QString productName;
+        QString inputName;
+        QString platformName;
+        QString jobDescription;
+        QString gameName = AssetUtilities::ComputeGameName();
+        AZ::u32 scanFolderID = 0;
+        AZ::Uuid guid = AZ::Uuid::CreateNull();
+
+        using namespace AzToolsFramework::AssetDatabase;
+
+        productName = AssetUtilities::NormalizeAndRemoveAlias(path);
+
+        // most of the time, the incoming request will be for an actual product name, so optimize this by assuming that is the case
+        // and do an optimized query for it
+
+        QString platformPrepend = QString("%1/%2/").arg(CURRENT_PLATFORM, gameName);
+        QString productNameWithPlatformAndGameName = productName;
+
+        if (!productName.startsWith(platformPrepend, Qt::CaseInsensitive))
+        {
+            productNameWithPlatformAndGameName = productName = QString("%1/%2/%3").arg(CURRENT_PLATFORM, gameName, productName);
+        }
+
+        ProductDatabaseEntryContainer products;
+        if (databaseConnection->GetProductsByProductName(productNameWithPlatformAndGameName, products))
+        {
+            // if we find stuff, then return immediately, productName is already a productName.
+            return productName;
+        }
+
+        // if that fails, see at least if it starts with the given product name.
+
+        if (databaseConnection->GetProductsLikeProductName(productName, AssetDatabaseConnection::LikeType::StartsWith, products))
+        {
+            return productName;
+        }
+
+        if (!databaseConnection->GetProductsLikeProductName(productNameWithPlatformAndGameName, AssetDatabaseConnection::LikeType::StartsWith, products))
+        {
+            //if we are here it means that the asset database does not know about this product,
+            //we will now remove the gameName and try again ,so now the path will only have $PLATFORM/ in front of it
+            int gameNameIndex = productName.indexOf(gameName, 0, Qt::CaseInsensitive);
+
+            if (gameNameIndex != -1)
+            {
+                //we will now remove the gameName and the native separator
+                productName.remove(gameNameIndex, gameName.length() + 1);// adding one for the native separator
+            }
+
+            //Search the database for this product
+            if (!databaseConnection->GetProductsLikeProductName(productName, AssetDatabaseConnection::LikeType::StartsWith, products))
+            {
+                //return empty string if the database still does not have any idea about the product
+                productName = QString();
+            }
+        }
+        return productName.toLower();
+    }
+
     FilePatternMatcher::FilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern)
         : m_pattern(pattern)
     {
@@ -1234,16 +1323,6 @@ namespace AssetUtilities
         , m_isValid(copy.m_isValid)
         , m_errorString(copy.m_errorString)
     {
-    }
-
-    FilePatternMatcher& AssetUtilities::FilePatternMatcher::operator=(const AssetUtilities::FilePatternMatcher& copy)
-    {
-        this->m_pattern = copy.m_pattern;
-        this->m_regex = copy.m_regex;
-        this->m_isRegex = copy.m_isRegex;
-        this->m_isValid = copy.m_isValid;
-        this->m_errorString = copy.m_errorString;
-        return *this;
     }
 
     bool FilePatternMatcher::MatchesPath(const AZStd::string& assetPath) const
@@ -1309,7 +1388,7 @@ namespace AssetUtilities
     };
 
     QuitListener::QuitListener()
-        :m_requestedQuit(false)
+        : m_requestedQuit(false)
     {
     }
 
@@ -1367,18 +1446,22 @@ namespace AssetUtilities
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
+            m_inException = true;
             AppendLog(AzFramework::LogFile::SEV_EXCEPTION, "EXCEPTION", message);
-            return true;
+            // we return false here so that the main app can also trace it, exceptions are bad enough
+            // that we want them to show up in all the logs.
         }
 
         return false;
     }
 
-    bool JobLogTraceListener::OnError(const char* window, const char* message)
+    // we want no trace of errors to show up from jobs, inside the console app
+    // only in explicit usages, so we return true for pre-error here too
+    bool JobLogTraceListener::OnPreError(const char* window, const char* /*file*/, int /*line*/, const char* /*func*/, const char* message)
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
-            AppendLog(AzFramework::LogFile::SEV_ERROR, window, message);
+            AppendLog(m_inException ? AzFramework::LogFile::SEV_EXCEPTION : AzFramework::LogFile::SEV_ERROR, window, message);
             return true;
         }
 
@@ -1389,7 +1472,7 @@ namespace AssetUtilities
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
-            AppendLog(AzFramework::LogFile::SEV_WARNING, window, message);
+            AppendLog(m_inException ? AzFramework::LogFile::SEV_EXCEPTION : AzFramework::LogFile::SEV_WARNING, window, message);
             return true;
         }
 
@@ -1406,12 +1489,11 @@ namespace AssetUtilities
             }
             else
             {
-                AppendLog(AzFramework::LogFile::SEV_NORMAL, window, message);
+                AppendLog(m_inException ? AzFramework::LogFile::SEV_EXCEPTION : AzFramework::LogFile::SEV_NORMAL, window, message);
             }
 
             return true;
         }
-
 
         return false;
     }

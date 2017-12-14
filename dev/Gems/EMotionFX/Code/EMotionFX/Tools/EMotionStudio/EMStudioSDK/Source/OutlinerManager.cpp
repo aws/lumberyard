@@ -13,7 +13,6 @@
 // include required headers
 #include "OutlinerManager.h"
 
-
 namespace EMStudio
 {
     OutlinerCategory::~OutlinerCategory()
@@ -26,13 +25,17 @@ namespace EMStudio
     }
 
 
-    void OutlinerCategory::AddItem(OutlinerCategoryItem* item)
+    void OutlinerCategory::AddItem(uint32 mID, void* mUserData)
     {
         // find the ID to avoid duplicate
-        if (FindItemByID(item->mID))
+        if (FindItemByID(mID))
         {
             return;
         }
+
+        OutlinerCategoryItem* item = aznew OutlinerCategoryItem();
+        item->mID = mID;
+        item->mUserData = mUserData;
 
         // set the category of the item
         item->mCategory = this;
@@ -119,12 +122,11 @@ namespace EMStudio
         // add the category in the array
         OutlinerCategory* category = new OutlinerCategory(this, name, callback);
         mCategories.push_back(category);
-
         // fire the register category event
         const size_t numCallbacks = mCallbacks.size();
         for (size_t i = 0; i < numCallbacks; ++i)
         {
-            mCallbacks[i]->OnRegisterCategory(name);
+            mCallbacks[i]->OnRegisterCategory(category);
         }
 
         // return the category
@@ -135,29 +137,28 @@ namespace EMStudio
     void OutlinerManager::UnregisterCategory(const QString& name)
     {
         const size_t numCategories = mCategories.size();
-        for (size_t i = 0; i < numCategories; ++i)
+        for (size_t categoryIndex = 0; categoryIndex < numCategories; ++categoryIndex)
         {
-            if (mCategories[i]->GetName() == name)
+            if (mCategories[categoryIndex]->GetName() == name)
             {
-                // remove the category from the array
-                delete mCategories[i];
-                mCategories.erase(mCategories.begin() + i);
+                // Remove the category from the array and delete it (it will clear the items held internally).
+                delete mCategories[categoryIndex];
+                mCategories.erase(mCategories.begin() + categoryIndex);
 
-                // fire the unregister category event
+                // Fire the unregister category event.
                 const size_t numCallbacks = mCallbacks.size();
                 for (size_t j = 0; j < numCallbacks; ++j)
                 {
                     mCallbacks[j]->OnUnregisterCategory(name);
                 }
 
-                // done
                 return;
             }
         }
     }
 
 
-    OutlinerCategory* OutlinerManager::FindCategoryByName(const QString& name)
+    OutlinerCategory* OutlinerManager::FindCategoryByName(const QString& name) const
     {
         const size_t numCategories = mCategories.size();
         for (size_t i = 0; i < numCategories; ++i)
@@ -189,6 +190,24 @@ namespace EMStudio
         for (size_t j = 0; j < numCallbacks; ++j)
         {
             mCallbacks[j]->OnItemModified();
+        }
+    }
+
+    void OutlinerManager::RemoveItemFromCategory(const QString& categoryName, uint32 mID)
+    {
+        OutlinerCategory* outlinerCategory = FindCategoryByName(categoryName);
+        if (outlinerCategory)
+        {
+            outlinerCategory->RemoveItem(mID);
+        }
+    }
+
+    void OutlinerManager::AddItemToCategory(const QString& categoryName, uint32 mID, void* userData)
+    {
+        OutlinerCategory* outlinerCategory = FindCategoryByName(categoryName);
+        if (outlinerCategory)
+        {
+            outlinerCategory->AddItem(mID, userData);
         }
     }
 } // namespace EMStudio

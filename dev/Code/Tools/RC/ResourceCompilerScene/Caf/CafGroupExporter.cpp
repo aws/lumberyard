@@ -1,5 +1,3 @@
-
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -28,7 +26,6 @@ namespace AZ
 {
     namespace RC
     {
-        namespace SceneEvents = AZ::SceneAPI::Events;
         namespace SceneUtil = AZ::SceneAPI::Utilities;
         namespace SceneContainer = AZ::SceneAPI::Containers;
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
@@ -119,5 +116,5 @@ namespace AZ
             exportInfo->bWantF32Vertices = false;
             exportInfo->authorToolVersion = 1;
         }
-    }
-}
+    } // namespace RC
+} // namespace AZ

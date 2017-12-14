@@ -34,13 +34,13 @@ namespace ScriptCanvasEditor
         UndoRequestBus::Broadcast(&UndoRequests::EndUndoBatch);
     }
 
-    UndoManager::SceneUndoState::SceneUndoState(const AZ::EntityId& entityId, AzToolsFramework::UndoSystem::IUndoNotify* undoNotify)
+    SceneUndoState::SceneUndoState(AzToolsFramework::UndoSystem::IUndoNotify* undoNotify)
         : m_undoStack(AZStd::make_unique<AzToolsFramework::UndoSystem::UndoStack>(c_undoLimit, undoNotify))
         , m_undoCache(AZStd::make_unique<UndoCache>())
     {        
     }
 
-    void UndoManager::SceneUndoState::BeginUndoBatch(AZStd::string_view label)
+    void SceneUndoState::BeginUndoBatch(AZStd::string_view label)
     {
         if (!m_currentUndoBatch)
         {
@@ -55,7 +55,7 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void UndoManager::SceneUndoState::EndUndoBatch()
+    void SceneUndoState::EndUndoBatch()
     {
         if (!m_currentUndoBatch)
         {
@@ -83,7 +83,7 @@ namespace ScriptCanvasEditor
         }
     }
 
-    UndoManager::SceneUndoState::~SceneUndoState()
+    SceneUndoState::~SceneUndoState()
     {
         delete m_currentUndoBatch;
     }
@@ -105,9 +105,21 @@ namespace ScriptCanvasEditor
         }
     }
 
-    UndoCache* UndoManager::GetUndoCache()
+    UndoCache* UndoManager::GetActiveSceneUndoCache()
     {
         SceneUndoState* sceneUndoState = FindActiveUndoState();
+
+        if (sceneUndoState)
+        {
+            return sceneUndoState->m_undoCache.get();
+        }
+
+        return nullptr;
+    }
+
+    UndoCache* UndoManager::GetSceneUndoCache(AZ::EntityId sceneId)
+    {
+        SceneUndoState* sceneUndoState = FindUndoState(sceneId);
 
         if (sceneUndoState)
         {
@@ -224,10 +236,10 @@ namespace ScriptCanvasEditor
 
     UndoData UndoManager::CreateUndoData(AZ::EntityId entityId)
     {
-        GraphCanvas::SceneData* sceneData;
+        GraphCanvas::SceneData* sceneData{};
         GraphCanvas::SceneRequestBus::EventResult(sceneData, entityId, &GraphCanvas::SceneRequests::GetSceneData);
 
-        ScriptCanvas::GraphData* graphData;
+        ScriptCanvas::GraphData* graphData{};
         ScriptCanvas::GraphRequestBus::EventResult(graphData, entityId, &ScriptCanvas::GraphRequests::GetGraphData);
 
         UndoData undoData;
@@ -274,7 +286,7 @@ namespace ScriptCanvasEditor
 
         if (mapIter == m_undoMapping.end())
         {
-            m_undoMapping[sceneId] = aznew SceneUndoState(sceneId, this);
+            m_undoMapping[sceneId] = aznew SceneUndoState(this);
         }
     }
 
@@ -286,6 +298,10 @@ namespace ScriptCanvasEditor
         {
             delete mapIter->second;
             m_undoMapping.erase(mapIter);
+            if (m_activeScene == sceneId)
+            {
+                m_activeScene.SetInvalid();
+            }
         }
     }
 
@@ -306,15 +322,52 @@ namespace ScriptCanvasEditor
         {
             m_undoMapping[newSceneId] = oldSceneIter->second;
             m_undoMapping.erase(oldSceneIter);
+            if (m_activeScene == oldSceneId)
+            {
+                m_activeScene = newSceneId;
+            }
         }
     }
 
-    UndoManager::SceneUndoState* UndoManager::FindActiveUndoState() const
+    AZStd::unique_ptr<SceneUndoState> UndoManager::ExtractSceneUndoState(AZ::EntityId sceneId)
+    {
+        if (!sceneId.IsValid())
+        {
+            return {};
+        }
+
+        AZStd::unique_ptr<SceneUndoState> extractUndoState;
+        auto mapIter = m_undoMapping.find(sceneId);
+        if (mapIter != m_undoMapping.end())
+        {
+            extractUndoState.reset(mapIter->second);
+            m_undoMapping.erase(mapIter);
+            if (m_activeScene == sceneId)
+            {
+                m_activeScene.SetInvalid();
+            }
+        }
+
+        return extractUndoState;
+    }
+
+    void UndoManager::InsertUndoState(AZ::EntityId sceneId, AZStd::unique_ptr<SceneUndoState> sceneUndoState)
+    {
+        if (!sceneId.IsValid() || !sceneUndoState)
+        {
+            return;
+        }
+
+        delete m_undoMapping[sceneId];
+        m_undoMapping[sceneId] = sceneUndoState.release();
+    }
+
+    SceneUndoState* UndoManager::FindActiveUndoState() const
     {
         return FindUndoState(m_activeScene);
     }
 
-    UndoManager::SceneUndoState* UndoManager::FindUndoState(const AZ::EntityId& sceneId) const
+    SceneUndoState* UndoManager::FindUndoState(const AZ::EntityId& sceneId) const
     {
         SceneUndoState* undoState = nullptr;
 

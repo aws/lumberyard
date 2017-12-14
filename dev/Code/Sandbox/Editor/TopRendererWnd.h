@@ -44,7 +44,7 @@ public:
     void InitHeightmapAlignment();
 
     //! Map viewport position to world space position.
-    virtual Vec3    ViewToWorld(const QPoint& vp, bool* collideWithTerrain = 0, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false) const override;
+    virtual Vec3    ViewToWorld(const QPoint& vp, bool* collideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override;
 
     void SetShowWater(bool bShow) { m_bShowWater = bShow; }
     bool GetShowWater() const { return m_bShowWater; };

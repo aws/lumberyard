@@ -17,11 +17,10 @@
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 
 BrowseButton::BrowseButton(PropertyType type, QWidget* parent /*= nullptr*/)
-    : QToolButton(parent)
+    : QPushButton(parent)
     , m_propertyType(type)
 {
     connect(this, &QAbstractButton::clicked, this, &BrowseButton::OnClicked);
-    setText("...");
 }
 
 void BrowseButton::SetPathAndEmit(const QString& path)
@@ -42,7 +41,13 @@ public:
     FileBrowseButton(PropertyType type, QWidget* pParent = nullptr)
         : BrowseButton(type, pParent)
     {
-        setIcon(QIcon(":/reflectedPropertyCtrl/img/file_browse.png"));
+        setFlat(true);
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        setFixedSize(QSize(16, 16));
+        setText("...");
+        setMouseTracking(true);
+        setContentsMargins(0, 0, 0, 0);
+        setToolTip("Browse...");
     }
 
 private:
@@ -149,7 +154,13 @@ public:
     TextureEditButton(QWidget* pParent = nullptr)
         : BrowseButton(ePropertyTexture, pParent)
     {
+        setFlat(true);
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        setFixedSize(QSize(16, 16));
         setIcon(QIcon(":/reflectedPropertyCtrl/img/texture_edit.png"));
+        setMouseTracking(true);
+        setContentsMargins(0, 0, 0, 0);
+        setToolTip(tr("Launch default editor"));
     }
 
 private:
@@ -256,23 +267,27 @@ void FileResourceSelectorWidget::AddButton(BrowseButton* button)
 
 void FileResourceSelectorWidget::OnPathChanged(const QString& path)
 {
-    SetPath(path);
-    emit PathChanged(m_path);
+    bool changed = SetPath(path);
+    if (changed)
+    {
+        emit PathChanged(m_path);
+    }
 }
 
-void FileResourceSelectorWidget::SetPath(const QString& path)
+bool FileResourceSelectorWidget::SetPath(const QString& path)
 {
-#ifdef KDAB_PORT_TODO
-    const bool bForceModified = (ftype == IFileUtil::EFILE_TYPE_GEOMCACHE);
-#endif
+    bool changed = false;
 
     const QString newPath = path.toLower();
-
     if (m_path != newPath)
     {
         m_path = newPath;
         UpdateWidgets();
+
+        changed = true;
     }
+
+    return changed;
 }
 
 

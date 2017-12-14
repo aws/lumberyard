@@ -22,6 +22,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
+#include <AzCore/IO/FileIO.h>
 
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -69,18 +70,37 @@ namespace AzFramework
      *
      */
 
+    /** 
+    * Just a base class to assign concrete RTTI to these classes - Don't derive from this - use GenericAssetHandler<T> instead.
+    * This being in the heirarchy allows you to easily ask whether a particular handler derives from this type and thus is a
+    * GenericAssetHandler.
+    */
+    class GenericAssetHandlerBase : public AZ::Data::AssetHandler
+    {
+    public:
+        AZ_RTTI(GenericAssetHandlerBase, "{B153B8B5-25CC-4BB7-A2BD-9A47ECF4123C}", AZ::Data::AssetHandler);
+        virtual ~GenericAssetHandlerBase() {}
+    };
+
     template <typename AssetType>
     class GenericAssetHandler
-        : public AZ::Data::AssetHandler
+        : public GenericAssetHandlerBase
         , private AZ::AssetTypeInfoBus::Handler
     {
     public:
-
         AZ_CLASS_ALLOCATOR(GenericAssetHandler<AssetType>, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(GenericAssetHandler<AssetType>, "{B153B8B5-25CC-4BB7-A2BD-9A47ECF4123C}");
+        AZ_RTTI(GenericAssetHandler<AssetType>, "{8B36B3E8-8C0B-4297-BDA2-1648C155C78E}", GenericAssetHandlerBase);
 
-        GenericAssetHandler(const char* extension, AZ::SerializeContext* serializeContext = nullptr)
-            : m_serializeContext(serializeContext)
+        GenericAssetHandler(const char* displayName,
+            const char* group,
+            const char* extension,
+            const AZ::Uuid& componentTypeId = AZ::Uuid::CreateNull(),
+            AZ::SerializeContext* serializeContext = nullptr)
+            : m_displayName(displayName)
+            , m_group(group)
+            , m_extension(extension)
+            , m_componentTypeId(componentTypeId)
+            , m_serializeContext(serializeContext)
         {
             AZ_Assert(extension, "Extension is required.");
             if (extension[0] == '.')
@@ -174,16 +194,6 @@ namespace AzFramework
             }
         }
 
-        AZ::Data::AssetType GetAssetType() const override
-        {
-            return AZ::AzTypeInfo<AssetType>::Uuid();
-        }
-
-        void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override
-        {
-            extensions.push_back(m_extension);
-        }
-
         bool CanHandleAsset(const AZ::Data::AssetId& id) const
         {
             AZStd::string assetPath;
@@ -200,14 +210,45 @@ namespace AzFramework
             return false;
         }
 
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // AZ::AssetTypeInfoBus::Handler
+        AZ::Data::AssetType GetAssetType() const override
+        {
+            return AZ::AzTypeInfo<AssetType>::Uuid();
+        }
+
+        const char* GetAssetTypeDisplayName() const override
+        {
+            return m_displayName.c_str();
+        }
+
+        const char* GetGroup() const override
+        {
+            return m_group.c_str();
+        }
+
+        AZ::Uuid GetComponentTypeId() const override
+        {
+            return m_componentTypeId;
+        }
+
+        void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override
+        {
+            extensions.push_back(m_extension);
+        }
+        //////////////////////////////////////////////////////////////////////////////////////////////
+
+        AZStd::string m_displayName;
+        AZStd::string m_group;
         AZStd::string m_extension;
+        AZ::Uuid m_componentTypeId = AZ::Uuid::CreateNull();
         AZ::SerializeContext* m_serializeContext;
 
-        private:
-            // Workaround for VS2013 - Delete the copy constructor and make it private
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-            GenericAssetHandler(const GenericAssetHandler&) = delete;
+    private:
+        // Workaround for VS2013 - Delete the copy constructor and make it private
+        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+        GenericAssetHandler(const GenericAssetHandler&) = delete;
     };
-}   // namespace AZ
+} // namespace AzFramework
 
 #endif // AZFRAMEWORK_ASSET_GENERICASSETHANDLER_H

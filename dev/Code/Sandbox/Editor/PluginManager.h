@@ -48,7 +48,7 @@ typedef TPluginEventMap::iterator TPluginEventIt;
 typedef std::map<uint8, IPlugin*> TUIIDPluginMap;
 typedef TUIIDPluginMap::iterator TUIIDPluginIt;
 
-class CPluginManager
+class SANDBOX_API CPluginManager
 {
 public:
     CPluginManager();

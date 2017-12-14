@@ -23,6 +23,8 @@
 #include <AzCore/std/function/function_fwd.h>
 #include <AzCore/std/string/string.h>
 
+#include <QtGui/qwindowdefs.h>
+
 class QFrame;
 class QMenu;
 class QToolBar;

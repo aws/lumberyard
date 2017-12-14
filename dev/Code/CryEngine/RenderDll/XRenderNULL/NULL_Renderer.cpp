@@ -18,19 +18,20 @@
 #include "NULL_Renderer.h"
 #include <IColorGradingController.h>
 #include "IStereoRenderer.h"
+#include "../Common/Textures/TextureManager.h"
 
 #include <IEngineModule.h>
 #include <CryExtension/Impl/ClassWeaver.h>
 // init memory pool usage
 
+#include "GraphicsPipeline/FurBendData.h"
+
 // Included only once per DLL module.
 #include <platform_impl.h>
 
 CCryNameTSCRC CTexture::s_sClassName = CCryNameTSCRC("CTexture");
-
 CCryNameTSCRC CHWShader::s_sClassNameVS = CCryNameTSCRC("CHWShader_VS");
 CCryNameTSCRC CHWShader::s_sClassNamePS = CCryNameTSCRC("CHWShader_PS");
-
 CCryNameTSCRC CShader::s_sClassName = CCryNameTSCRC("CShader");
 
 CNULLRenderer* gcpNULL = NULL;
@@ -337,6 +338,18 @@ void CNULLRenderer::GetProjectionMatrix(float* mat)
 }
 
 //////////////////////////////////////////////////////////////////////
+ITexture* CNULLRenderer::EF_LoadTexture(const char * nameTex, const uint32 flags)
+{
+    return CTextureManager::Instance()->GetNoTexture();
+}
+
+//////////////////////////////////////////////////////////////////////
+ITexture* CNULLRenderer::EF_LoadDefaultTexture(const char * nameTex)
+{
+    return CTextureManager::Instance()->GetDefaultTexture(nameTex);
+}
+
+//////////////////////////////////////////////////////////////////////
 void CNULLRenderer::DrawQuad(const Vec3& right, const Vec3& up, const Vec3& origin, int nFlipmode /*=0*/)
 {
 }
@@ -571,6 +584,23 @@ uint32 COcclusionQuery::GetVisibleSamples(bool bAsynchronous)
     return 0;
 }
 
+/*static*/ FurBendData& FurBendData::Get()
+{
+    static FurBendData s_instance;
+    return s_instance;
+}
+
+void FurBendData::InsertNewElements()
+{
+}
+
+void FurBendData::FreeData()
+{
+}
+
+void FurBendData::OnBeginFrame()
+{
+}
 
 TArray<SRenderLight>* CRenderer::EF_GetDeferredLights(const SRenderingPassInfo& passInfo, const eDeferredLightType eLightType)
 {
@@ -612,7 +642,7 @@ void CRenderer::ClearJobResources()
 
 ITexture* CNULLRenderer::EF_CreateCompositeTexture(int type, const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, ETEX_Format eTF, const STexComposition* pCompositions, size_t nCompositions, int8 nPriority)
 {
-    return CTexture::s_ptexNoTexture;
+    return CTextureManager::Instance()->GetNoTexture();
 }
 
 void CNULLRenderer::FX_ClearTarget(CTexture* pTex)

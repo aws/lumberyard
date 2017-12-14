@@ -21,7 +21,10 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 
+#if defined(AZ_PLATFORM_WINDOWS)
 #include <io.h>
+#endif
+
 #include <ICryPak.h>
 #include <Util/PathUtil.h>
 

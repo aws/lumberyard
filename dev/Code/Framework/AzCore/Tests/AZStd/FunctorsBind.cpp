@@ -1434,4 +1434,16 @@ namespace UnitTest
 
         AZ_TEST_ASSERT(!funclist[10]);
     }
+
+    TEST_F(Bind, Lambda)
+    {
+        auto lambda = []() -> bool
+        {
+            return true;
+        };
+
+        EXPECT_TRUE(AZStd::bind(lambda)());
+
+        EXPECT_EQ(5, AZStd::bind([](int shouldBe5) { return shouldBe5; }, 5)());
+    }
 }

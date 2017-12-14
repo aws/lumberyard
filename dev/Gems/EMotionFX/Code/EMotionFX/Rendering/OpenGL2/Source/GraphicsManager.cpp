@@ -93,7 +93,7 @@ namespace RenderGL
         mSkipLoadingTextures    = false;
 
         // init random offsets
-        MCore::Array<MCore::Vector3> samples = MCore::Random::RandomDirVectorsHalton(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::twoPi, 64);
+        MCore::Array<AZ::Vector3> samples = MCore::Random::RandomDirVectorsHalton(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::twoPi, 64);
         for (uint32 i = 0; i < 64; ++i)
         {
             mRandomOffsets[i] = samples[i] * MCore::Random::RandF(0.1f, 1.0f);
@@ -361,6 +361,14 @@ namespace RenderGL
                 mPostProcessing = false;
             }
         }
+
+        // Get the maximum number of shader constant components.
+        // The number of registers is this number divided by 4.
+        // We need at least 1024 registers, so 4096 constant components.
+        GLint maxConstantComponents = 0;
+        glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &maxConstantComponents);
+        AZ_Printf("EMotionFX", "Max shader constant components = %d (%d registers)\n", maxConstantComponents, maxConstantComponents / 4);
+        AZ_Assert(maxConstantComponents >= 4096, "The GPU does not have the minimum required number of shader constants of 4096. It has %d instead.", maxConstantComponents);
 
         return true;
     }
@@ -686,10 +694,10 @@ namespace RenderGL
             uint32 offset = h * (width * 4);
             for (uint32 w = 0; w < width; ++w)
             {
-                MCore::Vector3 randVec = MCore::Random::RandDirVecF();
-                data[offset  ] = randVec.x;
-                data[offset + 1] = randVec.y;
-                data[offset + 2] = randVec.z;
+                AZ::Vector3 randVec = MCore::Random::RandDirVecF();
+                data[offset  ] = randVec.GetX();
+                data[offset + 1] = randVec.GetY();
+                data[offset + 2] = randVec.GetZ();
                 data[offset + 3] = MCore::Random::RandF(0.0f, 1.0f);
                 offset += 4;
             }

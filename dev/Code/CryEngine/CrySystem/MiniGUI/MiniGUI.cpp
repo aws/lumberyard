@@ -27,6 +27,7 @@
 #include <IRenderer.h>
 
 #include <LyShine/Bus/UiCursorBus.h>
+#include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 CRYREGISTER_SINGLETON_CLASS(minigui::CMiniGUI)
@@ -72,7 +73,6 @@ public:
 CMiniGUI::CMiniGUI()
     : m_enabled(false)
     , m_inFocus(true)
-    , m_bListenersRegistered(false)
     , m_pDPadMenu(NULL)
     , m_pMovingCtrl(NULL)
 {
@@ -89,12 +89,7 @@ void CMiniGUI::Init()
     m_pEventListener = NULL;
     InitMetrics();
 
-    if (gEnv->pInput)
-    {
-        gEnv->pInput->AddEventListener(this);
-    }
-
-    m_bListenersRegistered = true;
+    AzFramework::InputChannelEventListener::Connect();
 
     m_pRootCtrl = new CMiniCtrlRoot;
 }
@@ -140,14 +135,7 @@ void CMiniGUI::SetInFocus(bool status)
 //////////////////////////////////////////////////////////////////////////
 void CMiniGUI::Done()
 {
-    if (m_bListenersRegistered)
-    {
-        if (gEnv->pInput)
-        {
-            gEnv->pInput->RemoveEventListener(this);
-        }
-    }
-    m_bListenersRegistered = false;
+    AzFramework::InputChannelEventListener::Disconnect();
 }
 
 
@@ -347,36 +335,34 @@ void CMiniGUI::OnCommand(SCommand& cmd)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMiniGUI::OnMouseInputEvent(const SInputEvent& rInputEvent)
+void CMiniGUI::OnMouseInputEvent(const AzFramework::InputChannel& inputChannel)
 {
     if (!m_inFocus || !m_enabled)
     {
         return;
     }
 
-    float mx = rInputEvent.screenPosition.x;
-    float my = rInputEvent.screenPosition.y;
+    const AzFramework::InputChannel::PositionData2D* positionData2D = inputChannel.GetCustomData<AzFramework::InputChannel::PositionData2D>();
+    if (!positionData2D)
+    {
+        return;
+    }
+    const float mx = positionData2D->m_normalizedPosition.GetX() * gEnv->pRenderer->GetWidth();
+    const float my = positionData2D->m_normalizedPosition.GetY() * gEnv->pRenderer->GetHeight();
     IMiniCtrl* pCtrl = GetCtrlFromPoint(mx, my);
     if (pCtrl)
     {
-        switch (rInputEvent.keyId)
+        const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+        if (channelId == AzFramework::InputDeviceMouse::Button::Left)
         {
-        case eKI_Mouse1: // Left Mouse
-            switch (rInputEvent.state)
+            if (inputChannel.IsStateBegan())
             {
-            case eIS_Pressed:
                 pCtrl->OnEvent(mx, my, eCtrlEvent_LButtonDown);
-                break;
-            case eIS_Released:
-                pCtrl->OnEvent(mx, my, eCtrlEvent_LButtonUp);
-                break;
             }
-            break;
-        case eKI_Mouse2: // Right Mouse
-        case eKI_Mouse3: // Middle Mouse
-        case eKI_MouseWheelDown:
-        case eKI_MouseWheelUp:
-            break;
+            else if (inputChannel.IsStateEnded())
+            {
+                pCtrl->OnEvent(mx, my, eCtrlEvent_LButtonUp);
+            }
         }
     }
 }
@@ -406,38 +392,14 @@ void CMiniGUI::CloseDPadMenu()
     }
 }
 
-void CMiniGUI::UpdateDPadMenu(const SInputEvent& rInputEvent)
+void CMiniGUI::UpdateDPadMenu(const AzFramework::InputChannel& inputChannel)
 {
-    EKeyId inputKey = rInputEvent.keyId;
-    bool isPressed = (rInputEvent.state == eIS_Pressed);
-
-    const EKeyId DPAD_UP = eKI_XI_DPadUp;
-    const EKeyId DPAD_DOWN = eKI_XI_DPadDown;
-    const EKeyId DPAD_LEFT = eKI_XI_DPadLeft;
-    const EKeyId DPAD_RIGHT = eKI_XI_DPadRight;
-    const EKeyId X_BUTTON = eKI_XI_A;
-    const EKeyId O_BUTTON = eKI_XI_B;
-
-    if (inputKey == eKI_XI_ThumbLUp)
-    {
-        inputKey = DPAD_UP;
-    }
-    else if (inputKey == eKI_XI_ThumbLDown)
-    {
-        inputKey = DPAD_DOWN;
-    }
-    else if (inputKey == eKI_XI_ThumbLLeft)
-    {
-        inputKey = DPAD_LEFT;
-    }
-    else if (inputKey == eKI_XI_ThumbLRight)
-    {
-        inputKey = DPAD_RIGHT;
-    }
+    const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+    const bool isPressed = inputChannel.IsStateBegan();
 
     if (m_pDPadMenu)
     {
-        if (inputKey == O_BUTTON)
+        if (channelId == AzFramework::InputDeviceGamepad::Button::B)
         {
             CloseDPadMenu();
             return;
@@ -445,21 +407,18 @@ void CMiniGUI::UpdateDPadMenu(const SInputEvent& rInputEvent)
 
         if (isPressed)
         {
-            switch (inputKey)
-            {
-            case DPAD_DOWN:
+            if (channelId == AzFramework::InputDeviceGamepad::Button::DD ||
+                channelId == AzFramework::InputDeviceGamepad::ThumbStickDirection::LD)
             {
                 m_pDPadMenu = m_pDPadMenu->UpdateSelection(eCtrlEvent_DPadDown);
             }
-            break;
-
-            case DPAD_UP:
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::DU ||
+                     channelId == AzFramework::InputDeviceGamepad::ThumbStickDirection::LU)
             {
                 m_pDPadMenu = m_pDPadMenu->UpdateSelection(eCtrlEvent_DPadUp);
             }
-            break;
-
-            case DPAD_LEFT:
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::DL ||
+                     channelId == AzFramework::InputDeviceGamepad::ThumbStickDirection::LL)
             {
                 CMiniMenu* pNewMenu = m_pDPadMenu->UpdateSelection(eCtrlEvent_DPadLeft);
 
@@ -492,10 +451,8 @@ void CMiniGUI::UpdateDPadMenu(const SInputEvent& rInputEvent)
                     m_pDPadMenu = pNewMenu;
                 }
             }
-
-            break;
-
-            case DPAD_RIGHT:
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::DR ||
+                     channelId == AzFramework::InputDeviceGamepad::ThumbStickDirection::LR)
             {
                 CMiniMenu* pNewMenu = m_pDPadMenu->UpdateSelection(eCtrlEvent_DPadRight);
 
@@ -528,25 +485,20 @@ void CMiniGUI::UpdateDPadMenu(const SInputEvent& rInputEvent)
                     m_pDPadMenu = pNewMenu;
                 }
             }
-            break;
-
-            case X_BUTTON:
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::A)
             {
                 m_pDPadMenu = m_pDPadMenu->UpdateSelection(eCtrlEvent_LButtonDown);
-            }
-            break;
             }
         }
     }
 }
 
-
-//General input callback - on consoles use 2nd controller input
-bool CMiniGUI::OnInputEvent(const SInputEvent& rInputEvent)
+bool CMiniGUI::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
-    if (rInputEvent.deviceType == eIDT_Mouse)
+    const AzFramework::InputDeviceId& deviceId = inputChannel.GetInputDevice().GetInputDeviceId();
+    if (AzFramework::InputDeviceMouse::IsMouseDevice(deviceId))
     {
-        OnMouseInputEvent(rInputEvent);
+        OnMouseInputEvent(inputChannel);
         return false;
     }
 
@@ -555,38 +507,44 @@ bool CMiniGUI::OnInputEvent(const SInputEvent& rInputEvent)
         return false;
     }
 
-    if (rInputEvent.deviceType != eIDT_Gamepad)
+    if (!AzFramework::InputDeviceGamepad::IsGamepadDevice(deviceId))
     {
         return false;
     }
 
     if (m_pDPadMenu)
     {
-        UpdateDPadMenu(rInputEvent);
+        UpdateDPadMenu(inputChannel);
     }
     else
     {
-        float posX = rInputEvent.screenPosition.x;
-        float posY = rInputEvent.screenPosition.y;
+        float posX = 0.0f;
+        float posY = 0.0f;
+        const AzFramework::InputChannel::PositionData2D* positionData2D = inputChannel.GetCustomData<AzFramework::InputChannel::PositionData2D>();
+        if (positionData2D)
+        {
+            posX = positionData2D->m_normalizedPosition.GetX() * gEnv->pRenderer->GetWidth();
+            posY = positionData2D->m_normalizedPosition.GetY() * gEnv->pRenderer->GetHeight();
+        }
 
         IMiniCtrl* pCtrl = GetCtrlFromPoint(posX, posY);
 
         if (pCtrl)
         {
-            if (rInputEvent.keyId == eKI_XI_A || rInputEvent.keyId == eKI_Orbis_Cross)
+            const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+            if (channelId == AzFramework::InputDeviceGamepad::Button::A)
             {
-                //state names a bit confusing - see HWMouse
-                switch (rInputEvent.state)
+                switch (inputChannel.GetState())
                 {
-                case eIS_Pressed:
+                case AzFramework::InputChannel::State::Began:
                     pCtrl->OnEvent(posX, posY, eCtrlEvent_LButtonDown);
                     break;
 
-                case eIS_Released:
+                case AzFramework::InputChannel::State::Ended:
                     pCtrl->OnEvent(posX, posY, eCtrlEvent_LButtonUp);
                     break;
 
-                case eIS_Down:
+                case AzFramework::InputChannel::State::Updated:
                     pCtrl->OnEvent(posX, posY, eCtrlEvent_LButtonPressed);
 
                     //if we've clicked on a menu, enter menu selection mode, disable mouse
@@ -598,7 +556,6 @@ bool CMiniGUI::OnInputEvent(const SInputEvent& rInputEvent)
                     break;
                 }
             }
-            //CryLogAlways("InputEvent %s %d", rInputEvent.keyName, rInputEvent.deviceId);
         }
     }
 

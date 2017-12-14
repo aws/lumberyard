@@ -395,8 +395,10 @@ JobManager::CJobManager::CJobManager()
     , m_nFallbackJobsRunCounter(0)
     , m_bSuspendWorkerForMP(false)
 {
+#if !JOBMANAGER_DISABLED
     // create backends
     m_pThreadBackEnd = new ThreadBackEnd::CThreadBackEnd();
+#endif // !JOBMANAGER_DISABLED
 
     CCpuFeatures* pCPU = new CCpuFeatures;
     pCPU->Detect();

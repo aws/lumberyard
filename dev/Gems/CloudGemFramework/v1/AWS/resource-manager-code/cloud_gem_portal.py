@@ -272,22 +272,17 @@ def create_portal_administrator(context, args):
         chars = list(password)
         random.shuffle(chars)
         password = ''.join(chars)
-        try:
-            response = client.admin_create_user(
-                UserPoolId=user_pool_id,
-                Username=administrator_name,
-                TemporaryPassword=password
-            )
-            response = client.admin_add_user_to_group(
-                UserPoolId=user_pool_id,
-                Username=administrator_name,
-                GroupName='administrator'
-            )
-        except Exception as e:
-            credentials = context.aws.load_credentials()      
-            access_key = credentials.get(constant.DEFAULT_SECTION_NAME, constant.ACCESS_KEY_OPTION)            
-            raise HandledError("Failed to create the administrator account.  Have your administrator run this option or verify the user account '{}' with access key '{}' has the policies ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup'].".format(context.config.user_default_profile,access_key), e)
-            
+
+        response = client.admin_create_user(
+            UserPoolId=user_pool_id,
+            Username=administrator_name,
+            TemporaryPassword=password
+        )
+        response = client.admin_add_user_to_group(
+            UserPoolId=user_pool_id,
+            Username=administrator_name,
+            GroupName='administrator'
+        )
         if not args.silent_create_admin:
             context.view.create_admin(administrator_name, password, 'The Cloud Gem Portal administrator account has been created.')
 

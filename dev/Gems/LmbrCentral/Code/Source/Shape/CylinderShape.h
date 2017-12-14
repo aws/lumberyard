@@ -17,6 +17,11 @@
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
 
+namespace AZ
+{
+    enum class RandomDistributionType : AZ::u32;
+}
+
 namespace LmbrCentral
 {
     class CylinderShape        
@@ -62,7 +67,8 @@ namespace LmbrCentral
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
         AZ::Aabb GetEncompassingAabb() override;
-                
+        AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) override;
+
         // ShapeBoxComponentRequestBus::Handler implementation
         CylinderShapeConfig GetCylinderConfiguration() override { return GetConfiguration(); }
         void SetHeight(float newHeight) override;

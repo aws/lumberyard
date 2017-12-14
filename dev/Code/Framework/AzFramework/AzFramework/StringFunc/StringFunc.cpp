@@ -19,7 +19,7 @@
 #include <AzCore/IO/SystemFile.h> // AZ_MAX_PATH_LEN
 #include "StringFunc.h"
 
-#ifndef AZ_COMPILER_MSVC
+#if !defined(AZ_PLATFORM_WINDOWS)
 
 //Have to declare this typedef for Android & Linux to minimise changes elsewhere in this file
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
@@ -725,6 +725,23 @@ namespace AzFramework
             return bSomethingWasStripped;
         }
 
+        AZStd::string& TrimWhiteSpace(AZStd::string& value, bool leading, bool trailing)
+        {
+            static const char* trimmable = " \t\r\n";
+            if (value.length() > 0)
+            {
+                if (leading)
+                {
+                    value.erase(0, value.find_first_not_of(trimmable));
+                }
+                if (trailing)
+                {
+                    value.erase(value.find_last_not_of(trimmable) + 1);
+                }
+            }
+            return value;
+        }
+
         void Tokenize(const char* instr, AZStd::vector<AZStd::string>& tokens, const char delimiter /* = ','*/, bool keepEmptyStrings /*= false*/, bool keepSpaceStrings /*= false*/)
         {
             if (!instr)
@@ -1091,6 +1108,31 @@ namespace AzFramework
             azfree(pszData);
 
             return true;
+        }
+
+        namespace AssetPath
+        {
+            void CalculateBranchToken(const AZStd::string& appRootPath, AZStd::string& token)
+            {
+                // Normalize the token to prepare for CRC32 calculation
+                AZStd::string normalized = appRootPath;
+
+                // Strip out any trailing path separators
+                AzFramework::StringFunc::Strip(normalized, AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING  AZ_WRONG_FILESYSTEM_SEPARATOR_STRING,false, false, true);
+
+                // Lower case always
+                AZStd::to_lower(normalized.begin(), normalized.end());
+
+                // Substitute path separators with '_'
+                AZStd::replace(normalized.begin(), normalized.end(), '\\', '_');
+                AZStd::replace(normalized.begin(), normalized.end(), '/', '_');
+
+                // Perform the CRC32 calculation
+                const AZ::Crc32 branchTokenCrc(normalized.c_str(), normalized.size(), true);
+                char branchToken[12];
+                azsnprintf(branchToken, AZ_ARRAY_SIZE(branchToken), "0x%08X", static_cast<AZ::u32>(branchTokenCrc));
+                token = AZStd::string(branchToken);
+            }
         }
 
         namespace AssetDatabasePath
@@ -4615,5 +4657,20 @@ namespace AzFramework
             }
         }
 
+        namespace Utf8
+        {
+            bool CheckNonAsciiChar(const AZStd::string& in)
+            {
+                for (int i = 0; i < in.length(); ++i)
+                {
+                    char byte = in[i];
+                    if (byte & 0x80)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
     } // namespace StringFunc
 } // namespace AzFramework

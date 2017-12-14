@@ -53,9 +53,8 @@ def build(bld):
         use_required_gems       = True,
 
         # Platform Specific
-        uselib                  = [ 'OPENSSL' ],
-        win_lib                 = ['Ws2_32', 'Shell32', 'shlwapi', 'Winhttp', 'Userenv'],
-
+        win_lib                 = ['Ws2_32', 'Shell32'],
+           
         darwin_lib              = ['curl'],
 
        
@@ -63,7 +62,6 @@ def build(bld):
 
         appletv_framework      = [ 'security' ],
 
-       
        
 
         # Testing

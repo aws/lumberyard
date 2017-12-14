@@ -726,7 +726,7 @@ namespace CD
         }
     }
 
-    bool HitTest(SMainContext& mc, HitContext& hit)
+    bool HitTest(const SMainContext& mc, HitContext& hit)
     {
         if (!mc.pModel || !mc.pObject)
         {

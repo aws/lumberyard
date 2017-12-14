@@ -53,9 +53,6 @@ CPlatformOS_PC::CPlatformOS_PC(const uint8 createParams)
     , m_bLevelLoad(false)
     , m_bSaveDuringLevelLoad(false)
 {
-#if !defined(_RELEASE)
-    m_bAllowMessageBox = (GetISystem()->GetICmdLine()->FindArg(eCLAT_Pre, "noprompt") == NULL);
-#endif // !defined(_RELEASE)
     AddListener(this, "PC");
 
     m_cachePakStatus = 0;
@@ -401,11 +398,11 @@ CPlatformOS_PC::DebugMessageBox(const char* body, const char* title, unsigned in
     }
 
 
-#ifdef PLATFORM_WINDOWS
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
     int winresult = CryMessageBox(body, title, MB_OKCANCEL);
     return (winresult == IDOK) ? eMsgBox_OK : eMsgBox_Cancel;
 #else
-    CRY_ASSERT_MESSAGE(false, "DebugMessageBox not implemented on non-windows platforms!");
+    CRY_ASSERT_MESSAGE(false, "DebugMessageBox not implemented on this platform!");
     return eMsgBox_OK; // [AlexMcC|30.03.10]: Ok? Cancel? Dunno! Uh-oh :( This is only used in CryPak.cpp so far, and for that use it's better to return ok
 #endif
 }

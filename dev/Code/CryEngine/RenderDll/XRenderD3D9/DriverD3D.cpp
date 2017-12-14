@@ -18,7 +18,6 @@
 
 #include "DriverD3D.h"
 #include "I3DEngine.h"
-#include "IMusicSystem.h"
 #include "IStatoscope.h"
 #include "AnimKey.h"
 
@@ -897,7 +896,7 @@ void CD3D9Renderer::PostMeasureOverdraw()
 
             SetCullMode(R_CULL_DISABLE);
             FX_SetState(GS_NODEPTHTEST);
-            CTexture::s_ptexWhite->Apply(0);
+            CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
         }
 
         {
@@ -919,7 +918,7 @@ void CD3D9Renderer::PostMeasureOverdraw()
                     PostProcessUtils().CopyScreenToTexture(pRT->m_pTexture);
 
                     pRT->Apply(0, CTexture::GetTexState(TexStatePoint));
-                    CTexture::s_ptexPaletteDebug->Apply(1, CTexture::GetTexState(TexStateLinear));
+                    CTextureManager::Instance()->GetDefaultTexture("PaletteDebug")->Apply(1, CTexture::GetTexState(TexStateLinear));
 
                     FX_DrawPrimitive(eptTriangleStrip, 0, 4);
 
@@ -935,7 +934,7 @@ void CD3D9Renderer::PostMeasureOverdraw()
             int nW = 96;
             int nH = 96;
 
-            Draw2dImage(nX - 2, nY - 2, nW + 4, nH + 4, CTexture::s_ptexWhite->GetTextureID());
+            Draw2dImage(nX - 2, nY - 2, nW + 4, nH + 4, CTextureManager::Instance()->GetWhiteTexture()->GetTextureID());
 
             Set2DMode(800, 600, backupSceneMatrices);
 
@@ -976,7 +975,7 @@ void CD3D9Renderer::PostMeasureOverdraw()
             pSH->FXBeginPass(0);
             FX_Commit();
 
-            CTexture::s_ptexPaletteDebug->Apply(0, CTexture::GetTexState(TexStateLinear));
+            CTextureManager::Instance()->GetDefaultTexture("PaletteDebug")->Apply(0, CTexture::GetTexState(TexStateLinear));
 
             FX_DrawPrimitive(eptTriangleStrip, 0, 4);
 
@@ -1030,8 +1029,8 @@ void CD3D9Renderer::DrawTexelsPerMeterInfo()
         int w = 296;
         int h = 6;
 
-        Draw2dImage(x - 2, y - 2, w + 4, h + 4, CTexture::s_ptexWhite->GetTextureID(), 0, 0, 1, 1, 0, 1, 1, 1, 1, 0);
-        Draw2dImage(x, y, w, h, CTexture::s_ptexPaletteTexelsPerMeter->GetTextureID(), 0, 0, 1, 1, 0, 1, 1, 1, 1, 0);
+        Draw2dImage(x - 2, y - 2, w + 4, h + 4, CTextureManager::Instance()->GetWhiteTexture()->GetTextureID(), 0, 0, 1, 1, 0, 1, 1, 1, 1, 0);
+        Draw2dImage(x, y, w, h, CTextureManager::Instance()->GetDefaultTexture("PaletteTexelsPerMeter")->GetTextureID(), 0, 0, 1, 1, 0, 1, 1, 1, 1, 0);
 
         float color[4] = { 1, 1, 1, 1 };
 
@@ -1317,13 +1316,18 @@ void CD3D9Renderer::BeginFrame()
 
 void CD3D9Renderer::RT_BeginFrame()
 {
-    //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
-    //  Igor: create autorelease pool before doing anything with the render device.
-    //  This will be released and re-created on present.
-    CCryDXGLSwapChain::FromInterface(m_pSwapChain)->TryCreateAutoreleasePool();
+    //  Create autorelease pool before doing anything with the render device.
+    //  This will be released in the Present method.
+    IDXGISwapChain* swapChain = m_pSwapChain;
+
+    if (m_bEditor && m_CurrContext->m_pSwapChain)
+    {
+        swapChain = m_CurrContext->m_pSwapChain;
+    }
+
+    CCryDXGLSwapChain::FromInterface(swapChain)->TryCreateAutoreleasePool();
 #endif
-    //  Confetti End: Igor Lobanchikov
 
     {
         static const ICVar* pCVarShadows = NULL;
@@ -1414,12 +1418,9 @@ void CD3D9Renderer::RT_BeginFrame()
 
     CheckDeviceLost();
 
-    if (!m_bDeviceLost && m_bIsWindowActive)
+    if (!m_bDeviceLost && (m_bIsWindowActive || m_bEditor))
     {
-        if (CV_r_gamma + m_fDeltaGamma + GetS3DRend().GetGammaAdjustment() != m_fLastGamma || CV_r_brightness != m_fLastBrightness || CV_r_contrast != m_fLastContrast)
-        {
-            SetGamma(CV_r_gamma + m_fDeltaGamma, CV_r_brightness, CV_r_contrast, false);
-        }
+        SetGamma(CV_r_gamma + m_fDeltaGamma, CV_r_brightness, CV_r_contrast, false);
     }
 
 
@@ -1478,13 +1479,6 @@ void CD3D9Renderer::RT_BeginFrame()
         m_nMaterialAnisoHighSampler = CTexture::GetTexState(STexState(getAnisoFilter(nAniso), false));
         m_nMaterialAnisoLowSampler  = CTexture::GetTexState(STexState(getAnisoFilter(CRenderer::CV_r_texminanisotropy), false));
         m_nMaterialAnisoSamplerBorder = CTexture::GetTexState(STexState(getAnisoFilter(nAniso), TADDR_BORDER, TADDR_BORDER, TADDR_BORDER, 0x0));
-    }
-
-    // Verify if water caustics needed at all
-    if (CV_r_watercaustics)
-    {
-        N3DEngineCommon::SOceanInfo& OceanInfo = gRenDev->m_p3DEngineCommon.m_OceanInfo;
-        m_bWaterCaustics = (OceanInfo.m_nOceanRenderFlags & OCR_OCEANVOLUME_VISIBLE) != 0;
     }
 
     m_drawNearFov = CV_r_drawnearfov;
@@ -2837,7 +2831,7 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
 
     ColorF colF = Col_Orange;
     Draw2dLabel(nX, nY, fFSize, &colF.r, false, "Total memory: %.1f Mb", BYTES_TO_MB(fMaxTextureMemory));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + fMaxBar, nY + 12, Col_Cyan, 1.0f);
     nY += nYst;
 
@@ -2852,7 +2846,7 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
         pTXSH = pTXSH->m_NextShadow;
     }
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Shadow textures: %.1f Mb", BYTES_TO_MB(nSizeSH));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSizeSH / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
@@ -2868,7 +2862,7 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
     }
     nSizeD -= nSizeSH;
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Dyn. text.: %.1f Mb", BYTES_TO_MB(nSizeD));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSizeD / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
@@ -2878,7 +2872,7 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
         nSizeD2 += SDynTexture2::s_nMemoryOccupied[i];
     }
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Dyn. atlas text.: %.1f Mb", BYTES_TO_MB(nSizeD2));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSizeD2 / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
@@ -2903,7 +2897,7 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
     nSizeCRT += m_d3dsdBackBuffer.Width * m_d3dsdBackBuffer.Height * 4 * 2;
     nSizeCRT += nSizeZRT;
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Frame targets: %.1f Mb", BYTES_TO_MB(nSizeCRT));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSizeCRT / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
@@ -2975,12 +2969,12 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
     }
     nSRT -= (nSizeD + nSizeD2 + nSizeSH);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Render targets: %.1f Mb", BYTES_TO_MB(nSRT));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSRT / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Textures: %.1f Mb", BYTES_TO_MB(nSAll));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSAll / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
@@ -2993,7 +2987,7 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
         }
     }
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Meshes: %.1f Mb", BYTES_TO_MB(nSizeMeshes));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSizeMeshes / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
@@ -3012,14 +3006,14 @@ void CD3D9Renderer::DebugVidResourcesBars(int nX, int nY)
 #endif
 
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Dyn. mesh: %.1f Mb", BYTES_TO_MB(nSizeDynM));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSizeDynM / fMaxTextureMemory * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst + 4;
 
     size_t nSize = nSizeDynM + nSRT + nSizeCRT + nSizeSH + nSizeD + nSizeD2;
     ColorF colO = Col_Blue;
     Draw2dLabel(nX, nY, fFSize, &colO.r, false, "Overall (Pure): %.1f Mb", BYTES_TO_MB(nSize));
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 1, nX + fOffs + (float)nSize / fMaxTextureMemory * fMaxBar, nY + 12, Col_White, 1.0f);
     nY += nYst;
 #endif
@@ -3072,123 +3066,123 @@ void CD3D9Renderer::DebugPerfBars(int nX, int nY)
 
     ColorF colF = Col_Orange;
     Draw2dLabel(nX, nY, fFSize, &colF.r, false, "Frame: %.3fms", fFrameTime * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fMaxBar, nY + 12, Col_Cyan, 1.0f);
     nY += nYst + 5;
 
     fTimeDIPZ = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPsZ + fTimeDIPZ * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "ZPass: %.3fms", fTimeDIPZ * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIPZ / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_DEFERRED_PREPROCESS] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_DEFERRED_PREPROCESS] + fTimeDIP[EFSLIST_DEFERRED_PREPROCESS] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Deferred Prepr.: %.3fms", fTimeDIP[EFSLIST_DEFERRED_PREPROCESS] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_DEFERRED_PREPROCESS] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_GENERAL] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_GENERAL] + fTimeDIP[EFSLIST_GENERAL] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "General: %.3fms", fTimeDIP[EFSLIST_GENERAL] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_GENERAL] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_TERRAINLAYER] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_TERRAINLAYER] + fTimeDIP[EFSLIST_TERRAINLAYER] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Terrain Layers: %.3fms", fTimeDIP[EFSLIST_TERRAINLAYER] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_TERRAINLAYER] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_SHADOW_GEN] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_SHADOW_GEN] + fTimeDIP[EFSLIST_SHADOW_GEN] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "ShadowGen: %.3fms", fTimeDIP[EFSLIST_SHADOW_GEN] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_SHADOW_GEN] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_DECAL] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_DECAL] + fTimeDIP[EFSLIST_DECAL] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Decals: %.3fms", fTimeDIP[EFSLIST_DECAL] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_DECAL] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIPRAIN = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPsRAIN + fTimeDIPRAIN * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Rain: %.3fms", fTimeDIPRAIN * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIPRAIN / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIPLayers = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPsDeferredLayers + fTimeDIPLayers * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Deferred Layers: %.3fms", fTimeDIPLayers * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIPLayers / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_WATER_VOLUMES] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_WATER_VOLUMES] + fTimeDIP[EFSLIST_WATER_VOLUMES] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Water volumes: %.3fms", fTimeDIP[EFSLIST_WATER_VOLUMES] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_WATER_VOLUMES] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_TRANSP] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_TRANSP] + fTimeDIP[EFSLIST_TRANSP] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Transparent: %.3fms", fTimeDIP[EFSLIST_TRANSP] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_TRANSP] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIPAO = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPsAO + fTimeDIPAO * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "AO: %.3fms", fTimeDIPAO * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIPAO / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIP[EFSLIST_POSTPROCESS] = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_POSTPROCESS] + fTimeDIP[EFSLIST_POSTPROCESS] * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Postprocessing: %.3fms", fTimeDIP[EFSLIST_POSTPROCESS] * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIP[EFSLIST_POSTPROCESS] / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     fTimeDIPSprites = (m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPsSprites + fTimeDIPSprites * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &col.r, false, "Sprites: %.3fms", fTimeDIPSprites * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIPSprites / fFrameTime * fMaxBar, nY + 12, Col_Green, 1.0f);
     nY += nYst;
 
     float fTimeDIPSum = fTimeDIPZ + fTimeDIP[EFSLIST_DEFERRED_PREPROCESS] + fTimeDIP[EFSLIST_GENERAL] + fTimeDIP[EFSLIST_TERRAINLAYER] + fTimeDIP[EFSLIST_SHADOW_GEN] + fTimeDIP[EFSLIST_DECAL] + fTimeDIPAO + fTimeDIPRAIN + fTimeDIPLayers + fTimeDIP[EFSLIST_WATER_VOLUMES] + fTimeDIP[EFSLIST_TRANSP] + fTimeDIP[EFSLIST_POSTPROCESS] + fTimeDIPSprites;
     Draw2dLabel(nX, nY, fFSize, &colF.r, false, "Sum all passes: %.3fms", fTimeDIPSum * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fTimeDIPSum / fFrameTime * fMaxBar, nY + 12, Col_Yellow, 1.0f);
     nY += nYst + 5;
 
 
     fRTTimeProcess = (m_fTimeProcessedRT[m_RP.m_nFillThreadID] + fRTTimeProcess * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &colT.r, false, "RT process time: %.3fms", fRTTimeProcess * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fRTTimeProcess / fFrameTime * fMaxBar, nY + 12, Col_Gray, 1.0f);
     nY += nYst;
     nX += 5;
 
     fRTTimeEndFrame = (m_fRTTimeEndFrame + fRTTimeEndFrame * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &colT.r, false, "RT end frame: %.3fms", fRTTimeEndFrame * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fRTTimeEndFrame / fFrameTime * fMaxBar, nY + 12, Col_Gray, 1.0f);
     nY += nYst;
 
     fRTTimeMiscRender = (m_fRTTimeMiscRender + fRTTimeMiscRender * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &colT.r, false, "RT misc render: %.3fms", fRTTimeMiscRender * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fRTTimeMiscRender / fFrameTime * fMaxBar, nY + 12, Col_Gray, 1.0f);
     nY += nYst;
 
     fRTTimeSceneRender = (m_fRTTimeSceneRender + fRTTimeSceneRender * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &colT.r, false, "RT scene render: %.3fms", fRTTimeSceneRender * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fRTTimeSceneRender / fFrameTime * fMaxBar, nY + 12, Col_Gray, 1.0f);
     nY += nYst;
 
     float fRTTimeOverall = fRTTimeSceneRender + fRTTimeEndFrame + fRTTimeFlashRender + fRTTimeMiscRender;
     Draw2dLabel(nX, nY, fFSize, &colT.r, false, "RT CPU overall: %.3fms", fRTTimeOverall * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fRTTimeOverall / fFrameTime * fMaxBar, nY + 12, Col_LightGray, 1.0f);
     nY += nYst + 5;
     nX -= 5;
@@ -3196,7 +3190,7 @@ void CD3D9Renderer::DebugPerfBars(int nX, int nY)
 
     fWaitForGPU = (m_fTimeWaitForGPU[m_RP.m_nFillThreadID] + fWaitForGPU * fSmooth) / (fSmooth + 1.0f);
     Draw2dLabel(nX, nY, fFSize, &colF.r, false, "Wait for GPU: %.3fms", fWaitForGPU * 1000.0f);
-    CTexture::s_ptexWhite->Apply(0);
+    CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
     DrawQuad(nX + fOffs, nY + 4, nX + fOffs + fWaitForGPU / fFrameTime * fMaxBar, nY + 12, Col_Blue, 1.0f);
     nY += nYst;
 
@@ -3891,7 +3885,7 @@ void CD3D9Renderer::RT_RenderDebug(bool bRenderStats)
         Set2DMode(m_width, m_height, backupSceneMatrices);
 
         ColorF col = Col_White;
-        int num = CTexture::s_ptexWhite->GetID();
+        int num = CTextureManager::Instance()->GetWhiteTexture()->GetID();
         DrawImage((float)nC, (float)(hgt - 280), 1, 256, num, 0, 0, 1, 1, col.r, col.g, col.b, col.a);
 
         Unset2DMode(backupSceneMatrices);
@@ -4062,7 +4056,7 @@ void CD3D9Renderer::RT_RenderDebug(bool bRenderStats)
     }
 #endif
 
-    if (CV_r_DeferredShadingDebug == 1)
+    if (CV_r_DeferredShadingDebug == 1 || CV_r_DeferredShadingDebug >= 3)
     {
         // Draw a custom RT list for deferred rendering
         m_showRenderTargetInfo.Reset();
@@ -4073,22 +4067,33 @@ void CD3D9Renderer::RT_RenderDebug(bool bRenderStats)
         rt.bRGBKEncoded = false;
         rt.bAliased = false;
         rt.channelWeight = Vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        m_showRenderTargetInfo.col = (CV_r_DeferredShadingDebug == 1 ? 2 : 1);
 
-        rt.pTexture = CTexture::s_ptexZTarget;
-        rt.channelWeight = Vec4(10.0f, 10.0f, 10.0f, 1.0f);
-        m_showRenderTargetInfo.rtList.push_back(rt);
-        rt.channelWeight = Vec4(1.0f, 1.0f, 1.0f, 1.0f);
-        rt.pTexture = CTexture::s_ptexSceneNormalsMap;
-        m_showRenderTargetInfo.rtList.push_back(rt);
-
+        if (CV_r_DeferredShadingDebug == 1 || CV_r_DeferredShadingDebug == 3)
+        {
+            rt.pTexture = CTexture::s_ptexZTarget;
+            rt.channelWeight = Vec4(10.0f, 10.0f, 10.0f, 1.0f);
+            m_showRenderTargetInfo.rtList.push_back(rt);
+        }
+        if (CV_r_DeferredShadingDebug == 1 || CV_r_DeferredShadingDebug == 4)
+        {
+            rt.channelWeight = Vec4(1.0f, 1.0f, 1.0f, 1.0f);
+            rt.pTexture = CTexture::s_ptexSceneNormalsMap;
+            m_showRenderTargetInfo.rtList.push_back(rt);
+        }
         // DiffuseAccuMap and SpecularAccMap are only calculated when CV_r_DeferredShadingTiled == 0 or 1.
         if (CV_r_DeferredShadingTiled < 2)
         {
-            rt.pTexture = CTexture::s_ptexCurrentSceneDiffuseAccMap;
-            m_showRenderTargetInfo.rtList.push_back(rt);
-
-            rt.pTexture = CTexture::s_ptexSceneSpecularAccMap;
-            m_showRenderTargetInfo.rtList.push_back(rt);
+            if (CV_r_DeferredShadingDebug == 1 || CV_r_DeferredShadingDebug == 5)
+            {
+                rt.pTexture = CTexture::s_ptexCurrentSceneDiffuseAccMap;
+                m_showRenderTargetInfo.rtList.push_back(rt);
+            }
+            if (CV_r_DeferredShadingDebug == 1 || CV_r_DeferredShadingDebug == 6)
+            {
+                rt.pTexture = CTexture::s_ptexSceneSpecularAccMap;
+                m_showRenderTargetInfo.rtList.push_back(rt);
+            }
         }
         DebugShowRenderTarget();
         m_showRenderTargetInfo.rtList.clear();
@@ -4338,15 +4343,16 @@ static uint32 ComputePresentInterval(bool vsync, uint32 refreshNumerator, uint32
     uint32 presentInterval = vsync ? 1 : 0;
     if (vsync && refreshNumerator != 0 && refreshDenominator != 0)
     {
-        static ICVar* pSysMaxFPS = gEnv && gEnv->pConsole ? gEnv->pConsole->GetCVar("sys_MaxFPS") : 0;
+        ICVar* pSysMaxFPS = gEnv && gEnv->pConsole ? gEnv->pConsole->GetCVar("sys_MaxFPS") : 0;
         if (pSysMaxFPS)
         {
             const int32 maxFPS = pSysMaxFPS->GetIVal();
             if (maxFPS > 0)
             {
-                const float refreshRate = refreshNumerator / refreshDenominator;
+                const float refreshRate = (float)refreshNumerator / refreshDenominator;
                 const float lockedFPS = maxFPS;
-
+                // presentInterval: how many vsync blanks between each presentation
+                // 0.1f is a magic number to compensate refreshRate is not exact 60 on hardware queried by FindClosestMatchingMode (for example: 59.99x)
                 presentInterval = (uint32) clamp_tpl((int) floorf(refreshRate / lockedFPS + 0.1f), 1, 4);
             }
         }
@@ -4385,35 +4391,38 @@ void CD3D9Renderer::RT_EndFrame()
 
         const Vec2 overscanOffset = Vec2(s_overscanBorders.x * VIRTUAL_SCREEN_WIDTH, s_overscanBorders.y * VIRTUAL_SCREEN_HEIGHT);
 
-        if (SShaderAsyncInfo::s_nPendingAsyncShaders > 0 && CV_r_shadersasynccompiling > 0 && CTexture::s_ptexIconShaderCompiling)
+        CTexture*   pDefTexture = CTextureManager::Instance()->GetDefaultTexture("IconShaderCompiling");
+        if (SShaderAsyncInfo::s_nPendingAsyncShaders > 0 && CV_r_shadersasynccompiling > 0 && pDefTexture)
         {
-            Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, CTexture::s_ptexIconShaderCompiling->GetID(), 0, 1, 1, 0);
+            Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, pDefTexture->GetID(), 0, 1, 1, 0);
         }
 
         ++nIconIndex;
 
-        if (CTexture::IsStreamingInProgress() && CTexture::s_ptexIconStreaming)
+        pDefTexture = CTextureManager::Instance()->GetDefaultTexture("IconStreaming");
+        if (CTexture::IsStreamingInProgress() && pDefTexture)
         {
-            Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, CTexture::s_ptexIconStreaming->GetID(), 0, 1, 1, 0);
+            Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, pDefTexture->GetID(), 0, 1, 1, 0);
         }
 
         ++nIconIndex;
 
         // indicate terrain texture streaming activity
-        if (gEnv->p3DEngine && CTexture::s_ptexIconStreamingTerrainTexture && gEnv->p3DEngine->IsTerrainTextureStreamingInProgress())
+        pDefTexture = CTextureManager::Instance()->GetDefaultTexture("IconStreamingTerrainTexture");
+        if (gEnv->p3DEngine && pDefTexture && gEnv->p3DEngine->IsTerrainTextureStreamingInProgress())
         {
-            Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, CTexture::s_ptexIconStreamingTerrainTexture->GetID(), 0, 1, 1, 0);
+            Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, pDefTexture->GetID(), 0, 1, 1, 0);
         }
 
         ++nIconIndex;
-
         if (IAISystem* pAISystem = gEnv->pAISystem)
         {
             if (INavigationSystem* pAINavigation = pAISystem->GetNavigationSystem())
             {
-                if (pAINavigation->GetState() == INavigationSystem::Working)
+                pDefTexture = CTextureManager::Instance()->GetDefaultTexture("IconNavigationProcessing");
+                if (pAINavigation->GetState() == INavigationSystem::Working && pDefTexture)
                 {
-                    Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, CTexture::s_ptexIconNavigationProcessing->GetID(), 0, 1, 1, 0);
+                    Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, pDefTexture->GetID(), 0, 1, 1, 0);
                 }
             }
         }
@@ -5784,7 +5793,7 @@ void CD3D9Renderer::Graph(byte* g, int x, int y, int wdt, int hgt, int nC, int t
 
     SetState(GS_NODEPTHTEST);
     col = Col_Blue;
-    int num = CTexture::s_ptexWhite->GetTextureID();
+    int num = CTextureManager::Instance()->GetWhiteTexture()->GetTextureID();
 
     float fy = (float)y;
     float fx = (float)x;
@@ -6952,52 +6961,27 @@ void CD3D9Renderer::UpdateTextureInVideoMemory(uint32 tnum, const byte* newdata,
     pTex->UpdateTextureRegion(newdata, posx, posy, posz, w, h, sizez, eTFSrc);
 }
 
+// Passing the actual texture resource to the renderer and prepping correct Mip
 bool CD3D9Renderer::EF_PrecacheResource(SShaderItem* pSI, float fMipFactorSI, float fTimeToReady, int Flags, int nUpdateId, int nCounter)
 {
     FUNCTION_PROFILER_FAST(GetISystem(), PROFILE_RENDERER, g_bProfilerEnabled);
 
-    CShader* pSH = (CShader*)pSI->m_pShader;
+    CShader*            pSH = (CShader*)pSI->m_pShader;
+    CShaderResources*   pSR = (CShaderResources*)pSI->m_pShaderResources;
 
-    if (pSH && !(pSH->m_Flags & EF_NODRAW))
+    if (pSH && !(pSH->m_Flags & EF_NODRAW) && pSR)
     {
-        if (CShaderResources* pSR = (CShaderResources*)pSI->m_pShaderResources)
+        for (auto iter = pSR->m_TexturesResourcesMap.begin(); iter != pSR->m_TexturesResourcesMap.end(); ++iter)
         {
-            // Optimisations: 1) Virtual calls removed. 2) Prefetch next iteration's SEfResTexture
-            SEfResTexture* pNextResTex = NULL;
-            EEfResTextures iSlot;
-            for (iSlot = EEfResTextures(0); iSlot < EFTT_MAX; iSlot = EEfResTextures(iSlot + 1))
+            SEfResTexture*  pResTex = &(iter->second);
+            ITexture*       pITex = pResTex->m_Sampler.m_pITex;
+            if (pITex)
             {
-                pNextResTex = pSR->m_Textures[iSlot];
-                if (pNextResTex)
-                {
-                    PrefetchLine(pNextResTex, offsetof(SEfResTexture, m_Sampler.m_pITex));
-                    iSlot = EEfResTextures(iSlot + 1);
-                    break;
-                }
-            }
-            while (pNextResTex)
-            {
-                SEfResTexture* pResTex = pNextResTex;
-                pNextResTex = NULL;
-                for (; iSlot < EFTT_MAX; iSlot = EEfResTextures(iSlot + 1))
-                {
-                    pNextResTex = pSR->m_Textures[iSlot];
-                    if (pNextResTex)
-                    {
-                        PrefetchLine(pNextResTex, offsetof(SEfResTexture, m_Sampler.m_pITex));
-                        iSlot = EEfResTextures(iSlot + 1);
-                        break;
-                    }
-                }
-                if (ITexture* pITex = pResTex->m_Sampler.m_pITex)
-                {
-                    float fMipFactor = fMipFactorSI * min(fabsf(pResTex->GetTiling(0)), fabsf(pResTex->GetTiling(1)));
-                    CD3D9Renderer::EF_PrecacheResource(pITex, fMipFactor, 0.f, Flags, nUpdateId, nCounter);
-                }
+                float fMipFactor = fMipFactorSI * min(fabsf(pResTex->GetTiling(0)), fabsf(pResTex->GetTiling(1)));
+                CD3D9Renderer::EF_PrecacheResource(pITex, fMipFactor, 0.f, Flags, nUpdateId, nCounter);
             }
         }
     }
-
     return true;
 }
 
@@ -7038,7 +7022,7 @@ ITexture* CD3D9Renderer::EF_CreateCompositeTexture(int type, const char* szName,
 
     default:
         CRY_ASSERT_MESSAGE(0, "Not implemented texture format");
-        pTex = CTexture::s_ptexNoTexture;
+        pTex = CTextureManager::Instance()->GetNoTexture();
     }
 
     return pTex;
@@ -7507,8 +7491,10 @@ void CD3D9Renderer::DebugShowRenderTarget()
     RT_SetViewport(0, 0, m_width, m_height);
     float tileW = 1.f / static_cast<float>(m_showRenderTargetInfo.col);
     float tileH = 1.f / static_cast<float>(m_showRenderTargetInfo.col);
-    const float tileGapW = tileW * 0.05f;
-    const float tileGapH = tileH * 0.05f;
+
+    const float tileGapW = tileW * 0.01f;
+    const float tileGapH = tileH * 0.01f;
+
     if (m_showRenderTargetInfo.col != 1) // If not a fullsceen(= 1x1 table),
     {
         tileW -= tileGapW;
@@ -7573,8 +7559,9 @@ void CD3D9Renderer::DebugShowRenderTarget()
         float curX = col * (tileW + tileGapW);
         float curY = row * (tileH + tileGapH);
         gcpRendD3D->FX_SetState(GS_NODEPTHTEST);  // fix the state change by using WriteXY
-        WriteXY((int)(curX * 800 + 2), (int)((curY + tileH) * 600 - 15), 1, 1, 1, 1, 1, 1, "Fmt: %s, Type: %s", pTex->GetFormatName(), CTexture::NameForTextureType(pTex->GetTextureType()));
-        WriteXY((int)(curX * 800 + 2), (int)((curY + tileH) * 600 + 1), 1, 1, 1, 1, 1, 1, "%s   %d x %d", pTex->GetName(), pTex->GetWidth(), pTex->GetHeight());
+
+        WriteXY((int)(curX * 800 + 2), (int)((curY + tileH) * 600 - 30), 1, 1, 1, 1, 1, 1, "Fmt: %s, Type: %s", pTex->GetFormatName(), CTexture::NameForTextureType(pTex->GetTextureType()));
+        WriteXY((int)(curX * 800 + 2), (int)((curY + tileH) * 600 - 15), 1, 1, 1, 1, 1, 1, "%s   %d x %d", pTex->GetName(), pTex->GetWidth(), pTex->GetHeight());
     }
 
     RT_SetViewport(x0, y0, w0, h0);

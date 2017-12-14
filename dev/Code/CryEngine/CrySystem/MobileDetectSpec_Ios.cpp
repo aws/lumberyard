@@ -28,7 +28,7 @@ namespace MobileSysInspect
     bool GetAutoDetectedSpecName(AZStd::string &buffer)
     {
         AZStd::string name = SystemUtilsApple::GetMachineName();
-        buffer = device_spec_map[AZStd::hash<AZStd::string>()(name)];
+        buffer = device_spec_map[name];
         return !buffer.empty();
     }
 

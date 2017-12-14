@@ -138,14 +138,10 @@ bool CVehiclePartTread::Init(IVehicle* pVehicle, const CVehicleParams& table, IV
 
         if (m_pShaderResources)
         {
-            for (int i = 0; i < EFTT_MAX; ++i)
+            for ( auto iter=m_pShaderResources->GetTexturesResourceMap()->begin() ; iter!= m_pShaderResources->GetTexturesResourceMap()->end() ; ++iter )
             {
-                if (!m_pShaderResources->GetTexture(i))
-                {
-                    continue;
-                }
-
-                SEfTexModificator& modif = *m_pShaderResources->GetTexture(i)->AddModificator();
+                SEfResTexture*      pTextureRes = &(iter->second);
+                SEfTexModificator&  modif = *pTextureRes->AddModificator();
 
                 modif.SetMember("m_eMoveType[0]", 2.0f);
                 modif.SetMember("m_OscRate[0]", 0.0f);
@@ -393,14 +389,10 @@ void CVehiclePartTread::SetUVSpeed(float wheelSpeed)
         return;
     }
 
-    for (int i = 0; i < EFTT_MAX; ++i)
+    for ( auto iter=m_pShaderResources->GetTexturesResourceMap()->begin() ; iter!= m_pShaderResources->GetTexturesResourceMap()->end() ; ++iter )
     {
-        if (!m_pShaderResources->GetTexture(i))
-        {
-            continue;
-        }
-
-        SEfTexModificator& modif = *m_pShaderResources->GetTexture(i)->AddModificator();
+        SEfResTexture*      pTextureRes = &(iter->second);
+        SEfTexModificator&  modif = *pTextureRes->AddModificator();
 
         //minimum speed
         float oscSpeed = (abs(wheelSpeed) > 0.2f) ? -wheelSpeed : 0.f;

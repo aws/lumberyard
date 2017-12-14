@@ -39,7 +39,7 @@ public:
     virtual void Display(DisplayContext& disp);
     virtual bool HitTest(HitContext& hc);
     virtual void GetLocalBounds(AABB& box);
-    bool IsScalable() { return false; }
+    bool IsScalable() const { return false; }
     virtual void SetHelperScale(float scale) { m_helperScale = scale; };
     virtual float GetHelperScale() { return m_helperScale; };
     //////////////////////////////////////////////////////////////////////////

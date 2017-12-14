@@ -20,6 +20,12 @@ namespace AzFramework
     const InputDeviceId InputDeviceVirtualKeyboard::Id("virtual_keyboard");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceVirtualKeyboard::IsVirtualKeyboardDevice(const InputDeviceId& inputDeviceId)
+    {
+        return (inputDeviceId.GetNameCrc32() == Id.GetNameCrc32());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputChannelId InputDeviceVirtualKeyboard::Command::EditEnter("virtual_keyboard_edit_enter");
     const InputChannelId InputDeviceVirtualKeyboard::Command::EditClear("virtual_keyboard_edit_clear");
     const InputChannelId InputDeviceVirtualKeyboard::Command::NavigationBack("virtual_keyboard_navigation_back");

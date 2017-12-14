@@ -15,6 +15,7 @@
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/Graph.h>
 #include <ScriptCanvas/Core/Datum.h>
+#include <ScriptCanvas/Data/PropertyTraits.h>
 
 namespace AZ
 {
@@ -25,18 +26,12 @@ namespace AZ
 
 namespace ScriptCanvas
 {
-    template<typename t_GetterFunction, typename t_SetterFunction, bool needsProperties = true>
     struct PropertyAccount
     {
-        AZStd::vector<t_GetterFunction> m_getters;
-        AZStd::unordered_map<SlotId, AZ::u32> m_getterIndexByInputSlot;
-        AZStd::vector<AZ::u32> m_getterSlotIndices;
-        AZStd::unordered_map<SlotId, t_SetterFunction> m_settersByInputSlot;
+        AZStd::unordered_map<SlotId, Data::GetterWrapper> m_gettersByInputSlot;
+        AZStd::unordered_map<SlotId, Data::SetterWrapper> m_settersByInputSlot;
+        AZStd::unordered_map<AZStd::string, AZStd::pair<SlotId, SlotId>> m_getterSetterIdPairs;
     };
-
-    template<typename t_GetterFunction, typename t_SetterFunction>
-    struct PropertyAccount<t_GetterFunction, t_SetterFunction, false>
-    {};
 
     class PureData
         : public Node
@@ -54,8 +49,6 @@ namespace ScriptCanvas
         void AddInputTypeAndOutputTypeSlot(const Data::Type& type);
 
     protected:
-        using GetterFunction = AZStd::function<Datum(const Datum& thisDatum)>;
-        using SetterFunction = AZStd::function<void(Datum& thisDatum, const Datum& setValue)>;
 
         static const int k_getSlotIndex = 1;
         static const int k_setSlotIndex = 0;
@@ -70,7 +63,8 @@ namespace ScriptCanvas
         
         void OnActivate() override;
         void OnInputChanged(const Datum& input, const SlotId& id) override;
-        
+        void MarkDefaultableInput() override {}
+
         AZ_INLINE void OnOutputChanged(const Datum& output) const
         { 
             OnOutputChanged(output, m_slotContainer.m_slots[k_getSlotIndex]); 
@@ -97,6 +91,16 @@ namespace ScriptCanvas
 
         AZStd::string_view GetInputDataName() const;
         AZStd::string_view GetOutputDataName() const;
+
+        void SetInput(const Datum& input, const SlotId& id) override;
+        void SetProperty(const Datum& input, const SlotId& id);
+        void CallGetter(const SlotId& getterSlotId);
+        bool IsConfigured() { return m_configured; }
+
+        void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+
+        PropertyAccount m_propertyAccount;
+        bool m_configured = false;
     };
 
     template<typename DatumType>

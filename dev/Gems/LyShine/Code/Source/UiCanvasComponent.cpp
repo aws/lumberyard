@@ -59,8 +59,10 @@
 AllocateConstIntCVar(UiCanvasComponent, CV_ui_DisplayElemBounds);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiCanvasNotificationBus Behavior context handler class 
-class UiCanvasNotificationBusBehaviorHandler : public UiCanvasNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiCanvasNotificationBus Behavior context handler class
+class UiCanvasNotificationBusBehaviorHandler
+    : public UiCanvasNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiCanvasNotificationBusBehaviorHandler, "{64014B4F-E12F-4839-99B0-426B5717DB44}", AZ::SystemAllocator,
@@ -73,8 +75,10 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiCanvasNotificationBus Behavior context handler class 
-class UiCanvasInputNotificationBusBehaviorHandler : public UiCanvasInputNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiCanvasInputNotificationBus Behavior context handler class
+class UiCanvasInputNotificationBusBehaviorHandler
+    : public UiCanvasInputNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiCanvasInputNotificationBusBehaviorHandler, "{76042EFA-0B61-4E7A-ACC8-296382D46881}", AZ::SystemAllocator,
@@ -112,8 +116,10 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiAnimationNotificationBus Behavior context handler class 
-class UiAnimationNotificationBusBehaviorHandler : public UiAnimationNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiAnimationNotificationBus Behavior context handler class
+class UiAnimationNotificationBusBehaviorHandler
+    : public UiAnimationNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiAnimationNotificationBusBehaviorHandler, "{35D19FE8-5F31-426E-877A-8EEF3A42F99F}", AZ::SystemAllocator,
@@ -169,6 +175,42 @@ namespace
     {
         return TestFileStartString(pathname, "<ObjectStream");
     }
+
+    template<class T, class MapType>
+    void ReuseOrGenerateNewIdsAndFixRefs(T* object, MapType& newIdMap, AZ::SerializeContext* context)
+    {
+        AZ::EntityUtils::ReplaceEntityIds(
+            object,
+            [&newIdMap](const AZ::EntityId& originalId, bool /*isEntityId*/) -> AZ::EntityId
+        {
+            auto findIt = newIdMap.find(originalId);
+            if (findIt == newIdMap.end())
+            {
+                AZ::EntityId newId = AZ::Entity::MakeId();
+                newIdMap.insert(AZStd::make_pair(originalId, newId));
+                return newId;
+            }
+            else
+            {
+                return findIt->second; // return the previously remapped id
+            }
+        }, context);
+
+        AZ::EntityUtils::ReplaceEntityRefs(
+            object,
+            [&newIdMap](const AZ::EntityId& originalId, bool /*isEntityId*/) -> AZ::EntityId
+        {
+            auto findIt = newIdMap.find(originalId);
+            if (findIt == newIdMap.end())
+            {
+                return originalId; // entityId is not being remapped
+            }
+            else
+            {
+                return findIt->second; // return the remapped id
+            }
+        }, context);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +260,11 @@ UiCanvasComponent::~UiCanvasComponent()
 
     if (m_entityContext)
     {
+        // deactivate all UI elements, this is so that we can detect improper deletion of UI elements by users
+        // during game play
+        DeactivateElements();
+
+        // Destroy the entity context, this will delete all the UI elements
         m_entityContext->DestroyUiContext();
     }
 
@@ -238,7 +285,7 @@ void UiCanvasComponent::UpdateCanvas(float deltaTime, bool isInGame)
             return;
         }
 
-        EBUS_EVENT_ID(m_rootElement, UiElementBus, UpdateElement);
+        EBUS_EVENT_ID(m_rootElement, UiElementBus, UpdateElement, deltaTime);
 
         // update the animation system
         m_uiAnimationSystem.PreUpdate(deltaTime);
@@ -620,7 +667,7 @@ AZ::Entity* UiCanvasComponent::LoadFromPrefab(const string& pathname, bool makeU
             AZ_Assert(context, "No serialization context found");
 
             AZ::SliceComponent::EntityIdToEntityIdMap entityIdMap;
-            AZ::EntityUtils::GenerateNewIdsAndFixRefs(fileObject, entityIdMap, context);
+            AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(fileObject, entityIdMap, context);
         }
 
         // add all of the entities to this canvases EntityContext
@@ -1038,8 +1085,8 @@ void UiCanvasComponent::SetIsNavigationSupported(bool isSupported)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasComponent::HandleInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,
-                                         const AZ::Vector2* viewportPos,
-                                         AzFramework::ModifierKeyMask activeModifierKeys)
+    const AZ::Vector2* viewportPos,
+    AzFramework::ModifierKeyMask activeModifierKeys)
 {
     // Ignore input events if we're not enabled
     if (!m_enabled)
@@ -1047,9 +1094,9 @@ bool UiCanvasComponent::HandleInputEvent(const AzFramework::InputChannel::Snapsh
         return false;
     }
 
-    if (inputSnapshot.m_deviceId == AzFramework::InputDeviceKeyboard::Id ||
-        inputSnapshot.m_deviceId == AzFramework::InputDeviceVirtualKeyboard::Id ||
-        AzFramework::InputDeviceGamepad::IsGamepad(inputSnapshot.m_deviceId)) // Any gamepad
+    if (AzFramework::InputDeviceKeyboard::IsKeyboardDevice(inputSnapshot.m_deviceId) ||
+        AzFramework::InputDeviceVirtualKeyboard::IsVirtualKeyboardDevice(inputSnapshot.m_deviceId) ||
+        AzFramework::InputDeviceGamepad::IsGamepadDevice(inputSnapshot.m_deviceId))
     {
         return HandleKeyInputEvent(inputSnapshot, activeModifierKeys);
     }
@@ -1087,9 +1134,9 @@ bool UiCanvasComponent::HandleTextEvent(const AZStd::string& textUTF8)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasComponent::HandleInputPositionalEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,
-                                                   AZ::Vector2 viewportPos)
+    AZ::Vector2 viewportPos)
 {
-    if (inputSnapshot.m_deviceId == AzFramework::InputDeviceMouse::Id)
+    if (AzFramework::InputDeviceMouse::IsMouseDevice(inputSnapshot.m_deviceId))
     {
         if (m_lastMousePosition != viewportPos)
         {
@@ -1106,8 +1153,8 @@ bool UiCanvasComponent::HandleInputPositionalEvent(const AzFramework::InputChann
         }
     }
 
-    if (inputSnapshot.m_deviceId == AzFramework::InputDeviceMouse::Id ||
-        inputSnapshot.m_deviceId == AzFramework::InputDeviceTouch::Id)
+    if (AzFramework::InputDeviceMouse::IsMouseDevice(inputSnapshot.m_deviceId) ||
+        AzFramework::InputDeviceTouch::IsTouchDevice(inputSnapshot.m_deviceId))
     {
         if (s_handleHoverInputEvents)
         {
@@ -1226,6 +1273,12 @@ void UiCanvasComponent::ForceHoverInteractable(AZ::EntityId newHoverInteractable
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetTransformsNeedRecomputeFlag()
+{
+    m_transformsNeedRecompute = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::OnEntityDeactivated(const AZ::EntityId& entityId)
 {
     AZ::EntityBus::Handler::BusDisconnect(entityId);
@@ -1234,7 +1287,7 @@ void UiCanvasComponent::OnEntityDeactivated(const AZ::EntityId& entityId)
     {
         ClearHoverInteractable();
 
-        // If we are using keybord/gamepad navigation we should set a new hover interactable
+        // If we are using keyboard/gamepad navigation we should set a new hover interactable
         SetFirstHoverInteractable();
     }
 }
@@ -1430,26 +1483,26 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
 
         serializeContext->Class<UiCanvasComponent, AZ::Component>()
             ->Version(3, &VersionConverter)
-            // Not in properties pane
+        // Not in properties pane
             ->Field("UniqueId", &UiCanvasComponent::m_uniqueId)
             ->Field("RootElement", &UiCanvasComponent::m_rootElement)
             ->Field("LastElement", &UiCanvasComponent::m_lastElementId)
-            ->Field("DrawOrder", &UiCanvasComponent::m_drawOrder)
             ->Field("CanvasSize", &UiCanvasComponent::m_canvasSize)
             ->Field("IsSnapEnabled", &UiCanvasComponent::m_isSnapEnabled)
-             // Rendering group
+        // Rendering group
+            ->Field("DrawOrder", &UiCanvasComponent::m_drawOrder)
             ->Field("IsPixelAligned", &UiCanvasComponent::m_isPixelAligned)
             ->Field("RenderToTexture", &UiCanvasComponent::m_renderToTexture)
             ->Field("RenderTargetName", &UiCanvasComponent::m_renderTargetName)
-            // Input group
+        // Input group
             ->Field("IsPosInputSupported", &UiCanvasComponent::m_isPositionalInputSupported)
             ->Field("IsNavigationSupported", &UiCanvasComponent::m_isNavigationSupported)
             ->Field("FirstHoverElement", &UiCanvasComponent::m_firstHoverInteractable)
             ->Field("AnimSystem", &UiCanvasComponent::m_uiAnimationSystem)
             ->Field("AnimationData", &UiCanvasComponent::m_serializedAnimationData)
-            // Tooltips group
+        // Tooltips group
             ->Field("TooltipDisplayElement", &UiCanvasComponent::m_tooltipDisplayElement)
-            // Editor settings
+        // Editor settings
             ->Field("SnapDistance", &UiCanvasComponent::m_snapDistance)
             ->Field("SnapRotationDegrees", &UiCanvasComponent::m_snapRotationDegrees);
 
@@ -1459,6 +1512,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiCanvasComponent>("UI Canvas", "These are the properties of the UI canvas.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AddableByUser, false)
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiCanvas.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiCanvas.png")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
@@ -1466,6 +1520,9 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             editInfo->ClassElement(AZ::Edit::ClassElements::Group, "Rendering")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
+            editInfo->DataElement(AZ::Edit::UIHandlers::Default, &UiCanvasComponent::m_drawOrder, "Draw order", "The order, relative to other canvases, in which this canvas will draw (higher numbers on top).")
+                ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1000.0f);
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isPixelAligned, "Is pixel aligned", "When checked, all corners of all elements will be rounded to the nearest pixel.");
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_renderToTexture, "Render to texture", "When checked, the canvas is rendered to a texture instead of the full screen.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
@@ -1604,6 +1661,17 @@ void UiCanvasComponent::Activate()
     UiCanvasBus::Handler::BusConnect(m_entity->GetId());
     UiAnimationBus::Handler::BusConnect(m_entity->GetId());
 
+    // Reconnect to buses that we connect to intermittently
+    // This will only happen if we have been deactivated and reactivated at runtime
+    if (m_hoverInteractable.IsValid())
+    {
+        AZ::EntityBus::Handler::BusConnect(m_hoverInteractable);
+    }
+    if (m_activeInteractable.IsValid())
+    {
+        UiInteractableActiveNotificationBus::Handler::BusConnect(m_activeInteractable);
+    }
+
     // Note: this will create a render target even when the canvas is being used in the editor which is
     // unnecessary but harmless. It will not actually be used as a render target unless we are running in game.
     // An alternative would be to create in on first use.
@@ -1620,6 +1688,16 @@ void UiCanvasComponent::Deactivate()
 {
     UiCanvasBus::Handler::BusDisconnect();
     UiAnimationBus::Handler::BusDisconnect();
+
+    // disconnect from any other buses we could be connected to
+    if (m_hoverInteractable.IsValid() && AZ::EntityBus::Handler::BusIsConnectedId(m_hoverInteractable))
+    {
+        AZ::EntityBus::Handler::BusDisconnect(m_hoverInteractable);
+    }
+    if (m_activeInteractable.IsValid() && UiInteractableActiveNotificationBus::Handler::BusIsConnectedId(m_activeInteractable))
+    {
+        UiInteractableActiveNotificationBus::Handler::BusDisconnect(m_activeInteractable);
+    }
 
     if (m_renderToTexture)
     {
@@ -1703,7 +1781,7 @@ bool UiCanvasComponent::HandleKeyInputEvent(const AzFramework::InputChannel::Sna
     if (m_activeInteractable.IsValid())
     {
         if (inputSnapshot.m_state == AzFramework::InputChannel::State::Began ||
-            inputSnapshot.m_deviceId == AzFramework::InputDeviceVirtualKeyboard::Id) // Virtual keyboard events don't have state
+            AzFramework::InputDeviceVirtualKeyboard::IsVirtualKeyboardDevice(inputSnapshot.m_deviceId)) // Virtual keyboard events don't have state
         {
             EBUS_EVENT_ID_RESULT(result, m_activeInteractable, UiInteractableBus, HandleKeyInputBegan, inputSnapshot, activeModifierKeys);
         }
@@ -1940,7 +2018,7 @@ bool UiCanvasComponent::HandleNavigationInputEvent(UiNavigationHelpers::Command 
                         };
 
                     AZ::EntityId nextEntityId = UiNavigationHelpers::GetNextElement(curInteractable, command,
-                        navigableElements, firstHoverInteractable, isValidInteractable, ancestorInteractable);
+                            navigableElements, firstHoverInteractable, isValidInteractable, ancestorInteractable);
 
                     if (nextEntityId.IsValid())
                     {
@@ -1987,7 +2065,7 @@ bool UiCanvasComponent::DeactivateInteractableByKeyInput(const AzFramework::Inpu
         AZ::EntityId prevActiveInteractable = m_activeInteractable;
         ClearActiveInteractable();
 
-        if (AzFramework::InputDeviceGamepad::IsGamepad(inputSnapshot.m_deviceId)) // Any gamepad
+        if (AzFramework::InputDeviceGamepad::IsGamepadDevice(inputSnapshot.m_deviceId))
         {
             SetHoverInteractable(prevActiveInteractable);
 
@@ -2293,9 +2371,9 @@ AZ::EntityId UiCanvasComponent::FindFirstHoverInteractable(AZ::EntityId parentEl
         float dist = topLeft.GetLength();
 
         bool inside = (center.GetX() >= parentRect.left &&
-            center.GetX() <= parentRect.right &&
-            center.GetY() >= parentRect.top &&
-            center.GetY() <= parentRect.bottom);
+                       center.GetX() <= parentRect.right &&
+                       center.GetY() >= parentRect.top &&
+                       center.GetY() <= parentRect.bottom);
 
         if (inside)
         {
@@ -2370,26 +2448,6 @@ void UiCanvasComponent::SetFirstHoverInteractable()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::ReplaceEntityRefs(AZ::Entity* entity, const UiElementComponent::EntityIdMap& entityIdMap,
-    AZ::SerializeContext* context)
-{
-    // USE AZ util to scan and entity and all its components and child entities
-    // and fixed up any entity refs using the given map
-    AZ::EntityUtils::ReplaceEntityRefs(entity, [&](const AZ::EntityId& key, bool /*isEntityId*/) -> AZ::EntityId
-        {
-            auto iter = entityIdMap.find(key);
-            if (iter != entityIdMap.end())
-            {
-                return iter->second;
-            }
-            else
-            {
-                return key; //leave unchanged if not in our map
-            }
-        }, context);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::PrepareAnimationSystemForCanvasSave()
 {
     m_serializedAnimationData.m_serializeData.clear();
@@ -2404,7 +2462,7 @@ void UiCanvasComponent::RestoreAnimationSystemAfterCanvasLoad(bool remapIds, UiE
     size_t size = m_serializedAnimationData.m_serializeData.length();
     if (size > 0)
     {
-        // found old format annimation data
+        // found old format animation data
         // serialize back from loaded string and then clear string
         XmlNodeRef xmlNode = gEnv->pSystem->LoadXmlFromBuffer(buffer, size);
 
@@ -2428,20 +2486,20 @@ UiCanvasComponent* UiCanvasComponent::CloneAndInitializeCanvas(UiEntityContext* 
     // If it is an editor canvas then slices will be flattened and Editor components will be
     // replaced with runtime components.
     AZ::Entity* clonedRootSliceEntity = nullptr;
-    AZStd::string prefabBuffer;
-    AZ::IO::ByteContainerStream<AZStd::string > prefabStream(&prefabBuffer);
-    if (m_entityContext->SaveToStreamForGame(prefabStream, AZ::ObjectStream::ST_XML))
+    AZStd::string rootSliceBuffer;
+    AZ::IO::ByteContainerStream<AZStd::string > rootSliceStream(&rootSliceBuffer);
+    if (m_entityContext->SaveToStreamForGame(rootSliceStream, AZ::ObjectStream::ST_XML))
     {
-        prefabStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-        clonedRootSliceEntity = AZ::Utils::LoadObjectFromStream<AZ::Entity>(prefabStream);
+        rootSliceStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        clonedRootSliceEntity = AZ::Utils::LoadObjectFromStream<AZ::Entity>(rootSliceStream);
     }
 
     // Clone the canvas entity
-    AZ::Entity* clonedCanvasEntity = nullptr;
     AZ::Entity* sourceCanvasEntity = GetEntity();
+    AZ::Entity* clonedCanvasEntity = nullptr;
     AZStd::string canvasBuffer;
     AZ::IO::ByteContainerStream<AZStd::string > canvasStream(&canvasBuffer);
-    if (AZ::Utils::SaveObjectToStream<AZ::Entity>(canvasStream, AZ::ObjectStream::ST_XML, sourceCanvasEntity))
+    if (m_entityContext->SaveCanvasEntityToStreamForGame(sourceCanvasEntity, canvasStream, AZ::ObjectStream::ST_XML))
     {
         canvasStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
         clonedCanvasEntity = AZ::Utils::LoadObjectFromStream<AZ::Entity>(canvasStream);
@@ -2463,6 +2521,24 @@ UiCanvasComponent* UiCanvasComponent::CloneAndInitializeCanvas(UiEntityContext* 
     }
 
     return canvasComponent;
+}
+
+void UiCanvasComponent::DeactivateElements()
+{
+    AZ::SliceComponent::EntityList entities;
+    AZ::SliceComponent* rootSlice = m_entityContext->GetRootSlice();
+
+    bool result = rootSlice->GetEntities(entities);
+    if (result)
+    {
+        for (AZ::Entity* entity : entities)
+        {
+            if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+            {
+                entity->Deactivate();
+            }
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2581,10 +2657,10 @@ UiCanvasComponent::EntityComboBoxVec UiCanvasComponent::PopulateTooltipDisplayEn
     LyShine::EntityArray tooltipDisplayElements;
 
     auto checkTooltipDisplay = [](const AZ::Entity* entity)
-    {
-        // Check for component on entity
-        return UiTooltipDisplayBus::FindFirstHandler(entity->GetId()) ? true : false;
-    };
+        {
+            // Check for component on entity
+            return UiTooltipDisplayBus::FindFirstHandler(entity->GetId()) ? true : false;
+        };
 
     FindElements(checkTooltipDisplay, tooltipDisplayElements);
 
@@ -2731,44 +2807,38 @@ void UiCanvasComponent::SendRectChangeNotificationsAndRecomputeLayouts()
     SendRectChangeNotifications();
 
     // Recompute invalid layouts
-    m_layoutManager->RecomputeMarkedLayouts();
+    if (m_layoutManager->HasMarkedLayouts())
+    {
+        m_layoutManager->RecomputeMarkedLayouts();
 
-    // The layout recompute may have caused child size changes, so
-    // send canvas space rect change notifications again
-    SendRectChangeNotifications();
+        // The layout recompute may have caused child size changes, so
+        // send canvas space rect change notifications again
+        // NOTE: this is expensive so we don't do it unless there were marked layouts
+        SendRectChangeNotifications();
 
-    // Remove the newly marked layouts since they have been marked due
-    // to their parents recomputing them
-    m_layoutManager->UnmarkAllLayouts();
+        // Remove the newly marked layouts since they have been marked due
+        // to their parents recomputing them
+        m_layoutManager->UnmarkAllLayouts();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::SendRectChangeNotifications()
 {
-    // Get a list of elements who's canvas space rect has changed
-    auto FindChangedElements = [](const AZ::Entity* entity)
+    // lambda that simply sends the RecomputeTransformsAndSendNotifications message to an entity
+    auto RecomputeAndNotify = [](const AZ::EntityId entity)
     {
-        bool rectChanged = false;
-        EBUS_EVENT_ID_RESULT(rectChanged, entity->GetId(), UiTransformBus, HasCanvasSpaceRectChanged);
-        return rectChanged;
+        EBUS_EVENT_ID(entity, UiTransformBus, RecomputeTransformsAndSendNotifications);
     };
 
-    LyShine::EntityArray changedElements;
-    EBUS_EVENT_ID(m_rootElement, UiElementBus, FindDescendantElements, FindChangedElements, changedElements);
-
-    // Notify of rect changes. The listeners could cause new rect changes, so loop until there are no elements
-    // with changed rects
-    while (!changedElements.empty())
+    // While we know there are transforms that need re-computing
+    while (m_transformsNeedRecompute)
     {
-        for (auto changedElement : changedElements)
-        {
-            // Notify rect change and reset
-            EBUS_EVENT_ID(changedElement->GetId(), UiTransformBus, NotifyAndResetCanvasSpaceRectChange);
-        }
+        // clear the flag, it may get set again if some of the notification listeners change things
+        m_transformsNeedRecompute = false;
 
-        // Check for new element rect changes
-        changedElements.clear();
-        EBUS_EVENT_ID(m_rootElement, UiElementBus, FindDescendantElements, FindChangedElements, changedElements);
+        // Recompute the transforms on all elements and sent notifications of any changes in element rects
+        EBUS_EVENT_ID(m_rootElement, UiElementBus, CallOnDescendantElements, RecomputeAndNotify);
     }
 }
 
@@ -2905,7 +2975,8 @@ UiCanvasComponent* UiCanvasComponent::CreateCanvasInternal(UiEntityContext* enti
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-UiCanvasComponent*  UiCanvasComponent::LoadCanvasInternal(const string& pathnameToOpen, bool forEditor, const string& assetIdPathname, UiEntityContext* entityContext)
+UiCanvasComponent*  UiCanvasComponent::LoadCanvasInternal(const string& pathnameToOpen, bool forEditor, const string& assetIdPathname, UiEntityContext* entityContext,
+    const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable, AZ::EntityId previousCanvasId)
 {
     UiCanvasComponent* canvasComponent = nullptr;
 
@@ -2939,7 +3010,7 @@ UiCanvasComponent*  UiCanvasComponent::LoadCanvasInternal(const string& pathname
                     // to generate new entity IDs for all entities loaded from the file.
 
                     // complete initialization of loaded entities
-                    canvasComponent = FixupPostLoad(canvasEntity, rootSliceEntity, forEditor, entityContext);
+                    canvasComponent = FixupPostLoad(canvasEntity, rootSliceEntity, forEditor, entityContext, nullptr, previousRemapTable, previousCanvasId);
                     if (canvasComponent)
                     {
                         // The canvas size may get reset on the first call to RenderCanvas to set the size to
@@ -2960,8 +3031,6 @@ UiCanvasComponent*  UiCanvasComponent::LoadCanvasInternal(const string& pathname
                 // doesn't destroy the canvas, but we need to delete it nonetheless to avoid leaking.
                 delete canvasFileObject;
             }
-
-            
         }
     }
     else
@@ -2991,11 +3060,22 @@ UiCanvasComponent* UiCanvasComponent::FixupReloadedCanvasForEditorInternal(AZ::E
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ::Entity* rootSliceEntity, bool forEditor, UiEntityContext* entityContext, const AZ::Vector2* canvasSize)
+UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ::Entity* rootSliceEntity, bool forEditor, UiEntityContext* entityContext, const AZ::Vector2* canvasSize,
+    const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable, AZ::EntityId previousCanvasId)
 {
-    // when we load in the editor we do not create new entity IDs. A canvas can only be open
-    // once in the editor. When we load in game we always generate new entity IDs.
+    // When we load in game we always generate new entity IDs.
     bool makeNewEntityIds = (forEditor) ? false : true;
+
+    // When we load in the editor, check if there is another canvas open that has the same entityId
+    if (forEditor)
+    {
+        AZ::Entity* foundEntity = nullptr;
+        EBUS_EVENT_RESULT(foundEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntity->GetId());
+        if (foundEntity)
+        {
+            makeNewEntityIds = true;
+        }
+    }
 
     UiCanvasComponent* canvasComponent = canvasEntity->FindComponent<UiCanvasComponent>();
     AZ_Assert(canvasComponent, "No canvas component found on loaded entity");
@@ -3004,26 +3084,56 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
         return nullptr;     // unlikely to happen but perhaps possible if a non-canvas file was opened
     }
 
-    AZ::SliceComponent::EntityIdToEntityIdMap idRemapTable;
-
     // Initialize the entity context for the new canvas and init and activate all the entities
     // in the root slice
     canvasComponent->m_entityContext = entityContext;
     canvasComponent->m_entityContext->InitUiContext();
-    if (!canvasComponent->m_entityContext->HandleLoadedRootSliceEntity(rootSliceEntity, makeNewEntityIds, &idRemapTable))
+
+    if (previousRemapTable)
     {
-        return nullptr;
+        // We are reloading a canvas and we want to use the same entity ID mapping (from editor entity to game entity) as in the previously
+        // loaded canvas. The code below is similar to what HandleLoadedRootSliceEntity does for remapping except that if the existing
+        // mapping table already contains an entry for an editor entity ID it will use the existing mapping
+        AZ::SliceComponent* newRootSlice = rootSliceEntity->FindComponent<AZ::SliceComponent>();
+
+        AZ::SerializeContext* context = nullptr;
+        EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
+        AZ_Assert(context, "No serialization context found");
+
+        AZ::SliceComponent::EntityList entities;
+        newRootSlice->GetEntities(entities);
+
+        canvasComponent->m_editorToGameEntityIdMap = *previousRemapTable;
+        AZ::SliceComponent::InstantiatedContainer entityContainer;
+        entityContainer.m_entities = AZStd::move(entities);
+        ReuseOrGenerateNewIdsAndFixRefs(&entityContainer, canvasComponent->m_editorToGameEntityIdMap, context);
+        entities = AZStd::move(entityContainer.m_entities); // have to move these out or all the entities get deleted
+
+        if (!canvasComponent->m_entityContext->HandleLoadedRootSliceEntity(rootSliceEntity, false, nullptr))
+        {
+            return nullptr;
+        }
+    }
+    else
+    {
+        // we are not reloading a canvas so we let the EntityContext HandleLoadedRootSliceEntity do the entity ID remapping as usual
+        if (!canvasComponent->m_entityContext->HandleLoadedRootSliceEntity(rootSliceEntity, makeNewEntityIds, &canvasComponent->m_editorToGameEntityIdMap))
+        {
+            return nullptr;
+        }
     }
 
     // For the canvas entity itself, handle ID mapping and initialization
     {
-        if (makeNewEntityIds)
+        if (previousCanvasId.IsValid())
+        {
+            canvasEntity->SetId(previousCanvasId);
+        }
+        else if (makeNewEntityIds)
         {
             AZ::EntityId newId = AZ::Entity::MakeId();
             canvasEntity->SetId(newId);
         }
-        canvasEntity->Init();
-        canvasEntity->Activate();
 
         // remap entity IDs such as m_rootElement and any entity IDs in the animation data
         if (makeNewEntityIds)
@@ -3033,8 +3143,11 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
             EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
             AZ_Assert(context, "No serialization context found");
 
-            canvasComponent->ReplaceEntityRefs(canvasEntity, idRemapTable, context);
+            ReuseOrGenerateNewIdsAndFixRefs(canvasEntity, canvasComponent->m_editorToGameEntityIdMap, context);
         }
+
+        canvasEntity->Init();
+        canvasEntity->Activate();
     }
 
     AZ::Entity* rootElement = canvasComponent->GetRootElement();
@@ -3043,7 +3156,7 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
     AZ_Assert(elementComponent, "No element component found on root element entity");
 
     // Need to remapIds too (actually I don't think this needs to remap anymore)
-    canvasComponent->RestoreAnimationSystemAfterCanvasLoad(makeNewEntityIds, &idRemapTable);
+    canvasComponent->RestoreAnimationSystemAfterCanvasLoad(makeNewEntityIds, &canvasComponent->m_editorToGameEntityIdMap);
 
     bool fixupSuccess = elementComponent->FixupPostLoad(rootElement, canvasComponent, nullptr, false);
     if (!fixupSuccess)
@@ -3074,6 +3187,10 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
         }
         canvasComponent->SetTargetCanvasSizeAndUniformScale(!forEditor, targetCanvasSize);
     }
+
+    // Set this before calling InGamePostActivate on the created entities. InGamePostActivate could
+    // call CloneElement which checks this flag
+    canvasComponent->m_isLoadedInGame = !forEditor;
 
     // Initialize transform properties of children of layout elements
     canvasComponent->InitializeLayouts();

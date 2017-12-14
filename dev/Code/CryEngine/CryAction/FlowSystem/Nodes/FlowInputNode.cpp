@@ -870,7 +870,10 @@ public:
         {
             if (IsPortActive(pActInfo, eIP_Index))
             {
-                gEnv->pInput->ForceFeedbackSetDeviceIndex(GetPortInt(pActInfo, eIP_Index));
+                if (gEnv->pInput)
+                {
+                    gEnv->pInput->ForceFeedbackSetDeviceIndex(GetPortInt(pActInfo, eIP_Index));
+                }
             }
             break;
         }

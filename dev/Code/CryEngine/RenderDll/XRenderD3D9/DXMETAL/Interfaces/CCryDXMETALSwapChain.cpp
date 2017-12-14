@@ -36,6 +36,10 @@
 
 CCryDXGLSwapChain::CCryDXGLSwapChain(CCryDXGLDevice* pDevice, const DXGI_SWAP_CHAIN_DESC& kDesc)
     : m_spDevice(pDevice)
+    , m_spBackBufferTexture(nullptr)
+    , m_spExposedBackBufferTexture(nullptr)
+    , m_Drawable(nullptr)
+    , m_currentView(nullptr)
     //  Confetti BEGIN: Igor Lobanchikov
     , m_pAutoreleasePool(0)
     //  Confetti End: Igor Lobanchikov
@@ -44,6 +48,7 @@ CCryDXGLSwapChain::CCryDXGLSwapChain(CCryDXGLDevice* pDevice, const DXGI_SWAP_CH
     DXGL_INITIALIZE_INTERFACE(DXGISwapChain)
 
     m_kDesc = kDesc;
+    CreateDrawableView();
 }
 
 CCryDXGLSwapChain::~CCryDXGLSwapChain()
@@ -52,30 +57,44 @@ CCryDXGLSwapChain::~CCryDXGLSwapChain()
 
 bool CCryDXGLSwapChain::Initialize()
 {
-    //  Confetti BEGIN: Igor Lobanchikov
-    //  Igor: need to do this now since initializetion might not happen in the autorelease pool area and
-    //  drawable and the texture won't be ever free!
-    @autoreleasepool
-    {
-        
-        NCryMetal::CDevice* pDevice(m_spDevice->GetGLDevice());
-#if defined(AZ_PLATFORM_APPLE_OSX)
-        CAMetalLayer* metalLayer = (static_cast<MetalView*>(pDevice->GetCurrentView())).metalLayer;
-        m_Drawable = [metalLayer nextDrawable];
-#else
-        m_Drawable = [static_cast<CAMetalLayer*>(pDevice->GetCurrentView().layer)nextDrawable];
-#endif
-        
-        [m_Drawable retain];
-    }
-    //  Confetti End: Igor Lobanchikov
-
     return UpdateTexture(true);
+}
+
+bool CCryDXGLSwapChain::CreateDrawableView()
+{
+    if (m_currentView != nullptr)
+    {
+        return false;
+    }
+
+    AZ_Assert(m_kDesc.OutputWindow != nullptr, "OutputWindow in the swap chain description is null. We are going to crash.");
+
+    if ([(id)m_kDesc.OutputWindow isKindOfClass:[NativeWindowType class]])
+    {
+        NativeWindowType* mainWindow = reinterpret_cast<NativeWindowType*>(m_kDesc.OutputWindow);
+        // Use the window's view as our own since the METALDevice class created
+        // it and not an outside tool like the editor
+#if defined(AZ_PLATFORM_APPLE_OSX)
+        m_currentView = reinterpret_cast<MetalView*>([mainWindow.contentViewController view]);
+#else
+        m_currentView = reinterpret_cast<MetalView*>([mainWindow.rootViewController view]);
+#endif
+    }
+    else
+    {
+        NativeViewType* superView = reinterpret_cast<NativeViewType*>(m_kDesc.OutputWindow);
+        NCryMetal::CDevice* pDevice(m_spDevice->GetGLDevice());
+        m_currentView = [[MetalView alloc] initWithFrame: [superView frame]
+                                                   scale: 1.0f
+                                                  device: pDevice->GetMetalDevice()];
+        [superView addSubview: m_currentView];
+    }
+
+    return true;
 }
 
 bool CCryDXGLSwapChain::UpdateTexture(bool bSetPixelFormat)
 {
-    //  Confetti BEGIN: Igor Lobanchikov
     //  Igor: Propagate actual texture resolution back from the RT to swap chan
     //  Check ho GL ES 3.0 does this
     if (m_Drawable)
@@ -83,7 +102,6 @@ bool CCryDXGLSwapChain::UpdateTexture(bool bSetPixelFormat)
         m_kDesc.BufferDesc.Width = min(m_kDesc.BufferDesc.Width, (UINT)m_Drawable.texture.width);
         m_kDesc.BufferDesc.Height = min(m_kDesc.BufferDesc.Height, (UINT)m_Drawable.texture.height);
     }
-    //  Confetti End: Igor Lobanchikov
 
     // Create a dummy texture that represents the default back buffer
     D3D11_TEXTURE2D_DESC kBackBufferDesc;
@@ -98,7 +116,6 @@ bool CCryDXGLSwapChain::UpdateTexture(bool bSetPixelFormat)
     kBackBufferDesc.CPUAccessFlags = 0;
     kBackBufferDesc.MiscFlags = 0;
 
-    //  Confetti BEGIN: Igor Lobanchikov
     NCryMetal::SDefaultFrameBufferTexturePtr spBackBufferTex(NCryMetal::CreateBackBufferTexture(kBackBufferDesc));
     m_spBackBufferTexture = new CCryDXGLTexture2D(kBackBufferDesc, spBackBufferTex, m_spDevice);
     m_spBackBufferTexture->GetGLTexture()->m_bBackBuffer = true;
@@ -111,10 +128,7 @@ bool CCryDXGLSwapChain::UpdateTexture(bool bSetPixelFormat)
     {
         m_spBackBufferTexture->GetGLTexture()->m_Texture = nil;
     }
-    //  Confetti End: Igor Lobanchikov
 
-
-    CRY_ASSERT(m_Drawable);
 
     //  Igor: this code is left here as a note about possible optimization.
     //  At the moment it is not clear if keeping this code is optimization
@@ -142,19 +156,12 @@ bool CCryDXGLSwapChain::UpdateTexture(bool bSetPixelFormat)
 
 HRESULT CCryDXGLSwapChain::Present(UINT SyncInterval, UINT Flags)
 {
-    //  Confetti BEGIN: Igor Lobanchikov
     NCryMetal::CDevice* pDevice(m_spDevice->GetGLDevice());
 
     if (!m_Drawable)
     {
-        
-#if defined(AZ_PLATFORM_APPLE_OSX)
-        CAMetalLayer* metalLayer = (static_cast<MetalView*>(pDevice->GetCurrentView())).metalLayer;
-        m_Drawable = [metalLayer nextDrawable];
-#else
-        m_Drawable = [static_cast<CAMetalLayer*>(pDevice->GetCurrentView().layer)nextDrawable];
-#endif
-        
+        m_Drawable = [m_currentView.metalLayer nextDrawable];
+
         if (m_Drawable)
         {
             m_spBackBufferTexture->GetGLTexture()->m_Texture = m_Drawable.texture;
@@ -234,7 +241,6 @@ HRESULT CCryDXGLSwapChain::Present(UINT SyncInterval, UINT Flags)
     FlushAutoreleasePool();
 
     return pDevice->Present();
-    //  Confetti End: Igor Lobanchikov
 }
 
 HRESULT CCryDXGLSwapChain::GetBuffer(UINT Buffer, REFIID riid, void** ppSurface)
@@ -269,6 +275,10 @@ HRESULT CCryDXGLSwapChain::GetDesc(DXGI_SWAP_CHAIN_DESC* pDesc)
 
 HRESULT CCryDXGLSwapChain::ResizeBuffers(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags)
 {
+    // MS Documentation states that a buffer count of 0 means to use the same
+    // number of existing buffers
+    BufferCount = BufferCount == 0 ? m_kDesc.BufferCount : BufferCount;
+
     if (
         Format         == m_kDesc.BufferDesc.Format &&
         Width          == m_kDesc.BufferDesc.Width  &&
@@ -278,6 +288,7 @@ HRESULT CCryDXGLSwapChain::ResizeBuffers(UINT BufferCount, UINT Width, UINT Heig
     {
         return S_OK; // Nothing to do
     }
+
     if (BufferCount == m_kDesc.BufferCount)
     {
         m_kDesc.BufferDesc.Format = Format;
@@ -287,6 +298,8 @@ HRESULT CCryDXGLSwapChain::ResizeBuffers(UINT BufferCount, UINT Width, UINT Heig
 
         if (UpdateTexture(false))
         {
+            CGSize drawableSize = CGSizeMake(Width, Height);
+            [m_currentView setFrameSize: drawableSize];
             return S_OK;
         }
     }
@@ -318,15 +331,13 @@ HRESULT CCryDXGLSwapChain::GetLastPresentCount(UINT* pLastPresentCount)
     return E_FAIL;
 }
 
-//  Confetti BEGIN: Igor Lobanchikov
 void CCryDXGLSwapChain::FlushAutoreleasePool()
 {
-    CRY_ASSERT(m_pAutoreleasePool);
-
-    [(NSAutoreleasePool*)m_pAutoreleasePool release];
-    m_pAutoreleasePool = 0;
-
-    TryCreateAutoreleasePool();
+    if (m_pAutoreleasePool)
+    {
+        [(NSAutoreleasePool*)m_pAutoreleasePool release];
+        m_pAutoreleasePool = nullptr;
+    }
 }
 
 void CCryDXGLSwapChain::TryCreateAutoreleasePool()
@@ -336,4 +347,3 @@ void CCryDXGLSwapChain::TryCreateAutoreleasePool()
         m_pAutoreleasePool = [[NSAutoreleasePool alloc] init];
     }
 }
-//  Confetti End: Igor Lobanchikov

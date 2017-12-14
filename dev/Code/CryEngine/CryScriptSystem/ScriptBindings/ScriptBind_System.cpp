@@ -18,7 +18,6 @@
 #include <ILog.h>
 #include <IRenderer.h>
 #include <I3DEngine.h>
-#include <IInput.h>
 #include <IEntitySystem.h>
 #include <IEntityPoolManager.h>
 #include <ITimer.h>
@@ -36,6 +35,8 @@
 #include <ILocalizationManager.h>
 #include <time.h>
 #include <IPostEffectGroup.h>
+
+#include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -2636,7 +2637,7 @@ int CScriptBind_System::Quit(IFunctionHandler* pH)
 int CScriptBind_System::ClearKeyState(IFunctionHandler* pH)
 {
     SCRIPT_CHECK_PARAMETERS(0);
-    m_pSystem->GetIInput()->ClearKeyState();
+    AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
 
     return pH->EndFunction();
 }

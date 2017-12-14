@@ -16,37 +16,18 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/Component/TransformBus.h>
 #include <LmbrCentral/Physics/WindVolumeRequestBus.h>
+#include "WindVolume.h"
 
 struct IPhysicalEntity;
 
 namespace LmbrCentral
 {
     /**
-     * Configuration for the WindVolume
-     * @see WindVolumeRequests
-     */
-    struct WindVolumeConfiguration
-    {
-        AZ_CLASS_ALLOCATOR(WindVolumeConfiguration, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(WindVolumeConfiguration, "{0946220B-77EA-49EF-8DC0-3825CBCB495F}");
-        static void Reflect(AZ::ReflectContext* context);
-
-        bool m_ellipsoidal = false;
-        float m_falloffInner = 0.0f;
-        float m_speed = 20.0f;
-        float m_airResistance = 1.0f;
-        float m_airDensity = 1.0f;
-        AZ::Vector3 m_direction = AZ::Vector3::CreateAxisX();
-        AZ::Vector3 m_size = AZ::Vector3(10.f, 10.f, 10.f);
-    };
-
-    /**
      * WindVolume component for a wind volume
      */
     class WindVolumeComponent
         : public AZ::Component
-        , public WindVolumeRequestBus::Handler
-        , protected AZ::TransformNotificationBus::MultiHandler
+        , public WindVolume
     {
     public:
         AZ_COMPONENT(WindVolumeComponent, "{7E97DA82-94EB-46B7-B5EB-8B72727E3D7E}");
@@ -55,38 +36,16 @@ namespace LmbrCentral
         WindVolumeComponent() = default;
         explicit WindVolumeComponent(const WindVolumeConfiguration& configuration);
         ~WindVolumeComponent() override = default;
-        
-        ////////////////////////////////
-        /// WindVolumeRequestBus        
-        void SetEllipsoidal(bool ellipsoidal) override;
-        bool GetEllipsoidal() override;
-        void SetFalloffInner(float falloffInner) override;
-        float GetFalloffInner() override;
-        void SetSpeed(float speed) override;
-        float GetSpeed() override;
-        void SetAirResistance(float airResistance) override;
-        float GetAirResistance() override;
-        void SetAirDensity(float airDensity) override;
-        float GetAirDensity() override;
-        void SetWindDirection(const AZ::Vector3& direction) override;
-        const AZ::Vector3& GetWindDirection() override;
-        void SetVolumeSize(const AZ::Vector3& size) override;
-        const AZ::Vector3& GetVolumeSize() override;
-        ////////////////////////////////
+
+        // WindVolume
+        WindVolumeConfiguration& GetConfiguration() override { return m_configuration; }
 
     protected:
-        friend class EditorWindVolumeComponent;
-        static float GetSphereVolumeRadius(const WindVolumeConfiguration&);
 
-        //! Update physics to match new position
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
-        void DestroyWindVolume();
-        void CreateWindVolume();
 
-        WindVolumeConfiguration m_configuration;        ///< Configuration of the wind volume
-        AZStd::shared_ptr<IPhysicalEntity> m_physics;   ///< Underlying physics object
+        WindVolumeConfiguration m_configuration;    ///< Configuration of the wind volume
     };
 } // namespace LmbrCentral

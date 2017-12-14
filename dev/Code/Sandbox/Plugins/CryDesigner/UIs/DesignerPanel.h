@@ -112,5 +112,5 @@ private:
     void UpdateBackFaceFlag(SMainContext& mc);
     void UpdateBackFaceCheckBoxFromContext();
 
-    int ArrangeButtons(CD::SWidgetContext& wc, CD::EToolGroup toolGroup, int stride, int offset);
+    int ArrangeButtons(const CD::SWidgetContext& wc, CD::EToolGroup toolGroup, int stride, int offset);
 };

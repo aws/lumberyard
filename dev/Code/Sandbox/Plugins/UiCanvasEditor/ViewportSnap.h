@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include "ViewportInteraction.h"
+
 class ViewportSnap
 {
 public:
@@ -27,20 +29,20 @@ public:
         AZ::Entity* element,
         float signedAngle);
 
-    static void ViewportSnap::ResizeByGizmo(HierarchyWidget* hierarchy,
+    static void ResizeByGizmo(HierarchyWidget* hierarchy,
         const AZ::EntityId& canvasId,
         const ViewportHelpers::GizmoParts& grabbedGizmoParts,
         AZ::Entity* element,
         const AZ::Vector2& pivot,
         const AZ::Vector2& translation);
 
-    static void ViewportSnap::ResizeDirectlyWithScaleOrRotation(HierarchyWidget* hierarchy,
+    static void ResizeDirectlyWithScaleOrRotation(HierarchyWidget* hierarchy,
         const AZ::EntityId& canvasId,
         const ViewportHelpers::ElementEdges& grabbedEdges,
         AZ::Entity* element,
         const UiTransformInterface::RectPoints& translation);
 
-    static void ViewportSnap::ResizeDirectlyNoScaleNoRotation(HierarchyWidget* hierarchy,
+    static void ResizeDirectlyNoScaleNoRotation(HierarchyWidget* hierarchy,
         const AZ::EntityId& canvasId,
         const ViewportHelpers::ElementEdges& grabbedEdges,
         AZ::Entity* element,

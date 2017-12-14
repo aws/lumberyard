@@ -69,8 +69,6 @@ void CComponentCamera::UpdateMaterialCamera()
         wtm.OrthonormalizeFast();
         cam.SetMatrix(wtm);
         cam.SetFrustum(cam.GetViewSurfaceX(), cam.GetViewSurfaceZ(), m_camera.GetFov(), cam.GetNearPlane(), cam.GetFarPlane(), cam.GetPixelAspectRatio());
-
-        pMaterial->SetCamera(cam);
     }
 }
 

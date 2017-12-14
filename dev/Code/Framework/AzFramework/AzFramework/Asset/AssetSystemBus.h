@@ -92,6 +92,10 @@ namespace AzFramework
             virtual void ShowAssetProcessor() = 0;
             //! Sets the asset processor port to use when connecting
             virtual void SetAssetProcessorPort(AZ::u16 port) = 0;
+            //! Sets the asset processor IP to use when connecting
+            virtual void SetAssetProcessorIP(const AZStd::string& ip) = 0;
+            //! Sets the branchtoken that will be used for negotiating with the AssetProcessor
+            virtual void SetBranchToken(const AZStd::string branchtoken) = 0;
 
             //! Compute the ping time between this client and the Asset Processor that's actually handling our requests (proxy relaying is included in the time)
             virtual float GetAssetProcessorPingTimeMilliseconds() = 0;

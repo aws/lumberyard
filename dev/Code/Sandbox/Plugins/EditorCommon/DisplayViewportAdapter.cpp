@@ -115,7 +115,7 @@ Vec3 CDisplayViewportAdapter::WorldToView3D(const Vec3& worldPoint, int flags) c
     return Vec3(0.0f, 0.0f, 0.0f);
 }
 
-Vec3 CDisplayViewportAdapter::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh) const
+Vec3 CDisplayViewportAdapter::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh, bool* collideWithObject) const
 {
     return Vec3(0.0f, 0.0f, 0.0f);
 }

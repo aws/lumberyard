@@ -15,7 +15,7 @@
 
 #include "AzAssetBrowser/ui_AzAssetBrowserDialog.h"
 
-#include <AzToolsFramework/AssetBrowser/AssetBrowserTreeView.h>
+#include <AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
@@ -54,9 +54,9 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
         QAbstractItemView::SelectionMode::ExtendedSelection : QAbstractItemView::SelectionMode::SingleSelection);
 
     // if the current selection is invalid, disable the Ok button
-    m_ui->m_buttonBox->buttons().first()->setEnabled(EvaluateSelection());
-    m_ui->m_buttonBox->buttons().first()->setProperty("class", "Primary");
-    m_ui->m_buttonBox->buttons().last()->setProperty("class", "Secondary");
+    m_ui->m_buttonBox->buttons().constFirst()->setEnabled(EvaluateSelection());
+    m_ui->m_buttonBox->buttons().constFirst()->setProperty("class", "Primary");
+    m_ui->m_buttonBox->buttons().constLast()->setProperty("class", "Secondary");
 
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
     connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserDialog::DoubleClickedSlot);

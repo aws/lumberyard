@@ -39,7 +39,7 @@ static bool DeleteFileInGameFolder(const char* filename)
     {
         return false;
     }
-    return DeleteFileA(path.c_str()) != FALSE;
+    return QFile::remove(path.c_str());
 }
 
 // ---------------------------------------------------------------------------

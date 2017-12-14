@@ -65,11 +65,6 @@ namespace LegacyGameInterface
         return successful;
     }
 
-    int EditorGame::Update(bool hasFocus, unsigned int updateFlags)
-    {
-        return m_GameStartup->Update(hasFocus, updateFlags);
-    }
-
     void EditorGame::Shutdown()
     {
         SetGameMode(false);

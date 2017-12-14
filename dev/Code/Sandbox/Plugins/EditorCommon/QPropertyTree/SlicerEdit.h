@@ -17,6 +17,10 @@
 #ifndef CRYINCLUDE_EDITORCOMMON_SLICEREDIT_H
 #define CRYINCLUDE_EDITORCOMMON_SLICEREDIT_H
 
+#include <QLineEdit>
+
+#include "SpriteBorderEditorCommon.h"
+
 class SlicerEdit
 : public QLineEdit
 {

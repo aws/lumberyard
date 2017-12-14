@@ -33,6 +33,8 @@ public:
     virtual CHyperNode* Clone();
 
     virtual void Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar = 0);
+
+    using CHyperNode::FindPort;
     virtual CHyperNodePort* FindPort(const char* portname, bool bInput);
     virtual bool IsEditorSpecialNode() { return true; }
     virtual bool IsFlowNode() { return false; }

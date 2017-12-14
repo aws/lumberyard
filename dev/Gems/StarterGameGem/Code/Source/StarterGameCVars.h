@@ -10,7 +10,6 @@
 *
 */
 
-
 #pragma once
 
 
@@ -36,6 +35,11 @@ namespace StarterGameGem
 		int m_viewPaths;
 
         float m_viewSoundRanges;
+
+		int m_pd_showData;
+		int m_pd_showCallbacks;
+		const char* m_pd_showFilter;
+		int m_pd_dumpData;
 
 	private:
 		// Only the gem component should unregister the CVars (to ensure it's only done once).

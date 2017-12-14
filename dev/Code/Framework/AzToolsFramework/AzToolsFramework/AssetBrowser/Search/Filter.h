@@ -246,16 +246,16 @@ namespace AzToolsFramework
         };
 
         //////////////////////////////////////////////////////////////////////////
-        // InverseFilter
+        // CleanerProductsFilter
         //////////////////////////////////////////////////////////////////////////
-        //! Inverse filter negates result of its child filter
-        class ProductsFilter
+        //! Filters out products that shouldn't be shown
+        class CleanerProductsFilter
             : public AssetBrowserEntryFilter
         {
             Q_OBJECT
         public:
-            ProductsFilter();
-            ~ProductsFilter() override = default;
+            CleanerProductsFilter();
+            ~CleanerProductsFilter() override = default;
 
         protected:
             QString GetNameInternal() const override;

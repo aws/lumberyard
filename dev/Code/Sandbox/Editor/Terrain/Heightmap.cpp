@@ -19,6 +19,8 @@
 #include "TerrainGrid.h"
 #include "Util/DynamicArray2D.h"
 #include "GameEngine.h"
+#include "OceanConstants.h"
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
 
 #include "Terrain/TerrainManager.h"
 #include "SurfaceType.h"
@@ -32,6 +34,7 @@
 #include <ITerrain.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Casting/lossy_cast.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #include "QtUtil.h"
 
@@ -244,7 +247,7 @@ private:
 //////////////////////////////////////////////////////////////////////
 
 CHeightmap::CHeightmap()
-    : m_fWaterLevel(16)
+    : m_fOceanLevel(AZ::OceanConstants::s_DefaultHeight)
     , m_fMaxHeight(HEIGHTMAP_MAX_HEIGHT)
     , m_iWidth(0)
     , m_iHeight(0)
@@ -257,10 +260,15 @@ CHeightmap::CHeightmap()
     , m_standaloneMode(false)
     , m_useTerrain(true)
 {
+    // is the feature toggle enabled for the ocean component feature enabled when the project includes the Water gem
+    if (OceanToggle::IsActive())
+    {
+        m_fOceanLevel = AZ::OceanConstants::s_HeightUnknown;
+    }
 }
 
 CHeightmap::CHeightmap(const CHeightmap& h)
-    : m_fWaterLevel(h.m_fWaterLevel)
+    : m_fOceanLevel(h.GetOceanLevel())
     , m_fMaxHeight(h.m_fMaxHeight)
     , m_pHeightmap(h.m_pHeightmap)
     , m_Weightmap() // no copy ctor for this
@@ -622,7 +630,7 @@ void CHeightmap::LoadASC(const QString& fileName)
 
     if (!CImageASC().Load(fileName, tmpImage))
     {
-        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Load image failed."));
+        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Load image failed."));
         return;
     }
 
@@ -642,7 +650,7 @@ void CHeightmap::LoadBT(const QString& fileName)
 
     if (!CImageBT().Load(fileName, tmpImage))
     {
-        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Load image failed."));
+        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Load image failed."));
         return;
     }
 
@@ -662,7 +670,7 @@ void CHeightmap::LoadTIF(const QString& fileName)
 
     if (!CImageTIF().Load(fileName, tmpImage))
     {
-        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Load image failed."));
+        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Load image failed."));
         return;
     }
 
@@ -685,13 +693,13 @@ void CHeightmap::LoadImage(const QString& fileName)
 
     if (!CImageUtil::LoadImage(fileName, tmpImage))
     {
-        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Load image failed."));
+        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Load image failed."));
         return;
     }
 
     if (!tmpImage.ConvertToFloatImage(floatImage))
     {
-        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Load image failed."));
+        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Load image failed."));
         return;
     }
 
@@ -714,12 +722,13 @@ bool CHeightmap::ProcessLoadedImage(const QString& fileName, const CFloatImage& 
         QString str = QObject::tr("Image dimensions do not match dimensions of heightmap.\nImage size is %1x%2,\nHeightmap size is %3x%4.\nWould you like to clip the image, resize it, or cancel?")
                 .arg(image.GetWidth()).arg(image.GetHeight()).arg(m_iWidth).arg(m_iHeight);
 
-        QMessageBox userPrompt;
+        QMessageBox userPrompt(AzToolsFramework::GetActiveWindow());
+        userPrompt.setWindowTitle(QObject::tr("Warning"));
         userPrompt.setText(str);
 
         QAbstractButton* clipButton = (QAbstractButton*)userPrompt.addButton(QObject::tr("Clip"), QMessageBox::YesRole);
         QAbstractButton* resizeButton = (QAbstractButton*)userPrompt.addButton(QObject::tr("Resize"), QMessageBox::YesRole);
-        QAbstractButton* cancelButton = (QAbstractButton*)userPrompt.addButton(QObject::tr("Cancel"), QMessageBox::ResetRole);
+        QAbstractButton* cancelButton = (QAbstractButton*)userPrompt.addButton(QObject::tr("Cancel"), QMessageBox::RejectRole);
 
         userPrompt.exec();
 
@@ -825,7 +834,7 @@ void CHeightmap::SaveRAW(const QString& rawFile)
     FILE* file = fopen(rawFile.toLatin1().data(), "wb");
     if (!file)
     {
-        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Error saving file %1").arg(rawFile));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Error saving file %1").arg(rawFile));
         return;
     }
 
@@ -861,7 +870,7 @@ void    CHeightmap::LoadRAW(const QString& rawFile)
     FILE* file = fopen(rawFile.toLatin1().data(), "rb");
     if (!file)
     {
-        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Error loading file %1").arg(rawFile));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Error loading file %1").arg(rawFile));
         return;
     }
     fseek(file, 0, SEEK_END);
@@ -870,7 +879,7 @@ void    CHeightmap::LoadRAW(const QString& rawFile)
 
     if (fileSize != m_iWidth * m_iHeight * 2)
     {
-        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Bad RAW file, RAW file must be %1x%2 16bit image").arg(m_iWidth).arg(m_iHeight));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Bad RAW file, RAW file must be %1x%2 16bit image").arg(m_iWidth).arg(m_iHeight));
         fclose(file);
         return;
     }
@@ -927,8 +936,8 @@ void CHeightmap::Noise()
             // Next pixel
             iCurPos++;
 
-            // Skip amnything below the water level
-            if (m_pHeightmap[iCurPos] > 0.0f && m_pHeightmap[iCurPos] >= m_fWaterLevel)
+            // Skip amnything below the ocean water level
+            if (m_pHeightmap[iCurPos] > 0.0f && m_pHeightmap[iCurPos] >= GetOceanLevel())
             {
                 // Swap the noise
                 switch (iNoiseSwapMode)
@@ -962,7 +971,7 @@ void CHeightmap::Noise()
                 float fInfluenceValue = GetNoise(iNoiseX, iNoiseY) / NOISE_RANGE * fInfluence - fInfluence / 2;
 
                 // Add the signed noise
-                m_pHeightmap[iCurPos] = __min(m_fMaxHeight, __max(m_fWaterLevel, m_pHeightmap[iCurPos] + fInfluenceValue));
+                m_pHeightmap[iCurPos] = __min(m_fMaxHeight, __max(GetOceanLevel(), m_pHeightmap[iCurPos] + fInfluenceValue));
             }
         }
     }
@@ -1228,8 +1237,6 @@ bool CHeightmap::GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth, bool bN
     return true;
 }
 
-
-
 //////////////////////////////////////////////////////////////////////////
 bool CHeightmap::GetData(const QRect& srcRect, const int resolution, const QPoint& vTexOffset, CFloatImage& hmap, bool bSmooth, bool bNoise)
 {
@@ -1375,7 +1382,29 @@ bool CHeightmap::GetData(const QRect& srcRect, const int resolution, const QPoin
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, bool bNoise, QRect* pUpdateRect, bool bShowWater, bool bUseScaledRange)
+void CHeightmap::Reset(int resolution, int unitSize)
+{
+    ClearModSectors();
+
+    bool bHasOceanFeature = false;
+    AZ::OceanFeatureToggleBus::BroadcastResult(bHasOceanFeature, &AZ::OceanFeatureToggleBus::Events::OceanComponentEnabled);
+    if (bHasOceanFeature)
+    {
+        // by default, there is no ocean
+        SetOceanLevel(AZ::OceanConstants::s_HeightUnknown);
+    }
+    else
+    {
+        // Legacy: Default ocean level.
+        SetOceanLevel(AZ::OceanConstants::s_DefaultHeight);
+    }
+
+    Resize(resolution, resolution, unitSize);
+    SetMaxHeight(resolution);
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, bool bNoise, QRect* pUpdateRect, bool bShowOcean, bool bUseScaledRange)
 {
     if (m_pHeightmap.empty())
     {
@@ -1442,11 +1471,11 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
     // Make sure we have at least an arbitrarily small non-zero height difference so we can safely divide.
     float maxHeightDifference = AZStd::max(0.00001f, (maxHeight - minHeight));
 
-    // Pleasant blue color for the water.
-    const QColor waterColor(0x00, 0x99, 0xFF);
+    // Pleasant blue color for the ocean.
+    const QColor oceanColor(0x00, 0x99, 0xFF);
 
-    // Alpha blend the water color in by 25%
-    const float waterBlendFactor = 0.25f;
+    // Alpha blend the ocean color in by 25%
+    const float oceanBlendFactor = 0.25f;
 
     QColor finalColor;
 
@@ -1460,13 +1489,13 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
             // Scale our height range to (0, 1) across the minHeight to maxHeight range.
             float greyVal = (height - minHeight) / maxHeightDifference;
 
-            if (bShowWater && (height <= m_fWaterLevel))
+            if (bShowOcean && (height <= GetOceanLevel()))
             {
-                // If we want to see water, blend a blue tint to any height data that's underwater.
+                // If we want to see ocean, blend a blue tint to any height data that's underwater.
                 finalColor.setRgbF(
-                    (waterColor.redF()   * waterBlendFactor) + (greyVal * (1.0f - waterBlendFactor)),
-                    (waterColor.greenF() * waterBlendFactor) + (greyVal * (1.0f - waterBlendFactor)),
-                    (waterColor.blueF()  * waterBlendFactor) + (greyVal * (1.0f - waterBlendFactor))
+                    (oceanColor.redF()   * oceanBlendFactor) + (greyVal * (1.0f - oceanBlendFactor)),
+                    (oceanColor.greenF() * oceanBlendFactor) + (greyVal * (1.0f - oceanBlendFactor)),
+                    (oceanColor.blueF()  * oceanBlendFactor) + (greyVal * (1.0f - oceanBlendFactor))
                 );
             }
             else
@@ -1474,7 +1503,7 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
                 finalColor.setRgbF(greyVal, greyVal, greyVal);
             }
 
-            // Use a texel from the tiled water texture when it is below the water level
+            // Use a texel from the tiled water texture when it is below the ocean level
             pBitmapData[iX + iY * width] = RGB(finalColor.red(), finalColor.green(), finalColor.blue());
         }
     }
@@ -1674,15 +1703,15 @@ void CHeightmap::Flatten(float fFactor)
         fRes = ExpCurve(*pHeightmapData, 128.0f, 0.985f);
 
         // Is this part of the landscape a potential flat area ?
-        // Only modify parts of the landscape that are above the water level
-        if (fRes < 100 && *pHeightmapData > m_fWaterLevel)
+        // Only modify parts of the landscape that are above the ocean level
+        if (fRes < 100 && *pHeightmapData > GetOceanLevel())
         {
             // Yes, apply the factor to it
             *pHeightmapData = *pHeightmapData * fFactor;
 
             // When we use a factor greater than 0.5, we don't want to drop below
-            // the water level
-            *pHeightmapData++ = __max(m_fWaterLevel, *pHeightmapData);
+            // the ocean level
+            *pHeightmapData++ = __max(GetOceanLevel(), *pHeightmapData);
         }
         else
         {
@@ -1720,14 +1749,14 @@ void CHeightmap::LowerRange(float fFactor)
     //////////////////////////////////////////////////////////////////////
 
     unsigned int i;
-    float fWaterHeight = m_fWaterLevel;
+    float fOceanHeight = GetOceanLevel();
 
     CLogFile::WriteLine("Lowering range...");
 
-    // Lower the range, make sure we don't put anything below the water level
+    // Lower the range, make sure we don't put anything below the ocean level
     for (i = 0; i < m_iWidth * m_iHeight; i++)
     {
-        m_pHeightmap[i] = ((m_pHeightmap[i] - fWaterHeight) * fFactor) + fWaterHeight;
+        m_pHeightmap[i] = ((m_pHeightmap[i] - fOceanHeight) * fFactor) + fOceanHeight;
     }
 
     NotifyModified();
@@ -2128,7 +2157,7 @@ void CHeightmap::Fetch()
     if (!Read(HEIGHTMAP_HOLD_FETCH_FILE))
     {
         qApp->restoreOverrideCursor();
-        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("You need to use 'Hold' before 'Fetch' !"));
+        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("You need to use 'Hold' before 'Fetch' !"));
         return;
     }
 
@@ -2410,7 +2439,14 @@ void CHeightmap::Serialize(CXmlArchive& xmlAr)
             m_iHeight = nHeight;
         }
 
-        heightmap->getAttr("WaterLevel", m_fWaterLevel);
+        if (OceanToggle::IsActive())
+        {
+            m_fOceanLevel = OceanRequest::GetOceanLevel();
+        }
+        else
+        {
+            heightmap->getAttr("WaterLevel", m_fOceanLevel);
+        }
         heightmap->getAttr("UnitSize", m_unitSize);
         heightmap->getAttr("MaxHeight", m_fMaxHeight);
 
@@ -2506,7 +2542,7 @@ void CHeightmap::Serialize(CXmlArchive& xmlAr)
 
         heightmap->setAttr("Width", (uint32)m_iWidth);
         heightmap->setAttr("Height", (uint32)m_iHeight);
-        heightmap->setAttr("WaterLevel", m_fWaterLevel);
+        heightmap->setAttr("WaterLevel", GetOceanLevel());
         heightmap->setAttr("UnitSize", m_unitSize);
         heightmap->setAttr("TextureSize", m_textureSize);
         heightmap->setAttr("MaxHeight", m_fMaxHeight);
@@ -2600,22 +2636,34 @@ void CHeightmap::SerializeTerrain(CXmlArchive& xmlAr)
 
 
 //////////////////////////////////////////////////////////////////////////
-void CHeightmap::SetWaterLevel(float waterLevel)
+void CHeightmap::SetOceanLevel(float oceanLevel)
 {
-    m_fWaterLevel = waterLevel;
+    if (OceanToggle::IsActive())
+    {
+        // the Water gem is enabled, so there is no reason to be in this method!
+        CLogFile::WriteLine("Deprecated: Please use the Water Gem's Infinite Component.");
+        return;
+    }
+
+    m_fOceanLevel = oceanLevel;
 
     if (!m_standaloneMode)
     {
         I3DEngine* i3d = GetIEditor()->GetSystem()->GetI3DEngine();
         if (i3d && i3d->GetITerrain())
         {
-            i3d->GetITerrain()->SetOceanWaterLevel(waterLevel);
+            i3d->GetITerrain()->SetOceanWaterLevel(oceanLevel);
         }
     }
 
     NotifyModified();
-};
+}
 
+
+float CHeightmap::GetOceanLevel() const
+{
+    return OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : m_fOceanLevel;
+}
 
 void CHeightmap::SetHoleAt(const int x, const int y, const bool bHole)
 {
@@ -2938,7 +2986,7 @@ QPoint CHeightmap::ImportBlock(CXmlArchive& xmlAr, const QPoint& newPos, bool bU
 
     if (width != m_iWidth || height != m_iHeight)
     {
-        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Terrain Block dimensions differ from current terrain."));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Terrain Block dimensions differ from current terrain."));
         return QPoint(0, 0);
     }
 
@@ -3326,51 +3374,49 @@ void CHeightmap::UpdateLayerTexture(const QRect& rect)
                     (iSectY + (float)iLocalOutMaxY / dwNeededResolution) / iTexSectorsNum,
                     imageBGR);
 
-                
                 {
                     uint32 dwWidth = imageBGR.GetWidth();
                     uint32 dwHeight = imageBGR.GetHeight();
 
                     uint32* pMemBGR = &imageBGR.ValueAt(0, 0);
 
-
 #if !TERRAIN_USE_CIE_COLORSPACE
-					// common case with no multiplier just requires alpha channel fixup
-					for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
-					{
-						for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
-						{
-							*pMemBGR++ |= 0xff000000; // shader requires alpha channel = 1
-						}
-					}
+                    // common case with no multiplier just requires alpha channel fixup
+                    for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
+                    {
+                        for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
+                        {
+                            *pMemBGR++ |= 0xff000000; // shader requires alpha channel = 1
+                        }
+                    }
 #else // convert RGB colour into format that has less compression artefacts for brightness variations
-					for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
-					{
-						for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
-						{
-							float fR = GetBValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so R == B
-							float fG = GetGValue(*pMemBGR) * (1.0f / 255.0f);
-							float fB = GetRValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so B == R
+                    for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
+                    {
+                        for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
+                        {
+                            float fR = GetBValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so R == B
+                            float fG = GetGValue(*pMemBGR) * (1.0f / 255.0f);
+                            float fB = GetRValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so B == R
 
-							ColorF cCol = ColorF(fR, fG, fB);
+                            ColorF cCol = ColorF(fR, fG, fB);
 
-							// Convert to linear space
-							cCol.srgb2rgb();
+                            // Convert to linear space
+                            cCol.srgb2rgb();
 
-							cCol.Clamp();
+                            cCol.Clamp();
 
-							cCol = cCol.RGB2mCIE();
+                            cCol = cCol.RGB2mCIE();
 
-							// Convert to gamma 2.2 space
-							cCol.rgb2srgb();
-					
-							uint32 dwR = (uint32)(cCol.r * 255.0f + 0.5f);
-							uint32 dwG = (uint32)(cCol.g * 255.0f + 0.5f);
-							uint32 dwB = (uint32)(cCol.b * 255.0f + 0.5f);
+                            // Convert to gamma 2.2 space
+                            cCol.rgb2srgb();
 
-							*pMemBGR++ = 0xff000000 | RGB(dwB, dwG, dwR);        // shader requires alpha channel = 1, Storing in BGR.
-						}
-					}
+                            uint32 dwR = (uint32)(cCol.r * 255.0f + 0.5f);
+                            uint32 dwG = (uint32)(cCol.g * 255.0f + 0.5f);
+                            uint32 dwB = (uint32)(cCol.b * 255.0f + 0.5f);
+
+                            *pMemBGR++ = 0xff000000 | RGB(dwB, dwG, dwR);        // shader requires alpha channel = 1, Storing in BGR.
+                        }
+                    }
 #endif
                 }
 
@@ -3536,7 +3582,7 @@ void CHeightmap::InitTerrain()
     TerrainInfo.nSectorSize_InMeters = si.sectorSize;
     TerrainInfo.nSectorsTableSize_InSectors = si.numSectors;
     TerrainInfo.fHeightmapZRatio = 0.0f;
-    TerrainInfo.fOceanWaterLevel = GetWaterLevel();
+    TerrainInfo.fOceanWaterLevel = GetOceanLevel();
 
     bool bCreateTerrain = false;
     ITerrain* pTerrain = gEnv->p3DEngine->GetITerrain();

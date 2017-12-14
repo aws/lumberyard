@@ -15,6 +15,9 @@
 #include <QtMath>
 #include <QPainter>
 #include <QGraphicsSceneContextMenuEvent>
+#include <QStyle>
+#include <QStyleOption>
+#include <qglobal.h>
 
 #include <Components/Connections/ConnectionVisualComponent.h>
 
@@ -57,13 +60,13 @@ namespace GraphCanvas
         }
 
         VisualRequestBus::Handler::BusConnect(GetEntityId());
-        RootVisualRequestBus::Handler::BusConnect(GetEntityId());
+        SceneMemberUIRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void ConnectionVisualComponent::Deactivate()
     {
         VisualRequestBus::Handler::BusDisconnect();
-        RootVisualRequestBus::Handler::BusDisconnect();
+        SceneMemberUIRequestBus::Handler::BusDisconnect();
 
         if (m_connectionGraphicsItem)
         {
@@ -89,6 +92,16 @@ namespace GraphCanvas
     QGraphicsLayoutItem* ConnectionVisualComponent::GetRootGraphicsLayoutItem()
     {
         return nullptr;
+    }
+
+    void ConnectionVisualComponent::SetSelected(bool selected)
+    {
+        m_connectionGraphicsItem->setSelected(selected);
+    }
+
+    bool ConnectionVisualComponent::IsSelected() const
+    {
+        return m_connectionGraphicsItem->isSelected();
     }
 	
 	void ConnectionVisualComponent::CreateConnectionVisual()
@@ -292,7 +305,7 @@ namespace GraphCanvas
             if (loopback)
             {
                 QGraphicsItem* rootVisual = nullptr;
-                RootVisualRequestBus::EventResult(rootVisual, sourceNode, &RootVisualRequests::GetRootGraphicsItem);
+                SceneMemberUIRequestBus::EventResult(rootVisual, sourceNode, &SceneMemberUIRequests::GetRootGraphicsItem);
 
                 if (rootVisual)
                 {
@@ -620,6 +633,22 @@ namespace GraphCanvas
     }
 
 
+    void ConnectionGraphicsItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget /*= nullptr*/)
+    {
+        bool showDefaultSelector = m_style.GetAttribute(Styling::Attribute::ConnectionDefaultMarquee, false);
+        if (!showDefaultSelector)
+        {
+            // Remove the selected state to get rid of the marquee outline
+            QStyleOptionGraphicsItem myoption = (*option);
+            myoption.state &= !QStyle::State_Selected;
+            QGraphicsPathItem::paint(painter, &myoption, widget);
+        }
+        else
+        {
+            QGraphicsPathItem::paint(painter, option, widget);
+        }
+    }
+     
     void ConnectionGraphicsItem::UpdateDisplayState(ConnectionDisplayState displayState, bool enabled)
     {
         switch (displayState)

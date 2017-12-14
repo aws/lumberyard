@@ -1224,6 +1224,51 @@ namespace EMStudio
     }
 
 
+    EMotionFX::BlendTreeConnection* BlendGraphWidget::FindBlendTreeConnection(NodeConnection* connection) const
+    {
+        // Make sure the given connection is valid and the currently viewed graph is a blend tree.
+        if (!connection || !mCurrentNode || mCurrentNode->GetType() != EMotionFX::BlendTree::TYPE_ID)
+        {
+            return nullptr;
+        }
+
+        const EMotionFX::AnimGraph* animGraph = mCurrentNode->GetAnimGraph();
+        if (!animGraph)
+        {
+            return nullptr;
+        }
+
+        const GraphNode* sourceNode = connection->GetSourceNode();
+        if (!sourceNode)
+        {
+            return nullptr;
+        }
+
+        const EMotionFX::AnimGraphNode* emfxSourceNode = animGraph->RecursiveFindNodeByID(sourceNode->GetID());
+        if (!emfxSourceNode)
+        {
+            return nullptr;
+        }        
+
+        const EMotionFX::BlendTree* blendTree = static_cast<EMotionFX::BlendTree*>(mCurrentNode);
+
+        // Iterate over all nodes in the blend tree and check if the given visual connection represents the blend tree connection we're searching.
+        const uint32 numChildNodes = blendTree->GetNumChildNodes();
+        for (uint32 i = 0; i < numChildNodes; ++i)
+        {
+            const EMotionFX::AnimGraphNode* childNode = blendTree->GetChildNode(i);
+
+            EMotionFX::BlendTreeConnection* emfxConnection = childNode->FindConnection(emfxSourceNode, connection->GetOutputPortNr(), connection->GetInputPortNr());
+            if (emfxConnection)
+            {
+                return emfxConnection;
+            }
+        }
+
+        return nullptr;
+    }
+
+
     // create the connection
     void BlendGraphWidget::OnCreateConnection(uint32 sourcePortNr, GraphNode* sourceNode, bool sourceIsInputPort, uint32 targetPortNr, GraphNode* targetNode, bool targetIsInputPort, const QPoint& startOffset, const QPoint& endOffset)
     {
@@ -1404,25 +1449,14 @@ namespace EMStudio
                     }
                     else
                     {
-                        // If the source node is specified get the node name from the connection.
-                        if (connection->GetSourceNode())
-                        {
-                            sourceNodeName = MCore::GetStringIDGenerator().GetName(connection->GetSourceNode()->GetID()).AsChar();
-                        }
-                        else
-                        {
-                            sourceNodeName.clear();
-                        }
+                        EMotionFX::BlendTreeConnection* emfxConnection = FindBlendTreeConnection(connection);
+                        EMotionFX::AnimGraphNode* emfxTargetNode = animGraph->RecursiveFindNodeByID(connection->GetTargetNode()->GetID());
 
-                        commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -targetNode \"%s\" -targetPort %d -sourceNode \"%s\" -sourcePort %d",
-                            animGraph->GetID(),
-                            MCore::GetStringIDGenerator().GetName(connection->GetTargetNode()->GetID()).AsChar(),
-                            connection->GetInputPortNr(),
-                            sourceNodeName.c_str(),
-                            connection->GetOutputPortNr());
-
-                        commandGroup.AddCommandString(commandString);
-                        numDeletedConnections++;
+                        if (emfxConnection && emfxTargetNode)
+                        {
+                            CommandSystem::DeleteConnection(&commandGroup, emfxTargetNode, emfxConnection, connectionList);
+                            numDeletedConnections++;
+                        }
                     }
                 }
             }

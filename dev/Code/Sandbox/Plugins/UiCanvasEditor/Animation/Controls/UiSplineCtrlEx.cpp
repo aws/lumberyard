@@ -43,6 +43,11 @@
 
 #define LEFT_BORDER_OFFSET 40
 
+#ifndef NM_CLICK
+#define NM_CLICK (-2)
+#define NM_RCLICK (-5)
+#endif
+
 const float AbstractSplineWidget::threshold = 0.015f;
 
 //////////////////////////////////////////////////////////////////////////
@@ -721,34 +726,20 @@ void SplineWidget::paintEvent(QPaintEvent* event)
 class SplineControlVerticalLineDrawer
 {
 public:
-    SplineControlVerticalLineDrawer(CDC& dc, const CRect& rect)
-        : rect(rect.left, rect.top, rect.Width(), rect.Height())
-        , painter(nullptr)
-        , dc(&dc)
-    {
-    }
-
     SplineControlVerticalLineDrawer(QPainter* painter, const QRect& rect)
         : rect(rect)
         , painter(painter)
-        , dc(nullptr)
     {
     }
 
     void operator()(int frameIndex, int x)
     {
-        if (dc)
-        {
-            dc->MoveTo(x, rect.top());
-            dc->LineTo(x, rect.bottom());
-        }
-        else if (painter)
+        if (painter)
         {
             painter->drawLine(x, rect.top(), x, rect.bottom());
         }
     }
 
-    CDC* dc;
     QPainter* painter;
     QRect rect;
 };
@@ -1614,7 +1605,7 @@ void SplineWidget::OnLButtonUp(const QPoint& point, Qt::KeyboardModifiers modifi
     if (m_editMode == TimeMarkerMode)
     {
         m_editMode = NothingMode;
-        ReleaseCapture();
+        releaseMouse();
         SendNotifyEvent(SPLN_TIME_END_CHANGE);
     }
 
@@ -1887,7 +1878,7 @@ void AbstractSplineWidget::StopTracking()
     }
 
     m_editMode = NothingMode;
-    ReleaseCapture();
+    releaseMouseImpl();
     update();
 }
 

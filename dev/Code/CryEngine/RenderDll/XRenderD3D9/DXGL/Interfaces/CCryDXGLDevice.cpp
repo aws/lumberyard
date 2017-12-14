@@ -39,10 +39,6 @@
 #include "../Implementation/GLResource.hpp"
 #include "../Implementation/GLShader.hpp"
 
-#if defined(MAC) || defined(LINUX)
-#include <SDL.h>
-#endif
-
 CCryDXGLDevice::CCryDXGLDevice(CCryDXGLGIAdapter* pAdapter, D3D_FEATURE_LEVEL eFeatureLevel)
     : m_spAdapter(pAdapter)
     , m_eFeatureLevel(eFeatureLevel)

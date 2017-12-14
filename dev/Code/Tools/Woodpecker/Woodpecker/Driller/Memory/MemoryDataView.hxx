@@ -18,7 +18,10 @@
 
 #include <Woodpecker/Driller/DrillerMainWindowMessages.h>
 #include <Woodpecker/Driller/StripChart.hxx>
-#include <QtWidgets/QMainWindow>
+#include <QMainWindow>
+#include <QDialog>
+
+namespace AZ { class ReflectContext; }
 
 namespace Ui
 {

@@ -55,9 +55,9 @@ namespace AzToolsFramework
             auto inverseFilter = new InverseFilter();
             inverseFilter->SetFilter(FilterConstType(hiddenGroupFilter));
             filters.push_back(FilterConstType(inverseFilter));
-            // if source has exactly one product with the same name, hide it
-            auto productsFilter = new ProductsFilter();
-            filters.push_back(FilterConstType(productsFilter));
+            // hide irrelevant
+            auto cleanerProductsFilter = new CleanerProductsFilter();
+            filters.push_back(FilterConstType(cleanerProductsFilter));
 
             if (assetTypeFilter)
             {

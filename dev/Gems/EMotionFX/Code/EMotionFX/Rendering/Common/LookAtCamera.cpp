@@ -30,7 +30,7 @@ namespace MCommon
 
 
     // look at target
-    void LookAtCamera::LookAt(const MCore::Vector3& target, const MCore::Vector3& up)
+    void LookAtCamera::LookAt(const AZ::Vector3& target, const AZ::Vector3& up)
     {
         mTarget = target;
         mUp     = up;

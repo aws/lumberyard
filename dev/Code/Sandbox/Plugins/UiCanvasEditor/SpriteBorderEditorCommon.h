@@ -34,6 +34,9 @@
 
 #include "FileHelpers.h"
 
+#define UICANVASEDITOR_SPRITEBORDEREDITOR_SCENE_WIDTH   (256)
+#define UICANVASEDITOR_SPRITEBORDEREDITOR_SCENE_HEIGHT  (256)
+
 class SlicerEdit;
 class SlicerManipulator;
 class SlicerView;
@@ -65,6 +68,6 @@ ADD_ENUM_CLASS_ITERATION_OPERATORS(SpriteBorder,
 #include "SpriteBorderEditor.h"
 
 bool IsBorderVertical(SpriteBorder border);
-float GetBorderValueInPixels(ISprite* sprite, SpriteBorder b, float totalSizeInPixels);
-void SetBorderValue(ISprite* sprite, SpriteBorder b, float pixelPosition, float totalSizeInPixels);
+float GetBorderValueInPixels(ISprite* sprite, SpriteBorder b, float totalSizeInPixels, AZ::u32 cellIndex = 0);
+void SetBorderValue(ISprite* sprite, SpriteBorder b, float pixelPosition, float totalSizeInPixels, AZ::u32 cellIndex = 0);
 const char* SpriteBorderToString(SpriteBorder b);

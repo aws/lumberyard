@@ -16,6 +16,7 @@
 
 #include "StdAfx.h"
 #include "NULL_Renderer.h"
+#include "Common/Textures/TextureManager.h"
 
 #include "../CryFont/FBitmap.h"
 
@@ -42,7 +43,7 @@ void CNULLRenderer::FontSetTexture(int nTexId, int nFilterMode)
 
 int CNULLRenderer::FontCreateTexture(int Width, int Height, byte* pData, ETEX_Format eTF, bool genMips)
 {
-    return CTexture::s_ptexNoTexture->GetTextureID();
+    return CTextureManager::Instance()->GetNoTexture()->GetTextureID();
 }
 
 void CNULLRenderer::DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, int nVerts, int nInds, const PublicRenderPrimitiveType nPrimType)

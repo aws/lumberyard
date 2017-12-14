@@ -34,7 +34,7 @@ public:
         AddVariable(mv_table, "Key Properties");
         AddVariable(mv_table, mv_value, "Value");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
         return trackType == eAnimCurveType_BezierFloat;
     }

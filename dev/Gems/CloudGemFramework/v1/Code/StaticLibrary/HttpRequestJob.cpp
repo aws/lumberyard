@@ -314,7 +314,7 @@ namespace CloudGemFramework
 
         if (itr != haystack.end())
         {
-            *result = itr->second;
+            result = itr->second;
         }
 
         return result;

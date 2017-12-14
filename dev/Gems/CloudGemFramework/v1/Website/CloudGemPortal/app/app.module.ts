@@ -13,7 +13,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ToastModule, ToastOptions} from 'ng2-toastr/ng2-toastr';
 
 export class CustomToastrOptions extends ToastOptions {
-    animate = "fade";
+    animate = "flyRight";
     showCloseButton = true;
     maxShown = 3;
     positionClass = 'toast-bottom-right';
@@ -29,7 +29,7 @@ export class CustomToastrOptions extends ToastOptions {
         NgbModule.forRoot(),
         AppSharedModule.forRoot(),
         ToastModule.forRoot(),
-        ErrorModule,        
+        ErrorModule,
         AuthModule,                
         GameModule,
         AppRoutingModule,  //This must be defined last as the order of the route defintions matters and the app defines '**' which would capute all routes

@@ -83,8 +83,8 @@ namespace EMotionFX
         void UpdateGlobalTransform(uint32 nodeIndex) const;
         void UpdateLocalTransform(uint32 nodeIndex) const;
 
-        void CompensateForMotionExtraction();
-        void CompensateForMotionExtractionDirect();
+        void CompensateForMotionExtraction(EMotionExtractionFlags motionExtractionFlags=(EMotionExtractionFlags)0);
+        void CompensateForMotionExtractionDirect(EMotionExtractionFlags motionExtractionFlags=(EMotionExtractionFlags)0);
 
         void InvalidateAllLocalTransforms();
         void InvalidateAllGlobalTransforms();

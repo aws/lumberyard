@@ -348,6 +348,22 @@ namespace AZ
         }
 
         //=========================================================================
+        void AssetManager::SetAssetInfoUpgradingEnabled(bool enable)
+        {
+            m_assetInfoUpgradingEnabled = enable;
+        }
+
+        bool AssetManager::GetAssetInfoUpgradingEnabled() const
+        {
+#if defined(_RELEASE)
+            // in release ("FINAL") builds, we never do this.
+            return false;
+#else
+            return m_assetInfoUpgradingEnabled;
+#endif
+        }
+
+        //=========================================================================
         // RegisterHandler
         // [7/9/2014]
         //=========================================================================
@@ -459,8 +475,12 @@ namespace AZ
             // Look up the asset id in the catalog, and use the result of that instead.
             // If assetId is a legacy id, assetInfo.m_assetId will be the canonical id. Otherwise, assetInfo.m_assetID == assetId.
             // This is because only canonical ids are stored in m_assets (see below).
+            // Only do the look up if upgrading is enabled
             AZ::Data::AssetInfo assetInfo;
-            EBUS_EVENT_RESULT(assetInfo, AssetCatalogRequestBus, GetAssetInfoById, assetId);
+            if (GetAssetInfoUpgradingEnabled())
+            {
+                AssetCatalogRequestBus::BroadcastResult(assetInfo, &AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
+            }
 
             // If the catalog is not available, use the original assetId
             const AssetId& assetToFind(assetInfo.m_assetId.IsValid() ? assetInfo.m_assetId : assetId);
@@ -572,7 +592,11 @@ namespace AZ
                     }
                 }
             }
-            asset.m_assetHint = assetInfo.m_relativePath;
+
+            if (!assetInfo.m_relativePath.empty())
+            {
+                asset.m_assetHint = assetInfo.m_relativePath;
+            }
             // We delay the start of the job until we release m_assetMutex to avoid a deadlock
             // when AZCORE_JOBS_IMPL_SYNCHRONOUS is defined
             if (loadJob)
@@ -733,8 +757,7 @@ namespace AZ
             AssetData* newAssetData = nullptr;
             AssetHandler* handler = nullptr;
 
-            // TODO: AZ_DEPRECATED Temporary workaround in order to veto an asset reload
-            if (!currentAssetData->IsRegisterReadonlyAndShareable() || currentAssetData->ShouldVetoAssetReload())
+            if (!currentAssetData->IsRegisterReadonlyAndShareable())
             {
                 // Reloading an "instance asset" is basically a no-op.
                 // We'll simply notify users to reload the asset.

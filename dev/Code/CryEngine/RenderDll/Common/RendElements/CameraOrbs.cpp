@@ -16,6 +16,7 @@
 #include "MeshUtil.h"
 #include "CameraOrbs.h"
 #include "../Textures/Texture.h"
+#include "../Textures/TextureManager.h"
 #include "../../RenderDll/XRenderD3D9/DriverD3D.h"
 
 class ScreenTile
@@ -369,7 +370,7 @@ void CameraOrbs::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
     }
     else
     {
-        CTexture::s_ptexBlack->Apply(5, CTexture::GetTexState(bilinearTS));
+       CTextureManager::Instance()->GetBlackTexture()->Apply(5, CTexture::GetTexState(bilinearTS));
     }
 
     if (m_bAdvancedShading)
@@ -377,7 +378,7 @@ void CameraOrbs::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
         ApplyAdvancedShadingParams(shader, GetAmbientDiffuseRGBK(), GetAbsorptance(), GetTransparency(), GetScatteringStrength());
     }
 
-    CTexture* pOrbTex = GetOrbTex() ? GetOrbTex() : CTexture::s_ptexBlack;
+    CTexture* pOrbTex = GetOrbTex() ? GetOrbTex() : CTextureManager::Instance()->GetBlackTexture();
     pOrbTex->Apply(0, CTexture::GetTexState(bilinearTS));
     ValidateMesh();
     ApplyMesh();
@@ -394,7 +395,7 @@ void CameraOrbs::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
             ApplyAdvancedShadingParams(shader, GetAmbientDiffuseRGBK(), GetAbsorptance(), GetTransparency(), GetScatteringStrength());
         }
         ApplyLensDetailParams(shader,  GetLensTexStrength(), GetLensDetailShadingStrength(), GetLensDetailBumpiness());
-        CTexture* pLensTex = GetLensTex() ? GetLensTex() : CTexture::s_ptexBlack;
+        CTexture* pLensTex = GetLensTex() ? GetLensTex() : CTextureManager::Instance()->GetBlackTexture();
         pLensTex->Apply(2, CTexture::GetTexState(bilinearTS));
         screenTile.Draw();
         shader->FXEndPass();

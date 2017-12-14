@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_TransformNodeHasProperties = true;
-
             class Transform
-                : public NativeDatumNode<Transform, Data::TransformType, k_TransformNodeHasProperties>
+                : public NativeDatumNode<Transform, Data::TransformType>
             {
             public:
-                using ParentType = NativeDatumNode<Transform, Data::TransformType, k_TransformNodeHasProperties>;
+                using ParentType = NativeDatumNode<Transform, Data::TransformType>;
                 AZ_COMPONENT(Transform, "{B74F127B-72E0-486B-86FF-2233767C2804}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -43,18 +41,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Transform.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    AddProperty(&AZ::Transform::GetBasisX, static_cast<void(AZ::Transform::*)(const AZ::Vector3&)>(&AZ::Transform::SetBasisX), "basisX");
-                    AddProperty(&AZ::Transform::GetBasisY, static_cast<void(AZ::Transform::*)(const AZ::Vector3&)>(&AZ::Transform::SetBasisY), "basisY");
-                    AddProperty(&AZ::Transform::GetBasisZ, static_cast<void(AZ::Transform::*)(const AZ::Vector3&)>(&AZ::Transform::SetBasisZ), "basisZ");
-                    AddProperty(&AZ::Transform::GetPosition, static_cast<void(AZ::Transform::*)(const AZ::Vector3&)>(&AZ::Transform::SetPosition), "position");
                 }
 
                 void Visit(NodeVisitor& visitor) const override

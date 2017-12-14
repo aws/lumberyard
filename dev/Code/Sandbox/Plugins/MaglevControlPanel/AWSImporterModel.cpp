@@ -119,7 +119,7 @@ void AWSImporterModel::OnCommandOutput(AWSResourceManager::RequestId outputId, c
         return;
     }
     // Send the signal when all the importable resources have been listed 
-    if (m_pendingListRequests > 0 && outputType != "message")
+    if (m_pendingListRequests > 0 && QString(outputType) != "message")
     {
         m_pendingListRequests--;
         if (m_pendingListRequests == 0)

@@ -781,7 +781,7 @@ bool CVehicleEditorDialog::OpenVehicle(bool silent /*=false*/)
 
     sFile = pScript->GetFile();
 
-    if (!sFile.toLower().contains("vehiclepool"))
+    if (!sFile.contains("vehiclepool", Qt::CaseInsensitive))
     {
         if (!silent)
         {

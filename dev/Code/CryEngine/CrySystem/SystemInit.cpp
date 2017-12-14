@@ -35,6 +35,7 @@
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
+#include <AzFramework/API/ApplicationAPI.h>
 #include "AZCoreLogSink.h"
 #include <AzCore/Math/MathUtils.h>
 #include "CryPakFileIO.h"
@@ -147,7 +148,6 @@
 
 #if defined(ANDROID)
     #include <AzCore/Android/Utils.h>
-    #include <AzCore/Android/JNI/Object.h>
 
     #include "AndroidConsole.h"
 #endif
@@ -159,6 +159,10 @@
 #include "IDebugCallStack.h"
 
 #include "WindowsConsole.h"
+
+#if defined(EXTERNAL_CRASH_REPORTING)
+#include <ToolsCrashHandler.h>
+#endif
 
 // select the asset processor based on cvars and defines.
 // uncomment the following and edit the path where it is instantiated if you'd like to use the test file client
@@ -202,7 +206,6 @@ CUNIXConsole* pUnixConsole;
 #define DLL_ONLINE          "CryOnline"
 #define DLL_ENTITYSYSTEM    "CryEntitySystem"
 #define DLL_SCRIPTSYSTEM    "CryScriptSystem"
-#define DLL_INPUT                 "CryInput"
 #define DLL_PHYSICS           "CryPhysics"
 #define DLL_MOVIE                 "CryMovie"
 #define DLL_AI                      "CryAISystem"
@@ -226,7 +229,6 @@ CUNIXConsole* pUnixConsole;
 #   define DLL_MODULE_SHUTDOWN_ISYSTEM "ModuleShutdownISystem"
 #   define DLL_INITFUNC_RENDERER "PackageRenderConstructor"
 #   define DLL_INITFUNC_ENTITY "CreateEntitySystem"
-#   define DLL_INITFUNC_INPUT "CreateInput"
 #   define DLL_INITFUNC_SOUND "CreateSoundSystem"
 #   define DLL_INITFUNC_PHYSIC "CreatePhysicalWorld"
 #   define DLL_INITFUNC_AI "CreateAISystem"
@@ -241,7 +243,6 @@ CUNIXConsole* pUnixConsole;
 #   define DLL_INITFUNC_RENDERER  (LPCSTR)1
 #   define DLL_INITFUNC_RENDERER  (LPCSTR)1
 #   define DLL_INITFUNC_ENTITY    (LPCSTR)1
-#   define DLL_INITFUNC_INPUT     (LPCSTR)1
 #   define DLL_INITFUNC_SOUND     (LPCSTR)1
 #   define DLL_INITFUNC_PHYSIC    (LPCSTR)1
 #   define DLL_INITFUNC_AI        (LPCSTR)1
@@ -251,6 +252,8 @@ CUNIXConsole* pUnixConsole;
 #   define DLL_INITFUNC_ANIMATION (LPCSTR)1
 #   define DLL_INITFUNC_UI        (LPCSTR)1
 #endif
+
+#define AZ_TRACE_SYSTEM_WINDOW AZ::Debug::Trace::GetDefaultSystemWindow()
 
 //////////////////////////////////////////////////////////////////////////
 // Extern declarations for static libraries.
@@ -277,23 +280,6 @@ namespace
     HANDLE g_cacheLock = INVALID_HANDLE_VALUE;
 #endif
 }
-
-#if defined(AZ_PLATFORM_ANDROID)
-// let the java code know the native renderer is taking over now
-extern "C" void OnEngineRendererTakeover(bool engineSplashActive)
-{
-    bool engineSplashEnabled = (g_cvars.sys_rendersplashscreen != 0);
-    if (engineSplashActive != engineSplashEnabled)
-    {
-        return;
-    }
-
-    AZ::Android::JNI::Object activity(AZ::Android::Utils::GetActivityClassRef(), AZ::Android::Utils::GetActivityRef());
-
-    activity.RegisterMethod("OnEngineRendererTakeover", "()V");
-    activity.InvokeVoidMethod("OnEngineRendererTakeover");
-}
-#endif
 
 //static int g_sysSpecChanged = false;
 
@@ -479,34 +465,14 @@ static ESystemConfigPlatform GetDevicePlatform()
 #elif defined(AZ_PLATFORM_APPLE_TV)
     return CONFIG_APPLETV;
 #elif defined(AZ_PLATFORM_APPLE_OSX)
-    const char* driverName = GetISystem()->GetRenderingDriverName();
-    // If a driver name is not specified then we could be running as a tool like
-    // the resource compiler. It will never set r_driver so pick our default on
-    // macOS - Metal.
-    if (driverName == nullptr)
-    {
-        return CONFIG_OSX_METAL;
-    }
-    if (strcmp(driverName, "GL") == 0)
-    {
-        return CONFIG_OSX_GL;
-    }
-    else if (strcmp(driverName, "METAL") == 0)
-    {
-        return CONFIG_OSX_METAL;
-    }
-    else
-    {
-        AZ_Assert(false, "Renderer type %s not supported", driverName);
-        return CONFIG_INVALID_PLATFORM;
-    }
+    return CONFIG_OSX_METAL;
 #else
     AZ_Assert(false, "Platform not supported");
     return CONFIG_INVALID_PLATFORM;
 #endif
 }
 
-static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string &cfgFile, int platform)
+static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, int platform)
 {
     switch (platform)
     {
@@ -558,7 +524,7 @@ static void LoadDetectedSpec(ICVar* pVar)
 {
     CDebugAllowFileAccess ignoreInvalidFileAccess;
     SysSpecOverrideSink sysSpecOverrideSink;
-    ILoadConfigurationEntrySink* pSysSpecOverrideSinkConsole = NULL;
+    ILoadConfigurationEntrySink* pSysSpecOverrideSinkConsole = nullptr;
 
 #if !defined(CONSOLE)
     SysSpecOverrideSinkConsole sysSpecOverrideSinkConsole;
@@ -776,16 +742,11 @@ struct SCryEngineLanguageConfigLoader
 #if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
 WIN_HMODULE CSystem::LoadDynamiclibrary(const char* dllName) const
 {
-    WIN_HMODULE handle = NULL;
+    WIN_HMODULE handle = nullptr;
 #ifdef WIN32
     if (m_binariesDir.empty())
     {
         handle = CryLoadLibrary(dllName);
-        if (!handle)
-        {
-            DWORD dwErrorCode = GetLastError();
-            CryLogAlways("DLL Failed to load with error code 0x%X: %s", dwErrorCode, dllName);
-        }
     }
     else
     {
@@ -802,25 +763,21 @@ WIN_HMODULE CSystem::LoadDynamiclibrary(const char* dllName) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-WIN_HMODULE CSystem::LoadDLL(const char* dllName, bool bQuitIfNotFound)
+WIN_HMODULE CSystem::LoadDLL(const char* dllName)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
-    CryComment("Loading DLL: %s", dllName);
+    AZ_TracePrintf(AZ_TRACE_SYSTEM_WINDOW, "Loading DLL: %s", dllName);
 
     WIN_HMODULE handle = LoadDynamiclibrary(dllName);
 
     if (!handle)
     {
-        if (bQuitIfNotFound)
-        {
 #if defined(LINUX) || defined(APPLE)
-            CryFatalError("Error loading DLL: %s, error :  %s\n", dllName, dlerror());
+        AZ_Assert(false, "Error loading DLL: %s, error :  %s\n", dllName, dlerror());
 #else
-            CryFatalError("Error loading DLL: %s, error code %d", dllName, GetLastError());
+        AZ_Assert(false, "Error loading DLL: %s, error code %d", dllName, GetLastError());
 #endif
-            Quit();
-        }
         return 0;
     }
 
@@ -851,9 +808,9 @@ bool CSystem::UnloadDLL(const char* dllName)
 {
     bool isSuccess = false;
 
-    WIN_HMODULE const hModule = stl::find_in_map(m_moduleDLLHandles, dllName, NULL);
+    WIN_HMODULE const hModule = stl::find_in_map(m_moduleDLLHandles, dllName, nullptr);
 
-    if (hModule != NULL)
+    if (hModule != nullptr)
     {
         CryComment("Unloading DLL: %s", dllName);
         CryFreeLibrary(hModule);
@@ -865,7 +822,7 @@ bool CSystem::UnloadDLL(const char* dllName)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClassName, const SSystemInitParams& initParams, bool bQuitIfNotFound)
+bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClassName, const SSystemInitParams& initParams)
 {
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "InitializeEngineModule");
     MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "%s", moduleClassName);
@@ -891,7 +848,7 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
     {
         m_pUserCallback->OnInitProgress(msg.c_str());
     }
-    CryLog("%s", msg.c_str());
+    AZ_TracePrintf(moduleClassName, "%s", msg.c_str());
 
     IMemoryManager::SProcessMemInfo memStart, memEnd;
     if (GetIMemoryManager())
@@ -917,7 +874,7 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
 #endif
 
 #if !defined(AZ_MONOLITHIC_BUILD)
-    WIN_HMODULE hModule = LoadDLL(dllfile.c_str(), bQuitIfNotFound);
+    WIN_HMODULE hModule = LoadDLL(dllfile.c_str());
     if (!hModule)
     {
         return bResult;
@@ -938,7 +895,7 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
         GetIMemoryManager()->GetProcessMemInfo(memEnd);
 
         uint64 memUsed = memEnd.WorkingSetSize - memStart.WorkingSetSize;
-        CryLog("Initializing %s done, MemUsage=%dKb", dllName, uint32(memUsed / 1024));
+        AZ_TracePrintf(moduleClassName, "Initializing %s done, MemUsage=%dKb", dllName, uint32(memUsed / 1024));
     }
 
     return bResult;
@@ -952,11 +909,11 @@ bool CSystem::UnloadEngineModule(const char* dllName, const char* moduleClassNam
     // Remove the factory.
     ICryFactoryRegistryImpl* const pReg = static_cast<ICryFactoryRegistryImpl*>(GetCryFactoryRegistry());
 
-    if (pReg != NULL)
+    if (pReg != nullptr)
     {
         ICryFactory* pICryFactory = pReg->GetFactory(moduleClassName);
 
-        if (pICryFactory != NULL)
+        if (pICryFactory != nullptr)
         {
             pReg->UnregisterFactory(pICryFactory);
         }
@@ -967,7 +924,7 @@ bool CSystem::UnloadEngineModule(const char* dllName, const char* moduleClassNam
     msg += dllName;
     msg += "...";
 
-    CryLog("%s", msg.c_str());
+    AZ_TracePrintf(AZ_TRACE_SYSTEM_WINDOW, "%s", msg.c_str());
 
     stack_string dllfile = dllName;
 
@@ -1050,8 +1007,7 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
         return OpenRenderLibrary(R_NULL_RENDERER, initParams);
     }
 
-
-    CryFatalError ("Unknown renderer type: %s", t_rend);
+    AZ_Assert(false, "Unknown renderer type: %s", t_rend);
     return false;
 }
 
@@ -1149,53 +1105,65 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
     LOADING_TIME_PROFILE_SECTION;
 #if !defined(DEDICATED_SERVER)
 #if defined(WIN32) || defined(WIN64)
-    if (!m_env.IsEditor() && !gEnv->IsDedicated())
+    if (!gEnv->IsDedicated())
     {
         unsigned int gpuVendorId = 0, gpuDeviceId = 0, totVidMem = 0;
         char gpuName[256];
         Win32SysInspect::DXFeatureLevel featureLevel = Win32SysInspect::DXFL_Undefined;
         Win32SysInspect::GetGPUInfo(gpuName, sizeof(gpuName), gpuVendorId, gpuDeviceId, totVidMem, featureLevel);
 
-        if (featureLevel < Win32SysInspect::DXFL_11_0)
+        if (m_env.IsEditor())
         {
-            const char logMsgFmt[] ("Unsupported GPU configuration!\n- %s (vendor = 0x%.4x, device = 0x%.4x)\n- Dedicated video memory: %d MB\n- Feature level: %s\n");
-            CryLogAlways(logMsgFmt, gpuName, gpuVendorId, gpuDeviceId, totVidMem >> 20, GetFeatureLevelAsString(featureLevel));
+#if defined(EXTERNAL_CRASH_REPORTING)
+            CrashHandler::ToolsCrashHandler::AddAnnotation("dx.feature.level", Win32SysInspect::GetFeatureLevelAsString(featureLevel));
+            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.name", gpuName);
+            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.vendorId", std::to_string(gpuVendorId));
+            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.deviceId", std::to_string(gpuDeviceId));
+            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.memory", std::to_string(totVidMem));
+#endif
+        }
+        else
+        {
+            if (featureLevel < Win32SysInspect::DXFL_11_0)
+            {
+                const char logMsgFmt[] ("Unsupported GPU configuration!\n- %s (vendor = 0x%.4x, device = 0x%.4x)\n- Dedicated video memory: %d MB\n- Feature level: %s\n");
+                AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, logMsgFmt, gpuName, gpuVendorId, gpuDeviceId, totVidMem >> 20, GetFeatureLevelAsString(featureLevel));
 
 #if !defined(_RELEASE)
-            const bool allowPrompts = m_env.pSystem->GetICmdLine()->FindArg(eCLAT_Pre, "noprompt") == 0;
+                const bool allowPrompts = m_env.pSystem->GetICmdLine()->FindArg(eCLAT_Pre, "noprompt") == 0;
 #else
-            const bool allowPrompts = true;
+                const bool allowPrompts = true;
 #endif // !defined(_RELEASE)
-            if (allowPrompts)
-            {
-                CryLogAlways("Asking user if they wish to continue...");
-                const int mbRes = MessageBoxW(0, GetErrorStringUnsupportedGPU(gpuName, gpuVendorId, gpuDeviceId).c_str(), L"Lumberyard", MB_ICONWARNING | MB_OKCANCEL | MB_DEFBUTTON2 | MB_DEFAULT_DESKTOP_ONLY);
-                if (mbRes == IDCANCEL)
+                if (allowPrompts)
                 {
-                    CryLogAlways("User chose to cancel.");
-                    return false;
+                    AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Asking user if they wish to continue...");
+                    const int mbRes = MessageBoxW(0, GetErrorStringUnsupportedGPU(gpuName, gpuVendorId, gpuDeviceId).c_str(), L"Lumberyard", MB_ICONWARNING | MB_OKCANCEL | MB_DEFBUTTON2 | MB_DEFAULT_DESKTOP_ONLY);
+                    if (mbRes == IDCANCEL)
+                    {
+                        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "User chose to cancel startup due to unsupported GPU.");
+                        return false;
+                    }
                 }
-            }
-            else
-            {
+                else
+                {
 #if !defined(_RELEASE)
-                const bool obeyGPUCheck = m_env.pSystem->GetICmdLine()->FindArg(eCLAT_Pre, "anygpu") == 0;
+                    const bool obeyGPUCheck = m_env.pSystem->GetICmdLine()->FindArg(eCLAT_Pre, "anygpu") == 0;
 #else
-                const bool obeyGPUCheck = true;
+                    const bool obeyGPUCheck = true;
 #endif // !defined(_RELEASE)
-                if (obeyGPUCheck)
-                {
-                    CryLogAlways("No prompts allowed and unsupported GPU check active. Treating unsupported GPU as error and exiting.");
-                    return false;
+                    if (obeyGPUCheck)
+                    {
+                        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "No prompts allowed and unsupported GPU check active. Treating unsupported GPU as error and exiting.");
+                        return false;
+                    }
                 }
-            }
 
-            CryLogAlways("User chose to continue despite unsupported GPU!");
+                AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "User chose to continue despite unsupported GPU!");
+            }
         }
     }
 #endif
 #endif // !defined(DEDICATED_SERVER)
-
 
 #if defined(DEDICATED_SERVER)
     type = R_NULL_RENDERER;
@@ -1235,18 +1203,18 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
     }
     else
     {
-        CryFatalError("No renderer specified!");
+        AZ_Assert(false, "Renderer did not initialize correctly; no valid renderer specified.");
         return false;
     }
 
-    if (!InitializeEngineModule(libname, "EngineModule_CryRenderer", initParams, true))
+    if (!InitializeEngineModule(libname, "EngineModule_CryRenderer", initParams))
     {
         return false;
     }
 
     if (!m_env.pRenderer)
     {
-        CryFatalError("Error creating Render System!");
+        AZ_Assert(false, "Renderer did not initialize correctly; it could not be found in the system environment.");
         return false;
     }
 
@@ -1259,14 +1227,14 @@ bool CSystem::InitNetwork(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
-    if (!InitializeEngineModule(DLL_NETWORK, "EngineModule_CryNetwork", initParams, true))
+    if (!InitializeEngineModule(DLL_NETWORK, "EngineModule_CryNetwork", initParams))
     {
         return false;
     }
 
-    if (m_env.pNetwork == NULL)
+    if (!m_env.pNetwork)
     {
-        CryFatalError("Error creating Network System!");
+        AZ_Assert(false, "Network System did not initialize correctly; it was not found in the system environment.");
         return false;
     }
     return true;
@@ -1277,14 +1245,14 @@ bool CSystem::InitEntitySystem(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
-    if (!InitializeEngineModule(DLL_ENTITYSYSTEM, "EngineModule_CryEntitySystem", initParams, true))
+    if (!InitializeEngineModule(DLL_ENTITYSYSTEM, "EngineModule_CryEntitySystem", initParams))
     {
         return false;
     }
 
     if (!m_env.pEntitySystem)
     {
-        CryFatalError("Error creating Entity System!");
+        AZ_Assert(false, "Entity System did not initialize correctly; it was not found in the system environment.");
         return false;
     }
 
@@ -1298,18 +1266,14 @@ bool CSystem::InitDynamicResponseSystem(const SSystemInitParams& initParams)
 
     const char* sDLLName = m_sys_dll_response_system->GetString();
 
-    if (!sDLLName || sDLLName[0] == '\0')
+    if (!sDLLName || !sDLLName[0] || !InitializeEngineModule(sDLLName, "EngineModule_CryDynamicResponseSystem", initParams))
     {
         return false;
-    }
-    else
-    {
-        InitializeEngineModule(sDLLName, "EngineModule_CryDynamicResponseSystem", initParams, true);
     }
 
     if (!m_env.pDynamicResponseSystem)
     {
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Error creating Dynamic Response System from dll: '%s'!", sDLLName);
+        AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "Dynamic Response System did not initialize correctly; it could not be found in the system environment.");
         return false;
     }
 
@@ -1328,21 +1292,11 @@ bool CSystem::InitInput(const SSystemInitParams& initParams)
         return true;
     }
 
-    if (!InitializeEngineModule(DLL_INPUT, "EngineModule_CryInput", initParams, true))
-    {
-#ifdef WIN32
-        if (!initParams.bUnattendedMode)
-        {
-            MessageBox(NULL, "CryInput.dll could not be loaded. This is likely due to not having XInput support installed.\nPlease install the most recent version of the DirectX runtime and reboot after installing DirectX.", "ERROR: CryInput.dll could not be loaded!", MB_OK | MB_ICONERROR);
-        }
-#endif
-        return false;
-    }
+    CryLegacyInputRequestBus::BroadcastResult(m_env.pInput, &CryLegacyInputRequests::InitInput);
 
     if (!m_env.pInput)
     {
-        CryFatalError("Error creating Input System!");
-        return false;
+        AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "The deprecated CryInput system was not created, if you depend on it please enable the CryLegacy Gem");
     }
 
     return true;
@@ -1459,37 +1413,42 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
     }
 #endif // defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_ANDROID)
 
-#ifdef WIN32
     if (m_env.pRenderer)
     {
+        // This is crucial as textures suffix are hard coded to context and we need to initialize
+        // the texture semantics to look it up.
+        m_env.pRenderer->InitTexturesSemantics();
+
+#ifdef WIN32
         SCustomRenderInitArgs args;
         args.appStartedFromMediaCenter = strstr(initParams.szSystemCmdLine, "ReLaunchMediaCenter") != 0;
 
-        m_hWnd = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, hinst, hwnd, false, &args, initParams.bShaderCacheGen);
+        m_hWnd = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, initParams.bEditor, hinst, hwnd, false, &args, initParams.bShaderCacheGen);
         //Timur, Not very clean code, we need to push new hwnd value to the system init params, so other modules can used when initializing.
         (const_cast<SSystemInitParams*>(&initParams))->hWnd = m_hWnd;
 
         InitPhysicsRenderer(initParams);
 
-        return (initParams.bShaderCacheGen || m_hWnd != 0);
-    }
-#else
-    if (m_env.pRenderer)
-    {
-        WIN_HWND h = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, hinst, hwnd);
+        bool retVal = (initParams.bShaderCacheGen || m_hWnd != 0);
+        AZ_Assert(retVal, "Renderer failed to initialize correctly.");
+        return retVal;
+#else   // WIN32
+        WIN_HWND h = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, initParams.bEditor, hinst, hwnd);
         InitPhysicsRenderer(initParams);
 
 #if (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))|| defined(ORBIS)
         return true;
-#else
+#else   // (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))|| defined(ORBIS)
         if (h)
         {
             return true;
         }
-        return (false);
-#endif
+
+        AZ_Assert(false, "Renderer failed to initialize correctly.");
+        return false;
+#endif  // (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))|| defined(ORBIS)
+#endif  // WIN32
     }
-#endif
     return true;
 }
 
@@ -1691,14 +1650,16 @@ bool CSystem::InitPhysics(const SSystemInitParams& initParams)
     LOADING_TIME_PROFILE_SECTION(GetISystem());
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Physics, 0, "Init Physics");
 
-    if (!InitializeEngineModule(DLL_PHYSICS, "EngineModule_CryPhysics", initParams, true))
+    const char* moduleName = "EngineModule_CryPhysics";
+    if (!InitializeEngineModule(DLL_PHYSICS, moduleName, initParams))
     {
+        AZ_Assert(false, "Physics System did not initialize correctly; the DLL failed to load: %s", DLL_PHYSICS);
         return false;
     }
 
     if (!m_env.pPhysicalWorld)
     {
-        CryFatalError("Error creating Physics System!");
+        AZ_Assert(false, "Physics System did not initialize correctly; it could not be found in the system environment.");
         return false;
     }
     //m_env.pPhysicalWorld->Init(); // don't need a second Init, the world is created initialized
@@ -1942,8 +1903,8 @@ bool CSystem::InitPhysics(const SSystemInitParams& initParams)
         // Setup physical grid for Editor.
         int nCellSize = 16;
         m_env.pPhysicalWorld->SetupEntityGrid(2, Vec3(0, 0, 0), (2048) / nCellSize, (2048) / nCellSize, (float)nCellSize, (float)nCellSize);
-        pConsole->CreateKeyBind("comma", "#System.SetCVar(\"p_single_step_mode\",1-System.GetCVar(\"p_single_step_mode\"));");
-        pConsole->CreateKeyBind("period", "p_do_step 1");
+        pConsole->CreateKeyBind("keyboard_key_punctuation_comma", "#System.SetCVar(\"p_single_step_mode\",1-System.GetCVar(\"p_single_step_mode\"));");
+        pConsole->CreateKeyBind("keyboard_key_punctuation_period", "p_do_step 1");
     }
 
     return true;
@@ -1999,11 +1960,11 @@ bool CSystem::InitPhysicsRenderer(const SSystemInitParams& initParams)
             "Physics proxies with triangle counts >= p_proxy_highlight_threshold+p_proxy_highlight_range will get the maximum highlight");
         REGISTER_CVAR2("p_jump_to_profile_ent", &(m_iJumpToPhysProfileEnt = 0), 0, 0,
             "Move the local player next to the corresponding entity in the p_profile_entities list");
-        GetIConsole()->CreateKeyBind("alt_1", "p_jump_to_profile_ent 1");
-        GetIConsole()->CreateKeyBind("alt_2", "p_jump_to_profile_ent 2");
-        GetIConsole()->CreateKeyBind("alt_3", "p_jump_to_profile_ent 3");
-        GetIConsole()->CreateKeyBind("alt_4", "p_jump_to_profile_ent 4");
-        GetIConsole()->CreateKeyBind("alt_5", "p_jump_to_profile_ent 5");
+        GetIConsole()->CreateKeyBind("alt_keyboard_key_alphanumeric_1", "p_jump_to_profile_ent 1");
+        GetIConsole()->CreateKeyBind("alt_keyboard_key_alphanumeric_2", "p_jump_to_profile_ent 2");
+        GetIConsole()->CreateKeyBind("alt_keyboard_key_alphanumeric_3", "p_jump_to_profile_ent 3");
+        GetIConsole()->CreateKeyBind("alt_keyboard_key_alphanumeric_4", "p_jump_to_profile_ent 4");
+        GetIConsole()->CreateKeyBind("alt_keyboard_key_alphanumeric_5", "p_jump_to_profile_ent 5");
     }
     return true;
 }
@@ -2017,14 +1978,15 @@ bool CSystem::InitAISystem(const SSystemInitParams& initParams)
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init AISystem ");
 
     const char* sDLLName = m_sys_dll_ai->GetString();
-    if (!InitializeEngineModule(sDLLName, "EngineModule_CryAISystem", initParams, false))
+    if (!InitializeEngineModule(sDLLName, "EngineModule_CryAISystem", initParams))
     {
+        AZ_Assert(false, "AI System did not initialize correctly; the DLL failed to load: %s", sDLLName);
         return false;
     }
 
     if (!m_env.pAISystem)
     {
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Cannot create AI System!");
+        AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "AI System did not initialize correctly; it could not be found in the system environment.");
     }
 
     return true;
@@ -2038,15 +2000,16 @@ bool CSystem::InitScriptSystem(const SSystemInitParams& initParams)
 
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_LUA, 0, "Init ScriptSystem");
 
-    if (!InitializeEngineModule(DLL_SCRIPTSYSTEM, "EngineModule_CryScriptSystem", initParams, true))
+    const char* moduleName = "EngineModule_CryScriptSystem";
+    if (!InitializeEngineModule(DLL_SCRIPTSYSTEM, moduleName, initParams))
     {
         return false;
     }
 
-    if (m_env.pScriptSystem == NULL)
+    if (m_env.pScriptSystem == nullptr)
     {
-        CryFatalError("Error creating Script System!");
-        return (false);
+        AZ_Assert(false, "Script System did not initialize correctly; it could not be found in system environment.");
+        return false;
     }
 
     if (!m_env.IsEditor())
@@ -2054,21 +2017,48 @@ bool CSystem::InitScriptSystem(const SSystemInitParams& initParams)
         m_env.pScriptSystem->PostInit();
     }
 
-    return (true);
+    return true;
 }
 
 bool CSystem::LaunchAssetProcessor()
 {
 #if defined(AZ_PLATFORM_WINDOWS) && defined(REMOTE_ASSET_PROCESSOR)
-    char exeName[AZ_MAX_PATH_LEN] = { 0 };
-    ::GetModuleFileName(::GetModuleHandle(nullptr), exeName, AZ_MAX_PATH_LEN);
-    char drive[AZ_MAX_PATH_LEN] = { 0 };
-    char dir[AZ_MAX_PATH_LEN] = { 0 };
+    static const char* asset_processor_name = "AssetProcessor";
+    static const char* asset_processor_ext = "exe";
     char assetProcessorExe[AZ_MAX_PATH_LEN] = { 0 };
     char workingDir[AZ_MAX_PATH_LEN] = { 0 };
-    _splitpath_s(exeName, drive, AZ_MAX_PATH_LEN, dir, AZ_MAX_PATH_LEN, nullptr, 0, nullptr, 0);
-    _makepath_s(assetProcessorExe, AZ_MAX_PATH_LEN, drive, dir, "AssetProcessor", "exe");
-    _makepath_s(workingDir, AZ_MAX_PATH_LEN, drive, dir, nullptr, nullptr);
+
+    const char* appRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+
+    // Get the engine root path
+    const char* engineRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+    if (engineRoot != nullptr)
+    {
+        AZStd::string engineBinFolder = AZStd::string::format("%s%s",engineRoot, BINFOLDER_NAME);
+        azstrncpy(workingDir, AZ_ARRAY_SIZE(workingDir), engineBinFolder.c_str(), engineBinFolder.length());
+
+        AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s.%s",
+                                                                        engineBinFolder.c_str(),
+                                                                        AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING,
+                                                                        asset_processor_name, 
+                                                                        asset_processor_ext);
+        azstrncpy(assetProcessorExe, AZ_ARRAY_SIZE(assetProcessorExe), engineAssetProcessorPath.c_str(), engineAssetProcessorPath.length());
+
+    }
+    else
+    {
+        char exeName[AZ_MAX_PATH_LEN] = { 0 };
+        ::GetModuleFileName(::GetModuleHandle(nullptr), exeName, AZ_MAX_PATH_LEN);
+        char drive[AZ_MAX_PATH_LEN] = { 0 };
+        char dir[AZ_MAX_PATH_LEN] = { 0 };
+        _splitpath_s(exeName, drive, AZ_MAX_PATH_LEN, dir, AZ_MAX_PATH_LEN, nullptr, 0, nullptr, 0);
+        _makepath_s(assetProcessorExe, AZ_MAX_PATH_LEN, drive, dir, "AssetProcessor", "exe");
+        _makepath_s(workingDir, AZ_MAX_PATH_LEN, drive, dir, nullptr, nullptr);
+    }
+
+
 
     if (m_pUserCallback)
     {
@@ -2082,12 +2072,19 @@ bool CSystem::LaunchAssetProcessor()
     si.wShowWindow = SW_MINIMIZE;
     PROCESS_INFORMATION pi;
     char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
-    azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "\"%s\" --start-hidden", assetProcessorExe);
+    if (appRoot != nullptr)
+    {
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "\"%s\" --start-hidden --app-root \"%s\"", assetProcessorExe, appRoot);
+    }
+    else
+    {
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "\"%s\" --start-hidden", assetProcessorExe);
+    }
 
     bool created = ::CreateProcess(nullptr, full_launch_command, nullptr, nullptr, FALSE, 0, nullptr, workingDir, &si, &pi) != 0;
     if (!created)
     {
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Unable to start AssetProcessor: %s", assetProcessorExe);
+        AZ_Assert(false, "CreateProcess failed to launch AssetProcessor at location: %s", assetProcessorExe);
         return false;
     }
 
@@ -2107,7 +2104,7 @@ bool CSystem::LaunchAssetProcessor()
     pid_t pid = fork();
     if (pid == -1)
     {
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Unable to fork process to start AssetProcessor: %s", strerror(errno));
+        AZ_Assert(false, "Unable to fork process to start AssetProcessor: %s", strerror(errno));
         return false;
     }
     else if (pid == 0)
@@ -2159,13 +2156,15 @@ bool CSystem::LaunchAssetProcessor()
         }
 
         if (count) {
-            CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Unable to start AssetProcessor: %s", strerror(err));
+            AZ_Assert(false, "Unable to start AssetProcessor: %s", strerror(err));
             return false;
         }
         close(pipefds[0]);
         return true;
     }
 #endif
+
+    AZ_Assert(false, "Could not start Asset Processor; platform not supported");
     return false;
 }
 
@@ -2178,6 +2177,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
     AzFramework::AssetSystem::AssetProcessorConnection* engineConnection = static_cast<AzFramework::AssetSystem::AssetProcessorConnection*>(AzFramework::SocketConnection::GetInstance());
     if (!engineConnection)
     {
+        AZ_Assert(false, "Could not get an engine connection for the Asset Processor Connection to use.");
         return false;
     }
 
@@ -2209,18 +2209,14 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             countseperators != 3 ||
             !isNumeric)
         {
-            IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-            if (pOS)
-            {
                 if (waitForConnect)
                 {
-                    pOS->DebugMessageBox("IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
+                AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.\nQuitting...");
                     return false;
                 }
                 else
                 {
-                    pOS->DebugMessageBox("IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.\n Acknowledge to Continue...", "AP Connection Failure");
-                }
+                AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.");
             }
         }
 
@@ -2274,7 +2270,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
                 if (!isAssetProcessorLaunched)
                 {
                     // if we are unable to launch asset processor
-                    EBUS_EVENT(AzFramework::AssetSystemInfoBus, OnError, AssetSystemErrors::ASSETSYSTEM_FAILED_TO_LAUNCH_ASSETPROCESSOR);
+                    AzFramework::AssetSystemInfoBus::Broadcast(&AzFramework::AssetSystem::AssetSystemInfoNotifications::OnError, AssetSystemErrors::ASSETSYSTEM_FAILED_TO_LAUNCH_ASSETPROCESSOR);
                 }
             }
 #endif//defined(AZ_PLATFORM_WINDOWS)
@@ -2283,7 +2279,13 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             int timeToConnect = isAssetProcessorLaunched ? 120000 : 5000;
             start = AZStd::chrono::system_clock::now();
             last = start;
-            while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(timeToConnect))
+
+            const auto timedOut = [start, timeToConnect]
+            {
+                return AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) >= AZStd::chrono::milliseconds(timeToConnect);
+            };
+
+            while (!engineConnection->NegotiationFailed() && !engineConnection->IsConnected() && !timedOut())
             {
                 if (m_pUserCallback && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - last) >= AZStd::chrono::milliseconds(250))
                 {
@@ -2297,47 +2299,32 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
                 AZStd::this_thread::yield();
             }
 
-            if (!engineConnection->IsConnected() && engineConnection->NegotiationFailed())
+            if (!engineConnection->IsConnected())
+            {
+                const char* errorMessage;
+                if (engineConnection->NegotiationFailed())
             {
                 //The negotiation failed, this means we did connect, but failed to establish a connection
-                EBUS_EVENT(AzFramework::AssetSystemConnectionNotificationsBus, ConnectionFailed);
-
-                engineConnection->Disconnect(); //should stop the async connection from retry
-
-                CryLogAlways("Negotiation with AssetProcessor failed. Check your bootstrap.cfg to make sure your settings are correct and that the Asset Processor is running on the computer that is connected via USB to, or on the same network as, this device");
-
-                if (m_pUserCallback)
-                {
-                    m_pUserCallback->OnInitProgress("Negotiation failed with the Asset Processor! Quitting...");
+                    errorMessage = "Negotiation with the Asset Processor failed.";
+                    EBUS_EVENT(AzFramework::AssetSystemConnectionNotificationsBus, NegotiationFailed);
                 }
-
-                IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-                if (pOS)
+                else
                 {
-                    pOS->DebugMessageBox("Negotiation failed with the Asset Processor!\nMake sure the Asset Processor is running out of the correct branch.\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-                }
-
-                return false;
+                    errorMessage = "Connection timeout with the Asset Processor.";
+                    EBUS_EVENT(AzFramework::AssetSystemConnectionNotificationsBus, ConnectionFailed);
             }
-            else if(!engineConnection->IsConnected())
-            {
-                //We never contacted an AP and we timed out
-                EBUS_EVENT(AzFramework::AssetSystemConnectionNotificationsBus, ConnectionFailed);
 
                 engineConnection->Disconnect(); //should stop the async connection from retry
 
-                CryLogAlways("Connection timeout with AssetProcessor. Check your bootstrap.cfg to make sure your settings are correct and that the Asset Processor is running on the computer that is connected via USB to, or on the same network as, this device");
+                const char* userHelpMessage = "Check your bootstrap.cfg to make sure your settings are correct and that the Asset Processor is running on the computer that is connected via USB to, or on the same network as, this device.";
+                AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "%s %s", errorMessage, userHelpMessage);
 
                 if (m_pUserCallback)
                 {
-                    m_pUserCallback->OnInitProgress("Connection timeout with the Asset Processor! Quitting...");
+                    m_pUserCallback->OnInitProgress(AZ::OSString::format("%s Quitting...", errorMessage).c_str());
                 }
 
-                IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-                if (pOS)
-                {
-                    pOS->DebugMessageBox("Connection timeout with the Asset Processor!\nMake sure the Asset Processor is running out of the correct branch.\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-                }
+                AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "%s %s", errorMessage, userHelpMessage);
 
                 return false;
             }
@@ -2369,18 +2356,12 @@ void CSystem::WaitForAssetProcessorToBeReady()
     string platformName = GetAssetsPlatform();
     while (!isAssetProcessorReady)
     {
-        // it is assumed that PumpWindowMessage keeps consuming system messages on whatever system you are on
-        PumpWindowMessage(true, m_hWnd);
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
 
         if (!engineConnection->IsConnected())
         {
             //If we are here than it means we have lost connection with AP
-            IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-            if (pOS)
-            {
-                pOS->DebugMessageBox("Lost the connection to the Asset Processor!\nMake sure the Asset Processor is running.", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-            }
-
+            AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "Lost the connection to the Asset Processor!\nMake sure the Asset Processor is running.");
             return;
         }
         //Keep asking the AP about it status, until it is ready
@@ -2389,14 +2370,7 @@ void CSystem::WaitForAssetProcessorToBeReady()
         ResponseAssetProcessorStatus response;
         if (!SendRequest(request, response))
         {
-            AZ_Error("Editor", false, "Failed to send Asset Processor Status request for platform %s", platformName.c_str());
-
-            IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-            if (pOS)
-            {
-                pOS->DebugMessageBox("Failed to send Asset Processor Status request!", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-            }
-
+            AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "Failed to send Asset Processor Status request for platform %s.", platformName.c_str());
             return;
         }
         else
@@ -2430,7 +2404,7 @@ void CSystem::WaitForAssetProcessorToBeReady()
             }
         }
         // Throttle this, each loop actually sends network traffic to the AP and there's no point in running at 100x a second, but 10x is smooth.
-        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100)); // on some systems, PumpWindowMessage may not sleep.
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100)); // on some systems, PumpSystemEventLoopUntilEmpty may not sleep.
     }
 }
 
@@ -2443,7 +2417,7 @@ void CSystem::ConnectFromAssetProcessor(const SSystemInitParams& initParams, boo
     }
 
 #if !defined(CONSOLE)
-    CRY_ASSERT(!initParams.connectToRemote && !m_env.IsEditor());
+    AZ_Assert(!initParams.connectToRemote && !m_env.IsEditor(), "The Editor must connect to the Asset Processor.\nEnsure SSystemInitParams for the Editor are configured correctly.");
 #endif
 
     //should we listen for a connection from the asset processor
@@ -2533,28 +2507,12 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
         if (engineConnection->IsConnected())
         {
-            bool catalogIsReady = false;
-            AzFramework::AssetSystemRequestBus::BroadcastResult(catalogIsReady, &AzFramework::AssetSystem::AssetSystemRequests::SaveCatalog);
-
-            if (!catalogIsReady)
-            {
-                AZ_Error("Editor", false, "The Asset Processor was unable to save the asset catalog and it is needed to start this application. Please check the Asset Processor logs for problems, and then try again.\n");
-                return false;
-            }
             //if we are connected than we must check and make sure that AP is ready before proceeding further.
             WaitForAssetProcessorToBeReady();
 
             if (!engineConnection->IsConnected())
             {
-#if defined(AZ_PLATFORM_WINDOWS)
-                CryMessageBox("Closing application.  The application cannot continue because the AssetProcessor is no longer running.  Please restart the application and make sure that the AssetProcessor is running", "Error", MB_OK | MB_ICONERROR);
-#endif
-                IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-                if (pOS)
-                {
-                    pOS->DebugMessageBox("Closing application.  The application cannot continue because the AssetProcessor is no longer running.  Please restart the application and make sure that the AssetProcessor is running!\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-                }
-
+                AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "The Editor could not connect to the Asset Processor.\nPlease make sure that the Asset Processor is running and then restart the Editor.");
                 return false;
             }
         }
@@ -2588,27 +2546,13 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
     if (rootPath == 0)
     {
-        CryLog("No root path specified in SystemInitParams. We cannot continue!");
-
-        IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-        if (pOS)
-        {
-            pOS->DebugMessageBox("No root path specified in SystemInitParams. We cannot continue!\nQuitting...", "SystemInitParams Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-        }
-
+        AZ_Assert(false, "No root path specified in SystemInitParams");
         return false;
     }
 
     if (assetsPath == 0)
     {
-        CryLog("No assets path specified in SystemInitParams. We cannot continue!");
-
-        IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-        if (pOS)
-        {
-            pOS->DebugMessageBox("No assets path specified in SystemInitParams. We cannot continue!\nQuitting...", "SystemInitParams Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-        }
-
+        AZ_Assert(false, "No assets path specified in SystemInitParams");
         return false;
     }
 
@@ -2700,20 +2644,13 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
             if (attemptNumber >= maxAttempts)
             {
-                CryLogAlways("Couldn't find a valid cache folder after %i attempts, cannot continue", attemptNumber);
-
-                IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-                if (pOS)
-                {
-                    pOS->DebugMessageBox("Couldn't find a valid cache folder, cannot continue!\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-                }
-
+                AZ_Assert(false, "Couldn't find a valid asset cache folder for the Asset Processor after %i attempts.", attemptNumber);
                 return false;
             }
         }
 
 #endif // defined(AZ_PLATFORM_WINDOWS)&&defined(REMOTE_ASSET_PROCESSOR)
-        CryLog("Using %s folder for cache.", finalCachePath.c_str());
+        AZ_Printf("FileSystem", "Using %s folder for asset cache.", finalCachePath.c_str());
         m_env.pFileIO->SetAlias("@cache@", finalCachePath.c_str());
         m_env.pFileIO->CreatePath("@cache@");
     }
@@ -2742,7 +2679,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 #if !defined(_RELEASE)
         const ICmdLineArg* pakalias = m_pCmdLine->FindArg(eCLAT_Pre, "pakalias");
 #else
-        const ICmdLineArg* pakalias = NULL;
+        const ICmdLineArg* pakalias = nullptr;
 #endif // !defined(_RELEASE)
         if (pakalias && strlen(pakalias->GetValue()) > 0)
         {
@@ -2751,12 +2688,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
     }
     else
     {
-        IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-        if (pOS)
-        {
-            pOS->DebugMessageBox("Crypak init failed, cannot continue!\nQuitting...", "CryPak Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
-        }
-
+        AZ_Assert(false, "Failed to initialize CryPak.");
         return false;
     }
 
@@ -2816,7 +2748,7 @@ bool CSystem::InitFileSystem_LoadEngineFolders(const SSystemInitParams& initPara
     {
         ILoadConfigurationEntrySink* pCVarsWhiteListConfigSink = GetCVarsWhiteListConfigSink();
         LoadConfiguration(m_systemConfigName.c_str(), pCVarsWhiteListConfigSink);
-        CryLogAlways("Loading system configuration from %s...", m_systemConfigName.c_str());
+        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Loading system configuration from %s...", m_systemConfigName.c_str());
     }
     
     GetISystem()->SetConfigPlatform(GetDevicePlatform());
@@ -2831,10 +2763,10 @@ bool CSystem::InitFileSystem_LoadEngineFolders(const SSystemInitParams& initPara
     m_sys_game_folder->ForceSet(initParams.gameFolderName);
     m_sys_dll_game->ForceSet(initParams.gameDLLName);
 
-    CryLogAlways("GameDir: %s\n", m_sys_game_folder->GetString());
+    AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "GameDir: %s\n", m_sys_game_folder->GetString());
 
 #if !defined(AZ_MONOLITHIC_BUILD)
-    CryLogAlways("GameDLL: %s%s%s\n", CrySharedLibraryPrefix, m_sys_dll_game->GetString(), CrySharedLibraryExtension);
+    AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "GameDLL: %s%s%s\n", CrySharedLibraryPrefix, m_sys_dll_game->GetString(), CrySharedLibraryExtension);
 #endif // AZ_MONOLITHIC_BUILD
 
 
@@ -2897,14 +2829,14 @@ bool CSystem::InitFont(const SSystemInitParams& initParams)
 
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init FontSystem");
 
-    if (!InitializeEngineModule(DLL_FONT, "EngineModule_CryFont", initParams, true))
+    if (!InitializeEngineModule(DLL_FONT, "EngineModule_CryFont", initParams))
     {
         return false;
     }
 
     if (!m_env.pCryFont)
     {
-        CryFatalError("Error creating Font System!");
+        AZ_Assert(false, "Font System did not initialize correctly; it could not be found in the system environment");
         return false;
     }
 
@@ -2932,20 +2864,19 @@ bool CSystem::Init3DEngine(const SSystemInitParams& initParams)
     LOADING_TIME_PROFILE_SECTION(GetISystem());
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init 3D Engine");
 
-    if (!InitializeEngineModule(DLL_3DENGINE, "EngineModule_Cry3DEngine", initParams, true))
+    if (!InitializeEngineModule(DLL_3DENGINE, "EngineModule_Cry3DEngine", initParams))
     {
         return false;
     }
 
     if (!m_env.p3DEngine)
     {
-        CryFatalError("Error creating 3D Engine!");
+        AZ_Assert(false, "3D Engine did not initialize correctly; it could not be found in the system environment");
         return false;
     }
 
     if (!m_env.p3DEngine->Init())
     {
-        CryFatalError("Error initializing 3D Engine!");
         return false;
     }
     m_pProcess = m_env.p3DEngine;
@@ -2960,20 +2891,6 @@ bool CSystem::InitAudioSystem(const SSystemInitParams& initParams)
     LOADING_TIME_PROFILE_SECTION(GetISystem());
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init Audio System");
 
-    // Music System is legacy and will be removed soon!
-    m_env.pMusicSystem = new Audio::CNULLMusicSystem();
-    if (!m_env.pMusicSystem)
-    {
-        CryFatalError("<Audio>: Could not create an instance of CNULLMusicSystem!");
-    }
-
-    // Create a deprecation object as pAudioSystem...
-    m_env.pAudioSystem = new Audio::AudioSystemDeprecationShim();
-    if (!m_env.pAudioSystem)
-    {
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "<Audio>: Could not create an instance of AudioSystemDeprecationShim!");
-    }
-
     // Initialize the main Audio system and implementation modules.
     bool bAudioInitSuccess = false;
     if (!initParams.bPreview
@@ -2982,7 +2899,7 @@ bool CSystem::InitAudioSystem(const SSystemInitParams& initParams)
         && m_sys_audio_disable->GetIVal() == 0)
     {
         INDENT_LOG_DURING_SCOPE();
-        bAudioInitSuccess = InitializeEngineModule(DLL_SOUND, AUDIO_SYSTEM_MODULE_NAME, initParams, false);
+        bAudioInitSuccess = InitializeEngineModule(DLL_SOUND, AUDIO_SYSTEM_MODULE_NAME, initParams);
     }
     else
     {
@@ -2992,11 +2909,11 @@ bool CSystem::InitAudioSystem(const SSystemInitParams& initParams)
         if (m_bDedicatedServer)
         {
             bAudioInitSuccess = true;
-            CryLogAlways("<Audio>: Running with NULL Audio System on Dedicated Server.");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "<Audio>: Running with NULL Audio System on Dedicated Server.");
         }
         else
         {
-            CryLogAlways("<Audio>: Skipping Audio System Initialization - it was disabled by startup settings!");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "<Audio>: Skipping Audio System Initialization - it was disabled by startup settings!");
         }
     }
 
@@ -3020,7 +2937,7 @@ bool CSystem::InitAnimationSystem(const SSystemInitParams& initParams)
     LOADING_TIME_PROFILE_SECTION(GetISystem());
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init AnimationSystem");
 
-    if (!InitializeEngineModule(DLL_ANIMATION, "EngineModule_CryAnimation", initParams, true))
+    if (!InitializeEngineModule(DLL_ANIMATION, "EngineModule_CryAnimation", initParams))
     {
         return false;
     }
@@ -3029,30 +2946,32 @@ bool CSystem::InitAnimationSystem(const SSystemInitParams& initParams)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CSystem::InitVTuneProfiler()
+bool CSystem::InitVTuneProfiler()
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
 #ifdef PROFILE_WITH_VTUNE
-    HMODULE hModule = CryLoadLibrary("VTuneApi.dll");
-    if (hModule)
+    
+    WIN_HMODULE hModule = LoadDLL("VTuneApi.dll");
+    if (!hModule)
     {
+        return false;
+    }
+
         VTPause = (VTuneFunction) CryGetProcAddress(hModule, "VTPause");
         VTResume = (VTuneFunction) CryGetProcAddress(hModule, "VTResume");
         if (!VTPause || !VTResume)
         {
-            CryFatalError("Failed to find VTPause");
-        }
-        else
-        {
-            CryLogAlways("VTune API Initialized");
-        }
+        AZ_Assert(false, "VTune did not initialize correctly.")
+        return false;
     }
     else
     {
-        CryFatalError("Failed to load VTuneAPI.dll");
+        AZ_TracePrintf(AZ_TRACE_SYSTEM_WINDOW, "VTune API Initialized");
     }
 #endif //PROFILE_WITH_VTUNE
+
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -3066,11 +2985,7 @@ bool CSystem::InitShine(const SSystemInitParams& initParams)
 
     if (!m_env.pLyShine)
     {
-        // We currently require the LyShine gem to be enabled for all projects.
-        // We don't really need CryFatalError here - there is no need to do a debug break since returning false
-        // will exit the program. However, there doesn't currently seem to be a good system to force a
-        // popup dialog message from here without using this. AZ_Error only displays a dialog in debug.
-        CryFatalError("Error initializing the LyShine system! Please check that the LyShine gem is enabled for this project in ProjectConfigurator.");
+        AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "LYShine System did not initialize correctly. Please check that the LyShine gem is enabled for this project in ProjectConfigurator.");
         return false;
     }
     return true;
@@ -3109,7 +3024,7 @@ void CSystem::InitLocalization()
 
     string language = CRYENGINE_DEFAULT_LOCALIZATION_LANG;
 
-    if (m_pLocalizationManager == NULL)
+    if (m_pLocalizationManager == nullptr)
     {
         m_pLocalizationManager = new CLocalizedStringsManager(this);
     }
@@ -3228,7 +3143,7 @@ void CSystem::OpenLanguagePak(const char* sLanguage)
     if (!m_env.pCryPak->OpenPacks(sLocalizationFolder.c_str(), sLocalizedPath, 0))
     {
         // make sure the localized language is found - not really necessary, for TC
-        CryLogAlways("Localized language content(%s) not available or modified from the original installation.", sLanguage);
+        AZ_Printf("Localization", "Localized language content(%s) not available or modified from the original installation.", sLanguage);
     }
 
     //Debugging code for profiling memory usage of pak system
@@ -3240,7 +3155,7 @@ void CSystem::OpenLanguagePak(const char* sLanguage)
     }
     m_env.pCryPak->FreePakInfo(pPakInfo);
 
-    CryLogAlways("Total pak size after loading localization is %d", openPakSize);*/
+    AZ_TracePrintf("Localization", "Total pak size after loading localization is %d", openPakSize);*/
 }
 
 
@@ -3272,7 +3187,7 @@ void CSystem::OpenLanguageAudioPak(const char* sLanguage)
     if (!m_env.pCryPak->OpenPacks(sLocalizationFolder.c_str(), sLocalizedPath, nPakFlags))
     {
         // make sure the localized language is found - not really necessary, for TC
-        CryLogAlways("Localized language content(%s) not available or modified from the original installation.", sLanguage);
+        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Localized language content(%s) not available or modified from the original installation.", sLanguage);
     }
 
     //Debugging code for profiling memory usage of pak system
@@ -3284,7 +3199,7 @@ void CSystem::OpenLanguageAudioPak(const char* sLanguage)
     }
     m_env.pCryPak->FreePakInfo(pPakInfo);
 
-    CryLogAlways("Total pak size after loading localization is %d", openPakSize);*/
+    AZ_TracePrintf(AZ_TRACE_SYSTEM_WINDOW, "Total pak size after loading localization is %d", openPakSize);*/
 }
 
 
@@ -3375,7 +3290,7 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
     {
         if (!(pCpu->hasSSE() && pCpu->hasSSE2() && pCpu->hasSSE3()))
         {
-            CryLogAlways("Unsupported CPU! Need SSE, SSE2 and SSE3 instructions to be available.");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Unsupported CPU! Need SSE, SSE2 and SSE3 instructions to be available.");
 
 #if !defined(_RELEASE)
             const bool allowPrompts = pSystem->GetICmdLine()->FindArg(eCLAT_Pre, "noprompt") == 0;
@@ -3384,11 +3299,11 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 #endif // !defined(_RELEASE)
             if (allowPrompts)
             {
-                CryLogAlways("Asking user if they wish to continue...");
+                AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Asking user if they wish to continue...");
                 const int mbRes = MessageBoxW(0, GetErrorStringUnsupportedCPU().c_str(), L"Lumberyard", MB_ICONWARNING | MB_OKCANCEL | MB_DEFBUTTON2 | MB_DEFAULT_DESKTOP_ONLY);
                 if (mbRes == IDCANCEL)
                 {
-                    CryLogAlways("User chose to cancel.");
+                    AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "User chose to cancel startup.");
                     return false;
                 }
             }
@@ -3401,12 +3316,12 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 #endif // !defined(_RELEASE)
                 if (obeyCPUCheck)
                 {
-                    CryLogAlways("No prompts allowed and unsupported CPU check active. Treating unsupported CPU as error and exiting.");
+                    AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "No prompts allowed and unsupported CPU check active. Treating unsupported CPU as error and exiting.");
                     return false;
                 }
             }
 
-            CryLogAlways("User chose to continue despite unsupported CPU!");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "User chose to continue despite unsupported CPU!");
         }
     }
 #endif
@@ -3444,6 +3359,21 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         AddPlatformOSCreateFlag(IPlatformOS::eCF_NoDialogs);
     }
     
+    m_pCmdLine = new CCmdLine(startupParams.szSystemCmdLine);
+
+#if !defined(_RELEASE)
+    if (m_pCmdLine->FindArg(eCLAT_Pre, "noprompt"))
+    {
+        AddPlatformOSCreateFlag(IPlatformOS::eCF_NoDialogs);
+    }
+#endif // !defined(_RELEASE)
+
+    //////////////////////////////////////////////////////////////////////////
+    // Create PlatformOS
+    //////////////////////////////////////////////////////////////////////////
+    m_pPlatformOS.reset(IPlatformOS::Create(m_PlatformOSCreateFlags));
+    InlineInitializationProcessing("CSystem::Init PlatformOS");
+    
         AZCoreLogSink::Connect();
 
     m_assetPlatform = startupParams.assetsPlatform;
@@ -3451,7 +3381,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
     // compute system config name
     if (m_assetPlatform.empty())
     {
-        AZ_Warning("CrySystem", false, "You must supply a valid asset platform in bootstrap.cfg");
+        AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "You must supply a valid asset platform in bootstrap.cfg");
         return false;
     }
 
@@ -3459,7 +3389,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
     m_systemConfigName += m_assetPlatform;
     m_systemConfigName += ".cfg";
 
-    assert(CryMemory::IsHeapValid());
+    AZ_Assert(CryMemory::IsHeapValid(), "Memory heap must be valid before continuing SystemInit.");
 
 #ifdef EXTENSION_SYSTEM_INCLUDE_TESTCASES
     TestExtensions(&CCryFactoryRegistryImpl::Access());
@@ -3480,7 +3410,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         if (!bIsWindowsXPorLater)
         {
-            CryFatalError("Windows XP or later is required");
+            AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "Lumberyard requires an OS version of Windows XP or later.");
             return false;
         }
     }
@@ -3510,7 +3440,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
     m_pCVarsWhitelist = startupParams.pCVarsWhitelist;
 #endif // defined(CVARS_WHITELIST)
     m_bDedicatedServer = startupParams.bDedicatedServer;
-    m_pCmdLine = new CCmdLine(startupParams.szSystemCmdLine);
     m_currentLanguageAudio = "";
 #if defined(DEDICATED_SERVER)
     m_bNoCrashDialog = true;
@@ -3604,7 +3533,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif
         m_pTextModeConsole = static_cast<ITextModeConsole*>(pConsole);
 
-        if (m_pUserCallback == NULL && m_bDedicatedServer)
+        if (m_pUserCallback == nullptr && m_bDedicatedServer)
         {
             char headerString[128];
             m_pUserCallback = pConsole;
@@ -3640,7 +3569,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         CNULLConsole* pConsole = new CNULLConsole(isDaemonMode);
         m_pTextModeConsole = pConsole;
 
-        if (m_pUserCallback == NULL && m_bDedicatedServer)
+        if (m_pUserCallback == nullptr && m_bDedicatedServer)
         {
             m_pUserCallback = pConsole;
         }
@@ -3648,14 +3577,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif
 
 #endif // !defined(CONSOLE)
-
-    //////////////////////////////////////////////////////////////////////////
-    // Create PlatformOS
-    //////////////////////////////////////////////////////////////////////////
-    // moved before 'InitFileSystem' for streaming install initialization:
-    //  10/06/2013 by Andriy
-    m_pPlatformOS.reset(IPlatformOS::Create(m_PlatformOSCreateFlags));
-    InlineInitializationProcessing("CSystem::Init PlatformOS");
 
     {
         EBUS_EVENT(CrySystemEventBus, OnCrySystemPreInitialize, *this, startupParams);
@@ -3715,6 +3636,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         int crc = gEnv->pCryPak->ComputeCachedPakCDR_CRC(filename, false);
 
+        AZ_Assert(crc, "Failed to compute cached Pak CRC.");
         exit(crc);
 
 #endif
@@ -3737,7 +3659,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         // Setup code checkpoint manager if checkpoints are enabled
         m_env.pCodeCheckpointMgr = new CCodeCheckpointMgr;
 #else
-        m_env.pCodeCheckpointMgr = NULL;
+        m_env.pCodeCheckpointMgr = nullptr;
 #endif
 
         bool devModeEnable = true;
@@ -3758,7 +3680,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         // CREATE NOTIFICATION NETWORK
         //////////////////////////////////////////////////////////////////////////
-        m_pNotificationNetwork = NULL;
+        m_pNotificationNetwork = nullptr;
 #ifndef _RELEASE
     #ifndef LINUX
 
@@ -3946,7 +3868,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         // Stream Engine
         //////////////////////////////////////////////////////////////////////////
-        CryLogAlways("Stream Engine Initialization");
+        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Stream Engine Initialization");
         InitStreamEngine();
         InlineInitializationProcessing("CSystem::Init StreamEngine");
 
@@ -3971,7 +3893,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             m_env.pStatoscope = new CStatoscope();
         }
 #else
-        m_env.pStatoscope = NULL;
+        m_env.pStatoscope = nullptr;
 #endif
 
         m_env.pOverloadSceneManager = new COverloadSceneManager;
@@ -3993,7 +3915,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         if (gEnv->IsEditor() && _stricmp(m_rDriver->GetString(), "DX12") == 0)
         {
-            AZ_Warning("System", false, "DX12 mode is not supported in the editor. Reverting to DX11 mode.");
+            AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "DX12 mode is not supported in the editor. Reverting to DX11 mode.");
             m_rDriver->Set("DX11");
         }
 #endif
@@ -4012,7 +3934,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //if (!params.bPreview)
         if (!startupParams.bShaderCacheGen && !startupParams.bSkipPhysics)
         {
-            CryLogAlways("Physics initialization");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Physics initialization");
             if (!InitPhysics(startupParams))
             {
                 return false;
@@ -4035,13 +3957,14 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bSkipRenderer)
         {
-            assert(CryMemory::IsHeapValid());
-            CryLogAlways("Renderer initialization");
-            if (!InitRenderer(m_hInst, (startupParams.bEditor) ? (WIN_HWND)1 : m_hWnd, startupParams))
+            AZ_Assert(CryMemory::IsHeapValid(), "CryMemory must be valid before initializing renderer.");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Renderer initialization");
+
+            if (!InitRenderer(m_hInst, m_hWnd, startupParams))
             {
                 return false;
             }
-            assert(CryMemory::IsHeapValid());
+            AZ_Assert(CryMemory::IsHeapValid(), "CryMemory must be valid after initializing renderer.");
             if (m_env.pRenderer)
             {
                 bool bMultiGPUEnabled = false;
@@ -4062,7 +3985,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         InlineInitializationProcessing("CSystem::Init m_pResourceManager->UnloadFastLoadPaks");
 
-        assert(m_env.pRenderer || startupParams.bSkipRenderer);
+        AZ_Assert(m_env.pRenderer || startupParams.bSkipRenderer, "The renderer did not initialize correctly.");
 
         if (g_cvars.sys_rendersplashscreen && !startupParams.bEditor && !startupParams.bShaderCacheGen)
         {
@@ -4120,18 +4043,25 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
                         m_env.pRenderer->EndFrame();
                     }
 
+#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_APPLE_OSX)
+                    // Pump system events in order to update the screen
+                    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
+#endif
+
                     pTex->Release();
                 }
 
         #if defined(AZ_PLATFORM_ANDROID)
-                // passing true because the engine renderer is now taking over with it's own
-                // splash screen so we need to tell the java code to clean up it's version
-                OnEngineRendererTakeover(true);
+                bool engineSplashEnabled = (g_cvars.sys_rendersplashscreen != 0);
+                if (engineSplashEnabled)
+                {
+                    AZ::Android::Utils::DismissSplashScreen();
+                }
         #endif
             }
             else
             {
-                CryWarning(EValidatorModule::VALIDATOR_MODULE_SYSTEM, EValidatorSeverity::VALIDATOR_WARNING, "Failed to load startscreen.tif");
+                AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "Could not load startscreen image: %s.", g_cvars.sys_splashscreen);
             }
         }
 
@@ -4148,7 +4078,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             if (!InitAudioSystem(startupParams))
             {
                 // Failure to initialize audio system is no longer a fatal error, warn here...
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "<Audio>: Running without any AudioSystem!");
+                AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "<Audio>: Running without any AudioSystem!");
             }
             else
             {
@@ -4162,7 +4092,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bSkipFont)
         {
-            CryLogAlways("Font initialization");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Font initialization");
             if (!InitFont(startupParams))
             {
                 return false;
@@ -4203,23 +4133,21 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
 
         m_env.pTelemetrySystem = new Telemetry::CTelemetrySystem();
-
-        CRY_ASSERT(m_env.pTelemetrySystem);
+        AZ_Assert(m_env.pTelemetrySystem, "Could not instantiate telemetry system.");
 
         if (!m_env.pTelemetrySystem->Init())
         {
-            CryFatalError("Failed to initialize telemetry system!");
-
+            AZ_Assert(false, "Failed to initialize telemetry system.");
             return false;
         }
 
         m_pTelemetryFileStream = new Telemetry::CFileStream();
+        AZ_Assert(m_pTelemetryFileStream, "Could not instantiate telemetry file stream.");
 
         CRY_ASSERT(m_pTelemetryFileStream);
 
         m_pTelemetryUDPStream = new Telemetry::CUDPStream();
-
-        CRY_ASSERT(m_pTelemetryUDPStream);
+        AZ_Assert(m_pTelemetryUDPStream, "Could not instantiate telemetry UDP stream.");
 
         TelemetryStreamFileChanged(gEnv->pConsole->GetCVar("sys_telemetry_stream_file"));
 
@@ -4229,7 +4157,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #ifdef SOFTCODE_SYSTEM_ENABLED
         m_env.pSoftCodeMgr = new SoftCodeMgr();
 #else
-        m_env.pSoftCodeMgr = NULL;
+        m_env.pSoftCodeMgr = nullptr;
 #endif
 
         //////////////////////////////////////////////////////////////////////////
@@ -4266,15 +4194,17 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #if defined(USE_DISK_PROFILER)
         m_pDiskProfiler = new CDiskProfiler(this);
 #else
-        m_pDiskProfiler = 0;
+        m_pDiskProfiler = nullptr;
 #endif
 
+        //////////////////////////////////////////////////////////////////////////
         // TIME
         //////////////////////////////////////////////////////////////////////////
-        CryLogAlways("Time initialization");
+        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Time initialization");
         if (!m_Time.Init())
         {
-            return (false);
+            AZ_Assert(false, "Failed to initialize CTimer instance.");
+            return false;
         }
         m_Time.ResetTimer();
 
@@ -4283,7 +4213,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bPreview && !gEnv->IsDedicated() && !startupParams.bShaderCacheGen)
         {
-            CryLogAlways("Input initialization");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Input initialization");
             INDENT_LOG_DURING_SCOPE();
             if (!InitInput(startupParams)) // !!! TODO: FIX ME !!!
             {
@@ -4298,7 +4228,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bShaderCacheGen && !m_bDedicatedServer)
         {
-            CryLogAlways("UI system initialization");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "UI system initialization");
             INDENT_LOG_DURING_SCOPE();
             if (!InitShine(startupParams))
             {
@@ -4325,13 +4255,9 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bPreview && !startupParams.bShaderCacheGen)
         {
-            if (gEnv->IsDedicated() && m_svAISystem && !m_svAISystem->GetIVal())
+            if (!gEnv->IsDedicated() || !m_svAISystem || m_svAISystem->GetIVal())
             {
-                ;
-            }
-            else
-            {
-                CryLogAlways("AI initialization");
+                AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Initializing AI System");
                 INDENT_LOG_DURING_SCOPE();
 
                 if (!InitAISystem(startupParams))
@@ -4353,7 +4279,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         // Init Animation system
         //////////////////////////////////////////////////////////////////////////
         {
-            CryLogAlways("Initializing Animation System");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Initializing Animation System");
             INDENT_LOG_DURING_SCOPE();
             if (!startupParams.bSkipAnimation && !startupParams.bShaderCacheGen)
             {
@@ -4369,7 +4295,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bSkipRenderer && !startupParams.bShaderCacheGen)
         {
-            CryLogAlways("Initializing 3D Engine");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Initializing 3D Engine");
             INDENT_LOG_DURING_SCOPE();
 
             if (!Init3DEngine(startupParams))
@@ -4409,12 +4335,13 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
                 m_pUserCallback->OnInitProgress("Initializing Gems...");
             }
 
-            CryLogAlways("Initializing Gems System");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Initializing Gems System");
             INDENT_LOG_DURING_SCOPE();
 
             if (!InitGems(startupParams))
             {
-                //return false;
+                AZ_Assert(false, "Failed to initialize Gems.");
+                return false;
             }
         }
 
@@ -4423,7 +4350,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         // SCRIPT SYSTEM
         //////////////////////////////////////////////////////////////////////////
-        CryLogAlways("Script System Initialization");
+        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Script System Initialization");
         INDENT_LOG_DURING_SCOPE();
 
         if (!startupParams.bSkipScriptSystem && !InitScriptSystem(startupParams))
@@ -4439,7 +4366,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bPreview && !startupParams.bShaderCacheGen)
         {
-            CryLogAlways("Entity system initialization");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Entity system initialization");
             INDENT_LOG_DURING_SCOPE();
 
             if (!InitEntitySystem(startupParams))
@@ -4458,7 +4385,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bSkipNetwork && !startupParams.bPreview && !startupParams.bShaderCacheGen)
         {
-            CryLogAlways("Network initialization");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Network initialization");
             INDENT_LOG_DURING_SCOPE();
             InitNetwork(startupParams);
 
@@ -4554,7 +4481,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             {
                 m_pUserCallback->OnInitProgress("Initializing AI System...");
             }
-            CryLogAlways("Initializing AI System");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Initializing AI System");
             INDENT_LOG_DURING_SCOPE();
             m_env.pAISystem->Init();
         }
@@ -4563,7 +4490,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         {
             m_pUserCallback->OnInitProgress("Initializing additional systems...");
         }
-        CryLogAlways("Initializing additional systems");
+        AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Initializing additional systems");
 
 
         InlineInitializationProcessing("CSystem::Init AIInit");
@@ -4571,7 +4498,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         // DYNAMIC RESPONSE SYSTEM
         {
-            CryLogAlways("Dynamic Response System initialization");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Dynamic Response System initialization");
             INDENT_LOG_DURING_SCOPE();
 
             if (m_pUserCallback)
@@ -4581,11 +4508,12 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
             if (!InitDynamicResponseSystem(startupParams))
             {
-                CryLogAlways("No Dynamic Response System was loaded from a module, will use the NULL DynamicResponseSystem.");
+                AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "No Dynamic Response System was loaded from a module, the system will use the NULL DynamicResponseSystem.");
                 m_env.pDynamicResponseSystem = new NULLDynamicResponse::CSystem();
-                if (m_env.pDynamicResponseSystem == NULL)
+                if (!m_env.pDynamicResponseSystem)
                 {
-                    CryFatalError("<DRS>: Could not create an instance of NULLDynamicResponse::CSystem!");
+                    AZ_Assert(false, "Could not instantiate an instance of NULLDynamicResponse::CSystem.");
+                    return false;
                 }
             }
         }
@@ -4643,12 +4571,15 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             m_pThreadTaskManager->InitThreads();
 
             SetAffinity();
-            assert(CryMemory::IsHeapValid());
+            AZ_Assert(CryMemory::IsHeapValid(), "CryMemory heap must be valid before initializing VTune.");
 
 
             if (strstr(startupParams.szSystemCmdLine, "-VTUNE") != 0 || g_cvars.sys_vtune != 0)
             {
-                InitVTuneProfiler();
+                if (!InitVTuneProfiler())
+                {
+                    return false;
+                }
             }
 
 
@@ -4681,7 +4612,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #if !defined(RELEASE)
         m_env.pLocalMemoryUsage = new CLocalMemoryUsage();
 #else
-        m_env.pLocalMemoryUsage = NULL;
+        m_env.pLocalMemoryUsage = nullptr;
 #endif
 
 #if defined(WIN32)
@@ -4698,7 +4629,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             }
             if (g_cvars.sys_float_exceptions > 0)
             {
-                CryLogAlways("enabled float exceptions(sys_float_exceptions %d) this makes the performance slower.", g_cvars.sys_float_exceptions);
+                AZ_TracePrintf(AZ_TRACE_SYSTEM_WINDOW, "Enabled float exceptions(sys_float_exceptions %d). This makes the performance slower.", g_cvars.sys_float_exceptions);
             }
         }
         EnableFloatExceptions(g_cvars.sys_float_exceptions);
@@ -4740,16 +4671,17 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
     //Connect to the render bus
     AZ::RenderNotificationsBus::Handler::BusConnect();
 
-    m_bInitializedSuccessfully = true;
-
     // Send out EBus event
     EBUS_EVENT(CrySystemEventBus, OnCrySystemInitialized, *this, startupParams);
 
     // Verify that the Maestro Gem initialized the movie system correctly. This can be removed if and when Maestro is not a required Gem
     if (gEnv->IsEditor() && !gEnv->pMovieSystem)
     {
-        CryFatalError("Error initializing the Cinematic System. Please check that the Maestro Gem is enabled for this project using the ProjectConfigurator.");
+        AZ_Assert(false, "Error initializing the Cinematic System. Please check that the Maestro Gem is enabled for this project using the ProjectConfigurator.");
+        return false;
     }
+
+    m_bInitializedSuccessfully = true;
 
     return (true);
 }
@@ -5580,7 +5512,7 @@ static void RecordClipCmd(IConsoleCmdArgs* pArgs)
         {
             IPlatformOS::IClipCaptureOS::SSpan span(sParamTimeBefore, sParamTimeAfter);
             IPlatformOS::IClipCaptureOS::SClipTextInfo clipTextInfo("RecordClipCmd", sParamFixedWStrDescription.c_str());
-            pClipCapture->RecordClip(clipTextInfo, span, NULL, sParamDoBackUp);
+            pClipCapture->RecordClip(clipTextInfo, span, nullptr, sParamDoBackUp);
         }
         else
         {
@@ -5686,6 +5618,19 @@ static void ScreenshotCmd(IConsoleCmdArgs* pParams)
     }
 }
 
+// Helper to maintain backwards compatibility with our CVar but not force our new code to 
+// pull in CryCommon by routing through an environment variable
+void CmdSetAwsLogLevel(IConsoleCmdArgs* pArgs)
+{
+    static const char* const logLevelEnvVar = "sys_SetLogLevel";
+    static AZ::EnvironmentVariable<int> logVar = AZ::Environment::CreateVariable<int>(logLevelEnvVar);
+    if (pArgs->GetArgCount() > 1)
+    {
+        int logLevel = atoi(pArgs->GetArg(1));
+        *logVar = logLevel;
+        AZ_TracePrintf("AWSLogging", "Log level set to %d", *logVar);
+    }
+}
 
 static void SysRestoreSpecCmd(IConsoleCmdArgs* pParams)
 {
@@ -5872,7 +5817,7 @@ void CmdDrillToFile(IConsoleCmdArgs* pArgs)
             CryLogAlways("    Replica");
         }
     }
-};
+}
 
 void ChangeLogAllocations(ICVar* pVal)
 {
@@ -5977,7 +5922,6 @@ void CSystem::CreateSystemVars()
     const int dwPakPriorityFlags = VF_READONLY | VF_CHEAT;
 #endif
 
-    attachVariable("sys_SetLogLevel", &g_cvars.pakVars.nSetLogLevel, "Set AWS log level [0 - 6].");
     attachVariable("sys_PakPriority", &g_cvars.pakVars.nPriority, "If set to 1, tells CryPak to try to open the file in pak first, then go to file system", dwPakPriorityFlags);
     attachVariable("sys_PakReadSlice", &g_cvars.pakVars.nReadSlice, "If non-0, means number of kilobytes to use to read files in portions. Should only be used on Win9x kernels");
     attachVariable("sys_PakLogMissingFiles", &g_cvars.pakVars.nLogMissingFiles,
@@ -6323,7 +6267,6 @@ void CSystem::CreateSystemVars()
         "3: Create a full minidump (+ all memory)\n"
         );
     REGISTER_CVAR2("sys_dump_aux_threads", &g_cvars.sys_dump_aux_threads, 1, VF_NULL, "Dumps callstacks of other threads in case of a crash");
-    REGISTER_CVAR2("sys_keyboard_break", &g_cvars.sys_keyboard_break, 0, VF_NULL, "Enables keyboard break handler");
 
     REGISTER_CVAR2("sys_limit_phys_thread_count", &g_cvars.sys_limit_phys_thread_count, 1, VF_NULL, "Limits p_num_threads to physical CPU count - 1");
 
@@ -6386,8 +6329,8 @@ void CSystem::CreateSystemVars()
 
 
     assert(m_env.pConsole);
-    m_env.pConsole->CreateKeyBind("alt_f12", "Screenshot");
-    m_env.pConsole->CreateKeyBind("alt_f11", "RecordClip");
+    m_env.pConsole->CreateKeyBind("alt_keyboard_key_function_F12", "Screenshot");
+    m_env.pConsole->CreateKeyBind("alt_keyboard_key_function_F11", "RecordClip");
 
     // video clip recording functionality in system as console command
     REGISTER_COMMAND("RecordClip", &RecordClipCmd, VF_BLOCKFRAME,
@@ -6499,6 +6442,8 @@ void CSystem::CreateSystemVars()
 
     REGISTER_COMMAND_DEV_ONLY("DrillerStart", CmdDrillToFile, VF_DEV_ONLY, "Start a driller capture.");
     REGISTER_COMMAND_DEV_ONLY("DrillerStop", CmdDrillToFile, VF_DEV_ONLY, "Stop a driller capture.");
+
+    REGISTER_COMMAND("sys_SetLogLevel", CmdSetAwsLogLevel, 0, "Set AWS log level [0 - 6].");
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6590,7 +6535,7 @@ const char* CSystem::GetLoadingProfilerCallstack()
 #if defined(ENABLE_LOADING_PROFILER)
     return CLoadingProfilerSystem::GetLoadingProfilerCallstack();
 #else
-    return 0;
+    return nullptr;
 #endif
 }
 
@@ -6600,7 +6545,7 @@ CBootProfilerRecord* CSystem::StartBootSectionProfiler(const char* name, const c
     CBootProfiler& profiler = CBootProfiler::GetInstance();
     return profiler.StartBlock(name, args);
 #else
-    return NULL;
+    return nullptr;
 #endif
 }
 
@@ -6680,7 +6625,7 @@ bool CSystem::LoadFontInternal(IFFont*& font, const string& fontName)
     font = m_env.pCryFont->NewFont(fontName);
     if (!font)
     {
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, "Error creating the default fonts");
+        AZ_Assert(false, "Could not instantiate the default font.");
         return false;
     }
 
@@ -6689,11 +6634,7 @@ bool CSystem::LoadFontInternal(IFFont*& font, const string& fontName)
 
     if (!font->Load(szFontPath.c_str()))
     {
-        string szError = "Error loading the default font from ";
-        szError += szFontPath;
-        szError += ". You're probably running the executable from the wrong working folder.";
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, szError.c_str());
-
+        AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "Could not load font: %s.  Make sure the program is running from the correct working directory.", szFontPath.c_str());
         return false;
     }
 

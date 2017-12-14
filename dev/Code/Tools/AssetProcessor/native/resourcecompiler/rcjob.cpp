@@ -20,6 +20,8 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Logging/LogFile.h>
 
+#include <AzToolsFramework/UI/Logging/LogLine.h>
+
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include "native/utilities/assetUtilEBusHelper.h"
@@ -109,7 +111,7 @@ namespace AssetProcessor
     void RCJob::Init(JobDetails& details)
     {
         m_jobDetails = AZStd::move(details);
-        m_queueElementID = QueueElementID(GetInputFileRelativePath(), GetPlatform(), GetJobKey());
+        m_queueElementID = QueueElementID(GetInputFileRelativePath(), GetPlatformInfo().m_identifier.c_str(), GetJobKey());
     }
 
     const JobEntry& RCJob::GetJobEntry() const
@@ -223,9 +225,9 @@ namespace AssetProcessor
         return m_jobDetails.m_destinationPath;
     }
 
-    QString RCJob::GetPlatform() const
+    const AssetBuilderSDK::PlatformInfo& RCJob::GetPlatformInfo() const
     {
-        return m_jobDetails.m_jobEntry.m_platform;
+        return m_jobDetails.m_jobEntry.m_platformInfo;
     }
 
     AssetBuilderSDK::ProcessJobResponse& RCJob::GetProcessJobResponse()
@@ -239,7 +241,7 @@ namespace AssetProcessor
         processJobRequest.m_jobDescription.m_additionalFingerprintInfo = m_jobDetails.m_extraInformationForFingerprinting.toUtf8().data();
         processJobRequest.m_jobDescription.m_jobKey = GetJobKey().toUtf8().data();
         processJobRequest.m_jobDescription.m_jobParameters = AZStd::move(m_jobDetails.m_jobParam);
-        processJobRequest.m_jobDescription.m_platform = AssetUtilities::ComputePlatformFlag(GetPlatform());
+        processJobRequest.m_jobDescription.SetPlatformIdentifier(GetPlatformInfo().m_identifier.c_str());
         processJobRequest.m_jobDescription.m_priority = GetPriority();
         
         for (AssetProcessor::SourceFileDependencyInternal& entry : m_jobDetails.m_sourceFileDependencyList)
@@ -247,6 +249,7 @@ namespace AssetProcessor
             processJobRequest.m_sourceFileDependencyList.push_back(entry.m_sourceFileDependency);
         }
 
+        processJobRequest.m_platformInfo = GetPlatformInfo();
         processJobRequest.m_builderGuid = GetBuilderGuid();
         processJobRequest.m_sourceFile = GetInputFileRelativePath().toUtf8().data();
         processJobRequest.m_sourceFileUUID = GetInputFileUuid();
@@ -273,6 +276,11 @@ namespace AssetProcessor
     bool RCJob::IsCritical() const
     {
         return m_jobDetails.m_critical;
+    }
+
+    bool RCJob::IsAutoFail() const
+    {
+        return m_jobDetails.m_autoFail;
     }
 
     int RCJob::GetPriority() const
@@ -342,10 +350,6 @@ namespace AssetProcessor
 
     void RCJob::ExecuteBuilderCommand(BuilderParams builderParams)
     {
-        // Setting job id for logging purposes
-
-        AssetProcessor::SetThreadLocalJobId(builderParams.m_rcJob->GetJobEntry().m_jobRunKey);
-
         // listen for the user quitting (CTRL-C or otherwise)
         AssetUtilities::QuitListener listener;
         listener.BusConnect();
@@ -378,19 +382,22 @@ namespace AssetProcessor
             }
         }
 
+        // We will only continue once the fingerprint of the file stops changing
         unsigned int fingerprint = AssetUtilities::GenerateFingerprint(builderParams.m_rcJob->m_jobDetails);
         while (fingerprint != builderParams.m_rcJob->GetOriginalFingerprint())
         {
-            // We will only continue once the fingerprint of the file stops changing
             builderParams.m_rcJob->SetOriginalFingerprint(fingerprint);
             QThread::msleep(g_sleepDurationForLockingAndFingerprintChecking);
+            
             if (listener.WasQuitRequested() || (ticker.elapsed() > g_jobMaximumWaitTime))
             {
                 result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
                 Q_EMIT builderParams.m_rcJob->JobFinished(result);
                 return;
             }
-        }
+
+            fingerprint = AssetUtilities::GenerateFingerprint(builderParams.m_rcJob->m_jobDetails);
+        }        
 
         Q_EMIT builderParams.m_rcJob->BeginWork();
         // We will actually start working on the job after this point and even if RcController gets the same job again, we will put it in the queue for processing
@@ -401,6 +408,10 @@ namespace AssetProcessor
 
     void RCJob::DoWork(AssetBuilderSDK::ProcessJobResponse& result, BuilderParams& builderParams, AssetUtilities::QuitListener& listener)
     {
+        // Setting job id for logging purposes
+        AssetProcessor::SetThreadLocalJobId(builderParams.m_rcJob->GetJobEntry().m_jobRunKey);
+        AssetUtilities::JobLogTraceListener jobLogTraceListener(builderParams.m_rcJob->m_jobDetails.m_jobEntry);
+
         {
             AssetBuilderSDK::JobCancelListener JobCancelListener(builderParams.m_rcJob->m_jobDetails.m_jobEntry.m_jobRunKey);
             result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed; // failed by default
@@ -420,8 +431,6 @@ namespace AssetProcessor
 
             builderParams.m_processJobRequest.m_tempDirPath = AZStd::string(workFolder.toUtf8().data());
 
-            AssetUtilities::JobLogTraceListener jobLogTraceListener(builderParams.m_rcJob->m_jobDetails.m_jobEntry);
-
             QString sourceFullPath(builderParams.m_processJobRequest.m_fullPath.c_str());
             if (builderParams.m_rcJob->m_jobDetails.m_autoFail)
             {
@@ -440,6 +449,32 @@ namespace AssetProcessor
                 else
                 {
                     AZ_Error(AssetBuilderSDK::ErrorWindow, false, "%s failed: auto-failed by builder.\n", sourceFullPath.toUtf8().data());
+                }
+                auto failLogFile = builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailLogFile));
+                if (failLogFile != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
+                {
+                    AzToolsFramework::Logging::LogLine::ParseLog(failLogFile->second.c_str(), failLogFile->second.size(),
+                        [](AzToolsFramework::Logging::LogLine& target)
+                    {
+                        switch (target.GetLogType())
+                        {
+                            case AzToolsFramework::Logging::LogLine::TYPE_DEBUG:
+                                AZ_TracePrintf(target.GetLogWindow().c_str(), "%s", target.GetLogMessage().c_str());
+                                break;
+                            case AzToolsFramework::Logging::LogLine::TYPE_MESSAGE:
+                                AZ_TracePrintf(target.GetLogWindow().c_str(), "%s", target.GetLogMessage().c_str());
+                                break;
+                            case AzToolsFramework::Logging::LogLine::TYPE_WARNING:
+                                AZ_Warning(target.GetLogWindow().c_str(), false, "%s", target.GetLogMessage().c_str());
+                                break;
+                            case AzToolsFramework::Logging::LogLine::TYPE_ERROR:
+                                AZ_Error(target.GetLogWindow().c_str(), false, "%s", target.GetLogMessage().c_str());
+                                break;
+                            case AzToolsFramework::Logging::LogLine::TYPE_CONTEXT:
+                                AZ_TracePrintf(target.GetLogWindow().c_str(), " %s", target.GetLogMessage().c_str());
+                                break;
+                        }
+                    });
                 }
                 
                 if (builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailOmitFromDatabaseKey)) != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
@@ -472,6 +507,8 @@ namespace AssetProcessor
             {
                 result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             }
+
+            
         }
 
         bool shouldRemoveTempFolder = true;
@@ -557,7 +594,18 @@ namespace AssetProcessor
                 return false;
             }
 
+            bool hasSpace = false;
             bool isCopyJob = !(absolutePathOfSource.startsWith(tempFolder, Qt::CaseInsensitive));
+            QFile inFile(absolutePathOfSource);
+                
+            AssetProcessor::DiskSpaceInfoBus::BroadcastResult(hasSpace, &AssetProcessor::DiskSpaceInfoBusTraits::CheckSufficientDiskSpace, outputDirectory.absolutePath(), inFile.size(), false);
+
+            if(!hasSpace)
+            {
+                AZ_Error(AssetProcessor::ConsoleChannel, false, "Cannot %s file, not enough disk space: %s", isCopyJob ? "copy" : "move", productFile.toStdString().c_str());
+                return false;
+            }
+
             EBUS_EVENT(AssetProcessor::ProcessingJobInfoBus, BeginIgnoringCacheFileDelete, productFile.toUtf8().data());
             if (!MoveCopyFile(absolutePathOfSource, productFile, isCopyJob)) // this has its own traceprintf for failure
             {

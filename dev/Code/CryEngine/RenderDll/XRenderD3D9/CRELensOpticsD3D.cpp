@@ -83,7 +83,7 @@ static int prevFrameID = 0;
 
 bool CRELensOptics::mfDraw(CShader* pShader, SShaderPass* pass)
 {
-    if (!CRenderer::CV_r_flares)
+    if (!CRenderer::CV_r_flares || !CRenderer::CV_r_PostProcess)
     {
         return false;
     }

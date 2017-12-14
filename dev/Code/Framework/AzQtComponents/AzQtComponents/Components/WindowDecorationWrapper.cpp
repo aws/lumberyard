@@ -202,7 +202,7 @@ namespace AzQtComponents
         return m_titleBar;
     }
 
-    void WindowDecorationWrapper::enableSaveRestoreGeometry(const QString& app, const QString& organization,
+    void WindowDecorationWrapper::enableSaveRestoreGeometry(const QString& organization, const QString& app,
         const QString& key)
     {
         if (m_settings)
@@ -217,7 +217,7 @@ namespace AzQtComponents
             return;
         }
 
-        m_settings = new QSettings(app, organization, this);
+        m_settings = new QSettings(organization, app, this);
         m_settingsKey = key;
     }
 
@@ -341,13 +341,44 @@ namespace AzQtComponents
     bool WindowDecorationWrapper::handleNativeEvent(const QByteArray& eventType, void* message, long* result, const QWidget* widget)
     {
 #ifdef Q_OS_WIN
-        if (isWin10() || (strcmp(eventType.constData(), "windows_generic_MSG") != 0))
+        MSG* msg = static_cast<MSG*>(message);
+        if (strcmp(eventType.constData(), "windows_generic_MSG") != 0)
         {
+            return false;
+        }
+
+        if (isWin10())
+        {
+            if (widget->window() && msg->message == WM_NCHITTEST && !(QApplication::mouseButtons() & Qt::RightButton))
+            {
+                HWND handle = (HWND)widget->window()->winId();
+                const LRESULT defWinProcResult = DefWindowProc(handle, msg->message, msg->wParam, msg->lParam);
+                if (defWinProcResult == 1)
+                {
+                    if (auto wrapper = qobject_cast<const WindowDecorationWrapper *>(widget))
+                    {
+                        TitleBar* titleBar = wrapper->titleBar();
+                        const short global_x = static_cast<short>(LOWORD(msg->lParam));
+                        const short global_y = static_cast<short>(HIWORD(msg->lParam));
+
+                        const QPoint globalPos = QHighDpi::fromNativePixels(QPoint(global_x, global_y), widget->window()->windowHandle());
+                        const QPoint local = titleBar->mapFromGlobal(globalPos);
+                        if (titleBar->draggableRect().contains(local) && !titleBar->isTopResizeArea(globalPos))
+                        {
+                            *result = HTCAPTION;
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            // No other event to process for win10()
             // for Win10 we have the native title-bar, so maximized geometry is calculated correctly out of the box
             return false;
         }
 
-        MSG* msg = static_cast<MSG*>(message);
         if (msg->message == WM_GETMINMAXINFO && widget->isMaximized())
         {
             // When Windows maximizes a window without native titlebar it will cover the taskbar.

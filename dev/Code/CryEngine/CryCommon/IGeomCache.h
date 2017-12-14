@@ -77,6 +77,40 @@ struct IGeomCache
     virtual void Reload() = 0;
 
     // Summary:
+    //      Returns the max AABB of the geom cache through the whole animation
+    // Return value:
+    //      The geom cache's max axis aligned bounding box
+    virtual const AABB& GetAABB() const = 0;
+
+    /**
+     * Tells the GeomCache whether or not it can release its static mesh data
+     *
+     * For the new AZ Geom Cache asset we have to be able
+     * to tell the Geom Cache not to release loaded data.
+     * This only matters when Geom Caches are not streamed.
+     *
+     * The legacy system works like this (if e_streamCGF is 0):
+     * Load a geom cache entity.
+     * Entity creates a geom cache render node.
+     * Node loads geom cache, cache is marked as loaded.
+     * Render node immediately initializes with the Geom Cache data.
+     * Because the Geom Cache is not streamed, it releases unneeded data next tick
+     * 
+     * The AZ system works like this:
+     * Geom Cache component is created
+     * Asset is requested
+     * Asset loads Geom Cache
+     * Geom Cache loads data and is marked as loaded
+     * Asset calls AllowReleaseLoadedData(false) and locks loaded state
+     * Tick happens and data is not freed (this is good, we need that data)
+     * OnAssetReady event fires and is picked up by Geom Cache Component
+     * Data is fed from the asset to the Geom Cache Render Node
+     * Component calls AllowReleaseLoadedData(true)
+     * Next tick the Geom Cache cleans up unneeded data
+     */
+    virtual void SetProcessedByRenderNode(bool) = 0;
+
+    // Summary:
     //      Returns statistics
     // Return value:
     //  SStatistics struct

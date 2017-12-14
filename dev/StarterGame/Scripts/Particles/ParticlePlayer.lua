@@ -33,7 +33,10 @@ function particleplayer:OnEventBegin(value)
 
 	if (GameplayNotificationBus.GetCurrentBusId() == self.triggerEventId) then
 		ParticleComponentRequestBus.Event.Enable(self.Properties.Entity, false);
-		ParticleComponentRequestBus.Event.Enable(self.Properties.Entity, true);
+		
+		if (value) then
+			ParticleComponentRequestBus.Event.Enable(self.Properties.Entity, true);
+		end
 	end
 
 end

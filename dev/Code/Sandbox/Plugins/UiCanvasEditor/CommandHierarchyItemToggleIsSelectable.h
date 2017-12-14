@@ -35,13 +35,13 @@ public:
 
     static void Push(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        HierarchyItemRawPtrList& items);
+        const HierarchyItemRawPtrList& items);
 
 private:
 
     CommandHierarchyItemToggleIsSelectable(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        HierarchyItemRawPtrList& items);
+        const HierarchyItemRawPtrList& items);
 
     void SetIsSelectable(bool isSelectable);
 

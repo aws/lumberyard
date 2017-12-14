@@ -29,8 +29,20 @@ namespace GraphCanvas
     public:
         AZ_CLASS_ALLOCATOR(GraphCanvasLabel, AZ::SystemAllocator, 0);
 
+        enum class WrapMode
+        {
+            MaximumWidth,
+            BoundingWidth
+        };
+
         GraphCanvasLabel(QGraphicsItem* parent = nullptr);
         ~GraphCanvasLabel() = default;
+
+        void SetFontColor(const QColor& color);
+        void ClearFontColor();
+
+        bool HasFontColorOverride() const;
+        const QColor& GetFontColorOverride() const;
 
         void SetLabel(const AZStd::string& label, const AZStd::string& translationContext = AZStd::string(), const AZStd::string& translationKey = AZStd::string());
         void SetLabel(const TranslationKeyedString& value);
@@ -39,6 +51,10 @@ namespace GraphCanvas
         void SetSceneStyle(const AZ::EntityId& sceneId, const char* style);
         void SetStyle(const AZ::EntityId& entityId, const char* styleElement);
         void RefreshDisplay();
+
+        void SetWrapMode(WrapMode wrapMode);
+
+        QRectF GetDisplayedSize() const;
 
         //! Sets whether the text should elide if it grows beyond max-width
         //! (Note: currently incompatible with word wrap)
@@ -53,6 +69,8 @@ namespace GraphCanvas
         Styling::StyleHelper& GetStyleHelper();
         const Styling::StyleHelper& GetStyleHelper() const;
 
+        void UpdateDisplayText();
+
     protected:
         // QGraphicsItem
         bool event(QEvent* qEvent) override;
@@ -63,8 +81,7 @@ namespace GraphCanvas
         ////
 
     private:
-
-        void UpdateDisplayText();
+        
         void UpdateDesiredBounds();
 
         Qt::Alignment   m_defaultAlignment;
@@ -77,9 +94,18 @@ namespace GraphCanvas
         QSizeF          m_maximumSize;
         QSizeF          m_minimumSize;
 
+        //! So, this is going to return the actual value of boundingRect(as seen when we actually render).
+        //! For whatever reason, preferredSize, boundingRect, size, rect, and even calling boundingRect internally and
+        //! passing that value back does not give me the modified visual size, but instead the static preferred size.
+        //! This means when we put this into something that scales it up(due to an expanding size policy)
+        //! We get back improper values. So to combat this, we'll store the value when we render, and hope for the best.
+        QRectF          m_displayedSize;
+
         //! This is influenced by the reflected value m_title.
         //! That's why we must update this value when m_title changes.
         QRectF m_desiredBounds;
+
+        WrapMode m_wrapMode;
 
         Styling::StyleHelper m_styleHelper;
     };

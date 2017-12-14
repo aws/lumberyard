@@ -69,7 +69,7 @@ namespace GraphCanvas
         // Values are displayed lowest first to highest last.
         //
         // This needs to be done using emplace and in init to deal with serialization(serialization will not step on any values
-        // already in ths map, so they all need to be added after the deserialization step has occurred)
+        // already in this map, so they all need to be added after the deserialization step has occurred)
         m_slotGroupConfigurations.emplace(SlotGroups::ExecutionGroup, SlotGroupConfiguration(0));
         m_slotGroupConfigurations.emplace(SlotGroups::PropertyGroup, SlotGroupConfiguration(1));
         m_slotGroupConfigurations.emplace(SlotGroups::VariableReferenceGroup, SlotGroupConfiguration(2));
@@ -176,12 +176,12 @@ namespace GraphCanvas
         // <input><spacer><output>
         layout->addItem(m_inputs);
 
-        QGraphicsWidget* spacer = new QGraphicsWidget();
-        spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        spacer->setContentsMargins(0, 0, 0, 0);
-        spacer->setPreferredSize(0, 0);
+        m_horizontalSpacer = new QGraphicsWidget();
+        m_horizontalSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        m_horizontalSpacer->setContentsMargins(0, 0, 0, 0);
+        m_horizontalSpacer->setPreferredSize(0, 0);
 
-        layout->addItem(spacer);
+        layout->addItem(m_horizontalSpacer);
 
         layout->addItem(m_outputs);
 
@@ -296,14 +296,16 @@ namespace GraphCanvas
         adjustSize();
         updateGeometry();
         update();
+
+        m_horizontalSpacer->adjustSize();
     }
 
     QGraphicsLayoutItem* GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::GetLayoutItem(const AZ::EntityId& slotId) const
     {
         QGraphicsLayoutItem* layoutItem = nullptr;
-        RootVisualRequestBus::EventResult(layoutItem, slotId, &RootVisualRequests::GetRootGraphicsLayoutItem);
+        VisualRequestBus::EventResult(layoutItem, slotId, &VisualRequests::AsGraphicsLayoutItem);
 
-        AZ_Assert(layoutItem, "Slot must return a RootGraphicsLayoutItem.");
+        AZ_Assert(layoutItem, "Slot must return a GraphicsLayoutItem.");
 
         return layoutItem;
     }
@@ -334,7 +336,7 @@ namespace GraphCanvas
 
     GeneralSlotLayoutGraphicsWidget::~GeneralSlotLayoutGraphicsWidget()
     {
-        // Because I'm allowing for re-use of widgets. There's no gaurantee which widgets
+        // Because I'm allowing for re-use of widgets. There's no guarantee which widgets
         // will have a valid parent. So we want to clear our display, then delete everything
         // that we own.
         ClearLayout();
@@ -600,6 +602,7 @@ namespace GraphCanvas
                 ++dividerCount;
 
                 m_groupLayout->addItem(dividerWidget);
+                dividerWidget->setVisible(true);
             }
 
             auto groupIter = m_slotGroups.find(slotGroup);
@@ -610,10 +613,12 @@ namespace GraphCanvas
                 m_groupLayout->addItem(groupIter->second);
             }
         }
-
+        
         updateGeometry();
         adjustSize();
         RefreshDisplay();
+
+        NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
     }
 
     void GeneralSlotLayoutGraphicsWidget::UpdateStyles()
@@ -642,7 +647,7 @@ namespace GraphCanvas
     }
 
     void GeneralSlotLayoutGraphicsWidget::RefreshDisplay()
-    {        
+    {
         updateGeometry();
         update();
     }

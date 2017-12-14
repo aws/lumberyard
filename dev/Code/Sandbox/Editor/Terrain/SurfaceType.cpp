@@ -71,7 +71,7 @@ void CSurfaceType::Serialize(XmlNodeRef xmlRootNode, bool boLoading)
             CMaterial* pMtl = GetIEditor()->GetMaterialManager()->CreateMaterial(Path::RemoveExtension(m_detailTexture), XmlNodeRef(), 0);
             pMtl->AddRef();
             pMtl->SetShaderName("Terrain.Layer");
-            pMtl->GetShaderResources().m_Textures[EFTT_DIFFUSE].m_Name = m_detailTexture.toLatin1().data();
+            pMtl->GetShaderResources().m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = m_detailTexture.toLatin1().data();  // populate the diffuse slot
             pMtl->Update();
             m_material = pMtl->GetName();
         }

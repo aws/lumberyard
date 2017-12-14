@@ -137,7 +137,7 @@ public:
     bool CompleteInit() override;
     void Shutdown() override;
     bool PreUpdate(bool haveFocus, unsigned int updateFlags) override;
-    void PostUpdate(bool haveFocus, unsigned int updateFlags) override;
+    bool PostUpdate(bool haveFocus, unsigned int updateFlags) override;
     void Reset(bool clients) override;
     void GetMemoryUsage(ICrySizer* pSizer) const override;
 

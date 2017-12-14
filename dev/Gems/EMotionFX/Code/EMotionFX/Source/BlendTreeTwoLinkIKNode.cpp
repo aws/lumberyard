@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -17,7 +17,6 @@
 #include "Recorder.h"
 #include "Node.h"
 #include "TransformData.h"
-#include "TwoLinkIKSolver.h"
 #include <MCore/Source/AttributeSettings.h>
 
 
@@ -220,6 +219,57 @@ namespace EMotionFX
     }
 
 
+    // solve the IK problem by calculating the 'knee/elbow' position
+    bool BlendTreeTwoLinkIKNode::Solve2LinkIK(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Vector3* outMidPos)
+    {
+        const AZ::Vector3 localGoal = goal - posA;
+        const float rLen = MCore::SafeLength(localGoal);
+
+        // get the lengths of the bones A and B
+        const float lengthA = MCore::SafeLength(posB - posA);
+        const float lengthB = MCore::SafeLength(posC - posB);
+
+        // calculate the d and e values from the equations by Ken Perlin
+        const float d = (rLen > MCore::Math::epsilon) ? MCore::Max<float>(0.0f, MCore::Min<float>(lengthA, (rLen + (lengthA * lengthA - lengthB * lengthB) / rLen) * 0.5f)) : MCore::Max<float>(0.0f, MCore::Min<float>(lengthA, rLen));
+        const float square = lengthA * lengthA - d * d;
+        const float e = MCore::Math::SafeSqrt(square);
+
+        // the solution on the YZ plane
+        const AZ::Vector3 solution(d, e, 0);
+
+        // calculate the matrix that rotates from IK solve space into global space
+        MCore::Matrix matForward;
+        matForward.Identity();
+        CalculateMatrix(localGoal, bendDir, &matForward);
+
+        // rotate the solution (the mid "knee/elbow" position) into global space
+        *outMidPos = posA + matForward.Mul3x3(solution);
+
+        // check if we found a solution or not
+        return (d > MCore::Math::epsilon && d < lengthA + MCore::Math::epsilon);
+    }
+
+
+    // calculate the direction matrix
+    void BlendTreeTwoLinkIKNode::CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, MCore::Matrix* outForward)
+    {
+        // the inverse matrix defines a coordinate system whose x axis contains P, so X = unit(P).
+        const AZ::Vector3 x = MCore::SafeNormalize(goal);
+
+        // the y axis of the inverse is perpendicular to P, so Y = unit( D - X(D�X) ).
+        const float dot = bendDir.Dot(x);
+        const AZ::Vector3 y = MCore::SafeNormalize(bendDir - (dot * x));
+
+        // the z axis of the inverse is perpendicular to both X and Y, so Z = X�Y.
+        const AZ::Vector3 z = x.Cross(y);
+
+        // set the rotation vectors of the output matrix
+        outForward->SetRow(0, x);
+        outForward->SetRow(1, y);
+        outForward->SetRow(2, z);
+    }
+
+
     // the main process method of the final node
     void BlendTreeTwoLinkIKNode::Output(AnimGraphInstance* animGraphInstance)
     {
@@ -292,7 +342,7 @@ namespace EMotionFX
         // get the goal
         OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_GOALPOS));
         const MCore::AttributeVector3* inputGoalPos = GetInputVector3(animGraphInstance, INPUTPORT_GOALPOS);
-        MCore::Vector3 goal = (inputGoalPos) ? inputGoalPos->GetValue() : MCore::Vector3(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 goal = (inputGoalPos) ? AZ::Vector3(inputGoalPos->GetValue()) : AZ::Vector3::CreateZero();
 
         // there is no error, as we have all we need to solve this
     #ifdef EMFX_EMSTUDIOBUILD
@@ -313,7 +363,7 @@ namespace EMotionFX
             alignInstance = animGraphInstance->FindActorInstanceFromParentDepth(goalNodeAttrib->GetParentDepth());
             if (alignInstance)
             {
-                const MCore::Vector3& offset = alignInstance->GetTransformData()->GetCurrentPose()->GetGlobalTransformInclusive(alignNodeIndex).mPosition;
+                const AZ::Vector3& offset = alignInstance->GetTransformData()->GetCurrentPose()->GetGlobalTransformInclusive(alignNodeIndex).mPosition;
                 goal += offset;
 
             #ifdef EMFX_EMSTUDIOBUILD
@@ -343,7 +393,7 @@ namespace EMotionFX
                 if (posConnection->GetSourceNode()->GetType() == BlendTreeParameterNode::TYPE_ID)
                 {
                     BlendTreeParameterNode* parameterNode = static_cast<BlendTreeParameterNode*>(posConnection->GetSourceNode());
-                    GetEventManager().OnSetVisualManipulatorOffset(animGraphInstance, parameterNode->GetParameterIndex(posConnection->GetSourcePort()), MCore::Vector3(0.0f, 0.0f, 0.0f));
+                    GetEventManager().OnSetVisualManipulatorOffset(animGraphInstance, parameterNode->GetParameterIndex(posConnection->GetSourcePort()), AZ::Vector3::CreateZero());
                 }
             }
         }
@@ -358,7 +408,7 @@ namespace EMotionFX
         Transform globalTransformC = outTransformPose.GetGlobalTransformInclusive(nodeIndexC);
 
         // extract the bend direction from the input pose?
-        MCore::Vector3 bendDir;
+        AZ::Vector3 bendDir;
         const bool extractBendDir = GetAttributeFloatAsBool(ATTRIB_EXTRACTBENDDIR);
         if (extractBendDir)
         {
@@ -375,18 +425,18 @@ namespace EMotionFX
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_BENDDIR));
             const MCore::AttributeVector3* inputBendDir = GetInputVector3(animGraphInstance, INPUTPORT_BENDDIR);
-            bendDir = (inputBendDir) ? inputBendDir->GetValue() : MCore::Vector3(0.0f, 0.0f, -1.0f);
+            bendDir = (inputBendDir) ? AZ::Vector3(inputBendDir->GetValue()) : AZ::Vector3(0.0f, 0.0f, -1.0f);
         }
 
         // if we want a relative bend dir, rotate it with the actor (only do this if we don't extract the bend dir)
         if (GetAttributeFloatAsBool(ATTRIB_RELBENDDIR) && extractBendDir == false)
         {
             bendDir = actorInstance->GetGlobalTransform().mRotation * bendDir;
-            bendDir.SafeNormalize();
+            bendDir = MCore::SafeNormalize(bendDir);
         }
         else
         {
-            bendDir.SafeNormalize();
+            bendDir = MCore::SafeNormalize(bendDir);
         }
 
         // if end node rotation is enabled
@@ -426,8 +476,8 @@ namespace EMotionFX
         }
 
         // adjust the goal and get the end effector position
-        MCore::Vector3 endEffectorNodePos = outTransformPose.GetGlobalTransformInclusive(endEffectorNodeIndex).mPosition;
-        const MCore::Vector3 posCToEndEffector = endEffectorNodePos - globalTransformC.mPosition;
+        AZ::Vector3 endEffectorNodePos = outTransformPose.GetGlobalTransformInclusive(endEffectorNodeIndex).mPosition;
+        const AZ::Vector3 posCToEndEffector = endEffectorNodePos - globalTransformC.mPosition;
         if (enableRotation)
         {
             goal -= posCToEndEffector;
@@ -442,7 +492,7 @@ namespace EMotionFX
         {
             const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
 
-            MCore::Vector3 realGoal;
+            AZ::Vector3 realGoal;
             if (enableRotation)
             {
                 realGoal = goal + posCToEndEffector;
@@ -453,15 +503,15 @@ namespace EMotionFX
             }
 
             uint32 color = mVisualizeColor;
-            GetEventManager().OnDrawLine(realGoal - MCore::Vector3(s, 0, 0), realGoal + MCore::Vector3(s, 0, 0), color);
-            GetEventManager().OnDrawLine(realGoal - MCore::Vector3(0, s, 0), realGoal + MCore::Vector3(0, s, 0), color);
-            GetEventManager().OnDrawLine(realGoal - MCore::Vector3(0, 0, s), realGoal + MCore::Vector3(0, 0, s), color);
+            GetEventManager().OnDrawLine(realGoal - AZ::Vector3(s, 0, 0), realGoal + AZ::Vector3(s, 0, 0), color);
+            GetEventManager().OnDrawLine(realGoal - AZ::Vector3(0, s, 0), realGoal + AZ::Vector3(0, s, 0), color);
+            GetEventManager().OnDrawLine(realGoal - AZ::Vector3(0, 0, s), realGoal + AZ::Vector3(0, 0, s), color);
 
             color = MCore::RGBA(0, 255, 255);
             GetEventManager().OnDrawLine(globalTransformA.mPosition, globalTransformA.mPosition + bendDir * s * 2.5f, color);
-            GetEventManager().OnDrawLine(globalTransformA.mPosition - MCore::Vector3(s, 0, 0), globalTransformA.mPosition + MCore::Vector3(s, 0, 0), color);
-            GetEventManager().OnDrawLine(globalTransformA.mPosition - MCore::Vector3(0, s, 0), globalTransformA.mPosition + MCore::Vector3(0, s, 0), color);
-            GetEventManager().OnDrawLine(globalTransformA.mPosition - MCore::Vector3(0, 0, s), globalTransformA.mPosition + MCore::Vector3(0, 0, s), color);
+            GetEventManager().OnDrawLine(globalTransformA.mPosition - AZ::Vector3(s, 0, 0), globalTransformA.mPosition + AZ::Vector3(s, 0, 0), color);
+            GetEventManager().OnDrawLine(globalTransformA.mPosition - AZ::Vector3(0, s, 0), globalTransformA.mPosition + AZ::Vector3(0, s, 0), color);
+            GetEventManager().OnDrawLine(globalTransformA.mPosition - AZ::Vector3(0, 0, s), globalTransformA.mPosition + AZ::Vector3(0, 0, s), color);
 
             //color = MCore::RGBA(0, 255, 0);
             //GetEventManager().OnDrawLine( endEffectorNodePos-Vector3(s,0,0), endEffectorNodePos+Vector3(s,0,0), color);
@@ -476,28 +526,28 @@ namespace EMotionFX
     #endif
 
         // perform IK, try to find a solution by calculating the new middle node position
-        MCore::Vector3 midPos;
+        AZ::Vector3 midPos;
         if (enableRotation)
         {
-            TwoLinkIKSolver::Solve2LinkIK(globalTransformA.mPosition, globalTransformB.mPosition, globalTransformC.mPosition, goal, bendDir, &midPos);
+            Solve2LinkIK(globalTransformA.mPosition, globalTransformB.mPosition, globalTransformC.mPosition, goal, bendDir, &midPos);
         }
         else
         {
-            TwoLinkIKSolver::Solve2LinkIK(globalTransformA.mPosition, globalTransformB.mPosition, endEffectorNodePos, goal, bendDir, &midPos);
+            Solve2LinkIK(globalTransformA.mPosition, globalTransformB.mPosition, endEffectorNodePos, goal, bendDir, &midPos);
         }
 
         // --------------------------------------
         // calculate the new node transforms
         // --------------------------------------
         // calculate the differences between the current forward vector and the new one after IK
-        MCore::Vector3 oldForward = globalTransformB.mPosition - globalTransformA.mPosition;
-        MCore::Vector3 newForward = midPos - globalTransformA.mPosition;
-        oldForward.SafeNormalize();
-        newForward.SafeNormalize();
+        AZ::Vector3 oldForward = globalTransformB.mPosition - globalTransformA.mPosition;
+        AZ::Vector3 newForward = midPos - globalTransformA.mPosition;
+        oldForward = MCore::SafeNormalize(oldForward);
+        newForward = MCore::SafeNormalize(newForward);
 
         // perform a delta rotation to rotate into the new direction after IK
         float deltaAngle = MCore::Math::ACos(oldForward.Dot(newForward));
-        MCore::Vector3 axis = oldForward.Cross(newForward);
+        AZ::Vector3 axis = oldForward.Cross(newForward);
         MCore::Quaternion deltaRot(axis, deltaAngle);
         globalTransformA.mRotation = deltaRot * globalTransformA.mRotation;
         outTransformPose.SetGlobalTransformInclusive(nodeIndexA, globalTransformA);
@@ -520,9 +570,9 @@ namespace EMotionFX
             oldForward = endEffectorNodePos - globalTransformB.mPosition;
         }
 
-        oldForward.SafeNormalize();
+        oldForward = MCore::SafeNormalize(oldForward);
         newForward = goal - globalTransformB.mPosition;
-        newForward.SafeNormalize();
+        newForward = MCore::SafeNormalize(newForward);
 
         // calculate the delta rotation
         const float dotProduct = oldForward.Dot(newForward);

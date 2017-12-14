@@ -28,6 +28,7 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
     return new CAudioControlsEditorPlugin(GetIEditor());
 }
 
+#if defined(AZ_PLATFORM_WINDOWS)
 //-----------------------------------------------------------------------------------------------//
 HINSTANCE g_hInstance = 0;
 BOOL __stdcall DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
@@ -38,3 +39,4 @@ BOOL __stdcall DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
     }
     return TRUE;
 }
+#endif

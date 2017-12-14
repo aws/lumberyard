@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_OBBNodeHasProperties = true;
-
             class OBB
-                : public NativeDatumNode<OBB, Data::OBBType, k_OBBNodeHasProperties>
+                : public NativeDatumNode<OBB, Data::OBBType>
             {
             public:
-                using ParentType = NativeDatumNode<OBB, Data::OBBType, k_OBBNodeHasProperties>;
+                using ParentType = NativeDatumNode<OBB, Data::OBBType>;
                 AZ_COMPONENT(OBB, "{C63E8C27-412B-4CEE-959B-3D97E1D17370}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -45,21 +43,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/OBB.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    AddProperty(&AZ::Obb::GetAxisX, &AZ::Obb::SetAxisX, "axisX");
-                    AddProperty(&AZ::Obb::GetAxisY, &AZ::Obb::SetAxisY, "axisY");
-                    AddProperty(&AZ::Obb::GetAxisZ, &AZ::Obb::SetAxisZ, "axisZ");
-                    AddProperty(&AZ::Obb::GetHalfLengthX, &AZ::Obb::SetHalfLengthX, "halfLengthX");
-                    AddProperty(&AZ::Obb::GetHalfLengthY, &AZ::Obb::SetHalfLengthY, "halfLengthY");
-                    AddProperty(&AZ::Obb::GetHalfLengthZ, &AZ::Obb::SetHalfLengthZ, "halfLengthZ");
-                    AddProperty(&AZ::Obb::GetPosition, &AZ::Obb::SetPosition, "position");
                 }
 
                 void Visit(NodeVisitor& visitor) const override

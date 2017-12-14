@@ -223,13 +223,15 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
         return False
 
     # Get the incredibuild profile file
-    ib_profile_xml = getattr(bld.options, 'incredibuild_profile', '')
-    if ib_profile_xml == "Code/Tools/waf-1.7.13/profile.xml":
-        # Convert the legacy profile xml to the default one
-        ib_profile_xml = "Tools/build/waf-1.7.13/profile.xml"
-
-    ib_profile_xml = os.path.normcase(ib_profile_xml)
-
+    ib_profile_xml_check = getattr(bld.options, 'incredibuild_profile', '').replace("Code/Tools/waf-1.7.13/profile.xml", "Tools/build/waf-1.7.13/profile.xml")
+    if os.path.exists(ib_profile_xml_check):
+        ib_profile_xml = ib_profile_xml_check
+    else:
+        # If the profile doesnt exist, then attempt to use the engine as the base
+        ib_profile_xml = bld.engine_node.make_node(ib_profile_xml_check).abspath()
+        if not os.path.exists(ib_profile_xml):
+            # If the entry doesnt exist, then set to the profile.xml that comes with the engine
+            ib_profile_xml = bld.engine_node.make_node("Tools/build/waf-1.7.13/profile.xml").abspath()
 
     result = subprocess.check_output([str(ib_folder) + '/xgconsole.exe', '/QUERYLICENSE'])
 

@@ -143,9 +143,19 @@ void MainWidget::initializeControls()
     availableTags.push_back("Weapon Right");
     availableTags.push_back("Loooooooooooooooooong Tag");
 
+    for (const QString& tag : availableTags)
+    {
+        ui->searchWidget->AddTypeFilter("Foo", tag);
+    }
+
     for (int i = 0; i < numAvailableTags; ++i)
     {
-        availableTags.push_back("tag" + QString::number(i+1));
+        QString tagName = "tag" + QString::number(i + 1);
+        availableTags.push_back(tagName);
+        if (i < 10)
+        {
+            ui->searchWidget->AddTypeFilter("Bar", tagName);
+        }
     }
 
     ui->tagSelector->Reinit(availableTags);

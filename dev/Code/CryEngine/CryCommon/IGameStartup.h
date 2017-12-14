@@ -57,13 +57,8 @@ struct IGameStartup
     //      Shuts down the game and any loaded MOD and delete itself.
     virtual void Shutdown() = 0;
 
-    // Description:
-    //      Updates the game.
-    // Arguments:
-    //      haveFocus - Boolean describing if the game has the input focus or not.
-    // Return Value:
-    //      0 to terminate the game (i.e. when quitting), non-zero to continue
-    virtual int Update(bool haveFocus, unsigned int updateFlags) = 0;
+    // Deprecated
+    virtual int AZ_DEPRECATED(Update(bool haveFocus, unsigned int updateFlags), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
 
     // Description:
     //      Returns a restart level and thus triggers a restart.
@@ -83,13 +78,8 @@ struct IGameStartup
     //      assigning pModNameBuffer (must be shorter than modNameBufferSizeInBytes).
     virtual bool GetRestartMod(char* pModNameBuffer, int modNameBufferSizeInBytes) { return false; }
 
-    // Description:
-    //      Initiate and control the game loop!
-    // Arguments:
-    //      autoStartLevelName - name of the level to jump into, or nullptr for normal behaviour
-    // Return Value:
-    //      0 when the game terminated normally, non-zero otherwise
-    virtual int Run(const char* autoStartLevelName) = 0;
+    // Deprecated:
+    virtual int AZ_DEPRECATED(Run(const char* autoStartLevelName), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
 
     // Description:
     //      Returns the RSA Public Key used by the engine to decrypt pak files which are encrypted by an offline tool.

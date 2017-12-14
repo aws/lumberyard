@@ -51,7 +51,7 @@ namespace RenderGL
         bool GetIsMeshRenderingSupported() const override           { return true; }
 
         // triangle rendering
-        void RenderTriangle(const MCore::Vector3& v1, const MCore::Vector3& v2, const MCore::Vector3& v3, const MCore::RGBAColor& color) override;
+        void RenderTriangle(const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3, const MCore::RGBAColor& color) override;
         void RenderTriangles(const MCore::Array<TriangleVertex>& triangleVertices) override;
 
         // text rendering (do not use until really needed, needs to do runtime allocations)
@@ -89,7 +89,9 @@ namespace RenderGL
             MCORE_MEMORYOBJECTCATEGORY(GLRenderUtil::TextureEntry, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_RENDERING);
             Texture*                texture;
             AZ::Vector2         pos;
-            TextureEntry() :pos(0.0f, 0.0f), texture(nullptr) {}
+            TextureEntry()
+                : pos(0.0f, 0.0f)
+                , texture(nullptr) {}
         };
 
         struct TextEntry

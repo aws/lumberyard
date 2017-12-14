@@ -28,6 +28,7 @@ namespace LyViewPane
     // from other areas of Editor code, they still work when the name changes.
     static const char* const SceneSettings = "Scene Settings (PREVIEW)";
     static const char* const AssetBrowser = "Asset Browser";
+    static const char* const AssetEditor = "Asset Editor";
     static const char* const EntityOutliner = "Entity Outliner (PREVIEW)";
     static const char* const EntityInspector = "Entity Inspector (PREVIEW)";
     static const char* const DeploymentTool = "Deployment Tool";
@@ -42,11 +43,13 @@ namespace LyViewPane
     static const char* const EditorSettingsManager = "Editor Settings Manager";
     static const char* const TerrainEditor = "Terrain Editor";
     static const char* const TerrainTool = "Terrain Tool";
+    static const char* const TerrainTextureLayers = "Terrain Texture Layers";
     static const char* const MaterialEditor = "Material Editor";
     static const char* const DatabaseView = "Database View";
     static const char* const AudioControlsEditor = "Audio Controls Editor";
     static const char* const SubstanceEditor = "Substance Editor";
     static const char* const VegetationEditor = "Vegetation Editor";
+    static const char* const AnimationEditor = "EMotion FX Animation Editor (PREVIEW)";
 
     static const char* const LegacyAssetBrowser = "Asset Browser (LEGACY)";
     static const char* const LegacyFlowGraph = "Flow Graph (LEGACY)";
@@ -55,6 +58,7 @@ namespace LyViewPane
     static const char* const LegacyRollupBar = "RollupBar (LEGACY)";
     static const char* const LegacyRollupBarMenuName = "&RollupBar (LEGACY)";
 
+    static const char* const SliceRelationships = "Slice Relationship View";
     static const char* const LegacyGeppetto = "Geppetto Editor (LEGACY)";
     static const char* const LegacyMannequin = "Mannequin Editor (LEGACY)";
 

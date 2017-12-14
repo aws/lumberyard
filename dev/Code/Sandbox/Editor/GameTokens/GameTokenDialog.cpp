@@ -146,6 +146,7 @@ public:
         LocalOnlyRole = CBaseLibraryDialog::BaseLibraryItemRole + 1
     };
 
+    using QAbstractListModel::index;
     QModelIndex index(CBaseLibraryItem* item) const override
     {
         for (int i = 0; m_library != nullptr && i < m_library->GetItemCount(); ++i)

@@ -16,6 +16,10 @@
 #include "CommentNode.h"
 #include "AnimSplineTrack.h"
 #include "CommentTrack.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
+
 
 //////////////////////////////////////////////////////////////////////////
 namespace
@@ -23,7 +27,7 @@ namespace
     bool s_nodeParamsInit = false;
     std::vector<CAnimNode::SParamInfo> s_nodeParameters;
 
-    void AddSupportedParameters(const char* sName, int paramId, EAnimValue valueType)
+    void AddSupportedParameters(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -35,7 +39,7 @@ namespace
 
 //-----------------------------------------------------------------------------
 CCommentNode::CCommentNode(const int id)
-    : CAnimNode(id, eAnimNodeType_Comment)
+    : CAnimNode(id, AnimNodeType::Comment)
 {
     CCommentNode::Initialize();
 }
@@ -52,9 +56,9 @@ void CCommentNode::Initialize()
     {
         s_nodeParamsInit = true;
         s_nodeParameters.reserve(3);
-        AddSupportedParameters("Text", eAnimParamType_CommentText, eAnimValue_Unknown);
-        AddSupportedParameters("Unit Pos X", eAnimParamType_PositionX, eAnimValue_Float);
-        AddSupportedParameters("Unit Pos Y", eAnimParamType_PositionY, eAnimValue_Float);
+        AddSupportedParameters("Text", AnimParamType::CommentText, AnimValueType::Unknown);
+        AddSupportedParameters("Unit Pos X", AnimParamType::PositionX, AnimValueType::Float);
+        AddSupportedParameters("Unit Pos Y", AnimParamType::PositionY, AnimValueType::Float);
     }
 }
 
@@ -63,7 +67,7 @@ void CCommentNode::Animate(SAnimContext& ac)
 {
     // It's only for valid operation of key time editing.
     // Actual animation process is in the editor side.
-    CCommentTrack* pCommentTrack = static_cast<CCommentTrack*>(GetTrackForParameter(eAnimParamType_CommentText));
+    CCommentTrack* pCommentTrack = static_cast<CCommentTrack*>(GetTrackForParameter(AnimParamType::CommentText));
     if (pCommentTrack)
     {
         pCommentTrack->ValidateKeyOrder();
@@ -73,14 +77,14 @@ void CCommentNode::Animate(SAnimContext& ac)
 //-----------------------------------------------------------------------------
 void CCommentNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_CommentText);
+    CreateTrack(AnimParamType::CommentText);
 
     C2DSplineTrack* pTrack = 0;
 
-    pTrack = (C2DSplineTrack*)CreateTrack(eAnimParamType_PositionX);
+    pTrack = (C2DSplineTrack*)CreateTrack(AnimParamType::PositionX);
     pTrack->SetDefaultValue(Vec2(0, 50));
 
-    pTrack = (C2DSplineTrack*)CreateTrack(eAnimParamType_PositionY);
+    pTrack = (C2DSplineTrack*)CreateTrack(AnimParamType::PositionY);
     pTrack->SetDefaultValue(Vec2(0, 50));
 }
 
@@ -123,7 +127,7 @@ CAnimParamType CCommentNode::GetParamType(unsigned int nIndex) const
         return s_nodeParameters[nIndex].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //-----------------------------------------------------------------------------

@@ -35,7 +35,7 @@ public:
     void Enter() override;
     void Leave() override;
 
-    static void FlipPolygons(CD::SMainContext& mc, ElementManager& outFlipedElements);
+    static void FlipPolygons(const CD::SMainContext& mc, ElementManager& outFlipedElements);
 
 private:
 

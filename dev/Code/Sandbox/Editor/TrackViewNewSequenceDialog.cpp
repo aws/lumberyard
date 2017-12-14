@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include "TrackViewNewSequenceDialog.h"
 #include "TrackView/TrackViewSequenceManager.h"
+#include "Maestro/Types/SequenceType.h"
 #include <ui_TrackViewNewSequenceDialog.h>
 #include <QMessageBox>
 #include "QtUtil.h"
@@ -22,13 +23,13 @@ namespace
 {
     struct seqTypeComboPair
     {
-        const char*     name;
-        ESequenceType   type;
+        const char*    name;
+        SequenceType   type;
     };
 
     seqTypeComboPair g_seqTypeComboPairs[] = {
-        { "Object Entity Sequence (Legacy)", eSequenceType_Legacy },
-        { "Component Entity Sequence (PREVIEW)", eSequenceType_SequenceComponent }
+        { "Object Entity Sequence (Legacy)", SequenceType::Legacy },
+        { "Component Entity Sequence (PREVIEW)", SequenceType::SequenceComponent }
     };
 }
 
@@ -36,9 +37,11 @@ namespace
 CTVNewSequenceDialog::CTVNewSequenceDialog(QWidget* parent)
     : QDialog(parent)
     , ui(new Ui::CTVNewSequenceDialog)
+    , m_inputFocusSet(false)
 {
     ui->setupUi(this);
     connect(ui->BTNOK, &QPushButton::clicked, this, &CTVNewSequenceDialog::OnOK);
+    connect(ui->NAME, &QLineEdit::returnPressed, this, &CTVNewSequenceDialog::OnOK);
     setWindowTitle("Add New Sequence");
 
     OnInitDialog();
@@ -55,13 +58,12 @@ void CTVNewSequenceDialog::OnInitDialog()
     {
         ui->m_seqNodeTypeCombo->addItem(tr(g_seqTypeComboPairs[i].name));
     }
-    ui->m_seqNodeTypeCombo->setCurrentIndex(eSequenceType_SequenceComponent);         // default choice is the Director Component Entity
-    ui->NAME->setFocus();
+    ui->m_seqNodeTypeCombo->setCurrentIndex(static_cast<int>(SequenceType::SequenceComponent));         // default choice is the Director Component Entity
 }
 
 void CTVNewSequenceDialog::OnOK()
 {
-    m_sequenceType = static_cast<ESequenceType>(ui->m_seqNodeTypeCombo->currentIndex());
+    m_sequenceType = static_cast<SequenceType>(ui->m_seqNodeTypeCombo->currentIndex());
 
     m_sequenceName = ui->NAME->text();
 
@@ -94,6 +96,17 @@ void CTVNewSequenceDialog::OnOK()
     }
 
     accept();
+}
+
+void CTVNewSequenceDialog::showEvent(QShowEvent* event)
+{
+    if (!m_inputFocusSet)
+    {
+        ui->NAME->setFocus();
+        m_inputFocusSet = true;
+    }
+
+    QDialog::showEvent(event);
 }
 
 #include <TrackViewNewSequenceDialog.moc>

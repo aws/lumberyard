@@ -22,7 +22,7 @@
 
 namespace LmbrCentral
 {
-    void ReadRigidPhysicsConfig(RigidPhysicsConfig& configuration, AZ::SerializeContext::DataElementNode* configurationNode, bool isProximityTriggerable)
+    void ReadRigidPhysicsConfig(AzFramework::RigidPhysicsConfig& configuration, AZ::SerializeContext::DataElementNode* configurationNode, bool isProximityTriggerable)
     {
         if (configurationNode)
         {
@@ -44,7 +44,7 @@ namespace LmbrCentral
         configuration.m_interactsWithTriggers = isProximityTriggerable;
     }
 
-    void ReadStaticPhysicsConfiguration(StaticPhysicsConfig& configuration, AZ::SerializeContext::DataElementNode* configurationNode)
+    void ReadStaticPhysicsConfiguration(AzFramework::StaticPhysicsConfig& configuration, AZ::SerializeContext::DataElementNode* configurationNode)
     {
         if (configurationNode)
         {
@@ -118,7 +118,7 @@ namespace LmbrCentral
 
         if (behaviorNode && (behaviorNode->GetId() == AZ::Uuid("{48366EA0-71FA-49CA-B566-426EE897468E}"))) // RigidPhysicsBehavior
         {
-            // The rigid behavior class contained a RigidPhysicsConfig.
+            // The rigid behavior class contained a AzFramework::RigidPhysicsConfig.
             auto rigidConfigurationNode = behaviorNode->FindSubElement(AZ::Crc32("Configuration"));
 
 #if defined(LMBR_CENTRAL_EDITOR)
@@ -136,7 +136,7 @@ namespace LmbrCentral
             else
 #endif
             {
-                RigidPhysicsConfig configuration;
+                AzFramework::RigidPhysicsConfig configuration;
                 ReadRigidPhysicsConfig(configuration, rigidConfigurationNode, isProximityTriggerable);
 
                 RigidPhysicsComponent component;
@@ -148,7 +148,7 @@ namespace LmbrCentral
         }
         else // Otherwise assume static physics, the user might have never set a behavior.
         {
-            // The static behavior class contained a StaticPhysicsConfig.
+            // The static behavior class contained a AzFramework::StaticPhysicsConfig.
             AZ::SerializeContext::DataElementNode* staticConfigurationNode = nullptr;
             if (behaviorNode && (behaviorNode->GetId() == AZ::Uuid("{BC0600CC-5EF5-4753-A8BE-E28194149CA5}"))) // StaticPhysicsBehavior
             {
@@ -170,7 +170,7 @@ namespace LmbrCentral
             else
 #endif 
             {
-                StaticPhysicsConfig configuration;
+                AzFramework::StaticPhysicsConfig configuration;
                 ReadStaticPhysicsConfiguration(configuration, staticConfigurationNode);
 
                 StaticPhysicsComponent component;

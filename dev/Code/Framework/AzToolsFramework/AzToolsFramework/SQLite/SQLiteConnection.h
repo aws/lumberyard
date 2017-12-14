@@ -124,7 +124,6 @@ namespace AzToolsFramework
             const void* GetColumnBlob(int col);
             int GetColumnBlobBytes(int col);
             AZ::s64 GetColumnInt64(int col);
-
             AZ::Uuid GetColumnUuid(int col);
 
             bool BindValueUuid(int col, const AZ::Uuid& data);
@@ -136,6 +135,14 @@ namespace AzToolsFramework
 
             //! returns zero if it does not find the named index.
             int GetNamedParamIdx(const char* name);
+
+            // Convenience functions if you don't need to retain the parameter index
+            bool BindNamedUuid(const char* name, AZ::Uuid& value);
+            bool BindNamedBlob(const char* name, void* data, int dataSize);
+            bool BindNamedDouble(const char* name, double value);
+            bool BindNamedInt(const char* name, int value);
+            bool BindNamedText(const char* name, const char* value);
+            bool BindNamedInt64(const char* name, AZ::s64 value);
 
             // internal use only
             const StatementPrototype* GetParentPrototype() const;

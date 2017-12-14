@@ -13,6 +13,7 @@
 
 #include "StdAfx.h"
 #include "System.h"
+#include <AZCrySystemInitLogSink.h>
 #include <platform_impl.h>
 #include "DebugCallStack.h"
 
@@ -159,10 +160,19 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
 #endif
     }
 
-
-    if (!pSystem->Init(startupParams))
+    bool retVal = false;
+    {
+        AZ::Debug::StartupLogSinkReporter<AZ::Debug::CrySystemInitLogSink> initLogSink;
+        retVal = pSystem->Init(startupParams);
+        if (!retVal)
+        {
+            initLogSink.GetContainedLogSink().SetFatalMessageBox();
+        }
+    }
+    if (!retVal)
     {
         delete pSystem;
+        gEnv = nullptr;
 
         return 0;
     }

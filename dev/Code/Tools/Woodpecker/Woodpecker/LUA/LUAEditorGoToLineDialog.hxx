@@ -16,6 +16,8 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
+#include <QDialog>
+
 #pragma once
 
 namespace Ui

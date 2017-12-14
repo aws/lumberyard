@@ -25,6 +25,7 @@
             "sort.h",
             "time.cpp",
             "time.h",
+            "tuple.h",
             "utils.h"
         ],
         "std/bind":
@@ -128,6 +129,7 @@
             "function/function_base.h",
             "function/function_fwd.h",
             "function/function_template.h",
+            "function/invoke.h",
             "function/maybe_include.h"
         ],
         "std/smart_ptr":
@@ -188,6 +190,7 @@
             "typetraits/ice.h",
             "typetraits/integral_constant.h",
             "typetraits/intrinsics.h",
+            "typetraits/invoke_traits.h",
             "typetraits/is_abstract.h",
             "typetraits/is_arithmetic.h",
             "typetraits/is_array.h",
@@ -235,7 +238,6 @@
             "typetraits/same_traits.h",
             "typetraits/size_t_trait_def.h",
             "typetraits/transform_traits.h",
-            "typetraits/tuple_traits.h",
             "typetraits/typetraits.h",
             "typetraits/type_id.h",
             "typetraits/type_trait_def.h",
@@ -253,9 +255,7 @@
             "typetraits/internal/ice_eq.h",
             "typetraits/internal/ice_not.h",
             "typetraits/internal/ice_or.h",
-            "typetraits/internal/is_function_ptr_helper.h",
             "typetraits/internal/is_function_ptr_tester.h",
-            "typetraits/internal/is_mem_fun_pointer_impl.h",
             "typetraits/internal/is_mem_fun_pointer_tester.h",
             "typetraits/internal/type_sequence_traits.h",
             "typetraits/internal/wrap.h",

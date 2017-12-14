@@ -29,16 +29,6 @@
 
 namespace MCore
 {
-    AZ_FORCE_INLINE AZ::Vector3 EmfxVec3ToAzVec3(const MCore::Vector3& emfxVec3)
-    {
-        return AZ::Vector3(emfxVec3.x, emfxVec3.y, emfxVec3.z);
-    }
-
-    AZ_FORCE_INLINE MCore::Vector3 AzVec3ToEmfxVec3(const AZ::Vector3& azVec3)
-    {
-        return MCore::Vector3(azVec3.GetX(), azVec3.GetY(), azVec3.GetZ());
-    }
-
     AZ_FORCE_INLINE AZ::Quaternion EmfxQuatToAzQuat(const MCore::Quaternion& emfxQuat)
     {
         return AZ::Quaternion(emfxQuat.x, emfxQuat.y, emfxQuat.z, emfxQuat.w);
@@ -53,17 +43,17 @@ namespace MCore
     {
         AZ::Transform transform = AZ::Transform::CreateFromQuaternionAndTranslation(
                 EmfxQuatToAzQuat(emfxTransform.mRotation),
-                EmfxVec3ToAzVec3(emfxTransform.mPosition));
-        transform.MultiplyByScale(EmfxVec3ToAzVec3(emfxTransform.mScale));
+                emfxTransform.mPosition);
+        transform.MultiplyByScale(emfxTransform.mScale);
         return transform;
     }
 
     AZ_FORCE_INLINE EMotionFX::Transform AzTransformToEmfxTransform(const AZ::Transform& azTransform)
     {
         return EMotionFX::Transform(
-            AzVec3ToEmfxVec3(azTransform.GetTranslation()),
+            azTransform.GetTranslation(),
             AzQuatToEmfxQuat(AZ::Quaternion::CreateFromTransform(azTransform)),
-            AzVec3ToEmfxVec3(azTransform.RetrieveScale()));
+            azTransform.RetrieveScale());
     }
 
     AZ_FORCE_INLINE MCore::Quaternion AzEulerAnglesToEmfxQuat(const AZ::Vector3& eulerAngles)
@@ -73,10 +63,5 @@ namespace MCore
         // In the LY coordinate system, that's X, Z, Y respectively.
         quat.SetEuler(eulerAngles.GetX(), eulerAngles.GetZ(), eulerAngles.GetY());
         return quat;
-    }
-
-    AZ_FORCE_INLINE AZ::Vector3 EmfxQuatToAzEulerAngles(const MCore::Quaternion& emfxQuaternion)
-    {
-        return EmfxVec3ToAzVec3(emfxQuaternion.ToEuler());
     }
 } // namespace MCore

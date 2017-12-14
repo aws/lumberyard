@@ -24,6 +24,7 @@
 #include <GridMate/Replica/Tasks/ReplicaProcessPolicy.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/containers/intrusive_set.h>
+#include <AzCore/std/containers/map.h>
 
 namespace GridMate {
     class Carrier;
@@ -57,6 +58,31 @@ namespace GridMate {
         Mode_Client,    // All objects (authoritative + non-authoritative) will be replicated
     };
 
+    class PeerAckCallbacks final : public CarrierACKCallback
+    {
+        CallbackBuffer m_callbackTargets;
+    public:
+        GM_CLASS_ALLOCATOR(PeerAckCallbacks);
+        /** 
+         *  Initializes by capturing the callback buffer
+         */
+        explicit PeerAckCallbacks(CallbackBuffer &callbacks)
+            : m_callbackTargets(AZStd::move(callbacks))
+        {
+        }
+        void Run() override
+        {
+            for( auto& cb : m_callbackTargets)
+            {
+                auto ptr = cb.lock();
+                if (ptr)
+                {
+                    (*ptr)();
+                }
+            }
+        }
+    };
+
     class ReplicaPeer
     {
         friend class ReplicaInternal::SessionInfo;
@@ -67,6 +93,7 @@ namespace GridMate {
         friend class ReplicaTarget;
         friend class SendLimitProcessPolicy;
         friend class ReplicaMarshalTaskBase;
+        friend class ReplicaMarshalTask;
 
         AZ::u32 m_flags;
         PeerId m_peerId;
@@ -77,6 +104,8 @@ namespace GridMate {
         PeerTargetList m_targets;
         WriteBufferDynamic m_reliableOutBuffer;
         WriteBufferDynamic m_unreliableOutBuffer;
+        CallbackBuffer m_reliableCallbacks;
+        CallbackBuffer m_unreliableCallbacks;
         WriteBuffer::Marker<AZ::u32> m_reliableTimestamp;
         WriteBuffer::Marker<AZ::u32> m_unreliableTimestamp;
         WriteBuffer::Marker<AZ::Crc32> m_reliableMsgCrc;
@@ -133,6 +162,8 @@ namespace GridMate {
         WriteBuffer& GetUnreliableOutBuffer() { return m_unreliableOutBuffer; }
         void SendBuffer(Carrier* carrier, unsigned char commChannel);
         void ResetBuffer();
+        CallbackBuffer& GetReliableCallbackBuffer() { return m_reliableCallbacks; }
+        CallbackBuffer& GetUnreliableCallbackBuffer() { return m_unreliableCallbacks; }
 
         ReplicaPtr GetReplica(ReplicaId repId);
     };

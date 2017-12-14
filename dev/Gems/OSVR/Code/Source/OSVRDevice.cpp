@@ -249,11 +249,7 @@ namespace OSVR
         //Just set some default camera info if there isn't any real info to retrieve from the render manager yet
         if (m_renderManager == nullptr)
         {
-            cameraInfo.aspectRatio = 16.0f / 9.0f;
-            cameraInfo.fov = DEG2RAD(1.5);
-            cameraInfo.frustumPlane.horizontalDistance = 1.6f;
-            cameraInfo.frustumPlane.verticalDistance = 0.9f;
-            cameraInfo.eyeOffset = AZ::Vector3(0.65f, 0.0f, 0.0f);
+            cameraInfo = AZ::VR::PerEyeCameraInfo();
             return;
         }
 
@@ -267,6 +263,15 @@ namespace OSVR
 
         OSVR_ProjectionMatrix proj;
         proj = frameInfo.renderInfo[osvrEye].projection;
+
+        //Sanity check what the server gives us, on the first few frames, sometimes it give us nan or within epsilon.
+        if( isnan(proj.left) || isnan(proj.right) || isnan(proj.top) || isnan(proj.bottom) || isnan(proj.nearClip) ||
+            abs(proj.left) < DBL_EPSILON    || abs(proj.right) < DBL_EPSILON    || abs(proj.top) < DBL_EPSILON ||
+            abs(proj.bottom) < DBL_EPSILON  || abs(proj.nearClip) < DBL_EPSILON || abs(proj.farClip) < DBL_EPSILON)//nan/sanity checks
+        {
+            cameraInfo = AZ::VR::PerEyeCameraInfo();
+            return;
+        }
 
         float left, right, top, bottom, nearClip;
         left = static_cast<float>(proj.left);

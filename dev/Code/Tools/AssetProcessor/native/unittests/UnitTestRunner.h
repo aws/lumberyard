@@ -104,10 +104,25 @@ namespace UnitTestUtils
             return true; // I handled this, do not forward it
         }
 
+        bool OnPrintf(const char* /*window*/, const char* /*message*/) override
+        {
+            ++m_numMessagesAbsorbed;
+            return true;
+        }
+
         ~AssertAbsorber()
         {
         }
 
+        void Clear()
+        {
+            m_numMessagesAbsorbed = 0;
+            m_numWarningsAbsorbed = 0;
+            m_numAssertsAbsorbed = 0;
+            m_numErrorsAbsorbed = 0;
+        }
+
+        int m_numMessagesAbsorbed = 0;
         int m_numWarningsAbsorbed = 0;
         int m_numAssertsAbsorbed = 0;
         int m_numErrorsAbsorbed = 0;

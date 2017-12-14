@@ -292,14 +292,13 @@
        </property>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
         <item>
-         <widget class="QLineEdit" name="m_macroShortcutKey">
-          <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-         </widget>
+         <widget class="QKeySequenceEdit" name="m_macroShortcutKey"/>
         </item>
         <item>
          <widget class="QPushButton" name="m_assignShortcut">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="text">
            <string>Assign</string>
           </property>

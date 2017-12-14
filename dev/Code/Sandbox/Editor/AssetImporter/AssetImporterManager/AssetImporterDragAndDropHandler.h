@@ -36,8 +36,8 @@ public:
     explicit AssetImporterDragAndDropHandler(QObject* parent, AssetImporterManager* const assetImporterManager);
     ~AssetImporterDragAndDropHandler();
 
-    void DragEnter(QDragEnterEvent* event) override;
-    void Drop(QDropEvent* event) override;
+    void DragEnter(QDragEnterEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
+    void Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
 
     static void ProcessDragEnter(QDragEnterEvent* event);
     static QStringList GetFileList(QDropEvent* event);

@@ -25,6 +25,8 @@ function cameramanager:OnActivate()
 	self.toggleFlyCamEventId = GameplayNotificationId(self.entityId, "ToggleFlyCam", "float");
 	self.toggleFlyCamHandler = GameplayNotificationBus.Connect(self, self.toggleFlyCamEventId);
 	
+	self.transitionTime = 0.0;
+	
 	self.activeCamTagCrc = Crc32(self.Properties.ActiveCamTag);
 	
 	-- We can't set the initial camera here because there's no gaurantee that a camera won't
@@ -123,12 +125,19 @@ function cameramanager:ActivateCam(camToActivate)
 		-- activating a camera while in fly cam means we need to change the camera to which we return once we exit fly cam
 		self.previousActiveCamera = camToActivate;
 	else
-		local c1Tags = TagComponentRequestBus.Event.AddTag(camToActivate, self.activeCamTagCrc);
-
 		local camToDeactivate = TagGlobalRequestBus.Event.RequestTaggedEntities(self.activeCamTagCrc);
 		if (camToDeactivate ~= nil) then
-			local c2Tags = TagComponentRequestBus.Event.RemoveTag(camToDeactivate, self.activeCamTagCrc);
+			--Debug.Log("Found camera");
+			TagComponentRequestBus.Event.RemoveTag(camToDeactivate, self.activeCamTagCrc);
+		else
+			Debug.Log("'CameraManager.lua' couldn't find camera [" .. tostring(camToDeactivate) .. "] to deactivate.");
 		end
+		
+		-- We need to ensure the entity has a TagComponent otherwise the 'AddTag' call will
+		-- silently fail.
+		StarterGameEntityUtility.AddTagComponentToEntity(camToActivate);
+		TagComponentRequestBus.Event.AddTag(camToActivate, self.activeCamTagCrc);
+		
 		self.activeCamera = camToActivate;
 		--Debug.Log("Activating camera: " .. tostring(camToActivate));
 		CameraRequestBus.Event.MakeActiveView(camToActivate);
@@ -140,6 +149,7 @@ function cameramanager:UpdatePlayerCameraSettings()
 	if (self.currentSettingsName == "" or self.currentSettingsName ~= activeSettings.Name) then
 		-- camera mode has changed, tell the player camera to go to new mode
 		self.currentSettingsName = activeSettings.Name;
+		activeSettings.TransitionTime = self.transitionTime;
 		GameplayNotificationBus.Event.OnEventBegin(self.playerCameraSettingsEventId, activeSettings);
 	end
 end
@@ -151,9 +161,11 @@ function cameramanager:OnEventBegin(value)
 		self:ActivateCam(value);
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.pushCameraSettingsEventId) then
 		CameraSettingsComponentRequestsBus.Event.PushSettings(self.entityId, value.name, value.entityId);
+		self.transitionTime = value.transitionTime;
 		settingsChanged = true;
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.popCameraSettingsEventId) then
 		CameraSettingsComponentRequestsBus.Event.PopSettings(self.entityId, value.name, value.entityId);
+		self.transitionTime = value.transitionTime;
 		settingsChanged = true;
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.toggleFlyCamEventId) then
 		self:ToggleFlyCam();

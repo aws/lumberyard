@@ -138,7 +138,7 @@ namespace EMotionFX
     EMFX_SCALECODE
     (
         // set the scaling value for the node and all child nodes
-        void TransformData::SetBindPoseLocalScaleInherit(uint32 nodeIndex, const MCore::Vector3 & scale)
+        void TransformData::SetBindPoseLocalScaleInherit(uint32 nodeIndex, const AZ::Vector3 & scale)
         {
             ActorInstance*  actorInstance   = mPose.GetActorInstance();
             Actor*          actor           = actorInstance->GetActor();
@@ -158,7 +158,7 @@ namespace EMotionFX
         }
 
         // update the local space scale
-        void TransformData::SetBindPoseLocalScale(uint32 nodeIndex, const MCore::Vector3 & scale)
+        void TransformData::SetBindPoseLocalScale(uint32 nodeIndex, const AZ::Vector3 & scale)
         {
             Transform newTransform = mBindPose->GetLocalTransform(nodeIndex);
             newTransform.mScale = scale;
@@ -189,7 +189,9 @@ namespace EMotionFX
                         //if (mask != 0)
                             //MCore::LogInfo("Mask is %d (0x%x) for scale (%f, %f, %f)", mask, mask, transform.mScale.x, transform.mScale.y, transform.mScale.z);
                     #else*/
-            if (!MCore::Compare<float>::CheckIfIsClose(transform.mScale.x, 1.0f, MCore::Math::epsilon) || !MCore::Compare<float>::CheckIfIsClose(transform.mScale.y, 1.0f, MCore::Math::epsilon) || !MCore::Compare<float>::CheckIfIsClose(transform.mScale.z, 1.0f, MCore::Math::epsilon))
+            if (!MCore::Compare<float>::CheckIfIsClose(transform.mScale.GetX(), 1.0f, MCore::Math::epsilon) ||
+                !MCore::Compare<float>::CheckIfIsClose(transform.mScale.GetY(), 1.0f, MCore::Math::epsilon) ||
+                !MCore::Compare<float>::CheckIfIsClose(transform.mScale.GetZ(), 1.0f, MCore::Math::epsilon))
             {
                 SetNodeFlag(nodeIndex, FLAG_HASSCALE, true);
             }

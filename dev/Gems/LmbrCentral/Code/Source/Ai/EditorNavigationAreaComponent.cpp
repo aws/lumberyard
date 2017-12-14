@@ -29,7 +29,7 @@ namespace LmbrCentral
     {
         return navAgentId != NavigationAgentTypeID();
     }
-    
+
     static AZ_FORCE_INLINE bool NavVolumeValid(NavigationVolumeID navVolumeId)
     {
         return navVolumeId != NavigationVolumeID();
@@ -53,9 +53,11 @@ namespace LmbrCentral
                 editContext->Class<EditorNavigationAreaComponent>("Navigation Area", "Navigation Area configuration")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "AI")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Navigation.png")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Navigation.png")
-                        //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.11
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NavigationArea.png")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NavigationArea.png")
+                        //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.12
+                        ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview) // Hidden for v1.12
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/nav-area-component")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorNavigationAreaComponent::m_exclusion, "Exclusion", "Does this area add or subtract from the Navigation Mesh")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged)
@@ -82,7 +84,7 @@ namespace LmbrCentral
     {
         EditorComponentBase::Activate();
 
-        AZ::EntityId entityId = GetEntityId();
+        const AZ::EntityId entityId = GetEntityId();
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
         ShapeComponentNotificationsBus::Handler::BusConnect(entityId);
         NavigationAreaRequestBus::Handler::BusConnect(entityId);
@@ -105,8 +107,8 @@ namespace LmbrCentral
     void EditorNavigationAreaComponent::Deactivate()
     {
         DestroyArea();
-        
-        AZ::EntityId entityId = GetEntityId();
+
+        const AZ::EntityId entityId = GetEntityId();
         AZ::TransformNotificationBus::Handler::BusDisconnect(entityId);
         ShapeComponentNotificationsBus::Handler::BusDisconnect(entityId);
         NavigationAreaRequestBus::Handler::BusDisconnect(entityId);
@@ -154,8 +156,8 @@ namespace LmbrCentral
         AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
         AZ::ConstPolygonPrismPtr polygonPrismPtr;
-        PolygonPrismShapeComponentRequestsBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
-        
+        PolygonPrismShapeComponentRequestBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
+
         const AZ::PolygonPrism& polygonPrism = *polygonPrismPtr;
         if (IAISystem* aiSystem = gEnv->pAISystem)
         {
@@ -193,14 +195,12 @@ namespace LmbrCentral
                 }
 
                 UpdateMeshes();
+                ApplyExclusion();
             }
             else if (NavVolumeValid(NavigationVolumeID(m_volume)))
             {
-                DestroyVolume();
-                UpdateMeshes();
+                DestroyArea();
             }
-
-            ApplyExclusion();
         }
     }
 
@@ -219,29 +219,29 @@ namespace LmbrCentral
 
                 for (size_t i = 0; i < agentTypeCount; ++i)
                 {
-                    NavigationMeshID meshID = NavigationMeshID(m_meshes[i]);
-                    NavigationAgentTypeID agentTypeID = aiSystem->GetNavigationSystem()->GetAgentTypeID(m_agentTypes[i].c_str());
+                    NavigationMeshID meshId = NavigationMeshID(m_meshes[i]);
+                    const NavigationAgentTypeID agentTypeId = aiSystem->GetNavigationSystem()->GetAgentTypeID(m_agentTypes[i].c_str());
 
-                    if (NavAgentValid(agentTypeID) && !meshID)
+                    if (NavAgentValid(agentTypeId) && !meshId)
                     {
                         INavigationSystem::CreateMeshParams params; // TODO: expose at least the tile size
-                        meshID = aiSystem->GetNavigationSystem()->CreateMesh(m_name.c_str(), agentTypeID, params);
-                        aiSystem->GetNavigationSystem()->SetMeshBoundaryVolume(meshID, NavigationVolumeID(m_volume));
+                        meshId = aiSystem->GetNavigationSystem()->CreateMesh(m_name.c_str(), agentTypeId, params);
+                        aiSystem->GetNavigationSystem()->SetMeshBoundaryVolume(meshId, NavigationVolumeID(m_volume));
 
                         AZ::Transform transform = AZ::Transform::CreateIdentity();
                         AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
                         AZ::ConstPolygonPrismPtr polygonPrismPtr;
-                        PolygonPrismShapeComponentRequestsBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
-                        
-                        const AZ::PolygonPrism& polygonPrism = *polygonPrismPtr;
-                        aiSystem->GetNavigationSystem()->QueueMeshUpdate(meshID, AZAabbToLyAABB(AZ::PolygonPrismUtil::CalculateAabb(polygonPrism, transform)));
+                        PolygonPrismShapeComponentRequestBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
 
-                        m_meshes[i] = meshID;
+                        const AZ::PolygonPrism& polygonPrism = *polygonPrismPtr;
+                        aiSystem->GetNavigationSystem()->QueueMeshUpdate(meshId, AZAabbToLyAABB(AZ::PolygonPrismUtil::CalculateAabb(polygonPrism, transform)));
+
+                        m_meshes[i] = meshId;
                     }
-                    else if (!NavAgentValid(agentTypeID) && meshID)
+                    else if (!NavAgentValid(agentTypeId) && meshId)
                     {
-                        aiSystem->GetNavigationSystem()->DestroyMesh(meshID);
+                        aiSystem->GetNavigationSystem()->DestroyMesh(meshId);
                         m_meshes[i] = 0;
                     }
                 }
@@ -282,8 +282,8 @@ namespace LmbrCentral
     {
         if (IAISystem* aiSystem = gEnv->pAISystem)
         {
-            INavigationSystem* pAINavigation = aiSystem->GetNavigationSystem();
-            m_volume = pAINavigation->GetAreaId(m_name.c_str());
+            INavigationSystem* aiNavigation = aiSystem->GetNavigationSystem();
+            m_volume = aiNavigation->GetAreaId(m_name.c_str());
 
             if (!m_exclusion)
             {
@@ -292,17 +292,15 @@ namespace LmbrCentral
 
                 for (size_t i = 0; i < agentTypeCount; ++i)
                 {
-                    NavigationAgentTypeID agentTypeID = pAINavigation->GetAgentTypeID(m_agentTypes[i].c_str());
-                    m_meshes[i] = pAINavigation->GetMeshID(m_name.c_str(), agentTypeID);
+                    const NavigationAgentTypeID agentTypeId = aiNavigation->GetAgentTypeID(m_agentTypes[i].c_str());
+                    m_meshes[i] = aiNavigation->GetMeshID(m_name.c_str(), agentTypeId);
                 }
             }
 
-            /*
-            FR: We need to update the game area even in the case that after having read
-            the data from the binary file the volume was not recreated.
-            This happens when there was no mesh associated to the actual volume.
-            */
-            if (updateGameArea || !pAINavigation->ValidateVolume(NavigationVolumeID(m_volume)))
+            // FR: We need to update the game area even in the case that after having read
+            // the data from the binary file the volume was not recreated.
+            // This happens when there was no mesh associated to the actual volume.
+            if (updateGameArea || !aiNavigation->ValidateVolume(NavigationVolumeID(m_volume)))
             {
                 UpdateGameArea();
             }
@@ -324,8 +322,8 @@ namespace LmbrCentral
                 }
 
                 AZ::ConstPolygonPrismPtr polygonPrismPtr;
-                PolygonPrismShapeComponentRequestsBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
-                
+                PolygonPrismShapeComponentRequestBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
+
                 const AZ::PolygonPrism& polygonPrism = *polygonPrismPtr;
                 m_volume = aiNavigation->CreateVolume(cryVertices.begin(), vertexCount, polygonPrism.GetHeight(), requestedID);
                 aiNavigation->RegisterListener(this, m_name.c_str());

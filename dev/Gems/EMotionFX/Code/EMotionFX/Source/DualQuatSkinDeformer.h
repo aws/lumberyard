@@ -124,7 +124,6 @@ namespace EMotionFX
         {
             uint32                  mNodeNr;        /**< The node number. */
             MCore::DualQuaternion   mDualQuat;      /**< The dual quat of the precalculated matrix that contains the "globalMatrix * inverse(bindPoseMatrix)". */
-            MCore::Matrix           mScaleMatrix;   /**< The scale matrix. */
 
             MCORE_INLINE BoneInfo()
                 : mNodeNr(MCORE_INVALIDINDEX32) {}

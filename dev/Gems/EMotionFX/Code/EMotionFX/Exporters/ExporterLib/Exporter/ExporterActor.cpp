@@ -71,7 +71,6 @@ namespace ExporterLib
         SaveNodes(file, actor, targetEndianType);
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(nodeTimer, "nodes");
 
-        SaveLimits(file, actor, targetEndianType);
         SaveNodeGroups(file, actor, targetEndianType);
         SaveNodeMotionSources(file, actor, nullptr, targetEndianType);
         SaveAttachmentNodes(file, actor, targetEndianType);

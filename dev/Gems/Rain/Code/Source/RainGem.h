@@ -14,16 +14,28 @@
 
 #include <IGem.h>
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
+namespace Rain
+{
+    class RainConverter;
+}
+
 class RainGem
     : public CryHooksModule
 {
 public:
     AZ_RTTI(RainGem, "{A5E81E5A-FD45-4875-A1B1-ECD0F3C94D7C}", CryHooksModule);
 
-    ~RainGem() override = default;
+    RainGem();
+    ~RainGem() override;
 
     void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
     void PostGameInit();
+
+#ifdef RAIN_EDITOR
+    AZStd::unique_ptr<Rain::RainConverter> m_rainConverter;
+#endif
 };
 
 #endif//GEM_E5F049AD_7F53_4847_A89C_27B7339CF6A6_CODE_SOURCE_RAINGEM_H

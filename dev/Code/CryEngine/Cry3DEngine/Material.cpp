@@ -40,7 +40,7 @@ void CMaterialLayer::SetShaderItem(const _smart_ptr<IMaterial> pParentMtl, const
     SAFE_RELEASE(m_pShaderItem.m_pShaderResources);
 
     m_pShaderItem = pShaderItem;
-    gEnv->pRenderer->UpdateShaderItem(&m_pShaderItem);
+    gEnv->pRenderer->UpdateShaderItem(&m_pShaderItem, nullptr);
 }
 //////////////////////////////////////////////////////////////////////////
 void CMaterialLayer::GetMemoryUsage(ICrySizer* pSizer)
@@ -64,7 +64,7 @@ size_t CMaterialLayer::GetResourceMemoryUsage(ICrySizer* pSizer)
             // Texture
             for (size_t nCount = 0; nCount < EFTT_MAX; ++nCount)
             {
-                SEfResTexture*  piTextureResource(piResources->GetTexture(nCount));
+                SEfResTexture*  piTextureResource(piResources->GetTextureResource(nCount));
                 if (piTextureResource)
                 {
                     ITexture* piTexture = piTextureResource->m_Sampler.m_pITex;
@@ -148,16 +148,23 @@ void CMatInfo::ShutDown()
 {
     SAFE_DELETE(m_pMaterialLayers);
 
-    if (m_shaderItem.m_pShaderResources)
+    // When a group material has the same pointer to a shader resource object as
+    // one of its sub materials we don't want to call ReleaseCurrentShaderItem as
+    // the sub material will be calling it and releasing the shader resources twice
+    // can lead to a crash.
+    bool haveReferenceToSubmaterialShaderResources = false;
+    for (auto& subMaterial : m_subMtls)
     {
-        CCamera* pC = m_shaderItem.m_pShaderResources->GetCamera();
-        if (pC)
+        if (this->GetShaderItem().m_pShaderResources == subMaterial->GetShaderItem().m_pShaderResources)
         {
-            delete pC;
+            haveReferenceToSubmaterialShaderResources = true;
+            break;
         }
     }
-
-    ReleaseCurrentShaderItem();
+    if (!haveReferenceToSubmaterialShaderResources)
+    {
+        ReleaseCurrentShaderItem();
+    }
     m_subMtls.clear();
 }
 
@@ -220,6 +227,18 @@ bool CMatInfo::IsDefault()
 }
 
 //////////////////////////////////////////////////////////////////////////
+bool CMatInfo::IsMaterialGroup() const
+{
+    return (m_Flags & MTL_FLAG_MULTI_SUBMTL) != 0 || m_subMtls.size() > 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CMatInfo::IsSubMaterial() const
+{
+    return (m_Flags & MTL_FLAG_PURE_CHILD) != 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CMatInfo::UpdateMaterialFlags()
 {
     m_Flags &= ~(MTL_FLAG_REQUIRE_FORWARD_RENDERING | MTL_FLAG_REQUIRE_NEAREST_CUBEMAP);
@@ -233,20 +252,21 @@ void CMatInfo::UpdateMaterialFlags()
         const bool bIsGlass = m_shaderItem.m_pShader->GetShaderType() == eST_Glass;
         const bool bIsWater = m_shaderItem.m_pShader->GetShaderType() == eST_Water;
         const bool bIsEye = strcmp(m_shaderItem.m_pShader->GetName(), "Eye") == 0;
+        const bool bIsFur = m_shaderItem.m_pShader->GetShaderDrawType() == eSHDT_Fur;
 
         if (bAlphaBlended && !(m_shaderItem.m_pShader->GetFlags2() & EF2_NODRAW) && !(m_shaderItem.m_pShader->GetFlags() & EF_DECAL))
         {
             m_Flags |= MTL_FLAG_REQUIRE_FORWARD_RENDERING;
         }
-        else if (bIsHair || bIsGlass)
+        else if (bIsHair || bIsGlass || bIsFur)
         {
             m_Flags |= MTL_FLAG_REQUIRE_FORWARD_RENDERING;
         }
 
         if ((bAlphaBlended || bIsHair || bIsGlass || bIsWater || bIsEye) &&
             (pRendShaderResources) &&
-            (pRendShaderResources->GetTexture(EFTT_ENV)) &&
-            (pRendShaderResources->GetTexture(EFTT_ENV)->m_Sampler.m_eTexType == eTT_NearestCube))
+            (pRendShaderResources->GetTextureResource(EFTT_ENV)) &&
+            (pRendShaderResources->GetTextureResource(EFTT_ENV)->m_Sampler.m_eTexType == eTT_NearestCube))
         {
             m_Flags |= MTL_FLAG_REQUIRE_NEAREST_CUBEMAP;
         }
@@ -286,7 +306,7 @@ void CMatInfo::SetShaderItem(const SShaderItem& _ShaderItem)
     ReleaseCurrentShaderItem();
 
     m_shaderItem = _ShaderItem;
-    gEnv->pRenderer->UpdateShaderItem(&m_shaderItem);
+    gEnv->pRenderer->UpdateShaderItem(&m_shaderItem, this);
 
     UpdateMaterialFlags();
 
@@ -310,7 +330,7 @@ void CMatInfo::AssignShaderItem(const SShaderItem& _ShaderItem)
     ReleaseCurrentShaderItem();
 
     m_shaderItem = _ShaderItem;
-    gEnv->pRenderer->UpdateShaderItem(&m_shaderItem);
+    gEnv->pRenderer->UpdateShaderItem(&m_shaderItem, this);
 
     UpdateMaterialFlags();
 }
@@ -423,16 +443,14 @@ bool CMatInfo::AreTexturesStreamedIn(const int nMinPrecacheRoundIds[MAX_STREAM_P
     // Check this material
     if (IRenderShaderResources* pShaderResources = GetShaderItem().m_pShaderResources)
     {
-        for (int t = 0; t < EFTT_MAX; t++)
+        for (auto iter = pShaderResources->GetTexturesResourceMap()->begin(); iter != pShaderResources->GetTexturesResourceMap()->end(); ++iter)
         {
-            if (SEfResTexture* pTextureResource = pShaderResources->GetTexture(t))
+            SEfResTexture*  pTextureResource = &(iter->second);
+            if (ITexture*   pTexture = pTextureResource->m_Sampler.m_pITex)
             {
-                if (ITexture*   pTexture = pTextureResource->m_Sampler.m_pITex)
+                if (!pTexture->IsStreamedIn(nMinPrecacheRoundIds))
                 {
-                    if (!pTexture->IsStreamedIn(nMinPrecacheRoundIds))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
         }
@@ -591,10 +609,7 @@ void CMatInfo::Copy(_smart_ptr<IMaterial> pMtlDest, EMaterialCopyFlags flags)
         SInputShaderResources idsTex(siDstTex.m_pShaderResources);
         if (!(flags & MTL_COPY_TEXTURES))
         {
-            for (int n = 0; n < EFTT_MAX; n++)
-            {
-                isr.m_Textures[n] = idsTex.m_Textures[n];
-            }
+            isr.m_TexturesResourcesMap = idsTex.m_TexturesResourcesMap;
         }
         SShaderItem siDst(GetRenderer()->EF_LoadShaderItem(siSrc.m_pShader->GetName(), false, 0, &isr, siSrc.m_pShader->GetGenerationMask()));
         pMatInfo->AssignShaderItem(siDst);
@@ -604,9 +619,9 @@ void CMatInfo::Copy(_smart_ptr<IMaterial> pMtlDest, EMaterialCopyFlags flags)
 
 
 //////////////////////////////////////////////////////////////////////////
-CMatInfo* CMatInfo::Clone()
+_smart_ptr<CMatInfo> CMatInfo::Clone()
 {
-    CMatInfo* pMatInfo = new CMatInfo;
+    _smart_ptr<CMatInfo> pMatInfo = new CMatInfo;
 
     pMatInfo->m_sMaterialName = m_sMaterialName;
     pMatInfo->m_sUniqueMaterialName = m_sUniqueMaterialName;
@@ -689,8 +704,37 @@ size_t CMatInfo::GetResourceMemoryUsage(ICrySizer* pSizer)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam /*= false*/)
+bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam /*= false*/, int materialIndex /*= 0*/)
 {
+    //For a material group, we need to set the param to a sub-material specified by materialIndex
+    if (IsMaterialGroup())
+    {
+        int subMtlCount = GetSubMtlCount();
+        if (materialIndex >= 0 && materialIndex < subMtlCount)
+        {
+            IMaterial* subMtl = GetSubMtl(materialIndex);
+            if (subMtl)
+            {
+                return subMtl->SetGetMaterialParamFloat(sParamName, v, bGet, allowShaderParam);
+            }
+            else
+            {
+                AZ_Error("Rendering", false, "Attempted to access an invalid Sub-Material at index %d.", materialIndex);
+                return false;
+            }
+        }
+        else
+        {
+            AZ_Error("Rendering", false, "Attempted to access an invalid Sub-Material at index %d. %d Materials are available.", materialIndex, subMtlCount);
+            return false;
+        }
+    }
+    else if (materialIndex > 0)
+    {
+        AZ_Warning("Rendering", false, "Setting a parameter on a single Material does not require a Material Index.");
+    }
+
+    //For a single material, we need to make sure it has all the shader resources we need
     IRenderShaderResources* pRendShaderRes = m_shaderItem.m_pShaderResources;
     if (!pRendShaderRes)
     {
@@ -758,7 +802,7 @@ bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool b
         // since "glow" is a post effect it needs to be updated here
         if (bEmissive != pRendShaderRes->IsEmissive())
         {
-            GetRenderer()->ForceUpdateShaderItem(&m_shaderItem);
+            GetRenderer()->ForceUpdateShaderItem(&m_shaderItem, this);
         }
 
         pRendShaderRes->UpdateConstants(m_shaderItem.m_pShader);
@@ -769,12 +813,12 @@ bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool b
     return bOk;
 }
 
-bool CMatInfo::SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam /*= false*/)
+bool CMatInfo::SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam /*= false*/, int materialIndex /*= 0*/)
 {
     static const float defaultAlpha = 1.0f;
 
     Vec4 vec4(v, defaultAlpha);
-    const bool bOk = SetGetMaterialParamVec4(sParamName, vec4, bGet, allowShaderParam);
+    const bool bOk = SetGetMaterialParamVec4(sParamName, vec4, bGet, allowShaderParam, materialIndex);
 
     if(bOk && bGet)
     {
@@ -786,8 +830,37 @@ bool CMatInfo::SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGe
     return bOk;
 }
 
-bool CMatInfo::SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam /*= false*/)
+bool CMatInfo::SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam /*= false*/, int materialIndex /*= 0*/)
 {
+    //For a material group, we need to set the param to a sub-material specified by materialIndex
+    if (IsMaterialGroup())
+    {
+        int subMtlCount = GetSubMtlCount();
+        if (materialIndex >= 0 && materialIndex < subMtlCount)
+        {
+            IMaterial* subMtl = GetSubMtl(materialIndex);
+            if (subMtl)
+            {
+                return subMtl->SetGetMaterialParamVec4(sParamName, v, bGet, allowShaderParam);
+            }
+            else
+            {
+                AZ_Error("Rendering", false, "Attempted to access an invalid Sub-Material at index %d.", materialIndex);
+                return false;
+            }
+        }
+        else
+        {
+            AZ_Error("Rendering", false, "Attempted to access an invalid Sub-Material at index %d. %d Materials are available.", materialIndex, subMtlCount);
+            return false;
+        }
+    }
+    else if (materialIndex > 0)
+    {
+        AZ_Warning("Rendering", false, "Setting a parameter on a single Material does not require a Material Index.");
+    }
+
+    //For a single material, we need to make sure it has all the shader resources we need
     IRenderShaderResources* pRendShaderRes = m_shaderItem.m_pShaderResources;
     if (!pRendShaderRes)
     {
@@ -862,23 +935,15 @@ void CMatInfo::SetDirty(bool dirty /*= true*/)
 
 bool CMatInfo::IsDirty() const
 {
-    return m_isDirty;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CMatInfo::SetCamera(CCamera& cam)
-{
-    if (!m_shaderItem.m_pShaderResources)
+    bool isChildrenDirty = false;
+    if (IsMaterialGroup())
     {
-        return;
+        for (int i = 0 ; i <  m_subMtls.size(); i ++)
+        {
+            isChildrenDirty |= m_subMtls[i]->IsDirty();
+        }
     }
-
-    CCamera* pC = m_shaderItem.m_pShaderResources->GetCamera();
-    if (!pC)
-    {
-        pC = new CCamera;
-    }
-    m_shaderItem.m_pShaderResources->SetCamera(pC);
+    return m_isDirty | isChildrenDirty;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1107,29 +1172,29 @@ void CMatInfo::DisableTextureStreaming()
         _smart_ptr<IMaterial> subMaterial = GetSafeSubMtl(subMaterialId);
         if (subMaterial)
         {
-            const SShaderItem& shaderItem = subMaterial->GetShaderItem();
-            if (shaderItem.m_pShaderResources)
+            const SShaderItem&      shaderItem = subMaterial->GetShaderItem();
+            IRenderShaderResources* pSHRes = shaderItem.m_pShaderResources;
+
+            if (pSHRes)
             {
                 // Iterate through each texture in the material
-                for (int textureSlot = 0; textureSlot < EFTT_MAX; ++textureSlot)
+                for ( auto& iter : *(pSHRes->GetTexturesResourceMap()) )
                 {
-                    SEfResTexture* shaderResourceTexture = shaderItem.m_pShaderResources->GetTexture(textureSlot);
-                    if (shaderResourceTexture)
+                    SEfResTexture*  pTextureRes = &(iter.second);
+                    uint16          textureSlot = iter.first;
+                    uint32          textureFlags = FT_DONT_STREAM;
+
+                    if (textureSlot == EFTT_SMOOTHNESS || textureSlot == EFTT_SECOND_SMOOTHNESS)
                     {
-                        uint32 textureFlags = FT_DONT_STREAM;
+                        textureFlags |= FT_ALPHA;
+                    }
 
-                        if (textureSlot == EFTT_SMOOTHNESS || textureSlot == EFTT_SECOND_SMOOTHNESS)
-                        {
-                            textureFlags |= FT_ALPHA;
-                        }
-
-                        // Calling load texture here will not actually re-create/re-load an existing texture. It will simply toggle streaming off
-                        ITexture* texture = gEnv->pRenderer->EF_LoadTexture(shaderResourceTexture->m_Name, textureFlags);
-                        // Call release to decrement the ref count, otherwise the texture will leak when switching between maps
-                        if (texture)
-                        {
-                            texture->Release();
-                        }
+                    // Calling load texture here will not actually re-create/re-load an existing texture. It will simply toggle streaming off
+                    ITexture*       texture = gEnv->pRenderer->EF_LoadTexture(pTextureRes->m_Name, textureFlags);
+                    // Call release to decrement the ref count, otherwise the texture will leak when switching between maps
+                    if (texture)
+                    {
+                        texture->Release();
                     }
                 }
             }
@@ -1257,21 +1322,21 @@ int CMatInfo::GetTextureMemoryUsage(ICrySizer* pSizer, int nSubMtlSlot)
             continue;
         }
 
-        for (int j = 0; j < EFTT_MAX; j++)
+        for ( auto& iter : *(pRes->GetTexturesResourceMap()) )
         {
-            SEfResTexture* pResTexure = pRes->GetTexture(j);
-            if (!pResTexure || !pResTexure->m_Sampler.m_pITex)
+            SEfResTexture*  pResTexure = &(iter.second);
+            if (!pResTexure->m_Sampler.m_pITex)
             {
                 continue;
             }
 
-            ITexture* pTexture = pResTexure->m_Sampler.m_pITex;
+            ITexture*       pTexture = pResTexure->m_Sampler.m_pITex;
             if (!pTexture)
             {
                 continue;
             }
 
-            if (used.find(pTexture) != used.end()) // Already used in size calculation.
+            if (used.find(pTexture) != used.end())  // Already used in size calculation.
             {
                 continue;
             }
@@ -1319,9 +1384,8 @@ void CMatInfo::SetKeepLowResSysCopyForDiffTex()
             continue;
         }
 
-        int j = EFTT_DIFFUSE;
         {
-            SEfResTexture* pResTexure = pRes->GetTexture(j);
+            SEfResTexture* pResTexure = pRes->GetTextureResource(EFTT_DIFFUSE);
             if (!pResTexure || !pResTexure->m_Sampler.m_pITex)
             {
                 continue;
@@ -1374,14 +1438,14 @@ CryCriticalSection& CMatInfo::GetSubMaterialResizeLock()
 void CMatInfo::UpdateShaderItems()
 {
     IRenderer* pRenderer = gEnv->pRenderer;
-    pRenderer->UpdateShaderItem(&m_shaderItem);
+    pRenderer->UpdateShaderItem(&m_shaderItem, this);
 
     for (int  i = 0; i < (int)m_subMtls.size(); ++i)
     {
         CMatInfo* pSubMaterial = m_subMtls[i];
         if (pSubMaterial)
         {
-            pRenderer->UpdateShaderItem(&pSubMaterial->m_shaderItem);
+            pRenderer->UpdateShaderItem(&pSubMaterial->m_shaderItem, this);
         }
     }
 }
@@ -1389,14 +1453,14 @@ void CMatInfo::UpdateShaderItems()
 void CMatInfo::RefreshShaderResourceConstants()
 {
     IRenderer* pRenderer = gEnv->pRenderer;
-    pRenderer->RefreshShaderResourceConstants(&m_shaderItem);
+    pRenderer->RefreshShaderResourceConstants(&m_shaderItem, this);
 
     for (int  i = 0; i < (int)m_subMtls.size(); ++i)
     {
         CMatInfo* pSubMaterial = m_subMtls[i];
         if (pSubMaterial)
         {
-            pRenderer->RefreshShaderResourceConstants(&pSubMaterial->m_shaderItem);
+            pRenderer->RefreshShaderResourceConstants(&pSubMaterial->m_shaderItem, this);
         }
     }
 }

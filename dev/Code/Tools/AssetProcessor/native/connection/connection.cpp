@@ -19,10 +19,9 @@
 #include <QSettings>
 #include <QTime>
 
-Connection::Connection(AssetProcessor::PlatformConfiguration* config, bool inProxyMode, qintptr socketDescriptor, QString proxyAddr, int defaultProxyPort, QObject* parent)
+Connection::Connection(AssetProcessor::PlatformConfiguration* config, qintptr socketDescriptor, QObject* parent)
     : QObject(parent)
     , m_platformConfig(config)
-    , m_defaultProxyPort(defaultProxyPort)
 {
     Q_ASSERT(m_platformConfig);
     m_runElapsed = true;
@@ -62,17 +61,12 @@ Connection::Connection(AssetProcessor::PlatformConfiguration* config, bool inPro
     m_status = Disconnected;//default status
     m_autoConnect = false;//default status
     m_connectionId = 0; //default
-    SetProxyInformation(proxyAddr);
-    m_inProxyMode = inProxyMode;
-    m_connectionWorker = new AssetProcessor::ConnectionWorker(socketDescriptor, m_inProxyMode);
+    m_connectionWorker = new AssetProcessor::ConnectionWorker(socketDescriptor);
     m_connectionWorker->moveToThread(&m_connectionWorkerThread);
     m_connectionWorker->GetSocket().moveToThread(&m_connectionWorkerThread);
-    m_connectionWorker->GetProxySocket().moveToThread(&m_connectionWorkerThread);
 
     connect(this, &Connection::TerminateConnection, m_connectionWorker, &AssetProcessor::ConnectionWorker::RequestTerminate, Qt::DirectConnection);
     connect(this, &Connection::NormalConnectionRequested, m_connectionWorker, &AssetProcessor::ConnectionWorker::ConnectToEngine);
-    connect(this, &Connection::ProxyConnectionRequested, m_connectionWorker, &AssetProcessor::ConnectionWorker::ConnectProxySocket);
-    connect(this, &Connection::ProxyModeChanged, m_connectionWorker, &AssetProcessor::ConnectionWorker::SetProxyMode);
     connect(m_connectionWorker, &AssetProcessor::ConnectionWorker::Identifier, this, &Connection::SetIdentifier);
     connect(m_connectionWorker, &AssetProcessor::ConnectionWorker::AssetPlatform, this, &Connection::SetAssetPlatform);
     connect(m_connectionWorker, &AssetProcessor::ConnectionWorker::ConnectionDisconnected, this, &Connection::OnConnectionDisconnect, Qt::QueuedConnection);
@@ -95,10 +89,6 @@ void Connection::Activate(qintptr socketDescriptor)
         SetStatus(Connecting);
         // by invoking the ConnectSocket, we cause it to occur in the worker's thread
         QMetaObject::invokeMethod(m_connectionWorker, "ConnectSocket", Q_ARG(qintptr, socketDescriptor));
-        if (m_inProxyMode)
-        {
-            QMetaObject::invokeMethod(m_connectionWorker, "ConnectProxySocket", Q_ARG(QString, m_proxyAddress), Q_ARG(quint16, m_proxyPort));
-        }
     }
 }
 
@@ -263,11 +253,6 @@ void Connection::Connect()
     }
     m_connectionWorker->Reset();
 
-    if (m_inProxyMode)
-    {
-        Q_EMIT ProxyConnectionRequested(m_proxyAddress, m_proxyPort);
-    }
-
     Q_EMIT NormalConnectionRequested(m_ipAddress, m_port);
 }
 
@@ -398,52 +383,6 @@ void Connection::UpdateElapsed()
     }
 }
 
-void Connection::SetProxyMode(bool proxyMode)
-{
-    if (m_inProxyMode == proxyMode)
-    {
-        return;
-    }
-    m_inProxyMode = proxyMode;
-
-    Q_EMIT ProxyModeChanged(m_inProxyMode);
-    //if connection is connected than we need to disconnect
-    if (m_status == Connected)
-    {
-        Q_EMIT DisconnectConnection(m_connectionId);
-    }
-}
-
-void Connection::SetProxyInformation(QString proxyInfo)
-{
-    QString proxyAddr;
-    quint16 proxyPort = 0;
-    if (!proxyInfo.isEmpty())
-    {
-        QStringList proxyStrings = proxyInfo.split(":");
-
-        if (proxyStrings.size() > 1)
-        {
-            proxyAddr = proxyStrings.at(0);
-            proxyPort = static_cast<quint16>(proxyStrings.at(1).toUInt());
-        }
-        else
-        {
-            proxyAddr = proxyInfo;
-            proxyPort = m_defaultProxyPort;
-        }
-    }
-
-    if (proxyAddr != m_proxyAddress || proxyPort != m_proxyPort)
-    {
-        m_proxyAddress = proxyAddr;
-        m_proxyPort = proxyPort;
-        if (m_status == Connected && m_inProxyMode)
-        {
-            Q_EMIT DisconnectConnection(m_connectionId);
-        }
-    }
-}
 
 unsigned int Connection::ConnectionId() const
 {
@@ -879,6 +818,58 @@ size_t Connection::SendRawPerPlatform(unsigned int type, unsigned int serial, co
     }
 
     return 0;
+}
+
+AZ::u32 Connection::GetNextSerial()
+{
+    static AZStd::atomic_uint serial(AzFramework::AssetSystem::DEFAULT_SERIAL);
+
+    AZ::u32 nextSerial = ++serial;
+    
+    // Avoid special-case serials
+    return (nextSerial & AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG
+        || nextSerial == AzFramework::AssetSystem::DEFAULT_SERIAL
+        || nextSerial == AzFramework::AssetSystem::NEGOTIATION_SERIAL)
+        ? GetNextSerial() // re-roll, we picked a special serial
+        : nextSerial;
+}
+
+unsigned int Connection::SendRequest(const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const AssetProcessor::ConnectionBusTraits::ResponseCallback& callback)
+{
+    AZ::u32 serial = GetNextSerial();
+
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+        m_responseHandlerMap.insert({ serial, callback });
+    }
+
+    Send(serial, message);
+
+    return serial;
+}
+
+size_t Connection::SendResponse(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message)
+{
+    serial |= AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG; // Set top bit to indicate this is a response
+    return Send(serial, message);
+}
+
+void Connection::InvokeResponseHandler(AZ::u32 serial, AZ::u32 type, QByteArray data)
+{
+    AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+    auto itr = m_responseHandlerMap.find(serial);
+
+    if (itr != m_responseHandlerMap.end())
+    {
+        itr->second(type, data);
+        m_responseHandlerMap.erase(itr);
+    }
+}
+
+void Connection::RemoveResponseHandler(unsigned int serial)
+{
+    AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+    m_responseHandlerMap.erase(serial);
 }
 
 bool Connection::InitiatedConnection() const

@@ -65,6 +65,7 @@ namespace AzToolsFramework
 
             void BuildGameEntity(AZ::Entity* gameEntity) override;
             void FinishedBuildingGameEntity(AZ::Entity* gameEntity) override;
+            void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 
             AZ::Component* GetTemplate() const { return m_template; }
 

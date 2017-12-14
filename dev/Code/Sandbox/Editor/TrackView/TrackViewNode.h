@@ -171,6 +171,7 @@ public:
 
     // Get the sequence of this node
     CTrackViewSequence* GetSequence();
+    const CTrackViewSequence* GetSequenceConst() const;
 
     // Get parent
     CTrackViewNode* GetParentNode() const { return m_pParentNode; }

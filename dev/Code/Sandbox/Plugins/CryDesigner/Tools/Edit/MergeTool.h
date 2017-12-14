@@ -33,7 +33,7 @@ public:
 
     void Enter() override;
 
-    static void MergePolygons(CD::SMainContext& mc);
+    static void MergePolygons(const CD::SMainContext& mc);
 
 private:
     void MergeObjects();

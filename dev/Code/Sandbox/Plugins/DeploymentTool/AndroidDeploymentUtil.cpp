@@ -96,7 +96,7 @@ void AndroidDeploymentUtil::BuildAndDeploy()
     ConfigureAssetProcessor();
 
     AZStd::string deploymentOptions = GetDeployOptionsString(m_cfg);
-    AZStd::string buildCmd = AZStd::move(AZStd::string::format("%s %s build_android_armv7_%s_%s %s", g_wafCmd, deploymentOptions.c_str(), m_cfg.m_compiler.c_str(), m_cfg.m_buildConfiguration.c_str(), s_buildOptions));
+    AZStd::string buildCmd = AZStd::move(AZStd::string::format("%s %s build_android_armv7_clang_%s %s", g_wafCmd, deploymentOptions.c_str(), m_cfg.m_buildConfiguration.c_str(), s_buildOptions));
 
     if (!m_cmdLauncher->AsyncProcess(buildCmd.c_str(), m_deployProcess))
     {
@@ -109,7 +109,7 @@ void AndroidDeploymentUtil::DeployFromFile(const AZStd::string& buildPath)
     ConfigureAssetProcessor();
 
     AZStd::string deploymentOptions = GetDeployOptionsString(m_cfg);
-    AZStd::string deployCmd = AZStd::move(AZStd::string::format("%s %s deploy_android_armv7_%s_%s", g_wafCmd, deploymentOptions.c_str(), m_cfg.m_compiler.c_str(), m_cfg.m_buildConfiguration.c_str()));
+    AZStd::string deployCmd = AZStd::move(AZStd::string::format("%s %s deploy_android_armv7_clang_%s", g_wafCmd, deploymentOptions.c_str(), m_cfg.m_buildConfiguration.c_str()));
 
     if (!m_cmdLauncher->AsyncProcess(deployCmd.c_str(), m_deployProcess))
     {

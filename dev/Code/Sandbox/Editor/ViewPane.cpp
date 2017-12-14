@@ -351,7 +351,7 @@ void CLayoutViewPane::ShowTitleMenu()
         connect(action, &QAction::triggered, layout, &CLayoutWnd::MaximizeViewport);
     }
     action->setChecked(IsFullscreen());
-    QMenu* viewsMenu = root.addMenu(tr("Viewport Type"));
+
     action = root.addAction(tr("Configure Layout..."));
 
     // NOTE: this must be a QueuedConnection, so that it executes after the menu is deleted.
@@ -362,6 +362,9 @@ void CLayoutViewPane::ShowTitleMenu()
     // after the QMenu is cleaned up on the stack.
     connect(action, &QAction::triggered, this, &CLayoutViewPane::OnMenuLayoutConfig, Qt::QueuedConnection);
 
+#ifdef FEATURE_ORTHOGRAPHIC_VIEW
+    QMenu* viewsMenu = root.addMenu(tr("Viewport Type"));
+    
     QtViewPanes viewports = QtViewPaneManager::instance()->GetRegisteredViewportPanes();
 
     for (auto it = viewports.cbegin(), end = viewports.cend(); it != end; ++it)
@@ -372,7 +375,7 @@ void CLayoutViewPane::ShowTitleMenu()
         action->setChecked(m_viewPaneClass == pane.m_name);
         connect(action, &QAction::triggered, [pane, this] { OnMenuViewSelected(pane.m_name); });
     }
-
+#endif
     root.exec(QCursor::pos());
 }
 
@@ -495,8 +498,9 @@ REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyUpdateViewPort, general, update_view
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyResizeViewport, general, resize_viewport,
     "Resizes the viewport resolution to a given width & hegiht.",
     "general.resize_viewport(int width, int height)");
+#ifdef FEATURE_ORTHOGRAPHIC_VIEW
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyBindViewport, general, bind_viewport,
     "Binds the viewport to a specific view like 'Top', 'Front', 'Perspective'.",
     "general.bind_viewport(str viewportName)");
-
+#endif
 #include <ViewPane.moc>

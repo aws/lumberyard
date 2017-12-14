@@ -15,7 +15,6 @@
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/std/string/string_view.h>
 
-#include <AzFramework/Entity/EntityReference.h>
 
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/GraphCanvasPropertyBus.h>
@@ -80,8 +79,12 @@ namespace GraphCanvas
         // SceneMemberRequestBus
         void SetScene(const AZ::EntityId& sceneId) override;
         void ClearScene(const AZ::EntityId& oldSceneId) override;
+        void SignalMemberSetupComplete() override;
 
         AZ::EntityId GetScene() const override;
+
+        bool LockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
+        void UnlockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
         ////
 
         // SceneMemberNotificationsBus
@@ -124,6 +127,8 @@ namespace GraphCanvas
 
         //! Serialized configuration settings
         NodeConfiguration m_configuration;
+
+        AZ::EntityId m_lockingSceneMember;
 
         //! Stores custom user data for this node
         AZStd::any m_userData;

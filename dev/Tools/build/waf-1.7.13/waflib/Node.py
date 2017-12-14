@@ -673,6 +673,13 @@ class Node(object):
 		if lst and Utils.is_win32 and len(lst[0]) == 2 and lst[0].endswith(':'):
 			lst[0] = lst[0][0]
 
+		expanded_engine_path = os.path.normcase('/'.join(self.ctx.engine_node_list))
+		expanded_path = os.path.normcase('/'.join(lst))
+		if expanded_path.startswith(expanded_engine_path):
+			# If the path starts with the engine root, then use a common __engine__ root instead
+			sub_lst = lst[len(self.ctx.engine_node_list):]
+			return self.ctx.bldnode.make_node(['__eng__'] + sub_lst)
+
 		# Try to use the shortest possible path between the length of the hash and the length of the original path.
 		# This will help minimize the chances of having the path too long for certain linkers (Microsoft @ 260 characters) to handle
 		expanded_path = '/'.join(lst)
@@ -778,7 +785,12 @@ class Node(object):
 		Return the path seen from the launch directory.
 		Can be used for opening files easily (copy-paste in the console).
 		"""
-		return self.path_from(self.ctx.launch_node())
+		if self.is_child_of(self.ctx.engine_node):
+			return self.path_from(self.ctx.engine_node)
+		elif self.is_child_of(self.ctx.launch_node()):
+			return self.path_from(self.ctx.launch_node())
+		else:
+			return self.abspath()
 
 	def bldpath(self):
 		"Path seen from the build directory default/src/foo.cpp"

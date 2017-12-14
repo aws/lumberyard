@@ -20,7 +20,7 @@
 // For non-windows platforms need to define the formats so that the ImageExtension
 // class used by the editor can have access to these
 
-#if defined(AZ_PLATFORM_APPLE) || defined(OPENGL) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_PLATFORM_APPLE) || defined(OPENGL) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
 
 #define DXGI_FORMAT_DEFINED 1
 

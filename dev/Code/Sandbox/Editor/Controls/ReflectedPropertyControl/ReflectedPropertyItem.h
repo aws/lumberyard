@@ -143,14 +143,14 @@ protected:
     PropertyType m_type;
 
     //The variable being edited.
-    TSmartPtr<IVariable> m_pVariable;
+    _smart_ptr<IVariable> m_pVariable;
 
     //holds the CReflectedVar and syncs its value with IVariable when either changes
     ReflectedVarAdapter* m_reflectedVarAdapter;
     ReflectedVarContainerAdapter* m_reflectedVarContainerAdapter;
 
     ReflectedPropertyItem* m_parent;
-    std::vector<TSmartPtr<ReflectedPropertyItem> > m_childs;
+    std::vector<_smart_ptr<ReflectedPropertyItem> > m_childs;
 
     ReflectedPropertyControl* m_propertyCtrl;
 

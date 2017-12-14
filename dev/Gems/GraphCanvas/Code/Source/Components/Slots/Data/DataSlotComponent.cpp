@@ -65,10 +65,7 @@ namespace GraphCanvas
             dataSlot = entity->CreateComponent<DataSlotComponent>(dataTypeId, slotConfiguration);
         }
 
-        dataSlot->SetNode(nodeId);
-
         entity->CreateComponent<DataSlotLayoutComponent>();
-
         entity->CreateComponent<StylingComponent>(Styling::Elements::DataSlot, nodeId, "");
 
         SlotConnectionFilterComponent* connectionFilter = entity->CreateComponent<SlotConnectionFilterComponent>();

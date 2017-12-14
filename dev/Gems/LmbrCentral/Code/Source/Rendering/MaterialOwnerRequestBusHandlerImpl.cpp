@@ -84,8 +84,15 @@ namespace LmbrCentral
     {
         if (m_renderNode)
         {
-            m_clonedMaterial = nullptr;
-            m_renderNode->SetMaterial(material);
+            if (material && material->IsSubMaterial())
+            {
+                 AZ_Error("MaterialOwnerRequestBus", false, "Material Owner cannot be given a Sub-Material.");
+            }
+            else
+            {
+                m_clonedMaterial = nullptr;
+                m_renderNode->SetMaterial(material);
+            }
         }
     }
 
@@ -152,7 +159,7 @@ namespace LmbrCentral
         }
     }
 
-    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value)
+    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value, int materialId)
     {
         if (GetMaterial())
         {
@@ -161,13 +168,14 @@ namespace LmbrCentral
                 CloneMaterial();
             }
 
+            const int materialIndex = materialId - 1;
             Vec4 vec4(value.GetX(), value.GetY(), value.GetZ(), value.GetW());
-            GetMaterial()->SetGetMaterialParamVec4(name.c_str(), vec4, false, true);
-
+            const bool success = GetMaterial()->SetGetMaterialParamVec4(name.c_str(), vec4, false, true, materialIndex);
+            AZ_Error("Material Owner", success, "Failed to set Material ID %d, param '%s'.", materialId, name.c_str());
         }
     }
 
-    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value)
+    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value, int materialId)
     {
         if (GetMaterial())
         {
@@ -176,13 +184,14 @@ namespace LmbrCentral
                 CloneMaterial();
             }
 
+            const int materialIndex = materialId - 1;
             Vec3 vec3(value.GetX(), value.GetY(), value.GetZ());
-            GetMaterial()->SetGetMaterialParamVec3(name.c_str(), vec3, false, true);
-
+            const bool success = GetMaterial()->SetGetMaterialParamVec3(name.c_str(), vec3, false, true, materialIndex);
+            AZ_Error("Material Owner", success, "Failed to set Material ID %d, param '%s'.", materialId, name.c_str());
         }
     }
 
-    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value)
+    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value, int materialId)
     {
         if (GetMaterial())
         {
@@ -202,13 +211,14 @@ namespace LmbrCentral
                 CloneMaterial();
             }
 
+            const int materialIndex = materialId - 1;
             Vec4 vec4(value.GetR(), value.GetG(), value.GetB(), value.GetA());
-            GetMaterial()->SetGetMaterialParamVec4(name.c_str(), vec4, false, true);
-
+            const bool success = GetMaterial()->SetGetMaterialParamVec4(name.c_str(), vec4, false, true, materialIndex);
+            AZ_Error("Material Owner", success, "Failed to set Material ID %d, param '%s'.", materialId, name.c_str());
         }
     }
 
-    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamFloat(const AZStd::string& name, float value)
+    void MaterialOwnerRequestBusHandlerImpl::SetMaterialParamFloat(const AZStd::string& name, float value, int materialId  /*= 0*/)
     {
         if (GetMaterial())
         {
@@ -217,71 +227,88 @@ namespace LmbrCentral
                 CloneMaterial();
             }
 
-            GetMaterial()->SetGetMaterialParamFloat(name.c_str(), value, false, true);
-
+            const int materialIndex = materialId - 1;
+            const bool success = GetMaterial()->SetGetMaterialParamFloat(name.c_str(), value, false, true, materialIndex);
+            AZ_Error("Material Owner", success, "Failed to set Material ID %d, param '%s'.", materialId, name.c_str());
         }
     }
 
-    AZ::Vector4 MaterialOwnerRequestBusHandlerImpl::GetMaterialParamVector4(const AZStd::string& name)
+    AZ::Vector4 MaterialOwnerRequestBusHandlerImpl::GetMaterialParamVector4(const AZStd::string& name, int materialId)
     {
         AZ::Vector4 value = AZ::Vector4::CreateZero();
 
         MaterialPtr material = GetMaterial();
         if (material)
         {
+            const int materialIndex = materialId - 1;
             Vec4 vec4;
-            if (material->SetGetMaterialParamVec4(name.c_str(), vec4, true, true))
+            if (material->SetGetMaterialParamVec4(name.c_str(), vec4, true, true, materialIndex))
             {
                 value.Set(vec4.x, vec4.y, vec4.z, vec4.w);
+            }
+            else
+            {
+                AZ_Error("Material Owner", false, "Failed to read Material ID %d, param '%s'.", materialId, name.c_str());
             }
         }
 
         return value;
     }
 
-    AZ::Vector3 MaterialOwnerRequestBusHandlerImpl::GetMaterialParamVector3(const AZStd::string& name)
+    AZ::Vector3 MaterialOwnerRequestBusHandlerImpl::GetMaterialParamVector3(const AZStd::string& name, int materialId)
     {
         AZ::Vector3 value = AZ::Vector3::CreateZero();
 
         MaterialPtr material = GetMaterial();
         if (material)
         {
+            const int materialIndex = materialId - 1;
             Vec3 vec3;
-            if (material->SetGetMaterialParamVec3(name.c_str(), vec3, true, true))
+            if (material->SetGetMaterialParamVec3(name.c_str(), vec3, true, true, materialIndex))
             {
                 value.Set(vec3.x, vec3.y, vec3.z);
+            }
+            else
+            {
+                AZ_Error("Material Owner", false, "Failed to read Material ID %d, param '%s'.", materialId, name.c_str());
             }
         }
 
         return value;
     }
 
-    AZ::Color MaterialOwnerRequestBusHandlerImpl::GetMaterialParamColor(const AZStd::string& name)
+    AZ::Color MaterialOwnerRequestBusHandlerImpl::GetMaterialParamColor(const AZStd::string& name, int materialId)
     {
         AZ::Color value = AZ::Color::CreateZero();
 
         MaterialPtr material = GetMaterial();
         if (material)
         {
+            const int materialIndex = materialId - 1;
             Vec4 vec4;
-            if (material->SetGetMaterialParamVec4(name.c_str(), vec4, true, true))
+            if (material->SetGetMaterialParamVec4(name.c_str(), vec4, true, true, materialIndex))
             {
                 value.Set(vec4.x, vec4.y, vec4.z, vec4.w);
+            }
+            else
+            {
+                AZ_Error("Material Owner", false, "Failed to read Material ID %d, param '%s'.", materialId, name.c_str());
             }
         }
 
         return value;
     }
 
-    float MaterialOwnerRequestBusHandlerImpl::GetMaterialParamFloat(const AZStd::string& name)
+    float MaterialOwnerRequestBusHandlerImpl::GetMaterialParamFloat(const AZStd::string& name, int materialId)
     {
         float value = 0.0f;
 
         MaterialPtr material = GetMaterial();
         if (material)
         {
-            material->SetGetMaterialParamFloat(name.c_str(), value, true, true);
-
+            const int materialIndex = materialId - 1;
+            const bool success = material->SetGetMaterialParamFloat(name.c_str(), value, true, true, materialIndex);
+            AZ_Error("Material Owner", success, "Failed to read Material ID %d, param '%s'.", materialId, name.c_str());
         }
 
         return value;

@@ -27,7 +27,7 @@ namespace ScriptCanvasEditor
     when the asset is removed from the file system. The reason the ScriptCanvasAssetHolder holder does not
     remove the asset reference itself is because the ScriptCanvasEditor MainWindow has a ScriptCanvasAssetHolder
     which it uses to maintain the asset data in memory. Therefore removing an open ScriptCanvasAsset from the file system
-    will remove the reference from the EditorScriptCanvasComponent, but not the reference from the MainWindow allowing the 
+    will remove the reference from the EditorScriptCanvasComponent, but not the reference from the MainWindow allowing the
     ScriptCanvas graph to still be modified while open
 
     Furthermore this component is responsible for invoking the ScriptCanvasEditor Graph Compile call in order to turn the loaded asset data
@@ -41,6 +41,7 @@ namespace ScriptCanvasEditor
         , private EditorScriptCanvasRequestBus::Handler
         , private EditorContextMenuRequestBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
+        , private EditorScriptCanvasAssetNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(EditorScriptCanvasComponent, "{C28E2D29-0746-451D-A639-7F113ECF5D72}", AzToolsFramework::Components::EditorComponentBase);
@@ -61,7 +62,6 @@ namespace ScriptCanvasEditor
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         void SetPrimaryAsset(const AZ::Data::AssetId&) override;
         //=====================================================================
-        void SetAsset(const AZ::Data::Asset<ScriptCanvasAsset>& asset) override;
         AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const override;
 
         //=====================================================================
@@ -75,6 +75,7 @@ namespace ScriptCanvasEditor
         // EditorContextMenuRequestBus
         AZ::EntityId GetGraphId() const override;
         //=====================================================================
+        AZ::EntityId GetGraphEntityId() const;
 
     protected:
         static void Reflect(AZ::ReflectContext* context);
@@ -98,6 +99,7 @@ namespace ScriptCanvasEditor
         // AssetCatalogEventBus
         void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
         //=====================================================================
+        void OnScriptCanvasAssetChanged(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
 
         //=====================================================================
         // EditorScriptCanvasRequestBus
@@ -107,6 +109,11 @@ namespace ScriptCanvasEditor
 
         void UpdateName();
 
+        //=====================================================================
+        // EditorScriptCanvasAssetNotificationBus
+        void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
+        void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
+        //=====================================================================
         AZStd::string m_name;
         ScriptCanvasAssetHolder m_scriptCanvasAssetHolder;
     };

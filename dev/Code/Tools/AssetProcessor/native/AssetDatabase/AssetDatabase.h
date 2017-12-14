@@ -165,6 +165,16 @@ namespace AssetProcessor
         bool CreateOrUpdateLegacySubID(AzToolsFramework::AssetDatabase::LegacySubIDsEntry& entry);  // create or overwrite operation.
         bool RemoveLegacySubID(AZ::s64 legacySubIDsEntryID);
         bool RemoveLegacySubIDsByProductID(AZ::s64 productID);
+
+        //ProductDependencies
+        bool GetProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
+        bool GetProductDependencyByProductDependencyID(AZ::s64 productDependencyID, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& productDependencyEntry);
+        bool GetProductDependenciesByProductID(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
+        bool GetDirectProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
+        bool GetAllProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
+        bool SetProductDependency(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
+        bool SetProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
+        bool RemoveProductDependencyByProductId(AZ::s64 productID);
  
     protected:
         void SetDatabaseVersion(AzToolsFramework::AssetDatabase::DatabaseVersion ver);

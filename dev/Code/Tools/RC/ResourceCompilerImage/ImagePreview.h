@@ -20,6 +20,7 @@ class CImageCompiler;
 class ImageObject;
 
 class QPainter;
+class QRect;
 
 // needs to be in the same order as in IDC_PREVIEWMODE
 enum EPreviewMode

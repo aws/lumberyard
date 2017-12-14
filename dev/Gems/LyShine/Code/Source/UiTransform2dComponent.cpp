@@ -25,6 +25,8 @@
 #include <LyShine/Bus/UiLayoutBus.h>
 
 #include "UiSerialize.h"
+#include "UiElementComponent.h"
+#include "UiCanvasComponent.h"
 
 namespace
 {
@@ -104,14 +106,38 @@ void UiTransform2dComponent::SetZRotation(float rotation)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::Vector2 UiTransform2dComponent::GetScale()
 {
-    return AZ::Vector2(m_scale.GetX(), m_scale.GetY());
+    return m_scale;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetScale(AZ::Vector2 scale)
 {
-    m_scale = AZ::Vector2(scale.GetX(), scale.GetY());
+    m_scale = scale;
     SetRecomputeTransformFlag();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetScaleX()
+{
+    return m_scale.GetX();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetScaleX(float scale)
+{
+    return SetScale(AZ::Vector2(scale, m_scale.GetY()));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetScaleY()
+{
+    return m_scale.GetY();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetScaleY(float scale)
+{
+    return SetScale(AZ::Vector2(m_scale.GetX(), scale));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +151,30 @@ void UiTransform2dComponent::SetPivot(AZ::Vector2 pivot)
 {
     m_pivot = pivot;
     SetRecomputeTransformFlag();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetPivotX()
+{
+    return m_pivot.GetX();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetPivotX(float pivot)
+{
+    return SetPivot(AZ::Vector2(pivot, m_pivot.GetY()));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetPivotY()
+{
+    return m_pivot.GetY();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetPivotY(float pivot)
+{
+    return SetPivot(AZ::Vector2(m_pivot.GetX(), pivot));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -158,14 +208,13 @@ AZ::Vector2 UiTransform2dComponent::GetViewportSpacePivot()
     AZ::Vector2 canvasSpacePivot = GetCanvasSpacePivotNoScaleRotate();
     AZ::Vector3 point3(canvasSpacePivot.GetX(), canvasSpacePivot.GetY(), 0.0f);
 
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (parentTransformComponent)
     {
         AZ::Matrix4x4 transform;
-        EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformToViewport, transform);
+        parentTransformComponent->GetTransformToViewport(transform);
 
-        point3 = transform * point3;
+        point3 = transform * point3;    
     }
 
     return AZ::Vector2(point3.GetX(), point3.GetY());
@@ -174,25 +223,8 @@ AZ::Vector2 UiTransform2dComponent::GetViewportSpacePivot()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::GetTransformToViewport(AZ::Matrix4x4& mat)
 {
-    // if we already computed the transform, don't recompute.
-    if (!m_recomputeTransform)
-    {
-        mat = m_transformToViewport;
-        return;
-    }
-
-    // first get the transform to canvas space
-    GetTransformToCanvasSpace(mat);
-
-    // then get the transform from canvas to viewport space
-    AZ::Matrix4x4 canvasToViewportMatrix;
-    EBUS_EVENT_ID_RESULT(canvasToViewportMatrix, GetCanvasEntityId(), UiCanvasBus, GetCanvasToViewportMatrix);
-
-    // add the transform to viewport space to the matrix
-    mat = canvasToViewportMatrix * mat;
-
-    m_transformToViewport = mat;
-    m_recomputeTransform = false;
+    RecomputeTransformIfNeeded();
+    mat = m_transformToViewport;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -203,7 +235,15 @@ void UiTransform2dComponent::GetTransformFromViewport(AZ::Matrix4x4& mat)
 
     // then get the transform from viewport to canvas space
     AZ::Matrix4x4 viewportToCanvasMatrix;
-    EBUS_EVENT_ID(GetCanvasEntityId(), UiCanvasBus, GetViewportToCanvasMatrix, viewportToCanvasMatrix);
+    if (IsFullyInitialized())
+    {
+        GetCanvasComponent()->GetViewportToCanvasMatrix(viewportToCanvasMatrix);
+    }
+    else
+    {
+        EmitNotInitializedWarning();
+        viewportToCanvasMatrix = AZ::Matrix4x4::CreateIdentity();
+    }
 
     // add the transform from viewport space to canvas space to the transform matrix
     mat = mat * viewportToCanvasMatrix;
@@ -212,9 +252,7 @@ void UiTransform2dComponent::GetTransformFromViewport(AZ::Matrix4x4& mat)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::RotateAndScalePoints(RectPoints& points)
 {
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    if (IsFullyInitialized() && GetElementComponent()->GetParent())
     {
         AZ::Matrix4x4 transform;
         GetTransformToViewport(transform);
@@ -228,10 +266,8 @@ void UiTransform2dComponent::GetCanvasSpacePoints(RectPoints& points)
 {
     GetCanvasSpacePointsNoScaleRotate(points);
 
-    // apply the transfrom to canvas space
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    // apply the transform to canvas space
+    if (IsFullyInitialized() && GetElementComponent()->GetParent())
     {
         AZ::Matrix4x4 transform;
         GetTransformToCanvasSpace(transform);
@@ -246,12 +282,11 @@ AZ::Vector2 UiTransform2dComponent::GetCanvasSpacePivot()
     AZ::Vector2 canvasSpacePivot = GetCanvasSpacePivotNoScaleRotate();
     AZ::Vector3 point3(canvasSpacePivot.GetX(), canvasSpacePivot.GetY(), 0.0f);
 
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (parentTransformComponent)
     {
         AZ::Matrix4x4 transform;
-        EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformToCanvasSpace, transform);
+        parentTransformComponent->GetTransformToCanvasSpace(transform);
 
         point3 = transform * point3;
     }
@@ -264,11 +299,10 @@ void UiTransform2dComponent::GetTransformToCanvasSpace(AZ::Matrix4x4& mat)
 {
     // this takes a matrix and builds the concatenation of this elements rotate and scale about the pivot
     // with the transforms for all parent elements into one 3x4 matrix.
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (parentTransformComponent)
     {
-        EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformToCanvasSpace, mat);
+        parentTransformComponent->GetTransformToCanvasSpace(mat);
 
         AZ::Matrix4x4 transformToParent;
         GetLocalTransform(transformToParent);
@@ -288,11 +322,10 @@ void UiTransform2dComponent::GetTransformFromCanvasSpace(AZ::Matrix4x4& mat)
     // with the transforms for all parent elements into one 3x4 matrix.
     // The result is an inverse transform that can be used to map from transformed space to non-transformed
     // space
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (parentTransformComponent)
     {
-        EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformFromCanvasSpace, mat);
+        parentTransformComponent->GetTransformFromCanvasSpace(mat);
 
         AZ::Matrix4x4 transformFromParent;
         GetLocalInverseTransform(transformFromParent);
@@ -345,38 +378,52 @@ AZ::Vector2 UiTransform2dComponent::GetCanvasSpacePivotNoScaleRotate()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::GetLocalTransform(AZ::Matrix4x4& mat)
 {
-    // this takes a matrix and builds the concatenation of this element's rotate and scale about the pivot
-    AZ::Vector2 pivot = GetCanvasSpacePivotNoScaleRotate();
-    AZ::Vector3 pivot3(pivot.GetX(), pivot.GetY(), 0);
+    if (HasScaleOrRotation())
+    {
+        // this takes a matrix and builds the concatenation of this element's rotate and scale about the pivot
+        AZ::Vector2 pivot = GetCanvasSpacePivotNoScaleRotate();
+        AZ::Vector3 pivot3(pivot.GetX(), pivot.GetY(), 0);
 
-    float rotRad = DEG2RAD(m_rotation);     // rotation
+        float rotRad = DEG2RAD(m_rotation);     // rotation
 
-    AZ::Vector2 scale = GetScaleAdjustedForDevice();
-    AZ::Vector3 scale3(scale.GetX(), scale.GetY(), 1);   // scale
+        AZ::Vector2 scale = GetScaleAdjustedForDevice();
+        AZ::Vector3 scale3(scale.GetX(), scale.GetY(), 1);   // scale
 
-    AZ::Matrix4x4 moveToPivotSpaceMat = AZ::Matrix4x4::CreateTranslation(-pivot3);
-    AZ::Matrix4x4 scaleMat = AZ::Matrix4x4::CreateScale(scale3);
-    AZ::Matrix4x4 rotMat = AZ::Matrix4x4::CreateRotationZ(rotRad);
-    AZ::Matrix4x4 moveFromPivotSpaceMat = AZ::Matrix4x4::CreateTranslation(pivot3);
+        AZ::Matrix4x4 moveToPivotSpaceMat = AZ::Matrix4x4::CreateTranslation(-pivot3);
+        AZ::Matrix4x4 scaleMat = AZ::Matrix4x4::CreateScale(scale3);
+        AZ::Matrix4x4 rotMat = AZ::Matrix4x4::CreateRotationZ(rotRad);
+        AZ::Matrix4x4 moveFromPivotSpaceMat = AZ::Matrix4x4::CreateTranslation(pivot3);
 
-    mat = moveFromPivotSpaceMat * rotMat * scaleMat * moveToPivotSpaceMat;
+        mat = moveFromPivotSpaceMat * rotMat * scaleMat * moveToPivotSpaceMat;
+    }
+    else
+    {
+        mat = AZ::Matrix4x4::CreateIdentity();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::GetLocalInverseTransform(AZ::Matrix4x4& mat)
 {
-    // this takes a matrix and builds the concatenation of this element's rotate and scale about the pivot
-    // The result is an inverse transform that can be used to map from parent space to non-transformed
-    // space
-    AZ::Vector2 pivot = GetCanvasSpacePivotNoScaleRotate();
-    AZ::Vector2 scale = GetScaleAdjustedForDevice();
-    GetInverseTransform(pivot, scale, m_rotation, mat);
+    if (HasScaleOrRotation())
+    {
+        // this takes a matrix and builds the concatenation of this element's rotate and scale about the pivot
+        // The result is an inverse transform that can be used to map from parent space to non-transformed
+        // space
+        AZ::Vector2 pivot = GetCanvasSpacePivotNoScaleRotate();
+        AZ::Vector2 scale = GetScaleAdjustedForDevice();
+        GetInverseTransform(pivot, scale, m_rotation, mat);
+    }
+    else
+    {
+        mat = AZ::Matrix4x4::CreateIdentity();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiTransform2dComponent::HasScaleOrRotation()
 {
-    return !(m_scale.GetX() == 1.0f && m_scale.GetY() == 1.0f && m_rotation == 0.0f);
+    return (m_scaleToDevice || m_scale.GetX() != 1.0f || m_scale.GetY() != 1.0f || m_rotation != 0.0f);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -388,9 +435,8 @@ AZ::Vector2 UiTransform2dComponent::GetViewportPosition()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetViewportPosition(const AZ::Vector2& position)
 {
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (!parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (!parentTransformComponent)
     {
         return; // this is the root element
     }
@@ -398,7 +444,7 @@ void UiTransform2dComponent::SetViewportPosition(const AZ::Vector2& position)
     AZ::Vector2 curCanvasSpacePosition = GetCanvasSpacePivotNoScaleRotate();
 
     AZ::Matrix4x4 transform;
-    EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformFromViewport, transform);
+    parentTransformComponent->GetTransformFromViewport(transform);
 
     AZ::Vector3 point3(position.GetX(), position.GetY(), 0.0f);
     point3 = transform * point3;
@@ -418,9 +464,8 @@ AZ::Vector2 UiTransform2dComponent::GetCanvasPosition()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetCanvasPosition(const AZ::Vector2& position)
 {
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (!parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (!parentTransformComponent)
     {
         return; // this is the root element
     }
@@ -428,7 +473,7 @@ void UiTransform2dComponent::SetCanvasPosition(const AZ::Vector2& position)
     AZ::Vector2 curCanvasSpacePosition = GetCanvasSpacePivotNoScaleRotate();
 
     AZ::Matrix4x4 transform;
-    EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformFromCanvasSpace, transform);
+    parentTransformComponent->GetTransformFromCanvasSpace(transform);
 
     AZ::Vector3 point3(position.GetX(), position.GetY(), 0.0f);
     point3 = transform * point3;
@@ -453,6 +498,34 @@ void UiTransform2dComponent::SetLocalPosition(const AZ::Vector2& position)
     m_offsets += position - curPosition;
 
     SetRecomputeTransformFlag();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetLocalPositionX()
+{
+    AZ::Vector2 position = GetCanvasSpacePivotNoScaleRotate() - GetCanvasSpaceAnchorsCenterNoScaleRotate();
+    return position.GetX();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetLocalPositionX(float position)
+{
+    AZ::Vector2 curPosition = GetLocalPosition();
+    SetLocalPosition(AZ::Vector2(position, curPosition.GetY()));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetLocalPositionY()
+{
+    AZ::Vector2 position = GetCanvasSpacePivotNoScaleRotate() - GetCanvasSpaceAnchorsCenterNoScaleRotate();
+    return position.GetY();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetLocalPositionY(float position)
+{
+    AZ::Vector2 curPosition = GetLocalPosition();
+    SetLocalPosition(AZ::Vector2(curPosition.GetX(), position));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -632,20 +705,27 @@ bool UiTransform2dComponent::BoundsAreOverlappingRect(const AZ::Vector2& bound0,
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetRecomputeTransformFlag()
 {
-    int numChildren = 0;
-    EBUS_EVENT_ID_RESULT(numChildren, GetEntityId(), UiElementBus, GetNumChildElements);
+    if (!IsFullyInitialized())
+    {
+        // If not initialized yet then transform will be recomputed after Fixup so no need to emit warning
+        return;
+    }
+
+    int numChildren = GetElementComponent()->GetNumChildElements();
     for (int i = 0; i < numChildren; i++)
     {
-        AZ::Entity* childElement = nullptr;
-        EBUS_EVENT_ID_RESULT(childElement, GetEntityId(), UiElementBus, GetChildElement, i);
-        if (childElement)
+        UiTransform2dComponent* childTransformComponent = GetChildTransformComponent(i);
+        if (childTransformComponent)
         {
-            EBUS_EVENT_ID(childElement->GetId(), UiTransformBus, SetRecomputeTransformFlag);
+            childTransformComponent->SetRecomputeTransformFlag();
         }
     }
 
     m_recomputeTransform = true;
     m_recomputeCanvasSpaceRect = true;
+
+    // Tell the canvas that there are elements needing a recompute
+    GetCanvasComponent()->SetTransformsNeedRecomputeFlag();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -686,6 +766,13 @@ void UiTransform2dComponent::NotifyAndResetCanvasSpaceRectChange()
         m_rectChangedByInitialization = false;
         EBUS_EVENT_ID(GetEntityId(), UiTransformChangeNotificationBus, OnCanvasSpaceRectChanged, GetEntityId(), prevRect, m_rect);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::RecomputeTransformsAndSendNotifications()
+{
+    NotifyAndResetCanvasSpaceRectChange();
+    RecomputeTransformIfNeeded();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -760,12 +847,10 @@ void UiTransform2dComponent::SetAnchors(Anchors anchors, bool adjustOffsets, boo
     if (adjustOffsets)
     {
         // now we need to adjust the offsets
-        AZ::Entity* parentElement = nullptr;
-        EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-        if (parentElement)
+        UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+        if (parentTransformComponent)
         {
-            AZ::Vector2 parentSize;
-            EBUS_EVENT_ID_RESULT(parentSize, parentElement->GetId(), UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
+            AZ::Vector2 parentSize = parentTransformComponent->GetCanvasSpaceSizeNoScaleRotate();
 
             m_offsets.m_left    -= parentSize.GetX() * (anchors.m_left - m_anchors.m_left);
             m_offsets.m_right   -= parentSize.GetX() * (anchors.m_right - m_anchors.m_right);
@@ -803,9 +888,8 @@ UiTransform2dComponent::Offsets UiTransform2dComponent::GetOffsets()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetOffsets(Offsets offsets)
 {
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (!parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (!parentTransformComponent)
     {
         return; // cannot set offsets on the root element
     }
@@ -821,7 +905,7 @@ void UiTransform2dComponent::SetOffsets(Offsets offsets)
     // being changed then we do enforce the "no flipping" rule.
 
     Rect parentRect;
-    EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetCanvasSpaceRectNoScaleRotate, parentRect);
+    parentTransformComponent->GetCanvasSpaceRectNoScaleRotate(parentRect);
 
     AZ::Vector2 parentSize = parentRect.GetSize();
 
@@ -950,6 +1034,57 @@ void UiTransform2dComponent::SetPivotAndAdjustOffsets(AZ::Vector2 pivot)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetLocalWidth(float width)
+{
+    if (m_anchors.m_left == m_anchors.m_right)
+    {
+        Offsets offsets = GetOffsets();
+        float curWidth = m_offsets.m_right - m_offsets.m_left;
+        float diff = width - curWidth;
+        offsets.m_left -= diff * m_pivot.GetX();
+        offsets.m_right += diff * (1.0f - m_pivot.GetX());
+        SetOffsets(offsets);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetLocalWidth()
+{
+    float width = 0;
+    if (m_anchors.m_left == m_anchors.m_right)
+    {
+        width = m_offsets.m_right - m_offsets.m_left;
+    }
+    return width;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::SetLocalHeight(float height)
+{
+    if (m_anchors.m_top == m_anchors.m_bottom)
+    {
+        Offsets offsets = GetOffsets();
+        float curHeight = m_offsets.m_bottom - m_offsets.m_top;
+        float diff = height - curHeight;
+        offsets.m_top -= diff * m_pivot.GetY();
+        offsets.m_bottom += diff * (1.0f - m_pivot.GetY());
+        SetOffsets(offsets);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTransform2dComponent::GetLocalHeight()
+{
+    float height = 0;
+    if (m_anchors.m_top == m_anchors.m_bottom)
+    {
+        height = m_offsets.m_bottom - m_offsets.m_top;
+    }
+    return height;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1049,8 +1184,16 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetZRotation", &UiTransformBus::Events::SetZRotation)
             ->Event("GetScale", &UiTransformBus::Events::GetScale)
             ->Event("SetScale", &UiTransformBus::Events::SetScale)
+            ->Event("GetScaleX", &UiTransformBus::Events::GetScaleX)
+            ->Event("SetScaleX", &UiTransformBus::Events::SetScaleX)
+            ->Event("GetScaleY", &UiTransformBus::Events::GetScaleY)
+            ->Event("SetScaleY", &UiTransformBus::Events::SetScaleY)
             ->Event("GetPivot", &UiTransformBus::Events::GetPivot)
             ->Event("SetPivot", &UiTransformBus::Events::SetPivot)
+            ->Event("GetPivotX", &UiTransformBus::Events::GetPivotX)
+            ->Event("SetPivotX", &UiTransformBus::Events::SetPivotX)
+            ->Event("GetPivotY", &UiTransformBus::Events::GetPivotY)
+            ->Event("SetPivotY", &UiTransformBus::Events::SetPivotY)
             ->Event("GetScaleToDevice", &UiTransformBus::Events::GetScaleToDevice)
             ->Event("SetScaleToDevice", &UiTransformBus::Events::SetScaleToDevice)
             ->Event("GetViewportPosition", &UiTransformBus::Events::GetViewportPosition)
@@ -1059,9 +1202,20 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetCanvasPosition", &UiTransformBus::Events::SetCanvasPosition)
             ->Event("GetLocalPosition", &UiTransformBus::Events::GetLocalPosition)
             ->Event("SetLocalPosition", &UiTransformBus::Events::SetLocalPosition)
+            ->Event("GetLocalPositionX", &UiTransformBus::Events::GetLocalPositionX)
+            ->Event("SetLocalPositionX", &UiTransformBus::Events::SetLocalPositionX)
+            ->Event("GetLocalPositionY", &UiTransformBus::Events::GetLocalPositionY)
+            ->Event("SetLocalPositionY", &UiTransformBus::Events::SetLocalPositionY)
             ->Event("MoveViewportPositionBy", &UiTransformBus::Events::MoveViewportPositionBy)
             ->Event("MoveCanvasPositionBy", &UiTransformBus::Events::MoveCanvasPositionBy)
-            ->Event("MoveLocalPositionBy", &UiTransformBus::Events::MoveLocalPositionBy);
+            ->Event("MoveLocalPositionBy", &UiTransformBus::Events::MoveLocalPositionBy)
+            ->VirtualProperty("ScaleX", "GetScaleX", "SetScaleX")
+            ->VirtualProperty("ScaleY", "GetScaleY", "SetScaleY")
+            ->VirtualProperty("PivotX", "GetPivotX", "SetPivotX")
+            ->VirtualProperty("PivotY", "GetPivotY", "SetPivotY")
+            ->VirtualProperty("LocalPositionX", "GetLocalPositionX", "SetLocalPositionX")
+            ->VirtualProperty("LocalPositionY", "GetLocalPositionY", "SetLocalPositionY")
+            ->VirtualProperty("Rotation", "GetZRotation", "SetZRotation");
 
         behaviorContext->EBus<UiTransform2dBus>("UiTransform2dBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
@@ -1069,7 +1223,17 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetAnchors", &UiTransform2dBus::Events::SetAnchors)
             ->Event("GetOffsets", &UiTransform2dBus::Events::GetOffsets)
             ->Event("SetOffsets", &UiTransform2dBus::Events::SetOffsets)
-            ->Event("SetPivotAndAdjustOffsets", &UiTransform2dBus::Events::SetPivotAndAdjustOffsets);
+            ->Event("SetPivotAndAdjustOffsets", &UiTransform2dBus::Events::SetPivotAndAdjustOffsets)
+            ->Event("GetLocalWidth", &UiTransform2dBus::Events::GetLocalWidth)
+            ->Event("SetLocalWidth", &UiTransform2dBus::Events::SetLocalWidth)
+            ->Event("GetLocalHeight", &UiTransform2dBus::Events::GetLocalHeight)
+            ->Event("SetLocalHeight", &UiTransform2dBus::Events::SetLocalHeight)
+            ->VirtualProperty("LocalWidth", "GetLocalWidth", "SetLocalWidth")
+            ->VirtualProperty("LocalHeight", "GetLocalHeight", "SetLocalHeight");
+
+        behaviorContext->Class<UiTransform2dComponent>()
+            ->RequestBus("UiTransformBus")
+            ->RequestBus("UiTransform2dBus");
     }
 }
 
@@ -1083,6 +1247,11 @@ void UiTransform2dComponent::Activate()
     UiTransformBus::Handler::BusConnect(m_entity->GetId());
     UiTransform2dBus::Handler::BusConnect(m_entity->GetId());
     UiAnimateEntityBus::Handler::BusConnect(m_entity->GetId());
+
+    if (!m_elementComponent)
+    {
+        m_elementComponent = GetEntity()->FindComponent<UiElementComponent>();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1098,11 +1267,17 @@ bool UiTransform2dComponent::IsControlledByParent() const
 {
     bool isControlledByParent = false;
 
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    if (IsFullyInitialized())
     {
-        EBUS_EVENT_ID_RESULT(isControlledByParent, parentElement->GetId(), UiLayoutBus, IsControllingChild, GetEntityId());
+        AZ::Entity* parentElement = GetElementComponent()->GetParent();
+        if (parentElement)
+        {
+            EBUS_EVENT_ID_RESULT(isControlledByParent, parentElement->GetId(), UiLayoutBus, IsControllingChild, GetEntityId());
+        }
+    }
+    else
+    {
+        EmitNotInitializedWarning();
     }
 
     return isControlledByParent;
@@ -1140,8 +1315,53 @@ const char* UiTransform2dComponent::GetAnchorPropertyLabel() const
 AZ::EntityId UiTransform2dComponent::GetCanvasEntityId()
 {
     AZ::EntityId canvasEntityId;
-    EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    if (m_elementComponent)
+    {
+        m_elementComponent->GetCanvasEntityId();
+    }
+    else
+    {
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    }
+
     return canvasEntityId;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiCanvasComponent* UiTransform2dComponent::GetCanvasComponent() const
+{
+    return GetElementComponent()->GetCanvasComponent();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::RecomputeTransformIfNeeded()
+{
+    // if we already computed the transform, don't recompute.
+    if (!m_recomputeTransform)
+    {
+        return;
+    }
+
+    // first get the transform to canvas space
+    AZ::Matrix4x4 transformToCanvasSpace;
+    GetTransformToCanvasSpace(transformToCanvasSpace);
+
+    // then get the transform from canvas to viewport space
+    AZ::Matrix4x4 canvasToViewportMatrix;
+    if (IsFullyInitialized())
+    {
+        canvasToViewportMatrix = GetCanvasComponent()->GetCanvasToViewportMatrix();
+    }
+    else
+    {
+        EmitNotInitializedWarning();
+        canvasToViewportMatrix = AZ::Matrix4x4::CreateIdentity();
+    }
+
+    // add the transform to viewport space to the matrix
+    m_transformToViewport = canvasToViewportMatrix * transformToCanvasSpace;
+
+    m_recomputeTransform = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1152,7 +1372,16 @@ AZ::Vector2 UiTransform2dComponent::GetScaleAdjustedForDevice()
     if (m_scaleToDevice)
     {
         float uniformDeviceScale = 1.0f;
-        EBUS_EVENT_ID_RESULT(uniformDeviceScale, GetCanvasEntityId(), UiCanvasBus, GetUniformDeviceScale);
+
+        if (IsFullyInitialized())
+        {
+            uniformDeviceScale = GetCanvasComponent()->GetUniformDeviceScale();
+        }
+        else
+        {
+            EmitNotInitializedWarning();
+        }
+
         scale *= AZ::Vector2(uniformDeviceScale, uniformDeviceScale);
     }
 
@@ -1169,13 +1398,12 @@ void UiTransform2dComponent::CalculateCanvasSpaceRect()
 
     Rect rect;
 
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
-    if (parentElement)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (parentTransformComponent)
     {
         Rect parentRect;
 
-        EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetCanvasSpaceRectNoScaleRotate, parentRect);
+        parentTransformComponent->GetCanvasSpaceRectNoScaleRotate(parentRect);
 
         AZ::Vector2 parentSize = parentRect.GetSize();
 
@@ -1189,8 +1417,16 @@ void UiTransform2dComponent::CalculateCanvasSpaceRect()
     else
     {
         // this is the root element, it's offset and anchors are ignored
-        AZ::Vector2 size;
-        EBUS_EVENT_ID_RESULT(size, GetCanvasEntityId(), UiCanvasBus, GetCanvasSize);
+
+        AZ::Vector2 size = UiCanvasComponent::s_defaultCanvasSize;
+        if (IsFullyInitialized())
+        {
+            size = GetCanvasComponent()->GetCanvasSize();
+        }
+        else
+        {
+            EmitNotInitializedWarning();
+        }
 
         rect.Set(0.0f, size.GetX(), 0.0f, size.GetY());
     }
@@ -1218,7 +1454,7 @@ void UiTransform2dComponent::CalculateCanvasSpaceRect()
         // If the rect is being changed after it was initialized, but before the first
         // update, keep prev rect in sync with current rect. On a canvas space rect
         // change callback, prev rect and current rect can be used to determine whether
-        // the canvas rect size has changed. Equal rects implies a change due to initialization 
+        // the canvas rect size has changed. Equal rects implies a change due to initialization
         if (m_rectChangedByInitialization)
         {
             m_prevRect = m_rect;
@@ -1231,17 +1467,15 @@ void UiTransform2dComponent::CalculateCanvasSpaceRect()
 AZ::Vector2 UiTransform2dComponent::GetCanvasSpaceAnchorsCenterNoScaleRotate()
 {
     // Get the position of the element's anchors in canvas space
-    AZ::Entity* parentEntity = nullptr;
-    EBUS_EVENT_ID_RESULT(parentEntity, GetEntityId(), UiElementBus, GetParent);
-
-    if (!parentEntity)
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (!parentTransformComponent)
     {
         return AZ::Vector2(0.0f, 0.0f); // this is the root element
     }
 
     // Get parent's rect in canvas space
     UiTransformInterface::Rect parentRect;
-    EBUS_EVENT_ID(parentEntity->GetId(), UiTransformBus, GetCanvasSpaceRectNoScaleRotate, parentRect);
+    parentTransformComponent->GetCanvasSpaceRectNoScaleRotate(parentRect);
 
     // Get the anchor center in canvas space
     UiTransformInterface::Rect anchorRect;
@@ -1254,9 +1488,66 @@ AZ::Vector2 UiTransform2dComponent::GetCanvasSpaceAnchorsCenterNoScaleRotate()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+UiElementComponent* UiTransform2dComponent::GetElementComponent() const
+{
+    AZ_Assert(m_elementComponent, "UiTransform2dComponent: m_elementComponent used when not initialized");
+    return m_elementComponent;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiTransform2dComponent* UiTransform2dComponent::GetParentTransformComponent() const
+{
+    if (IsFullyInitialized())
+    {
+        UiElementComponent* parentElementComponent = GetElementComponent()->GetParentElementComponent();
+        if (parentElementComponent)
+        {
+            return parentElementComponent->GetTransform2dComponent();
+        }
+    }
+    else
+    {
+        EmitNotInitializedWarning();
+    }
+
+    return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiTransform2dComponent* UiTransform2dComponent::GetChildTransformComponent(int index) const
+{
+    if (IsFullyInitialized())
+    {
+        UiElementComponent* childElementComponent = GetElementComponent()->GetChildElementComponent(index);
+        if (childElementComponent)
+        {
+            return childElementComponent->GetTransform2dComponent();
+        }
+    }
+    else
+    {
+        EmitNotInitializedWarning();
+    }
+
+    return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiTransform2dComponent::IsFullyInitialized() const
+{
+    return (m_elementComponent && m_elementComponent->IsFullyInitialized());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::EmitNotInitializedWarning() const
+{
+    AZ_Warning("UI", false, "UiTransform2dComponent used before fully initialized, possibly on activate before FixupPostLoad was called on this element")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::PropertyValuesChanged()
 {
-    EBUS_EVENT_ID(GetEntityId(), UiTransformBus, SetRecomputeTransformFlag);
+    SetRecomputeTransformFlag();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

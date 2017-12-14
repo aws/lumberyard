@@ -42,7 +42,7 @@ class GUIApplicationManager
 {
     Q_OBJECT
 public:
-    explicit GUIApplicationManager(int argc, char** argv, QObject* parent = 0);
+    explicit GUIApplicationManager(int* argc, char*** argv, QObject* parent = 0);
     virtual ~GUIApplicationManager();
 
     ApplicationManager::BeforeRunStatus BeforeRun() override;
@@ -55,11 +55,11 @@ public:
     ////////////////////////////////////////////////////
     ///MessageInfoBus::Listener interface///////////////
     void NegotiationFailed() override;
-    void ProxyConnectFailed() override;
     ///////////////////////////////////////////////////
 
     //! TraceMessageBus::Handler
     bool OnError(const char* window, const char* message) override;
+    bool OnAssert(const char* message) override;
 
 protected:
     bool Activate() override;

@@ -11,7 +11,7 @@
 */
 #include "StdAfx.h"
 #include "LightningNode.h"
-#include "LightningGameEffect.h"
+#include "LightningGameEffectCry.h"
 #include "IRenderAuxGeom.h"
 
 namespace
@@ -112,14 +112,14 @@ void CLightningRenderNode::CTriStrip::Clear()
     m_vertices.clear();
 }
 
-void CLightningRenderNode::CTriStrip::AddStats(SLightningStats* pStats) const
+void CLightningRenderNode::CTriStrip::AddStats(LightningStats* pStats) const
 {
     pStats->m_memory.Increment(m_vertices.capacity() * sizeof(SLightningVertex));
     pStats->m_memory.Increment(m_indices.capacity() * sizeof(uint16));
     pStats->m_triCount.Increment(m_indices.size() / 3);
 }
 
-void CLightningRenderNode::CSegment::Create(const SLightningParams& desc, SPointData* pointData,
+void CLightningRenderNode::CSegment::Create(const LightningArcParams& desc, SPointData* pointData,
     int _parentSegmentIdx, int _parentPointIdx, Vec3 _origin, Vec3 _destany,
     float _duration, float _intensity)
 {
@@ -132,9 +132,11 @@ void CLightningRenderNode::CSegment::Create(const SLightningParams& desc, SPoint
     m_parentSegmentIdx = _parentSegmentIdx;
     m_parentPointIdx = _parentPointIdx;
     m_time = 0.0f;
-
-    const int numSegs = desc.m_strikeNumSegments;
-    const int numSubSegs = desc.m_strikeNumPoints;
+    
+    //Do not let numSegs or numSubSegs be 0
+    //In ::GetPoint we have the same behavior to avoid a crash. This is just for consistency
+    const int numSegs = desc.m_strikeNumSegments > 0 ? desc.m_strikeNumSegments : 1;
+    const int numSubSegs = desc.m_strikeNumPoints > 0 ? desc.m_strikeNumPoints : 1;
     const int numFuzzySegs = numSegs * numSubSegs;
 
     pointData->m_points.push_back(Vec3(ZERO));
@@ -158,12 +160,12 @@ void CLightningRenderNode::CSegment::Create(const SLightningParams& desc, SPoint
     m_numFuzzyPoints = pointData->m_fuzzyPoints.size() - m_firstFuzzyPoint;
 }
 
-void CLightningRenderNode::CSegment::Update(const SLightningParams& desc)
+void CLightningRenderNode::CSegment::Update(const LightningArcParams& desc)
 {
     m_time += gEnv->pTimer->GetFrameTime();
 }
 
-void CLightningRenderNode::CSegment::Draw(const SLightningParams& desc, const SPointData& pointData, CTriStrip* strip,
+void CLightningRenderNode::CSegment::Draw(const LightningArcParams& desc, const SPointData& pointData, CTriStrip* strip,
     Vec3 cameraPosition, float deviationMult)
 {
     float fade = 1.0f;
@@ -250,7 +252,7 @@ void CLightningRenderNode::CSegment::Draw(const SLightningParams& desc, const SP
     }
 }
 
-bool CLightningRenderNode::CSegment::IsDone(const SLightningParams& desc)
+bool CLightningRenderNode::CSegment::IsDone(const LightningArcParams& desc)
 {
     return m_time > (m_duration + desc.m_strikeFadeOut);
 }
@@ -267,7 +269,6 @@ void CLightningRenderNode::CSegment::SetDestany(Vec3 _destany)
 
 CLightningRenderNode::CLightningRenderNode()
     : m_pMaterial(0)
-    , m_pLightningDesc(0)
     , m_dirtyBBox(true)
     , m_deviationMult(1.0f)
 {
@@ -368,7 +369,7 @@ void CLightningRenderNode::SetSparkDeviationMult(float deviationMult)
     m_deviationMult = max(0.0f, deviationMult);
 }
 
-void CLightningRenderNode::AddStats(SLightningStats* pStats) const
+void CLightningRenderNode::AddStats(LightningStats* pStats) const
 {
     m_triStrip.AddStats(pStats);
     int lightningMem = 0;
@@ -396,16 +397,16 @@ float CLightningRenderNode::TriggerSpark()
     m_dirtyBBox = true;
     m_deviationMult = 1.0f;
 
-    float lightningTime = cry_random<float>(m_pLightningDesc->m_strikeTimeMin, m_pLightningDesc->m_strikeTimeMax);
+    float lightningTime = cry_random<float>(m_lightningDesc.m_strikeTimeMin, m_lightningDesc.m_strikeTimeMax);
 
     CreateSegment(m_emmitterPosition, -1, -1, lightningTime, 0);
 
-    return lightningTime + m_pLightningDesc->m_strikeFadeOut;
+    return lightningTime + m_lightningDesc.m_strikeFadeOut;
 }
 
-void CLightningRenderNode::SetLightningParams(const SLightningParams* pDescriptor)
+void CLightningRenderNode::SetLightningParams(const LightningArcParams& pDescriptor)
 {
-    m_pLightningDesc = pDescriptor;
+    m_lightningDesc = pDescriptor;
 }
 
 void CLightningRenderNode::Update()
@@ -414,14 +415,14 @@ void CLightningRenderNode::Update()
 
     for (TSegments::iterator it = m_segments.begin(); it != m_segments.end(); ++it)
     {
-        it->Update(*m_pLightningDesc);
+        it->Update(m_lightningDesc);
     }
 
     for (TSegments::iterator it = m_segments.begin(); it != m_segments.end(); ++it)
     {
         if (it->GetParentSegmentIdx() != -1)
         {
-            it->SetOrigin(m_segments[it->GetParentSegmentIdx()].GetPoint(*m_pLightningDesc, m_pointData,
+            it->SetOrigin(m_segments[it->GetParentSegmentIdx()].GetPoint(m_lightningDesc, m_pointData,
                     it->GetParentPointIdx(), m_deviationMult));
         }
         else
@@ -431,7 +432,7 @@ void CLightningRenderNode::Update()
         it->SetDestany(m_receiverPosition);
     }
 
-    while (!m_segments.empty() && m_segments[0].IsDone(*m_pLightningDesc))
+    while (!m_segments.empty() && m_segments[0].IsDone(m_lightningDesc))
     {
         PopSegment();
     }
@@ -441,30 +442,30 @@ void CLightningRenderNode::Draw(CTriStrip* strip, Vec3 cameraPosition)
 {
     for (TSegments::iterator it = m_segments.begin(); it != m_segments.end(); ++it)
     {
-        it->Draw(*m_pLightningDesc, m_pointData, strip, cameraPosition, m_deviationMult);
+        it->Draw(m_lightningDesc, m_pointData, strip, cameraPosition, m_deviationMult);
     }
 }
 
 void CLightningRenderNode::CreateSegment(Vec3 originPosition, int parentIdx, int parentPointIdx, float duration,
     int level)
 {
-    if (level > m_pLightningDesc->m_branchMaxLevel)
+    if (level > m_lightningDesc.m_branchMaxLevel)
     {
         return;
     }
-    if (m_segments.size() == m_pLightningDesc->m_maxNumStrikes)
+    if (m_segments.size() == m_lightningDesc.m_maxNumStrikes)
     {
         return;
     }
     int segmentIdx = m_segments.size();
 
     CSegment segmentData;
-    segmentData.Create(*m_pLightningDesc, &m_pointData, parentIdx, parentPointIdx, originPosition, m_receiverPosition,
+    segmentData.Create(m_lightningDesc, &m_pointData, parentIdx, parentPointIdx, originPosition, m_receiverPosition,
         duration, 1.0f / (level + 1));
     m_segments.push_back(segmentData);
 
-    float randVal = cry_random<float>(0.0f, max(1.0f, m_pLightningDesc->m_branchProbability));
-    float prob = m_pLightningDesc->m_branchProbability;
+    float randVal = cry_random<float>(0.0f, max(1.0f, m_lightningDesc.m_branchProbability));
+    float prob = m_lightningDesc.m_branchProbability;
     int numBranches = int(randVal);
     prob -= std::floor(prob);
     if (randVal <= prob)
@@ -474,8 +475,8 @@ void CLightningRenderNode::CreateSegment(Vec3 originPosition, int parentIdx, int
 
     for (int i = 0; i < numBranches; ++i)
     {
-        int point = cry_random<int>(0, (m_pLightningDesc->m_strikeNumSegments * m_pLightningDesc->m_strikeNumPoints) - 1);
-        CreateSegment(segmentData.GetPoint(*m_pLightningDesc, m_pointData, point, m_deviationMult), segmentIdx, point,
+        int point = cry_random<int>(0, (m_lightningDesc.m_strikeNumSegments * m_lightningDesc.m_strikeNumPoints) - 1);
+        CreateSegment(segmentData.GetPoint(m_lightningDesc, m_pointData, point, m_deviationMult), segmentIdx, point,
             duration, level + 1);
     }
 }
@@ -498,7 +499,7 @@ const AABB CLightningRenderNode::GetBBox() const
 {
     if (m_dirtyBBox)
     {
-        const float borderSize = m_pLightningDesc ? m_pLightningDesc->m_beamSize : 0.0f;
+        const float borderSize = m_lightningDesc.m_beamSize;
         AABB box(m_emmitterPosition);
         box.Add(m_receiverPosition);
 
@@ -507,10 +508,7 @@ const AABB CLightningRenderNode::GetBBox() const
             const CSegment& segment = m_segments[i];
             for (int j = 0; j < segment.GetNumPoints(); ++j)
             {
-                if (m_pLightningDesc)
-                {
-                    box.Add(segment.GetPoint(*m_pLightningDesc, m_pointData, j, m_deviationMult));
-                }
+                box.Add(segment.GetPoint(m_lightningDesc, m_pointData, j, m_deviationMult));
             }
         }
 
@@ -524,23 +522,27 @@ const AABB CLightningRenderNode::GetBBox() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-Vec3 CLightningRenderNode::CSegment::GetPoint(const SLightningParams& desc, const SPointData& pointData, int point, float deviationMult) const
+Vec3 CLightningRenderNode::CSegment::GetPoint(const LightningArcParams& desc, const SPointData& pointData, int point, float deviationMult) const
 {
-    const int numSegs = desc.m_strikeNumSegments;
-    const int numSubSegs = desc.m_strikeNumPoints;
+    //Do not let numSegs or numSubSegs be 0
+    //Doing so would allow 2 possible divide by 0 crashes
+    const int numSegs = desc.m_strikeNumSegments > 0 ? desc.m_strikeNumSegments : 1;
+    const int numSubSegs = desc.m_strikeNumPoints > 0 ? desc.m_strikeNumPoints : 1;
 
     const float deviation = desc.m_lightningDeviation;
-    const float fuzzyness = desc.m_lightningFuzzyness;
+    const float fuzzyness = desc.m_lightningFuzziness;
 
     int i = point / numSubSegs;
     int j = point % numSubSegs;
 
+    int maxIndex = static_cast<int>(pointData.m_points.size()) - 1 - m_firstPoint;
+
     int idx[4] =
     {
-        max(i - 1, 0),
-        i,
-        min(i + 1, numSegs),
-        min(i + 2, numSegs)
+        min(max(i - 1, 0), maxIndex),
+        min(min(i, maxIndex), maxIndex),
+        min(min(i + 1, numSegs), maxIndex),
+        min(min(i + 2, numSegs), maxIndex)
     };
 
     Vec3 positions[4];
@@ -553,6 +555,9 @@ Vec3 CLightningRenderNode::CSegment::GetPoint(const SLightningParams& desc, cons
 
     float x = j / float(numSubSegs);
     int k = i * numSubSegs + j;
+    int maxFuzzyIndex = static_cast<int>(pointData.m_fuzzyPoints.size()) - 1 - m_firstFuzzyPoint;
+    k = min(k, maxFuzzyIndex);
+
     Vec3 result = CatmullRom(
             positions[0], positions[1],
             positions[2], positions[3], x);

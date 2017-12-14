@@ -37,7 +37,7 @@ namespace EMotionFX
 
         enum
         {
-            ATTRIB_CALCULATION_METHOD_X = 0,
+            ATTRIB_CALCULATION_METHOD   = 0,
             ATTRIB_EVALUATOR            = 1,
             ATTRIB_SYNC                 = 2,
             ATTRIB_SYNC_MASTERMOTION    = 3,
@@ -73,9 +73,10 @@ namespace EMotionFX
                 , m_allMotionsHaveSyncTracks(false)
                 , m_currentPosition(0)
                 , m_masterMotionIdx(0)
-                , m_updateCounter(0)
+                , m_hasOverlappingCoordinates(false)
             {
             }
+
             ~UniqueData();
             uint32 GetClassSize() const override { return sizeof(UniqueData); }
             AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override
@@ -100,12 +101,13 @@ namespace EMotionFX
             float                           m_currentPosition;
             CurrentSegmentInfo              m_currentSegment;
             BlendInfos                      m_blendInfos;
-            AZ::u32                         m_masterMotionIdx; // index of the master motion for synching
-            AZ::u16                         m_updateCounter;
+            AZ::u32                         m_masterMotionIdx; // index of the master motion for syncing
+            bool                            m_hasOverlappingCoordinates; // indicates if two coordinates are overlapping, to notify the UI
         };
 
         static BlendSpace1DNode* Create(AnimGraph* animGraph);
 
+        bool GetValidCalculationMethodAndEvaluator() const;
         const char* GetAxisLabel() const;
 
         // AnimGraphNode overrides

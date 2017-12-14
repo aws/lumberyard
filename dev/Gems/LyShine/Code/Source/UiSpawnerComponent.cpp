@@ -21,17 +21,35 @@
 #include <AzCore/Asset/AssetManagerBus.h>
 
 #include <LyShine/Bus/UiGameEntityContextBus.h>
+#include <LyShine/Bus/UiElementBus.h>
 
 // BehaviorContext UiSpawnerNotificationBus forwarder
-class BehaviorUiSpawnerNotificationBusHandler : public UiSpawnerNotificationBus::Handler, public AZ::BehaviorEBusHandler
+class BehaviorUiSpawnerNotificationBusHandler
+    : public UiSpawnerNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiSpawnerNotificationBusHandler, "{95213AF9-F8F4-4D86-8C68-625F5AFE78FA}", AZ::SystemAllocator,
-        OnSpawnBegin, OnSpawnEnd, OnEntitySpawned);
+        OnSpawnBegin, OnEntitySpawned, OnEntitiesSpawned, OnTopLevelEntitiesSpawned, OnSpawnEnd, OnSpawnFailed);
 
     void OnSpawnBegin(const AzFramework::SliceInstantiationTicket& ticket) override
     {
         Call(FN_OnSpawnBegin, ticket);
+    }
+
+    void OnEntitySpawned(const AzFramework::SliceInstantiationTicket& ticket, const AZ::EntityId& id) override
+    {
+        Call(FN_OnEntitySpawned, ticket, id);
+    }
+
+    void OnEntitiesSpawned(const AzFramework::SliceInstantiationTicket& ticket, const AZStd::vector<AZ::EntityId>& spawnedEntities) override
+    {
+        Call(FN_OnEntitiesSpawned, ticket, spawnedEntities);
+    }
+
+    void OnTopLevelEntitiesSpawned(const AzFramework::SliceInstantiationTicket& ticket, const AZStd::vector<AZ::EntityId>& spawnedEntities) override
+    {
+        Call(FN_OnTopLevelEntitiesSpawned, ticket, spawnedEntities);
     }
 
     void OnSpawnEnd(const AzFramework::SliceInstantiationTicket& ticket) override
@@ -39,9 +57,9 @@ public:
         Call(FN_OnSpawnEnd, ticket);
     }
 
-    void OnEntitySpawned(const AzFramework::SliceInstantiationTicket& ticket, const AZ::EntityId& id) override
+    void OnSpawnFailed(const AzFramework::SliceInstantiationTicket& ticket) override
     {
-        Call(FN_OnEntitySpawned, ticket, id);
+        Call(FN_OnSpawnFailed, ticket);
     }
 };
 
@@ -60,7 +78,7 @@ void UiSpawnerComponent::Reflect(AZ::ReflectContext* context)
         if (editContext)
         {
             auto editInfo = editContext->Class<UiSpawnerComponent>("UiSpawner",
-                "The spawner component provides dynamic UI slice spawning support.");
+                    "The spawner component provides dynamic UI slice spawning support.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::Category, "UI")
@@ -83,12 +101,12 @@ void UiSpawnerComponent::Reflect(AZ::ReflectContext* context)
             ->Event("Spawn", &UiSpawnerBus::Events::Spawn)
             ->Event("SpawnRelative", &UiSpawnerBus::Events::SpawnRelative)
             ->Event("SpawnAbsolute", &UiSpawnerBus::Events::SpawnViewport)
-            ;
+        ;
 
         behaviorContext->EBus<UiSpawnerNotificationBus>("UiSpawnerNotificationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiSpawnerNotificationBusHandler>()
-            ;
+        ;
     }
 }
 
@@ -139,7 +157,7 @@ AzFramework::SliceInstantiationTicket UiSpawnerComponent::SpawnRelative(const AZ
 {
     return SpawnSliceInternal(m_sliceAsset, relative, false);
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AzFramework::SliceInstantiationTicket UiSpawnerComponent::SpawnViewport(const AZ::Vector2& pos)
 {
@@ -157,11 +175,65 @@ AzFramework::SliceInstantiationTicket UiSpawnerComponent::SpawnSliceRelative(con
 {
     return SpawnSliceInternal(slice, relative, false);
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AzFramework::SliceInstantiationTicket UiSpawnerComponent::SpawnSliceViewport(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Vector2& pos)
 {
     return SpawnSliceInternal(slice, pos, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiSpawnerComponent::OnEntityContextSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/)
+{
+    const AzFramework::SliceInstantiationTicket& ticket = (*UiGameEntityContextSliceInstantiationResultsBus::GetCurrentBusId());
+    EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnSpawnBegin, ticket);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiSpawnerComponent::OnEntityContextSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
+{
+    const AzFramework::SliceInstantiationTicket& ticket = (*UiGameEntityContextSliceInstantiationResultsBus::GetCurrentBusId());
+
+    // Stop listening for this ticket (since it's done). We can have have multiple tickets in flight.
+    UiGameEntityContextSliceInstantiationResultsBus::MultiHandler::BusDisconnect(ticket);
+
+    const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+
+    // first, send a notification of every individual entity that has been spawned (including top-level elements)
+    AZStd::vector<AZ::EntityId> entityIds;
+    entityIds.reserve(entities.size());
+    for (AZ::Entity* currEntity : entities)
+    {
+        entityIds.push_back(currEntity->GetId());
+        EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnEntitySpawned, ticket, currEntity->GetId());
+    }
+
+    // Then send one notification with all the entities spawned for this ticket
+    EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnEntitiesSpawned, ticket, entityIds);
+
+    // Then send notifications for all top level entities (there is usually only one). This will have been
+    // included in the OnEntitySpawned and OnEntitiesSpawned but this is probably the most useful notification
+    AZStd::vector<AZ::EntityId> topLevelEntityIds = GetTopLevelEntities(entities);
+    EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnTopLevelEntitiesSpawned, ticket, topLevelEntityIds);
+
+    // last, send an "OnSpawnEnd" to indicate the end of all notifications for this ticket
+    EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnSpawnEnd, ticket);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiSpawnerComponent::OnEntityContextSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
+{
+    UiGameEntityContextSliceInstantiationResultsBus::MultiHandler::BusDisconnect(*UiGameEntityContextSliceInstantiationResultsBus::GetCurrentBusId());
+
+    AZStd::string assetPath;
+    EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, sliceAssetId);
+
+    if (assetPath.empty())
+    {
+        assetPath = sliceAssetId.ToString<AZStd::string>();
+    }
+
+    AZ_Warning("UiSpawnerComponent", false, "Slice '%s' failed to instantiate. Check that it contains UI elements.", assetPath.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,53 +245,40 @@ AzFramework::SliceInstantiationTicket UiSpawnerComponent::SpawnSliceInternal(con
     AzFramework::SliceInstantiationTicket ticket;
     EBUS_EVENT_ID_RESULT(ticket, contextId, UiGameEntityContextBus, InstantiateDynamicSlice, slice, position, isViewportPosition, GetEntity(), nullptr);
 
-    AzFramework::SliceInstantiationResultBus::MultiHandler::BusConnect(ticket);
+    UiGameEntityContextSliceInstantiationResultsBus::MultiHandler::BusConnect(ticket);
 
     return ticket;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiSpawnerComponent::OnSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/)
+AZStd::vector<AZ::EntityId> UiSpawnerComponent::GetTopLevelEntities(const AZ::SliceComponent::EntityList& entities)
 {
-    const AzFramework::SliceInstantiationTicket& ticket = (*AzFramework::SliceInstantiationResultBus::GetCurrentBusId());
-    EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnSpawnBegin, ticket);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiSpawnerComponent::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
-{
-    const AzFramework::SliceInstantiationTicket& ticket = (*AzFramework::SliceInstantiationResultBus::GetCurrentBusId());
-
-    // Stop listening for this ticket (since it's done). We can have have multiple tickets in flight.
-    AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
-
-    const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
-
-    AZStd::vector<AZ::EntityId> entityIds;
-    entityIds.reserve(entities.size());
-    for (AZ::Entity* currEntity : entities)
+    // Create a set of all the top-level entities.
+    AZStd::unordered_set<AZ::Entity*> topLevelEntities;
+    for (AZ::Entity* entity : entities)
     {
-        entityIds.push_back(currEntity->GetId());
-        EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnEntitySpawned, ticket, currEntity->GetId());
+        topLevelEntities.insert(entity);
     }
 
-    EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnSpawnEnd, ticket);
-
-    EBUS_EVENT_ID(GetEntityId(), UiSpawnerNotificationBus, OnEntitiesSpawned, ticket, entityIds);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiSpawnerComponent::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
-{
-    AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(*AzFramework::SliceInstantiationResultBus::GetCurrentBusId());
-
-    AZStd::string assetPath;
-    EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, sliceAssetId);
-
-    if (assetPath.empty())
+    // remove anything from the topLevelEntities set that is referenced as the child of another element in the list
+    for (AZ::Entity* entity : entities)
     {
-        assetPath = sliceAssetId.ToString<AZStd::string>();
+        LyShine::EntityArray children;
+        EBUS_EVENT_ID_RESULT(children, entity->GetId(), UiElementBus, GetChildElements);
+
+        for (auto child : children)
+        {
+            topLevelEntities.erase(child);
+        }
     }
 
-    AZ_Warning("UiSpawnerComponent", false, "Slice '%s' failed to instantiate. Check that it contains UI elements.", assetPath.c_str());
+    // Now topLevelElements contains all of the top-level elements in the set of newly instantiated entities
+    // Copy the topLevelEntities set into a list
+    AZStd::vector<AZ::EntityId> result;
+    for (auto entity : topLevelEntities)
+    {
+        result.push_back(entity->GetId());
+    }
+
+    return result;
 }

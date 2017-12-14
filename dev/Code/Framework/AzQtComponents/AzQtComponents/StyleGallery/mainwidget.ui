@@ -50,7 +50,7 @@
    <item row="2" column="0" colspan="8">
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="controlsPage">
       <layout class="QGridLayout" name="gridLayout_4">
@@ -548,13 +548,13 @@ p, li { white-space: pre-wrap; }
               <item>
                <widget class="AzQtComponents::StyledDoubleSpinBox" name="spinBoxLeft">
                 <property name="minimum">
-                 <double>-45.5</double>
+                 <double>-45.500000000000000</double>
                 </property>
                 <property name="maximum">
-                 <double>100.52</double>
+                 <double>100.519999999999996</double>
                 </property>
                 <property name="value">
-                 <double>48.7</double>
+                 <double>48.700000000000003</double>
                 </property>
                </widget>
               </item>
@@ -574,13 +574,13 @@ p, li { white-space: pre-wrap; }
               <item>
                <widget class="AzQtComponents::StyledSpinBox" name="spinBoxRight">
                 <property name="minimum">
-                 <double>-50.0</double>
+                 <double>-50.000000000000000</double>
                 </property>
                 <property name="maximum">
-                 <double>100.0</double>
+                 <double>100.000000000000000</double>
                 </property>
                 <property name="value">
-                 <double>50.0</double>
+                 <double>50.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -652,6 +652,9 @@ p, li { white-space: pre-wrap; }
             </property>
            </item>
           </widget>
+         </item>
+         <item>
+          <widget class="AzQtComponents::FilteredSearchWidget" name="searchWidget" native="true"/>
          </item>
          <item>
           <spacer name="verticalSpacer_2">
@@ -801,7 +804,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Select_right.png</normaloff>:/stylesheet/img/16x16/Select_right.png</iconset>
             </property>
            </widget>
@@ -815,7 +818,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Move.png</normaloff>:/stylesheet/img/16x16/Move.png</iconset>
             </property>
            </widget>
@@ -826,7 +829,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Select_right.png</normaloff>:/stylesheet/img/16x16/Select_right.png</iconset>
             </property>
             <property name="checkable">
@@ -843,7 +846,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Move.png</normaloff>:/stylesheet/img/16x16/Move.png</iconset>
             </property>
             <property name="checkable">
@@ -863,7 +866,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Translate.png</normaloff>:/stylesheet/img/16x16/Translate.png</iconset>
             </property>
            </widget>
@@ -874,7 +877,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Translate.png</normaloff>:/stylesheet/img/16x16/Translate.png</iconset>
             </property>
             <property name="checkable">
@@ -891,7 +894,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Move.png</normaloff>:/stylesheet/img/16x16/Move.png</iconset>
             </property>
             <property name="checkable">
@@ -905,7 +908,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Select_right.png</normaloff>:/stylesheet/img/16x16/Select_right.png</iconset>
             </property>
             <property name="checkable">
@@ -919,7 +922,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Translate.png</normaloff>:/stylesheet/img/16x16/Translate.png</iconset>
             </property>
             <property name="checkable">
@@ -936,7 +939,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Scale.png</normaloff>:/stylesheet/img/16x16/Scale.png</iconset>
             </property>
            </widget>
@@ -947,7 +950,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Scale.png</normaloff>:/stylesheet/img/16x16/Scale.png</iconset>
             </property>
             <property name="checkable">
@@ -964,7 +967,7 @@ p, li { white-space: pre-wrap; }
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Scale.png</normaloff>:/stylesheet/img/16x16/Scale.png</iconset>
             </property>
             <property name="checkable">
@@ -990,7 +993,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1001,7 +1004,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1012,7 +1015,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1023,7 +1026,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1034,7 +1037,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1045,7 +1048,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1056,7 +1059,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1067,7 +1070,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1078,7 +1081,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1089,7 +1092,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1100,7 +1103,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1111,7 +1114,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1122,7 +1125,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1133,7 +1136,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1144,7 +1147,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1155,7 +1158,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1166,7 +1169,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1177,7 +1180,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1188,7 +1191,7 @@ p, li { white-space: pre-wrap; }
              <string>Sample</string>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/stylesheet/img/16x16/Audio.png</normaloff>:/stylesheet/img/16x16/Audio.png</iconset>
             </property>
            </widget>
@@ -1463,7 +1466,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question.png</normaloff>:/stylesheet/img/question.png</iconset>
               </property>
              </widget>
@@ -1489,7 +1492,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question.png</normaloff>:/stylesheet/img/question.png</iconset>
               </property>
              </widget>
@@ -1513,7 +1516,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question_small.png</normaloff>:/stylesheet/img/question_small.png</iconset>
               </property>
              </widget>
@@ -1563,7 +1566,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question.png</normaloff>:/stylesheet/img/question.png</iconset>
               </property>
              </widget>
@@ -1589,7 +1592,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question.png</normaloff>:/stylesheet/img/question.png</iconset>
               </property>
              </widget>
@@ -1613,7 +1616,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question_small.png</normaloff>:/stylesheet/img/question_small.png</iconset>
               </property>
              </widget>
@@ -1663,7 +1666,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question.png</normaloff>:/stylesheet/img/question.png</iconset>
               </property>
              </widget>
@@ -1689,7 +1692,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question.png</normaloff>:/stylesheet/img/question.png</iconset>
               </property>
              </widget>
@@ -1713,7 +1716,7 @@ p, li { white-space: pre-wrap; }
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/stylesheet/img/question_small.png</normaloff>:/stylesheet/img/question_small.png</iconset>
               </property>
              </widget>
@@ -2004,10 +2007,14 @@ p, li { white-space: pre-wrap; }
    <header>AzQtComponents/Components/ButtonDivider.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>AzQtComponents::FilteredSearchWidget</class>
+   <extends>QWidget</extends>
+   <header>AzQtComponents/Components/FilteredSearchWidget.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
- <resources>
-  <include location="resource.qrc"/>
- </resources>
+ <resources/>
  <connections>
   <connection>
    <sender>horizontalSlider</sender>

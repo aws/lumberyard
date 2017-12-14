@@ -39,7 +39,6 @@
 #include <IParticles.h>
 #include <IMovieSystem.h>
 #include <IJobManager.h>
-#include <IMusicSystem.h>
 #include <IPlatformOS.h>
 
 #include "CrySizerStats.h"
@@ -62,7 +61,7 @@
 
 extern CMTSafeHeap* g_pPakHeap;
 #if defined(AZ_PLATFORM_ANDROID)
-#include <SDL.h>
+#include <AZCore/Android/Utils.h>
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
 extern bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels);
 #endif
@@ -77,18 +76,7 @@ bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_hei
     o_heightPixels = GetSystemMetrics(SM_CYSCREEN);
     return true;
 #elif defined(AZ_PLATFORM_ANDROID)
-    SDL_DisplayMode sdlDisplayMode;
-    if (SDL_GetDesktopDisplayMode(0, &sdlDisplayMode) == 0)
-    {
-        o_widthPixels = sdlDisplayMode.w;
-        o_heightPixels = sdlDisplayMode.h;
-        return true;
-    }
-    else
-    {
-        CryLogAlways("Failed to get SDL display mode: %s", SDL_GetError());
-        return false;
-    }
+    return AZ::Android::Utils::GetWindowSize(o_widthPixels, o_heightPixels);
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     return UIKitGetPrimaryPhysicalDisplayDimensions(o_widthPixels, o_heightPixels);
 #else
@@ -169,8 +157,12 @@ void CSystem::CreateRendererVars(const SSystemInitParams& startupParams)
 
 #if defined(WIN32) || defined(WIN64)
     const char* p_r_DriverDef = "Auto";
-#elif defined(APPLE) || defined(LINUX)
+#elif defined(APPLE)
+    const char* p_r_DriverDef = "METAL";
+#elif defined(ANDROID)
     const char* p_r_DriverDef = "GL";
+#elif defined(LINUX)
+    const char* p_r_DriverDef = "NULL";
 #else
     const char* p_r_DriverDef = "DX9";                          // required to be deactivated for final release
 #endif
@@ -602,12 +594,6 @@ void CSystem::UpdateLoadingScreen()
         return;
     }
 
-    // will throttle itself to every 0.25 sec
-    if (gEnv->pMusicSystem)
-    {
-        gEnv->pMusicSystem->Update();
-    }
-
 #if defined(CHECK_UPDATE_TIMES)
 #endif // CHECK_UPDATE_TIMES
 
@@ -622,15 +608,6 @@ void CSystem::UpdateLoadingScreen()
             m_pProgressListener->OnLoadingProgress(0);
         }
     }
-    // This happens during loading, give windows opportunity to process window messages.
-#ifdef WIN32
-    if (m_hWnd && ::IsWindow((HWND)m_hWnd))
-    {
-        gEnv->pSystem->PumpWindowMessage(true, m_hWnd);
-    }
-
-#endif
-
 }
 
 //////////////////////////////////////////////////////////////////////////

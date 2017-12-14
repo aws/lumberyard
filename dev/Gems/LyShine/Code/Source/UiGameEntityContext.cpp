@@ -127,7 +127,7 @@ bool UiGameEntityContext::CloneUiEntities(const AZStd::vector<AZ::EntityId>& sou
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiGameEntityContext::DestroyUiEntity(AZ::EntityId entityId)
 {
-    return EntityContext::DestroyEntity(entityId);
+    return EntityContext::DestroyEntityById(entityId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,18 @@ bool UiGameEntityContext::SaveToStreamForGame(AZ::IO::GenericStream& stream, AZ:
     }
 
     AZ::Entity* rootSliceEntity = m_rootAsset.Get()->GetEntity();
-    return AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, AZ::ObjectStream::ST_XML, rootSliceEntity);
+    return AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, rootSliceEntity);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiGameEntityContext::SaveCanvasEntityToStreamForGame(AZ::Entity* canvasEntity, AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType)
+{
+    if (!canvasEntity)
+    {
+        return false;
+    }
+
+    return AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, canvasEntity);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -278,11 +289,13 @@ void UiGameEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAs
                             }
                         }
                         return originalId;
-
                     }, m_serializeContext, false);
 
                 instanceEntities.m_entities.clear();
             }
+
+            const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+            EBUS_EVENT_ID(ticket, UiGameEntityContextSliceInstantiationResultsBus, OnEntityContextSlicePreInstantiate, sliceAssetId, sliceAddress);
 
             break;
         }
@@ -302,19 +315,10 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
         {
             const AZ::SliceComponent::EntityList& entities = instance.second->GetInstantiated()->m_entities;
 
-            // Initialize the new entities and create a set of all the top-level entities.
+            // Create a set of all the top-level entities.
             AZStd::unordered_set<AZ::Entity*> topLevelEntities;
             for (AZ::Entity* entity : entities)
             {
-                if (entity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-                {
-                    entity->Init();
-                }
-                if (entity->GetState() == AZ::Entity::ES_INIT)
-                {
-                    entity->Activate();
-                }
-
                 topLevelEntities.insert(entity);
             }
 
@@ -323,7 +327,7 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
             {
                 LyShine::EntityArray children;
                 EBUS_EVENT_ID_RESULT(children, entity->GetId(), UiElementBus, GetChildElements);
-                
+
                 for (auto child : children)
                 {
                     topLevelEntities.erase(child);
@@ -356,11 +360,10 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
                 EBUS_EVENT_ID(m_canvasEntityId, UiCanvasBus, AddElement, entity, parent, nullptr);
             }
 
-            // Here we adjust the position of the instantiated entities so that if the slice was instantiated from the
-            // viewport menu we instantiate it at the mouse position
+            // Here we adjust the position of the instantiated entities. Depending on how the dynamic slice
+            // was spawned we position it at a viewport position or a relative position.
             if (instantiatingIter->m_isViewportPosition)
             {
-                // This is the same behavior as the old "Add elements from prefab" had.
                 const AZ::Vector2& desiredViewportPosition = instantiatingIter->m_position;
 
                 AZ::Entity* rootElement = entitiesToInit[0];
@@ -391,6 +394,9 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
                 EBUS_EVENT_ID(rootElement->GetId(), UiTransformBus, MoveLocalPositionBy, instantiatingIter->m_position);
             }
 
+            // This allows the UiSpawnerComponent to respond after the entities have been activated and fixed up
+            EBUS_EVENT_ID(ticket, UiGameEntityContextSliceInstantiationResultsBus, OnEntityContextSliceInstantiated, sliceAssetId, instance);
+
             EBUS_EVENT(UiGameEntityContextNotificationBus, OnSliceInstantiated, sliceAssetId, instance, ticket);
             m_instantiatingDynamicSlices.erase(instantiatingIter);
             break;
@@ -409,6 +415,7 @@ void UiGameEntityContext::OnSliceInstantiationFailed(const AZ::Data::AssetId& sl
     {
         if (instantiatingIter->m_asset.GetId() == sliceAssetId)
         {
+            EBUS_EVENT_ID(ticket, UiGameEntityContextSliceInstantiationResultsBus, OnEntityContextSliceInstantiationFailed, sliceAssetId);
             EBUS_EVENT(UiGameEntityContextNotificationBus, OnSliceInstantiationFailed, sliceAssetId, ticket);
 
             m_instantiatingDynamicSlices.erase(instantiatingIter);

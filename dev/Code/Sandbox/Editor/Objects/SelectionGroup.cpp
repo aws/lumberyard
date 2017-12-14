@@ -351,11 +351,7 @@ void CSelectionGroup::Rotate(const Ang3& angles, int referenceCoordSys)
     // Rotate selection about selection center.
     Vec3 center = GetCenter();
 
-    Matrix34 rotateTM;
-    rotateTM.SetIdentity();
-    //rotateTM.RotateMatrix_fix( angles );
-    rotateTM = rotateTM * Matrix34::CreateRotationXYZ(DEG2RAD(-angles)); //NOTE: angles in radians and negated
-
+    Matrix34 rotateTM = Matrix34::CreateRotationXYZ(DEG2RAD(angles));
     Rotate(rotateTM, referenceCoordSys);
 }
 
@@ -420,7 +416,6 @@ void CSelectionGroup::Rotate(const Matrix34& rotateTM, int referenceCoordSys)
         }
 
         obj->SetWorldTM(objectTransform, eObjectUpdateFlags_UserInput);
-        obj->InvalidateTM(eObjectUpdateFlags_UserInput);
     }
 }
 

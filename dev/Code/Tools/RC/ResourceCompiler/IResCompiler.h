@@ -197,6 +197,9 @@ struct IResourceCompiler
     // Get Asset Writer interface
     virtual IAssetWriter* GetAssetWriter() const = 0;
 
+    // Get the app root that the resource 
+    virtual const char* GetAppRoot() const = 0;
+
     virtual struct SSystemGlobalEnvironment* GetSystemEnvironment() = 0;
 };
 

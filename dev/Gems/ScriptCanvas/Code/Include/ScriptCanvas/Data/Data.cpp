@@ -12,6 +12,7 @@
 
 #include "precompiled.h"
 #include "Data.h"
+#include <ScriptCanvas/Data/DataTrait.h>
 
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/Math/VectorFloat.h>
@@ -181,58 +182,58 @@ namespace ScriptCanvas
             switch (type.GetType())
             {
             case eType::AABB:
-                return eTraits<eType::AABB>::s_traits.GetName();
+                return eTraits<eType::AABB>::GetName();
 
             case eType::BehaviorContextObject:
                 return DataCpp::GetBehaviorClassName(type.GetAZType());
 
             case eType::Boolean:
-                return eTraits<eType::Boolean>::s_traits.GetName();
+                return eTraits<eType::Boolean>::GetName();
 
             case eType::Color:
-                return eTraits<eType::Color>::s_traits.GetName();
+                return eTraits<eType::Color>::GetName();
 
             case eType::CRC:
-                return eTraits<eType::CRC>::s_traits.GetName();
+                return eTraits<eType::CRC>::GetName();
 
             case eType::EntityID:
-                return eTraits<eType::EntityID>::s_traits.GetName();
+                return eTraits<eType::EntityID>::GetName();
 
             case eType::Invalid:
                 return "Invalid";
 
             case eType::Matrix3x3:
-                return eTraits<eType::Matrix3x3>::s_traits.GetName();
+                return eTraits<eType::Matrix3x3>::GetName();
 
             case eType::Matrix4x4:
-                return eTraits<eType::Matrix4x4>::s_traits.GetName();
+                return eTraits<eType::Matrix4x4>::GetName();
 
             case eType::Number:
-                return eTraits<eType::Number>::s_traits.GetName();
+                return eTraits<eType::Number>::GetName();
 
             case eType::OBB:
-                return eTraits<eType::OBB>::s_traits.GetName();
+                return eTraits<eType::OBB>::GetName();
 
             case eType::Plane:
-                return eTraits<eType::Plane>::s_traits.GetName();
+                return eTraits<eType::Plane>::GetName();
 
             case eType::Rotation:
-                return eTraits<eType::Rotation>::s_traits.GetName();
+                return eTraits<eType::Rotation>::GetName();
 
             case eType::String:
-                return eTraits<eType::String>::s_traits.GetName();
+                return eTraits<eType::String>::GetName();
 
             case eType::Transform:
-                return eTraits<eType::Transform>::s_traits.GetName();
+                return eTraits<eType::Transform>::GetName();
 
             case eType::Vector2:
-                return eTraits<eType::Vector2>::s_traits.GetName();
+                return eTraits<eType::Vector2>::GetName();
 
             case eType::Vector3:
-                return eTraits<eType::Vector3>::s_traits.GetName();
+                return eTraits<eType::Vector3>::GetName();
 
             case eType::Vector4:
-                return eTraits<eType::Vector4>::s_traits.GetName();
+                return eTraits<eType::Vector4>::GetName();
 
             default:
                 AZ_Assert(false, "Invalid type!");
@@ -247,19 +248,19 @@ namespace ScriptCanvas
             switch (type.GetType())
             {
             case eType::Boolean:
-                return eTraits<eType::Boolean>::s_traits.GetName();
+                return eTraits<eType::Boolean>::GetName();
 
             case eType::EntityID:
-                return eTraits<eType::EntityID>::s_traits.GetName();
+                return eTraits<eType::EntityID>::GetName();
 
             case eType::Invalid:
                 return "Invalid";
 
             case eType::Number:
-                return eTraits<eType::Number>::s_traits.GetName();
+                return eTraits<eType::Number>::GetName();
 
             case eType::String:
-                return eTraits<eType::String>::s_traits.GetName();
+                return eTraits<eType::String>::GetName();
 
             case eType::AABB:
             case eType::BehaviorContextObject:
@@ -284,10 +285,9 @@ namespace ScriptCanvas
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
                 serializeContext->Class<Type>()
-                    ->Version(1)
+                    ->Version(2)
                     ->Field("m_type", &Type::m_type)
                     ->Field("m_azType", &Type::m_azType)
-                    ->Field("m_independentType", &Type::m_independentType)
                     ;
             }
         }

@@ -330,6 +330,7 @@ namespace
     //////////////////////////////////////////////////////////////////////////
 
     template<typename STRING>
+    // [Shader System TO DO] remove once dynamic slots assingment is in place
     EEfResTextures TryConvertingCStringToEEfResTextures(const STRING& resTextureName)
     {
         if (resTextureName == "Diffuse")
@@ -389,6 +390,8 @@ namespace
             return EFTT_SPECULAR_2;
         }
         throw std::runtime_error("Invalid texture name.");
+
+        return EFTT_MAX;
     }
 
     template<typename STRING>
@@ -1329,186 +1332,215 @@ namespace
         // ########## Texture Maps ##########
         else if (categoryName == "Texture Maps")
         {
+            SInputShaderResources&      shaderResources = pMaterial->GetShaderResources();
             // ########## Texture Maps / [name] ##########
             if (splittedPropertyPath.size() == 2)
             {
                 value.type = SPyWrappedProperty::eType_String;
-                value.stringValue = pMaterial->GetShaderResources().m_Textures[TryConvertingCStringToEEfResTextures(propertyName)].m_Name.c_str();
+
+                uint16          nSlot = (uint16)TryConvertingCStringToEEfResTextures(propertyName);
+                SEfResTexture*  pTextureRes = shaderResources.GetTextureResource(nSlot);
+                if (!pTextureRes || pTextureRes->m_Name.empty())
+                {
+                    AZ_Warning("ShadersSystem", false, "PyGetProperty - Error: empty texture slot [%d] (or missing name) for material %s",
+                        nSlot, pMaterial->GetName().toStdString().c_str());
+                    value.stringValue = "";
+                }
+                else
+                {
+                    value.stringValue = pTextureRes->m_Name.c_str();
+                }
             }
             // ########## Texture Maps / [TexType | Filter | IsProjectedTexGen | TexGenType ] ##########
             else if (splittedPropertyPath.size() == 3)
             {
-                SEfResTexture& currentResTexture = pMaterial->GetShaderResources().m_Textures[TryConvertingCStringToEEfResTextures(subCategoryName)];
-
-                if (propertyName == "TexType")
+                SEfResTexture*      pTextureRes = shaderResources.GetTextureResource(TryConvertingCStringToEEfResTextures(subCategoryName));
+                if (pTextureRes)
                 {
-                    value.type = SPyWrappedProperty::eType_String;
-                    value.stringValue = TryConvertingETEX_TypeToCString(currentResTexture.m_Sampler.m_eTexType);
-                }
-                else if (propertyName == "Filter")
-                {
-                    value.type = SPyWrappedProperty::eType_String;
-                    value.stringValue = TryConvertingTexFilterToCString(currentResTexture.m_Filter);
-                }
-                else if (propertyName == "IsProjectedTexGen")
-                {
-                    value.type = SPyWrappedProperty::eType_Bool;
-                    value.property.boolValue = currentResTexture.AddModificator()->m_bTexGenProjected;
-                }
-                else if (propertyName == "TexGenType")
-                {
-                    value.type = SPyWrappedProperty::eType_String;
-                    value.stringValue = TryConvertingETexGenTypeToCString(currentResTexture.AddModificator()->m_eTGType);
+                    if (propertyName == "TexType")
+                    {
+                        value.type = SPyWrappedProperty::eType_String;
+                        value.stringValue = TryConvertingETEX_TypeToCString(pTextureRes->m_Sampler.m_eTexType);
+                    }
+                    else if (propertyName == "Filter")
+                    {
+                        value.type = SPyWrappedProperty::eType_String;
+                        value.stringValue = TryConvertingTexFilterToCString(pTextureRes->m_Filter);
+                    }
+                    else if (propertyName == "IsProjectedTexGen")
+                    {
+                        value.type = SPyWrappedProperty::eType_Bool;
+                        value.property.boolValue = pTextureRes->AddModificator()->m_bTexGenProjected;
+                    }
+                    else if (propertyName == "TexGenType")
+                    {
+                        value.type = SPyWrappedProperty::eType_String;
+                        value.stringValue = TryConvertingETexGenTypeToCString(pTextureRes->AddModificator()->m_eTGType);
+                    }
+                    else
+                    {
+                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                    }
                 }
                 else
                 {
-                    throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                    uint16      nSlot = (uint16) TryConvertingCStringToEEfResTextures(subCategoryName);
+                    AZ_Warning("ShadersSystem", false, "PyGetProperty - Error: empty 'subCategoryName' texture slot [%d] for material %s",
+                        nSlot, pMaterial->GetName().toStdString().c_str());
                 }
             }
             // ########## Texture Maps / [Tiling | Rotator | Oscillator] ##########
             else if (splittedPropertyPath.size() == 4)
             {
-                SEfResTexture& currentResTexture = pMaterial->GetShaderResources().m_Textures[TryConvertingCStringToEEfResTextures(subSubCategoryName)];
-
-                if (subCategoryName == "Tiling")
+                SEfResTexture*  pTextureRes = shaderResources.GetTextureResource(TryConvertingCStringToEEfResTextures(subSubCategoryName));
+                if (pTextureRes)
                 {
-                    if (propertyName == "IsTileU")
+                    if (subCategoryName == "Tiling")
                     {
-                        value.type = SPyWrappedProperty::eType_Bool;
-                        value.property.boolValue = currentResTexture.m_bUTile;
+                        if (propertyName == "IsTileU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Bool;
+                            value.property.boolValue = pTextureRes->m_bUTile;
+                        }
+                        else if (propertyName == "IsTileV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Bool;
+                            value.property.boolValue = pTextureRes->m_bVTile;
+                        }
+                        else if (propertyName == "TileU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_Tiling[0];
+                        }
+                        else if (propertyName == "TileV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_Tiling[1];
+                        }
+                        else if (propertyName == "OffsetU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_Offs[0];
+                        }
+                        else if (propertyName == "OffsetV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_Offs[1];
+                        }
+                        else if (propertyName == "RotateU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_Rot[0]);
+                        }
+                        else if (propertyName == "RotateV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_Rot[1]);
+                        }
+                        else if (propertyName == "RotateW")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_Rot[2]);
+                        }
+                        else
+                        {
+                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                        }
                     }
-                    else if (propertyName == "IsTileV")
+                    else if (subCategoryName == "Rotator")
                     {
-                        value.type = SPyWrappedProperty::eType_Bool;
-                        value.property.boolValue = currentResTexture.m_bVTile;
+                        if (propertyName == "Type")
+                        {
+                            value.type = SPyWrappedProperty::eType_String;
+                            value.stringValue = TryConvertingETexModRotateTypeToCString(pTextureRes->AddModificator()->m_eRotType);
+                        }
+                        else if (propertyName == "Rate")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_RotOscRate[2]);
+                        }
+                        else if (propertyName == "Phase")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_RotOscPhase[2]);
+                        }
+                        else if (propertyName == "Amplitude")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_RotOscAmplitude[2]);
+                        }
+                        else if (propertyName == "CenterU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_RotOscCenter[0];
+                        }
+                        else if (propertyName == "CenterV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_RotOscCenter[1];
+                        }
+                        else
+                        {
+                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                        }
                     }
-                    else if (propertyName == "TileU")
+                    else if (subCategoryName == "Oscillator")
                     {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_Tiling[0];
-                    }
-                    else if (propertyName == "TileV")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_Tiling[1];
-                    }
-                    else if (propertyName == "OffsetU")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_Offs[0];
-                    }
-                    else if (propertyName == "OffsetV")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_Offs[1];
-                    }
-                    else if (propertyName == "RotateU")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = Word2Degr(currentResTexture.AddModificator()->m_Rot[0]);
-                    }
-                    else if (propertyName == "RotateV")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = Word2Degr(currentResTexture.AddModificator()->m_Rot[1]);
-                    }
-                    else if (propertyName == "RotateW")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = Word2Degr(currentResTexture.AddModificator()->m_Rot[2]);
+                        if (propertyName == "TypeU")
+                        {
+                            value.type = SPyWrappedProperty::eType_String;
+                            value.stringValue = TryConvertingETexModMoveTypeToCString(pTextureRes->AddModificator()->m_eMoveType[0]);
+                        }
+                        else if (propertyName == "TypeV")
+                        {
+                            value.type = SPyWrappedProperty::eType_String;
+                            value.stringValue = TryConvertingETexModMoveTypeToCString(pTextureRes->AddModificator()->m_eMoveType[1]);
+                        }
+                        else if (propertyName == "RateU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_OscRate[0];
+                        }
+                        else if (propertyName == "RateV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_OscRate[1];
+                        }
+                        else if (propertyName == "PhaseU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_OscPhase[0];
+                        }
+                        else if (propertyName == "PhaseV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_OscPhase[1];
+                        }
+                        else if (propertyName == "AmplitudeU")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_OscAmplitude[0];
+                        }
+                        else if (propertyName == "AmplitudeV")
+                        {
+                            value.type = SPyWrappedProperty::eType_Float;
+                            value.property.floatValue = pTextureRes->AddModificator()->m_OscAmplitude[1];
+                        }
+                        else
+                        {
+                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                        }
                     }
                     else
                     {
-                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
-                    }
-                }
-                else if (subCategoryName == "Rotator")
-                {
-                    if (propertyName == "Type")
-                    {
-                        value.type = SPyWrappedProperty::eType_String;
-                        value.stringValue = TryConvertingETexModRotateTypeToCString(currentResTexture.AddModificator()->m_eRotType);
-                    }
-                    else if (propertyName == "Rate")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = Word2Degr(currentResTexture.AddModificator()->m_RotOscRate[2]);
-                    }
-                    else if (propertyName == "Phase")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = Word2Degr(currentResTexture.AddModificator()->m_RotOscPhase[2]);
-                    }
-                    else if (propertyName == "Amplitude")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = Word2Degr(currentResTexture.AddModificator()->m_RotOscAmplitude[2]);
-                    }
-                    else if (propertyName == "CenterU")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_RotOscCenter[0];
-                    }
-                    else if (propertyName == "CenterV")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_RotOscCenter[1];
-                    }
-                    else
-                    {
-                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
-                    }
-                }
-                else if (subCategoryName == "Oscillator")
-                {
-                    if (propertyName == "TypeU")
-                    {
-                        value.type = SPyWrappedProperty::eType_String;
-                        value.stringValue = TryConvertingETexModMoveTypeToCString(currentResTexture.AddModificator()->m_eMoveType[0]);
-                    }
-                    else if (propertyName == "TypeV")
-                    {
-                        value.type = SPyWrappedProperty::eType_String;
-                        value.stringValue = TryConvertingETexModMoveTypeToCString(currentResTexture.AddModificator()->m_eMoveType[1]);
-                    }
-                    else if (propertyName == "RateU")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_OscRate[0];
-                    }
-                    else if (propertyName == "RateV")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_OscRate[1];
-                    }
-                    else if (propertyName == "PhaseU")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_OscPhase[0];
-                    }
-                    else if (propertyName == "PhaseV")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_OscPhase[1];
-                    }
-                    else if (propertyName == "AmplitudeU")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_OscAmplitude[0];
-                    }
-                    else if (propertyName == "AmplitudeV")
-                    {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentResTexture.AddModificator()->m_OscAmplitude[1];
-                    }
-                    else
-                    {
-                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                        throw std::runtime_error((QString("\"") + subCategoryName + "\" is an invalid sub category.").toLatin1().data());
                     }
                 }
                 else
                 {
-                    throw std::runtime_error((QString("\"") + subCategoryName + "\" is an invalid sub category.").toLatin1().data());
+                    uint16      nSlot = (uint16)TryConvertingCStringToEEfResTextures(subSubCategoryName);
+                    AZ_Warning("ShadersSystem", false, "PyGetProperty - Error: empty 'subSubCategoryName' texture slot [%d] for material %s",
+                        nSlot, pMaterial->GetName().toStdString().c_str());
                 }
             }
             else
@@ -1968,137 +2000,143 @@ namespace
         else if (categoryName == "Texture Maps")
         {
             // ########## Texture Maps / [name] ##########
+            SInputShaderResources&      shaderResources = pMaterial->GetShaderResources();
             if (splittedPropertyPath.size() == 2)
             {
-                SEfResTexture& currentResTexture = pMaterial->GetShaderResources().m_Textures[TryConvertingCStringToEEfResTextures(propertyName)];
-                currentResTexture.m_Name = value.stringValue.toLatin1().data();
+                uint16      nSlot = TryConvertingCStringToEEfResTextures(propertyName);
+                if (value.stringValue.length() == 0)
+                {
+                    AZ_Warning("ShadersSystem", false, "PySetProperty - Error: empty texture [%d] name for material %s",
+                        nSlot, pMaterial->GetName().toStdString().c_str());
+                }
+                // notice that the following is an insertion operation if the index did not exist in the map
+                shaderResources.m_TexturesResourcesMap[nSlot].m_Name = value.stringValue.toLatin1().data();
             }
             // ########## Texture Maps / [TexType | Filter | IsProjectedTexGen | TexGenType ] ##########
             else if (splittedPropertyPath.size() == 3)
             {
-                SEfResTexture& currentResTexture = pMaterial->GetShaderResources().m_Textures[TryConvertingCStringToEEfResTextures(subCategoryName)];
-
+                uint16              nSlot = TryConvertingCStringToEEfResTextures(subCategoryName);
+                // notice that each of the following will add the texture slot if did not exist yet
                 if (propertyName == "TexType")
                 {
-                    currentResTexture.m_Sampler.m_eTexType = TryConvertingCStringToETEX_Type(value.stringValue);
+                    shaderResources.m_TexturesResourcesMap[nSlot].m_Sampler.m_eTexType = TryConvertingCStringToETEX_Type(value.stringValue);
                 }
                 else if (propertyName == "Filter")
                 {
-                    currentResTexture.m_Filter = TryConvertingCStringToTexFilter(value.stringValue);
+                    shaderResources.m_TexturesResourcesMap[nSlot].m_Filter = TryConvertingCStringToTexFilter(value.stringValue);
                 }
                 else if (propertyName == "IsProjectedTexGen")
                 {
-                    currentResTexture.AddModificator()->m_bTexGenProjected = value.property.boolValue;
+                    shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_bTexGenProjected = value.property.boolValue;
                 }
                 else if (propertyName == "TexGenType")
                 {
-                    currentResTexture.AddModificator()->m_eTGType = TryConvertingCStringToETexGenType(value.stringValue);
+                    shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eTGType = TryConvertingCStringToETexGenType(value.stringValue);
                 }
             }
             // ########## Texture Maps / [Tiling | Rotator | Oscillator] ##########
             else if (splittedPropertyPath.size() == 4)
             {
-                SEfResTexture& currentResTexture = pMaterial->GetShaderResources().m_Textures[TryConvertingCStringToEEfResTextures(subSubCategoryName)];
-
+                uint16              nSlot = TryConvertingCStringToEEfResTextures(subSubCategoryName);
                 if (subCategoryName == "Tiling")
                 {
                     if (propertyName == "IsTileU")
                     {
-                        currentResTexture.m_bUTile = value.property.boolValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].m_bUTile = value.property.boolValue;
                     }
                     else if (propertyName == "IsTileV")
                     {
-                        currentResTexture.m_bVTile = value.property.boolValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].m_bVTile = value.property.boolValue;
                     }
                     else if (propertyName == "TileU")
                     {
-                        currentResTexture.AddModificator()->m_Tiling[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Tiling[0] = value.property.floatValue;
                     }
                     else if (propertyName == "TileV")
                     {
-                        currentResTexture.AddModificator()->m_Tiling[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Tiling[1] = value.property.floatValue;
                     }
                     else if (propertyName == "OffsetU")
                     {
-                        currentResTexture.AddModificator()->m_Offs[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Offs[0] = value.property.floatValue;
                     }
                     else if (propertyName == "OffsetV")
                     {
-                        currentResTexture.AddModificator()->m_Offs[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Offs[1] = value.property.floatValue;
                     }
                     else if (propertyName == "RotateU")
                     {
-                        currentResTexture.AddModificator()->m_Rot[0] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[0] = Degr2Word(value.property.floatValue);
                     }
                     else if (propertyName == "RotateV")
                     {
-                        currentResTexture.AddModificator()->m_Rot[1] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[1] = Degr2Word(value.property.floatValue);
                     }
                     else if (propertyName == "RotateW")
                     {
-                        currentResTexture.AddModificator()->m_Rot[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[2] = Degr2Word(value.property.floatValue);
                     }
                 }
                 else if (subCategoryName == "Rotator")
                 {
                     if (propertyName == "Type")
                     {
-                        currentResTexture.AddModificator()->m_eRotType = TryConvertingCStringToETexModRotateType(value.stringValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eRotType = TryConvertingCStringToETexModRotateType(value.stringValue);
                     }
                     else if (propertyName == "Rate")
                     {
-                        currentResTexture.AddModificator()->m_RotOscRate[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscRate[2] = Degr2Word(value.property.floatValue);
                     }
                     else if (propertyName == "Phase")
                     {
-                        currentResTexture.AddModificator()->m_RotOscPhase[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscPhase[2] = Degr2Word(value.property.floatValue);
                     }
                     else if (propertyName == "Amplitude")
                     {
-                        currentResTexture.AddModificator()->m_RotOscAmplitude[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscAmplitude[2] = Degr2Word(value.property.floatValue);
                     }
                     else if (propertyName == "CenterU")
                     {
-                        currentResTexture.AddModificator()->m_RotOscCenter[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscCenter[0] = value.property.floatValue;
                     }
                     else if (propertyName == "CenterV")
                     {
-                        currentResTexture.AddModificator()->m_RotOscCenter[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscCenter[1] = value.property.floatValue;
                     }
                 }
                 else if (subCategoryName == "Oscillator")
                 {
                     if (propertyName == "TypeU")
                     {
-                        currentResTexture.AddModificator()->m_eMoveType[0] = TryConvertingCStringToETexModMoveType(value.stringValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eMoveType[0] = TryConvertingCStringToETexModMoveType(value.stringValue);
                     }
                     else if (propertyName == "TypeV")
                     {
-                        currentResTexture.AddModificator()->m_eMoveType[1] = TryConvertingCStringToETexModMoveType(value.stringValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eMoveType[1] = TryConvertingCStringToETexModMoveType(value.stringValue);
                     }
                     else if (propertyName == "RateU")
                     {
-                        currentResTexture.AddModificator()->m_OscRate[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscRate[0] = value.property.floatValue;
                     }
                     else if (propertyName == "RateV")
                     {
-                        currentResTexture.AddModificator()->m_OscRate[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscRate[1] = value.property.floatValue;
                     }
                     else if (propertyName == "PhaseU")
                     {
-                        currentResTexture.AddModificator()->m_OscPhase[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscPhase[0] = value.property.floatValue;
                     }
                     else if (propertyName == "PhaseV")
                     {
-                        currentResTexture.AddModificator()->m_OscPhase[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscPhase[1] = value.property.floatValue;
                     }
                     else if (propertyName == "AmplitudeU")
                     {
-                        currentResTexture.AddModificator()->m_OscAmplitude[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscAmplitude[0] = value.property.floatValue;
                     }
                     else if (propertyName == "AmplitudeV")
                     {
-                        currentResTexture.AddModificator()->m_OscAmplitude[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscAmplitude[1] = value.property.floatValue;
                     }
                 }
             }

@@ -44,7 +44,10 @@ public:
 
     virtual QString GetTitle() const;
     virtual QString GetClassName() const;
+
+    using CFlowNode::GetDescription;
     virtual QString GetDescription();
+
     virtual QColor GetCategoryColor() override { return QColor(220, 40, 40); }
     virtual void OnInputsChanged();
 

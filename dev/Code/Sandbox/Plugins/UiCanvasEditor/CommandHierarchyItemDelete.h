@@ -21,7 +21,7 @@ public:
 
     static void Push(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems);
+        const QTreeWidgetItemRawPtrQList& selectedItems);
 
 private:
 

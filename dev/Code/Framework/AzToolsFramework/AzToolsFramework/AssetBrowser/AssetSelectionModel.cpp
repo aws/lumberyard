@@ -108,7 +108,7 @@ namespace AzToolsFramework
             return !m_results.empty();
         }
 
-        AssetSelectionModel AssetSelectionModel::AssetTypeSelection(AZ::Data::AssetType assetType, bool multiselect)
+        AssetSelectionModel AssetSelectionModel::AssetTypeSelection(const AZ::Data::AssetType& assetType, bool multiselect)
         {
             AssetSelectionModel selection;
 
@@ -134,6 +134,32 @@ namespace AzToolsFramework
             EBusFindAssetTypeByName result(assetTypeName);
             AZ::AssetTypeInfoBus::BroadcastResult(result, &AZ::AssetTypeInfo::GetAssetType);
             return AssetTypeSelection(result.GetAssetType(), multiselect);
+        }
+
+        AssetSelectionModel AssetSelectionModel::AssetTypesSelection(const AZStd::vector<AZ::Data::AssetType>& assetTypes, bool multiselect) 
+        {
+            AssetSelectionModel selection;
+
+            CompositeFilter* anyAssetTypeFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::OR);
+            anyAssetTypeFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
+            auto anyAssetTypeFilterPtr = FilterConstType(anyAssetTypeFilter);
+
+            for (const auto& assetType : assetTypes) {
+                AssetTypeFilter* assetTypeFilter = new AssetTypeFilter();
+                assetTypeFilter->SetAssetType(assetType);
+                anyAssetTypeFilter->AddFilter(FilterConstType(assetTypeFilter));
+            }
+
+            selection.SetDisplayFilter(anyAssetTypeFilterPtr);
+
+            CompositeFilter* compFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::AND);
+            compFilter->AddFilter(anyAssetTypeFilterPtr);
+            compFilter->AddFilter(ProductsNoFoldersFilter());
+
+            selection.SetSelectionFilter(FilterConstType(compFilter));
+            selection.SetMultiselect(multiselect);
+
+            return selection;
         }
 
         AssetSelectionModel AssetSelectionModel::AssetGroupSelection(const char* group, bool multiselect)

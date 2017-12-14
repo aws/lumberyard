@@ -12,6 +12,7 @@
 
 #include <SliceBuilder/Source/SliceBuilderWorker.h>
 #include <SliceBuilder/Source/TraceDrillerHook.h>
+#include <SliceBuilder/Source/TypeFingerprinter.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
@@ -21,7 +22,6 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
-#include <AzCore/std/sort.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzCore/Component/ComponentApplication.h>
 
@@ -31,33 +31,7 @@ namespace SliceBuilder
     {
         TypeFingerprint GetFingerprintForAllTypesInSlice(const AZ::SliceComponent& slice, const TypeFingerprinter& typeFingerprinter, AZ::SerializeContext& serializeContext)
         {
-            // Find all unique types contained in slice.
-            AZStd::unordered_set<AZ::TypeId> typesInSlice;
-            AZ::SerializeContext::BeginElemEnumCB elementCallback =
-                [&typesInSlice](void* /* instance pointer */, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* /* classElement*/)
-                {
-                    typesInSlice.insert(classData->m_typeId);
-                    return true;
-                };
-
-            serializeContext.EnumerateObject(&slice, elementCallback, nullptr, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
-
-            // TODO: find all types contained in DataPatches
-
-            // Sort all types before fingerprinting
-            AZStd::vector<AZ::TypeId> sortedTypes;
-            sortedTypes.reserve(typesInSlice.size());
-            sortedTypes.insert(sortedTypes.begin(), typesInSlice.begin(), typesInSlice.end());
-            AZStd::sort(sortedTypes.begin(), sortedTypes.end());
-        
-            // Create a fingerprint from all types found in the slice.
-            TypeFingerprint fingerprint = 0;
-            for (const AZ::TypeId& typeId : sortedTypes)
-            {
-                AZStd::hash_combine(fingerprint, typeFingerprinter.GetFingerprint(typeId));
-            }
-
-            return fingerprint;
+            return typeFingerprinter.GenerateFingerprintForAllTypesInObject(&slice);
         }
     } // namespace anonymous
 
@@ -68,13 +42,12 @@ namespace SliceBuilder
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
         AZ_Assert(serializeContext, "SerializeContext not found");
-        if (serializeContext)
-        {
-            m_typeFingerprinter.CreateFingerprintsForAllTypes(*serializeContext);
-        }
+        m_typeFingerprinter = AZStd::make_unique<TypeFingerprinter>(*serializeContext);
 
         AssetBuilderSDK::AssetBuilderCommandBus::Handler::BusConnect(GetUUID());
     }
+
+    SliceBuilderWorker::~SliceBuilderWorker() = default;
 
     void SliceBuilderWorker::ShutDown()
     {
@@ -89,7 +62,7 @@ namespace SliceBuilder
 
         TraceDrillerHook traceDrillerHook(true);
 
-        AZ_TracePrintf(s_sliceBuilder, "CreateJobs for slice \"%s\"", fullPath.c_str());
+        AZ_TracePrintf(s_sliceBuilder, "CreateJobs for slice \"%s\"\n", fullPath.c_str());
 
         // Serialize in the source slice to determine if we need to generate a .dynamicslice.
         AZ::IO::FileIOStream stream(fullPath.c_str(), AZ::IO::OpenMode::ModeRead);
@@ -114,7 +87,8 @@ namespace SliceBuilder
                     response.m_sourceFileDependencyList.push_back(dependency);
                 }
             }
-            else if (asset.GetType() == AZ::Uuid("{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}")) // ScriptCanvasAsset
+            else
+            if (asset.GetType() == AZ::Uuid("{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}")) // ScriptCanvasAsset
             {
                 AssetBuilderSDK::SourceFileDependency dependency;
                 dependency.m_sourceFileDependencyUUID = asset.GetId().m_guid;
@@ -154,18 +128,17 @@ namespace SliceBuilder
         {
             AZ::SerializeContext* context;
             AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-            TypeFingerprint sourceSliceTypeFingerprint = GetFingerprintForAllTypesInSlice(*sourcePrefab, m_typeFingerprinter, *context);
+            TypeFingerprint sourceSliceTypeFingerprint = GetFingerprintForAllTypesInSlice(*sourcePrefab, *m_typeFingerprinter, *context);
 
             const char* compilerVersion = "3";
-            const size_t platformCount = request.GetEnabledPlatformsCount();
 
-            for (size_t i = 0; i < platformCount; ++i)
+            for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
             {
                 AssetBuilderSDK::JobDescriptor jobDescriptor;
                 jobDescriptor.m_priority = 0;
                 jobDescriptor.m_critical = true;
                 jobDescriptor.m_jobKey = "RC Slice";
-                jobDescriptor.m_platform = request.GetEnabledPlatformAt(i);
+                jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
                 jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion)
                     .append(AZStd::string::format("|%llu", static_cast<uint64_t>(sourceSliceTypeFingerprint)));
 
@@ -216,7 +189,7 @@ namespace SliceBuilder
         AzFramework::StringFunc::Path::ConstructFull(request.m_watchFolder.c_str(), request.m_sourceFile.c_str(), fullPath, false);
         AzFramework::StringFunc::Path::Normalize(fullPath);
 
-        AZ_TracePrintf(s_sliceBuilder, "Processing slice \"%s\".", fullPath.c_str());
+        AZ_TracePrintf(s_sliceBuilder, "Processing slice \"%s\".\n", fullPath.c_str());
         
         // Serialize in the source slice to determine if we need to generate a .dynamicslice.
         AZ::IO::FileIOStream stream(fullPath.c_str(), AZ::IO::OpenMode::ModeRead);
@@ -231,12 +204,19 @@ namespace SliceBuilder
 
         AZ::Data::Asset<AZ::SliceAsset> asset;
         asset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
-        AZ::SliceAssetHandler assetHandler(context);
 
+        AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+
+        // Asset filter is used to record dependencies.  Only returns true for slices
+        auto assetFilter = [&productDependencies](const AZ::Data::Asset<AZ::Data::AssetData>& filterAsset)
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_processingMutex);
-            assetHandler.LoadAssetData(asset, &stream, AZ::ObjectStream::AssetFilterSlicesOnly);
-        }
+            productDependencies.emplace_back(filterAsset.GetId(), 0);
+
+            return AZ::ObjectStream::AssetFilterSlicesOnly(filterAsset);
+        };
+
+        AZ::SliceAssetHandler assetHandler(context);
+        assetHandler.LoadAssetData(asset, &stream, assetFilter);
 
         // Flush asset manager events to ensure no asset references are held by closures queued on Ebuses.
         AZ::Data::AssetManager::Instance().DispatchEvents();
@@ -284,6 +264,12 @@ namespace SliceBuilder
                 }
             }
 
+            if (traceDrillerHook.GetErrorCount() > 0)
+            {
+                AZ_Error(s_sliceBuilder, false, "Failed to instantiate entities.");
+                return;
+            }
+
             // Create cleanup function to ensure all BuildGameEntity calls are matched with FinishedBuildingGameEntity calls
             // even if we early return due to errors - we need to do this to prevent memory leaks/crashes caused by double deletions/missing deletions
             typedef AZStd::pair<AzToolsFramework::Components::EditorComponentBase*, AZ::Entity*> EditorComponentToEntityPair;
@@ -298,6 +284,14 @@ namespace SliceBuilder
                 }
             };
             ScopedProcessJobCleanup scopedBuildGameEntityCleanup(cleanupFunc);
+
+            AZ::ImmutableEntityVector immutableSourceEntities;
+            immutableSourceEntities.reserve(sourceEntities.size());
+            for (AZ::Entity* entity : sourceEntities)
+            {
+                immutableSourceEntities.push_back(entity);
+            }
+
 
             // Prepare entities for export. This involves invoking BuildGameEntity on source
             // entity's components, targeting a separate entity for export.
@@ -315,6 +309,13 @@ namespace SliceBuilder
 
                     if (asEditorComponent)
                     {
+                        if (!asEditorComponent->ValidateComponentRequirements(immutableSourceEntities))
+                        {
+                            AZ_Error("Slice compilation", false, "Slice \"%s\", Entity \"%s\" for Component \"%s\"could not pass validation",
+                                fullPath.c_str(), sourceEntity->GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
+                            return;
+                        }
+
                         size_t oldComponentCount = exportEntity->GetComponents().size();
                         asEditorComponent->BuildGameEntity(exportEntity);
                         sourceComponentToBuiltGameEntityMapping.push_back(EditorComponentToEntityPair(asEditorComponent, exportEntity));
@@ -368,12 +369,33 @@ namespace SliceBuilder
                 return;
             }
 
+            AZ::ImmutableEntityVector immutableExportEntities;
+            immutableExportEntities.reserve(exportEntities.size());
+            for (AZ::Entity* entity : exportEntities)
+            {
+                immutableExportEntities.push_back(entity);
+            }
+
+            for (AZ::Entity* exportEntity : exportEntities)
+            {
+                const AZ::Entity::ComponentArrayType& gameComponents = exportEntity->GetComponents();
+                for (AZ::Component* component : gameComponents)
+                {
+                    if (!component->ValidateComponentRequirements(immutableExportEntities))
+                    {
+                        AZ_Error("Slice compilation", false, "Slice \"%s\", Entity \"%s\" for Component \"%s\"could not pass validation",
+                            fullPath.c_str(), exportEntity->GetName().c_str(), component->RTTI_GetType().ToString<AZStd::string>().c_str());
+                        return;
+                    }
+                }
+            }
+
             // Save runtime slice to disk.
             // Use SaveObjectToFile because it writes to a byte stream first and then to disk
             // which is much faster than SaveObjectToStream(outputStream...) when writing large slices
             if (AZ::Utils::SaveObjectToFile<AZ::Entity>(dynamicSliceOutputPath.c_str(), AZ::DataStream::ST_XML, &exportSliceEntity))
             {
-                AZ_TracePrintf(s_sliceBuilder, "Output file %s", dynamicSliceOutputPath.c_str());
+                AZ_TracePrintf(s_sliceBuilder, "Output file %s\n", dynamicSliceOutputPath.c_str());
             }
             else
             {
@@ -388,12 +410,13 @@ namespace SliceBuilder
             AssetBuilderSDK::JobProduct jobProduct(dynamicSliceOutputPath);
             jobProduct.m_productAssetType = azrtti_typeid<AZ::DynamicSliceAsset>();
             jobProduct.m_productSubID = 2;
-            response.m_outputProducts.push_back(jobProduct);
+            jobProduct.m_dependencies = AZStd::move(productDependencies);
+            response.m_outputProducts.push_back(AZStd::move(jobProduct));
         }
 
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
 
-        AZ_TracePrintf(s_sliceBuilder, "Finished processing slice %s", fullPath.c_str());
+        AZ_TracePrintf(s_sliceBuilder, "Finished processing slice %s\n", fullPath.c_str());
     }
 
     AZ::Uuid SliceBuilderWorker::GetUUID()

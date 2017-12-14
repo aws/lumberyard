@@ -27,6 +27,8 @@
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/conditional.h>
 #include <AzCore/std/typetraits/function_traits.h>
+#include <AzCore/std/typetraits/is_reference.h>
+#include <AzCore/std/utils.h>
 
 namespace AZ
 {
@@ -179,7 +181,7 @@ namespace AZ
              * By default, the event queue is disabled.
              */
             static const bool EnableEventQueue = Traits::EnableEventQueue;
-
+            static const bool EventQueueingActiveByDefault = Traits::EventQueueingActiveByDefault;
             static const bool EnableQueuedReferences = Traits::EnableQueuedReferences;
 
             /**
@@ -456,14 +458,26 @@ namespace AZ
              * Execution will occur on the thread that calls this function.
              * @see QueueBroadcast(), EBusEventQueue::QueueEvent(), QueueFunction(), ClearQueuedEvents()
              */
-            static void ExecuteQueuedEvents() { Bus::GetContext().m_queue.Execute(); Bus::GetContext().m_functionQueue.Execute(); }
+            static void ExecuteQueuedEvents()
+            {
+                if (auto* context = Bus::GetContext())
+                {
+                    context->m_queue.Execute();
+                }
+            }
 
             /**
              * Clears the queue without calling events or functions.
              * Use in situations where memory must be freed immediately, such as shutdown.
              * Use with care. Cleared queued events will never be executed, and those events might have been expected.
              */
-            static void ClearQueuedEvents() { Bus::GetContext().m_queue.Clear(); Bus::GetContext().m_functionQueue.Clear(); }
+            static void ClearQueuedEvents()
+            {
+                if (auto* context = Bus::GetContext())
+                {
+                    context->m_queue.Clear();
+                }
+            }
 
             /**
              * Sets whether function queuing is allowed.
@@ -473,14 +487,18 @@ namespace AZ
              * @see QueueFunction, EBusTraits::EnableEventQueue
              * @param isAllowed Set to true to allow function queuing. Otherwise, set to false.
              */
-            static void AllowFunctionQueuing(bool isAllowed) { Bus::GetContext().m_functionQueue.SetActive(isAllowed); }
+            static void AllowFunctionQueuing(bool isAllowed) { Bus::GetOrCreateContext().m_queue.SetActive(isAllowed); }
 
             /**
              * Returns whether function queuing is allowed.
              * @return True if function queuing is allowed. Otherwise, false.
              * @see QueueFunction, AllowFunctionQueuing
              */
-            static bool IsFunctionQueuing() { return Bus::GetContext().m_functionQueue.IsActive(); }
+            static bool IsFunctionQueuing()
+            {
+                auto* context = Bus::GetContext();
+                return context ? context->m_queue.IsActive() : Traits::EventQueueingActiveByDefault;
+            }
 
             /**
              * Enqueues an asynchronous event to dispatch to all handlers.
@@ -660,29 +678,31 @@ namespace AZ
         template <class Function, class ... InputArgs>
         inline void EBusEventer<Bus, Traits>::Event(const BusIdType& id, Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
-                if (ebIter != context.m_buses.end())
-                {
-                    auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
                     {
-                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
-                        typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                        while (ebCurrentEvent.m_iterator != ebEnd)
+                        return;
+                    }
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
+                    if (ebIter != context->m_buses.end())
+                    {
+                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
+                        if (ebBus.size())
                         {
-                            ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
+                            while (ebCurrentEvent.m_iterator != ebEnd)
+                            {
+                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
                         }
                     }
                 }
@@ -693,29 +713,31 @@ namespace AZ
         template <class Results, class Function, class ... InputArgs>
         inline void EBusEventer<Bus, Traits>::EventResult(Results& results, const BusIdType& id, Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
-                if (ebIter != context.m_buses.end())
-                {
-                    auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
                     {
-                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
-                        typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                        while (ebCurrentEvent.m_iterator != ebEnd)
+                        return;
+                    }
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
+                    if (ebIter != context->m_buses.end())
+                    {
+                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
+                        if (ebBus.size())
                         {
-                            results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
+                            while (ebCurrentEvent.m_iterator != ebEnd)
+                            {
+                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
                         }
                     }
                 }
@@ -729,18 +751,19 @@ namespace AZ
             if (ptr)
             {
                 auto& ebBus = *ptr;
-                auto& context = Bus::GetContext();
-                if (context.m_routing.m_routers.size())
+                auto* context = Bus::GetContext();
+                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
+                if (context->m_routing.m_routers.size())
                 {
                     // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
                     {
                         return;
                     }
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
                     typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
@@ -758,18 +781,19 @@ namespace AZ
             if (ptr)
             {
                 auto& ebBus = *ptr;
-                auto& context = Bus::GetContext();
-                if (context.m_routing.m_routers.size())
+                auto* context = Bus::GetContext();
+                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
+                if (context->m_routing.m_routers.size())
                 {
                     // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
                     {
                         return;
                     }
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
                     typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
@@ -784,28 +808,30 @@ namespace AZ
         template <class Function, class ... InputArgs>
         inline void EBusEventer<Bus, Traits>::EventReverse(const BusIdType& id, Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
-                if (ebIter != context.m_buses.end())
-                {
-                    auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
                     {
-                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
-                        while (ebCurrentEvent.m_iterator != ebBus.rend())
+                        return;
+                    }
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
+                    if (ebIter != context->m_buses.end())
+                    {
+                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
+                        if (ebBus.size())
                         {
-                            ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                            while (ebCurrentEvent.m_iterator != ebBus.rend())
+                            {
+                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
                         }
                     }
                 }
@@ -816,28 +842,30 @@ namespace AZ
         template <class Results, class Function, class ... InputArgs>
         inline void EBusEventer<Bus, Traits>::EventResultReverse(Results& results, const BusIdType& id, Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
-                if (ebIter != context.m_buses.end())
-                {
-                    auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
                     {
-                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
-                        while (ebCurrentEvent.m_iterator != ebBus.rend())
+                        return;
+                    }
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
+                    if (ebIter != context->m_buses.end())
+                    {
+                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
+                        if (ebBus.size())
                         {
-                            results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                            while (ebCurrentEvent.m_iterator != ebBus.rend())
+                            {
+                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
                         }
                     }
                 }
@@ -851,18 +879,19 @@ namespace AZ
             if (ptr)
             {
                 auto& ebBus = *ptr;
-                auto& context = Bus::GetContext();
-                if (context.m_routing.m_routers.size())
+                auto* context = Bus::GetContext();
+                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
+                if (context->m_routing.m_routers.size())
                 {
                     // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
                     {
                         return;
                     }
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
                     typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
                     while (ebCurrentEvent.m_iterator != ebBus.rend())
                     {
@@ -879,18 +908,19 @@ namespace AZ
             if (ptr)
             {
                 auto& ebBus = *ptr;
-                auto& context = Bus::GetContext();
-                if (context.m_routing.m_routers.size())
+                auto* context = Bus::GetContext();
+                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
+                if (context->m_routing.m_routers.size())
                 {
                     // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
                     {
                         return;
                     }
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
                     typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus);
                     while (ebCurrentEvent.m_iterator != ebBus.rend())
                     {
@@ -904,12 +934,12 @@ namespace AZ
         template <class Callback>
         void EBusEventEnumerator<Bus, Traits>::EnumerateHandlers(Callback callback)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size())
+            auto* context = Bus::GetContext();
+            if (context && context->m_buses.size())
             {
-                context.m_mutex.lock();
-                auto ebFirstBus = context.m_buses.begin();
-                auto ebLastBus = context.m_buses.end();
+                context->m_mutex.lock();
+                auto ebFirstBus = context->m_buses.begin();
+                auto ebLastBus = context->m_buses.end();
                 bool isAbortEnum = false;
                 for (; ebFirstBus != ebLastBus && !isAbortEnum; )
                 {
@@ -936,7 +966,7 @@ namespace AZ
                         ++ebFirstBus;
                     }
                 }
-                context.m_mutex.unlock();
+                context->m_mutex.unlock();
             }
         }
 
@@ -944,12 +974,12 @@ namespace AZ
         template <class Callback>
         void EBusEventEnumerator<Bus, Traits>::EnumerateHandlersId(const BusIdType& id, Callback callback)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size())
+            auto* context = Bus::GetContext();
+            if (context && context->m_buses.size())
             {
-                context.m_mutex.lock();
-                auto ebIter = context.m_buses.find(id);
-                if (ebIter != context.m_buses.end())
+                context->m_mutex.lock();
+                auto ebIter = context->m_buses.find(id);
+                if (ebIter != context->m_buses.end())
                 {
                     auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
                     if (ebBus.size())
@@ -965,7 +995,7 @@ namespace AZ
                         }
                     }
                 }
-                context.m_mutex.unlock();
+                context->m_mutex.unlock();
             }
         }
 
@@ -978,8 +1008,9 @@ namespace AZ
                 auto& ebBus = *ptr;
                 if (ebBus.size())
                 {
-                    auto& context = Bus::GetContext();
-                    context.m_mutex.lock();
+                    auto* context = Bus::GetContext();
+                    AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
+                    context->m_mutex.lock();
                     typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
@@ -989,7 +1020,7 @@ namespace AZ
                             break;
                         }
                     }
-                    context.m_mutex.unlock();
+                    context->m_mutex.unlock();
                 }
             }
         }
@@ -1022,127 +1053,102 @@ namespace AZ
         template <class Function, class ... InputArgs>
         inline void EBusEventQueue<Bus, Traits>::QueueEvent(const BusIdType& id, Function func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
+            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            auto& context = Bus::GetOrCreateContext();
+            if (context.m_routing.m_routers.size())
             {
-                if (context.m_routing.m_routers.size())
+                context.m_mutex.lock();
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, false, func, args...))
                 {
-                    context.m_mutex.lock();
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, false, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
                     context.m_mutex.unlock();
+                    return;
                 }
-
-                context.m_queue.m_messagesMutex.lock();
-                context.m_queue.m_messages.push();
-                typename Bus::MessageQueuePolicy::BusMessage& ebMsg = context.m_queue.m_messages.back();
-                ebMsg.m_id = id;
-                ebMsg.m_isUseId = true;
-                ebMsg.m_isForward = true;
-                ebMsg.m_invoke = typename Bus::MessageQueuePolicy::BusMessageCall(AZStd::bind(func, AZStd::placeholders::_1, args...), typename Traits::AllocatorType());
-                context.m_queue.m_messagesMutex.unlock();
+                context.m_mutex.unlock();
             }
+
+            Bus::QueueFunction([id, func, args...]()
+            {
+                Bus::Event(id, func, args...);
+            });
         }
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
         inline void EBusEventQueue<Bus, Traits>::QueueEvent(const BusPtr& ptr, Function func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
+            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            auto* context = Bus::GetContext();
+            AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
+            if (context->m_routing.m_routers.size())
             {
-                if (context.m_routing.m_routers.size())
+                context->m_mutex.lock();
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, false, func, args...))
                 {
-                    context.m_mutex.lock();
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, false, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
-                    context.m_mutex.unlock();
+                    context->m_mutex.unlock();
+                    return;
                 }
-
-                context.m_queue.m_messagesMutex.lock();
-                context.m_queue.m_messages.push();
-                typename Bus::MessageQueuePolicy::BusMessage& ebMsg = context.m_queue.m_messages.back();
-                ebMsg.m_isUseId = false;
-                ebMsg.m_ptr = ptr;
-                ebMsg.m_isForward = true;
-                ebMsg.m_invoke = typename Bus::MessageQueuePolicy::BusMessageCall(AZStd::bind(func, AZStd::placeholders::_1, args...), typename Traits::AllocatorType());
-                context.m_queue.m_messagesMutex.unlock();
+                context->m_mutex.unlock();
             }
+
+            Bus::QueueFunction([ptr, func, args...]()
+            {
+                Bus::Event(ptr, func, args...);
+            });
         }
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
         inline void EBusEventQueue<Bus, Traits>::QueueEventReverse(const BusIdType& id, Function func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
+            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus dBus::oesn't support queued events! Check 'EnableEventQueue'");
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            auto& context = Bus::GetOrCreateContext();
+            if (context.m_routing.m_routers.size())
             {
-                if (context.m_routing.m_routers.size())
+                context.m_mutex.lock();
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, true, func, args...))
                 {
-                    context.m_mutex.lock();
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, true, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
                     context.m_mutex.unlock();
+                    return;
                 }
-                context.m_queue.m_messagesMutex.lock();
-                context.m_queue.m_messages.push();
-                typename Bus::MessageQueuePolicy::BusMessage& ebMsg = context.m_queue.m_messages.back();
-                ebMsg.m_id = id;
-                ebMsg.m_isUseId = true;
-                ebMsg.m_isForward = false;
-                ebMsg.m_invoke = Bus::MessageQueuePolicy::BusMessageCall(AZStd::bind(func, AZStd::placeholders::_1, args...), typename Traits::AllocatorType());
-                context.m_queue.m_messagesMutex.unlock();
+                context.m_mutex.unlock();
             }
+
+            Bus::QueueFunction([id, func, args...]()
+            {
+                Bus::EventReverse(id, func, args...);
+            });
         }
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
         inline void EBusEventQueue<Bus, Traits>::QueueEventReverse(const BusPtr& ptr, Function func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
+            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size())
+            auto* context = Bus::GetContext();
+            AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
+            if (context->m_routing.m_routers.size())
             {
-                if (context.m_routing.m_routers.size())
+                context->m_mutex.lock();
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, true, func, args...))
                 {
-                    context.m_mutex.lock();
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, true, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
-                    context.m_mutex.unlock();
+                    context->m_mutex.unlock();
+                    return;
                 }
-
-                context.m_queue.m_messagesMutex.lock();
-                context.m_queue.m_messages.push();
-                typename Bus::MessageQueuePolicy::BusMessage& ebMsg = context.m_queue.m_messages.back();
-                ebMsg.m_isUseId = false;
-                ebMsg.m_ptr = ptr;
-                ebMsg.m_isForward = false;
-                ebMsg.m_invoke = typename Bus::MessageQueuePolicy::BusMessageCall(AZStd::bind(func, AZStd::placeholders::_1, args...), typename Traits::AllocatorType());
-                context.m_queue.m_messagesMutex.unlock();
+                context->m_mutex.unlock();
             }
+
+            Bus::QueueFunction([ptr, func, args...]()
+            {
+                Bus::EventReverse(ptr, func, args...);
+            });
         }
 
         //=========================================================================
@@ -1152,14 +1158,16 @@ namespace AZ
         size_t EBusEventEnumerator<Bus, Traits>::GetNumOfEventHandlers(const BusIdType& id)
         {
             size_t size = 0;
-            auto& context = Bus::GetContext();
-            context.m_mutex.lock();
-            auto iter = context.m_buses.find(id);
-            if (iter != context.m_buses.end())
+            if (auto* context = Bus::GetContext())
             {
-                size = Traits::BusesContainer::toNodePtr(iter)->size();
+                context->m_mutex.lock();
+                auto iter = context->m_buses.find(id);
+                if (iter != context->m_buses.end())
+                {
+                    size = Traits::BusesContainer::toNodePtr(iter)->size();
+                }
+                context->m_mutex.unlock();
             }
-            context.m_mutex.unlock();
             return size;
         }
 
@@ -1167,38 +1175,40 @@ namespace AZ
         template <class Function, class ... InputArgs>
         inline void EBusBroadcaster<Bus, Traits>::Broadcast(Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                auto ebFirstBus = context.m_buses.begin();
-                auto ebLastBus = context.m_buses.end();
-                for (; ebFirstBus != ebLastBus; )
-                {
-                    auto& ebBus = *ebFirstBus;
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
                     {
-                        ebBus.add_ref();
-                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
-                        typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                        while (ebCurrentEvent.m_iterator != ebEnd)
-                        {
-                            ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                        }
-                        ++ebFirstBus;
-                        ebBus.release();
+                        return;
                     }
-                    else
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    auto ebFirstBus = context->m_buses.begin();
+                    auto ebLastBus = context->m_buses.end();
+                    for (; ebFirstBus != ebLastBus; )
                     {
-                        ++ebFirstBus;
+                        auto& ebBus = *ebFirstBus;
+                        if (ebBus.size())
+                        {
+                            ebBus.add_ref();
+                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
+                            while (ebCurrentEvent.m_iterator != ebEnd)
+                            {
+                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
+                            ++ebFirstBus;
+                            ebBus.release();
+                        }
+                        else
+                        {
+                            ++ebFirstBus;
+                        }
                     }
                 }
             }
@@ -1208,38 +1218,40 @@ namespace AZ
         template <class Results, class Function, class ... InputArgs>
         inline void EBusBroadcaster<Bus, Traits>::BroadcastResult(Results& results, Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                auto ebFirstBus = context.m_buses.begin();
-                auto ebLastBus = context.m_buses.end();
-                for (; ebFirstBus != ebLastBus; )
-                {
-                    auto& ebBus = *ebFirstBus;
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
                     {
-                        ebBus.add_ref();
-                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
-                        typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                        while (ebCurrentEvent.m_iterator != ebEnd)
-                        {
-                            results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                        }
-                        ++ebFirstBus;
-                        ebBus.release();
+                        return;
                     }
-                    else
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    auto ebFirstBus = context->m_buses.begin();
+                    auto ebLastBus = context->m_buses.end();
+                    for (; ebFirstBus != ebLastBus; )
                     {
-                        ++ebFirstBus;
+                        auto& ebBus = *ebFirstBus;
+                        if (ebBus.size())
+                        {
+                            ebBus.add_ref();
+                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
+                            while (ebCurrentEvent.m_iterator != ebEnd)
+                            {
+                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
+                            ++ebFirstBus;
+                            ebBus.release();
+                        }
+                        else
+                        {
+                            ++ebFirstBus;
+                        }
                     }
                 }
             }
@@ -1249,70 +1261,72 @@ namespace AZ
         template <class Function, class ... InputArgs>
         inline void EBusBroadcaster<Bus, Traits>::BroadcastReverse(Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                auto ebCurrentBus = context.m_buses.rbegin();
-                for (; ebCurrentBus != context.m_buses.rend(); )
-                {
-                    auto& ebBus = *ebCurrentBus;
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
                     {
-                        typename Traits::EBNode* iteratorLockedBus = nullptr;
-                        if (ebCurrentBus != context.m_buses.rbegin())
+                        return;
+                    }
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    auto ebCurrentBus = context->m_buses.rbegin();
+                    for (; ebCurrentBus != context->m_buses.rend(); )
+                    {
+                        auto& ebBus = *ebCurrentBus;
+                        if (ebBus.size())
                         {
-                            // The reverse iterator (ebCurrentBus) internally points to the previous element (the next forward iterator).
-                            // It's important to make sure that this iterator stays valid, so we hold a lock on that element until we 
-                            // have moved to the next one. Moving to the next element will happen after processing current bus. While 
-                            // processing, we can change the bus container (add/remove listeners).
-                            iteratorLockedBus = &*AZStd::prior(ebCurrentBus);
-                            iteratorLockedBus->add_ref();
-                        }
-
-                        ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
-                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
-                        while (ebCurrentEvent.m_iterator != ebBus.rend())
-                        {
-                            ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                        }
-                        ebBus.release(); // Release the reference to the bus we are processing. It will be deleted if needed.
-
-                        if (iteratorLockedBus == nullptr) // If iteratorLockedBus is null, ebCurrentBus is rbegin. Make sure we update the iterator.
-                        {
-                            ebCurrentBus = context.m_buses.rbegin();
-                        }
-
-                        // Since rend() internally points to begin(), it might have changed during the message (e.g., bus was removed).  
-                        // Make sure that we are not at the end before moving to the next element, which would be an invalid operation.
-                        if (ebCurrentBus != context.m_buses.rend())
-                        {
-                            // During message processing we could have removed/added buses. Since the reverse iterator points
-                            // to the next forward iterator, the elements it points to can change. In this case, we don't need
-                            // to move the reverse iterator.
-                            if (&*ebCurrentBus == &ebBus)
+                            typename Traits::EBNode* iteratorLockedBus = nullptr;
+                            if (ebCurrentBus != context->m_buses.rbegin())
                             {
-                                ++ebCurrentBus; // If we did not remove the bus we just processed, move to the next one.
+                                // The reverse iterator (ebCurrentBus) internally points to the previous element (the next forward iterator).
+                                // It's important to make sure that this iterator stays valid, so we hold a lock on that element until we 
+                                // have moved to the next one. Moving to the next element will happen after processing current bus. While 
+                                // processing, we can change the bus container (add/remove listeners).
+                                iteratorLockedBus = &*AZStd::prior(ebCurrentBus);
+                                iteratorLockedBus->add_ref();
+                            }
+
+                            ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
+                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                            while (ebCurrentEvent.m_iterator != ebBus.rend())
+                            {
+                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
+                            ebBus.release(); // Release the reference to the bus we are processing. It will be deleted if needed.
+
+                            if (iteratorLockedBus == nullptr) // If iteratorLockedBus is null, ebCurrentBus is rbegin. Make sure we update the iterator.
+                            {
+                                ebCurrentBus = context->m_buses.rbegin();
+                            }
+
+                            // Since rend() internally points to begin(), it might have changed during the message (e.g., bus was removed).  
+                            // Make sure that we are not at the end before moving to the next element, which would be an invalid operation.
+                            if (ebCurrentBus != context->m_buses.rend())
+                            {
+                                // During message processing we could have removed/added buses. Since the reverse iterator points
+                                // to the next forward iterator, the elements it points to can change. In this case, we don't need
+                                // to move the reverse iterator.
+                                if (&*ebCurrentBus == &ebBus)
+                                {
+                                    ++ebCurrentBus; // If we did not remove the bus we just processed, move to the next one.
+                                }
+                            }
+
+                            if (iteratorLockedBus)
+                            {
+                                // We are done moving the ebCurrentBus iterator. It's safe to release the lock on the element the iterator was pointing to.
+                                iteratorLockedBus->release();
                             }
                         }
-
-                        if (iteratorLockedBus)
+                        else
                         {
-                            // We are done moving the ebCurrentBus iterator. It's safe to release the lock on the element the iterator was pointing to.
-                            iteratorLockedBus->release();
+                            ++ebCurrentBus;
                         }
-                    }
-                    else
-                    {
-                        ++ebCurrentBus;
                     }
                 }
             }
@@ -1322,70 +1336,72 @@ namespace AZ
         template <class Results, class Function, class ... InputArgs>
         inline void EBusBroadcaster<Bus, Traits>::BroadcastResultReverse(Results& results, Function func, InputArgs&& ... args)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_routing.m_routers.size())
+            if (auto* context = Bus::GetContext())
             {
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
+                if (context->m_routing.m_routers.size())
                 {
-                    return;
-                }
-            }
-            if (context.m_buses.size())
-            {
-                typename Bus::DispatchLockGuard lock(context.m_mutex);
-                auto ebCurrentBus = context.m_buses.rbegin();
-                for (; ebCurrentBus != context.m_buses.rend(); )
-                {
-                    auto& ebBus = *ebCurrentBus;
-                    if (ebBus.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
                     {
-                        typename Traits::EBNode* iteratorLockedBus = nullptr;
-                        if (ebCurrentBus != context.m_buses.rbegin())
+                        return;
+                    }
+                }
+                if (context->m_buses.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    auto ebCurrentBus = context->m_buses.rbegin();
+                    for (; ebCurrentBus != context->m_buses.rend(); )
+                    {
+                        auto& ebBus = *ebCurrentBus;
+                        if (ebBus.size())
                         {
-                            // The reverse iterator (ebCurrentBus) internally points to the previous element (the next forward iterator).
-                            // It's important to make sure that this iterator stays valid, so we hold a lock on that element until we 
-                            // have moved to the next one. Moving to the next element will happen after processing current bus. While 
-                            // processing, we can change the bus container (add/remove listeners).
-                            iteratorLockedBus = &*AZStd::prior(ebCurrentBus);
-                            iteratorLockedBus->add_ref();
-                        }
-
-                        ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
-                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
-                        while (ebCurrentEvent.m_iterator != ebBus.rend())
-                        {
-                            results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                        }
-                        ebBus.release(); // Release the reference to the bus we are processing. It will be deleted if needed.
-
-                        if (iteratorLockedBus == nullptr) // If iteratorLockedBus is null, ebCurrentBus is rbegin. Make sure we update the iterator.
-                        {
-                            ebCurrentBus = context.m_buses.rbegin();
-                        }
-
-                        // Since rend() internally points to begin(), it might have changed during the message (e.g., bus was removed).  
-                        // Make sure that we are not at the end before moving to the next element, which would be an invalid operation.
-                        if (ebCurrentBus != context.m_buses.rend())
-                        {
-                            // During message processing we could have removed/added buses. Since the reverse iterator points
-                            // to the next forward iterator, the elements it points to can change. In this case, we don't need
-                            // to move the reverse iterator.
-                            if (&*ebCurrentBus == &ebBus)
+                            typename Traits::EBNode* iteratorLockedBus = nullptr;
+                            if (ebCurrentBus != context->m_buses.rbegin())
                             {
-                                ++ebCurrentBus; // If we did not remove the bus we just processed, move to the next one.
+                                // The reverse iterator (ebCurrentBus) internally points to the previous element (the next forward iterator).
+                                // It's important to make sure that this iterator stays valid, so we hold a lock on that element until we 
+                                // have moved to the next one. Moving to the next element will happen after processing current bus. While 
+                                // processing, we can change the bus container (add/remove listeners).
+                                iteratorLockedBus = &*AZStd::prior(ebCurrentBus);
+                                iteratorLockedBus->add_ref();
+                            }
+
+                            ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
+                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                            while (ebCurrentEvent.m_iterator != ebBus.rend())
+                            {
+                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
+                            }
+                            ebBus.release(); // Release the reference to the bus we are processing. It will be deleted if needed.
+
+                            if (iteratorLockedBus == nullptr) // If iteratorLockedBus is null, ebCurrentBus is rbegin. Make sure we update the iterator.
+                            {
+                                ebCurrentBus = context->m_buses.rbegin();
+                            }
+
+                            // Since rend() internally points to begin(), it might have changed during the message (e.g., bus was removed).  
+                            // Make sure that we are not at the end before moving to the next element, which would be an invalid operation.
+                            if (ebCurrentBus != context->m_buses.rend())
+                            {
+                                // During message processing we could have removed/added buses. Since the reverse iterator points
+                                // to the next forward iterator, the elements it points to can change. In this case, we don't need
+                                // to move the reverse iterator.
+                                if (&*ebCurrentBus == &ebBus)
+                                {
+                                    ++ebCurrentBus; // If we did not remove the bus we just processed, move to the next one.
+                                }
+                            }
+
+                            if (iteratorLockedBus)
+                            {
+                                // We are done moving the ebCurrentBus iterator. It's safe to release the lock on the element the iterator was pointing to.
+                                iteratorLockedBus->release();
                             }
                         }
-
-                        if (iteratorLockedBus)
+                        else
                         {
-                            // We are done moving the ebCurrentBus iterator. It's safe to release the lock on the element the iterator was pointing to.
-                            iteratorLockedBus->release();
+                            ++ebCurrentBus;
                         }
-                    }
-                    else
-                    {
-                        ++ebCurrentBus;
                     }
                 }
             }
@@ -1395,12 +1411,12 @@ namespace AZ
         template <class Callback>
         void EBusBroadcastEnumerator<Bus, Traits>::EnumerateHandlers(Callback callback)
         {
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size())
+            auto* context = Bus::GetContext();
+            if (context && context->m_buses.size())
             {
-                context.m_mutex.lock();
-                auto ebFirstBus = context.m_buses.begin();
-                auto ebLastBus = context.m_buses.end();
+                context->m_mutex.lock();
+                auto ebFirstBus = context->m_buses.begin();
+                auto ebLastBus = context->m_buses.end();
                 bool isAbortEnum = false;
                 for (; ebFirstBus != ebLastBus && !isAbortEnum; )
                 {
@@ -1427,7 +1443,7 @@ namespace AZ
                         ++ebFirstBus;
                     }
                 }
-                context.m_mutex.unlock();
+                context->m_mutex.unlock();
             }
         }
 
@@ -1488,85 +1504,67 @@ namespace AZ
         template <class Function, class ... InputArgs>
         inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcast(Function func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
+            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            auto& context = Bus::GetOrCreateContext();
+            if (context.m_routing.m_routers.size())
             {
-                if (context.m_routing.m_routers.size())
+                context.m_mutex.lock();
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, false, func, args...))
                 {
-                    context.m_mutex.lock();
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, false, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
                     context.m_mutex.unlock();
+                    return;
                 }
-
-                context.m_queue.m_messagesMutex.lock();
-                context.m_queue.m_messages.push();
-                typename Bus::MessageQueuePolicy::BusMessage& ebMsg = context.m_queue.m_messages.back();
-                ebMsg.m_ptr = nullptr;
-                ebMsg.m_isUseId = false;
-                ebMsg.m_isForward = true;
-                ebMsg.m_invoke = typename Bus::MessageQueuePolicy::BusMessageCall(AZStd::bind(func, AZStd::placeholders::_1, args...), typename Traits::AllocatorType());
-                context.m_queue.m_messagesMutex.unlock();
+                context.m_mutex.unlock();
             }
+
+            Bus::QueueFunction([func, args...]()
+            {
+                Bus::Broadcast(func, args...);
+            });
         }
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
         inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcastReverse(Function func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
+            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
-            auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            auto& context = Bus::GetOrCreateContext();
+            if (context.m_routing.m_routers.size())
             {
-                if (context.m_routing.m_routers.size())
+                context.m_mutex.lock();
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, true, func, args...))
                 {
-                    context.m_mutex.lock();
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, true, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
                     context.m_mutex.unlock();
+                    return;
                 }
-
-                context.m_queue.m_messagesMutex.lock();
-                context.m_queue.m_messages.push();
-                typename Bus::MessageQueuePolicy::BusMessage& ebMsg = context.m_queue.m_messages.back();
-                ebMsg.m_ptr = nullptr;
-                ebMsg.m_isUseId = false;
-                ebMsg.m_isForward = false;
-                ebMsg.m_invoke = typename Bus::MessageQueuePolicy::BusMessageCall(AZStd::bind(func, AZStd::placeholders::_1, args...), typename Traits::AllocatorType());
-                context.m_queue.m_messagesMutex.unlock();
+                context.m_mutex.unlock();
             }
+
+            Bus::QueueFunction([func, args...]()
+            {
+                Bus::BroadcastReverse(func, args...);
+            });
         }
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
         inline void EBusBroadcastQueue<Bus, Traits>::QueueFunction(Function func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::FunctionQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
+            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
-            auto& context = Bus::GetContext();
-            if (context.m_functionQueue.IsActive())
+            auto& context = Bus::GetOrCreateContext();
+            if (context.m_queue.IsActive())
             {
-                context.m_functionQueue.m_messagesMutex.lock();
-                context.m_functionQueue.m_messages.push(typename Bus::FunctionQueuePolicy::BusMessageCall(AZStd::bind(func, args...), typename Traits::AllocatorType()));
-                context.m_functionQueue.m_messagesMutex.unlock();
-            }
-            else
-            {
-                AZ_Warning("System", false, "You are trying to queue function on an EBus, but function queuing is NOT enabled! The function will not be executed/called!");
+                context.m_queue.m_messagesMutex.lock();
+                context.m_queue.m_messages.push(typename Bus::QueuePolicy::BusMessageCall(AZStd::bind(func, args...), typename Traits::AllocatorType()));
+                context.m_queue.m_messagesMutex.unlock();
             }
         }
     } // namespace BusInternal

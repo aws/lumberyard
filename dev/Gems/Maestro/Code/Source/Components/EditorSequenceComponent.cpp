@@ -15,6 +15,8 @@
 
 #include "Objects/EntityObject.h"
 #include "TrackView/TrackViewSequenceManager.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/SequenceType.h"
 
 #include <AzCore/Math/Uuid.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -39,6 +41,12 @@ namespace Maestro
         static bool UpVersionEditorSequenceComponent(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
     } // namespace ClassConverters
 
+      ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    EditorSequenceComponent::EditorSequenceComponent()
+        : m_sequenceId(s_invalidSequenceId)
+    {
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     EditorSequenceComponent::~EditorSequenceComponent()
     {
@@ -49,9 +57,9 @@ namespace Maestro
             IAnimSequence* sequence = editor->GetMovieSystem()->FindSequenceById(m_sequenceId);
             ITrackViewSequenceManager* pSequenceManager = editor->GetSequenceManager();
 
-            if (sequence && pSequenceManager && pSequenceManager->GetSequenceByEntityId(sequence->GetOwnerId()))
+            if (sequence && pSequenceManager && pSequenceManager->GetSequenceByEntityId(sequence->GetSequenceEntityId()))
             {
-                pSequenceManager->OnDeleteSequenceObject(sequence->GetOwnerId());
+                pSequenceManager->OnDeleteSequenceEntity(sequence->GetSequenceEntityId());
             }
         }
 
@@ -121,12 +129,11 @@ namespace Maestro
             else
             {
                 // if m_sequence is NULL, we're creating a new sequence - request the creation from the Track view
-                m_sequence = static_cast<CAnimSequence*>(editor->GetSequenceManager()->OnCreateSequenceObject(m_entity->GetName().c_str(), false));
+                m_sequence = static_cast<CAnimSequence*>(editor->GetSequenceManager()->OnCreateSequenceObject(m_entity->GetName().c_str(), false, GetEntityId()));
             }
 
             if (m_sequence)
             {
-                m_sequence->SetOwner(GetEntityId());
                 m_sequenceId = m_sequence->GetId();
             }
 
@@ -139,8 +146,6 @@ namespace Maestro
                     trackViewSequence->Load();
                 }
             }
-
-            editor->GetSequenceManager()->OnSequenceLoaded(GetEntityId());
         }
     }
 
@@ -151,6 +156,13 @@ namespace Maestro
 
         Maestro::EditorSequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
         Maestro::SequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
+
+        IEditor* editor = nullptr;
+        EBUS_EVENT_RESULT(editor, AzToolsFramework::EditorRequests::Bus, GetEditor);
+        if (editor)
+        {
+            editor->GetSequenceManager()->OnSequenceActivated(GetEntityId());
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -232,13 +244,14 @@ namespace Maestro
     void EditorSequenceComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
         SequenceComponent *gameSequenceComponent = gameEntity->CreateComponent<SequenceComponent>();
+        gameSequenceComponent->m_sequence = m_sequence;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    EAnimValue EditorSequenceComponent::GetValueType(const AZStd::string& animatableAddress)
+    AnimValueType EditorSequenceComponent::GetValueType(const AZStd::string& animatableAddress)
     {
         // TODO: look up type from BehaviorContext Property
-        return eAnimValue_Float;
+        return AnimValueType::Float;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -373,8 +386,8 @@ namespace Maestro
             if (classElement.GetVersion() == 0)
             {
 
-                // upgrade V0 to V1 - change "Position", "Rotation", "Scale" anim params in Transform Component Nodes from eAnimParamType_ByString to
-                // eAnimParamType_Position, eAnimParamType_Rotation, eAnimParamType_Scale respectively
+                // upgrade V0 to V1 - change "Position", "Rotation", "Scale" anim params in Transform Component Nodes from AnimParamType::ByString to
+                // AnimParamType::Position, AnimParamType::Rotation, AnimParamType::Scale respectively
                 int serializedAnimStringIdx = classElement.FindElement(AZ::Crc32("SerializedString"));
                 if (serializedAnimStringIdx == -1)
                 {
@@ -475,7 +488,7 @@ namespace Maestro
                                         {
                                             // create and fill in the sequence outside of the Cinematics/TrackView system - the sequence will get registered
                                             // with these the Cinematics/TrackView libraries during the Init() call
-                                            CAnimSequence sequence(movieSystem, seqId, eSequenceType_SequenceComponent);
+                                            CAnimSequence sequence(movieSystem, seqId, SequenceType::SequenceComponent);
                                             sequence.SetName(seqName);
 
                                             /// deserialize Xml data into m_sequence via deprecated legacy CrySerialization

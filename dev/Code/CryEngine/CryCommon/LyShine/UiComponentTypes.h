@@ -29,6 +29,7 @@ namespace LyShine
     const char* const UiDynamicScrollBoxComponentUuid = "{6982C200-4D32-43CC-A7F6-F54FA50FCFF5}";
     const char* const UiElementComponentUuid =          "{4A97D63E-CE7A-45B6-AAE4-102DB4334688}";
     const char* const UiFaderComponentUuid =            "{CD01FF77-2249-4ED8-BFFB-33A66A47E17C}";
+    const char* const UiFlipbookAnimationComponentUuid ="{AACCFFA1-B694-4F8B-A289-391A56404E0C}";
     const char* const UiImageComponentUuid =            "{BDBEFD23-DBB4-4726-A32D-4FEAC24E51F6}";
     const char* const UiLayoutColumnComponentUuid =     "{4BC2E786-360B-4426-8D9C-9B254C5EA21F}";
     const char* const UiLayoutCellComponentUuid =       "{A0568E58-4382-47F8-8B88-77C64B99AC80}";

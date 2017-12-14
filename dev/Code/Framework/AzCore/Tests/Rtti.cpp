@@ -385,21 +385,65 @@ namespace UnitTest
 
     TEST_F(Rtti, MultiThreadedTypeInfo)
     {
+        // These must be Uuids so that they don't engage the UuidHolder code
         const AZ::Uuid expectedMtti("{4876C017-0C26-4D0D-9A1F-2A738BAE6449}");
         const AZ::Uuid expectedMtti2("{CBC94693-5ECD-4CBF-A8DB-9B122E697E8D}");
-        auto threadFunc = [&expectedMtti, &expectedMtti2]()
+
+        // Create 2x of each of these threads which are doing RTTI ops and
+        // let the scheduler run them at random. This is attempting to crash
+        // them into each other as best we can
+        auto threadFunc1 = [&expectedMtti, &expectedMtti2]()
         {
-            const AZ::Uuid& mtti = azrtti_typeid<MTTI>();
-            const AZ::Uuid& mtti2 = azrtti_typeid<MTTI2>();
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
+            const AZ::TypeId& mtti = azrtti_typeid<MTTI>();
+            const AZ::TypeId& mtti2 = azrtti_typeid<MTTI2>();
             EXPECT_FALSE(mtti.IsNull());
             EXPECT_EQ(expectedMtti, mtti);
             EXPECT_FALSE(mtti2.IsNull());
             EXPECT_EQ(expectedMtti2, mtti2);
         };
 
-        AZStd::thread threads[64];
-        for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
+        auto threadFunc2 = []()
         {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
+            MTTI* mtti = new MTTI();
+            bool castSucceeded = (azrtti_cast<MTTI2*>(mtti) != nullptr);
+            EXPECT_FALSE(castSucceeded);
+            delete mtti;
+        };
+
+        auto threadFunc3 = []()
+        {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
+            MTTI2* mtti2 = new MTTI2();
+            bool castSucceeded = (azrtti_cast<MTTI*>(mtti2) != nullptr);
+            EXPECT_FALSE(castSucceeded);
+            delete mtti2;
+        };
+
+        auto threadFunc4 = []()
+        {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
+            MTTI* mtti = new MTTI();
+            bool castSucceeded = (azrtti_cast<MTTI*>(mtti) != nullptr);
+            EXPECT_TRUE(castSucceeded);
+            delete mtti;
+        };
+
+        auto threadFunc5 = []()
+        {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
+            MTTI2* mtti2 = new MTTI2();
+            bool castSucceeded = (azrtti_cast<MTTI2*>(mtti2) != nullptr);
+            EXPECT_TRUE(castSucceeded);
+            delete mtti2;
+        };
+
+        AZStd::fixed_vector<AZStd::function<void()>, 5> threadFuncs({ threadFunc1, threadFunc2, threadFunc3, threadFunc4, threadFunc5 });
+        AZStd::thread threads[10];
+        for (size_t threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
+        {
+            auto threadFunc = threadFuncs[threadIdx % threadFuncs.size()];
             threads[threadIdx] = AZStd::thread(threadFunc);
         }
         for (auto& thread : threads)

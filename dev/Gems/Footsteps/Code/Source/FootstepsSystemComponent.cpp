@@ -3,7 +3,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
 
 #include "FootstepsSystemComponent.h"
 
@@ -51,7 +51,7 @@ namespace Footsteps
 
     void FootstepsSystemComponent::Init()
     {
-        using namespace LmbrCentral;
+        using namespace AzFramework;
 
         //AZStd::vector<AZ::EntityId> aabbResults = PhysicsSystemRequestBus::Broadcast(&PhysicsSystemRequestBus::Events::GatherPhysicalEntitiesInAABB, aabb, query);
         //AZStd::vector<AZ::EntityId> pointResults = PhysicsSystemRequestBus::Broadcast(&PhysicsSystemRequestBus::Events::GatherPhysicalEntitiesAroundPoint, center, radius, query);

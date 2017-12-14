@@ -46,7 +46,7 @@ namespace RenderGL
 
         GLSLShader*                     mActiveShader;
         MCore::Array<GLSLShader*>       mShaders;
-        MCore::Matrix                   mBoneMatrices[50];
+        MCore::Matrix                   mBoneMatrices[200];
         EMotionFX::Material*            mMaterial;
 
         Texture*                        mDiffuseMap;

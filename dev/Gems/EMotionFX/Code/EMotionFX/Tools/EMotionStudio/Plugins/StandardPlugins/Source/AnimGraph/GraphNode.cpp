@@ -51,6 +51,7 @@ namespace EMStudio
         mVisualizeHighlighted   = false;
         mNameAndPortsUpdated    = false;
         mCanHaveChildren        = false;
+        mHasVisualGraph         = false;
         mHasVisualOutputPorts   = true;
         mMaxInputWidth          = 0;
         mMaxOutputWidth         = 0;
@@ -721,7 +722,7 @@ namespace EMStudio
         MCORE_UNUSED(pen);
 
         // render the marker which indicates that you can go inside this node
-        if (mCanHaveChildren)
+        if (mCanHaveChildren || mHasVisualGraph)
         {
             const int indicatorSize = 13;
             QRect childIndicatorRect(mRect.right() - indicatorSize - 2 * BORDER_RADIUS, mRect.top(), indicatorSize + 2 * BORDER_RADIUS + 1, indicatorSize + 2 * BORDER_RADIUS);

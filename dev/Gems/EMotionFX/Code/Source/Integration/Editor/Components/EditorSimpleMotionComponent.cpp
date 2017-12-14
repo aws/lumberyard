@@ -42,7 +42,7 @@ namespace EMotionFX
                 if (editContext)
                 {
                     editContext->Class<EditorSimpleMotionComponent>(
-                        "Simple Motion", "Manages a single EMotion FX motion in lieu of an animation graph")
+                        "Simple Motion", "The Simple Motion component assigns a single motion to the associated Actor in lieu of an Anim Graph component")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Mannequin.png")

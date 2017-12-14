@@ -18,6 +18,8 @@
 #include "MiniTable.h"
 #include "DrawContext.h"
 
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
+
 MINIGUI_BEGIN
 
 CMiniTable::CMiniTable()
@@ -292,20 +294,12 @@ void CMiniTable::SetVisible(bool state)
     if (state)
     {
         clear_flag(eCtrl_Hidden);
-
-        if (gEnv->pInput)
-        {
-            gEnv->pInput->AddEventListener(this);
-        }
+        AzFramework::InputChannelEventListener::Connect();
     }
     else
     {
         set_flag(eCtrl_Hidden);
-
-        if (gEnv->pInput)
-        {
-            gEnv->pInput->RemoveEventListener(this);
-        }
+        AzFramework::InputChannelEventListener::Disconnect();
     }
 
     if (m_pCloseButton)
@@ -319,16 +313,17 @@ void CMiniTable::Hide(bool stat)
     SetVisible(!stat);
 }
 
-bool CMiniTable::OnInputEvent(const SInputEvent& rInputEvent)
+bool CMiniTable::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
-    if (!IsHidden())
+    if (!IsHidden() && inputChannel.IsStateBegan())
     {
-        if (rInputEvent.state == eIS_Pressed && rInputEvent.keyId == eKI_PgUp)
+        const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+        if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationPageUp)
         {
             m_pageNum++;
             m_requiresResize = true;
         }
-        else if (rInputEvent.state == eIS_Pressed && rInputEvent.keyId == eKI_PgDn)
+        else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationPageDown)
         {
             if (m_pageNum > 0)
             {

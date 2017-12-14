@@ -55,7 +55,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // Overrides from IAnimNode
     // ComponentNodes use reflection for typing - return invalid for this pure virtual for the legacy system
-    CAnimParamType GetParamType(unsigned int nIndex) const override { (void)nIndex; return eAnimParamType_Invalid; };
+    CAnimParamType GetParamType(unsigned int nIndex) const override;
 
     void     SetComponent(AZ::ComponentId componentId, const AZ::Uuid& typeId) override;
 
@@ -75,6 +75,7 @@ public:
 
     Vec3 GetPos() override;
     Quat GetRotate() override;
+    Quat GetRotate(float time) override;
     Vec3 GetScale() override;
 
     ICharacterInstance* GetCharacterInstance() override;
@@ -117,6 +118,20 @@ protected:
 
 
 private:
+
+    enum ETransformSpaceConversionDirection
+    {
+        eTransformConverstionDirection_toWorldSpace = 0,
+        eTransformConverstionDirection_toLocalSpace
+    };
+
+    // methods to convert world transforms to local transforms to account for Transform Delegate bug working solely
+    // in world space
+    void GetParentWorldTransform(AZ::Transform& retTransform) const;
+    void ConvertBetweenWorldAndLocalPosition(Vec3& position, ETransformSpaceConversionDirection conversionDirection) const;
+    void ConvertBetweenWorldAndLocalRotation(Quat& rotation, ETransformSpaceConversionDirection conversionDirection) const;
+    void ConvertBetweenWorldAndLocalScale(Vec3& scale, ETransformSpaceConversionDirection conversionDirection) const;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // certain components, such as SimpleAnimation, are mapped to specialized types and handled withing CryMovie, as opposed
     // to using getters/setters in VirtualProperties
@@ -134,7 +149,7 @@ private:
     int SetKeysForChangedBoolTrackValue(IAnimTrack* track, int keyIdx, float time);
     int SetKeysForChangedFloatTrackValue(IAnimTrack* track, int keyIdx, float time);
     int SetKeysForChangedVector3TrackValue(IAnimTrack* track, int keyIdx, float time, bool applyTrackMultiplier = true, float isChangedTolerance = AZ::g_simdTolerance);
-    int SetKeysForChangedQuaternionTrackValue(IAnimTrack* track, int keyIdx, float time, float isChangedTolerance = AZ::g_simdTolerance);
+    int SetKeysForChangedQuaternionTrackValue(IAnimTrack* track, int keyIdx, float time);
 
     class BehaviorPropertyInfo
     {
@@ -154,7 +169,7 @@ private:
         {
             // TODO: clean this up - this weird memory sharing was copied from legacy Cry - could be better.
             m_displayName = str;
-            m_animNodeParamInfo.paramType = str;   // set type to eAnimParamType_ByString by assigning a string
+            m_animNodeParamInfo.paramType = str;   // set type to AnimParamType::ByString by assigning a string
             m_animNodeParamInfo.name = &m_displayName[0];
             return *this;
         }
@@ -174,7 +189,7 @@ private:
     AZStd::unordered_map<CAnimParamType, BehaviorPropertyInfo>   m_paramTypeToBehaviorPropertyInfoMap;
 
     // a mapping of component type ID's to specialized param types (such as animation). If a component is not in this map,
-    // eAnimParamType_ByString is used with the Virtual Property name as the string value
+    // AnimParamType::ByString is used with the Virtual Property name as the string value
     static AZStd::unordered_map<AZ::Uuid, IAnimNode::AnimParamInfos> s_componentTypeToNonBehaviorPropertiesMap;
 
     // used to return a reference to an empty vector

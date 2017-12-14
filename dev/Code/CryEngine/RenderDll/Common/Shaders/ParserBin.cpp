@@ -882,7 +882,7 @@ void CParserBin::SetupForGLES3()
     gRenDev->m_cEF.mfInitLookups();
 
     //  Confetti BEGIN: Igor Lobanchikov
-#if defined(ANDROID)
+#if defined(ANDROID) && defined(OPENGL_ES)
     assert(gcpRendD3D);
     if (!gcpRendD3D->UseHalfFloatRenderTargets())
     {
@@ -3145,58 +3145,58 @@ void SFXParam::PostLoad(CParserBin& Parser, SParserFrame& Name, SParserFrame& An
 
                     if (nTok == eT_register)
                     {
-                        m_RegisterOffset[eHWSC_Vertex] = registerOffset;
-                        m_RegisterOffset[eHWSC_Pixel] = m_RegisterOffset[eHWSC_Vertex];
+                        m_Register[eHWSC_Vertex] = registerOffset;
+                        m_Register[eHWSC_Pixel] = m_Register[eHWSC_Vertex];
                         if (CParserBin::PlatformSupportsGeometryShaders())
                         {
-                            m_RegisterOffset[eHWSC_Geometry] = m_RegisterOffset[eHWSC_Vertex];
+                            m_Register[eHWSC_Geometry] = m_Register[eHWSC_Vertex];
                         }
                         if (CParserBin::PlatformSupportsDomainShaders())
                         {
-                            m_RegisterOffset[eHWSC_Domain] = m_RegisterOffset[eHWSC_Vertex];
+                            m_Register[eHWSC_Domain] = m_Register[eHWSC_Vertex];
                         }
                         if (CParserBin::PlatformSupportsHullShaders())
                         {
-                            m_RegisterOffset[eHWSC_Hull] = m_RegisterOffset[eHWSC_Vertex];
+                            m_Register[eHWSC_Hull] = m_Register[eHWSC_Vertex];
                         }
                         if (CParserBin::PlatformSupportsComputeShaders())
                         {
-                            m_RegisterOffset[eHWSC_Compute] = m_RegisterOffset[eHWSC_Vertex];
+                            m_Register[eHWSC_Compute] = m_Register[eHWSC_Vertex];
                         }
                         bIsUniformRegisterOffset = true;
                     }
                     else
                     if (nTok == eT_vsregister)
                     {
-                        m_RegisterOffset[eHWSC_Vertex] = registerOffset;
+                        m_Register[eHWSC_Vertex] = registerOffset;
                     }
                     else
                     if (nTok == eT_psregister)
                     {
-                        m_RegisterOffset[eHWSC_Pixel] = registerOffset;
+                        m_Register[eHWSC_Pixel] = registerOffset;
                     }
                     else
                     if (CParserBin::PlatformSupportsGeometryShaders() && nTok == eT_gsregister)
                     {
-                        m_RegisterOffset[eHWSC_Geometry] = registerOffset;
+                        m_Register[eHWSC_Geometry] = registerOffset;
                     }
                     else
                     if (CParserBin::PlatformSupportsDomainShaders() && nTok == eT_dsregister)
                     {
-                        m_RegisterOffset[eHWSC_Domain] = registerOffset;
-                        m_RegisterOffset[eHWSC_Vertex] = m_RegisterOffset[eHWSC_Domain];
+                        m_Register[eHWSC_Domain] = registerOffset;
+                        m_Register[eHWSC_Vertex] = m_Register[eHWSC_Domain];
                     }
                     else
                     if (CParserBin::PlatformSupportsHullShaders() && nTok == eT_hsregister)
                     {
-                        m_RegisterOffset[eHWSC_Hull] = registerOffset;
-                        m_RegisterOffset[eHWSC_Vertex] = m_RegisterOffset[eHWSC_Hull];
+                        m_Register[eHWSC_Hull] = registerOffset;
+                        m_Register[eHWSC_Vertex] = m_Register[eHWSC_Hull];
                     }
                     else
                     if (CParserBin::PlatformSupportsComputeShaders() && nTok == eT_csregister)
                     {
-                        m_RegisterOffset[eHWSC_Compute] = registerOffset;
-                        m_RegisterOffset[eHWSC_Vertex] = m_RegisterOffset[eHWSC_Compute];
+                        m_Register[eHWSC_Compute] = registerOffset;
+                        m_Register[eHWSC_Vertex] = m_Register[eHWSC_Compute];
                     }
                 }
             }
@@ -3304,12 +3304,12 @@ void SFXSampler::PostLoad(CParserBin& Parser, SParserFrame& Name, SParserFrame& 
                             ++szReg;
                         }
                         assert(isdigit(szReg[0]));
-                        m_nRegister[eHWSC_Vertex] =
-                            m_nRegister[eHWSC_Pixel] =
-                                m_nRegister[eHWSC_Geometry] =
-                                    m_nRegister[eHWSC_Domain] =
-                                        m_nRegister[eHWSC_Hull] =
-                                            m_nRegister[eHWSC_Compute] = atoi(&szReg[0]);
+                        m_Register[eHWSC_Vertex] =
+                            m_Register[eHWSC_Pixel] =
+                                m_Register[eHWSC_Geometry] =
+                                    m_Register[eHWSC_Domain] =
+                                        m_Register[eHWSC_Hull] =
+                                            m_Register[eHWSC_Compute] = atoi(&szReg[0]);
 
                         uint32 tok2 = pTokens[nCur++];
                         if (tok2 != eT_br_rnd_2)
@@ -3346,32 +3346,32 @@ void SFXSampler::PostLoad(CParserBin& Parser, SParserFrame& Name, SParserFrame& 
                         assert(isdigit(szReg[0]));
                         if (nTok == eT_vsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Vertex] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Vertex] = atoi(&szReg[0]);
                         }
                         else
                         if (nTok == eT_psslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Pixel] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Pixel] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsGeometryShaders() && nTok == eT_gsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Geometry] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Geometry] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsDomainShaders() && nTok == eT_dsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Domain] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Domain] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsHullShaders() && nTok == eT_hsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Hull] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Hull] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsComputeShaders() && nTok == eT_csslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Compute] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Compute] = atoi(&szReg[0]);
                         }
                     }
                 }
@@ -3440,12 +3440,12 @@ void SFXTexture::PostLoad(CParserBin& Parser, SParserFrame& Name, SParserFrame& 
                             ++szReg;
                         }
                         assert(isdigit(szReg[0]));
-                        m_nRegister[eHWSC_Vertex] =
-                            m_nRegister[eHWSC_Pixel] =
-                                m_nRegister[eHWSC_Geometry] =
-                                    m_nRegister[eHWSC_Domain] =
-                                        m_nRegister[eHWSC_Hull] =
-                                            m_nRegister[eHWSC_Compute] = atoi(&szReg[0]);
+                        m_Register[eHWSC_Vertex] =
+                            m_Register[eHWSC_Pixel] =
+                                m_Register[eHWSC_Geometry] =
+                                    m_Register[eHWSC_Domain] =
+                                        m_Register[eHWSC_Hull] =
+                                            m_Register[eHWSC_Compute] = atoi(&szReg[0]);
 
                         uint32 tok2 = pTokens[nCur++];
                         if (tok2 != eT_br_rnd_2)
@@ -3482,32 +3482,32 @@ void SFXTexture::PostLoad(CParserBin& Parser, SParserFrame& Name, SParserFrame& 
                         assert(isdigit(szReg[0]));
                         if (nTok == eT_vsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Vertex] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Vertex] = atoi(&szReg[0]);
                         }
                         else
                         if (nTok == eT_psslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Pixel] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Pixel] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsGeometryShaders() && nTok == eT_gsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Geometry] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Geometry] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsDomainShaders() && nTok == eT_dsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Domain] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Domain] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsHullShaders() && nTok == eT_hsslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Hull] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Hull] = atoi(&szReg[0]);
                         }
                         else
                         if (CParserBin::PlatformSupportsComputeShaders() && nTok == eT_csslot || nTok == eT_slot)
                         {
-                            m_nRegister[eHWSC_Compute] = atoi(&szReg[0]);
+                            m_Register[eHWSC_Compute] = atoi(&szReg[0]);
                         }
                     }
                 }
@@ -3659,6 +3659,9 @@ void CParserBin::SetupFeatureDefines()
     RemoveMacro(CParserBin::GetCRC32("FEATURE_8_BONE_SKINNING"), m_StaticMacros);
     RemoveMacro(CParserBin::GetCRC32("FEATURE_TEXTURE_VIEWS"), m_StaticMacros);
     RemoveMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), m_StaticMacros);
+#if defined(CRY_USE_METAL) || defined(OPENGL_ES)
+    RemoveMacro(CParserBin::GetCRC32("FEATURE_GMEM_VELOCITY"), m_StaticMacros);
+#endif
 
     uint32 nEnable[1] = {eT_1};
 #if defined(MESH_TESSELLATION)
@@ -3730,5 +3733,13 @@ void CParserBin::SetupFeatureDefines()
      {
          AddMacro(CParserBin::fxToken("NoDepthClipping"), nEnable, 1, 0, m_StaticMacros);
      }
+    
+#if defined(CRY_USE_METAL) || defined(OPENGL_ES)
+     //Ensure that the device can support at least 5 render targets - GBUFFER A, GBUFFER B, GBUFFER C, Lin Depth/Stencil and Velocity
+     if (RenderCapabilities::SupportsRenderTargets(5))
+     {
+         AddMacro(CParserBin::GetCRC32("FEATURE_GMEM_VELOCITY"), nEnable, 1, 0, m_StaticMacros);
+     }
+#endif
 #endif // !defined(NULL_RENDERER)
 }

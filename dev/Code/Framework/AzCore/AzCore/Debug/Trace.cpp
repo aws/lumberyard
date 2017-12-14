@@ -35,10 +35,19 @@
 namespace AZ {
     using namespace AZ::Debug;
 
+    namespace DebugInternal
+    {
+        // other threads can trigger fatals and errors, but the same thread should not, to avoid stack overflow.
+        // because its thread local, it does not need to be atomic.
+        // its also important that this is inside the cpp file, so that its only in the trace.cpp module and not the header shared by everyone.
+        static AZ_THREAD_LOCAL bool g_alreadyHandlingAssertOrFatal = false;
+        static AZ_THREAD_LOCAL bool g_suppressEBusCalls = false; // used when it would be dangerous to use ebus broadcasts.
+    }
+
     //////////////////////////////////////////////////////////////////////////
     // Globals
     const int       g_maxMessageLength = 4096;
-    const char*    g_dbgSystemWnd = "System";
+    static const char*    g_dbgSystemWnd = "System";
     Trace Debug::g_tracer;
     void* g_exceptionInfo = NULL;
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
@@ -58,6 +67,12 @@ namespace AZ {
             : m_value(false) {}
         void operator=(bool rhs)     { m_value = m_value || rhs; }
     };
+
+    //=========================================================================
+    const char* Trace::GetDefaultSystemWindow()
+    {
+        return g_dbgSystemWnd;
+    }
 
     //=========================================================================
     // IsDebuggerPresent
@@ -137,6 +152,15 @@ namespace AZ {
 #endif // AZ_ENABLE_DEBUG_TOOLS
     }
 
+    void Debug::Trace::Terminate(int exitCode)
+    {
+#if defined(AZ_PLATFORM_WINDOWS)
+        ::ExitProcess(exitCode);
+#else
+        _exit(exitCode);
+#endif
+    }
+
     //=========================================================================
     // Assert
     // [8/3/2009]
@@ -144,8 +168,17 @@ namespace AZ {
     void
     Trace::Assert(const char* fileName, int line, const char* funcName, const char* format, ...)
     {
+        using namespace DebugInternal;
+
         char message[g_maxMessageLength];
         char header[g_maxMessageLength];
+
+        if (g_alreadyHandlingAssertOrFatal)
+        {
+            return;
+        }
+
+        g_alreadyHandlingAssertOrFatal = true;
 
         va_list mark;
         va_start(mark, format);
@@ -158,6 +191,7 @@ namespace AZ {
         EBUS_EVENT_RESULT(result, TraceMessageBus, OnPreAssert, fileName, line, funcName, message);
         if (result.m_value)
         {
+            g_alreadyHandlingAssertOrFatal = false;
             return;
         }
 
@@ -172,12 +206,14 @@ namespace AZ {
         if (result.m_value)
         {
             Output(g_dbgSystemWnd, "==================================================================\n");
+            g_alreadyHandlingAssertOrFatal = false;
             return;
         }
 
         Output(g_dbgSystemWnd, "------------------------------------------------\n");
         PrintCallstack(g_dbgSystemWnd, 1);
         Output(g_dbgSystemWnd, "==================================================================\n");
+        g_alreadyHandlingAssertOrFatal = false;
 
         g_tracer.Break();
     }
@@ -189,8 +225,20 @@ namespace AZ {
     void
     Trace::Error(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...)
     {
+        using namespace DebugInternal;
+        if (!window)
+        {
+            window = g_dbgSystemWnd;
+        }
+
         char message[g_maxMessageLength];
         char header[g_maxMessageLength];
+
+        if (g_alreadyHandlingAssertOrFatal)
+        {
+            return;
+        }
+        g_alreadyHandlingAssertOrFatal = true;
 
         va_list mark;
         va_start(mark, format);
@@ -203,6 +251,7 @@ namespace AZ {
         EBUS_EVENT_RESULT(result, TraceMessageBus, OnPreError, window, fileName, line, funcName, message);
         if (result.m_value)
         {
+            g_alreadyHandlingAssertOrFatal = false;
             return;
         }
 
@@ -217,6 +266,7 @@ namespace AZ {
         if (result.m_value)
         {
             Output(window, "==================================================================\n");
+            g_alreadyHandlingAssertOrFatal = false;
             return;
         }
 
@@ -231,7 +281,9 @@ namespace AZ {
         {
             Break();
         }
-#endif // RR_PLATFORM_WIN32
+#endif // defined(AZ_PLATFORM_WINDOWS) && defined(AZ_DEBUG_BUILD)
+
+        g_alreadyHandlingAssertOrFatal = false;
     }
     //=========================================================================
     // Warning
@@ -283,6 +335,11 @@ namespace AZ {
     void
     Trace::Printf(const char* window, const char* format, ...)
     {
+        if (!window)
+        {
+            window = g_dbgSystemWnd;
+        }
+
         char message[g_maxMessageLength];
 
         va_list mark;
@@ -309,7 +366,7 @@ namespace AZ {
     void
     Trace::Output(const char* window, const char* message)
     {
-        if (window == 0)
+        if (!window)
         {
             window = g_dbgSystemWnd;
         }
@@ -331,13 +388,19 @@ namespace AZ {
 #if defined(AZ_PLATFORM_ANDROID) && !RELEASE
         __android_log_print(ANDROID_LOG_INFO, window, message);
 #endif // AZ_PLATFORM_ANDROID
-
-        EBUS_EVENT(TraceMessageDrillerBus, OnOutput, window, message);
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnOutput, window, message);
-        if (result.m_value)
+        
+        if (!DebugInternal::g_suppressEBusCalls)
         {
-            return;
+            // only call into Ebusses if we are not in a recursive-exception situation as that
+            // would likely just lead to even more exceptions.
+            
+            EBUS_EVENT(TraceMessageDrillerBus, OnOutput, window, message);
+            TraceMessageResult result;
+            EBUS_EVENT_RESULT(result, TraceMessageBus, OnOutput, window, message);
+            if (result.m_value)
+            {
+                return;
+            }
         }
 
         printf("%s: %s", window, message);
@@ -374,7 +437,7 @@ namespace AZ {
                 }
 
                 azstrcat(lines[i], AZ_ARRAY_SIZE(lines[i]), "\n");
-                Output(window, lines[i]);
+                AZ_Printf(window, "%s", lines[i]); // feed back into the trace system so that listeners can get it.
             }
         }
     }
@@ -437,14 +500,19 @@ namespace AZ {
         static bool volatile isInExeption = false;
         if (isInExeption)
         {
+            // prevent g_tracer from calling the tracebus:
+            DebugInternal::g_suppressEBusCalls = true;
             g_tracer.Output(g_dbgSystemWnd, "Exception handler loop!");
+            g_tracer.PrintCallstack(g_dbgSystemWnd, 0, ExceptionInfo->ContextRecord);
+            DebugInternal::g_suppressEBusCalls = false;
+
             if (g_tracer.IsDebuggerPresent())
             {
                 g_tracer.Break();
             }
             else
             {
-                exit(1);
+                _exit(1); // do not proceed any further.  note that _exit(1) is expected to terminate immediately.  exit without the underscore may still execute code.
             }
         }
 
@@ -464,28 +532,16 @@ namespace AZ {
         {
             g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
             g_exceptionInfo = NULL;
+            // if someone ever returns TRUE we assume that they somehow handled this exception and continue.
             return EXCEPTION_CONTINUE_EXECUTION;
         }
         g_tracer.PrintCallstack(g_dbgSystemWnd, 0, ExceptionInfo->ContextRecord);
         g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
 
+        // allowing continue of execution is not valid here.  This handler gets called for serious exceptions.
+        // programs wanting things like a message box can implement them on a case-by-case basis, but we want no such 
+        // default behavior - this code is used in automated build systems and UI applications alike.
         LONG lReturn = EXCEPTION_CONTINUE_SEARCH;
-#if defined(AZ_PLATFORM_WINDOWS)
-        int Result = MessageBox(NULL, "Abort to quit\nRetry with debugger\nIgnore to continue execution", "Exception encountered",
-                MB_ABORTRETRYIGNORE | MB_DEFBUTTON3 | MB_ICONSTOP | MB_APPLMODAL);
-        switch (Result)
-        {
-        case IDABORT:
-            exit(1);
-        case IDRETRY:
-            g_tracer.Break();
-        case IDIGNORE:
-            lReturn = EXCEPTION_CONTINUE_EXECUTION;
-            break;
-        }
-#else // else non-windows-platform
-        g_tracer.Break();
-#endif
         isInExeption = false;
         g_exceptionInfo = NULL;
         return lReturn;

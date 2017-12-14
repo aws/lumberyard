@@ -33,6 +33,8 @@
 
 #include "Util/BoostPythonHelpers.h"
 
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <InitGuid.h>
 #endif
@@ -61,6 +63,7 @@ CVegetationTool::CVegetationTool()
     m_panelPreviewId = 0;
 
     m_pointerPos(0, 0, 0);
+    m_mouseOverPaintableSurface = false;
 
     m_vegetationMap = GetIEditor()->GetVegetationMap();
 
@@ -72,6 +75,7 @@ CVegetationTool::CVegetationTool()
     m_opMode = OPMODE_NONE;
 
     m_isAffectedByBrushes = false;
+    m_instanceLimitMessageActive = false;
 
     SetStatusText("Click to Place or Remove Vegetation");
 }
@@ -162,7 +166,12 @@ bool CVegetationTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& 
 
         GetIEditor()->BeginUndo();
         view->CaptureMouse();
-        PaintBrush();
+        // If the paint fails we need to handle the button release ourselves because
+        // the failure message box will steal the mouse events
+        if (!PaintBrush())
+        {
+            OnLButtonUp(view, nFlags, point);
+        }
     }
     else
     {
@@ -355,8 +364,14 @@ bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
     {
         m_isAffectedByBrushes = true;
     }
-    m_pointerPos = view->ViewToWorld(point, 0, !m_isAffectedByBrushes, m_isAffectedByBrushes);
+
+    bool mouseCollidingWithTerrain = false;
+    bool mouseCollidingWithObject = false;
+
+    m_pointerPos = view->ViewToWorld(point, &mouseCollidingWithTerrain, !m_isAffectedByBrushes, m_isAffectedByBrushes, false /* collideWithRenderMesh */, &mouseCollidingWithObject);
     m_mousePos = point;
+
+    m_mouseOverPaintableSurface = mouseCollidingWithTerrain || mouseCollidingWithObject;
 
     bool bProcessed = false;
     if (event == eMouseLDown)
@@ -482,7 +497,7 @@ void CVegetationTool::Display(DisplayContext& dc)
             }
         }
     }
-    else
+    else if (m_mouseOverPaintableSurface)
     {
         // Brush paint mode.
 
@@ -644,8 +659,13 @@ void CVegetationTool::GetSelectedObjects(std::vector<CVegetationObject*>& object
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CVegetationTool::PaintBrush()
+bool CVegetationTool::PaintBrush()
 {
+    if (!m_mouseOverPaintableSurface)
+    {
+        return true;
+    }
+
     GetSelectedObjects(m_selectedObjects);
 
     QRect rc(QPoint(m_pointerPos.x - m_brushRadius, m_pointerPos.y - m_brushRadius), 
@@ -654,17 +674,23 @@ void CVegetationTool::PaintBrush()
     AABB updateRegion;
     updateRegion.min = m_pointerPos - Vec3(m_brushRadius, m_brushRadius, m_brushRadius);
     updateRegion.max = m_pointerPos + Vec3(m_brushRadius, m_brushRadius, m_brushRadius);
-
+    bool success = true;
     if (m_bPlaceMode)
     {
         for (int i = 0; i < m_selectedObjects.size(); i++)
         {
             int numInstances = m_selectedObjects[i]->GetNumInstances();
-            m_vegetationMap->PaintBrush(rc, true, m_selectedObjects[i], &m_pointerPos);
+            success = m_vegetationMap->PaintBrush(rc, true, m_selectedObjects[i], &m_pointerPos);
             // If number of instances changed.
             if (numInstances != m_selectedObjects[i]->GetNumInstances() && m_panel)
             {
                 m_panel->UpdateObjectInTree(m_selectedObjects[i]);
+            }
+
+            if (!success)
+            {
+                OnPaintBrushFailed();
+                break;
             }
         }
     }
@@ -685,6 +711,36 @@ void CVegetationTool::PaintBrush()
     }
 
     SetModified(true, updateRegion);
+
+    return success;
+}
+
+void CVegetationTool::OnPaintBrushFailed()
+{
+    // Bail out if we already have a dialog active (e.g. the dialog was thrown on mouse
+    // click, but this will get triggered if you drag the mouse before the dialog
+    // has been exec'd)
+    if (m_instanceLimitMessageActive)
+    {
+        return;
+    }
+
+    // Display error modal dialog if we reached the limit of vegetation instances
+    // Need to delay the exec so that we don't block the mouse callback, since it
+    // comes from the RenderViewport that will start assert'ing since the PostWidgetRendering
+    // call won't be invoked at the proper time
+    QTimer::singleShot(0, this, [this] {
+        m_instanceLimitMessageActive = true;
+        QMessageBox* box = new QMessageBox(AzToolsFramework::GetActiveWindow());
+        box->setWindowTitle(QObject::tr("Limit reached"));
+        box->setText(QObject::tr("The maximum limit of vegetation instances has been reached."));
+        box->setIcon(QMessageBox::Critical);
+        QObject::connect(box, &QMessageBox::finished, this, [this, box]() {
+            m_instanceLimitMessageActive = false;
+            box->deleteLater();
+        });
+        box->exec();
+    });
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -727,11 +783,17 @@ void CVegetationTool::Distribute()
         int numInstances = m_selectedObjects[i]->GetNumInstances();
 
         QRect rc(0, 0, m_vegetationMap->GetSize(), m_vegetationMap->GetSize());
-        m_vegetationMap->PaintBrush(rc, false, m_selectedObjects[i]);
+        bool success = m_vegetationMap->PaintBrush(rc, false, m_selectedObjects[i]);
 
         if (numInstances != m_selectedObjects[i]->GetNumInstances() && m_panel)
         {
             m_panel->UpdateObjectInTree(m_selectedObjects[i]);
+        }
+
+        if (!success)
+        {
+            OnPaintBrushFailed();
+            break;
         }
     }
     if (!m_selectedObjects.empty())

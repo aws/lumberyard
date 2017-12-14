@@ -49,7 +49,7 @@ namespace ScriptCanvasEditor
             /////
 
             // GetVariableNodeDescriptNotificationBus
-			void OnVariableActivated() override;
+            void OnVariableActivated() override;
             void OnAssignVariableChanged() override;
             ////
 
@@ -94,7 +94,7 @@ namespace ScriptCanvasEditor
         
     private:
     
-		void PopulateExternalSlotIds();
+        void PopulateExternalSlotIds();
         void ConvertConnections(const AZ::EntityId& oldVariableId);
     
         void ClearPins();

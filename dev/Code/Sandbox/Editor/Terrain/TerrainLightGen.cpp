@@ -293,7 +293,6 @@ bool CTerrainLightGen::GenerateSectorTexture(const QPoint& sector, const QRect& 
 
     // set flags.
     bool bUseLighting = flags & ETTG_LIGHTING;
-    //  bool bShowWater = flags & ETTG_SHOW_WATER;
     bool bNoTexture = flags & ETTG_NOTEXTURE;
     bool bUseLightmap = flags & ETTG_USE_LIGHTMAPS;
     m_bLog = !(flags & ETTG_QUIET);
@@ -305,8 +304,6 @@ bool CTerrainLightGen::GenerateSectorTexture(const QPoint& sector, const QRect& 
 
     assert(pDocument);
     assert(pHeightmap);
-
-    float waterLevel = pHeightmap->GetWaterLevel();
 
     // Update heightmap for that sector.
     UpdateSectorHeightmap(sector);
@@ -535,7 +532,7 @@ bool CTerrainLightGen::GenerateLightmap(const QPoint& sector, LightingSettings* 
 
     if (genFlags & ETTG_SHOW_WATER)
     {
-        fWaterZ = m_heightmap->GetWaterLevel();
+        fWaterZ = m_heightmap->GetOceanLevel();
     }
 
     uint32 iWidth = m_resolution;

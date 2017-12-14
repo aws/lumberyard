@@ -22,7 +22,7 @@
 #include <Serialization/Enum.h>
 #include <Bezier_impl.h>
 
-namespace
+namespace EnvironmentPresetDetails
 {
     static const float sBezierSplineKeyValueEpsilon = 0.001f;
 
@@ -155,8 +155,8 @@ float CBezierSpline::Evaluate(float t) const
 
     const SBezierKey* pKeyLeftOfSegment = (startIt != m_keys.begin()) ? &*(startIt - 1) : NULL;
     const SBezierKey* pKeyRightOfSegment = (startIt != (m_keys.end() - 2)) ? &*(startIt + 2) : NULL;
-    const SBezierKey segmentStart = ApplyOutTangent(*startIt, pKeyLeftOfSegment, *(startIt + 1));
-    const SBezierKey segmentEnd = ApplyInTangent(*(startIt + 1), *startIt, pKeyRightOfSegment);
+    const SBezierKey segmentStart = EnvironmentPresetDetails::ApplyOutTangent(*startIt, pKeyLeftOfSegment, *(startIt + 1));
+    const SBezierKey segmentEnd = EnvironmentPresetDetails::ApplyInTangent(*(startIt + 1), *startIt, pKeyRightOfSegment);
 
     const float factor = Bezier::InterpolationFactorFromX(timeInSegment, deltaTime.ToFloat(), segmentStart.m_controlPoint, segmentEnd.m_controlPoint);
     const float fResult = Bezier::EvaluateY(factor, segmentStart.m_controlPoint, segmentEnd.m_controlPoint);
@@ -190,7 +190,7 @@ void CBezierSpline::UpdateKeyForTime(float fTime, float value)
     const size_t nKeyNum = m_keys.size();
     for (size_t i = 0; i < nKeyNum; ++i)
     {
-        if (fabs(m_keys[i].m_time.ToFloat() - fTime) < sBezierSplineKeyValueEpsilon)
+        if (fabs(m_keys[i].m_time.ToFloat() - fTime) < EnvironmentPresetDetails::sBezierSplineKeyValueEpsilon)
         {
             m_keys[i].m_controlPoint.m_value = value;
             return;
@@ -454,7 +454,7 @@ void CEnvironmentPreset::ResetVariables()
 
     AddVar("Depth Of Field", "Focus range", "Dof: focus range", ITimeOfDay::PARAM_COLORGRADING_DOF_FOCUSRANGE, ITimeOfDay::TYPE_FLOAT, 1000.0f, 0.0f, 10000.0f);
     AddVar("Depth Of Field", "Blur amount", "Dof: blur amount", ITimeOfDay::PARAM_COLORGRADING_DOF_BLURAMOUNT, ITimeOfDay::TYPE_FLOAT, 0.0f, 0.0f, 1.0f);
-
+    
     AddVar("Advanced", "", "Ocean fog color", ITimeOfDay::PARAM_OCEANFOG_COLOR, ITimeOfDay::TYPE_COLOR, 29.0f * fRecip255, 102.0f * fRecip255, 141.0f * fRecip255);
     AddVar("Advanced", "", "Ocean fog color multiplier", ITimeOfDay::PARAM_OCEANFOG_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 1.0f, 0.0f, 1.0f);
     AddVar("Advanced", "", "Ocean fog density", ITimeOfDay::PARAM_OCEANFOG_DENSITY, ITimeOfDay::TYPE_FLOAT, 0.2f, 0.0f, 1.0f);

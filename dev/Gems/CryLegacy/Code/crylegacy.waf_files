@@ -13,6 +13,37 @@
             "Source/CryLegacyModule.cpp",
             "Source/CryLegacySystemComponent.cpp",
             "Source/CryLegacySystemComponent.h"
+        ],
+        "Source/Input": [
+            "Source/Input/AzToLyInput.cpp",
+            "Source/Input/AzToLyInput.h",
+            "Source/Input/AzToLyInputDevice.cpp",
+            "Source/Input/AzToLyInputDevice.h",
+            "Source/Input/AzToLyInputDeviceGamepad.cpp",
+            "Source/Input/AzToLyInputDeviceGamepad.h",
+            "Source/Input/AzToLyInputDeviceKeyboard.cpp",
+            "Source/Input/AzToLyInputDeviceKeyboard.h",
+            "Source/Input/AzToLyInputDeviceMotion.cpp",
+            "Source/Input/AzToLyInputDeviceMotion.h",
+            "Source/Input/AzToLyInputDeviceMouse.cpp",
+            "Source/Input/AzToLyInputDeviceMouse.h",
+            "Source/Input/AzToLyInputDeviceTouch.cpp",
+            "Source/Input/AzToLyInputDeviceTouch.h",
+            "Source/Input/AzToLyInputDeviceVirtualKeyboard.cpp",
+            "Source/Input/AzToLyInputDeviceVirtualKeyboard.h",
+            "Source/Input/BaseInput.cpp",
+            "Source/Input/BaseInput.h",
+            "Source/Input/InputCVars.cpp",
+            "Source/Input/InputCVars.h",
+            "Source/Input/InputDevice.cpp",
+            "Source/Input/InputDevice.h",
+            "Source/Input/RawInputNotificationBus_synergy.h",
+            "Source/Input/SynergyContext.cpp",
+            "Source/Input/SynergyContext.h",
+            "Source/Input/SynergyKeyboard.cpp",
+            "Source/Input/SynergyKeyboard.h",
+            "Source/Input/SynergyMouse.cpp",
+            "Source/Input/SynergyMouse.h"
         ]
     }
 }

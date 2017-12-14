@@ -17,6 +17,7 @@
 #include <AzCore/Serialization/EditContext.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/Application/Application.h>
 
 #include <AzCore/std/string/regex.h>
 #if defined(AZ_PLATFORM_ANDROID)
@@ -70,7 +71,18 @@ namespace AzFramework
     void BootstrapReaderComponent::Activate()
     {
         AZStd::string path;
-        EBUS_EVENT_RESULT(path, AZ::ComponentApplicationBus, GetExecutableFolder);
+
+        // Attempt to get the app root to look for bootstrap.cfg, but default to the executable path
+        const char* appRoot = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(appRoot, &AZ::ComponentApplicationRequests::GetAppRoot);
+        if (appRoot != nullptr)
+        {
+            path = AZStd::string(appRoot);
+        }
+        else
+        {
+            EBUS_EVENT_RESULT(path, AZ::ComponentApplicationBus, GetExecutableFolder);
+        }
 
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         if (!fileIO)

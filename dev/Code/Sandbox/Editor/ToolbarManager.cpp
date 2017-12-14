@@ -15,7 +15,8 @@
 #include "ActionManager.h"
 #include "MainWindow.h"
 #include "IGemManager.h"
-#include "ToolBox.h"
+
+#include <AzToolsFramework/API/EditorAnimationSystemRequestBus.h>
 
 #include <QDataStream>
 #include <QDebug>
@@ -384,7 +385,11 @@ void ToolbarManager::SaveToolbars()
     }
 
     m_settings.beginGroup(TOOLBAR_SETTINGS_KEY);
-    InternalAmazonToolbarList savedToolbars = { TOOLBAR_VERSION, m_toolbars };
+
+    QVector<AmazonToolbar> toBeSaved = m_toolbars;
+    // We only save toolbars that differ from their default or are user-created
+    toBeSaved.erase(std::remove_if(toBeSaved.begin(), toBeSaved.end(), [this](const AmazonToolbar& t) { return !IsDirty(t); }), toBeSaved.end());
+    InternalAmazonToolbarList savedToolbars = { TOOLBAR_VERSION, toBeSaved };
     m_settings.setValue("toolbars", QVariant::fromValue<InternalAmazonToolbarList>(savedToolbars));
     m_settings.endGroup();
 }
@@ -443,6 +448,21 @@ void AmazonToolbar::UpdateAllowedAreas(QToolBar* toolbar)
     {
         toolbar->setAllowedAreas(Qt::AllToolBarAreas);
     }
+}
+
+bool ToolbarManager::IsDirty(const AmazonToolbar& toolbar) const
+{
+    const AmazonToolbar* defaultStandardToolbar = FindDefaultToolbar(toolbar.GetName());
+
+    // custom toolbars are always considered dirty
+    bool isDirty = true;
+
+    if (defaultStandardToolbar != nullptr)
+    {
+        isDirty = !defaultStandardToolbar->IsSame(toolbar);
+    }
+
+    return isDirty;
 }
 
 bool ToolbarManager::IsGemEnabled(const QString& uuid, const QString& version) const
@@ -523,9 +543,14 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
     t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_CHARACTER_TOOL, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_MANNEQUIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-#if defined(EMOTIONFX_GEM_ENABLED)
-    t.AddAction(ID_OPEN_EMOTIONFX_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-#endif // EMOTIONFX_GEM_ENABLED
+    AZ::EBusReduceResult<bool, AZStd::logical_or<bool>> emfxEnabled(false);
+    using AnimationRequestBus = AzToolsFramework::EditorAnimationSystemRequestsBus;
+    using AnimationSystemType = AzToolsFramework::EditorAnimationSystemRequests::AnimationSystem;
+    AnimationRequestBus::BroadcastResult(emfxEnabled, &AnimationRequestBus::Events::IsSystemActive, AnimationSystemType::EMotionFX);
+    if (emfxEnabled.value)
+    {
+        t.AddAction(ID_OPEN_EMOTIONFX_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+    }
     t.AddAction(ID_OPEN_FLOWGRAPH, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_AIDEBUGGER, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_TRACKVIEW, ORIGINAL_TOOLBAR_VERSION);
@@ -729,6 +754,8 @@ int ToolbarManager::Add(const QString& name)
 
     AmazonToolbar t(name, name);
     t.InstantiateToolbar(m_mainWindow, this);
+
+    MainWindow::instance()->AdjustToolBarIconSize();
 
     m_toolbars.push_back(t);
     SaveToolbars();
@@ -1148,7 +1175,8 @@ void EditableQToolBar::dragEnterEvent(QDragEnterEvent* ev)
 
 void EditableQToolBar::dragMoveEvent(QDragMoveEvent* ev)
 {
-    if (!m_toolbarManager->IsEditingToolBars())
+    // FIXME: D&D into & within vertical toolbars is broken
+    if (!m_toolbarManager->IsEditingToolBars() || orientation() == Qt::Orientation::Vertical)
     {
         return;
     }
@@ -1203,6 +1231,32 @@ AmazonToolbar::AmazonToolbar(const QString& name, const QString& translatedName,
 {
 }
 
+const bool AmazonToolbar::IsSame(const AmazonToolbar& other) const
+{
+    if (m_actions.size() != other.m_actions.size())
+    {
+        return false;
+    }
+
+    if (m_showByDefault != other.m_showByDefault)
+    {
+        return false;
+    }
+
+    if (m_showToggled != other.m_showToggled)
+    {
+        return false;
+    }
+
+    bool actionListsSame = std::equal(m_actions.cbegin(), m_actions.cend(), other.m_actions.cbegin(), [](const ActionData& l, const ActionData& r) { return l.actionId == r.actionId; });
+    if (!actionListsSame)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* manager)
 {
     Q_ASSERT(!m_toolbar);
@@ -1212,7 +1266,7 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     mainWindow->addToolBar(m_toolbar);
 
     // Hide custom toolbars if they've been flagged that way.
-    // We now store whether or not the user has toggled away the default visiblity
+    // We now store whether or not the user has toggled away the default visibility
     // and use that restore in lieu of QMainWindow's restoreState
     // So hide if we're hidden by default XOR we've toggled the default visibility
     if ((!m_showByDefault) ^ m_showToggled)
@@ -1220,8 +1274,8 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
         m_toolbar->hide();
     }
 
-    // Our standard toolbars's icons, when hovered on, get a white color effect.
-    // but for this to work we need .pngs that look good with this effect, so this only works with the standard toolbars
+    // Our standard toolbar icons, when hovered on, get a white color effect.
+    // But for this to work we need .pngs that look good with this effect, so this only works with the standard toolbars
     // and looks very ugly for other toolbars, including toolbars loaded from XML (which just show a white rectangle)
     if (m_applyHoverEffect)
     {

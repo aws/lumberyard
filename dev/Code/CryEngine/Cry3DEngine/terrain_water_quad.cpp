@@ -23,6 +23,8 @@
 #include "MatMan.h"
 #include "VisAreas.h"
 
+#include "Environment/OceanEnvironmentBus.h"
+
 ITimer* COcean::m_pTimer = 0;
 CREWaterOcean* COcean::m_pOceanRE = 0;
 uint32 COcean::m_nVisiblePixelsCount = ~0;
@@ -31,11 +33,14 @@ COcean::COcean(_smart_ptr<IMaterial> pMat)
 {
     m_pRenderMesh = 0;
     m_pBottomCapRenderMesh = 0;
+    m_swathWidth = 0;
+    m_bUsingFFT = false;
+    m_bUseTessHW = false;
 
     memset(m_fRECustomData, 0, sizeof(m_fRECustomData));
     memset(m_fREOceanBottomCustomData, 0, sizeof(m_fREOceanBottomCustomData));
 
-    m_pMaterial = pMat;
+    SetMaterial(pMat);
     m_fLastFov = 0;
     m_fLastVisibleFrameTime = 0.0f;
 
@@ -119,7 +124,7 @@ void COcean::Update(const SRenderingPassInfo& passInfo)
     uint32 nBufID = passInfo.GetFrameID() % CYCLE_BUFFERS_NUM;
 
     Vec3 vCamPos = rCamera.GetPosition();
-    float fWaterLevel = p3DEngine->GetWaterLevel();
+    float fWaterLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : p3DEngine->GetWaterLevel();
 
     // No hardware FFT support
     m_bOceanFFT = false;
@@ -217,24 +222,16 @@ void COcean::Update(const SRenderingPassInfo& passInfo)
 void COcean::Create()
 {
     // Calculate water geometry and update vertex buffers
-    int32 nScrGridSizeX = 20 * GetCVars()->e_WaterTessellationAmount;
+    int32 nScrGridSizeX;
+    int32 nScrGridSizeY;
 
-    nScrGridSizeX = (GetCVars()->e_WaterTessellationAmountX && GetCVars()->e_WaterTessellationAmountY) ? GetCVars()->e_WaterTessellationAmountX : nScrGridSizeX;
-    int32 nScrGridSizeY = (GetCVars()->e_WaterTessellationAmountX && GetCVars()->e_WaterTessellationAmountY) ? GetCVars()->e_WaterTessellationAmountY : nScrGridSizeX;
+    GetOceanGridSize(nScrGridSizeX, nScrGridSizeY);
 
-    // Store permanently the swath width
-    static int32 swathWidth = 0;
-    static bool bUsingFFT = false;
-    static bool bUseTessHW = false;
     bool bUseWaterTessHW;
     GetRenderer()->EF_Query(EFQ_WaterTessellation, bUseWaterTessHW);
 
-    if (!bUseWaterTessHW && m_bOceanFFT)
-    {
-        nScrGridSizeX = nScrGridSizeY = 20 * 10; // for hi/very specs - use maximum tessellation
-    }
     // Generate screen space grid
-    if ((m_bOceanFFT && bUsingFFT != m_bOceanFFT) || bUseTessHW != bUseWaterTessHW || swathWidth != GetCVars()->e_WaterTessellationSwathWidth || !m_nVertsCount || !m_nIndicesCount ||  nScrGridSizeX * nScrGridSizeY != m_nPrevGridDim)
+    if ((m_bOceanFFT && m_bUsingFFT != m_bOceanFFT) || m_bUseTessHW != bUseWaterTessHW || m_swathWidth != GetCVars()->e_WaterTessellationSwathWidth || !m_nVertsCount || !m_nIndicesCount ||  nScrGridSizeX * nScrGridSizeY != m_nPrevGridDim)
     {
         m_nPrevGridDim = nScrGridSizeX * nScrGridSizeY;
         m_pMeshVerts.Clear();
@@ -242,10 +239,10 @@ void COcean::Create()
         m_nVertsCount = 0;
         m_nIndicesCount = 0;
 
-        bUsingFFT = m_bOceanFFT;
-        bUseTessHW = bUseWaterTessHW;
+        m_bUsingFFT = m_bOceanFFT;
+        m_bUseTessHW = bUseWaterTessHW;
         // Update the swath width
-        swathWidth = GetCVars()->e_WaterTessellationSwathWidth;
+        m_swathWidth = GetCVars()->e_WaterTessellationSwathWidth;
 
         // Render ocean with screen space tessellation
 
@@ -291,7 +288,7 @@ void COcean::Create()
             }
         }
 
-        if (bUseTessHW)
+        if (m_bUseTessHW)
         {
             // Normal approach
             int32 nIndex = 0;
@@ -321,7 +318,7 @@ void COcean::Create()
         {
             // Grid index generation
 
-            if (swathWidth <= 0)
+            if (m_swathWidth < 0)
             {
                 // Normal approach
                 int32 nIndex = 0;
@@ -340,7 +337,7 @@ void COcean::Create()
                     }
                 }
             }
-            else
+            else if(m_swathWidth > 1)
             {
                 // Boustrophedonic walk
                 //
@@ -353,7 +350,7 @@ void COcean::Create()
                 // 0 5 1 6 2 7 3 8 4 9 9 14 14 9 13 8 12 7 11 6 10 5 5 10 10 15 11 16 12 17 13 18 14 19
                 //
 
-                int32 startX = 0, endX = swathWidth - 1;
+                int32 startX = 0, endX = m_swathWidth - 1;
 
                 do
                 {
@@ -409,13 +406,17 @@ void COcean::Create()
                     }
 
                     startX = endX;
-                    endX   = startX + swathWidth - 1;
+                    endX   = startX + m_swathWidth - 1;
 
                     if (endX >= nScrGridSizeX)
                     {
                         endX = nScrGridSizeX - 1;
                     }
                 } while (startX < nScrGridSizeX - 1);
+            }
+            else
+            {
+                AZ_TracePrintf("terrain_water_quad", "e_WaterTessellationSwathWidth cannot be 0.")
             }
         }
 
@@ -428,7 +429,7 @@ void COcean::Create()
                 eVF_P3F_C4B_T2F,
                 m_pMeshIndices.GetElements(),
                 m_pMeshIndices.Count(),
-                bUseTessHW ? prtTriangleList : prtTriangleStrip,
+                m_bUseTessHW ? prtTriangleList : prtTriangleStrip,
                 "OutdoorWaterGrid", "OutdoorWaterGrid",
                 eRMT_Static);
 
@@ -455,7 +456,7 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
 
     int32 nBufID = (passInfo.GetFrameID() & 1);
     Vec3 vCamPos = passInfo.GetCamera().GetPosition();
-    float fWaterLevel = p3DEngine->GetWaterLevel();
+    float fWaterLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : p3DEngine->GetWaterLevel();
 
     CRenderObject* pObject = GetRenderer()->EF_GetObject_Temp(passInfo.ThreadID());
     if (!pObject)
@@ -477,13 +478,20 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
     m_Camera = passInfo.GetCamera();
     pObject->m_fAlpha = 1.f;
 
-    m_fRECustomData[0] = p3DEngine->m_oceanWindDirection;
-    m_fRECustomData[1] = p3DEngine->m_oceanWindSpeed;
-    m_fRECustomData[2] = p3DEngine->m_oceanWavesSpeed;
-    m_fRECustomData[3] = p3DEngine->m_oceanWavesAmount;
-    m_fRECustomData[4] = p3DEngine->m_oceanWavesSize;
+    int32 gridSizeX;
+    int32 gridSizeY;
+    GetOceanGridSize(gridSizeX, gridSizeY);
+    const float tessellationScaleFactor = 1000.0f; // physical size of grid is how many grid tiles per thousand meters.
+    m_fRECustomData[0] = tessellationScaleFactor / (gridSizeX - 1);
 
-    sincos_tpl(p3DEngine->m_oceanWindDirection, &m_fRECustomData[6], &m_fRECustomData[5]);
+    const auto oceanAnimationData = p3DEngine->GetOceanAnimationParams();
+
+    m_fRECustomData[1] = oceanAnimationData.fWindSpeed;
+    m_fRECustomData[2] = oceanAnimationData.fWavesSpeed;
+    m_fRECustomData[3] = oceanAnimationData.fWavesAmount;
+    m_fRECustomData[4] = oceanAnimationData.fWavesSize;
+
+    sincos_tpl(oceanAnimationData.fWindDirection, &m_fRECustomData[6], &m_fRECustomData[5]);
     m_fRECustomData[7] = fWaterLevel;
     m_fRECustomData[8] = m_fRECustomData[9] = m_fRECustomData[10] = m_fRECustomData[11] = 0.0f;
 
@@ -494,10 +502,21 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
         Vec3 camPos(passInfo.GetCamera().GetPosition());
 
         // Check if we outside water volume - we can enable fast path with merged fog version
-        if (camPos.z - fWaterLevel >= p3DEngine->m_oceanWavesSize)
+        if (camPos.z - fWaterLevel >= oceanAnimationData.fWavesSize)
         {
-            Vec3 cFinalFogColor = gEnv->p3DEngine->GetSunColor().CompMul(m_p3DEngine->m_oceanFogColor);
-            Vec4 vFogParams = Vec4(cFinalFogColor, m_p3DEngine->m_oceanFogDensity * 1.44269502f);// log2(e) = 1.44269502
+            Vec3 fogColor;
+            if (OceanToggle::IsActive())
+            {
+                AZ::Vector3 oceanFogColor = OceanRequest::GetFogColorPremultiplied();
+                fogColor = Vec3(oceanFogColor.GetX(), oceanFogColor.GetY(), oceanFogColor.GetZ());
+            }
+            else
+            {
+                fogColor = m_p3DEngine->m_oceanFogColor;
+            }
+            Vec3 cFinalFogColor = gEnv->p3DEngine->GetSunColor().CompMul(fogColor);
+            float fogDensity = OceanToggle::IsActive() ? OceanRequest::GetFogDensity() : m_p3DEngine->m_oceanFogDensity;
+            Vec4 vFogParams = Vec4(cFinalFogColor, fogDensity * 1.44269502f);// log2(e) = 1.44269502
 
             m_fRECustomData[8] = vFogParams.x;
             m_fRECustomData[9] = vFogParams.y;
@@ -528,7 +547,8 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
         pRenderer->EF_AddEf(m_pOceanRE, shaderItem, pObject, passInfo, EFSLIST_WATER, 0, SRendItemSorter::CreateDefaultRendItemSorter());
     }
 
-    if (GetCVars()->e_WaterOceanBottom)
+    bool useOceanBottom = OceanToggle::IsActive() ? OceanRequest::GetUseOceanBottom() : (GetCVars()->e_WaterOceanBottom == 1);
+    if (useOceanBottom)
     {
         RenderBottomCap(passInfo);
     }
@@ -537,6 +557,11 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
     {
         RenderFog(passInfo);
     }
+}
+
+void COcean::SetMaterial(_smart_ptr<IMaterial> pMat)
+{
+    m_pMaterial = pMat;
 }
 
 void COcean::RenderBottomCap(const SRenderingPassInfo& passInfo)
@@ -556,8 +581,9 @@ void COcean::RenderBottomCap(const SRenderingPassInfo& passInfo)
     }
 
     // Calculate water geometry and update vertex buffers
-    int32 nScrGridSize = 5;
-    float fRcpScrGridSize = 1.0f / (float) nScrGridSize;
+    static const int32 nScrGridSize = 5;
+    // distance between grid points for -1.0 to 1.0 space.
+    static const float fRcpScrGridSize = 2.0f / static_cast<float>(nScrGridSize - 1);
 
     if (!m_pBottomCapVerts.Count() || !m_pBottomCapIndices.Count() ||  nScrGridSize * nScrGridSize != m_pBottomCapVerts.Count())
     {
@@ -565,17 +591,15 @@ void COcean::RenderBottomCap(const SRenderingPassInfo& passInfo)
         m_pBottomCapIndices.Clear();
 
         SVF_P3F_C4B_T2F tmp;
-        Vec3 vv;
-        vv.z = 0;
+        tmp.xyz.z = 1.0f;
 
         // Grid vertex generation
-        for (int32 y(0); y < nScrGridSize; ++y)
+        for (int32 y = 0; y < nScrGridSize; ++y)
         {
-            vv.y = (float) y * fRcpScrGridSize + fRcpScrGridSize;
+            tmp.xyz.y = -1.0f + y * fRcpScrGridSize;
             for (int32 x(0); x < nScrGridSize; ++x)
             {
-                vv.x = (float) x * fRcpScrGridSize + fRcpScrGridSize;
-                tmp.xyz = vv;
+                tmp.xyz.x = -1.0f + x * fRcpScrGridSize;
                 m_pBottomCapVerts.Add(tmp);
             }
         }
@@ -651,7 +675,7 @@ void COcean::RenderFog(const SRenderingPassInfo& passInfo)
                                             (isLowSpec && m_pFogIntoMatLowSpec && m_pFogOutofMatLowSpec)))
     {
         Vec3 camPos(passInfo.GetCamera().GetPosition());
-        float waterLevel(p3DEngine->GetWaterLevel());
+        float waterLevel(OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : p3DEngine->GetWaterLevel());
         Vec3 planeOrigin(camPos.x, camPos.y, waterLevel);
 
         // fill water volume param structure
@@ -663,12 +687,32 @@ void COcean::RenderFog(const SRenderingPassInfo& passInfo)
         m_wvParams[fillThreadID].m_viewerInsideVolume = distCamToFogPlane < 0.00f;
         m_wvParams[fillThreadID].m_viewerCloseToWaterVolume = true;
 
-        if (!isFastpath || (distCamToFogPlane < p3DEngine->m_oceanWavesSize))
+        const auto oceanAnimationData = p3DEngine->GetOceanAnimationParams();
+
+        if (!isFastpath || (distCamToFogPlane < oceanAnimationData.fWavesSize))
         {
+            Vec3 fogColor;
+            Vec3 fogColorShallow;
+            bool oceanToggleIsActive = OceanToggle::IsActive();
+            if (oceanToggleIsActive)
+            {
+                AZ::Vector3 oceanFogColor = OceanRequest::GetFogColorPremultiplied();
+                fogColor = Vec3(oceanFogColor.GetX(), oceanFogColor.GetY(), oceanFogColor.GetZ());
+
+                AZ::Vector3 nearFogColor = OceanRequest::GetNearFogColor();
+                fogColorShallow = Vec3(nearFogColor.GetX(), nearFogColor.GetY(), nearFogColor.GetZ());
+            }
+            else
+            {
+                fogColor = m_p3DEngine->m_oceanFogColor;
+                fogColorShallow = m_p3DEngine->m_oceanFogColorShallow;
+            }
+            float fogDensity = oceanToggleIsActive ? OceanRequest::GetFogDensity() : m_p3DEngine->m_oceanFogDensity;
+
             if (isLowSpec)
             {
-                m_wvParams[fillThreadID].m_fogColor = m_p3DEngine->m_oceanFogColor;
-                m_wvParams[fillThreadID].m_fogDensity = m_p3DEngine->m_oceanFogDensity;
+                m_wvParams[fillThreadID].m_fogColor = fogColor;
+                m_wvParams[fillThreadID].m_fogDensity = fogDensity;
 
                 m_wvoParams[fillThreadID].m_fogColor = Vec3(0, 0, 0);   // not needed for low spec
                 m_wvoParams[fillThreadID].m_fogColorShallow = Vec3(0, 0, 0);   // not needed for low spec
@@ -681,9 +725,9 @@ void COcean::RenderFog(const SRenderingPassInfo& passInfo)
                 m_wvParams[fillThreadID].m_fogColor = Vec3(0, 0, 0);   // not needed, we set ocean specific params below
                 m_wvParams[fillThreadID].m_fogDensity = 0; // not needed, we set ocean specific params below
 
-                m_wvoParams[fillThreadID].m_fogColor = m_p3DEngine->m_oceanFogColor;
-                m_wvoParams[fillThreadID].m_fogColorShallow = m_p3DEngine->m_oceanFogColorShallow;
-                m_wvoParams[fillThreadID].m_fogDensity = m_p3DEngine->m_oceanFogDensity;
+                m_wvoParams[fillThreadID].m_fogColor = fogColor;
+                m_wvoParams[fillThreadID].m_fogColorShallow = fogColorShallow;
+                m_wvoParams[fillThreadID].m_fogDensity = fogDensity;
 
                 m_pWVRE[fillThreadID]->m_pOceanParams = &m_wvoParams[fillThreadID];
             }
@@ -805,6 +849,8 @@ float COcean::GetWave(const Vec3& pPos, int32 nFrameID)
         bOceanFFT = true;
     }
 
+    const auto oceanAnimationData = p3DEngine->GetOceanAnimationParams();
+
     if (bOceanFFT)
     {
         Vec4 pDispPos = Vec4(0, 0, 0, 0);
@@ -820,8 +866,8 @@ float COcean::GetWave(const Vec3& pPos, int32 nFrameID)
             }
 
             // match scales used in shader
-            float fScaleX = pPos.x * 0.0125f * p3DEngine->m_oceanWavesAmount * 1.25f;
-            float fScaleY = pPos.y * 0.0125f * p3DEngine->m_oceanWavesAmount * 1.25f;
+            float fScaleX = pPos.x * 0.0125f * oceanAnimationData.fWavesAmount * 1.25f;
+            float fScaleY = pPos.y * 0.0125f * oceanAnimationData.fWavesAmount * 1.25f;
 
             float fu = fScaleX * 64.0f;
             float fv = fScaleY * 64.0f;
@@ -850,47 +896,47 @@ float COcean::GetWave(const Vec3& pPos, int32 nFrameID)
         }
 
         // match scales used in shader
-        return pDispPos.z * 0.06f * p3DEngine->m_oceanWavesSize;
+        return pDispPos.z * 0.06f * oceanAnimationData.fWavesSize;
     }
 
     // constant to scale down values a bit
     const float fAnimAmplitudeScale = 1.0f / 5.0f;
 
     static int32 s_nFrameID = 0;
-    static Vec3 vFlowDir = Vec3(0, 0, 0);
-    static Vec4 vFrequencies = Vec4(0, 0, 0, 0);
-    static Vec4 vPhases = Vec4(0, 0, 0, 0);
-    static Vec4 vAmplitudes = Vec4(0, 0, 0, 0);
+    static Vec3 s_vFlowDir = Vec3(0, 0, 0);
+    static Vec4 s_vFrequencies = Vec4(0, 0, 0, 0);
+    static Vec4 s_vPhases = Vec4(0, 0, 0, 0);
+    static Vec4 s_vAmplitudes = Vec4(0, 0, 0, 0);
 
     // Update per-frame data
     if (s_nFrameID != nFrameID)
     {
-        sincos_tpl(p3DEngine->m_oceanWindDirection, &vFlowDir.y, &vFlowDir.x);
-        vFrequencies = Vec4(0.233f, 0.455f, 0.6135f, -0.1467f) * p3DEngine->m_oceanWavesSpeed * 5.0f;
-        vPhases = Vec4(0.1f, 0.159f, 0.557f, 0.2199f) * p3DEngine->m_oceanWavesAmount;
-        vAmplitudes = Vec4(1.0f, 0.5f, 0.25f, 0.5f) * p3DEngine->m_oceanWavesSize;
+        sincos_tpl(oceanAnimationData.fWindDirection, &s_vFlowDir.y, &s_vFlowDir.x);
+        s_vFrequencies = Vec4(0.233f, 0.455f, 0.6135f, -0.1467f) * oceanAnimationData.fWavesSpeed * 5.0f;
+        s_vPhases = Vec4(0.1f, 0.159f, 0.557f, 0.2199f) * oceanAnimationData.fWavesAmount;
+        s_vAmplitudes = Vec4(1.0f, 0.5f, 0.25f, 0.5f) * oceanAnimationData.fWavesSize;
 
         s_nFrameID = nFrameID;
     }
 
-    float fPhase = sqrt_tpl(pPos.x * pPos.x + pPos.y * pPos.y);
-    Vec4 vCosPhase = vPhases * (fPhase + pPos.x);
+    const float fPhase = sqrt_tpl(pPos.x * pPos.x + pPos.y * pPos.y);
+    Vec4 vCosPhase = s_vPhases * (fPhase + pPos.x);
 
-    Vec4 vWaveFreq = vFrequencies * m_pTimer->GetCurrTime();
+    Vec4 vWaveFreq = s_vFrequencies * m_pTimer->GetCurrTime();
 
-    Vec4 vCosWave = Vec4(cos_tpl(vWaveFreq.x * vFlowDir.x + vCosPhase.x),
-            cos_tpl(vWaveFreq.y * vFlowDir.x + vCosPhase.y),
-            cos_tpl(vWaveFreq.z * vFlowDir.x + vCosPhase.z),
-            cos_tpl(vWaveFreq.w * vFlowDir.x + vCosPhase.w));
+    Vec4 vCosWave = Vec4(cos_tpl(vWaveFreq.x * s_vFlowDir.x + vCosPhase.x),
+            cos_tpl(vWaveFreq.y * s_vFlowDir.x + vCosPhase.y),
+            cos_tpl(vWaveFreq.z * s_vFlowDir.x + vCosPhase.z),
+            cos_tpl(vWaveFreq.w * s_vFlowDir.x + vCosPhase.w));
 
 
-    Vec4 vSinPhase = vPhases * (fPhase + pPos.y);
-    Vec4 vSinWave = Vec4(sin_tpl(vWaveFreq.x * vFlowDir.y + vSinPhase.x),
-            sin_tpl(vWaveFreq.y * vFlowDir.y + vSinPhase.y),
-            sin_tpl(vWaveFreq.z * vFlowDir.y + vSinPhase.z),
-            sin_tpl(vWaveFreq.w * vFlowDir.y + vSinPhase.w));
+    Vec4 vSinPhase = s_vPhases * (fPhase + pPos.y);
+    Vec4 vSinWave = Vec4(sin_tpl(vWaveFreq.x * s_vFlowDir.y + vSinPhase.x),
+            sin_tpl(vWaveFreq.y * s_vFlowDir.y + vSinPhase.y),
+            sin_tpl(vWaveFreq.z * s_vFlowDir.y + vSinPhase.z),
+            sin_tpl(vWaveFreq.w * s_vFlowDir.y + vSinPhase.w));
 
-    return (vCosWave.Dot(vAmplitudes) + vSinWave.Dot(vAmplitudes)) * fAnimAmplitudeScale;
+    return (vCosWave.Dot(s_vAmplitudes) + vSinWave.Dot(s_vAmplitudes)) * fAnimAmplitudeScale;
 }
 
 uint32 COcean::GetVisiblePixelsCount()
@@ -906,4 +952,30 @@ bool COcean::IsWaterVisibleOcclusionCheck()
 #else
     return m_nVisiblePixelsCount > 16;
 #endif
+}
+
+// Gets the X & Y Grid sizes based on cVars. Individual X & Y CVars should probably go away in
+// favor of a single value that exists on an ocean component instead of using CVars at all.
+void COcean::GetOceanGridSize(int& outX, int& outY) const
+{
+    // Calculate water geometry and update vertex buffers
+    if (OceanToggle::IsActive())
+    {
+        outX = AZ::OceanConstants::s_waterTessellationDefault;
+        AZ::OceanEnvironmentBus::BroadcastResult(outX, &AZ::OceanEnvironmentBus::Events::GetWaterTessellationAmount);
+        outY = outX;
+    }
+    else
+    {
+         // Calculate water geometry and update vertex buffers
+        outX = outY = GetCVars()->e_WaterTessellationAmount;
+
+        bool bUseWaterTessHW;
+        GetRenderer()->EF_Query(EFQ_WaterTessellation, bUseWaterTessHW);
+
+        if (!bUseWaterTessHW && m_bOceanFFT)
+        {
+            outX = outY = 20 * 10; // for hi/very specs - use maximum tessellation
+        }
+    }
 }

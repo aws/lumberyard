@@ -36,6 +36,7 @@ public: // member functions
     void InitUiContext() override;
     void DestroyUiContext() override;
     bool SaveToStreamForGame(AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType) override;
+    bool SaveCanvasEntityToStreamForGame(AZ::Entity* canvasEntity, AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType) override;
     // ~UiEntityContext
 
     // UiEntityContextRequestBus
@@ -74,7 +75,10 @@ protected: // data
     {
         InstantiatingDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset,
             const AZ::Vector2& position, bool isViewportPosition, AZ::Entity* parent)
-            : m_asset(asset), m_position(position), m_isViewportPosition(isViewportPosition), m_parent(parent) {}
+            : m_asset(asset)
+            , m_position(position)
+            , m_isViewportPosition(isViewportPosition)
+            , m_parent(parent) {}
 
         AZ::Data::Asset<AZ::Data::AssetData>    m_asset;
         AZ::Vector2                             m_position;

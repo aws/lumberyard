@@ -744,11 +744,7 @@ namespace CharacterTool {
         {
             char buffer[ICryPak::g_nMaxPath] = "";
             const char* realPath = gEnv->pCryPak->AdjustFileName(filePath, buffer, 0);
-            DWORD attribs = GetFileAttributesA(realPath);
-            if (attribs != INVALID_FILE_ATTRIBUTES && (attribs & FILE_ATTRIBUTE_READONLY) != 0)
-            {
-                SetFileAttributesA(realPath, FILE_ATTRIBUTE_NORMAL);
-            }
+            QFile::setPermissions(realPath, QFile::permissions(realPath) | QFile::WriteOther);
         }
 
         if (!fakeEntry.content.settings.SaveUsingAssetPath(filePath))
@@ -1084,7 +1080,7 @@ namespace CharacterTool {
 
         bool allSpecialSaveOperationsInitiated = true;
         AZStd::shared_ptr<AZ::SaveOperationController> saveEntryController = m_saveRunner->GenerateController();
-        AZStd::string animSettingsFilename = SAnimSettings::GetAnimSettingsFilename(entry->path.c_str());
+        AZStd::string animSettingsFilename = SAnimSettings::GetAnimSettingsFilename(entry->path.c_str()).c_str();
         if (!animSettingsFilename.empty())
         {
             animSettingsFilename = Path::GamePathToFullPath(animSettingsFilename.c_str()).toLatin1().data();
@@ -1791,7 +1787,7 @@ namespace CharacterTool {
         bool newAnimation = entry && entry->content.importState == AnimationContent::NEW_ANIMATION;
         bool isBlendSpace = entry && entry->content.type == AnimationContent::BLEND_SPACE;
         bool isCombinedBlendSpace = entry && entry->content.type == AnimationContent::COMBINED_BLEND_SPACE;
-        bool isAnimSettingsMissing = entry && entry->content.type == AnimationContent::COMPILED_BUT_NO_ANIMSETTINGS;
+        bool isAnimSettingsMissing = entry && entry->content.type == static_cast<CharacterTool::AnimationContent::Type>(AnimationContent::COMPILED_BUT_NO_ANIMSETTINGS);
         bool isAnm = entry && entry->content.type == AnimationContent::ANM;
 
         if (isBlendSpace || isCombinedBlendSpace)

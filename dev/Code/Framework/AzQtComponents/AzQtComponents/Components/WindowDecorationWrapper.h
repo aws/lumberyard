@@ -68,8 +68,8 @@ namespace AzQtComponents
         /**
          * Enables restoring/saving geometry on creation/destruction.
          */
-        void enableSaveRestoreGeometry(const QString& app,
-            const QString& organization,
+        void enableSaveRestoreGeometry(const QString& organization,
+            const QString& app,
             const QString& key);
 
         /**

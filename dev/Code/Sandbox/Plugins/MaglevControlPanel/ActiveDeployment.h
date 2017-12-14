@@ -16,6 +16,7 @@
 #include <QString>
 #include <QSharedPointer>
 #include <WinWidget/WinWidgetId.h>
+#include <QUuid>
 
 class IAWSDeploymentModel;
 

@@ -123,7 +123,6 @@ namespace AZ
                 SCENE_CORE_API bool UsesVertexColoring(const AZ::SceneAPI::DataTypes::ISceneNodeGroup& sceneNodeGroup, const SceneAPI::Containers::Scene& scene,
                     SceneAPI::Containers::SceneGraph::HierarchyStorageConstIterator materialNode) const;
 
-                SCENE_CORE_API const SceneAPI::DataTypes::IMeshAdvancedRule* FindMeshAdvancedRule(const SceneAPI::DataTypes::ISceneNodeGroup* group) const;
                 SCENE_CORE_API bool DoesMeshNodeHaveColorStreamChild(const SceneAPI::Containers::Scene& scene,
                     SceneAPI::Containers::SceneGraph::NodeIndex meshNode) const;
 

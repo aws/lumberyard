@@ -30,8 +30,10 @@
 #include "UiNavigationHelpers.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiSliderNotificationBus Behavior context handler class 
-class UiSliderNotificationBusBehaviorHandler : public UiSliderNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiSliderNotificationBus Behavior context handler class
+class UiSliderNotificationBusBehaviorHandler
+    : public UiSliderNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiSliderNotificationBusBehaviorHandler, "{13540E5E-5987-4BD9-AC7A-F771F8AD0206}", AZ::SystemAllocator,
@@ -625,7 +627,13 @@ void UiSliderComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetValueChangingActionName", &UiSliderBus::Events::GetValueChangingActionName)
             ->Event("SetValueChangingActionName", &UiSliderBus::Events::SetValueChangingActionName)
             ->Event("GetValueChangedActionName", &UiSliderBus::Events::GetValueChangedActionName)
-            ->Event("SetValueChangedActionName", &UiSliderBus::Events::SetValueChangedActionName);
+            ->Event("SetValueChangedActionName", &UiSliderBus::Events::SetValueChangedActionName)
+            ->VirtualProperty("Value", "GetValue", "SetValue")
+            ->VirtualProperty("MinValue", "GetMinValue", "SetMinValue")
+            ->VirtualProperty("MaxValue", "GetMaxValue", "SetMaxValue")
+            ->VirtualProperty("StepValue", "GetStepValue", "SetStepValue");
+
+        behaviorContext->Class<UiSliderComponent>()->RequestBus("UiSliderBus");
 
         behaviorContext->EBus<UiSliderNotificationBus>("UiSliderNotificationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)

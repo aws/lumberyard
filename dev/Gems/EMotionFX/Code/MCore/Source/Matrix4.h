@@ -18,6 +18,7 @@
 #include "Vector.h"
 #include "PlaneEq.h"
 #include "LogManager.h"
+#include "AzCore/Math/Vector3.h"
 
 // matrix order
 #define MCORE_MATRIX_ROWMAJOR
@@ -94,11 +95,11 @@ namespace MCore
          */
         MCORE_INLINE Matrix(const Matrix& m);
 
-        void InitFromPosRot(const Vector3& pos, const Quaternion& rot);
-        void InitFromPosRotScale(const Vector3& pos, const Quaternion& rot, const Vector3& scale);
-        void InitFromNoScaleInherit(const Vector3& translation, const Quaternion& rotation, const Vector3& scale, const Vector3& invParentScale);
-        void InitFromPosRotScaleScaleRot(const Vector3& pos, const Quaternion& rot, const Vector3& scale, const Quaternion& scaleRot);
-        void InitFromPosRotScaleShear(const Vector3& pos, const Quaternion& rot, const Vector3& scale, const Vector3& shear);
+        void InitFromPosRot(const AZ::Vector3& pos, const Quaternion& rot);
+        void InitFromPosRotScale(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale);
+        void InitFromNoScaleInherit(const AZ::Vector3& translation, const Quaternion& rotation, const AZ::Vector3& scale, const AZ::Vector3& invParentScale);
+        void InitFromPosRotScaleScaleRot(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale, const Quaternion& scaleRot);
+        void InitFromPosRotScaleShear(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale, const AZ::Vector3& shear);
 
         /**
          * Sets the matrix to identity.
@@ -111,20 +112,20 @@ namespace MCore
          * Values of 1.0 would have no influence on the scale. Values of for example 2.0 would scale up by a factor of two.
          * @param s The vector containing the scale values for each axis.
          */
-        void SetScaleMatrix(const Vector3& s);
+        void SetScaleMatrix(const AZ::Vector3& s);
 
         /**
          * Makes this matrix a shear matrix from three different shear matrices: XY, XZ and YZ.
          * The multiplication order is YZ * XZ * XY.
          * @param s The shear values (x=XY, y=XZ, z=YZ)
          */
-        void SetShearMatrix(const Vector3& s);
+        void SetShearMatrix(const AZ::Vector3& s);
 
         /**
          * Makes this matrix a translation matrix.
          * @param t The translation value.
          */
-        void SetTranslationMatrix(const Vector3& t);
+        void SetTranslationMatrix(const AZ::Vector3& t);
 
         /**
          * Initialize this matrix into a rotation matrix from a quaternion.
@@ -155,14 +156,14 @@ namespace MCore
          * @param axis The axis to rotate around.
          * @param angle The angle to rotate around this axis, in radians.
          */
-        void SetRotationMatrixAxisAngle(const Vector3& axis, float angle);
+        void SetRotationMatrixAxisAngle(const AZ::Vector3& axis, float angle);
 
         /**
          * Makes the matrix a rotation matrix given the euler angles.
          * The multiplication order is RotMatrix(v.z) * RotMatrix(v.y) * RotMatrix(v.x).
          * @param anglevec The vector containing the angles for each axis, in radians, so (pitch, yaw, roll) as (x,y,z).
          */
-        void SetRotationMatrixEulerZYX(const Vector3& anglevec);
+        void SetRotationMatrixEulerZYX(const AZ::Vector3& anglevec);
 
         /**
          * Initialize the matrix from a yaw, pitch and roll.
@@ -184,14 +185,14 @@ namespace MCore
          * All angles are in radians.
          * @param angles The angle for each axis, in radians.
          */
-        MCORE_INLINE void SetRotationMatrixPitchYawRoll(const Vector3& angles)              { SetRotationMatrixPitchYawRoll(angles.x, angles.y, angles.z); }
+        MCORE_INLINE void SetRotationMatrixPitchYawRoll(const AZ::Vector3& angles)              { SetRotationMatrixPitchYawRoll(angles.GetX(), angles.GetY(), angles.GetZ()); }
 
         /**
          * Makes the matrix a rotation matrix given the euler angles.
          * The multiplication order is RotMatrix(v.x) * RotMatrix(v.y) * RotMatrix(v.z).
          * @param anglevec The vector containing the angles for each axis, in radians, so (pitch, yaw, roll) as (x,y,z).
          */
-        void SetRotationMatrixEulerXYZ(const Vector3& anglevec);
+        void SetRotationMatrixEulerXYZ(const AZ::Vector3& anglevec);
 
         /**
          * Inverse rotate a vector with this matrix.
@@ -199,7 +200,7 @@ namespace MCore
          * @param v The vector to rotate.
          * @result The rotated vector.
          */
-        Vector3 InverseRot(const Vector3& v);
+        AZ::Vector3 InverseRot(const AZ::Vector3& v);
 
         /**
          * Multiply this matrix with another matrix and stores the result in itself.
@@ -239,8 +240,8 @@ namespace MCore
          */
         void MultMatrix3x3(const Matrix& right);
 
-        MCORE_INLINE void Skin(const Vector3* inPos, const Vector3* inNormal, Vector3* outPos, Vector3* outNormal, float weight);
-        MCORE_INLINE void Skin(const Vector3* inPos, const Vector3* inNormal, const AZ::Vector4* inTangent, Vector3* outPos, Vector3* outNormal, AZ::Vector4* outTangent, float weight);
+        MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, AZ::Vector3* outPos, AZ::Vector3* outNormal, float weight);
+        MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, const AZ::Vector4* inTangent, AZ::Vector3* outPos, AZ::Vector3* outNormal, AZ::Vector4* outTangent, float weight);
 
         /**
          * Perform skinning on an input vertex, and add the result to the output, weighted by a weight value.
@@ -256,7 +257,7 @@ namespace MCore
          * @param out The output vector. Keep in mind that the result will be added to the output vector.
          * @param weight The weight value.
          */
-        MCORE_INLINE void Skin4x3(const Vector3& in, Vector3& out, float weight);
+        MCORE_INLINE void Skin4x3(const AZ::Vector3& in, AZ::Vector3& out, float weight);
 
         /**
          * Perform skinning on an input vertex, and add the result to the output, weighted by a weight value.
@@ -272,7 +273,7 @@ namespace MCore
          * @param out The output vector. Keep in mind that the result will be added to the output vector.
          * @param weight The weight value.
          */
-        MCORE_INLINE void Skin3x3(const Vector3& in, Vector3& out, float weight);
+        MCORE_INLINE void Skin3x3(const AZ::Vector3& in, AZ::Vector3& out, float weight);
 
         /**
          * Transpose the matrix (swap rows with columns).
@@ -331,14 +332,14 @@ namespace MCore
          * Scale this matrix.
          * @param scale The scale factors for each axis.
          */
-        MCORE_INLINE void Scale(const Vector3& scale);
+        MCORE_INLINE void Scale(const AZ::Vector3& scale);
 
         /**
          * Scale only the upper left 3x3 part of this matrix.
          * So this doesn't scale the translation part.
          * @param scale The scale factors for each axis.
          */
-        void Scale3x3(const Vector3& scale);
+        void Scale3x3(const AZ::Vector3& scale);
 
         /**
          * Rotate this matrix around the x-axis.
@@ -364,14 +365,14 @@ namespace MCore
          * @param from The vector that the resulting matrix rotates from.
          * @param to The vector that the resulting matrix rotates to.
          */
-        void SetRotationMatrixTwoVectors(const MCore::Vector3& from, const MCore::Vector3& to);
+        void SetRotationMatrixTwoVectors(const AZ::Vector3& from, const AZ::Vector3& to);
 
         /**
          * Multiply a vector with the 3x3 rotation part of this matrix.
          * @param v The vector to transform.
          * @result The transformed (rotated) vector.
          */
-        MCORE_INLINE Vector3 Mul3x3(const Vector3& v) const;
+        MCORE_INLINE AZ::Vector3 Mul3x3(const AZ::Vector3& v) const;
 
         /**
          * Returns the inversed version of this matrix.
@@ -403,7 +404,7 @@ namespace MCore
          * Translate the matrix.
          * @param t The vector containing the translation to add to the current translation of the matrix.
          */
-        MCORE_INLINE void Translate(const Vector3& t)                                           { TMAT(3, 0) += t.x; TMAT(3, 1) += t.y; TMAT(3, 2) += t.z; }
+        MCORE_INLINE void Translate(const AZ::Vector3& t)                                           { TMAT(3, 0) += t.GetX(); TMAT(3, 1) += t.GetY(); TMAT(3, 2) += t.GetZ(); }
 
         /**
          * Set the values for a given row, using a 3D vector.
@@ -411,7 +412,7 @@ namespace MCore
          * @param row A zero-based index of the row.
          * @param value The values to set in the row.
          */
-        MCORE_INLINE void SetRow(uint32 row, const Vector3& value)                      { TMAT(row, 0) = value.x; TMAT(row, 1) = value.y; TMAT(row, 2) = value.z;}
+        MCORE_INLINE void SetRow(uint32 row, const AZ::Vector3& value)                      { TMAT(row, 0) = value.GetX(); TMAT(row, 1) = value.GetY(); TMAT(row, 2) = value.GetZ(); }
 
         /**
          * Set the values in the given row, using a 4D vector.
@@ -426,7 +427,7 @@ namespace MCore
          * @param column A zero-based index of the column.
          * @param value The values to set in the column.
          */
-        MCORE_INLINE void SetColumn(uint32 column, const Vector3& value)                    { TMAT(0, column) = value.x; TMAT(1, column) = value.y; TMAT(2, column) = value.z;}
+        MCORE_INLINE void SetColumn(uint32 column, const AZ::Vector3& value)                    { TMAT(0, column) = value.GetX(); TMAT(1, column) = value.GetY(); TMAT(2, column) = value.GetZ(); }
 
         /**
          * Set the values for a given column, using a 4D vector.
@@ -440,14 +441,14 @@ namespace MCore
          * @param row A zero-based index of the row number ot get.
          * @result The vector containing the values of the specified row.
          */
-        MCORE_INLINE Vector3 GetRow(uint32 row) const                                       { return Vector3(TMAT(row, 0), TMAT(row, 1), TMAT(row, 2)); }
+        MCORE_INLINE AZ::Vector3 GetRow(uint32 row) const                                       { return AZ::Vector3(TMAT(row, 0), TMAT(row, 1), TMAT(row, 2)); }
 
         /**
          * Get the values of a given row as 4D vector.
          * @param column A zero-based index of the row number ot get.
          * @result The vector containing the values of the specified row.
          */
-        MCORE_INLINE Vector3 GetColumn(uint32 column) const                             { return Vector3(TMAT(0, column), TMAT(1, column), TMAT(2, column)); }
+        MCORE_INLINE AZ::Vector3 GetColumn(uint32 column) const                             { return AZ::Vector3(TMAT(0, column), TMAT(1, column), TMAT(2, column)); }
 
         /**
          * Get the values of a given column as 3D vector.
@@ -475,7 +476,7 @@ namespace MCore
          * Set the right vector.
          * @param x The right vector, must be normalized.
          */
-        MCORE_INLINE void SetRight(const Vector3& x);
+        MCORE_INLINE void SetRight(const AZ::Vector3& x);
 
         /**
          * Set the up vector (must be normalized).
@@ -489,7 +490,7 @@ namespace MCore
          * Set the up vector (must be normalized).
          * @param y The up vector.
          */
-        MCORE_INLINE void SetUp(const Vector3& y);
+        MCORE_INLINE void SetUp(const AZ::Vector3& y);
 
         /**
          * Set the forward vector (must be normalized).
@@ -503,7 +504,7 @@ namespace MCore
          * Set the forward vector (must be normalized).
          * @param z The forward vector.
          */
-        MCORE_INLINE void SetForward(const Vector3& z);
+        MCORE_INLINE void SetForward(const AZ::Vector3& z);
 
         /**
          * Set the translation part of the matrix.
@@ -517,31 +518,31 @@ namespace MCore
          * Set the translation part of the matrix.
          * @param t The translation vector.
          */
-        MCORE_INLINE void SetTranslation(const Vector3& t);
+        MCORE_INLINE void SetTranslation(const AZ::Vector3& t);
 
         /**
          * Get the right vector.
          * @result The right vector (x-axis).
          */
-        MCORE_INLINE Vector3 GetRight() const;
+        MCORE_INLINE AZ::Vector3 GetRight() const;
 
         /**
          * Get the up vector.
          * @result The up vector (z-axis).
          */
-        MCORE_INLINE Vector3 GetUp() const;
+        MCORE_INLINE AZ::Vector3 GetUp() const;
 
         /**
          * Get the forward vector.
          * @result The forward vector (y-axis).
          */
-        MCORE_INLINE Vector3 GetForward() const;
+        MCORE_INLINE AZ::Vector3 GetForward() const;
 
         /**
          * Get the translation part of the matrix.
          * @result The vector containing the translation.
          */
-        MCORE_INLINE Vector3 GetTranslation() const;
+        MCORE_INLINE AZ::Vector3 GetTranslation() const;
 
         /**
          * Calculates the determinant of the matrix.
@@ -553,7 +554,7 @@ namespace MCore
          * Calculates the euler angles.
          * @result The euler angles, describing the rotation along each axis, in radians.
          */
-        Vector3 CalcEulerAngles() const;
+        AZ::Vector3 CalcEulerAngles() const;
 
         /**
          * Calculate the pitch, yaw and roll.
@@ -563,7 +564,7 @@ namespace MCore
          * All angles returned are in radians.
          * @result The vector containing the rotation around each axis (x=pitch, y=yaw, z=roll).
          */
-        Vector3 CalcPitchYawRoll() const;
+        AZ::Vector3 CalcPitchYawRoll() const;
 
         /**
          * Makes this matrix a mirrored version of a specified matrix.
@@ -580,7 +581,7 @@ namespace MCore
          * @param up The up vector, describing the roll of the camera, where (0,1,0) would mean the camera is straight up and has no roll and
          * where (0,-1,0) would mean the camera is upside down, etc.
          */
-        void LookAt(const Vector3& view, const Vector3& target, const Vector3& up);
+        void LookAt(const AZ::Vector3& view, const AZ::Vector3& target, const AZ::Vector3& up);
 
         /**
          * Makes this matrix a lookat matrix (also known as camera or view matrix), in right handed mode.
@@ -589,7 +590,7 @@ namespace MCore
          * @param up The up vector, describing the roll of the camera, where (0,1,0) would mean the camera is straight up and has no roll and
          * where (0,-1,0) would mean the camera is upside down, etc.
          */
-        void LookAtRH(const Vector3& view, const Vector3& target, const Vector3& up);
+        void LookAtRH(const AZ::Vector3& view, const AZ::Vector3& target, const AZ::Vector3& up);
 
         /**
          * Makes this matrix a perspective projection matrix.
@@ -675,15 +676,15 @@ namespace MCore
          * @param outRotation A pointer to a quaternion where the rotation will be written to.
          * @note Please keep in mind that nullptr values for the parameters are NOT allowed.
          */
-        void Decompose(Vector3* outTranslation, Quaternion* outRotation) const;
+        void Decompose(AZ::Vector3* outTranslation, Quaternion* outRotation) const;
 
         // QR Gram-Schmidt decomposition
-        void DecomposeQRGramSchmidt(Vector3& translation, Quaternion& rot) const;
-        void DecomposeQRGramSchmidt(Vector3& translation, Matrix& rot) const;
-        void DecomposeQRGramSchmidt(Vector3& translation, Matrix& rot, Vector3& scale) const;
-        void DecomposeQRGramSchmidt(Vector3& translation, Matrix& rot, Vector3& scale, Vector3& shear) const;
-        void DecomposeQRGramSchmidt(Vector3& translation, Quaternion& rot, Vector3& scale, Vector3& shear) const;
-        void DecomposeQRGramSchmidt(Vector3& translation, Quaternion& rot, Vector3& scale) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot, AZ::Vector3& scale) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot, AZ::Vector3& scale, AZ::Vector3& shear) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot, AZ::Vector3& scale, AZ::Vector3& shear) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot, AZ::Vector3& scale) const;
 
         static Matrix OuterProduct(const AZ::Vector4& column, const AZ::Vector4& row);
 
@@ -782,7 +783,7 @@ namespace MCore
          * @param v The translation of the matrix.
          * @result The translation matrix having the specified translation.
          */
-        static MCORE_INLINE Matrix TranslationMatrix(const Vector3& v)                      { Matrix m; m.SetTranslationMatrix(v); return m; }
+        static MCORE_INLINE Matrix TranslationMatrix(const AZ::Vector3& v)                      { Matrix m; m.SetTranslationMatrix(v); return m; }
 
         /**
          * Returns a rotation matrix from a quaternion.
@@ -797,7 +798,7 @@ namespace MCore
          * @param trans The translation of the matrix.
          * @result The rotation matrix, that includes a translation as well.
          */
-        static MCORE_INLINE Matrix RotationTranslationMatrix(const Quaternion& rot, const Vector3& trans)       { Matrix m; m.InitFromPosRot(trans, rot); return m; }
+        static MCORE_INLINE Matrix RotationTranslationMatrix(const Quaternion& rot, const AZ::Vector3& trans)       { Matrix m; m.InitFromPosRot(trans, rot); return m; }
 
         /**
          * Returns a rotation matrix along the x-axis.
@@ -826,7 +827,7 @@ namespace MCore
          * @param eulerAngles The euler angles in radians.
          * @result A rotation matrix.
          */
-        static MCORE_INLINE Matrix RotationMatrixEulerXYZ(const Vector3& eulerAngles)       { Matrix m; m.SetRotationMatrixEulerXYZ(eulerAngles); return m; }
+        static MCORE_INLINE Matrix RotationMatrixEulerXYZ(const AZ::Vector3& eulerAngles)       { Matrix m; m.SetRotationMatrixEulerXYZ(eulerAngles); return m; }
 
         /**
          * Returns a rotation matrix along the x, y and z-axis.
@@ -834,7 +835,7 @@ namespace MCore
          * @param eulerAngles The euler angles in radians.
          * @result A rotation matrix.
          */
-        static MCORE_INLINE Matrix RotationMatrixEulerZYX(const Vector3& eulerAngles)       { Matrix m; m.SetRotationMatrixEulerZYX(eulerAngles); return m; }
+        static MCORE_INLINE Matrix RotationMatrixEulerZYX(const AZ::Vector3& eulerAngles)       { Matrix m; m.SetRotationMatrixEulerZYX(eulerAngles); return m; }
 
         /**
          * Returns a rotation matrix given a pitch, yaw and roll.
@@ -844,7 +845,7 @@ namespace MCore
          * @param angles The rotation angles for each axis, in radians.
          * @result A rotation matrix.
          */
-        static MCORE_INLINE Matrix RotationMatrixPitchYawRoll(const Vector3& angles)        { Matrix m; m.SetRotationMatrixPitchYawRoll(angles); return m; }
+        static MCORE_INLINE Matrix RotationMatrixPitchYawRoll(const AZ::Vector3& angles)        { Matrix m; m.SetRotationMatrixPitchYawRoll(angles); return m; }
 
         /**
          * Constructs a rotation matrix given two vectors. The resulting matrix rotates the vector 'from' such that it points
@@ -853,7 +854,7 @@ namespace MCore
          * @param to The vector that the resulting matrix rotates from.
          * @result The rotation matrix that rotates the vector 'from' into the vector 'to'.
          */
-        static MCORE_INLINE Matrix RotationMatrixTwoVectors(const MCore::Vector3& from, const MCore::Vector3& to)       { Matrix m; m.SetRotationMatrixTwoVectors(from, to); return m; }
+        static MCORE_INLINE Matrix RotationMatrixTwoVectors(const AZ::Vector3& from, const AZ::Vector3& to)     { Matrix m; m.SetRotationMatrixTwoVectors(from, to); return m; }
 
         /**
          * Returns a rotation matrix from a given axis and angle.
@@ -861,14 +862,14 @@ namespace MCore
          * @param angle The angle of rotation, in radians.
          * @result A rotation matrix.
          */
-        static MCORE_INLINE Matrix RotationMatrixAxisAngle(const Vector3& axis, float angle)    { Matrix m; m.SetRotationMatrixAxisAngle(axis, angle); return m; }
+        static MCORE_INLINE Matrix RotationMatrixAxisAngle(const AZ::Vector3& axis, float angle)    { Matrix m; m.SetRotationMatrixAxisAngle(axis, angle); return m; }
 
         /**
          * Returns a scale matrix from a given scaling factor.
          * @param s The vector containing the scaling factors for each axis.
          * @result A scaling matrix.
          */
-        static MCORE_INLINE Matrix ScaleMatrix(const Vector3& s)                                { Matrix m; m.SetScaleMatrix(s); return m; }
+        static MCORE_INLINE Matrix ScaleMatrix(const AZ::Vector3& s)                                { Matrix m; m.SetScaleMatrix(s); return m; }
 
         /**
          * Returns a shear matrix created from three different shear matrices: XY, XZ and YZ.
@@ -876,7 +877,7 @@ namespace MCore
          * @param s The shear values (x=XY, y=XZ, z=YZ)
          * @result The shear matrix.
          */
-        static MCORE_INLINE Matrix ShearMatrix(const Vector3& s)                                { Matrix m; m.SetShearMatrix(s); return m; }
+        static MCORE_INLINE Matrix ShearMatrix(const AZ::Vector3& s)                                { Matrix m; m.SetShearMatrix(s); return m; }
 
 
         // operators

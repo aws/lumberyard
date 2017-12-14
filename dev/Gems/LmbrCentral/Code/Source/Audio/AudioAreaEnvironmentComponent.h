@@ -60,17 +60,17 @@ namespace LmbrCentral
     protected:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("AudioAreaEnvironmentService"));
+            provided.push_back(AZ_CRC("AudioAreaEnvironmentService", 0x6ba54d6c));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("ShapeService"));
+            required.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("AudioAreaEnvironmentService"));
+            incompatible.push_back(AZ_CRC("AudioAreaEnvironmentService", 0x6ba54d6c));
         }
 
         static void Reflect(AZ::ReflectContext* context);

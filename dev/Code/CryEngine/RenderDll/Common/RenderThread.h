@@ -616,7 +616,7 @@ struct SRenderThread
     void     RC_AuxFlush(IRenderAuxGeomImpl* pAux, SAuxGeomCBRawDataPackaged& data, size_t begin, size_t end, bool reset);
     void    RC_ParseShader (CShader* pSH, uint64 nMaskGen, uint32 flags, CShaderResources* pRes);
     void        RC_SetShaderQuality(EShaderType eST, EShaderQuality eSQ);
-    void        RC_UpdateShaderItem(SShaderItem* pShaderItem);
+    void    RC_UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
     void    RC_SetCamera();
     void    RC_RenderScene(int nFlags, RenderFunc pRenderFunc);
     void    RC_BeginFrame();

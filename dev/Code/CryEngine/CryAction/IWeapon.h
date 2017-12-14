@@ -16,7 +16,6 @@
 #pragma once
 
 #include <IAgent.h>
-#include <IMusicSystem.h>
 #include "IActionMapManager.h"
 
 struct IWeapon;
@@ -528,9 +527,6 @@ struct IWeapon
     virtual void SaveWeaponPosition(){}// FIX ME: = 0;
 
     virtual bool IsValidAssistTarget(IEntity* pEntity, IEntity* pSelf, bool includeVehicles = false) = 0;
-
-    virtual void SendMusicLogicEvent(Audio::EMusicLogicEvents event) = 0;
-
 
     virtual bool PredictProjectileHit(IPhysicalEntity* pShooter, const Vec3& pos, const Vec3& dir,
         const Vec3& velocity, float speed, Vec3& predictedPosOut, float& projectileSpeedOut,

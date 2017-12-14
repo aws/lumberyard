@@ -1,0 +1,14 @@
+def build(bld):
+    bld.DefineGem (
+        includes            = [ bld.Path('Code/Tools') ],
+        disable_pch         = True,
+
+        editor              = dict(
+            includes        = [ bld.Path('Code/Tools') ],
+            use             = ['SceneCore', 'SceneData', 'FbxSceneBuilder'],
+            disable_pch     = True,
+            features        = ['crcfix', 'qt5'],
+            autod_uselib    = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+            defines         = ['SCENE_PROCESSING_EDITOR']
+            )
+    )

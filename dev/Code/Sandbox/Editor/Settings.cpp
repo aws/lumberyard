@@ -164,7 +164,6 @@ SEditorSettings::SEditorSettings()
     bShowTimeInConsole = false;
     bLayerDoubleClicking = false;
 
-    enableQtDocking = false;
     enableSceneInspector = false;
 
     strStandardTempDirectory = "Temp";
@@ -201,11 +200,6 @@ SEditorSettings::SEditorSettings()
     sAssetBrowserSettings.bHideLods = false;
     sAssetBrowserSettings.bAutoChangeViewportSelection = false;
     sAssetBrowserSettings.bAutoFilterFromViewportSelection = false;
-
-    //////////////////////////////////////////////////////////////////////////
-    // Time of day settings
-    //////////////////////////////////////////////////////////////////////////
-    bShowBasicPropertiesInTimeOfDay = true;
 
     //////////////////////////////////////////////////////////////////////////
     // FlowGraph
@@ -269,7 +263,7 @@ void SEditorSettings::SaveValue(const char* sSection, const char* sKey, const QC
     {
         if (GetIEditor()->GetSettingsManager())
         {
-            GetIEditor()->GetSettingsManager()->SaveSetting(sSection, sKey, RGB(value.red(), value.green(), value.blue()));
+            GetIEditor()->GetSettingsManager()->SaveSetting(sSection, sKey, value);
         }
     }
 }
@@ -335,9 +329,7 @@ void SEditorSettings::LoadValue(const char* sSection, const char* sKey, QColor& 
     {
         if (GetIEditor()->GetSettingsManager())
         {
-            int v = RGB(value.red(), value.green(), value.blue());
-            GetIEditor()->GetSettingsManager()->LoadSetting(sSection, sKey, v);
-            value = QColor(GetRValue(v), GetGValue(v), GetBValue(v));
+            GetIEditor()->GetSettingsManager()->LoadSetting(sSection, sKey, value);
         }
 
         SaveValue(sSection, sKey, value);
@@ -351,7 +343,7 @@ void SEditorSettings::LoadValue(const char* sSection, const char* sKey, QColor& 
 
         if (GetIEditor()->GetSettingsManager())
         {
-            GetIEditor()->GetSettingsManager()->SaveSetting(sSection, sKey, v);
+            GetIEditor()->GetSettingsManager()->SaveSetting(sSection, sKey, value);
         }
     }
 }
@@ -509,8 +501,6 @@ void SEditorSettings::Save()
     SaveValue("Settings", "ShowTimeInConsole", bShowTimeInConsole);
     SaveValue("Settings", "LayerDoubleClicking", bLayerDoubleClicking);
 
-    SaveValue("Settings", "EnableQtDocking", enableQtDocking);
-
     SaveValue("Settings", "EnableSceneInspector", enableSceneInspector);
     
     //////////////////////////////////////////////////////////////////////////
@@ -658,11 +648,6 @@ void SEditorSettings::Save()
     SaveValue("Settings\\AssetBrowser", "AutoFilterFromViewportSelection", sAssetBrowserSettings.bAutoFilterFromViewportSelection);
     SaveValue("Settings\\AssetBrowser", "VisibleColumnNames", sAssetBrowserSettings.sVisibleColumnNames);
     SaveValue("Settings\\AssetBrowser", "ColumnNames", sAssetBrowserSettings.sColumnNames);
-
-    //////////////////////////////////////////////////////////////////////////
-    // Time of day settings
-    //////////////////////////////////////////////////////////////////////////
-    SaveValue("Settings\\TimeOfDay", "ShowBasicProperties", bShowBasicPropertiesInTimeOfDay);
     
     //////////////////////////////////////////////////////////////////////////
     // FlowGraph
@@ -780,6 +765,7 @@ void SEditorSettings::Load()
     LoadValue("Settings", "ApplyConfigSpecInEditor", bApplyConfigSpecInEditor);
     LoadValue("Settings", "editorConfigSpec", editorConfigSpec);
 
+
     LoadValue("Settings", "TemporaryDirectory", strStandardTempDirectory);
     LoadValue("Settings", "EditorEnv", strEditorEnv);
 
@@ -793,8 +779,6 @@ void SEditorSettings::Load()
 
     LoadValue("Settings", "ShowTimeInConsole", bShowTimeInConsole);
     LoadValue("Settings", "LayerDoubleClicking", bLayerDoubleClicking);
-
-    LoadValue("Settings", "EnableQtDocking", enableQtDocking);
 
     LoadValue("Settings", "EnableSceneInspector", enableSceneInspector);
     
@@ -951,11 +935,6 @@ void SEditorSettings::Load()
         sAssetBrowserSettings.sColumnNames =
             sAssetBrowserSettings.sVisibleColumnNames = kDefaultColumnsForAssetBrowserList;
     }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Time of day settings
-    //////////////////////////////////////////////////////////////////////////
-    LoadValue("Settings\\TimeOfDay", "ShowBasicProperties", bShowBasicPropertiesInTimeOfDay);
 
     //////////////////////////////////////////////////////////////////////////
     // FlowGraph

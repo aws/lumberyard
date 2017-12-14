@@ -77,18 +77,18 @@ void CSyntaxColorizer::createTables()
 	memset(m_pTableTwo,SKIP,256);  memset(m_pTableThree,SKIP,256);
 	memset(m_pTableFour,SKIP,256); memset(m_pAllowable,false,256);
 
-	*(m_pTableZero + '"') = DQSTART; *(m_pTableZero + '\'')  = SQSTART;
-	*(m_pTableZero + '/') = CMSTART; *(m_pTableOne + '"')    = DQEND;
-	*(m_pTableTwo + '\'') = SQEND;
-	*(m_pTableFour + '*') = MLEND;
+	*(m_pTableZero + int('"')) = DQSTART; *(m_pTableZero + int('\''))  = SQSTART;
+	*(m_pTableZero + int('/')) = CMSTART; *(m_pTableOne + int('"'))    = DQEND;
+	*(m_pTableTwo + int('\'')) = SQEND;
+	*(m_pTableFour + int('*')) = MLEND;
 
-	*(m_pAllowable + '\n') = true; *(m_pAllowable + '\r') = true;
-	*(m_pAllowable + '\t') = true; *(m_pAllowable + '\0') = true;
-	*(m_pAllowable + ' ')  = true; *(m_pAllowable + ';')  = true;
-	*(m_pAllowable + '(')  = true; *(m_pAllowable + ')')  = true;
-	*(m_pAllowable + '{')  = true; *(m_pAllowable + '}')  = true;
-	*(m_pAllowable + '[')  = true; *(m_pAllowable + ']')  = true;
-	*(m_pAllowable + '*')  = true;
+	*(m_pAllowable + int('\n')) = true; *(m_pAllowable + int('\r')) = true;
+	*(m_pAllowable + int('\t')) = true; *(m_pAllowable + int('\0')) = true;
+	*(m_pAllowable + int(' '))  = true; *(m_pAllowable + int(';'))  = true;
+	*(m_pAllowable + int('('))  = true; *(m_pAllowable + int(')'))  = true;
+	*(m_pAllowable + int('{'))  = true; *(m_pAllowable + int('}'))  = true;
+	*(m_pAllowable + int('['))  = true; *(m_pAllowable + int(']'))  = true;
+	*(m_pAllowable + int('*'))  = true;
 }
 
 void CSyntaxColorizer::deleteTables()
@@ -308,7 +308,7 @@ void CSyntaxColorizer::highlightBlock(const QString& text)
 	//do the work
 	while(lpszBuf[x])
 	{
-		switch(ppTables[iState][lpszBuf[x]])
+		switch(ppTables[iState][int(lpszBuf[x])])
 		{
 		case DQSTART:
 			iState = 1;
@@ -362,11 +362,11 @@ void CSyntaxColorizer::highlightBlock(const QString& text)
 			// Extract whole word.
 			lpszTemp = lpszBuf+x;
 			{
-				if (x > 0 && !m_pAllowable[lpszBuf[x-1]])
+				if (x > 0 && !m_pAllowable[int(lpszBuf[x-1])])
 					break;
 				
 				int i = 0;
-				while (!m_pAllowable[lpszTemp[i]])
+				while (!m_pAllowable[int(lpszTemp[i])])
 				{
 					sWord[i] = lpszTemp[i];
 					i++;

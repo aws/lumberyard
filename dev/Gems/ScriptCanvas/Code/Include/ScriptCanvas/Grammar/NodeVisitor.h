@@ -17,13 +17,19 @@
 // one thing to remember is that a function call that sends output into two different nodes' input
 // is a function call statement (assigning output to variables, NOT a function call expression)
 
+#define SCRIPT_CANVAS_NODE_VISITOR_FUNCTIONS(PREFIX, SUFFIX)\
+    PREFIX Visit(const Node& node) { AZ_WarningOnce("ScriptCanvas", false, "Implement a Visit on all leaf node"); }; /* \todo delete me! */\
+    PREFIX Visit(const Nodes::Math::Divide& node) SUFFIX;\
+    PREFIX Visit(const Nodes::Math::Multiply& node) SUFFIX;\
+    PREFIX Visit(const Nodes::Math::Number& node) SUFFIX;\
+    PREFIX Visit(const Nodes::Math::Subtract& node) SUFFIX;\
+    PREFIX Visit(const Nodes::Math::Sum& node) SUFFIX;
+
+#define SCRIPT_CANVAS_NODE_VISITOR_FUNCTION_DECLARATIONS\
+    SCRIPT_CANVAS_NODE_VISITOR_FUNCTIONS(virtual void, =0)
+
 #define SCRIPT_CANVAS_NODE_VISITOR_FUNCTION_OVERRIDES\
-    void Visit(const Node&) override {}; /* \todo delete me! */\
-    void Visit(const Nodes::Math::Divide& node) override;\
-    void Visit(const Nodes::Math::Multiply& node) override;\
-    void Visit(const Nodes::Math::Number& node) override;\
-    void Visit(const Nodes::Math::Subtract& node) override;\
-    void Visit(const Nodes::Math::Sum& node) override;
+    SCRIPT_CANVAS_NODE_VISITOR_FUNCTIONS(void, override)
 
 namespace ScriptCanvas
 {
@@ -48,12 +54,6 @@ namespace ScriptCanvas
     public:
         virtual ~NodeVisitor() = default;
 
-        virtual void Visit(const Node&) = 0; // \todo delete me!
-
-        virtual void Visit(const Nodes::Math::Divide&) = 0;
-        virtual void Visit(const Nodes::Math::Multiply&) = 0;
-        virtual void Visit(const Nodes::Math::Number&) = 0;
-        virtual void Visit(const Nodes::Math::Subtract&) = 0;
-        virtual void Visit(const Nodes::Math::Sum&) = 0;
+        SCRIPT_CANVAS_NODE_VISITOR_FUNCTION_DECLARATIONS;
     };
 }

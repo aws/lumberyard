@@ -15,6 +15,7 @@
 // Based on boost 1.39.0
 
 #include <AzCore/std/base.h>
+#include <AzCore/std/typetraits/function_traits.h>
 
 namespace AZStd
 {

@@ -362,8 +362,7 @@ QPoint QToolTipWidget::AdjustTipPosByArrowSize(QPoint pos, ArrowDirection dir)
         break;
     }
     default:
-        m_arrow->pos().setX(-10);
-        m_arrow->pos().setY(-10);
+        m_arrow->move(-10, -10);
         break;
     }
     return pos;

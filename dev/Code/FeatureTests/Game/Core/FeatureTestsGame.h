@@ -85,7 +85,6 @@ namespace LYGame
         bool Init(IGameFramework* gameFramework) override;
         bool CompleteInit() override;
         void Shutdown() override;
-        int Update(bool hasFocus, unsigned int updateFlags) override;
         void PlayerIdSet(EntityId playerId) override;
         IGameFramework* GetIGameFramework() override { return m_gameFramework; }
         const char* GetLongName() override { return GAME_LONGNAME; }

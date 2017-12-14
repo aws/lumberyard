@@ -94,7 +94,7 @@ namespace MCore
          * @param axis The axis to rotate around.
          * @param angle The angle in radians to rotate around the given axis.
          */
-        Quaternion(const Vector3& axis, float angle);
+        Quaternion(const AZ::Vector3& axis, float angle);
 
         /**
          * Set the quaternion x/y/z/w component values.
@@ -183,19 +183,19 @@ namespace MCore
          * Calculate and get the right basis vector.
          * @result The basis vector pointing to the right. This assumes x+ points to the right.
          */
-        MCORE_INLINE Vector3 CalcRightAxis() const;
+        MCORE_INLINE AZ::Vector3 CalcRightAxis() const;
 
         /**
          * Calculate and get the up basis vector.
          * @result The basis vector pointing upwards. This assumes z+ points up.
          */
-        MCORE_INLINE Vector3 CalcUpAxis() const;
+        MCORE_INLINE AZ::Vector3 CalcUpAxis() const;
 
         /**
          * Calculate and get the forward basis vector.
          * @result The basis vector pointing forward. This assumes y+ points forward, into the depth.
          */
-        MCORE_INLINE Vector3 CalcForwardAxis() const;
+        MCORE_INLINE AZ::Vector3 CalcForwardAxis() const;
 
         /**
          * Initialize the current quaternion from a specified matrix.
@@ -219,7 +219,7 @@ namespace MCore
          * @param axis Pointer to the vector to store the axis in.
          * @param angle Pointer to the variable to store the angle in (will be in radians).
          */
-        void ToAxisAngle(Vector3* axis, float* angle) const;
+        void ToAxisAngle(AZ::Vector3* axis, float* angle) const;
 
         /**
          * Convert the quaternion to a spherical rotation.
@@ -235,10 +235,10 @@ namespace MCore
          * the rotation around the z-axis (roll).
          * @result The 3D vector containing the euler angles in radians, around each axis.
          */
-        Vector3 ToEuler() const;
+        AZ::Vector3 ToEuler() const;
 
         /**
-        * Returns the angle of rotation about the z axis. This is same as 
+        * Returns the angle of rotation about the z axis. This is same as
         * the z component of the vector returned by the ToEuler method.  It
         * is just more efficient to call this when one is interested only in rotation about the z axis.
         * @result The angle of rotation about z axis in radians.
@@ -266,7 +266,7 @@ namespace MCore
          * @param toVector The normalized vector to rotate towards. This must be normalized as well!
          * @result The delta rotation quaternion.
          */
-        static Quaternion CreateDeltaRotation(const Vector3& fromVector, const Vector3& toVector);
+        static Quaternion CreateDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector);
 
         /**
          * Create a delta rotation that rotates one vector onto another vector.
@@ -277,14 +277,14 @@ namespace MCore
          * @param maxAngleRadians The maximum rotation angle on the plane defined by the two vectors. This cannot be more than Math::pi (180 degrees).
          * @result The delta rotation quaternion.
          */
-        static Quaternion CreateDeltaRotation(const Vector3& fromVector, const Vector3& toVector, float maxAngleRadians);
+        static Quaternion CreateDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector, float maxAngleRadians);
 
         /**
          * Init this quaternion as a delta rotation that rotates one vector onto another vector.
          * @param fromVector The normalized vector to start from. This must be normalized!
          * @param toVector The normalized vector to rotate towards. This must be normalized as well!
          */
-        void SetAsDeltaRotation(const Vector3& fromVector, const Vector3& toVector);
+        void SetAsDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector);
 
         /**
          * Init this quaternion as a delta rotation that rotates one vector onto another vector.
@@ -294,7 +294,7 @@ namespace MCore
          * @param toVector The normalized vector to rotate towards. This must be normalized as well!
          * @param maxAngleRadians The maximum rotation angle on the plane defined by the two vectors. This cannot be more than Math::pi (180 degrees).
          */
-        void SetAsDeltaRotation(const Vector3& fromVector, const Vector3& toVector, float maxAngleRadians);
+        void SetAsDeltaRotation(const AZ::Vector3& fromVector, const AZ::Vector3& toVector, float maxAngleRadians);
 
         /**
          * Rotate this current quaternion using a given delta that is calculated from two vectors.
@@ -302,7 +302,7 @@ namespace MCore
          * @param fromVector The current direction vector, must be normalized.
          * @param toVector The desired new direction vector, must be normalized.
          */
-        void RotateFromTo(const Vector3& fromVector, const Vector3& toVector);
+        void RotateFromTo(const AZ::Vector3& fromVector, const AZ::Vector3& toVector);
 
         /**
          * Decompose into swing and twist.
@@ -311,7 +311,7 @@ namespace MCore
          * @param outSwing This will contain the swing quaternion.
          * @param outTwist This will contain the twist quaternion.
          */
-        void DecomposeSwingTwist(const Vector3& direction, Quaternion* outSwing, Quaternion* outTwist) const;
+        void DecomposeSwingTwist(const AZ::Vector3& direction, Quaternion* outSwing, Quaternion* outTwist) const;
 
         /**
          * Linear interpolate between this and another quaternion.
@@ -364,7 +364,7 @@ namespace MCore
         MCORE_INLINE operator           float*()                                                { return (float*)&x; }
         MCORE_INLINE operator           const float*() const                                    { return (const float*)&x; }
 
-        MCORE_INLINE Vector3            operator*(const Vector3& p) const;                      // multiply a vector by a quaternion
+        MCORE_INLINE AZ::Vector3            operator*(const AZ::Vector3& p) const;                      // multiply a vector by a quaternion
         MCORE_INLINE Quaternion         operator/(const Quaternion& q) const;                   // returns the ratio of two quaternions
 
         // attributes

@@ -21,6 +21,7 @@
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QKeyEvent>
+#include <QVBoxLayout>
 
 static const int STATIC_TEXT_C_HEIGHT = 42;
 static const int HISTOGRAM_C_HEIGHT = 130;
@@ -29,17 +30,32 @@ static const int HISTOGRAM_C_HEIGHT = 130;
 // CBitmapToolTip
 CBitmapToolTip::CBitmapToolTip(QWidget* parent)
     : QWidget(parent, Qt::ToolTip)
-    , m_staticBitmap(this)
-    , m_staticText(this)
-    , m_rgbaHistogram(this)
-    , m_alphaChannelHistogram(this)
+    , m_staticBitmap(new QLabel(this))
+    , m_staticText(new QLabel(this))
+    , m_rgbaHistogram(new CImageHistogramCtrl(this))
+    , m_alphaChannelHistogram(new CImageHistogramCtrl(this))
 {
     m_nTimer = 0;
-    m_hToolWnd = 0;
+    m_hToolWnd = nullptr;
     m_bShowHistogram = true;
     m_bShowFullsize = false;
 
     connect(&m_timer, &QTimer::timeout, this, &CBitmapToolTip::OnTimer);
+
+    auto* layout = new QVBoxLayout(this);
+    layout->setSizeConstraint(QLayout::SetFixedSize);
+
+    layout->addWidget(m_staticBitmap);
+    layout->addWidget(m_staticText);
+
+    auto* histogramLayout = new QHBoxLayout(this);
+    histogramLayout->addWidget(m_rgbaHistogram);
+    histogramLayout->addWidget(m_alphaChannelHistogram);
+    m_alphaChannelHistogram->setVisible(false);
+
+    layout->addLayout(histogramLayout);
+
+    setLayout(layout);
 }
 
 CBitmapToolTip::~CBitmapToolTip()
@@ -58,7 +74,7 @@ void CBitmapToolTip::GetShowMode(EShowMode& eShowMode, bool& bShowInOriginalSize
         {
             eShowMode = ESHOW_RGB_ALPHA;
         }
-        else if (CheckVirtualKey(Qt::Key_Menu))
+        else if (CheckVirtualKey(Qt::Key_Alt))
         {
             eShowMode = ESHOW_ALPHA;
         }
@@ -95,94 +111,41 @@ const char* CBitmapToolTip::GetShowModeDescription(EShowMode eShowMode, bool bSh
     return "";
 }
 
-void CBitmapToolTip::RefreshLayout()
-{
-    QRect rcClient = rect();
-
-        if (rcClient.width() <= 0)
-        {
-            return;
-        }
-        if (rcClient.height() <= 0)
-        {
-            return;
-        }
-
-        QRect rc(rcClient);
-        int histoHeight = (m_bShowHistogram ? HISTOGRAM_C_HEIGHT : 0);
-
-        rc.setBottom(rc.bottom() - STATIC_TEXT_C_HEIGHT - histoHeight);
-        m_staticBitmap.setGeometry(rc);
-
-        rc = rcClient;
-        rc.setTop(rc.bottom() - STATIC_TEXT_C_HEIGHT - histoHeight);
-        m_staticText.setGeometry(rc);
-
-        if (m_bShowHistogram)
-        {
-            QRect rcHistoRgba, rcHistoAlpha;
-
-            if (m_eShowMode == ESHOW_RGB_ALPHA || m_eShowMode == ESHOW_RGBA)
-            {
-                rc = rcClient;
-                rc.setTop(rc.bottom() - histoHeight);
-                rc.setRight(rc.width() / 2);
-                rcHistoRgba = rc;
-
-                rc = rcClient;
-                rc.setTop(rc.bottom() - histoHeight);
-                rc.setLeft(rcHistoRgba.right());
-                rc.setRight(rcClient.width());
-                rcHistoAlpha = rc;
-
-                m_rgbaHistogram.setVisible(true);
-                m_alphaChannelHistogram.setVisible(true);
-            }
-            else if (m_eShowMode == ESHOW_ALPHA)
-            {
-                rc = rcClient;
-                rc.setTop(rc.bottom() - histoHeight);
-                rc.setRight(rc.width());
-                rcHistoAlpha = rc;
-
-                m_rgbaHistogram.setVisible(false);
-                m_alphaChannelHistogram.setVisible(true);
-            }
-            else
-            {
-                rc = rcClient;
-                rc.setTop(rc.bottom() - histoHeight);
-                rc.setRight(rc.width());
-                rcHistoRgba = rc;
-
-                m_rgbaHistogram.setVisible(true);
-                m_alphaChannelHistogram.setVisible(false);
-            }
-
-            m_rgbaHistogram.setGeometry(rcHistoRgba);
-            m_alphaChannelHistogram.setGeometry(rcHistoAlpha);
-        }
-}
-
 void CBitmapToolTip::RefreshViewmode()
 {
-    EShowMode eShowMode = ESHOW_RGB;
-    bool bShowInOriginalSize = false;
+    LoadImage(m_filename);
 
-    GetShowMode(eShowMode, bShowInOriginalSize);
-
-    if ((m_eShowMode != eShowMode) || (m_bShowFullsize != bShowInOriginalSize))
+    if (m_eShowMode == ESHOW_RGB_ALPHA || m_eShowMode == ESHOW_RGBA)
     {
-        LoadImage(m_filename);
-
-        RefreshLayout();
-        CorrectPosition();
-        update();
+        m_rgbaHistogram->setVisible(true);
+        m_alphaChannelHistogram->setVisible(true);
+    }
+    else if (m_eShowMode == ESHOW_ALPHA)
+    {
+        m_rgbaHistogram->setVisible(false);
+        m_alphaChannelHistogram->setVisible(true);
+    }
+    else
+    {
+        m_rgbaHistogram->setVisible(true);
+        m_alphaChannelHistogram->setVisible(false);
     }
 }
 
 bool CBitmapToolTip::LoadImage(const QString& imageFilename)
 {
+    EShowMode eShowMode = ESHOW_RGB;
+    const char* pShowModeDescription = "RGB";
+    bool bShowInOriginalSize = false;
+
+    GetShowMode(eShowMode, bShowInOriginalSize);
+    pShowModeDescription = GetShowModeDescription(eShowMode, bShowInOriginalSize);
+
+    if ((m_eShowMode == eShowMode) && (m_bShowFullsize == bShowInOriginalSize))
+    {
+        return true;
+    }
+
     // For max quality, let's try loading the source image if available:
     QString convertedFileName = Path::GamePathToFullPath(Path::ReplaceExtension(imageFilename, ".dds"));
 
@@ -197,15 +160,7 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
         fileCheck.Close();
     }
 
-
-    EShowMode eShowMode = ESHOW_RGB;
-    const char* pShowModeDescription = "RGB";
-    bool bShowInOriginalSize = false;
-
-    GetShowMode(eShowMode, bShowInOriginalSize);
-    pShowModeDescription = GetShowModeDescription(eShowMode, bShowInOriginalSize);
-
-    if ((m_filename == convertedFileName) && (m_eShowMode == eShowMode) && (m_bShowFullsize == bShowInOriginalSize))
+    if ((m_filename == convertedFileName))
     {
         return true;
     }
@@ -222,8 +177,7 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
         loadedRequestedAsset = false;
         if (!CImageUtil::LoadImage(convertedFileName, image))
         {
-            m_staticBitmap.clear();
-            update();
+            m_staticBitmap->clear();
             return false;
         }
     }
@@ -252,7 +206,7 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
 
     imginfo = imginfo.arg(image.GetWidth()).arg(image.GetHeight()).arg(image.GetFormatDescription()).arg(pShowModeDescription);
 
-    m_staticText.setText(imginfo);
+    m_staticText->setText(imginfo);
 
     int w = image.GetWidth();
     int h = image.GetHeight();
@@ -333,22 +287,19 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
         scaledImage.SwapRedAndBlue();
     }
 
-    update();
-
     QImage qImage(scaledImage.GetWidth(), scaledImage.GetHeight(), QImage::Format_RGB32);
     memcpy(qImage.bits(), scaledImage.GetData(), qImage.byteCount());
-    m_staticBitmap.setPixmap(QPixmap::fromImage(qImage));
+    m_staticBitmap->setPixmap(QPixmap::fromImage(qImage));
 
     if (m_bShowHistogram && scaledImage.GetData())
     {
-        m_rgbaHistogram.ComputeHistogram((BYTE*)image.GetData(), image.GetWidth(), image.GetHeight(), CImageHistogramCtrl::eImageFormat_32BPP_BGRA);
-        m_rgbaHistogram.m_drawMode = CImageHistogramCtrl::eDrawMode_OverlappedRGB;
-        m_alphaChannelHistogram.CopyComputedDataFrom(&m_rgbaHistogram);
-        m_alphaChannelHistogram.m_drawMode = CImageHistogramCtrl::eDrawMode_AlphaChannel;
+        m_rgbaHistogram->ComputeHistogram(image, CImageHistogram::eImageFormat_32BPP_BGRA);
+        m_rgbaHistogram->setDrawMode(EHistogramDrawMode::OverlappedRGB);
+
+        m_alphaChannelHistogram->histogramDisplay()->CopyComputedDataFrom(m_rgbaHistogram->histogramDisplay());
+        m_alphaChannelHistogram->setDrawMode(EHistogramDrawMode::AlphaChannel);
     }
 
-    CorrectPosition();
-    update();
     return true;
 }
 
@@ -409,76 +360,6 @@ void CBitmapToolTip::keyReleaseEvent(QKeyEvent* event)
         RefreshViewmode();
     }
 }
-
-//////////////////////////////////////////////////////////////////////////
-void CBitmapToolTip::resizeEvent(QResizeEvent* event)
-{
-    RefreshLayout();
-}
-
-void CBitmapToolTip::CorrectPosition()
-{
-    // Move window inside monitor
-    QRect rc = geometry();
-
-
-    int hMon = qApp->desktop()->screenNumber(rc.bottomRight());
-    if (hMon == -1)
-    {
-        hMon = qApp->desktop()->screenNumber(QCursor::pos());
-        if (hMon == -1)
-        {
-            return;
-        }
-    }
-
-    QRect rcMonitor = qApp->desktop()->screenGeometry(hMon);
-
-    QRect toolRc(m_toolRect);
-    if (m_hToolWnd)
-    {
-        toolRc.moveTopLeft(m_hToolWnd->mapToGlobal(toolRc.topLeft()));
-    }
-
-    bool bOffset = false;
-    int dx, dy;
-    QRect go = rc;
-    QPoint cursorPos = QCursor::pos();
-
-    // move to the default position
-    go.setRight(cursorPos.x() + rc.width());
-    go.setLeft(cursorPos.x());
-    go.setBottom(toolRc.top() + rc.height() + m_toolRect.height());
-    go.setTop(toolRc.top() + m_toolRect.height());
-
-    // if the texture clips monitor's right, move it left
-    if (go.right() > rcMonitor.right())
-    {
-        dx = rcMonitor.right() - go.right();
-        go.translate(dx, 0);
-    }
-
-    // if the texture clips monitor's bottom, move it up
-    if (go.bottom() > rcMonitor.bottom())
-    {
-        dy = rcMonitor.bottom() - go.bottom();
-        go.translate(0, dy);
-    }
-
-    // if the texture clips monitor's top, move it down
-    if (go.top() < rcMonitor.top())
-    {
-        dy = rcMonitor.bottom() - go.bottom();
-        go.translate(0, dy);
-    }
-
-    // move window only if position changed
-    if (go != rc)
-    {
-        setGeometry(go);
-    }
-}
-
 
 //////////////////////////////////////////////////////////////////////////
 void CBitmapToolTip::SetTool(QWidget* pWnd, const QRect& rect)

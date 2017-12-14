@@ -1,5 +1,3 @@
-
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -28,7 +26,6 @@ namespace AZ
 {
     namespace RC
     {
-        namespace SceneEvents = AZ::SceneAPI::Events;
         namespace SceneUtil = AZ::SceneAPI::Utilities;
         namespace SceneContainer = AZ::SceneAPI::Containers;
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
@@ -36,8 +33,7 @@ namespace AZ
         const AZStd::string ChrGroupExporter::fileExtension = "chr";
 
         ChrGroupExporter::ChrGroupExporter(IAssetWriter* writer, IConvertContext* convertContext)
-            : CallProcessorBinder()
-            , m_assetWriter(writer)
+            : m_assetWriter(writer)
             , m_convertContext(convertContext)
         {
             BindToCall(&ChrGroupExporter::ProcessContext);
@@ -130,5 +126,5 @@ namespace AZ
             exportInfo->bWantF32Vertices = false;
             exportInfo->authorToolVersion = 1;
         }
-    }
-}
+    } // namespace RC
+} // namespace AZ

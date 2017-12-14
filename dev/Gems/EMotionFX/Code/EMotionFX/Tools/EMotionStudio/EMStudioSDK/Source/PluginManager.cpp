@@ -11,6 +11,7 @@
 */
 
 // include required headers
+#include <AzFramework/StringFunc/StringFunc.h>
 #include "EMStudioManager.h"
 #include <MysticQt/Source/MysticQtConfig.h>
 #include "PluginManager.h"
@@ -264,11 +265,16 @@ namespace EMStudio
 
         // init the plugin
         newPlugin->CreateBaseInterface(objectName);
+
+        // register as active plugin. This has to be done at this point since
+        // the initialization could try to access the plugin and assume that
+        // is active.
+        mActivePlugins.Add(newPlugin);
+
         newPlugin->Init();
         newPlugin->RegisterKeyboardShortcuts();
 
-        // register as active plugin and return it
-        mActivePlugins.Add(newPlugin);
+        SortActivePlugins();
         return newPlugin;
     }
 
@@ -276,11 +282,10 @@ namespace EMStudio
     // find a given plugin by its name (type string)
     uint32 PluginManager::FindPluginByTypeString(const char* pluginType) const
     {
-        MCore::String pluginName(pluginType);
         const uint32 numPlugins = mPlugins.GetLength();
         for (uint32 i = 0; i < numPlugins; ++i)
         {
-            if (pluginName.CheckIfIsEqualNoCase(mPlugins[i]->GetName()))
+            if (AzFramework::StringFunc::Equal(pluginType, mPlugins[i]->GetName()))
             {
                 return i;
             }
@@ -289,6 +294,19 @@ namespace EMStudio
         return MCORE_INVALIDINDEX32;
     }
 
+    EMStudioPlugin* PluginManager::GetActivePluginByTypeString(const char* pluginType) const
+    {
+        const uint32 numPlugins = mActivePlugins.GetLength();
+        for (uint32 i = 0; i < numPlugins; ++i)
+        {
+            if (AzFramework::StringFunc::Equal(pluginType, mActivePlugins[i]->GetName()))
+            {
+                return mActivePlugins[i];
+            }
+        }
+
+        return nullptr;
+    }
 
     // generate a unique object name
     QString PluginManager::GenerateObjectName() const
@@ -334,14 +352,11 @@ namespace EMStudio
     {
         uint32 total = 0;
 
-        // build a string object for comparing
-        MCore::String pluginTypeString = pluginType;
-
         // check all active plugins to see if they are from the given type
         const uint32 numActivePlugins = mActivePlugins.GetLength();
         for (uint32 i = 0; i < numActivePlugins; ++i)
         {
-            if (pluginTypeString.CheckIfIsEqualNoCase(mActivePlugins[i]->GetName()))
+            if (AzFramework::StringFunc::Equal(pluginType, mActivePlugins[i]->GetName()))
             {
                 total++;
             }

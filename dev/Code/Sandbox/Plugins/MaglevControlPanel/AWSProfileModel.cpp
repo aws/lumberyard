@@ -22,7 +22,8 @@
 
 #include <AWSProfileModel.moc>
 
-const QMap<AWSProfileColumn, QString> ColumnEnumToNameMap<AWSProfileColumn>::s_columnEnumToNameMap
+template<>
+const QMap<AWSProfileColumn, QString> ColumnEnumToNameMap<AWSProfileColumn>::s_columnEnumToNameMap =
 {
     {
         AWSProfileColumn::Name, "Name"

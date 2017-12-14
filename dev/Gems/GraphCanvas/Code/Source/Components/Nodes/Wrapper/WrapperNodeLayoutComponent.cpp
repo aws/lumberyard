@@ -45,7 +45,6 @@ namespace GraphCanvas
         setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
         m_layout = new QGraphicsLinearLayout(Qt::Vertical);
-        m_layout->setInstantInvalidatePropagation(true);
 
         setLayout(m_layout);
     }
@@ -92,7 +91,7 @@ namespace GraphCanvas
             for (const AZ::EntityId& nodeId : m_wrapperLayoutComponent.m_wrappedNodes)
             {
                 QGraphicsLayoutItem* rootLayoutItem = nullptr;
-                RootVisualRequestBus::EventResult(rootLayoutItem, nodeId, &RootVisualRequests::GetRootGraphicsLayoutItem);
+                SceneMemberUIRequestBus::EventResult(rootLayoutItem, nodeId, &SceneMemberUIRequests::GetRootGraphicsLayoutItem);
 
                 if (rootLayoutItem)
                 {
@@ -371,6 +370,8 @@ namespace GraphCanvas
             m_wrappedNodes.insert(nodeId);
             m_wrappedNodeLayout->RefreshLayout();
 
+            NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
+
             RefreshActionStyle();
         }
     }
@@ -389,6 +390,8 @@ namespace GraphCanvas
             m_wrappedNodeConfigurations.erase(configurationIter);
 
             m_wrappedNodeLayout->RefreshLayout();
+
+            NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
 
             RefreshActionStyle();
         }

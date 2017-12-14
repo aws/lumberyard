@@ -51,7 +51,7 @@
        <property name="styleSheet">
         <string notr="true">selection-background-color: rgb(233, 99, 0);
 background: #6e7071;
-background-image: url(:/AssetBrowser/Resources/search.png);
+background-image: url(:/stylesheet/img/search.png);
 background-repeat: no-repeat;
 background-position: left;
 padding: 2 2 2 24;
@@ -84,10 +84,6 @@ color: rgb(255, 255, 255);</string>
          <width>16777215</width>
          <height>25</height>
         </size>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">border: none; 
-background: #6e7071;</string>
        </property>
        <property name="text">
         <string/>

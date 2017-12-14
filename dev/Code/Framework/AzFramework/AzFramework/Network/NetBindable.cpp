@@ -64,7 +64,7 @@ namespace AzFramework
                 editContext->Class<NetBindable>(
                     "Network Bindable", "Network-bindable components are synchronized over the network.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Network")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Networking")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NetBindable::m_isSyncEnabled, "Bind To network", "Enable binding to the network.");
             }

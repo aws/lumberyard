@@ -591,7 +591,7 @@ public:
     virtual void SetPoint(int index, const Vec3& pos);
 
     //////////////////////////////////////////////////////////////////////////
-    virtual void ChangeColor(COLORREF color);
+    virtual void ChangeColor(const QColor& color);
 
     virtual void OnShapeTypeChange(IVariable* var);
     virtual void OnShapeAgentTypeChange(IVariable* var);

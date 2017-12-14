@@ -27,7 +27,7 @@ public:
     virtual void Done();
     virtual XmlNodeRef Export(const QString& levelPath, XmlNodeRef& xmlNode);
     virtual bool CreateGameObject();
-    virtual void Validate(CErrorReport* report)
+    virtual void Validate(IErrorReport* report)
     {
         CBaseObject::Validate(report);
     }

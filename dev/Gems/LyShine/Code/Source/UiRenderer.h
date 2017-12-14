@@ -13,6 +13,7 @@
 
 #include <LyShine/IUiRenderer.h>
 #include <IRenderer.h>
+#include <AzCore/std/containers/stack.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Implementation of IUiRenderInterface
@@ -37,6 +38,10 @@ public: // member functions
     void IncrementStencilRef() override;
     void DecrementStencilRef() override;
 
+    void PushAlphaFade(float alphaFadeValue) final;
+    void PopAlphaFade() final;
+    float GetAlphaFade() const final;
+
     // ~IUiRenderer
 
 private:
@@ -47,6 +52,7 @@ public: // static member functions
 
 protected: // attributes
 
-    int     m_baseState;
-    uint32  m_stencilRef;
+    int                 m_baseState;
+    uint32              m_stencilRef;
+    AZStd::stack<float> m_alphaFadeStack;
 };

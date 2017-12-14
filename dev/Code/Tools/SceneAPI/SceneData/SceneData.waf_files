@@ -16,8 +16,6 @@
         [
             "Behaviors/Registry.h",
             "Behaviors/Registry.cpp",
-            "Behaviors/SoftNameTypes.h",
-            "Behaviors/SoftNameTypes.cpp",
             "Behaviors/MeshGroup.h",
             "Behaviors/MeshGroup.cpp",
             "Behaviors/SkeletonGroup.h",

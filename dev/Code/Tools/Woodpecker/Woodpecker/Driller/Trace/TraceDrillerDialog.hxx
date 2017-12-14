@@ -28,6 +28,8 @@ namespace Ui {
 		class TraceDrillerDialog;
 } // namespace Ui
 
+namespace AZ { class ReflectContext; }
+
 namespace Driller
 {
 	class TraceFilterModel;

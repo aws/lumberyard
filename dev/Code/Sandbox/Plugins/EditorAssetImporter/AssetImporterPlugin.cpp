@@ -28,15 +28,7 @@ AssetImporterPlugin::AssetImporterPlugin(IEditor* editor)
 {
     s_instance = this;
 
-    m_sceneCoreModule = LoadSceneLibrary("SceneCore", true);
-    m_sceneDataModule = LoadSceneLibrary("SceneData", true);
     m_sceneUIModule = LoadSceneLibrary("SceneUI", true);
-    m_fbxSceneBuilderModule = LoadSceneLibrary("FbxSceneBuilder", false);
-
-    ActivateSceneLibrary(m_sceneCoreModule);
-    ActivateSceneLibrary(m_sceneDataModule);
-    ActivateSceneLibrary(m_sceneUIModule);
-    ActivateSceneLibrary(m_fbxSceneBuilderModule);
 
     m_sceneSerializationHandler.Activate();
     
@@ -51,33 +43,12 @@ void AssetImporterPlugin::Release()
     AzToolsFramework::UnregisterViewPane(m_toolName.c_str());
     m_sceneSerializationHandler.Deactivate();
 
-    DeactivateSceneLibrary(m_fbxSceneBuilderModule);
-    DeactivateSceneLibrary(m_sceneUIModule);
-    DeactivateSceneLibrary(m_sceneDataModule);
-    DeactivateSceneLibrary(m_sceneCoreModule);
-
-    auto uninit = m_sceneCoreModule->GetFunction<AZ::UninitializeDynamicModuleFunction>(AZ::UninitializeDynamicModuleFunctionName);
-    if (uninit)
-    {
-        (*uninit)();
-    }
-    m_sceneCoreModule.reset();
-
-    uninit = m_sceneDataModule->GetFunction<AZ::UninitializeDynamicModuleFunction>(AZ::UninitializeDynamicModuleFunctionName);
-    if (uninit)
-    {
-        (*uninit)();
-    }
-    m_sceneDataModule.reset();
-    
-    uninit = m_sceneUIModule->GetFunction<AZ::UninitializeDynamicModuleFunction>(AZ::UninitializeDynamicModuleFunctionName);
+    auto uninit = m_sceneUIModule->GetFunction<AZ::UninitializeDynamicModuleFunction>(AZ::UninitializeDynamicModuleFunctionName);
     if (uninit)
     {
         (*uninit)();
     }
     m_sceneUIModule.reset();
-
-    m_fbxSceneBuilderModule.reset();
 }
 
 AZStd::unique_ptr<AZ::DynamicModuleHandle> AssetImporterPlugin::LoadSceneLibrary(const char* name, bool explicitInit)
@@ -110,34 +81,6 @@ AZStd::unique_ptr<AZ::DynamicModuleHandle> AssetImporterPlugin::LoadSceneLibrary
     {
         AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Failed to initialize library '%s'", name);
         return nullptr;
-    }
-}
-
-void AssetImporterPlugin::ActivateSceneLibrary(AZStd::unique_ptr<AZ::DynamicModuleHandle>& module)
-{
-    using ActivateFunc = void(*)();
-
-    if (module)
-    {
-        ActivateFunc activate = module->GetFunction<ActivateFunc>("Activate");
-        if (activate)
-        {
-            (*activate)();
-        }
-    }
-}
-
-void AssetImporterPlugin::DeactivateSceneLibrary(AZStd::unique_ptr<AZ::DynamicModuleHandle>& module)
-{
-    using DeactivateFunc = void(*)();
-
-    if (module)
-    {
-        DeactivateFunc deactivate = module->GetFunction<DeactivateFunc>("Deactivate");
-        if (deactivate)
-        {
-            (*deactivate)();
-        }
     }
 }
 

@@ -93,6 +93,15 @@ void PropertiesWidget::TriggerRefresh(AzToolsFramework::PropertyModificationRefr
     }
 }
 
+void PropertiesWidget::TriggerImmediateRefresh(AzToolsFramework::PropertyModificationRefreshLevel refreshLevel, const AZ::Uuid* componentType)
+{
+    TriggerRefresh(refreshLevel, componentType);
+
+    m_refreshTimer.stop();
+
+    Refresh(m_refreshLevel, (!m_componentTypeToRefresh.IsNull() ? &m_componentTypeToRefresh : nullptr));
+}
+
 void PropertiesWidget::SelectedEntityPointersChanged()
 {
     m_propertiesContainer->SelectedEntityPointersChanged();
@@ -101,6 +110,19 @@ void PropertiesWidget::SelectedEntityPointersChanged()
 void PropertiesWidget::SetSelectedEntityDisplayNameWidget(QLabel * selectedEntityDisplayNameWidget)
 {
     m_propertiesContainer->SetSelectedEntityDisplayNameWidget(selectedEntityDisplayNameWidget);
+}
+
+float PropertiesWidget::GetScrollValue()
+{
+    return m_propertiesContainer->verticalScrollBar() ? m_propertiesContainer->verticalScrollBar()->value() : 0.0f;
+}
+
+void PropertiesWidget::SetScrollValue(float scrollValue)
+{
+    if (m_propertiesContainer->verticalScrollBar())
+    {
+        m_propertiesContainer->verticalScrollBar()->setValue(scrollValue);
+    }
 }
 
 void PropertiesWidget::Refresh(AzToolsFramework::PropertyModificationRefreshLevel refreshLevel, const AZ::Uuid* componentType)

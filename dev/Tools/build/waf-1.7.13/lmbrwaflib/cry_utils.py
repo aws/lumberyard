@@ -320,6 +320,8 @@ def get_output_folder_name(self, platform, configuration):
         path = self.options.out_folder_android_armv7_gcc
     elif platform == 'android_armv7_clang':
         path = self.options.out_folder_android_armv7_clang
+    elif platform == 'android_armv8_clang':
+        path = self.options.out_folder_android_armv8_clang
     else:
         path = 'BinUnknown'
         Logs.warn('[WARNING] No output folder for platform (%s), defaulting to (%s)' % (platform, path))

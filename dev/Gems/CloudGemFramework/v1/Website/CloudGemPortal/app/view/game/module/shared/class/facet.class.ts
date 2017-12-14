@@ -9,6 +9,6 @@ export class Facet {
 export class FacetDefinitions {
     public static defined = [
         new Facet("REST Explorer", RestApiExplorerComponent, 0, ["ServiceUrl"]),
-        new Facet("Log", CloudWatchLogComponent, 1, ["physicalResourceId"])     
+        new Facet("Log", CloudWatchLogComponent, 1, ["physicalResourceId", "cloudwatchPhysicalId"])     
     ]
 }

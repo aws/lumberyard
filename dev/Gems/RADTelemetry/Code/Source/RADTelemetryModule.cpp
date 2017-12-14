@@ -80,7 +80,7 @@ namespace RADTelemetry
 #ifdef AZ_PROFILE_TELEMETRY
             REGISTER_COMMAND("radtm_ToggleEnabled", &CmdTelemetryToggleEnabled, 0, "Enabled or Disable RAD Telemetry");
 
-            REGISTER_CVAR2("radtm_Address", &s_telemetryAddress, "localhost", VF_NULL, "The IP address for the telemetry server");
+            REGISTER_CVAR2("radtm_Address", &s_telemetryAddress, "127.0.0.1", VF_NULL, "The IP address for the telemetry server");
             REGISTER_CVAR2("radtm_Port", &s_telemetryPort, 4719, VF_NULL, "The port for the RAD telemetry server");
             REGISTER_CVAR2("radtm_MemoryCaptureEnabled", &s_memCaptureEnabled, 0, VF_NULL, "Toggle for telemetry memory capture");
 

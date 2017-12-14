@@ -31,7 +31,7 @@ struct SWaterTile
         return this;
     }
     void zero() { int n = sqr(nCells); memset(ph, 0, n * sizeof(ph[0])); memset(pvel, 0, n * sizeof(pvel[0])); memset(pvel, 0, n * sizeof(pvel[0])); memset(norm, 0, sizeof(norm[0])); }
-    int cell_used(int i) { return isneg((int)norm[i] - 255); }
+    int cell_used(int i) const { return isneg((int)norm[i] - 255); }
 
     Vec2* mv;
     float* m;
@@ -128,6 +128,8 @@ public:
     vector2df* m_pCellNorm;
     int* m_pCellQueue, m_szCellQueue;
     mutable volatile int m_lockUpdate;
+    
+    const static AZ::u32 s_MaxCells;
 };
 
 #endif // CRYINCLUDE_CRYPHYSICS_WATERMAN_H

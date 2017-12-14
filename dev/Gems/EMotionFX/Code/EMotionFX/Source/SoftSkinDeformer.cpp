@@ -107,11 +107,11 @@ namespace EMotionFX
         SkinningInfoVertexAttributeLayer* layer = (SkinningInfoVertexAttributeLayer*)mMesh->FindSharedVertexAttributeLayer(SkinningInfoVertexAttributeLayer::TYPE_ID);
         MCORE_ASSERT(layer);
 
-        MCore::Vector3   newPos, newNormal;
-        MCore::Vector3   vtxPos, normal;
+        AZ::Vector3   newPos, newNormal;
+        AZ::Vector3   vtxPos, normal;
         AZ::Vector4      tangent, newTangent;
-        MCore::Vector3* __restrict  positions   = (MCore::Vector3*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
-        MCore::Vector3* __restrict  normals     = (MCore::Vector3*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
+        AZ::PackedVector3f* __restrict  positions   = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
+        AZ::PackedVector3f* __restrict  normals     = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
         AZ::Vector4*    __restrict  tangents    = (AZ::Vector4*)mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS);
         uint32*  __restrict orgVerts    = (uint32*) mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
 
@@ -204,10 +204,10 @@ namespace EMotionFX
     }
 
 
-    void SoftSkinDeformer::SkinVertexRange(uint32 startVertex, uint32 endVertex, MCore::Vector3* positions, MCore::Vector3* normals, AZ::Vector4* tangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer)
+    void SoftSkinDeformer::SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::PackedVector3f* positions, AZ::PackedVector3f* normals, AZ::Vector4* tangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer)
     {
-        MCore::Vector3 newPos, newNormal;
-        MCore::Vector3 vtxPos, normal;
+        AZ::Vector3 newPos, newNormal;
+        AZ::Vector3 vtxPos, normal;
         AZ::Vector4 tangent, newTangent;
 
         // if there are tangents and binormals to skin
@@ -215,12 +215,12 @@ namespace EMotionFX
         {
             for (uint32 v = startVertex; v < endVertex; ++v)
             {
-                newPos.Zero();
-                newNormal.Zero();
+                newPos = AZ::Vector3::CreateZero();
+                newNormal = AZ::Vector3::CreateZero();
                 newTangent = AZ::Vector4::CreateZero();
 
-                vtxPos  = positions[v];
-                normal  = normals[v];
+                vtxPos  = AZ::Vector3(positions[v]);
+                normal  = AZ::Vector3(normals[v]);
                 tangent = tangents[v];
 
                 const uint32 orgVertex = orgVerts[v]; // get the original vertex number
@@ -234,8 +234,8 @@ namespace EMotionFX
                 newTangent.SetW(tangent.GetW());
 
                 // output the skinned values
-                positions[v]    = newPos;
-                normals[v]      = newNormal;
+                positions[v]    = AZ::PackedVector3f(newPos);
+                normals[v]      = AZ::PackedVector3f(newNormal);
                 tangents[v]     = newTangent;
             }
         }
@@ -243,11 +243,11 @@ namespace EMotionFX
         {
             for (uint32 v = startVertex; v < endVertex; ++v)
             {
-                newPos.Zero();
-                newNormal.Zero();
+                newPos = AZ::Vector3::CreateZero();
+                newNormal = AZ::Vector3::CreateZero();
 
-                vtxPos  = positions[v];
-                normal  = normals[v];
+                vtxPos  = AZ::Vector3(positions[v]);
+                normal  = AZ::Vector3(normals[v]);
 
                 // skin the vertex
                 const uint32 orgVertex = orgVerts[v]; // get the original vertex number
@@ -259,8 +259,8 @@ namespace EMotionFX
                 }
 
                 // output the skinned values
-                positions[v]    = newPos;
-                normals[v]      = newNormal;
+                positions[v]    = AZ::PackedVector3f(newPos);
+                normals[v]      = AZ::PackedVector3f(newNormal);
             }
         }
     }

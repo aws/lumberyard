@@ -21,6 +21,7 @@
 #include <IRenderer.h>
 #include <Cry_Vector3.h>
 
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 //===================================================================
 // GetCameraPos
@@ -45,7 +46,7 @@ float CAIDebugRenderer::GetDebugDrawZ(const Vec3& vPoint, bool bUseTerrainOrWate
         }
         I3DEngine* pEngine = gEnv->p3DEngine;
         float terrainZ = pEngine->GetTerrainElevation(vPoint.x, vPoint.y);
-        float waterZ = pEngine->GetWaterLevel(&vPoint);
+        float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vPoint) : pEngine->GetWaterLevel(&vPoint);
         return max(terrainZ, waterZ) + g_drawOffset;
     }
     else

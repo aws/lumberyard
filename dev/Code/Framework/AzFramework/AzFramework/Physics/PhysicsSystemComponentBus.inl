@@ -10,7 +10,7 @@
 *
 */
 
-namespace LmbrCentral
+namespace AzFramework
 {
     size_t PhysicsSystemRequests::RayCastResult::GetHitCount() const
     {

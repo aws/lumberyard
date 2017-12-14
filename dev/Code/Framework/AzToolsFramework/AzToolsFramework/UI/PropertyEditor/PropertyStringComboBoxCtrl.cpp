@@ -156,20 +156,6 @@ namespace AzToolsFramework
                 AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'StringList' attribute from property '%s' into string combo box. Expected string vector.", debugName);
             }
         }
-        else if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool value;
-            if (attrValue->Read<bool>(value))
-            {
-                GUI->m_pComboBox->setEnabled(!value);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into string combo box", debugName);
-            }
-            return;
-        }
         else if (attrib == AZ::Edit::Attributes::ComboBoxEditable)
         {
             bool value;

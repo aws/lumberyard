@@ -13,60 +13,38 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Debug/Trace.h>
-#include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/Component/EntityBus.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/containers/stack.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/parallel/mutex.h>
-#include <AzFramework/Entity/EntityReference.h>
-#include <ScriptCanvas/AST/Node.h>
-#include <ScriptCanvas/Debugger/Bus.h>
 
-#include "Core.h"
-#include "GraphBus.h" 
-#include "GraphAsset.h"
+#include <ScriptCanvas/AST/Node.h>
+#include <ScriptCanvas/Core/Core.h>
+#include <ScriptCanvas/Core/GraphBus.h>
+#include <ScriptCanvas/Core/GraphData.h>
+#include <ScriptCanvas/Debugger/Bus.h>
 
 namespace ScriptCanvas
 {
     class Node;
-    
+    class Connection;
+
     namespace Execution
     {
         class ASTInterpreter;
     }
-
-    bool UseVMZeroPointOnePipeline();
     
-    //! Structure for maintaining GraphData
-    struct GraphData
-    {
-        AZ_TYPE_INFO(GraphData, "{ADCB5EB5-8D3F-42ED-8F65-EAB58A82C381}");
-        AZ_CLASS_ALLOCATOR(GraphData, AZ::SystemAllocator, 0);
-
-        static void Reflect(AZ::ReflectContext* context);
-
-        void BuildEndpointMap();
-
-        using NodeContainer = AZStd::unordered_set<AZ::Entity*>;
-        using ConnectionContainer = AZStd::vector<AZ::Entity*>;
-
-        NodeContainer m_nodes;
-        ConnectionContainer m_connections;
-
-        // An endpoint(NodeId, SlotId Pair) is represents one end of a potential connection
-        // The endpoint map is lookup table for all endpoints connected on the opposite end of the key value endpoint
-        AZStd::unordered_multimap<Endpoint, Endpoint> m_endpointMap; ///< Endpoint map built at edit time based on active connections
-
-        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-    };
-
     //! Graph is the execution model of a ScriptCanvas graph.
     class Graph 
         : public AZ::Component
         , protected GraphRequestBus::MultiHandler
         , protected Debugger::RequestBus::Handler
         , private AZ::Data::AssetBus::Handler
+        , private AZ::EntityBus::Handler
     {
     public:
+        friend Node;
 
         AZ_COMPONENT(Graph, "{C3267D77-EEDC-490E-9E42-F1D1F473E184}");
 
@@ -76,8 +54,23 @@ namespace ScriptCanvas
 
         ~Graph() override;
 
+        /** 
+         ** Use with caution, or better, not at all. The slot is the input execution slot, and empty slot is
+         ** acceptable for nodes that only have one execution input.
+         **/
+        void AddToExecutionStack(Node& node, SlotId slot);
+        
+        bool IsExecuting() const;
+        
         void Activate() override;
         void Deactivate() override;
+        
+        /**
+        ** Use with caution, or better, not at all. This is only currently public to all for BehaviorContext ebus handlers with return values
+        ** to properly function.
+        **/
+        void Execute();
+        
         AZStd::string GetLastErrorDescription() const;
         Node* GetNode(const ID& id) const;
         const AZStd::vector<AZ::EntityId> GetNodesConst() const;
@@ -85,7 +78,6 @@ namespace ScriptCanvas
         void Init() override;
         AZ_INLINE bool IsInErrorState() const { return m_isInErrorState; }
         AZ_INLINE bool IsInIrrecoverableErrorState() const { return m_isInErrorState && !m_isRecoverable; }
-        void SetStartNode(AZ::EntityId nodeID);
         void ReportError(const Node& reporter, const char* format, ...);
         
         // GraphRequestBus::Handler
@@ -156,12 +148,7 @@ namespace ScriptCanvas
         AZ::EntityId GetUniqueId() const { return m_uniqueId; };
 
         void ResolveSelfReferences(const AZ::EntityId& graphOwnerId);
-
-#if defined(SCRIPTCANVAS_ERRORS_ENABLED)
-        int AddToExecutionStack(const Node& node);
-        int RemoveFromExecutionStack(const Node& node);
-#endif//defined(SCRIPTCANVAS_ERRORS_ENABLED)
-
+        
     protected:
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
@@ -181,14 +168,22 @@ namespace ScriptCanvas
         void ErrorIrrecoverably();
         Node* GetErrorHandler() const;
         //! Searches for the node ids that from both endpoints of the connection inside of the supplied node set container
-        bool ValidateConnectionEndpoints(const AzFramework::EntityReference& connectionRef, const AZStd::unordered_set<AzFramework::EntityReference>& nodeRefs);
+        void UnwindStack(const Node& callStackTop);
+        bool ValidateConnectionEndpoints(const AZ::EntityId& connectionRef, const AZStd::unordered_set<AZ::EntityId>& nodeRefs);
+        
+        AZ::Outcome<void, AZStd::string> ValidateDataFlow(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const;
+        AZ::Outcome<void, AZStd::string> ValidateDataFlow(const AZ::Entity& sourceNodeEntity, const AZ::Entity& targetNodeEntity, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const;
+        
+        bool IsInDataFlowPath(const Node* sourceNode, const Node* targetNode) const;
 
-    private:
+        void RefreshDataFlowValidity(bool warnOnRemoval=false);
+
+private:
         bool m_isInErrorState = false;
+        bool m_isExecuting = false;
         
         GraphData m_graphData;
 
-        AZStd::vector<AZ::EntityId> m_entryPointNodes;
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_errorHandlersBySource;
 
         AZ::EntityId m_uniqueId;
@@ -200,19 +195,12 @@ namespace ScriptCanvas
         Node* m_errorHandler = nullptr;
         AZStd::string m_errorDescription;
 
-#if defined(SCRIPTCANVAS_ERRORS_ENABLED)
-        AZStd::unordered_map<const Node*, int> m_executionStack;
-#endif
-
-//////////////////////////////////////////////////////////////////////////
-/// VM 0.1 begin
-    private:
-        Graph(const Graph&) = delete;
-        bool m_executeWithVM = false;        
-        AST::NodePtrConst m_ast = nullptr;
-        AZStd::unique_ptr<Execution::ASTInterpreter> m_astInterpreter;
-/// VM 0.1 end
-//////////////////////////////////////////////////////////////////////////
+        using StackEntry = AZStd::pair<Node*, SlotId>;
+        using ExecutionStack = AZStd::stack<StackEntry, AZStd::vector<StackEntry>>;
+        ExecutionStack m_executionStack;
+        size_t m_preExecutedStackSize;
+        
+        void OnEntityActivated(const AZ::EntityId&) override;
         class GraphEventHandler;
     };
     

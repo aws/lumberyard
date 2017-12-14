@@ -12,8 +12,8 @@
 #include "StdAfx.h"
 #include "LightningArc.h"
 #include "ScriptBind_LightningArc.h"
-#include "LightningArcGem.h"
-#include "LightningGameEffect.h"
+#include "LightningGem.h"
+#include "LightningGameEffectCry.h"
 
 DECLARE_DEFAULT_COMPONENT_FACTORY(CLightningArc, CLightningArc)
 

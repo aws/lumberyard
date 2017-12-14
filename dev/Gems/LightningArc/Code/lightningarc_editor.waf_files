@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Source":
+        [
+            "source/EditorLightningArcComponent.cpp",
+            "source/EditorLightningArcComponent.h",
+            "source/EditorLightningComponent.cpp",
+            "source/EditorLightningComponent.h",
+            "source/EditorSkyHighlightComponent.cpp",
+            "source/EditorSkyHighlightComponent.h"
+        ]
+    }
+}

@@ -18,6 +18,8 @@
 #include <IRenderer.h>
 #include <ISystem.h>
 #include <I3DEngine.h>
+#include <ITimeOfDay.h>
+#include <MathConversion.h>
 
 namespace GraphicsReflectContext
 {
@@ -43,6 +45,100 @@ namespace GraphicsReflectContext
         gEnv->p3DEngine->SetGlobalParameter(E3DPARAM_SKY_SKYBOX_STRETCHING, amount);
     }
 
+    float Environment::GetMoonLatitude()
+    {
+        Vec3 vec(0);
+        gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_MOONROTATION, vec);
+        return vec.x;
+    }
+    
+    void Environment::SetMoonLatitude(float latitude, bool forceUpdate)
+    {
+        Vec3 vec(0);
+        gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_MOONROTATION, vec);
+        vec.x = latitude;
+        gEnv->p3DEngine->SetGlobalParameter(E3DPARAM_SKY_MOONROTATION, vec);
+        ITimeOfDay* tod = gEnv->p3DEngine->GetTimeOfDay();
+        if (forceUpdate && tod)
+        {
+            tod->Update(true, true);
+        }
+    }
+
+    float Environment::GetMoonLongitude()
+    {
+        Vec3 vec(0);
+        gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_MOONROTATION, vec);
+        return vec.y;
+    }
+    
+    void Environment::SetMoonLongitude(float longitude, bool forceUpdate)
+    {
+        Vec3 vec(0);
+        gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_SKY_MOONROTATION, vec);
+        vec.y = longitude;
+        gEnv->p3DEngine->SetGlobalParameter(E3DPARAM_SKY_MOONROTATION, vec);
+        ITimeOfDay* tod = gEnv->p3DEngine->GetTimeOfDay();
+        if (forceUpdate && tod)
+        {
+            tod->Update(true, true);
+        }
+    }
+
+    float Environment::GetSunLatitude()
+    {
+        ITimeOfDay* tod = gEnv->p3DEngine->GetTimeOfDay();
+        if (tod)
+        {
+            return tod->GetSunLatitude();
+        }
+        return 0;
+    }
+    
+    void Environment::SetSunLatitude(float latitude, bool forceUpdate)
+    {
+        ITimeOfDay* tod = gEnv->p3DEngine->GetTimeOfDay();
+        if (tod)
+        {
+            float longitude = tod->GetSunLongitude();
+            tod->SetSunPos(longitude, latitude);
+            tod->Update(true, forceUpdate);
+        }
+    }
+
+    float Environment::GetSunLongitude()
+    {
+        ITimeOfDay* tod = gEnv->p3DEngine->GetTimeOfDay();
+        if (tod)
+        {
+            return tod->GetSunLongitude();
+        }
+        return 0;
+    }
+    
+    void Environment::SetSunLongitude(float longitude, bool forceUpdate)
+    {
+        ITimeOfDay* tod = gEnv->p3DEngine->GetTimeOfDay();
+        if (tod)
+        {
+            float latitude = tod->GetSunLatitude();
+            tod->SetSunPos(longitude, latitude);
+            tod->Update(true, forceUpdate);
+        }
+    }
+
+    AZ::Vector3 Environment::GetWindDirection()
+    {
+        const Vec3 windDir = gEnv->p3DEngine->GetGlobalWind(false);
+        return LYVec3ToAZVec3(windDir);
+    }
+
+    void Environment::SetWindDirection(const AZ::Vector3& windDir)
+    {
+        const Vec3 windDirVec = AZVec3ToLYVec3(windDir);
+        gEnv->p3DEngine->SetWind(windDirVec);
+    }
+
     void Environment::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
@@ -55,6 +151,50 @@ namespace GraphicsReflectContext
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Set the rotation angle of the skybox, around world Z")
                 ->Method("SetSkyboxStretch", &SetSkyboxStretch, { { { "Amount", "Vertical stretch/scale factor" } } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets a vertical stretch factor for the skybox")
+                ->Method("SetMoonLatitude",
+                    &SetMoonLatitude,
+                    { {
+                        { "Latitude",       "Moon's Latitude to be set ",                                    AZ::BehaviorMakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Moon's Latitude in the sky")
+                ->Method("GetMoonLatitude", &GetMoonLatitude, { {} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Gets Moon's Latitude in the sky")
+                ->Method("SetMoonLongitude",
+                    &SetMoonLongitude,
+                    { {
+                        { "Longitude",      "Moon's Longitude to be set ",                                   AZ::BehaviorMakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Moon's Longitude in the sky")
+                ->Method("GetMoonLongitude", &GetMoonLongitude, { {} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Gets Moon's Longitude in the sky")
+                ->Method("SetSunLatitude",
+                    &SetSunLatitude,
+                    { {
+                        { "Latitude",       "Sun's Latitude to be set ",                                     AZ::BehaviorMakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Sun's Latitude in the sky")
+                ->Method("GetSunLatitude", &GetSunLatitude, { {} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Gets Sun's Latitude in the sky")
+                ->Method("SetSunLongitude",
+                    &SetSunLongitude,
+                    { {
+                        { "Longitude",      "Sun's Longitude to be set ",                                    AZ::BehaviorMakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Sun's Longitude in the sky")
+                ->Method("GetSunLongitude", &GetSunLongitude, { {} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Gets Sun's Longitude in the sky")
+                ->Method("SetWindDirection",
+                    &SetWindDirection,
+                     { { 
+                        { "Wind Direction", "Global wind direction to be set",                            AZ::BehaviorMakeDefaultValue(AZ::Vector3::CreateZero())}
+                        } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets global wind's direction")
+                ->Method("GetWindDirection", &GetWindDirection, { {} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Gets global wind's direction")
                 ;
         }
     }

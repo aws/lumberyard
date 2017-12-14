@@ -15,18 +15,21 @@
 #include <LyShine/Bus/UiEditorBus.h>
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Slice/SliceBus.h>
 #include <AzCore/std/containers/vector.h>
 
 #include "UiSerialize.h"
 #include <LyShine/UiComponentTypes.h>
 
 class UiCanvasComponent;
+class UiTransform2dComponent;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiElementComponent
     : public AZ::Component
     , public UiElementBus::Handler
     , public UiEditorBus::Handler
+    , public AZ::SliceEntityHierarchyRequestBus::Handler
 {
 public: // types
 
@@ -35,7 +38,7 @@ public: // types
 
 public: // member functions
 
-    AZ_COMPONENT(UiElementComponent, LyShine::UiElementComponentUuid, AZ::Component);
+    AZ_COMPONENT(UiElementComponent, LyShine::UiElementComponentUuid, AZ::Component, AZ::SliceEntityHierarchyInterface);
 
     //! Construct an uninitialized element component
     UiElementComponent();
@@ -43,7 +46,7 @@ public: // member functions
 
     // UiElementInterface
 
-    void UpdateElement() override;
+    void UpdateElement(float deltaTime) override;
     void RenderElement(bool isInGame, bool displayBounds) override;
 
     LyShine::ElementId GetElementId() override;
@@ -83,6 +86,7 @@ public: // member functions
     AZ::Entity* FindChildByEntityId(AZ::EntityId id) override;
     AZ::Entity* FindDescendantById(LyShine::ElementId id) override;
     void FindDescendantElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) override;
+    void CallOnDescendantElements(std::function<void(const AZ::EntityId)> callFunction) override;
 
     bool IsAncestor(AZ::EntityId id) override;
 
@@ -113,6 +117,29 @@ public: // member functions
     //! Only to be used by UiCanvasComponent when loading, cloning etc
     bool FixupPostLoad(AZ::Entity* entity, UiCanvasComponent* canvas, AZ::Entity* parent, bool makeNewElementIds);
 
+    //! Get the cached UiTransform2dComponent pointer (for optimization)
+    UiTransform2dComponent* GetTransform2dComponent() const;
+
+    //! Get the cached UiElementComponent pointer for the parent (for optimization)
+    UiElementComponent* GetParentElementComponent() const;
+
+    //! Get the cached UiElementComponent pointer for the child (for optimization)
+    UiElementComponent* GetChildElementComponent(int index) const;
+
+    //! Get the cached UiCanvasComponent pointer for the canvas this element belongs to (for optimization)
+    UiCanvasComponent* GetCanvasComponent() const;
+
+    // Used to check that FixupPostLoad has been called
+    bool IsFullyInitialized() const;
+
+    // Used to check that cached child pointers are setup
+    bool AreChildPointersValid() const;
+
+    // SliceEntityHierarchyRequestBus
+    AZ::EntityId GetSliceEntityParentId() override;
+    AZStd::vector<AZ::EntityId> GetSliceEntityChildren() override;
+    // ~SliceEntityHierarchyRequestBus
+
 public: // static member functions
 
     static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -140,6 +167,14 @@ protected: // member functions
     void Deactivate() override;
     // ~AZ::Component
 
+private: // member functions
+
+    // Display a warning that the component is not yet fully initialized
+    void EmitNotInitializedWarning() const;
+
+    // helper function for setting the multiple parent reference that we store
+    void SetParentReferences(AZ::Entity* parent, UiElementComponent* parentElementComponent);
+
 private: // static member functions
 
     static bool VersionConverter(AZ::SerializeContext& context,
@@ -149,17 +184,69 @@ private: // data
 
     AZ_DISABLE_COPY_MOVE(UiElementComponent);
 
-    LyShine::ElementId m_elementId;
+    LyShine::ElementId m_elementId = 0;
 
     AZStd::vector<AZ::EntityId> m_children;
-    AZ::Entity* m_parent;
-    UiCanvasComponent* m_canvas;    // currently we store a pointer to the canvas component rather than an entity ID
+    AZ::Entity* m_parent = nullptr;
+    AZ::EntityId m_parentId;    // Stored in order to do error checking when m_parent could have been deleted
+    UiCanvasComponent* m_canvas = nullptr;    // currently we store a pointer to the canvas component rather than an entity ID
 
-    bool m_isEnabled;
+    //! Pointers directly to components that are cached for performance to avoid ebus use in critical paths
+    UiElementComponent* m_parentElementComponent = nullptr;
+    UiTransform2dComponent* m_transformComponent = nullptr;
+    AZStd::vector<UiElementComponent*> m_childElementComponents;
+
+    bool m_isEnabled = true;
 
     // this data is only relevant when running in the editor, it is accessed through UiEditorBus
-    bool m_isVisibleInEditor;
-    bool m_isSelectableInEditor;
-    bool m_isSelectedInEditor;
-    bool m_isExpandedInEditor;
+    bool m_isVisibleInEditor = true;
+    bool m_isSelectableInEditor = true;
+    bool m_isSelectedInEditor = false;
+    bool m_isExpandedInEditor = true;
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inline method implementations
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline UiTransform2dComponent* UiElementComponent::GetTransform2dComponent() const
+{
+    AZ_Assert(m_transformComponent, "UiElementComponent: m_transformComponent used when not initialized");
+    return m_transformComponent;
+}
+
+inline UiElementComponent* UiElementComponent::GetParentElementComponent() const
+{
+    AZ_Assert(m_parentElementComponent || !m_parent, "UiElementComponent: m_parentElementComponent used when not initialized");
+    return m_parentElementComponent;
+}
+
+inline UiElementComponent* UiElementComponent::GetChildElementComponent(int index) const
+{
+    AZ_Assert(index >= 0 && index < m_childElementComponents.size(), "UiElementComponent: index to m_childElementComponents out of bounds");
+    AZ_Assert(m_childElementComponents[index], "UiElementComponent: m_childElementComponents used when not initialized");
+    return m_childElementComponents[index];
+}
+
+inline UiCanvasComponent* UiElementComponent::GetCanvasComponent() const
+{
+    AZ_Assert(m_canvas, "UiElementComponent: m_canvas used when not initialized");
+    return m_canvas;
+}
+
+inline bool UiElementComponent::IsFullyInitialized() const
+{
+    return (m_canvas && m_transformComponent && AreChildPointersValid());
+}
+
+inline bool UiElementComponent::AreChildPointersValid() const
+{
+    if (m_childElementComponents.size() == m_children.size())
+    {
+        return true;
+    }
+
+    AZ_Assert(m_childElementComponents.empty(), "Cached child pointers exist but are a different size to m_children");
+
+    return false;
+}

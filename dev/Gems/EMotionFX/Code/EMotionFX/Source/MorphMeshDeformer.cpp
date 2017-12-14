@@ -138,8 +138,8 @@ namespace EMotionFX
                 mDeformPasses[i].mLastNearZero = false; // we moved away from zero influence
             }
             // output data
-            MCore::Vector3* positions   = (MCore::Vector3*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
-            MCore::Vector3* normals     = (MCore::Vector3*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
+            AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS);
+            AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mMesh->FindVertexData(Mesh::ATTRIB_NORMALS);
             AZ::Vector4* tangents       = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
 
             // input data
@@ -158,11 +158,11 @@ namespace EMotionFX
                     vtxNr = deltas[v].mVertexNr;
 
                     // deform the vertex data
-                    positions[vtxNr] += deltas[v].mPosition.ToVector3(minValue, maxValue) * weight;
-                    normals  [vtxNr] += deltas[v].mNormal.ToVector3(-1.0f, 1.0f) * weight;
+                    positions[vtxNr] = AZ::PackedVector3f(AZ::Vector3(positions[vtxNr]) + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight);
+                    normals  [vtxNr] = AZ::PackedVector3f(AZ::Vector3(normals[vtxNr]) + deltas[v].mNormal.ToVector3(-1.0f, 1.0f) * weight);
 
-                    MCore::Vector3 EmfxVector = deltas[v].mTangent.ToVector3(-1.0f, 1.0f);
-                    AZ::Vector4 scaleVector4(EmfxVector.x, EmfxVector.y, EmfxVector.z, 0.0f);
+                    AZ::Vector3 EmfxVector = deltas[v].mTangent.ToVector3(-1.0f, 1.0f);
+                    AZ::Vector4 scaleVector4(EmfxVector.GetX(), EmfxVector.GetY(), EmfxVector.GetZ(), 0.0f);
                     scaleVector4 *= weight;
                     tangents[vtxNr] += scaleVector4;
                 }
@@ -177,8 +177,8 @@ namespace EMotionFX
                     vtxNr = deltas[v].mVertexNr;
 
                     // deform the vertex data
-                    positions[vtxNr] += deltas[v].mPosition.ToVector3(minValue, maxValue) * weight;
-                    normals  [vtxNr] += deltas[v].mNormal.ToVector3(-1.0f, 1.0f) * weight;
+                    positions[vtxNr] = AZ::PackedVector3f(AZ::Vector3(positions[vtxNr]) + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight);
+                    normals[vtxNr]   = AZ::PackedVector3f(AZ::Vector3(normals[vtxNr]) + deltas[v].mNormal.ToVector3(-1.0f, 1.0f) * weight);
                 }
             }
         }

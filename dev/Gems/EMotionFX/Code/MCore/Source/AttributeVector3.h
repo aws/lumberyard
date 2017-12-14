@@ -35,16 +35,16 @@ namespace MCore
         };
 
         static AttributeVector3* Create();
-        static AttributeVector3* Create(const Vector3& value);
+        static AttributeVector3* Create(const AZ::PackedVector3f& value);
         static AttributeVector3* Create(float x, float y, float z);
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
-        MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(Vector3); }
+        MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(AZ::PackedVector3f); }
         bool GetSupportsRawDataPointer() const override             { return true; }
 
         // adjust values
-        MCORE_INLINE const Vector3& GetValue() const                { return mValue; }
-        MCORE_INLINE void SetValue(const Vector3& value)            { mValue = value; }
+        MCORE_INLINE const AZ::PackedVector3f& GetValue() const     { return mValue; }
+        MCORE_INLINE void SetValue(const AZ::PackedVector3f& value) { mValue = value; }
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeVector3::Create(mValue); }
@@ -68,23 +68,23 @@ namespace MCore
             mValue = valueString.ToVector3();
             return true;
         }
-        bool ConvertToString(String& outString) const override      { outString.FromVector3(mValue); return true; }
+        bool ConvertToString(String& outString) const override      { outString.FromVector3(AZ::Vector3(mValue)); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeVector3); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_VECTOR3; }
-        void Scale(float scaleFactor) override                      { mValue *= scaleFactor; }
+        void Scale(float scaleFactor) override                      { mValue = AZ::PackedVector3f(AZ::Vector3(mValue) * scaleFactor); }
 
 
     private:
-        Vector3     mValue;     /**< The Vector3 value. */
+        AZ::PackedVector3f  mValue;     /**< The Vector3 value. */
 
         AttributeVector3()
             : Attribute(TYPE_ID)                    { mValue.Set(0.0f, 0.0f, 0.0f); }
-        AttributeVector3(const Vector3& value)
+        AttributeVector3(const AZ::Vector3& value)
             : Attribute(TYPE_ID)
             , mValue(value)     { }
         ~AttributeVector3() { }
 
-        uint32 GetDataSize() const override                         { return sizeof(Vector3); }
+        uint32 GetDataSize() const override                         { return sizeof(AZ::PackedVector3f); }
 
         // read from a stream
         bool ReadData(MCore::Stream* stream, MCore::Endian::EEndianType streamEndianType, uint8 version) override
@@ -92,8 +92,8 @@ namespace MCore
             MCORE_UNUSED(version);
 
             // read the value
-            Vector3 streamValue;
-            if (stream->Read(&streamValue, sizeof(Vector3)) == 0)
+            AZ::PackedVector3f streamValue(0.0f);
+            if (stream->Read(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
             {
                 return false;
             }
@@ -108,9 +108,9 @@ namespace MCore
         // write to a stream
         bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
         {
-            Vector3 streamValue = mValue;
+            AZ::PackedVector3f streamValue = mValue;
             Endian::ConvertVector3To(&streamValue, targetEndianType);
-            if (stream->Write(&streamValue, sizeof(Vector3)) == 0)
+            if (stream->Write(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
             {
                 return false;
             }

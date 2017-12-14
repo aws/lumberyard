@@ -19,7 +19,7 @@ namespace MCommon
     Camera::Camera()
     {
         Reset();
-        mPosition       = MCore::Vector3(0.0f, 0.0f, 0.0f);
+        mPosition       = AZ::Vector3::CreateZero();
         mScreenWidth    = 0;
         mScreenHeight   = 0;
         mProjectionMode = PROJMODE_PERSPECTIVE;
@@ -86,8 +86,8 @@ namespace MCommon
         MCore::Matrix invProj = mProjectionMatrix.Inversed();
         MCore::Matrix invView = mViewMatrix.Inversed();
 
-        MCore::Vector3  start   = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mNearClipDistance, invProj, invView);
-        MCore::Vector3  end     = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mFarClipDistance, invProj, invView);
+        AZ::Vector3  start   = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mNearClipDistance, invProj, invView);
+        AZ::Vector3  end     = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mFarClipDistance, invProj, invView);
 
         //LogInfo("start=(%.2f, %.2f, %.2f) end=(%.2f, %.2f, %.2f)", start.x, start.y, start.z, end.x, end.y, end.z);
 

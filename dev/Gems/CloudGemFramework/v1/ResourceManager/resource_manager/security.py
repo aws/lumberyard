@@ -280,10 +280,10 @@ def list_roles(context, args):
     role_list = []
 
     if not args.deployment:
-        role_list.extend(__list_roles_in_template(context.config.extended_project_template.effective_template, 'Project'))
+        role_list.extend(__list_roles_in_template(context.config.project_template_aggregator.effective_template, 'Project'))
 
     if not args.project:
-        role_list.extend(__list_roles_in_template(context.config.extended_deployment_access_template.effective_template, 'Deployment'))
+        role_list.extend(__list_roles_in_template(context.config.deployment_access_template_aggregator.effective_template, 'Deployment'))
 
     context.view.role_list(role_list)
 
@@ -386,10 +386,10 @@ def list_role_mappings(context, args):
     role_mapping_list = []
 
     if not args.deployment:
-        role_mapping_list.extend(__list_role_mappings_in_template(context.config.extended_project_template.effective_template, 'Project'))
+        role_mapping_list.extend(__list_role_mappings_in_template(context.config.project_template_aggregator.effective_template, 'Project'))
 
     if not args.project:
-        role_mapping_list.extend(__list_role_mappings_in_template(context.config.extended_deployment_access_template.effective_template, 'Deployment'))
+        role_mapping_list.extend(__list_role_mappings_in_template(context.config.deployment_access_template_aggregator.effective_template, 'Deployment'))
 
     context.view.role_mapping_list(role_mapping_list)
 

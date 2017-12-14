@@ -27,8 +27,10 @@
 #include <LyShine/UiSerializeHelpers.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiRadioButtonNotificationBus Behavior context handler class 
-class UiRadioButtonNotificationBusBehaviorHandler : public UiRadioButtonNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiRadioButtonNotificationBus Behavior context handler class
+class UiRadioButtonNotificationBusBehaviorHandler
+    : public UiRadioButtonNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiRadioButtonNotificationBusBehaviorHandler, "{182D0EB2-DAD6-4CFC-98E9-185863A78637}", AZ::SystemAllocator,
@@ -128,7 +130,7 @@ void UiRadioButtonComponent::SetChangedActionName(const LyShine::ActionName& act
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiRadioButtonComponent::SetState(bool isOn)
+void UiRadioButtonComponent::SetState(bool isOn, bool sendNotifications)
 {
     bool oldState = m_isOn;
     m_isOn = isOn;
@@ -146,29 +148,32 @@ void UiRadioButtonComponent::SetState(bool isOn)
             EBUS_EVENT_ID(m_optionalUncheckedEntity, UiElementBus, SetIsEnabled, !m_isOn);
         }
 
-        // Tell any action listeners about the event
-        if (m_isOn && !m_turnOnActionName.empty())
+        if (sendNotifications)
         {
-            AZ::EntityId canvasEntityId;
-            EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-            EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_turnOnActionName);
-        }
+            // Tell any action listeners about the event
+            if (m_isOn && !m_turnOnActionName.empty())
+            {
+                AZ::EntityId canvasEntityId;
+                EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+                EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_turnOnActionName);
+            }
 
-        if (!m_isOn && !m_turnOffActionName.empty())
-        {
-            AZ::EntityId canvasEntityId;
-            EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-            EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_turnOffActionName);
-        }
+            if (!m_isOn && !m_turnOffActionName.empty())
+            {
+                AZ::EntityId canvasEntityId;
+                EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+                EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_turnOffActionName);
+            }
 
-        if (!m_changedActionName.empty())
-        {
-            AZ::EntityId canvasEntityId;
-            EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-            EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_changedActionName);
-        }
+            if (!m_changedActionName.empty())
+            {
+                AZ::EntityId canvasEntityId;
+                EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+                EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_changedActionName);
+            }
 
-        EBUS_EVENT_ID(GetEntityId(), UiRadioButtonNotificationBus, OnRadioButtonStateChange, m_isOn);
+            EBUS_EVENT_ID(GetEntityId(), UiRadioButtonNotificationBus, OnRadioButtonStateChange, m_isOn);
+        }
     }
 }
 
@@ -411,7 +416,7 @@ bool UiRadioButtonComponent::HandleReleasedCommon(const AZ::Vector2& point)
     {
         UiInteractableComponent::TriggerReleasedAction();
 
-        EBUS_EVENT_ID(m_group, UiRadioButtonGroupBus, SetState, GetEntityId(), !m_isOn);
+        EBUS_EVENT_ID(m_group, UiRadioButtonGroupCommunicationBus, RequestRadioButtonStateChange, GetEntityId(), !m_isOn);
     }
 
     m_isPressed = false;

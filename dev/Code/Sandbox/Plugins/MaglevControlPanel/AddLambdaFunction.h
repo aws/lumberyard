@@ -40,7 +40,7 @@ protected:
 
 private:
 
-    QStringList AddLambdaFunction::GetSelectedResourceNames() const;
+    QStringList GetSelectedResourceNames() const;
     QString GetConfigurationName() const;
     QVariantMap GetConfigurationVariantMap() const;
     void SetupResourceList();

@@ -21,6 +21,8 @@
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 namespace AzToolsFramework
 {
     PropertyHandlerBase::PropertyHandlerBase()
@@ -35,6 +37,25 @@ namespace AzToolsFramework
     void PropertyHandlerBase::DestroyGUI(QWidget* pTarget)
     {
         delete pTarget;
+    }
+
+    bool NodeMatchesFilter(const InstanceDataNode& node, const char* filter)
+    {
+        if (!filter || filter[0] == '\0')
+        {
+            return true;
+        }
+
+        if (node.GetElementEditMetadata() && node.GetElementEditMetadata()->m_name)
+        {
+            // Check if we match the filter
+            if (AzFramework::StringFunc::Find(node.GetElementEditMetadata()->m_name, filter) != AZStd::string::npos)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     //-----------------------------------------------------------------------------
@@ -67,7 +88,7 @@ namespace AzToolsFramework
         {
             if (node.GetClassMetadata() && node.GetClassMetadata()->m_editData)
             {
-                visibility = NodeDisplayVisibility::Visible;
+                visibility = NodeDisplayVisibility::ShowChildrenOnly;
             }
         }
 

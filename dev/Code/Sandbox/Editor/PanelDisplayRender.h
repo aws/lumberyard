@@ -69,7 +69,6 @@ public:
     BOOL m_dbg_renderer_profile_shaders;
     BOOL m_dbg_renderer_overdraw;
     BOOL m_dbg_renderer_resources;
-    BOOL m_dbg_budget_monitoring;
     BOOL m_dbg_drawcalls;
     BOOL m_dbg_highlight_breakable;
     BOOL m_dbg_highlight_missing_surface_type;

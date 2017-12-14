@@ -18,6 +18,8 @@
 #define CRYINCLUDE_EDITOR_INCLUDE_IEDITORCLASSFACTORY_H
 #pragma once
 
+#include <vector>
+
 #define DEFINE_UUID(l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
 static const GUID uuid() { return { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }; }
 

@@ -150,12 +150,6 @@ namespace ScriptCanvasEditor
         if (entitiesRemapped)
         {
             GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, GetEntityId());
-            
-            AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset;
-            EditorScriptCanvasRequestBus::EventResult(scriptCanvasAsset, GetUniqueId(), &EditorScriptCanvasRequests::GetAsset);
-            AZ::Data::AssetInfo suppliedAssetInfo;
-            AZ::Data::AssetCatalogRequestBus::BroadcastResult(suppliedAssetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, scriptCanvasAsset.GetId());
-            DocumentContextRequestBus::Broadcast(&DocumentContextRequests::SaveScriptCanvasAsset, suppliedAssetInfo, scriptCanvasAsset, nullptr);
         }
     }
 
@@ -229,7 +223,8 @@ namespace ScriptCanvasEditor
                 AZStd::any* userData = nullptr;
                 GraphCanvas::NodeRequestBus::EventResult(userData, node->GetId(), &GraphCanvas::NodeRequests::GetUserData);
                 auto scriptCanvasNodeId = userData->is<AZ::EntityId>() ? *AZStd::any_cast<AZ::EntityId>(userData) : AZ::EntityId();
-                AZ::Entity* scriptCanvasEntity = AzFramework::EntityReference(scriptCanvasNodeId).GetEntity();
+                AZ::Entity* scriptCanvasEntity{};
+                AZ::ComponentApplicationBus::BroadcastResult(scriptCanvasEntity, &AZ::ComponentApplicationRequests::FindEntity, scriptCanvasNodeId);
                 if (scriptCanvasEntity)
                 {
                     scriptCanvasEntities.emplace(scriptCanvasEntity);
@@ -246,7 +241,8 @@ namespace ScriptCanvasEditor
             AZStd::any* userData = nullptr;
             GraphCanvas::ConnectionRequestBus::EventResult(userData, connection->GetId(), &GraphCanvas::ConnectionRequests::GetUserData);
             auto scriptCanvasConnectionId = userData->is<AZ::EntityId>() ? *AZStd::any_cast<AZ::EntityId>(userData) : AZ::EntityId();
-            AZ::Entity* scriptCanvasEntity = AzFramework::EntityReference(scriptCanvasConnectionId).GetEntity();
+            AZ::Entity* scriptCanvasEntity{};
+            AZ::ComponentApplicationBus::BroadcastResult(scriptCanvasEntity, &AZ::ComponentApplicationRequests::FindEntity, scriptCanvasConnectionId);
             if (scriptCanvasEntity)
             {
                 scriptCanvasEntities.emplace(scriptCanvasEntity);
@@ -603,27 +599,32 @@ namespace ScriptCanvasEditor
                 dataInterface = aznew ScriptCanvasEntityIdDataInterface(scriptCanvasNodeId, scriptCanvasSlotId);
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateEntityIdNodePropertyDisplay, static_cast<ScriptCanvasEntityIdDataInterface*>(dataInterface));
             }
-            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Vector3::TYPEINFO_Uuid())))
+            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Vector3::TYPEINFO_Uuid()))
+                     || slotType.IS_A(ScriptCanvas::Data::Type::Vector3()))
             {
                 dataInterface = aznew ScriptCanvasVectorDataInterface<AZ::Vector3, 3>(scriptCanvasNodeId, scriptCanvasSlotId);
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateVectorNodePropertyDisplay, static_cast<GraphCanvas::VectorDataInterface*>(dataInterface));
             }
-            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Vector2::TYPEINFO_Uuid())))
+            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Vector2::TYPEINFO_Uuid()))
+                     || slotType.IS_A(ScriptCanvas::Data::Type::Vector2()))
             {
                 dataInterface = aznew ScriptCanvasVectorDataInterface<AZ::Vector2, 2>(scriptCanvasNodeId, scriptCanvasSlotId);
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateVectorNodePropertyDisplay, static_cast<GraphCanvas::VectorDataInterface*>(dataInterface));
             }
-            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Vector4::TYPEINFO_Uuid())))
+            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Vector4::TYPEINFO_Uuid()))
+                     || slotType.IS_A(ScriptCanvas::Data::Type::Vector4()))
             {
                 dataInterface = aznew ScriptCanvasVectorDataInterface<AZ::Vector4, 4>(scriptCanvasNodeId, scriptCanvasSlotId);
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateVectorNodePropertyDisplay, static_cast<GraphCanvas::VectorDataInterface*>(dataInterface));
             }
-            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Quaternion::TYPEINFO_Uuid())))
+            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Quaternion::TYPEINFO_Uuid()))
+                     || slotType.IS_A(ScriptCanvas::Data::Type::Rotation()))
             {
                 dataInterface = aznew ScriptCanvasQuaternionDataInterface(scriptCanvasNodeId, scriptCanvasSlotId);
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateVectorNodePropertyDisplay, static_cast<GraphCanvas::VectorDataInterface*>(dataInterface));
             }
-            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Color::TYPEINFO_Uuid())))
+            else if (slotType.IS_A(ScriptCanvas::Data::Type::BehaviorContextObject(AZ::Color::TYPEINFO_Uuid()))
+                     || slotType.IS_A(ScriptCanvas::Data::Type::Color()))
             {
                 dataInterface = aznew ScriptCanvasColorDataInterface(scriptCanvasNodeId, scriptCanvasSlotId);
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateVectorNodePropertyDisplay, static_cast<GraphCanvas::VectorDataInterface*>(dataInterface));
@@ -672,11 +673,6 @@ namespace ScriptCanvasEditor
         return ++m_variableCounter;
     }
 
-    void Graph::OnItemMouseMoveComplete(const AZ::EntityId&, const QGraphicsSceneMouseEvent*)
-    {
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, GetEntityId());
-    }
-
     void Graph::PostDeletionEvent()
     {
         GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, GetEntityId());
@@ -714,7 +710,7 @@ namespace ScriptCanvasEditor
             // tell the difference between the two cases anyway.
             //
             // Idea here is to keep track of groupings so that when we paste, I can create the appropriate number
-            // of nodes and groupings within these nodes to create a proper dupilcate. And when we drag and drop
+            // of nodes and groupings within these nodes to create a proper duplicate. And when we drag and drop
             // I want to merge as many events onto a single node as I can.
             //
             // First step in this process is to sort our pasted nodes into EBus handlers and EBus events.
@@ -795,7 +791,7 @@ namespace ScriptCanvasEditor
                 // If we have, bypass the creation step.
                 if (!wrapperNodeId.IsValid())
                 {
-                    // If we haven't check if we match a type, or if our previous group wrapper node is is valid.
+                    // If we haven't check if we match a type, or if our previous group wrapper node is valid.
                     // If we had a previous group. I need to create a ebus wrapper for that group.
                     // If we didn't have a previous group, I want to just use the Bus name to find an appropriate grouping.
                     auto busIter = busTypeWrappers.find(mapPair.first);

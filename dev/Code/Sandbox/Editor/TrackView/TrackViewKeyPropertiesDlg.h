@@ -52,7 +52,7 @@ public:
     // Callbacks that must be implemented in derived class
     //////////////////////////////////////////////////////////////////////////
     // Returns true if specified animation track type is supported by this UI.
-    virtual bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const = 0;
+    virtual bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const = 0;
 
     // Called when UI variable changes.
     virtual void OnCreateVars() = 0;

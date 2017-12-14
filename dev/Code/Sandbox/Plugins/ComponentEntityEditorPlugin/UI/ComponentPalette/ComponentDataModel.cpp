@@ -32,6 +32,7 @@
 #include <CryCommon/MathConversion.h>
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzQtComponents/DragAndDrop/ViewportDragAndDrop.h>
 
 namespace
 {
@@ -139,7 +140,7 @@ ComponentDataModel::ComponentDataModel(QObject* parent)
                 if (element.m_elementId == AZ::Edit::ClassElements::EditorData)
                 {
                     AZStd::string iconPath;
-                    EBUS_EVENT_RESULT(iconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, classData->m_typeId);
+                    EBUS_EVENT_RESULT(iconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, classData->m_typeId, nullptr);
                     if (!iconPath.empty())
                     {
                         m_componentIcons[classData->m_typeId] = QIcon(iconPath.c_str());
@@ -191,6 +192,14 @@ ComponentDataModel::ComponentDataModel(QObject* parent)
 
         return true;
     });
+
+    // we'd like viewport events
+    AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(AzQtComponents::DragAndDropContexts::EditorViewport);
+}
+
+ComponentDataModel::~ComponentDataModel()
+{
+    AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect();
 }
 
 Qt::ItemFlags ComponentDataModel::flags(const QModelIndex &index) const
@@ -359,97 +368,138 @@ QMimeData* ComponentDataModel::mimeData(const QModelIndexList& indices) const
     if (!sortedList.empty())
     {
         mimeData = AzToolsFramework::ComponentTypeMimeData::Create(sortedList).release();
-
-        for (int i = 0; i < GetIEditor()->GetViewManager()->GetViewCount(); i++)
-        {
-            GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(&ComponentDataModel::DragDropHandler, mimeData);
-        }
     }
 
     return mimeData;
-
 }
 
-void ComponentDataModel::DragDropHandler(CViewport* viewport, int ptx, int pty, void* custom)
+bool ComponentDataModel::CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const
 {
-    QMimeData* mimeData = static_cast<QMimeData*>(custom);
+    using namespace AzToolsFramework;
+    using namespace AzQtComponents;
 
-    if (mimeData)
+    // if a listener with a higher priority already claimed this event, do not touch it.
+    if ((!event) || (event->isAccepted()) || (!event->mimeData()))
     {
-        AzToolsFramework::ScopedUndoBatch undo("Create entity from components");
+        return false;
+    }
 
-        const AZStd::string name = AZStd::string::format("Entity%d", GetIEditor()->GetObjectManager()->GetObjectCount());
+    ViewportDragContext* contextVP = azrtti_cast<ViewportDragContext*>(&context);
+    if (!contextVP)
+    {
+        // not a viewport event.  This is for some other GUI such as the main window itself.
+        return false;
+    }
 
-        AZ::Entity* newEntity = aznew AZ::Entity(name.c_str());
-        if (newEntity)
+    AZStd::vector<const AZ::SerializeContext::ClassData*> componentClassDataList;
+    return AzToolsFramework::ComponentTypeMimeData::Get(event->mimeData(), componentClassDataList);
+}
+
+void ComponentDataModel::DragEnter(QDragEnterEvent* event, AzQtComponents::DragAndDropContextBase& context)
+{
+    if (CanAcceptDragAndDropEvent(event, context))
+    {
+        event->setDropAction(Qt::CopyAction);
+        event->setAccepted(true);
+        // opportunities to show special highlights, or ghosted entities or previews here.
+    }
+}
+
+void ComponentDataModel::DragMove(QDragMoveEvent* event, AzQtComponents::DragAndDropContextBase& context)
+{
+    if (CanAcceptDragAndDropEvent(event, context))
+    {
+        event->setDropAction(Qt::CopyAction);
+        event->setAccepted(true);
+        // opportunities to update special highlights, or ghosted entities or previews here.
+    }
+}
+
+void ComponentDataModel::DragLeave(QDragLeaveEvent* /*event*/)
+{
+    // opportunities to remove ghosted entities or previews here.
+}
+
+void ComponentDataModel::Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context)
+{
+    using namespace AzToolsFramework;
+    using namespace AzQtComponents;
+
+    // ALWAYS CHECK - you are not the only one connected to this bus, and someone else may have already
+    // handled the event or accepted the drop - it might not contain types relevant to you.
+    // you still get informed about the drop event in case you did some stuff in your gui and need to clean it up.
+    if (!CanAcceptDragAndDropEvent(event, context))
+    {
+        return;
+    }
+
+    // note that the above call already checks all the pointers such as event, or whether context is a VP context, mimetype, etc
+    ViewportDragContext* contextVP = azrtti_cast<ViewportDragContext*>(&context);
+
+    // we don't get given this action by Qt unless we already returned accepted from one of the other ones (such as drag move of drag enter)
+    event->setDropAction(Qt::CopyAction);
+    event->setAccepted(true);
+
+    AzToolsFramework::ScopedUndoBatch undo("Create entity from components");
+    const AZStd::string name = AZStd::string::format("Entity%d", GetIEditor()->GetObjectManager()->GetObjectCount());
+
+    AZ::Entity* newEntity = aznew AZ::Entity(name.c_str());
+    if (newEntity)
+    {
+        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::AddRequiredComponents, *newEntity);
+        auto* transformComponent = newEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+        if (transformComponent)
         {
-            AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::AddRequiredComponents, *newEntity);
-
-            // Set initial transform.
-            auto* transformComponent = newEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
-            if (transformComponent)
-            {
-                bool collideWithTerrain = true;
-                QPoint screenPoint(ptx, pty);
-                Vec3 worldPosition = viewport->ViewToWorld(screenPoint, &collideWithTerrain);
-                transformComponent->SetWorldTM(AZ::Transform::CreateTranslation(LYVec3ToAZVec3(worldPosition)));
-            }
-
-            // Add the entity to the editor context, which activates it and creates the sandbox object.
-            AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::AddEditorEntity, newEntity);
-
-            // Create Entity metrics event (Drag+Drop from Component Palette to Viewport)
-            AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBusTraits::EntityCreated, newEntity->GetId());
-
-            // Prepare undo command last so it captures the final state of the entity.
-            AzToolsFramework::EntityCreateCommand* command = aznew AzToolsFramework::EntityCreateCommand(static_cast<AZ::u64>(newEntity->GetId()));
-            command->Capture(newEntity);
-            command->SetParent(undo.GetUndoBatch());
-
-            // Only need to add components to the new entity
-            AzToolsFramework::EntityIdList entities = { newEntity->GetId() };
-
-
-            AZStd::vector<const AZ::SerializeContext::ClassData*> componentClassDataList;
-            AzToolsFramework::ComponentTypeMimeData::Get(mimeData, componentClassDataList);
-
-            AZ::ComponentTypeList componentsToAdd;
-            for (auto classData : componentClassDataList)
-            {
-                if (!classData)
-                {
-                    continue;
-                }
-
-                componentsToAdd.push_back(classData->m_typeId);
-            }
-
-            AzToolsFramework::EntityCompositionRequests::AddComponentsOutcome addedComponentsResult = AZ::Failure(AZStd::string("Failed to call AddComponentsToEntities on EntityCompositionRequestBus"));
-            AzToolsFramework::EntityCompositionRequestBus::BroadcastResult(addedComponentsResult, &AzToolsFramework::EntityCompositionRequests::AddComponentsToEntities, entities, componentsToAdd);
-
-            if (addedComponentsResult.IsSuccess())
-            {
-                for (auto& componentsAddedToEntity : addedComponentsResult.GetValue())
-                {
-                    auto entityId = componentsAddedToEntity.first;
-                    AZ_Assert(entityId == newEntity->GetId(), "Only asked to add components to one entity, the id returned is not the right one");
-                    for (auto componentAddedToEntity : componentsAddedToEntity.second.m_componentsAdded)
-                    {
-                        // Add Component metrics event (Drag+Drop from Component Palette to View port to create a new entity with the component)
-                        AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBusTraits::ComponentAdded, entityId, AzToolsFramework::GetComponentTypeId(componentAddedToEntity));
-                    }
-                }
-            }
-
-            // Select the new entity (and deselect others).
-            EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, SetSelectedEntities, entities);
+            transformComponent->SetWorldTM(AZ::Transform::CreateTranslation(contextVP->m_hitLocation));
         }
 
-        // Clear the drag handlers from the viewport
-        for (int i = 0; i < GetIEditor()->GetViewManager()->GetViewCount(); i++)
+        // Add the entity to the editor context, which activates it and creates the sandbox object.
+        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::AddEditorEntity, newEntity);
+
+        // Create Entity metrics event (Drag+Drop from Component Palette to Viewport)
+        AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBusTraits::EntityCreated, newEntity->GetId());
+
+        // Prepare undo command last so it captures the final state of the entity.
+        AzToolsFramework::EntityCreateCommand* command = aznew AzToolsFramework::EntityCreateCommand(static_cast<AZ::u64>(newEntity->GetId()));
+        command->Capture(newEntity);
+        command->SetParent(undo.GetUndoBatch());
+
+        // Only need to add components to the new entity
+        AzToolsFramework::EntityIdList entities = { newEntity->GetId() };
+
+        AZStd::vector<const AZ::SerializeContext::ClassData*> componentClassDataList;
+        AzToolsFramework::ComponentTypeMimeData::Get(event->mimeData(), componentClassDataList);
+
+        AZ::ComponentTypeList componentsToAdd;
+        for (auto classData : componentClassDataList)
         {
-            GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(nullptr, nullptr);
+            if (!classData)
+            {
+                continue;
+            }
+
+            componentsToAdd.push_back(classData->m_typeId);
         }
+
+        AzToolsFramework::EntityCompositionRequests::AddComponentsOutcome addedComponentsResult = AZ::Failure(AZStd::string("Failed to call AddComponentsToEntities on EntityCompositionRequestBus"));
+        AzToolsFramework::EntityCompositionRequestBus::BroadcastResult(addedComponentsResult, &AzToolsFramework::EntityCompositionRequests::AddComponentsToEntities, entities, componentsToAdd);
+
+        if (addedComponentsResult.IsSuccess())
+        {
+            for (auto& componentsAddedToEntity : addedComponentsResult.GetValue())
+            {
+                auto entityId = componentsAddedToEntity.first;
+                AZ_Assert(entityId == newEntity->GetId(), "Only asked to add components to one entity, the id returned is not the right one");
+                for (auto componentAddedToEntity : componentsAddedToEntity.second.m_componentsAdded)
+                {
+                    // Add Component metrics event (Drag+Drop from Component Palette to View port to create a new entity with the component)
+                    AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBusTraits::ComponentAdded, entityId, AzToolsFramework::GetComponentTypeId(componentAddedToEntity));
+                }
+            }
+        }
+
+        ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::AddDirtyEntity, newEntity->GetId());
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, entities);
     }
 }
 

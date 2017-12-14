@@ -24,6 +24,7 @@
 #include <SceneAPI/SceneUI/CommonWidgets/JobWatcher.h>
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>
 #include <QScopedPointer>
+#include <QWidget>
 
 class QCloseEvent;
 class QLabel;

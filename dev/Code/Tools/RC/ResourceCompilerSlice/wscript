@@ -32,7 +32,6 @@ def build(bld):
                                         bld.Path('Code/Tools'),
                                         bld.Path('Code/Tools/RC/ResourceCompiler'),
                                         bld.Path('Code/Tools/CryCommonTools')],
-        win_export_definitions      = 'ResourceCompilerPlugin.def',
 
         darwin_uselib               = ['AWS_CPP_SDK_CORE',
                                        'AWS_CPP_SDK_COGNITO_IDENTITY_STATIC',

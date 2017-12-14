@@ -23,6 +23,9 @@
 
 #include "AnimSplineTrack.h"
 #include "CompoundSplineTrack.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 // Don't remove or the console builds will break!
 #define s_nodeParamsInitialized s_nodeParamsInitializedMat
@@ -34,7 +37,7 @@ namespace
     bool s_nodeParamsInitialized = false;
     std::vector<CAnimNode::SParamInfo> s_nodeParams;
 
-    void AddSupportedParam(const char* sName, int paramId, EAnimValue valueType)
+    void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -46,17 +49,17 @@ namespace
 
 enum EMaterialNodeParam
 {
-    MTL_PARAM_SHADER_PARAM1  = eAnimParamType_User + 100,
+    MTL_PARAM_SHADER_PARAM1  = static_cast<int>(AnimParamType::User) + 100,
 };
 
 //////////////////////////////////////////////////////////////////////////
 void CAnimMaterialNode::InitializeTrack(IAnimTrack* pTrack, const CAnimParamType& paramType)
 {
-    if (paramType == eAnimParamType_MaterialOpacity)
+    if (paramType == AnimParamType::MaterialOpacity)
     {
         pTrack->SetKeyValueRange(0.0f, 100.f);
     }
-    else if (paramType == eAnimParamType_MaterialSmoothness)
+    else if (paramType == AnimParamType::MaterialSmoothness)
     {
         pTrack->SetKeyValueRange(0.0f, 255.f);
     }
@@ -70,7 +73,7 @@ CAnimMaterialNode::CAnimMaterialNode()
 
 //////////////////////////////////////////////////////////////////////////
 CAnimMaterialNode::CAnimMaterialNode(const int id)
-    : CAnimNode(id, eAnimNodeType_Material)
+    : CAnimNode(id, AnimNodeType::Material)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
 
@@ -85,12 +88,12 @@ void CAnimMaterialNode::Initialize()
         s_nodeParamsInitialized = true;
 
         s_nodeParams.reserve(5);
-        AddSupportedParam("Diffuse", eAnimParamType_MaterialDiffuse, eAnimValue_RGB);
-        AddSupportedParam("Emissive Color", eAnimParamType_MaterialEmissive, eAnimValue_RGB);
-        AddSupportedParam("Emissive Intensity", eAnimParamType_MaterialEmissiveIntensity, eAnimValue_Float);
-        AddSupportedParam("Glossiness", eAnimParamType_MaterialSmoothness, eAnimValue_Float);
-        AddSupportedParam("Opacity", eAnimParamType_MaterialOpacity, eAnimValue_Float);
-        AddSupportedParam("Specular", eAnimParamType_MaterialSpecular, eAnimValue_RGB);
+        AddSupportedParam("Diffuse", AnimParamType::MaterialDiffuse, AnimValueType::RGB);
+        AddSupportedParam("Emissive Color", AnimParamType::MaterialEmissive, AnimValueType::RGB);
+        AddSupportedParam("Emissive Intensity", AnimParamType::MaterialEmissiveIntensity, AnimValueType::Float);
+        AddSupportedParam("Glossiness", AnimParamType::MaterialSmoothness, AnimValueType::Float);
+        AddSupportedParam("Opacity", AnimParamType::MaterialOpacity, AnimValueType::Float);
+        AddSupportedParam("Specular", AnimParamType::MaterialSpecular, AnimValueType::RGB);
     }
 }
 
@@ -135,16 +138,16 @@ void CAnimMaterialNode::UpdateDynamicParamsInternal()
         case eType_FLOAT:
         // Fall through
         case eType_HALF:
-            paramInfo.valueType = eAnimValue_Float;
+            paramInfo.valueType = AnimValueType::Float;
             break;
         case eType_VECTOR:
-            paramInfo.valueType = eAnimValue_Vector;
+            paramInfo.valueType = AnimValueType::Vector;
             break;
         case eType_FCOLOR:
-            paramInfo.valueType = eAnimValue_RGB;
+            paramInfo.valueType = AnimValueType::RGB;
             break;
         case eType_BOOL:
-            paramInfo.valueType = eAnimValue_Bool;
+            paramInfo.valueType = AnimValueType::Bool;
             break;
         default:
             continue;
@@ -177,7 +180,7 @@ CAnimParamType CAnimMaterialNode::GetParamType(unsigned int nIndex) const
         return m_dynamicShaderParamInfos[nIndex - (int)s_nodeParams.size()].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -206,7 +209,7 @@ bool CAnimMaterialNode::GetParamInfoFromType(const CAnimParamType& paramId, SPar
 //////////////////////////////////////////////////////////////////////////
 const char* CAnimMaterialNode::GetParamName(const CAnimParamType& param) const
 {
-    if (param.GetType() == eAnimParamType_ByString)
+    if (param.GetType() == AnimParamType::ByString)
     {
         return param.GetName();
     }
@@ -281,44 +284,44 @@ void CAnimMaterialNode::Animate(SAnimContext& ec)
 
         switch (paramId.GetType())
         {
-        case eAnimParamType_MaterialOpacity:
+        case AnimParamType::MaterialOpacity:
             pTrack->GetValue(ec.time, fValue);
             pShaderResources->SetStrengthValue(EFTT_OPACITY, fValue);
             break;
-        case eAnimParamType_MaterialDiffuse:
+        case AnimParamType::MaterialDiffuse:
             pTrack->GetValue(ec.time, vValue);
             {
                 pShaderResources->SetColorValue(EFTT_DIFFUSE, vValue / 255.0f);
             }
             break;
-        case eAnimParamType_MaterialSpecular:
+        case AnimParamType::MaterialSpecular:
             pTrack->GetValue(ec.time, vValue);
             {
                 pShaderResources->SetColorValue(EFTT_SPECULAR, vValue / 255.0f);
             }
             break;
-        case eAnimParamType_MaterialEmissive:
+        case AnimParamType::MaterialEmissive:
             pTrack->GetValue(ec.time, vValue);
             pShaderResources->SetColorValue(EFTT_EMITTANCE, vValue / 255.0f);
             break;
-        case eAnimParamType_MaterialEmissiveIntensity:
+        case AnimParamType::MaterialEmissiveIntensity:
             pTrack->GetValue(ec.time, fValue);
             pShaderResources->SetStrengthValue(EFTT_EMITTANCE, fValue);
             break;
-        case eAnimParamType_MaterialSmoothness:
+        case AnimParamType::MaterialSmoothness:
             pTrack->GetValue(ec.time, fValue);
             {
                 pShaderResources->SetStrengthValue(EFTT_SMOOTHNESS, fValue / 255.0f);
             }
             break;
-        case eAnimParamType_ByString:
+        case AnimParamType::ByString:
             AnimateNamedParameter(ec, pShaderResources, paramId.GetName(), pTrack);
             break;
         default:
             // Legacy support code
-            if (paramId.GetType() >= (EAnimParamType)MTL_PARAM_SHADER_PARAM1)
+            if (paramId.GetType() >= (AnimParamType)MTL_PARAM_SHADER_PARAM1)
             {
-                int id = paramId.GetType() - (EAnimParamType)MTL_PARAM_SHADER_PARAM1;
+                int id = static_cast<int>(paramId.GetType()) - MTL_PARAM_SHADER_PARAM1;
                 if (id < (int)pShaderResources->GetParameters().size())
                 {
                     pTrack->GetValue(ec.time, fValue);
@@ -349,24 +352,24 @@ void CAnimMaterialNode::AnimateNamedParameter(SAnimContext& ec, IRenderShaderRes
 
         switch (pTrack->GetValueType())
         {
-        case eAnimValue_Float:
+        case AnimValueType::Float:
             pTrack->GetValue(ec.time, fValue);
             param.m_Value.m_Float = fValue;
             break;
-        case eAnimValue_Vector:
+        case AnimValueType::Vector:
             pTrack->GetValue(ec.time, vecValue);
             param.m_Value.m_Vector[0] = vecValue[0];
             param.m_Value.m_Vector[1] = vecValue[1];
             param.m_Value.m_Vector[2] = vecValue[2];
             break;
-        case eAnimValue_RGB:
+        case AnimValueType::RGB:
             pTrack->GetValue(ec.time, colorValue);
             param.m_Value.m_Color[0] = colorValue[0];
             param.m_Value.m_Color[1] = colorValue[1];
             param.m_Value.m_Color[2] = colorValue[2];
             param.m_Value.m_Color[3] = 0.0f;
             break;
-        case eAnimValue_Bool:
+        case AnimValueType::Bool:
             pTrack->GetValue(ec.time, boolValue);
             param.m_Value.m_Bool = boolValue;
             break;

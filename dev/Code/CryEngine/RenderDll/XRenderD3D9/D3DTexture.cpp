@@ -24,12 +24,12 @@
 #include "../Common/PostProcess/PostProcessUtils.h"
 #include "D3DPostProcess.h"
 #include "../Common/Textures/TextureHelpers.h"
+#include "../Common/Textures/TextureManager.h"
 #include "../Common/RenderCapabilities.h"
 #include <Common/Memory/VRAMDrillerBus.h>
 
 #undef min
 #undef max
-
 //===============================================================================
 namespace {
     void SetShaderResourceViewDesc(const SResourceView& rv, uint32 texType, D3DFormat format, int arraySize, uint32 nSliceCount, D3D11_SHADER_RESOURCE_VIEW_DESC& desc)
@@ -3354,7 +3354,7 @@ void STexState::PostCreate()
     }
 }
 
-STexState::~STexState()
+void STexState::Destroy()
 {
     if (m_pDeviceState)
     {
@@ -3364,7 +3364,7 @@ STexState::~STexState()
     }
 }
 
-STexState::STexState(const STexState& src)
+void STexState::Init(const STexState& src)
 {
     memcpy(this, &src, sizeof(src));
     if (m_pDeviceState)
@@ -3465,6 +3465,9 @@ void CTexture::ApplySamplerState(int nSUnit, EHWShaderClass eHWSC, int nState)
     SetSamplerState(nTSSel, nSUnit, eHWSC);
 }
 
+//------------------------------------------------------------------------------
+// Given a texture and a binding slot, this is the method that actually refreshes 
+// the texture resource, validates it and finally binds it to the HW stage.
 void CTexture::ApplyTexture(int nTUnit, EHWShaderClass eHWSC, SResourceView::KeyType nResViewKey)
 {
     FUNCTION_PROFILER_RENDER_FLAT
@@ -3503,16 +3506,27 @@ void CTexture::ApplyTexture(int nTUnit, EHWShaderClass eHWSC, SResourceView::Key
     IF(this != CTexture::s_pTexNULL && (!pDevTex || !pDevTex->GetBaseTexture()), 0)
     {
         // apply black by default
-        if (CTexture::s_ptexBlack)
+        CTexture*     pBlackTexture = CTextureManager::Instance()->GetBlackTexture();
+        if (m_eTT != eTT_Cube && pBlackTexture)
         {
-            CTexture::s_ptexBlack->ApplyTexture(nTUnit, eHWSC, nResViewKey);
+            pBlackTexture->ApplyTexture(nTUnit, eHWSC, nResViewKey);
+        }
+        else
+        {
+            pBlackTexture = CTextureManager::Instance()->GetBlackTextureCM();
+            if (m_eTT == eTT_Cube && pBlackTexture)
+            {
+                pBlackTexture->ApplyTexture(nTUnit, eHWSC, nResViewKey);
+            }
         }
         return;
     }
 
     // Resolve multisampled RT to texture
     if (!m_bResolved)
+    {
         Resolve();
+    }
 
     bool bStreamed = IsStreamed();
     if (m_nAccessFrameID != nFrameID)
@@ -3705,9 +3719,13 @@ void CTexture::Apply(int nTUnit, int nState, int nTexMatSlot, int nSUnit, SResou
     IF (this != CTexture::s_pTexNULL && (!pDevTex || !pDevTex->GetBaseTexture()), 0)
     {
         // apply black by default
-        if (CTexture::s_ptexBlack && this != CTexture::s_ptexBlack)
+        if (m_eTT != eTT_Cube && CTextureManager::Instance()->GetBlackTexture() && this != CTextureManager::Instance()->GetBlackTexture())
         {
-            CTexture::s_ptexBlack->Apply(nTUnit, nState, nTexMatSlot, nSUnit, nResViewKey);
+            CTextureManager::Instance()->GetBlackTexture()->Apply(nTUnit, nState, nTexMatSlot, nSUnit, nResViewKey);
+        }
+        else if (m_eTT == eTT_Cube && CTextureManager::Instance()->GetBlackTextureCM() && this != CTextureManager::Instance()->GetBlackTextureCM())
+        {
+            CTextureManager::Instance()->GetBlackTextureCM()->Apply(nTUnit, nState, nTexMatSlot, nSUnit, nResViewKey);
         }
         return;
     }
@@ -4439,6 +4457,7 @@ void CTexture::GenerateZMaps()
     if (!s_ptexZTarget)
     {
         s_ptexZTarget = CreateRenderTarget("$ZTarget", nWidth, nHeight, Clr_White, eTT_2D, nFlags, eTFZ);
+        s_ptexFurZTarget = CreateRenderTarget("$FurZTarget", nWidth, nHeight, Clr_White, eTT_2D, nFlags, eTFZ);
     }
     else
     {
@@ -4446,6 +4465,11 @@ void CTexture::GenerateZMaps()
         s_ptexZTarget->m_nWidth = nWidth;
         s_ptexZTarget->m_nHeight = nHeight;
         s_ptexZTarget->CreateRenderTarget(eTFZ, Clr_White);
+
+        s_ptexFurZTarget->m_nFlags = nFlags;
+        s_ptexFurZTarget->m_nWidth = nWidth;
+        s_ptexFurZTarget->m_nHeight = nHeight;
+        s_ptexFurZTarget->CreateRenderTarget(eTFZ, Clr_White);
     }
 }
 
@@ -5043,6 +5067,7 @@ void CTexture::ReleaseSystemTargets()
     SAFE_RELEASE_FORCE(s_ptexZTargetScaled);
     SAFE_RELEASE_FORCE(s_ptexZTargetScaled2);
     SAFE_RELEASE_FORCE(s_ptexAmbientLookup);
+    SAFE_RELEASE_FORCE(s_ptexDepthBufferQuarter);
 
     gcpRendD3D->m_bSystemTargetsInit = 0;
 }

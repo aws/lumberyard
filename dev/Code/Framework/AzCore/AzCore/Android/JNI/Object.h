@@ -27,6 +27,7 @@
 
 #if defined(JNI_SIGNATURE_VALIDATION)
     #include <AzCore/Android/JNI/Signature.h>
+    #include <AzCore/Outcome/Outcome.h>
 #endif
 
 
@@ -354,7 +355,9 @@ namespace AZ { namespace Android
 
 
             #if defined(JNI_SIGNATURE_VALIDATION)
-                typedef Signature<string_type> SigGen;
+                using SignatureOutcome = AZ::Outcome<void, string_type>;
+
+                typedef Signature<string_type> SigUtil;
             #endif
 
 
@@ -388,18 +391,23 @@ namespace AZ { namespace Android
                 //! \param signature The signature, or type, of the java field
                 void SetFieldSignature(JFieldCachePtr fieldCache, const char* fieldName, const char* signature);
 
-                //! Validate the pending method call's signature matches the registered method's signature
-                //! \param methodCache The register method information.
-                //! \param argumentSignature The argument signature extracted from the Invoke<Type>Method's arguments.
-                //! \param returnSignature The return signature from the the Invoke[Static]<Type>Method call.
-                //! \return True if the signatures match, False otherwise.
-                bool ValidateSignature(JMethodCachePtr methodCache, const string_type& argumentSignature, const string_type& returnSignature);
+                //! Performs a full signature validation for all types in Args
+                //! \param baseSignature The base signature used to register the JNI method or field
+                //! \param parameters Pending arguments to a JNI call needing validation
+                //! \return \ref AZ::Success if all parameters pass validation, \ref AZ::Failure<string_type> containing the
+                //!         error message otherwise
+                template<typename... Args>
+                SignatureOutcome ValidateSignature(const string_type& baseSignature, Args&&... parameters);
 
-                //! Validate the pending field call's signature matches the registered field's signature
-                //! \param fieldCache The register field information.
-                //! \param signature The field signature extracted from the call to <Opt>[Static]<Type>Field.
-                //! \return True if the signatures match, False otherwise.
-                bool ValidateSignature(JFieldCachePtr fieldCache, const string_type& signature);
+                //! Performs a partial signature validation when \p Type is jobject or jobjectArray, and a full signature validation
+                //! for other types.  Primarily used for basic validation of return type values when the requested type
+                //! can't be deduced without making the JNI call first.
+                //! \param baseSignature The base signature used to register the JNI method or field
+                //! \param param Pending type to a JNI call needing validation
+                //! \return \ref AZ::Success if all parameters pass validation, \ref AZ::Failure<string_type> containing the
+                //!         error message otherwise
+                template<typename Type>
+                SignatureOutcome ValidateSignaturePartial(const string_type& baseSignature, Type param);
             #endif // defined(JNI_SIGNATURE_VALIDATION)
 
 

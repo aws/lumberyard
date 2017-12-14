@@ -16,7 +16,8 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include "LUAContextControlMessages.h"
-#include <QtWidgets/QPushButton>
+#include <QPushButton>
+#include <QWidgetAction>
 
 #pragma once
 

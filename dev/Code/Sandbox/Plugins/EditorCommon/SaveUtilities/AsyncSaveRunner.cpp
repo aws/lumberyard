@@ -65,9 +65,9 @@ namespace AZ
                 bool moreDetails = true;
 
                 // Be more specific with errors so as to give the user the best chance at fixing them
-                if (info.m_status != AzToolsFramework::SourceControlStatus::SCS_OpenByUser)
+                if (!info.HasFlag(AzToolsFramework::SCF_OpenByUser))
                 {
-                    if (info.HasFlag(AzToolsFramework::SourceControlFlags::SCF_OutOfDate))
+                    if (info.HasFlag(AzToolsFramework::SCF_OutOfDate))
                     {
                         message = "The file being worked on doesn't contain the latest changes from source control";
                         moreDetails = false;
@@ -90,7 +90,7 @@ namespace AZ
                     {
                         message = "Failed to put entries/dependencies into source control as the provider reported an error.\n";
                     }
-                    else if (info.m_status == AzToolsFramework::SourceControlStatus::SCS_NotTracked)
+                    else if (!info.IsManaged())
                     {
                         message = "Failed to put entries/dependencies into source control as they are outside the current workspace mapping.\n";
                         reportAsWarning = true;
@@ -128,13 +128,13 @@ namespace AZ
         SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, m_fullSavePath.c_str(), true, callback);
     }
 
-    void SaveOperationController::SaveOperationCache::RunDelete (const AZStd::shared_ptr<ActionOutput>& actionOutput)
+    void SaveOperationController::SaveOperationCache::RunDelete(const AZStd::shared_ptr<ActionOutput>& actionOutput)
     {
         // Create the callback to pass to the SourceControlAPI
         AzToolsFramework::SourceControlResponseCallback callback =
             [this, actionOutput](bool success, const AzToolsFramework::SourceControlFileInfo& info)
         {
-            if (success || info.m_status == AzToolsFramework::SourceControlStatus::SCS_NotTracked)
+            if (success || !info.IsManaged())
             {
                 success = true;
                 if (m_saveOperation && !m_saveOperation(m_fullSavePath, actionOutput))
@@ -150,7 +150,7 @@ namespace AZ
             else if (actionOutput)
             {
                 // Be more specific with errors so as to give the user the best chance at fixing them
-                if (info.m_status != AzToolsFramework::SourceControlStatus::SCS_OpenByUser)
+                if (!info.HasFlag(AzToolsFramework::SCF_OpenByUser))
                 {
                     if (info.HasFlag(AzToolsFramework::SourceControlFlags::SCF_OutOfDate))
                     {
@@ -190,6 +190,7 @@ namespace AZ
 
     SaveOperationController::SaveOperationController(AsyncSaveRunner& owner)
         : m_owner(owner)
+        , m_completedCount(0)
     {
     }
 
@@ -319,8 +320,8 @@ namespace AZ
         else if (m_order == ControllerOrder::Sequential)
         {
             AZ_Assert(m_counter < m_allSaveControllers.size(), 
-                "Counter for save controllers has become invalid (%i vs. %i).", m_counter, m_allSaveControllers.size());
-            AZ_Assert(m_allSaveControllers[m_counter].get() == runner, "Completed incorrect save runner for index %i.", m_counter);
+                "Counter for save controllers has become invalid (%i vs. %i).", static_cast<int>(m_counter), m_allSaveControllers.size());
+            AZ_Assert(m_allSaveControllers[m_counter].get() == runner, "Completed incorrect save runner for index %i.", static_cast<int>(m_counter));
 
             m_counter++;
             if (m_counter < m_allSaveControllers.size())

@@ -4,7 +4,7 @@
    <Textures>
     <Texture Map="Diffuse" File="Objects/Natural/Vegetation/AM_Ivy_02_diff.tif"/>
    </Textures>
-   <PublicParams bendDetailLeafAmplitude="0.1" bendDetailFrequency="0.5" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" NormalViewDependency="0.5" TransmittanceColor="1,1,0.60000002" CapOpacityFalloff="1" BackDiffuseMultiplier="0.75" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
+   <PublicParams bendDetailLeafAmplitude="0.1" bendDetailFrequency="0.5" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" NormalViewDependency="0.5" TransmittanceColor="1,1,0.60000002" CapOpacityFalloff="1" BackDiffuseMultiplier="0.5" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
   </Material>
   <Material Name="col" MtlFlags="524416" Shader="Illum" GenMask="4000000000001" StringGenMask="%ALLOW_SILHOUETTE_POM%SUBSURFACE_SCATTERING" SurfaceType="mat_vegetation" Diffuse="1,0,0,1" Specular="0.5,0.5,0.5,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
    <Textures />

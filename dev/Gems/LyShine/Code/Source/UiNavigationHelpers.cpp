@@ -340,9 +340,9 @@ namespace UiNavigationHelpers
 
                     AZ::Vector2 center = destPointsFromViewport.GetCenter();
                     inside = (center.GetX() >= parentRect.left &&
-                        center.GetX() <= parentRect.right &&
-                        center.GetY() >= parentRect.top &&
-                        center.GetY() <= parentRect.bottom);
+                              center.GetX() <= parentRect.right &&
+                              center.GetY() >= parentRect.top &&
+                              center.GetY() <= parentRect.bottom);
                 }
 
                 if (inside)
@@ -414,7 +414,7 @@ namespace UiNavigationHelpers
 
         return nextEntityId;
     }
- 
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     bool IsInteractableNavigable(AZ::EntityId interactableEntityId)
     {
@@ -534,6 +534,4 @@ namespace UiNavigationHelpers
 
         return parent;
     }
-
-
 } // namespace UiNavigationHelpers

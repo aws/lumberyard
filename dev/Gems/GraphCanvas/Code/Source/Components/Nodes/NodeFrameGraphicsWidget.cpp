@@ -39,7 +39,7 @@ namespace GraphCanvas
 
     void NodeFrameGraphicsWidget::Activate()
     {
-        RootVisualRequestBus::Handler::BusConnect(GetEntityId());
+        SceneMemberUIRequestBus::Handler::BusConnect(GetEntityId());
         GeometryNotificationBus::Handler::BusConnect(GetEntityId());
         StyleNotificationBus::Handler::BusConnect(GetEntityId());
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
@@ -56,7 +56,7 @@ namespace GraphCanvas
         NodeUIRequestBus::Handler::BusDisconnect();
         VisualRequestBus::Handler::BusDisconnect();
         GeometryNotificationBus::Handler::BusDisconnect();
-        RootVisualRequestBus::Handler::BusDisconnect();
+        SceneMemberUIRequestBus::Handler::BusDisconnect();
     }
 
     QGraphicsItem* NodeFrameGraphicsWidget::GetRootGraphicsItem()
@@ -67,6 +67,16 @@ namespace GraphCanvas
     QGraphicsLayoutItem* NodeFrameGraphicsWidget::GetRootGraphicsLayoutItem()
     {
         return this;
+    }
+
+    void NodeFrameGraphicsWidget::SetSelected(bool selected)
+    {
+        setSelected(selected);
+    }
+
+    bool NodeFrameGraphicsWidget::IsSelected() const
+    {
+        return isSelected();
     }
 
     void NodeFrameGraphicsWidget::OnPositionChanged(const AZ::EntityId& entityId, const AZ::Vector2& position)
@@ -81,17 +91,6 @@ namespace GraphCanvas
         setZValue(m_style.GetAttribute(Styling::Attribute::ZValue, 0));
 
         OnRefreshStyle();
-    }
-
-    void NodeFrameGraphicsWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
-    {
-        // Need to release the mouse in case we did the start move.
-        if (mouseEvent->button() == Qt::MouseButton::LeftButton)
-        {
-            ungrabMouse();
-        }
-
-        RootVisualNotificationsHelper<QGraphicsWidget>::mouseReleaseEvent(mouseEvent);
     }
 
     void NodeFrameGraphicsWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent)
@@ -122,13 +121,13 @@ namespace GraphCanvas
     {
         QSizeF retVal = QGraphicsWidget::sizeHint(which, constraint);
 
-        if (IsSnappedToGrid() && (!m_isWrapped))
+        if (IsResizedToGrid() && (!m_isWrapped))
         {
-            int width = retVal.width();
-            int height = retVal.height();
+            int width = static_cast<int>(retVal.width());
+            int height = static_cast<int>(retVal.height());
 
-            width += (GetGridXStep() - width % GetGridXStep());
-            height += (GetGridYStep() - height % GetGridYStep());
+            width = GrowToNextStep(width, GetGridXStep());
+            height = GrowToNextStep(height, GetGridYStep());
 
             retVal = QSizeF(width, height);
         }
@@ -167,16 +166,12 @@ namespace GraphCanvas
         m_isWrapped = true;
 
         SetSnapToGridEnabled(false);
+        SetResizeToGridEnabled(false);
     }
 
-    void NodeFrameGraphicsWidget::SetSelected(bool selected)
+    void NodeFrameGraphicsWidget::AdjustSize()
     {
-        setSelected(selected);
-    }
-
-    bool NodeFrameGraphicsWidget::IsSelected() const
-    {
-        return isSelected();
+        adjustSize();
     }
 
     bool NodeFrameGraphicsWidget::IsWrapped() const
@@ -184,23 +179,14 @@ namespace GraphCanvas
         return m_isWrapped;
     }
 
-    void NodeFrameGraphicsWidget::StartItemMove(const QPointF& initialPosition, const QPointF& currentPosition)
-    {
-        // Ideally, we'd just send a fake mousePressEvent, but that didn't seem to work.
-        // Grabbing the mouse and sending out the move event does though.
-        grabMouse();
-
-        setSelected(true);
-
-        QGraphicsSceneMouseEvent fakeMouseMoveEvent(QEvent::GraphicsSceneMouseMove);
-        fakeMouseMoveEvent.setButtonDownScreenPos(Qt::MouseButton::LeftButton, currentPosition.toPoint());
-
-        this->mouseMoveEvent(&fakeMouseMoveEvent);
-    }
-
     void NodeFrameGraphicsWidget::SetSnapToGrid(bool snapToGrid)
     {
         SetSnapToGridEnabled(snapToGrid);
+    }
+
+    void NodeFrameGraphicsWidget::SetResizeToGrid(bool resizeToGrid)
+    {
+        SetResizeToGridEnabled(resizeToGrid);
     }
 
     void NodeFrameGraphicsWidget::SetGrid(AZ::EntityId gridId)
@@ -214,6 +200,38 @@ namespace GraphCanvas
     qreal NodeFrameGraphicsWidget::GetCornerRadius() const
     {
         return m_style.GetAttribute(Styling::Attribute::BorderRadius, 5.0);
+    }
+
+    int NodeFrameGraphicsWidget::GrowToNextStep(int value, int step) const
+    {
+        int delta = value % step;
+
+        if (delta == 0)
+        {
+            return value;
+        }
+        else
+        {
+            return value + (step - (value % step));
+        }
+    }
+
+    int NodeFrameGraphicsWidget::RoundToClosestStep(int value, int step) const
+    {
+        if (step == 1)
+        {
+            return value;
+        }
+
+        int halfStep = step / 2;
+
+        value += halfStep;
+        return ShrinkToPreviousStep(value, step);
+    }
+
+    int NodeFrameGraphicsWidget::ShrinkToPreviousStep(int value, int step) const
+    {
+        return value - (value % step);
     }
 
     void NodeFrameGraphicsWidget::OnActivated()

@@ -153,21 +153,9 @@ void CUiAnimViewCurveEditor::OnEditorNotifyEvent(EEditorNotifyEvent event)
 void CUiAnimViewCurveEditor::OnActiveCanvasChanged()
 {
     m_ui->m_wndSpline->RemoveAllSplines();
-    m_hasActiveCanvas = true;
+    IUiAnimationSystem* animationSystem = CUiAnimViewSequenceManager::GetSequenceManager()->GetAnimationSystem();
+    m_hasActiveCanvas = animationSystem ? true : false;
     UpdateSplines();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CUiAnimViewCurveEditor::OnCanvasLoaded()
-{
-    // nothing to do here, only need to update if active canvas changes
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CUiAnimViewCurveEditor::OnCanvasUnloading()
-{
-    m_ui->m_wndSpline->RemoveAllSplines();
-    m_hasActiveCanvas = false;
 }
 
 //////////////////////////////////////////////////////////////////////////

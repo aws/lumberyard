@@ -57,6 +57,7 @@ namespace AzQtComponents
         setAttribute(Qt::WA_TransparentForMouseEvents);
         setAttribute(Qt::WA_NoSystemBackground);
         setAutoFillBackground(false);
+        setGeometry(screen->availableGeometry());
     }
 
     FancyDockingDropZoneWidget::~FancyDockingDropZoneWidget()

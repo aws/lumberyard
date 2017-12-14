@@ -15,6 +15,7 @@
 #include "DriverD3D.h"
 #include "I3DEngine.h"
 #include "D3DPostProcess.h"
+#include "../Common/Textures/TextureManager.h"
 
 #pragma warning(disable: 4244)
 
@@ -332,7 +333,8 @@ void CRainDrops::DrawRaindrops(int iViewportWidth, int iViewportHeight, int iRTW
 void CRainDrops::ApplyExtinction(CTexture*& rptexPrevRT, int iViewportWidth, int iViewportHeight, int iRTWidth, int iRTHeight)
 {
     //restore black texture to backbuffer for cleaning
-    PostProcessUtils().CopyTextureToScreen(CTexture::s_ptexBlack);
+    CTexture*   pTex = CTextureManager::Instance()->GetBlackTexture();
+    PostProcessUtils().CopyTextureToScreen(pTex);
 
     PROFILE_LABEL_SCOPE("RAIN_DROPS_EXTINCTION");
     if (!m_bFirstFrame)

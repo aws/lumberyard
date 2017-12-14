@@ -101,10 +101,10 @@ namespace EMStudio
         //void OnStartTransition(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphStateTransition* transition);
         //void OnEndTransition(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphStateTransition* transition);
         void Sync(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphNode* animGraphNode) override;
-        void OnSetVisualManipulatorOffset(EMotionFX::AnimGraphInstance* animGraphInstance, uint32 paramIndex, const MCore::Vector3& offset) override;
+        void OnSetVisualManipulatorOffset(EMotionFX::AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset) override;
         void OnParameterNodeMaskChanged(EMotionFX::BlendTreeParameterNode* parameterNode) override;
         void OnConditionTriggered(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphTransitionCondition* condition) override;
-        bool OnRayIntersectionTest(const MCore::Vector3& start, const MCore::Vector3& end, EMotionFX::IntersectionInfo* outIntersectInfo) override;
+        bool OnRayIntersectionTest(const AZ::Vector3& start, const AZ::Vector3& end, EMotionFX::IntersectionInfo* outIntersectInfo) override;
         void OnCreatedNode(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* node) override;
 
     private:
@@ -266,7 +266,7 @@ namespace EMStudio
         void RegisterPerFrameCallback(AnimGraphPerFrameCallback* callback);
         void UnregisterPerFrameCallback(AnimGraphPerFrameCallback* callback);
 
-
+        void OnMainWindowClosed() override;
     public slots:
         // save/load the active anim graph
         void OnFileOpen();
@@ -283,8 +283,10 @@ namespace EMStudio
         void ReInitAllGraphs();
         void ShowGraph(EMotionFX::AnimGraphNode* node, EMotionFX::AnimGraph* animGraph, bool addToHistory = true);
 
+        void CleanHistory();
         void HistoryStepBack();
         void HistoryStepForward();
+        void ShowGraphFromHistory(uint32 historyIndex);
 
         MCORE_INLINE BlendGraphWidget* GetGraphWidget()                     { return mGraphWidget; }
         MCORE_INLINE BlendResourceWidget* GetResourceWidget()               { return mResourceWidget; }

@@ -15,8 +15,12 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <LegacyEntityConversion/LegacyEntityConversionBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-
-class CBaseObject;
+//Some headers needed for LegacyEntityConversionUtil.inl
+#include <QString.h>
+#include <Editor/Objects/BaseObject.h>
+#include <Objects/EntityObject.h>
+#include <Util/Variable.h>
+#include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 
 namespace AZ
 {

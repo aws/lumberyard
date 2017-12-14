@@ -31,6 +31,7 @@ namespace EMStudio
     class EMSTUDIO_API DockWidgetPlugin
         : public EMStudioPlugin
     {
+        Q_OBJECT
         MCORE_MEMORYOBJECTCATEGORY(DockWidgetPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:

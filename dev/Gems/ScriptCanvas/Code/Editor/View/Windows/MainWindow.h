@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QTranslator>
+#include <QMimeData>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/EntityId.h>
@@ -29,7 +30,6 @@
 
 namespace GraphCanvas
 {
-    class Node;
     class GraphCanvasMimeEvent;
 }
 
@@ -37,6 +37,10 @@ namespace Ui
 {
     class MainWindow;
 }
+
+class QDir;
+class QFile;
+class QProgressDialog;
 
 namespace ScriptCanvasEditor
 {
@@ -65,7 +69,7 @@ namespace ScriptCanvasEditor
         , private UndoNotificationBus::Handler
         , private GraphCanvas::SceneNotificationBus::MultiHandler
         , private GraphCanvas::SceneUIRequestBus::MultiHandler
-        , private EditorScriptCanvasAssetNotificationBus::MultiHandler
+        , private DocumentContextNotificationBus::MultiHandler
 #if SCRIPTCANVAS_EDITOR
         //, public IEditorNotifyListener
 #endif
@@ -141,7 +145,6 @@ namespace ScriptCanvasEditor
         void OnNodeAdded(const AZ::EntityId& nodeId) override;
         void OnNodeRemoved(const AZ::EntityId& nodeId) override;
         void OnNodePositionChanged(const AZ::EntityId& nodeId, const AZ::Vector2& position) override;
-        void OnKeyReleased(QKeyEvent* event) override;
         /////////////////////////////////////////////////////////////////////////////////////////////
 
         void SetDefaultLayout();
@@ -158,12 +161,18 @@ namespace ScriptCanvasEditor
         QVariant GetTabData(const AZ::Data::AssetId& assetId);
 
         //! GeneralRequestBus
-        int OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1) override;
-        int UpdateScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset) override;
+        AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1, AZ::EntityId hostId = AZ::EntityId()) override;
         int CloseScriptCanvasAsset(const AZ::Data::AssetId& assetId) override;
+        ////
+        AZ::Outcome<int, AZStd::string> CreateScriptCanvasAsset(AZStd::string_view assetPath, int tabIndex = -1);
+        AZ::Outcome<int, AZStd::string> UpdateScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset);
         
         void RefreshScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset);
+
+        //! Removes the assetId -> ScriptCanvasAsset mapping and disconnects from the asset
+        //! The DocumentContextNotificationBus and the GraphCanvas::SceneNotificationBus
         void RemoveScriptCanvasAsset(const AZ::Data::AssetId& assetId);
+        void MoveScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& newAsset, const ScriptCanvasAssetFileInfo& assetFileInfo);
 
         void LoadStyleSheet(const AZ::EntityId& sceneId);
 
@@ -187,11 +196,14 @@ namespace ScriptCanvasEditor
         void DisconnectEndpoints(const AZ::EntityId& sceneId, const AZStd::vector<GraphCanvas::Endpoint>& endpoints) override;
         /////////////////////////////////////////////////////////////////////////////////////////////
 
-        //! EditorScriptCanvasAssetNotificationBus
-        void OnScriptCanvasAssetUnloaded(const AZ::Data::AssetId& assetId) override;
-        void OnScriptCanvasAssetSaved(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, bool isSuccessful) override;
-        void OnScriptCanvasAssetActivated(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset) override;
+        //! DocumentContextNotificationBus
+        void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset) override;
         ////
+
+        void SourceFileChanged(const AZ::Data::AssetId& saveAssetId, AZStd::string relPath, AZStd::string scanFolder, const AZ::Data::AssetId& assetId);
+
+        void CloneAssetEntity(AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset);
+        void ActivateAssetEntity(AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset);
 
         //! UndoNotificationBus
         void OnCanUndoChanged(bool canUndo) override;
@@ -201,11 +213,10 @@ namespace ScriptCanvasEditor
         //! Helper function which serializes a file to disk
         //! \param filename name of file to serialize the Entity
         //! \param asset asset to save
-        void SaveScriptCanvasAsset(const char* filename, AZ::Data::Asset<ScriptCanvasAsset> asset, const DocumentContextRequests::SaveCB& saveCB);
+        void SaveScriptCanvasAsset(AZStd::string_view filename, AZ::Data::Asset<ScriptCanvasAsset> asset, const DocumentContextRequests::SaveCB& saveCB);
         AZStd::string GetSuggestedFullFilenameToSaveAs(const AZ::Data::AssetId& assetId);
 
-        void CreateScriptCanvasAssetHolder(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex);
-        AZ::Data::AssetInfo CopyAssetForSave(AZ::Data::Asset<ScriptCanvasAsset> newAsset, AZ::Data::Asset<ScriptCanvasAsset> oldAsset, const char* filename, const DocumentContextRequests::SaveCB& saveCB);
+        AZ::Data::Asset<ScriptCanvasAsset> CopyAssetForSave(const AZ::Data::AssetId& newAssetId, AZ::Data::Asset<ScriptCanvasAsset> oldAsset);
 
         void MarkAssetModified(const AZ::Data::AssetId& assetId);
         void MarkAssetUnmodified(const AZ::Data::AssetId& assetId);
@@ -222,6 +233,10 @@ namespace ScriptCanvasEditor
 
         void SaveWindowState();
         void RestoreWindowState();
+
+        void RunBatchConversion();
+        void BatchConvertDirectory(QDir directory);
+        void BatchConvertFile(const QString& fileName);
 
         NodeIdPair ProcessCreateNodeMimeEvent(GraphCanvas::GraphCanvasMimeEvent* mimeEvent, const AZ::EntityId& sceneId, AZ::Vector2 nodeCreationPos);
 
@@ -259,16 +274,23 @@ namespace ScriptCanvasEditor
             AZ::EntityId m_graphId;
             AZ::EntityId m_sceneId;
         };
+
+    public:
         struct AssetGraphSceneData
         {
+            AZ_CLASS_ALLOCATOR(AssetGraphSceneData, AZ::SystemAllocator, 0);
             AssetGraphSceneData(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset);
-
             AssetGraphSceneData(const AssetGraphSceneData&) = delete;
+            AssetGraphSceneData& operator=(const AssetGraphSceneData&) = delete;
+            void Set(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset);
+
             AssetGraphSceneId m_tupleId;
-            ScriptCanvasAssetHolder m_assetHolder; //< Maintains a reference to ScriptCanvasAsset that is open within the editor
+            AZ::Data::Asset<ScriptCanvasAsset> m_asset; //< Maintains a reference to ScriptCanvasAsset that is open within the editor
                                                    //< While a reference is maintained in the MainWindow, the ScriptCanvas Graph will remain open
                                                    //< Even if the underlying asset is removed from disk
         };
+
+    private:
 
         /*! AssetGraphSceneMapper
         The AssetGraphSceneMapper is a structure for allowing quick lookups of open ScriptCanvas
@@ -276,8 +298,7 @@ namespace ScriptCanvasEditor
         */
         struct AssetGraphSceneMapper
         {
-            void Add(const AZ::Data::Asset<ScriptCanvasAsset> &scriptCanvasAsset);
-            void Add(AZStd::unique_ptr<AssetGraphSceneData> assetGraphSceneData);
+            AZ::Outcome<void, AZStd::string> Add(AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset);
             void Remove(const AZ::Data::AssetId& assetId);
             void Clear();
 
@@ -301,5 +322,13 @@ namespace ScriptCanvasEditor
 
         QByteArray m_defaultLayout;
         QTranslator m_translator;
+        
+        QMimeData   m_initialDropMimeData;
+
+        // Batch Conversion Information
+        bool m_processing;
+        QProgressDialog* m_progressDialog;
+        size_t m_processCount;
+        AZStd::unordered_set< AZ::Data::AssetId > m_savingIds;
     };
 }

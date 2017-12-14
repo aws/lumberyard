@@ -38,10 +38,15 @@ namespace AZ
         {
             delete this;
         }
+        void SceneConverter::Init(const ConvertorInitContext& context)
+        {
+            m_appRoot = context.appRootPath;
+        }
+
 
         ICompiler* SceneConverter::CreateCompiler()
         {
-            return new SceneCompiler(m_config);
+            return new SceneCompiler(m_config, m_appRoot.c_str());
         }
 
         bool SceneConverter::SupportsMultithreading() const

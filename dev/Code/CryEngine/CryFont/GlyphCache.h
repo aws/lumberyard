@@ -82,7 +82,7 @@ public:
     CGlyphCache();
     ~CGlyphCache();
 
-    int Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount);
+    int Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount, float sizeRatio);
     int Release();
 
     int LoadFontFromFile(const string& szFileName);

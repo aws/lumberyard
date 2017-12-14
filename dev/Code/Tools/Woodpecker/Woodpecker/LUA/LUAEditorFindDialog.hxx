@@ -18,7 +18,12 @@
 #include <AzCore/Component/Component.h>
 #include "LUAEditorView.hxx"
 
+#include <QDialog>
+
 #pragma once
+
+class LUAEditorMainWindow;
+class QListWidget;
 
 namespace Ui
 {

@@ -143,6 +143,12 @@
      <Audio bEnableAudio="0" audioRTPCRtpc="particlefx"/>
     </Properties>
    </Object>
+   <Object VolumeDepth="10" StreamSpeed="0" FogDensity="0.1" FogColor="0.00651209,0.0262412,0.0193824" FogColorMultiplier="1" FogColorAffectedBySun="0" FogShadowing="0.5" UScale="1" VScale="1" CapFogAtVolumeDepth="0" Caustics="1" CausticIntensity="1" CausticTiling="1" CausticHeight="0.5" Type="River" Layer="Rivers" LayerGUID="{23c88ada-addb-40b5-a1c3-cad54c899e12}" Id="{5acdbc85-ac81-4e18-8435-d7b57cb0a5e5}" Name="River9" HideOrder="0" Pos="1474.2499,1806,53.349987" FloorNumber="-1" Rotate="0.026176982,0,0,0.99965733" Material="objects/effects/fx_caveriver" Width="60" BorderWidth="6" EraseVegWidth="3" EraseVegWidthVar="0" StepSize="4" ViewDistanceMultiplier="1" TileLength="40">
+    <Points>
+     <Point Pos="0,0,0" Back="0,0,0" Forw="-41.583336,-12.333334,0" Angle="0" Width="0" IsDefaultWidth="1"/>
+     <Point Pos="-124.75,-37,0" Back="-83.166664,-24.666664,0" Forw="-124.75,-37,0" Angle="0" Width="0" IsDefaultWidth="1"/>
+    </Points>
+   </Object>
    <Object Type="ParticleEntity" Layer="Rivers" LayerGUID="{23c88ada-addb-40b5-a1c3-cad54c899e12}" Id="{37dca59d-79c3-431f-bc72-b8d8c558a397}" Name="ParticleEffect1" HideOrder="0" Pos="794.61029,848.76147,31.433208" FloorNumber="-1" Rotate="0.64805102,0.34734517,0.52478135,-0.42893562" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="ParticleEffect">
     <Properties bActive="1" esAttachForm="" esAttachType="" Comment="" bCountPerUnit="0" CountScale="1" NetworkSync="0" ParticleEffect="Waterfall.Waterfall.SplashesRocks3" bPrime="1" PulsePeriod="0" bRegisterByBBox="0" Scale="1" soclasses_SmartObjectClass="" SpeedScale="1" Strength="-1" TimeScale="1">
      <Audio bEnableAudio="0" audioRTPCRtpc="particlefx"/>
@@ -157,6 +163,18 @@
     <Properties bActive="1" esAttachForm="" esAttachType="" Comment="" bCountPerUnit="0" CountScale="1" NetworkSync="0" ParticleEffect="Waterfall.Waterfall.SplashesBottomDistant" bPrime="1" PulsePeriod="0" bRegisterByBBox="0" Scale="1" soclasses_SmartObjectClass="" SpeedScale="1" Strength="-1" TimeScale="1">
      <Audio bEnableAudio="0" audioRTPCRtpc="particlefx"/>
     </Properties>
+   </Object>
+   <Object VolumeDepth="10" StreamSpeed="0" FogDensity="0.1" FogColor="0.00651209,0.0262412,0.0193824" FogColorMultiplier="1" FogColorAffectedBySun="1" FogShadowing="0.5" UScale="0.22" VScale="0.32" CapFogAtVolumeDepth="0" Caustics="1" CausticIntensity="1" CausticTiling="0.25" CausticHeight="1" Type="River" Layer="Rivers" LayerGUID="{23c88ada-addb-40b5-a1c3-cad54c899e12}" Id="{16b8f2c8-ba01-4447-95c0-c51952afdb6e}" Name="River8" HideOrder="0" Pos="1578.4999,1800.25,53.099995" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/effects/fx_caveriver" MinSpec="1" Width="18" BorderWidth="8" EraseVegWidth="3" EraseVegWidthVar="0" StepSize="4" ViewDistanceMultiplier="1" TileLength="5">
+    <Points>
+     <Point Pos="0,0,0" Back="0,0,0" Forw="0.6970461,-2.9368756,0" Angle="0" Width="18" IsDefaultWidth="1"/>
+     <Point Pos="1,-9,0" Back="1.426875,-6.0118752,0" Forw="0.5666666,-12.033334,0" Angle="0" Width="10" IsDefaultWidth="1"/>
+     <Point Pos="-2.5,-17.5,0" Back="-1.1497203,-14.74943,0" Forw="-5.6538849,-23.92458,0" Angle="0" Width="18" IsDefaultWidth="1"/>
+     <Point Pos="-12.5,-36.5,0" Back="-10.917887,-29.52009,0" Forw="-13.867671,-42.533844,0" Angle="0" Width="15" IsDefaultWidth="1"/>
+     <Point Pos="-11,-55,0" Back="-10.082232,-48.881546,0" Forw="-12.125934,-62.506226,0" Angle="0" Width="0" IsDefaultWidth="1"/>
+     <Point Pos="-18.5,-76.5,0" Back="-19.935925,-69.04686,0" Forw="-16.129562,-88.803703,0" Angle="0" Width="18" IsDefaultWidth="1"/>
+     <Point Pos="-0.5,-109.5,0" Back="2.6204755,-97.364815,0" Forw="-3.5754302,-121.46001,0" Angle="0" Width="0" IsDefaultWidth="1"/>
+     <Point Pos="-32,-129,0" Back="-20.063717,-125.83374,0" Forw="-32,-129,0" Angle="0" Width="0" IsDefaultWidth="1"/>
+    </Points>
    </Object>
    <Object Type="ParticleEntity" Layer="Rivers" LayerGUID="{23c88ada-addb-40b5-a1c3-cad54c899e12}" Id="{5b3d40ce-cd3d-4ba3-aaf0-dcde8dbf5d59}" Name="WaterfallSplashSmallFX" HideOrder="0" Pos="952.46545,1008.5916,53.529476" FloorNumber="-1" Rotate="0.86190826,0.16626409,-0.42770144,0.21573569" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="ParticleEffect">
     <Properties bActive="1" esAttachForm="" esAttachType="" Comment="" bCountPerUnit="0" CountScale="1" NetworkSync="0" ParticleEffect="Waterfall.Waterfall.SplashesSmall" bPrime="1" PulsePeriod="0" bRegisterByBBox="0" Scale="1" soclasses_SmartObjectClass="" SpeedScale="1" Strength="-1" TimeScale="1">

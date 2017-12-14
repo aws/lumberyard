@@ -16,7 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzToolsFramework/UI/LegacyFramework/UIFrameworkAPI.h>
-#include <QtWidgets/QDialog>
+#include <QDialog>
 
 namespace Ui
 {

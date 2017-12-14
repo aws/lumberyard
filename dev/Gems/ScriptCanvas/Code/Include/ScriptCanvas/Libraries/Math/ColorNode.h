@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_ColorNodeHasProperties = true;
-
             class Color
-                : public NativeDatumNode<Color, Data::ColorType, k_ColorNodeHasProperties>
+                : public NativeDatumNode<Color, Data::ColorType>
             {
             public:
-                using ParentType = NativeDatumNode<Color, Data::ColorType, k_ColorNodeHasProperties>;
+                using ParentType = NativeDatumNode<Color, Data::ColorType>;
                 AZ_COMPONENT(Color, "{26FBE6FF-C4B4-4D62-9474-3B2EE1B3E165}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -45,18 +43,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Color.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    AddProperty(&AZ::Color::GetR, &AZ::Color::SetR, "r");
-                    AddProperty(&AZ::Color::GetG, &AZ::Color::SetG, "g");
-                    AddProperty(&AZ::Color::GetB, &AZ::Color::SetB, "b");
-                    AddProperty(&AZ::Color::GetA, &AZ::Color::SetA, "a");
                 }
 
                 void Visit(NodeVisitor& visitor) const override

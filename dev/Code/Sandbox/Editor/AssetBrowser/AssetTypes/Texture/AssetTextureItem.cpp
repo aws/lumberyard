@@ -16,6 +16,7 @@
 
 #include "StdAfx.h"
 #include "AssetTextureItem.h"
+#include "Util/GdiUtil.h"
 #include "Util/MemoryBlock.h"
 #include "Util/Image.h"
 #include "Util/ImageUtil.h"
@@ -499,7 +500,7 @@ bool CAssetTextureItem::Render(QWidget* hRenderWindow, const QRect& r, bool bCac
     {
         QPainter painter(hRenderWindow);
 
-        QBrush brush(CGdiCanvas::ScaleColor(m_previewBackColor, AssetBrowser::kTexturePreviewGridScaleBackColor), Qt::DiagCrossPattern);
+        QBrush brush(ScaleColor(m_previewBackColor, AssetBrowser::kTexturePreviewGridScaleBackColor), Qt::DiagCrossPattern);
         painter.fillRect(r, m_previewBackColor);
         painter.fillRect(r, brush);
 
@@ -597,8 +598,8 @@ void CAssetTextureItem::DrawTextOnReportImage(QPaintDevice* pd) const
     const QColor filenameShadowColor(0, 0, 0);
     const QColor filenameColor(255, 255, 0);
     const QColor otherInfosColor(0, 0, 0);
-    QFont fontInfoTitle(QStringLiteral("Arial"), 9.5, QFont::Bold);
-    QFont fontInfo(QStringLiteral("Arial"), 8.0, QFont::Bold);
+    QFont fontInfoTitle(QStringLiteral("Arial"), 9, QFont::Bold);
+    QFont fontInfo(QStringLiteral("Arial"), 8, QFont::Bold);
 
     QPainter painter(pd);
     painter.setFont(fontInfoTitle);

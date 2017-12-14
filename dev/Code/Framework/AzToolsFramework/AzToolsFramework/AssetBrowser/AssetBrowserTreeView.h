@@ -48,7 +48,6 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             // QTreeView
             //////////////////////////////////////////////////////////////////////////
-            void startDrag(Qt::DropActions supportedActions) override;
             void setModel(QAbstractItemModel* model) override;
             
             void LoadState(const QString& name);

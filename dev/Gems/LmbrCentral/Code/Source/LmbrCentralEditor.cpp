@@ -23,6 +23,7 @@
 #include "Audio/EditorAudioAreaEnvironmentComponent.h"
 #include "Audio/EditorAudioEnvironmentComponent.h"
 #include "Audio/EditorAudioListenerComponent.h"
+#include "Audio/EditorAudioPreloadComponent.h"
 #include "Audio/EditorAudioRtpcComponent.h"
 #include "Audio/EditorAudioSwitchComponent.h"
 #include "Audio/EditorAudioTriggerComponent.h"
@@ -44,10 +45,12 @@
 #include "Rendering/EditorSkinnedMeshComponent.h"
 #include "Rendering/EditorParticleComponent.h"
 #include "Rendering/EditorFogVolumeComponent.h"
+#include "Rendering/EditorGeomCacheComponent.h"
 #include "Animation/EditorSimpleAnimationComponent.h"
 #include "Animation/EditorMannequinScopeComponent.h"
 #include "Animation/EditorMannequinComponent.h"
 #include "Scripting/EditorLookAtComponent.h"
+#include "Scripting/EditorRandomTimedSpawnerComponent.h"
 #include "Scripting/EditorTagComponent.h"
 #include "Scripting/EditorTriggerAreaComponent.h"
 
@@ -74,6 +77,7 @@ namespace LmbrCentral
             EditorAudioAreaEnvironmentComponent::CreateDescriptor(),
             EditorAudioEnvironmentComponent::CreateDescriptor(),
             EditorAudioListenerComponent::CreateDescriptor(),
+            EditorAudioPreloadComponent::CreateDescriptor(),
             EditorAudioRtpcComponent::CreateDescriptor(),
             EditorAudioSwitchComponent::CreateDescriptor(),
             EditorAudioTriggerComponent::CreateDescriptor(),
@@ -111,6 +115,8 @@ namespace LmbrCentral
             EditorNavigationAreaComponent::CreateDescriptor(),
             EditorNavigationSeedComponent::CreateDescriptor(),
             EditorFogVolumeComponent::CreateDescriptor(),
+            EditorRandomTimedSpawnerComponent::CreateDescriptor(),
+            EditorGeometryCacheComponent::CreateDescriptor(),
             #ifdef METRICS_SYSTEM_COMPONENT_ENABLED
                 LyEditorMetrics::LyEditorMetricsSystemComponent::CreateDescriptor(),
             #endif // #ifdef METRICS_SYSTEM_COMPONENT_ENABLED
@@ -124,6 +130,10 @@ namespace LmbrCentral
             typeIds.emplace_back(descriptor->GetUuid());
         }
         EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, typeIds);
+    }
+
+    LmbrCentralEditorModule::~LmbrCentralEditorModule()
+    {
     }
 
     AZ::ComponentTypeList LmbrCentralEditorModule::GetRequiredSystemComponents() const

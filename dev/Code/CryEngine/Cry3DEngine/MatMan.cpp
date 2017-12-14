@@ -41,22 +41,28 @@ int CMatMan::e_sketch_mode = 0;
 int CMatMan::e_pre_sketch_spec = 0;
 int CMatMan::e_texeldensity = 0;
 
+//------------------------------------------------------------------------------
+// Default textures declarations
+//------------------------------------------------------------------------------
 #if !defined(_RELEASE)
-    // Texture names to be used for error / process loading indications
-    static const char* szDefaultSolid = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
-static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMe.tif";
+	// Texture names to be used for error / process loading indications
+    static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMe.tif";
     static const char* szTextureCompiling = "EngineAssets/TextureMsg/TextureCompiling.tif";
     static const char* szShaderCompiling = "EngineAssets/TextureMsg/ShaderCompiling.tif";
-static const char* szGeomNotBreakable = "EngineAssets/TextureMsg/GeomNotBreakable.tif";
+    static const char* szGeomNotBreakable = "EngineAssets/TextureMsg/GeomNotBreakable.tif";
 #else
     // Some of the textures here will direct to the regular DefaultSolids_diff to prevent eye catching
     // bug textures in release mode
-    static const char* szDefaultSolid = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
-static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
+    static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
     static const char* szTextureCompiling = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
     static const char* szShaderCompiling = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
-static const char* szGeomNotBreakable = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
+    static const char* szGeomNotBreakable = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
 #endif
+
+static const char* szDefaultSolid = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
+static const char* szNormalDefault = "EngineAssets/Textures/white_ddn.dds";
+//------------------------------------------------------------------------------
+
 
 static void OnSketchModeChange(ICVar* pVar)
 {
@@ -160,7 +166,7 @@ _smart_ptr<IMaterial> CMatMan::CreateMaterial(const char* sMtlName, int nMtlFlag
 //////////////////////////////////////////////////////////////////////////
 // A placeholder material while the original is loading.
 // Add more edge case handling for various material types if required
-_smart_ptr<IMaterial> CMatMan::CreateMaterialPlaceholder(const char* materialName, int nMtlFlags, const char* textureName)
+_smart_ptr<IMaterial> CMatMan::CreateMaterialPlaceholder(const char* materialName, int nMtlFlags, const char* textureName, _smart_ptr<IMaterial> existingMtl)
 {
     SInputShaderResources   sr;
     SShaderItem             si;
@@ -168,7 +174,9 @@ _smart_ptr<IMaterial> CMatMan::CreateMaterialPlaceholder(const char* materialNam
     sr.m_LMaterial.m_Opacity = 1;
     sr.m_LMaterial.m_Diffuse.set(1, 1, 1, 1);
     sr.m_LMaterial.m_Specular.set(0, 0, 0, 0);
-    sr.m_Textures[EFTT_DIFFUSE].m_Name = textureName;
+
+    // This will create texture data insertion to the table for the diffuse slot
+    sr.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = textureName;
 
     if (nMtlFlags & MTL_FLAG_IS_TERRAIN)
         si = GetRenderer()->EF_LoadShaderItem("Terrain.Layer", true, 0, &sr);
@@ -180,10 +188,30 @@ _smart_ptr<IMaterial> CMatMan::CreateMaterialPlaceholder(const char* materialNam
     if (si.m_pShaderResources)
         si.m_pShaderResources->SetMaterialName(materialName);
 
-    _smart_ptr<IMaterial>   pMtl = CreateMaterial(materialName);
-    pMtl->AssignShaderItem(si);
+    if (existingMtl)
+    {
+        //For existing material we need to clear sub-materials, set flags and assign the new shader item.
+        existingMtl->SetSubMtlCount(0);
+        existingMtl->SetFlags(nMtlFlags);
+        existingMtl->AssignShaderItem(si);
 
-    return pMtl;
+        //Note: All PURE_CHILD materials are sub-materials, but not all sub-materials are PURE_CHILD.
+        //You can have one sub-material that shares some properties with another sub-material in the same parent, and overrides other properties. A sub-material that does this is not a pure child.
+        //But since it is seldom used, this should cover most cases when we want to know whether the material is a root.
+        if (!(nMtlFlags & MTL_FLAG_PURE_CHILD))
+        {
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_materialMapMutex);
+            m_mtlNameMap[UnifyName(materialName)] = existingMtl;
+        }
+
+        return existingMtl;
+    }
+    else
+    {
+        _smart_ptr<IMaterial>   pMtl = CreateMaterial(materialName);
+        pMtl->AssignShaderItem(si);
+        return pMtl;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -210,8 +238,6 @@ bool CMatMan::Unregister(_smart_ptr<IMaterial> pMat, bool deleteEditorMaterial)
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_materialMapMutex);
         
         AZStd::string unifiedName = UnifyName(pMat->GetName());
-
-        m_mtlNameMap.erase(unifiedName);
         m_pendingMaterialLoads.erase(unifiedName);
     }
     return true;
@@ -283,10 +309,10 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
         return m_pDefaultMtl;
     }
 
-    AZStd::string name = UnifyName(sMtlName);
-    _smart_ptr<IMaterial> pMtl = nullptr;
+    AZStd::string           name = UnifyName(sMtlName);
+    _smart_ptr<IMaterial>   pMtl = nullptr;
 
-    UniqueManualEvent uniqueManualEvent = CheckMaterialCache(name, pMtl);
+    UniqueManualEvent       uniqueManualEvent = CheckMaterialCache(name, pMtl);
 
     if (pMtl != nullptr)
     {
@@ -336,7 +362,7 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
             // Fall through
         case AzFramework::AssetSystem::AssetStatus_Compiling:
         {
-            AZStd::string unifiedName = UnifyName(filename.c_str());
+            AZStd::string   unifiedName = UnifyName(filename.c_str());
             pMtl = CreateMaterialPlaceholder(unifiedName.c_str(), nLoadingFlags, szDefaultSolid );
             break;
         }
@@ -524,11 +550,12 @@ _smart_ptr<IMaterial> CMatMan::MakeMaterialFromXml(const AZStd::string& sMtlName
         s_materialHelpers.SetTexturesFromXml(sr, node);
         s_materialHelpers.MigrateXmlLegacyData(sr, node);
 
-        for (EEfResTextures texId = EFTT_DIFFUSE; texId < EFTT_MAX; texId = EEfResTextures(texId + 1))
+        // Next warn about textures with drive letter in them
+        for (auto &iter : sr.m_TexturesResourcesMap )
         {
-            // Ignore textures with drive letters in them
-            const char* name = sr.m_Textures[texId].m_Name;
-            if (name && (strchr(name, ':') != NULL))
+            SEfResTexture*      pTexture = &(iter.second);
+            const char*         name = pTexture->m_Name;
+            if (name && (strchr(name, ':') != nullptr))
             {
                 CryLog("Invalid texture '%s' found in material '%s'", name, sMtlName.c_str());
             }
@@ -562,6 +589,11 @@ _smart_ptr<IMaterial> CMatMan::MakeMaterialFromXml(const AZStd::string& sMtlName
         
         LoadMaterialShader(pMtl, pParentMtl, shaderName.c_str(), nShaderGenMask, sr, publicVarsNode);
         pMtl->SetShaderName(shaderName);
+    }
+    else
+    {
+        //Release any shader item if assigned for material group
+        pMtl->ReleaseCurrentShaderItem();
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -622,7 +654,7 @@ _smart_ptr<IMaterial> CMatMan::MakeMaterialFromXml(const AZStd::string& sMtlName
                     }
                 }
 
-                SShaderItem pShaderItemBase = pMtl->GetShaderItem();
+                SShaderItem& pShaderItemBase = pMtl->GetShaderItem();
                 if (pShaderItemBase.m_pShaderResources)
                 {
                     pShaderItemBase.m_pShaderResources->SetMtlLayerNoDrawFlags(nMaterialLayerFlags);
@@ -716,30 +748,36 @@ bool CMatMan::LoadMaterialLayerSlot(uint32 nSlot, _smart_ptr<IMaterial> pMtl, co
     }
 
     // Get base material/shaderItem info
-    SInputShaderResources pInputResources;
-    SShaderItem pShaderItemBase = pMtl->GetShaderItem();
+    SInputShaderResources       pInputResources;
+    SShaderItem& pShaderItemBase = pMtl->GetShaderItem();
 
     uint32 nMaskGenBase = (uint32)pShaderItemBase.m_pShader->GetGenerationMask();
     SShaderGen* pShaderGenBase = pShaderItemBase.m_pShader->GetGenerationParams();
 
     // copy diffuse and bump textures names
-
     pInputResources.m_szMaterialName = pBaseResources.m_szMaterialName;
-    pInputResources.m_Textures[EFTT_DIFFUSE].m_Name = pBaseResources.m_Textures[EFTT_DIFFUSE].m_Name;
-    pInputResources.m_Textures[EFTT_NORMALS].m_Name = pBaseResources.m_Textures[EFTT_NORMALS].m_Name;
 
-    // Check if names are valid - else replace with default textures
-
-    if (pInputResources.m_Textures[EFTT_DIFFUSE].m_Name.empty())
+    // The following copies the entire texture data for this slot as it did not exist in the map
+    if (pBaseResources.GetTextureResource(EFTT_DIFFUSE))
     {
-        pInputResources.m_Textures[EFTT_DIFFUSE].m_Name = szReplaceMe;
+        pInputResources.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = pBaseResources.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name;
     }
 
-    if (pInputResources.m_Textures[EFTT_NORMALS].m_Name.empty())
+    if (pBaseResources.GetTextureResource(EFTT_NORMALS))
     {
-        pInputResources.m_Textures[EFTT_NORMALS].m_Name = "EngineAssets/Textures/white_ddn.dds";
+        pInputResources.m_TexturesResourcesMap[EFTT_NORMALS].m_Name = pBaseResources.m_TexturesResourcesMap[EFTT_NORMALS].m_Name;
     }
 
+    // Names validity - if the texture slot doesn't exist or no name replace with default textures
+    if (pInputResources.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name.empty())
+    {
+        pInputResources.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = szReplaceMe;
+    }
+
+    if (pInputResources.m_TexturesResourcesMap[EFTT_NORMALS].m_Name.empty())
+    {
+        pInputResources.m_TexturesResourcesMap[EFTT_NORMALS].m_Name = szNormalDefault;
+    }
     // Load layer shader item
     IShader* pNewShader = gEnv->pRenderer->EF_LoadShader(szShaderName, 0);
     if (!pNewShader)
@@ -950,9 +988,7 @@ _smart_ptr<IMaterial> CMatMan::CloneMaterial(_smart_ptr<IMaterial> pSrcMtl, int 
     }
     else
     {
-        _smart_ptr<IMaterial> pMat = nullptr;
-        CMatInfo* pCMat = ((CMatInfo*)pSrcMtl.get())->Clone();
-        pMat = (IMaterial*)pCMat;
+        _smart_ptr<IMaterial> pMat = reinterpret_cast<CMatInfo*>(pSrcMtl.get())->Clone();
         return pMat;
     }
 }
@@ -1071,7 +1107,8 @@ void CMatMan::InitDefaults()
         SInputShaderResources sr;
         sr.m_LMaterial.m_Opacity = 1;
         sr.m_LMaterial.m_Diffuse.set(1, 1, 1, 1);
-        sr.m_Textures[EFTT_DIFFUSE].m_Name = szReplaceMe;
+        // Notice that the following line creates a texture data slot, inserts it and set the texture name
+        sr.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = szReplaceMe;    
         SShaderItem si = GetRenderer()->EF_LoadShaderItem("Helper", true, 0, &sr);
         if (si.m_pShaderResources)
         {
@@ -1162,11 +1199,18 @@ void CMatMan::ReloadMaterial(_smart_ptr<IMaterial> pMtl)
 
     XmlNodeRef mtlNode = GetSystem()->LoadXmlFromFile(filename.c_str());
 
-    // This should reload the Material's data in-place without modifying any
-    // material management registration. Otherwise we would have to send some
-    // kind of messages about the material being replaced to every object 
-    // with a pointer to it.
-    MakeMaterialFromXml(name, mtlNode, false, 0, pMtl);
+    if (mtlNode)
+    {
+        // This should reload the Material's data in-place without modifying any
+        // material management registration. Otherwise we would have to send some
+        // kind of messages about the material being replaced to every object 
+        // with a pointer to it.
+        MakeMaterialFromXml(name, mtlNode, false, 0, pMtl);
+    }
+    else
+    {
+        AZ_Warning("Material System", false, "Failed to re-load %s", filename.c_str());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1489,91 +1533,26 @@ void CMatMan::RefreshShaderResourceConstants()
 
 // override from LegacyAssetEventBus::Handler
 // Notifies listeners that a file changed
-//Note: Currently the material editor doesn't hotload, it directly manipulates memory and then
-//writes to disk.  By adding hotloading we are going to hit a double load/delete attempt.
-//This shouldn't be an issue but just a note to avoid confusion at a later date. 
 void CMatMan::OnFileChanged(AZStd::string assetPath)
 {
     _smart_ptr<IMaterial> mat = FindMaterial(assetPath.c_str());
 
+    //Reload material pointer in place if the material is found
     if (mat)
     {
-        Unregister(mat, false);
-
-        //Check all statObjs to see if they are using this material and reload them if so.
-        int statObjCount = 0;
-
-        gEnv->p3DEngine->GetLoadedStatObjArray(nullptr, statObjCount);
-        if (statObjCount > 0)
-        {
-            std::vector<IStatObj*> objects;
-            objects.resize(statObjCount);
-            gEnv->p3DEngine->GetLoadedStatObjArray(&objects[0], statObjCount);
-            for (int curObj = 0; curObj < statObjCount; ++curObj)
-            {
-                _smart_ptr<IMaterial> objMat = objects[curObj]->GetMaterial();
-                if (mat == objMat)
-                {
-                    objects[curObj]->Refresh(FRO_GEOMETRY);
-                }
-            }
-        }
+        ReloadMaterial(mat);
     }
-    else
-    {
-        //Here we are creating the file.  However some statobjs might have
-        //been trying to use the file already. Think a delete and undo. 
-        //Walk stat objects and force reload any that are trying to use the default material.
-        int statObjCount = 0;
-
-        gEnv->p3DEngine->GetLoadedStatObjArray(nullptr, statObjCount);
-        if (statObjCount > 0)
-        {
-            std::vector<IStatObj*> objects;
-            objects.resize(statObjCount);
-            gEnv->p3DEngine->GetLoadedStatObjArray(&objects[0], statObjCount);
-            for (int curObj = 0; curObj < statObjCount; ++curObj)
-            {
-                _smart_ptr<IMaterial> objMaterial = objects[curObj]->GetMaterial();
-                if (objMaterial && !strcmp(objMaterial->GetName(),
-                    "Default"))
-                {
-                    objects[curObj]->Refresh(FRO_GEOMETRY);
-                }
-            }
-        }
-
-    }
-
 }
 
 void CMatMan::OnFileRemoved(AZStd::string assetPath)
 {
     _smart_ptr<IMaterial> mat = FindMaterial(assetPath.c_str());
+
+    //Reload the material in place to a place holder
     if (mat)
     {
         Unregister(mat);
-
-
-        //Check all statObjs to see if they are using this material and reload them if so.
-        int statObjCount = 0;
-
-        gEnv->p3DEngine->GetLoadedStatObjArray(nullptr, statObjCount);
-        if (statObjCount > 0)
-        {
-            std::vector<IStatObj*> objects;
-            objects.resize(statObjCount);
-            gEnv->p3DEngine->GetLoadedStatObjArray(&objects[0], statObjCount);
-            for (int curObj = 0; curObj < statObjCount; ++curObj)
-            {
-                _smart_ptr<IMaterial> objMat = objects[curObj]->GetMaterial();
-                if (mat == objMat)
-                {   
-                    objects[curObj]->SetMaterial(nullptr);
-                    objects[curObj]->Refresh(FRO_GEOMETRY);
-                }
-            }
-        }
+        CreateMaterialPlaceholder(mat->GetName(), mat->GetFlags(), szDefaultSolid, mat);
     }
 }
 

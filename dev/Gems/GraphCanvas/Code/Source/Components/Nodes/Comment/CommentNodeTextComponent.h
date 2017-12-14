@@ -19,8 +19,11 @@
 #include <QTimer>
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Math/Color.h>
+#include <AzCore/RTTI/TypeInfo.h>
 
 #include <Components/Nodes/General/GeneralNodeLayoutComponent.h>
+#include <GraphCanvas/Components/EntitySaveDataBus.h>
 #include <GraphCanvas/Components/GraphCanvasPropertyBus.h>
 #include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
 #include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
@@ -40,9 +43,34 @@ namespace GraphCanvas
         , public NodeNotificationBus::Handler
         , public CommentRequestBus::Handler
         , public CommentLayoutRequestBus::Handler
+        , public EntitySaveDataRequestBus::Handler
     {
     public:
         AZ_COMPONENT(CommentNodeTextComponent, "{15C568B0-425C-4655-814D-0A299341F757}", GraphCanvasPropertyComponent);
+
+        class CommentNodeTextComponentSaveData
+            : public ComponentSaveData
+        {
+        public:
+            AZ_RTTI(CommentNodeTextComponentSaveData, "{524D8380-AC09-444E-870E-9CEF2535B4A2}", ComponentSaveData);
+            AZ_CLASS_ALLOCATOR(CommentNodeTextComponentSaveData, AZ::SystemAllocator, 0);
+
+            CommentNodeTextComponentSaveData();
+            CommentNodeTextComponentSaveData(CommentNodeTextComponent* nodeComponent);
+
+            void operator=(const CommentNodeTextComponentSaveData& other);
+
+            void OnCommentChanged();
+            void UpdateStyleOverrides();
+
+            AZStd::string m_comment;
+            FontConfiguration m_fontConfiguration;
+
+        private:
+            CommentNodeTextComponent* m_callback;
+        };
+
+        friend class CommentNodeTextComponentSaveData;
 
         static void Reflect(AZ::ReflectContext*);
 
@@ -82,19 +110,37 @@ namespace GraphCanvas
 
         // CommentRequestBus
         void SetComment(const AZStd::string& comment) override;
-        const AZStd::string& GetComment() const override;        
+        const AZStd::string& GetComment() const override;
+
+        void SetCommentMode(CommentMode commentMode) override;
         ////
 
         // CommentLayoutRequestBus
         QGraphicsLayoutItem* GetGraphicsLayoutItem() override;
         ////
 
+        // EntitySaveDataRequestBus
+        void WriteSaveData(EntitySaveDataContainer& saveDataContainer) const override;
+        void ReadSaveData(const EntitySaveDataContainer& saveDataContainer) override;
+        ////
+
+    protected:
+
         void OnCommentChanged();
+        void UpdateStyleOverrides();
 
     private:
         CommentNodeTextComponent(const CommentNodeTextComponent&) = delete;
 
-        AZStd::string m_comment;
+        CommentNodeTextComponentSaveData m_saveData;
+
         CommentTextGraphicsWidget* m_commentTextWidget;
     };
+}
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(Qt::AlignmentFlag, "{8CCC83B0-F267-49FE-A9B7-8065F5869E91}")
+    AZ_TYPE_INFO_SPECIALIZE(QFont::Style, "{49E7569D-19FE-4BC2-8242-D5DCF5454137}");
+    AZ_TYPE_INFO_SPECIALIZE(QFont::Capitalization, "{37EDD868-C58E-4C21-840A-3CE4714CEEA3}");
 }

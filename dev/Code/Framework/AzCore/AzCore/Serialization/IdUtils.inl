@@ -21,7 +21,7 @@ namespace AZ
     namespace IdUtils
     {
         // Type IDs of types of special interest (we copy the string as it should never change)
-        static const AZ::Uuid s_pairID = AZ::Uuid::CreateString("{9F3F5302-3390-407a-A6F7-2E011E3BB686}"); // AZStd::pair 
+        static const AZ::Uuid s_GenericClassPairID = AZ::Uuid::CreateString("{9F3F5302-3390-407a-A6F7-2E011E3BB686}"); // GenericClassPair
         struct StackDataType
         {
             const AZ::SerializeContext::ClassData* m_classData;
@@ -53,12 +53,13 @@ namespace AZ
                     IdGenerator idGeneratorFunc;
                     if (elementData)
                     {
-                        auto attributeIt = elementData->m_attributes.find(AZ::Edit::Attributes::IdGeneratorFunction);
-                        if (attributeIt != elementData->m_attributes.end())
+                        AZ::Attribute* attribute = FindAttribute(AZ::Edit::Attributes::IdGeneratorFunction, elementData->m_attributes);
+                        if (attribute)
                         {
-                            if(auto funcAttribute = azrtti_cast<AZ::AttributeData<IdGenerator>*>(attributeIt->second))
+                            AZ_Assert(azrtti_istypeof<AttributeFunction<IdType()>>(attribute), "Attribute \"AZ::Edit::Attributes::IdGeneratorFunction\" must contain a non-member function with signature IdType()");
+                            if (auto funcAttribute = azrtti_cast<AZ::AttributeFunction<IdType()>*>(attribute))
                             {
-                                idGeneratorFunc = funcAttribute->Get(nullptr);
+                                idGeneratorFunc = [funcAttribute](){ return funcAttribute->Invoke(nullptr); };
                             }
                         }
                     }
@@ -97,7 +98,8 @@ namespace AZ
                                 // or any other side effect. If this become the case, we can Reflect a function to handle when we remap UUID (or any field) 
                                 // reflect it during the serialization and react anytime we change the content on the UUID, via the OnWriteBegin/OnWriteEnd events
                                 StackDataType& parentInfo = parentStack.back();
-                                if (parentInfo.m_classData->m_typeId == IdUtils::s_pairID)
+                                GenericClassInfo* genericClassInfo = context->FindGenericClassInfo(parentInfo.m_classData->m_typeId);
+                                if (genericClassInfo && genericClassInfo->GetGenericTypeId() == IdUtils::s_GenericClassPairID)
                                 {
                                     if (parentStack.size() >= 2) // check if the pair is part of a container
                                     {

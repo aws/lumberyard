@@ -29,8 +29,7 @@ def build(bld):
         uselib                      = ['QT5CORE',
                                        'QT5GUI',
                                        'QT5WIDGETS',
-                                       'QT5NETWORK',
-                                       'XTP'],
+                                       'QT5NETWORK'],
         features                    = ['qt5'],
         defines                     = [ 'EDITOR_COMMON_IMPORTS'],
         #==============================

@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #include "MetastreamGem.h"
@@ -29,6 +30,13 @@ namespace Metastream
 
     void Metastream::MetastreamReflectComponent::Reflect(AZ::ReflectContext* context)
     {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<MetastreamReflectComponent, AZ::Component>()
+                ->Version(0)
+                ;
+        }
+
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {

@@ -101,6 +101,9 @@ namespace CloudGemAWSScriptBehaviors
 
         using S3UploadRequestJob = AWS_API_REQUEST_JOB(S3, PutObject);
         S3UploadRequestJob::Config config(S3UploadRequestJob::GetDefaultConfig());
+        AZStd::string region;
+        EBUS_EVENT_RESULT(region, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "region");
+        config.region = region.c_str();
 
         auto job = S3UploadRequestJob::Create(
             [](S3UploadRequestJob* job) // OnSuccess handler

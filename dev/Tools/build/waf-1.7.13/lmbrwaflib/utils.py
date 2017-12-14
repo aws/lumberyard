@@ -42,7 +42,7 @@ def fast_copyfile(src, dst, buffer_size=1024*1024):
         with open(dst, 'wb') as fdst:
             shutil.copyfileobj(fsrc, fdst, buffer_size)
 
-def fast_copy2(src, dst, buffer_size=1024*1024):
+def fast_copy2(src, dst, check_file_hash=False, buffer_size=1024*1024):
     """
     Copy data and all stat info ("cp -p src dst").
     The destination may be a directory.
@@ -51,8 +51,19 @@ def fast_copy2(src, dst, buffer_size=1024*1024):
 
     if os.path.isdir(dst):
         dst = os.path.join(dst, os.path.basename(src))
+
+    # If the destination file exists, and we want to check the fingerprints, perform the check
+    # to see if we need to actually copy the file
+    if os.path.exists(dst) and check_file_hash:
+        src_hash = calculate_file_hash(src)
+        dst_hash = calculate_file_hash(dst)
+        if src_hash == dst_hash:
+            # If the hashes match, no need to try to copy
+            return False
+
     fast_copyfile(src, dst, buffer_size)
     shutil.copystat(src, dst)
+    return True
 
 MAX_TIMESTAMP_DELTA_MILS = datetime.timedelta(milliseconds=1)
 

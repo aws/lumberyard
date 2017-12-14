@@ -663,31 +663,35 @@ namespace AZ
         };
 
         /**
-         * Set the 3D transform.
-         * Sets both the local and world transform to the same value.
-         * SetLocalAndWorldTransform() is suggested when a parent is assigned.
-         * @param transform The entity's position, rotation, and scale in 3D.
+         * Constructor with all default values.
+         * Transform is positioned at (0,0,0) with no rotation and scale of 1.
          */
-        void SetTransform(const Transform& transform)
-        {
-            m_localTransform = transform;
-            m_worldTransform = transform;
-        }
+        TransformConfig() = default;
 
         /**
-         * Set the local and world 3D transform.
-         * This function is suggested over SetTransform() when a parent is assigned.
-         * @param localTransform The local transform, as an offset from its parent.
-         * @param worldTransform The world transform.
+         * Constructor which sets a 3D transform.
+         * Sets both the local and world transform to the same value.
+         * @param transform The entity's position, rotation, and scale in 3D.
          */
-        void SetLocalAndWorldTransform(const Transform& localTransform, const Transform& worldTransform)
-        {
-            m_localTransform = localTransform;
-            m_worldTransform = worldTransform;
-        }
+        explicit TransformConfig(const Transform& transform)
+            : m_localTransform(transform)
+            , m_worldTransform(transform)
+        {}
 
-        const Transform& GetLocalTransform() const { return m_localTransform; }
-        const Transform& GetWorldTransform() const { return m_worldTransform; }
+        /**
+         * World 3D transform.
+         * This property is used if no parent is assigned,
+         * or if the assigned parent entity cannot be found.
+         * This property is ignored if the assigned parent is present.
+         */
+        Transform m_worldTransform = Transform::Identity();
+
+        /**
+         * Local 3D transform, as an offset from the parent entity.
+         * This property is used to offset the entity from its parent's world transform.
+         * Local transform is ignored if no parent is assigned.
+         */
+        Transform m_localTransform = Transform::Identity();
 
         /**
          * ID of parent entity.
@@ -697,6 +701,10 @@ namespace AZ
 
         /**
          * Behavior when the parent entity activates.
+         * A parent entity is not guaranteed to activate before its children.
+         * If a parent entity activates after its child, this property
+         * determines whether the entity maintains its current world transform
+         * or snaps to maintain the local transform as an offset from the parent.
          */
         ParentActivationTransformMode m_parentActivationTransformMode = ParentActivationTransformMode::MaintainOriginalRelativeTransform;
 
@@ -721,17 +729,29 @@ namespace AZ
          */
         bool m_isStatic = false;
 
-    protected:
+        /// @cond EXCLUDE_DOCS
 
-        /**
-         * Local 3D transform.
-         */
-        Transform m_localTransform = Transform::Identity();
+        /// @deprecated Deprecated, access properties directly.
+        void SetTransform(const Transform& transform)
+        {
+            m_localTransform = transform;
+            m_worldTransform = transform;
+        }
 
-        /**
-         * World 3D transform.
-         */
-        Transform m_worldTransform = Transform::Identity();
+        /// @deprecated Deprecated, access properties directly.
+        void SetLocalAndWorldTransform(const Transform& localTransform, const Transform& worldTransform)
+        {
+            m_localTransform = localTransform;
+            m_worldTransform = worldTransform;
+        }
+
+        /// @deprecated Deprecated, access property directly.
+        const Transform& GetLocalTransform() const { return m_localTransform; }
+
+        /// @deprecated Deprecated, access property directly.
+        const Transform& GetWorldTransform() const { return m_worldTransform; }
+
+        /// @endcond
     };
 
     AZ_TYPE_INFO_SPECIALIZE(TransformConfig::ParentActivationTransformMode, "{03FD8A24-CE8F-4651-A3CC-09F40D36BC2C}");

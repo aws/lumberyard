@@ -21,6 +21,38 @@
 #include <IMovieSystem.h>
 
 #include "Util/BoostPythonHelpers.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimParamType.h"
+#include "Maestro/Types/AnimValueType.h"
+
+namespace
+{
+    CTrackViewSequence* GetSequenceByEntityIdOrName(const CTrackViewSequenceManager* pSequenceManager, const char* entityIdOrName)
+    {
+        // the "name" string will be an AZ::EntityId in string form if this was called from
+        // TrackView code. But for backward compatibility we also support a sequence name.
+        bool isNameAValidU64 = false;
+        QString entityIdString = entityIdOrName;
+        AZ::u64 nameAsU64 = entityIdString.toULongLong(&isNameAValidU64);
+
+        CTrackViewSequence* pSequence = nullptr;
+        if (isNameAValidU64)
+        {
+            // "name" string was a valid u64 represented as a string. Use as an entity Id to search for sequence.
+            pSequence = pSequenceManager->GetSequenceByEntityId(AZ::EntityId(nameAsU64));
+        }
+
+        if (!pSequence)
+        {
+            // name passed in could not find a sequence by using it as an EntityId. Use it as a
+            // sequence name for backward compatibility
+            pSequence = pSequenceManager->GetSequenceByName(entityIdOrName);
+        }
+
+        return pSequence;
+    }
+
+}
 
 namespace
 {
@@ -50,13 +82,13 @@ namespace
         }
 
         CUndo undo("Create TrackView sequence");
-        pSequenceManager->CreateSequence(name, static_cast<ESequenceType>(sequenceType));
+        pSequenceManager->CreateSequence(name, static_cast<SequenceType>(sequenceType));
     }
 
     void PyTrackViewDeleteSequence(const char* name)
     {
         CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(name);
+        CTrackViewSequence* pSequence = GetSequenceByEntityIdOrName(pSequenceManager, name);
         if (pSequence)
         {
             pSequenceManager->DeleteSequence(pSequence);
@@ -69,7 +101,7 @@ namespace
     void PyTrackViewSetCurrentSequence(const char* name)
     {
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(name);
+        CTrackViewSequence* pSequence = GetSequenceByEntityIdOrName(pSequenceManager, name);
         CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
         pAnimationContext->SetSequence(pSequence, false, false);
     }
@@ -94,7 +126,7 @@ namespace
     boost::python::tuple PyTrackViewGetSequenceTimeRange(const char* name)
     {
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(name);
+        CTrackViewSequence* pSequence = GetSequenceByEntityIdOrName(pSequenceManager, name);
         if (!pSequence)
         {
             throw std::runtime_error("A sequence with this name doesn't exists");
@@ -107,7 +139,7 @@ namespace
     void PyTrackViewSetSequenceTimeRange(const char* name, float start, float end)
     {
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(name);
+        CTrackViewSequence* pSequence = GetSequenceByEntityIdOrName(pSequenceManager, name);
         if (!pSequence)
         {
             throw std::runtime_error("A sequence with this name doesn't exists");
@@ -157,8 +189,8 @@ namespace
             throw std::runtime_error("No sequence is active");
         }
 
-        const EAnimNodeType nodeType = GetIEditor()->GetMovieSystem()->GetNodeTypeFromString(nodeTypeString);
-        if (nodeType == eAnimNodeType_Invalid)
+        const AnimNodeType nodeType = GetIEditor()->GetMovieSystem()->GetNodeTypeFromString(nodeTypeString);
+        if (nodeType == AnimNodeType::Invalid)
         {
             throw std::runtime_error("Invalid node type");
         }
@@ -185,7 +217,7 @@ namespace
         for (int i = 0; i < trackCount.size(); ++i)
         {
             CAnimParamType paramType = pMovieSystem->GetEntityNodeParamType(i);
-            if (paramType == eAnimParamType_Position || paramType == eAnimParamType_Rotation || paramType == eAnimParamType_Event)
+            if (paramType == AnimParamType::Position || paramType == AnimParamType::Rotation || paramType == AnimParamType::Event)
             {
                 trackCount[i] = 1;
             }
@@ -221,7 +253,7 @@ namespace
         if (strlen(parentDirectorName) > 0)
         {
             CTrackViewAnimNodeBundle foundNodes = pSequence->GetAnimNodesByName(parentDirectorName);
-            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != eAnimNodeType_Director)
+            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != AnimNodeType::Director)
             {
                 throw std::runtime_error("Director node not found");
             }
@@ -261,7 +293,7 @@ namespace
         {
             CAnimParamType paramType = pNode->GetParamType(i);
 
-            if (paramType == eAnimParamType_Invalid)
+            if (paramType == AnimParamType::Invalid)
             {
                 continue;
             }
@@ -322,7 +354,7 @@ namespace
         if (strlen(parentDirectorName) > 0)
         {
             CTrackViewAnimNodeBundle foundNodes = pSequence->GetAnimNodesByName(parentDirectorName);
-            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != eAnimNodeType_Director)
+            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != AnimNodeType::Director)
             {
                 throw std::runtime_error("Director node not found");
             }
@@ -347,7 +379,7 @@ namespace
         if (strlen(parentDirectorName) > 0)
         {
             CTrackViewAnimNodeBundle foundNodes = pSequence->GetAnimNodesByName(parentDirectorName);
-            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != eAnimNodeType_Director)
+            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != AnimNodeType::Director)
             {
                 throw std::runtime_error("Director node not found");
             }
@@ -411,8 +443,8 @@ namespace
 
         switch (pTrack->GetValueType())
         {
-        case eAnimValue_Float:
-        case eAnimValue_DiscreteFloat:
+        case AnimValueType::Float:
+        case AnimValueType::DiscreteFloat:
         {
             float value;
             pTrack->GetValue(time, value);
@@ -420,7 +452,7 @@ namespace
             prop.property.floatValue = value;
         }
         break;
-        case eAnimValue_Bool:
+        case AnimValueType::Bool:
         {
             bool value;
             pTrack->GetValue(time, value);
@@ -428,7 +460,7 @@ namespace
             prop.property.boolValue = value;
         }
         break;
-        case eAnimValue_Quat:
+        case AnimValueType::Quat:
         {
             Quat value;
             pTrack->GetValue(time, value);
@@ -438,7 +470,7 @@ namespace
             prop.property.vecValue.y = rotation.y;
             prop.property.vecValue.z = rotation.z;
         }
-        case eAnimValue_Vector:
+        case AnimValueType::Vector:
         {
             Vec3 value;
             pTrack->GetValue(time, value);
@@ -448,7 +480,7 @@ namespace
             prop.property.vecValue.z = value.z;
         }
         break;
-        case eAnimValue_Vector4:
+        case AnimValueType::Vector4:
         {
             Vec4 value;
             pTrack->GetValue(time, value);
@@ -459,7 +491,7 @@ namespace
             prop.property.vecValue.w = value.w;
         }
         break;
-        case eAnimValue_RGB:
+        case AnimValueType::RGB:
         {
             Vec3 value;
             pTrack->GetValue(time, value);

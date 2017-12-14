@@ -1,13 +1,9 @@
 ﻿@import "../../../styles/variables";
 
-.loading-spinner-container {
-    clear: both;
-    text-align: center;
-}
-
 .basic-button {
     margin-left: 5px;
     margin-right: 5px;
+    margin-top: 0px;
 }
 
 .number{
@@ -15,16 +11,31 @@
     margin-right: 5px;
 }
 
-.upload {
+.upload-input {
     display:none;
+}
+
+.upload-tooltip {
+    cursor: pointer;   
+}
+
+.inline-header {
+    display: inline;
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+.loading-spinner-container {
+    clear: both;
+    text-align: center;
 }
 
 .content-container {
 	margin-bottom: 30px;
 }
 
-.question-mark {
-    cursor: pointer;
+.category-selection {
+    margin-left: 10px;
 }
 
 table.table {
@@ -33,6 +44,10 @@ table.table {
         display:table-header-group;
     }
     tr {
+        /* Style the bot table */
+        .arrow-column {
+            width: 2%;
+        }
         .name-column {
             width: 15%;
         }
@@ -51,5 +66,189 @@ table.table {
         .created-column {
             width: 15%;
         }
+        /* Style the alias table */
+        .alias-name-column {
+            width: 40%;
+        }
+        .bot-version-column {
+            width: 40%;
+        }
+         /* Style the intent and slot type table */
+        .select-column {
+            width: 5%;
+        }
+
+        .radio-button-column {
+            width: 5%;
+        }
+    }
+}
+
+.table-scroll {
+    height:400px;
+    overflow:auto;
+}
+
+/* Style the sidebar */
+div.sidebar {
+    float: left;
+    border: 1px solid $lighter-gray;
+    background-color: $off-white;
+    width: 13%;
+    padding-top: 10px;
+    .add-intent {
+        height: 20px;
+        .add-button{
+            margin-top: 1px;
+        }
+        .add-button:hover{
+            color: $white;
+        }
+    }  
+}
+
+div.sidebar .option-button {
+    display: inline;
+    background-color: inherit;
+    color: black;
+    padding: 5px;
+    width: 100%;
+    border: none;
+    outline: none;
+    text-align: left;
+    cursor: pointer;
+    transition: 0.3s;
+    .remove-intent {
+        display: none;
+    }
+}
+
+div.sidebar button:hover {
+    color: $primary-color;
+    .remove-intent {
+        padding-top: 3px;
+        cursor: pointer;
+        display: inline;
+        color: $black;
+    }
+}
+
+div.sidebar button.active {
+    color: $primary-color;
+    font-weight: bold;
+    border-left: 4px solid $primary-color;
+}
+
+.sidebar-section {
+    padding-left: 4px;
+}
+
+.sidebar-content {
+    float: left;
+    padding: 0px 30px;
+    width: 87%;
+    border-left: none;
+    overflow: hidden;
+}
+
+.bot-info-row{
+    margin-bottom: 20px;
+    .bot-info-name {
+        width: 30%;
+        text-align: right;
+        vertical-align: top;
+    }
+
+    .bot-info-content {
+        margin-left: 20px;
+        width: 40%;
+        vertical-align: top;
+    }
+
+    .label-content {
+        margin-left: 20px;
+        width: 40%;
+        vertical-align: top;
+    }
+}
+
+.setting-box {
+    width:48%;
+    height: 20px;
+    margin-top: 2px;
+}
+
+.description {
+    margin-bottom: 5px;
+}
+
+.property-content {
+    width: 90%;
+    height: 20px;
+    margin-bottom: 5px;
+}
+
+.available-intents{
+    overflow: auto;
+}
+
+li {
+    list-style-type: none;
+    cursor: pointer;
+}
+
+.selected {
+    background-color: $off-white;
+}
+
+.existing-intents {
+    color: $primary-color;
+}
+
+.existing-intents:hover {
+    background-color: $off-white;
+}
+
+.slot-description {
+    padding-top:8px;
+}
+
+.form-control {
+    display: inline;
+}
+
+.row-basic-container{
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.row-radio-buttons-container {
+    padding-left: 0;
+    padding-right: 0;
+    margin-top: 5px;
+}
+
+.boxed {
+    border: 1px solid $primary-color;
+    height: 50px;
+    line-height: 50px;
+    padding-left: 5px;
+    margin-bottom: 10px;
+    .boxed-content {
+        display: inline-block;
+        vertical-align: middle;
+        line-height: normal;
+    }
+}
+
+.intent-name {
+    color: $primary-color;
+}
+
+.slot-type-input {
+    margin-bottom: 10px;
+    vertical-align: baseline;
+    .add-value-button {
+        margin: 0px 0px 0px 0px;
     }
 }

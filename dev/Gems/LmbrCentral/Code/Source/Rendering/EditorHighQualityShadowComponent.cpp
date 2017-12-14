@@ -115,14 +115,15 @@ namespace LmbrCentral
     void EditorHighQualityShadowComponent::Activate()
     {
         m_config.m_entityId = GetEntityId();
-        HighQualityShadowComponentUtils::ApplyShadowSettings(GetEntityId(), m_config);
         EditorHighQualityShadowComponentRequestBus::Handler::BusConnect(GetEntityId());
+        MeshComponentNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorHighQualityShadowComponent::Deactivate()
     {
         HighQualityShadowComponentUtils::RemoveShadow(GetEntityId());
         EditorHighQualityShadowComponentRequestBus::Handler::BusDisconnect();
+        MeshComponentNotificationBus::Handler::BusDisconnect(GetEntityId());
     }
 
     void EditorHighQualityShadowComponent::RefreshProperties()
@@ -136,6 +137,16 @@ namespace LmbrCentral
         {
             runtimeComponent->m_config = m_config;
         }
+    }
+
+    void EditorHighQualityShadowComponent::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+    {
+        HighQualityShadowComponentUtils::ApplyShadowSettings(GetEntityId(), m_config);
+    }
+
+    void EditorHighQualityShadowComponent::OnMeshDestroyed()
+    {
+        HighQualityShadowComponentUtils::RemoveShadow(GetEntityId());
     }
 
 

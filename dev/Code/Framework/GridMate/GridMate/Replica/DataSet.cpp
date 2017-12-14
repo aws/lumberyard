@@ -24,6 +24,7 @@ namespace GridMate
         , m_replicaChunk(nullptr)
         , m_lastUpdateTime(0)
         , m_isDefaultValue(true)
+        , m_revision(0)  //null stamp
     {
         ReplicaChunkInitContext* initContext = ReplicaChunkDescriptorTable::Get().GetCurrentReplicaChunkInitContext();
         AZ_Assert(initContext, "Replica's context was NOT pushed on the stack! Call Replica::Descriptor::Push() before construction!");
@@ -32,7 +33,7 @@ namespace GridMate
         descriptor->RegisterDataSet(debugName, this);
     }
 
-    ReadBuffer DataSetBase::GetMarshalData()
+    ReadBuffer DataSetBase::GetMarshalData() const
     {
         AZ_Assert(m_streamCache.Size() != 0, "The value was not written to the stream cache!");
 

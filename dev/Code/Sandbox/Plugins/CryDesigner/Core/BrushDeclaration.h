@@ -103,7 +103,7 @@ namespace CD
     template<class _Type>
     bool IsEquivalent(const _Type& v0, const _Type& v1)
     {
-        return v0.IsEquivalent(v1, (_Type::value_type)kDesignerEpsilon);
+        return v0.IsEquivalent(v1, (typename _Type::value_type)kDesignerEpsilon);
     }
 
     struct SVertex

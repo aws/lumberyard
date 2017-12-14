@@ -17,6 +17,7 @@
 
 #include "EditorCommonAPI.h"
 #include <QDialog>
+#include <QMap>
 
 class DeepFilterProxyModel;
 class QLineEdit;
@@ -26,6 +27,7 @@ class QStandardItem;
 class QString;
 class QTreeView;
 class QWidget;
+class QByteArray;
 
 class EDITOR_COMMON_API ListSelectionDialog
     : public QDialog
@@ -56,10 +58,10 @@ private:
     QTreeView* m_tree;
     QStandardItemModel* m_model;
     DeepFilterProxyModel* m_filterModel;
-    typedef std::map<string, QStandardItem*, stl::less_stricmp<string> > StringToItem;
+    typedef QMap<QString, QStandardItem*> StringToItem;
     StringToItem m_firstColumnToItem;
     QLineEdit* m_filterEdit;
-    string m_chosenItem;
+    QByteArray m_chosenItem;
     int m_currentColumn;
 };
 

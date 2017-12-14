@@ -21,6 +21,7 @@
 #include "ILocalMemoryUsage.h"
 #include <IJobManager_JobDelegator.h>
 
+#include "TextureManager.h"
 #include "TextureStreamPool.h"
 #include "TextureHelpers.h"
 
@@ -457,7 +458,7 @@ bool STexStreamPrepState::Commit()
     }
     else
     {
-        m_pTexture->SetNoTexture();
+        m_pTexture->SetNoTexture( CTextureManager::Instance()->GetNoTexture() );
     }
 
     m_pImage = pNextImage;

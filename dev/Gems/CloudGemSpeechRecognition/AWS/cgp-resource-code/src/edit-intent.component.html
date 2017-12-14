@@ -1,0 +1,171 @@
+﻿<div [ngSwitch]="isLoadingIntent || isLoadingBuiltinSlotTypes || isLoadingCustomSlotTypes">
+    <div *ngSwitchCase="true">
+        <div class="loading-spinner-container">
+            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+        </div>
+    </div>
+    <div class="content-container" *ngSwitchCase="false">
+        <div *ngIf="currentIntent.version != '$LATEST'" class="boxed">
+            <span class="boxed-content">{{oldVersionWarning}}</span>
+        </div>
+        <h2 class="inline-header">{{currentIntent["name"]}}</h2>
+        <select class="version-list" [(ngModel)]="currentIntent['version']" (ngModelChange)="changeIntentVersion()">
+            <ng-container *ngFor="let intent of currentIntent.versions">
+                <option class="version-option" *ngIf="intent['version'] != '$LATEST'" [ngValue]="intent['version']">{{intent['version']}}</option>
+                <option class="version-option" *ngIf="intent['version'] == '$LATEST'" [ngValue]="intent['version']">Latest</option>
+            </ng-container>  
+        </select>
+        <fieldset [disabled]="currentIntent['version'] != '$LATEST'">
+            <div class="intent-property" (click)="expandProperty('sampleUtterances')">
+                <i [ngClass]="listSampleUtterances ? 'fa fa-caret-down' : 'fa fa-caret-right'" aria-hidden="true"></i>
+                <h3 class="inline-header">Sample utterances</h3>
+                <i class="fa fa-question-circle-o" aria-hidden="true" placement="right" [ngbTooltip]="'Spoken or typed phrases that invoke your intent.  Use curly braces to insert slot names. For example, &quot;I want to order a {size} pizza&quot;.'"></i>
+            </div>
+            <div *ngIf="!currentIntent.parentIntentSignature">
+                <div *ngIf="listSampleUtterances" class="settings-container">
+                    <div *ngIf="currentIntent['version'] == '$LATEST'" class="intent-input">
+                        <input class="intent-property-entry form-control" type="text" placeholder="e.g. I would like to book a flight." [(ngModel)]="newSampleUtterance"/>
+                        <button class="btn l-primary basic-button add-button" (click)="addNewSampleUtterance(newSampleUtterance)" data-toggle="tooltip" data-placement="top" title="Add a new sample utterance">Add</button>
+                    </div>
+                    <div *ngFor="let sampleUtterance of currentIntent.sampleUtterances; let i = index; trackBy:customTrackBy" class="intent-input">
+                        <input class="intent-property-entry form-control" type="text" [ngModel]="currentIntent.sampleUtterances[i]" (ngModelChange)="currentSampleUtteranceChange($event, i)"/>
+                        <i *ngIf="currentIntent['version'] == '$LATEST'" class="fa fa fa-trash-o" aria-hidden="true" (click)="removeSampleUtterance(i)" data-toggle="tooltip" data-placement="top" title="Delete the sample utterance"></i>
+                    </div>
+                </div>
+            </div>
+            <div *ngIf="currentIntent.parentIntentSignature" class="boxed settings-container">
+                <span class="boxed-content">Bulit-in intents provide an extensive set of pre-built utterances. These utterances cannot be viewed or edited.</span>
+            </div>
+            <div class="intent-property" (click)="expandProperty('lambdaInitializationAndValidation')">
+                <i [ngClass]="showLambdaInitializationAndValidation ? 'fa fa-caret-down' : 'fa fa-caret-right'" aria-hidden="true"></i>
+                <h3 class="inline-header">Lambda initialization and validation</h3>
+                    <i class="fa fa-question-circle-o" aria-hidden="true" placement="right" [ngbTooltip]="'The business logic required to validate the users\'s input'"></i>
+            </div>
+            <div *ngIf="showLambdaInitializationAndValidation" class="settings-container">
+                <input type="checkbox" [id]="'codeHook'" [(ngModel)]="lambdaInitializationAndValidationEnabled" name="codeHook" (change)="changeLambdaInitializationAndValidationState($event)"/>
+                <label class="l-checkbox" [attr.for]="'codeHook'" [id]="'codeHook'">
+                    Initialization and validation code hook
+                </label>
+                <div *ngIf="lambdaInitializationAndValidationEnabled">
+                    <div>Lambda function ARN</div>
+                    <input class="intent-property-entry form-control" type="text" [(ngModel)]="currentIntent.dialogCodeHook.uri"/>
+                </div>
+            </div>
+            <div>
+                <div class="intent-property" (click)="expandProperty('slots')">
+                    <i [ngClass]="showSlots ? 'fa fa-caret-down' : 'fa fa-caret-right'" aria-hidden="true"></i>
+                    <h3 class="inline-header">Slots</h3>
+                    <i class="fa fa-question-circle-o" aria-hidden="true" placement="right" [ngbTooltip]="'Data that user must provide to fulfill the intent.  New slot types can be created by returning to the Speech Recognition page and selecting the Slot Types tab.'"></i>
+                </div>
+                <div *ngIf="showSlots">
+                    <div *ngIf="!currentIntent.parentIntentSignature">
+                        <table [ngClass]="currentIntent.version == '$LATEST' ? 'table table-hover' : 'table'">
+                            <thead>
+                                <tr>
+                                    <th class="priority-column">PRIORITY</th>
+                                    <th class="required-column">REQUIRED</th>
+                                    <th class="name-column">NAME</th>
+                                    <th class="slot-type-column">SLOT TYPE AND VERSION</th>
+                                    <th class="prompt-column">PROMPT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngIf="currentIntent['version'] == '$LATEST'">
+                                    <td class="priority-column"></td>
+                                    <td class="required-column"></td>
+                                    <td class="name-column">
+                                        <div class="intent-input">
+                                            <input class="slot-name form-control" type="text" [(ngModel)]="newSlot['name']" />
+                                        </div>
+                                    </td>
+                                    <td class="slot-type-column">
+                                        <select class="slot-type-name" [(ngModel)]="newSlot['slotType']">
+                                            <option *ngFor="let slotType of customSlotTypes" [ngValue]="slotType['name']">{{slotType["name"]}}</option>
+                                            <option *ngFor="let slotType of builtinSlotTypes" [ngValue]="slotType['name']">{{slotType["name"]}}</option>
+                                        </select>
+                                    </td>
+                                    <td class="prompt-column">
+                                        <prompt [context]="context" [(promptContent)]="newSlot['valueElicitationPrompt']" [showMaxAttempts]="true"></prompt>
+                                    </td>
+                                    <td>
+                                        <button *ngIf="currentIntent['version'] == '$LATEST'" class="btn l-primary basic-button add-button float-right" (click)="addSlot()" data-toggle="tooltip" data-placement="top" title="Add a new slot">Add</button>
+                                    </td>
+                                </tr>
+                                <tr *ngFor="let slot of currentIntent['slots'] let i = index">
+                                    <td class="priority-column">
+                                        {{slot["priority"]}}
+                                        <span *ngIf="currentIntent['version'] == '$LATEST'">
+                                            <i *ngIf="i != 0" class="fa fa-angle-up" aria-hidden="true" (click)="changePriority(i, 1)" data-toggle="tooltip" data-placement="top" title="Change the priority"></i>
+                                            <i *ngIf="i != currentIntent['slots'].length - 1" class="fa fa-angle-down" aria-hidden="true" (click)="changePriority(i, -1)" data-toggle="tooltip" data-placement="top" title="Change the priority"></i>
+                                        </span>
+                                    </td>
+                                    <td class="required-column">
+                                        <input type="checkbox" [id]="slot['name']" [checked]="slot['slotConstraint'] == 'Required'" (change)="setslotConstraint($event, slot)" />
+                                        <label class="l-checkbox" [attr.for]="slot['name']" [id]="slot['name']">
+                                        </label>
+                                    </td>
+                                    <td class="name-column">
+                                        <div class="intent-input">
+                                            <input class="intent-property-entry slot-name form-control" type="text" [(ngModel)]="slot['name']" placeholder="e.g. Location" />
+                                        </div>   
+                                    </td>
+                                    <td class="slot-type-column">
+                                        <select class="slot-type-name" [(ngModel)]="slot['slotType']" (ngModelChange)="updateSlotTypeVersions(slot['slotType'])" placeholder="e.g. AMAZON.US_CITY">
+                                            <option *ngFor="let slotType of customSlotTypes" [ngValue]="slotType['name']">{{slotType["name"]}}</option>
+                                            <option *ngFor="let slotType of builtinSlotTypes" [ngValue]="slotType['name']">{{slotType["name"]}}</option>
+                                        </select>
+                                        <span *ngIf="isBuiltinSlotType(slot['slotType'])"> Built-in </span>
+                                        <span *ngIf="!isBuiltinSlotType(slot['slotType'])">
+                                            <select class="version-list" [(ngModel)]="slot['slotTypeVersion']" (ngModelChange)="updateSlotTypeVersions(slot['slotType'])">
+                                                <ng-container *ngFor="let slotType of slotTypeVersionMappings[slot['slotType']]">
+                                                    <option class="version-option" *ngIf="slotType.version != '$LATEST'" [ngValue]="slotType.version">{{slotType.version}}</option>
+                                                    <option class="version-option" *ngIf="slotType.version == '$LATEST'" [ngValue]="slotType.version">Latest</option>
+                                                </ng-container>
+                                            </select>
+                                        </span>
+                                    </td>
+                                    <td class="prompt-column">
+                                        <prompt class="prompt-content" [context]="context" [(promptContent)]="slot['valueElicitationPrompt']" [showMaxAttempts]="true" [editable]="currentIntent['version'] == '$LATEST'"></prompt>
+                                    </td>
+                                    <td>
+                                        <div class="float-right">
+                                            <i *ngIf="currentIntent['version'] == '$LATEST'" class="fa fa fa-trash-o" aria-hidden="true" (click)="removeSlot(i)" data-toggle="tooltip" data-placement="top" title="Delete the slot"></i>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div *ngIf="currentIntent.parentIntentSignature" class="boxed settings-container">
+                        Slots cannot be edited in Built-in intents.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="intent-property" (click)="expandProperty('confirmationPrompt')">
+                    <i [ngClass]="showConfirmationPrompt ? 'fa fa-caret-down' : 'fa fa-caret-right'" aria-hidden="true"></i>
+                    <h3 class="inline-header">Confirmation prompt</h3>
+                        <i class="fa fa-question-circle-o" aria-hidden="true" placement="right" [ngbTooltip]="'Questions that ask the user to input data'"></i>
+                </div>
+                <div *ngIf="showConfirmationPrompt" class="settings-container">
+                    <input type="checkbox" [id]="'confirmationPrompt'" [(ngModel)]="confirmationPromptEnabled" name="confirmationPrompt" (change)="changeConfirmationPromptState($event)" />
+                    <label class="l-checkbox" [attr.for]="'confirmationPrompt'" [id]="'confirmationPrompt'">
+                        Confirmation prompt
+                    </label>
+                    <div *ngIf="confirmationPromptEnabled">
+                        <div>Confirm</div>
+                        <prompt [context]="context" [(promptContent)]="currentIntent.confirmationPrompt" [showMaxAttempts]="true" [editable] ="true"></prompt>
+                        <div>Cancel</div>
+                        <prompt [context]="context" [(promptContent)]="currentIntent.rejectionStatement" [showMaxAttempts]="false" [editable] ="true"></prompt>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div>
+                <button class="btn l-primary basic-button" (click)="saveIntent()">
+                    Save Intent
+                </button>
+            </div>
+        </fieldset>
+    </div>
+</div>

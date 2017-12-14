@@ -14,19 +14,6 @@
 ########################################################################################
 
 def build(bld):
-
-
-    supported_plats=['win','linux','android']
-    if bld.is_monolithic_build():
-        if bld.options.mac_build_renderer == 'GL':
-            supported_plats.append( 'darwin')        
-    else:
-        supported_plats.append('darwin');
-
-    android_defines = [ 'DONT_USE_SPI_INDEXED_CB' ]
-    if bld.get_android_sdk_version() == 'android-19':
-        android_defines += ['DXGL_ANDROID_GLES_30']
-
     #==============================
     # Build CryRenderGL
     #==============================
@@ -38,7 +25,7 @@ def build(bld):
         copyright_org       = 'Amazon-CryTek',
 
         file_list           = ['../core_renderer.waf_files', 'opengl_renderer.waf_files' ],
-        platforms           = supported_plats,
+        platforms           = ['win', 'android'],
         configurations      = ['debug', 'debug_test',
                                'profile', 'profile_test',
                                'linux:performance',
@@ -54,7 +41,8 @@ def build(bld):
                                'LZ4'],
         includes            = [ '..', '../..',
                                 bld.Path('Code/Tools/HLSLCrossCompiler/include'),
-                                bld.Path('Code/SDKs')],
+                                bld.Path('Code/SDKs'),
+                                './Specification'],
         defines             = [ 'DO_RENDERLOG',
                                 'DO_RENDERSTATS',
                                 'DIRECT3D10',
@@ -82,30 +70,11 @@ def build(bld):
                                'libHLSLcc' ],
         win_libpath         = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/win64') ],
 
-        # Darwin
-        darwin_file_list    = 'opengl_mesh_baker.waf_files',
-        darwin_includes     = [bld.Path('Code/Tools/HLSLCrossCompiler/include') ],
-        darwin_defines      = ['EXCLUDE_SQUISH_SDK'],
-        darwin_lib          = ['HLSLcc' ],
-        darwin_uselib       = ['SDL2'],
-        darwin_libpath      = [bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
-        darwin_framework    = ['OpenGL', 'ApplicationServices', 'IOKit' ],
-        darwin_cxxflags     = ['-Wno-c++11-narrowing' ],
-        darwin_rpath        = ["@executable_path/"],
-
-        linux_file_list     = ['opengl_mesh_baker.waf_files', 'opengl_loader_gl.waf_files', 'opengl_loader_glx.waf_files'],
-        linux_lib           = ['HLSLcc'],
-        linux_uselib        = ['SDL2'],
-        linux_includes      = [bld.Path('Code/Tools/HLSLCrossCompiler/include') ],
-        linux_x64_libpath   = [bld.Path('Code/Tools/HLSLCrossCompiler/lib/linux')],
-        linux_cxxflags      = ['-Wno-c++11-narrowing' ],
-
-        android_defines     = android_defines,
+        android_defines     = ['DONT_USE_SPI_INDEXED_CB'],
         android_includes    = [ bld.Path('Code/Tools/HLSLCrossCompiler/include') ],
-        android_lib         = [ 'HLSLcc', 'GLESv2', 'EGL' ],
-        android_libpath     = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/android-armeabi-v7a') ],
+        android_lib         = [ 'GLESv2', 'EGL' ],
 
-        android_file_list   = ['opengl_mesh_baker.waf_files', 'opengl_loader_gles2.waf_files', 'opengl_loader_egl.waf_files'],
+        android_file_list   = ['opengl_mesh_baker.waf_files', 'opengl_loader_gles.waf_files', 'opengl_loader_egl.waf_files'],
         
         # Testing
         test_all_file_list  = ['opengl_test.waf_files'],

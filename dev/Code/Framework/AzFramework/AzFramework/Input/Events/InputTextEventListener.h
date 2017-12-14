@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <AzFramework/Input/Buses/Notifications/InputTextEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputTextNotificationBus.h>
 
 // Start: fix for windows defining max/min macros
 #pragma push_macro("max")
@@ -24,13 +24,14 @@ namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Class that handles input text event notifications by priority
-    class InputTextEventListener : public InputTextEventNotificationBus::Handler
+    class InputTextEventListener : public InputTextNotificationBus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         ///@{
         //! Predefined text event listener priority, used to sort handlers from highest to lowest
         inline static AZ::s32 GetPriorityFirst()    { return std::numeric_limits<AZ::s32>::max(); }
+        inline static AZ::s32 GetPriorityDebug()    { return (GetPriorityFirst() / 4) * 3;        }
         inline static AZ::s32 GetPriorityUI()       { return GetPriorityFirst() / 2;              }
         inline static AZ::s32 GetPriorityDefault()  { return 0;                                   }
         inline static AZ::s32 GetPriorityLast()     { return std::numeric_limits<AZ::s32>::min(); }
@@ -65,7 +66,7 @@ namespace AzFramework
         ~InputTextEventListener() override = default;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputTextEventNotifications::GetPriority
+        //! \ref AzFramework::InputTextNotifications::GetPriority
         AZ::s32 GetPriority() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +79,7 @@ namespace AzFramework
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputTextEventNotifications::OnInputTextEvent
+        //! \ref AzFramework::InputTextNotifications::OnInputTextEvent
         void OnInputTextEvent(const AZStd::string& textUTF8, bool& o_hasBeenConsumed) final;
 
         ////////////////////////////////////////////////////////////////////////////////////////////

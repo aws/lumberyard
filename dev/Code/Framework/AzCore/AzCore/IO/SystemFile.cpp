@@ -29,6 +29,11 @@
     #include <dirent.h>
 #endif
 
+#if defined(AZ_PLATFORM_ANDROID)
+    #include <AzCore/Android/APKFileHandler.h>
+    #include <AzCore/Android/Utils.h>
+#endif 
+
 using namespace AZ::IO;
 
 namespace
@@ -175,6 +180,13 @@ namespace
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     bool CreateDirRecursive(char* dirPath)
     {
+    #if defined(AZ_PLATFORM_ANDROID)
+        if (AZ::Android::Utils::IsApkPath(dirPath))
+        {
+            return false;
+        }
+    #endif // defined(AZ_PLATFORM_ANDROID)
+
         int result = mkdir(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         if (result == 0)
         {
@@ -222,8 +234,10 @@ namespace
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
     static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = INVALID_HANDLE_VALUE;
-#elif defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = (SystemFile::FileHandleType) -1;
+#elif defined(AZ_PLATFORM_ANDROID)
+    static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = nullptr;
 #endif
 }
 
@@ -359,7 +373,7 @@ SystemFile::Open(const char* fileName, int mode, int platformFlags)
             SetFilePointer(m_handle, 0, NULL, FILE_END);
         }
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     int desiredAccess = 0;
     int permissions = S_IRWXU | S_IRGRP | S_IROTH;
 
@@ -426,6 +440,96 @@ SystemFile::Open(const char* fileName, int mode, int platformFlags)
             lseek(m_handle, 0, SEEK_END);
         }
     }
+#elif defined(AZ_PLATFORM_ANDROID)
+    const char* openMode = nullptr;
+    if ((mode & SF_OPEN_READ_ONLY) == SF_OPEN_READ_ONLY)
+    {
+        openMode = "r";
+    }
+    else if ((mode & SF_OPEN_WRITE_ONLY) == SF_OPEN_WRITE_ONLY)
+    {
+        if ((mode & SF_OPEN_APPEND) == SF_OPEN_APPEND)
+        {
+            openMode = "a+";
+        }
+        else if (mode & (SF_OPEN_TRUNCATE | SF_OPEN_CREATE_NEW | SF_OPEN_CREATE))
+        {
+            openMode = "w+";
+        }
+        else
+        {
+            openMode = "w";
+        }
+    }
+    else if ((mode & SF_OPEN_READ_WRITE) == SF_OPEN_READ_WRITE)
+    {
+        if ((mode & SF_OPEN_APPEND) == SF_OPEN_APPEND)
+        {
+            openMode = "a+";
+        }
+        else if (mode & (SF_OPEN_TRUNCATE | SF_OPEN_CREATE_NEW | SF_OPEN_CREATE))
+        {
+            openMode = "w+";
+        }
+        else
+        {
+            openMode = "r+";
+        }
+    }
+    else
+    {
+        EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, EINVAL);
+        return false;
+    }
+
+    bool createPath = false;
+    if (mode & (SF_OPEN_CREATE_NEW | SF_OPEN_CREATE))
+    {
+        createPath = (mode & SF_OPEN_CREATE_PATH) == SF_OPEN_CREATE_PATH;
+    }
+
+    bool isApkFile = AZ::Android::Utils::IsApkPath(m_fileName);
+
+    if (createPath)
+    {
+        if (isApkFile)
+        {
+            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, ENOSPC);
+            return false;
+        }
+
+        char folderPath[AZ_MAX_PATH_LEN] = {0};
+        const char* delimiter1 = strrchr(m_fileName, '\\');
+        const char* delimiter2 = strrchr(m_fileName, '/');
+        const char* delimiter = delimiter2 > delimiter1 ? delimiter2 : delimiter1;
+        if (delimiter > m_fileName)
+        {
+            azstrncpy(folderPath, AZ_ARRAY_SIZE(folderPath), m_fileName, delimiter - m_fileName);
+            if (!Exists(folderPath))
+            {
+                CreateDir(folderPath);
+            }
+        }
+    }
+
+    int errorCode = 0;
+    if (isApkFile)
+    {
+        AZ::u64 size = 0;
+        m_handle = AZ::Android::APKFileHandler::Open(m_fileName, openMode, size);
+        errorCode = EACCES; // general error when a file can't be opened from inside the APK
+    }
+    else
+    {
+        m_handle = fopen(m_fileName, openMode);
+        errorCode = errno;
+    }
+
+    if (m_handle == PlatformSpecificInvalidHandle)
+    {
+        EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errorCode);
+        return false;
+    }
 #else
     return false;
 #endif
@@ -470,10 +574,16 @@ SystemFile::Close()
         }
         m_handle = INVALID_HANDLE_VALUE;
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         close(m_handle);
+        m_handle = PlatformSpecificInvalidHandle;
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        fclose(m_handle);
         m_handle = PlatformSpecificInvalidHandle;
     }
 #endif
@@ -508,11 +618,20 @@ SystemFile::Seek(SizeType offset, SeekMode mode)
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
         }
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         int result = lseek(m_handle, offset, mode);
         if (result == -1)
+        {
+            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
+        }
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        off_t result = fseeko(m_handle, static_cast<off_t>(offset), mode);
+        if (result != 0)
         {
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
         }
@@ -540,13 +659,24 @@ SystemFile::SizeType SystemFile::Tell()
 
         return aznumeric_cast<SizeType>(newFilePtr.QuadPart);
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         off_t result = lseek(m_handle, 0, SEEK_CUR);
         if (result == (off_t) -1)
         {
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
+        }
+        return aznumeric_cast<SizeType>(result);
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        off_t result = ftello(m_handle);
+        if (result != -1)
+        {
+            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
+            return 0;
         }
         return aznumeric_cast<SizeType>(result);
     }
@@ -582,7 +712,7 @@ bool SystemFile::Eof()
 
         return currentFilePtr.QuadPart == fileInfo.EndOfFile.QuadPart;
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         off_t current = lseek(m_handle, 0, SEEK_CUR);
@@ -603,6 +733,11 @@ bool SystemFile::Eof()
         lseek(m_handle, current, SEEK_SET);
 
         return current == end;
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        return (feof(m_handle) != 0);
     }
 #endif
 
@@ -626,11 +761,21 @@ AZ::u64 SystemFile::ModificationTime()
 
         return aznumeric_cast<AZ::u64>(fileInfo.ChangeTime.QuadPart);
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         struct stat statResult;
         if (fstat(m_handle, &statResult) != 0)
+        {
+            return 0;
+        }
+        return aznumeric_cast<AZ::u64>(statResult.st_mtime);
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        struct stat statResult;
+        if (stat(m_fileName, &statResult) != 0)
         {
             return 0;
         }
@@ -671,7 +816,7 @@ SystemFile::Read(SizeType byteSize, void* buffer)
         }
         return static_cast<SizeType>(dwNumBytesRead);
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         ssize_t bytesRead = read(m_handle, buffer, byteSize);
@@ -680,6 +825,21 @@ SystemFile::Read(SizeType byteSize, void* buffer)
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
             return 0;
         }
+        return bytesRead;
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        size_t bytesToRead = static_cast<size_t>(byteSize);
+        AZ::Android::APKFileHandler::SetNumBytesToRead(bytesToRead);
+        size_t bytesRead = fread(buffer, 1, bytesToRead, m_handle);
+
+        if (bytesRead != bytesToRead && ferror(m_handle))
+        {
+            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
+            return 0;
+        }
+
         return bytesRead;
     }
 #endif
@@ -717,7 +877,7 @@ SystemFile::Write(const void* buffer, SizeType byteSize)
         }
         return static_cast<SizeType>(dwNumBytesWritten);
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         ssize_t result = write(m_handle, buffer, byteSize);
@@ -727,6 +887,20 @@ SystemFile::Write(const void* buffer, SizeType byteSize)
             return 0;
         }
         return result;
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        size_t bytesToWrite = static_cast<size_t>(byteSize);
+        size_t bytesWritten = fwrite(buffer, 1, bytesToWrite, m_handle);
+
+        if (bytesWritten != bytesToWrite && ferror(m_handle))
+        {
+            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
+            return 0;
+        }
+
+        return bytesWritten;
     }
 #endif
 
@@ -746,10 +920,18 @@ void SystemFile::Flush()
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
         }
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         if (fsync(m_handle) != 0)
+        {
+            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
+        }
+    }
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        if (fflush(m_handle) != 0)
         {
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
         }
@@ -776,7 +958,7 @@ SystemFile::Length() const
 
         return static_cast<SizeType>(size.QuadPart);
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         struct stat stat;
@@ -787,7 +969,25 @@ SystemFile::Length() const
         }
         return stat.st_size;
     }
-
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (m_handle != PlatformSpecificInvalidHandle)
+    {
+        if (AZ::Android::Utils::IsApkPath(m_fileName))
+        {
+            int fileSize = AZ::Android::APKFileHandler::FileLength(m_fileName);
+            return static_cast<SizeType>(fileSize);
+        }
+        else
+        {
+            struct stat fileStat;
+            if (stat(m_fileName, &fileStat) < 0)
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, 0);
+                return 0;
+            }
+            return static_cast<SizeType>(fileStat.st_size);
+        }
+    }
 #endif
 
     return 0;
@@ -822,8 +1022,17 @@ SystemFile::Exists(const char* fileName)
 {
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
     return GetAttributes(fileName) != INVALID_FILE_ATTRIBUTES;
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     return access(fileName, F_OK) == 0;
+#elif defined(AZ_PLATFORM_ANDROID)
+    if (AZ::Android::Utils::IsApkPath(fileName))
+    {
+        return AZ::Android::APKFileHandler::DirectoryOrFileExists(fileName);
+    }
+    else
+    {
+        return access(fileName, F_OK) == 0;
+    }
 #else
     return false;
 #endif

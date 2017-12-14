@@ -12,6 +12,7 @@
 
 #include "precompiled.h"
 #include "BehaviorContextObject.h"
+#include <ScriptCanvas/SystemComponent.h>
 
 #include <AzCore/Component/EntityBus.h>
 
@@ -59,7 +60,7 @@ namespace ScriptCanvas
             }
         }
     }
-    
+
     void BehaviorContextObject::SerializeContextEventHandler::OnReadBegin(void* classPtr)
     {
         BehaviorContextObject* object = reinterpret_cast<BehaviorContextObject*>(classPtr);
@@ -70,6 +71,50 @@ namespace ScriptCanvas
     {
         BehaviorContextObject* object = reinterpret_cast<BehaviorContextObject*>(classPtr);
         object->OnWriteEnd();
+    }
+
+    SystemComponent* BehaviorContextObject::GetSystemComponent()
+    {
+        SystemComponent* systemComponent{};
+        SystemRequestBus::BroadcastResult(systemComponent, &SystemRequests::ModSystemComponent);
+        return systemComponent;
+    }
+
+    BehaviorContextObjectPtr BehaviorContextObject::Create(const AZ::BehaviorClass& behaviorClass, const void* value)
+    {
+        CheckClass(behaviorClass);
+
+        if (SystemComponent* scEditorSystemComponent = GetSystemComponent())
+        {
+            BehaviorContextObject* ownedObject = value ? CreateCopy(behaviorClass, value) : CreateDefault(behaviorClass);
+            scEditorSystemComponent->AddOwnedObjectReference(ownedObject->Get(), ownedObject);
+            return BehaviorContextObjectPtr(ownedObject);
+        }
+
+        AZ_Assert(false, "The Script Canvas SystemComponent needs to be part of the SystemEntity!");
+        return nullptr;
+    }
+
+    BehaviorContextObjectPtr BehaviorContextObject::CreateReference(const AZ::Uuid& typeID, void* reference)
+    {
+        const AZ::u32 referenceFlags(0);
+        SystemComponent* scEditorSystemComponent = GetSystemComponent();
+        BehaviorContextObject* ownedObject = scEditorSystemComponent ? scEditorSystemComponent->FindOwnedObjectReference(reference) : nullptr;
+        return ownedObject
+            ? BehaviorContextObjectPtr(ownedObject)
+            : BehaviorContextObjectPtr(aznew BehaviorContextObject(reference, GetAnyTypeInfoReference(typeID), referenceFlags));
+    }
+
+    void BehaviorContextObject::release()
+    {
+        if (--m_referenceCount == 0)
+        {
+            if (SystemComponent* scEditorSystemComponent = GetSystemComponent())
+            {
+                scEditorSystemComponent->RemoveOwnedObjectReference(Get());
+            }
+            delete this;
+        }
     }
 
 } // namespace ScriptCanvas

@@ -41,6 +41,7 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/algorithm.h>
 
 // Enable to insert Crc checks for each message
 #if defined(AZ_DEBUG_BUILD)
@@ -70,7 +71,8 @@ namespace GridMate
         GM_CLASS_ALLOCATOR(MessageData); // make a pool and use it...
 
         MessageData()
-            : m_data(NULL) {}
+            : m_data(nullptr)
+        {}
         enum MessageFlags
         {
             MF_RELIABLE         = (1 << 0),
@@ -91,6 +93,7 @@ namespace GridMate
         void*           m_data;
         AZ::u16         m_dataSize;
         bool            m_isConnecting;         ///< True if this message is generated while we are in connecting state, otherwise false.
+        AZStd::unique_ptr<CarrierACKCallback> m_ackCallback;    ///< After receiving an ACK execute the callback
     };
 
     typedef AZStd::intrusive_list<MessageData, AZStd::list_base_hook<MessageData> > MessageDataListType;
@@ -107,6 +110,7 @@ namespace GridMate
         unsigned short      m_resendDataSize;   ///< Size of the data in the toResend list (not including any headers, just the sum of messages data)
 
         MessageDataListType m_toResend[Carrier::PRIORITY_MAX];  ///< A list of all reliable messages that were part if the datagram. We might need to resend them.
+        AZStd::vector<AZStd::unique_ptr<CarrierACKCallback> > m_ackCallbacks;
     };
 
     typedef AZStd::intrusive_slist<DatagramData, AZStd::slist_base_hook<DatagramData> > DatagramDataListType;
@@ -545,6 +549,7 @@ namespace GridMate
         MTM_ON_ERROR,
         MTM_STATS_UPDATE,       ///< Currently unused
         MTM_RATE_UPDATE,        ///< Notification of connection rate change (congestion occurring or clearing up)
+        MTM_ACK_NOTIFY,         ///< notify of packet ACK'd
     };
 
     /**
@@ -555,21 +560,24 @@ namespace GridMate
         GM_CLASS_ALLOCATOR(ThreadMessage); // make a pool and use it...
 
         ThreadMessage(MainThreadMsg mtm)
-            : m_id(mtm)
+            : m_code(mtm)
             , m_connection(NULL)
-            , m_threadConnection(NULL) {}
+            , m_threadConnection(NULL)
+        {}
         ThreadMessage(CarrierThreadMsg ctm)
-            : m_id(ctm)
+            : m_code(ctm)
             , m_connection(NULL)
-            , m_threadConnection(NULL) {}
+            , m_threadConnection(NULL)
+        {}
 
-        int                     m_id;
+        int                     m_code;
         Connection*             m_connection;
         ThreadConnection*       m_threadConnection;
 
         string                  m_newConnectionAddress;
         CarrierErrorCode        m_errorCode;
         AZ::u32                 m_newRateBytesPerSec;           ///< new send rate
+        AZStd::vector<AZStd::unique_ptr<CarrierACKCallback> > m_ackCallbacks;
         union
         {
             DriverError	        m_driverError;
@@ -786,10 +794,12 @@ namespace GridMate
         unsigned int    GetMessageMTU() override                    { return m_maxMsgDataSizeBytes; }
 
         string          ConnectionToAddress(ConnectionID id) override;
-        /**
-        *
-        */
-        void            Send(const char* data, unsigned int dataSize, ConnectionID target = AllConnections, DataReliability reliability = SEND_RELIABLE, DataPriority priority = PRIORITY_NORMAL, unsigned char channel = 0) override;
+
+        void            SendWithCallback(const char* data, unsigned int dataSize, AZStd::unique_ptr<CarrierACKCallback> ackCallback, ConnectionID target = AllConnections, DataReliability reliability = SEND_RELIABLE, DataPriority priority = PRIORITY_NORMAL, unsigned char channel = 0) override;
+        void            Send(const char* data, unsigned int dataSize, ConnectionID target = AllConnections, DataReliability reliability = SEND_RELIABLE, DataPriority priority = PRIORITY_NORMAL, unsigned char channel = 0) override
+        {
+            SendWithCallback(data, dataSize, AZStd::unique_ptr<CarrierACKCallback>(), target, reliability, priority, channel);
+        };
         /**
         * Receive the data for the specific connection.
         * \note Internal buffers are user make sure you periodically receive data for all connections,
@@ -847,12 +857,11 @@ namespace GridMate
         void            DisconnectRequest(ConnectionID id, CarrierDisconnectReason reason);
         void            DeleteConnection(Connection* conn, CarrierDisconnectReason reason);
 
-        void GenerateSendMessages(const char* data, unsigned int dataSize, ConnectionID target, DataReliability reliability, DataPriority priority, unsigned char channel);
+        void GenerateSendMessages(const char* data, unsigned int dataSize, ConnectionID target, DataReliability reliability, DataPriority priority, unsigned char channel, AZStd::unique_ptr<CarrierACKCallback> ackCallback = AZStd::unique_ptr<CarrierACKCallback>());
 
         /// Send sync time if possible
         void SendSyncTime();
         void OnReceivedTime(ConnectionID fromId, AZ::u32 time);
-        void OnSendTime();
 
         typedef vector<Connection*> ConnectionList;
         ConnectionList       m_connections;
@@ -1335,7 +1344,7 @@ CarrierThread::UpdateSend()
 
             //////////////////////////////////////////////////////////////////////////
             // We send one data gram for each connection, every frame to maintain correct RTT, ACK, detect connection lost.
-            unsigned int maxDatagramSize = m_trafficControl->GetMaxPacketSize(conn); ///< This doesn't change at the moment
+            unsigned int maxDatagramSize = AZStd::GetMin(m_driver->GetMaxSendSize(), m_trafficControl->GetMaxPacketSize(conn)); ///< This doesn't change at the moment
             do
             {
                 if (!m_trafficControl->IsSend(conn))
@@ -1386,7 +1395,7 @@ CarrierThread::UpdateSend()
                     dataSize = static_cast<unsigned int>(writeBuffer.Size());
                 }
 
-                AZ_Assert(dataSize <= maxDatagramSize, "We wrote more bytes to the datagram, that is allowed. Internal error!");
+                AZ_Assert(dataSize <= maxDatagramSize, "We wrote more bytes to the datagram than allowed. Internal error!");
 
                 if (conn->m_isDisconnected || conn->m_isDisconnecting)
                 {
@@ -1856,7 +1865,7 @@ CarrierThread::ThreadPump()
             ThreadMessage* msg;
             while ((msg = PopCarrierThreadMessage()) != NULL)
             {
-                switch (msg->m_id)
+                switch (msg->m_code)
                 {
                 case CTM_CONNECT:
                 {
@@ -2356,6 +2365,13 @@ CarrierThread::ReadAckData(ThreadConnection* connection, ReadBuffer& readBuffer)
                         NotifyRateUpdate(connection);
                     }
 
+                    if ( dg.m_ackCallbacks.size() > 0)
+                    {
+                        ThreadMessage* mtm = aznew ThreadMessage(MTM_ACK_NOTIFY);
+                        mtm->m_connection = connection->m_mainConnection;
+                        mtm->m_ackCallbacks = AZStd::move(dg.m_ackCallbacks);
+                        PushMainThreadMessage(mtm);
+                    }
                     FreeDatagram(dg);
                     //AZ_TracePrintf("GridMate","%p ACK: %d from %s\n",this,dg.m_flowControl.m_sequenceNumber,connection->m_target->ToString().c_str());
                 }
@@ -2506,10 +2522,10 @@ CarrierThread::ProcessIncomingDataGram(ThreadConnection* connection, DatagramDat
         }
     }
 
-    bool duplicate = connection->m_receivedDatagramsHistory.Insert(dgram.m_flowControl.m_sequenceNumber);
+    bool duplicate = ! connection->m_receivedDatagramsHistory.Insert(dgram.m_flowControl.m_sequenceNumber);
     // We should detect bad connection anyway, but it will be good to check if the packet ID is within reasonable expected one.
     //bool isWithinReasonable = SequenceNumberSequentialDistance(connection->m_receivedDatagramsHistory.First(),dgram.m_flowControl.m_sequenceNumber) < DataGramHistoryList::m_maxNumberOfElements;
-    if (duplicate == false /*|| isWithinReasonable == false*/)
+    if (duplicate /*|| isWithinReasonable == false*/)
     {
         //Duplicate packet received. Could be nominal network behaviors or malicious activity. Report it!
         ThreadMessage* mtm = aznew ThreadMessage(MTM_ON_ERROR);
@@ -2736,6 +2752,11 @@ void CarrierThread::GenerateOutgoingDataGram(ThreadConnection* connection, Datag
         {
             continue; // only system priority messages are processed
         }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        //TODO: add extra resend test here of unAck'd data older than X ms
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
         if (!mainConn->m_toSend[iPriority].empty())
         {
             AZStd::lock_guard<AZStd::mutex> l(mainConn->m_toSendLock);
@@ -2785,7 +2806,9 @@ void CarrierThread::GenerateOutgoingDataGram(ThreadConnection* connection, Datag
                 }
                 //////////////////////////////////////////////////////////////////////////
 
-                if ((msg.m_dataSize + GetMessageHeaderSize(msg, isWriteMessageSequenceId, isWriteReliableMessageSequenceId, isWriteChannel)) > (maxDatagramSize - writeBuffer.Size()))
+                //If this Message can fit into the remaining Datagram buffer space
+                if ((msg.m_dataSize + GetMessageHeaderSize(msg, isWriteMessageSequenceId, isWriteReliableMessageSequenceId, isWriteChannel)) 
+                        > (maxDatagramSize - writeBuffer.Size()))
                 {
                     break; // we can't add this message
                 }
@@ -2825,6 +2848,10 @@ void CarrierThread::GenerateOutgoingDataGram(ThreadConnection* connection, Datag
                 }
                 else
                 {
+                    if (msg.m_ackCallback)
+                    {
+                        dgram.m_ackCallbacks.push_back(AZStd::move(msg.m_ackCallback));
+                    }
                     FreeMessage(msg);
                 }
             }
@@ -3467,15 +3494,17 @@ CarrierImpl::ConnectionToAddress(ConnectionID id)
 // [10/4/2010]
 //=========================================================================
 inline void
-CarrierImpl::GenerateSendMessages(const char* data, unsigned int dataSize, ConnectionID target, DataReliability reliability, DataPriority priority, unsigned char channel)
+CarrierImpl::GenerateSendMessages(const char* data, unsigned int dataSize, ConnectionID target, DataReliability reliability, DataPriority priority, unsigned char channel, AZStd::unique_ptr<CarrierACKCallback> ackCallback)
 {
     unsigned short dataSendStep;
     unsigned int numChunks = 1;
+
     if (dataSize > m_maxMsgDataSizeBytes)
     {
         dataSendStep = static_cast<unsigned short>(m_maxMsgDataSizeBytes);
         // in order to merge the messages we need to send it reliable
         reliability = SEND_RELIABLE;
+        
         numChunks += ((dataSize - 1) / m_maxMsgDataSizeBytes);
         // We use half the range only because we sort messages based on that, even that might not be 100% safe is all cases.
         // avoid sending messages > 1 MB in general. If we need to push the limits PLEASE change all sequence numbers
@@ -3506,11 +3535,36 @@ CarrierImpl::GenerateSendMessages(const char* data, unsigned int dataSize, Conne
             msg.m_reliability = reliability;
             msg.m_data = dataBuffer;
             msg.m_sequenceNumber = ++conn->m_sendSeqNum[channel];
+            
             msg.m_isConnecting = conn->m_state == Carrier::CST_CONNECTING;
+            //static long long urSent = 0, rSent=0;
             if (reliability == SEND_RELIABLE)
             {
+                //if ((++rSent % 100) == 0)
+                //{
+                //    AZ_Printf("GridMate", "Reliable-Message ratio sent %d/%d\n", rSent, urSent);
+                //}
                 ++conn->m_sendReliableSeqNum[channel];
+
+                if(ackCallback)
+                {
+                    ackCallback->Run();
+                }
             }
+            else
+            {
+                //if ((++urSent % 10000) == 0)
+                //{
+                //    //AZ_Printf("GridMate", "UnReliable Messages sent %d!\n", urSent);
+                //    AZ_Printf("GridMate", "Reliable-Message ratio sent %d/%d\n", rSent, urSent);
+                //}
+                AZ_Assert(dataSize <= dataSendStep, "Cannot split unreliable messages.");
+                if (ackCallback)
+                {
+                    msg.m_ackCallback = AZStd::move(ackCallback);
+                }
+            }
+            
             msg.m_sendReliableSeqNum = conn->m_sendReliableSeqNum[channel];
             conn->m_toSend[priority].push_back(msg);
             conn->m_bytesInQueue += msg.m_dataSize;
@@ -3537,7 +3591,7 @@ CarrierImpl::GenerateSendMessages(const char* data, unsigned int dataSize, Conne
 // [9/14/2010]
 //=========================================================================
 void
-CarrierImpl::Send(const char* data, unsigned int dataSize, ConnectionID target, DataReliability reliability, DataPriority priority, unsigned char channel)
+CarrierImpl::SendWithCallback(const char* data, unsigned int dataSize, AZStd::unique_ptr<CarrierACKCallback> ackCallback, ConnectionID target, DataReliability reliability, DataPriority priority, unsigned char channel)
 {
     AZ_Assert(dataSize > 0, "You can NOT send empty messages!");
     AZ_Assert(priority > PRIORITY_SYSTEM, "PRIORITY_SYSTEM is reserved for internal use!");
@@ -3559,6 +3613,7 @@ CarrierImpl::Send(const char* data, unsigned int dataSize, ConnectionID target, 
 
     if (target == AllConnections)
     {
+        AZ_Assert(!ackCallback, "ACK Callback not compatible with Broadcast sends!");
         for (AZStd::size_t i = 0; i < m_connections.size(); ++i)
         {
             if (m_connections[i]->m_state == Carrier::CST_CONNECTED)
@@ -3575,7 +3630,7 @@ CarrierImpl::Send(const char* data, unsigned int dataSize, ConnectionID target, 
         AZ_Assert(AZStd::find(m_connections.begin(), m_connections.end(), target) != m_connections.end(), "This connection ID is not valid! Not in the list 0x%08x", target);
         if (static_cast<Connection*>(target)->m_state == Carrier::CST_CONNECTED)
         {
-            GenerateSendMessages(data, dataSize, target, reliability, priority, channel);
+            GenerateSendMessages(data, dataSize, target, reliability, priority, channel, AZStd::move(ackCallback));
         }
         else
         {
@@ -3727,7 +3782,7 @@ CarrierImpl::Update()
         ThreadMessage* msg;
         while ((msg = m_thread->PopMainThreadMessage()) != NULL)
         {
-            switch (msg->m_id)
+            switch (msg->m_code)
             {
             case MTM_NEW_CONNECTION:
             {
@@ -3842,6 +3897,18 @@ CarrierImpl::Update()
             {
                 EBUS_EVENT_ID(m_gridMate, CarrierEventBus, OnRateChange, this, msg->m_connection, msg->m_newRateBytesPerSec);
             } break;
+            case MTM_ACK_NOTIFY:
+            {
+                for (auto& cb : msg->m_ackCallbacks)
+                {
+                    if (cb)
+                    {
+                        cb->Run();
+                    }
+                }
+            }break;
+            default:
+                AZ_Assert(false, "Unknown message type! %d", msg->m_code);
             }
 
             delete msg;

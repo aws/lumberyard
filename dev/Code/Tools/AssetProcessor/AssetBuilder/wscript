@@ -1,0 +1,32 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+import os
+
+def build(bld):
+    bld.CryConsoleApplication(
+        target          = 'AssetBuilder',
+        vs_filter       = 'Tools/AssetProcessor',
+        file_list       = 'asset_builder.waf_files',
+        platforms       = ['win', 'darwin'],
+        configurations  = ['debug_all', 'profile_all'],
+        use             = ['AssetBuilderSDK'],
+        uselib          = ['QT5CORE',
+                           'QT5GUI',
+                           'QT5WIDGETS'],
+        disable_pch     = True,
+        darwin_rpath    = ['@executable_path/../BinMac64/qtlibs/lib', 
+                           '@executable_path'],
+        features        = ['link_running_program']
+    )
+
+

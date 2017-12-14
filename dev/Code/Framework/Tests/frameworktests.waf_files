@@ -9,8 +9,8 @@
             "BinToTextEncode.cpp",
             "ComponentAddRemove.cpp",
             "EntityContext.cpp",
-            "EntityReference.cpp",
             "EntityTestbed.h",
+            "FileFunc.cpp",
             "FileIO.cpp",
             "FrameworkApplicationFixture.h",
             "GenAppDescriptors.cpp",
@@ -20,8 +20,11 @@
             "NetworkContext.cpp",
             "Slices.cpp",
             "Script.cpp",
+            "StringFunc.cpp",
             "TestTypes.h",
-            "TransformComponent.cpp"
+            "TransformComponent.cpp",
+            "AssetCatalog.cpp",
+            "AssetProcessorConnection.cpp"
         ]
     }
 }

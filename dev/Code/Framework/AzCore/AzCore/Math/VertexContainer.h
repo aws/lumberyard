@@ -13,14 +13,13 @@
 #pragma once
 
 #include <AzCore/Memory/Memory.h>
-#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/functional.h>
 
 namespace AZ
 {
-    class SerializeContext;
-    void VertexContainerReflect(SerializeContext& context);
+    class ReflectContext;
+    void VertexContainerReflect(ReflectContext* context);
 
     /**
      * A wrapper around a AZStd::vector of either Vector2 or Vector3s.
@@ -37,9 +36,9 @@ namespace AZ
         using VoidFunction = AZStd::function<void()>;
 
         VertexContainer() = default;
-        VertexContainer(const IndexFunction& addCallback, const IndexFunction& removeCallback,
-                        const VoidFunction& updateCallback, const VoidFunction& setCallback,
-                        const VoidFunction& clearCallback);
+        VertexContainer(
+            const IndexFunction& addCallback, const IndexFunction& removeCallback, const VoidFunction& updateCallback, 
+            const VoidFunction& setCallback, const VoidFunction& clearCallback);
         ~VertexContainer() = default;
 
         /**
@@ -85,7 +84,6 @@ namespace AZ
         bool GetVertex(size_t index, Vertex& vertex) const;
         /**
         * Get last vertex.
-        * @param index index of vertex to get.
         * @return if vector is empty return false.
         */
         bool GetLastVertex(Vertex& vertex) const;
@@ -94,9 +92,17 @@ namespace AZ
          */
         size_t Size() const;
         /**
+         * Is the container empty or not.
+         */
+        bool Empty() const;
+        /**
          * Immutable reference to container of vertices.
          */
         const AZStd::vector<Vertex>& GetVertices() const;
+        /**
+         * Unsafe access to vertices (index must be checked to be in range before use).
+         */
+        const Vertex& operator[](size_t index) const;
 
         /**
         * Provide callbacks for this container 
@@ -104,11 +110,11 @@ namespace AZ
         * Useful if you could not provide callbacks at construction or
         * you need to re-supply callbacks after de-serialization
         */
-        void SetCallbacks(const IndexFunction& addCallback, const IndexFunction& removeCallback,
-                          const VoidFunction& updateCallback, const VoidFunction& setCallback,
-                          const VoidFunction& clearCallback);
+        void SetCallbacks(
+            const IndexFunction& addCallback, const IndexFunction& removeCallback, const VoidFunction& updateCallback, 
+            const VoidFunction& setCallback, const VoidFunction& clearCallback);
 
-        static void Reflect(SerializeContext& context);
+        static void Reflect(ReflectContext* context);
 
     private:
         AZStd::vector<Vertex> m_vertices; ///< Vertices (positions).

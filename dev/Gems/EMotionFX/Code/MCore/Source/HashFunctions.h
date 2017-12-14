@@ -98,8 +98,8 @@ namespace MCore
 
 
     template<>
-    MCORE_INLINE uint32 Hash<Vector3>(const Vector3& key)
+    MCORE_INLINE uint32 Hash<AZ::Vector3>(const AZ::Vector3& key)
     {
-        return (uint32)Math::Abs(key.x * 101.0f + key.y * 1002.0f + key.z * 10003.0f);
+        return (uint32)Math::Abs(key.GetX() * 101.0f + key.GetY() * 1002.0f + key.GetZ() * 10003.0f);
     }
 }   // namespace MCore

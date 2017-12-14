@@ -25,6 +25,7 @@
 
 class CMaterial;
 class CVegetationMap;
+class CVegetationObject;
 
 /** This is description of single static vegetation object instance.
 */

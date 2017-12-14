@@ -13,3 +13,7 @@
 
 // Description : Kinect for Xbox One central class
 
+#pragma once
+
+#include <IInput.h>
+

@@ -10,7 +10,6 @@
 *
 */
 
-
 #include "StdAfx.h"
 #include "StarterGameCVars.h"
 
@@ -29,6 +28,11 @@ namespace StarterGameGem
         REGISTER_CVAR2("s_visualiseSoundRanges", &m_viewSoundRanges, 0, VF_NULL, "Enable drawing of sounds.\n"
             "Usage: value is the duration of the visualisations.\n"
             "Default is 0.0 (off).");
+
+		REGISTER_CVAR2("pd_showData",		&m_pd_showData,			0, VF_NULL, "Enable drawing persistant data to the screen.");
+		REGISTER_CVAR2("pd_showCallbacks",	&m_pd_showCallbacks,	0, VF_NULL, "Enable the showing of callback information on information printouts.");
+		REGISTER_CVAR2("pd_showFilter",		&m_pd_showFilter,		"NONE", VF_NULL, "filter the results to keys containing the given text, set to 0 to clear.");
+		REGISTER_CVAR2("pd_dumpData",		&m_pd_dumpData,			0, VF_NULL, "Dump the persistant data into the output window.");
 	}
 
 	void StarterGameCVars::DeregisterCVars()
@@ -41,6 +45,11 @@ namespace StarterGameGem
 		UNREGISTER_CVAR("ai_debugDrawPaths");
 
         UNREGISTER_CVAR("s_visualiseSoundRanges");
+
+		UNREGISTER_CVAR("pd_showData");
+		UNREGISTER_CVAR("pd_showCallbacks");
+		UNREGISTER_CVAR("pd_showFilter");
+		UNREGISTER_CVAR("pd_dumpData");
 	}
 
 }

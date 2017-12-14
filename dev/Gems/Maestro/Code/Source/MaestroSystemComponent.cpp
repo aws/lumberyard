@@ -35,7 +35,7 @@ namespace Maestro
                 ec->Class<MaestroSystemComponent>("Maestro", "Provides the Lumberyard Cinematics Service")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         // ->Attribute(AZ::Edit::Attributes::Category, "") Set a category
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }
@@ -44,12 +44,12 @@ namespace Maestro
 
     void MaestroSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("MaestroService"));
+        provided.push_back(AZ_CRC("MaestroService", 0xba05938e));
     }
 
     void MaestroSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("MaestroService"));
+        incompatible.push_back(AZ_CRC("MaestroService", 0xba05938e));
     }
 
     void MaestroSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)

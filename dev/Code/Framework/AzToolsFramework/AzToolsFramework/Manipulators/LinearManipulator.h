@@ -9,153 +9,130 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
-#include <AzCore/Math/Vector3.h>
-#include <AzCore/Math/VectorConversions.h>
-#include <AzCore/Memory/SystemAllocator.h>
-
-#include <AzToolsFramework/Picking/ContextBoundAPI.h>
-
 #include "BaseManipulator.h"
+
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzToolsFramework/Manipulators/ManipulatorView.h>
 
 namespace AzToolsFramework
 {
     /**
-     * LinearManipulator provides a way to visually change properties of a component.
-     * Like the gizmo tool that's typically used to modify translation values of a transform component, LinearManipulator
-     * can be attached to any component, serving as a visual tool for mouse to interact with in the viewport. Instead of 
-     * three axes, LinearManipulator displays only one axis whose direction and origin can be customized. 
+     * LinearManipulator serves as a visual tool for users to modify values
+     * in one dimension on an axis defined in 3D space.
      */
-    class LinearManipulator 
+    class LinearManipulator
         : public BaseManipulator
     {
     public:
-
-        enum class DisplayType
-        {
-            Arrow = 0, ///< a cylinder with an arrow head
-            Cube = 1, ///< a cylinder with a cube head
-            SquarePoint = 2 ///< a square
-        };
-
-        AZ_RTTI(LinearManipulator, "{4AA805DA-7D3C-4AFA-8110-EECF32B8F530}", BaseManipulator);
-        AZ_CLASS_ALLOCATOR(LinearManipulator, AZ::SystemAllocator, 0);
+        AZ_RTTI(LinearManipulator, "{4AA805DA-7D3C-4AFA-8110-EECF32B8F530}", BaseManipulator)
+        AZ_CLASS_ALLOCATOR(LinearManipulator, AZ::SystemAllocator, 0)
 
         explicit LinearManipulator(AZ::EntityId entityId);
         ~LinearManipulator();
 
         /**
+         * The state of the manipulator at the start of an interaction.
+         */
+        struct Start
+        {
+            AZ::Vector3 m_localPosition; ///< The current position of the manipulator in local space.
+            AZ::Vector3 m_snapOffset; ///< The snap offset amount to ensure manipulator is aligned to the grid.
+        };
+        
+        /**
+         * The state of the manipulator during an interaction.
+         */
+        struct Current
+        {
+            AZ::Vector3 m_localOffset; ///< The current offset of the manipulator from its starting position in local space.
+        };
+
+        /**
+         * Mouse action data used by MouseActionCallback (wraps Start and Current manipulator state).
+         */
+        struct Action
+        {
+            Start m_start;
+            Current m_current;
+            AZ::Vector3 LocalPosition() const { return m_start.m_localPosition + m_current.m_localOffset; }
+        };
+
+        /**
          * This is the function signature of callbacks that will be invoked whenever a manipulator
          * is being clicked on or dragged.
          */
-        using MouseActionCallback = AZStd::function<void(const LinearManipulationData&)>;
+        using MouseActionCallback = AZStd::function<void(const Action&)>;
 
-        void InstallMouseDownCallback(MouseActionCallback onMouseDownCallback);
-        void InstallMouseMoveCallback(MouseActionCallback onMouseDownCallback);
-        void InstallMouseUpCallback(MouseActionCallback onMouseDownCallback);
+        void InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback);
+        void InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback);
+        void InstallMouseMoveCallback(MouseActionCallback onMouseMoveCallback);
 
-        void SetBoundsDirty() override;
+        void Draw(
+            AzFramework::EntityDebugDisplayRequests& display,
+            const ViewportInteraction::CameraState& cameraState,
+            const ViewportInteraction::MouseInteraction& mouseInteraction) override;
 
-        void OnMouseDown(const ViewportInteraction::MouseInteraction& interaction, float t) override;
-        void OnMouseMove(const ViewportInteraction::MouseInteraction& interaction) override;
-        void OnMouseUp(const ViewportInteraction::MouseInteraction& interaction) override;
-        void OnMouseOver(ManipulatorId manipulatorId)  override;
+        void SetAxis(const AZ::Vector3& axis) { m_fixed.m_axis = axis; }
+        void SetPosition(const AZ::Vector3& position) { m_position = position; }
 
-        void Draw(AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState) override;
+        const AZ::Vector3& GetPosition() const { return m_position; }
+        const AZ::Vector3& GetAxis() const { return m_fixed.m_axis; }
+
+        void SetViews(ManipulatorViews&& views);
+
+    private:
+        void OnLeftMouseDownImpl(
+            const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance) override;
+        void OnLeftMouseUpImpl(
+            const ViewportInteraction::MouseInteraction& interaction) override;
+        void OnMouseMoveImpl(
+            const ViewportInteraction::MouseInteraction& interaction) override;
+
+        void SetBoundsDirtyImpl() override;
+        void InvalidateImpl() override;
 
         /**
-         * Set whether the size of the manipulator should maintain the same in the viewport when the camera zooms in and out.
+         * Unchanging data set once for the linear manipulator.
          */
-        void SetSizeFixedInScreen(bool isFixed) { m_isSizeFixedInScreen = isFixed; }
-
-        void SetColor(const AZ::Color& color) { m_color = color; }
-        void SetMouseOverColor(const AZ::Color& color) { m_mouseOverColor = color; }
-
-        void SetPosition(const AZ::Vector3& pos) { m_origin = pos; }
-        void SetDirection(const AZ::Vector3& dir) { m_direction = dir; }
-        void SetLength(float length) { m_length = length; }
-        void SetWidth(float width) { m_width = width; }
-        void SetSquarePointSize(float size) { m_squarePointSize = size; }
-
-        const AZ::Vector3& GetPosition() const { return m_origin; }
-
-        void SetUpDirection(const AZ::Vector3& up) { m_upDir = up; }
-        void SetSideReferenceDirection(const AZ::Vector3& side) { m_sideDir = side; }
-
-        void SetDisplayType(DisplayType displayType) { m_displayType = displayType; }
-
-    protected:
-
-        void Invalidate() override;
-
-    private:
-
-        LinearManipulationData GetManipulationData(const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection);
-
-    private:
-
-        /* Shape and Color */
-
-        // in entity's local space
-        AZ::Vector3 m_origin = AZ::Vector3::CreateZero(); 
-        AZ::Vector3 m_direction = AZ::Vector3::CreateAxisX();
-        AZ::Vector3 m_upDir = AZ::Vector3::CreateAxisZ(); ///< only used for DisplayType::Cube
-        AZ::Vector3 m_sideDir = AZ::Vector3::CreateAxisY(); ///< only used for DisplayType::Cube
-        AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); 
-        AZ::Color m_mouseOverColor = BaseManipulator::s_defaultMouseOverColor;
-
-        bool m_isSizeFixedInScreen = true;
-
-        // If m_isSizeFixedInScreen is true, the following variables define the manipulator's shape 
-        // in screen space, otherwise they describe the manipulator in the local space of its owing 
-        // component. 
-        float m_length = 80.0f;
-        float m_width = 6.0f;
-        float m_squarePointSize = 2.5f;
-
-        // The closer the manipulator is shown in the camera, the smaller this number is.
-        float m_screenToWorldMultiplier = 1.0f;
-
-        DisplayType m_displayType = DisplayType::Arrow;
-            
-        /* Hit Detection */
-        
-        union 
+        struct Fixed
         {
-            Picking::RegisteredBoundId m_cylinderBoundId = Picking::InvalidBoundId;
-            Picking::RegisteredBoundId m_squarePointBoundId;
+            AZ::Vector3 m_axis = AZ::Vector3::CreateAxisX(); ///< The axis the manipulator will move along.
         };
-        union
+
+        /**
+         * Initial data recorded when a press first happens with a linear manipulator.
+         */
+        struct StartInternal
         {
-            Picking::RegisteredBoundId m_coneBoundId = Picking::InvalidBoundId;
-            Picking::RegisteredBoundId m_cubeBoundId;
+            AZ::Vector3 m_localPosition; ///< The position in local space of the manipulator when the mouse down event happens.
+            AZ::Vector3 m_localHitPosition; ///< The intersection point in local space between the ray and the manipulator when the mouse down event happens.
+            AZ::Vector3 m_localNormal; ///< The normal in local space of the manipulator when the mouse down event happens.
+            AZ::Vector3 m_snapOffset; ///< The snap offset amount to ensure manipulator is aligned to the grid.
         };
-        
-        /* Mouse Actions */
 
-        float m_cameraFarClip = 1.0f;
-        AZ::Vector3 m_manipulatorOriginWorld = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_manipulatorDirectionWorld = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_manipulatorPlaneNormalWorld = AZ::Vector3::CreateZero();
+        AZ::Vector3 m_position = AZ::Vector3::CreateZero(); ///< Position in local space.
 
-        AZ::Vector3 m_startHitWorldPosition = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_currentHitWorldPosition = AZ::Vector3::CreateZero();
+        Fixed m_fixed;
+        StartInternal m_startInternal;
 
-        MouseActionCallback m_onMouseDownCallback = nullptr;
+        MouseActionCallback m_onLeftMouseDownCallback = nullptr;
+        MouseActionCallback m_onLeftMouseUpCallback = nullptr;
         MouseActionCallback m_onMouseMoveCallback = nullptr;
-        MouseActionCallback m_onMouseUpCallback = nullptr;
+
+        ManipulatorViews m_manipulatorViews; ///< Look of manipulator.
+
+        static StartInternal CalculateManipulationDataStart(
+            const Fixed& fixed, const AZ::Transform& worldFromLocal, bool snapping, float size,
+            const AZ::Vector3 localStartPosition, const AZ::Vector3& rayOrigin,
+            const AZ::Vector3& rayDirection, ManipulatorSpace manipulatorSpace);
+
+        static Action CalculateManipulationDataAction(
+            const Fixed& fixed, const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
+            bool snapping, float size, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
+            ManipulatorSpace manipulatorSpace);
     };
-
-    /**
-     * Return local space translation of manipulator.
-     * @param manipulationData Current state of linear manipulator.
-     * @param inverseTransform Inverse transform of entity manipulator exists on.
-     */
-    AZ_FORCE_INLINE AZ::Vector3 CalculateLocalOffsetFromOrigin(const LinearManipulationData& manipulationData, const AZ::Transform& inverseTransform)
-    {
-        return Vector4ToVector3(inverseTransform
-            * Vector3ToVector4(manipulationData.m_manipulationWorldDirection)) * manipulationData.m_totalTranslationWorldDelta;
-    }
-
 } // namespace AzToolsFramework

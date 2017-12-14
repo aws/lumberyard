@@ -49,7 +49,11 @@ def get_input_dir_node(tg):
     """
     input_dir = getattr(tg, 'az_code_gen_input_dir', None)
     if input_dir:
-        input_dir = tg.bld.srcnode.make_node(input_dir)
+        if os.path.isabs(input_dir):
+            input_dir = tg.bld.root.make_node(input_dir)
+        else:
+            input_dir = tg.bld.srcnode.make_node(input_dir)
+
     else:
         input_dir = tg.path
     return input_dir
@@ -96,8 +100,8 @@ def create_code_generator_tasks(self):
         Logs.warn('az_code_gen: Unable to find azcg directory. Code Generator tasks will not have the utility/scripts as dependencies')
 
     # this script is a dependency
-    script_relpath = os.path.relpath(__file__, self.bld.root.abspath())
-    azcg_dep_nodes.append(self.bld.root.find_node(script_relpath))
+    script_node = self.bld.root.make_node(__file__)
+    azcg_dep_nodes.append(script_node)
 
     for az_code_gen_pass in getattr(self, 'az_code_gen', []):
         # See if we have any scripts
@@ -165,9 +169,9 @@ def create_az_code_generator_task(self, input_file_list, code_generator_scripts,
     if self.bld.is_option_true('use_debug_code_generator'):
         Logs.warn("Using DEBUG AZCodeGenerator!")
         az_code_gen_exe = "AzCodeGeneratorD.exe"
-        full_debug_path = os.path.join(new_task.env.CODE_GENERATOR_PATH,az_code_gen_exe)
-        if os.path.exist(full_debug_path):
-            new_task.env.CODE_GENERATOR_EXECUTABLE = "AzCodeGeneratorD.exe"
+        full_debug_path = os.path.join(new_task.env['CODE_GENERATOR_PATH'][0],az_code_gen_exe)
+        if os.path.exists(full_debug_path):
+            new_task.env['CODE_GENERATOR_EXECUTABLE'] = "AzCodeGeneratorD.exe"
         else:
             Logs.error('Debug AzCodeGenerator executable ({}) was not found.  Make sure to build it first if you want to run the code generator in debug mode'.format(full_debug_path))
 
@@ -320,6 +324,21 @@ class az_code_gen(Task.Task):
             return
 
         created_task = task_hook(self.generator, node_to_link)
+
+        # Shove /Fd flags into codegen meta-tasks, this is similar to logic in mscv_helper's
+        # set_pdb_flags. We compute PDB file path and add the requisite /Fd flag
+        # This enables debug symbols for code outputted by azcg
+        if 'msvc' in (self.generator.env.CC_NAME, self.generator.env.CXX_NAME):
+            # Not having PDBs stops CL.exe working for precompiled header when we have VCCompiler set to true for IB...
+            # When DISABLE_DEBUG_SYMBOLS_OVERRIDE doesn't exist in the dictionary it returns []
+            # which will results to false in this check.
+            if self.bld.is_option_true('generate_debug_info') or self.generator.env['DISABLE_DEBUG_SYMBOLS_OVERRIDE']:
+                pdb_folder = self.generator.path.get_bld().make_node(str(self.generator.idx))
+                pdb_cxxflag = '/Fd{}'.format(pdb_folder.abspath())
+
+                created_task.env.append_unique('CFLAGS', pdb_cxxflag)
+                created_task.env.append_unique('CXXFLAGS', pdb_cxxflag)
+        
         link_task = getattr(self.generator, 'link_task', None)
         if link_task:
             link_task.set_run_after(created_task)  # Compile our .cpp before we link.
@@ -518,7 +537,8 @@ class az_code_gen(Task.Task):
 
         # Write input files to a file (command line version is too long)
         for input_file in self.inputs:
-            self.add_argument('-input-file "{}"'.format(clean_path(input_file.path_from(self.input_dir))))
+            input_file_rel_path = clean_path(input_file.path_from(self.input_dir))
+            self.add_argument('-input-file "{}"'.format(input_file_rel_path))
             input_file.parent.get_bld().mkdir()
 
         def pypath(python_path):

@@ -110,13 +110,8 @@ struct IGame
     //      Notify game of pre-physics update.
     virtual void PrePhysicsUpdate() {}
 
-    // Description:
-    //      Updates the MOD.
-    // Arguments:
-    //      haveFocus - Boolean describing if the game has the input focus or not.
-    // Return Value:
-    //      0 to terminate the game (i.e. when quitting), non-zero to continue
-    virtual int Update(bool haveFocus, unsigned int updateFlags) = 0;
+    // Deprecated
+    virtual int AZ_DEPRECATED(Update(bool haveFocus, unsigned int updateFlags), "Deprecated, main loop now in launcher") { return 0; }
 
     // Description:
     //      Called on the game when entering/exiting game mode in editor

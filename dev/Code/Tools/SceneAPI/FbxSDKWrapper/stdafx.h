@@ -17,13 +17,6 @@
 // are changed infrequently
 //
 
-// If defined, we can mix with release reasonably safe, but we can't link Fbx in debug
-// Might have to change this so it's defined, and link release FBX instead, if this causes problems
-// #define CHANGE_STL_DEBUG_SETTINGS
-
-// Include Configuration settings for Standard Template Library
-#include <STLPortConfig.h>
-
 #include <assert.h>
 
 #define CRY_ASSERT_TRACE(condition, message) assert(condition)

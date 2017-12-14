@@ -30,7 +30,7 @@ namespace LmbrCentral
         (void)context;
         (void)classElement;
 
-        const int valueIndex = classElement.FindElement(AZ_CRC("Value"));
+        const int valueIndex = classElement.FindElement(AZ_CRC("Value", 0x1d775834));
         if (valueIndex >= 0)
         {
             // [Old Hierarchy]                                 [New Hierarchy]
@@ -397,6 +397,11 @@ namespace LmbrCentral
                 for (const SerializedFlowGraph::Input& input : node.m_inputs)
                 {
                     scratchBuffer[0] = '\0';
+
+                    if (!input.m_value)
+                    {
+                        continue;
+                    }
 
                     switch (input.m_type)
                     {

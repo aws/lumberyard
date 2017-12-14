@@ -16,6 +16,8 @@
 #include "IMaterialEffects.h"
 #include "CryAction.h"
 
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
 const float InvalidRayWorldIntersectDistance = -1.0f;
 
 CGroundEffect::CGroundEffect(IEntity* pEntity)
@@ -146,7 +148,7 @@ void CGroundEffect::Update()
         {
             objTypes |= ent_water;
 
-            refHeight = max(refHeight, gEnv->p3DEngine->GetWaterLevel(&entityPos));
+            refHeight = max(refHeight, OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(entityPos) : gEnv->p3DEngine->GetWaterLevel(&entityPos));
         }
 
         if (m_interpSpeed > 0.0f)

@@ -21,10 +21,15 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <Integration/Editor/Components/EditorAnimGraphComponent.h>
+#include <Integration/ActorComponentBus.h>
 
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/AttributeSettings.h>
 #include <MCore/Source/AttributeFloat.h>
+
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+
 
 //#pragma optimize("",off)
 
@@ -58,7 +63,7 @@ namespace EMotionFX
                         ;
 
                     editContext->Class<EditorAnimGraphComponent>(
-                        "Anim Graph", "Manages a EMotion FX animation graph")
+                        "Anim Graph", "The Anim Graph component manages a set of assets that are built in the Animation Editor, including the animation graph, default parameter settings, and assigned motion set for the associated Actor")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation")
                         ->Attribute(AZ::Edit::Attributes::Icon, ":/EMotionFX/AnimGraphComponent.png")
@@ -106,14 +111,29 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void EditorAnimGraphComponent::Deactivate()
         {
+            EditorAnimGraphComponentRequestBus::Handler::BusDisconnect();
             m_animGraphAsset.Release();
             m_motionSetAsset.Release();
-            EditorAnimGraphComponentRequestBus::Handler::BusDisconnect();
         }
 
-        void EditorAnimGraphComponent::LaunchAnimationEditor(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType&)
+        void EditorAnimGraphComponent::LaunchAnimationEditor(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType)
         {
-            EBUS_EVENT(ActorComponentRequestBus, RequestLaunchAnimationEditor);
+            if (assetId.IsValid())
+            {
+                AZ::Data::AssetId actorAssetId;
+                actorAssetId.SetInvalid();
+                EditorActorComponentRequestBus::EventResult(actorAssetId, GetEntityId(), &EditorActorComponentRequestBus::Events::GetActorAssetId);
+
+                // call to open must be done before LoadCharacter
+                const char* panelName = EMStudio::MainWindow::GetEMotionFXPaneName();
+                EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, OpenViewPane, panelName);
+
+                EMStudio::MainWindow* mainWindow = EMStudio::GetMainWindow();
+                if (mainWindow)
+                {
+                    mainWindow->LoadCharacter(actorAssetId, m_animGraphAsset.GetId(), m_motionSetAsset.GetId());
+                }
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -256,6 +276,8 @@ namespace EMotionFX
 
             gameEntity->AddComponent(aznew AnimGraphComponent(&cfg));
         }
+
+       
     } //namespace Integration
 } // namespace EMotionFX
 

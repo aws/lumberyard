@@ -27,10 +27,6 @@ namespace AZ
 
             virtual const char* GetManifestFileExtension() const = 0;
 
-            virtual void ReflectSceneModules(SerializeContext* context) = 0;
-            virtual void ActivateSceneModules() = 0;
-            virtual void DeactivateSceneModules() = 0;
-
             virtual size_t GetErrorCount() const = 0;
         };
 

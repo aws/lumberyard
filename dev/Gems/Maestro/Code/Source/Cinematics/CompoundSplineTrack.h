@@ -27,7 +27,7 @@ public:
     AZ_CLASS_ALLOCATOR(CCompoundSplineTrack, AZ::SystemAllocator, 0);
     AZ_RTTI(CCompoundSplineTrack, "{E6B88EF4-6DB7-48E7-9758-DF6C9E40D4D2}", IAnimTrack);
 
-    CCompoundSplineTrack(int nDims, EAnimValue inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS]);
+    CCompoundSplineTrack(int nDims, AnimValueType inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS]);
     CCompoundSplineTrack();
 
     //////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ public:
     virtual void SetSubTrackName(int nIndex, const char* name);
 
     virtual EAnimCurveType GetCurveType() { return eAnimCurveType_BezierFloat; };
-    virtual EAnimValue GetValueType() { return m_valueType; };
+    virtual AnimValueType GetValueType() { return m_valueType; };
 
     virtual const CAnimParamType& GetParameterType() const { return m_nParamType; };
     virtual void SetParameterType(CAnimParamType type) { m_nParamType = type; }
@@ -100,6 +100,7 @@ public:
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); };
 
     virtual void OffsetKeyPosition(const Vec3& value);
+    virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM);
 
     virtual void SetTimeRange(const Range& timeRange);
 
@@ -152,7 +153,7 @@ public:
 
 protected:
     int m_refCount;
-    EAnimValue m_valueType;
+    AnimValueType m_valueType;
     int m_nDimensions;
     AZStd::vector<AZStd::intrusive_ptr<IAnimTrack>> m_subTracks;
     int m_flags;

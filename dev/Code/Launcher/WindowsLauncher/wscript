@@ -20,6 +20,7 @@ def build(bld):
         platforms                   = ['win'],
         configurations              = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
         file_list                   = 'launcher.waf_files',
+        includes                    = [bld.Path('Code/Launcher')],
 
         lib                         = 'Shell32', 
         additional_manifests        = 'DPIAware.xml',

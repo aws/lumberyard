@@ -46,7 +46,7 @@ public:
     virtual void Render(const SRendParams&, const SRenderingPassInfo& passInfo) {}
     virtual IPhysicalEntity* GetPhysics(void) const { return 0; }
     virtual void SetPhysics(IPhysicalEntity*) { }
-    virtual void SetMaterial(_smart_ptr<IMaterial> pMat) { m_pMaterial = pMat; }
+    virtual void SetMaterial(_smart_ptr<IMaterial> pMat) override;
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL);
     virtual _smart_ptr<IMaterial> GetMaterialOverride() { return m_pMaterial; }
     virtual float GetMaxViewDist() { return 1000000.f; }
@@ -61,10 +61,11 @@ private:
 
     void RenderFog(const SRenderingPassInfo& passInfo);
     void RenderBottomCap(const SRenderingPassInfo& passInfo);
+    void GetOceanGridSize(int& outX, int& outY) const;
 
 private:
     static bool IsWaterVisibleOcclusionCheck();
-
+    
     // Ocean data
     _smart_ptr<IMaterial> m_pMaterial;
     _smart_ptr<IRenderMesh> m_pRenderMesh;
@@ -111,6 +112,10 @@ private:
     CREWaterVolume* m_pWVRE[RT_COMMAND_BUF_COUNT];
     std::vector<SVF_P3F_C4B_T2F> m_wvVertices[RT_COMMAND_BUF_COUNT];
     std::vector<uint16> m_wvIndices[RT_COMMAND_BUF_COUNT];
+
+    int32 m_swathWidth;
+    bool m_bUsingFFT;
+    bool m_bUseTessHW;
 
     static ITimer* m_pTimer;
     static CREWaterOcean* m_pOceanRE;

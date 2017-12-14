@@ -51,7 +51,8 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
     ENGINE_JSON_DATA = json.load(ENGINE_FILE)
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
-LUMBERYARD_BUILD = 486406
+LUMBERYARD_BUILD = 526767
+LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
 
 # validate the Lumberyard version string above
 VERSION_NUMBER_PATTERN = re.compile("^(\.?\d+)*$")
@@ -70,16 +71,16 @@ SUBFOLDERS = [
 PLATFORMS = {
     'darwin': [
         'darwin_x64',
-        'android_armv7_gcc',
         'android_armv7_clang',
+        'android_armv8_clang',
         'ios',
         'appletv'
     ],
     'win32' : [
         'win_x64_vs2015',
         'win_x64_vs2013',
-        'android_armv7_gcc',
-        'android_armv7_clang'
+        'android_armv7_clang',
+        'android_armv8_clang'
     ],
     'linux': [
         'linux_x64'
@@ -125,8 +126,12 @@ for configuration_alias_key in CONFIGURATION_SHORTCUT_ALIASES:
 # if an entry exists in this dictionary, only the configurations listed will be built
 PLATFORM_CONFIGURATION_FILTER = {
     # Remove these as testing comes online for each platform
-    platform : CONFIGURATION_SHORTCUT_ALIASES['non_test'] for platform in ('android_armv7_gcc', 'android_armv7_clang',
-        'ios', 'appletv', 'linux_x64_gcc', 'linux_x64_clang')
+    platform : CONFIGURATION_SHORTCUT_ALIASES['non_test'] for platform in ( 'android_armv7_gcc',
+                                                                            'android_armv7_clang',
+                                                                            'android_armv8_clang',
+                                                                            'ios',
+                                                                            'appletv',
+                                                                            'linux_x64')
 }
 
 ## what conditions do you want a monolithic build ?  Uses the same matching rules as other settings
@@ -143,8 +148,7 @@ MONOLITHIC_BUILDS = [
     'ios',
     'appletv',
     'darwin_release',
-    'android_armv7_gcc_release',
-    'android_armv7_clang_release'
+    'android_release',
 ]
 
 ## List of available launchers by spec module

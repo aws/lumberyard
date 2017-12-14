@@ -19,32 +19,29 @@
 
 #pragma once
 
-namespace AzToolsFramework
+/*!
+    * Enables the Outliner to filter entries based on search string.
+    * Enables the Outliner to do custom sorting on entries.
+    */
+class OutlinerSortFilterProxyModel
+    : public QSortFilterProxyModel
 {
-    /*!
-     * Enables the Outliner to filter entries based on search string.
-     * Enables the Outliner to do custom sorting on entries.
-     */
-    class OutlinerSortFilterProxyModel
-        : public QSortFilterProxyModel
-    {
-        Q_OBJECT
+    Q_OBJECT
 
-    public:
-        AZ_CLASS_ALLOCATOR(OutlinerSortFilterProxyModel, AZ::SystemAllocator, 0);
+public:
+    AZ_CLASS_ALLOCATOR(OutlinerSortFilterProxyModel, AZ::SystemAllocator, 0);
 
-        OutlinerSortFilterProxyModel(QObject* pParent = nullptr);
+    OutlinerSortFilterProxyModel(QObject* pParent = nullptr);
 
-        void UpdateFilter();
+    void UpdateFilter();
 
-        // Qt overrides
-        bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-        bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
-        void sort(int column, Qt::SortOrder order) override;
+    // Qt overrides
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
+    void sort(int column, Qt::SortOrder order) override;
 
-    private:
-        QString m_filterName;
-    };
-}
+private:
+    QString m_filterName;
+};
 
 #endif

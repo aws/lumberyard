@@ -28,6 +28,7 @@
 #include <QShortcutEvent>
 #include <QSettings>
 #include <QMenuBar>
+#include <QScopedValueRollback>
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
@@ -42,6 +43,16 @@ bool PatchedAction::event(QEvent* ev)
 
     if (ev->type() == QEvent::Shortcut && shortcutContext() == Qt::WindowShortcut)
     {
+        // This prevents shortcuts from firing while we're in a long running operation
+        // started by a shortcut
+        static bool reentranceLock = false;
+        if (reentranceLock)
+        {
+            return true;
+        }
+
+        QScopedValueRollback<bool> reset(reentranceLock, true);
+
         QWidget* focusWidget = ShortcutDispatcher::focusWidget();
         if (!focusWidget)
         {

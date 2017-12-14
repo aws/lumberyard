@@ -10,7 +10,6 @@
 *
 */
 
-// include required headers
 #include "AnimGraphPlugin.h"
 #include "BlendGraphWidget.h"
 #include "NodeGraph.h"
@@ -525,6 +524,15 @@ namespace EMStudio
         }
     }
 
+    void AnimGraphPlugin::OnMainWindowClosed()
+    {
+        // If the recorder is on, turn it off
+        if (EMotionFX::GetEMotionFX().GetRecorder()
+            && EMotionFX::GetEMotionFX().GetRecorder()->GetIsRecording())
+        {
+            EMotionFX::GetEMotionFX().GetRecorder()->StopRecording();
+        }
+    }
 
     // init after the parent dock window has been created
     bool AnimGraphPlugin::Init()
@@ -643,7 +651,7 @@ namespace EMStudio
         //mGraphWidget->show();
 
         // get the main window
-        QMainWindow* mainWindow = (QMainWindow*)GetMainWindow();
+        QMainWindow* mainWindow = GetMainWindow();
 
         // create the attribute dock window
         mAttributeDock = new MysticQt::DockWidget("Attributes");
@@ -772,8 +780,8 @@ namespace EMStudio
         TimeViewPlugin* timeViewPlugin = FindTimeViewPlugin();
         if (timeViewPlugin)
         {
-            connect(timeViewPlugin, SIGNAL(DoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnDoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)));
-            connect(timeViewPlugin, SIGNAL(ClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)));
+            connect(timeViewPlugin, SIGNAL(DoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnDoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)));
+            connect(timeViewPlugin, SIGNAL(ClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)));
         }
 
         // detect changes in the recorder
@@ -794,10 +802,7 @@ namespace EMStudio
                 continue;
             }
 
-            OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-            outlinerCategoryItem->mID = animGraph->GetID();
-            outlinerCategoryItem->mUserData = animGraph;
-            outlinerCategory->AddItem(outlinerCategoryItem);
+            outlinerCategory->AddItem(animGraph->GetID(), animGraph);
         }
 
         return true;
@@ -910,8 +915,8 @@ namespace EMStudio
         TimeViewPlugin* timeViewPlugin = FindTimeViewPlugin();
         if (timeViewPlugin)
         {
-            connect(timeViewPlugin, SIGNAL(DoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnDoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)));
-            connect(timeViewPlugin, SIGNAL(ClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*, EMotionFX::Recorder::NodeHistoryItem*)));
+            connect(timeViewPlugin, SIGNAL(DoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnDoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)));
+            connect(timeViewPlugin, SIGNAL(ClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)), this, SLOT(OnClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData*,EMotionFX::Recorder::NodeHistoryItem*)));
         }
     }
 
@@ -1199,6 +1204,7 @@ namespace EMStudio
         mParameterWindow->Init();
         mNodeGroupWindow->Init();
         mViewWidget->Update();
+        mAttributesWindow->InitForAnimGraphObject(nodeToShow);
 #ifdef HAS_GAME_CONTROLLER
         mGameControllerWindow->ReInit();
 #endif
@@ -1229,13 +1235,7 @@ namespace EMStudio
             return;
         }
 
-        OutlinerCategory* category = manager->FindCategoryByName("Anim Graphs");
-        if (category == nullptr)
-        {
-            return;
-        }
-
-        category->RemoveItem(animGraph->GetID());
+        manager->RemoveItemFromCategory("Anim Graphs", animGraph->GetID());
     }
 
     /*
@@ -1375,12 +1375,12 @@ namespace EMStudio
 
 
     //
-    bool AnimGraphEventHandler::OnRayIntersectionTest(const MCore::Vector3& start, const MCore::Vector3& end, EMotionFX::IntersectionInfo* outIntersectInfo)
+    bool AnimGraphEventHandler::OnRayIntersectionTest(const AZ::Vector3& start, const AZ::Vector3& end, EMotionFX::IntersectionInfo* outIntersectInfo)
     {
         outIntersectInfo->mIsValid = true;
 
-        MCore::Vector3 pos;
-        MCore::Vector3 normal;
+        AZ::Vector3 pos;
+        AZ::Vector3 normal;
         AZ::Vector2 uv(0.0f, 0.0f);
         float baryU;
         float baryV;
@@ -1418,11 +1418,11 @@ namespace EMStudio
                 outIntersectInfo->mUV           = uv;
                 outIntersectInfo->mBaryCentricU = baryU;
                 outIntersectInfo->mBaryCentricV = baryU;
-                closestDist = (start - pos).SafeLength();
+                closestDist = MCore::SafeLength(start - pos);
             }
             else
             {
-                float dist = (start - pos).SafeLength();
+                float dist = MCore::SafeLength(start - pos);
                 if (dist < closestDist)
                 {
                     outIntersectInfo->mPosition     = pos;
@@ -1430,7 +1430,7 @@ namespace EMStudio
                     outIntersectInfo->mUV           = uv;
                     outIntersectInfo->mBaryCentricU = baryU;
                     outIntersectInfo->mBaryCentricV = baryU;
-                    closestDist = (start - pos).SafeLength();
+                    closestDist = MCore::SafeLength(start - pos);
                     closestDist = dist;
                 }
             }
@@ -1464,7 +1464,7 @@ namespace EMStudio
 
 
     // set the gizmo offsets
-    void AnimGraphEventHandler::OnSetVisualManipulatorOffset(EMotionFX::AnimGraphInstance* animGraphInstance, uint32 paramIndex, const MCore::Vector3& offset)
+    void AnimGraphEventHandler::OnSetVisualManipulatorOffset(EMotionFX::AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset)
     {
         EMStudioManager* manager = GetManager();
 
@@ -1918,35 +1918,114 @@ namespace EMStudio
     }
 
 
-    // do one step back in the blend graph node history
+    void AnimGraphPlugin::CleanHistory()
+    {
+        MCore::Array<HistoryItem>& history = mCurrentAnimGraphHistory->mHistory;
+
+        bool historyModified = false;
+        const int32 numHistoryItems = history.GetLength();
+        for (int32 i = numHistoryItems - 1; i >= 0; i--)
+        {
+            const HistoryItem& historyItem = history[i];
+            EMotionFX::AnimGraphNode* node = history[i].FindNode();
+            const EMotionFX::AnimGraph* animGraph = history[i].mAnimGraph;
+            bool deleteHistoryItem = false;
+
+            // Delete the history item in case we are dealing with graphs that already got deleted.
+            if (!animGraph || !node)
+            {
+                deleteHistoryItem = true;
+            }
+            else
+            {
+                // Check if the previous or the following history item is a clone of the current one.
+                const int32 prevIndex = i - 1;
+                if (!deleteHistoryItem && prevIndex >= 0)
+                {
+                    const EMotionFX::AnimGraphNode* prevNode = history[prevIndex].FindNode();
+
+                    if (prevNode && node == prevNode)
+                    {
+                        deleteHistoryItem = true;
+                    }
+                }
+
+                const uint32 nextIndex = i + 1;
+                if (!deleteHistoryItem && nextIndex < history.GetLength())
+                {
+                    const EMotionFX::AnimGraphNode* nextNode = history[nextIndex].FindNode();
+
+                    if (nextNode && node == nextNode)
+                    {
+                        deleteHistoryItem = true;
+                    }
+                }
+            }
+
+            // Remove the history item in case we are dealing with invalid graphs or duplicated history items.
+            if (deleteHistoryItem)
+            {
+                history.Remove(i);
+
+                // Decrease the current time in history in case we removed a history item before or at the current time.
+                if (i <= static_cast<int32>(mCurrentAnimGraphHistory->mHistoryIndex))
+                {
+                    mCurrentAnimGraphHistory->mHistoryIndex--;
+                }
+
+                historyModified = true;
+            }
+        }
+
+        if (historyModified)
+        {
+            // Update the step forward and backward buttons in case we modified the history. Maybe they need to be disabled as no history item is left.
+            mViewWidget->Update();
+        }
+    }
+
+
+    void AnimGraphPlugin::ShowGraphFromHistory(uint32 historyIndex)
+    {
+        EMotionFX::AnimGraphNode* node = mCurrentAnimGraphHistory->mHistory[historyIndex].FindNode();
+        EMotionFX::AnimGraph* animGraph = mCurrentAnimGraphHistory->mHistory[historyIndex].mAnimGraph;
+
+        if (!node || !animGraph)
+        {
+            return;
+        }
+
+        ShowGraph(node, animGraph, false);
+    }
+
+
     void AnimGraphPlugin::HistoryStepBack()
     {
-        if (CanPopHistory() == false)
+        // Remove history items of not-existing nodes and update the interface accordingly.
+        CleanHistory();
+
+        if (!CanPopHistory())
         {
             return;
         }
 
         mCurrentAnimGraphHistory->mHistoryIndex--;
-
-        EMotionFX::AnimGraphNode*  node        = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].FindNode();
-        EMotionFX::AnimGraph*      animGraph  = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].mAnimGraph;
-        ShowGraph(node, animGraph, false);
+        ShowGraphFromHistory(mCurrentAnimGraphHistory->mHistoryIndex);
     }
 
 
-    // do one step forward in the blend graph node history
     void AnimGraphPlugin::HistoryStepForward()
     {
-        if (CanStepForwardInHistory() == false)
+        // Remove history items of not-existing nodes and update the interface accordingly.
+        CleanHistory();
+
+        if (!CanStepForwardInHistory())
         {
             return;
         }
 
         mCurrentAnimGraphHistory->mHistoryIndex++;
-
-        EMotionFX::AnimGraphNode*  node        = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].FindNode();
-        EMotionFX::AnimGraph*      animGraph  = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].mAnimGraph;
-        ShowGraph(node, animGraph, false);
+        ShowGraphFromHistory(mCurrentAnimGraphHistory->mHistoryIndex);
     }
 
 
@@ -2374,7 +2453,7 @@ namespace EMStudio
         }
 
         // Auto-relocate to asset source folder.
-        
+
         if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
             const AZStd::string errorString = AZStd::string::format("Unable to find Anim Graph -filename \"%s\"", filename.c_str());
@@ -2418,7 +2497,7 @@ namespace EMStudio
                         {
                             continue;
                         }
-                     
+
                         motionSet = candidate;
                         motionSetId = motionSet->GetID();
                         break;
@@ -2513,7 +2592,10 @@ namespace EMStudio
 
     // timer event
     void AnimGraphPlugin::ProcessFrame(float timePassedInSeconds)
-    {
+    {       
+        if (GetManager()->GetAvoidRendering() || mGraphWidget->visibleRegion().isEmpty())
+            return;
+
         mTotalTime += timePassedInSeconds;
 
         for (AnimGraphPerFrameCallback* callback : mPerFrameCallbacks)
@@ -2530,11 +2612,6 @@ namespace EMStudio
         {
             redraw = true;
             mTotalTime = 0.0f;
-        }
-
-        if (mGraphWidget->visibleRegion().isEmpty())
-        {
-            redraw = false;
         }
 
         if (EMotionFX::GetRecorder().GetIsInPlayMode())

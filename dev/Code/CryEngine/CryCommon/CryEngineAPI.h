@@ -15,16 +15,32 @@
 
 #pragma once
 
-#if defined(WIN32)
-    #if defined(ENGINE_API)
-        #error ENGINE_API should only be defined in this header
-    #endif
+#if defined(ENGINE_API)
+    #error ENGINE_API should only be defined in this header
+#endif
 
+#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+    #define ENGINE_EXPORT_PUBLIC
     #if defined(ENGINE_EXPORTS)
         #define ENGINE_API __declspec(dllexport)
     #else
-        #define ENGINE_API __declspec(dllimport)
+        #if defined(DEDICATED_SERVER)
+            #define ENGINE_API 
+        #else
+            #define ENGINE_API __declspec(dllimport)
+        #endif
+    #endif
+#elif defined(ANDROID) || defined(APPLE)
+    #if defined(ENGINE_EXPORTS)
+        #define ENGINE_EXPORT_PUBLIC __attribute__((visibility("default")))
+        #define ENGINE_API __attribute__((visibility("default")))
+    #else
+        #define ENGINE_EXPORT_PUBLIC
+        #define ENGINE_API __attribute__((visibility("default")))
     #endif
 #else
-    #define ENGINE_API
+#define ENGINE_EXPORT_PUBLIC
+#define ENGINE_API
 #endif
+
+

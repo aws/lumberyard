@@ -86,7 +86,7 @@ namespace AzToolsFramework
                         }
 
                         AZStd::string componentIconPath;
-                        EBUS_EVENT_RESULT(componentIconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentClass->m_typeId);
+                        EBUS_EVENT_RESULT(componentIconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentClass->m_typeId, nullptr);
                         componentIconTable[componentClass] = QString::fromUtf8(componentIconPath.c_str());
                     }
 

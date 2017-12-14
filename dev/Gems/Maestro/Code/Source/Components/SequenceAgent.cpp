@@ -17,6 +17,43 @@
 
 namespace Maestro
 {
+    namespace SequenceAgentHelper
+    {
+        template <typename T>
+        AZ_INLINE void DoSafeSet(AZ::BehaviorEBus::VirtualProperty* prop, AZ::EntityId entityId, T& data)
+        {
+            if (!prop->m_setter)
+            {
+                return;
+            }
+            if (prop->m_setter->m_event)
+            {
+                prop->m_setter->m_event->Invoke(entityId, data);
+            }
+            else if (prop->m_setter->m_broadcast)
+            {
+                prop->m_setter->m_broadcast->Invoke(data);
+            }
+        }
+
+        template <typename T>
+        AZ_INLINE void DoSafeGet(AZ::BehaviorEBus::VirtualProperty* prop, AZ::EntityId entityId, T& data)
+        {
+            if (!prop->m_getter)
+            {
+                return;
+            }
+            if (prop->m_getter->m_event)
+            {
+                prop->m_getter->m_event->InvokeResult(data, entityId);
+            }
+            else if (prop->m_getter->m_broadcast)
+            {
+                prop->m_getter->m_broadcast->InvokeResult(data);
+            }
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceAgent::CacheAllVirtualPropertiesFromBehaviorContext(AZ::Entity* entity)
     {
@@ -59,7 +96,14 @@ namespace Maestro
         auto findIter = m_addressToBehaviorVirtualPropertiesMap.find(animatableAddress);
         if (findIter != m_addressToBehaviorVirtualPropertiesMap.end())
         {
-            retTypeUuid = findIter->second->m_getter->m_event->GetResult()->m_typeId;
+            if (findIter->second->m_getter->m_event)
+            {
+                retTypeUuid = findIter->second->m_getter->m_event->GetResult()->m_typeId;
+            }
+            else if(findIter->second->m_getter->m_broadcast)
+            {
+                retTypeUuid = findIter->second->m_getter->m_broadcast->GetResult()->m_typeId;
+            }
         }
         return retTypeUuid;
     }
@@ -77,7 +121,7 @@ namespace Maestro
             {
                 AZ::Vector3 vector3Value(.0f, .0f, .0f);
                 value.GetValue(vector3Value);               // convert the generic value to a Vector3
-                findIter->second->m_setter->m_event->Invoke(entityId, vector3Value);
+                SequenceAgentHelper::DoSafeSet(findIter->second, entityId, vector3Value);
                 changed = true;
             }
             else if (propertyTypeId == AZ::Color::TYPEINFO_Uuid())
@@ -85,21 +129,21 @@ namespace Maestro
                 AZ::Vector3 vector3Value(.0f, .0f, .0f);
                 value.GetValue(vector3Value);               // convert the generic value to a Vector3
                 AZ::Color colorValue(AZ::Color::CreateFromVector3(vector3Value));
-                findIter->second->m_setter->m_event->Invoke(entityId, colorValue);
+                SequenceAgentHelper::DoSafeSet(findIter->second, entityId, colorValue);
                 changed = true;
             }
             else if (propertyTypeId == AZ::Quaternion::TYPEINFO_Uuid())
             {
                 AZ::Quaternion quaternionValue(AZ::Quaternion::CreateIdentity());
                 value.GetValue(quaternionValue);
-                findIter->second->m_setter->m_event->Invoke(entityId, quaternionValue);
+                SequenceAgentHelper::DoSafeSet(findIter->second, entityId, quaternionValue);
                 changed = true;
             }
             else if (propertyTypeId == AZ::AzTypeInfo<bool>::Uuid())
             {
                 bool boolValue = true;
                 value.GetValue(boolValue);                  // convert the generic value to a bool
-                findIter->second->m_setter->m_event->Invoke(entityId, boolValue);
+                SequenceAgentHelper::DoSafeSet(findIter->second, entityId, boolValue);
                 changed = true;
             }
             else if (propertyTypeId == AZ::AzTypeInfo<AZ::u32>::Uuid())
@@ -114,7 +158,7 @@ namespace Maestro
                 // fall-through default is to cast to float
                 float floatValue = .0f;
                 value.GetValue(floatValue);                 // convert the generic value to a float
-                findIter->second->m_setter->m_event->Invoke(entityId, floatValue);
+                SequenceAgentHelper::DoSafeSet(findIter->second, entityId, floatValue);
                 changed = true;
             }
         }
@@ -132,25 +176,25 @@ namespace Maestro
             if (propertyTypeId == AZ::Vector3::TYPEINFO_Uuid())
             {
                 AZ::Vector3 vector3Value(AZ::Vector3::CreateZero());
-                findIter->second->m_getter->m_event->InvokeResult(vector3Value, entityId);
+                SequenceAgentHelper::DoSafeGet(findIter->second, entityId, vector3Value);
                 returnValue.SetValue(vector3Value);
             }
             else if (propertyTypeId == AZ::Color::TYPEINFO_Uuid())
             {
                 AZ::Color colorValue(AZ::Color::CreateZero());
-                findIter->second->m_getter->m_event->InvokeResult(colorValue, entityId);
+                SequenceAgentHelper::DoSafeGet(findIter->second, entityId, colorValue);
                 returnValue.SetValue((AZ::Vector3)colorValue);
             }
             else if (propertyTypeId == AZ::Quaternion::TYPEINFO_Uuid())
             {
                 AZ::Quaternion quaternionValue(AZ::Quaternion::CreateIdentity());
-                findIter->second->m_getter->m_event->InvokeResult(quaternionValue, entityId);
+                SequenceAgentHelper::DoSafeGet(findIter->second, entityId, quaternionValue);
                 returnValue.SetValue(quaternionValue);
             }
             else if (propertyTypeId == AZ::AzTypeInfo<bool>::Uuid())
             {
-                bool boolValue;
-                findIter->second->m_getter->m_event->InvokeResult(boolValue, entityId);
+                bool boolValue = false;
+                SequenceAgentHelper::DoSafeGet(findIter->second, entityId, boolValue);
                 returnValue.SetValue(boolValue);
             }
             else if (propertyTypeId == AZ::AzTypeInfo<AZ::u32>::Uuid())
@@ -163,7 +207,7 @@ namespace Maestro
             {
                 // fall-through default is to cast to float
                 float floatValue = .0f;
-                findIter->second->m_getter->m_event->InvokeResult(floatValue, entityId);
+                SequenceAgentHelper::DoSafeGet(findIter->second, entityId, floatValue);
                 returnValue.SetValue(floatValue);
             }
         }

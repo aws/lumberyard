@@ -141,6 +141,9 @@ namespace AZ
 
             /// Whether or not to load dynamic modules described by \ref Descriptor::m_modules
             bool m_loadDynamicModules = true;
+
+            /// Specifies which system components to create & activate. If no tags specified, all system components are used.
+            AZStd::vector<AZ::Crc32, OSStdAllocator> m_systemComponentTags;
         };
 
         ComponentApplication();
@@ -233,6 +236,9 @@ namespace AZ
         virtual void CreateBehaviorContext();
         virtual void DestroyBehaviorContext();
 
+        /// Perform any additional initialization needed before loading modules
+        virtual void PreModuleLoad() {};
+
         /// Common logic shared between the multiple Create(...) functions.
         void        CreateCommon();
 
@@ -268,6 +274,9 @@ namespace AZ
          * Subclasses of AZ::Component should not be listed here, they are reflected through the ComponentDescriptorBus.
          */
         virtual void Reflect(ReflectContext* context);
+
+        /// Check if a System Component should be created
+        bool ShouldAddSystemComponent(AZ::ComponentDescriptor* descriptor);
 
         /// Adds system components requested by modules and the application to the system entity.
         void AddRequiredSystemComponents(AZ::Entity* systemEntity);

@@ -57,15 +57,18 @@ namespace AzFramework
         virtual EConnectionState GetConnectionState() const = 0;
         virtual bool IsConnected() const = 0;
 
-        //! Callback parameters: Message ID, Data Buffer, Data Length
+        //! Callback parameters: Message ID, Serial, Data Buffer, Data Length
         //! Note that if the message is a request and it failed because of a protocol error (engine is shutting down for example)
-        //! It is still guarinteed to be called, but will be called with 0, nullptr
-        typedef AZStd::function<void(AZ::u32, const void*, AZ::u32)> TMessageCallback;
+        //! It is still guaranteed to be called, but will be called with 0, nullptr
+        typedef AZStd::function<void(AZ::u32, AZ::u32, const void*, AZ::u32)> TMessageCallback;
         typedef AZ::u32 TMessageCallbackHandle;
         static const TMessageCallbackHandle s_invalidCallbackHandle = 0;
 
         //! Send a message across the connection by message id
         virtual bool SendMsg(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength) = 0;
+
+        //! Send a message across the connection by message id
+        virtual bool SendMsg(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength) = 0;
 
         //! Send a message and wait for the response
         virtual bool SendRequest(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength, TMessageCallback handler) = 0;

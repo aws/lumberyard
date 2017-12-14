@@ -28,7 +28,7 @@ namespace CD
     bool GetRenderFlag(CBaseObject* pObj, int& outRenderFlag);
     bool GetCompiler(CBaseObject* pObj, CD::ModelCompiler*& pCompiler);
     bool GetModel(CBaseObject* pObj, CD::Model*& pModel);
-    bool HitTest(SMainContext& mc, HitContext& hit);
+    bool HitTest(const SMainContext& mc, HitContext& hit);
     void AddMirroredPolygon(CD::Model* pModel, CD::PolygonPtr pPolygon, int opDesignerType);
     void AddMirroredOpenPolygon(CD::Model* pModel, CD::PolygonPtr pPolygon, bool bOnlyAdd);
     void RemoveMirroredPolygon(CD::Model* pModel, CD::PolygonPtr pPolygon);

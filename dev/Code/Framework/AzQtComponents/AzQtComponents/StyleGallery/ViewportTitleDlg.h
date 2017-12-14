@@ -11,6 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+#pragma once
+
 #include <QWidget>
 #include <QLatin1Literal>
 

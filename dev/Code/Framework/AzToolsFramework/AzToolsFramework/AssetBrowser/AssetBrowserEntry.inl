@@ -39,5 +39,32 @@ namespace AzToolsFramework
                 child->GetChildrenRecursively<EntryType>(entries);
             }
         }
+
+        template <typename EntryType>
+        void AssetBrowserEntry::ForEachEntryInMimeData(const QMimeData* mimeData, AZStd::function<void(const EntryType*)> callbackFunction)
+        {
+            if ((!mimeData) || (!callbackFunction))
+            {
+                return;
+            }
+
+            AZStd::vector<AssetBrowserEntry*> entries;
+            if (!AssetBrowserEntry::FromMimeData(mimeData, entries))
+            {
+                // if mimedata does not even contain product entries, no point in proceeding.
+                return;
+            }
+
+            for (auto entry : entries)
+            {
+                // note that this works even if entry itself is a product already.
+                AZStd::vector<const EntryType*> matchingEntries;
+                entry->GetChildrenRecursively<EntryType>(matchingEntries);
+                for (const EntryType* matchingEntry : matchingEntries)
+                {
+                    callbackFunction(matchingEntry);
+                }
+            }
+        }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

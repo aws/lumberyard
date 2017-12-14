@@ -31,4 +31,32 @@
 		<Audio trigger="Play_AMZ_sfx_obj_col_player_crate">
 		</Audio>
      </Effect>
+     <Effect name="character_metal">
+		<Audio trigger="Play_AMZ_sfx_character_col_chr_chr">
+		</Audio>
+     </Effect>
+	 <Effect name="character_soil">
+		<Audio trigger="Play_AMZ_sfx_character_col_chr_dirt">
+		</Audio>
+     </Effect>
+	 <Effect name="character_grass">
+		<Audio trigger="Play_AMZ_sfx_character_col_chr_grass">
+		</Audio>
+     </Effect>
+	 <Effect name="character_rock">
+		<Audio trigger="Play_AMZ_sfx_character_col_chr_rock">
+		</Audio>
+     </Effect>
+	 <Effect name="character_rock_dusty">
+		<Audio trigger="Play_AMZ_sfx_character_col_chr_dirt">
+		</Audio>
+     </Effect>
+	 <Effect name="character_player">
+		<Audio trigger="Play_AMZ_sfx_character_col_chr_chr">
+		</Audio>
+     </Effect>
+	 <Effect name="default_character">
+		<Audio trigger="Play_AMZ_sfx_character_col_chr_chr">
+		</Audio>
+     </Effect>
     </FXLib>

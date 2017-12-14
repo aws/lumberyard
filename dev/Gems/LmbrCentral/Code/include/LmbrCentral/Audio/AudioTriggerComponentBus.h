@@ -42,6 +42,9 @@ namespace LmbrCentral
 
         //! Specify whether the Trigger should be repositioned as the Entity moves or not.
         virtual void SetMovesWithEntity(bool shouldTrackEntity) = 0;
+
+        //! Set the occlusion / obstruction calculation type.
+        virtual void SetObstructionType(Audio::ObstructionType obstructionType) = 0;
     };
 
     using AudioTriggerComponentRequestBus = AZ::EBus<AudioTriggerComponentRequests>;

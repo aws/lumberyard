@@ -21,7 +21,6 @@ namespace LYGame
         : public CGameObjectExtensionHelper < CRain, IGameObjectExtension >
     {
     public:
-
         DECLARE_COMPONENT_TYPE("ComponentRain", 0xD822390820164C00, 0xAD3B490D08E7F9A6);
 
         CRain();
@@ -48,6 +47,9 @@ namespace LYGame
         void SetChannelId(ChannelId id) override { }
         void SetAuthority(bool auth) override;
         void GetMemoryUsage(ICrySizer* pSizer) const override { pSizer->Add(*this); }
+
+        inline const SRainParams& GetRainParams() const { return m_params; }
+        inline bool GetEnabled() const { return m_bEnabled; }
 
         //~IGameObjectExtension
 

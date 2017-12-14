@@ -21,6 +21,7 @@
 #include "GameEngine.h"
 
 #include <TrackView/ui_SequenceBatchRenderDialog.h>
+#include "Maestro/Types/AnimNodeType.h"
 
 #include <QtUtilWin.h>
 
@@ -499,42 +500,24 @@ void CSequenceBatchRenderDialog::OnMovieEvent(IMovieListener::EMovieEvent event,
     if (event == IMovieListener::eMovieEvent_Stopped
         || event == IMovieListener::eMovieEvent_Aborted)
     {
-        /// Finalize the current one, if any.
+        // Finalize the current one, if any.
         if (pSequence)
         {
-            EndCaptureItem(pSequence);
-
-            bool bDone = m_renderContext.currentItemIndex == m_renderItems.size() - 1;
-            bool bCancelled = event == IMovieListener::eMovieEvent_Aborted;
-            if (bDone || bCancelled)
-            {
-                // Display the final progress message.
-                if (bCancelled)
-                {
-                    m_ui->m_progressBar->setValue(0);
-                    m_ui->m_progressStatusMsg->setText(tr("Rendering cancelled"));
-                }
-                else
-                {
-                    m_ui->m_progressBar->setValue(100);
-                    m_ui->m_progressStatusMsg->setText(tr("Rendering finished"));
-                }
-                /// End the batch.
-                m_ui->m_pGoBtn->setText(tr("Start"));
-                m_ui->m_pGoBtn->setIcon(QPixmap(":/Trackview/clapperboard_ready.png"));
-                GetIEditor()->GetMovieSystem()->EnableBatchRenderMode(false);
-                m_renderContext.currentItemIndex = -1;
-                m_ui->BATCH_RENDER_PRESS_ESC_TO_CANCEL->setText(m_ffmpegPluginStatusMsg);
-                return;
-            }
-
-            /// Update the context.
-            m_renderContext.spentTime += m_renderContext.captureOptions.duration;
-            ++m_renderContext.currentItemIndex;
+            OnCaptureItemEnding(pSequence);
+            m_renderContext.canceled = (event == IMovieListener::eMovieEvent_Aborted);
         }
-
-        /// Trigger the next item.
-        StartCaptureItem();
+        else
+        {
+            // This is odd, but this is the condition that starts the first item capturing
+            // when the user presses the start button.
+            if (m_renderItems.size() > 0)
+            {
+                // Setup and trigger the first time
+                m_renderContext.spentTime = 0.0f;
+                m_renderContext.currentItemIndex = 0;
+                OnCaptureItemStarting();
+            }
+        }
     }
 }
 
@@ -565,7 +548,7 @@ void CSequenceBatchRenderDialog::OnSequenceSelected()
 {
     // Get the selected sequence.
     const QString seqName = m_ui->m_sequenceCombo->currentText();
-    IAnimSequence* pSequence = GetIEditor()->GetMovieSystem()->FindSequence(seqName.toLatin1().data());
+    IAnimSequence* pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toLatin1().data());
 
     // Adjust the frame range.
     float sFrame = pSequence->GetTimeRange().start * m_fpsForTimeToFrameConversion;
@@ -581,7 +564,7 @@ void CSequenceBatchRenderDialog::OnSequenceSelected()
     // Fill the shot combo box with the names of director nodes.
     for (int i = 0; i < pSequence->GetNodeCount(); ++i)
     {
-        if (pSequence->GetNode(i)->GetType() == eAnimNodeType_Director)
+        if (pSequence->GetNode(i)->GetType() == AnimNodeType::Director)
         {
             m_ui->m_shotCombo->addItem(pSequence->GetNode(i)->GetName());
         }
@@ -644,7 +627,7 @@ void CSequenceBatchRenderDialog::SaveOutputOptions(const QString& pathname) cons
     if (m_ui->m_resolutionCombo->currentIndex() == arraysize(resolutions))
     {
         const QString resText = m_ui->m_resolutionCombo->currentText();
-        resolutionNode->setContent(resText.toLatin1().data());
+        resolutionNode->setContent(resText.toUtf8().data());
     }
 
     // FPS
@@ -653,7 +636,7 @@ void CSequenceBatchRenderDialog::SaveOutputOptions(const QString& pathname) cons
     const QString fpsText = m_ui->m_fpsCombo->currentText();
     if (m_ui->m_fpsCombo->currentIndex() == -1 || m_ui->m_fpsCombo->findText(fpsText) == -1)
     {
-        fpsNode->setContent(fpsText.toLatin1().data());
+        fpsNode->setContent(fpsText.toUtf8().data());
     }
 
     // Capture options (format, buffer, prefix, create_video)
@@ -661,7 +644,7 @@ void CSequenceBatchRenderDialog::SaveOutputOptions(const QString& pathname) cons
     imageNode->setAttr("format", m_ui->m_imageFormatCombo->currentIndex() % arraysize(imageFormats));
     imageNode->setAttr("bufferstocapture", m_ui->m_buffersToCaptureCombo->currentIndex());
     const QString prefix = m_ui->BATCH_RENDER_FILE_PREFIX->text();
-    imageNode->setAttr("prefix", prefix.toLatin1().data());
+    imageNode->setAttr("prefix", prefix.toUtf8().data());
     bool disableDebugInfo = m_ui->m_disableDebugInfoCheckBox->isChecked();
     imageNode->setAttr("disabledebuginfo", disableDebugInfo);
     bool bCreateVideoOn = m_ui->m_createVideoCheckBox->isChecked();
@@ -672,15 +655,15 @@ void CSequenceBatchRenderDialog::SaveOutputOptions(const QString& pathname) cons
     const QStringList lines = m_ui->m_cvarsEdit->toPlainText().split(QStringLiteral("\n"));
     for (const QString& line : lines)
     {
-        cvarsNode->newChild("cvar")->setContent(line.toLatin1().data());
+        cvarsNode->newChild("cvar")->setContent(line.toUtf8().data());
     }
 
     // Destination
     XmlNodeRef destinationNode = batchRenderOptionsNode->newChild("destination");
     const QString destinationText = m_ui->m_destinationEdit->text();
-    destinationNode->setContent(destinationText.toLatin1().data());
+    destinationNode->setContent(destinationText.toUtf8().data());
 
-    XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), batchRenderOptionsNode, pathname.toStdString().c_str());
+    batchRenderOptionsNode->saveToFile(pathname.toUtf8().data());
 }
 
 bool CSequenceBatchRenderDialog::GetResolutionFromCustomResText(const char* customResText, int& retCustomWidth, int& retCustomHeight) const
@@ -828,8 +811,11 @@ void CSequenceBatchRenderDialog::InitializeContext()
     m_ui->BATCH_RENDER_PRESS_ESC_TO_CANCEL->setText(tr("Press ESC to cancel"));
 }
 
-void CSequenceBatchRenderDialog::StartCaptureItem()
+void CSequenceBatchRenderDialog::OnCaptureItemStarting()
 {
+    m_renderContext.captureState = CaptureState::Starting;
+    m_renderContext.canceled = false;
+
     SRenderItem renderItem = m_renderItems[m_renderContext.currentItemIndex];
     IAnimSequence* pNextSequence = renderItem.pSequence;
     /// Initialize the next one for the batch rendering.
@@ -873,7 +859,7 @@ void CSequenceBatchRenderDialog::StartCaptureItem()
         break;
     default:
         // fall back to tga, the most general of the formats
-        gEnv->pLog->LogWarning("Unhandled file format type detected in CSequenceBatchRenderDialog::StartCaptureItem(), using tga");
+        gEnv->pLog->LogWarning("Unhandled file format type detected in CSequenceBatchRenderDialog::OnCaptureItemStarting(), using tga");
         m_renderContext.captureOptions.FormatTGA();
         break;
     }
@@ -919,7 +905,7 @@ void CSequenceBatchRenderDialog::StartCaptureItem()
     ICVar* cvarDebugInfo = gEnv->pConsole->GetCVar("r_DisplayInfo");
     if (cvarDebugInfo)
     {
-        // cache the current value to restore during EndCaptureItem()
+        // cache the current value to restore during OnCaptureItemEnding()
         m_renderContext.cvarDisplayInfoBU = cvarDebugInfo->GetIVal();
         if (renderItem.disableDebugInfo && cvarDebugInfo->GetIVal())
         {
@@ -936,10 +922,12 @@ void CSequenceBatchRenderDialog::StartCaptureItem()
     m_renderTimer.start();
 }
 
-void CSequenceBatchRenderDialog::ReallyStartCaptureItem()
+void CSequenceBatchRenderDialog::OnCaptureItemStart()
 {
     SRenderItem renderItem = m_renderItems[m_renderContext.currentItemIndex];
     IAnimSequence* pNextSequence = renderItem.pSequence;
+
+    m_renderContext.captureState = CaptureState::Capturing;
 
     GetIEditor()->GetMovieSystem()->StartCapture(m_renderContext.captureOptions);
     GetIEditor()->SetInGameMode(true);
@@ -947,8 +935,16 @@ void CSequenceBatchRenderDialog::ReallyStartCaptureItem()
     GetIEditor()->GetMovieSystem()->AddMovieListener(pNextSequence, this);
 }
 
-void CSequenceBatchRenderDialog::EndCaptureItem(IAnimSequence* pSequence)
+void CSequenceBatchRenderDialog::OnCaptureItemEnding(IAnimSequence* pSequence)
 {
+    m_renderContext.captureState = CaptureState::Ending;
+    m_renderContext.endingSequence = pSequence;
+}
+
+void CSequenceBatchRenderDialog::OnCaptureItemEnd(IAnimSequence* pSequence)
+{
+    m_renderTimer.stop();
+
     GetIEditor()->GetMovieSystem()->RemoveMovieListener(pSequence, this);
     GetIEditor()->SetInGameMode(false);
     GetIEditor()->GetGameEngine()->Update();        // Update is needed because SetInGameMode() queues game mode, Update() executes it.
@@ -970,7 +966,7 @@ void CSequenceBatchRenderDialog::EndCaptureItem(IAnimSequence* pSequence)
     {
         cvarDebugInfo->Set(m_renderContext.cvarDisplayInfoBU);
     }
-    
+
     // Restore flags, range and the active director of the sequence.
     pSequence->SetFlags(m_renderContext.flagBU);
     pSequence->SetTimeRange(m_renderContext.rangeBU);
@@ -989,27 +985,67 @@ void CSequenceBatchRenderDialog::EndCaptureItem(IAnimSequence* pSequence)
             QString inputFile, outputFile = outputFolder;
             outputFile += "\\";
             outputFile += renderItem.prefix;
-            inputFile   = outputFile;
+            inputFile = outputFile;
             outputFile += ".mp4";
-            inputFile  += "%06d.";
-            inputFile  += imageFormats[renderItem.formatIndex];
+            inputFile += "%06d.";
+            inputFile += imageFormats[renderItem.formatIndex];
             GetIEditor()->ExecuteCommand(
                 "plugin.ffmpeg_encode '%s' '%s' '%s' %d %d '-vf crop=%d:%d:0:0'",
                 inputFile.toLocal8Bit().data(), outputFile.toLocal8Bit().data(), "mpeg4",
                 10240, renderItem.fps, getResWidth(renderItem.resW), getResHeight(renderItem.resH));
         }
-            );
+        );
         do
         {
             OnKickIdle();
-        }
-        while (future.isRunning());
+        } while (future.isRunning());
         m_renderContext.bFFMPEGProcessing = false;
+    }
+
+    m_renderContext.captureState = CaptureState::Idle;
+
+    // Check to see if there is more items to process
+    bool done = m_renderContext.currentItemIndex == m_renderItems.size() - 1;
+    if (done)
+    {
+        // Update end the batch message
+        if (m_renderContext.canceled)
+        {
+            m_ui->m_progressBar->setValue(0);
+            m_ui->m_progressStatusMsg->setText(tr("Rendering canceled"));
+        }
+        else
+        {
+            m_ui->m_progressBar->setValue(100);
+            m_ui->m_progressStatusMsg->setText(tr("Rendering finished"));
+        }
+
+        m_ui->m_pGoBtn->setText(tr("Start"));
+        m_ui->m_pGoBtn->setIcon(QPixmap(":/Trackview/clapperboard_ready.png"));
+        GetIEditor()->GetMovieSystem()->EnableBatchRenderMode(false);
+        m_renderContext.currentItemIndex = -1;
+        m_ui->BATCH_RENDER_PRESS_ESC_TO_CANCEL->setText(m_ffmpegPluginStatusMsg);
+    }
+    else
+    {
+        // Update the context.
+        m_renderContext.spentTime += m_renderContext.captureOptions.duration;
+        ++m_renderContext.currentItemIndex;
+
+        // Trigger the next item.
+        OnCaptureItemStarting();
     }
 }
 
 void CSequenceBatchRenderDialog::OnKickIdleTimout()
 {
+    // End capture was triggered, fully end it here.
+    if (m_renderContext.captureState == CaptureState::Ending)
+    {
+        OnCaptureItemEnd(m_renderContext.endingSequence);
+        m_renderContext.endingSequence = nullptr;
+    }
+
     OnKickIdle();
     if (m_renderContext.IsInRendering())
     {
@@ -1028,7 +1064,6 @@ void CSequenceBatchRenderDialog::OnKickIdle()
             const char* rotatingCursor[] =  { "|", "/", "-", "\\" };
             const QString msg = tr("Warming up %1").arg(rotatingCursor[(count++) % arraysize(rotatingCursor)]);
             m_ui->m_progressStatusMsg->setText(msg);
-            GetIEditor()->GetGameEngine()->Update();
             GetIEditor()->Notify(eNotify_OnIdleUpdate);
 
             if (GetTickCount() > m_renderContext.timeWarmingUpStarted + kWarmingUpDuration)
@@ -1036,7 +1071,7 @@ void CSequenceBatchRenderDialog::OnKickIdle()
                 // The warming-up done.
                 m_renderContext.bWarmingUpAfterResChange = false;
                 count = 0;
-                ReallyStartCaptureItem();
+                OnCaptureItemStart();
             }
         }
         else if (m_renderContext.bFFMPEGProcessing)    /// A ffmpeg-processing phase
@@ -1044,7 +1079,6 @@ void CSequenceBatchRenderDialog::OnKickIdle()
             const char* rotatingCursor[] =  { "|", "/", "-", "\\" };
             const QString msg = tr("FFMPEG processing %1").arg(rotatingCursor[(count++) % arraysize(rotatingCursor)]);
             m_ui->m_progressStatusMsg->setText(msg);
-            GetIEditor()->GetGameEngine()->Update();
             GetIEditor()->Notify(eNotify_OnIdleUpdate);
         }
         else                                          /// A capturing phase
@@ -1123,7 +1157,7 @@ void CSequenceBatchRenderDialog::OnLoadBatch()
 
             // sequence
             const QString seqName = itemNode->getAttr("sequence");
-            item.pSequence = GetIEditor()->GetMovieSystem()->FindSequence(seqName.toLatin1().data());
+            item.pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toLatin1().data());
             if (item.pSequence == NULL)
             {
                 QMessageBox::warning(this, tr("Sequence not found"), tr("A sequence of '%1' not found! This'll be skipped.").arg(seqName));
@@ -1135,7 +1169,7 @@ void CSequenceBatchRenderDialog::OnLoadBatch()
             for (int k = 0; k < item.pSequence->GetNodeCount(); ++k)
             {
                 IAnimNode* pNode = item.pSequence->GetNode(k);
-                if (pNode->GetType() == eAnimNodeType_Director && directorName == pNode->GetName())
+                if (pNode->GetType() == AnimNodeType::Director && directorName == pNode->GetName())
                 {
                     item.pDirectorNode = pNode;
                     break;
@@ -1257,13 +1291,13 @@ bool CSequenceBatchRenderDialog::SetUpNewRenderItem(SRenderItem& item)
         return false;
     }
     // sequence
-    item.pSequence = GetIEditor()->GetMovieSystem()->FindSequence(seqName.toLatin1().data());
+    item.pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toLatin1().data());
     assert(item.pSequence);
     // director
     for (int i = 0; i < item.pSequence->GetNodeCount(); ++i)
     {
         IAnimNode* pNode = item.pSequence->GetNode(i);
-        if (pNode->GetType() == eAnimNodeType_Director && shotName == pNode->GetName())
+        if (pNode->GetType() == AnimNodeType::Director && shotName == pNode->GetName())
         {
             item.pDirectorNode = pNode;
             break;

@@ -32,7 +32,7 @@ AzToLyInputDevice::AzToLyInputDevice(IInput& input,
 {
     m_deviceType = cryDeviceType;
 
-    InputChannelEventNotificationBus::Handler::BusConnect();
+    InputChannelNotificationBus::Handler::BusConnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +52,7 @@ AzToLyInputDevice::AzToLyInputDevice(IInput& input,
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AzToLyInputDevice::~AzToLyInputDevice()
 {
-    InputChannelEventNotificationBus::Handler::BusDisconnect();
+    InputChannelNotificationBus::Handler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

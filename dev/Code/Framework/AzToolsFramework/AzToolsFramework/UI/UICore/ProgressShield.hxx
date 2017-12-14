@@ -10,15 +10,14 @@
 *
 */
 
-#ifndef PROGRESSSHIELD_HXX
-#define PROGRESSSHIELD_HXX
+#pragma once
 
 #include <AzCore/base.h>
 
-#pragma once
-
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/function/function_fwd.h>
+
+#include <QWidget>
 
 namespace Ui
 {
@@ -38,7 +37,8 @@ namespace AzToolsFramework
 
         // For porting legacy systems, have the progress shield display like a dialog until "completeCallback" returns true
         // Prefer fully async implementations
-        static void LegacyShowAndWait(QWidget* pParent, QString label, AZStd::function<bool(int& current, int& max)> completeCallback);
+        static void LegacyShowAndWait(QWidget* pParent, QString label, AZStd::function<bool(int& current, int& max)> completeCallback, int delayMS = 0);
+
     protected:
         bool eventFilter(QObject* obj, QEvent* event) override;
     public slots:
@@ -48,6 +48,4 @@ namespace AzToolsFramework
     private:
         Ui::progressShield* uiConstructor;
     };
-}
-
-#endif
+} // namespace AzToolsFramework

@@ -166,6 +166,8 @@ def verify_use_incredibuild(ctx, option_name, value):
     """ Verify value for use_incredibuild """
     if not _is_user_option_true(value):
         return (True,"","")
+    if (ctx.is_option_true('internal_dont_check_recursive_execution')):  # if we're ALREADY inside an incredibuild invocation there is little point to checking this.
+        return (True, "", "")
     (res, warning, error) = internal_verify_incredibuild_license('Make && Build Tools', 'All Platforms')
     return (res, warning, error)
 
@@ -318,8 +320,8 @@ def out_folder_ios(ctx, section_name, option_name, value):
 
 ###############################################################################
 @register_attribute_callback
-def out_folder_android_armv7(ctx, section_name, option_name, value):
-    """ Configure output folder for Android ARMv7 """
+def out_folder_android_armv7_gcc(ctx, section_name, option_name, value):
+    """ Configure output folder for Android ARMv7 GCC """
     if not _is_user_input_allowed(ctx, option_name, value):
         Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
@@ -329,7 +331,39 @@ def out_folder_android_armv7(ctx, section_name, option_name, value):
         return ctx.gui_get_attribute(section_name, option_name, value)
 
     _output_folder_disclaimer(ctx)
-    return _get_string_value(ctx, 'Android ARMv7 Output Folder', value)
+    return _get_string_value(ctx, 'Android ARMv7 GCC Output Folder', value)
+
+
+###############################################################################
+@register_attribute_callback
+def out_folder_android_armv7_clang(ctx, section_name, option_name, value):
+    """ Configure output folder for Android ARMv7 Clang """
+    if not _is_user_input_allowed(ctx, option_name, value):
+        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
+        return value
+
+    # GUI
+    if not ctx.is_option_true('console_mode'):
+        return ctx.gui_get_attribute(section_name, option_name, value)
+
+    _output_folder_disclaimer(ctx)
+    return _get_string_value(ctx, 'Android ARMv7 Clang Output Folder', value)
+
+
+###############################################################################
+@register_attribute_callback
+def out_folder_android_armv8_clang(ctx, section_name, option_name, value):
+    """ Configure output folder for Android ARMv8 Clang """
+    if not _is_user_input_allowed(ctx, option_name, value):
+        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
+        return value
+
+    # GUI
+    if not ctx.is_option_true('console_mode'):
+        return ctx.gui_get_attribute(section_name, option_name, value)
+
+    _output_folder_disclaimer(ctx)
+    return _get_string_value(ctx, 'Android ARMv8 Clang Output Folder', value)
 
 
 ###############################################################################
@@ -660,15 +694,15 @@ def load_user_settings(ctx):
                 value = settings.get('default_value', '')
                 if getattr(ctx.options, option_name) != value:
                     value = getattr(ctx.options, option_name)
-                    
+
                 if not isinstance(value, str):
                     value = str(value)
-                    
-                if  ATTRIBUTE_CALLBACKS.get(option_name, None):                 
+
+                if  ATTRIBUTE_CALLBACKS.get(option_name, None):
                     value = ATTRIBUTE_CALLBACKS[option_name](ctx, section_name, settings['attribute'], value)
-                
+
                 (isValid, warning, error) = ctx.verify_settings_option(option_name, value)
-                                
+
                 # Add option
                 if isValid:
                     user_settings.set( section_name, settings['attribute'], str(value) )
@@ -712,6 +746,9 @@ def load_user_settings(ctx):
         except:
             Logs.warn('unable to query hardware for number of hw threads, using "%d"' % max_cores)
         setattr(ctx.options, 'max_cores', max_cores)
+
+    # removing temporarily while we refactor how code scrubbing works. Do not re-enable without talking with JM Albertson.
+    setattr(ctx.options, 'disable_orbis', 'True') # really. I'm not kidding. ACCEPTED_USE
 
     return user_settings, new_options
 

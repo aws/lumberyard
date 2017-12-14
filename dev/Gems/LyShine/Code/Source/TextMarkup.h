@@ -58,7 +58,8 @@ namespace TextMarkup
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Contains text data
-    struct TextTag : public Tag
+    struct TextTag
+        : public Tag
     {
         TagType GetType() const override { return TagType::Text; }
         AZStd::string text;
@@ -66,21 +67,24 @@ namespace TextMarkup
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Indicates that child elements should be bolded
-    struct BoldTag : public Tag
+    struct BoldTag
+        : public Tag
     {
         TagType GetType() const override { return TagType::Bold; }
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Indicates that child elements should be italicized
-    struct ItalicTag : public Tag
+    struct ItalicTag
+        : public Tag
     {
         TagType GetType() const override { return TagType::Italic; }
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Allows modifying font display properties, such as face and color
-    struct FontTag : public Tag
+    struct FontTag
+        : public Tag
     {
         TagType GetType() const override { return TagType::Font; }
         AZStd::string face;

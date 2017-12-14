@@ -68,26 +68,21 @@ namespace CommandSystem
         }
 
         // get the other parameter info
-        //const float posX          = parameters.GetValueAsFloat("xPos",    this);
-        //const float posY          = parameters.GetValueAsFloat("yPos",    this);
-        //const float posZ          = parameters.GetValueAsFloat("zPos",    this);
         const float scaleX          = parameters.GetValueAsFloat("xScale",  this);
         const float scaleY          = parameters.GetValueAsFloat("yScale",  this);
         const float scaleZ          = parameters.GetValueAsFloat("zScale",  this);
         const AZ::Vector4 rotV4     = parameters.GetValueAsVector4("rot",   this);
+        AZ::Vector3 scale(scaleX, scaleY, scaleZ);
 
         // validate the scale values, don't allow zero or negative scaling
         if (MCore::InRange(scaleX, 0.0001f, 10000.0f) == false ||
             MCore::InRange(scaleY, 0.0001f, 10000.0f) == false ||
             MCore::InRange(scaleZ, 0.0001f, 10000.0f) == false)
         {
-            outResult = "The scale values must be between 0.0001 and 10000.";
-            return false;
+            AZ_Warning("EMotionFX", false, "The scale values must be between 0.0001 and 10000. Resetting scale back to 1.0.");
+            scale = AZ::Vector3::CreateOne();
         }
 
-        // convert into vectors/quaternions
-        //MCore::Vector3 pos(posX, posY, posZ);
-        MCore::Vector3 scale(scaleX, scaleY, scaleZ);
         MCore::Quaternion rot(rotV4.GetX(), rotV4.GetY(), rotV4.GetZ(), rotV4.GetW());
 
         // check if we have to select the new actor instances created by this command automatically
@@ -124,33 +119,23 @@ namespace CommandSystem
         mPreviouslyUsedID = newInstance->GetID();
 
         // setup the position, rotation and scale
-        MCore::Vector3 newPos = newInstance->GetLocalPosition();
+        AZ::Vector3 newPos = newInstance->GetLocalPosition();
         if (parameters.CheckIfHasParameter("xPos"))
         {
-            newPos.x = parameters.GetValueAsFloat("xPos", this);
+            newPos.SetX(parameters.GetValueAsFloat("xPos", this));
         }
         if (parameters.CheckIfHasParameter("yPos"))
         {
-            newPos.y = parameters.GetValueAsFloat("yPos", this);
+            newPos.SetY(parameters.GetValueAsFloat("yPos", this));
         }
         if (parameters.CheckIfHasParameter("zPos"))
         {
-            newPos.z = parameters.GetValueAsFloat("zPos", this);
+            newPos.SetZ(parameters.GetValueAsFloat("zPos", this));
         }
         newInstance->SetLocalPosition(newPos);
 
         newInstance->SetLocalRotation(rot);
         newInstance->SetLocalScale(scale);
-
-        // setup bounds update mode to mesh based if it has meshes
-        if (newInstance->GetActor()->CheckIfHasMeshes(0))
-        {
-            newInstance->SetupAutoBoundsUpdate(0.0f, EMotionFX::ActorInstance::BOUNDS_MESH_BASED);
-        }
-        else
-        {
-            newInstance->SetupAutoBoundsUpdate(0.0f, EMotionFX::ActorInstance::BOUNDS_NODE_BASED);
-        }
 
         // add the actor instance to the selection
         if (select)
@@ -287,7 +272,7 @@ namespace CommandSystem
         // set the position
         if (parameters.CheckIfHasParameter("pos"))
         {
-            MCore::Vector3 value    = parameters.GetValueAsVector3("pos", this);
+            AZ::Vector3 value       = parameters.GetValueAsVector3("pos", this);
             mOldPosition            = actorInstance->GetLocalPosition();
             actorInstance->SetLocalPosition(value);
         }
@@ -303,7 +288,7 @@ namespace CommandSystem
         // set the scale
         if (parameters.CheckIfHasParameter("scale"))
         {
-            MCore::Vector3 value    = parameters.GetValueAsVector3("scale", this);
+            AZ::Vector3 value       = parameters.GetValueAsVector3("scale", this);
             mOldScale               = actorInstance->GetLocalScale();
             actorInstance->SetLocalScale(value);
         }
@@ -429,7 +414,7 @@ namespace CommandSystem
         GetSyntax().AddParameter("lodLevel", "The LOD level. Values higher than [GetNumLODLevels()-1] will be clamped to the maximum LOD.", MCore::CommandSyntax::PARAMTYPE_INT, "0");
         GetSyntax().AddParameter("isVisible", "The visibility flag. In case of true the actor instance is getting updated, in case of false the OnUpdate() will be skipped.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes");
         GetSyntax().AddParameter("doRender", "This flag specifies if the actor instance is getting rendered or not. In case of true the actor instance is rendered, in case of false it will not be visible.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes");
-        GetSyntax().AddParameter("attachmentFastUpdate", "This flag specifies if the actor instance is allowed to get updated fastly in case it is an attachment. In case of true the actor instance attachment is getting updated in the fast mode, in case of false it will be updated in the normal way.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "No");
+        GetSyntax().AddParameter("attachmentFastUpdate", "This flag specifies if the actor instance is allowed to get updated quickly in case it is an attachment. In case of true the actor instance attachment is getting updated in the fast mode, in case of false it will be updated in the normal way.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "No");
     }
 
 
@@ -580,14 +565,18 @@ namespace CommandSystem
         }
 
         // get the transformation values
-        const MCore::Vector3& pos           = actorInstance->GetLocalPosition();
-        const MCore::Vector3& scale         = actorInstance->GetLocalScale();
+        const AZ::Vector3& pos              = actorInstance->GetLocalPosition();
+        const AZ::Vector3& scale            = actorInstance->GetLocalScale();
         const MCore::Quaternion& rotQuat    = actorInstance->GetLocalRotation();
-        const AZ::Vector4 rot           = AZ::Vector4(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w);
+        const AZ::Vector4 rot               = AZ::Vector4(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w);
 
         // create the command
         MCore::String command;
-        command.Format("CreateActorInstance -actorID %i -xPos %f -yPos %f -zPos %f -xScale %f -yScale %f -zScale %f -rot \"%s\"", actorInstance->GetActor()->GetID(), pos.x, pos.y, pos.z, scale.x, scale.y, scale.z, MCore::String(rot).AsChar());
+        command.Format("CreateActorInstance -actorID %i -xPos %f -yPos %f -zPos %f -xScale %f -yScale %f -zScale %f -rot \"%s\"",
+            actorInstance->GetActor()->GetID(),
+            pos.GetX(), pos.GetY(), pos.GetZ(),
+            scale.GetX(), scale.GetY(), scale.GetZ(),
+            MCore::String(rot).AsChar());
 
         // execute the command or add it to the given command group
         if (commandGroup == nullptr)

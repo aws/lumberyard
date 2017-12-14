@@ -226,16 +226,16 @@ function surveymenu:UpdateQuestion()
 		elseif questionType == "text" then
 			self.currentQuestionEntityID = self.TextInputQuestionBody
 			UiElementBus.Event.SetIsEnabled(self.currentQuestionEntityID, true)
+			local textInputElement = UiElementBus.Event.FindChildByName(self.TextInputQuestionBody, "Text Input")
+			self.maxAnswerChars = question.max_chars
+			UiTextInputBus.Event.SetMaxStringLength(textInputElement, self.maxAnswerChars)
 			-- since we support that back option, we need to restore the saved values
 			if #self.answerList.answers[self.currentQuestionIndex].answer >= 1 then
 				local textValue = self.answerList.answers[self.currentQuestionIndex].answer[1]
-				local textInputElement = UiElementBus.Event.FindChildByName(self.TextInputQuestionBody, "Text Input")
 				UiTextInputBus.Event.SetText(textInputElement, textValue)
 			else
-				local textInputElement = UiElementBus.Event.FindChildByName(self.TextInputQuestionBody, "Text Input")			
 				UiTextInputBus.Event.SetText(textInputElement, "")
 			end
-			self.maxAnswerChars = question.max_chars
 			self:UpdateCharCounter()
 			
 		end

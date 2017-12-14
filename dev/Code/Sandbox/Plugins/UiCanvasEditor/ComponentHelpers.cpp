@@ -17,6 +17,7 @@
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <LyShine/Bus/UiSystemBus.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <LyShine/Bus/UiLayoutManagerBus.h>
 
 namespace ComponentHelpers
@@ -59,9 +60,9 @@ namespace ComponentHelpers
                : classData.m_name;
     }
 
-    bool AppearsInUIComponentMenu(const AZ::SerializeContext::ClassData& classData)
+    bool AppearsInUIComponentMenu(const AZ::SerializeContext::ClassData& classData, bool isCanvasSelected)
     {
-        return AzToolsFramework::AppearsInAddComponentMenu(classData, AZ_CRC("UI", 0x27ff46b0));
+        return AzToolsFramework::AppearsInAddComponentMenu(classData, isCanvasSelected ? AZ_CRC("CanvasUI", 0xe1e05605) : AZ_CRC("UI", 0x27ff46b0));
     }
 
     bool IsAddableByUser(const AZ::SerializeContext::ClassData* classData)
@@ -276,20 +277,23 @@ namespace ComponentHelpers
         QTreeWidgetItemRawPtrQList& selectedItems,
         QWidget* parent)
     {
-        if (selectedItems.empty())
-        {
-            // Nothing has been selected.
-            // Nothing to do.
-            return QList<QAction*>();
-        }
-
         HierarchyItemRawPtrList items = SelectionHelpers::GetSelectedHierarchyItems(hierarchy,
                 selectedItems);
 
         AzToolsFramework::EntityIdList entitiesSelected;
-        for (auto item : items)
+
+        bool isCanvasSelected = false;
+        if (selectedItems.empty())
         {
-            entitiesSelected.push_back(item->GetEntityId());
+            isCanvasSelected = true;
+            entitiesSelected.push_back(hierarchy->GetEditorWindow()->GetCanvas());
+        }
+        else
+        {
+            for (auto item : items)
+            {
+                entitiesSelected.push_back(item->GetEntityId());
+            }
         }
 
         using ComponentsList = AZStd::vector < const AZ::SerializeContext::ClassData* >;
@@ -302,11 +306,11 @@ namespace ComponentHelpers
 
         // Gather all components that match our filter and group by category.
         serializeContext->EnumerateDerived<AZ::Component>(
-            [ &componentsList ](const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& knownType) -> bool
+            [ &componentsList, isCanvasSelected ](const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& knownType) -> bool
             {
                 (void)knownType;
 
-                if (AppearsInUIComponentMenu(*classData))
+                if (AppearsInUIComponentMenu(*classData, isCanvasSelected))
                 {
                     if (!IsAddableByUser(classData))
                     {
@@ -358,19 +362,26 @@ namespace ComponentHelpers
                 QString iconUrl = QString(iconPath.c_str());
 
                 bool isEnabled = false;
-                for (auto i : items)
+                if (items.empty())
                 {
-                    AZ::Entity* entity = i->GetElement();
-                    if (CanCreateComponentOnEntity(serializeContext, *componentClass, entity))
+                    auto canvasEntity = AzToolsFramework::GetEntityById(hierarchy->GetEditorWindow()->GetCanvas());
+                    isEnabled = CanCreateComponentOnEntity(serializeContext, *componentClass, canvasEntity);
+                }
+                else
+                {
+                    for (auto i : items)
                     {
-                        isEnabled = true;
+                        AZ::Entity* entity = i->GetElement();
+                        if (CanCreateComponentOnEntity(serializeContext, *componentClass, entity))
+                        {
+                            isEnabled = true;
 
-                        // Stop iterating thru the items
-                        // and go to the next factory.
-                        break;
+                            // Stop iterating thru the items
+                            // and go to the next factory.
+                            break;
+                        }
                     }
                 }
-
                 QAction* action = new QAction(QIcon(iconUrl), typeName, parent);
                 action->setEnabled(isEnabled);
                 QObject::connect(action,
@@ -379,9 +390,22 @@ namespace ComponentHelpers
                     {
                         hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);
 
-                        for (auto i : items)
+                        AzToolsFramework::EntityIdList entitiesSelected;
+                        if (items.empty())
                         {
-                            AZ::Entity* entity = i->GetElement();
+                            entitiesSelected.push_back(hierarchy->GetEditorWindow()->GetCanvas());
+                        }
+                        else
+                        {
+                            for (auto item : items)
+                            {
+                                entitiesSelected.push_back(item->GetEntityId());
+                            }
+                        }
+
+                        for (auto i : entitiesSelected)
+                        {
+                            AZ::Entity* entity = AzToolsFramework::GetEntityById(i);
                             if (CanCreateComponentOnEntity(serializeContext, *componentClass, entity))
                             {
                                 entity->Deactivate();
@@ -409,18 +433,24 @@ namespace ComponentHelpers
         QTreeWidgetItemRawPtrQList& selectedItems,
         const AZ::Component* componentToRemove)
     {
-        if (selectedItems.empty())
-        {
-            // Nothing has been selected.
-            // Nothing to do.
-            return QList<QAction*>();
-        }
-
         AZ_Assert(componentToRemove, "We should have a valid component to remove!");
 
         // Get the list of selected elements
         HierarchyItemRawPtrList items = SelectionHelpers::GetSelectedHierarchyItems(hierarchy,
                 selectedItems);
+
+        AzToolsFramework::EntityIdList entitiesSelected;
+        if (items.empty())
+        {
+            entitiesSelected.push_back(hierarchy->GetEditorWindow()->GetCanvas());
+        }
+        else
+        {
+            for (auto item : items)
+            {
+                entitiesSelected.push_back(item->GetEntityId());
+            }
+        }
 
         // Get the serialize context.
         AZ::SerializeContext* serializeContext;
@@ -451,14 +481,14 @@ namespace ComponentHelpers
         QAction* action = new QAction(title, hierarchy);
         QObject::connect(action,
             &QAction::triggered,
-            [hierarchy, componentTypeId, items, componentIndex](bool checked)
+            [hierarchy, componentTypeId, entitiesSelected, componentIndex](bool checked)
         {
             hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);
 
-            for (auto i : items)
+            for (auto i : entitiesSelected)
             {
                 // We got this factory from LyShine so we know this is a UI component
-                AZ::Entity* element = i->GetElement();
+                AZ::Entity* element = AzToolsFramework::GetEntityById(i);
                 AZ::Component* component = element->FindComponents(componentTypeId)[componentIndex];
                 // Remove the component of that type at the right index
                 element->Deactivate();
@@ -474,9 +504,9 @@ namespace ComponentHelpers
 
         // Check if we can remove the component from every selected element
         bool canRemove = true;
-        for (auto i : items)
+        for (auto i : entitiesSelected)
         {
-            AZ::Entity* entity = i->GetElement();
+            AZ::Entity* entity = AzToolsFramework::GetEntityById(i);
             if (!CanRemoveComponentFromEntity(serializeContext, componentToRemove, entity))
             {
                 canRemove = false;
@@ -513,7 +543,7 @@ namespace ComponentHelpers
             {
                 (void)knownType;
 
-                if (AppearsInUIComponentMenu(*classData))
+                if (AppearsInUIComponentMenu(*classData, false))
                 {
                     if (!IsAddableByUser(classData))
                     {

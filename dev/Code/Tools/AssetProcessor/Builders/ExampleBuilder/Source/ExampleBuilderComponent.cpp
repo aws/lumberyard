@@ -85,11 +85,11 @@ namespace ExampleBuilder
         if (AzFramework::StringFunc::Equal(ext.c_str(), "example"))
         {
             // since we're a source file, we also add a job to do the actual compilation:
-            for (size_t idx = 0; idx < request.GetEnabledPlatformsCount(); idx++)
+            for (const AssetBuilderSDK::PlatformInfo& platformInfo : request.m_enabledPlatforms)
             {
                 AssetBuilderSDK::JobDescriptor descriptor;
                 descriptor.m_jobKey = "Compile Example";
-                descriptor.m_platform = descriptor.m_platform = request.GetEnabledPlatformAt(idx);
+                descriptor.SetPlatformIdentifier(platformInfo.m_identifier.c_str());
 
                 // you can also place whatever parameters you want to save for later into this map:
                 descriptor.m_jobParameters[AZ_CRC("hello", 0x3610a686)] = "World";
@@ -125,12 +125,12 @@ namespace ExampleBuilder
             sourceFileDependencyInfo.m_sourceFileDependencyPath = relPath;
             response.m_sourceFileDependencyList.push_back(sourceFileDependencyInfo);
 
-            // since we're a source file, we also add a job to do the actual compilation:
-            for (size_t idx = 0; idx < request.GetEnabledPlatformsCount(); idx++)
+            // since we're a source file, we also add a job to do the actual compilation (for each enabled platform)
+            for (const AssetBuilderSDK::PlatformInfo& platformInfo : request.m_enabledPlatforms)
             {
                 AssetBuilderSDK::JobDescriptor descriptor;
                 descriptor.m_jobKey = "Compile Example";
-                descriptor.m_platform = request.GetEnabledPlatformAt(idx);
+                descriptor.SetPlatformIdentifier(platformInfo.m_identifier.c_str());
 
                 // you can also place whatever parameters you want to save for later into this map:
                 descriptor.m_jobParameters[AZ_CRC("hello", 0x3610a686)] = "World";
@@ -164,7 +164,7 @@ namespace ExampleBuilder
         //You can always derive from the Job Cancel Listener and reimplement Cancel() if you need to do more things such as signal a semaphore or other threading work.
 
         AssetBuilderSDK::JobCancelListener jobCancelListener(request.m_jobId);
-        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting Job.");
+        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting Job.\n");
         AZStd::string fileName;
         AzFramework::StringFunc::Path::GetFullFileName(request.m_fullPath.c_str(), fileName);
         AZStd::string ext;
@@ -208,17 +208,17 @@ namespace ExampleBuilder
         {
             if (m_isShuttingDown)
             {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Cancelled job %s because shutdown was requested", request.m_fullPath.c_str());
+                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Cancelled job %s because shutdown was requested.\n", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             }
             else if (jobCancelListener.IsCancelled())
             {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Cancelled was requested for job %s", request.m_fullPath.c_str());
+                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Cancelled was requested for job %s.\n", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             }
             else
             {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Error during processing job %s.", request.m_fullPath.c_str());
+                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Error during processing job %s.\n", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             }
         }

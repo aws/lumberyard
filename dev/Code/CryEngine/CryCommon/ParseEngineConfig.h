@@ -134,12 +134,12 @@ public:
         startupParams.connectToRemote = m_connectToRemote;
         startupParams.waitForConnection = m_waitForConnect;
 
-        azstrncpy(startupParams.remoteIP, sizeof(startupParams.remoteIP), m_remoteIP.c_str(), m_remoteIP.length());
-        azstrncpy(startupParams.assetsPlatform, sizeof(startupParams.assetsPlatform), m_assetPlatform.c_str(), m_assetPlatform.length());
-        azstrncpy(startupParams.rootPath, sizeof(startupParams.rootPath), m_rootFolder.c_str(), m_rootFolder.length());
-        azstrncpy(startupParams.gameFolderName, sizeof(startupParams.gameFolderName), m_gameFolder.c_str(), m_gameFolder.length());
-        azstrncpy(startupParams.gameDLLName, sizeof(startupParams.gameDLLName), m_gameDLL.c_str(), m_gameDLL.length());
-        azstrncpy(startupParams.branchToken, sizeof(startupParams.branchToken), m_branchToken.c_str(), m_branchToken.length());
+        azstrncpy(startupParams.remoteIP, sizeof(startupParams.remoteIP), m_remoteIP.c_str(), m_remoteIP.length() + 1); // +1 for the null terminator
+        azstrncpy(startupParams.assetsPlatform, sizeof(startupParams.assetsPlatform), m_assetPlatform.c_str(), m_assetPlatform.length() + 1); // +1 for the null terminator
+        azstrncpy(startupParams.rootPath, sizeof(startupParams.rootPath), m_rootFolder.c_str(), m_rootFolder.length() + 1); // +1 for the null terminator
+        azstrncpy(startupParams.gameFolderName, sizeof(startupParams.gameFolderName), m_gameFolder.c_str(), m_gameFolder.length() + 1); // +1 for the null terminator
+        azstrncpy(startupParams.gameDLLName, sizeof(startupParams.gameDLLName), m_gameDLL.c_str(), m_gameDLL.length() + 1); // +1 for the null terminator
+        azstrncpy(startupParams.branchToken, sizeof(startupParams.branchToken), m_branchToken.c_str(), m_branchToken.length() + 1); // +1 for the null terminator
 
         // compute assets path based on game folder name
         string gameFolderLower(m_gameFolder);

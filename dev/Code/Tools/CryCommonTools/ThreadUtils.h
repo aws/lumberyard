@@ -56,7 +56,7 @@ namespace ThreadUtils
             return TryEnterCriticalSection(&m_cs) != FALSE;
         }
 
-#ifndef NDEBUG
+#if defined(AZ_DEBUG_BUILD)
         bool IsLocked()
         {
             return m_cs.RecursionCount > 0 && (DWORD)m_cs.OwningThread == GetCurrentThreadId();
@@ -133,7 +133,7 @@ namespace ThreadUtils
             return m_locked;
         }
 
-#ifndef NDEBUG
+#if defined (AZ_DEBUG_BUILD)
         bool IsLocked()
         {
             return m_locked;

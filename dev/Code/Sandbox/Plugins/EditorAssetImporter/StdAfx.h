@@ -20,19 +20,6 @@
 #include "AzCore/Math/Guid.h"
 #endif
 
-#if defined(AZ_PLATFORM_WINDOWS)
-#ifndef VC_EXTRALEAN
-#define VC_EXTRALEAN        // Exclude rarely-used stuff from Windows headers
-#endif
-
-#ifndef _WIN32_WINNT        // Allow use of features specific to Windows XP or later.
-#define _WIN32_WINNT 0x0600 // Change this to the appropriate value to target other versions of Windows.
-#endif
-
-#include <afxwin.h>
-#include <afxext.h>
-#endif
-
 /////////////////////////////////////////////////////////////////////////////
 // CryTek
 /////////////////////////////////////////////////////////////////////////////

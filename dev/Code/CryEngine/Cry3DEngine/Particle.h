@@ -261,60 +261,77 @@ private:
     // Track sliding state.
     struct SSlideInfo
     {
-        _smart_ptr<IPhysicalEntity>
-        pEntity;                                        // Physical entity hit.
-        Vec3                    vNormal;            // Normal of sliding surface.
-        float                   fFriction;      // Sliding friction, proportional to normal force.
-        float                   fSlidingTime;   // Cumulative amount of time sliding.
+        int                     physicalEntityId;       // Physical entity hit.
+        Vec3					vNormal;			// Normal of sliding surface.
+        float					fFriction;		// Sliding friction, proportional to normal force.
+        float					fSlidingTime;	// Cumulative amount of time sliding.
 
         SSlideInfo()
-        { Clear(); }
+        {
+            Clear();
+        }
         void Clear()
-        { ClearSliding(Vec3(ZERO)); }
+        {
+            ClearSliding(Vec3(ZERO));
+        }
         void ClearSliding(const Vec3& vNormal_)
         {
-            pEntity = 0;
+            physicalEntityId = -1; // Defaulting to -1 to fallback to terrain collision (see GetPhysicalEntityById)
             fFriction = 0;
             fSlidingTime = -1.f;
             vNormal = vNormal_;
         }
         void SetSliding(IPhysicalEntity* pEntity_, const Vec3& vNormal_, float fFriction_)
         {
-            pEntity = pEntity_;
+            physicalEntityId = gEnv->pPhysicalWorld->GetPhysicalEntityId(pEntity_);
             vNormal = vNormal_;
             fFriction = fFriction_;
             fSlidingTime = 0.f;
         }
         bool IsSliding() const
-        { return fSlidingTime >= 0.f; }
+        {
+            return fSlidingTime >= 0.f;
+        }
+
+        IPhysicalEntity* GetPhysicalEntity() const
+        {
+            return gEnv->pPhysicalWorld->GetPhysicalEntityById(physicalEntityId);
+        }
     };
 
-    // Track predicted collisions.
+	// Track predicted collisions.
     struct SHitInfo
     {
-        Vec3                vPos;                           // Hit position.
-        Vec3                vPathDir;                   // Direction of reverse path.
+        Vec3                vPos;                   // Hit position.
+        Vec3                vPathDir;               // Direction of reverse path.
         float               fPathLength;            // Length of reverse path.
-        Vec3                vNormal;                    // Normal of hit surface.
-        _smart_ptr<IPhysicalEntity>
-        pEntity;                                            // Physical entity hit.
+        Vec3                vNormal;                // Normal of hit surface.
+        int                 physicalEntityId;       // Physical entity hit.
         int                 nSurfaceIdx;            // Surface index of hit; -1 if no hit.
 
         SHitInfo()
-        { Clear(); }
+        {
+            Clear();
+        }
         void Clear()
         {
             nSurfaceIdx = -1;
             fPathLength = 0.f;
-            pEntity = 0;
+            physicalEntityId = -1; // Defaulting to -1 to fallback to terrain collision (see GetPhysicalEntityById)
         }
 
         bool HasPath() const
-        { return fPathLength > 0.f; }
+        {
+            return fPathLength > 0.f;
+        }
         bool HasHit() const
-        { return nSurfaceIdx >= 0; }
+        {
+            return nSurfaceIdx >= 0;
+        }
         void SetMiss(const Vec3& vStart_, const Vec3& vEnd_)
-        { SetHit(vStart_, vEnd_, Vec3(0.f)); }
+        {
+            SetHit(vStart_, vEnd_, Vec3(0.f));
+        }
         void SetHit(const Vec3& vStart_, const Vec3& vEnd_, const Vec3& vNormal_, int nSurfaceIdx_ = -1, IPhysicalEntity* pEntity_ = 0)
         {
             vPos = vEnd_;
@@ -326,12 +343,17 @@ private:
             }
             vNormal = vNormal_;
             nSurfaceIdx = nSurfaceIdx_;
-            pEntity = pEntity_;
+            physicalEntityId = gEnv->pPhysicalWorld->GetPhysicalEntityId(pEntity_);
         }
 
         // If path invalid, returns false.
         // If path valid returns true; if hit.dist < 1, then hit was matched.
         bool TestHit(ray_hit& hit, const Vec3& vPos0, const Vec3& vPos1, const Vec3& vVel0, const Vec3& vVel1, float fMaxDev, float fRadius = 0.f) const;
+
+        IPhysicalEntity* GetPhysicalEntity() const
+        {
+            return gEnv->pPhysicalWorld->GetPhysicalEntityById(physicalEntityId);
+        }
     };
 
     struct SCollisionInfo

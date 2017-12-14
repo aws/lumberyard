@@ -25,8 +25,10 @@
 #include "UiSerialize.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiRadioButtonGroupNotificationBus Behavior context handler class 
-class UiRadioButtonGroupNotificationBusBehaviorHandler : public UiRadioButtonGroupNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiRadioButtonGroupNotificationBus Behavior context handler class
+class UiRadioButtonGroupNotificationBusBehaviorHandler
+    : public UiRadioButtonGroupNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiRadioButtonGroupNotificationBusBehaviorHandler, "{A8D1A53C-7419-4EBA-8B73-EA4C5F6ED2DA}", AZ::SystemAllocator,
@@ -62,40 +64,7 @@ AZ::EntityId UiRadioButtonGroupComponent::GetCheckedRadioButton()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiRadioButtonGroupComponent::SetState(AZ::EntityId radioButton, bool isOn)
 {
-    // First check if the button is actually in the group
-    if (radioButton.IsValid() && ContainsRadioButton(radioButton))
-    {
-        // If this is a request to be checked
-        if (isOn)
-        {
-            // Check if we currently have a checked radio button
-            if (m_checkedEntity.IsValid())
-            {
-                EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false);
-                m_checkedEntity.SetInvalid();
-            }
-
-            m_checkedEntity = radioButton;
-            EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, true);
-        }
-        else if (m_allowUncheck && radioButton == m_checkedEntity) // && isOn == false
-        {
-            EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false);
-            m_checkedEntity.SetInvalid();
-        }
-        else // we didn't change anything, don't send events
-        {
-            return;
-        }
-
-        if (!m_changedActionName.empty())
-        {
-            AZ::EntityId canvasEntityId;
-            EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-            EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_changedActionName);
-        }
-        EBUS_EVENT_ID(GetEntityId(), UiRadioButtonGroupNotificationBus, OnRadioButtonGroupStateChange, m_checkedEntity);
-    }
+    SetStateCommon(radioButton, isOn, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,11 +134,10 @@ bool UiRadioButtonGroupComponent::RegisterRadioButton(AZ::EntityId radioButton)
                 if (m_checkedEntity.IsValid())
                 {
                     // Uncheck our currently checked entity
-                    EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false);
+                    EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false, false);
                     m_checkedEntity.SetInvalid();
                 }
                 m_checkedEntity = radioButton;
-                EBUS_EVENT_ID(GetEntityId(), UiRadioButtonGroupNotificationBus, OnRadioButtonGroupStateChange, m_checkedEntity);
             }
 
             return true;
@@ -184,13 +152,17 @@ void UiRadioButtonGroupComponent::UnregisterRadioButton(AZ::EntityId radioButton
 {
     m_radioButtons.erase(radioButton);
 
-    // If the button that is getting removed was the checked entity, send a notification out that we do not have
-    // a checked entity anymore
+    // If the button that is getting removed was the checked entity, set the check entity to invalid
     if (radioButton == m_checkedEntity)
     {
         m_checkedEntity.SetInvalid();
-        EBUS_EVENT_ID(GetEntityId(), UiRadioButtonGroupNotificationBus, OnRadioButtonGroupStateChange, m_checkedEntity);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::RequestRadioButtonStateChange(AZ::EntityId radioButton, bool newState)
+{
+    SetStateCommon(radioButton, newState, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -277,3 +249,46 @@ void UiRadioButtonGroupComponent::Reflect(AZ::ReflectContext* context)
             ->Handler<UiRadioButtonGroupNotificationBusBehaviorHandler>();
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::SetStateCommon(AZ::EntityId radioButton, bool isOn, bool sendNotifications)
+{
+    // First check if the button is actually in the group
+    if (radioButton.IsValid() && ContainsRadioButton(radioButton))
+    {
+        // If this is a request to be checked
+        if (isOn)
+        {
+            // Check if we currently have a checked radio button
+            if (m_checkedEntity.IsValid())
+            {
+                EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false, sendNotifications);
+                m_checkedEntity.SetInvalid();
+            }
+
+            m_checkedEntity = radioButton;
+            EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, true, sendNotifications);
+        }
+        else if (m_allowUncheck && radioButton == m_checkedEntity) // && isOn == false
+        {
+            EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false, sendNotifications);
+            m_checkedEntity.SetInvalid();
+        }
+        else // we didn't change anything, don't send events
+        {
+            return;
+        }
+
+        if (sendNotifications)
+        {
+            if (!m_changedActionName.empty())
+            {
+                AZ::EntityId canvasEntityId;
+                EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+                EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_changedActionName);
+            }
+            EBUS_EVENT_ID(GetEntityId(), UiRadioButtonGroupNotificationBus, OnRadioButtonGroupStateChange, m_checkedEntity);
+        }
+    }
+}
+

@@ -32,9 +32,9 @@ public:
     // adjust a given actor instance
         MCORE_DEFINECOMMAND_START(CommandAdjustActorInstance, "Adjust actor instance", true)
 public:
-    MCore::Vector3      mOldPosition;
+    AZ::Vector3         mOldPosition;
     MCore::Quaternion   mOldRotation;
-    MCore::Vector3      mOldScale;
+    AZ::Vector3         mOldScale;
     uint32              mOldLODLevel;
     bool                mOldIsVisible;
     bool                mOldDoRender;
@@ -46,9 +46,9 @@ public:
     // remove an actor instance
         MCORE_DEFINECOMMAND_START(CommandRemoveActorInstance, "Remove actor instance", true)
     uint32              mOldActorID;
-    MCore::Vector3      mOldPosition;
+    AZ::Vector3         mOldPosition;
     MCore::Quaternion   mOldRotation;
-    MCore::Vector3      mOldScale;
+    AZ::Vector3         mOldScale;
     uint32              mOldLODLevel;
     bool                mOldIsVisible;
     bool                mOldDoRender;

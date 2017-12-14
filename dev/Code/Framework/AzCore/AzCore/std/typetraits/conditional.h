@@ -57,6 +57,9 @@ namespace AZStd
         typedef T1 type;
     };
 
+    template <bool Condition, typename T1, typename T2>
+    using conditional_t = typename conditional<Condition, T1, T2>::type;
+
     template<bool B, class T = void>
     struct enable_if
     {	

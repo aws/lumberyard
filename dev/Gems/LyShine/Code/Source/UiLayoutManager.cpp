@@ -98,9 +98,9 @@ void UiLayoutManager::ComputeLayoutForElementAndDescendants(AZ::EntityId entityI
 {
     // Get a list of layout children
     auto FindLayoutChildren = [](const AZ::Entity* entity)
-    {
-        return (UiLayoutControllerBus::FindFirstHandler(entity->GetId())) ? true : false;
-    };
+        {
+            return (UiLayoutControllerBus::FindFirstHandler(entity->GetId())) ? true : false;
+        };
 
     LyShine::EntityArray layoutChildren;
     EBUS_EVENT_ID(entityId, UiElementBus, FindDescendantElements, FindLayoutChildren, layoutChildren);
@@ -147,17 +147,17 @@ void UiLayoutManager::AddToRecomputeLayoutList(AZ::EntityId entityId)
 
         m_elementsToRecomputeLayout.remove_if(
             [descendants](const AZ::EntityId& e)
-        {
-            for (auto descendant : descendants)
             {
-                if (descendant->GetId() == e)
+                for (auto descendant : descendants)
                 {
-                    return true;
+                    if (descendant->GetId() == e)
+                    {
+                        return true;
+                    }
                 }
+                return false;
             }
-            return false;
-        }
-        );
+            );
 
         // Add element to list
         m_elementsToRecomputeLayout.push_back(entityId);

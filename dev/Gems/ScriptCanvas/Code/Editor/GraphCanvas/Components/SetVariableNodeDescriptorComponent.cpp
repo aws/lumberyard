@@ -61,10 +61,10 @@ namespace ScriptCanvasEditor
         return AZStd::any::TYPEINFO_Uuid();
     }
 
-	void SetVariableNodeDescriptorComponent::SetVariableReferenceDataInterface::OnVariableActivated()
-	{
-		SignalValueChanged();
-	}
+    void SetVariableNodeDescriptorComponent::SetVariableReferenceDataInterface::OnVariableActivated()
+    {
+        SignalValueChanged();
+    }
 
     void SetVariableNodeDescriptorComponent::SetVariableReferenceDataInterface::OnAssignVariableChanged()
     {
@@ -195,7 +195,7 @@ namespace ScriptCanvasEditor
     void SetVariableNodeDescriptorComponent::OnVariableActivated()
     {
         UpdateTitle();
-		SetVariableNodeDescriptorNotificationBus::Event(GetEntityId(), &SetVariableNodeDescriptorNotifications::OnVariableActivated);
+        SetVariableNodeDescriptorNotificationBus::Event(GetEntityId(), &SetVariableNodeDescriptorNotifications::OnVariableActivated);
     }
 
     void SetVariableNodeDescriptorComponent::OnVariableDestroyed()

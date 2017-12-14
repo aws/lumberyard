@@ -13,6 +13,8 @@
 #ifndef PROFILER_CHARTTYPES_H
 #define PROFILER_CHARTTYPES_H
 
+#include <QObject>
+
 namespace Charts
 {
     enum class AxisType

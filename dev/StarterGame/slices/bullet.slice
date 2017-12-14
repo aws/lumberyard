@@ -1,9 +1,9 @@
 <ObjectStream version="1">
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-			<Class name="AZ::u64" field="id" value="17860696277262604590" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			<Class name="AZ::u64" field="id" value="18170900539353260663" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
-		<Class name="AZStd::string" field="Name" value="17860696277262604590" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+		<Class name="AZStd::string" field="Name" value="18170900539353260663" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 		<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 			<Class name="PrefabComponent" field="element" version="1" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
@@ -158,14 +158,14 @@
 													<Class name="AZ::u64" field="id" value="2292188746" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 													<Class name="AZStd::string" field="name" value="Lifespan" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 												</Class>
-												<Class name="double" field="value" value="6.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+												<Class name="double" field="value" value="3.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 											</Class>
 											<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 												<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
 													<Class name="AZ::u64" field="id" value="254213878" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 													<Class name="AZStd::string" field="name" value="Speed" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 												</Class>
-												<Class name="double" field="value" value="35.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+												<Class name="double" field="value" value="150.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 											</Class>
 										</Class>
 										<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
@@ -194,17 +194,24 @@
 												<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
-															<Class name="AZ::u64" field="id" value="298341484" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-															<Class name="AZStd::string" field="name" value="Damage" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
-														</Class>
-														<Class name="double" field="value" value="70.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
-													</Class>
-													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
-														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
 															<Class name="AZ::u64" field="id" value="2393449801" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="ForceMultiplier" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 														</Class>
-														<Class name="double" field="value" value="2000.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="value" value="1000.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" value="2883517783" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" value="DamageMin" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+														</Class>
+														<Class name="double" field="value" value="10.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" value="2547237390" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" value="DamageMax" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+														</Class>
+														<Class name="double" field="value" value="100.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 												</Class>
 												<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>

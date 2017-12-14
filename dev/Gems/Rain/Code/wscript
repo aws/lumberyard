@@ -16,10 +16,19 @@ def build(bld):
         #==============================
         # Common
         #==============================
-        includes    = [ '.' ,
+        includes    = [ 'Include' ,
                         bld.Path('Code/CryEngine/CryCommon'),
                         bld.Path('Code/CryEngine/CryAction')],
-
-        use         = ['AzGameFramework']
-
+        
+        editor = dict(
+            defines     = ['RAIN_EDITOR'],
+            includes    = ['Include',
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/CryEngine/CryAction'),
+                           bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                           bld.Path('Code/Sandbox'),
+                           bld.Path('Code/Sandbox/Editor'),
+                           bld.Path('Code/Sandbox/Editor/Include')
+                           ],
+        ),
     )

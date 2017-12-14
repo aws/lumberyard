@@ -18,8 +18,12 @@
 #define CRYINCLUDE_CRYCOMMON_ANDROIDSPECIFIC_H
 #pragma once
 
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 #define _CPU_ARM
+#endif
+
+#if defined(__aarch64__)
+#define PLATFORM_64BIT
 #endif
 
 #if defined(__ARM_NEON__)
@@ -30,12 +34,14 @@
 #define MOBILE
 #endif
 
-#if defined(__clang__) && NDK_REV_MAJOR >= 14
+#if (defined(__clang__) && NDK_REV_MAJOR >= 14) || (defined(_CPU_ARM) && defined(PLATFORM_64BIT))
     // The version of clang that NDK r14+ ships with is seemingly generating different (for better or worse) code for the atomic operations 
     // used in the LocklessLinkedList.  In either case, this is causing deadlocks in the job system and crashes from memory stomps in 
     // the bucket allocator.  By defining INTERLOCKED_COMPARE_EXCHANGE_128_NOT_SUPPORTED it will disable the Cry job system as well as
     // change the implementation of the LocklessLinkedList to use a mutex in it's operations instead, essentially use the same behaviour 
     // as iOS.  While not ideal to use this as a band-aid on the problem, it does fix it with a negligible performance impact.
+    //
+    // Additionally, arm64 processors do not provide a cmpxchg16b (or equivalent) instruction required for _InterlockedCompareExchange128
     #define INTERLOCKED_COMPARE_EXCHANGE_128_NOT_SUPPORTED
 #endif
 
@@ -76,9 +82,13 @@ typedef double real;
 
 typedef uint32              DWORD;
 typedef DWORD*              LPDWORD;
-typedef DWORD                               DWORD_PTR;
-typedef int INT_PTR, * PINT_PTR;
-typedef unsigned int UINT_PTR, * PUINT_PTR;
+#if defined(PLATFORM_64BIT)
+typedef uint64              DWORD_PTR;
+#else
+typedef DWORD               DWORD_PTR;
+#endif
+typedef intptr_t INT_PTR, *PINT_PTR;
+typedef uintptr_t UINT_PTR, * PUINT_PTR;
 typedef char* LPSTR, * PSTR;
 typedef uint64      __uint64;
 typedef int64       INT64;

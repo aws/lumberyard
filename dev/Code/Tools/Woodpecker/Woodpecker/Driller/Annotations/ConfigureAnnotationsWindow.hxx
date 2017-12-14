@@ -15,7 +15,12 @@
 
 #pragma once
 
-#include <QtWidgets/QDialog>
+#include <QDialog>
+#include <QAbstractTableModel>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/containers/vector.h>
+
+class QSortFilterProxyModel;
 
 namespace Ui
 {

@@ -47,6 +47,7 @@ namespace GraphCanvas
         AZ::Entity* CreateCoreNode() const override;
         AZ::Entity* CreateGeneralNode(const char* nodeType) const override;
         AZ::Entity* CreateCommentNode() const override;
+        AZ::Entity* CreateBlockCommentNode() const override;
         AZ::Entity* CreateWrapperNode(const char* nodeType) const override;
 
         AZ::Entity* CreateDataSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const override;
@@ -74,7 +75,5 @@ namespace GraphCanvas
         AZ::EntityId CreateStyleEntity(const AZStd::string& style) const override;
         AZ::EntityId CreateVirtualChild(const AZ::EntityId& real, const AZStd::string& virtualChildElement) const override;
         ////
-
-        
     };
 }

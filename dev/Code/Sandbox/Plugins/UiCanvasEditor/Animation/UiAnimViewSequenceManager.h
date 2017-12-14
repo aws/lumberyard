@@ -63,8 +63,6 @@ public:
     IUiAnimationSystem* GetAnimationSystem() override;
     CUiAnimViewSequence* GetCurrentSequence() override;
     void ActiveCanvasChanged() override;
-    void CanvasLoaded() override;
-    void CanvasUnloading() override;
     // ~UiEditorAnimationInterface
 
 private:

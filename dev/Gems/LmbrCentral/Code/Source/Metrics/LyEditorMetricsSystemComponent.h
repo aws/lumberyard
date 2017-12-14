@@ -29,7 +29,7 @@ namespace LyEditorMetrics
     {
     public:
         AZ_COMPONENT(LyEditorMetricsSystemComponent, "{B8C74085-F6B7-4E2F-8135-78C991CC53C5}");
-       
+
         static void Reflect(AZ::ReflectContext* context);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
@@ -65,6 +65,8 @@ namespace LyEditorMetrics
 
         void MenuTriggered(const char* menuIdentifier, AzToolsFramework::MetricsActionTriggerType triggerType) override;
 
+        void AssetBrowserAction(AzToolsFramework::AssetBrowserActionType actionType, const AZ::Uuid& sourceUuid, const char* extension, int numberOfProducts) override;
+
         void RegisterAction(QAction* action, const QString& metricsText) override;
         void UnregisterAction(QAction* action) override;
 
@@ -85,9 +87,12 @@ namespace LyEditorMetrics
         ActionMetricsTracker* m_actionTracker;
         AZStd::set<AZStd::string> m_legacyEntityNameWhiteList;
         AZStd::set<AZStd::string> m_legacyScriptEntityNameWhiteList;
+        AZStd::set<AZStd::string> m_extensionWhiteList;
+        AZStd::unordered_map<AzToolsFramework::AssetBrowserActionType, AZStd::string> m_assetBrowserActionMap;
 
         void InitializeLegacyEntityList();
         void InitializeLegacyScriptEntityList();
+        void InitializeActionBrowserData();
 
         // helper function for instantiating slice metrics events
         void SendSliceInstantiatedMetricsEvent(const char* eventName, const AZ::Crc32& sliceIdentifier);

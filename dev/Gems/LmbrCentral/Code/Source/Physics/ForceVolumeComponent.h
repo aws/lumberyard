@@ -37,7 +37,7 @@ namespace LmbrCentral
 
         ForceMode m_forceMode = ForceMode::eDirection;
         ForceSpace m_forceSpace = ForceSpace::eWorldSpace;
-        bool m_forceMassDependent = true;
+        bool m_useMass = false;
         AZ::Vector3 m_forceDirection = AZ::Vector3::CreateAxisX();
         float m_forceMagnitude = 20.0f;
         float m_volumeDamping = 0.0f;
@@ -72,14 +72,13 @@ namespace LmbrCentral
         explicit ForceVolumeComponent(const ForceVolumeConfiguration& configuration);
         ~ForceVolumeComponent() override = default;
 
-        ////////////////////////////////////////////////////////////////////////
         // ForceVolumeRequests
         void SetForceMode(ForceMode mode) override;
         ForceMode GetForceMode() override;
         void SetForceSpace(ForceSpace space) override;
         ForceSpace GetForceSpace() override;
-        void SetForceMassDependent(bool massDependent) override;
-        bool GetForceMassDependent() override;
+        void SetUseMass(bool useMass) override;
+        bool GetUseMass() override;
         void SetForceMagnitude(float magnitude) override;
         float GetForceMagnitude() override;
         void SetForceDirection(const AZ::Vector3& direction) override;
@@ -88,7 +87,6 @@ namespace LmbrCentral
         float GetVolumeDamping() override;
         void SetVolumeDensity(float density) override;
         float GetVolumeDensity() override;
-        ////////////////////////////////////////////////////////////////////////
 
     protected:
         friend class EditorForceVolumeComponent;
@@ -98,12 +96,16 @@ namespace LmbrCentral
             required.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c));
         }
 
-        /// TriggerAreaNotifications
+        // TriggerAreaNotifications
         void OnTriggerAreaEntered(AZ::EntityId entityId) override;
         void OnTriggerAreaExited(AZ::EntityId entityId) override;
 
         // TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+
+        // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
 
         static AZ::Vector3 GetWorldForceDirectionAtPoint(const ForceVolumeConfiguration& config, const AZ::Vector3& point, const AZ::Vector3& volumeCenter, const AZ::Quaternion& volumeRotation);
 
@@ -111,10 +113,7 @@ namespace LmbrCentral
         virtual AZ::Vector3 CalculateDamping(const AZ::EntityId& entity, float deltaTime);
         virtual AZ::Vector3 CalculateResistance(const AZ::EntityId& entity, float deltaTime);
 
-        void Activate() override;
-        void Deactivate() override;
-
-        ForceVolumeConfiguration m_configuration;
-        AZStd::vector<AZ::EntityId> m_entities;
+        ForceVolumeConfiguration m_configuration;   ///< Configuration of the force volume
+        AZStd::vector<AZ::EntityId> m_entities;     ///< List of entitiy ids contained within the volume
     };
 } // namespace LmbrCentral

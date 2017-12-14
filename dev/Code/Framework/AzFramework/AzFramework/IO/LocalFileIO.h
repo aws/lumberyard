@@ -10,8 +10,6 @@
 *
 */
 #pragma once
-#ifndef AZFRAMEWORK_LOCALFILEIO_H
-#define AZFRAMEWORK_LOCALFILEIO_H
 
 #include <AzCore/base.h>
 #include <AzCore/std/containers/vector.h>
@@ -107,6 +105,8 @@ namespace AZ
             bool ResolveAliases(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize) const;
             bool IsAbsolutePath(const char* path) const;
 
+            bool LowerIfBeginsWith(char* inOutBuffer, AZ::u64 bufferLen, const char* alias) const;
+
         private:
             static AZ::OSString RemoveTrailingSlash(const AZ::OSString& pathStr);
             static AZ::OSString CheckForTrailingSlash(const AZ::OSString& pathStr);
@@ -120,4 +120,4 @@ namespace AZ
         };
     } // namespace IO
 } // namespace AZ
-#endif // #ifndef AZFRAMEWORK_LOCALFILEIO_H
+

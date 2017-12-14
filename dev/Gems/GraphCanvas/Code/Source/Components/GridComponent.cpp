@@ -149,8 +149,24 @@ namespace GraphCanvas
         m_scene.SetInvalid();
     }
 
+    void GridComponent::SignalMemberSetupComplete()
+    {
+        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnMemberSetupComplete);
+    }
+
     AZ::EntityId GridComponent::GetScene() const
     {
         return m_scene;
+    }
+
+    bool GridComponent::LockForExternalMovement(const AZ::EntityId& sceneMemberId)
+    {
+        AZ_Error("Graph Canvas", false, "The grid should not be controlled directly, as is the background.");
+        return false;
+    }
+
+    void GridComponent::UnlockForExternalMovement(const AZ::EntityId& sceneMemberId)
+    {
+        AZ_Error("Graph Canvas", false, "The grid should not be controlled directly, as is the background.");
     }
 }

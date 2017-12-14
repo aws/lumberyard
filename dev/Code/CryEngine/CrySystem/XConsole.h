@@ -17,15 +17,15 @@
 #pragma once
 
 #include <IConsole.h>
-#include <IInput.h>
 #include <CryCrc32.h>
 #include "Timer.h"
 #include <AzFramework/Components/ConsoleBus.h>
 
 #include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
+#include <AzFramework/Input/Events/InputTextEventListener.h>
 
 //forward declaration
-struct IIpnut;
 struct INetwork;
 class CSystem;
 
@@ -128,7 +128,8 @@ struct IRenderer;
 */
 class CXConsole
     : public IConsole
-    , public IInputEventListener
+    , public AzFramework::InputChannelEventListener
+    , public AzFramework::InputTextEventListener
     , public IRemoteConsoleListener
     , public AzFramework::ConsoleRequestBus::Handler
 {
@@ -222,11 +223,9 @@ public:
     virtual void SetClientDataProbeString(const char* pName, const char* pValue);
 #endif
 
-
-    // interface IInputEventListener ------------------------------------------------------------------
-
-    virtual bool OnInputEvent(const SInputEvent& event);
-    virtual bool OnInputEventUI(const SUnicodeEvent& event);
+    // InputChannelEventListener / InputTextEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+    bool OnInputTextEventFiltered(const AZStd::string& textUTF8) override;
 
     // interface IRemoteConsoleListener ------------------------------------------------------------------
 
@@ -254,10 +253,10 @@ protected: // ------------------------------------------------------------------
 
     void RegisterVar(ICVar* pCVar, ConsoleVarFunc pChangeFunc = 0);
 
-    bool ProcessInput(const SInputEvent& event);
+    bool ProcessInput(const AzFramework::InputChannel& inputChannel);
     void AddLine(const char* inputStr);
     void AddLinePlus(const char* inputStr);
-    void AddInputChar(const uint32 c);
+    void AddInputUTF8(const AZStd::string& textUTF8);
     void RemoveInputChar(bool bBackSpace);
     void ExecuteInputBuffer();
     void ExecuteCommand(CConsoleCommand& cmd, string& params, bool bIgnoreDevMode = false);
@@ -383,7 +382,7 @@ private: // ----------------------------------------------------------
     ITexture*                                               m_pImage;
 
     float                                                       m_fRepeatTimer;                     // relative, next repeat even in .. decreses over time, repeats when 0, only valid if m_nRepeatEvent.keyId != eKI_Unknown
-    SInputEvent                                         m_nRepeatEvent;                     // event that will be repeated
+    AzFramework::InputChannelId                                 m_nRepeatEventId;                     // event that will be repeated
 
     float                                                       m_fCursorBlinkTimer;            // relative, increases over time,
     bool                                                        m_bDrawCursor;
@@ -404,7 +403,6 @@ private: // ----------------------------------------------------------
     CSystem*                                               m_pSystem;
     IFFont*                                                m_pFont;
     IRenderer*                                         m_pRenderer;
-    IInput*                                                m_pInput;
     ITimer*                                                m_pTimer;
     INetwork*                                          m_pNetwork;                              // EvenBalance - M. Quinn
 

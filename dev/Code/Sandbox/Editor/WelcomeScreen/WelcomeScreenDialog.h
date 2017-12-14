@@ -25,6 +25,7 @@ namespace Ui {
 }
 
 class QStringListModel;
+class RecentFileList;
 
 class WelcomeScreenDialog
     : public QDialog

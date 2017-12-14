@@ -18,7 +18,6 @@
 #include "DecalRenderNode.h"
 #include "WaterVolumeRenderNode.h"
 #include "DistanceCloudRenderNode.h"
-#include "WaterWaveRenderNode.h"
 #include "MergedMeshRenderNode.h"
 #include "MergedMeshGeometry.h"
 #include "VisAreas.h"
@@ -183,43 +182,6 @@ struct SDistanceCloudChunk
     f32 m_sizeY;
     f32 m_rotationZ;
     int32 m_materialID;
-
-    AUTO_STRUCT_INFO_LOCAL
-};
-
-struct SWaterWaveChunk
-    : public SRenderNodeChunk
-{
-    int32 m_nID;
-
-    // Geometry properties
-    Matrix34 m_pWorldTM;
-    uint32 m_nVertexCount;
-
-    f32 m_fUScale;
-    f32 m_fVScale;
-
-    // Material
-    int32 m_nMaterialID;
-
-
-    // Animation properties
-
-    f32 m_fSpeed;
-    f32 m_fSpeedVar;
-
-    f32 m_fLifetime;
-    f32 m_fLifetimeVar;
-
-    f32 m_fPosVar;
-
-    f32 m_fHeight;
-    f32 m_fHeightVar;
-
-    f32 m_fCurrLifetime;
-    f32 m_fCurrFrameLifetime;
-    f32 m_fCurrSpeed;
-    f32 m_fCurrHeight;
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -399,16 +361,6 @@ int COctreeNode::GetSingleObjectSize(IRenderNode* pObj, const SHotUpdateInfo* pE
     {
         nBlockSize += sizeof(eType);
         nBlockSize += sizeof(SDistanceCloudChunk);
-    }
-    else if (eType == eERType_WaterWave)
-    {
-        CWaterWaveRenderNode* pWaveRenderNode(static_cast< CWaterWaveRenderNode* >(pRenderNode));
-        const SWaterWaveSerialize* pSerParams(pWaveRenderNode->GetSerializationParams());
-
-        nBlockSize += sizeof(eType);
-        nBlockSize += sizeof(SWaterWaveChunk);
-
-        nBlockSize += (pSerParams->m_pVertices.size()) * sizeof(Vec3);
     }
     // align to 4
     while (UINT_PTR(nBlockSize) & 3)
@@ -664,54 +616,6 @@ void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pE
         chunk.m_materialID = CObjManager::GetItemId(pMatTable, pObj->GetMaterial());
 
         AddToPtr(pPtr, nDatanSize, chunk, eEndian);
-    }
-    else if (eERType_WaterWave == eType)
-    {
-        CWaterWaveRenderNode* pObj((CWaterWaveRenderNode*)pEnt);
-
-        // get access to serialization parameters
-        const SWaterWaveSerialize* pSerData(pObj->GetSerializationParams());
-        assert(pSerData);   // trying to save level outside the editor?
-
-        // save type
-        AddToPtr(pPtr, nDatanSize, eType, eEndian);
-
-        SWaterWaveChunk chunk;
-
-        CopyCommonData(&chunk, pObj);
-
-        chunk.m_nID = (int32)pSerData->m_nID;
-        chunk.m_nMaterialID = CObjManager::GetItemId(pMatTable, pSerData->m_pMaterial);
-
-        chunk.m_fUScale = pSerData->m_fUScale;
-        chunk.m_fVScale = pSerData->m_fVScale;
-
-        chunk.m_nVertexCount = pSerData->m_nVertexCount;
-
-        chunk.m_pWorldTM = pSerData->m_pWorldTM;
-        chunk.m_pWorldTM.SetTranslation(chunk.m_pWorldTM.GetTranslation());
-
-        chunk.m_fSpeed = pSerData->m_pParams.m_fSpeed;
-        chunk.m_fSpeedVar = pSerData->m_pParams.m_fSpeedVar;
-        chunk.m_fLifetime = pSerData->m_pParams.m_fLifetime;
-        chunk.m_fLifetimeVar = pSerData->m_pParams.m_fLifetimeVar;
-        chunk.m_fPosVar = pSerData->m_pParams.m_fPosVar;
-        chunk.m_fHeight = pSerData->m_pParams.m_fHeight;
-        chunk.m_fHeightVar = pSerData->m_pParams.m_fHeightVar;
-
-        chunk.m_fCurrLifetime = pSerData->m_pParams.m_fCurrLifetime;
-        chunk.m_fCurrFrameLifetime = pSerData->m_pParams.m_fCurrFrameLifetime;
-        chunk.m_fCurrSpeed = pSerData->m_pParams.m_fCurrSpeed;
-        chunk.m_fCurrHeight = pSerData->m_pParams.m_fCurrHeight;
-
-        AddToPtr(pPtr, nDatanSize, chunk, eEndian);
-
-        // save vertices
-        for (size_t i(0); i < pSerData->m_nVertexCount; ++i)
-        {
-            Vec3 vPos(pSerData->m_pVertices[i]);
-            AddToPtr(pPtr, nDatanSize, vPos, eEndian);
-        }
     }
 
     // align to 4
@@ -1251,62 +1155,6 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
         {
             Get3DEngine()->RegisterEntity(pObj, nSID, nSID);
         }
-    }
-    else if (eERType_WaterWave == eType)
-    {
-        // read common info
-        SWaterWaveChunk* pChunk(StepData<SWaterWaveChunk>(pPtr, eEndian));
-        if (!CheckRenderFlagsMinSpec(pChunk->m_dwRndFlags) || Get3DEngine()->IsLayerSkipped(pChunk->m_nLayerId))
-        {
-            for (uint32 j(0); j < pChunk->m_nVertexCount; ++j)
-            {
-                Vec3* pVertex(StepData<Vec3>(pPtr, eEndian));
-            }
-
-            return;
-        }
-
-        CWaterWaveRenderNode* pObj(new CWaterWaveRenderNode());
-
-        // read common node data
-        pObj->SetBBox(pChunk->m_WSBBox);
-        LoadCommonData(pChunk, pObj, pLayerVisibility);
-
-        // read vertices
-        std::vector<Vec3> pVertices;
-        pVertices.reserve(pChunk->m_nVertexCount);
-        for (uint32 j(0); j < pChunk->m_nVertexCount; ++j)
-        {
-            Vec3* pVertex(StepData<Vec3>(pPtr, eEndian));
-            pVertices.push_back(*pVertex);
-        }
-
-        // set material
-        _smart_ptr<IMaterial> pMaterial(CObjManager::GetItemPtr(pMatTable, pChunk->m_nMaterialID));
-        assert(pMaterial);
-
-        // set material
-        pObj->SetMaterial(pMaterial);
-
-        SWaterWaveParams pParams;
-        pParams.m_fSpeed = pChunk->m_fSpeed;
-        pParams.m_fSpeedVar = pChunk->m_fSpeedVar;
-        pParams.m_fLifetime = pChunk->m_fLifetime;
-        pParams.m_fLifetimeVar = pChunk->m_fLifetimeVar;
-        pParams.m_fPosVar = pChunk->m_fPosVar;
-        pParams.m_fHeight = pChunk->m_fHeight;
-        pParams.m_fHeightVar = pChunk->m_fHeightVar;
-        pParams.m_fCurrLifetime = pChunk->m_fCurrLifetime;
-        pParams.m_fCurrFrameLifetime = pChunk->m_fCurrFrameLifetime;
-        pParams.m_fCurrSpeed = pChunk->m_fCurrSpeed;
-        pParams.m_fCurrHeight = pChunk->m_fCurrHeight;
-
-        pObj->SetParams(pParams);
-
-        Vec2 vScaleUV(pChunk->m_fUScale, pChunk->m_fVScale);
-        pObj->Create(pChunk->m_nID, &pVertices[0], pChunk->m_nVertexCount, vScaleUV, pChunk->m_pWorldTM);
-
-        //Get3DEngine()->RegisterEntity( pObj );
     }
     else
     {

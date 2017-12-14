@@ -96,6 +96,7 @@ namespace ScriptCanvas
                 const EBusEventEntry* FindEvent(const AZStd::string& name) const;
                 AZ_INLINE const char* GetEBusName() const { return m_ebusName.c_str(); }
                 AZ_INLINE const EventMap& GetEvents() const { return m_eventMap; }
+                AZStd::vector<SlotId> GetEventSlotIds() const;
                 AZStd::vector<SlotId> GetNonEventSlotIds() const;
                 bool IsEventSlotId(const SlotId& slotId) const;
 
@@ -110,8 +111,6 @@ namespace ScriptCanvas
                 {
                     return AZStd::string::format("%s Handler", GetEBusName());
                 }
-
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
 
             protected:
                 AZ_INLINE bool IsConfigured() const { return !m_eventMap.empty(); }
@@ -134,8 +133,8 @@ namespace ScriptCanvas
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("OnDisconnected", "Signalled when this event handler is disconnected."));
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("OnFailure", "Signalled when it is not possible to connect this handler."));
                                 
-                Property(EventMap, m_eventMap);
-                Property(AZStd::string, m_ebusName);
+                ScriptCanvas_SerializeProperty(EventMap, m_eventMap);
+                ScriptCanvas_SerializeProperty(AZStd::string, m_ebusName);
 
                 AZ::BehaviorEBusHandler* m_handler = nullptr;
                 AZ::BehaviorEBus* m_ebus = nullptr;

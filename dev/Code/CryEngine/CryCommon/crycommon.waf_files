@@ -45,6 +45,7 @@
             "ICustomActions.h",
             "ICustomEvents.h",
             "IDebugHistory.h",
+            "IDeformableNode.h",
             "IDefragAllocator.h",
             "IDialogSystem.h",
             "IDiskProfiler.h",
@@ -109,7 +110,6 @@
             "IMiniLog.h",
             "IMovementSystem.h",
             "IMovieSystem.h",
-            "IMusicSystem.h",
             "INetwork.h",
             "INetworkService.h",
             "INotificationNetwork.h",
@@ -432,7 +432,8 @@
             "MainThreadRenderRequestBus.h",
             "ManualResetEvent.h",
             "UniqueManualEvent.h",
-            "CryCommonReflection.h"
+            "CryCommonReflection.h",
+            "OceanConstants.h"
         ],
         "Common_h/RenderElements":
         [
@@ -532,7 +533,6 @@
             "MSVCspecific.h",
             "platform.h",
             "platform_impl.h",
-            "STLPortConfig.h",
             "Win32specific.h",
             "WinBase.cpp",
             "WindowsUtils.h"
@@ -745,12 +745,16 @@
             "CloudCanvas/ICloudCanvas.h",
             "CloudCanvas/ICloudCanvasEditor.h"
         ],
-       "Maestro/Bus":
+        "Maestro/Bus":
         [
             "Maestro/Bus/EditorSequenceAgentComponentBus.h",
             "Maestro/Bus/EditorSequenceComponentBus.h",
             "Maestro/Bus/SequenceComponentBus.h",
             "Maestro/Bus/SequenceAgentComponentBus.h"
-        ]    
+        ],
+        "Terrain/Bus":
+        [
+            "Terrain/Bus/LegacyTerrainBus.h"
+        ]
     }
 }

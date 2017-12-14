@@ -13,9 +13,36 @@ REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 REM
 
 SETLOCAL
-SET CMD_DIR=%~dp0
-SET CMD_DIR=%CMD_DIR:~0,-1%
-SET TOOLS_DIR=%CMD_DIR%\Tools
+
+pushd %~dp0%
+
+REM search for the engine root from the engine.json if possible
+IF NOT EXIST engine.json GOTO noSetupConfig
+
+FOR /F "tokens=1,2*" %%A in ('findstr /I /N "ExternalEnginePath" engine.json') do SET ENGINE_ROOT=%%C
+
+REM Clear the trailing comma if any
+SET ENGINE_ROOT=%ENGINE_ROOT:,=%
+
+REM Trim the double quotes
+SET ENGINE_ROOT=%ENGINE_ROOT:"=%
+
+IF "%ENGINE_ROOT%"=="" GOTO noSetupConfig
+
+IF NOT EXIST "%ENGINE_ROOT%" GOTO noSetupConfig
+
+REM Set the base path to the value
+SET BASE_PATH=%ENGINE_ROOT%\
+ECHO [WAF] Engine Root: %BASE_PATH%
+GOTO engineRootSet
+
+:noSetupConfig
+SET BASE_PATH=%~dp0
+ECHO [WAF] Engine Root: %BASE_PATH%
+
+:engineRootSet
+
+SET TOOLS_DIR=%BASE_PATH%\Tools
 
 SET PYTHON_DIR=%TOOLS_DIR%\Python
 IF EXIST "%PYTHON_DIR%" GOTO PYTHON_DIR_EXISTS
@@ -33,9 +60,11 @@ GOTO :EOF
 
 :PYTHON_EXISTS
 
-SET LMBR_AWS_DIR=%CMD_DIR%\Tools\lmbr_aws
+SET LMBR_AWS_DIR=%BASE_PATH%\Tools\lmbr_aws
 
 SET PYTHONPATH=%LMBR_AWS_DIR%
 
-"%PYTHON%" "%LMBR_AWS_DIR%\cli.py" %*
+call "%PYTHON%" "%LMBR_AWS_DIR%\cli.py" %*
+
+popd
 

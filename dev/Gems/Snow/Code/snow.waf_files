@@ -9,12 +9,18 @@
     },
     "auto":
     {
+        "Include":
+        [
+            "Include/SnowComponentBus.h"
+        ],
         "Source":
         [
-            "Source/SnowGem.h",
-            "Source/SnowGem.cpp",
             "Source/Snow.h",
-            "Source/Snow.cpp"
+            "Source/Snow.cpp",
+            "Source/SnowComponent.cpp",
+            "Source/SnowComponent.h",
+            "Source/SnowGem.h",
+            "Source/SnowGem.cpp"
         ]
     }
 }

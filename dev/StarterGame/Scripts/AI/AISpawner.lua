@@ -8,10 +8,24 @@ local aispawner =
 		OverrideDebugManager = { default = false },
 		GroupId = { default = "", description = "Spawner's spawn group." },
 		AlertId = { default = "", description = "Used by A.I. to call for help." },
+		SpawnInCombat = { default = false, description = "When true, the A.I. will spawn actively attacking the player." },
+		
+		Teleport =
+		{
+			IsTeleportedIn = { default = false },
+			SpawnEffect = { default = "SpawnTeleportIn", description = "The particle effect to play when spawning in." },
+			SpawnDelay = { default = 0.5, description = "Time before this A.I. begins to teleport in.", suffix = " s" },
+			SpawnDelayVariance = { default = 1.0, description = "Additional time to the SpawnDelay for randomness.", suffix = " s" },
+			DelayBeforeActualSpawn = { default = 0.5, description = "Time between the particle starting and the A.I. appearing.", suffix = " s" },
+		},
 		
 		DeathMessageTarget = {default = EntityId(), description = "When my AI dies send a message at this entity."},
 		DeathMessage = {default = "", description = "Actual message to send when my entity dies."},
 	},
+	
+	Data_GroupCountForAlive = "_alive";
+	Data_GroupCountForActive = "_active";
+	Data_GroupCountForDead = "_dead";
 }
 
 function aispawner:OnActivate()
@@ -28,7 +42,10 @@ function aispawner:OnActivate()
 	self.exitedAITriggerHandler = GameplayNotificationBus.Connect(self, self.exitedAITriggerEventId);	
 	self.spawnedDiedEventId = nil;
 	self.spawnedDiedHandler = nil;
+	self.spawnFightingEventId = nil;
 	self.isDead = false;
+	
+	self.alreadyTeleportedIn = false;
 end
 
 function aispawner:OnDeactivate()
@@ -62,20 +79,62 @@ end
 function aispawner:OnTick(deltaTime, timePoint)
 
 	if (self.performedFirstUpdate == false) then
-		if (utilities.GetDebugManagerBool("PreventAIDisabling", false)) then
-			self:SpawnAI();
+		-- Increment the 'alive' counter when the spawner is initialised.
+		if (self.Properties.Enabled) then
+			self:AdjustPersistentDataCount(self.Data_GroupCountForAlive, 1);
 		end
 		
-		if (self:ShouldSpawn()) then
-			self:AdjustLivingCount(1);
+		if (not self.Properties.Teleport.IsTeleportedIn) then
+			if (utilities.GetDebugManagerBool("PreventAIDisabling", false)) then
+				if (self:ShouldSpawn()) then
+					self:SpawnAI();
+				end
+			end
+		else
+			local particleMan = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("ParticleManager"));
+			self.particleSpawnEventId = GameplayNotificationId(particleMan, "SpawnParticleEvent", "float");
 		end
 		
 		self.performedFirstUpdate = true;
 	end
 	
-	-- Unregister from the tick bus.
-	self.tickHandler:Disconnect();
-	self.tickHandler = nil;
+	-- If this A.I. doesn't teleport in then unregister from the tick bus as we don't need it.
+	if (not self.Properties.Teleport.IsTeleportedIn) then
+		self.tickHandler:Disconnect();
+		self.tickHandler = nil;
+		return;
+	end
+	
+	-- The rest of this function should only ever be hit by spawners that DO teleport in.
+	if (self.teleportingIn) then
+		if (self.spawnDelay > 0.0) then
+			self.spawnDelay = self.spawnDelay - deltaTime;
+			-- Trigger the particle.
+			if (self.spawnDelay <= 0.0) then
+				self.spawnDelay = 0.0;
+				
+				-- Get the point to spawn (plus half the height of the A.I.).
+				local tm = self:GetLocationToSpawn();
+				tm:SetTranslation(tm:GetTranslation() + Vector3(0.0, 0.0, 0.8));
+				
+				local params = ParticleSpawnerParams();
+				params.transform = tm;
+				params.event = self.Properties.Teleport.SpawnEffect;
+				
+				GameplayNotificationBus.Event.OnEventBegin(self.particleSpawnEventId, params);
+			end
+		elseif (self.spawnDelayPostParticle > 0.0) then
+			self.spawnDelayPostParticle = self.spawnDelayPostParticle - deltaTime;
+			-- Trigger the spawn.
+			if (self.spawnDelayPostParticle <= 0.0) then
+				self.spawnDelayPostParticle = 0.0;
+				self.teleportingIn = false;
+				--self.alreadyTeleportedIn = true;
+				
+				self:SpawnAI();
+			end
+		end
+	end
 
 end
 
@@ -89,50 +148,47 @@ function aispawner:ShouldSpawn()
 	return shouldSpawn and self.Properties.Enabled and self.isDead == false;
 end
 
+function aispawner:BeginTeleportingIn()
+	self.teleportingIn = true;
+	self.spawnDelay = self.Properties.Teleport.SpawnDelay + utilities.RandomPlusMinus(self.Properties.Teleport.SpawnDelayVariance, 0.5);
+	self.spawnDelayPostParticle = self.Properties.Teleport.DelayBeforeActualSpawn;
+	
+	if (self.spawnDelay <= 0.0) then
+		self.spawnDelay = 0.0001;
+	end
+	if (self.spawnDelayPostParticle <= 0.0) then
+		self.spawnDelayPostParticle = 0.0001;
+	end
+end
+
 function aispawner:SpawnAI()
 	if (self.spawnedEntityId == nil) then -- Will be nil if the spawner is not enabled or spawning failed
 		-- Spawn the A.I.
-		if (self:ShouldSpawn()) then
-			-- Look below the spawner for a piece of terrain to spawn on.
-			local spawnerPos = TransformBus.Event.GetWorldTM(self.entityId);
-			local rayCastConfig = RayCastConfiguration();
-			rayCastConfig.origin = spawnerPos:GetTranslation();
-			rayCastConfig.direction =  Vector3(0.0, 0.0, -1.0);
-			rayCastConfig.maxDistance = 2.0;
-			rayCastConfig.maxHits = 1;
-			rayCastConfig.physicalEntityTypes = PhysicalEntityTypes.Static + PhysicalEntityTypes.Terrain;
-			local hits = PhysicsSystemRequestBus.Broadcast.RayCast(rayCastConfig);
-			if (#hits > 0) then
-				local tm = spawnerPos;
-				tm:SetTranslation(hits[1].position);
-				self.spawnTicket = SpawnerComponentRequestBus.Event.SpawnAbsolute(self.entityId, tm);
-				if (self.spawnTicket == nil) then
-					Debug.Log("Spawn failed");
-				end
-			else
-				-- This asserts if we couldn't find terrain below the spawner to place the
-				-- slice.
-				-- This would need to be changed if we had flying enemies (obviously).
-				-- I want this to be an assert, but apparently asserts and warnings don't
-				-- do anything so I'll have to keep it as a log.
-				Debug.Log("AISpawner: '" .. tostring(StarterGameUtility.GetEntityName(self.entityId)) .. "' couldn't find a point to spawn the A.I.");
-			end
+		self.spawnTicket = SpawnerComponentRequestBus.Event.SpawnAbsolute(self.entityId, self:GetLocationToSpawn());
+		if (self.spawnTicket == nil) then
+			Debug.Log("AISpawner: '" .. tostring(StarterGameEntityUtility.GetEntityName(self.entityId)) .. "' spawn failed");
 		end
 	else
-		--Debug.Log("AISpawner " .. tostring(StarterGameUtility.GetEntityName(self.entityId)) .. " tried to spawn an A.I. with one already active.");
+		--Debug.Log("AISpawner " .. tostring(StarterGameEntityUtility.GetEntityName(self.entityId)) .. " tried to spawn an A.I. with one already active.");
 	end
 end
 
 function aispawner:DespawnAI()
 	if (self.spawnedEntityId ~= nil) then -- Will be nil if the spawner is not enabled or spawning failed
+		-- Only decrement the alive counter if the A.I. is not dead at the time of despawning.
+		if (self.isDead == false) then
+			self:AdjustPersistentDataCount(self.Data_GroupCountForActive, -1);
+		end
+	
 		self:DisableAI();
+		self.spawnedDiedEventId = nil;
+		self.spawnedDiedHandler:Disconnect();
+		self.spawnedDiedHandler = nil;
+		self.spawnFightingEventId = nil;
 		GameEntityContextRequestBus.Broadcast.DestroyDynamicSliceByEntity(self.spawnedEntityId);
-		--local parentId = StarterGameUtility.GetParentEntity(self.spawnedEntityId);
-		--GameEntityContextRequestBus.Broadcast.DestroyGameEntityAndDescendants(parentId);
-		--StarterGameUtility.DeactivateGameEntityAndDescendants(parentId);
 		self.spawnedEntityId = nil;
 	else
-		--Debug.Log("AISpawner " .. tostring(StarterGameUtility.GetEntityName(self.entityId)) .. " tried to despawn an A.I. without having one active.");
+		--Debug.Log("AISpawner " .. tostring(StarterGameEntityUtility.GetEntityName(self.entityId)) .. " tried to despawn an A.I. without having one active.");
 	end
 end
 
@@ -140,6 +196,11 @@ function aispawner:EnableAI()
 	if (self.spawnedEntityId ~= nil) then -- Will be nil if the spawner is not enabled or spawning failed
 		local eventId = GameplayNotificationId(self.spawnedEntityId, "Enable", "float");
 		GameplayNotificationBus.Event.OnEventBegin(eventId, self.entityId);
+		
+		-- Make sure they continue fighting the player.
+		if (self.Properties.SpawnInCombat) then
+			GameplayNotificationBus.Event.OnEventBegin(self.spawnFightingEventId, true);
+		end
 	end
 end
 
@@ -150,9 +211,41 @@ function aispawner:DisableAI()
 	end
 end
 
+function aispawner:GetLocationToSpawn()
+	-- Look below the spawner for a piece of terrain to spawn on.
+	local tm = Transform.CreateIdentity();
+	local spawnerPos = TransformBus.Event.GetWorldTM(self.entityId);
+	local rayCastConfig = RayCastConfiguration();
+	rayCastConfig.origin = spawnerPos:GetTranslation();
+	rayCastConfig.direction =  Vector3(0.0, 0.0, -1.0);
+	rayCastConfig.maxDistance = 2.0;
+	rayCastConfig.maxHits = 1;
+	rayCastConfig.physicalEntityTypes = PhysicalEntityTypes.Static + PhysicalEntityTypes.Terrain;
+	local hits = PhysicsSystemRequestBus.Broadcast.RayCast(rayCastConfig);
+	if (#hits > 0) then
+		tm = spawnerPos;
+		tm:SetTranslation(hits[1].position);
+	else
+		-- This asserts if we couldn't find terrain below the spawner to place the
+		-- slice.
+		-- This would need to be changed if we had flying enemies (obviously).
+		-- I want this to be an assert, but apparently asserts and warnings don't
+		-- do anything so I'll have to keep it as a log.
+		Debug.Log("AISpawner: '" .. tostring(StarterGameEntityUtility.GetEntityName(self.entityId)) .. "' couldn't find a point to spawn the A.I.");
+	end
+	
+	return tm;
+end
+
 function aispawner:EnteredAITrigger(groupId)
 	if (groupId == self.Properties.GroupId) then
-		self:SpawnAI();
+		if (self:ShouldSpawn()) then
+			if (self.Properties.Teleport.IsTeleportedIn and not self.alreadyTeleportedIn) then
+				self:BeginTeleportingIn();
+			else
+				self:SpawnAI();
+			end
+		end
 	end
 end
 
@@ -173,13 +266,15 @@ function aispawner:SpawnedDied()
 	
 	if (self.isDead == false) then
 		self.isDead = true;
-		self:AdjustLivingCount(-1);
+		self:AdjustPersistentDataCount(self.Data_GroupCountForAlive, -1);
+		self:AdjustPersistentDataCount(self.Data_GroupCountForActive, -1);
+		self:AdjustPersistentDataCount(self.Data_GroupCountForDead, 1);
 	end
 end
 
-function aispawner:AdjustLivingCount(adjustment)
+function aispawner:AdjustPersistentDataCount(suffix, adjustment)
 	if (self.Properties.GroupId ~= "" and self.Properties.GroupId ~= nil) then
-		local counterName = tostring(self.Properties.GroupId) .. "_alive";
+		local counterName = tostring(self.Properties.GroupId) .. tostring(suffix);
 		local value = 0;
 		if (PersistentDataSystemRequestBus.Broadcast.HasData(counterName)) then
 			value = PersistentDataSystemRequestBus.Broadcast.GetData(counterName);
@@ -207,7 +302,7 @@ end
 
 function aispawner:OnEntitySpawned(ticket, spawnedEntityId)
 
-	local isMainEntity = StarterGameUtility.EntityHasTag(spawnedEntityId, "AICharacter");
+	local isMainEntity = StarterGameEntityUtility.EntityHasTag(spawnedEntityId, "AICharacter");
 	if (self.spawnTicket == ticket and isMainEntity) then
 		--Debug.Log("Spawned A.I. : " .. tostring(spawnedEntityId));
 		self.spawnedEntityId = spawnedEntityId;
@@ -216,9 +311,16 @@ function aispawner:OnEntitySpawned(ticket, spawnedEntityId)
 		
 		local alertIdEventId = GameplayNotificationId(spawnedEntityId, "SetAlertID", "float");
 		GameplayNotificationBus.Event.OnEventBegin(alertIdEventId, self.Properties.AlertId);
+		
+		if (self.Properties.SpawnInCombat) then
+			self.spawnFightingEventId = GameplayNotificationId(spawnedEntityId, "FightPlayer", "float");
+			GameplayNotificationBus.Event.OnEventBegin(self.spawnFightingEventId, true);
+		end
 				
 		self.spawnedDiedEventId = GameplayNotificationId(spawnedEntityId, "HealthEmpty", "float");
 		self.spawnedDiedHandler = GameplayNotificationBus.Connect(self, self.spawnedDiedEventId);
+		
+		self:AdjustPersistentDataCount(self.Data_GroupCountForActive, 1);
 	end
 
 end

@@ -213,7 +213,7 @@ namespace EMStudio
         // Call mainWindow->window() to make sure you get the top level window which the mainWindow might not in fact be.
         //IEditor* editor = nullptr;
         //AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
-        //QMainWindow* mainWindow = editor->GetEditorMainWindow();      
+        //QMainWindow* mainWindow = editor->GetEditorMainWindow();
         //HWND hWnd = reinterpret_cast<HWND>( mainWindow->window()->winId() );
         HWND hWnd = nullptr;
         if (mGameController->Init(hWnd) == false)
@@ -1436,7 +1436,7 @@ namespace EMStudio
                         if (settingsInfo->mEnabled)
                         {
                             MCore::Quaternion localRot = actorInstance->GetLocalRotation();
-                            localRot = localRot * MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), value * timeDelta * 3.0f);
+                            localRot = localRot * MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), value * timeDelta * 3.0f);
                             actorInstance->SetLocalRotation(localRot);
                         }
                     }
@@ -1596,7 +1596,7 @@ namespace EMStudio
                         if (settingsInfo->mEnabled)
                         {
                             MCore::Quaternion localRot = actorInstance->GetLocalRotation();
-                            localRot = localRot * MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), value.GetX() * timeDelta * 3.0f);
+                            localRot = localRot * MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), value.GetX() * timeDelta * 3.0f);
                             actorInstance->SetLocalRotation(localRot);
                         }
                     }

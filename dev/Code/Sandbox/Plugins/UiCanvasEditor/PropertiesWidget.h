@@ -11,7 +11,12 @@
 */
 #pragma once
 
+#include "EditorCommon.h"
+
+#include <QWidget>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
 
 class PropertiesWidget
     : public QWidget
@@ -40,11 +45,15 @@ public:
     void InvalidatePropertyDisplay(AzToolsFramework::PropertyModificationRefreshLevel level) override;
 
     void TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel refreshLevel = AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree, const AZ::Uuid* componentType = nullptr);
+    void TriggerImmediateRefresh(AzToolsFramework::PropertyModificationRefreshLevel refreshLevel = AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree, const AZ::Uuid* componentType = nullptr);
 
     // Notify the properties pane when a selected entity has been recreated
     void SelectedEntityPointersChanged();
 
     void SetSelectedEntityDisplayNameWidget(QLabel* selectedEntityDisplayNameWidget);
+
+    float GetScrollValue();
+    void SetScrollValue(float scrollValue);
 
 public slots:
 

@@ -13,11 +13,11 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include "SourceControlAPI.h"
+#include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
 namespace AzToolsFramework
 {
-    class NullSCComponent
+    class LocalFileSCComponent
         : public AZ::Component
         , private SourceControlCommandBus::Handler
         , private SourceControlConnectionRequestBus::Handler
@@ -25,7 +25,7 @@ namespace AzToolsFramework
         friend class PerforceComponent;
 
     public:
-        AZ_COMPONENT(NullSCComponent, "{5AE6565F-046D-42F4-8E95-77C163A98420}")
+        AZ_COMPONENT(LocalFileSCComponent, "{5AE6565F-046D-42F4-8E95-77C163A98420}")
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component overrides
@@ -50,7 +50,6 @@ namespace AzToolsFramework
         void EnableSourceControl(bool) override {}
         bool IsActive() const override { return false; }
         void EnableTrust(bool, AZStd::string) override {}
-        bool HasTrustIssue() const override { return false; }
         void SetConnectionSetting(const char*, const char*, const SourceControlSettingCallback&) override {}
         void GetConnectionSetting(const char*, const SourceControlSettingCallback&) override {}
         //////////////////////////////////////////////////////////////////////////

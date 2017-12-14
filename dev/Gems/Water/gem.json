@@ -1,0 +1,21 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        }
+    ],
+    "GemFormatVersion": 3,
+    "Uuid": "c5083fcf89b24ab68fb0611c01a07b1d",
+    "Name": "Water",
+    "DisplayName": "Water",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "The Water Gem includes the Infinite Ocean and Water Volume components that can be used to define bodies of water.",
+    "Tags": [ "Water" ],
+    "IconPath": "water_gem.png",
+    "EditorModule": true
+}

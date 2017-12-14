@@ -107,7 +107,7 @@ namespace UnitTest
         };
 
         AZStd::thread threads[8];
-        for (int t = 0; t < AZ_ARRAY_SIZE(threads); ++t)
+        for (size_t t = 0; t < AZ_ARRAY_SIZE(threads); ++t)
         {
             threads[t] = AZStd::thread(threadFunc);
         }
@@ -162,7 +162,7 @@ namespace UnitTest
         };
 
         AZStd::thread threads[8];
-        for (int t = 0; t < AZ_ARRAY_SIZE(threads); ++t)
+        for (size_t t = 0; t < AZ_ARRAY_SIZE(threads); ++t)
         {
             threads[t] = AZStd::thread(threadFunc);
         }

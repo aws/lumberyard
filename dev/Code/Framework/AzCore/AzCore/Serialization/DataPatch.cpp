@@ -460,7 +460,7 @@ namespace AZ
                 {
                     // load in place
                     ObjectStream::LoadBlocking(&stream, *context, ObjectStream::ClassReadyCB(), filterDesc,
-                        [&targetPointer, &sourceNode](void** rootAddress, const SerializeContext::ClassData** classData, const Uuid&, SerializeContext*)
+                        [&targetPointer, &sourceNode, parentClassData](void** rootAddress, const SerializeContext::ClassData** classData, const Uuid&, SerializeContext* sc)
                         {
                             if (rootAddress)
                             {
@@ -469,6 +469,11 @@ namespace AZ
                             if (classData)
                             {
                                 *classData = sourceNode->m_classData;
+                                if (!*classData && sourceNode->m_classElement)
+                                {
+                                    *classData = sc->FindClassData(sourceNode->m_classElement->m_typeId, parentClassData, sourceNode->m_classElement->m_nameCrc);
+                                }
+
                             }
                         });
                 }

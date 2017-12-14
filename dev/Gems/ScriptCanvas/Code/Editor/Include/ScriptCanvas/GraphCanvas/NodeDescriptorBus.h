@@ -153,7 +153,7 @@ namespace ScriptCanvasEditor
 
         virtual GraphCanvas::VariableReferenceDataInterface* CreateVariableDataInterface() = 0;
         virtual ScriptCanvas::Endpoint GetSourceEndpoint(ScriptCanvas::SlotId slotId) const = 0;
-		
+        
         virtual AZ::EntityId GetVariableId() const = 0;
         virtual void SetVariableId(const AZ::EntityId& variableId) = 0;
     };
@@ -166,7 +166,7 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-		virtual void OnVariableActivated() {};
+        virtual void OnVariableActivated() {};
         virtual void OnAssignVariableChanged() {};
     };
 
@@ -179,7 +179,7 @@ namespace ScriptCanvasEditor
         using BusIdType = AZ::EntityId;
 
         virtual GraphCanvas::VariableReferenceDataInterface* CreateVariableDataInterface() = 0;
-		
+        
         virtual AZ::EntityId GetVariableId() const = 0;
         virtual void SetVariableId(const AZ::EntityId& variableId) = 0;
     };
@@ -192,8 +192,8 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-		virtual void OnVariableActivated() {};
-		virtual void OnAssignVariableChanged() {};
+        virtual void OnVariableActivated() {};
+        virtual void OnAssignVariableChanged() {};
     };
 
     using SetVariableNodeDescriptorNotificationBus = AZ::EBus<SetVariableNodeDescriptorNotifications>;

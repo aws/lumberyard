@@ -59,7 +59,7 @@ protected:
     void closePanel();
     Ui::PanelTitleBar* ui;
     QWidget* storedContents;
-    bool m_collapsed;
+    bool m_collapsed = false;
 private slots:
     void on_pushButton_clicked();
 private:

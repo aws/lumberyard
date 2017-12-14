@@ -11,12 +11,41 @@
 */
 #pragma once
 
+#include "EditorCommon.h"
+
+#include <QObject>
+
+#include <AzCore/Math/Vector2.h>
+
+class EditorWindow;
+class Draw2dHelper;
+class QMouseEvent;
+class QKeyEvent;
+class QWheelEvent;
+
 class ViewportInteraction
     : public QObject
 {
     Q_OBJECT
 
-public:
+public: // types
+
+    struct TranslationAndScale
+    {
+        TranslationAndScale()
+            : translation(0.0)
+            , scale(1.0f) { }
+
+        bool operator == (const TranslationAndScale& other) const
+        {
+            return translation == other.translation && scale == other.scale;
+        }
+
+        AZ::Vector3 translation;
+        float scale;
+    };
+
+public: // member functions
 
     ViewportInteraction(EditorWindow* editorWindow);
     virtual ~ViewportInteraction();
@@ -25,13 +54,13 @@ public:
     bool GetSpaceBarIsActive();
 
     void Draw(Draw2dHelper& draw2d,
-        QTreeWidgetItemRawPtrQList& selectedItems);
+        const QTreeWidgetItemRawPtrQList& selectedItems);
 
     void MousePressEvent(QMouseEvent* ev);
     void MouseMoveEvent(QMouseEvent* ev,
-        QTreeWidgetItemRawPtrQList& selectedItems);
+        const QTreeWidgetItemRawPtrQList& selectedItems);
     void MouseReleaseEvent(QMouseEvent* ev,
-        QTreeWidgetItemRawPtrQList& selectedItems);
+        const QTreeWidgetItemRawPtrQList& selectedItems);
     void MouseWheelEvent(QWheelEvent* ev);
 
     void KeyPressEvent(QKeyEvent* ev);
@@ -82,6 +111,9 @@ public:
 
     float GetCanvasToViewportScale() const { return m_canvasViewportMatrixProps.scale; }
     AZ::Vector3 GetCanvasToViewportTranslation() const { return m_canvasViewportMatrixProps.translation; }
+    
+    const TranslationAndScale& GetCanvasViewportMatrixProps();
+    void SetCanvasViewportMatrixProps(const TranslationAndScale& canvasViewportMatrixProps);
 
     //! Centers the entirety of the canvas so that it's viewable within the viewport.
     //
@@ -114,26 +146,11 @@ public:
 
 private: // types
 
-    struct TranslationAndScale
-    {
-        TranslationAndScale()
-            : translation(0.0)
-            , scale(1.0f) { }
-
-        bool operator == (const TranslationAndScale& other) const
-        {
-            return translation == other.translation && scale == other.scale;
-        }
-
-        AZ::Vector3 translation;
-        float scale;
-    };
-
 private: // member functions
 
     //! Update the interaction type based on where the cursor is right now
     void UpdateInteractionType(const AZ::Vector2& mousePosition,
-        QTreeWidgetItemRawPtrQList& selectedItems);
+        const QTreeWidgetItemRawPtrQList& selectedItems);
 
     //! Update the cursor based on the current interaction
     void UpdateCursor();
@@ -156,7 +173,7 @@ private: // member functions
     //! Process click and drag interaction
     void ProcessInteraction(const AZ::Vector2& mousePosition,
         Qt::KeyboardModifiers modifiers,
-        QTreeWidgetItemRawPtrQList& selectedItems);
+        const QTreeWidgetItemRawPtrQList& selectedItems);
 
     // Draw a transform gizmo on the element
     void DrawAxisGizmo(Draw2dHelper& draw2d, const AZ::Entity* element, CoordinateSystem coordinateSystem, const ViewportIcon* lineTextureX, const ViewportIcon* lineTextureY);
@@ -167,7 +184,7 @@ private: // member functions
 
     bool AreaSelectionIsActive();
 
-    void BeginReversibleAction(QTreeWidgetItemRawPtrQList& selectedItems);
+    void BeginReversibleAction(const QTreeWidgetItemRawPtrQList& selectedItems);
     void EndReversibleAction();
 
     void PanOnMouseMoveEvent(const AZ::Vector2& mousePosition);

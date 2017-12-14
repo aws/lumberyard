@@ -10,8 +10,13 @@
 *
 */
 
+#ifdef _DEBUG
+#define AZ_NUMERICCAST_ENABLED 1
+#endif
+
 #include <StdAfx.h>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/TickBus.h>
@@ -34,12 +39,6 @@ namespace EMotionFX
     namespace Integration
     {
         //////////////////////////////////////////////////////////////////////////
-        AZ_FORCE_INLINE Vec3 EmfxVec3ToLYVec3(const MCore::Vector3& emfxVec3)
-        {
-            return Vec3(emfxVec3.x, emfxVec3.y, emfxVec3.z);
-        }
-
-        //////////////////////////////////////////////////////////////////////////
         ActorRenderNode::ActorRenderNode(AZ::EntityId entityId,
             const EMotionFXPtr<EMotionFX::ActorInstance>& actorInstance,
             const AZ::Data::Asset<ActorAsset>& asset,
@@ -52,6 +51,7 @@ namespace EMotionFX
         {
             SetActorAsset(asset);
             AttachToEntity(entityId);
+            memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -105,7 +105,7 @@ namespace EMotionFX
         {
             const MCore::AABB& emfxAabb = m_actorInstance->GetStaticBasedAABB();
 
-            m_worldBoundingBox = AABB(EmfxVec3ToLYVec3(emfxAabb.GetMin()), EmfxVec3ToLYVec3(emfxAabb.GetMax()));
+            m_worldBoundingBox = AABB(AZVec3ToLYVec3(emfxAabb.GetMin()), AZVec3ToLYVec3(emfxAabb.GetMax()));
             m_worldBoundingBox.SetTransformedAABB(m_renderTransform, m_worldBoundingBox);
 
             if (m_isRegisteredWithRenderer)
@@ -233,14 +233,7 @@ namespace EMotionFX
                 const EMotionFX::TransformData* transforms = m_actorInstance->GetTransformData();
                 if (transforms && jointIndex < transforms->GetNumTransforms())
                 {
-                    const MCore::Matrix matrix = transforms->GetGlobalInclusiveMatrices()[jointIndex];
-                    const MCore::Quaternion rotation(matrix);
-                    const MCore::Vector3 position(matrix.GetTranslation());
-
-                    const AZ::Transform actorRoot = MCore::EmfxTransformToAzTransform(m_actorInstance->GetLocalTransform());
-                    const AZ::Transform joint = AZ::Transform::CreateFromQuaternionAndTranslation(MCore::EmfxQuatToAzQuat(rotation), MCore::EmfxVec3ToAzVec3(position));
-
-                    return actorRoot.GetInverseFull() * joint;
+                    return MCore::EmfxTransformToAzTransform(transforms->GetCurrentPose()->GetGlobalTransform(jointIndex));
                 }
             }
 
@@ -373,7 +366,7 @@ namespace EMotionFX
 
             // Get the base transformations from the actor instance so that the bone transformations and the world transformations are being derived from the same place.
             const AZ::Quaternion entityOrientation = MCore::EmfxQuatToAzQuat(m_actorInstance->GetGlobalRotation());
-            AZ::Vector3 entityPosition = MCore::EmfxVec3ToAzVec3(m_actorInstance->GetGlobalPosition());
+            const AZ::Vector3 entityPosition = m_actorInstance->GetGlobalPosition();
             const AZ::Transform worldTransformInv = MCore::EmfxTransformToAzTransform(m_actorInstance->GetGlobalTransform()).GetInverseFull();
 
             //---------------------------------------
@@ -407,6 +400,7 @@ namespace EMotionFX
             {
                 DualQuat* renderTransforms = renderSkinningData->pBoneQuatsS;
 
+                const AZ::Transform worldTransformInvNoScale = AZ::Transform::CreateFromQuaternionAndTranslation(entityOrientation, entityPosition).GetInverseFull();
                 for (AZ::u32 transformIndex = 0; transformIndex < transformCount; ++transformIndex)
                 {
                     const AZ::Transform bindTransform = EmfxTransformToAzTransform(invBindPoseMatrices[transformIndex]);
@@ -578,10 +572,10 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////
-        ActorAsset::ActorInstancePtr ActorAsset::CreateInstance()
+        ActorAsset::ActorInstancePtr ActorAsset::CreateInstance(AZ::EntityId entityId)
         {
             AZ_Assert(m_emfxActor, "Anim graph asset is not loaded");
-            auto actorInstance = ActorInstancePtr::MakeFromNew(EMotionFX::ActorInstance::Create(m_emfxActor.get()));
+            auto actorInstance = ActorInstancePtr::MakeFromNew(EMotionFX::ActorInstance::Create(m_emfxActor.get(), entityId));
             if (actorInstance)
             {
                 actorInstance->SetIsOwnedByRuntime(true);
@@ -607,8 +601,8 @@ namespace EMotionFX
             // Buffers re-used during the construction of all LODs.
             //
 
-            AZStd::vector<MCore::Vector3> vertexBuffer;
-            AZStd::vector<MCore::Vector3> vertexNormals;
+            AZStd::vector<AZ::Vector3> vertexBuffer;
+            AZStd::vector<AZ::Vector3> vertexNormals;
             AZStd::vector<AZ::Vector4> vertexTangents;
             AZStd::vector<AZ::Vector2> vertexUVs;
             AZStd::vector<vtx_idx> indexBuffer;
@@ -646,7 +640,7 @@ namespace EMotionFX
                     }
 
                     const EMotionFX::Mesh::EMeshType meshType = mesh->ClassifyMeshType(0, actor, node->GetNodeIndex(), false, 4, 255);
-                    if (meshType != EMotionFX::Mesh::MESHTYPE_GPUSKINNED)
+                    if (meshType != EMotionFX::Mesh::MESHTYPE_GPU_DEFORMED)
                     {
                         continue;
                     }
@@ -660,8 +654,8 @@ namespace EMotionFX
                     lod.m_vertexBoneMappings.reserve(numVertices);
                     indexBuffer.reserve(mesh->GetNumIndices());
 
-                    const MCore::Vector3* positions = static_cast<MCore::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-                    const MCore::Vector3* normals = static_cast<MCore::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+                    const AZ::PackedVector3f* positions = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+                    const AZ::PackedVector3f* normals = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
                     const AZ::u32* orgVerts = static_cast<AZ::u32*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS));
                     const AZ::Vector4* tangents = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
                     const AZ::Vector2* uvsA = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));
@@ -690,11 +684,10 @@ namespace EMotionFX
 
                         // Subset's index values are relative to its own vertex block.
                         const uint32* subMeshIndices = subMesh->GetIndices();
-                        for (AZ::u32 i = 0; i < numSubMeshIndices; i += 3)
+                        for (AZ::u32 i = 0; i < numSubMeshIndices; ++i)
                         {
-                            indexBuffer.push_back(subMeshIndices[i + 0] + meshFirstVertex);
-                            indexBuffer.push_back(subMeshIndices[i + 1] + meshFirstVertex);
-                            indexBuffer.push_back(subMeshIndices[i + 2] + meshFirstVertex);
+                            const uint32 meshIndex = subMeshIndices[i] + meshFirstVertex;
+                            indexBuffer.push_back(aznumeric_cast<vtx_idx>(meshIndex));
                         }
 
                         AABB localAabb(AABB::RESET);
@@ -705,13 +698,14 @@ namespace EMotionFX
                             const uint32 meshVertIndex = v + subMesh->GetStartVertex();
                             const uint32 orgVertex = orgVerts[meshVertIndex];
 
-                            const MCore::Vector3 position = positions[meshVertIndex];
-                            localAabb.Add(Vec3(position.x, position.y, position.z));
+                            const AZ::Vector3 position = AZ::Vector3(positions[meshVertIndex]);
+                            localAabb.Add(Vec3(position.GetX(), position.GetY(), position.GetZ()));
 
                             vertexBuffer.push_back(position);
-                            vertexNormals.push_back(normals[meshVertIndex]);
-                            vertexTangents.push_back(tangents[meshVertIndex]);
-                            vertexUVs.push_back(uvsA ? uvsA[meshVertIndex] : AZ::Vector2(0.f, 0.f));
+                            vertexNormals.push_back(AZ::Vector3(normals[meshVertIndex]));
+
+                            vertexTangents.push_back(tangents ? tangents[meshVertIndex] : AZ::Vector4::CreateZero());
+                            vertexUVs.push_back(uvsA ? uvsA[meshVertIndex] : AZ::Vector2::CreateZero());
 
                             lod.m_vertexBoneMappings.emplace_back();
                             auto& boneMapping = lod.m_vertexBoneMappings.back();
@@ -759,22 +753,22 @@ namespace EMotionFX
 
                 for (AZ::u32 vertIndex = 0, vertCount = vertexBuffer.size(); vertIndex < vertCount; ++vertIndex)
                 {
-                    const MCore::Vector3& vertex = vertexBuffer[vertIndex];
-                    const MCore::Vector3& normal = vertexNormals[vertIndex];
+                    const AZ::Vector3& vertex = vertexBuffer[vertIndex];
+                    const AZ::Vector3& normal = vertexNormals[vertIndex];
                     const AZ::Vector4& tangent = vertexTangents[vertIndex];
 
                     const AZ::Vector2& uv = vertexUVs[vertIndex];
 
-                    MCore::Vector3 bitangent = MCore::Vector3(tangent.GetX(), tangent.GetY(), tangent.GetZ()).Cross(normal) * tangent.GetW();
+                    AZ::Vector3 bitangent = AZ::Vector3(tangent.GetX(), tangent.GetY(), tangent.GetZ()).Cross(normal) * tangent.GetW();
 
-                    lod.m_mesh->m_bbox.Add(Vec3(vertex.x, vertex.y, vertex.z));
+                    lod.m_mesh->m_bbox.Add(Vec3(vertex.GetX(), vertex.GetY(), vertex.GetZ()));
 
-                    *pVertices++ = Vec3(vertex.x, vertex.y, vertex.z);
-                    *pNormals++ = Vec3(normal.x, normal.y, normal.z);
+                    *pVertices++ = Vec3(vertex.GetX(), vertex.GetY(), vertex.GetZ());
+                    *pNormals++ = Vec3(normal.GetX(), normal.GetY(), normal.GetZ());
                     *pTangents++ = SMeshTangents(
-                        Vec3(tangent.GetX(), tangent.GetY(), tangent.GetZ()),
-                        Vec3(bitangent.x, bitangent.y, bitangent.z),
-                        Vec3(normal.x, normal.y, normal.z));
+                            Vec3(tangent.GetX(), tangent.GetY(), tangent.GetZ()),
+                            Vec3(bitangent.GetX(), bitangent.GetY(), bitangent.GetZ()),
+                            Vec3(normal.GetX(), normal.GetY(), normal.GetZ()));
                     *pTexCoords++ = SMeshTexCoord(uv.GetX(), uv.GetY());
                 }
 
@@ -864,8 +858,8 @@ namespace EMotionFX
         {
             ActorAsset* assetData = asset.GetAs<ActorAsset>();
             assetData->m_emfxActor = EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(EMotionFX::GetImporter().LoadActor(
-                assetData->m_emfxNativeData.data(),
-                assetData->m_emfxNativeData.size()));
+                        assetData->m_emfxNativeData.data(),
+                        assetData->m_emfxNativeData.size()));
 
             if (!assetData->m_emfxActor)
             {
@@ -882,11 +876,11 @@ namespace EMotionFX
             }
 
             AZStd::function<void()> finalizeOnMainThread = [asset, this]()
-            {
-                // RenderMesh creation must be performed on the main thread,
-                // as required by the renderer.
-                FinalizeActorAssetForRendering(asset);
-            };
+                {
+                    // RenderMesh creation must be performed on the main thread,
+                    // as required by the renderer.
+                    FinalizeActorAssetForRendering(asset);
+                };
 
             AZ::SystemTickBus::QueueFunction(finalizeOnMainThread);
 
@@ -917,6 +911,5 @@ namespace EMotionFX
         {
             return "EMotionFX Actor";
         }
-
     } //namespace Integration
 } // namespace EMotionFX

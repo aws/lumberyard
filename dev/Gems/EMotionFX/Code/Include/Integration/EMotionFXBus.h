@@ -14,6 +14,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <EMotionFX/Source/AnimGraphObject.h>
 
 namespace EMotionFX
 {
@@ -28,7 +29,7 @@ namespace EMotionFX
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-            virtual void RegisterAnimGraphNodeType(EMotionFX::AnimGraphNode* nodeTemplate) = 0;
+            virtual void RegisterAnimGraphObjectType(EMotionFX::AnimGraphObject* objectTemplate) = 0;
         };
         using EMotionFXRequestBus = AZ::EBus<EMotionFXRequests>;
     }

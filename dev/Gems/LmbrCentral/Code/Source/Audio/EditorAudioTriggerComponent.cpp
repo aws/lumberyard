@@ -28,11 +28,19 @@ namespace LmbrCentral
                 ->Version(1)
                 ->Field("Play Trigger", &EditorAudioTriggerComponent::m_defaultPlayTrigger)
                 ->Field("Stop Trigger", &EditorAudioTriggerComponent::m_defaultStopTrigger)
+                ->Field("Obstruction Type", &EditorAudioTriggerComponent::m_obstructionType)
                 ->Field("Plays Immediately", &EditorAudioTriggerComponent::m_playsImmediately)
+                ->Field("Send Finished Event", &EditorAudioTriggerComponent::m_notifyWhenTriggerFinishes)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
             {
+                editContext->Enum<Audio::ObstructionType>("Obstruction Type", "The types of ray-casts available for obstruction and occlusion")
+                    ->Value("Ignore", Audio::ObstructionType::Ignore)
+                    ->Value("SingleRay", Audio::ObstructionType::SingleRay)
+                    ->Value("MultiRay", Audio::ObstructionType::MultiRay)
+                    ;
+
                 editContext->Class<EditorAudioTriggerComponent>("Audio Trigger", "The Audio Trigger component provides basic play and stop features so that you can set up Audio Translation Layer (ATL) play and stop triggers that can be executed on demand")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
@@ -43,7 +51,9 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-audio-trigger.html")
                     ->DataElement("AudioControl", &EditorAudioTriggerComponent::m_defaultPlayTrigger, "Default 'play' Trigger", "The default ATL Trigger control used by 'Play'")
                     ->DataElement("AudioControl", &EditorAudioTriggerComponent::m_defaultStopTrigger, "Default 'stop' Trigger", "The default ATL Trigger control used by 'Stop'")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorAudioTriggerComponent::m_obstructionType, "Obstruction Type", "Ray-casts used in calculation of obstruction and occlusion")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAudioTriggerComponent::m_playsImmediately, "Plays immediately", "Play when this component is Activated")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAudioTriggerComponent::m_notifyWhenTriggerFinishes, "Send Finished Event", "Send a notification event when the trigger finishes")
                     ;
             }
         }
@@ -59,7 +69,7 @@ namespace LmbrCentral
     //=========================================================================
     void EditorAudioTriggerComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        gameEntity->CreateComponent<AudioTriggerComponent>(m_defaultPlayTrigger.m_controlName, m_defaultStopTrigger.m_controlName, m_playsImmediately);
+        gameEntity->CreateComponent<AudioTriggerComponent>(m_defaultPlayTrigger.m_controlName, m_defaultStopTrigger.m_controlName, m_obstructionType, m_playsImmediately, m_notifyWhenTriggerFinishes);
     }
 
 } // namespace LmbrCentral

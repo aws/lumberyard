@@ -18,6 +18,8 @@
 #ifndef CRYINCLUDE_EDITORCOMMON_SPRITEBORDEREDITOR_H
 #define CRYINCLUDE_EDITORCOMMON_SPRITEBORDEREDITOR_H
 
+#include <QDialog>
+
 class SpriteBorderEditor
 : public QDialog
 {

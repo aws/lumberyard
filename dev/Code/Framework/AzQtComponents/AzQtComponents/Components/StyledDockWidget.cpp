@@ -45,6 +45,8 @@ namespace AzQtComponents
         EditorProxyStyle::addTitleBarOverdrawWidget(this);
         connect(this, &QDockWidget::topLevelChanged, this, &StyledDockWidget::onFloatingChanged);
         createCustomTitleBar();
+        // Workaround intel driver bug visible when a QOpenGLWidget is used with custom window margins
+        setAttribute(Qt::WA_NativeWindow);
     }
 
     StyledDockWidget::~StyledDockWidget()

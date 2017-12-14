@@ -49,7 +49,8 @@ protected:
 
     QTemporaryDir m_tempDir;
     AssetProcessorManager_Test* m_assetProcessorManager;
-    AssetProcessor::PlatformConfiguration m_config;
+    AssetProcessor::PlatformConfiguration* m_config;
+    UnitTestUtils::AssertAbsorber m_assertAbsorber; // absorb asserts/warnings/errors so that the unit test output is not cluttered
     QString m_gameName;
     QDir m_normalizedCacheRootDir;
 private:

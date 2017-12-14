@@ -44,6 +44,7 @@ class CUiAnimViewDialog
     , public IUiAnimViewSequenceListener
     , public IUiAnimViewSequenceManagerListener
     , IUndoManagerListener
+    , public UiEditorAnimationStateBus::Handler
     , public UiEditorAnimListenerBus::Handler
 {
     Q_OBJECT
@@ -69,10 +70,13 @@ public:
     // IUiAnimViewSequenceListener
     virtual void OnSequenceSettingsChanged(CUiAnimViewSequence* pSequence) override;
 
+    // UiEditorAnimationStateInterface
+    UiEditorAnimationStateInterface::UiEditorAnimationEditState GetCurrentEditState() override;
+    void RestoreCurrentEditState(const UiEditorAnimationStateInterface::UiEditorAnimationEditState& animEditState);
+    // ~UiEditorAnimationStateInterface
+
     // UiEditorAnimListenerInterface
     void OnActiveCanvasChanged() override;
-    void OnCanvasLoaded() override;
-    void OnCanvasUnloading() override;
     void OnUiElementsDeletedOrReAdded() override;
     // ~UiEditorAnimListenerInterface
 
@@ -134,6 +138,9 @@ protected slots:
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
+#if defined(AZ_PLATFORM_WINDOWS)
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+#endif
 
 private slots:
     void ReadLayouts();
@@ -176,6 +183,10 @@ private:
     virtual void BeginUndoTransaction();
     virtual void EndUndoTransaction();
     void SaveSequenceTimingToXML();
+
+#if defined(AZ_PLATFORM_WINDOWS)
+    bool processRawInput(MSG* pMsg);
+#endif
 
     // Instance
     static CUiAnimViewDialog* s_pUiAnimViewDialog;

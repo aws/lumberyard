@@ -23,7 +23,7 @@ namespace AzFramework
     //! they connect or disconnect from the system. Some common input devices are assumed to always
     //! be connected, and will never generate these notifications. This interface could be extended
     //! to include notifications for other events related to input devices, for example low battery.
-    class InputDeviceEventNotifications : public AZ::EBusTraits
+    class InputDeviceNotifications : public AZ::EBusTraits
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor
-        virtual ~InputDeviceEventNotifications() = default;
+        virtual ~InputDeviceNotifications() = default;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Override to be notified when input devices connect to the system
@@ -57,10 +57,13 @@ namespace AzFramework
         //! Compare function required by BusHandlerOrderCompare = BusHandlerCompareDefault
         //! \param[in] other Another instance of the class to compare
         //! \return True if the priority of this handler is greater than the other, false otherwise
-        inline bool Compare(const InputDeviceEventNotifications* other) const
+        inline bool Compare(const InputDeviceNotifications* other) const
         {
             return GetPriority() > other->GetPriority();
         }
     };
-    using InputDeviceEventNotificationBus = AZ::EBus<InputDeviceEventNotifications>;
+    using InputDeviceNotificationBus = AZ::EBus<InputDeviceNotifications>;
+
+    AZ_DEPRECATED(typedef InputDeviceNotificationBus InputDeviceEventNotificationBus, "Renamed to InputDeviceNotificationBus");
+    AZ_DEPRECATED(typedef InputDeviceNotifications InputDeviceEventNotifications, "Renamed to InputDeviceNotifications");
 } // namespace AzFramework

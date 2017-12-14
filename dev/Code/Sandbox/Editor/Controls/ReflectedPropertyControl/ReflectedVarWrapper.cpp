@@ -177,8 +177,10 @@ void ReflectedVarEnumAdapter::SetVariable(IVariable *pVariable)
 
 bool ReflectedVarEnumAdapter::UpdateReflectedVarEnums()
 {
-    if (!m_pVariable)
+    if (!m_pVariable || m_updatingEnums)
+    {
         return false;
+    }
 
     m_updatingEnums = true;
     //Allow derived classes to populate the IVariable's enumList (used by AIWave and AITerritory)
@@ -228,7 +230,9 @@ void ReflectedVarEnumAdapter::OnVariableChange(IVariable* pVariable)
     //setting the enums on the pVariable will cause the variable to change getting us back here
     //The original property editor did need to update things immediately because it did so when creating the in-place editing control
     if (!m_updatingEnums)
+    {
         UpdateReflectedVarEnums();
+    }
 }
 
 

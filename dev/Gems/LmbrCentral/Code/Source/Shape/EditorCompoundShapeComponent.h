@@ -36,7 +36,7 @@ namespace LmbrCentral
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
-            provided.push_back(AZ_CRC("CompoundShapeService"));
+            provided.push_back(AZ_CRC("CompoundShapeService", 0x4f7c640a));
         }
 
     private:

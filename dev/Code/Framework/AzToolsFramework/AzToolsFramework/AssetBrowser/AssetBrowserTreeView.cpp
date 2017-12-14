@@ -18,6 +18,7 @@
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 
 #include <QMenu>
+#include <QHeaderView>
 
 namespace AzToolsFramework
 {
@@ -31,7 +32,7 @@ namespace AzToolsFramework
         {
             setSortingEnabled(true);
             setItemDelegate(m_delegate.data());
-
+            header()->hide();
             setContextMenuPolicy(Qt::CustomContextMenu);
 
             connect(this, &QTreeView::customContextMenuRequested, this, &AssetBrowserTreeView::OnContextMenu);
@@ -127,17 +128,6 @@ namespace AzToolsFramework
             Q_EMIT selectionChangedSignal(selected, deselected);
         }
 
-        void AssetBrowserTreeView::startDrag(Qt::DropActions supportedActions)
-        {
-            QModelIndexList indexes = selectedIndexes();
-            if (indexes.count() > 0)
-            {
-                QMimeData* mimeData = model()->mimeData(indexes);
-                EBUS_EVENT(AssetBrowserInteractionNotificationsBus, StartDrag, mimeData);
-            }
-            QAbstractItemView::startDrag(supportedActions);
-        }
-
         void AssetBrowserTreeView::setModel(QAbstractItemModel* model)
         {
             m_assetBrowserSortFilterProxyModel = static_cast<AssetBrowserFilterModel*>(model);
@@ -154,6 +144,30 @@ namespace AzToolsFramework
             }
 
             QMenu menu(this);
+
+            // we can make our own universal "Open" action.
+            // we can only open products or sources (not folders).
+
+            AZ::Data::AssetId selectedId;
+            // note: we have already made sure that selectedAssets.size() == 1.
+            if (const ProductAssetBrowserEntry* productEntry = azrtti_cast<const ProductAssetBrowserEntry*>(selectedAssets[0]))
+            {
+                selectedId = productEntry->GetAssetId();
+            }
+            else if (const SourceAssetBrowserEntry* sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(selectedAssets[0]))
+            {
+                // manufacture an empty AssetID with the source's UUID
+                selectedId = AZ::Data::AssetId(sourceEntry->GetSourceUuid(), 0);
+            }
+            if (selectedId.IsValid())
+            {
+                menu.addAction(tr("Open"), [selectedId]()
+                {
+                    bool someoneHandledIt = false;
+                    AssetBrowserInteractionNotificationsBus::Broadcast(&AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, selectedId, someoneHandledIt);
+                });
+            }
+
             AssetBrowserInteractionNotificationsBus::Broadcast(
                 &AssetBrowserInteractionNotificationsBus::Events::AddContextMenuActions, this, &menu, selectedAssets);
             if (!menu.isEmpty())

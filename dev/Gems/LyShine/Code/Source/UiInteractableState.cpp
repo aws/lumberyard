@@ -264,7 +264,6 @@ UiInteractableStateSprite::UiInteractableStateSprite(AZ::EntityId target, ISprit
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiInteractableStateSprite::UiInteractableStateSprite(AZ::EntityId target, const AZStd::string& spritePath)
     : m_targetEntity(target)
-    , m_sprite(nullptr)
 {
     m_spritePathname.SetAssetPath(spritePath.c_str());
 
@@ -304,12 +303,17 @@ void UiInteractableStateSprite::Init(AZ::EntityId interactableEntityId)
     {
         m_sprite = gEnv->pLyShine->LoadSprite(m_spritePathname.GetAssetPath().c_str());
     }
+
+    if (!m_sprite)
+    {
+        LoadSpriteFromTargetElement();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiInteractableStateSprite::ApplyState()
 {
-    EBUS_EVENT_ID(m_targetEntity, UiVisualBus, SetOverrideSprite, m_sprite);
+    EBUS_EVENT_ID(m_targetEntity, UiVisualBus, SetOverrideSprite, m_sprite, m_spriteSheetCellIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -363,6 +367,9 @@ void UiInteractableStateSprite::OnSpritePathnameChange()
     SAFE_RELEASE(m_sprite);
 
     m_sprite = newSprite;
+
+    // Default to selecting first cell in sprite-sheet
+    m_spriteSheetCellIndex = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -373,9 +380,10 @@ void UiInteractableStateSprite::Reflect(AZ::ReflectContext* context)
     if (serializeContext)
     {
         serializeContext->Class<UiInteractableStateSprite, UiInteractableStateAction>()
-            ->Version(1)
+            ->Version(3)
             ->Field("TargetEntity", &UiInteractableStateSprite::m_targetEntity)
-            ->Field("Sprite", &UiInteractableStateSprite::m_spritePathname);
+            ->Field("Sprite", &UiInteractableStateSprite::m_spritePathname)
+            ->Field("Index", &UiInteractableStateSprite::m_spriteSheetCellIndex);
 
         AZ::EditContext* ec = serializeContext->GetEditContext();
         if (ec)
@@ -387,11 +395,66 @@ void UiInteractableStateSprite::Reflect(AZ::ReflectContext* context)
 
             editInfo->DataElement("ComboBox", &UiInteractableStateSprite::m_targetEntity, "Target", "The target element.")
                 ->Attribute("EnumValues", &UiInteractableStateSprite::PopulateTargetEntityList)
-                ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
+                ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiInteractableStateSprite::OnTargetElementChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
             editInfo->DataElement("Sprite", &UiInteractableStateSprite::m_spritePathname, "Sprite", "The sprite.")
-                ->Attribute("ChangeNotify", &UiInteractableStateSprite::OnSpritePathnameChange);
+                ->Attribute("ChangeNotify", &UiInteractableStateSprite::OnSpritePathnameChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
+            editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiInteractableStateSprite::m_spriteSheetCellIndex, "Index", "Sprite-sheet index. Defines which cell in a sprite-sheet is displayed.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &UiInteractableStateSprite::IsSpriteSheet)
+                ->Attribute("EnumValues", &UiInteractableStateSprite::PopulateIndexStringList);
         }
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiInteractableStateSprite::IsSpriteSheet()
+{
+    if (!m_sprite)
+    {
+        return false;
+    }
+
+    // We could query the target element's UiImageBus to see if the
+    // sprite-type is actually sprite-sheet, but instead we simply check if
+    // the provided sprite has more than one sprite-sheet cell configured.
+    return m_sprite->GetSpriteSheetCells().size() > 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableStateSprite::OnTargetElementChange()
+{
+    if (!m_sprite && m_targetEntity.IsValid())
+    {
+        LoadSpriteFromTargetElement();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableStateSprite::LoadSpriteFromTargetElement()
+{
+    AZStd::string spritePathname;
+    EBUS_EVENT_ID_RESULT(spritePathname, m_targetEntity, UiImageBus, GetSpritePathname);
+    m_spritePathname.SetAssetPath(spritePathname.c_str());
+
+    OnSpritePathnameChange();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiImageComponent::AZu32ComboBoxVec UiInteractableStateSprite::PopulateIndexStringList() const
+{
+    // There may not be a sprite loaded for this component
+    if (m_sprite)
+    {
+        const AZ::u32 numCells = m_sprite->GetSpriteSheetCells().size();
+
+        if (numCells != 0)
+        {
+            return UiImageComponent::GetEnumSpriteIndexList(0, numCells - 1, m_sprite);
+        }
+    }
+    return UiImageComponent::AZu32ComboBoxVec();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -418,7 +481,6 @@ UiInteractableStateFont::UiInteractableStateFont(AZ::EntityId target, const AZSt
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiInteractableStateFont::~UiInteractableStateFont()
 {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -484,7 +546,7 @@ void UiInteractableStateFont::SetFontPathname(const AZStd::string& pathname)
                 CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, errorMsg.c_str());
             }
         }
-        
+
         if (fontFamily)
         {
             m_fontFamily = fontFamily;

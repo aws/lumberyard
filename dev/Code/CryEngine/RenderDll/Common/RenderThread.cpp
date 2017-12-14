@@ -24,13 +24,12 @@
 #include <DriverD3D.h>
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
-#include <CoreFoundation/CFRunLoop.h>
-#endif
-
 #include "MainThreadRenderRequestBus.h"
 #include "Common/RenderView.h"
+#include "Common/Textures/TextureManager.h"
+#include "GraphicsPipeline/FurBendData.h"
 
+#include <AzFramework/API/ApplicationAPI.h>
 #include <AzCore/Debug/EventTraceDrillerBus.h>
 
 #ifdef STRIP_RENDER_THREAD
@@ -358,7 +357,7 @@ void SRenderThread::RC_ParseShader (CShader* pSH, uint64 nMaskGen, uint32 flags,
     EndCommand(p);
 }
 
-void SRenderThread::RC_UpdateShaderItem (SShaderItem* pShaderItem)
+void SRenderThread::RC_UpdateShaderItem (SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial)
 {
     AZ_TRACE_METHOD();
     if (IsRenderThread(true))
@@ -368,9 +367,9 @@ void SRenderThread::RC_UpdateShaderItem (SShaderItem* pShaderItem)
 
     if (!IsMainThread(true))
     {
-        AZStd::function<void()> runOnMainThread = [this, pShaderItem]()
+        AZStd::function<void()> runOnMainThread = [this, pShaderItem, pMaterial]()
             {
-                RC_UpdateShaderItem(pShaderItem);
+                RC_UpdateShaderItem(pShaderItem, pMaterial);
             };
 
         EBUS_QUEUE_FUNCTION(AZ::MainThreadRenderRequestBus, runOnMainThread);
@@ -378,17 +377,26 @@ void SRenderThread::RC_UpdateShaderItem (SShaderItem* pShaderItem)
     }
 
     LOADINGLOCK_COMMANDQUEUE
+    IMaterial* materialRawPointer = pMaterial.get();
+    if (materialRawPointer)
+    {
+        // Add a reference to prevent it from getting deleted before the RenderThread process the message.
+        materialRawPointer->AddRef();
+    }
+
     if (m_eVideoThreadMode == eVTM_Disabled)
     {
-        byte* p = AddCommand(eRC_UpdateShaderItem, sizeof(SShaderItem*));
+        byte* p = AddCommand(eRC_UpdateShaderItem, sizeof(pShaderItem) + sizeof(materialRawPointer));
         AddPointer(p, pShaderItem);
+        AddPointer(p, materialRawPointer);
         EndCommand(p);
     }
     else
     {
         // Move command into loading queue, which will be executed in first render frame after loading is done
-        byte* p = AddCommandTo(eRC_UpdateShaderItem, sizeof(SShaderItem*), m_CommandsLoading);
+        byte* p = AddCommandTo(eRC_UpdateShaderItem, sizeof(pShaderItem) + sizeof(materialRawPointer), m_CommandsLoading);
         AddPointer(p, pShaderItem);
+        AddPointer(p, pMaterial);
         EndCommandTo(p, m_CommandsLoading);
     }
 }
@@ -1549,6 +1557,7 @@ void SRenderThread::RC_ReleaseSystemTextures()
     }
     else
     {
+        CTextureManager::Instance()->Release();
         CTexture::ReleaseSystemTextures();
     }
 }
@@ -2346,7 +2355,20 @@ void SRenderThread::ProcessCommands()
         case eRC_UpdateShaderItem:
         {
             SShaderItem* pShaderItem = ReadCommand<SShaderItem*>(n);
+            //Note the read command is a blit of the memory so it won't over increment the smart pointer.
+            //But we need to let this pointer go out of scope to deref correctly
+            //It is unclear why this material is even necessary to pass at this point.
+            //Further investigation is warranted.
+            // MSR - The material is necessary at this point because an UpdateShaderItem may have been queued 
+            // for a material that was subsequently released and would have been deleted, thus resulting in a
+            // dangling pointer and a crash; this keeps it alive until this render command can complete
+            IMaterial* pMaterial = ReadCommand<IMaterial*>(n);
             gRenDev->RT_UpdateShaderItem(pShaderItem);
+            if (pMaterial)
+            {
+                // Release the reference we added when we submitted the command.
+                pMaterial->Release();
+            }
         }
         break;
         case eRC_ReleaseDeviceTexture:
@@ -2721,8 +2743,12 @@ void SRenderThread::ProcessCommands()
         break;
         case eRC_AzFunction:
         {
-            RenderCommandCB callback = AZStd::move(ReadCommand<RenderCommandCB>(n));
-            callback();
+            // We "build" the command from the buffer memory (instead of copying it)
+            RenderCommandCB* command = alias_cast<RenderCommandCB*>(reinterpret_cast<uint32*>(&m_Commands[threadId][n]));
+            (*command)();
+            // We need to destroy the object that we created using placement new.
+            command->~RenderCommandCB();
+            n += Align4(sizeof(RenderCommandCB));
         }
         break;
         case eRC_ReleaseVBStream:
@@ -2778,6 +2804,7 @@ void SRenderThread::ProcessCommands()
                     // to non-thread safe remaing work for *::Render functions
                     CRenderMesh::FinalizeRendItems(gRenDev->m_RP.m_nProcessThreadID);
                     CMotionBlur::InsertNewElements();
+                    FurBendData::Get().InsertNewElements();
                 }
             }
             SRendItem::m_RecurseLevel[threadId] = nROld;
@@ -2859,6 +2886,7 @@ void SRenderThread::ProcessCommands()
         }
         break;
         case eRC_ReleaseSystemTextures:
+            CTextureManager::Instance()->Release();
             CTexture::ReleaseSystemTextures();
             break;
         case eRC_SetEnvTexRT:
@@ -3489,11 +3517,7 @@ void SRenderThread::WaitFlushFinishedCond()
         m_LockFlushNotify.Unlock();
         MsgWaitForMultipleObjects(1, &m_FlushFinishedCondition, FALSE, 1, QS_ALLINPUT);
         m_LockFlushNotify.Lock();
-        const HWND hWnd = GetRenderWindowHandle();
-        if (hWnd)
-        {
-            gEnv->pSystem->PumpWindowMessage(true, hWnd);
-        }
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
         if (m_bQuit && m_pThread && !m_pThread->IsRunning())
         {
             // We're in shutdown and the render thread is not running.
@@ -3511,11 +3535,7 @@ void SRenderThread::WaitFlushFinishedCond()
     while (*(volatile int*)&m_nFlush)
     {
 #ifdef WIN32
-        const HWND hWnd = GetRenderWindowHandle();
-        if (hWnd)
-        {
-            gEnv->pSystem->PumpWindowMessage(true, hWnd);
-        }
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
         Sleep(0);
 #elif defined(AZ_PLATFORM_APPLE_OSX) && !defined(_RELEASE)
         // On MacOS, we display blocking alerts(dialogs) to provide notifications to users(eg: assert failed).
@@ -3523,12 +3543,7 @@ void SRenderThread::WaitFlushFinishedCond()
         // this block of code ensures that the alert is displayed on the main thread and we're not deadlocked with render thread.
         if (!gEnv->IsEditor())
         {
-            SInt32 result;
-            do
-            {
-                result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, TRUE);
-            }
-            while (result == kCFRunLoopRunHandledSource);
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
         }
 #endif
         READ_WRITE_BARRIER

@@ -43,6 +43,7 @@ namespace GridMate
         , m_upstreamHop(nullptr)
         , m_replicaStatus(nullptr)
         , m_priority(0)
+        , m_revision(1)
     {
         AZ_PROFILE_TIMER("GridMate");
 
@@ -503,6 +504,7 @@ namespace GridMate
         //AZ_PROFILE_TIMER("GridMate");
 
         PrepareDataResult pdr(false, false, false, false);
+        bool dataSetChange = false;
         for (auto chunk : m_chunks)
         {
             if (chunk)
@@ -513,7 +515,13 @@ namespace GridMate
                 pdr.m_isDownstreamUnreliableDirty |= chunkPDR.m_isDownstreamUnreliableDirty;
                 pdr.m_isUpstreamReliableDirty |= chunkPDR.m_isUpstreamReliableDirty;
                 pdr.m_isUpstreamUnreliableDirty |= chunkPDR.m_isUpstreamUnreliableDirty;
+                dataSetChange |= chunk->m_reliableDirtyBits.any() | chunk->m_unreliableDirtyBits.any();
             }
+        }
+
+        if(dataSetChange)
+        {
+            m_revision++;    //If any chunk's dataset changed increase the replica revision.
         }
 
         return pdr;
@@ -523,8 +531,10 @@ namespace GridMate
     {
         //AZ_PROFILE_TIMER("GridMate");
 
-        // We are going to replace the buffer for each chunk, hold on to the original so we can restore it later
+        // We are going to replace the outBuffer with a temporary chunk buffer for each chunk,
+        // hold on to the original so we can restore it later and write the chunk buffers into
         WriteBuffer* outBuffer = mc.m_outBuffer;
+
         mc.m_outBuffer = nullptr;
 
         AZStd::bitset<GM_MAX_CHUNKS_PER_REPLICA> chunkManifest;
@@ -552,13 +562,15 @@ namespace GridMate
                 continue;
             }
 
-            if (!(mc.m_marshalFlags & ReplicaMarshalFlags::ForceDirty) && !chunk->IsDirty(mc.m_marshalFlags))
+            if (!(mc.m_marshalFlags & ReplicaMarshalFlags::ForceDirty)
+                && !chunk->IsDirty(mc.m_marshalFlags)
+                && !(ReplicaTarget::IsAckEnabled() && (mc.m_peerLatestVersionAckd < chunk->m_revision )) )
             {
                 /*
                  * New operation such as NewProxy are optimized to send chunks that are not currently dirty but
                  * have values are no longer the default constructor values.
                  */
-                if (!(mc.m_marshalFlags & ReplicaMarshalFlags::NewProxy))
+                if ((mc.m_marshalFlags & ReplicaMarshalFlags::NewProxy) != ReplicaMarshalFlags::NewProxy)
                 {
                     continue;
                 }
@@ -596,14 +608,14 @@ namespace GridMate
             payloadLen += chunkLen + chunkInfo.m_length.GetExactSize();
         }
 
-        mc.m_outBuffer = outBuffer;
-        mc.m_outBuffer->Write(GetRepId());
-
-        WriteBufferStatic<VlqU64Marshaler::MaxEncodingBytes> chunkManifestBuffer(mc.m_outBuffer->GetEndianType());
-        chunkManifestBuffer.Write(chunkManifest.to_ullong(), VlqU64Marshaler());
-
         if (!chunkBuffers.empty())
         {
+            mc.m_outBuffer = outBuffer;
+            mc.m_outBuffer->Write(GetRepId());
+
+            WriteBufferStatic<VlqU64Marshaler::MaxEncodingBytes> chunkManifestBuffer(mc.m_outBuffer->GetEndianType());
+            chunkManifestBuffer.Write(chunkManifest.to_ullong(), VlqU64Marshaler());
+
             payloadLen += chunkManifestBuffer.Size();
 
             mc.m_outBuffer->Write(payloadLen);

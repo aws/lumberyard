@@ -428,9 +428,10 @@ void CWaterShapeObject::SetMaterialLayersMask(uint32 nLayersMask)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CWaterShapeObject::SetHidden(bool bHidden)
+void CWaterShapeObject::SetHidden(bool bHidden, uint64 hiddenId, bool bAnimated)
+
 {
-    CShapeObject::SetHidden(bHidden);
+    CShapeObject::SetHidden(bHidden, hiddenId, bAnimated);
     UpdateGameArea();
 }
 

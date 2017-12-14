@@ -14,6 +14,7 @@
 #include "stdafx.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CSoundKeyUIControls
@@ -37,9 +38,9 @@ public:
         AddVariable(mv_options, "Options");
         AddVariable(mv_options, mv_customColor, "Custom Color", IVariable::DT_COLOR);
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_Sound;
+        return paramType == AnimParamType::Sound;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -72,7 +73,7 @@ bool CSoundKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Sound)
+        if (paramType == AnimParamType::Sound)
         {
             ISoundKey soundKey;
             keyHandle.GetKey(&soundKey);
@@ -103,7 +104,7 @@ void CSoundKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Sound)
+        if (paramType == AnimParamType::Sound)
         {
             ISoundKey soundKey;
             keyHandle.GetKey(&soundKey);

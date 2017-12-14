@@ -25,6 +25,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSettings>
+#include <QUuid>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/containers/vector.h>
 #include <RoleSelectionView.h>

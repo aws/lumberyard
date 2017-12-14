@@ -10,7 +10,6 @@
 *
 */
 
-
 #include "StdAfx.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -20,8 +19,12 @@
 #include "StarterGameGemSystemComponent.h"
 
 #include "Config.h"
-#include "StarterGameUtility.h"
+#include "StarterGameAIUtility.h"
+#include "StarterGameEntityUtility.h"
 #include "StarterGameMaterialUtility.h"
+#include "StarterGameTimeOfDayUtility.h"
+#include "StarterGameUIUtility.h"
+#include "StarterGameUtility.h"
 
 namespace StarterGameGem
 {
@@ -47,8 +50,12 @@ namespace StarterGameGem
 		if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
 		{
 			Config::Reflect(behaviorContext);
-			StarterGameUtility::Reflect(behaviorContext);
+            StarterGameAIUtility::Reflect(behaviorContext);
+            StarterGameEntityUtility::Reflect(behaviorContext);
             StarterGameMaterialUtility::Reflect(behaviorContext);
+            StarterGameTimeOfDayUtility::Reflect(behaviorContext);
+            StarterGameUIUtility::Reflect(behaviorContext);
+            StarterGameUtility::Reflect(behaviorContext);
         }
     }
 

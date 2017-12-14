@@ -17,6 +17,7 @@
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
 #include <IPlatformOS.h>
+#include <IInput.h>
 
 #if defined(APPLE)
 #define GAME_FRAMEWORK_FILENAME  "libCryAction.dylib"
@@ -33,6 +34,7 @@ namespace CryLegacy
         : public AZ::Component
         , protected CryLegacyRequestBus::Handler
         , protected CryGameFrameworkBus::Handler
+        , protected CryLegacyInputRequestBus::Handler
     {
     public:
         AZ_COMPONENT(CryLegacySystemComponent, "{D2051F81-6B46-4B23-A7F6-C19F814E63F0}");
@@ -51,6 +53,12 @@ namespace CryLegacy
 
         void ShutdownFramework() override;
 
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
+        // CryLegacyInputRequests interface implementation
+        IInput* InitInput() override;
+        void ShutdownInput(IInput* input) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

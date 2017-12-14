@@ -71,33 +71,29 @@ namespace MaterialBuilder
     // This function should always create the same jobs and not do any checking whether the job is up to date.
     void MaterialBuilderWorker::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
     {
-        auto addJobForPlatform = [&](AssetBuilderSDK::Platform platform)
-            {
-                if (request.m_platformFlags & platform)
-                {
-                    AssetBuilderSDK::JobDescriptor descriptor;
-                    descriptor.m_jobKey = "Material Builder Job";
-                    descriptor.m_platform = platform;
-                    // a priority that is lower than models but still not "the lowest priority"
-                    descriptor.m_priority = 8; 
-                    response.m_createJobOutputs.push_back(descriptor);
-                    response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
-                }
-            };
+        if (m_isShuttingDown)
+        {
+            response.m_result = AssetBuilderSDK::CreateJobsResultCode::ShuttingDown;
+            return;
+        }
 
-        addJobForPlatform(AssetBuilderSDK::Platform_PC);
-        addJobForPlatform(AssetBuilderSDK::Platform_ES3);
-        addJobForPlatform(AssetBuilderSDK::Platform_IOS);
-        addJobForPlatform(AssetBuilderSDK::Platform_OSX);
+        for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
+        {
+            AssetBuilderSDK::JobDescriptor descriptor;
+            descriptor.m_jobKey = "Material Builder Job";
+            descriptor.SetPlatformIdentifier(info.m_identifier.c_str());
+            descriptor.m_priority = 8; // meshes are more important (at 10) but mats are still pretty important.
+            response.m_createJobOutputs.push_back(descriptor);
+        }
 
-
+        response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
     }
 
     // The request will contain the CreateJobResponse you constructed earlier, including any keys and
     // values you placed into the hash table
     void MaterialBuilderWorker::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
     {
-        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting Job.");
+        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting Job.\n");
         AZStd::string fileName;
         AzFramework::StringFunc::Path::GetFullFileName(request.m_fullPath.c_str(), fileName);
         AZStd::string destPath;
@@ -120,12 +116,12 @@ namespace MaterialBuilder
         {
             if (m_isShuttingDown)
             {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Cancelled job %s because shutdown was requested", request.m_fullPath.c_str());
+                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Cancelled job %s because shutdown was requested.\n", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             }
             else
             {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Error during processing job %s.", request.m_fullPath.c_str());
+                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Error during processing job %s.\n", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             }
         }

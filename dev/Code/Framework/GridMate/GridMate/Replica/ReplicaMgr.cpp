@@ -150,7 +150,10 @@ namespace GridMate
 #ifdef REPLICA_MSG_CRC_CHECK
             m_reliableMsgCrc = AZ::Crc32(m_reliableOutBuffer.Get() + m_reliableMsgCrc.GetOffsetAfterMarker(), m_reliableOutBuffer.Size() - m_reliableMsgCrc.GetOffsetAfterMarker());
 #endif
-            carrier->Send(m_reliableOutBuffer.Get(), static_cast<unsigned int>(m_reliableOutBuffer.Size()), GetConnectionId(), Carrier::SEND_RELIABLE, Carrier::PRIORITY_NORMAL, commChannel);
+
+            auto callback = AZStd::make_unique<PeerAckCallbacks>((m_reliableCallbacks));
+            carrier->SendWithCallback(m_reliableOutBuffer.Get(), static_cast<unsigned int>(m_reliableOutBuffer.Size()), AZStd::move(callback), GetConnectionId(), Carrier::SEND_RELIABLE, Carrier::PRIORITY_NORMAL, commChannel);
+
             EBUS_EVENT(Debug::ReplicaDrillerBus, OnSend, GetId(), m_reliableOutBuffer.Get(), m_reliableOutBuffer.Size(), true);
         }
 
@@ -165,7 +168,9 @@ namespace GridMate
                 AZ_TracePrintf("GridMate", "Unreliable replica update exceeds MTU (size=%u, MTU=%u), this will cause fragmentation!\n", static_cast<unsigned int>(m_unreliableOutBuffer.Size()), carrier->GetMessageMTU());
             }
 
-            carrier->Send(m_unreliableOutBuffer.Get(), static_cast<unsigned int>(m_unreliableOutBuffer.Size()), GetConnectionId(), Carrier::SEND_UNRELIABLE, Carrier::PRIORITY_NORMAL, commChannel);
+            auto callback = AZStd::make_unique<PeerAckCallbacks>((m_unreliableCallbacks));
+            carrier->SendWithCallback(m_unreliableOutBuffer.Get(), static_cast<unsigned int>(m_unreliableOutBuffer.Size()), AZStd::move(callback), GetConnectionId(), Carrier::SEND_UNRELIABLE, Carrier::PRIORITY_NORMAL, commChannel);
+
             EBUS_EVENT(Debug::ReplicaDrillerBus, OnSend, GetId(), m_unreliableOutBuffer.Get(), m_unreliableOutBuffer.Size(), false);
         }
         // prepare for next cycle
@@ -1129,13 +1134,6 @@ namespace GridMate
                 }
                 else
                 {
-                    // check if it is a stale message for an object already destroyed
-                    if (m_tombstones.find(repId) != m_tombstones.end())
-                    {
-                        AZ_TracePrintf("Gridmate", "Received replica type id 0x%x, which was recently deleted. Discarding %d bytes\n", (int)repId, (int)chunkSize.GetSizeInBytesRoundUp());
-                        //break;
-                    }
-
                     // if failed to find replica or creating new proxy
                     pReplica = aznew Replica("");
                     pReplica->m_createTime = createTime;
@@ -1417,7 +1415,7 @@ namespace GridMate
                 auto& target = *(it++);
 
                 if (replica->IsProxy()
-                    && (!IsSyncHost()  
+                    && (!IsSyncHost()
                         || source->GetId() == target.GetPeer()->GetId()  // target points to the owner (no need to send replica to its owner)
                         || (source->GetMode() == Mode_Peer && target.GetPeer()->GetMode() == Mode_Peer))) // Clients should never forward proxies
                 {
@@ -1635,9 +1633,9 @@ namespace GridMate
         //If rate changed
         if (connIt->m_rate != bytesPerSecond)
         {
-            //Note this could invalidate the heap ordering, but since we only need a weak guarantee that 
-            //the top is the lowest we can delay re-running make-heap until 1) a different connection 
-            //takes the top/min spot or 2) a connection is removed/added (very rare) 
+            //Note this could invalidate the heap ordering, but since we only need a weak guarantee that
+            //the top is the lowest we can delay re-running make-heap until 1) a different connection
+            //takes the top/min spot or 2) a connection is removed/added (very rare)
             connIt->m_rate = bytesPerSecond;
 
             //If new min or old min increased, rebuild the heap and send an update

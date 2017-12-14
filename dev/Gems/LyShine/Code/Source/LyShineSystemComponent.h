@@ -68,7 +68,9 @@ namespace LyShine
         void SaveCanvasToStream(CanvasAssetHandle* canvas, AZ::IO::FileIOStream& stream) override;
         AZ::SliceComponent* GetRootSliceSliceComponent(CanvasAssetHandle* canvas) override;
         AZ::Entity* GetRootSliceEntity(CanvasAssetHandle* canvas) override;
+        AZ::Entity* GetCanvasEntity(CanvasAssetHandle* canvas) override;
         void ReplaceRootSliceSliceComponent(CanvasAssetHandle* canvas, AZ::SliceComponent* newSliceComponent) override;
+        void ReplaceCanvasEntity(UiSystemToolsInterface::CanvasAssetHandle* canvas, AZ::Entity* newCanvasEntity) override;
         void DestroyCanvas(CanvasAssetHandle* canvas) override;
         ////////////////////////////////////////////////////////////////////////
 

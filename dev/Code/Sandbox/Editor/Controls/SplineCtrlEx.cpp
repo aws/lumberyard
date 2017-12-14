@@ -1128,9 +1128,7 @@ void SplineWidget::OnLButtonDown(const QPoint& point, Qt::KeyboardModifiers modi
     ISplineInterpolator* pSpline = HitSpline(m_cMouseDownPos);
 
     // Get control key status.
-    bool bAltClick = modifiers & Qt::AltModifier;
     bool bCtrlClick = modifiers & Qt::ControlModifier;
-    bool bShiftClick = modifiers & Qt::ShiftModifier;
 
     switch (m_hitCode)
     {
@@ -1359,6 +1357,11 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
         m_rcSelect = rc;
         m_rubberBand->setGeometry(m_rcSelect);
         m_rubberBand->setVisible(true);
+
+        // Trigger a repaint so that the spline lines will be drawn correctly,
+        // or else they end up being chopped up if you drag the selection area
+        // over them
+        update();
     }
 
     if (m_editMode == TimeMarkerMode)
@@ -1379,9 +1382,6 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
             StoreUndo();
 
             bool bAltClick = event->modifiers() & Qt::AltModifier;
-            bool bCtrlClick = event->modifiers() & Qt::ControlModifier;
-            bool bShiftClick = event->modifiers() & Qt::ShiftModifier;
-
 
             Vec2 v0 = ClientToWorld(m_cMouseDownPos);
             Vec2 v1 = ClientToWorld(event->pos());
@@ -1397,46 +1397,6 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
             {
                 MoveSelectedKeys(v1 - v0, m_copyKeys);
             }
-        }
-    }
-
-    if (m_editMode == TrackingMode && GetNumSelected() == 1)
-    {
-        float time = 0;
-        ISplineInterpolator::ValueType  afValue;
-        QString                         tipText;
-        bool                            boFoundTheSelectedKey(false);
-
-        for (int splineIndex = 0, endSpline = m_splines.size(); splineIndex < endSpline; ++splineIndex)
-        {
-            ISplineInterpolator* pSpline = m_splines[splineIndex].pSpline;
-            for (int i = 0; i < pSpline->GetKeyCount(); i++)
-            {
-                for (int nCurrentDimension = 0; nCurrentDimension < pSpline->GetNumDimensions(); nCurrentDimension++)
-                {
-                    if (pSpline->IsKeySelectedAtDimension(i, nCurrentDimension))
-                    {
-                        time = pSpline->GetKeyTime(i);
-                        pSpline->GetKeyValue(i, afValue);
-                        tipText = QStringLiteral("t=%1  v=%2").arg(time * m_fTooltipScaleX, 0, 'f', 3).arg(afValue[nCurrentDimension] * m_fTooltipScaleY, 0, 'f', 3);
-                        boFoundTheSelectedKey = true;
-                        break;
-                    }
-                }
-                if (boFoundTheSelectedKey)
-                {
-                    break;
-                }
-            }
-        }
-
-        if (event->pos() != m_lastToolTipPos)
-        {
-            m_lastToolTipPos = event->pos();
-            m_tooltipText = tipText;
-            update();
-            //m_tooltip.UpdateTipText( tipText,this,1 );
-            //m_tooltip.Activate(TRUE);
         }
     }
 
@@ -1557,14 +1517,6 @@ void SplineWidget::OnLButtonUp(const QPoint& point, Qt::KeyboardModifiers modifi
 
         if (!m_startedDragging)
         {
-            // Get control key status.
-            bool bAltClick = modifiers & Qt::AltModifier;
-            bool bCtrlClick = modifiers & Qt::ControlModifier;
-            bool bShiftClick = modifiers & Qt::ShiftModifier;
-
-            bool bAddSelect = bCtrlClick;
-            bool bUnselect = bAltClick;
-
             HitSpline(m_cMouseDownPos);
         }
     }
@@ -1574,17 +1526,19 @@ void SplineWidget::OnLButtonUp(const QPoint& point, Qt::KeyboardModifiers modifi
         // Get control key status.
         bool bAltClick = modifiers & Qt::AltModifier;
         bool bCtrlClick = modifiers & Qt::ControlModifier;
-        bool bShiftClick = modifiers & Qt::ShiftModifier;
 
         bool bAddSelect = bCtrlClick;
         bool bUnselect = bAltClick;
+
+        // Stop tracking first or else the clear selection will end up being
+        // undone
+        StopTracking();
 
         if (!bAddSelect && !bUnselect)
         {
             ClearSelection();
         }
 
-        StopTracking();
         SelectRectangle(m_rcSelect, !bUnselect);
 
         m_rcSelect = QRect();
@@ -2263,16 +2217,12 @@ void AbstractSplineWidget::MoveSelectedKeys(Vec2 offset, bool copyKeys)
         DuplicateSelectedKeys();
     }
 
-    float affectedRangeMin = FLT_MAX;
-    float affectedRangeMax = -FLT_MAX;
     // For each spline...
     for (int splineIndex = 0, splineCount = m_splines.size(); splineIndex < splineCount; ++splineIndex)
     {
         ISplineInterpolator* pSpline = m_splines[splineIndex].pSpline;
 
         int  keyCount = pSpline->GetKeyCount();
-        float keyRangeMin = FLT_MAX;
-        float keyRangeMax = -FLT_MAX;
         for (int i = 0; i < keyCount; i++)
         {
             float   oldTime = pSpline->GetKeyTime(i);
@@ -2284,11 +2234,6 @@ void AbstractSplineWidget::MoveSelectedKeys(Vec2 offset, bool copyKeys)
                 {
                     pSpline->SetKeyTime(i, SnapTimeToGridVertical(t));
                 }
-
-                keyRangeMin = min(keyRangeMin, oldTime);
-                keyRangeMin = min(keyRangeMin, t);
-                keyRangeMax = max(keyRangeMax, oldTime);
-                keyRangeMax = max(keyRangeMax, t);
             }
 
             for (int nCurrentDimension = 0; nCurrentDimension < pSpline->GetNumDimensions(); nCurrentDimension++)
@@ -2303,46 +2248,9 @@ void AbstractSplineWidget::MoveSelectedKeys(Vec2 offset, bool copyKeys)
                 }
             }
         }
-        if (keyRangeMin <= keyRangeMax)
-        {
-            // Changes to a key's value affect spline up to two keys away.
-            int lastMovedKey = 0;
-            for (int keyIndex = 0; keyIndex < keyCount; ++keyIndex)
-            {
-                if (pSpline->GetKeyTime(keyIndex) <= keyRangeMax)
-                {
-                    lastMovedKey = keyIndex + 1;
-                }
-            }
-            int firstMovedKey = pSpline->GetKeyCount();
-            for (int keyIndex = pSpline->GetKeyCount() - 1; keyIndex >= 0; --keyIndex)
-            {
-                if (pSpline->GetKeyTime(keyIndex) >= keyRangeMin)
-                {
-                    firstMovedKey = keyIndex;
-                }
-            }
-
-            int firstAffectedKey = max(0, firstMovedKey - 2);
-            int lastAffectedKey = min(keyCount - 1, lastMovedKey + 2);
-
-            affectedRangeMin = min(affectedRangeMin, (firstAffectedKey <= 0 ? m_timeRange.start : pSpline->GetKeyTime(firstAffectedKey)));
-            affectedRangeMax = max(affectedRangeMax, (lastAffectedKey >= keyCount - 1 ? m_timeRange.end : pSpline->GetKeyTime(lastAffectedKey)));
-        }
     }
 
-    int rangeMin = TimeToXOfs(affectedRangeMin);
-    int rangeMax = TimeToXOfs(affectedRangeMax);
-
-    if (m_timeRange.start == affectedRangeMin)
-    {
-        rangeMin = m_rcSpline.left();
-    }
-    if (m_timeRange.end == affectedRangeMax)
-    {
-        rangeMax = m_rcSpline.right() + 1;
-    }
-
+    update();
     if (m_pTimelineCtrl)
     {
         m_pTimelineCtrl->update();

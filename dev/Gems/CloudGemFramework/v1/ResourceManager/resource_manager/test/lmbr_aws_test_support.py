@@ -38,6 +38,7 @@ import resource_manager.cli
 import resource_manager.constant
 import resource_manager.util
 import resource_manager.stack
+from resource_manager.gem import GemContext
 
 # resource manager test imports
 import test_constant
@@ -163,18 +164,17 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.__copy_root_dir_file(temp_dir, 'engineroot.txt')
         self.__copy_root_dir_file(temp_dir, 'LyzardConfig.xml')
         self.__make_root_dir_link(temp_dir, 'Bin64vc140.Debug.Test')
+        self.__make_root_dir_link(temp_dir, 'Bin64vc140.Debug')
+        self.__make_root_dir_link(temp_dir, '_WAF_')
+        self.__make_root_dir_link(temp_dir, 'Tools')
         self.__make_file(game_dir, 'project.json', PROJECT_JSON_CONTENT)
         self.__make_game_config_file(game_dir, 'Editor.xml', EDITOR_XML_CONTENT)
         self.__make_game_config_file(game_dir, 'Game.xml', GAME_XML_CONTENT)
 
-        lmbr_path = os.path.join(temp_dir, 'Bin64vc140.Debug.Test', 'lmbr.exe')
+        lmbr_path = GemContext.get_lmbr_exe_path_from_root(temp_dir)
 
-        sourcepath = os.path.join(self.REAL_ROOT_DIR, 'Tools', 'LmbrSetup', 'Win.vc140.Debug', 'lmbr.exe')
-        if os.path.isfile(sourcepath):
-            print 'Copying {} to {}.'.format(sourcepath, lmbr_path)
-            shutil.copyfile(sourcepath, lmbr_path)
-        else:
-            raise RuntimeError('Failed to find lmbr.exe at {}'.format(sourcepath))
+        if not lmbr_path:
+            raise RuntimeError('Failed to find lmbr.exe')
 
         # make it so lmbr_aws can call itself (used to generate client code when creating cloud gems)
         self.__make_file(temp_dir, 'lmbr_aws.cmd', '@CALL {}\lmbr_aws.cmd %*'.format(self.REAL_ROOT_DIR))
@@ -1219,8 +1219,7 @@ PROJECT_JSON_CONTENT = '''{
         "version_number" : 1,
         "version_name" : "1.0.0.0",
         "orientation" : "landscape"
-    },
-
+    }
 }
 '''
 

@@ -15,6 +15,7 @@
 #include "CommentNodeAnimator.h"
 #include "TrackViewAnimNode.h"
 #include "TrackViewTrack.h"
+#include "Maestro/Types/AnimParamType.h"
 
 CCommentNodeAnimator::CCommentNodeAnimator(CTrackViewAnimNode* pCommentNode)
 {
@@ -49,17 +50,17 @@ void CCommentNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContext
 
         switch (pTrack->GetParameterType().GetType())
         {
-        case eAnimParamType_CommentText:
+        case AnimParamType::CommentText:
         {
             AnimateCommentTextTrack(pTrack, ac);
         }
         break;
-        case eAnimParamType_PositionX:
+        case AnimParamType::PositionX:
         {
             pTrack->GetValue(ac.time, pos.x);
         }
         break;
-        case eAnimParamType_PositionY:
+        case AnimParamType::PositionY:
         {
             pTrack->GetValue(ac.time, pos.y);
         }

@@ -164,11 +164,11 @@ namespace CharacterTool {
         {
             if (system && IsSkeletonProductFromAssetImporterSource(system->document->GetLoadedCharacterDefinition()->skeleton.c_str()))
             {
-                ar.Warning(this, "Compression settings not available for animations generated from an fbx file.");
+                ar.Warning(*this, "Compression settings not available for animations generated from an fbx file.");
             }
             else
             {
-                ar.Warning(this, "AnimSettings file used to compile the animation is missing. You may need to obtain it from version control.\n\nAlternatively you can create a new AnimSettings file.");
+                ar.Warning(*this, "AnimSettings file used to compile the animation is missing. You may need to obtain it from version control.\n\nAlternatively you can create a new AnimSettings file.");
                 bool createNewAnimSettings = false;
                 ar(Serialization::ToggleButton(createNewAnimSettings), "createButton", "<Create New AnimSettings");
                 if (createNewAnimSettings)

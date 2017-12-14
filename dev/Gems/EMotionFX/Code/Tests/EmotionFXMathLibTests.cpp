@@ -30,14 +30,12 @@ class EmotionFXMathLibTests
     : public ::testing::Test
 {
 protected:
-    
+
     void SetUp() override
     {
         m_azNormalizedVector3_a = AZ::Vector3(s_x1, s_y1, s_z1);
         m_azNormalizedVector3_a.Normalize();
-        m_emNormalizedVector3_a = MCore::Vector3(s_x1, s_y1, s_z1);
-        m_emNormalizedVector3_a.Normalize();
-        m_emQuaternion_a =  MCore::Quaternion(m_emNormalizedVector3_a, s_angle_a);
+        m_emQuaternion_a =  MCore::Quaternion(m_azNormalizedVector3_a, s_angle_a);
         m_azQuaternion_a = AZ::Quaternion::CreateFromAxisAngle(m_azNormalizedVector3_a, s_angle_a);
     }
 
@@ -49,26 +47,42 @@ protected:
     bool AZQuaternionCompareExact(AZ::Quaternion& quaternion, float x, float y, float z, float w)
     {
         if (quaternion.GetX() != x)
+        {
             return false;
+        }
         if (quaternion.GetY() != y)
+        {
             return false;
+        }
         if (quaternion.GetZ() != z)
+        {
             return false;
+        }
         if (quaternion.GetW() != w)
+        {
             return false;
+        }
         return true;
     }
 
     bool EmfxQuaternionCompareExact(MCore::Quaternion& quaternion, float x, float y, float z, float w)
     {
         if (quaternion.x != x)
+        {
             return false;
+        }
         if (quaternion.y != y)
+        {
             return false;
+        }
         if (quaternion.z != z)
+        {
             return false;
+        }
         if (quaternion.w != w)
+        {
             return false;
+        }
         return true;
     }
 
@@ -93,41 +107,7 @@ protected:
         return true;
     }
 
-    bool EmfxVector3CompareClose(MCore::Vector3& vector, float x, float y, float z, float tolerance)
-    {
-        if (!AZ::IsClose(vector.x, x, tolerance))
-        {
-            return false;
-        }
-        if (!AZ::IsClose(vector.y, y, tolerance))
-        {
-            return false;
-        }
-        if (!AZ::IsClose(vector.z, z, tolerance))
-        {
-            return false;
-        }
-        return true;
-    }
-
-    bool AZEMVector3CompareClose(AZ::Vector3& azVector, MCore::Vector3& emVector, float tolerance)
-    {
-        if (!AZ::IsClose(azVector.GetX(), emVector.x, tolerance))
-        {
-            return false;
-        }
-        if (!AZ::IsClose(azVector.GetY(), emVector.y, tolerance))
-        {
-            return false;
-        }
-        if (!AZ::IsClose(azVector.GetZ(), emVector.z, tolerance))
-        {
-            return false;
-        }
-        return true;
-    }
-
-    bool AZVector3CompareClose(AZ::Vector3& vector, AZ::Vector3& vector2, float tolerance)
+    bool AZVector3CompareClose(const AZ::Vector3& vector, const AZ::Vector3& vector2, float tolerance)
     {
         if (!AZ::IsClose(vector.GetX(), vector2.GetX(), tolerance))
         {
@@ -144,6 +124,23 @@ protected:
         return true;
     }
 
+    bool AZVector3CompareClose(const AZ::Vector3& vector, float x, float y, float z, float tolerance)
+    {
+        if (!AZ::IsClose(vector.GetX(), x, tolerance))
+        {
+            return false;
+        }
+        if (!AZ::IsClose(vector.GetY(), y, tolerance))
+        {
+            return false;
+        }
+        if (!AZ::IsClose(vector.GetZ(), z, tolerance))
+        {
+            return false;
+        }
+        return true;
+    }
+
     static const float  s_toleranceHigh;
     static const float  s_toleranceMedium;
     static const float  s_toleranceLow;
@@ -153,7 +150,6 @@ protected:
     static const float  s_z1;
     static const float  s_angle_a;
     AZ::Vector3         m_azNormalizedVector3_a;
-    MCore::Vector3      m_emNormalizedVector3_a;
     AZ::Quaternion      m_azQuaternion_a;
     MCore::Quaternion   m_emQuaternion_a;
 };
@@ -172,7 +168,7 @@ const float EmotionFXMathLibTests::s_angle_a    = 0.5f;
 ///////////////////////////////////////////////////////////////////////////////
 
 
-// MCore::Quaternion: Test identity values 
+// MCore::Quaternion: Test identity values
 TEST_F(EmotionFXMathLibTests, QuaternionIdentity_Identity_Success)
 {
     MCore::Quaternion test(0.1f, 0.2f, 0.3f, 0.4f);
@@ -216,7 +212,7 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionNormalizeEquivalent_Success)
 // Compare setting a quaternion using axis and angle
 TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_SetToAxisAngleEquivalent_Success)
 {
-    MCore::Quaternion emQuaternion(m_emNormalizedVector3_a, s_angle_a);
+    MCore::Quaternion emQuaternion(m_azNormalizedVector3_a, s_angle_a);
     AZ::Quaternion azQuaternion = AZ::Quaternion::CreateFromAxisAngle(m_azNormalizedVector3_a, s_angle_a);
 
     ASSERT_TRUE(AZQuaternionCompareClose(azQuaternion, emQuaternion.x, emQuaternion.y, emQuaternion.z, emQuaternion.w, s_toleranceLow));
@@ -229,7 +225,7 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_ToAxisAngleEquivalent_Suc
     MCore::Quaternion emTest = m_emQuaternion_a;
     AZ::Quaternion azTest(emTest.x, emTest.y, emTest.z, emTest.w);
 
-    MCore::Vector3 emAxis;
+    AZ::Vector3 emAxis;
     float emAngle;
     emTest.ToAxisAngle(&emAxis, &emAngle);
 
@@ -238,7 +234,7 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_ToAxisAngleEquivalent_Suc
     AzFramework::ConvertQuaternionToAxisAngle(azTest, azAxis, azAngle);
 
     bool same = AZ::IsClose(azAngle, emAngle, s_toleranceLow) &&
-        AZEMVector3CompareClose(azAxis, emAxis, s_toleranceLow);
+        AZVector3CompareClose(azAxis, emAxis, s_toleranceLow);
 
     ASSERT_TRUE(same);
 }
@@ -299,7 +295,7 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternion_NormalizedQuaternionRotationTest3DA
     AZ::Vector3 vertexIn(0.1f, 0.2f, 0.3f);
 
     AZ::Vector3 vertexOut1, vertexOut1FromNormalizedQuaternion;
-    
+
     //generate value 1
     vertexOut1 = azQuaternion1 * vertexIn;
 
@@ -320,11 +316,11 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet1ComponentAxis_Success)
     AZ::Vector3 axis = AZ::Vector3(0.0f, 0.0f, 1.0f);
     axis.Normalize();
     AZ::Quaternion azQuaternion1 = AZ::Quaternion::CreateFromAxisAngle(axis, AZ::Constants::HalfPi);
-    AZ::Vector3 vertexIn( 0.1f, 0.2f, 0.3f);
+    AZ::Vector3 vertexIn(0.1f, 0.2f, 0.3f);
     AZ::Vector3 vertexOut1, vertexOut2;
     AZ::Vector3 euler1;
     AZ::Quaternion test1;
-    
+
     vertexOut1 = azQuaternion1 * vertexIn;
 
     //euler out and in
@@ -388,7 +384,7 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerInOutRotationTest3DAxis_Success)
     ASSERT_TRUE(same);
 }
 
-// Quaternion -> Transform -> Euler conversion is same as Quaternion -> Euler 
+// Quaternion -> Transform -> Euler conversion is same as Quaternion -> Euler
 // AZ Euler get set Transform Compare test 3 dim axis
 TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet3ComponentAxisCompareTransform_Success)
 {
@@ -417,7 +413,7 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet3ComponentAxisCompareTrans
     vertexOut2 = test1 * vertexIn;
 
     bool same = AZVector3CompareClose(vertexOut1, vertexTransform, s_toleranceReallyLow)
-        && AZVector3CompareClose(vertexOut1, vertexOut2, s_toleranceReallyLow) 
+        && AZVector3CompareClose(vertexOut1, vertexOut2, s_toleranceReallyLow)
         && AZVector3CompareClose(vertexOut2, vertexTransform, s_toleranceHigh);
     ASSERT_TRUE(same);
 }
@@ -462,12 +458,12 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet3ComponentAxisCompareTrans
 // EM Quaternion to Euler test
 TEST_F(EmotionFXMathLibTests, EMQuaternionConversion_ToEulerEquivalent_Success)
 {
-    MCore::Vector3 eulerIn(0.1f, 0.2f, 0.3f);
+    AZ::Vector3 eulerIn(0.1f, 0.2f, 0.3f);
     MCore::Quaternion test;
-    test.SetEuler(eulerIn.x, eulerIn.y, eulerIn.z);
-    MCore::Vector3 eulerOut = test.ToEuler();
+    test.SetEuler(eulerIn.GetX(), eulerIn.GetY(), eulerIn.GetZ());
+    AZ::Vector3 eulerOut = test.ToEuler();
 
-    ASSERT_TRUE(EmfxVector3CompareClose(eulerOut, 0.1f, 0.2f, 0.3f, s_toleranceHigh));
+    ASSERT_TRUE(AZVector3CompareClose(eulerOut, 0.1f, 0.2f, 0.3f, s_toleranceHigh));
 }
 
 // AZ Quaternion to Euler test
@@ -485,7 +481,7 @@ TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_ToEulerEquivalent_Success)
     outVertex1 = test * testVertex;
 
     eulerOut1 = AzFramework::ConvertQuaternionToEulerRadians(test);
-    
+
     test2 = AzFramework::ConvertEulerRadiansToQuaternion(eulerOut1);
     test2.Normalize();
     outVertex2 = test2 * testVertex;
@@ -516,16 +512,15 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternion_OrderTest_Success)
     MCore::Quaternion emQuaterionOut = emQuaternion1 * emQuaternion2;
 
     AZ::Vector3 azVertexIn(0.1f, 0.2f, 0.3f);
-    MCore::Vector3 emVertexIn(0.1f, 0.2f, 0.3f);
 
     AZ::Vector3 azVertexOut, azVertexOut2;
-    MCore::Vector3 emVertexOut;
+    AZ::Vector3 emVertexOut;
 
     azVertexOut = azQuaterionOut * azVertexIn;
     azVertexOut2 = azQuaterionOut2 * azVertexIn;
-    emVertexOut = emQuaterionOut * emVertexIn;
+    emVertexOut = emQuaterionOut * azVertexIn;
 
-    bool same = EmfxVector3CompareClose(emVertexOut, azVertexOut.GetX(), azVertexOut.GetY(), azVertexOut.GetZ(), s_toleranceMedium);
+    bool same = AZVector3CompareClose(emVertexOut, azVertexOut.GetX(), azVertexOut.GetY(), azVertexOut.GetZ(), s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
@@ -540,11 +535,10 @@ TEST_F(EmotionFXMathLibTests, EMQuaternionConversion_FromMatrixXRot_Success)
     MCore::Matrix emMatrix = MCore::Matrix::RotationMatrixX(AZ::Constants::HalfPi);
     MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
 
-    MCore::Vector3 emVertexIn(0.0f, 0.1f, 0.0f);
+    AZ::Vector3 emVertexIn(0.0f, 0.1f, 0.0f);
+    AZ::Vector3 emVertexOut = emQuaternion * emVertexIn;
 
-    MCore::Vector3 emVertexOut = emQuaternion * emVertexIn;
-
-    bool same = EmfxVector3CompareClose(emVertexOut, 0.0f, 0.0f, 0.1f, s_toleranceMedium);
+    bool same = AZVector3CompareClose(emVertexOut, 0.0f, 0.0f, 0.1f, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
@@ -554,11 +548,10 @@ TEST_F(EmotionFXMathLibTests, EMQuaternionConversion_FromMatrixYRot_Success)
     MCore::Matrix emMatrix = MCore::Matrix::RotationMatrixY(AZ::Constants::HalfPi);
     MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
 
-    MCore::Vector3 emVertexIn(0.0f, 0.0f, 0.1f);
+    AZ::Vector3 emVertexIn(0.0f, 0.0f, 0.1f);
+    AZ::Vector3 emVertexOut = emQuaternion * emVertexIn;
 
-    MCore::Vector3 emVertexOut = emQuaternion * emVertexIn;
-
-    bool same = EmfxVector3CompareClose(emVertexOut, 0.1f, 0.0f, 0.0f, s_toleranceMedium);
+    bool same = AZVector3CompareClose(emVertexOut, 0.1f, 0.0f, 0.0f, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
@@ -572,12 +565,11 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_FromMatrixXRot_Success)
     MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
 
     AZ::Vector3 azVertexIn(0.0f, 0.1f, 0.0f);
-    MCore::Vector3 emVertexIn(azVertexIn.GetX(), azVertexIn.GetY(), azVertexIn.GetZ());
 
     AZ::Vector3 azVertexOut = azQuaternion * azVertexIn;
-    MCore::Vector3 emVertexOut = emQuaternion * emVertexIn;
+    AZ::Vector3 emVertexOut = emQuaternion * azVertexIn;
 
-    bool same = AZEMVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
+    bool same = AZVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
@@ -591,12 +583,10 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_FromMatrixYRot_Success)
     MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
 
     AZ::Vector3 azVertexIn(0.1f, 0.0f, 0.0f);
-    MCore::Vector3 emVertexIn(azVertexIn.GetX(), azVertexIn.GetY(), azVertexIn.GetZ());
-
     AZ::Vector3 azVertexOut = azQuaternion * azVertexIn;
-    MCore::Vector3 emVertexOut = emQuaternion * emVertexIn;
+    AZ::Vector3 emVertexOut = emQuaternion * azVertexIn;
 
-    bool same = AZEMVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
+    bool same = AZVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
@@ -610,12 +600,11 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_FromMatrixZRot_Success)
     MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
 
     AZ::Vector3 azVertexIn(0.1f, 0.0f, 0.0f);
-    MCore::Vector3 emVertexIn(azVertexIn.GetX(), azVertexIn.GetY(), azVertexIn.GetZ());
 
     AZ::Vector3 azVertexOut = azQuaternion * azVertexIn;
-    MCore::Vector3 emVertexOut = emQuaternion * emVertexIn;
+    AZ::Vector3 emVertexOut = emQuaternion * azVertexIn;
 
-    bool same = AZEMVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
+    bool same = AZVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 

@@ -32,7 +32,6 @@ namespace EMotionFX
     class Importer;
     class ActorManager;
     class MotionManager;
-    class LODGenerator;
     class EventManager;
     class SoftSkinManager;
     class AnimGraphManager;
@@ -132,13 +131,6 @@ namespace EMotionFX
          * @result A pointer to the importer.
          */
         MCORE_INLINE Importer* GetImporter() const                                  { return mImporter; }
-
-        /**
-         * Get the geometry LOD generator.
-         * This can also be accessed with the GetLODGenerator() macro.
-         * @result A pointer to the geometry LOD generator.
-         */
-        MCORE_INLINE LODGenerator* GetLODGenerator() const                          { return mLODGenerator; }
 
         /**
          * Get the actor manager.
@@ -333,7 +325,6 @@ namespace EMotionFX
         Importer*                   mImporter;              /**< The importer that can load actors and motions. */
         ActorManager*               mActorManager;          /**< The actor manager. */
         MotionManager*              mMotionManager;         /**< The motion manager. */
-        LODGenerator*               mLODGenerator;          /**< The geometry LOD generator. */
         EventManager*               mEventManager;          /**< The motion event manager. */
         SoftSkinManager*            mSoftSkinManager;       /**< The softskin manager. */
         WaveletCache*               mWaveletCache;          /**< The wavelet cache. */
@@ -372,12 +363,6 @@ namespace EMotionFX
          * @param manager The motion manager to use.
          */
         void SetMotionManager(MotionManager* manager);
-
-        /**
-         * Set the LOD generator.
-         * @param generator The LOD generator to use.
-         */
-        void SetLODGenerator(LODGenerator* generator);
 
         /**
          * Set the event manager.
@@ -496,7 +481,6 @@ namespace EMotionFX
     MCORE_INLINE Importer&                  GetImporter()               { return *GetEMotionFX().GetImporter(); }           /**< Get the importer that can load actors and motions. */
     MCORE_INLINE ActorManager&              GetActorManager()           { return *GetEMotionFX().GetActorManager(); }       /**< Get the actor manager. */
     MCORE_INLINE MotionManager&             GetMotionManager()          { return *GetEMotionFX().GetMotionManager(); }      /**< Get the motion manager. */
-    MCORE_INLINE LODGenerator&              GetLODGenerator()           { return *GetEMotionFX().GetLODGenerator(); }       /**< Get the geometry LOD generator. */
     MCORE_INLINE EventManager&              GetEventManager()           { return *GetEMotionFX().GetEventManager(); }       /**< Get the motion event manager. */
     MCORE_INLINE SoftSkinManager&           GetSoftSkinManager()        { return *GetEMotionFX().GetSoftSkinManager(); }    /**< Get the softskin manager. */
     MCORE_INLINE WaveletCache&              GetWaveletCache()           { return *GetEMotionFX().GetWaveletCache(); }       /**< Get the wavelet cache. */

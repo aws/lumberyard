@@ -15,6 +15,7 @@
 #include "DriverD3D.h"
 #include "I3DEngine.h"
 #include "D3DPostProcess.h"
+#include "../Common/Textures/TextureManager.h"
 
 #pragma warning(disable: 4244)
 
@@ -110,8 +111,8 @@ void CHudSilhouettes::RenderDeferredSilhouettes(float fBlendParam, float fType)
     PostProcessUtils().m_pCurDepthSurface = &gcpRendD3D->m_DepthBufferOrig;
 
     CTexture* pScreen = CTexture::s_ptexSceneNormalsMap;
-    CTexture* pMask = CTexture::s_ptexBlack;
-    CTexture* pMaskBlurred = CTexture::s_ptexBlack;
+    CTexture* pMask = CTextureManager::Instance()->GetBlackTexture();
+    CTexture* pMaskBlurred = CTextureManager::Instance()->GetBlackTexture();
 
     // skip processing, nothing was added to mask
     if ((SRendItem::BatchFlags(EFSLIST_GENERAL, gRenDev->m_RP.m_pRLD) | SRendItem::BatchFlags(EFSLIST_TRANSP, gRenDev->m_RP.m_pRLD)) & FB_CUSTOM_RENDER)

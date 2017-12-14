@@ -26,7 +26,7 @@ MINIGUI_BEGIN
 class CMiniTable
     : public CMiniCtrl
     , public IMiniTable
-    , public IInputEventListener
+    , public AzFramework::InputChannelEventListener
 {
 public:
     CMiniTable();
@@ -65,8 +65,9 @@ public:
 
     virtual void Hide(bool stat);
 
-    // IInputEventListener
-    virtual bool OnInputEvent(const SInputEvent& rInputEvent);
+    // AzFramework::InputChannelEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+    AZ::s32 GetPriority() const override { return AzFramework::InputChannelEventListener::GetPriorityUI(); }
 
     static const int MAX_TEXT_LENGTH = 64;
 

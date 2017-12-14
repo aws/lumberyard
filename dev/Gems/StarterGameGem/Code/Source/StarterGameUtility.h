@@ -10,23 +10,15 @@
 *
 */
 
-
 #pragma once
 
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Vector3.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <MathConversion.h>
+#include <AzCore/std/string/string.h>
 
-#include <AzCore/Component/ComponentBus.h>
-#include <AzCore/EBus/EBus.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
-#include <AZCore/Component/TransformBus.h>
-#include <LmbrCentral/Scripting/TagComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 
-#include <AzCore/Casting/numeric_cast.h>
-#include <IPhysics.h>
-#include <physinterface.h>
 
 namespace AZ
 {
@@ -64,6 +56,34 @@ namespace StarterGameGem
         AZ::EntityId m_cameraEntity;
     };
 
+    struct PlayAnimParams
+    {
+        AZ_TYPE_INFO(PlayAnimParams, "{CF1E77F0-A906-4468-9EA1-71A79C9D7325}");
+        AZ_CLASS_ALLOCATOR(PlayAnimParams, AZ::SystemAllocator, 0);
+
+        PlayAnimParams()
+            : m_animName("")
+            , m_loop(true)
+        {}
+
+        AZStd::string m_animName;
+        bool m_loop;
+    };
+
+    struct CompanionPOIParams
+    {
+        AZ_TYPE_INFO(CompanionPOIParams, "{398AD4C3-15D1-4755-8BA1-EAA17AE63F90}");
+        AZ_CLASS_ALLOCATOR(CompanionPOIParams, AZ::SystemAllocator, 0);
+
+        CompanionPOIParams()
+            : m_reset(true)
+        {}
+
+        bool m_reset;           // if true, return to normal positioning
+        AZ::EntityId m_position;
+        AZ::EntityId m_lookAt;
+    };
+
 	/*!
 	* Wrapper for utility functions exposed to Lua for StarterGame.
 	*/
@@ -75,8 +95,21 @@ namespace StarterGameGem
 
 		static void Reflect(AZ::ReflectContext* reflection);
 
-        static AZStd::string GetEntityName(AZ::EntityId entityId);
+        static bool IsGameStarted();
+        static void RestartLevel(const bool& fade);
+
+        static AZ::Transform GetJointWorldTM(const AZ::EntityId& entityId, const AZStd::string& bone);
+
+        static AzFramework::PhysicsComponentNotifications::Collision CreatePseudoCollisionEvent(const AZ::EntityId& entity, const AZ::Vector3& position, const AZ::Vector3& normal, const AZ::Vector3& direction);
+
+        static int GetSurfaceFromRayCast(const AZ::Vector3& pos, const AZ::Vector3& direction);
+		static AZStd::sys_time_t GetTimeNowMicroSecond();
+
         static AZ::Uuid GetUuid(const AZStd::string& className);
+		static bool IsLegacyCharacter(const AZ::EntityId& entityId);
+
+    private:
+        static unsigned int EntFromEntityTypes(AZ::u32 types);
 
 	};
 

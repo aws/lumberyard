@@ -2015,7 +2015,6 @@ bytesPerImage: kMappedSubTex.m_uImagePitch];
 
     void UpdateRingBuffer(SBuffer* pBuffer, CContext* pContext, bool checkIfBufferIsMapped)
     {
-        size_t ringBufferOffsetOut = 0;
         MemRingBufferStorage memAllocMode = GetMemAllocModeBasedOnSize(pBuffer->m_uMapSize);
         id<MTLBuffer> mtlBuffer = GetMtlBufferBasedOnSize(pBuffer);
 
@@ -2026,7 +2025,8 @@ bytesPerImage: kMappedSubTex.m_uImagePitch];
         if ((pBuffer->m_eUsage == eBU_Default) && checkForMapping)
         {
             id<MTLBuffer> tmpBuffer = pContext->GetRingBuffer(memAllocMode);
-            void* pTempData = pContext->AllocateMemoryInRingBuffer(pBuffer->m_uMapSize, memAllocMode, ringBufferOffsetOut);
+            size_t unusedOffset = 0;
+            void* pTempData = pContext->AllocateMemoryInRingBuffer(pBuffer->m_uMapSize, memAllocMode, unusedOffset);
             size_t tmpOffset = (uint8*)pTempData - (uint8*)tmpBuffer.contents;
 
             cryMemcpy(pTempData, pBuffer->m_pSystemMemoryCopy + pBuffer->m_uMapOffset, pBuffer->m_uMapSize);

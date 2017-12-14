@@ -31,6 +31,7 @@
 #   include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
 #   include <SceneAPIExt/Behaviors/MeshRuleBehavior.h>
 #   include <SceneAPIExt/Behaviors/MotionGroupBehavior.h>
+#   include <SceneAPIExt/Behaviors/MotionRangeRuleBehavior.h>
 #   include <SceneAPIExt/Behaviors/SkinRuleBehavior.h>
 #   include <RCExt/Actor/ActorExporter.h>
 #   include <RCExt/Actor/ActorGroupExporter.h>
@@ -85,6 +86,7 @@ namespace EMotionFX
                     // Motion
                     EMotionFX::Pipeline::Behavior::MotionGroupBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::Behavior::SkinRuleBehavior::CreateDescriptor(),
+                    EMotionFX::Pipeline::Behavior::MotionRangeRuleBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::MotionExporter::CreateDescriptor(),
                     EMotionFX::Pipeline::MotionGroupExporter::CreateDescriptor(),
                     EMotionFX::Pipeline::MotionDataBuilder::CreateDescriptor()

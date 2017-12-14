@@ -83,50 +83,48 @@
 
 #define DXGL_USE_ADRENO_ES_EMULATOR 0
 #define DXGL_USE_POWERVR_ES_EMULATOR 0
-#define DXGL_USE_ES_EMULATOR (DXGL_USE_ADRENO_ES_EMULATOR || DXGL_USE_POWERVR_ES_EMULATOR)
 
 // Set to 1 to enable NVidia's Tegra-specific extensions for Android
 #if defined(ANDROID) && !defined(DXGL_ANDROID_GLES_30) // TODO: TEGRA DXT texture support shouldn't be an ifdef in the first place
 #define DXGL_SUPPORT_TEGRA 1
 #endif
 
-#if defined(MAC)
-#define DXGL_REQUIRED_VERSION DXGL_VERSION_41
-#define DXGLES_REQUIRED_VERSION 0
-#elif defined(ANDROID)
-#define DXGL_USE_GLAD
-#if defined(DXGL_ANDROID_GL)
-// Android with OpenGL 4
-#define DXGL_REQUIRED_VERSION DXGL_VERSION_44
-#define DXGLES_REQUIRED_VERSION 0
-#else
-#define DXGL_REQUIRED_VERSION 0
-#define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
-#endif
-#elif defined(LINUX) || defined(WIN32)
-#if defined(OPENGL_ES)
-#define DXGL_USE_GLAD
-#define DXGL_ES_SUBSET
-#define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
-#define DXGL_REQUIRED_VERSION 0
-#else
-#define DXGL_USE_GLAD
-#define DXGL_REQUIRED_VERSION DXGL_VERSION_44
-#define DXGLES_REQUIRED_VERSION 0
-#endif
-#elif defined(IOS) || defined(APPLETV)
-#define DXGL_REQUIRED_VERSION 0
-#define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
-#endif
-//  Confetti End: Igor Lobanchikov
-
 //This is also defined in GLCommon.hpp
-#if defined(IOS) || defined(APPLETV) || (defined(ANDROID) && !defined(DXGL_ANDROID_GL))
-    #define OPENGL_ES
-#endif //defined(IOS) || defined(APPLETV) || defined(ANDROID) && !defined(DXGL_ANDROID_GL)
+#if (defined(ANDROID) && !defined(DXGL_ANDROID_GL)) || DXGL_USE_ADRENO_ES_EMULATOR || DXGL_USE_POWERVR_ES_EMULATOR
+#define OPENGL_ES
+#endif
 
-#if defined(APPLE) || defined(LINUX) || defined(ANDROID)
-#define DXGL_USE_SDL
+#if defined(ANDROID)
+#define DXGL_USE_EGL
+#define DXGL_USE_LOADER_GLAD
+#define DXGL_REQUIRED_VERSION 0
+#define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
+#elif defined(LINUX)
+#if defined(OPENGL_ES)
+#   define DXGL_USE_EGL
+#   define DXGL_USE_LOADER_GLAD
+#   define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
+#   define DXGL_REQUIRED_VERSION 0
+#else
+#   define DXGL_USE_EGL
+#   define DXGL_USE_LOADER_GLAD
+#   define DXGL_REQUIRED_VERSION DXGL_VERSION_44
+#   define DXGLES_REQUIRED_VERSION 0
+#endif // defined(OPENGL_ES)
+#elif defined(WIN32)
+#if defined(OPENGL_ES)
+#   define DXGL_USE_EGL
+#   define DXGL_USE_LOADER_GLAD
+#   define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
+#   define DXGL_REQUIRED_VERSION 0
+#else
+#   define DXGL_USE_WGL
+#   define DXGL_USE_LOADER_GLAD
+#   define DXGL_REQUIRED_VERSION DXGL_VERSION_44
+#   define DXGLES_REQUIRED_VERSION 0
+#endif // defined(OPENGL_ES)
+#else
+#error "OpenGL is not supported on this platform"
 #endif
 
 typedef ID3D10Blob* LPD3D10BLOB;
@@ -253,7 +251,7 @@ DXGL_EXTERN DXGL_API void DXGLProfileLabelPop(const char* szName);
 ////////////////////////////////////////////////////////////////////////////
 
 //  Confetti BEGIN: Igor Lobanchikov & David Srour
-#if defined(ANDROID)
+#if defined(OPENGL_ES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare = false,
     bool const storeDontCare = false);
@@ -265,7 +263,7 @@ void DXGLSetStencilDontCareActions(ID3D11DepthStencilView* const dsv,
     bool const storeDontCare = false);
 
 void DXGLTogglePLS(ID3D11DeviceContext* pDeviceContext, bool const enable);
-#endif
+#endif // defined(OPENGL_ES)
 
 void DXGLInitializeIHVSpecifix();
 
@@ -309,10 +307,10 @@ void DXGLIssueFrameFences(ID3D11Device* pDevice);
 
 #endif //!DXGL_FULL_EMULATION
 
-#if defined(DXGL_USE_SDL)
-DXGL_EXTERN DXGL_API bool DXGLCreateSDLWindow(const char* szTitle, uint32 uWidth, uint32 uHeight, bool bFullScreen, HWND* pHandle);
-DXGL_EXTERN DXGL_API void DXGLDestroySDLWindow(HWND kHandle);
-#endif //defined(DXGL_USE_SDL)
+#if !defined(WIN32)
+DXGL_EXTERN DXGL_API bool DXGLCreateWindow(const char* szTitle, uint32 uWidth, uint32 uHeight, bool bFullScreen, HWND* pHandle);
+DXGL_EXTERN DXGL_API void DXGLDestroyWindow(HWND kHandle);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////
 //  DxErr Logging and error functions

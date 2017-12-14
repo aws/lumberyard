@@ -34,7 +34,7 @@ namespace GraphCanvas
         static void Reflect(AZ::ReflectContext*);
 
         GeneralNodeFrameComponent();
-        ~GeneralNodeFrameComponent() override = default;
+        ~GeneralNodeFrameComponent() override;
 
         // AZ::Component
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -69,11 +69,15 @@ namespace GraphCanvas
 
         // NodeNotifications
         void OnNodeActivated();
+
+        void OnNodeWrapped(const AZ::EntityId&) override;
+        void OnNodeUnwrapped(const AZ::EntityId&) override;
         ////
 
     private:
         GeneralNodeFrameComponent(const GeneralNodeFrameComponent&) = delete;
 
+        bool                            m_deleteWidget;
         GeneralNodeFrameGraphicsWidget* m_frameWidget;
     };
 

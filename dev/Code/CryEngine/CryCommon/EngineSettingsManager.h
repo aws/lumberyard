@@ -15,12 +15,13 @@
 #define CRYINCLUDE_CRYCOMMON_ENGINESETTINGSMANAGER_H
 #pragma once
 
-#if !defined(LINUX)
+#include "ProjectDefines.h"
 
 #if defined(CRY_ENABLE_RC_HELPER)
 
 #include "SettingsManagerHelpers.h"
 
+class CEngineSettingsBackend;
 
 //////////////////////////////////////////////////////////////////////////
 // Manages storage and loading of all information for tools and CryENGINE, by either registry or an INI file.
@@ -29,12 +30,11 @@
 // If the engine root path is not found, a fall-back dialog is opened.
 class CEngineSettingsManager
 {
-    friend class CResourceCompilerHelper;
-
 public:
     // prepares CEngineSettingsManager to get requested information either from registry or an INI file,
     // if existent as a file with name an directory equal to the module, or from registry.
     CEngineSettingsManager(const wchar_t* moduleName = NULL, const wchar_t* iniFileName = NULL);
+    ~CEngineSettingsManager();
 
     void RestoreDefaults();
 
@@ -82,17 +82,12 @@ private:
     // parses a file and stores all flags in a private key-value-map
     bool LoadValuesFromConfigFile(const wchar_t* szFileName);
 
-    bool SetRegValue(void* key, const char* valueName, const wchar_t* value);
-    bool SetRegValue(void* key, const char* valueName, bool value);
-    bool SetRegValue(void* key, const char* valueName, int value);
-    bool GetRegValue(void* key, const char* valueName, SettingsManagerHelpers::CWCharBuffer wbuffer);
-    bool GetRegValue(void* key, const char* valueName, bool& value);
-    bool GetRegValue(void* key, const char* valueName, int& value);
-
 private:
+    CEngineSettingsBackend *m_backend;
+
     SettingsManagerHelpers::CFixedString<wchar_t, 256> m_sModuleName;         // name to store key-value pairs of modules in (registry) or to identify INI file
     SettingsManagerHelpers::CFixedString<wchar_t, 256> m_sModuleFileName;     // used in case of data being loaded from INI file
-    bool m_bGetDataFromRegistry;
+    bool m_bGetDataFromBackend;
     SettingsManagerHelpers::CKeyValueArray<30> m_keyValueArray;
 
     void* m_hBtnBrowse;
@@ -100,6 +95,5 @@ private:
 };
 
 #endif // CRY_ENABLE_RC_HELPER
-#endif // !defined(LINUX)
 
 #endif // CRYINCLUDE_CRYCOMMON_ENGINESETTINGSMANAGER_H

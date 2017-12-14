@@ -30,7 +30,6 @@
 #include "SkyLightManager.h"
 #include "ObjectsTree.h"
 #include "LightEntity.h"
-#include "WaterWaveRenderNode.h"
 #include "RoadRenderNode.h"
 #include "PhysCallbacks.h"
 #include "TimeOfDay.h"
@@ -43,6 +42,7 @@
 #include <ICryAnimation.h>
 #include <IMaterialEffects.h>
 #include "ClipVolumeManager.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #include <LoadScreenBus.h>
 
@@ -128,22 +128,22 @@ void C3DEngine::LoadDefaultAssets()
 
     if (!m_ptexIconLowMemoryUsage)
     {
-        m_ptexIconLowMemoryUsage = gEnv->pRenderer->EF_LoadTexture("EngineAssets/Icons/LowMemoryUsage.tif", FT_DONT_STREAM);
+        m_ptexIconLowMemoryUsage = gEnv->pRenderer->EF_LoadDefaultTexture("LowMemoryUsage");
     }
 
     if (!m_ptexIconAverageMemoryUsage)
     {
-        m_ptexIconAverageMemoryUsage = gEnv->pRenderer->EF_LoadTexture("EngineAssets/Icons/AverageMemoryUsage.tif", FT_DONT_STREAM);
+        m_ptexIconAverageMemoryUsage = gEnv->pRenderer->EF_LoadDefaultTexture("AverageMemoryUsage");
     }
 
     if (!m_ptexIconHighMemoryUsage)
     {
-        m_ptexIconHighMemoryUsage = gEnv->pRenderer->EF_LoadTexture("EngineAssets/Icons/HighMemoryUsage.tif", FT_DONT_STREAM);
+        m_ptexIconHighMemoryUsage = gEnv->pRenderer->EF_LoadDefaultTexture("HighMemoryUsage");
     }
 
     if (!m_ptexIconEditorConnectedToConsole)
     {
-        m_ptexIconEditorConnectedToConsole = gEnv->pRenderer->EF_LoadTexture("EngineAssets/Icons/LivePreview.TIF", FT_DONT_STREAM);
+        m_ptexIconEditorConnectedToConsole = gEnv->pRenderer->EF_LoadDefaultTexture("LivePreview");
     }
 }
 
@@ -238,11 +238,6 @@ bool C3DEngine::InitLevelForEditor(const char* szFolderName, const char* szMissi
     LoadDefaultAssets();
 
     LoadParticleEffects(szFolderName);
-
-    if (!m_pWaterWaveManager)
-    {
-        m_pWaterWaveManager = new CWaterWaveManager();
-    }
 
     {
         string SettingsFileName = GetLevelFilePath("ScreenshotMap.Settings");
@@ -445,13 +440,6 @@ void C3DEngine::UnloadLevel()
 
     CRY_ASSERT(m_pClipVolumeManager->GetClipVolumeCount() == 0);
 
-    if (m_pWaterWaveManager)
-    {
-        CryComment("Deleting WaterWaves");
-        SAFE_DELETE(m_pWaterWaveManager);
-        CryComment("done");
-    }
-
     m_LightVolumesMgr.Reset();
 
     m_pTerrainWaterMat = 0;
@@ -480,6 +468,7 @@ void C3DEngine::UnloadLevel()
     m_pREHDRSky = 0;
     stl::free_container(m_skyMatName);
     stl::free_container(m_skyLowSpecMatName);
+    m_previousSkyType = -1;
 
     if (m_nCloudShadowTexId)
     {
@@ -534,9 +523,7 @@ void C3DEngine::UnloadLevel()
         CryComment("done");
     }
 
-#if defined (_DEBUG) || defined(FORCE_ASSERTS_IN_PROFILE)
-    assert(m_pObjectsTree == nullptr);
-#endif
+    AZ_Assert(m_pObjectsTree == nullptr, "m_pObjectsTree == nullptr");
     COctreeNode::StaticReset();
 
     //////////////////////////////////////////////////////////////////////////
@@ -551,34 +538,12 @@ void C3DEngine::UnloadLevel()
         CryComment("done");
     }
 
-    if (!gEnv->IsDedicated())
-    {
-        SAFE_RELEASE_FORCE(m_ptexIconLowMemoryUsage);
-        SAFE_RELEASE_FORCE(m_ptexIconAverageMemoryUsage);
-        SAFE_RELEASE_FORCE(m_ptexIconHighMemoryUsage);
-        SAFE_RELEASE_FORCE(m_ptexIconEditorConnectedToConsole);
-
-        //////////////////////////////////////////////////////////////////////////
-        // Relases loaded default loaded textures.
-        //////////////////////////////////////////////////////////////////////////
-        {
-            SAFE_RELEASE(m_ptexIconAverageMemoryUsage);
-            SAFE_RELEASE(m_ptexIconLowMemoryUsage);
-            SAFE_RELEASE(m_ptexIconHighMemoryUsage);
-            SAFE_RELEASE(m_ptexIconEditorConnectedToConsole);
-        }
-    }
-    else
-    {
-        // loading a texture will return default on the dedicated server,
-        // therefore we just NULL the pointers here as it would be bad to delete them,
-        // bad things happen if we do
-        m_ptexIconAverageMemoryUsage = NULL;
-        m_ptexIconLowMemoryUsage = NULL;
-        m_ptexIconHighMemoryUsage = NULL;
-        m_ptexIconEditorConnectedToConsole = NULL;
-    }
-
+    //Set default icons to nullptr here, texture manager will take care of the memory release
+    m_ptexIconAverageMemoryUsage = nullptr;
+    m_ptexIconLowMemoryUsage = nullptr;
+    m_ptexIconHighMemoryUsage = nullptr;
+    m_ptexIconEditorConnectedToConsole = nullptr;
+    
     if (m_pOpticsManager && !gEnv->IsEditor())
     {
         m_pOpticsManager->Reset();
@@ -764,11 +729,6 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
         GetISystem()->LoadConfiguration(GetLevelFilePath(LEVEL_CONFIG_FILE));
     }
 
-#if AZ_LOADSCREENCOMPONENT_ENABLED
-    // IMPORTANT: This MUST be done AFTER the LoadConfiguration() above.
-    EBUS_EVENT(LoadScreenBus, LevelStart);
-#endif // if AZ_LOADSCREENCOMPONENT_ENABLED
-
     { // check is LevelData.xml file exist
         char sMapFileName[_MAX_PATH];
         cry_strcpy(sMapFileName, m_szLevelFolder);
@@ -794,6 +754,13 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
         LoadUsedShadersList();
     }
 
+#if AZ_LOADSCREENCOMPONENT_ENABLED
+    // Make sure system resources are inited before displaying a load screen
+    GetRenderer()->InitSystemResources(FRR_SYSTEM_RESOURCES);
+    // IMPORTANT: This MUST be done AFTER the LoadConfiguration() above.
+    EBUS_EVENT(LoadScreenBus, LevelStart);
+#endif // if AZ_LOADSCREENCOMPONENT_ENABLED
+
     LoadDefaultAssets();
 
     //  Confetti BEGIN: Igor Lobanchikov
@@ -818,9 +785,6 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     // re-create decal manager
     SAFE_DELETE(m_pDecalManager);
     m_pDecalManager = new CDecalManager();
-
-    SAFE_DELETE(m_pWaterWaveManager);
-    m_pWaterWaveManager = new CWaterWaveManager();
 
     gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START_MATERIALS);
     if (GetCVars()->e_PreloadMaterials)
@@ -948,7 +912,7 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     if (m_pTerrain && !m_pTerrain->GetOcean())
     {
         PrintMessage("===== Creating Ocean =====");
-        m_pTerrain->InitTerrainWater(m_pTerrainWaterMat, m_nWaterBottomTexId);
+        m_pTerrain->InitTerrainWater(m_pTerrainWaterMat);
     }
 
     PrintMessage("===== Load level physics data =====");
@@ -1169,10 +1133,10 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
     PrintComment("Loading environment settings from XML ...");
 
     // set start and end time for dawn/dusk (to fade moon/sun light in and out)
-    float dawnTime = (float) atof(GetXMLAttribText(pInputNode, "Lighting", "DawnTime", "355"));
-    float dawnDuration = (float) atof(GetXMLAttribText(pInputNode, "Lighting", "DawnDuration", "10"));
-    float duskTime = (float) atof(GetXMLAttribText(pInputNode, "Lighting", "DuskTime", "365"));
-    float duskDuration = (float) atof(GetXMLAttribText(pInputNode, "Lighting", "DuskDuration", "10"));
+    float dawnTime = (float)atof(GetXMLAttribText(pInputNode, "Lighting", "DawnTime", "355"));
+    float dawnDuration = (float)atof(GetXMLAttribText(pInputNode, "Lighting", "DawnDuration", "10"));
+    float duskTime = (float)atof(GetXMLAttribText(pInputNode, "Lighting", "DuskTime", "365"));
+    float duskDuration = (float)atof(GetXMLAttribText(pInputNode, "Lighting", "DuskDuration", "10"));
 
     m_dawnStart = (dawnTime - dawnDuration * 0.5f) / 60.0f;
     m_dawnEnd = (dawnTime + dawnDuration * 0.5f) / 60.0f;
@@ -1187,11 +1151,11 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
 
 
     // get moon info
-    m_moonRotationLatitude = (float) atof(GetXMLAttribText(pInputNode, "Moon", "Latitude", "240"));
-    m_moonRotationLongitude = (float) atof(GetXMLAttribText(pInputNode, "Moon", "Longitude", "45"));
+    m_moonRotationLatitude = (float)atof(GetXMLAttribText(pInputNode, "Moon", "Latitude", "240"));
+    m_moonRotationLongitude = (float)atof(GetXMLAttribText(pInputNode, "Moon", "Longitude", "45"));
     UpdateMoonDirection();
 
-    m_nightMoonSize = (float) atof(GetXMLAttribText(pInputNode, "Moon", "Size", "0.5"));
+    m_nightMoonSize = (float)atof(GetXMLAttribText(pInputNode, "Moon", "Size", "0.5"));
 
     {
         char moonTexture[256];
@@ -1208,10 +1172,10 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
 
     // max view distance
     m_fMaxViewDistHighSpec = (float)atol(GetXMLAttribText(pInputNode, "Fog", "ViewDistance", "8000"));
-    m_fMaxViewDistLowSpec  = (float)atol(GetXMLAttribText(pInputNode, "Fog", "ViewDistanceLowSpec", "1000"));
+    m_fMaxViewDistLowSpec = (float)atol(GetXMLAttribText(pInputNode, "Fog", "ViewDistanceLowSpec", "1000"));
     m_fMaxViewDistScale = 1.f;
 
-    m_volFogGlobalDensityMultiplierLDR = (float) max(atof(GetXMLAttribText(pInputNode, "Fog", "LDRGlobalDensMult", "1.0")), 0.0);
+    m_volFogGlobalDensityMultiplierLDR = (float)max(atof(GetXMLAttribText(pInputNode, "Fog", "LDRGlobalDensMult", "1.0")), 0.0);
 
     float fTerrainDetailMaterialsViewDistRatio = (float)atof(GetXMLAttribText(pInputNode, "Terrain", "DetailLayersViewDistRatio", "1.0"));
     if (m_fTerrainDetailMaterialsViewDistRatio != fTerrainDetailMaterialsViewDistRatio && GetTerrain())
@@ -1221,48 +1185,48 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
     m_fTerrainDetailMaterialsViewDistRatio = fTerrainDetailMaterialsViewDistRatio;
 
     // SkyBox
-    m_skyMatName = GetXMLAttribText(pInputNode, "SkyBox", "Material", "Materials/Sky/Sky");
-    m_skyLowSpecMatName = GetXMLAttribText(pInputNode, "SkyBox", "MaterialLowSpec", "Materials/Sky/Sky");
-
-    // Forces the engine to reload the material of the skybox in the next time it renders it.
-    m_pSkyMat = nullptr;
-    m_pSkyLowSpecMat = nullptr;
+    const string skyMaterialName = GetXMLAttribText(pInputNode, "SkyBox", "Material", "Materials/Sky/Sky");
+    const string skyLowSpecMaterialName = GetXMLAttribText(pInputNode, "SkyBox", "MaterialLowSpec", "Materials/Sky/Sky");
+    SetSkyMaterialPath(skyMaterialName);
+    SetSkyLowSpecMaterialPath(skyLowSpecMaterialName);
+    LoadSkyMaterial();
 
     m_fSkyBoxAngle = (float)atof(GetXMLAttribText(pInputNode, "SkyBox", "Angle", "0.0"));
     m_fSkyBoxStretching = (float)atof(GetXMLAttribText(pInputNode, "SkyBox", "Stretching", "1.0"));
 
-    // set terrain water, sun road and bottom shaders
-    char szTerrainWaterMatName[256];
-    cry_strcpy(szTerrainWaterMatName, GetXMLAttribText(pInputNode, "Ocean", "Material", "EngineAssets/Materials/Water/Ocean_default"));
-    m_pTerrainWaterMat = szTerrainWaterMatName[0] ? GetMatMan()->LoadMaterial(szTerrainWaterMatName, false) : nullptr;
+    // set terrain water (aka the infinite ocean), sun road and bottom shaders
+    if (OceanToggle::IsActive())
+    {
+        AZStd::string szOceanMatName = OceanRequest::GetOceanMaterialName();
+        m_pTerrainWaterMat = GetMatMan()->LoadMaterial(szOceanMatName.c_str(), false);
+    }
+    else
+    {
+        char szTerrainWaterMatName[256];
+        cry_strcpy(szTerrainWaterMatName, GetXMLAttribText(pInputNode, "Ocean", "Material", "EngineAssets/Materials/Water/Ocean_default"));
+        m_pTerrainWaterMat = szTerrainWaterMatName[0] ? GetMatMan()->LoadMaterial(szTerrainWaterMatName, false) : nullptr;
+    }
+
 
     if (m_pTerrain)
     {
-        m_pTerrain->InitTerrainWater(m_pTerrainWaterMat,  0);
+        m_pTerrain->InitTerrainWater(m_pTerrainWaterMat);
     }
-
-    m_oceanCausticsMultiplier = (float) atof(GetXMLAttribText(pInputNode, "Ocean", "CausticsMultiplier", "0.85"));
-    m_oceanCausticsDistanceAtten = (float) atof(GetXMLAttribText(pInputNode, "Ocean", "CausticsDistanceAtten", "100.0"));
-    m_oceanCausticsTilling = (float) atof(GetXMLAttribText(pInputNode, "Ocean", "CausticsTilling", "1.0"));
 
     m_oceanWindDirection = (float) atof(GetXMLAttribText(pInputNode, "OceanAnimation", "WindDirection", "1.0"));
     m_oceanWindSpeed = (float) atof(GetXMLAttribText(pInputNode, "OceanAnimation", "WindSpeed", "4.0"));
     m_oceanWavesSpeed = (float) atof(GetXMLAttribText(pInputNode, "OceanAnimation", "WavesSpeed", "1.0"));
-    m_oceanWavesSpeed = clamp_tpl<float>(m_oceanWavesSpeed, 0.0f, 1.0f);
     m_oceanWavesAmount = (float) atof(GetXMLAttribText(pInputNode, "OceanAnimation", "WavesAmount", "1.5"));
-    m_oceanWavesAmount = clamp_tpl<float>(m_oceanWavesAmount, 0.4f, 3.0f);
     m_oceanWavesSize = (float) atof(GetXMLAttribText(pInputNode, "OceanAnimation", "WavesSize", "0.75"));
-    m_oceanWavesSize = clamp_tpl<float>(m_oceanWavesSize, 0.0f, 3.0f);
-
-    // disabled temporarily - we'll use fixed height instead with tweaked attenuation function
-    m_oceanCausticHeight = 0.0f;
-    //m_oceanCausticHeight = (float) atof( GetXMLAttribText(pInputNode, "Ocean", "CausticHeight", "2.5"));
-    m_oceanCausticDepth = (float) atof(GetXMLAttribText(pInputNode, "Ocean", "CausticDepth", "8.0"));
-    m_oceanCausticIntensity = (float) atof(GetXMLAttribText(pInputNode, "Ocean", "CausticIntensity", "1.0"));
 
     // re-scale speed based on size - the smaller the faster waves move
-    m_oceanWavesSpeed /= clamp_tpl<float>(m_oceanWavesSize, 0.45f, 1.0f);
+    m_oceanWavesSpeed /= m_oceanWavesSize;
 
+    m_oceanCausticsDistanceAtten = (float)atof(GetXMLAttribText(pInputNode, "Ocean", "CausticsDistanceAtten", "100.0"));
+    m_oceanCausticsTiling = (float)atof(GetXMLAttribText(pInputNode, "Ocean", "CausticsTilling", "1.0"));
+    m_oceanCausticDepth = (float)atof(GetXMLAttribText(pInputNode, "Ocean", "CausticDepth", "8.0"));
+    m_oceanCausticIntensity = (float)atof(GetXMLAttribText(pInputNode, "Ocean", "CausticIntensity", "1.0"));
+    
     // get wind
     Vec3 vWindSpeed = StringToVector(GetXMLAttribText(pInputNode, "EnvState", "WindVector", "1,0,0"));
     SetWind(vWindSpeed);
@@ -1562,8 +1526,10 @@ void C3DEngine::PostLoadLevel()
     CRY_ASSERT(m_levelLoaded == false);
 
     //////////////////////////////////////////////////////////////////////////
-    // Submit water material to physics
+    // Submit water material to physics if the ocean exists
     //////////////////////////////////////////////////////////////////////////
+
+    if (!OceanToggle::IsActive() || OceanRequest::OceanIsEnabled())
     {
         IMaterialManager* pMatMan = GetMaterialManager();
         IPhysicalWorld* pPhysicalWorld = gEnv->pPhysicalWorld;
@@ -1571,7 +1537,7 @@ void C3DEngine::PostLoadLevel()
 
         pe_params_buoyancy pb;
         pb.waterPlane.n.Set(0, 0, 1);
-        pb.waterPlane.origin.Set(0, 0, GetWaterLevel());
+        pb.waterPlane.origin.Set(0, 0, OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel());
         pGlobalArea->SetParams(&pb);
 
         ISurfaceType* pSrfType = pMatMan->GetSurfaceTypeByName("mat_water");
@@ -1579,15 +1545,6 @@ void C3DEngine::PostLoadLevel()
         {
             pPhysicalWorld->SetWaterMat(pSrfType->GetId());
         }
-
-        pe_params_waterman pwm;
-        pwm.nExtraTiles = 3;
-        pwm.nCells = 40;
-        pwm.tileSize = 4;
-        pwm.waveSpeed = 11.0f;
-        pwm.dampingCenter = 0.6f;
-        pwm.dampingRim = 2.3f;
-        //pPhysicalWorld->SetWaterManagerParams(&pwm);
     }
 
     if (GetCVars()->e_PrecacheLevel)

@@ -21,7 +21,7 @@
 
 class CSequenceObject
     : public CBaseObject
-    , public IAnimSequenceOwner
+    , public IAnimLegacySequenceObject
 {
     Q_OBJECT
 public:
@@ -76,7 +76,7 @@ public:
     IAnimSequence* GetSequence() {return m_pSequence.get(); }
 
     //////////////////////////////////////////////////////////////////////////
-    // Overrides from IAnimSequenceOwner
+    // Overrides from IAnimLegacySequenceObject
     void OnNameChanged() override;
     void OnModified() override;
     //////////////////////////////////////////////////////////////////////////

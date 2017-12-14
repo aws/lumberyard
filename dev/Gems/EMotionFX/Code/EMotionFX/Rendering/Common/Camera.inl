@@ -14,14 +14,14 @@
 
 
 // set the camera position
-MCORE_INLINE void Camera::SetPosition(const MCore::Vector3& position)
+MCORE_INLINE void Camera::SetPosition(const AZ::Vector3& position)
 {
     mPosition = position;
 }
 
 
 // get the camera position
-MCORE_INLINE const MCore::Vector3& Camera::GetPosition() const
+MCORE_INLINE const AZ::Vector3& Camera::GetPosition() const
 {
     return mPosition;
 }

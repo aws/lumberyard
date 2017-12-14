@@ -26,6 +26,7 @@ namespace AzToolsFramework
     void RegisterStringLineEditHandler();
     void RegisterBoolComboBoxHandler();
     void RegisterBoolCheckBoxHandler();
+    void RegisterBoolRadioButtonsHandler();
     void RegisterEnumComboBoxHandler();
     void RegisterStringComboBoxHandler();
     void RegisterAssetPropertyHandler();
@@ -151,6 +152,7 @@ namespace AzToolsFramework
             RegisterStringLineEditHandler();
             RegisterBoolComboBoxHandler();
             RegisterBoolCheckBoxHandler();
+            RegisterBoolRadioButtonsHandler();
             RegisterEnumComboBoxHandler();
             RegisterStringComboBoxHandler();
             RegisterAssetPropertyHandler();

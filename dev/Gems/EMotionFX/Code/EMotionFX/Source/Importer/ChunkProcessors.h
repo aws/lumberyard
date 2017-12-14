@@ -203,7 +203,7 @@ namespace EMotionFX
          * @param endianType The endian type in which the current object is stored.
          * @param count The number of items to convert.
          */
-        static MCORE_INLINE void ConvertVector3(MCore::Vector3* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
+        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
         {
             MCore::Endian::ConvertVector3(value, endianType, count);
         }
@@ -263,7 +263,7 @@ namespace EMotionFX
          * @param endianType The endian type in which the current object is stored.
          * @param count The number of items to convert.
          */
-        static MCORE_INLINE void ConvertScale(MCore::Vector3* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
+        static MCORE_INLINE void ConvertScale(AZ::PackedVector3f* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
         {
             MCore::Endian::ConvertVector3(value, endianType, count);
         }
@@ -316,7 +316,6 @@ namespace EMotionFX
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorStdMaterial,          FileFormat::ACTOR_CHUNK_STDMATERIAL,          1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorStdMaterialLayer,     FileFormat::ACTOR_CHUNK_STDMATERIALLAYER,     1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorGenericMaterial,      FileFormat::ACTOR_CHUNK_GENERICMATERIAL,      1)
-    EMFX_CHUNKPROCESSOR(ChunkProcessorActorLimit,                FileFormat::ACTOR_CHUNK_LIMIT,                1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorInfo,                 FileFormat::ACTOR_CHUNK_INFO,                 1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMeshLOD,              FileFormat::ACTOR_CHUNK_MESHLODLEVELS,        1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorProgMorphTarget,      FileFormat::ACTOR_CHUNK_STDPROGMORPHTARGET,   1)

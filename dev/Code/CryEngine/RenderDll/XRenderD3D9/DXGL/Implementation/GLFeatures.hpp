@@ -23,22 +23,37 @@
 #   define DXGL_UNWRAPPED_FUNCTION(_Name) _Name
 #endif
 
-#if defined(DXGL_USE_GLAD)
+#if defined(DXGL_USE_LOADER_GLAD)
 #   define DXGL_EXTENSION_LOADER 1
 #   if DXGLES && !defined(DXGL_ES_SUBSET)
-#       include "../Specification/glad_gles2.h"
+#       include <glad/glad_gles.h>
 #   else
-#       include "../Specification/glad_gl.h"
+#       include <glad/glad_gl.h>
 #   endif
 #   define DXGL_GL_EXTENSION_SUPPORTED(_Extension) (GLAD_GL_ ## _Extension == 1)
 #   define DXGL_GL_LOADER_FUNCTION_PTR(_Func) (glad_ ## _Func)
-#   if defined(WIN32)
-#       include "../Specification/glad_wgl.h"
+#   define DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(_Func) DXGL_GL_LOADER_FUNCTION_PTR(gl ## _Func)
+#   if defined(DXGL_USE_WGL)
+#       include <glad/glad_wgl.h>
 #       define DXGL_WGL_EXTENSION_SUPPORTED(_Extension) (GLAD_WGL_ ## _Extension == 1)
-#   elif defined(ANDROID)
-#       include "../Specification/glad_egl.h"
-#   elif defined(LINUX)
-#       include "../Specification/glad_glx.h"
+#   elif defined(DXGL_USE_EGL)
+#       include <glad/glad_egl.h>
+#   elif defined(DXGL_USE_GLX)
+#       include <glad/glad_glx.h>
+#   endif
+#elif defined(DXGL_USE_LOADER_GLEW)
+#   define DXGL_EXTENSION_LOADER 1
+#   define DXGL_GL_EXTENSION_SUPPORTED(_Extension) (glewIsExtensionSupported("GL_" # _Extension) == GL_TRUE)
+#   define DXGL_GL_LOADER_FUNCTION_PTR(_Func) (_Func)
+#   define DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(_Func) (__glew ## _Func)
+#   include <GL/glew.h>
+#   if defined(DXGL_USE_WGL)
+#       define DXGL_WGL_EXTENSION_SUPPORTED(_Extension) (wglewIsSupported("WGL_" # _Extension) == GL_TRUE)
+#       include <GL/wglew.h>
+#   elif defined(DXGL_USE_EGL)
+#       include <EGL/egl.h>
+#   elif defined(DXGL_USE_GLX)
+#       include <GL/glxew.h>
 #   endif
 #else
 #   define DXGL_EXTENSION_LOADER 0
@@ -54,7 +69,7 @@
 #   endif
 #endif
 
-#include "../../Common/RenderCapabilities.h"
+#include <Common/RenderCapabilities.h>
 
 #define DXGL_SUPPORT_INDEXED_BOOL_STATE             (DXGL_REQUIRED_VERSION >= DXGL_VERSION_32 || DXGLES_REQUIRED_VERSION >= DXGLES_VERSION_30)
 #define DXGL_SUPPORT_INDEXED_ENABLE_STATE           !DXGLES
@@ -757,19 +772,6 @@ inline void glNamedBufferStorageEXT(GLuint uBuffer, GLsizeiptr iSize, const GLvo
     glBufferStorage(kAutoBind.TARGET, iSize, pData, uFlags);
 }
 #endif
-
-#if DXGL_USE_ES_EMULATOR
-// ES extensions
-#define GL_DEBUG_OUTPUT                  GL_DEBUG_OUTPUT_KHR
-#define GL_DEBUG_OUTPUT_SYNCHRONOUS      GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR
-#define GL_DEBUG_SEVERITY_HIGH           GL_DEBUG_SEVERITY_HIGH_KHR
-#define GL_DEBUG_SEVERITY_MEDIUM         GL_DEBUG_SEVERITY_MEDIUM_KHR
-#define GL_DEBUG_SEVERITY_LOW            GL_DEBUG_SEVERITY_LOW_KHR
-#define GL_DEBUG_SEVERITY_NOTIFICATION   GL_DEBUG_SEVERITY_NOTIFICATION_KHR
-#define GLDEBUGPROC                      GLDEBUGPROCKHR
-extern PFNGLDEBUGMESSAGECONTROLKHRPROC   glDebugMessageControl;
-extern PFNGLDEBUGMESSAGECALLBACKKHRPROC  glDebugMessageCallback;
-#endif //DXGL_USE_ES_EMULATOR
 
 #if defined(ANDROID) && !defined(EGL_OPENGL_API)
 #define EGL_OPENGL_API 0x30A2

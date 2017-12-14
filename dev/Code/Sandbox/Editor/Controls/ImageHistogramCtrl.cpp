@@ -17,6 +17,9 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QVBoxLayout>
+#include <QComboBox>
+#include <QLabel>
 
 // CImageHistogramCtrl
 
@@ -43,30 +46,90 @@ namespace ImageHistogram
 
 CImageHistogramCtrl::CImageHistogramCtrl(QWidget* parent)
     : QWidget(parent)
+    , m_display(new CImageHistogramDisplay(this))
+    , m_drawMode(new QComboBox(this))
+    , m_infoText(new QLabel)
 {
     setWindowTitle("Image Histogram");
-    m_graphMargin = ImageHistogram::kGraphMargin;
-    m_drawMode = eDrawMode_Luminosity;
-    m_backColor = ImageHistogram::kBackColor;
-    m_graphHeightPercent = ImageHistogram::kGraphHeightPercent;
+
+    m_drawMode->setFocusPolicy(Qt::NoFocus);
+    m_drawMode->addItem(tr("Luminosity"),
+                        QVariant::fromValue(EHistogramDrawMode::Luminosity));
+    m_drawMode->addItem(tr("Overlapped RGBA"),
+                        QVariant::fromValue(EHistogramDrawMode::OverlappedRGB));
+    m_drawMode->addItem(tr("Split RGB"),
+                        QVariant::fromValue(EHistogramDrawMode::SplitRGB));
+    m_drawMode->addItem(tr("Red Channel"),
+                        QVariant::fromValue(EHistogramDrawMode::RedChannel));
+    m_drawMode->addItem(tr("Green Channel"),
+                        QVariant::fromValue(EHistogramDrawMode::GreenChannel));
+    m_drawMode->addItem(tr("Blue Channel"),
+                        QVariant::fromValue(EHistogramDrawMode::BlueChannel));
+    m_drawMode->addItem(tr("Alpha Channel"),
+                        QVariant::fromValue(EHistogramDrawMode::AlphaChannel));
+
+    connect(m_drawMode, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            [=](int index){
+                auto mode = drawMode();
+                m_display->m_drawMode = mode;
+                m_display->update();
+            });
+
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(m_drawMode);
+    layout->addWidget(m_display);
+    setLayout(layout);
+
+    setMinimumSize(200,150);
 }
 
 CImageHistogramCtrl::~CImageHistogramCtrl()
 {
 }
 
-// CImageHistogramCtrl message handlers
+EHistogramDrawMode CImageHistogramCtrl::drawMode() const
+{
+    return m_drawMode->currentData().value<EHistogramDrawMode>();
+}
 
-void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
+void CImageHistogramCtrl::setDrawMode(EHistogramDrawMode mode)
+{
+    auto index = m_drawMode->findData(QVariant::fromValue(mode));
+    if (index != -1)
+    {
+        m_drawMode->setCurrentIndex(index);
+    }
+}
+
+void CImageHistogramCtrl::ComputeHistogram(CImageEx& image, CImageHistogram::EImageFormat format)
+{
+    m_display->ComputeHistogram((BYTE*)image.GetData(), image.GetWidth(), image.GetHeight(), format);
+}
+
+
+CImageHistogramDisplay::CImageHistogramDisplay(QWidget* parent)
+    : QWidget(parent)
+{
+    m_graphMargin = ImageHistogram::kGraphMargin;
+    m_drawMode = EHistogramDrawMode::Luminosity;
+    m_backColor = ImageHistogram::kBackColor;
+    m_graphHeightPercent = ImageHistogram::kGraphHeightPercent;
+}
+
+CImageHistogramDisplay::~CImageHistogramDisplay()
+{}
+
+void CImageHistogramDisplay::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
 
-    QColor  penColor;
-    QString     str, mode;
-    QRect           rc, rcGraph;
-    QPen            penSpikes;
-    QFont           fnt;
-    QPen            redPen, greenPen, bluePen, alphaPen;
+    QColor   penColor;
+    QString  str, mode;
+    QRect    rc, rcGraph;
+    QPen     penSpikes;
+    QFont    fnt;
+    QPen     redPen, greenPen, bluePen, alphaPen;
 
     redPen = QColor(255, 0, 0);
     greenPen = QColor(0, 255, 0);
@@ -85,28 +148,28 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
 
     switch (m_drawMode)
     {
-    case eDrawMode_Luminosity:
+    case EHistogramDrawMode::Luminosity:
         mode = "Lum";
         break;
-    case eDrawMode_OverlappedRGB:
+    case EHistogramDrawMode::OverlappedRGB:
         mode = "Overlap";
         break;
-    case eDrawMode_SplitRGB:
+    case EHistogramDrawMode::SplitRGB:
         mode = "R|G|B";
         break;
-    case eDrawMode_RedChannel:
+    case EHistogramDrawMode::RedChannel:
         mode = "Red";
         penColor = QColor(255, 0, 0);
         break;
-    case eDrawMode_GreenChannel:
+    case EHistogramDrawMode::GreenChannel:
         mode = "Green";
         penColor = QColor(0, 255, 0);
         break;
-    case eDrawMode_BlueChannel:
+    case EHistogramDrawMode::BlueChannel:
         mode = "Blue";
         penColor = QColor(0, 0, 255);
         break;
-    case eDrawMode_AlphaChannel:
+    case EHistogramDrawMode::AlphaChannel:
         mode = "Alpha";
         penColor = QColor(120, 120, 120);
         break;
@@ -125,8 +188,8 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
     int graphBottom = abs(rcGraph.top() + rcGraph.height());
     int crtX = 0;
 
-    if (m_drawMode != eDrawMode_SplitRGB &&
-        m_drawMode != eDrawMode_OverlappedRGB)
+    if (m_drawMode != EHistogramDrawMode::SplitRGB &&
+        m_drawMode != EHistogramDrawMode::OverlappedRGB)
     {
         for (size_t x = 0, xCount = abs(rcGraph.width()); x < xCount; ++x)
         {
@@ -137,7 +200,7 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
 
             switch (m_drawMode)
             {
-            case eDrawMode_Luminosity:
+            case EHistogramDrawMode::Luminosity:
             {
                 if (m_maxLumCount)
                 {
@@ -146,7 +209,7 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
                 break;
             }
 
-            case eDrawMode_RedChannel:
+            case EHistogramDrawMode::RedChannel:
             {
                 if (m_maxCount[0])
                 {
@@ -155,7 +218,7 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
                 break;
             }
 
-            case eDrawMode_GreenChannel:
+            case EHistogramDrawMode::GreenChannel:
             {
                 if (m_maxCount[1])
                 {
@@ -164,7 +227,7 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
                 break;
             }
 
-            case eDrawMode_BlueChannel:
+            case EHistogramDrawMode::BlueChannel:
             {
                 if (m_maxCount[2])
                 {
@@ -173,7 +236,7 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
                 break;
             }
 
-            case eDrawMode_AlphaChannel:
+            case EHistogramDrawMode::AlphaChannel:
             {
                 if (m_maxCount[3])
                 {
@@ -188,7 +251,7 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
         }
     }
     else
-    if (m_drawMode == eDrawMode_OverlappedRGB)
+    if (m_drawMode == EHistogramDrawMode::OverlappedRGB)
     {
         int lastHeight[kNumChannels] = { INT_MAX, INT_MAX, INT_MAX, INT_MAX };
         int heightR, heightG, heightB, heightA;
@@ -272,7 +335,7 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
         }
     }
     else
-    if (m_drawMode == eDrawMode_SplitRGB)
+    if (m_drawMode == EHistogramDrawMode::SplitRGB)
     {
         const float aThird = 1.0f / 3.0f;
         const int aThirdOfNumColorLevels = kNumColorLevels / 3;
@@ -334,48 +397,37 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
         painter.drawLine(rcGraph.left() + aThirdOfWidth * 2, rcGraph.bottom(), rcGraph.left() + aThirdOfWidth * 2, rcGraph.top());
     }
 
-    QRect rcBtnMode, rcText;
-
-    rcBtnMode = QRect(QPoint(m_graphMargin, rcGraph.height() + m_graphMargin * 2), QPoint(m_graphMargin + ImageHistogram::kButtonWidth, rc.height() - m_graphMargin));
-    painter.fillRect(rcBtnMode, ImageHistogram::kButtonBackColor);
-    painter.setPen(ImageHistogram::kBtnLightColor);
-    painter.drawLine(rcBtnMode.topLeft(), rcBtnMode.bottomLeft());
-    painter.drawLine(rcBtnMode.topLeft(), rcBtnMode.topRight());
-    painter.setPen(ImageHistogram::kBtnShadowColor);
-    painter.drawLine(rcBtnMode.bottomRight(), rcBtnMode.bottomLeft());
-    painter.drawLine(rcBtnMode.bottomRight(), rcBtnMode.topRight());
-
-    rcText = rcBtnMode;
-    rcText.setLeft(rcBtnMode.right() + ImageHistogram::kTextLeftSpacing);
-    rcText.setRight(rc.width());
+    QRect rcText;
+    rcText = QRect(QPoint(m_graphMargin, rcGraph.height() + m_graphMargin * 2),
+                   QPoint(rc.width(), rc.height() - m_graphMargin));
 
     float mean = 0, stdDev = 0, median = 0;
 
     switch (m_drawMode)
     {
-    case eDrawMode_Luminosity:
-    case eDrawMode_SplitRGB:
-    case eDrawMode_OverlappedRGB:
+    case EHistogramDrawMode::Luminosity:
+    case EHistogramDrawMode::SplitRGB:
+    case EHistogramDrawMode::OverlappedRGB:
         mean = m_meanAvg;
         stdDev = m_stdDevAvg;
         median = m_medianAvg;
         break;
-    case eDrawMode_RedChannel:
+    case EHistogramDrawMode::RedChannel:
         mean = m_mean[0];
         stdDev = m_stdDev[0];
         median = m_median[0];
         break;
-    case eDrawMode_GreenChannel:
+    case EHistogramDrawMode::GreenChannel:
         mean = m_mean[1];
         stdDev = m_stdDev[1];
         median = m_median[1];
         break;
-    case eDrawMode_BlueChannel:
+    case EHistogramDrawMode::BlueChannel:
         mean = m_mean[2];
         stdDev = m_stdDev[2];
         median = m_median[2];
         break;
-    case eDrawMode_AlphaChannel:
+    case EHistogramDrawMode::AlphaChannel:
         mean = m_mean[3];
         stdDev = m_stdDev[3];
         median = m_median[3];
@@ -387,55 +439,11 @@ void CImageHistogramCtrl::paintEvent(QPaintEvent* event)
     painter.setFont(fnt);
     painter.setPen(ImageHistogram::kTextColor);
     painter.drawText(rcText, Qt::AlignCenter | Qt::TextSingleLine, painter.fontMetrics().elidedText(str, Qt::ElideRight, rcText.width(), Qt::TextSingleLine));
-    painter.setPen(ImageHistogram::kButtonTextColor);
-    painter.drawText(rcBtnMode, Qt::AlignCenter | Qt::TextSingleLine, painter.fontMetrics().elidedText(mode, Qt::ElideRight, rcBtnMode.width(), Qt::TextSingleLine));
-	}
+}
 
-void CImageHistogramCtrl::mousePressEvent(QMouseEvent* event)
-	{
-    if (event->button() != Qt::LeftButton)
-    {
-        QWidget::mousePressEvent(event);
-        return;
-    }
-
-    QMenu menu;
-    menu.addAction(tr("Luminosity"));
-    menu.addAction(tr("Overlapped RGBA"));
-    menu.addAction(tr("Split RGB"));
-    menu.addAction(tr("Red Channel"));
-    menu.addAction(tr("Green Channel"));
-    menu.addAction(tr("Blue Channel"));
-    menu.addAction(tr("Alpha Channel"));
-
-    QAction* action = menu.exec(event->globalPos());
-
-    switch (menu.actions().indexOf(action))
-    {
-    case 0:
-        m_drawMode = eDrawMode_Luminosity;
-        break;
-    case 1:
-        m_drawMode = eDrawMode_OverlappedRGB;
-        break;
-    case 2:
-        m_drawMode = eDrawMode_SplitRGB;
-        break;
-    case 3:
-        m_drawMode = eDrawMode_RedChannel;
-        break;
-    case 4:
-        m_drawMode = eDrawMode_GreenChannel;
-        break;
-    case 5:
-        m_drawMode = eDrawMode_BlueChannel;
-        break;
-    case 6:
-        m_drawMode = eDrawMode_AlphaChannel;
-        break;
-    }
-
-    update();
+CImageHistogramDisplay* CImageHistogramCtrl::histogramDisplay() const
+{
+    return m_display;
 }
 
 #include <Controls/ImageHistogramCtrl.moc>

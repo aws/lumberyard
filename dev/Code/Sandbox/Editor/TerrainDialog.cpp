@@ -40,10 +40,13 @@
 #include "QtUtilWin.h"
 #include "QtViewPaneManager.h"
 #include "Util/AutoDirectoryRestoreFileDialog.h"
+#include "NewTerrainDialog.h"
 
 #include <AzCore/Casting/numeric_cast.h>
 
 #include <ui_TerrainDialog.h>
+
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
 
 #include "QtUtil.h"
 
@@ -136,8 +139,21 @@ void CTerrainDialog::OnInitDialog()
     connect(m_ui->actionExport_Heightmap, &QAction::triggered, this, &CTerrainDialog::OnExportHeightmap);
     connect(m_ui->actionShow_Large_Preview, &QAction::triggered, this, &CTerrainDialog::OnHeightmapShowLargePreview);
     connect(m_ui->actionMake_Isle, &QAction::triggered, this, &CTerrainDialog::OnModifyMakeisle);
-    connect(m_ui->actionRemove_Ocean, &QAction::triggered, this, &CTerrainDialog::OnModifyRemovewater);
-    connect(m_ui->actionSet_Ocean_Height, &QAction::triggered, this, &CTerrainDialog::OnSetWaterLevel);
+
+    // is the feature toggle enabled for the ocean component feature enabled when the project includes the Water gem
+    bool bHasOceanFeature = false;
+    AZ::OceanFeatureToggleBus::BroadcastResult(bHasOceanFeature, &AZ::OceanFeatureToggleBus::Events::OceanComponentEnabled);
+    if (bHasOceanFeature)
+    {
+        m_ui->actionRemove_Ocean->setVisible(false);
+        m_ui->actionSet_Ocean_Height->setVisible(false);
+    }
+    else
+    {
+        connect(m_ui->actionRemove_Ocean, &QAction::triggered, this, &CTerrainDialog::OnModifyRemoveOcean);
+        connect(m_ui->actionSet_Ocean_Height, &QAction::triggered, this, &CTerrainDialog::OnSetOceanLevel);
+    }
+
     connect(m_ui->actionSet_Terrain_Max_Height, &QAction::triggered, this, &CTerrainDialog::OnSetMaxHeight);
     connect(m_ui->actionSet_Unit_Size, &QAction::triggered, this, &CTerrainDialog::OnSetUnitSize);
     connect(m_ui->actionFlatten, &QAction::triggered, this, &CTerrainDialog::OnModifyFlatten);
@@ -221,7 +237,7 @@ void CTerrainDialog::OnTerrainLoad()
 
     if (dlg.exec())
     {
-        QString fileName = dlg.selectedFiles().first();
+        QString fileName = dlg.selectedFiles().constFirst();
         QFileInfo info(fileName);
         const QString ext = info.completeSuffix().toLower();
 
@@ -415,7 +431,7 @@ void CTerrainDialog::OnModifyMakeisle()
 
     QWaitCursor wait;
 
-    // Call the make isle fucntion of the heightmap class
+    // Call the make isle function of the heightmap class
     m_pHeightmap->MakeIsle();
 
     InvalidateTerrain();
@@ -432,7 +448,7 @@ void CTerrainDialog::Flatten(float flattenPercent)
     // Heightmap expects a scalar factor to be applied
     float flattenFactor = 1.0f - (flattenPercent / 100.f);
 
-    // Call the flatten function of the heigtmap class
+    // Call the flatten function of the heightmap class
     m_pHeightmap->Flatten(flattenFactor);
 
     InvalidateTerrain();
@@ -456,23 +472,23 @@ void CTerrainDialog::OnModifyFlatten()
     }
 }
 
-void CTerrainDialog::OnModifyRemovewater()
+void CTerrainDialog::OnModifyRemoveOcean()
 {
     //////////////////////////////////////////////////////////////////////
-    // Remove all water areas from the heightmap
+    // Remove ocean from the heightmap
     //////////////////////////////////////////////////////////////////////
     if (!GetIEditor()->FlushUndo(true))
     {
         return;
     }
 
-    CLogFile::WriteLine("Removing water areas from heightmap...");
+    CLogFile::WriteLine("Removing ocean from heightmap...");
 
     QWaitCursor wait;
 
-    // Using a water level <=0, if we reload the environment, it will
+    // Using a ocean level <=0, if we reload the environment, it will
     // cause in method CTerrain::InitTerrainWater the SAFE_DELETE(m_pOcean);
-    m_pHeightmap->SetWaterLevel(WATER_LEVEL_UNKNOWN);
+    m_pHeightmap->SetOceanLevel(WATER_LEVEL_UNKNOWN);
 
     // Changed the InvalidateTerrain to include a environment reload.
     InvalidateTerrain();
@@ -632,7 +648,7 @@ void CTerrainDialog::OnTerrainSurface()
     // Show the terrain texture dialog
     ////////////////////////////////////////////////////////////////////////
 
-    GetIEditor()->OpenView("Terrain Texture Layers");
+    GetIEditor()->OpenView(LyViewPane::TerrainTextureLayers);
 }
 
 void CTerrainDialog::OnHold()
@@ -800,24 +816,25 @@ void CTerrainDialog::OnOptionsEditTerrainCurve()
 {
 }
 
-void CTerrainDialog::OnSetWaterLevel()
+void CTerrainDialog::OnSetOceanLevel()
 {
     ////////////////////////////////////////////////////////////////////////
-    // Let the user change the current water level
+    // Let the user change the current ocean level
     ////////////////////////////////////////////////////////////////////////
-    // Get the water level from the document and set it as default into
+    // Get the ocean level from the document and set it as default into
     // the dialog
-    float fPreviousWaterLevel = GetIEditor()->GetHeightmap()->GetWaterLevel();
+    float fPreviousOceanLevel = GetIEditor()->GetHeightmap()->GetOceanLevel();
     bool ok = false;
     int fractionalDigitCount = 2;
-    float waterLevel = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Water Height"), tr("Water height"), fPreviousWaterLevel, 1.0f, FLT_MAX, fractionalDigitCount, &ok));
+    float oceanLevel = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Ocean Height"), tr("Ocean height"), fPreviousOceanLevel, AZ::OceanConstants::s_HeightMin, AZ::OceanConstants::s_HeightMax, fractionalDigitCount, &ok));
 
     // Show the dialog
     if (ok)
     {
-        // Save the new water level in the document
-        GetIEditor()->GetHeightmap()->SetWaterLevel(waterLevel);
+        // Save the new ocean level in the document
+        GetIEditor()->GetHeightmap()->SetOceanLevel(oceanLevel);
         InvalidateTerrain();
+        GetIEditor()->Notify(eNotify_OnTerrainRebuild);
     }
 }
 
@@ -840,15 +857,38 @@ void CTerrainDialog::OnSetMaxHeight()
 
 void CTerrainDialog::OnSetUnitSize()
 {
-    // Set up dialog box to update Unit size
-    float fValue = GetIEditor()->GetHeightmap()->GetUnitSize();
-    bool ok = false;
-    int fractionalDigitCount = 2;
-    fValue = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Unit Size (Meters per texel)"), tr("Unit size (meters/texel)"), fValue, 1.0, FLT_MAX, fractionalDigitCount, &ok));
+    CHeightmap* heightmap = GetIEditor()->GetHeightmap();
+    if (!heightmap)
+    {
+        return;
+    }
 
+    // Calculate valid unit sizes for the current terrain resolution
+    int currentUnitSize = heightmap->GetUnitSize();
+    uint64 terrainResolution = heightmap->GetWidth();
+    int maxUnitSize = IntegerLog2(Ui::MAXIMUM_TERRAIN_RESOLUTION / terrainResolution);
+    int units = Ui::START_TERRAIN_UNITS;
+    QStringList unitSizes;
+    int currentIndex = 0;
+    for (int i = 0; i <= maxUnitSize; ++i)
+    {
+        // Find the index of our current unit size so we can make it selected
+        // by default
+        if (currentUnitSize == units)
+        {
+            currentIndex = i;
+        }
+
+        // Add this unit size to our list of available unit sizes
+        unitSizes.append(QString::number(units));
+        units *= 2;
+    }
+
+    bool ok = false;
+    QString newUnitSize = QInputDialog::getItem(this, tr("Set Unit Size (Meters per texel)"), tr("Unit size (meters/texel)"), unitSizes, currentIndex, false, &ok);
     if (ok)
     {
-        GetIEditor()->GetHeightmap()->SetUnitSize(fValue);
+        GetIEditor()->GetHeightmap()->SetUnitSize(newUnitSize.toInt());
 
         InvalidateTerrain();
     }

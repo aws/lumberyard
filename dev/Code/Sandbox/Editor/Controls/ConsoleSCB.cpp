@@ -78,7 +78,8 @@ static QString RemoveColorCode(const QString& text, int& iColorCode)
             continue;
         }
 
-        if (c == '\r' || c == '\n')
+        // convert \r \n to just \n
+        if (c == '\r')
         {
             ++i;
             continue;
@@ -342,13 +343,15 @@ void CConsoleSCB::OnStyleSettingsChanged()
     {
         bgColor = Qt::white;
     }
-
-    ui->textEdit->setStyleSheet(QString("QTextEdit{ background: %1 }").arg(bgColor.name(QColor::HexRgb)));
+    ui->textEdit->setBackgroundVisible(true);
+    ui->textEdit->setStyleSheet(QString("QPlainTextEdit{ background: %1 }").arg(bgColor.name(QColor::HexRgb)));
 
     // Clear out the console text when we change our background color since
     // some of the previous text colors may not be appropriate for the
     // new background color
+    QString text = ui->textEdit->toPlainText();
     ui->textEdit->clear();
+    ui->textEdit->setPlainText(text);
 }
 
 void CConsoleSCB::SetInputFocus()
@@ -395,7 +398,7 @@ void CConsoleSCB::FlushText()
         if (line.newLine)
         {
             text = QtUtil::trimRight(text);
-            text = "\r\n" + text;
+            text = "\n" + text;
         }
 
         QTextCharFormat format;
@@ -558,24 +561,24 @@ static void OnConsoleVariableUpdated(IVariable* pVar)
 }
 
 ConsoleTextEdit::ConsoleTextEdit(QWidget* parent)
-	: QTextEdit(parent)
+    : QPlainTextEdit(parent)
     , m_contextMenu(new QMenu(this))
 {
     setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(this, &QTextEdit::customContextMenuRequested, this, &ConsoleTextEdit::showContextMenu);
+    connect(this, &QPlainTextEdit::customContextMenuRequested, this, &ConsoleTextEdit::showContextMenu);
 
     // Make sure to add the actions to this widget, so that the ShortCutDispatcher picks them up properly
 
     QAction* copyAction = m_contextMenu->addAction(tr("&Copy"));
     copyAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     copyAction->setShortcut(QKeySequence::Copy);
-    connect(copyAction, &QAction::triggered, this, &QTextEdit::copy);
+    connect(copyAction, &QAction::triggered, this, &QPlainTextEdit::copy);
     addAction(copyAction);
 
     QAction* selectAllAction = m_contextMenu->addAction(tr("Select &All"));
     selectAllAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     selectAllAction->setShortcut(QKeySequence::SelectAll);
-    connect(selectAllAction, &QAction::triggered, this, &QTextEdit::selectAll);
+    connect(selectAllAction, &QAction::triggered, this, &QPlainTextEdit::selectAll);
     addAction(selectAllAction);
 
     m_contextMenu->addSeparator();
@@ -583,23 +586,20 @@ ConsoleTextEdit::ConsoleTextEdit(QWidget* parent)
     QAction* clearAction = m_contextMenu->addAction(tr("Clear"));
     clearAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     clearAction->setShortcut(QKeySequence::Delete);
-    connect(clearAction, &QAction::triggered, this, &QTextEdit::clear);
+    connect(clearAction, &QAction::triggered, this, &QPlainTextEdit::clear);
     addAction(clearAction);
 
-    connect(this, &QTextEdit::copyAvailable, copyAction, &QAction::setEnabled);
+    connect(this, &QPlainTextEdit::copyAvailable, copyAction, &QAction::setEnabled);
 }
 
 bool ConsoleTextEdit::event(QEvent* theEvent)
 {
-    bool handled = false;
-    switch (theEvent->type())
-    {
-    case QEvent::ShortcutOverride:
+    if (theEvent->type() == QEvent::ShortcutOverride)
     {
         // ignore several possible key combinations to prevent them bubbling up to the main editor
         QKeyEvent* shortcutEvent = static_cast<QKeyEvent*>(theEvent);
-        
-        static QVector<QKeySequence::StandardKey> ignoredKeys = { QKeySequence::Backspace };
+
+        QKeySequence::StandardKey ignoredKeys[] = { QKeySequence::Backspace };
 
         for (auto& currKey : ignoredKeys)
         {
@@ -607,16 +607,12 @@ bool ConsoleTextEdit::event(QEvent* theEvent)
             {
                 // these shortcuts are ignored. Accept them and do nothing.
                 theEvent->accept();
-                handled = true;
+                return true;
             }
         }
+    }
 
-        break;
-    }
-    default:
-        break;
-    }
-    return handled;
+    return QPlainTextEdit::event(theEvent);
 }
 
 void ConsoleTextEdit::showContextMenu(const QPoint &pt)
@@ -643,7 +639,7 @@ void ConsoleVariableItemDelegate::setEditorData(QWidget* editor, const QModelInd
         // If this is a float variable, we need to set the decimal precision of
         // our spin box to fit the precision of the variable's default value
         QVariant value = index.data();
-        if (value.type() == QMetaType::Float)
+        if (value.canConvert<float>())
         {
             QString valStr = QString::number(value.toFloat());
             int decimalIndex = valStr.indexOf('.');
@@ -736,7 +732,7 @@ QWidget* ConsoleVariableItemDelegate::createEditor(QWidget* parent, const QStyle
                 spinBoxInt->setMaximum(INT_MAX);
             }
         }
-        else if (type == QMetaType::Float)
+        else if (value.canConvert<float>())
         {
             spinBox = new AzQtComponents::StyledDoubleSpinBox(parent);
 
@@ -786,7 +782,7 @@ QWidget* ConsoleVariableItemDelegate::createEditor(QWidget* parent, const QStyle
             {
                 spinBox->setSingleStep(step);
             }
-            else if (type == QMetaType::Float)
+            else if (value.canConvert<float>())
             {
                 spinBox->setSingleStep(0.1);
             }

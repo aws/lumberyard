@@ -19,7 +19,7 @@
 
 namespace MobileSysInspect
 {
-    AZStd::unordered_map<AZStd::size_t, AZStd::string> device_spec_map;
+    AZStd::unordered_map<AZStd::string, AZStd::string> device_spec_map;
     const float LOW_SPEC_RAM = 1.0f;
     const float MEDIUM_SPEC_RAM = 2.0f;
     const float HIGH_SPEC_RAM = 3.0f;
@@ -35,17 +35,27 @@ namespace MobileSysInspect
                 return;
             }
 
-            const int childCount = xmlNode->getChildCount();
+            const int fileCount = xmlNode->getChildCount();
 
-            for (int i = 0; i < childCount; ++i)
+            for (int i = 0; i < fileCount; ++i)
             {
-                XmlNodeRef xmlEntry = xmlNode->getChild(i);
-                AZStd::string model = xmlEntry->getAttr("model");
-                AZStd::string file = xmlEntry->getAttr("file");
+                XmlNodeRef fileNode = xmlNode->getChild(i);
+                AZStd::string file = fileNode->getAttr("file");
 
-                if (!model.empty() && !file.empty())
+                if (!file.empty())
                 {
-                    device_spec_map[AZStd::hash<AZStd::string>()(model)] = file;
+                    const int modelCount = fileNode->getChildCount();
+
+                    for (int j = 0; j < modelCount; ++j)
+                    {
+                        XmlNodeRef modelNode = fileNode->getChild(j);
+                        AZStd::string model = modelNode->getAttr("model");
+
+                        if (!model.empty())
+                        {
+                            device_spec_map[model] = file;
+                        }
+                    }
                 }
             }
         }

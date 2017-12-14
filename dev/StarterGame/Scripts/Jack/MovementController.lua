@@ -9,6 +9,7 @@ local movementcontroller =
 		StrafeMoveSpeed = { default = 3.6, description = "How fast the chicken moves.", suffix = " m/s" },
 		RotationSpeed = { default = 155.0, description = "How fast (in degrees per second) the chicken can turn.", suffix = " deg/sec"},
 		Camera = {default = EntityId()},
+		Drone = { default = EntityId() },
 		InitialState = "Idle",
 		DebugStateMachine = false,
 		Move2IdleThreshold = { default = 0.8, description = "Character must be moving faster than this normalised speed when they stop to use a move to idle transition animation." },
@@ -30,6 +31,14 @@ local movementcontroller =
 			Radius = { default = 1.0, description = "The radius of the character's capsule for escaping infinite falling.", suffix = " m" },
 			
 			SlopeAngle = { default = 73.0, description = "If the ground is too steep then falling will continue [0, 90].", suffix = " deg" },
+			
+			Nudging =
+			{
+				Acceleration = { default = 6.0, description = "The acceleration of the character's nudging speed." },
+				MaxSpeed = { default = 2.0, description = "The character's maximum nudging speed." },
+				
+				CollisionTimer = { default = 0.15, description = "How long to disable nudging for when a collision occurs." },
+			},
 		},
 		
 		UIMessages = 
@@ -136,20 +145,50 @@ local movementcontroller =
 		-- Idle is the base state. All other states should transition back to idle
 		-- when complete.
 		Idle = 
-		{	  
+		{
+			OnAnimationEvent = function(self, evName, startTime)
+				if (evName == "IdleAnimEnded") then
+					if (not self.IdleAnimLoop) then
+						self.transitionReached = true;
+					end
+				end
+			end,
+			
+			StartNewAnimation = function(self, sm, newAnim)
+				self.transitionReached = false;
+				self.idleAnimInUse = newAnim;
+				sm.UserData.Fragments.Idle = sm:EnsureFragmentPlaying(sm.UserData.Fragments.Idle, 1, self.idleAnimInUse, "", self.IdleAnimLoop);
+			end,
+			
 			OnEnter = function(self, sm)
-			--Debug.Log("entering idle")
+				--Debug.Log("entering idle")
 				-- Trigger idle animation as "persistent". Even if the state isn't running, this guarantees we never t-pose.
-				sm.UserData.Fragments.Idle  = sm:EnsureFragmentPlaying(sm.UserData.Fragments.Idle, 1, "Idle", "", true);
+				self.StartNewAnimation(self, sm, self.IdleAnim);
 				CharacterAnimationRequestBus.Event.SetAnimationDrivenMotion(sm.EntityId, false);
 			end,
+			
 			OnExit = function(self, sm)
+				-- Ensure we go back to the normal idle when we next return to Idle.
+				if (self.IdleAnim ~= self.DefaultIdleAnim) then
+					self.IdleAnim = self.DefaultIdleAnim;
+				end
+				
 				sm.UserData.Fragments.Idle = sm:EnsureFragmentStopped(sm.UserData.Fragments.Idle);
 				CryCharacterPhysicsRequestBus.Event.RequestVelocity(sm.EntityId, Vector3(0,0,0), 0);
-			end,			
+			end,
+			
 			OnUpdate = function(self, sm, deltaTime)
-				-- Count down to fidget.
-				--sm.UserData.timeIdle = sm.UserData.timeIdle + deltaTime;
+				-- If the custom animation has finished, then return to the default idle.
+				if (self.transitionReached) then
+					self.IdleAnim = self.DefaultIdleAnim;
+					self.IdleAnimLoop = self.DefaultIdleAnimLoop;
+				end
+				
+				-- Change the animation we're using if a new one has been set.
+				if (self.IdleAnim ~= self.idleAnimInUse) then
+					sm.UserData.Fragments.Idle = sm:EnsureFragmentStopped(sm.UserData.Fragments.Idle);
+					self.StartNewAnimation(self, sm, self.IdleAnim);
+				end
 			end,
 			
 			Transitions =
@@ -180,6 +219,11 @@ local movementcontroller =
 					end
 				},
 			},
+			
+			IdleAnim = "Idle";
+			IdleAnimLoop = true;
+			DefaultIdleAnim = "Idle";
+			DefaultIdleAnimLoop = true;
 		},
 		-- Idle turn state transitioning to move
 		IdleTurn = 
@@ -208,14 +252,14 @@ local movementcontroller =
 				self.startFacing = self.GetFacing(sm);
 				
 				-- Announce that we've started a turn.
-				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnStarted"), 1.0, "float");
+				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnStarted", "float"), 1.0);
 			end,
 			OnExit = function(self, sm)
 				sm.UserData.Fragments.IdleTurn = sm:EnsureFragmentStopped(sm.UserData.Fragments.IdleTurn);
 				CryCharacterPhysicsRequestBus.Event.RequestVelocity(sm.EntityId, Vector3(0,0,0), 0);
 				
 				-- Announce that we've ended a turn.
-				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnEnded"), 1.0, "float");
+				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnEnded", "float"), 1.0);
 			end,
 
 			-- Update movement logic while in navigation state.
@@ -518,7 +562,7 @@ local movementcontroller =
 				CharacterAnimationRequestBus.Event.SetAnimationDrivenMotion(sm.EntityId, true);
 				
 				-- Announce that we've started a turn.
-				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnStarted"), 1.0, "float");
+				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnStarted", "float"), 1.0);
 			end,
 			
 			OnExit = function(self, sm)
@@ -526,7 +570,7 @@ local movementcontroller =
 				self.MoveMag = 0.0;
 				
 				-- Announce that we've ended a turn.
-				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnEnded"), 1.0, "float");
+				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "EventTurnEnded", "float"), 1.0);
 			end,
 			
 			OnUpdate = function(self, sm, deltaTime)
@@ -638,10 +682,12 @@ local movementcontroller =
 				sm.UserData:SetCanFire(false);
 
 				sm.UserData.States.Falling.FallDuration = 0.0;
+				sm.UserData.nudgingCollisionTimer = 0.0;
 				
 				self.launchCompleted = false;
 				self.canJump = false;
 				self.transitionReached = false;
+				self.transitionedToFalling = false;
 				
 				self.animJump = "JumpRunning";
 				self.transitionName = "TransitionJump";
@@ -686,6 +732,10 @@ local movementcontroller =
 			
 				sm.UserData.Fragments.Jumping = sm:EnsureFragmentStopped(sm.UserData.Fragments.Jumping);
 				
+				if (not self.transitionedToFalling) then
+					sm.UserData.fallingPrevTm = nil;
+				end
+				
 				if (self.IsDoubleJumping) then
 					self.WantsToDoubleJump = false;
 					self.IsDoubleJumping = false;
@@ -699,6 +749,7 @@ local movementcontroller =
 				else
 					sm.UserData.States.Falling.FallDuration = 0.0;
 				end
+				sm.UserData:UpdateFallingNudging(deltaTime, self.JumpingVector);
 				self.prevTm = thisTm;
 			end,
 			
@@ -722,7 +773,8 @@ local movementcontroller =
 				Falling =
 				{
 					Evaluate = function(state, sm)
-						return state.transitionReached and not sm.UserData:ShouldLand();
+						state.transitionedToFalling = state.transitionReached and not sm.UserData:ShouldLand();
+						return state.transitionedToFalling;
 					end
 				},
 				
@@ -753,6 +805,25 @@ local movementcontroller =
 				self.transitionReached = false;
 				--self.FallDuration = 0.0;
 				
+				-- If we walk off a cliff instead of jumping then we'll enter this state with a
+				-- zero jumping vector.
+				if (sm.UserData.fallingPrevTm == nil) then
+					local maxSpeed = sm.UserData.Properties.MoveSpeed;
+					if (sm.UserData:IsStrafing()) then
+						maxSpeed = sm.UserData.Properties.StrafeMoveSpeed;
+					end
+					local forward = TransformBus.Event.GetWorldTM(sm.UserData.entityId):GetColumn(1):GetNormalized();
+					-- If 'GetLength()' is a zero length vector then it means we've started falling
+					-- because the ground has moved rather than us walking/jumping off something.
+					local movDirLen = sm.UserData.movementDirection:GetLength();
+					if (movDirLen <= 0.001) then
+						forward = Vector3(0.0, 0.0, -1.0);
+					else
+						forward = forward * movDirLen;
+					end
+					sm.UserData.States.Jumping.JumpingVector = forward * maxSpeed;
+				end
+				
 				sm.UserData.Fragments.Falling = sm:EnsureFragmentPlaying(sm.UserData.Fragments.Falling, 1, "Falling", "", true);
 				
 				self.prevTm = TransformBus.Event.GetWorldTM(sm.UserData.entityId);
@@ -766,7 +837,9 @@ local movementcontroller =
 				
 				if (self.NotReallyFalling > self.NotReallyFallingMax) then
 					sm.UserData.landedBecauseSupported = true;
+					sm.UserData.landedBecauseSupportedPrevTm = TransformBus.Event.GetWorldTM(sm.UserData.entityId);
 				end
+				sm.UserData.fallingPrevTm = nil;
 			end,
 			
 			OnUpdate = function(self, sm, deltaTime)
@@ -778,6 +851,7 @@ local movementcontroller =
 					self.NotReallyFalling = self.NotReallyFalling + 1;
 				end
 				self.prevTm = thisTm;
+				sm.UserData:UpdateFallingNudging(deltaTime, sm.UserData.States.Jumping.JumpingVector);
 			end,
 			
 			Transitions =
@@ -900,7 +974,7 @@ local movementcontroller =
 				rayCastConfig.direction =  Vector3(0.0, 0.0, -1.0);
 				rayCastConfig.maxDistance = 4.0;
 				rayCastConfig.maxHits = 1;
-				rayCastConfig.physicalEntityTypes = PhysicalEntityTypes.Static + PhysicalEntityTypes.Terrain;		
+				rayCastConfig.physicalEntityTypes = PhysicalEntityTypes.Static + PhysicalEntityTypes.Terrain;
 				local hits = PhysicsSystemRequestBus.Broadcast.RayCast(rayCastConfig);
 				if (#hits > 0) then
 					tm:SetTranslation(hits[1].position);
@@ -1014,7 +1088,7 @@ local movementcontroller =
 					RagdollPhysicsRequestBus.Event.EnterRagdoll(sm.EntityId);
 				else
 				local deathTag = "DeathFront";
-				if ((sm.UserData.hitParam > 0.25) and (sm.UserData.hitParam < 0.75)) then
+				if ((sm.UserData.hitParam ~= nil) and(sm.UserData.hitParam > 0.25) and (sm.UserData.hitParam < 0.75)) then
 					deathTag = "DeathBack";
 				end
 				sm.UserData.Fragments.Dead = sm:EnsureFragmentPlaying(sm.UserData.Fragments.Dead, 2, "Dead", deathTag, false);
@@ -1025,7 +1099,7 @@ local movementcontroller =
 				self.switchRagdoll = false;
 				
 				-- Announce to the entity that it's died.
-				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "OnDeath"), 1.0, "float");
+				GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(sm.EntityId, "OnDeath", "float"), 1.0);
 			end,
 			
 			OnUpdate = function(self, sm, deltaTime)
@@ -1059,9 +1133,17 @@ function movementcontroller:OnActivate()
 	self.enableHandler = GameplayNotificationBus.Connect(self, self.enableEventId);
 	self.disableEventId = GameplayNotificationId(self.entityId, "Disable", "float");
 	self.disableHandler = GameplayNotificationBus.Connect(self, self.disableEventId);
+	self.setVisibleEventId = GameplayNotificationId(self.entityId, "SetVisible", "float");
+	self.setVisibleHandler = GameplayNotificationBus.Connect(self, self.setVisibleEventId);
+	
+	self.teleportToEventId = GameplayNotificationId(self.entityId, "TeleportTo", "float");
+	self.teleportToHandler = GameplayNotificationBus.Connect(self, self.teleportToEventId);
 	
 	self.enableFiringEventId = GameplayNotificationId(self.entityId, "EnableFiring", "float");
 	self.disableFiringEventId = GameplayNotificationId(self.entityId, "DisableFiring", "float");
+	
+	self.setIdleAnimEventId = GameplayNotificationId(self.entityId, "SetIdleAnim", "float");
+	self.setIdleAnimHandler = GameplayNotificationBus.Connect(self, self.setIdleAnimEventId);
 	
 	-- Input listeners (events).
 	self.getDiedEventId = GameplayNotificationId(self.entityId, self.Properties.Events.DiedMessage, "float");
@@ -1073,6 +1155,10 @@ function movementcontroller:OnActivate()
 	-- Tick needed to detect aim timeout
 	self.tickBusHandler = TickBus.Connect(self);
 	self.performedFirstUpdate = false;
+	
+	-- Subscribe to collision notifications.
+	self.physicsNotificationHandler = PhysicsComponentNotificationBus.Connect(self, self.entityId);
+	self.nudgingCollisionTimer = 0.0;
 
 	-- Create and start our state machine.
 	self.StateMachine = {}
@@ -1108,6 +1194,7 @@ function movementcontroller:OnActivate()
 	self.wantsToJump = false;
 	self.wantedToJumpLastFrame = false;
 	self.landedBecauseSupported = false;
+	self.landedBecauseSupportedPrevTm = nil;
 
 	self.strafeEventId = GameplayNotificationId(self.entityId, "Strafe", "float");
 	self.strafeHandler = GameplayNotificationBus.Connect(self, self.strafeEventId);
@@ -1125,6 +1212,7 @@ function movementcontroller:OnActivate()
 	self.endInteractHandler = GameplayNotificationBus.Connect(self, self.endInteractEventId);
 	
 	self.Properties.Falling.SlopeAngle = self.Properties.Falling.SlopeAngle * math.pi / 180.0;
+	self.fallingPrevTm = nil;
 end
 
 function movementcontroller:OnDeactivate()
@@ -1133,6 +1221,11 @@ function movementcontroller:OnDeactivate()
 	self.StateMachine:Stop();
 	self.tickBusHandler:Disconnect();
 	self.tickBusHandler = nil;
+	
+	if (self.physicsNotificationHandler ~= nil) then
+		self.physicsNotificationHandler:Disconnect();
+		self.physicsNotificationHandler = nil;
+	end
 
 	self.getDiedHandler:Disconnect();
 	self.getDiedHandler = nil;
@@ -1147,6 +1240,19 @@ function movementcontroller:OnDeactivate()
 	if (self.disableHandler ~= nil) then
 		self.disableHandler:Disconnect();
 		self.disableHandler = nil;	
+	end
+	if (self.setVisibleHandler ~= nil) then
+		self.setVisibleHandler:Disconnect();
+		self.setVisibleHandler = nil;	
+	end
+	if (self.teleportToHandler ~= nil) then
+		self.teleportToHandler:Disconnect();
+		self.teleportToHandler = nil;	
+	end
+	
+	if (self.setIdleAnimHandler ~= nil) then
+		self.setIdleAnimHandler:Disconnect();
+		self.setIdleAnimHandler = nil;
 	end
 	
 	if (self.jumpHandler ~= nil) then
@@ -1170,6 +1276,7 @@ function movementcontroller:IsFalling()
 	if (dist < self.Properties.Falling.FallingHeight) then
 		-- If the basic falling check has become valid again then reset this variable.
 		self.landedBecauseSupported = false;
+		self.landedBecauseSupportedPrevTm = nil;
 	else
 		if (self.landedBecauseSupported) then
 			-- If we landed because we were in the falling state but not actually going downwards
@@ -1177,7 +1284,8 @@ function movementcontroller:IsFalling()
 			-- I'd have liked to just use a simple 'have I moved down in the last frame' check but
 			-- because this is called in the statemachine and the 'prevTm' would be stored in the
 			-- MovementController it means I'd have to rely on a specific update order.
-			local pos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
+			local thisTm = TransformBus.Event.GetWorldTM(self.entityId);
+			local pos = thisTm:GetTranslation();
 			local radius = self.Properties.Falling.Radius;
 			
 			-- 'pos' is at the base of the character. The physics uses a capsule so raise up the
@@ -1193,8 +1301,14 @@ function movementcontroller:IsFalling()
 			elseif (self:FallingRayCastHitSomething(pos + Vector3(0.0, 1.0, 0.0), range)) then
 			elseif (self:FallingRayCastHitSomething(pos + Vector3(0.0, -1.0, 0.0), range)) then
 			else
-				isFalling = true;
+				-- If we're not moving up or down then we're not falling.
+				local zDiff = pos.z - self.landedBecauseSupportedPrevTm:GetTranslation().z;
+				if (math.abs(zDiff) >= 0.1) then
+					isFalling = true;
+				end
 			end
+			
+			self.landedBecauseSupportedPrevTm = TransformBus.Event.GetWorldTM(self.entityId);
 		else
 			isFalling = true;
 		end
@@ -1313,7 +1427,6 @@ function movementcontroller:IsLargeAngleDelta()
 end
 
 function movementcontroller:OnTick(deltaTime, timePoint)
-	
 	-- Doing anything that requires other entities here because they might not exist
 	-- yet in the 'OnActivate()' function.
 	
@@ -1331,12 +1444,17 @@ function movementcontroller:OnTick(deltaTime, timePoint)
 		self.camPushNotificationId = GameplayNotificationId(camMan, "PushCameraSettings", "float");
 		self.camPopNotificationId = GameplayNotificationId(camMan, "PopCameraSettings", "float");
 		
+		self.strafingEventId = nil;
+		if (self.Properties.Drone:IsValid()) then
+			self.strafingEventId = GameplayNotificationId(self.Properties.Drone, "IsStrafing", "float");
+		end
+		
 		self.SetHideUIEventId = GameplayNotificationId(EntityId(), self.Properties.UIMessages.SetHideUIMessage, "float");
 
 		-- Make sure we don't do this 'first update' again.
 		self.performedFirstUpdate = true;	
 	end
-			
+	
 	self:UpdateHit();
 	
 	self:UpdateStrafeMode();
@@ -1346,6 +1464,12 @@ function movementcontroller:OnTick(deltaTime, timePoint)
 		self.wantedToJumpLastFrame = false;
 	elseif (self.wantsToJump) then
 		self.wantedToJumpLastFrame = true;
+	end
+end
+
+function movementcontroller:OnCollision(data)
+	if (data and data ~= nil) then
+		self.nudgingCollisionTimer = self.Properties.Falling.Nudging.CollisionTimer;
 	end
 end
    
@@ -1396,13 +1520,21 @@ function movementcontroller:UpdateStrafeMode()
 	if ((not self.isStrafing) and doStrafe) then
 		self.camAimSettingsEventArgs.name = "Aim";
 		self.camAimSettingsEventArgs.entityId = self.entityId;
+		self.camAimSettingsEventArgs.transitionTime = 0.25;
 		GameplayNotificationBus.Event.OnEventBegin(self.camPushNotificationId, self.camAimSettingsEventArgs);
 		self.isStrafing = true;
+		if (self.strafingEventId ~= nil) then
+			GameplayNotificationBus.Event.OnEventBegin(self.strafingEventId, self.isStrafing);
+		end
 	elseif (self.isStrafing and (not doStrafe)) then
 		self.camAimSettingsEventArgs.name = "Aim";
 		self.camAimSettingsEventArgs.entityId = self.entityId;
+		self.camAimSettingsEventArgs.transitionTime = 0.25;
 		GameplayNotificationBus.Event.OnEventBegin(self.camPopNotificationId, self.camAimSettingsEventArgs);
 		self.isStrafing = false;
+		if (self.strafingEventId ~= nil) then
+			GameplayNotificationBus.Event.OnEventBegin(self.strafingEventId, self.isStrafing);
+		end
 	end
 end
 
@@ -1431,6 +1563,79 @@ end
 
 function movementcontroller:EndInteract()
 	self.InteractComplete = true;
+end
+
+-- Applies small impulses to allow fine-tuned landing.
+function movementcontroller:UpdateFallingNudging(deltaTime, jumpingDir)
+	-- Update the collision timer.
+	if (self.nudgingCollisionTimer ~= 0.0) then
+		self.nudgingCollisionTimer = utilities.Clamp(self.nudgingCollisionTimer - deltaTime, 0.0, self.nudgingCollisionTimer);
+	end
+	
+	-- Compare the desired direction with the jumping direction.
+	local moveFlatDir = Vector3(self.movementDirection.x, self.movementDirection.y, 0.0);
+	local moveFlatDirNorm = Vector3(0.0);
+	if (moveFlatDir:GetLength() > 0.001) then
+		moveFlatDirNorm = moveFlatDir:GetNormalized();
+	end
+	--Debug.Log("Movement: " .. tostring(self.movementDirection) .. ", Norm: " .. tostring(moveFlatDirNorm));
+	local jumpFlatDir = Vector3(jumpingDir.x, jumpingDir.y, 0.0);
+	local jumpFlatDirNorm = Vector3(0.0);
+	if (jumpFlatDir:GetLength() > 0.001) then
+		jumpFlatDirNorm = jumpFlatDir:GetNormalized();
+	end
+	local nudgeThisFrame = jumpFlatDirNorm:Dot(moveFlatDirNorm);
+	
+	local thisTm = TransformBus.Event.GetWorldTM(self.entityId);
+	if (self.fallingPrevTm == nil) then
+		-- Prep for nudging.
+		--	MaxSpeed == pushing in the jumping direction
+		--	½ MaxSpeed == not pushing or pulling
+		--	0.0 == pulling backwards from the jumping direction
+		self.nudgingVelocity = self.Properties.Falling.Nudging.MaxSpeed;
+	else
+		local deltaAcc = self.Properties.Falling.Nudging.Acceleration * deltaTime;
+		if (nudgeThisFrame == 0.0) then
+			-- If the character isn't trying to be nudged then head towards the 'mid-point'.
+			local halfMaxSpeed = self.Properties.Falling.Nudging.MaxSpeed * 0.5;
+			local diff = self.nudgingVelocity - halfMaxSpeed;
+			
+			if (math.abs(diff) <= deltaAcc) then
+				deltaAcc = 0.0;
+				self.nudgingVelocity = halfMaxSpeed;
+			elseif (diff > deltaAcc) then
+				deltaAcc = deltaAcc * -1.0;
+			elseif (diff < deltaAcc) then
+				-- do nothing
+			end
+		else
+			deltaAcc = deltaAcc * nudgeThisFrame;
+		end
+		
+		self.nudgingVelocity = self.nudgingVelocity + deltaAcc;
+		self.nudgingVelocity = utilities.Clamp(self.nudgingVelocity, 0, self.Properties.Falling.Nudging.MaxSpeed);
+		--Debug.Log("self.nudgingVelocity: " .. tostring(self.nudgingVelocity));
+
+		-- Only modify the velocity if we haven't hit something.
+		if (self.nudgingCollisionTimer == 0.0) then
+			-- Calculate the new horizontal velocity.
+			local normalisedNudgingVel = self.nudgingVelocity / self.Properties.Falling.Nudging.MaxSpeed;
+			local hVel = jumpFlatDir * normalisedNudgingVel;
+			
+			-- Get the vertical velocity.
+			local vVel = Vector3(0.0);
+			if (not StarterGameEntityUtility.GetEntitysVelocity(self.entityId, vVel)) then
+				Debug.Log(tostring(self.entityId) .. " failed to get velocity.");
+			--else
+			--	Debug.Log(tostring(self.entityId) .. " vel: " .. tostring(vVel));
+			end
+			
+			-- Combine the vertical and horizontal velocities and set it.
+			hVel.z = vVel.z;
+			PhysicsComponentRequestBus.Event.SetVelocity(self.entityId, hVel);
+		end
+	end
+	self.fallingPrevTm = thisTm;
 end
 	
 function movementcontroller:SetControlsEnabled(newControlsEnabled)
@@ -1488,8 +1693,9 @@ function movementcontroller:OnDisable()
 end
 	
 function movementcontroller:OnEventBegin(value)
+	local busId = GameplayNotificationBus.GetCurrentBusId();
 	--Debug.Log("movementcontroller:OnEventBegin( " .. tostring(value) .. " )");
-	if (GameplayNotificationBus.GetCurrentBusId() == self.controlsEnabledEventId) then
+	if (busId == self.controlsEnabledEventId) then
 		--Debug.Log("controlls set: " .. tostring(value));
 		if (value == 1.0) then
 			self.controlsDisabledCount = self.controlsDisabledCount - 1;
@@ -1505,19 +1711,19 @@ function movementcontroller:OnEventBegin(value)
 			self:SetControlsEnabled(newEnabled);
 		end
 	elseif (self.controlsEnabled) then
-		if (GameplayNotificationBus.GetCurrentBusId() == self.setMovementDirectionId) then
+		if (busId == self.setMovementDirectionId) then
 			--Debug.Log("setMovementDirectionId ( " .. tostring(value) .. " )");
 			self.movementDirection = value;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.jumpEventId) then
+		elseif (busId == self.jumpEventId) then
 			self.wantsToJump = true;
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.strafeEventId) then
+		elseif (busId == self.strafeEventId) then
 			self.wantsToStrafe = true;
 		end
 	end
 
-	if (GameplayNotificationBus.GetCurrentBusId() == self.getDiedEventId) then
+	if (busId == self.getDiedEventId) then
 		self:Die();
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.gotShotEventId) then
+	elseif (busId == self.gotShotEventId) then
 		-- React to being hit (if it wasn't done by themself).
 		if (self.entityId ~= value.assailant) then
 			self.shouldImmediatelyRagdoll = value.immediatelyRagdoll;
@@ -1525,21 +1731,35 @@ function movementcontroller:OnEventBegin(value)
 		end
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.startInteractEventId) then
+	if (busId == self.startInteractEventId) then
 		self:StartInteract(value.positionEntity, value.cameraEntity);
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.endInteractEventId) then
+	elseif (busId == self.endInteractEventId) then
 		self:EndInteract();
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.enableEventId) then
+	if (busId == self.enableEventId) then
 		self:OnEnable();
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.disableEventId) then
+	elseif (busId == self.disableEventId) then
 		self:OnDisable();
+	elseif (busId == self.setVisibleEventId) then
+		MeshComponentRequestBus.Event.SetVisibility(self.entityId, value);
+	end
+	
+	if (busId == self.teleportToEventId) then
+		local tm = TransformBus.Event.GetWorldTM(self.entityId);
+		tm:SetTranslation(value);
+		TransformBus.Event.SetWorldTM(self.entityId, tm);
+	end
+	
+	if (busId == self.setIdleAnimEventId) then
+		self.States.Idle.IdleAnim = value.animName;
+		self.States.Idle.IdleAnimLoop = value.loop;
 	end
 end
 	
 function movementcontroller:OnEventEnd(value)
-	if (GameplayNotificationBus.GetCurrentBusId() == self.strafeEventId) then
+	local busId = GameplayNotificationBus.GetCurrentBusId();
+	if (busId == self.strafeEventId) then
 		self.wantsToStrafe = false;
 	end
 end	

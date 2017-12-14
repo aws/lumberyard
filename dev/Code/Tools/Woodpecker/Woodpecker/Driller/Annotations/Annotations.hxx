@@ -14,13 +14,17 @@
 #define DRILLER_ANNOTATIONS_H
 
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/Math/Crc.h>
 #include <QObject>
 
 #include <Woodpecker/Driller/DrillerDataTypes.h>
 
 #pragma once
+
+namespace AZ { class ReflectContext; }
 
 namespace Driller
 {

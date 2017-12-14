@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -32,21 +31,26 @@ namespace StarterGameGem
 	public:
 		virtual ~StatRequests() {}
 		
-		virtual void SetMax(float max) = 0;
-		virtual void SetMin(float min) = 0;
-		virtual void SetValue(float value) = 0;
-		virtual void SetRegenSpeed(float value) = 0;
-		virtual void SetRegenDelay(float value) = 0;
+		// NOTE:
+		// because it is in the design for mutiple instances of stat objets to exist on a singular entity (for different stats)
+		// all the methods take the state name that it is interested in so we can use the bus but only have things that have the specified
+		// name respond, because otherwise targeting them nicely is impossible.
+		// the name will be a perperty that is effictivly const when in game to avoid possible unintentional interactions
+		virtual bool SetMax(const AZStd::string& statName, const float max) = 0;
+		virtual bool SetMin(const AZStd::string& statName, const float min) = 0;
+		virtual bool SetValue(const AZStd::string& statName, const float value) = 0;
+		virtual bool SetRegenSpeed(const AZStd::string& statName, const float value) = 0;
+		virtual bool SetRegenDelay(const AZStd::string& statName, const float value) = 0;
 
 		// making these const seems to cause problems
-		virtual float GetMax(float max) /*const*/ = 0;
-		virtual float GetMin(float min) /*const*/ = 0;
-		virtual float GetValue(float value) /*const*/ = 0;
-		virtual float GetRegenSpeed(float value) /*const*/ = 0;
-		virtual float GetRegenDelay(float value) /*const*/ = 0;
+		virtual bool GetMax(const AZStd::string& statName, float& max) /*const*/ = 0;
+		virtual bool GetMin(const AZStd::string& statName, float& min) /*const*/ = 0;
+		virtual bool GetValue(const AZStd::string& statName, float& value) /*const*/ = 0;
+		virtual bool GetRegenSpeed(const AZStd::string& statName, float& value) /*const*/ = 0;
+		virtual bool GetRegenDelay(const AZStd::string& statName, float& value) /*const*/ = 0;
 
-		virtual void DeltaValue(float value) = 0;
-		virtual void Reset() = 0;
+		virtual bool DeltaValue(const AZStd::string& statName, const float value) = 0;
+		virtual bool Reset(const AZStd::string& statName) = 0;
 	};
 	using StatRequestBus = AZ::EBus<StatRequests>;
 	
@@ -83,8 +87,6 @@ namespace StarterGameGem
 		//	required.push_back(AZ_CRC("TransformService"));
 		//}
 
-		//////////////////////////////////////////////////////////////////////////
-		// StatComponentRequestBus::Handler
 		void SetMax(float max);
 		void SetMin(float min);
 		void SetValue(float value);
@@ -97,11 +99,11 @@ namespace StarterGameGem
 		void SetRegenEndEvent(const char* name);
 		void SetValueChangedEvent(const char* name);
 
-		float GetMax(float max) /*const*/;
-		float GetMin(float min) /*const*/;
-		float GetValue(float value) /*const*/;
-		float GetRegenSpeed(float value) /*const*/;
-		float GetRegenDelay(float value) /*const*/;
+		float GetMax() const;
+		float GetMin() const;
+		float GetValue() const;
+		float GetRegenSpeed() const;
+		float GetRegenDelay() const;
 
 		AZStd::string GetFullEvent() const;
 		AZStd::string GetEmptyEvent() const;
@@ -111,13 +113,34 @@ namespace StarterGameGem
 
 		void DeltaValue(float value);	
 		void Reset();
+		//////////////////////////////////////////////////////////////////////////
+		// StatComponentRequestBus::Handler
+		bool SetMax(const AZStd::string& statName, const float max);
+		bool SetMin(const AZStd::string& statName, const float min);
+		bool SetValue(const AZStd::string& statName, const float value);
+		bool SetRegenSpeed(const AZStd::string& statName, const float value);
+		bool SetRegenDelay(const AZStd::string& statName, const float value);
+		
+		bool GetMax(const AZStd::string& statName, float& max) /*const*/;
+		bool GetMin(const AZStd::string& statName, float& min) /*const*/;
+		bool GetValue(const AZStd::string& statName, float& value) /*const*/;
+		bool GetRegenSpeed(const AZStd::string& statName, float& value) /*const*/;
+		bool GetRegenDelay(const AZStd::string& statName, float& value) /*const*/;
+		
+		bool DeltaValue(const AZStd::string& statName, const float value);
+		bool Reset(const AZStd::string& statName);
+		//////////////////////////////////////////////////////////////////////////
 
+
+		//////////////////////////////////////////////////////////////////////////
+		// GameplayNotificationBus::MultiHandler
 		void OnEventBegin(const AZStd::any& value) override;
 		void OnEventUpdating(const AZStd::any&) override;
 		void OnEventEnd(const AZStd::any&) override;
-
+		//////////////////////////////////////////////////////////////////////////
 
 	protected:
+		AZStd::string m_name;
 		float m_max;
 		float m_min;
 		float m_value;
@@ -143,6 +166,7 @@ namespace StarterGameGem
 		AZStd::string m_setRegenDelayEventName;
 		AZStd::string m_setValueEventName;
 		AZStd::string m_deltaValueEventName;
+		AZStd::string m_regenResetEventName;
 		AZStd::string m_resetEventName;
 
 		AZStd::string m_GetValueEventName;
@@ -151,6 +175,10 @@ namespace StarterGameGem
 		AZStd::string m_SendUsedCapacityEventName;
 		AZStd::string m_GetUnUsedCapacityEventName;
 		AZStd::string m_SendUnUsedCapacityEventName;
+		AZStd::string m_GetMinEventName;
+		AZStd::string m_SendMinEventName;
+		AZStd::string m_GetMaxEventName;
+		AZStd::string m_SendMaxEventName;
 
 	private:
 		float m_timer;
@@ -163,11 +191,13 @@ namespace StarterGameGem
 		AZ::GameplayNotificationId m_setRegenDelayEventID;
 		AZ::GameplayNotificationId m_setValueEventID;
 		AZ::GameplayNotificationId m_deltaValueEventID;
+		AZ::GameplayNotificationId m_regenResetEventID;
 		AZ::GameplayNotificationId m_resetEventID;
 		AZ::GameplayNotificationId m_GetValueEventID;
 		AZ::GameplayNotificationId m_GetUsedCapacityEventID;
 		AZ::GameplayNotificationId m_GetUnUsedCapacityEventID;
-
+		AZ::GameplayNotificationId m_GetMinEventID;
+		AZ::GameplayNotificationId m_GetMaxEventID;
 	};
 
 }

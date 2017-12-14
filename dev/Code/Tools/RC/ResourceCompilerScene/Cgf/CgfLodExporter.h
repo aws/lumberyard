@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -11,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#pragma once
 
 #include <AzCore/std/string/string.h>
 #include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
@@ -24,19 +24,21 @@ namespace AZ
     {
         struct CgfGroupExportContext;
 
+        namespace SceneEvents = AZ::SceneAPI::Events;
+
         class CgfLodExporter
-            : public SceneAPI::Events::CallProcessorBinder
+            : public SceneEvents::CallProcessorBinder
         {
         public:
-            explicit CgfLodExporter(IAssetWriter* writer);
+            CgfLodExporter(IAssetWriter* writer);
             ~CgfLodExporter() override = default;
 
             static const AZStd::string s_fileExtension;
 
-            SceneAPI::Events::ProcessingResult ProcessContext(CgfGroupExportContext& context) const;
+            SceneEvents::ProcessingResult ProcessContext(CgfGroupExportContext& context) const;
 
         protected:
             IAssetWriter* m_assetWriter;
         };
-    } // RC
-} // AZ
+    } // namespace RC
+} // namespace AZ

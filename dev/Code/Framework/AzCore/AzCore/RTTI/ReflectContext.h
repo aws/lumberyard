@@ -20,7 +20,11 @@
 #include <AzCore/std/containers/deque.h>
 #include <AzCore/std/smart_ptr/weak_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
-#include <AzCore/std/typetraits/has_member_function.h>
+#include <AzCore/std/typetraits/decay.h>
+#include <AzCore/std/typetraits/function_traits.h>
+#include <AzCore/std/typetraits/is_function.h>
+#include <AzCore/std/typetraits/is_member_function_pointer.h>
+#include <AzCore/std/typetraits/is_same.h>
 
 namespace AZ
 {
@@ -179,10 +183,10 @@ namespace AZ
     {
     public:
         AZ_RTTI((AttributeData<T>, "{24248937-86FB-406C-8DD5-023B10BD0B60}", T), Attribute);
-        AZ_CLASS_ALLOCATOR(AttributeData<T>, SystemAllocator, 0)
-            template<class U>
-        explicit AttributeData(U data)
-            : m_data(data) {}
+        AZ_CLASS_ALLOCATOR(AttributeData<T>, SystemAllocator, 0);
+        template<class U>
+        explicit AttributeData(U&& data)
+            : m_data(AZStd::forward<U>(data)) {}
         virtual const T& Get(void* instance) const { (void)instance; return m_data; }
         T& operator = (T& data) { m_data = data; return m_data; }
         T& operator = (const T& data) { m_data = data; return m_data; }
@@ -204,8 +208,8 @@ namespace AZ
     {
     public:
         AZ_RTTI((AZ::AttributeMemberData<T C::*>, "{00E5F991-6B96-43CC-9869-F371548581D9}", T, C), AttributeData<T>);
-        AZ_CLASS_ALLOCATOR(AttributeMemberData<T C::*>, SystemAllocator, 0)
-            typedef T C::* DataPtr;
+        AZ_CLASS_ALLOCATOR(AttributeMemberData<T C::*>, SystemAllocator, 0);
+        typedef T C::* DataPtr;
         explicit AttributeMemberData(DataPtr p)
             : AttributeData<T>(T())
             , m_dataPtr(p) {}
@@ -310,6 +314,12 @@ namespace AZ
     private:
         FunctionPtr m_memFunction;
     };
+
+    template <typename T>
+    using AttributeContainerType = typename AZStd::Utils::if_c<AZStd::is_member_pointer<T>::value,
+        typename AZStd::Utils::if_c<AZStd::is_member_function_pointer<T>::value, AttributeMemberFunction<T>, AttributeMemberData<T> >::type,
+        typename AZStd::Utils::if_c<AZStd::is_function<typename AZStd::remove_pointer<T>::type>::value, AttributeFunction<typename AZStd::remove_pointer<T>::type>, AttributeData<T> >::type
+    >::type;
 
     namespace Internal
     {

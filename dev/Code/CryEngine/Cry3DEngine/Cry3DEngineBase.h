@@ -40,7 +40,6 @@ class CDecalManager;
 class CRainManager;
 class CCloudsManager;
 class CSkyLightManager;
-class CWaterWaveManager;
 class CRenderMeshMerger;
 class CMergedMeshesManager;
 class CGeomCacheManager;
@@ -63,7 +62,7 @@ struct Cry3DEngineBase
     static IPhysicalWorld* m_pPhysicalWorld;
     static IConsole* m_pConsole;
     static C3DEngine* m_p3DEngine;
-    ENGINE_API static CVars* m_pCVars;
+    static CVars* m_pCVars;
     static ICryPak* m_pCryPak;
     static IObjManager* m_pObjManager;
     static CTerrain* m_pTerrain;
@@ -75,7 +74,6 @@ struct Cry3DEngineBase
     static CClipVolumeManager* m_pClipVolumeManager;
     static CMatMan* m_pMatMan;
     static CSkyLightManager* m_pSkyLightManager;
-    static CWaterWaveManager* m_pWaterWaveManager;
     static CRenderMeshMerger* m_pRenderMeshMerger;
     static CMergedMeshesManager* m_pMergedMeshesManager;
     static CBreezeGenerator* m_pBreezeGenerator;
@@ -118,7 +116,6 @@ struct Cry3DEngineBase
     inline static ICryPak* GetPak() { return m_pCryPak; }
     inline static CMatMan* GetMatMan() { return m_pMatMan; }
     inline static CCloudsManager* GetCloudsManager() { return m_pCloudsManager; }
-    inline static CWaterWaveManager* GetWaterWaveManager() { return m_pWaterWaveManager; };
     inline static CRenderMeshMerger* GetSharedRenderMeshMerger() { return m_pRenderMeshMerger; };
     inline static CTemporaryPool* GetTemporaryPool() { return CTemporaryPool::Get(); };
 

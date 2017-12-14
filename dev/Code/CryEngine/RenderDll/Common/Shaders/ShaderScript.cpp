@@ -431,28 +431,28 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
         {
             if (pBit->m_nDependencySet & SHGD_TEX_NORMALS)
             {
-                if (!pRes->IsEmpty(EFTT_NORMALS))
+                if (pRes->TextureSlotExists(EFTT_NORMALS))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_NORMALS)
             {
-                if (pRes->IsEmpty(EFTT_NORMALS))
+                if (!pRes->TextureSlotExists(EFTT_NORMALS))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencySet & SHGD_TEX_HEIGHT)
             {
-                if (!pRes->IsEmpty(EFTT_HEIGHT))
+                if (pRes->TextureSlotExists(EFTT_HEIGHT))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_HEIGHT)
             {
-                if (pRes->IsEmpty(EFTT_HEIGHT))
+                if (!pRes->TextureSlotExists(EFTT_HEIGHT))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -460,14 +460,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_DETAIL)
             {
-                if (!pRes->IsEmpty(EFTT_DETAIL_OVERLAY))
+                if (pRes->TextureSlotExists(EFTT_DETAIL_OVERLAY))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_DETAIL)
             {
-                if (pRes->IsEmpty(EFTT_DETAIL_OVERLAY))
+                if (!pRes->TextureSlotExists(EFTT_DETAIL_OVERLAY))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -475,14 +475,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_SECOND_SMOOTHNESS)
             {
-                if (!pRes->IsEmpty(EFTT_SECOND_SMOOTHNESS))
+                if (pRes->TextureSlotExists(EFTT_SECOND_SMOOTHNESS))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_SECOND_SMOOTHNESS)
             {
-                if (pRes->IsEmpty(EFTT_SECOND_SMOOTHNESS))
+                if (!pRes->TextureSlotExists(EFTT_SECOND_SMOOTHNESS))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -490,14 +490,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_SPECULAR)
             {
-                if (!pRes->IsEmpty(EFTT_SPECULAR))
+                if (pRes->TextureSlotExists(EFTT_SPECULAR))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_SPECULAR)
             {
-                if (pRes->IsEmpty(EFTT_SPECULAR))
+                if (!pRes->TextureSlotExists(EFTT_SPECULAR))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -505,14 +505,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_ENVCM)
             {
-                if (!pRes->IsEmpty(EFTT_ENV))
+                if (pRes->TextureSlotExists(EFTT_ENV))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_ENVCM)
             {
-                if (pRes->IsEmpty(EFTT_ENV))
+                if (!pRes->TextureSlotExists(EFTT_ENV))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -520,14 +520,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_SUBSURFACE)
             {
-                if (!pRes->IsEmpty(EFTT_SUBSURFACE))
+                if (pRes->TextureSlotExists(EFTT_SUBSURFACE))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_SUBSURFACE)
             {
-                if (pRes->IsEmpty(EFTT_SUBSURFACE))
+                if (!pRes->TextureSlotExists(EFTT_SUBSURFACE))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -535,14 +535,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_DECAL)
             {
-                if (!pRes->IsEmpty(EFTT_DECAL_OVERLAY))
+                if (pRes->TextureSlotExists(EFTT_DECAL_OVERLAY))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_DECAL)
             {
-                if (pRes->IsEmpty(EFTT_DECAL_OVERLAY))
+                if (!pRes->TextureSlotExists(EFTT_DECAL_OVERLAY))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -550,14 +550,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_CUSTOM)
             {
-                if (!pRes->IsEmpty(EFTT_CUSTOM))
+                if (pRes->TextureSlotExists(EFTT_CUSTOM))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_CUSTOM)
             {
-                if (pRes->IsEmpty(EFTT_CUSTOM))
+                if (!pRes->TextureSlotExists(EFTT_CUSTOM))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -565,14 +565,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_CUSTOM_SECONDARY)
             {
-                if (!pRes->IsEmpty(EFTT_CUSTOM_SECONDARY))
+                if (pRes->TextureSlotExists(EFTT_CUSTOM_SECONDARY))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_CUSTOM_SECONDARY)
             {
-                if (pRes->IsEmpty(EFTT_CUSTOM_SECONDARY))
+                if (!pRes->TextureSlotExists(EFTT_CUSTOM_SECONDARY))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -580,14 +580,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_SPECULAR_2)
             {
-                if (!pRes->IsEmpty(EFTT_SPECULAR_2))
+                if (pRes->TextureSlotExists(EFTT_SPECULAR_2))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_SPECULAR_2)
             {
-                if (pRes->IsEmpty(EFTT_SPECULAR_2))
+                if (!pRes->TextureSlotExists(EFTT_SPECULAR_2))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -596,7 +596,7 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
             if (pBit->m_nDependencySet & SHGD_TEX_EMITTANCE)
             {
                 // If either the emittance or the decal overlay (emissive intensity) are used, SHGD_TEX_EMITTANCE should be defined
-                if (!pRes->IsEmpty(EFTT_EMITTANCE) || !pRes->IsEmpty(EFTT_DECAL_OVERLAY))
+                if (pRes->TextureSlotExists(EFTT_EMITTANCE) || pRes->TextureSlotExists(EFTT_DECAL_OVERLAY))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
@@ -604,7 +604,7 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
             if (pBit->m_nDependencyReset & SHGD_TEX_EMITTANCE)
             {
                 // If neither the emittance nor the decal overlay (emissive intensity) are used, SHGD_TEX_EMITTANCE should not be defined
-                if (pRes->IsEmpty(EFTT_EMITTANCE) && pRes->IsEmpty(EFTT_DECAL_OVERLAY))
+                if (!pRes->TextureSlotExists(EFTT_EMITTANCE) && !pRes->TextureSlotExists(EFTT_DECAL_OVERLAY))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }
@@ -613,14 +613,14 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
 
             if (pBit->m_nDependencySet & SHGD_TEX_OCC)
             {
-                if (!pRes->IsEmpty(EFTT_OCCLUSION))
+                if (pRes->TextureSlotExists(EFTT_OCCLUSION))
                 {
                     nMaskGen |= pBit->m_Mask;
                 }
             }
             if (pBit->m_nDependencyReset & SHGD_TEX_OCC)
             {
-                if (pRes->IsEmpty(EFTT_OCCLUSION))
+                if (!pRes->TextureSlotExists(EFTT_OCCLUSION))
                 {
                     nMaskGen &= ~pBit->m_Mask;
                 }

@@ -119,8 +119,9 @@ VAR_INFO_ATTRS(eEmitterGpuShape, "Emitter shape specifies the shape of the emitt
 VAR_INFO_ATTRS(eInheritance, "Source of ParticleParams used as base for this effect (for serialization, display, etc)")
 VAR_INFO_ATTRS(eSpawnIndirection, "Direct: spawn from emitter location; else spawn from each particle in parent emitter")
 VAR_INFO_ATTRS(eGPUSpawnIndirection, "Direct: spawn from emitter location, else spawn for each dead particle")
-VAR_INFO_ATTRS(fCount, "<Min=0><Max=" STRINGIFY(PARTICLE_PARAMS_MAX_COUNT) ">Number of particles alive at once")
-VAR_INFO_ATTRS(fBeamCount, "Number of beams alive at once")
+//Note: we have different maximum particle count for cpu and gpu. Search PARTICLE_PARAMS_MAX_COUNT_GPU for detail. 
+VAR_INFO_ATTRS(fCount, "<Min=0><Max=" STRINGIFY(PARTICLE_PARAMS_MAX_COUNT_CPU) ">Number of particles alive at once")
+VAR_INFO_ATTRS(fBeamCount, "<Max=100>Number of beams alive at once") //Max is arbitrary max reasonable value for this emitter type
 VAR_INFO_ATTRS(fMaintainDensity, "<SoftMax=1> Increase count when emitter moves to maintain spatial density")
 VAR_INFO_ATTRS(vVelocity, "Simplified speed controller")
 
@@ -165,7 +166,7 @@ VAR_INFO_ATTRS(fBeamAge, "how long should beams stay alive")
 VAR_INFO_ATTRS(vTargetPosition, "location the beam should end at")
 VAR_INFO_ATTRS(vTargetRandOffset, "random offset from the target position the beam will end at")
 VAR_INFO_ATTRS(vBeamUpVector, "determines the number of the peaks and valleys for the wave")
-VAR_INFO_ATTRS(fSegmentCount, "number of segments per beam")
+VAR_INFO_ATTRS(fSegmentCount, "<Max=100>number of segments per beam") // Max is arbitrary max reasonable value for this emitter type
 VAR_INFO_ATTRS(fSegmentLength, "length of segments per beam")
 VAR_INFO_ATTRS(eSegmentType, "type of quad segments generated per beam")
 VAR_INFO_ATTRS(eBeamWaveTangentSource, "which source to set the tangent for")
@@ -333,6 +334,7 @@ VAR_INFO_ATTRS(bStreamable, "Texture/geometry allowed to be streamed")
 VAR_INFO_ATTRS(bVolumeFog, "Use as a participating media of volumetric fog")
 VAR_INFO_ATTRS(fVolumeThickness, "Thickness of participating media, scale for particle size")
 VAR_INFO_ATTRS(nParticleSizeDiscard, "Minimum size in pixels of particle, particles smaller or equal too this value will be discarted")
+VAR_INFO_ATTRS(DepthOfFieldBlur, "Particles will be blurred against depth of field fullscreen effect. (Excluding geometry and decal types)")
 
 ATTRS_INFO("<Group=Configuration>")
 VAR_INFO_ATTRS(eConfigMin, "Minimum config spec this effect runs in")

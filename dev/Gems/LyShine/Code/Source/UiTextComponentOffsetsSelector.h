@@ -20,11 +20,11 @@ struct UiTextComponentOffsetsSelector
 {
     UiTextComponentOffsetsSelector(
         const UiTextComponent::DrawBatchLines& drawBatchLines,
-        const STextDrawContext& fontContext, 
+        const STextDrawContext& fontContext,
         const UiTextInterface::DisplayedTextFunction& displayedTextFunction,
-        float fontSize, 
-        int firstIndex, 
-        int lastIndex, 
+        float fontSize,
+        int firstIndex,
+        int lastIndex,
         int lastIndexLineNumber,
         int lineNumHint)
         : m_drawBatchLines(drawBatchLines)

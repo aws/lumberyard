@@ -63,12 +63,16 @@ CGeomCacheRenderNode::CGeomCacheRenderNode()
 
 CGeomCacheRenderNode::~CGeomCacheRenderNode()
 {
+    Clear(true);
+
     if (m_pGeomCache)
     {
         m_pGeomCache->RemoveListener(this);
+        m_pGeomCache = nullptr;
     }
 
-    Clear(true);
+    m_pMaterial = nullptr;
+    
     Get3DEngine()->FreeRenderNodeState(this);
 }
 
@@ -289,7 +293,7 @@ _smart_ptr<IMaterial> CGeomCacheRenderNode::GetMaterial(Vec3* pHitPos)
 
 float CGeomCacheRenderNode::GetMaxViewDist()
 {
-    return m_maxViewDist;
+    return m_maxViewDist * m_fViewDistanceMultiplier;
 }
 
 void CGeomCacheRenderNode::GetMemoryUsage(ICrySizer* pSizer) const
@@ -347,6 +351,34 @@ bool CGeomCacheRenderNode::LoadGeomCache(const char* sGeomCacheFileName)
     }
 
     return true;
+}
+
+void CGeomCacheRenderNode::SetGeomCache(_smart_ptr<IGeomCache> geomCache)
+{
+    Clear(false);
+
+    if (geomCache == nullptr || !geomCache->IsValid())
+    {
+        return;
+    }
+
+    m_pGeomCache = static_cast<CGeomCache*>(geomCache.get());
+
+    m_currentAABB = m_pGeomCache->GetAABB();
+    m_bBoundsChanged = true;
+    m_pMaterial = m_pGeomCache->GetMaterial();
+
+    const std::vector<SGeomCacheStaticNodeData>& staticNodeData = m_pGeomCache->GetStaticNodeData();
+    m_nodeMatrices.resize(staticNodeData.size());
+    uint currentNodeIndex = 0;
+    InitTransformsRec(currentNodeIndex, staticNodeData, QuatTNS(IDENTITY));
+
+    m_pGeomCache->AddListener(this);
+
+    if (m_pGeomCache->IsLoaded())
+    {
+        Initialize();
+    }
 }
 
 bool CGeomCacheRenderNode::Initialize()

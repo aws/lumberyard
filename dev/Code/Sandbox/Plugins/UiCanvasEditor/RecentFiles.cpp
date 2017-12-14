@@ -65,8 +65,6 @@ void WriteRecentFiles(const QStringList& recentFiles)
 
 void AddRecentFile(const QString& filename)
 {
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
-
     // QSettings -> QStringList.
     QStringList recentFiles = ReadRecentFiles();
 

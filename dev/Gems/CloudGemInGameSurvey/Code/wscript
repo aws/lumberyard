@@ -15,12 +15,10 @@ def build(bld):
 
     bld.DefineGem(
         # Add custom build options here
-        includes = [bld.Path('Code/SDKs/AWSNativeSDK/include')],
  
         file_list = file_list,
  
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
-        shared_settings = ['awsgem.json'],
          
         use = ['CloudGemFrameworkStaticLibrary']
     )

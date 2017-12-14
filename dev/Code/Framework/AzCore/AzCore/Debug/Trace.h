@@ -45,6 +45,12 @@ namespace AZ
         public:
             static Trace& Instance()    { return g_tracer; }
 
+            /**
+            * Returns the default string used for a system window.
+            * It can be useful for Trace message handlers to easily validate if the window they received is the fallback window used by this class,
+            * or to force a Trace message bus handler to do special processing by using a known, consistent char*
+            */
+            static const char* GetDefaultSystemWindow();
             static bool IsDebuggerPresent();
 
             /// True or false if we want to handle system exceptions.
@@ -52,6 +58,9 @@ namespace AZ
 
             /// Breaks program execution immediately.
             static void Break();
+
+            /// Terminates the process with the specified exit code
+            static void Terminate(int exitCode);
 
             static void Assert(const char* fileName, int line, const char* funcName, const char* format, ...);
             static void Error(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);

@@ -151,8 +151,6 @@ private:
 
 //////////////////////////////////////////////////////////////////////////-
 
-static HINSTANCE g_hInstance = 0;
-
 PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
 {
     if (pInitParam->pluginVersion != SANDBOX_PLUGIN_SYSTEM_VERSION)
@@ -173,6 +171,9 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
     return pPlugin;
 }
 
+#if defined(AZ_PLATFORM_WINDOWS)
+static HINSTANCE g_hInstance = 0;
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 {
     if (fdwReason == DLL_PROCESS_ATTACH)
@@ -182,3 +183,4 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 
     return(TRUE);
 }
+#endif

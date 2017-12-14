@@ -5,6 +5,8 @@ local uistartscreen =
 	{
 		SkipStartScreen = { default = false },
 		
+		StartScreenMusic = { default = "StartScreenMusicEvent", description = "Event to start start sceen music" },
+		
 		EnableControlsEvent = { default = "EnableControlsEvent", description = "The event used to enable/disable the player controls." },
 		CutsceneEndedEvent = { default = "CutsceneHasStopped", description = "The event used to catch the end of the cutscene." },
 		PlayCutsceneEvent = { default = "StartCutscene", description = "The event used to start the cutscene." },
@@ -14,9 +16,6 @@ local uistartscreen =
 }
 
 function uistartscreen:OnActivate()
-
-
-
 	-- IMPORTANT: The 'canvas ID' is different to 'self.entityId'.
 	self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("UI/Canvases/uiStartScreen.uicanvas");
 	--Debug.Log("uistartscreen:OnActivate - " .. tostring(self.canvasEntityId));
@@ -37,9 +36,6 @@ function uistartscreen:OnActivate()
 	
 	self.gameStarted = false;
 	self.cutsceneStarted = false;
-	
-	-- AUDIO
-	varPressStartSndEvent = self.Properties.PressStartSndEvent;
 end
 
 function uistartscreen:OnDeactivate()
@@ -54,9 +50,6 @@ function uistartscreen:OnDeactivate()
 		self.endScreenHandler:Disconnect();
 		self.endScreenHandler = nil;
 	end
-
-	-- clear out the persistend data, we dont want it to be that persistent!
-	PersistentDataSystemRequestBus.Broadcast.ClearAllData();
 end
 
 function uistartscreen:OnTick(deltaTime, timePoint)
@@ -86,6 +79,8 @@ function uistartscreen:OnTick(deltaTime, timePoint)
 		self.tickHandler:Disconnect();
 		self.tickHandler = nil;
 	end	
+		
+	AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, self.Properties.StartScreenMusic);
 		
 	-- Check if we should skip the start screen.
 	if (self.Properties.SkipStartScreen == true) then
@@ -143,7 +138,7 @@ function uistartscreen:OnEventBegin(value)
 			self.anyButtonHandler = nil;	
 			
 			-- Audio
-			AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, varPressStartSndEvent);		
+			AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, self.Properties.PressStartSndEvent);		
 		
 			-- Remove the U.I.
 			--Debug.Log("uistartscreen:OnAction - remove screen " .. tostring(self.canvasEntityId));

@@ -1444,15 +1444,6 @@ void CMannKeyPropertiesDlgFE::OnKeySelectionChange()
         m_forceUpdate = false;
         PopulateVariables();
     }
-
-    if (!bAssigned)
-    {
-        m_wndProps->SetDisplayOnlyModified(true);
-    }
-    else
-    {
-        m_wndProps->SetDisplayOnlyModified(false);
-    }
 }
 
 void CMannKeyPropertiesDlgFE::OnUpdate()

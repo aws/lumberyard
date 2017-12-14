@@ -23,16 +23,9 @@
 
 #include "CloudCanvasCommonSystemComponent.h"
 
-#include <aws/core/Aws.h>
-#include <aws/core/utils/logging/DefaultLogSystem.h>
-#include <aws/core/utils/logging/AWSLogging.h>
-#include <aws/core/utils/logging/LogSystemInterface.h>
-#include <aws/core/utils/StringUtils.h>
-#include <aws/core/utils/UnreferencedParam.h>
-#include <aws/core/utils/logging/ConsoleLogSystem.h>
+#include <AWSNativeSDKInit/AWSNativeSDKInit.h>
 
 #include <AzCore/IO/SystemFile.h>
-
 
 namespace CloudCanvasCommon
 {
@@ -41,9 +34,6 @@ namespace CloudCanvasCommon
     const char* CloudCanvasCommonSystemComponent::COMPONENT_DESCRIPTION = "Provides functionality used by other Cloud Canvas gems.";
     const char* CloudCanvasCommonSystemComponent::COMPONENT_CATEGORY = "CloudCanvas";
     const char* CloudCanvasCommonSystemComponent::SERVICE_NAME = "CloudCanvasCommonService";
-
-    const char* CloudCanvasCommonSystemComponent::AWS_API_ALLOC_TAG = "AwsApi";
-    const char* CloudCanvasCommonSystemComponent::AWS_API_LOG_PREFIX = "AwsApi-";
 
     static const char* pakCertPath = "certs/aws/cacert.pem";
 
@@ -90,7 +80,7 @@ namespace CloudCanvasCommon
 
     bool CloudCanvasCommonSystemComponent::IsAwsApiInitialized()
     {
-        return m_awsApiInitialized;
+        return AWSNativeSDKInit::InitializationManager::IsInitialized();
     }
 
     void CloudCanvasCommonSystemComponent::Init()
@@ -141,173 +131,17 @@ namespace CloudCanvasCommon
 
     }
 
-    class LumberyardLogSystemInterface : 
-        public Aws::Utils::Logging::LogSystemInterface
-    {
 
-    public:
-
-        LumberyardLogSystemInterface(Aws::Utils::Logging::LogLevel logLevel)
-            : m_logLevel(logLevel)
-        {
-        }
-
-        /**
-        * Gets the currently configured log level for this logger.
-        */
-        Aws::Utils::Logging::LogLevel GetLogLevel(void) const override
-        {
-            Aws::Utils::Logging::LogLevel newLevel = m_logLevel;
-            if (gEnv && gEnv->pConsole)
-            {
-                ICVar* pCvar = gEnv->pConsole->GetCVar("sys_SetLogLevel");
-
-                if (pCvar)
-                {
-                    newLevel = (Aws::Utils::Logging::LogLevel) pCvar->GetIVal();
-                }
-            }    
-
-            return newLevel != m_logLevel ? newLevel : m_logLevel;            
-        }
-
-        /**
-        * Does a printf style output to the output stream. Don't use this, it's unsafe. See LogStream
-        */
-        void Log(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const char* formatStr, ...)
-        {
-
-            if (!ShouldLog(logLevel))
-            {
-                return;
-            }
-
-            char message[MAX_MESSAGE_LENGTH];
-
-            va_list mark;
-            va_start(mark, formatStr);
-            azvsnprintf(message, MAX_MESSAGE_LENGTH, formatStr, mark);
-            va_end(mark);
-
-            ForwardAwsApiLogMessage(logLevel, tag, message);
-
-        }
-
-        /**
-        * Writes the stream to the output stream.
-        */
-        void LogStream(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const Aws::OStringStream &messageStream)
-        {
-
-            if(!ShouldLog(logLevel)) 
-            {
-                return;
-            }
-
-            ForwardAwsApiLogMessage(logLevel, tag, messageStream.str().c_str());
-
-        }
-
-    private:
-
-        bool ShouldLog(Aws::Utils::Logging::LogLevel logLevel)
-        {
-            Aws::Utils::Logging::LogLevel newLevel = GetLogLevel();
-            if (newLevel > Aws::Utils::Logging::LogLevel::Info && newLevel <= Aws::Utils::Logging::LogLevel::Trace && newLevel != m_logLevel)
-            {
-                SetLogLevel(newLevel);
-            }
-
-            return (logLevel <= m_logLevel);
-        }
-
-        void SetLogLevel(Aws::Utils::Logging::LogLevel newLevel)
-        {
-            Aws::Utils::Logging::ShutdownAWSLogging();
-            Aws::Utils::Logging::InitializeAWSLogging(Aws::MakeShared<LumberyardLogSystemInterface>("AWS", newLevel));
-            m_logLevel = newLevel;
-        }
-
-        static const int MAX_MESSAGE_LENGTH = 4096;
-        Aws::Utils::Logging::LogLevel m_logLevel;
-        const char* MESSAGE_FORMAT = "[AWS] %s - %s";
-
-        void ForwardAwsApiLogMessage(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const char* message)
-        {
-
-            switch (logLevel)
-            {
-
-            case Aws::Utils::Logging::LogLevel::Off:
-                break;
-
-            case Aws::Utils::Logging::LogLevel::Fatal:
-                AZ::Debug::Trace::Instance().Error(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, CloudCanvasCommonSystemComponent::COMPONENT_DISPLAY_NAME, MESSAGE_FORMAT, tag, message);
-                break;
-
-            case Aws::Utils::Logging::LogLevel::Error:
-                AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, CloudCanvasCommonSystemComponent::COMPONENT_DISPLAY_NAME, MESSAGE_FORMAT, tag, message);
-                break;
-
-            case Aws::Utils::Logging::LogLevel::Warn:
-                AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, CloudCanvasCommonSystemComponent::COMPONENT_DISPLAY_NAME, MESSAGE_FORMAT, tag, message);
-                break;
-
-            case Aws::Utils::Logging::LogLevel::Info:
-                AZ::Debug::Trace::Instance().Printf(CloudCanvasCommonSystemComponent::COMPONENT_DISPLAY_NAME, MESSAGE_FORMAT, tag, message);
-                break;
-
-            case Aws::Utils::Logging::LogLevel::Debug:
-                AZ::Debug::Trace::Instance().Printf(CloudCanvasCommonSystemComponent::COMPONENT_DISPLAY_NAME, MESSAGE_FORMAT, tag, message);
-                break;
-
-            case Aws::Utils::Logging::LogLevel::Trace:
-                AZ::Debug::Trace::Instance().Printf(CloudCanvasCommonSystemComponent::COMPONENT_DISPLAY_NAME, MESSAGE_FORMAT, tag, message);
-                break;
-
-            default:
-                break;
-
-            }
-
-        }
-    };
 
     void CloudCanvasCommonSystemComponent::InitAwsApi()
     {
-#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-        Aws::Utils::Logging::LogLevel logLevel;
-#ifdef _DEBUG
-        logLevel = Aws::Utils::Logging::LogLevel::Warn;
-#else
-        logLevel = Aws::Utils::Logging::LogLevel::Warn;
-#endif
-        m_awsSDKOptions.loggingOptions.logLevel = logLevel;
-        m_awsSDKOptions.loggingOptions.logger_create_fn = [logLevel]() 
-        {
-            return Aws::MakeShared<LumberyardLogSystemInterface>("AWS", logLevel);
-        };
-
-        m_awsSDKOptions.memoryManagementOptions.memoryManager = &m_memoryManager;
-
-
-        Aws::InitAPI(m_awsSDKOptions);
-
-        m_awsApiInitialized = true;
-#endif // #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
+        AWSNativeSDKInit::InitializationManager::InitAwsApi();
     }
 
     void CloudCanvasCommonSystemComponent::ShutdownAwsApi()
     {
-#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-        m_awsApiInitialized = false;
-        Aws::ShutdownAPI(m_awsSDKOptions);
 
-#endif // #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
     }
-
-
-
 
 
     CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::LmbrRequestRootCAFile(AZStd::string& resultPath)

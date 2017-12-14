@@ -30,7 +30,6 @@
 #include <MCore/Source/AttributeVector3.h>
 #include <MCore/Source/AttributeVector4.h>
 #include <MCore/Source/AttributeQuaternion.h>
-#include <MCore/Source/AttributeMatrix.h>
 #include <MCore/Source/AttributeColor.h>
 
 
@@ -90,15 +89,15 @@ namespace EMotionFX
         };
 
         static AttributeRotation* Create();
-        static AttributeRotation* Create(const MCore::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order);
+        static AttributeRotation* Create(const AZ::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order);
         static AttributeRotation* Create(float xDeg, float yDeg, float zDeg);
 
         void UpdateRotationQuaternion();
 
         const MCore::Quaternion& GetRotationQuaternion() const              { return mRotation; }
         const MCore::Matrix GetRotationMatrix() const                       { return mRotation.ToMatrix(); }
-        const MCore::Vector3& GetRotationAngles() const                     { return mDegrees; }
-        void SetRotationAngles(const MCore::Vector3& degrees, bool updateQuat = true)
+        const AZ::Vector3& GetRotationAngles() const                        { return mDegrees; }
+        void SetRotationAngles(const AZ::Vector3& degrees, bool updateQuat = true)
         {
             mDegrees = degrees;
             if (updateQuat)
@@ -106,14 +105,14 @@ namespace EMotionFX
                 UpdateRotationQuaternion();
             }
         }
-        void SetDirect(const MCore::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order)       { mDegrees = angles; mRotation = quat; mOrder = order; }
+        void SetDirect(const AZ::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order)       { mDegrees = angles; mRotation = quat; mOrder = order; }
         void SetDirect(const MCore::Quaternion& quat, bool updateAngles = false)
         {
             if (updateAngles)
             {
                 mOrder = ROTATIONORDER_ZYX;
-                MCore::Vector3 euler = quat.ToEuler();
-                mDegrees.Set(MCore::Math::RadiansToDegrees(euler.x), MCore::Math::RadiansToDegrees(euler.y), MCore::Math::RadiansToDegrees(euler.z));
+                AZ::Vector3 euler = quat.ToEuler();
+                mDegrees.Set(MCore::Math::RadiansToDegrees(euler.GetX()), MCore::Math::RadiansToDegrees(euler.GetY()), MCore::Math::RadiansToDegrees(euler.GetZ()));
             }
             mRotation = quat;
         }
@@ -164,9 +163,9 @@ namespace EMotionFX
             }
 
             // convert the string parts into floats
-            mDegrees.x  = values[0].ToFloat();
-            mDegrees.y  = values[1].ToFloat();
-            mDegrees.z  = values[2].ToFloat();
+            mDegrees.SetX(values[0].ToFloat());
+            mDegrees.SetY(values[1].ToFloat());
+            mDegrees.SetZ(values[2].ToFloat());
             mRotation.x = values[3].ToFloat();
             mRotation.y = values[4].ToFloat();
             mRotation.z = values[5].ToFloat();
@@ -186,17 +185,17 @@ namespace EMotionFX
             return true;
         }
 
-        bool ConvertToString(MCore::String& outString) const override       { outString.Format("%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d", mDegrees.x, mDegrees.y, mDegrees.z, mRotation.x, mRotation.y, mRotation.z, mRotation.w, mOrder); return true; }
+        bool ConvertToString(MCore::String& outString) const override       { outString.Format("%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d", mDegrees.GetX(), mDegrees.GetY(), mDegrees.GetZ(), mRotation.x, mRotation.y, mRotation.z, mRotation.w, mOrder); return true; }
         uint32 GetClassSize() const override                                { return sizeof(AttributeRotation); }
 
     private:
         MCore::Quaternion   mRotation;      /**< The unit quaternion rotation. */
-        MCore::Vector3      mDegrees;       /**< The rotation angles. As programmer you don't need to setup these values. They are only to display in the GUI. */
+        AZ::Vector3         mDegrees;       /**< The rotation angles. As programmer you don't need to setup these values. They are only to display in the GUI. */
         ERotationOrder      mOrder;         /**< The rotation order, which defaults to ZYX. */
 
         AttributeRotation()
-            : MCore::Attribute(TYPE_ID)                         { mDegrees.Zero(); mOrder = ROTATIONORDER_ZYX; }
-        AttributeRotation(const MCore::Vector3& angles, const MCore::Quaternion& quat)
+            : MCore::Attribute(TYPE_ID)                         { mDegrees = AZ::Vector3::CreateZero(); mOrder = ROTATIONORDER_ZYX; }
+        AttributeRotation(const AZ::Vector3& angles, const MCore::Quaternion& quat)
             : MCore::Attribute(TYPE_ID)      { mDegrees = angles; mRotation = quat; mOrder = ROTATIONORDER_ZYX; }
         AttributeRotation(float xDeg, float yDeg, float zDeg)
             : MCore::Attribute(TYPE_ID)                         { mOrder = ROTATIONORDER_ZYX; mDegrees.Set(xDeg, yDeg, zDeg); UpdateRotationQuaternion(); }
@@ -634,19 +633,28 @@ namespace EMotionFX
         {
             TYPE_ID = 0x00003001
         };
+        enum class TypeFlags : AZ::u8
+        {
+            None = 0,
+            UserSetCoordinateX = 1 << 0,   // Flag set if the x coordinate is set by the user instead of being auto computed.
+            BlendSpace1D = 1 << 1,
+            BlendSpace2D = 1 << 2,
+            UserSetCoordinateY = 1 << 3,   // Flag set if the y coordinate is set by the user instead of being auto computed.
+            InvalidMotion = 1 << 4    // Flag set when the motion is invalid
+        };
 
         static AttributeBlendSpaceMotion* Create();
         static AttributeBlendSpaceMotion* Create(const AZStd::string& motionId);
-        static AttributeBlendSpaceMotion* Create(const AZStd::string& motionId, const AZ::Vector2& coordinates, AZ::u8 typeFlags);
+        static AttributeBlendSpaceMotion* Create(const AZStd::string& motionId, const AZ::Vector2& coordinates, TypeFlags typeFlags = TypeFlags::None);
 
-        void Set(const AZStd::string& motionId, const AZ::Vector2& coordinates, AZ::u8 typeFlags);
+        void Set(const AZStd::string& motionId, const AZ::Vector2& coordinates, TypeFlags typeFlags = TypeFlags::None);
         AZ_INLINE const AZStd::string& GetMotionId() const                  { return m_motionId; }
 
         AZ_INLINE const AZ::Vector2& GetCoordinates() const                 { return m_coordinates; }
-        
+
         AZ_INLINE float GetXCoordinate() const                              { return m_coordinates.GetX(); }
         AZ_INLINE float GetYCoordinate() const                              { return m_coordinates.GetY(); }
-        
+
         AZ_INLINE void SetXCoordinate(float x)                              { m_coordinates.SetX(x); }
         AZ_INLINE void SetYCoordinate(float y)                              { m_coordinates.SetY(y); }
 
@@ -655,46 +663,54 @@ namespace EMotionFX
 
         void MarkXCoordinateSetByUser(bool setByUser);
         void MarkYCoordinateSetByUser(bool setByUser);
-        
+
         int GetDimension() const;
         void SetDimension(int dimension);
 
-    public:
         // MCore::Attribute overrides
-        MCore::Attribute* Clone() const override                            { return Create(m_motionId, m_coordinates, mTypeFlags); }
-        MCore::Attribute* CreateInstance(void* destMemory) override         { return new(destMemory) AttributeBlendSpaceMotion(); }
-        const char* GetTypeString() const override                          { return "BlendSpaceMotion"; }
-        uint8 GetStreamWriteVersion() const override                        { return 1; }  
-        uint32 GetDefaultInterfaceType() const override                     { return ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS; }
-        bool InitFrom(const MCore::Attribute* other) override;
+        MCore::Attribute*   Clone() const override { return Create(m_motionId, m_coordinates, m_TypeFlags); }
+        MCore::Attribute*   CreateInstance(void* destMemory) override { return new(destMemory) AttributeBlendSpaceMotion(); }
+        const char*         GetTypeString() const override { return "BlendSpaceMotion"; }
+        uint8               GetStreamWriteVersion() const override { return 1; }
+        uint32              GetDefaultInterfaceType() const override { return ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS; }
+        bool                InitFrom(const MCore::Attribute* other) override;
 
-        bool InitFromString(const MCore::String& valueString) override;
-        bool ConvertToString(MCore::String& outString) const override;
-        uint32 GetClassSize() const override                                { return sizeof(AttributeBlendSpaceMotion); }
-        uint32 GetDataSize() const override;
+        bool                InitFromString(const MCore::String& valueString) override;
+        bool                ConvertToString(MCore::String& outString) const override;
+        uint32              GetClassSize() const override { return sizeof(AttributeBlendSpaceMotion); }
+        uint32              GetDataSize() const override;
+
+        AZ_INLINE void SetFlag(TypeFlags flag);
+        AZ_INLINE void UnsetFlag(TypeFlags flag);
+        AZ_INLINE bool TestFlag(TypeFlags flag) const;
 
     protected:
         // MCore::Attribute overrides
         bool ReadData(MCore::Stream* stream, MCore::Endian::EEndianType streamEndianType, uint8 version) override;
         bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override;
 
-    private:
-        enum TypeFlags
-        {
-            UserSetCoordinateX  = 1 << 0,   // Flag set if the x coordinate is set by the user instead of being auto computed.
-            BlendSpace1D        = 1 << 1,
-            BlendSpace2D        = 1 << 2,
-            UserSetCoordinateY  = 1 << 3    // Flag set if the y coordinate is set by the user instead of being auto computed.
-        };
 
     private:
         AttributeBlendSpaceMotion();
-        AttributeBlendSpaceMotion(const AZStd::string& motionName, const AZ::Vector2& coordinates, AZ::u8 typeFlags);
+        AttributeBlendSpaceMotion(const AZStd::string& motionName, const AZ::Vector2& coordinates, TypeFlags typeFlags);
         ~AttributeBlendSpaceMotion() {}
 
     private:
         AZStd::string   m_motionId;
         AZ::Vector2     m_coordinates; // Coordinates of the motion in blend space
-        AZ::u8          mTypeFlags;
+        TypeFlags       m_TypeFlags;
     };
+
+    AZ_INLINE AttributeBlendSpaceMotion::TypeFlags operator~(AttributeBlendSpaceMotion::TypeFlags a) { return static_cast<AttributeBlendSpaceMotion::TypeFlags>(~static_cast<AZ::u8>(a)); }
+    AZ_INLINE AttributeBlendSpaceMotion::TypeFlags operator| (AttributeBlendSpaceMotion::TypeFlags a, AttributeBlendSpaceMotion::TypeFlags b) { return static_cast<AttributeBlendSpaceMotion::TypeFlags>(static_cast<AZ::u8>(a) | static_cast<AZ::u8>(b)); }
+    AZ_INLINE AttributeBlendSpaceMotion::TypeFlags operator& (AttributeBlendSpaceMotion::TypeFlags a, AttributeBlendSpaceMotion::TypeFlags b) { return static_cast<AttributeBlendSpaceMotion::TypeFlags>(static_cast<AZ::u8>(a) & static_cast<AZ::u8>(b)); }
+    AZ_INLINE AttributeBlendSpaceMotion::TypeFlags operator^ (AttributeBlendSpaceMotion::TypeFlags a, AttributeBlendSpaceMotion::TypeFlags b) { return static_cast<AttributeBlendSpaceMotion::TypeFlags>(static_cast<AZ::u8>(a) ^ static_cast<AZ::u8>(b)); }
+    AZ_INLINE AttributeBlendSpaceMotion::TypeFlags& operator|= (AttributeBlendSpaceMotion::TypeFlags& a, AttributeBlendSpaceMotion::TypeFlags b) { (AZ::u8&)(a) |= static_cast<AZ::u8>(b); return a; }
+    AZ_INLINE AttributeBlendSpaceMotion::TypeFlags& operator&= (AttributeBlendSpaceMotion::TypeFlags& a, AttributeBlendSpaceMotion::TypeFlags b) { (AZ::u8&)(a) &= static_cast<AZ::u8>(b); return a; }
+    AZ_INLINE AttributeBlendSpaceMotion::TypeFlags& operator^= (AttributeBlendSpaceMotion::TypeFlags& a, AttributeBlendSpaceMotion::TypeFlags b) { (AZ::u8&)(a) ^= static_cast<AZ::u8>(b); return a; }
+
+    void AttributeBlendSpaceMotion::SetFlag(TypeFlags flag) { m_TypeFlags |= flag; }
+    void AttributeBlendSpaceMotion::UnsetFlag(TypeFlags flag) { m_TypeFlags &= ~flag; }
+    bool AttributeBlendSpaceMotion::TestFlag(TypeFlags flag) const { return (m_TypeFlags & flag) == flag; }
+
 } // namespace EMotionFX

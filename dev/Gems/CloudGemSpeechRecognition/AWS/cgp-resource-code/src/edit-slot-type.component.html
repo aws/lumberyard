@@ -1,0 +1,42 @@
+﻿<div [ngSwitch]="isLoadingSlotType">
+    <div *ngSwitchCase="true">
+        <div class="loading-spinner-container">
+            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+        </div>
+    </div>
+    <div class="content-container" *ngSwitchCase="false">
+        <div *ngIf="currentSlotType.version != '$LATEST'" class="boxed">
+            <span class="boxed-content">{{oldVersionWarning}}</span>
+        </div>
+        <h2 class="inline-header">{{currentSlotType["name"]}}</h2>
+        <select class="version-list" [(ngModel)]="currentSlotType.version" (ngModelChange)="getSlotType(this.currentSlotType)">
+            <ng-container *ngFor="let slotType of currentSlotType.versions">
+                <option class="version-option" *ngIf="slotType.version != '$LATEST'" [ngValue]="slotType.version">{{slotType.version}}</option>
+                <option class="version-option" *ngIf="slotType.version == '$LATEST'" [ngValue]="slotType.version">Latest</option>
+            </ng-container>
+        </select>
+        <fieldset [disabled]="currentSlotType['version'] != '$LATEST'">
+            <div class="slot-description">
+                <input class="slot-type-property-entry form-control" type="text" [(ngModel)]="currentSlotType['description']" />
+            </div>
+            <div class="slot-type-property">
+                <h3 class="inline-header">Value</h3>
+                <i class="fa fa-question-circle-o" aria-hidden="true" placement="right" [ngbTooltip]="'Values are a representative sample for this slot type.'"></i>
+            </div>
+            <div *ngIf="currentSlotType['version'] == '$LATEST'" class="slot-type-input">
+                <input class="slot-type-property-entry form-control" type="text" [(ngModel)]="newSlotTypeValue" placeholder="e.g. Small" />
+                <button class="btn l-primary basic-button add-button" (click)="addNewSlotTypeValue()" data-toggle="tooltip" data-placement="top" title="Add a new value">Add</button>
+            </div>
+            <div *ngFor="let slotTypeValue of currentSlotType['enumerationValues'] let i = index" class="slot-type-input">
+                <input class="slot-type-property-entry form-control" type="text" [ngModel]="currentSlotType['enumerationValues'][i]['value']" (ngModelChange)="slotTypeValueChange($event, i)" />
+                <i *ngIf="currentSlotType['version'] == '$LATEST'" class="fa fa fa-trash-o" aria-hidden="true" (click)="removeSlotTypeValue(i)" data-toggle="tooltip" data-placement="top" title="Delete the value"></i>
+            </div>
+            <hr>
+            <div>
+                <button class="btn l-primary basic-button" (click)="saveSlotType()">
+                    Save Slot Type
+                </button>
+            </div>
+        </fieldset>
+    </div>
+</div>

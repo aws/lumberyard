@@ -15,6 +15,8 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/bitset.h>
+#include <AzCore/Outcome/Outcome.h>
 
 namespace AZ
 {
@@ -34,6 +36,17 @@ namespace AZ
             AZ::Data::AssetType m_assetType = s_invalidAssetType;
             AZ::u64 m_sizeBytes = 0;
             AZStd::string m_relativePath; // (legacy asset name)
+        };
+
+        struct ProductDependency
+        {
+            AZ_TYPE_INFO(ProductDependency, "{5b9a8f1c-407a-4d2b-88f4-a79584684cc4}");
+
+            ProductDependency() = default;
+            ProductDependency(const AZ::Data::AssetId& assetId, AZStd::bitset<64> flags) : m_assetId(assetId), m_flags(flags) {}
+
+            AZ::Data::AssetId m_assetId;
+            AZStd::bitset<64> m_flags;
         };
 
         /**
@@ -110,6 +123,16 @@ namespace AZ
             /// \param path - asset full or asset-root relative path.
             /// \return AssetId computed from path. Returned Id will be invalid if input path is full, but not under the asset root.
             virtual AZ::Data::AssetId GenerateAssetIdTEMP(const char* /*path*/) { return AZ::Data::AssetId(); }
+
+            /// Retrieves a list of all products the given (product) asset directly depends on.
+            /// \param id - the id of the asset to look up the dependencies for
+            /// \return AZ::Success containing a list of dependencies, AZ::Failure if id is not found
+            virtual AZ::Outcome<AZStd::vector<ProductDependency>, AZStd::string> GetDirectProductDependencies(const AssetId& /*id*/) { return AZ::Failure<AZStd::string>("Not implemented"); }
+
+            /// Retrieves a list of all products the given (product) asset depends on (recursively).
+            /// \param id - the id of the asset to look up the dependencies for
+            /// \return AZ::Success containing a list of dependencies
+            virtual AZ::Outcome<AZStd::vector<ProductDependency>, AZStd::string> GetAllProductDependencies(const AssetId& /*id*/) { return AZ::Failure<AZStd::string>("Not implemented"); }
 
             using BeginAssetEnumerationCB = AZStd::function< void() >;
             using AssetEnumerationCB = AZStd::function< void(const AZ::Data::AssetId /*id*/, const AZ::Data::AssetInfo& /*info*/) >;

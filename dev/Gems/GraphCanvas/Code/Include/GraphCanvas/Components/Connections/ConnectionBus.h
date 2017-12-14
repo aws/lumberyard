@@ -178,7 +178,7 @@ namespace GraphCanvas
         //! This is sent when attempting to create a given connection.
         virtual bool CreateConnection(const AZ::EntityId& connectionId, const Endpoint& sourcePoint, const Endpoint& targetPoint) = 0;
 
-        //! This is sent to confirm wether or not a connection can take place.
+        //! This is sent to confirm whether or not a connection can take place.
         virtual bool IsValidConnection(const Endpoint& sourcePoint, const Endpoint& targetPoint) const = 0;
 
         //! This is sent to confirm whether or not a variable assignment can take place.

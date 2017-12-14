@@ -13,8 +13,88 @@
 #include "PropertyRowWidget.hxx"
 #include "PropertyQTConstants.h"
 
+#include <QtWidgets/QHBoxLayout>
+#include <QtGui/QFontMetrics>
+#include <QtGui/QTextLayout>
+#include <QtGui/QPainter>
+
 namespace AzToolsFramework
 {
+
+    ElidingLabel::ElidingLabel(QWidget* parent /* = nullptr */)
+        : QWidget(parent)
+        , m_label(new QLabel(this))
+    {
+        auto layout = new QHBoxLayout(this);
+        layout->setMargin(0);
+        layout->addWidget(m_label);
+    }
+
+    void ElidingLabel::SetText(const QString& text)
+    {
+        if (text == m_text)
+        {
+            return;
+        }
+
+        m_text = text;
+        m_label->setText(m_text);
+        m_elidedText.clear();
+        update();
+    }
+
+    void ElidingLabel::SetDescription(const QString& description)
+    {
+        m_description = description;
+    }
+
+    void ElidingLabel::paintEvent(QPaintEvent* event)
+    {
+        Elide();
+        QWidget::paintEvent(event);
+    }
+
+    void ElidingLabel::resizeEvent(QResizeEvent* event)
+    {
+        m_elidedText.clear();
+        QWidget::resizeEvent(event);
+    }
+
+    void ElidingLabel::Elide()
+    {
+        if (!m_elidedText.isEmpty()) {
+            return;
+        }
+
+        QPainter painter(this);
+        QFontMetrics fontMetrics = painter.fontMetrics();
+        m_elidedText = fontMetrics.elidedText(m_text, Qt::ElideRight, m_label->contentsRect().width());
+        m_label->setText(m_elidedText);
+
+        if (m_elidedText != m_text)
+        {
+            if (m_description.isEmpty())
+            {
+                setToolTip(m_text);
+            }
+            else
+            {
+                setToolTip(m_text + "\n" + m_description);
+            }
+        }
+        else
+        {
+            setToolTip(m_description);
+        }
+    }
+
+    void ElidingLabel::RefreshStyle()
+    {
+        m_label->style()->unpolish(m_label);
+        m_label->style()->polish(m_label);
+        m_label->update();
+    }
+
     PropertyRowWidget::PropertyRowWidget(QWidget* pParent)
         : QFrame(pParent)
     {
@@ -60,7 +140,7 @@ namespace AzToolsFramework
 
         m_leftHandSideLayout->addSpacerItem(m_indent);
 
-        m_nameLabel = aznew QLabel(this);
+        m_nameLabel = aznew ElidingLabel(this);
         m_nameLabel->setObjectName("Name");
         m_nameLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
         m_nameLabel->setFixedHeight(16);
@@ -124,7 +204,11 @@ namespace AzToolsFramework
         m_handler = nullptr;
         m_isMultiSizeContainer = false;
         m_isFixedSizeOrSmartPtrContainer = false;
-        m_isSelected = false;
+        if (m_selectionEnabled) 
+        {
+            SetSelected(false);
+        }
+        m_readOnly = false;
         m_defaultValueString.clear();
         m_changeNotifiers.clear();
 
@@ -133,10 +217,6 @@ namespace AzToolsFramework
         delete m_elementRemoveButton;
 
         setToolTip("");
-        if (m_nameLabel)
-        {
-            m_nameLabel->setToolTip("");
-        }
     }
 
     void PropertyRowWidget::createContainerButtons()
@@ -154,7 +234,6 @@ namespace AzToolsFramework
             m_containerClearButton->setFixedSize(QSize(16, 16));
             m_containerClearButton->setIcon(s_iconClear);
             m_containerClearButton->setToolTip(tr("Remove all elements"));
-            m_containerClearButton->setEnabled(!m_readOnly && m_containerEditable && m_containerSize > 0);
 
             m_containerAddButton = aznew QPushButton(this);
             m_containerAddButton->setFlat(true);
@@ -163,10 +242,11 @@ namespace AzToolsFramework
             m_containerAddButton->setFixedSize(QSize(16, 16));
             m_containerAddButton->setIcon(s_iconAdd);
             m_containerAddButton->setToolTip(tr("Add new child element"));
-            m_containerAddButton->setEnabled(!m_readOnly);
 
             m_rightHandSideLayout->insertWidget(0, m_containerClearButton);
             m_rightHandSideLayout->insertWidget(1, m_containerAddButton);
+
+            UpdateEnabledState();
 
             connect(m_containerClearButton, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedClearContainerButton);
             connect(m_containerAddButton, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedAddElementButton);
@@ -271,8 +351,6 @@ namespace AzToolsFramework
             m_containerClearButton->setVisible(m_containerEditable && !m_isFixedSizeOrSmartPtrContainer);
             m_containerAddButton->setVisible(m_containerEditable && !m_isMultiSizeContainer && !m_isFixedSizeOrSmartPtrContainer);
 
-            SetReadOnly(false);
-
             if (m_isMultiSizeContainer)
             {
                 m_containerAddButton->hide();
@@ -305,7 +383,7 @@ namespace AzToolsFramework
                 m_elementRemoveButton->setFixedSize(QSize(16, 16));
                 m_elementRemoveButton->setIcon(s_iconRemove);
                 m_elementRemoveButton->setToolTip(tr("Remove this element"));
-                m_elementRemoveButton->setEnabled(!m_readOnly);
+                m_elementRemoveButton->setDisabled(m_readOnly);
                 m_rightHandSideLayout->insertWidget(m_rightHandSideLayout->count(), m_elementRemoveButton);
                 connect(m_elementRemoveButton, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedRemoveElementButton);
                 m_elementRemoveButton->setVisible(!m_parentRow->m_isFixedSizeOrSmartPtrContainer);
@@ -330,7 +408,7 @@ namespace AzToolsFramework
 
     QString PropertyRowWidget::label() const
     {
-        return m_nameLabel->text();
+        return m_nameLabel->Text();
     }
 
     void PropertyRowWidget::SetNameLabel(const char* text)
@@ -339,7 +417,7 @@ namespace AzToolsFramework
 
         label = text;
 
-        m_nameLabel->setText(label);
+        m_nameLabel->SetText(label);
         m_nameLabel->setVisible(!label.isEmpty());
         m_leftAreaContainer->setFixedWidth(CalculateLabelWidth());
         m_identifier = AZ::Crc32(label.toUtf8().data());
@@ -348,7 +426,7 @@ namespace AzToolsFramework
     void PropertyRowWidget::SetDescription(const QString& text)
     {
         setToolTip(text);
-        m_nameLabel->setToolTip(text);
+        m_nameLabel->SetDescription(text);
     }
 
     void PropertyRowWidget::SetOverridden(bool overridden)
@@ -370,9 +448,7 @@ namespace AzToolsFramework
         style()->polish(this);
         update();
 
-        m_nameLabel->style()->unpolish(m_nameLabel);
-        m_nameLabel->style()->polish(m_nameLabel);
-        m_nameLabel->update();
+        m_nameLabel->RefreshStyle();
     }
 
     void PropertyRowWidget::OnValuesUpdated()
@@ -652,6 +728,8 @@ namespace AzToolsFramework
             }
         }
 
+        UpdateDefaultLabel(m_sourceNode); // Container items display a default value
+
         if (m_sourceNode->GetClassMetadata())
         {
             const AZ::Edit::ClassData* classEditData = m_sourceNode->GetClassMetadata()->m_editData;
@@ -718,6 +796,8 @@ namespace AzToolsFramework
         m_middleLayout->addWidget(pChild);
         pChild->show();
 
+        m_childWidget->setDisabled(m_readOnly);
+
         QWidget* pfirstTarget = m_handler->GetFirstInTabOrder_Internal(pChild);
         if (pfirstTarget)
         {
@@ -776,17 +856,18 @@ namespace AzToolsFramework
         {
             m_forbidExpansion = true;
         }
-        else if (attributeName == AZ_CRC("Enabled", 0x50f9bb84))
+        else if (attributeName == AZ::Edit::Attributes::ReadOnly)
         {
             bool value;
             if (reader.Read<bool>(value))
             {
-                setEnabled(value);
+                m_readOnly = value;
+                UpdateEnabledState();
             }
             else
             {
                 // emit a warning!
-                AZ_WarningOnce("Property Editor", false, "Failed to read 'Enabled' attribute from property into Spin Box");
+                AZ_WarningOnce("Property Editor", false, "Failed to read 'ReadOnly' attribute from property");
             }
         }
         else if (attributeName == AZ::Edit::Attributes::NameLabelOverride)
@@ -1258,28 +1339,26 @@ namespace AzToolsFramework
         m_defaultLabel->hide();
     }
 
-    void PropertyRowWidget::SetReadOnly(bool readOnly)
+    void PropertyRowWidget::UpdateEnabledState()
     {
-        m_readOnly = readOnly;
-
         if (m_containerClearButton)
         {
-            m_containerClearButton->setEnabled(!readOnly && m_containerEditable && m_containerSize > 0);
+            m_containerClearButton->setEnabled(!m_readOnly && m_containerEditable && m_containerSize > 0);
         }
 
         if (m_containerAddButton)
         {
-            m_containerAddButton->setEnabled(!readOnly);
+            m_containerAddButton->setDisabled(m_readOnly);
         }
 
         if (m_elementRemoveButton)
         {
-            m_elementRemoveButton->setEnabled(!readOnly);
+            m_elementRemoveButton->setDisabled(m_readOnly);
         }
 
         if (m_childWidget)
         {
-            m_childWidget->setEnabled(!readOnly);
+            m_childWidget->setDisabled(m_readOnly);
         }
     }
 }

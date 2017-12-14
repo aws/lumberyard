@@ -22,6 +22,7 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 
 #include <IEntityRenderState.h>
+#include <IDeformableNode.h>
 
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
@@ -41,7 +42,6 @@ namespace LmbrCentral
         : public IRenderNode
         , public AZ::TransformNotificationBus::Handler
         , public AZ::Data::AssetBus::Handler
-        , public AzFramework::LegacyAssetEventBus::Handler
     {
         friend class EditorMeshComponent;
     public:
@@ -95,6 +95,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // AZ::Data::AssetBus::Handler
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+        void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -106,6 +107,7 @@ namespace LmbrCentral
         // IRenderNode interface implementation
         void Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo) override;
         bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const override;
+        float GetFirstLodDistance() const override { return m_lodDistance; }
         EERType GetRenderNodeType() override;
         const char* GetName() const override;
         const char* GetEntityClassName() const override;
@@ -172,12 +174,6 @@ namespace LmbrCentral
         //! Applies configured render options to the render node.
         void ApplyRenderOptions();
 
-
-        // override from LegacyAssetEventBus::Handler
-        // Notifies listeners that a file changed
-        void OnFileChanged(AZStd::string assetPath) override;
-        void OnFileRemoved(AZStd::string assetPath) override;
-
         class MeshRenderOptions
         {
         public:
@@ -207,7 +203,18 @@ namespace LmbrCentral
 
             AZStd::function<void()> m_changeCallback;
 
-            AZ::u32 OnChanged()
+            //Due to the fact that some ui elements like sliders don't seem to work properly with
+            //entire tree refreshes we needed to have two on change functions.
+            AZ::u32 OnMinorChanged()
+            {
+                if (m_changeCallback)
+                {
+                    m_changeCallback();
+                }
+                return AZ::Edit::PropertyRefreshLevels::None;
+            }
+
+            AZ::u32 OnMajorChanged()
             {
                 if (m_changeCallback)
                 {
@@ -256,6 +263,7 @@ namespace LmbrCentral
         //! Reference to current asset
         AZ::Data::Asset<MeshAsset> m_meshAsset;
         MeshPtr m_statObj;
+        IDeformableNode* m_deformNode;
 
         //! Computed LOD distance.
         float m_lodDistance;
@@ -307,14 +315,14 @@ namespace LmbrCentral
         _smart_ptr<IMaterial> GetMaterial() override;
         void SetMaterialHandle(MaterialHandle) override;
         MaterialHandle GetMaterialHandle() override;
-        void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/) override;
-        void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/) override;
-        void SetMaterialParamColor(const AZStd::string& /*name*/, const AZ::Color& /*value*/) override;
-        void SetMaterialParamFloat(const AZStd::string& /*name*/, float /*value*/) override;
-        AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/) override;
-        AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/) override;
-        AZ::Color   GetMaterialParamColor(const AZStd::string& /*name*/) override;
-        float       GetMaterialParamFloat(const AZStd::string& /*name*/) override;
+        void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/, int /*materialId = 1*/) override;
+        void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/, int /*materialId = 1*/) override;
+        void SetMaterialParamColor(const AZStd::string& /*name*/, const AZ::Color& /*value*/, int /*materialId = 1*/) override;
+        void SetMaterialParamFloat(const AZStd::string& /*name*/, float /*value*/, int /*materialId = 1*/) override;
+        AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/, int /*materialId = 1*/) override;
+        AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/, int /*materialId = 1*/) override;
+        AZ::Color   GetMaterialParamColor(const AZStd::string& /*name*/, int /*materialId = 1*/) override;
+        float       GetMaterialParamFloat(const AZStd::string& /*name*/, int /*materialId = 1*/) override;
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

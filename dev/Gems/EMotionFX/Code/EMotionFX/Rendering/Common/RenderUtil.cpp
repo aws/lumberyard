@@ -120,19 +120,19 @@ namespace MCommon
 
 
     // render a grid
-    void RenderUtil::RenderGrid(AZ::Vector2 start, AZ::Vector2 end, const MCore::Vector3& normal, float scale, const MCore::RGBAColor& mainAxisColor, const MCore::RGBAColor& gridColor, const MCore::RGBAColor& subStepColor, bool directlyRender)
+    void RenderUtil::RenderGrid(AZ::Vector2 start, AZ::Vector2 end, const AZ::Vector3& normal, float scale, const MCore::RGBAColor& mainAxisColor, const MCore::RGBAColor& gridColor, const MCore::RGBAColor& subStepColor, bool directlyRender)
     {
         start.SetX(start.GetX() - MCore::Math::FMod(start.GetX(), scale));
         start.SetY(start.GetY() - MCore::Math::FMod(start.GetY(), scale));
         end.SetX(end.GetX() - MCore::Math::FMod(end.GetX(), scale));
         end.SetY(end.GetY() - MCore::Math::FMod(end.GetY(), scale));
 
-        MCore::Vector3 gridLineStart, gridLineEnd;
+        AZ::Vector3 gridLineStart, gridLineEnd;
         MCore::RGBAColor color;
 
         MCore::Matrix matRotate;
         matRotate.Identity();
-        matRotate.SetRotationMatrixTwoVectors(MCore::Vector3(0.0f, 1.0f, 0.0f), normal);
+        matRotate.SetRotationMatrixTwoVectors(AZ::Vector3(0.0f, 1.0f, 0.0f), normal);
 
         const uint32    gridBlockSize       = 5;
         const uint32    numVerticalLines    = static_cast<uint32>((end.GetX() - start.GetX()) / scale);// x component
@@ -144,12 +144,12 @@ namespace MCommon
         for (uint32 x = 0; x <= numVerticalLines; ++x)
         {
             gridLineStart.Set(start.GetX() + x * scale, 0.0f, start.GetY());
-            gridLineEnd.Set(gridLineStart.x, 0.0f, end.GetY());
+            gridLineEnd.Set(gridLineStart.GetX(), 0.0f, end.GetY());
 
-            const float fmodStartValue = MCore::Math::FMod(MCore::Math::Abs(gridLineStart.x), scaledGridBlockSize);
+            const float fmodStartValue = MCore::Math::FMod(MCore::Math::Abs(gridLineStart.GetX()), scaledGridBlockSize);
 
             // coordinate axis
-            if (MCore::Compare<float>::CheckIfIsClose(gridLineStart.x, 0.0f, maxFmodError))
+            if (MCore::Compare<float>::CheckIfIsClose(gridLineStart.GetX(), 0.0f, maxFmodError))
             {
                 color = mainAxisColor;
             }
@@ -172,18 +172,18 @@ namespace MCommon
         // render all horizontal grid lines
         for (uint32 y = 0; y <= numHorizontalLines; ++y)
         {
-            gridLineStart.z = start.GetY() + y * scale;
-            gridLineStart.x = start.GetX();
-            gridLineEnd.z   = gridLineStart.z;
-            gridLineEnd.x   = end.GetX();
+            gridLineStart.SetZ(start.GetY() + y * scale);
+            gridLineStart.SetX(start.GetX());
+            gridLineEnd.SetZ(gridLineStart.GetZ());
+            gridLineEnd.SetX(end.GetX());
 
             gridLineStart.Set(start.GetX(), 0.0f, start.GetY() + y * scale);
-            gridLineEnd.Set(end.GetX(), 0.0f, gridLineStart.z);
+            gridLineEnd.Set(end.GetX(), 0.0f, gridLineStart.GetZ());
 
-            const float fmodStartValue = MCore::Math::FMod(MCore::Math::Abs(gridLineStart.z), scaledGridBlockSize);
+            const float fmodStartValue = MCore::Math::FMod(MCore::Math::Abs(gridLineStart.GetZ()), scaledGridBlockSize);
 
             // coordinate axis
-            if (MCore::Compare<float>::CheckIfIsClose(gridLineStart.z, 0.0f, maxFmodError))
+            if (MCore::Compare<float>::CheckIfIsClose(gridLineStart.GetZ(), 0.0f, maxFmodError))
             {
                 color = mainAxisColor;
             }
@@ -200,6 +200,7 @@ namespace MCommon
 
             gridLineStart = matRotate.Mul3x3(gridLineStart);
             gridLineEnd   = matRotate.Mul3x3(gridLineEnd);
+
             RenderLine(gridLineStart, gridLineEnd, color);
         }
 
@@ -213,19 +214,19 @@ namespace MCommon
     // render the current bounding box of the given actor instance
     void RenderUtil::RenderAABB(const MCore::AABB& box, const MCore::RGBAColor& color, bool directlyRender)
     {
-        MCore::Vector3 min = box.GetMin();
-        MCore::Vector3 max = box.GetMax();
+        AZ::Vector3 min = box.GetMin();
+        AZ::Vector3 max = box.GetMax();
 
         // generate our vertices
-        MCore::Vector3 p[8];
-        p[0].Set(min.x, min.y, min.z);
-        p[1].Set(max.x, min.y, min.z);
-        p[2].Set(max.x, min.y, max.z);
-        p[3].Set(min.x, min.y, max.z);
-        p[4].Set(min.x, max.y, min.z);
-        p[5].Set(max.x, max.y, min.z);
-        p[6].Set(max.x, max.y, max.z);
-        p[7].Set(min.x, max.y, max.z);
+        AZ::Vector3 p[8];
+        p[0].Set(min.GetX(), min.GetY(), min.GetZ());
+        p[1].Set(max.GetX(), min.GetY(), min.GetZ());
+        p[2].Set(max.GetX(), min.GetY(), max.GetZ());
+        p[3].Set(min.GetX(), min.GetY(), max.GetZ());
+        p[4].Set(min.GetX(), max.GetY(), min.GetZ());
+        p[5].Set(max.GetX(), max.GetY(), min.GetZ());
+        p[6].Set(max.GetX(), max.GetY(), max.GetZ());
+        p[7].Set(min.GetX(), max.GetY(), max.GetZ());
 
         // render the box
         RenderLine(p[0], p[1], color);
@@ -254,23 +255,23 @@ namespace MCommon
     void RenderUtil::RenderSelection(const MCore::AABB& box, const MCore::RGBAColor& color, bool directlyRender)
     {
         //const Vector3 center  = box.CalcMiddle();
-        const MCore::Vector3    min     = box.GetMin();// + (box.GetMin()-center).Normalized()*0.005f;
-        const MCore::Vector3    max     = box.GetMax();// + (box.GetMax()-center).Normalized()*0.005f;
+        const AZ::Vector3       min     = box.GetMin();// + (box.GetMin()-center).Normalized()*0.005f;
+        const AZ::Vector3       max     = box.GetMax();// + (box.GetMax()-center).Normalized()*0.005f;
         const float             scale   = box.CalcRadius() * 0.1f;
-        const MCore::Vector3    up      = MCore::Vector3(0.0f, 1.0f, 0.0f) * scale;
-        const MCore::Vector3    right   = MCore::Vector3(1.0f, 0.0f, 0.0f) * scale;
-        const MCore::Vector3    front   = MCore::Vector3(0.0f, 0.0f, 1.0f) * scale;
+        const AZ::Vector3       up      = AZ::Vector3(0.0f, 1.0f, 0.0f) * scale;
+        const AZ::Vector3       right   = AZ::Vector3(1.0f, 0.0f, 0.0f) * scale;
+        const AZ::Vector3       front   = AZ::Vector3(0.0f, 0.0f, 1.0f) * scale;
 
         // generate our vertices
-        MCore::Vector3 p[8];
-        p[0].Set(min.x, min.y, min.z);
-        p[1].Set(max.x, min.y, min.z);
-        p[2].Set(max.x, min.y, max.z);
-        p[3].Set(min.x, min.y, max.z);
-        p[4].Set(min.x, max.y, min.z);
-        p[5].Set(max.x, max.y, min.z);
-        p[6].Set(max.x, max.y, max.z);
-        p[7].Set(min.x, max.y, max.z);
+        AZ::Vector3 p[8];
+        p[0].Set(min.GetX(), min.GetY(), min.GetZ());
+        p[1].Set(max.GetX(), min.GetY(), min.GetZ());
+        p[2].Set(max.GetX(), min.GetY(), max.GetZ());
+        p[3].Set(min.GetX(), min.GetY(), max.GetZ());
+        p[4].Set(min.GetX(), max.GetY(), min.GetZ());
+        p[5].Set(max.GetX(), max.GetY(), min.GetZ());
+        p[6].Set(max.GetX(), max.GetY(), max.GetZ());
+        p[7].Set(min.GetX(), max.GetY(), max.GetZ());
 
         // render the box
         RenderLine(p[0], p[0] + up,    color);
@@ -427,8 +428,8 @@ namespace MCommon
             {
                 // draw a line between the current node and its parent node
                 // here we first calculate the start and end position of the line, which are just the global space positions of the nodes
-                MCore::Vector3 startPos = globalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
-                MCore::Vector3 endPos    = globalMatrices[ parentIndex ].GetTranslation();
+                AZ::Vector3 startPos = globalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
+                AZ::Vector3 endPos    = globalMatrices[ parentIndex ].GetTranslation();
 
                 // finally draw the line
                 if (selectedNodeIndices != NULL && selectedNodeIndices->GetIsEmpty() == false && selectedNodeIndices->Find(parentIndex) != MCORE_INVALIDINDEX32)
@@ -452,7 +453,7 @@ namespace MCommon
     // render object orientated bounding  boxes for all enabled nodes inside the actor instance
     void RenderUtil::RenderOBBs(EMotionFX::ActorInstance* actorInstance, MCore::Array<uint32>* visibleNodeIndices, MCore::Array<uint32>* selectedNodeIndices, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, bool directlyRender)
     {
-        MCore::Vector3 p[8];
+        AZ::Vector3 p[8];
 
         // get the actor it is an instance from
         EMotionFX::Actor* actor = actorInstance->GetActor();
@@ -539,16 +540,16 @@ namespace MCommon
 
         const float scale = 0.01f * offsetScale;
 
-        MCore::Vector3* normals     = (MCore::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
-        MCore::Vector3* positions   = (MCore::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
+        AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+        AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
         uint32*         indices     = (uint32*)mesh->GetIndices();
         uint8*          vtxCounts   = (uint8*)mesh->GetPolygonVertexCounts();
 
         uint32 indexA;
         uint32 indexB;
         uint32 curIndex = 0;
-        MCore::Vector3 posA;
-        MCore::Vector3 posB;
+        AZ::Vector3 posA;
+        AZ::Vector3 posB;
         const uint32 numPolygons = mesh->GetNumPolygons();
         for (uint32 p = 0; p < numPolygons; ++p)
         {
@@ -557,8 +558,8 @@ namespace MCommon
             {
                 indexA = indices[curIndex + i];
                 indexB = (i < numPolyVerts - 1) ? indices[curIndex + i + 1] : indices[curIndex];
-                posA = (positions[indexA] + normals[indexA] * scale) * globalTM;
-                posB = (positions[indexB] + normals[indexB] * scale) * globalTM;
+                posA = (AZ::Vector3(positions[indexA]) + AZ::Vector3(normals[indexA]) * scale) * globalTM;
+                posB = (AZ::Vector3(positions[indexB]) + AZ::Vector3(normals[indexB]) * scale) * globalTM;
                 RenderLine(posA, posB, color);
             }
 
@@ -606,7 +607,7 @@ namespace MCommon
 
         PrepareForMesh(mesh, globalTM);
 
-        MCore::Vector3* normals     = (MCore::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+        AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
         uint32*         indices     = (uint32*)mesh->GetIndices();
         const uint32    numVertices = mesh->GetNumVertices();
         uint8*          vertCounts  = mesh->GetPolygonVertexCounts();
@@ -614,8 +615,8 @@ namespace MCommon
         // render face normals
         if (faceNormals)
         {
-            MCore::Vector3 posA, posB, posC;
-            MCore::Vector3 normalDir, normalPos;
+            AZ::Vector3 posA, posB, posC;
+            AZ::Vector3 normalDir, normalPos;
             uint32 indexA, indexB, indexC;
             uint32 polyStartIndex = 0;
             const uint32 numPolygons = mesh->GetNumPolygons();
@@ -632,10 +633,10 @@ namespace MCommon
                 posB = mGlobalPositions[ indexB ];
                 posC = mGlobalPositions[ indexC ];
 
-                normalDir   = (posB - posA).Cross(posC - posA).FastNormalize();
+                normalDir   = (posB - posA).Cross(posC - posA).GetNormalized();
 
                 // calculate the center pos
-                normalPos.Zero();
+                normalPos = AZ::Vector3::CreateZero();
                 for (uint32 v = 0; v < numPolyVerts; ++v)
                 {
                     normalPos += mGlobalPositions[ indices[polyStartIndex + v] ];
@@ -651,10 +652,10 @@ namespace MCommon
         // render vertex normals
         if (vertexNormals)
         {
-            MCore::Vector3 normal;
+            AZ::Vector3 normal;
             for (uint32 j = 0; j < numVertices; ++j)
             {
-                normal = globalTM.Mul3x3(normals[j]) * vertexNormalsScale;
+                normal = globalTM.Mul3x3(AZ::Vector3(normals[j])) * vertexNormalsScale;
                 RenderLine(mGlobalPositions[j], mGlobalPositions[j] + normal, colorVertexNormals);
             }
         }
@@ -684,17 +685,17 @@ namespace MCommon
 
         PrepareForMesh(mesh, globalTM);
 
-        MCore::Vector3*     normals     = (MCore::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+        AZ::PackedVector3f*     normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
         const uint32    numVertices = mesh->GetNumVertices();
 
         // render the tangents and binormals
-        MCore::Vector3 position, orgTangent, tangent, biNormal;
+        AZ::Vector3 position, orgTangent, tangent, biNormal;
         for (uint32 i = 0; i < numVertices; ++i)
         {
             orgTangent.Set(tangents[i].GetX(), tangents[i].GetY(), tangents[i].GetZ());
-            tangent     = globalTM.Mul3x3(orgTangent).FastNormalize();
-            biNormal    = tangents[i].GetW() * (normals[i].Cross(orgTangent));
-            biNormal    = globalTM.Mul3x3(biNormal).FastNormalize();
+            tangent     = globalTM.Mul3x3(orgTangent).GetNormalized();
+            biNormal    = tangents[i].GetW() * (AZ::Vector3(normals[i]).Cross(orgTangent));
+            biNormal    = globalTM.Mul3x3(biNormal).GetNormalized();
 
             RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (tangent * scale), colorTangents);
 
@@ -729,7 +730,7 @@ namespace MCommon
 
         // get the number of vertices and the data
         const uint32    numVertices = mCurrentMesh->GetNumVertices();
-        MCore::Vector3* positions   = (MCore::Vector3*)mCurrentMesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
+        AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mCurrentMesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
 
         // check if the vertices fits in our buffer
         if (mGlobalPositions.GetLength() < numVertices)
@@ -740,7 +741,7 @@ namespace MCommon
         // pre-calculate the global space positions
         for (uint32 i = 0; i < numVertices; ++i)
         {
-            mGlobalPositions[i] = positions[i] * globalTM;
+            mGlobalPositions[i] = AZ::Vector3(positions[i]) * globalTM;
         }
     }
 
@@ -753,13 +754,13 @@ namespace MCommon
 
         const uint32            nodeIndex       = node->GetNodeIndex();
         const uint32            parentIndex     = node->GetParentIndex();
-        const MCore::Vector3    nodeGlobalPos   = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
+        const AZ::Vector3       nodeGlobalPos   = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
 
         if (parentIndex != MCORE_INVALIDINDEX32)
         {
-            const MCore::Vector3    parentGlobalPos = transformData->GetGlobalInclusiveMatrix(parentIndex).GetTranslation();
-            const MCore::Vector3    bone            = parentGlobalPos - nodeGlobalPos;
-            const float             boneLength      = bone.SafeLength();
+            const AZ::Vector3       parentGlobalPos = transformData->GetGlobalInclusiveMatrix(parentIndex).GetTranslation();
+            const AZ::Vector3       bone            = parentGlobalPos - nodeGlobalPos;
+            const float             boneLength      = MCore::SafeLength(bone);
 
             // 10% of the bone length is the sphere size
             return boneLength * 0.1f;
@@ -806,15 +807,15 @@ namespace MCommon
                 (visibleNodeIndices->GetIsEmpty()) ||
                 (visibleNodeIndices->GetIsEmpty() == false && visibleNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32))
             {
-                const MCore::Vector3    nodeGlobalPos       = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
-                const MCore::Vector3    parentGlobalPos     = transformData->GetGlobalInclusiveMatrix(parentIndex).GetTranslation();
-                const MCore::Vector3    bone                = parentGlobalPos - nodeGlobalPos;
-                const MCore::Vector3    boneDirection       = bone.SafeNormalized();
-                const float             boneLength          = bone.SafeLength();
+                const AZ::Vector3       nodeGlobalPos       = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
+                const AZ::Vector3       parentGlobalPos     = transformData->GetGlobalInclusiveMatrix(parentIndex).GetTranslation();
+                const AZ::Vector3       bone                = parentGlobalPos - nodeGlobalPos;
+                const AZ::Vector3       boneDirection       = MCore::SafeNormalize(bone);
+                const float             boneLength          = MCore::SafeLength(bone);
                 const float             boneScale           = GetBoneScale(actorInstance, node);
                 const float             parentBoneScale     = GetBoneScale(actorInstance, skeleton->GetNode(parentIndex));
                 const float             cylinderSize        = boneLength - boneScale - parentBoneScale;
-                const MCore::Vector3    boneStartPosition   = nodeGlobalPos + boneDirection * boneScale;
+                const AZ::Vector3       boneStartPosition   = nodeGlobalPos + boneDirection * boneScale;
 
                 // check if the current bone is selected and set the color according to it
                 if (selectedNodeIndices != NULL && selectedNodeIndices->GetIsEmpty() == false && selectedNodeIndices->Find(parentIndex) != MCORE_INVALIDINDEX32)
@@ -931,8 +932,8 @@ namespace MCommon
             {
                 // draw a line between the current node and its parent node
                 // here we first calculate the start and end position of the line, which are just the global space positions of the nodes
-                MCore::Vector3 startPos     = globalSpaceBindPoseMatrices[ nodeIndex ].GetTranslation();
-                MCore::Vector3 endPos       = globalSpaceBindPoseMatrices[ parentIndex ].GetTranslation();
+                AZ::Vector3 startPos     = globalSpaceBindPoseMatrices[ nodeIndex ].GetTranslation();
+                AZ::Vector3 endPos       = globalSpaceBindPoseMatrices[ parentIndex ].GetTranslation();
 
                 // finally draw the line
                 RenderLine(startPos, endPos, color);
@@ -977,32 +978,32 @@ namespace MCommon
         }
 
         // reset all normals to the zero vector
-        MCore::MemSet(mNormals, 0, sizeof(MCore::Vector3) * mNumVertices);
+        MCore::MemSet(mNormals, 0, sizeof(AZ::PackedVector3f) * mNumVertices);
 
         // iterate through all vertices and sum up the face normals
         uint32 i;
         uint32 indexA, indexB, indexC;
-        MCore::Vector3 v1, v2, normal;
+        AZ::Vector3 v1, v2, normal;
         for (i = 0; i < mNumIndices; i += 3)
         {
             indexA = mIndices[i];
             indexB = mIndices[i + (counterClockWise ? 1 : 2)];
             indexC = mIndices[i + (counterClockWise ? 2 : 1)];
 
-            v1 = mPositions[indexB] - mPositions[indexA];
-            v2 = mPositions[indexC] - mPositions[indexA];
+            v1 = AZ::Vector3(mPositions[indexB]) - AZ::Vector3(mPositions[indexA]);
+            v2 = AZ::Vector3(mPositions[indexC]) - AZ::Vector3(mPositions[indexA]);
 
             normal = v1.Cross(v2);
 
-            mNormals[indexA] += normal;
-            mNormals[indexB] += normal;
-            mNormals[indexC] += normal;
+            mNormals[indexA] = AZ::PackedVector3f(AZ::Vector3(mNormals[indexA]) + normal);
+            mNormals[indexB] = AZ::PackedVector3f(AZ::Vector3(mNormals[indexB]) + normal);
+            mNormals[indexC] = AZ::PackedVector3f(AZ::Vector3(mNormals[indexC]) + normal);
         }
 
         // normalize all the normals
         for (i = 0; i < mNumVertices; ++i)
         {
-            mNormals[i].Normalize();
+            mNormals[i] = AZ::PackedVector3f(AZ::Vector3(mNormals[i]).GetNormalized());
         }
     }
 
@@ -1018,11 +1019,11 @@ namespace MCommon
         mNumIndices = numIndices;
 
         // allocate the buffers
-        mPositions  = new MCore::Vector3[numVertices];
+        mPositions  = new AZ::PackedVector3f[numVertices];
         mIndices    = new uint32[numIndices];
         if (hasNormals)
         {
-            mNormals = new MCore::Vector3[numVertices];
+            mNormals = new AZ::PackedVector3f[numVertices];
         }
     }
 
@@ -1065,8 +1066,8 @@ namespace MCommon
             const float z = MCore::Math::Sin(p);
             const float y = MCore::Math::Cos(p);
 
-            mesh->mPositions[i]               = MCore::Vector3(0.0f,    y * baseRadius, z * baseRadius);
-            mesh->mPositions[i + numSegments] = MCore::Vector3(-length, y * topRadius,  z * topRadius);
+            mesh->mPositions[i]               = AZ::PackedVector3f(0.0f,    y * baseRadius, z * baseRadius);
+            mesh->mPositions[i + numSegments] = AZ::PackedVector3f(-length, y * topRadius,  z * topRadius);
         }
 
         // fill in the indices
@@ -1094,14 +1095,14 @@ namespace MCommon
 
 
     // render the given cylinder
-    void RenderUtil::RenderCylinder(float baseRadius, float topRadius, float length, const MCore::Vector3& position, const MCore::Vector3& direction, const MCore::RGBAColor& color)
+    void RenderUtil::RenderCylinder(float baseRadius, float topRadius, float length, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color)
     {
         MCore::Matrix globalTM;
 
         // rotate the cylinder to the desired direction
-        if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(direction, MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::epsilon) == false)
+        if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(direction, AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::epsilon) == false)
         {
-            globalTM.SetRotationMatrixAxisAngle(MCore::Vector3(-1.0f, 0.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(MCore::Vector3(-1.0f, 0.0f, 0.0f))));
+            globalTM.SetRotationMatrixAxisAngle(AZ::Vector3(-1.0f, 0.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(-1.0f, 0.0f, 0.0f))));
         }
         else
         {
@@ -1147,18 +1148,18 @@ namespace MCommon
                 const float x = r * MCore::Math::Sin(p);
                 const float y = r * MCore::Math::Cos(p);
 
-                sphereMesh->mPositions[(i - 1) * numSegments + j] = MCore::Vector3(x, y, z * radius);
+                sphereMesh->mPositions[(i - 1) * numSegments + j] = AZ::PackedVector3f(x, y, z * radius);
             }
         }
 
         // the highest and lowest vertices
-        sphereMesh->mPositions[(numSegments - 2) * numSegments + 0]   = MCore::Vector3(0.0f, 0.0f,  radius);
-        sphereMesh->mPositions[(numSegments - 2) * numSegments + 1]   = MCore::Vector3(0.0f, 0.0f, -radius);
+        sphereMesh->mPositions[(numSegments - 2) * numSegments + 0]   = AZ::PackedVector3f(0.0f, 0.0f,  radius);
+        sphereMesh->mPositions[(numSegments - 2) * numSegments + 1]   = AZ::PackedVector3f(0.0f, 0.0f, -radius);
 
         // calculate normals
         for (i = 0; i < sphereMesh->mNumVertices; ++i)
         {
-            sphereMesh->mNormals[i] = -sphereMesh->mPositions[i].Normalized();
+            sphereMesh->mNormals[i] = AZ::PackedVector3f(-AZ::Vector3(sphereMesh->mPositions[i]).GetNormalized());
         }
 
         // fill the indices
@@ -1213,11 +1214,11 @@ namespace MCommon
 
 
     // render the given sphere
-    void RenderUtil::RenderSphere(const MCore::Vector3& position, float radius, const MCore::RGBAColor& color)
+    void RenderUtil::RenderSphere(const AZ::Vector3& position, float radius, const MCore::RGBAColor& color)
     {
         // setup the global space matrix of the sphere
         MCore::Matrix sphereMatrix;
-        sphereMatrix.SetScaleMatrix(MCore::Vector3(radius, radius, radius));
+        sphereMatrix.SetScaleMatrix(AZ::Vector3(radius, radius, radius));
         sphereMatrix.SetTranslation(position);
 
         // render the sphere
@@ -1226,10 +1227,10 @@ namespace MCommon
 
 
     // render a circle using the RenderLine and RenderTriangles function
-    void RenderUtil::RenderCircle(const MCore::Matrix& globalTM, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle, float endAngle, bool fillCircle, const MCore::RGBAColor& fillColor, bool cullFaces, const MCore::Vector3& camRollAxis)
+    void RenderUtil::RenderCircle(const MCore::Matrix& globalTM, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle, float endAngle, bool fillCircle, const MCore::RGBAColor& fillColor, bool cullFaces, const AZ::Vector3& camRollAxis)
     {
         // if culling is enabled but cam roll axis has not been set return without rendering
-        if (cullFaces && camRollAxis == MCore::Vector3(0.0f, 0.0f, 0.0f))
+        if (cullFaces && camRollAxis == AZ::Vector3::CreateZero())
         {
             return;
         }
@@ -1257,15 +1258,16 @@ namespace MCommon
             const float y2 = radius * MCore::Math::Cos(p2);
 
             // convert position values into 3D vectors
-            MCore::Vector3 pos1(x1, y1, 0.0f);
-            MCore::Vector3 pos2(x2, y2, 0.0f);
+            AZ::Vector3 pos1(x1, y1, 0.0f);
+            AZ::Vector3 pos2(x2, y2, 0.0f);
 
             // perform global transformation
             pos1 = globalTM.Mul3x3(pos1) + globalTM.GetTranslation();
             pos2 = globalTM.Mul3x3(pos2) + globalTM.GetTranslation();
 
             // render line segment
-            if (cullFaces == false || MCore::InRange(MCore::Math::ACos((pos2 - globalTM.GetTranslation()).Normalize().Dot(camRollAxis)), MCore::Math::halfPi - (MCore::Math::halfPi / 18.0f), MCore::Math::pi))
+            if (cullFaces == false ||
+                MCore::InRange(MCore::Math::ACos((pos2 - globalTM.GetTranslation()).GetNormalized().Dot(camRollAxis)), MCore::Math::halfPi - (MCore::Math::halfPi / 18.0f), MCore::Math::pi))
             {
                 RenderLine(pos1, pos2, color);
             }
@@ -1290,14 +1292,14 @@ namespace MCommon
         mesh->Allocate(numVertices, numTriangles * 3, true);
 
         // define the vertices
-        mesh->mPositions[0] = MCore::Vector3(-0.5f, -0.5f, -0.5f) * size;
-        mesh->mPositions[1] = MCore::Vector3(0.5f, -0.5f, -0.5f) * size;
-        mesh->mPositions[2] = MCore::Vector3(0.5f, 0.5f, -0.5f) * size;
-        mesh->mPositions[3] = MCore::Vector3(-0.5f, 0.5f, -0.5f) * size;
-        mesh->mPositions[4] = MCore::Vector3(-0.5f, -0.5f, 0.5f) * size;
-        mesh->mPositions[5] = MCore::Vector3(0.5f, -0.5f, 0.5f) * size;
-        mesh->mPositions[6] = MCore::Vector3(0.5f, 0.5f, 0.5f) * size;
-        mesh->mPositions[7] = MCore::Vector3(-0.5f, 0.5f, 0.5f) * size;
+        mesh->mPositions[0] = AZ::PackedVector3f(AZ::Vector3(-0.5f, -0.5f, -0.5f) * size);
+        mesh->mPositions[1] = AZ::PackedVector3f(AZ::Vector3(0.5f, -0.5f, -0.5f) * size);
+        mesh->mPositions[2] = AZ::PackedVector3f(AZ::Vector3(0.5f, 0.5f, -0.5f) * size);
+        mesh->mPositions[3] = AZ::PackedVector3f(AZ::Vector3(-0.5f, 0.5f, -0.5f) * size);
+        mesh->mPositions[4] = AZ::PackedVector3f(AZ::Vector3(-0.5f, -0.5f, 0.5f) * size);
+        mesh->mPositions[5] = AZ::PackedVector3f(AZ::Vector3(0.5f, -0.5f, 0.5f) * size);
+        mesh->mPositions[6] = AZ::PackedVector3f(AZ::Vector3(0.5f, 0.5f, 0.5f) * size);
+        mesh->mPositions[7] = AZ::PackedVector3f(AZ::Vector3(-0.5f, 0.5f, 0.5f) * size);
 
         // define the indices
         mesh->mIndices[0]   = 0;
@@ -1346,7 +1348,7 @@ namespace MCommon
 
 
     // render a cube
-    void RenderUtil::RenderCube(const MCore::Vector3& size, const MCore::Vector3& position, const MCore::RGBAColor& color)
+    void RenderUtil::RenderCube(const AZ::Vector3& size, const AZ::Vector3& position, const MCore::RGBAColor& color)
     {
         // setup the global space matrix of the cube
         MCore::Matrix cubeMatrix;
@@ -1385,7 +1387,7 @@ namespace MCommon
     // fill the arrow head mesh vertices, indices and recalculate the normals if desired
     void RenderUtil::FillArrowHead(UtilMesh* mesh, float height, float radius, bool calculateNormals)
     {
-        static MCore::Vector3   points[12];
+        static AZ::Vector3      points[12];
         uint32                  pointNr     = 0;
         const uint32            numVertices = mesh->mNumVertices;
         const uint32            numTriangles = numVertices / 3;
@@ -1407,17 +1409,17 @@ namespace MCommon
             float theta     = MCore::Math::DegreesToRadians(static_cast<float>(angle));
             float x         = MCore::Math::Cos(theta) * radius;
             float z         = MCore::Math::Sin(theta) * radius;
-            points[pointNr] = MCore::Vector3(x, 0.0f, z);
+            points[pointNr] = AZ::Vector3(x, 0.0f, z);
             pointNr++;
         }
 
         // get some data used for constructing the arrow head mesh
         uint32  vertexNr;
-        MCore::Vector3 segmentPoint;
-        //MCore::Vector3 center     = MCore::Vector3(0.0f, height * 0.25f, 0.0f);   // real arrow head
-        MCore::Vector3 center           = MCore::Vector3(0.0f, 0.0f, 0.0f);     // normal cone
-        MCore::Vector3 top              = MCore::Vector3(0.0f, height, 0.0f);
-        MCore::Vector3 previousPoint    = points[(numSegments - 1)];
+        AZ::Vector3 segmentPoint;
+        //AZ::Vector3 center     = AZ::Vector3(0.0f, height * 0.25f, 0.0f);   // real arrow head
+        AZ::Vector3 center           = AZ::Vector3::CreateZero();     // normal cone
+        AZ::Vector3 top              = AZ::Vector3(0.0f, height, 0.0f);
+        AZ::Vector3 previousPoint    = points[(numSegments - 1)];
 
         for (uint32 i = 0; i < numSegments; ++i)
         {
@@ -1426,14 +1428,14 @@ namespace MCommon
             vertexNr        = i * 6;
 
             // triangle 1
-            mesh->mPositions[vertexNr + 0] = segmentPoint;
-            mesh->mPositions[vertexNr + 1] = previousPoint;
-            mesh->mPositions[vertexNr + 2] = center;
+            mesh->mPositions[vertexNr + 0] = AZ::PackedVector3f(segmentPoint);
+            mesh->mPositions[vertexNr + 1] = AZ::PackedVector3f(previousPoint);
+            mesh->mPositions[vertexNr + 2] = AZ::PackedVector3f(center);
 
             // triangle 2
-            mesh->mPositions[vertexNr + 3] = previousPoint;
-            mesh->mPositions[vertexNr + 4] = segmentPoint;
-            mesh->mPositions[vertexNr + 5] = top;
+            mesh->mPositions[vertexNr + 3] = AZ::PackedVector3f(previousPoint);
+            mesh->mPositions[vertexNr + 4] = AZ::PackedVector3f(segmentPoint);
+            mesh->mPositions[vertexNr + 5] = AZ::PackedVector3f(top);
 
             // postprocess data
             previousPoint = segmentPoint;
@@ -1448,14 +1450,14 @@ namespace MCommon
 
 
     // render the given arrow head
-    void RenderUtil::RenderArrowHead(float height, float radius, const MCore::Vector3& position, const MCore::Vector3& direction, const MCore::RGBAColor& color)
+    void RenderUtil::RenderArrowHead(float height, float radius, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color)
     {
         MCore::Matrix globalTM;
 
         // rotate the arrow head to the desired direction
-        if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(direction, MCore::Vector3(0.0f, -1.0f, 0.0f), MCore::Math::epsilon) == false)
+        if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(direction, AZ::Vector3(0.0f, -1.0f, 0.0f), MCore::Math::epsilon) == false)
         {
-            globalTM.SetRotationMatrixAxisAngle(MCore::Vector3(0.0f, 1.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(MCore::Vector3(0.0f, 1.0f, 0.0f))));
+            globalTM.SetRotationMatrixAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))));
         }
         else
         {
@@ -1471,7 +1473,7 @@ namespace MCommon
 
 
     // render mesh based axis
-    void RenderUtil::RenderAxis(float size, const MCore::Vector3& position, const MCore::Vector3& right, const MCore::Vector3& up, const MCore::Vector3& forward)
+    void RenderUtil::RenderAxis(float size, const AZ::Vector3& position, const AZ::Vector3& right, const AZ::Vector3& up, const AZ::Vector3& forward)
     {
         const float                     zeroSphereRadius    = size * 0.075f;
         const float                     arrowHeadRadius     = size * 0.1f;
@@ -1517,12 +1519,12 @@ namespace MCommon
     {
         const float             size                = settings.mSize;
         const MCore::Matrix&    globalTM            = settings.mGlobalTM;
-        const MCore::Vector3&   cameraRight         = settings.mCameraRight;
-        const MCore::Vector3&   cameraUp            = settings.mCameraUp;
+        const AZ::Vector3&      cameraRight         = settings.mCameraRight;
+        const AZ::Vector3&      cameraUp            = settings.mCameraUp;
         const float             arrowHeadRadius     = size * 0.1f;
         const float             arrowHeadHeight     = size * 0.3f;
         const float             axisHeight          = size * 0.7f;
-        const MCore::Vector3    position            = globalTM.GetTranslation();
+        const AZ::Vector3       position            = globalTM.GetTranslation();
 
         if (settings.mRenderXAxis)
         {
@@ -1539,14 +1541,14 @@ namespace MCommon
                 xSelectedColor = xAxisColor;
             }
 
-            const MCore::Vector3    xAxisDir            = (MCore::Vector3(size, 0.0f, 0.0f) * globalTM - position).Normalized();
-            const MCore::Vector3    xAxisArrowStart     = position + xAxisDir * axisHeight;
+            const AZ::Vector3       xAxisDir = (AZ::Vector3(size, 0.0f, 0.0f) * globalTM - position).GetNormalized();
+            const AZ::Vector3       xAxisArrowStart = position + xAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, xAxisArrowStart, xAxisDir, xSelectedColor);
             RenderLine(position, xAxisArrowStart, xAxisColor);
 
             if (settings.mRenderXAxisName)
             {
-                const MCore::Vector3 xNamePos = position + xAxisDir * (size * 1.15f);
+                const AZ::Vector3 xNamePos = position + xAxisDir * (size * 1.15f);
                 RenderLine(xNamePos + cameraUp * (-0.15f * size) + cameraRight * (0.1f * size),    xNamePos + cameraUp * (0.15f * size) + cameraRight * (-0.1f * size),    xAxisColor);
                 RenderLine(xNamePos + cameraUp * (-0.15f * size) + cameraRight * (-0.1f * size),   xNamePos + cameraUp * (0.15f * size) + cameraRight * (0.1f * size),     xAxisColor);
             }
@@ -1567,14 +1569,14 @@ namespace MCommon
                 ySelectedColor = yAxisColor;
             }
 
-            const MCore::Vector3    yAxisDir            = (MCore::Vector3(0.0f, size, 0.0f) * globalTM - position).Normalized();
-            const MCore::Vector3    yAxisArrowStart     = position + yAxisDir * axisHeight;
+            const AZ::Vector3       yAxisDir = (AZ::Vector3(0.0f, size, 0.0f) * globalTM - position).GetNormalized();
+            const AZ::Vector3       yAxisArrowStart = position + yAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, yAxisArrowStart, yAxisDir, ySelectedColor);
             RenderLine(position, yAxisArrowStart, yAxisColor);
 
             if (settings.mRenderYAxisName)
             {
-                const MCore::Vector3 yNamePos = position + yAxisDir * (size * 1.15f);
+                const AZ::Vector3 yNamePos = position + yAxisDir * (size * 1.15f);
                 RenderLine(yNamePos,   yNamePos + cameraRight * (-0.1f * size) + cameraUp * (0.15f * size),    yAxisColor);
                 RenderLine(yNamePos,   yNamePos + cameraRight * (0.1f * size) + cameraUp * (0.15f * size),     yAxisColor);
                 RenderLine(yNamePos,   yNamePos + cameraUp * (-0.15f * size),                              yAxisColor);
@@ -1596,14 +1598,14 @@ namespace MCommon
                 zSelectedColor = zAxisColor;
             }
 
-            const MCore::Vector3    zAxisDir            = (MCore::Vector3(0.0f, 0.0f, size) * globalTM - position).Normalized();
-            const MCore::Vector3    zAxisArrowStart     = position + zAxisDir * axisHeight;
+            const AZ::Vector3       zAxisDir = (AZ::Vector3(0.0f, 0.0f, size) * globalTM - position).GetNormalized();
+            const AZ::Vector3       zAxisArrowStart = position + zAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, zAxisArrowStart, zAxisDir, zSelectedColor);
             RenderLine(position, zAxisArrowStart, zAxisColor);
 
             if (settings.mRenderZAxisName)
             {
-                const MCore::Vector3 zNamePos = position + zAxisDir * (size * 1.15f);
+                const AZ::Vector3 zNamePos = position + zAxisDir * (size * 1.15f);
                 RenderLine(zNamePos + cameraRight * (-0.1f * size) + cameraUp * (0.15f * size),    zNamePos + cameraRight * (0.1f * size) + cameraUp * (0.15f * size),            zAxisColor);
                 RenderLine(zNamePos + cameraRight * (0.1f * size) + cameraUp * (0.15f * size),    zNamePos + cameraRight * (-0.1f * size) + cameraUp * (-0.15f * size),           zAxisColor);
                 RenderLine(zNamePos + cameraRight * (-0.1f * size) + cameraUp * (-0.15f * size),   zNamePos + cameraRight * (0.1f * size) + cameraUp * (-0.15f * size),           zAxisColor);
@@ -1623,62 +1625,62 @@ namespace MCommon
             MCore::Matrix invProj = camera->GetProjectionMatrix();
             MCore::Matrix invView = camera->GetViewMatrix();
 
-            MCore::Vector3 a = UnprojectOrtho(0.0f, 0.0f, static_cast<float>(screenWidth), static_cast<float>(screenHeight), -1.0f, invProj, invView);
-            MCore::Vector3 b = UnprojectOrtho(static_cast<float>(screenWidth), static_cast<float>(screenHeight), static_cast<float>(screenWidth), static_cast<float>(screenHeight), 1.0f, invProj, invView);
+            AZ::Vector3 a = UnprojectOrtho(0.0f, 0.0f, static_cast<float>(screenWidth), static_cast<float>(screenHeight), -1.0f, invProj, invView);
+            AZ::Vector3 b = UnprojectOrtho(static_cast<float>(screenWidth), static_cast<float>(screenHeight), static_cast<float>(screenWidth), static_cast<float>(screenHeight), 1.0f, invProj, invView);
 
             OrthographicCamera* orthoCamera = static_cast<OrthographicCamera*>(camera);
             switch (orthoCamera->GetMode())
             {
             case OrthographicCamera::VIEWMODE_FRONT:
             {
-                gridStart.SetX(MCore::Min(a.x, b.x) - unitSize);
-                gridStart.SetY(MCore::Min(a.y, b.y) - unitSize);
-                gridEnd.SetX(MCore::Max(a.x, b.x) + unitSize);
-                gridEnd.SetY(MCore::Max(a.y, b.y) + unitSize);
+                gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetY(), b.GetY()) - unitSize);
+                gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetY(), b.GetY()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_BACK:
             {
-                a = MCore::Vector3(a.x, -a.y, a.z);
-                b = MCore::Vector3(b.x, -b.y, b.z);
-                gridStart.SetX(MCore::Min(a.x, b.x) - unitSize);
-                gridStart.SetY(MCore::Min(a.y, b.y) - unitSize);
-                gridEnd.SetX(MCore::Max(a.x, b.x) + unitSize);
-                gridEnd.SetY(MCore::Max(a.y, b.y) + unitSize);
+                a = AZ::Vector3(a.GetX(), -a.GetY(), a.GetZ());
+                b = AZ::Vector3(b.GetX(), -b.GetY(), b.GetZ());
+                gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetY(), b.GetY()) - unitSize);
+                gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetY(), b.GetY()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_LEFT:
             {
-                a = MCore::Vector3(a.x, -a.y, a.z);
-                b = MCore::Vector3(b.x, -b.y, b.z);
-                gridStart.SetX(MCore::Min(a.y, b.y) - unitSize);
-                gridStart.SetY(MCore::Min(a.z, b.z) - unitSize);
-                gridEnd.SetX(MCore::Max(a.y, b.y) + unitSize);
-                gridEnd.SetY(MCore::Max(a.z, b.z) + unitSize);
+                a = AZ::Vector3(a.GetX(), -a.GetY(), a.GetZ());
+                b = AZ::Vector3(b.GetX(), -b.GetY(), b.GetZ());
+                gridStart.SetX(MCore::Min(a.GetY(), b.GetY()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
+                gridEnd.SetX(MCore::Max(a.GetY(), b.GetY()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_RIGHT:
             {
-                gridStart.SetX(MCore::Min(a.y, b.y) - unitSize);
-                gridStart.SetY(MCore::Min(a.z, b.z) - unitSize);
-                gridEnd.SetX(MCore::Max(a.y, b.y) + unitSize);
-                gridEnd.SetY(MCore::Max(a.z, b.z) + unitSize);
+                gridStart.SetX(MCore::Min(a.GetY(), b.GetY()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
+                gridEnd.SetX(MCore::Max(a.GetY(), b.GetY()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_TOP:
             {
-                gridStart.SetX(MCore::Min(a.x, b.x) - unitSize);
-                gridStart.SetY(MCore::Min(a.z, b.z) - unitSize);
-                gridEnd.SetX(MCore::Max(a.x, b.x) + unitSize);
-                gridEnd.SetY(MCore::Max(a.z, b.z) + unitSize);
+                gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
+                gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_BOTTOM:
             {
-                gridStart.SetX(MCore::Min(a.x, b.x) - unitSize);
-                gridStart.SetY(MCore::Min(a.z, b.z) - unitSize);
-                gridEnd.SetX(MCore::Max(a.x, b.x) + unitSize);
-                gridEnd.SetY(MCore::Max(a.z, b.z) + unitSize);
+                gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
+                gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
                 break;
             }
             }
@@ -1689,7 +1691,7 @@ namespace MCommon
             const float screenHeight    = static_cast<float>(camera->GetScreenHeight());
 
             // find the 4 corners of the frustum
-            MCore::Vector3 corners[4];
+            AZ::Vector3 corners[4];
             corners[0] = MCore::Unproject(0.0f, 0.0f, screenWidth, screenHeight, camera->GetFarClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
             corners[1] = MCore::Unproject(screenWidth, 0.0f, screenWidth, screenHeight, camera->GetFarClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
             corners[2] = MCore::Unproject(screenWidth, screenHeight, screenWidth, screenHeight, camera->GetFarClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
@@ -1698,8 +1700,8 @@ namespace MCommon
             // calculate the intersection points with the ground plane and create an AABB around those
             // if there is no intersection point then use the ray target as point, which is the projection onto the far plane basically
             MCore::AABB aabb;
-            MCore::Vector3 intersectionPoint;
-            MCore::PlaneEq groundPlane(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Vector3(0.0f, 0.0f, 0.0f));
+            AZ::Vector3 intersectionPoint;
+            MCore::PlaneEq groundPlane(AZ::Vector3(0.0f, 0.0f, 1.0f), AZ::Vector3::CreateZero());
             for (uint32 i = 0; i < 4; ++i)
             {
                 if (MCore::Ray(camera->GetPosition(), corners[i]).Intersects(groundPlane, &intersectionPoint))
@@ -1711,10 +1713,10 @@ namespace MCommon
             }
 
             // set the grid start and end values
-            gridStart.SetX(aabb.GetMin().x - unitSize);
-            gridStart.SetY(aabb.GetMin().y - unitSize);
-            gridEnd.SetX(aabb.GetMax().x + unitSize);
-            gridEnd.SetY(aabb.GetMax().y + unitSize);
+            gridStart.SetX(aabb.GetMin().GetX() - unitSize);
+            gridStart.SetY(aabb.GetMin().GetY() - unitSize);
+            gridEnd.SetX(aabb.GetMax().GetX() + unitSize);
+            gridEnd.SetY(aabb.GetMax().GetY() + unitSize);
         }
 
         *outGridStart = gridStart;
@@ -1764,15 +1766,15 @@ namespace MCommon
     void RenderUtil::RenderTrajectory(const MCore::Matrix& globalTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale)
     {
         // get the position and some direction vectors of the trajectory node matrix
-        const MCore::Vector3 center     = globalTM.GetTranslation();
-        const MCore::Vector3 forward    = globalTM.GetRight().Normalized();
-        const MCore::Vector3 right      = globalTM.GetForward().Normalized();
+        const AZ::Vector3 center        = globalTM.GetTranslation();
+        const AZ::Vector3 forward       = globalTM.GetRight().GetNormalized();
+        const AZ::Vector3 right         = globalTM.GetForward().GetNormalized();
         const float trailWidthHalf      = 0.5f;
         const float trailLengh          = 2.0f;
         const float arrowWidthHalf      = 1.5f;
         const float arrowLength         = 2.0f;
 
-        MCore::Vector3 vertices[7];
+        AZ::Vector3 vertices[7];
         /*
             //              4
             //             / \
@@ -1789,13 +1791,13 @@ namespace MCommon
             //         0---------1
         */
         // construct the arrow vertices
-        vertices[0] = center + MCore::Vector3(-right * trailWidthHalf - forward * trailLengh) * scale;
-        vertices[1] = center + MCore::Vector3(right * trailWidthHalf - forward * trailLengh) * scale;
-        vertices[2] = center + MCore::Vector3(right * trailWidthHalf) * scale;
-        vertices[3] = center + MCore::Vector3(right * arrowWidthHalf) * scale;
-        vertices[4] = center + MCore::Vector3(forward * arrowLength) * scale;
-        vertices[5] = center + MCore::Vector3(-right * arrowWidthHalf) * scale;
-        vertices[6] = center + MCore::Vector3(-right * trailWidthHalf) * scale;
+        vertices[0] = center + AZ::Vector3(-right * trailWidthHalf - forward * trailLengh) * scale;
+        vertices[1] = center + AZ::Vector3(right * trailWidthHalf - forward * trailLengh) * scale;
+        vertices[2] = center + AZ::Vector3(right * trailWidthHalf) * scale;
+        vertices[3] = center + AZ::Vector3(right * arrowWidthHalf) * scale;
+        vertices[4] = center + AZ::Vector3(forward * arrowLength) * scale;
+        vertices[5] = center + AZ::Vector3(-right * arrowWidthHalf) * scale;
+        vertices[6] = center + AZ::Vector3(-right * trailWidthHalf) * scale;
 
         // render the solid arrow
         RenderTriangle(vertices[0], vertices[1], vertices[2], innerColor);
@@ -1866,7 +1868,7 @@ namespace MCommon
         const float trailLength             = 2.0f;
         const float arrowWidthHalf          = 0.75f;
         const float arrowLength             = 1.5f;
-        const MCore::Vector3 liftFromGround(0.0f, 0.0f, 0.0001f);
+        const AZ::Vector3 liftFromGround(0.0f, 0.0f, 0.0001f);
 
         const MCore::Matrix trajectoryGlobalTM = actorInstance->GetGlobalTransform().ToMatrix();
 
@@ -1875,13 +1877,13 @@ namespace MCommon
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // get the position and some direction vectors of the trajectory node matrix
         MCore::Matrix  globalTM = traceParticles[numTraceParticles - 1].mGlobalTM;
-        MCore::Vector3 right    = trajectoryGlobalTM.GetRight().Normalized();
-        MCore::Vector3 center   = trajectoryGlobalTM.GetTranslation();
-        MCore::Vector3 forward  = trajectoryGlobalTM.GetForward().Normalized();
-        MCore::Vector3 up(0.0f, 0.0f, 1.0f);
+        AZ::Vector3 right = trajectoryGlobalTM.GetRight().GetNormalized();
+        AZ::Vector3 center = trajectoryGlobalTM.GetTranslation();
+        AZ::Vector3 forward = trajectoryGlobalTM.GetForward().GetNormalized();
+        AZ::Vector3 up(0.0f, 0.0f, 1.0f);
 
-        MCore::Vector3 vertices[7];
-        MCore::Vector3 oldLeft, oldRight;
+        AZ::Vector3 vertices[7];
+        AZ::Vector3 oldLeft, oldRight;
 
         /*
             //              4
@@ -1910,8 +1912,8 @@ namespace MCommon
         oldLeft     = vertices[6];
         oldRight    = vertices[2];
 
-        MCore::Vector3 arrowOldLeft = oldLeft;
-        MCore::Vector3 arrowOldRight = oldRight;
+        AZ::Vector3 arrowOldLeft = oldLeft;
+        AZ::Vector3 arrowOldRight = oldRight;
 
         // render the solid arrow
         MCore::RGBAColor arrowColor = innerColor * 1.2f;
@@ -1923,7 +1925,7 @@ namespace MCommon
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // Render arrow tail (actual path)
         //////////////////////////////////////////////////////////////////////////////////////////////////////
-        MCore::Vector3 a, b;
+        AZ::Vector3 a, b;
         MCore::RGBAColor color = innerColor;
 
         // render the path from the arrow head towards the tail
@@ -1936,16 +1938,16 @@ namespace MCommon
             globalTM    = traceParticles[i].mGlobalTM;
             a           = globalTM.GetTranslation();
             b           = traceParticles[i - 1].mGlobalTM.GetTranslation();
-            right       = globalTM.GetRight().Normalized();
+            right       = globalTM.GetRight().GetNormalized();
 
             if (i > 1 && i < numTraceParticles - 3)
             {
-                const MCore::Vector3 deltaA = traceParticles[i - 2].mGlobalTM.GetTranslation() - traceParticles[i - 1].mGlobalTM.GetTranslation();
-                const MCore::Vector3 deltaB = traceParticles[i - 1].mGlobalTM.GetTranslation() - traceParticles[i    ].mGlobalTM.GetTranslation();
-                const MCore::Vector3 deltaC = traceParticles[i    ].mGlobalTM.GetTranslation() - traceParticles[i + 1].mGlobalTM.GetTranslation();
-                const MCore::Vector3 deltaD = traceParticles[i + 1].mGlobalTM.GetTranslation() - traceParticles[i + 2].mGlobalTM.GetTranslation();
-                MCore::Vector3 delta = deltaA + deltaB + deltaC + deltaD;
-                delta.SafeNormalize();
+                const AZ::Vector3 deltaA = traceParticles[i - 2].mGlobalTM.GetTranslation() - traceParticles[i - 1].mGlobalTM.GetTranslation();
+                const AZ::Vector3 deltaB = traceParticles[i - 1].mGlobalTM.GetTranslation() - traceParticles[i    ].mGlobalTM.GetTranslation();
+                const AZ::Vector3 deltaC = traceParticles[i    ].mGlobalTM.GetTranslation() - traceParticles[i + 1].mGlobalTM.GetTranslation();
+                const AZ::Vector3 deltaD = traceParticles[i + 1].mGlobalTM.GetTranslation() - traceParticles[i + 2].mGlobalTM.GetTranslation();
+                AZ::Vector3 delta = deltaA + deltaB + deltaC + deltaD;
+                delta = MCore::SafeNormalize(delta);
 
                 right = up.Cross(delta);
             }
@@ -1966,8 +1968,8 @@ namespace MCommon
             // construct the arrow vertices
             vertices[0] = oldLeft;
             vertices[1] = oldRight;
-            vertices[2] = b + MCore::Vector3(-right * trailWidthHalf) * scale;
-            vertices[3] = b + MCore::Vector3( right * trailWidthHalf) * scale;
+            vertices[2] = b + AZ::Vector3(-right * trailWidthHalf) * scale;
+            vertices[3] = b + AZ::Vector3(right * trailWidthHalf) * scale;
 
             // make sure we perfectly align with the arrow head
             if (i == numTraceParticles - 1)
@@ -2011,24 +2013,24 @@ namespace MCommon
 
 
     // render the name of the given node at the node position
-    void RenderUtil::RenderText(const char* text, uint32 textSize, const MCore::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color)
+    void RenderUtil::RenderText(const char* text, uint32 textSize, const AZ::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color)
     {
         // project the node global position to the screen space
-        const MCore::Vector3 projectedPoint = Project(globalPos, camera->GetViewProjMatrix(), screenWidth, screenHeight);
+        const AZ::Vector3 projectedPoint = Project(globalPos, camera->GetViewProjMatrix(), screenWidth, screenHeight);
 
         // perform clipping and make sure the node is actually visible, if not skip rendering its name
-        if (projectedPoint.x < 0.0f || projectedPoint.x > screenWidth || projectedPoint.y < 0.0f || projectedPoint.y > screenHeight)
+        if (projectedPoint.GetX() < 0.0f || projectedPoint.GetX() > screenWidth || projectedPoint.GetY() < 0.0f || projectedPoint.GetY() > screenHeight)
         {
             return;
         }
 
-        if (camera->GetType() != MCommon::OrthographicCamera::TYPE_ID && projectedPoint.z < 0.0f)
+        if (camera->GetType() != MCommon::OrthographicCamera::TYPE_ID && projectedPoint.GetZ() < 0.0f)
         {
             return;
         }
 
         // render the text
-        RenderText(projectedPoint.x, projectedPoint.y, text, color, static_cast<float>(textSize), true);
+        RenderText(projectedPoint.GetX(), projectedPoint.GetY(), text, color, static_cast<float>(textSize), true);
     }
 
 
@@ -2045,7 +2047,7 @@ namespace MCommon
         {
             EMotionFX::Node*    node        = skeleton->GetNode(actorInstance->GetEnabledNode(i));
             const uint32        nodeIndex   = node->GetNodeIndex();
-            MCore::Vector3      globalPos   = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
+            AZ::Vector3         globalPos   = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
 
             // check if the current enabled node is along the visible nodes and render it if that is the case
             if ((visibleNodeIndices.GetIsEmpty()) ||

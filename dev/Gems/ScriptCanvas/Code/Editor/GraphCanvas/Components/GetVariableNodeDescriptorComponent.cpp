@@ -61,10 +61,10 @@ namespace ScriptCanvasEditor
         return AZStd::any::TYPEINFO_Uuid();
     }
 
-	void GetVariableNodeDescriptorComponent::GetVariableReferenceDataInterface::OnVariableActivated()
-	{
-		SignalValueChanged();
-	}
+    void GetVariableNodeDescriptorComponent::GetVariableReferenceDataInterface::OnVariableActivated()
+    {
+        SignalValueChanged();
+    }
 
     void GetVariableNodeDescriptorComponent::GetVariableReferenceDataInterface::OnAssignVariableChanged()
     {
@@ -147,8 +147,8 @@ namespace ScriptCanvasEditor
     void GetVariableNodeDescriptorComponent::OnVariableActivated()
     {
         UpdateTitle();
-		PopulateExternalSlotIds();
-		GetVariableNodeDescriptorNotificationBus::Event(GetEntityId(), &GetVariableNodeDescriptorNotifications::OnVariableActivated);
+        PopulateExternalSlotIds();
+        GetVariableNodeDescriptorNotificationBus::Event(GetEntityId(), &GetVariableNodeDescriptorNotifications::OnVariableActivated);
     }
 
     void GetVariableNodeDescriptorComponent::OnVariableDestroyed()
@@ -214,7 +214,7 @@ namespace ScriptCanvasEditor
         }
         else if (m_variableId.IsValid() && GraphCanvas::VariableRequestBus::FindFirstHandler(m_variableId) != nullptr)
         {
-			PopulateExternalSlotIds();
+            PopulateExternalSlotIds();
         }
 
         if (m_variableId.IsValid())
@@ -231,33 +231,33 @@ namespace ScriptCanvasEditor
         GetVariableNodeDescriptorRequestBus::Handler::BusDisconnect();
     }
 
-	void GetVariableNodeDescriptorComponent::PopulateExternalSlotIds()
-	{
-		if (!m_variableId.IsValid())
-		{
-			return;
-		}
+    void GetVariableNodeDescriptorComponent::PopulateExternalSlotIds()
+    {
+        if (!m_variableId.IsValid())
+        {
+            return;
+        }
 
-		m_externalSlotIds.clear();
+        m_externalSlotIds.clear();
 
-		ScriptCanvas::Endpoint variableEndpoint;
-		VariableNodeDescriptorRequestBus::EventResult(variableEndpoint, m_variableId, &VariableNodeDescriptorRequests::GetReadEndpoint);
+        ScriptCanvas::Endpoint variableEndpoint;
+        VariableNodeDescriptorRequestBus::EventResult(variableEndpoint, m_variableId, &VariableNodeDescriptorRequests::GetReadEndpoint);
 
-		AZStd::vector< const ScriptCanvas::Slot* > slotList;
-		ScriptCanvas::NodeRequestBus::EventResult(slotList, variableEndpoint.GetNodeId(), &ScriptCanvas::NodeRequests::GetAllSlots);
+        AZStd::vector< const ScriptCanvas::Slot* > slotList;
+        ScriptCanvas::NodeRequestBus::EventResult(slotList, variableEndpoint.GetNodeId(), &ScriptCanvas::NodeRequests::GetAllSlots);
 
-		for (const ScriptCanvas::Slot* slot : slotList)
-		{
-			if (slot->GetType() == ScriptCanvas::SlotType::ExecutionIn
-				|| slot->GetType() == ScriptCanvas::SlotType::ExecutionOut
-				|| slot->GetType() == ScriptCanvas::SlotType::DataIn)
-			{
-				continue;
-			}
+        for (const ScriptCanvas::Slot* slot : slotList)
+        {
+            if (slot->GetType() == ScriptCanvas::SlotType::ExecutionIn
+                || slot->GetType() == ScriptCanvas::SlotType::ExecutionOut
+                || slot->GetType() == ScriptCanvas::SlotType::DataIn)
+            {
+                continue;
+            }
 
-			m_externalSlotIds.insert(slot->GetId());
-		}
-	}
+            m_externalSlotIds.insert(slot->GetId());
+        }
+    }
 
     void GetVariableNodeDescriptorComponent::ConvertConnections(const AZ::EntityId& oldVariableId)
     {

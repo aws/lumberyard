@@ -13,8 +13,5 @@
     <file>AssetProcessor.png</file>
     <file>i18n/qml_en_us.qm</file>
     <file>i18n/qml_ww_ww.qm</file>
-    <file>qml/RCListView.qml</file>
-    <file>qml/FileServerView.qml</file>
-    <file>qml/ShaderCompilerView.qml</file>
   </qresource>
 </RCC>

@@ -12,6 +12,9 @@
 
 #include "NeighborhoodAPI.h"
 #include <GridMate/Session/LANSession.h>
+#include <GridMate/Replica/ReplicaFunctions.h>
+
+using namespace GridMate;
 
 namespace Neighborhood {
     //---------------------------------------------------------------------
@@ -29,13 +32,6 @@ namespace Neighborhood {
         , m_persistentName("PersistentName", persistentName)
         , m_displayName("DisplayName")
     {
-        /*
-        Different instances have different constructor values inside driller, thus we have to forcefully mark these as non default.
-        */
-        m_capabilities.MarkNonDefaultValue();
-        m_owner.MarkNonDefaultValue();
-        m_persistentName.MarkNonDefaultValue();
-        m_displayName.MarkNonDefaultValue();
     }
     //---------------------------------------------------------------------
     void NeighborReplica::UpdateChunk(const GridMate::ReplicaContext& rc)
@@ -97,5 +93,48 @@ namespace Neighborhood {
     {
         return m_displayName.Get().c_str();
     }
+
+    NeighborReplica::Desc::Desc()
+        : GridMate::ReplicaChunkDescriptor(NeighborReplica::GetChunkName(), sizeof(Desc))
+    {
+    }
+
+    ReplicaChunkBase* NeighborReplica::Desc::CreateFromStream(GridMate::UnmarshalContext& mc)
+    {
+        GridMate::MemberIDCompact member;
+        mc.m_iBuf->Read(member);
+        AZStd::string name;
+        mc.m_iBuf->Read(name);
+        NeighborCaps caps;
+        mc.m_iBuf->Read(caps);
+
+        return CreateReplicaChunk<NeighborReplica>(member, name.c_str(), caps);
+    }
+
+    void NeighborReplica::Desc::DiscardCtorStream(GridMate::UnmarshalContext& mc)
+    {
+        GridMate::MemberIDCompact member;
+        mc.m_iBuf->Read(member);
+        AZStd::string name;
+        mc.m_iBuf->Read(name);
+        NeighborCaps caps;
+        mc.m_iBuf->Read(caps);
+    }
+
+    void NeighborReplica::Desc::DeleteReplicaChunk(ReplicaChunkBase* chunkInstance)
+    {
+        delete chunkInstance;
+    }
+
+    void NeighborReplica::Desc::MarshalCtorData(ReplicaChunkBase* chunkInstance, GridMate::WriteBuffer& wb)
+    {
+        if (NeighborReplica* member = static_cast<NeighborReplica*>(chunkInstance))
+        {
+            wb.Write(member->GetTargetMemberId());
+            wb.Write(member->m_persistentName.Get());
+            wb.Write(member->GetCapabilities());
+        }
+    }
+
     //---------------------------------------------------------------------
 }   // namespace Neighborhood

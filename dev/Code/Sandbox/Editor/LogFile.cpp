@@ -43,8 +43,8 @@
 #define EDITOR_LOG_FILE "Editor.log"
 
 // Static member variables
-QListWidget* CLogFile::m_hWndListBox = nullptr;
-QTextEdit* CLogFile::m_hWndEditBox = nullptr;
+SANDBOX_API QListWidget* CLogFile::m_hWndListBox = nullptr;
+SANDBOX_API QTextEdit* CLogFile::m_hWndEditBox = nullptr;
 bool CLogFile::m_bShowMemUsage = false;
 bool CLogFile::m_bIsQuitting = false;
 
@@ -147,6 +147,16 @@ const char* CLogFile::GetLogFileName()
     {
         return "";
     }
+}
+
+void CLogFile::AttachListBox(QListWidget* hWndListBox) 
+{ 
+    m_hWndListBox = hWndListBox; 
+}
+
+void CLogFile::AttachEditBox(QTextEdit* hWndEditBox) 
+{ 
+    m_hWndEditBox = hWndEditBox; 
 }
 
 void CLogFile::FormatLine(const char * format, ...)
@@ -284,20 +294,23 @@ void CLogFile::AboutSystem()
     str += szBuffer;
     str += ")";
     CryLog("%s", str.toLatin1().data());
-#elif defined(AZ_PLATFORMS_APPLE)
-    QString operatingSystemVersionString();
+#elif defined(AZ_PLATFORM_APPLE)
     QString operatingSystemName;
-#if defined(Q_OS_MACOS)
     if (QSysInfo::MacintoshVersion >= Q_MV_OSX(10, 12))
+    {
         operatingSystemName = "macOS ";
+    }
     else
+    {
         operatingSystemName = "OS X ";
-#elif defined(Q_OS_TVOS)
-    operatingSystemName = "tvOS ";
-#elif defined(Q_OS_IOS)
-    operatingSystemName = "iOS ";
-#endif
-    CryLog("%s", qPrintable(operatingSystemName + operatingSystemVersionString()));
+    }
+
+    int majorVersion = 0;
+    int minorVersion = 0;
+    Gestalt(gestaltSystemVersionMajor, &majorVersion);
+    Gestalt(gestaltSystemVersionMinor, &minorVersion);
+
+    CryLog("%s - %d.%d", qPrintable(operatingSystemName), majorVersion, minorVersion);
 #else
     CryLog("Unknown Operating System");
 #endif
@@ -328,7 +341,7 @@ void CLogFile::AboutSystem()
 #else
     clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
-    CryLog("Local time is %s, system running for %d minutes", qPrintable(QTime::currentTime().toString("hh:mm:ss")), ts.tv_sec / 60);
+    CryLog("Local time is %s, system running for %ld minutes", qPrintable(QTime::currentTime().toString("hh:mm:ss")), ts.tv_sec / 60);
 #endif
 
     //////////////////////////////////////////////////////////////////////
@@ -363,14 +376,10 @@ void CLogFile::AboutSystem()
     CryLog("%s", szBuffer);
 #else
     auto screen = QGuiApplication::primaryScreen();
-#if defined(AZ_PLATFORM_APPLE)
-    QString graphicsCardName();
     if (screen)
-        CryLog("Current display mode is %dx%dx%d, %s", screen->size().width(), screen->size().height(), screen->depth(), qPrintable(graphicsCardName()));
-#else
-    if (screen)
+    {
         CryLog("Current display mode is %dx%dx%d, %s", screen->size().width(), screen->size().height(), screen->depth(), qPrintable(screen->name()));
-#endif
+    }
 #endif
 
     //////////////////////////////////////////////////////////////////////
@@ -590,21 +599,15 @@ void CLogFile::OnWriteToConsole(const char* sText, bool bNewLine)
     //////////////////////////////////////////////////////////////////////////
     // Look for exit messages while writing to the console
     //////////////////////////////////////////////////////////////////////////
-#ifdef KDAB_MAC_PORT
     if (gEnv && gEnv->pSystem && !gEnv->pSystem->IsQuitting() && !m_bIsQuitting)
     {
-        MSG msg;
-        if (PeekMessage(&msg, 0, 0, 0, PM_NOREMOVE))
+        if (QCoreApplication::closingDown())
         {
-            if (msg.message == WM_QUIT)
-            {
-                m_bIsQuitting = true;
-                CCryEditApp::instance()->ExitInstance();
-                m_bIsQuitting = false;
-            }
+            m_bIsQuitting = true;
+            CCryEditApp::instance()->ExitInstance();
+            m_bIsQuitting = false;
         }
     }
-#endif // KDAB_MAC_PORT
 }
 
 //////////////////////////////////////////////////////////////////////////

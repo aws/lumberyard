@@ -69,6 +69,7 @@ public:
     float GetTimeScale() { return m_timeScale; }
 
     void SetScrollOffset(int hpos);
+    int GetScrollOffset();
 
     int GetScrollPos() const;
 
@@ -160,7 +161,7 @@ private:
 
     void SetMouseCursor(const QCursor& cursor);
 
-    void ShowKeyTooltip(CUiAnimViewKeyHandle& keyHandle, const QPoint& point);
+    void ShowKeyTooltip(const CUiAnimViewKeyHandle& keyHandle, const QPoint& point);
 
     bool IsOkToAddKeyHere(const CUiAnimViewTrack* pTrack, float time) const;
 
@@ -206,7 +207,6 @@ private:
     void DrawNodeTrack(CUiAnimViewAnimNode* pAnimNode, QPainter* pDC, const QRect& trackRect);
     void DrawTrack(CUiAnimViewTrack* pTrack, QPainter* pDC, const QRect& trackRect);
     void DrawKeys(CUiAnimViewTrack* pTrack, QPainter* pDC, QRect& rc, Range& timeRange);
-    void DrawSequenceTrack(const Range& timeRange, QPainter* pDC, CUiAnimViewTrack* pTrack, const QRect& rc);
     void DrawBoolTrack(const Range& timeRange, QPainter* pDC, CUiAnimViewTrack* pTrack, const QRect& rc);
     void DrawSelectTrack(const Range& timeRange, QPainter* pDC, CUiAnimViewTrack* pTrack, const QRect& rc);
     void DrawKeyDuration(CUiAnimViewTrack* pTrack, QPainter* pDC, const QRect& rc, int keyIndex);

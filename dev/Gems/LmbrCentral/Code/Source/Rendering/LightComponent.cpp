@@ -135,8 +135,11 @@ namespace LmbrCentral
                 ->Event("SetProbeBoxWidth", &LightComponentRequestBus::Events::SetProbeBoxWidth, { { { "Width", "Box Width" } } })
                 ->VirtualProperty("ProbeBoxWidth", "GetProbeBoxWidth", "SetProbeBoxWidth")
                 ->Event("GetProbeAttenuationFalloff", &LightComponentRequestBus::Events::GetProbeAttenuationFalloff)
-                ->Event("SetProbeAttenuationFalloff", &LightComponentRequestBus::Events::SetProbeAttenuationFalloff, { { { "Falloff", "New Attenuation Falloff" } } })
+                ->Event("SetProbeAttenuationFalloff", &LightComponentRequestBus::Events::SetProbeAttenuationFalloff, { { { "Falloff", "Smoothness of the falloff around the probe's bounds" } } })
                 ->VirtualProperty("ProbeAttenuationFalloff", "GetProbeAttenuationFalloff", "SetProbeAttenuationFalloff")
+                ->Event("GetProbeFade", &LightComponentRequestBus::Events::GetProbeFade)
+                ->Event("SetProbeFade", &LightComponentRequestBus::Events::SetProbeFade, { { { "Fade", "Multiplier for fading out a probe [0-1]", AZ::BehaviorMakeDefaultValue(1.0f) } } })
+                ->VirtualProperty("ProbeFade", "GetProbeFade", "SetProbeFade")
                 ;
 
             behaviorContext->EBus<LightComponentNotificationBus>("LightNotification", "LightComponentNotificationBus", "Notifications for the Light Components")
@@ -191,6 +194,7 @@ namespace LmbrCentral
                 ->Field("VolumetricFogOnly", &LightConfiguration::m_volumetricFogOnly)
                 ->Field("VolumetricFog", &LightConfiguration::m_volumetricFog)
                 ->Field("Deferred", &LightConfiguration::m_deferred)
+                ->Field("TerrainShadows", &LightConfiguration::m_castTerrainShadows)
                 ->Field("ShadowBias", &LightConfiguration::m_shadowBias)
                 ->Field("ShadowResScale", &LightConfiguration::m_shadowResScale)
                 ->Field("ShadowSlopeBias", &LightConfiguration::m_shadowSlopeBias)
@@ -657,6 +661,24 @@ namespace LmbrCentral
     {
         return m_configuration.m_attenFalloffMax;
     }
+
+    void LightComponent::SetProbeFade(float fade)
+    {
+        AZ_Warning("Lighting", 0.0f <= fade && fade <= 1.0f, "SetProbeFade value %f out of range. Clamping to [0,1]", fade);
+        fade = AZ::GetClamp(fade, 0.0f, 1.0f);
+
+        if (fade != m_configuration.m_probeFade)
+        {
+            m_configuration.m_probeFade = fade;
+            m_light.UpdateRenderLight(m_configuration);
+        }
+    }
+
+    float LightComponent::GetProbeFade()
+    {
+        return m_configuration.m_probeFade;
+    }
+
     ///////////////////////////////////////////////////////////
     void LightComponent::ToggleLight()
     {
@@ -762,6 +784,7 @@ namespace LmbrCentral
         , m_boxHeight(20.0f)
         , m_boxLength(20.0f)
         , m_attenFalloffMax(0.3f)
+        , m_probeFade(1.0f)
         , m_minSpec(EngineSpec::Low)
         , m_viewDistMultiplier(1.f)
         , m_castShadowsSpec(EngineSpec::Never)
@@ -779,6 +802,7 @@ namespace LmbrCentral
         , m_animIndex(0)
         , m_animSpeed(1.f)
         , m_animPhase(0.f)
+        , m_castTerrainShadows(false)
         , m_shadowBias(1.f)
         , m_shadowSlopeBias(1.f)
         , m_shadowResScale(1.f)

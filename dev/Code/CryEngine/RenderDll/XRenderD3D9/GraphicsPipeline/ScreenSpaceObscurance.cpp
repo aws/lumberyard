@@ -16,6 +16,8 @@
 #include "DriverD3D.h"
 #include "D3DPostProcess.h"
 #include "D3D_SVO.h"
+#include "../../Common/Textures/TextureManager.h"
+#include "FurPasses.h"
 
 
 void CScreenSpaceObscurancePass::Init()
@@ -71,9 +73,12 @@ void CScreenSpaceObscurancePass::Execute()
     {
         CShader* pShader = CShaderMan::s_shDeferredShading;
 
+        bool isRenderingFur = FurPasses::GetInstance().IsRenderingFur();
+
         uint64 rtMask = 0;
         rtMask |= CRenderer::CV_r_ssdoHalfRes ? g_HWSR_MaskBit[HWSR_SAMPLE0] : 0;
         rtMask |= pHeightMapFrustum ? g_HWSR_MaskBit[HWSR_SAMPLE1] : 0;
+        rtMask |= isRenderingFur ? g_HWSR_MaskBit[HWSR_SAMPLE2] : 0;
 
         // Extreme magnification as happening with small FOVs will cause banding issues with half-res depth
         if (CRenderer::CV_r_ssdoHalfRes == 2 && RAD2DEG(rd->GetCamera().GetFov()) < 30)
@@ -89,9 +94,15 @@ void CScreenSpaceObscurancePass::Execute()
 
         m_passObscurance.SetTextureSamplerPair(0, CTexture::s_ptexSceneNormalsMap, texStatePoint);
         m_passObscurance.SetTextureSamplerPair(1, CTexture::s_ptexZTarget, texStatePoint);
-        m_passObscurance.SetTextureSamplerPair(3, CTexture::s_ptexAOVOJitter, texStatePointWrap);
+        m_passObscurance.SetTextureSamplerPair(3, CTextureManager::Instance()->GetDefaultTexture("AOVOJitter"), texStatePointWrap);
         m_passObscurance.SetTextureSamplerPair(5, bLowResOutput ? CTexture::s_ptexZTargetScaled2 : CTexture::s_ptexZTargetScaled, texStatePoint);
         m_passObscurance.SetTextureSamplerPair(11, pHeightMapAODepth, texStatePoint);
+
+        if (isRenderingFur)
+        {
+            m_passObscurance.SetTextureSamplerPair(2, CTexture::s_ptexFurZTarget, texStatePoint);
+        }
+
         m_passObscurance.SetTexture(12, pHeightMapAO);
         m_passObscurance.SetRequireWorldPos(true);  // TODO: Can be removed after shader changes
 

@@ -1,0 +1,10 @@
+{
+	"none":
+	{
+		"Resource Files":
+		[
+			"EditorCryEdit.rc",
+			"res/editor_icon.ico"
+		]
+	}
+}

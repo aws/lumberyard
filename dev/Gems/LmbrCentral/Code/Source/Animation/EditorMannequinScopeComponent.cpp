@@ -26,7 +26,7 @@ namespace LmbrCentral
                 ->Field("Animation Database", &EditorMannequinScopeComponent::m_animationDatabase)
                 ->Field("Scope name", &EditorMannequinScopeComponent::m_scopeContextName)
                 ->Field("Target Entity", &EditorMannequinScopeComponent::m_targetEntityId);
-#ifdef ENABLE_LEGACY_ANIMATION
+
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
@@ -37,6 +37,9 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/MannequinScopeContext.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/MannequinScopeContext.png")
+#ifndef ENABLE_LEGACY_ANIMATION
+                        ->Attribute(AZ::Edit::Attributes::AddableByUser, false)
+#endif
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-mannequinscope.html")
@@ -45,7 +48,6 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::StringList, &EditorMannequinScopeComponent::GetAvailableScopeContextNames)
                     ->DataElement(0, &EditorMannequinScopeComponent::m_targetEntityId, "Target Entity", "Entity that this scope context setting is bound to; Empty for this entity");
             }
-#endif
         }
     }
 

@@ -11,8 +11,21 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+#include <QtGlobal>
+
+#include <AzCore/PlatformDef.h>
+
+#if defined(AZ_PLATFORM_APPLE)
+#include <QUuid>
+#include "AzCore/Math/Guid.h"
+#endif
+
 #include <Cry_Math.h>
 #include <platform.h>
 #include <Cry_Geo.h>
 #include <CrySizer.h>
 #include <VertexFormats.h>
+
+#if defined max
+#undef max
+#endif

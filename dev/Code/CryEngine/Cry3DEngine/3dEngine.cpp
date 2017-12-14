@@ -50,10 +50,8 @@
 #include "FogVolumeRenderNode.h"
 #include "ObjectsTree.h"
 #include "WaterVolumeRenderNode.h"
-#include "WaterWaveRenderNode.h"
 #include "DistanceCloudRenderNode.h"
 #include "VolumeObjectRenderNode.h"
-#include "WaterWaveRenderNode.h"
 #include "RopeRenderNode.h"
 #include "RenderMeshMerger.h"
 #include "PhysCallbacks.h"
@@ -70,6 +68,9 @@
 #include "MainThreadRenderRequestBus.h"
 #include "ObjMan.h"
 #include "Terrain/Texture/MacroTextureImporter.h"
+#include "DeformableNode.h"
+#include "Environment/OceanEnvironmentBus.h"
+#include <limits>
 
 #if defined(FEATURE_SVO_GI)
 #include "SVO/SceneTreeManager.h"
@@ -108,7 +109,6 @@ CSkyLightManager* Cry3DEngineBase::m_pSkyLightManager = 0;
 CCloudsManager* Cry3DEngineBase::m_pCloudsManager = 0;
 CVisAreaManager* Cry3DEngineBase::m_pVisAreaManager = 0;
 CClipVolumeManager* Cry3DEngineBase::m_pClipVolumeManager = 0;
-CWaterWaveManager* Cry3DEngineBase::m_pWaterWaveManager = 0;
 CRenderMeshMerger* Cry3DEngineBase::m_pRenderMeshMerger = 0;
 CMatMan* Cry3DEngineBase::m_pMatMan = 0;
 CMergedMeshesManager* Cry3DEngineBase::m_pMergedMeshesManager = 0;
@@ -191,7 +191,7 @@ C3DEngine::C3DEngine(ISystem* pSystem)
 
     m_postEffectGroups = std::make_unique<PostEffectGroupManager>();
     m_postEffectBaseGroup = m_postEffectGroups->GetGroup("Base");
-    if (IPostEffectGroup* pPostEffectsDefaultGroup = m_postEffectGroups->GetGroup("Libs/PostEffectGroups/Default.xml"))
+    if (IPostEffectGroup* pPostEffectsDefaultGroup = m_postEffectGroups->GetGroup(m_defaultPostEffectGroup))
     {
         pPostEffectsDefaultGroup->SetEnable(true);
     }
@@ -221,7 +221,6 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_pVisAreaManager   = 0;
     m_pClipVolumeManager = new CClipVolumeManager();
     m_pSkyLightManager  = CryAlignedNew<CSkyLightManager>();
-    m_pWaterWaveManager = 0;
 
     // create REs
     m_pRESky              = 0;
@@ -291,16 +290,13 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_oceanFogDensity = 0; //0.2f;
 
     m_oceanCausticsDistanceAtten = 100.0f;
-    m_oceanCausticsMultiplier = 1.0f;
-    m_oceanCausticsDarkeningMultiplier = 1.0f;
 
-    m_oceanCausticHeight = 2.5f;
     m_oceanCausticDepth = 8.0f;
     m_oceanCausticIntensity = 1.0f;
 
     m_oceanWindDirection = 1;
     m_oceanWindSpeed = 4.0f;
-    m_oceanWavesSpeed = 5.0f;
+    m_oceanWavesSpeed = 1.0f;
     m_oceanWavesAmount = 1.5f;
     m_oceanWavesSize = 0.75f;
 
@@ -529,14 +525,14 @@ bool C3DEngine::Init()
 
     // Allocate the temporary pool used for allocations during streaming and loading
     const size_t tempPoolSize = static_cast<size_t>(GetCVars()->e_3dEngineTempPoolSize) << 10;
-    CRY_ASSERT_MESSAGE(tempPoolSize != 0, "C3DEngine::Init() temp pool size is set to 0");
+    AZ_Assert(tempPoolSize != 0, "Temp pool size should not be 0.");
 
     {
         MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "3Engine Temp Pool");
 
         if (!CTemporaryPool::Initialize(tempPoolSize))
         {
-            CryFatalError("C3DEngine::Init() could not initialize temporary pool");
+            AZ_Assert(false, "Could not initialize initialize temporary pool for 3D Engine startup.");
             return false;
         }
     }
@@ -545,7 +541,7 @@ bool C3DEngine::Init()
     frameLodInfo.fLodRatio = GetCVars()->e_LodRatio;
 
     frameLodInfo.fTargetSize = GetCVars()->e_LodFaceAreaTargetSize;
-    CRY_ASSERT(frameLodInfo.fTargetSize > 0.f);
+    AZ_Assert(frameLodInfo.fTargetSize > 0.f, "FrameLodInfo target size should be greater than 0.");
     if (frameLodInfo.fTargetSize <= 0.f)
     {
         frameLodInfo.fTargetSize = 1.f;
@@ -560,7 +556,7 @@ bool C3DEngine::Init()
     }
     SetFrameLodInfo(frameLodInfo);
 
-    return  (true);
+    return true;
 }
 
 bool C3DEngine::IsCameraAnd3DEngineInvalid(const SRenderingPassInfo& passInfo, const char* szCaller)
@@ -609,10 +605,10 @@ void C3DEngine::OnFrameStart()
     }
 }
 
-float g_oceanLevel, g_oceanStep;
+float g_oceanLevel, g_oceanStep; // TODO: need to fix/wrap these
 float GetOceanLevelCallback(int ix, int iy)
 {
-    return gEnv->p3DEngine->GetAccurateOceanHeight(Vec3(ix * g_oceanStep, iy * g_oceanStep, g_oceanLevel));
+    return OceanToggle::IsActive() ? OceanRequest::GetAccurateOceanHeight(Vec3(ix * g_oceanStep, iy * g_oceanStep, g_oceanLevel)) : gEnv->p3DEngine->GetAccurateOceanHeight(Vec3(ix * g_oceanStep, iy * g_oceanStep, g_oceanLevel));
 }
 
 unsigned char GetOceanSurfTypeCallback(int ix, int iy)
@@ -672,8 +668,8 @@ void C3DEngine::Update()
     IPhysicalEntity* pArea;
     if ((pArea = gEnv->pPhysicalWorld->AddGlobalArea())->GetParams(&pa))
     {
-        g_oceanLevel = GetWaterLevel();
-        bool bOceanEnabled = GetFloatCVar(e_PhysOceanCell) > 0 && g_oceanLevel > 0;
+        g_oceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel();
+        bool bOceanEnabled = GetFloatCVar(e_PhysOceanCell) > 0 && (OceanToggle::IsActive() ? OceanRequest::OceanIsEnabled() : g_oceanLevel > 0);
 
         if (bOceanEnabled && (!pa.pGeom || g_oceanStep != GetFloatCVar(e_PhysOceanCell)))
         {
@@ -1350,6 +1346,17 @@ void C3DEngine::LoadStatObjAsync(I3DEngine::LoadStaticObjectAsyncResult resultCa
     }
 }
 
+IDeformableNode* C3DEngine::CreateDeformableNode()
+{
+    return new CDeformableNode();
+}
+
+void C3DEngine::DestroyDeformableNode(IDeformableNode* node)
+{
+    SAFE_DELETE(node);
+}
+
+
 void C3DEngine::ProcessAsyncStaticObjectLoadRequests()
 {
     // Same scheme as skinned meshes: CharacterManager::ProcessAsyncLoadRequests.
@@ -1669,17 +1676,28 @@ void C3DEngine::OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain)
 
 float C3DEngine::GetMaxViewDistance(bool bScaled)
 {
-    // spec lerp factor
-    float lerpSpec = clamp_tpl(GetCVars()->e_MaxViewDistSpecLerp, 0.0f, 1.0f);
+    // lerp between specs
+    float fMaxViewDist;
 
     // camera height lerp factor
-    float lerpHeight = clamp_tpl(max(0.f, GetSystem()->GetViewCamera().GetPosition().z - GetWaterLevel()) / GetFloatCVar(e_MaxViewDistFullDistCamHeight), 0.0f, 1.0f);
+    if (OceanToggle::IsActive() && !OceanRequest::OceanIsEnabled())
+    {
+        fMaxViewDist = m_fMaxViewDistHighSpec;
+    }
+    else
+    {
+        // spec lerp factor
+        float lerpSpec = clamp_tpl(GetCVars()->e_MaxViewDistSpecLerp, 0.0f, 1.0f);
 
-    // lerp between specs
-    float fMaxViewDist = m_fMaxViewDistLowSpec * (1.f - lerpSpec) + m_fMaxViewDistHighSpec * lerpSpec;
+        // lerp between specs
+        fMaxViewDist = m_fMaxViewDistLowSpec * (1.f - lerpSpec) + m_fMaxViewDistHighSpec * lerpSpec;
 
-    // lerp between prev result and high spec
-    fMaxViewDist = fMaxViewDist * (1.f - lerpHeight) + m_fMaxViewDistHighSpec * lerpHeight;
+        const float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel();
+        float lerpHeight = clamp_tpl(max(0.f, GetSystem()->GetViewCamera().GetPosition().z - waterLevel) / GetFloatCVar(e_MaxViewDistFullDistCamHeight), 0.0f, 1.0f);
+
+        // lerp between prev result and high spec
+        fMaxViewDist = fMaxViewDist * (1.f - lerpHeight) + m_fMaxViewDistHighSpec * lerpHeight;
+    }
 
     if (bScaled)
     {
@@ -1793,16 +1811,17 @@ IPhysMaterialEnumerator* C3DEngine::GetPhysMaterialEnumerator()
 
 float C3DEngine::GetDistanceToSectorWithWater()
 {
-    if (!m_pTerrain || !m_pTerrain->GetRootNode())
+    // If there's no terrain or no ocean, return an arbitrarily large number.
+    if (!m_pTerrain || !m_pTerrain->GetRootNode() || (OceanToggle::IsActive() && !OceanRequest::OceanIsEnabled()))
     {
-        return 100000.f;
+        return std::numeric_limits<float>::infinity();
     }
 
     Vec3 camPostion = GetRenderingCamera().GetPosition();
     bool bCameraInTerrainBounds = Overlap::Point_AABB2D(camPostion, m_pTerrain->GetRootNode()->GetBBoxVirtual());
 
     return (bCameraInTerrainBounds && (m_pTerrain && m_pTerrain->GetDistanceToSectorWithWater() > 0.1f))
-           ? m_pTerrain->GetDistanceToSectorWithWater() : max(camPostion.z - GetWaterLevel(), 0.1f);
+           ? m_pTerrain->GetDistanceToSectorWithWater() : max(camPostion.z - OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel(), 0.1f);
 }
 
 Vec3 C3DEngine::GetSunColor() const
@@ -2746,7 +2765,7 @@ float C3DEngine::GetAccurateOceanHeight(const Vec3& pCurrPos) const
     static float fWaterLevel = 0;
     if (nFrameID != nEngineFrameID && m_pTerrain)
     {
-        fWaterLevel = m_pTerrain->GetWaterLevel();
+        fWaterLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : m_pTerrain->GetWaterLevel();
         nFrameID = nEngineFrameID;
     }
 
@@ -2754,14 +2773,25 @@ float C3DEngine::GetAccurateOceanHeight(const Vec3& pCurrPos) const
     return waterLevel;
 }
 
-Vec4 C3DEngine::GetCausticsParams() const
+I3DEngine::CausticsParams C3DEngine::GetCausticsParams() const
 {
-    return Vec4(m_oceanCausticsTilling, m_oceanCausticsDistanceAtten, m_oceanCausticsMultiplier, 1.0);
-}
-
-Vec4 C3DEngine::GetOceanAnimationCausticsParams() const
-{
-    return Vec4(1, m_oceanCausticHeight, m_oceanCausticDepth, m_oceanCausticIntensity);
+    I3DEngine::CausticsParams params;
+    if (OceanToggle::IsActive())
+    {
+        params.tiling = OceanRequest::GetCausticsTiling();
+        params.distanceAttenuation = OceanRequest::GetCausticsDistanceAttenuation();
+        params.depth = OceanRequest::GetCausticsDepth();
+        params.intensity = OceanRequest::GetCausticsIntensity();
+    }
+    else
+    {
+        params.tiling = m_oceanCausticsTiling;
+        params.distanceAttenuation = m_oceanCausticsDistanceAtten;
+        params.depth = m_oceanCausticDepth;
+        params.intensity = m_oceanCausticIntensity;
+    }
+    params.height = 0.0f; // @TODO: (@pruiksma) Parameter not currently accessible, need to decide whether to rip out or start using. [LY-62048]
+    return params;
 }
 
 void C3DEngine::GetHDRSetupParams(Vec4 pParams[5]) const
@@ -2775,6 +2805,7 @@ void C3DEngine::GetHDRSetupParams(Vec4 pParams[5]) const
     pParams[4] = Vec4(m_vHDREyeAdaptationLegacy, 1.0f);
 };
 
+// TODO: collapse this function and merge with the version of GetOceanAnimationParams() that doesn't have arguments.
 void C3DEngine::GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const
 {
     static int nFrameID = -1;
@@ -2783,13 +2814,22 @@ void C3DEngine::GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const
     static Vec4 s_pParams0 = Vec4(0, 0, 0, 0);
     static Vec4 s_pParams1 = Vec4(0, 0, 0, 0);
 
-    if (nFrameID != nCurrFrameID && m_pTerrain)
+    if (nFrameID != nCurrFrameID)
     {
-        sincos_tpl(m_oceanWindDirection, &s_pParams1.y, &s_pParams1.z);
+        if (OceanToggle::IsActive())
+        {
+            s_pParams1.w = OceanRequest::GetOceanLevelOrDefault(AZ::OceanConstants::s_HeightUnknown);
+        }
+        else
+        {
+            s_pParams1.w = m_pTerrain ? m_pTerrain->GetWaterLevel() : AZ::OceanConstants::s_HeightUnknown;
+        }
 
-        s_pParams0 = Vec4(m_oceanWindDirection,  m_oceanWindSpeed, m_oceanWavesSpeed, m_oceanWavesAmount);
-        s_pParams1.x = m_oceanWavesSize;
-        s_pParams1.w = m_pTerrain->GetWaterLevel();
+        const auto ocean = GetOceanAnimationParams();
+
+        sincos_tpl(ocean.fWindDirection, &s_pParams1.y, &s_pParams1.z);
+        s_pParams0 = Vec4(ocean.fWindDirection, ocean.fWindSpeed, ocean.fWavesSpeed, ocean.fWavesAmount);
+        s_pParams1.x = ocean.fWavesSize;
 
         nFrameID = nCurrFrameID;
     }
@@ -2797,6 +2837,28 @@ void C3DEngine::GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const
     pParams0 = s_pParams0;
     pParams1 = s_pParams1;
 };
+
+I3DEngine::OceanAnimationData C3DEngine::GetOceanAnimationParams() const
+{
+    I3DEngine::OceanAnimationData data;
+    if (OceanToggle::IsActive())
+    {
+        data.fWavesAmount = OceanRequest::GetWavesAmount();
+        data.fWavesSize = OceanRequest::GetWavesSize();
+        data.fWavesSpeed = OceanRequest::GetWavesSpeed();
+        data.fWindDirection = OceanRequest::GetWindDirection();
+        data.fWindSpeed = OceanRequest::GetWindSpeed();
+    }
+    else
+    {
+        data.fWavesAmount = m_oceanWavesAmount;
+        data.fWavesSize = m_oceanWavesSize;
+        data.fWavesSpeed = m_oceanWavesSpeed;
+        data.fWindDirection = m_oceanWindDirection;
+        data.fWindSpeed = m_oceanWindSpeed;
+    }
+    return data;
+}
 
 IVisArea* C3DEngine::CreateVisArea(uint64 visGUID)
 {
@@ -2954,11 +3016,6 @@ IRenderNode* C3DEngine::CreateRenderNode(EERType type)
         CWaterVolumeRenderNode* pWaterVolume = new CWaterVolumeRenderNode();
         return pWaterVolume;
     }
-    case eERType_WaterWave:
-    {
-        CWaterWaveRenderNode* pRenderNode = new CWaterWaveRenderNode();
-        return pRenderNode;
-    }
     case eERType_DistanceCloud:
     {
         CDistanceCloudRenderNode* pRenderNode = new CDistanceCloudRenderNode();
@@ -3031,11 +3088,15 @@ void C3DEngine::SetWind(const Vec3& vWind)
             m_pGlobalWind->SetParams(&fd);
         }
 
-        // Set medium half-plane above water level. Set standard air density.
+        // The wind shouldn't even be a half space if there's no ocean, so set the water level arbitrarily low.
+        const float noOceanAirDepth = -100000.0f;
+        float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevelOrDefault(noOceanAirDepth) : GetWaterLevel();
+
+        // Set medium half-space above water level. Set standard air density.
         pe_params_buoyancy pb;
-        pb.iMedium = 1;
+        pb.iMedium = 1; // 1 == air
         pb.waterPlane.n.Set(0, 0, -1);
-        pb.waterPlane.origin.Set(0, 0, GetWaterLevel());
+        pb.waterPlane.origin.Set(0, 0, waterLevel);
         pb.waterFlow = m_vWindSpeed;
         pb.waterResistance = 1;
         pb.waterDensity = 1;

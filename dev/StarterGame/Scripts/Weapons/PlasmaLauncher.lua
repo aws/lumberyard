@@ -38,7 +38,7 @@ function plasmalauncher:DoFire(useForwardForAiming, playerOwned)
 	params.ownerId = self.Properties.Owner;
 	params.attachToEntity = false;
 	if(useForwardForAiming == true) then
-		params.impulse = TransformBus.Event.GetWorldTM(self.entityId):GetColumn(2):GetNormalized();
+		params.impulse = self.weapon:GetWeaponForward():GetNormalized();
 	else
 		local camTm = TransformBus.Event.GetWorldTM(TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCamera")));
 		params.impulse = camTm:GetColumn(1);
@@ -48,7 +48,7 @@ function plasmalauncher:DoFire(useForwardForAiming, playerOwned)
 	
 	-- Spawn a muzzle flash.
 	local from = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
-	local to = from + TransformBus.Event.GetWorldTM(self.entityId):GetColumn(2):GetNormalized();	-- the gun is weird; column 2 is the forward
+	local to = from + self.weapon:GetWeaponForward():GetNormalized();
 	local tm = MathUtils.CreateLookAt(from, to, AxisType.YPositive);
 	TransformBus.Event.SetWorldTM(self.Properties.MuzzleEffect.Spawner, tm);
 	

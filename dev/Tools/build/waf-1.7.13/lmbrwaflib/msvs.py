@@ -361,7 +361,7 @@ SUPPORTED_MSVS_VALUE_TABLE = {
         "name" : "Visual Studio 2015",
         "numver" : "14.00",
         "vsver": "14",
-        "defaultPlatformToolSet": "v120",
+        "defaultPlatformToolSet": "v140",
         "platforms": ["win_x64_vs2015",
 	],
         "product_name": "2015"
@@ -792,7 +792,7 @@ class vsnode_project(vsnode):
         required for writing the source files
         """
         name = node.name
-        if name.endswith('.cpp') or name.endswith('.c'):
+        if self.ctx.is_cxx_file(name):
             return 'ClCompile'
         return 'ClInclude'
 
@@ -940,7 +940,7 @@ class vsnode_build_all(vsnode_alias):
 
         # Collect WAF files
         waf_data_dir            = self.ctx.root.make_node(Context.launch_dir).make_node('_WAF_')
-        waf_source_dir          = self.ctx.root.make_node(Context.launch_dir).make_node('Tools/build/waf-1.7.13')
+        waf_source_dir          = self.ctx.engine_node.make_node('Tools/build/waf-1.7.13')
 
         waf_config_files        = waf_data_dir.ant_glob('**/*', maxdepth=0)
         waf_spec_files          = waf_data_dir.make_node('specs').ant_glob('**/*')

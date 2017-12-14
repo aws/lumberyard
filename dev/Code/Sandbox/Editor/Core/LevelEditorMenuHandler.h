@@ -45,6 +45,8 @@ public:
 
     QAction* CreateViewPaneAction(const QtViewPane* view);
 
+    // It's used when users update the Tool Box Macro list in the Configure Tool Box Macro dialog
+    void UpdateMacrosMenu();
 Q_SIGNALS:
     void ActivateAssetImporter();
 
@@ -84,9 +86,6 @@ private:
 
     void LoadComponentLayout();
     void LoadLegacyLayout();
-
-    // It's used when users update the Tool Box Macro list in the Configure Tool Box Macro dialog
-    void UpdateMacrosMenu();
 
     void LoadNetPromoterScoreDialog(ActionManager::MenuWrapper& menu);
     

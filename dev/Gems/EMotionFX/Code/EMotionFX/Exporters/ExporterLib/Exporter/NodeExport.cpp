@@ -32,9 +32,9 @@ namespace ExporterLib
         const uint32                parentIndex         = node->GetParentIndex();
         const uint32                numChilds           = node->GetNumChildNodes();
         const EMotionFX::Transform& transform           = actor->GetBindPose()->GetLocalTransform(nodeIndex);
-        MCore::Vector3              position            = transform.mPosition;
+        AZ::PackedVector3f          position            = AZ::PackedVector3f(transform.mPosition);
         MCore::Quaternion           rotation            = transform.mRotation;
-        MCore::Vector3              scale               = transform.mScale;
+        AZ::PackedVector3f          scale               = AZ::PackedVector3f(transform.mScale);
 
         // create the node chunk and copy over the information
         EMotionFX::FileFormat::Actor_Node nodeChunk;
@@ -91,7 +91,10 @@ namespace ExporterLib
         MCore::LogDetailedInfo("    + NumChilds: %i", nodeChunk.mNumChilds);
         MCore::LogDetailedInfo("    + Position: x=%f y=%f z=%f", nodeChunk.mLocalPos.mX, nodeChunk.mLocalPos.mY, nodeChunk.mLocalPos.mZ);
         MCore::LogDetailedInfo("    + Rotation: x=%f y=%f z=%f w=%f", nodeChunk.mLocalQuat.mX, nodeChunk.mLocalQuat.mY, nodeChunk.mLocalQuat.mZ, nodeChunk.mLocalQuat.mW);
-        MCore::LogDetailedInfo("    + Rotation Euler: x=%f y=%f z=%f", rotation.ToEuler().x * 180.0 / MCore::Math::pi, rotation.ToEuler().y * 180.0 / MCore::Math::pi, rotation.ToEuler().z * 180.0 / MCore::Math::pi);
+        MCore::LogDetailedInfo("    + Rotation Euler: x=%f y=%f z=%f",
+            float(rotation.ToEuler().GetX()) * 180.0 / MCore::Math::pi,
+            float(rotation.ToEuler().GetY()) * 180.0 / MCore::Math::pi,
+            float(rotation.ToEuler().GetZ()) * 180.0 / MCore::Math::pi);
         MCore::LogDetailedInfo("    + Scale: x=%f y=%f z=%f", nodeChunk.mLocalScale.mX, nodeChunk.mLocalScale.mY, nodeChunk.mLocalScale.mZ);
         MCore::LogDetailedInfo("    + IncludeInBoundsCalc: %d", node->GetIncludeInBoundsCalc());
 
@@ -106,7 +109,7 @@ namespace ExporterLib
 
         // endian conversion
         ConvertFileVector3(&nodeChunk.mLocalPos,           targetEndianType);
-        ConvertFileQuaternion(&nodeChunk.mLocalQuat,          targetEndianType);
+        ConvertFileQuaternion(&nodeChunk.mLocalQuat,       targetEndianType);
         ConvertFileVector3(&nodeChunk.mLocalScale,         targetEndianType);
         ConvertUnsignedInt(&nodeChunk.mParentIndex,        targetEndianType);
         ConvertUnsignedInt(&nodeChunk.mNumChilds,          targetEndianType);
@@ -156,12 +159,12 @@ namespace ExporterLib
         EMotionFX::FileFormat::Actor_Nodes nodesChunk;
         nodesChunk.mNumNodes        = numNodes;
         nodesChunk.mNumRootNodes    = actor->GetSkeleton()->GetNumRootNodes();
-        nodesChunk.mStaticBoxMin.mX = actor->GetStaticAABB().GetMin().x;
-        nodesChunk.mStaticBoxMin.mY = actor->GetStaticAABB().GetMin().y;
-        nodesChunk.mStaticBoxMin.mZ = actor->GetStaticAABB().GetMin().z;
-        nodesChunk.mStaticBoxMax.mX = actor->GetStaticAABB().GetMax().x;
-        nodesChunk.mStaticBoxMax.mY = actor->GetStaticAABB().GetMax().y;
-        nodesChunk.mStaticBoxMax.mZ = actor->GetStaticAABB().GetMax().z;
+        nodesChunk.mStaticBoxMin.mX = actor->GetStaticAABB().GetMin().GetX();
+        nodesChunk.mStaticBoxMin.mY = actor->GetStaticAABB().GetMin().GetY();
+        nodesChunk.mStaticBoxMin.mZ = actor->GetStaticAABB().GetMin().GetZ();
+        nodesChunk.mStaticBoxMax.mX = actor->GetStaticAABB().GetMax().GetX();
+        nodesChunk.mStaticBoxMax.mY = actor->GetStaticAABB().GetMax().GetY();
+        nodesChunk.mStaticBoxMax.mZ = actor->GetStaticAABB().GetMax().GetZ();
 
         // endian conversion and write it
         ConvertUnsignedInt(&nodesChunk.mNumNodes, targetEndianType);

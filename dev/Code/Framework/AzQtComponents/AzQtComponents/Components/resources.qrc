@@ -5,6 +5,7 @@
     <file>img/double_triangles.png</file>
     <file>img/dockWidgetSeparatorDots_horiz.png</file>
     <file>img/dockWidgetSeparatorDots_vert.png</file>
+    <file>img/filter.png</file>
     <file>img/radio-hover.png</file>
     <file>img/radio-selected.png</file>
     <file>img/radio-unselected.png</file>
@@ -12,6 +13,7 @@
     <file>img/combo-checked.png</file>
     <file>img/combo-tristate.png</file>
     <file>img/ly_application_icon.png</file>
+    <file>img/search.png</file>
     <file>img/separator.png</file>
     <file>img/separator_horiz.png</file>
     <file>img/slider-handle.png</file>
@@ -260,6 +262,15 @@
     <file>img/titlebar/titlebar_minimize.png</file>
     <file>img/titlebar/titlebar_minimize_press.png</file>
     <file>img/titlebar/titlebar_minimize_hover.png</file>
+    <file>img/titlebar/titlebar_close_dark.png</file>
+    <file>img/titlebar/titlebar_close_hover_dark.png</file>
+    <file>img/titlebar/titlebar_close_press_dark.png</file>
+    <file>img/titlebar/titlebar_maximize_dark.png</file>
+    <file>img/titlebar/titlebar_maximize_hover_dark.png</file>
+    <file>img/titlebar/titlebar_maximize_press_dark.png</file>
+    <file>img/titlebar/titlebar_minimize_dark.png</file>
+    <file>img/titlebar/titlebar_minimize_press_dark.png</file>
+    <file>img/titlebar/titlebar_minimize_hover_dark.png</file>
 
     <file>img/titlebarmenu/close.png</file>
     <file>img/titlebarmenu/restore.png</file>

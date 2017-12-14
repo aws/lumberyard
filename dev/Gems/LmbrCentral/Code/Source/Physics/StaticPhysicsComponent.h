@@ -22,7 +22,7 @@ namespace LmbrCentral
         : public PhysicsComponent
     {
     public:
-        AZ_COMPONENT(StaticPhysicsComponent, StaticPhysicsComponentTypeId, PhysicsComponent);
+        AZ_COMPONENT(StaticPhysicsComponent, AzFramework::StaticPhysicsComponentTypeId, PhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         StaticPhysicsComponent() = default;
@@ -45,6 +45,6 @@ namespace LmbrCentral
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
         ////////////////////////////////////////////////////////////////////////
 
-        StaticPhysicsConfig m_configuration;
+        AzFramework::StaticPhysicsConfig m_configuration;
     };
 } // namespace LmbrCentral

@@ -100,6 +100,7 @@ namespace EMStudio
 
         bool Init() override;
         void OnAfterLoadProject() override;
+        void OnAfterLoadActors() override;
 
         // callback functions
         virtual void CreateRenderWidget(RenderViewWidget* renderViewWidget, RenderWidget** outRenderWidget, QWidget** outWidget) = 0;

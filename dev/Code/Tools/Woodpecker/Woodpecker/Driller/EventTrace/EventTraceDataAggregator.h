@@ -18,6 +18,7 @@
 #include "EventTraceDataParser.h"
 
 #include <AzCore/JSON/document.h>
+#include <AzCore/RTTI/RTTI.h>
 
 #include <QProcess>
 

@@ -209,8 +209,8 @@ void ShortcutManager::Serialize(Serialization::IArchive& ar)
 
 bool ShortcutManager::Process(uint32 nChar)
 {
-    bool bPressCTRL = GetKeyState(VK_CONTROL) & (1 << 15);
-    bool bPressSHIFT = GetKeyState(VK_SHIFT) & (1 << 15);
+    bool bPressCTRL = Qt::ControlModifier & QApplication::queryKeyboardModifiers();
+    bool bPressSHIFT = Qt::ShiftModifier & QApplication::queryKeyboardModifiers();
 
     for (int i = 0, iCount(m_ShortCutItems.size()); i < iCount; ++i)
     {
@@ -306,7 +306,7 @@ bool ShortcutManager::CheckDuplicatedShortcuts()
     return false;
 }
 
-void ShortcutManager::SetShortcut(CD::SShortCutItem& sc)
+void ShortcutManager::SetShortcut(const CD::SShortCutItem& sc)
 {
     for (int i = 0, iCount(m_ShortCutItems.size()); i < iCount; ++i)
     {

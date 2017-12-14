@@ -94,8 +94,8 @@ public:
 
     void Execute() const;
 
-    void SetShortcutName(const char* name)
-    {   m_action.setShortcut(QKeySequence(name));   }
+    void SetShortcutName(const QKeySequence& name)
+    {   m_action.setShortcut(name);   }
     QKeySequence GetShortcutName()  const
     {   return m_action.shortcut();         }
 

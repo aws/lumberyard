@@ -11,28 +11,33 @@
 import os
 import sys
 import argparse
-import ConfigParser
 import xml.etree.ElementTree as ET
 
+from waflib.TaskGen import feature, before_method, after_method
 from waflib import Logs, Options, Utils, Configure, ConfigSet
 from waflib.Configure import conf, ConfigurationContext
 from waflib.Build import BuildContext, CleanContext, Context
 
-from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, PLATFORM_CONFIGURATION_FILTER, PLATFORMS, CONFIGURATIONS, LUMBERYARD_VERSION
+from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, PLATFORM_CONFIGURATION_FILTER, PLATFORMS, CONFIGURATIONS, LUMBERYARD_ENGINE_PATH
 from utils import parse_json_file
 
 UNSUPPORTED_PLATFORM_CONFIGURATIONS = set()
 
-CURRENT_WAF_EXECUTABLE = '"{0}" ./Tools/build/waf-1.7.13/lmbr_waf'.format(sys.executable)
+WAF_BASE_SCRIPT = os.path.normpath("{}/Tools/build/waf-1.7.13/lmbr_waf".format(LUMBERYARD_ENGINE_PATH))
 
-WAF_TOOL_ROOT_DIR = 'Tools/build/waf-1.7.13'
-LMBR_WAF_TOOL_DIR = WAF_TOOL_ROOT_DIR + '/lmbrwaflib'
-GENERAL_WAF_TOOL_DIR = WAF_TOOL_ROOT_DIR + '/waflib'
+CURRENT_WAF_EXECUTABLE = '"{}" "{}"'.format(sys.executable, WAF_BASE_SCRIPT)
 
-# some files write a corresponding .timestamp file in BinTemp/ as part of the configuration process
-TIMESTAMP_CHECK_FILES = ['bootstrap.cfg','SetupAssistantConfig.json']
-# additional files for android builds
+WAF_TOOL_ROOT_DIR = os.path.join(LUMBERYARD_ENGINE_PATH, "Tools", "build","waf-1.7.13")
+LMBR_WAF_TOOL_DIR = os.path.join(WAF_TOOL_ROOT_DIR, "lmbrwaflib")
+GENERAL_WAF_TOOL_DIR = os.path.join(WAF_TOOL_ROOT_DIR, "waflib")
+
+# some files write a corresponding .timestamp files in BinTemp/ as part of the configuration process
+if LUMBERYARD_ENGINE_PATH=='.':
+    TIMESTAMP_CHECK_FILES = ['SetupAssistantConfig.json']
+else:
+    TIMESTAMP_CHECK_FILES = [os.path.join(LUMBERYARD_ENGINE_PATH, "SetupAssistantConfig.json"),'bootstrap.cfg']
 ANDROID_TIMESTAMP_CHECK_FILES = ['_WAF_/android/android_settings.json', '_WAF_/environment.json']
+
 # successful configure generates these timestamps
 CONFIGURE_TIMESTAMP_FILES = ['bootstrap.timestamp','SetupAssistantConfig.timestamp', 'android_settings.timestamp', 'environment.timestamp']
 # if configure is run explicitly, delete these files to force them to rerun
@@ -133,6 +138,7 @@ PLATFORM_COMPILE_SETTINGS = [
     'compile_settings_test',
     'compile_settings_android',
     'compile_settings_android_armv7',
+    'compile_settings_android_armv8',
     'compile_settings_android_gcc',
     'compile_settings_android_clang',
     'compile_settings_ios',
@@ -161,12 +167,11 @@ def load_lmbr_waf_modules(conf, module_table):
                     continue
             else:
                 module = lmbr_waflib_module
-
             try:
                 if tool_dir == GENERAL_WAF_TOOL_DIR:
                     conf.load(module)
                 else:
-                    conf.load(module, tooldir=tool_dir)
+                    conf.load(module, tooldir=[tool_dir])
             except SyntaxError as syntax_err:
                 conf.fatal("[Error] Unable to load required module '{}.py: {} (Line:{}, Offset:{})'".format(module, syntax_err.msg, syntax_err.lineno, syntax_err.offset))
             except Exception as e:
@@ -203,7 +208,7 @@ def check_module_load_options(conf):
 
     if conf.options.external_crash_reporting:
         if os.path.exists(crash_reporter_path):
-            conf.load(crash_reporter_file, tooldir=LMBR_WAF_TOOL_DIR)
+            conf.load(crash_reporter_file, tooldir=[LMBR_WAF_TOOL_DIR])
 
 def configure_general_compile_settings(conf):
     """
@@ -212,13 +217,28 @@ def configure_general_compile_settings(conf):
     """
     # Load general compile settings
     load_setting_count = 0
-    absolute_lmbr_waf_tool_path = conf.path.make_node(LMBR_WAF_TOOL_DIR).abspath()
+    absolute_lmbr_waf_tool_path = LMBR_WAF_TOOL_DIR if os.path.isabs(LMBR_WAF_TOOL_DIR) else conf.path.make_node(LMBR_WAF_TOOL_DIR).abspath()
+
     for compile_settings in PLATFORM_COMPILE_SETTINGS:
+        t_path = os.path.join(absolute_lmbr_waf_tool_path, "{}.py".format(compile_settings))
         if os.path.exists(os.path.join(absolute_lmbr_waf_tool_path, "{}.py".format(compile_settings))):
-            conf.load(compile_settings, tooldir=LMBR_WAF_TOOL_DIR)
+            conf.load(compile_settings, tooldir=[LMBR_WAF_TOOL_DIR])
             load_setting_count += 1
     if load_setting_count == 0:
         conf.fatal('[ERROR] Unable to load any general compile settings modules')
+
+    # load the android specific tools, if enabled
+    if any(platform for platform in conf.get_available_platforms() if platform.startswith('android')):
+        # We need to validate the JDK path from SetupAssistant before loading the javaw tool.
+        # This way we don't introduce a dependency on lmbrwaflib in the core waflib.
+        jdk_home = conf.get_env_file_var('LY_JDK', required = True)
+        if not jdk_home:
+            conf.fatal('[ERROR] Missing JDK path from Setup Assistant detected.  Please re-run Setup Assistant with "Compile For Android" enabled and run the configure command again.')
+
+        conf.env['JAVA_HOME'] = jdk_home
+
+        conf.load('javaw')
+        conf.load('android', tooldir=[LMBR_WAF_TOOL_DIR])
 
 
 def load_compile_rules_for_host(conf, waf_host_platform):
@@ -231,7 +251,7 @@ def load_compile_rules_for_host(conf, waf_host_platform):
     """
     host_module_file = 'compile_rules_{}_host'.format(waf_host_platform)
     try:
-        conf.load(host_module_file, tooldir=LMBR_WAF_TOOL_DIR)
+        conf.load(host_module_file, tooldir=[LMBR_WAF_TOOL_DIR])
     except:
         conf.fatal("[ERROR] Unable to load compile rules module file '{}'".format(host_module_file))
 
@@ -314,36 +334,6 @@ def run_bootstrap(conf):
 
 
 @conf
-def filter_target_platforms(conf):
-    """
-    Filter out any target platforms based on settings or options from the configuration/options
-
-    :param conf:                Configuration context
-    """
-
-    # handle disabling android here to avoid having the same block of code in each of the compile_rules
-    # for all the current and future android targets
-    android_enabled = conf.get_env_file_var('ENABLE_ANDROID', required=False, silent=True)
-    if android_enabled == 'True':
-        # We need to validate the JDK path from SetupAssistant before loading the javaw tool.
-        # This way we don't introduce a dependency on lmbrwaflib in the core waflib.
-        jdk_home = conf.get_env_file_var('LY_JDK', required = True)
-        if not jdk_home:
-            conf.fatal('[ERROR] Missing JDK path from Setup Assistant detected.  Please re-run Setup Assistant with "Compile For Android" enabled and run the configure command again.')
-
-        conf.env['JAVA_HOME'] = jdk_home
-
-        conf.load('javaw')
-        conf.load('android', tooldir=LMBR_WAF_TOOL_DIR)
-    else:
-        android_targets = [target for target in conf.get_available_platforms() if 'android' in target]
-        Logs.warn('[WARN] Removing the following Android target platforms due to "Compile For Android" not checked in Setup Assistant.\n'
-                  '\t-> {}'.format(', '.join(android_targets)))
-        for android in android_targets:
-            conf.remove_platform_from_available_platforms(android)
-
-
-@conf
 def load_compile_rules_for_supported_platforms(conf, platform_configuration_filter):
     """
     Load the compile rules for all the supported target platforms for the current host platform
@@ -354,7 +344,7 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
 
     host_platform = conf.get_waf_host_platform()
 
-    absolute_lmbr_waf_tool_path = conf.path.make_node(LMBR_WAF_TOOL_DIR).abspath()
+    absolute_lmbr_waf_tool_path = LMBR_WAF_TOOL_DIR if os.path.isabs(LMBR_WAF_TOOL_DIR) else conf.path.make_node(LMBR_WAF_TOOL_DIR).abspath()
 
     vanilla_conf = conf.env.derive()  # grab a snapshot of conf before you pollute it.
 
@@ -374,7 +364,7 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
             continue
 
         Logs.info('[INFO] Configure "%s - [%s]"' % (platform, ', '.join(conf.get_supported_configurations(platform))))
-        conf.load(compile_rule_script, tooldir=LMBR_WAF_TOOL_DIR)
+        conf.load(compile_rule_script, tooldir=[LMBR_WAF_TOOL_DIR])
 
         # platform installed
         installed_platforms.append(platform)
@@ -382,6 +372,14 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
         # Keep track of uselib's that we found in the 3rd party config files
         third_party_uselib_map = conf.read_and_mark_3rd_party_libs()
         conf.env['THIRD_PARTY_USELIBS'] = [uselib_name for uselib_name in third_party_uselib_map]
+
+        # Save off configuration values from the uselib which are necessary during build for modules built with the uselib
+        configuration_settings_map = {}
+        for uselib_name in third_party_uselib_map:
+            configuration_values = conf.get_configuration_settings(uselib_name)
+            if configuration_values:
+                configuration_settings_map[uselib_name] = configuration_values
+        conf.env['THIRD_PARTY_USELIB_SETTINGS'] = configuration_settings_map
 
         for supported_configuration in conf.get_supported_configurations():
             # if the platform isn't going to generate a build command, don't require that the configuration exists either
@@ -495,13 +493,13 @@ def process_custom_configure_commands(conf):
                 Options.commands.append('xcode_mac')
 
     # Android target platform commands
-    if any(platform for platform in conf.get_supported_platforms() if 'android' in platform):
+    if any(platform for platform in conf.get_supported_platforms() if platform.startswith('android')):
 
         # this is required for building any android projects. It adds the Android launchers
         # to the list of build directories
         android_builder_func = getattr(conf, 'create_and_add_android_launchers_to_build', None)
         if android_builder_func != None and android_builder_func():
-            SUBFOLDERS.append(conf.get_android_project_relative_path())
+            SUBFOLDERS.append(conf.get_android_project_absolute_path())
 
         # rebuild the project if invoked from android studio or sepcifically requested to do so
         if conf.options.from_android_studio or conf.is_option_true('generate_android_studio_projects_automatically'):
@@ -510,79 +508,6 @@ def process_custom_configure_commands(conf):
                 Options.commands.insert(build_cmd_idx, 'android_studio')
             else:
                 Options.commands.append('android_studio')
-
-        # generate header
-        def _indent_text(indent_level, text, *args):
-            indent_space = ' ' * indent_level * 4
-            return str.format('{}{}', indent_space, text % args)
-
-        recordingMode = [
-            'AZ::Debug::AllocationRecords::Mode::RECORD_NO_RECORDS',
-            'AZ::Debug::AllocationRecords::Mode::RECORD_STACK_NEVER',
-            'AZ::Debug::AllocationRecords::Mode::RECORD_STACK_IF_NO_FILE_LINE',
-            'AZ::Debug::AllocationRecords::Mode::RECORD_FULL',
-            'AZ::Debug::AllocationRecords::Mode::RECORD_MAX',
-        ]
-
-        outputString = ""
-
-        outputString += "////////////////////////////////////////////////////////////////\n"
-        outputString += "// This file was automatically created by WAF\n"
-        outputString += "// WARNING! All modifications will be lost!\n"
-        outputString += "////////////////////////////////////////////////////////////////\n\n"
-
-        outputString += "void SetupAndroidDescriptor(const char* gameName, AZ::ComponentApplication::Descriptor &desc)\n{\n"
-
-        for project in conf.get_enabled_game_project_list():
-            targetFile = os.path.join(conf.path.abspath(), project, "Config", "Game.xml")
-
-            tree = ET.parse(targetFile)
-            root = tree.getroot()
-            descriptor = root[0]
-
-            outputString += _indent_text(1, "if(stricmp(gameName, \"%s\") == 0)\n", project)
-            outputString += _indent_text(1, "{\n")
-            outputString += _indent_text(2, "desc.m_useExistingAllocator = %s;\n", descriptor.findall("*[@field='useExistingAllocator']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_grabAllMemory = %s;\n", descriptor.findall("*[@field='grabAllMemory']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_allocationRecords = %s;\n", descriptor.findall("*[@field='allocationRecords']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_autoIntegrityCheck = %s;\n", descriptor.findall("*[@field='autoIntegrityCheck']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_markUnallocatedMemory = %s;\n", descriptor.findall("*[@field='markUnallocatedMemory']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_doNotUsePools = %s;\n", descriptor.findall("*[@field='doNotUsePools']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_pageSize = %s;\n", descriptor.findall("*[@field='pageSize']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_poolPageSize = %s;\n", descriptor.findall("*[@field='poolPageSize']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_memoryBlockAlignment = %s;\n", descriptor.findall("*[@field='blockAlignment']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_memoryBlocksByteSize = %s;\n", descriptor.findall("*[@field='blockSize']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_reservedOS = %s;\n", descriptor.findall("*[@field='reservedOS']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_reservedDebug = %s;\n", descriptor.findall("*[@field='reservedDebug']")[0].get("value"))
-
-            if descriptor.find("*[@field='recordingMode']") is not None:
-                field = "recordingMode"
-            else:
-                field = "recordsMode"
-
-            id = int(descriptor.findall(str.format("*[@field='{}']", field))[0].get("value"))
-            outputString += _indent_text(2, "desc.m_recordingMode = %s;\n", recordingMode[id])
-
-            outputString += _indent_text(2, "desc.m_stackRecordLevels = %s;\n", descriptor.findall("*[@field='stackRecordLevels']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_enableDrilling = %s;\n", descriptor.findall("*[@field='enableDrilling']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_x360IsPhysicalMemory = %s;\n", descriptor.findall("*[@field='x360PhysicalMemory']")[0].get("value")) # ACCEPTED_USE
-
-            modulesElement = descriptor.findall("*[@field='modules']")[0]
-            for moduleEntry in modulesElement.findall("*[@field='element']"):
-                outputString += _indent_text(2, "desc.m_modules.push_back();\n")
-                outputString += _indent_text(2, "desc.m_modules.back().m_dynamicLibraryPath = \"%s\";\n", moduleEntry.findall("*[@field='dynamicLibraryPath']")[0].get("value"))
-            outputString += _indent_text(1, "}\n")
-
-        outputString += "}\n"
-
-        if conf.is_engine_local():
-            filePath = os.path.join(conf.path.abspath(), "Code", "Launcher", "AndroidLauncher", "android_descriptor.h")
-        else:
-            filePath = os.path.join(conf.engine_path, "Code", "Launcher", "AndroidLauncher", "android_descriptor.h")
-
-        fp = open(filePath, 'w')
-        fp.write(outputString)
-        fp.close()
 
     # Make sure the intermediate files are generated and updated
     if len(Options.commands) == 0:
@@ -689,6 +614,10 @@ def validate_build_command(bld):
         elif bld.is_option_true('show_disassembly') and bld.options.file_filter == "":
             bld.fatal('--show-disassembly can only be used in conjunction with --file-filter')
 
+    # android armv8 api level validation
+    if ('android_armv8' in bld.cmd) and (not bld.is_android_armv8_api_valid()):
+        bld.fatal('[ERROR] Attempting to build Android ARMv8 against an API that is lower than the min spec: API 21.')
+
     # Validate the game project version
     if VERSION_NUMBER_PATTERN.match(bld.options.version) is None:
         bld.fatal("[Error] Invalid game version number format ({})".format(bld.options.version))
@@ -747,11 +676,11 @@ def prepare_build_environment(bld):
             bld.fatal('[ERROR] Target platform "%s" not supported. [on host platform: %s]' % (platform, Utils.unversioned_sys_platform()))
 
         # make sure the android launchers are included in the build
-        if bld.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang'):
+        if bld.is_android_platform(bld.env['PLATFORM']):
             android_path = os.path.join(bld.path.abspath(), bld.get_android_project_relative_path(), 'wscript')
             if not os.path.exists(android_path):
                 bld.fatal('[ERROR] Android launchers not correctly configured. Run \'configure\' again')
-            SUBFOLDERS.append(bld.get_android_project_relative_path())
+            SUBFOLDERS.append(bld.get_android_project_absolute_path())
 
         # If a spec was supplied, check for platform limitations
         if bld.options.project_spec != '':
@@ -775,8 +704,9 @@ def prepare_build_environment(bld):
         deploy_cmd = 'deploy_' + platform + '_' + configuration
         # Only deploy to specific target platforms
         if 'build' in bld.cmd and platform in [
-	'android_armv7_gcc',
-	'android_armv7_clang'] and deploy_cmd not in Options.commands:
+    'android_armv7_gcc',
+    'android_armv7_clang',
+    'android_armv8_clang'] and deploy_cmd not in Options.commands:
             # Only deploy if we are not trying to rebuild 3rd party libraries for the platforms above
             if '3rd_party' != getattr(bld.options, 'project_spec', ''):
                 Options.commands.append(deploy_cmd)
@@ -828,13 +758,26 @@ def calculate_engine_path(ctx):
     :param conf     Context
     """
 
-    ctx.engine_node = ctx.path
-    ctx.engine_path = ctx.path.abspath()
+    def _make_engine_node_lst(node):
+        engine_node_lst = []
+        cur_node = node
+        while cur_node.parent:
+            if ' ' in cur_node.name:
+                engine_node_lst.append(cur_node.name.replace(' ', '_'))
+            else:
+                engine_node_lst.append(cur_node.name)
+            cur_node = cur_node.parent
+        engine_node_lst.reverse()
+        # For win32, remove the ':' if the node represents a drive letter
+        if engine_node_lst and Utils.is_win32 and len(engine_node_lst[0]) == 2 and engine_node_lst[0].endswith(':'):
+            engine_node_lst[0] = engine_node_lst[0][0]
+        return engine_node_lst
 
     # Default the engine path, node, and version
     ctx.engine_node = ctx.path
     ctx.engine_path = ctx.path.abspath()
     ctx.engine_root_version = '0.0.0.0'
+    ctx.engine_node_list = _make_engine_node_lst(ctx.engine_node)
 
     engine_json_file_path = ctx.path.make_node('engine.json').abspath()
     if os.path.exists(engine_json_file_path):
@@ -847,6 +790,7 @@ def calculate_engine_path(ctx):
             if os.path.normcase(engine_root_abs)!=os.path.normcase(ctx.engine_path):
                 ctx.engine_node = ctx.root.make_node(engine_root_abs)
                 ctx.engine_path = engine_root_abs
+                ctx.engine_node_list = _make_engine_node_lst(ctx.engine_node)
 
     if ctx.engine_path != ctx.path.abspath():
         last_build_engine_version_node = ctx.get_bintemp_folder_node().make_node(LAST_ENGINE_BUILD_VERSION_TAG_FILE)
@@ -855,7 +799,6 @@ def calculate_engine_path(ctx):
             if last_built_version!= ctx.engine_root_version:
                 Logs.warn('[WARN] The current engine version ({}) does not match the last version {} that this project was built against'.format(ctx.engine_root_version,last_built_version))
                 last_build_engine_version_node.write(ctx.engine_root_version)
-
 
 @conf
 def is_engine_local(conf):
@@ -943,7 +886,7 @@ for platform in PLATFORMS[Utils.unversioned_sys_platform()]:
                 modified = False
 
                 # create a src node
-                src_node = self.path.make_node(path)
+                src_path = path if os.path.isabs(path) else self.path.make_node(path).abspath()
                 timestamp_file = os.path.splitext(os.path.split(path)[1])[0] + '.timestamp'
                 timestamp_node = self.get_bintemp_folder_node().make_node(timestamp_file)
                 timestamp_stat = 0
@@ -954,9 +897,9 @@ for platform in PLATFORMS[Utils.unversioned_sys_platform()]:
                     modified = True
                 else:
                     try:
-                        src_file_stat = os.stat(src_node.abspath())
+                        src_file_stat = os.stat(src_path)
                     except OSError:
-                        Logs.warn('%s not found' % src_node.abspath())
+                        Logs.warn('%s not found' % src_path)
                     else:
                         if src_file_stat.st_mtime > timestamp_stat.st_mtime:
                             modified = True
@@ -1014,8 +957,8 @@ def get_enabled_capabilities(ctx):
         capability_parser = argparse.ArgumentParser()
         capability_parser.add_argument('--enablecapability', '-e', action='append')
         params = [token.strip() for token in raw_capability_string.split()]
-        parsed_capabilities, _ = capability_parser.parse_known_args(params)
-        parsed_capabilities = parsed_capabilities.enablecapability
+        parsed_params = capability_parser.parse_args(params)
+        parsed_capabilities = getattr(parsed_params,'enablecapability',[])
     else:
         parsed_capabilities = []
 

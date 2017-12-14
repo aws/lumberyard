@@ -33,6 +33,8 @@ namespace NCryMetal
 class CCryDXGLDevice;
 class CCryDXGLTexture2D;
 
+@class MetalView;
+
 class CCryDXGLSwapChain
     : public CCryDXGLGIObject
 {
@@ -68,12 +70,15 @@ public:
     //  Confetti End: Igor Lobanchikov
 
 protected:
+    bool CreateDrawableView();
     bool UpdateTexture(bool bSetPixelFormat);
 protected:
     _smart_ptr<CCryDXGLDevice> m_spDevice;
     _smart_ptr<CCryDXGLTexture2D> m_spBackBufferTexture;
     _smart_ptr<CCryDXGLTexture2D> m_spExposedBackBufferTexture;
     DXGI_SWAP_CHAIN_DESC m_kDesc;
+
+    MetalView* m_currentView;
 
     //  Confetti BEGIN: Igor Lobanchikov
     id<CAMetalDrawable> m_Drawable;

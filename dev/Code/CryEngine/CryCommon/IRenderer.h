@@ -107,7 +107,7 @@ struct SClipVolumeBlendInfo;
 class IImageFile;
 class CRenderView;
 struct SDynTexture2;
-
+class ITextureManager;
 class CTexture;
 
 //////////////////////////////////////////////////////////////////////
@@ -265,6 +265,13 @@ public:
     {
         Clear();
     }
+    SMinMaxBox(const Vec3& min, const Vec3& max) :
+        m_min(min), 
+        m_max(max)
+    {
+        UpdateSphere();
+    }
+
     // Summary:
     //  Destructor
     virtual ~SMinMaxBox() {}
@@ -443,11 +450,11 @@ enum PublicRenderPrimitiveType
 #define RFT_FREE_0x2000000    0x2000000
 #define RFT_FREE_0x4000000    0x4000000
 #define RFT_FREE_0x8000000    0x8000000
-#define RFT_FREE_0x10000000   0x10000000
 
-#define RFT_RGBA              0x20000000 // RGBA order (otherwise BGRA).
-#define RFT_COMPUTE_SHADERS   0x40000000 // Compute Shaders support
-#define RFT_HW_VERTEXTEXTURES 0x80000000 // Vertex texture fetching supported.
+#define RFT_HW_VERTEX_STRUCTUREDBUF 0x10000000 // Supports Structured Buffers in the Vertex Shader.
+#define RFT_RGBA                    0x20000000 // RGBA order (otherwise BGRA).
+#define RFT_COMPUTE_SHADERS         0x40000000 // Compute Shaders support
+#define RFT_HW_VERTEXTEXTURES       0x80000000 // Vertex texture fetching supported.
 
 //====================================================================
 // PrecacheResources flags
@@ -479,7 +486,6 @@ enum PublicRenderPrimitiveType
 #define SHDF_NOASYNC                BIT(10)
 #define SHDF_NO_DRAWNEAR            BIT(11)
 #define SHDF_STREAM_SYNC            BIT(13)
-#define SHDF_NO_DRAWCAUSTICS        BIT(14)
 #define SHDF_NO_SHADOWGEN           BIT(15)
 
 //////////////////////////////////////////////////////////////////////
@@ -554,6 +560,7 @@ const float VIRTUAL_SCREEN_HEIGHT = 600.0f;
 #define GS_DEPTHFUNC_GEQUAL        0x00400000
 #define GS_DEPTHFUNC_NOTEQUAL      0x00500000
 #define GS_DEPTHFUNC_HIZEQUAL      0x00600000 // keep hi-z test, always pass fine depth. Useful for debug display
+#define GS_DEPTHFUNC_ALWAYS        0x00700000
 #define GS_DEPTHFUNC_MASK          0x00700000
 
 #define GS_STENCIL                 0x00800000
@@ -1078,6 +1085,7 @@ class CDeviceBufferManager;
 class CShaderResources;
 
 namespace AZ {
+    class Plane;
     namespace Vertex {
         class Format;
     }
@@ -1101,7 +1109,7 @@ struct IRenderer
 
     // Summary:
     //  Initializes the renderer, params are self-explanatory.
-    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false) = 0;
+    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, bool isEditor, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false) = 0;
     virtual void PostInit() = 0;
 
     virtual bool IsPost3DRendererEnabled() const { return false; }
@@ -1166,6 +1174,7 @@ struct IRenderer
     // Summary:
     //  Creates default system shaders and textures.
     virtual void  InitSystemResources(int nFlags) = 0;
+    virtual void  InitTexturesSemantics() = 0;
 
     // Summary:
     //  Frees the allocated resources.
@@ -1492,6 +1501,10 @@ struct IRenderer
     // Summary:
     //  Loads the texture for name(nameTex).
     virtual ITexture* EF_LoadTexture(const char* nameTex, const uint32 flags = 0) = 0;
+    virtual ITexture* EF_LoadCubemapTexture(const char* nameTex, const uint32 flags = 0) = 0;
+    // Summary:
+    //  Loads default texture whose life cycle is managed by Texture Manager, do not try to release them by yourself!
+    virtual ITexture* EF_LoadDefaultTexture(const char* nameTex) = 0;
 
     // Summary:
     //  Loads lightmap for name.
@@ -1506,12 +1519,6 @@ struct IRenderer
     //  Starts using of the shaders (return first index for allow recursions).
     virtual void EF_StartEf (const SRenderingPassInfo& passInfo) = 0;
 
-    //! Get permanent RenderObject
-    virtual CRenderObject* EF_GetObject() = 0;
-
-    //! Release permanent RenderObject
-    virtual void EF_FreeObject(CRenderObject* pObj) = 0;
-
     virtual SRenderObjData* EF_GetObjData(CRenderObject* pObj, bool bCreate, int nThreadID) = 0;
 
     // Summary:
@@ -1525,9 +1532,6 @@ struct IRenderer
     // Summary:
     //  Adds shader to the list.
     virtual void EF_AddEf (CRendElementBase* pRE, SShaderItem& pSH, CRenderObject* pObj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter) = 0;
-
-    //! Adds compiled render object to the list.
-    virtual void EF_AddRenderObject(CRenderObject* pRO, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
 
     //! Draw all shaded REs in the list
     virtual void EF_EndEf3D (const int nFlags, const int nPrecacheUpdateId, const int nNearPrecacheUpdateId, const SRenderingPassInfo& passInfo) = 0;
@@ -1843,8 +1847,6 @@ struct IRenderer
     virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight, bool bAA) = 0;
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf) = 0;
 
-    virtual float EF_GetWaterZElevation(float fX, float fY) = 0;
-
     virtual IOpticsElementBase* CreateOptics(EFlareType type) const = 0;
 
     // Note:
@@ -2134,9 +2136,9 @@ struct IRenderer
     virtual int EF_GetSkinningPoolID() = 0;
 
     virtual void ClearShaderItem(SShaderItem* pShaderItem) = 0;
-    virtual void UpdateShaderItem(SShaderItem* pShaderItem) = 0;
-    virtual void ForceUpdateShaderItem(SShaderItem* pShaderItem) = 0;
-    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem) = 0;
+    virtual void UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial) = 0;
+    virtual void ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial) = 0;
+    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial) = 0;
 
     // Summary:
     //  Determine if a switch to stereo mode will occur at the start of the next frame
@@ -2314,6 +2316,12 @@ struct IRenderer
 #ifdef SUPPORT_HW_MOUSE_CURSOR
     virtual IHWMouseCursor* GetIHWMouseCursor() = 0;
 #endif
+
+    virtual int GetRecursionLevel() = 0;
+
+    virtual int GetIntegerConfigurationValue(const char* varName, int defaultValue) = 0;
+    virtual float GetFloatConfigurationValue(const char* varName, float defaultValue) = 0;
+    virtual bool GetBooleanConfigurationValue(const char* varName, bool defaultValue) = 0;
 
 private:
     // use private for EF_Query to prevent client code to submit arbitrary combinations of output data/size
@@ -2600,6 +2608,10 @@ struct SRendParams
     // Summary:
     // Check if the preview would Show Wireframe - Vera,Confetti
     bool bIsShowWireframe;
+
+    //Summary:
+    // Force drawing static instead of deformable meshes
+    bool bForceDrawStatic;
 };
 
 #endif // CRYINCLUDE_CRYCOMMON_IRENDERER_H

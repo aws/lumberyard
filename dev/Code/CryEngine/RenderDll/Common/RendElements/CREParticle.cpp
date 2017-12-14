@@ -24,7 +24,8 @@
 #include <ParticleParams.h>
 // Confetti END:
 #include <IJobManager_JobDelegator.h>
-#include "Common/RenderView.h"
+#include "../RenderView.h"
+#include "../Textures/TextureManager.h"
 
 DECLARE_JOB("ComputeVertices", TComputeVerticesJob, CREParticle::ComputeVertices);
 
@@ -266,7 +267,7 @@ void CRenderer::EF_AddParticle(CREParticle* pParticle, SShaderItem& shaderItem, 
         }
 
         SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
-        passInfo.GetRenderView()->AddRenderItem(pParticle, pRO, nullptr, shaderItem, nList, !!(pRO->m_ObjFlags & FOB_AFTER_WATER), nBatchFlags, passInfo, rendItemSorter);
+        passInfo.GetRenderView()->AddRenderItem(pParticle, pRO, shaderItem, nList, !!(pRO->m_ObjFlags & FOB_AFTER_WATER), nBatchFlags, passInfo, rendItemSorter);
     }
 #endif
 }
@@ -410,11 +411,13 @@ void CRenderer::PrepareParticleRenderObjects(Array<const SAddParticlesToSceneJob
         {
             if (passInfo.IsAuxWindow())
             {
-                pRE->m_CustomTexBind[0] = CTexture::s_ptexDefaultProbeCM->GetID();
+                CTexture*   pTex = CTextureManager::Instance()->GetDefaultTexture("DefaultProbeCM");
+                pRE->m_CustomTexBind[0] = (pTex ? pTex->GetID() : -1);
             }
             else
             {
-                pRE->m_CustomTexBind[0] = CTexture::s_ptexBlackCM->GetID();
+                CTexture*   pTex = CTextureManager::Instance()->GetBlackTextureCM();
+                pRE->m_CustomTexBind[0] = (pTex ? pTex->GetID() : -1);
             }
         }
 
@@ -434,7 +437,7 @@ void CRenderer::PrepareParticleRenderObjects(Array<const SAddParticlesToSceneJob
         }
 
         // generate the RenderItem entries for this Particle Element
-        passInfo.GetRenderView()->AddRenderItem(pRE, pRenderObject, nullptr, shaderItem, nList, !!(pRenderObject->m_ObjFlags & FOB_AFTER_WATER), nBatchFlags, passInfo, rendItemSorter);
+        passInfo.GetRenderView()->AddRenderItem(pRE, pRenderObject, shaderItem, nList, !!(pRenderObject->m_ObjFlags & FOB_AFTER_WATER), nBatchFlags, passInfo, rendItemSorter);
         rendItemSorter.IncreaseParticleCounter();
     }
 
@@ -529,6 +532,14 @@ bool CRenderer::EF_GetParticleListAndBatchFlags(uint32& nBatchFlags, int& nList,
 
         nBatchFlags |= (pTech->m_nTechnique[TTYPE_PARTICLESTHICKNESSPASS] > 0) ? FB_PARTICLES_THICKNESS : 0;
         pRO->m_ObjFlags |= (pOD && pOD->m_LightVolumeId) ? FOB_LIGHTVOLUME : 0;
+    }
+
+    // Add batch flag so we can filter out these particles which need to be rendered after dof. Also disable half res for particles 
+    // since we don't want to introduce one extra half res pass after dof. This will be mentioned in user document. 
+    if (pRO->m_ObjFlags & FOB_RENDER_TRANS_AFTER_DOF)
+    {
+        nBatchFlags |= FB_TRANSPARENT_AFTER_DOF;
+        bHalfRes = false;
     }
 
     if (bHalfRes)

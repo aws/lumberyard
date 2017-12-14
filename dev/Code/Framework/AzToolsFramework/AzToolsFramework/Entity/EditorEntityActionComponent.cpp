@@ -17,6 +17,7 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzCore/std/containers/map.h>
@@ -405,6 +406,16 @@ namespace AzToolsFramework
 
                 // Only remove, do not delete components until we know it was successful
                 AZStd::vector<AZ::Component*> removedComponents;
+                AZStd::vector<AZ::EntityId> entityIds;
+                for (auto component : componentsToRemove)
+                {
+                    if (component->GetEntity())
+                    {
+                        entityIds.push_back(component->GetEntity()->GetId());
+                    }
+                }
+
+                EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanging, entityIds);
 
                 // Remove all the components requested
                 for (auto componentToRemove : componentsToRemove)
@@ -451,6 +462,8 @@ namespace AzToolsFramework
                 {
                     delete removedComponent;
                 }
+                
+                EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanged, entityIds);
             }
 
             return AZ::Success(AZStd::move(resultMap));
@@ -501,6 +514,8 @@ namespace AzToolsFramework
             {
                 return AZ::Success(AddComponentsOutcome::ValueType());
             }
+
+            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanging, entityIds);
 
             // Validate componentsToAdd uuids and convert into class data
             AzToolsFramework::ClassDataList componentsToAddClassData;
@@ -568,6 +583,8 @@ namespace AzToolsFramework
                 }
             }
 
+            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanged, entityIds);
+
             return AZ::Success(AZStd::move(entityToAddedComponentsMap));
         }
 
@@ -582,6 +599,8 @@ namespace AzToolsFramework
 
             AddComponentsResults addComponentsResults;
 
+            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanging, AZStd::vector<AZ::EntityId>{ entity->GetId() });
+
             // Add all components to the pending list
             for (auto component : componentsToAdd)
             {
@@ -590,6 +609,12 @@ namespace AzToolsFramework
                 {
                     // Just skip null components
                     continue;
+                }
+
+                // If it's not an "editor component" then wrap it in a GenericComponentWrapper.
+                if (!azrtti_istypeof<Components::EditorComponentBase>(component))
+                {
+                    component = aznew Components::GenericComponentWrapper(component);
                 }
 
                 // Obliterate any existing component id to allow the entity to set the id
@@ -629,11 +654,13 @@ namespace AzToolsFramework
             // Any left over validated components are other components that happened to get validated because of our change and return those, but separately
             addComponentsResults.m_additionalValidatedComponents.swap(scrubEntityResult.m_validatedComponents);
 
+            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanged, AZStd::vector<AZ::EntityId>{ entity->GetId() });
+
             return AZ::Success(AZStd::move(addComponentsResults));
         }
 
         EditorEntityActionComponent::ScrubEntityResult EditorEntityActionComponent::ScrubEntity(AZ::Entity* entity)
-        {
+        {   
             ScrubEntityResult result;
             ScopedUndoBatch undo("Scrub entity");
 

@@ -219,6 +219,23 @@ StatusBarItem[clickable="true"]:hover
 	background-color: @ToolButtonHoverBackgroundColor
 }
 
+AzToolsFramework--AssetBrowser--SearchWidget QLineEdit
+{
+    selection-background-color: rgb(233, 99, 0);
+    background: #6e7071;
+    background-image: url(:/AssetBrowser/Resources/search.png);
+    background-repeat: no-repeat;
+    background-position: left;
+    padding: 2 2 2 24;
+    color: rgb(255, 255, 255);
+}
+
+AzToolsFramework--AssetBrowser--SearchWidget QPushButton#m_buttonClearFilter
+{
+    border: none; 
+    background: #6e7071;
+}
+
 /* ============================================================= */
 /* Styles applied through programmatically-set QT properties      */
 /* ============================================================= */
@@ -1860,47 +1877,9 @@ ConditionGroupWidget QLineEdit
     padding: 0 0 0 4;
 }
 
-TagWidget {
-    border-image: url(:/stylesheet/img/tag_background.png) 4;
-    border: 4px solid rgb(40, 41, 42);
-    min-height: 12;
-    font-size: 10 px;
-}
-
-
-TagSelector QComboBox
+AzQtComponents--TagWidget
 {
-    padding: 0 0 0 0;
-    max-width: 167;
-    border-width: 1px;
-    border-radius: 2px;
-    height: 19px;
-}
-
-TagSelector QComboBox:enabled:!focus
-{
-    color: rgb(204, 204, 204);
-    background-color: rgb(47, 46, 46);
-    border-color: rgb(46, 45, 45);
-}
-
-TagSelector QComboBox:enabled:focus
-{
-    background-color: rgb(110, 112, 113);
-    border-color: rgb(60, 116, 209);
-    color: black;
-}
-
-TagSelector QComboBox::down-arrow {
-    image: url(:/stylesheet/img/double_arrows_tag_unfocused.png);
-}
-
-TagSelector QComboBox::down-arrow:focus {
-    image: url(:/stylesheet/img/double_arrows_tag_focused.png);
-}
-
-TagSelector QComboBox::down-arrow:!focus:on {
-    image: url(:/stylesheet/img/double_arrows_tag_focused.png);
+    padding: 2 5 4 3;
 }
 
 QLabel[class="addDeployment"]
@@ -2120,7 +2099,7 @@ QWidget[tableRow="Even"]
 /* Style specific to the outliner visibility and lock icons      */
 /* ============================================================= */
 
-AzToolsFramework--OutlinerVisibilityCheckBox
+OutlinerVisibilityCheckBox
 {
     border: 0px solid transparent;
     border-radius: 0px;
@@ -2131,9 +2110,9 @@ AzToolsFramework--OutlinerVisibilityCheckBox
     margin: 2px;
 }
 
-AzToolsFramework--OutlinerVisibilityCheckBox::indicator:checked
-, AzToolsFramework--OutlinerVisibilityCheckBox::indicator:unchecked
-, AzToolsFramework--OutlinerVisibilityCheckBox::indicator:indeterminate
+OutlinerVisibilityCheckBox::indicator:checked
+, OutlinerVisibilityCheckBox::indicator:unchecked
+, OutlinerVisibilityCheckBox::indicator:indeterminate
 {
     width: 20px;
     height: 20px;
@@ -2149,25 +2128,25 @@ AzToolsFramework--OutlinerVisibilityCheckBox::indicator:checked
     margin: 0px;
 }
 
-AzToolsFramework--OutlinerVisibilityCheckBox::indicator:checked
+OutlinerVisibilityCheckBox::indicator:checked
 {
     image: url(:/Icons/Eye_Open.tif);
 }
 
-AzToolsFramework--OutlinerVisibilityCheckBox::indicator:unchecked
+OutlinerVisibilityCheckBox::indicator:unchecked
 {
     image: url(:/Icons/Eye_Slash.tif);
 }
 
-AzToolsFramework--OutlinerVisibilityCheckBox#bordered::indicator:checked
-, AzToolsFramework--OutlinerVisibilityCheckBox#bordered::indicator:unchecked 
-, AzToolsFramework--OutlinerVisibilityCheckBox#bordered::indicator:indeterminate
+OutlinerVisibilityCheckBox#bordered::indicator:checked
+, OutlinerVisibilityCheckBox#bordered::indicator:unchecked 
+, OutlinerVisibilityCheckBox#bordered::indicator:indeterminate
 {
     border: 1px solid rgb(240, 195, 45);
     border-radius: 3px;
 }
 
-AzToolsFramework--OutlinerLockCheckBox
+OutlinerLockCheckBox
 {
     border: 0px solid transparent;
     border-radius: 0px;
@@ -2178,9 +2157,9 @@ AzToolsFramework--OutlinerLockCheckBox
     margin: 2px;
 }
 
-AzToolsFramework--OutlinerLockCheckBox::indicator:checked
-, AzToolsFramework--OutlinerLockCheckBox::indicator:unchecked
-, AzToolsFramework--OutlinerLockCheckBox::indicator:indeterminate
+OutlinerLockCheckBox::indicator:checked
+, OutlinerLockCheckBox::indicator:unchecked
+, OutlinerLockCheckBox::indicator:indeterminate
 {
     width: 20px;
     height: 20px;
@@ -2196,19 +2175,19 @@ AzToolsFramework--OutlinerLockCheckBox::indicator:checked
     margin: 0px;
 }
 
-AzToolsFramework--OutlinerLockCheckBox::indicator:unchecked
+OutlinerLockCheckBox::indicator:unchecked
 {
     image: url(:/Icons/Padlock_Disabled.tif);
 }
 
-AzToolsFramework--OutlinerLockCheckBox::indicator:checked
+OutlinerLockCheckBox::indicator:checked
 {
     image: url(:/Icons/Padlock_Enabled_Hover.tif);
 }
 
-AzToolsFramework--OutlinerLockCheckBox#bordered::indicator:checked
-, AzToolsFramework--OutlinerLockCheckBox#bordered::indicator:unchecked
-, AzToolsFramework--OutlinerLockCheckBox#bordered::indicator:indeterminate
+OutlinerLockCheckBox#bordered::indicator:checked
+, OutlinerLockCheckBox#bordered::indicator:unchecked
+, OutlinerLockCheckBox#bordered::indicator:indeterminate
 {
     border: 1px solid rgb(240, 195, 45);
     border-radius: 3px;

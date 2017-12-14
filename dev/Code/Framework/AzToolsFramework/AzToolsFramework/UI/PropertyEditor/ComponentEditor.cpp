@@ -148,6 +148,7 @@ namespace AzToolsFramework
         m_header->SetReadOnly(false);
         m_header->SetExpandable(true);
         m_header->SetHasContextMenu(true);
+        m_header->setStyleSheet("QToolTip { padding: 5px; }");
 
         // create property editor
         m_propertyEditor = aznew ReflectedPropertyEditor(this);
@@ -202,6 +203,8 @@ namespace AzToolsFramework
         {
             SetComponentType(*componentInstance);
         }
+
+        m_header->setToolTip(BuildHeaderTooltip());
     }
 
     void ComponentEditor::ClearInstances(bool invalidateImmediately)
@@ -223,8 +226,9 @@ namespace AzToolsFramework
         }
 
         InvalidateComponentType();
-    }
 
+        m_header->setToolTip(BuildHeaderTooltip());
+    }
 
     void ComponentEditor::AddNotifications()
     {
@@ -251,7 +255,7 @@ namespace AzToolsFramework
         m_header->SetReadOnly(isReadOnly);
 
         //disable property editor if component isn't valid
-        m_propertyEditor->SetReadOnly(isReadOnly);
+        m_propertyEditor->setDisabled(isReadOnly);
 
         if (m_components.empty())
         {
@@ -485,9 +489,9 @@ namespace AzToolsFramework
         return combinedPendingComponentInfo;
     }
 
-    void ComponentEditor::InvalidateAll()
+    void ComponentEditor::InvalidateAll(const char* filter)
     {
-        m_propertyEditor->InvalidateAll();
+        m_propertyEditor->InvalidateAll(filter);
     }
 
     void ComponentEditor::QueuePropertyEditorInvalidation(PropertyModificationRefreshLevel refreshLevel)
@@ -530,7 +534,7 @@ namespace AzToolsFramework
         }
 
         AZStd::string iconPath;
-        EBUS_EVENT_RESULT(iconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentType);
+        EBUS_EVENT_RESULT(iconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentType, const_cast<AZ::Component*>(&componentInstance));
         m_header->SetIcon(QIcon(iconPath.c_str()));
     }
 
@@ -543,6 +547,91 @@ namespace AzToolsFramework
         AZStd::string iconPath;
         EBUS_EVENT_RESULT(iconPath, AzToolsFramework::EditorRequests::Bus, GetDefaultComponentEditorIcon);
         m_header->SetIcon(QIcon(iconPath.c_str()));
+    }
+
+    QString ComponentEditor::BuildHeaderTooltip()
+    {
+        // Don't display tooltip if multiple entities / component instances are being displayed.
+        if (m_components.size() != 1)
+        {
+            return QString();
+        }
+
+        // Prepare a tooltip showing useful metadata about this particular component,
+        // such as dependencies on other services (and components) on the entity.
+
+        AZ::Component* thisComponent = m_components.front();
+
+        if (!thisComponent)
+        {
+            return QString();
+        }
+
+        AZ::ComponentDescriptor* componentDescriptor = nullptr;
+        EBUS_EVENT_ID_RESULT(componentDescriptor, thisComponent->RTTI_GetType(), AZ::ComponentDescriptorBus, GetDescriptor);
+
+        if (!componentDescriptor)
+        {
+            return QString();
+        }
+
+        AZ::Entity* entity = thisComponent->GetEntity();
+
+        if (!entity)
+        {
+            return QString();
+        }
+
+        const AZStd::vector<AZ::Component*>& components = entity->GetComponents();
+
+        // Gather required services for the component.
+        AZ::ComponentDescriptor::DependencyArrayType requiredServices;
+        componentDescriptor->GetRequiredServices(requiredServices, thisComponent);
+
+        QString tooltip;
+
+        AZStd::list<AZStd::string> dependsOnComponents;
+
+        // For each service, identify the component on the entity that is currently satisfying the requirement.
+        for (const AZ::ComponentServiceType service : requiredServices)
+        {
+            for (AZ::Component* otherComponent : components)
+            {
+                if (otherComponent == thisComponent)
+                {
+                    continue;
+                }
+
+                AZ::ComponentDescriptor* otherDescriptor = nullptr;
+                EBUS_EVENT_ID_RESULT(otherDescriptor, otherComponent->RTTI_GetType(), AZ::ComponentDescriptorBus, GetDescriptor);
+
+                if (otherDescriptor)
+                {
+                    AZ::ComponentDescriptor::DependencyArrayType providedServices;
+                    otherDescriptor->GetProvidedServices(providedServices, otherComponent);
+
+                    if (AZStd::find(providedServices.begin(), providedServices.end(), service) != providedServices.end())
+                    {
+                        dependsOnComponents.emplace_back(GetFriendlyComponentName(otherComponent));
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!dependsOnComponents.empty())
+        {
+            tooltip += tr("Component has required services satisfied by the following components on this entity:");
+            tooltip += "\n";
+
+            for (const AZStd::string& componentName : dependsOnComponents)
+            {
+                tooltip += "\n\t";
+                tooltip += componentName.c_str();
+            }
+        }
+
+        return tooltip;
     }
 
     void ComponentEditor::OnExpanderChanged(bool expanded)

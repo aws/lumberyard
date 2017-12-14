@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -19,8 +20,8 @@
 namespace LmbrCentral
 {
     /**
-     * Common functionality and data for the SplineComponent.
-     */
+    * Common functionality and data for the SplineComponent.
+    */
     class SplineCommon
     {
     public:
@@ -33,23 +34,34 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         void ChangeSplineType(AZ::u64 splineType);
-        void SetCallbacks(const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer);
 
-        AZ::SplinePtr& GetSpline() { return m_spline; }
+        /**
+         * Override callbacks to be used when spline changes/is modified.
+         */
+        void SetCallbacks(
+            const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
+            const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
+            const AZStd::function<void()>& OnClearVertices, const AZStd::function<void()>& OnChangeType);
+
+        AZ::SplinePtr m_spline; ///< Reference to the underlying spline data.
 
     private:
         AZ::u32 OnChangeSplineType();
 
-        AZ::u64 m_splineType = AZ::LinearSpline::RTTI_Type().GetHash(); ///< The currently set spline type (default to Linear)
-        AZ::SplinePtr m_spline; ///< Reference to the underlying spline data.
+        AZ::u64 m_splineType = AZ::LinearSpline::RTTI_Type().GetHash(); ///< The currently set spline type (default to Linear).
 
-        AZStd::function<void()> m_onChangeElement = nullptr;
-        AZStd::function<void()> m_onChangeContainer = nullptr;
+        AZStd::function<void(size_t)> m_onAddVertex = nullptr;
+        AZStd::function<void(size_t)> m_onRemoveVertex = nullptr;
+        AZStd::function<void()> m_onUpdateVertex = nullptr;
+        AZStd::function<void()> m_onSetVertices = nullptr;
+        AZStd::function<void()> m_onClearVertices = nullptr;
+
+        AZStd::function<void()> m_onChangeType = nullptr;
     };
 
     /**
-     * Component interface to core spline implementation.
-     */
+    * Component interface to core spline implementation.
+    */
     class SplineComponent
         : public AZ::Component
         , private SplineComponentRequestBus::Handler
@@ -60,34 +72,28 @@ namespace LmbrCentral
 
         AZ_COMPONENT(SplineComponent, "{F0905297-1E24-4044-BFDA-BDE3583F1E57}");
 
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        // SplineComponentRequestBus handler
+        // SplineComponentRequestBus
         AZ::ConstSplinePtr GetSpline() override;
         void ChangeSplineType(AZ::u64 splineType) override;
         void SetClosed(bool closed) override;
-        
+        bool GetVertex(size_t index, AZ::Vector3& vertex) const override;
         void AddVertex(const AZ::Vector3& vertex) override;
-        void UpdateVertex(size_t index, const AZ::Vector3& vertex) override;
-        void InsertVertex(size_t index, const AZ::Vector3& vertex) override;
-        void RemoveVertex(size_t index) override;
+        bool UpdateVertex(size_t index, const AZ::Vector3& vertex) override;
+        bool InsertVertex(size_t index, const AZ::Vector3& vertex) override;
+        bool RemoveVertex(size_t index) override;
         void SetVertices(const AZStd::vector<AZ::Vector3>& vertices) override;
         void ClearVertices() override;
-        //////////////////////////////////////////////////////////////////////////
+        size_t Size() const override;
+        bool Empty() const override;
 
-        //////////////////////////////////////////////////////////////////////////
-        // TransformNotificationBus listener
-        // Called when the local transform of the entity has changed. Local transform update always implies world transform change too.
+        // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        //////////////////////////////////////////////////////////////////////////
 
     protected:
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("SplineService", 0x2b674d3c));

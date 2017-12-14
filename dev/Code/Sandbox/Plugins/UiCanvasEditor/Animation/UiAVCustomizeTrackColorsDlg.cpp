@@ -22,26 +22,6 @@
 // prevent inclusion of conflicting definitions of INT8_MIN etc
 #define _INTSAFE_H_INCLUDED_
 
-#include <afxcontrolbars.h>
-#include <afxwin.h>         // MFC core and standard components
-#include <afxext.h>         // MFC extensions
-#include <afxdlgs.h>
-
-// MFC text conversions.
-#include <afxconv.h>
-
-#ifndef _AFX_NO_AFXCMN_SUPPORT
-#include <afxcmn.h>         // MFC support for Windows Common Controls
-#endif // _AFX_NO_AFXCMN_SUPPORT
-
-// Shell Extensions.
-#include <Shlwapi.h>
-
-#ifdef WIN64
-//#include <ObjBase.h>
-#include <atlbase.h>
-#endif
-
 // ----- End UI_ANIMATION_REVISIT
 
 #include "EditorDefs.h"
@@ -194,7 +174,7 @@ void CUiAVCustomizeTrackColorsDlg::OnInitDialog()
 void CUiAVCustomizeTrackColorsDlg::accept()
 {
     OnApply();
-    accept();
+    QDialog::accept();
 }
 
 void CUiAVCustomizeTrackColorsDlg::OnApply()

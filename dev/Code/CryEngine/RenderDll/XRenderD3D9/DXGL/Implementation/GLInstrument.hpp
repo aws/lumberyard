@@ -16,11 +16,13 @@
 #ifndef __GLINSTRUMENT__
 #define __GLINSTRUMENT__
 
-#if defined(DXGL_USE_GLAD)
+#if defined(DXGL_USE_LOADER_GLAD)
 #   define DXGL_UNWRAPPED_FUNCTION(_Name) glad_ ## _Name
+#elif defined(DXGL_USE_LOADER_GLEW)
+#   define DXGL_UNWRAPPED_FUNCTION(_Name) __glew ## _Name
 #else
 #   error "Not implemented in this configuration"
-#endif //defined(DXGL_USE_GLAD)
+#endif //defined(DXGL_USE_LOADER_GLAD)
 
 namespace NCryOpenGL
 {

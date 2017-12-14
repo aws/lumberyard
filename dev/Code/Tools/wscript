@@ -36,33 +36,13 @@ SUBFOLDERS = [
     'Woodpecker',
     'GridHub',
     'News',
-    'SDLExtension',
     'AzCodeGenerator',
-    'SharedQMLResource'
+    'CrashHandler',
+    'SharedQMLResource',
+    'AWSNativeSDKInit'
 ]
 
 def build(bld):
-
-    bld.CryEngineModule(
-        target              = 'SDL2_Android',
-        vs_filter           = 'Tools',
-        file_list           = [ 'sdl_empty.waf_files' ],
-        disable_pch         = True,
-        platforms           = ['android'],
-        configurations      = ['all'],
-
-        android_file_list           = [ 'sdl.waf_files', 'sdl_android.waf_files' ],
-        android_includes            = [ bld.Path('Code/SDKs/SDL2/src/include') ],
-        android_export_includes     = [ bld.Path('Code/SDKs/SDL2/src/include') ],
-        android_defines             = [ 'GL_GLEXT_PROTOTYPES' ],
-        android_lib                 = [ 'm', 'GLESv2', 'GLESv1_CM' ],
-        android_cflags              = [ '-fvisibility=default' ],
-
-        android_armv7_clang_cflags  = [ '-Wno-incompatible-pointer-types', 
-                                        '-Wno-pointer-bool-conversion', 
-                                        '-Wno-sometimes-uninitialized'
-                                      ],
-    )
 
     # dedicated server uses a special build of RC to generate compressed data, etc.
     bld.recurse(['RC'])

@@ -529,11 +529,6 @@ void CStatObj::CommitStreamRenderMeshes()
 
 bool CStatObj::IsDeformable()
 {
-    if (Cry3DEngineBase::GetCVars()->e_MergedMeshes == 0)
-    {
-        return false;
-    }
-
     // Create deformable subobject is present
     if (m_isDeformable)
     {

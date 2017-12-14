@@ -242,7 +242,7 @@ class ConfigurationContext(Context.Context):
         ###############################################################################
 		waf_command = os.path.basename(sys.executable)
 		if waf_command.lower()=='python' or waf_command.lower()=='python.exe':
-			waf_executable = self.path.make_node('./Tools/build/waf-1.7.13/lmbr_waf')
+			waf_executable = self.engine_node.make_node('./Tools/build/waf-1.7.13/lmbr_waf')
 		else:
 			waf_executable = self.path.make_node(waf_command)
 
@@ -304,7 +304,10 @@ class ConfigurationContext(Context.Context):
 		if tooldir: 
 			tooldir = Utils.to_list(tooldir)
 			# Assume that whenever we specify a tooldir, we want to track those files
-			lmbr_waf_lib = self.path.make_node(tooldir).make_node(input + '.py')
+			if os.path.isabs(tooldir[0]):
+				lmbr_waf_lib = self.root.make_node(tooldir).make_node(input + '.py')
+			else:
+				lmbr_waf_lib = self.path.make_node(tooldir).make_node(input + '.py')
 			self.hash = hash((self.hash, lmbr_waf_lib.read('rb')))
 			self.files.append(os.path.normpath(lmbr_waf_lib.abspath()))			
 		for tool in tools:

@@ -11,6 +11,10 @@
 */
 #pragma once
 
+#include <QTreeWidgetItem>
+
+#include "EditorCommon.h"
+
 class HierarchyItem
     : public QObject
     , public QTreeWidgetItem

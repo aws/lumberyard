@@ -21,7 +21,6 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzFramework/Asset/AssetRegistry.h>
-
 #include <AzFramework/Asset/AssetSystemTypes.h>
 
 namespace AZ
@@ -76,7 +75,7 @@ namespace AzFramework
 
             NegotiationMessage() = default;
             unsigned int GetMessageType() const override;
-            int m_apiVersion = 2; // Changing the value will cause negotiation to fail between incompatible versions
+            int m_apiVersion = 3; // Changing the value will cause negotiation to fail between incompatible versions
             AZ::OSString m_identifier;
             typedef AZStd::unordered_map<unsigned int, AZ::OSString> NegotiationInfoMap;
             NegotiationInfoMap m_negotiationInfoMap;
@@ -243,6 +242,94 @@ namespace AzFramework
         };
 
         //////////////////////////////////////////////////////////////////////////
+
+        class SourceAssetInfoRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(SourceAssetInfoRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(SourceAssetInfoRequest, "{e92cd74f-11e0-4ad8-a786-61d3b9715e35}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            SourceAssetInfoRequest() = default;
+
+            /**
+            * Gets information about an asset, given the assetId.
+            * @param assetType This parameter is optional but could help detect problems with incorrect asset types being assigned to products.
+            * Note that this will return the source asset instead of the product for any types registered as "source asset types" during asset compilation.
+            * The rest of the time, the asset's path, id, and returned type will behave identical to an Asset Catalog lookup.).
+            */
+            explicit SourceAssetInfoRequest(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType = AZ::Data::s_invalidAssetType);
+            
+            //! You can also make a request with the relative or absolute path to the asset instead.  This always returns the source path.
+            explicit SourceAssetInfoRequest(const char* assetPath);
+
+            unsigned int GetMessageType() const override;
+
+            AZ::OSString m_assetPath; ///< At least one of AssetPath or AssetId must be non-empty.
+            AZ::Data::AssetId m_assetId;
+            AZ::Data::AssetType m_assetType = AZ::Data::s_invalidAssetType;
+        };
+
+        class SourceAssetInfoResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(SourceAssetInfoResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(SourceAssetInfoResponse, "{2e748a05-9acc-4459-9e98-76b71e8a7bb7}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            SourceAssetInfoResponse() = default;
+            SourceAssetInfoResponse(const AZ::Data::AssetInfo& assetInfo, const char* rootFolder);
+
+            unsigned int GetMessageType() const override;
+
+            bool m_found = false;
+            AZ::Data::AssetInfo m_assetInfo; ///< This contains defaults such as relative path from watched folder, size, Uuid.
+            AZ::OSString m_rootFolder; ///< This is the folder it was found in (the watched/scanned folder, such as gems /assets/ folder)
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+
+        class RegisterSourceAssetRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(RegisterSourceAssetRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(RegisterSourceAssetRequest, "{189c6045-e1d4-4d78-b0e7-2bb7bd05fde1}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            RegisterSourceAssetRequest() = default;
+            RegisterSourceAssetRequest(const AZ::Data::AssetType& assetType, const char* assetFileFilter);
+
+            unsigned int GetMessageType() const override;
+
+            AZ::Data::AssetType m_assetType;
+            AZ::OSString m_assetFileFilter;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+
+        class UnregisterSourceAssetRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(UnregisterSourceAssetRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(UnregisterSourceAssetRequest, "{ce3cf055-cf91-4851-9e2c-cb24b2b172d3}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            UnregisterSourceAssetRequest() = default;
+            UnregisterSourceAssetRequest(const AZ::Data::AssetType& assetType);
+
+            unsigned int GetMessageType() const override;
+
+            AZ::Data::AssetType m_assetType;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
         //Show
         // I don't know if this should really be here
         class ShowAssetProcessorRequest
@@ -289,6 +376,7 @@ namespace AzFramework
             AZ::Data::AssetId m_assetId = AZ::Data::AssetId();
             AZStd::vector<AZ::Data::AssetId> m_legacyAssetIds; // if this asset was referred to by other legacy assetIds in the past, then they will be included here.
             AZ::Data::AssetType m_assetType = AZ::Data::s_invalidAssetType;
+            AZStd::vector<AZ::Data::ProductDependency> m_dependencies;
         };
 
         // SaveAssetCatalogRequest

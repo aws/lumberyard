@@ -57,12 +57,12 @@ void CAlembicCompileDialog::OnInitDialog()
 
     SDirectoryEnumeratorHelper dirHelper;
 
-    dirHelper.ScanDirectoryRecursive("@devroot@/", "Editor/Presets/GeomCache", filePattern, presetFiles);
+    dirHelper.ScanDirectoryRecursive("@engroot@/", "Editor/Presets/GeomCache", filePattern, presetFiles);
 
     for (auto iter = presetFiles.begin(); iter != presetFiles.end(); ++iter)
     {
         const string& file = *iter;
-        const string filePath = "@devroot@/" + file;
+        const string filePath = "@engroot@/" + file;
         m_presets.push_back(LoadConfig(Path::GetFileName(file.c_str()), XmlHelpers::LoadXmlFromFile(filePath)));
         m_ui->m_presetComboBox->addItem(m_presets.back().m_name);
     }

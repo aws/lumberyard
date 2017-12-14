@@ -480,6 +480,12 @@ bool CLevelFileDialog::CheckSubFoldersForLevelsRec(const QString folder, bool bR
                 continue;
             }
 
+            // Skip checking folders which are internal storage for backup and temp level files
+            if (CCryEditDoc::IsBackupOrTempLevelSubdirectory(fileName))
+            {
+                continue;
+            }
+
             // Check if this sub folder contains a level
             if (CheckSubFoldersForLevelsRec(folder + "/" + fileName, false))
             {
@@ -530,23 +536,18 @@ bool CLevelFileDialog::ValidateLevelPath(const QString& levelPath)
 
 void CLevelFileDialog::SaveLastUsedLevelPath()
 {
-    const QString settingPath = QString(GetIEditor()->GetUserFolder()) + lastLoadPathFilename;
+    const QString settingPath = QString(Path::GetUserSandboxFolder()) + lastLoadPathFilename;
 
     XmlNodeRef lastUsedLevelPathNode = XmlHelpers::CreateXmlNode("lastusedlevelpath");
-    lastUsedLevelPathNode->setAttr("path", ui->nameLineEdit->text().toLatin1().data());
-
-    XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), lastUsedLevelPathNode, settingPath.toLatin1().data());
+    lastUsedLevelPathNode->setAttr("path", ui->nameLineEdit->text().toUtf8().data());
+    lastUsedLevelPathNode->saveToFile(settingPath.toUtf8().data());
 }
 
 void CLevelFileDialog::LoadLastUsedLevelPath()
 {
-    const QString settingPath = QString(GetIEditor()->GetUserFolder()) + lastLoadPathFilename;
-    if (!QFile::exists(settingPath))
-    {
-        return;
-    }
+    const QString settingPath = Path::GetUserSandboxFolder() + QString(lastLoadPathFilename);
 
-    XmlNodeRef lastUsedLevelPathNode = XmlHelpers::LoadXmlFromFile(settingPath.toLatin1().data());
+    XmlNodeRef lastUsedLevelPathNode = XmlHelpers::LoadXmlFromFile(settingPath.toUtf8().data());
     if (lastUsedLevelPathNode == nullptr)
     {
         return;

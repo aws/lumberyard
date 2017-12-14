@@ -91,7 +91,7 @@ namespace Input
             // Register asset handlers. Requires "AssetDatabaseService"
             AZ_Assert(AZ::Data::AssetManager::IsReady(), "Asset manager isn't ready!");
 
-            m_inputEventBindingsAssetHandler = aznew AzFramework::GenericAssetHandler<Input::InputEventBindingsAsset>("inputbindings");
+            m_inputEventBindingsAssetHandler = aznew AzFramework::GenericAssetHandler<Input::InputEventBindingsAsset>("Input Bindings", "Other", "inputbindings", AZ::AzTypeInfo<InputConfigurationComponent>::Uuid());
             m_inputEventBindingsAssetHandler->Register();
 
             AZ::InputRequestBus::Handler::BusConnect();

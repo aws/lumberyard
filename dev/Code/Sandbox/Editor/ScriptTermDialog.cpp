@@ -72,7 +72,7 @@ void CScriptTermDialog::InitCompleter()
     CAutoRegisterPythonCommandHelper* pCurrent = CAutoRegisterPythonCommandHelper::s_pFirst;
     while (pCurrent)
     {
-        QString command = pCurrent->m_name.c_str();
+        QString command = pCurrent->m_name;
         QString fullCmd = CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name.c_str();
         fullCmd += ".";
         fullCmd += command;

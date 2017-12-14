@@ -168,7 +168,7 @@
  </SurfaceType>
  
  <SurfaceType name="mat_rock">
-  <Physics friction="1.8" elasticity="0" pierceability="3" sound_obstruction="0.0" />
+  <Physics friction="2.4" elasticity="0" pierceability="3" sound_obstruction="0.0" />
   <AI fImpactRadius="2.5" fImpactSoundRadius="20" fFootStepRadius="20" proneMult="0.2" crouchMult="0.5" movingMult="2.5" />
  </SurfaceType>
  

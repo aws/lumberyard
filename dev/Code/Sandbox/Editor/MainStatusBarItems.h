@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <MainStatusBar.h>
 #include <IBackgroundTaskManager.h>
 #include <IRenderer.h>
 #include <QMutex>

@@ -16,13 +16,16 @@
 #define _LAUNCHER // Must be defined before including platform_impl.h
 #include <platform_impl.h>
 
+#include <IEditorGame.h>
+#include <IGameFramework.h>
 #include <IGameStartup.h>
+#include <ITimer.h>
+#include <LumberyardLauncher.h>
 #include <ParseEngineConfig.h>
 #include <SystemUtilsApple.h>
 
 #include <AzGameFramework/Application/GameApplication.h>
 #include <Foundation/Foundation.h>
-#include <IEditorGame.h>
 
 #if defined(AZ_MONOLITHIC_BUILD)
     // Include common type defines for static linking
@@ -203,7 +206,7 @@ namespace AppleLauncher
          }
     #endif //!AZ_MONOLITHIC_BUILD
 
-        // create the startup interface
+        // Create the legacy CryEngine startup interface
         IGameStartup* gameStartup = nullptr;
         if (legacyGameDllStartup)
         {
@@ -224,6 +227,7 @@ namespace AppleLauncher
             return EXIT_CODE_FAILURE;
         }
 
+        // Init the legacy CryEngine startup interface
         if (!gameStartup->Init(systemInitParams))
         {
             AZ_TracePrintf("AppleLauncher", "Failed to initialize the GameStartup Interface");
@@ -238,8 +242,30 @@ namespace AppleLauncher
             return EXIT_CODE_FAILURE;
         }
 
-        // Run
-        gameStartup->Run(nullptr);
+#if !defined(SYS_ENV_AS_STRUCT)
+        gEnv = systemInitParams.pSystem->GetGlobalEnvironment();
+#endif
+
+        // Ensure the various global environment pointers are valid
+        if (!gEnv || !gEnv->pConsole || !gEnv->pGame || !gEnv->pGame->GetIGameFramework())
+        {
+            AZ_TracePrintf("AppleLauncher", "Failed to initialize the CryEngine global environment");
+
+            // If initialization failed, we still need to call shutdown.
+            gameStartup->Shutdown();
+            gameStartup = nullptr;
+            if (legacyGameDllStartup)
+            {
+                CryFreeLibrary(gameLib);
+            }
+            return EXIT_CODE_FAILURE;
+        }
+
+        // Execute autoexec.cfg to load the initial level
+        gEnv->pConsole->ExecuteString("exec autoexec.cfg");
+
+        // Run the main loop
+        LumberyardLauncher::RunMainLoop(gameApplication, *gEnv->pGame->GetIGameFramework());
 
         // Shutdown
         gameStartup->Shutdown();

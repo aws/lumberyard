@@ -54,10 +54,11 @@ namespace AZ
         PLATFORM_PS4, // ACCEPTED_USE
         PLATFORM_WII, // ACCEPTED_USE
         PLATFORM_LINUX_64,
-        PLATFORM_ANDROID,
+        PLATFORM_ANDROID,       // ARMv7 / 32-bit
         PLATFORM_APPLE_IOS,
         PLATFORM_APPLE_OSX,
         PLATFORM_APPLE_TV,
+        PLATFORM_ANDROID_64,    // ARMv8 / 64-bit
         // Add new platforms here
 
         PLATFORM_MAX  ///< Must be last
@@ -69,8 +70,10 @@ namespace AZ
     static const PlatformID g_currentPlatform = PLATFORM_WINDOWS_32;
 #elif defined(AZ_PLATFORM_LINUX_X64)
     static const PlatformID g_currentPlatform = PLATFORM_LINUX_64;
-#elif defined(AZ_PLATFORM_ANDROID)
+#elif defined(AZ_PLATFORM_ANDROID_X32)
     static const PlatformID g_currentPlatform = PLATFORM_ANDROID;
+#elif defined(AZ_PLATFORM_ANDROID_X64)
+    static const PlatformID g_currentPlatform = PLATFORM_ANDROID_64;
 #elif defined(AZ_PLATFORM_APPLE_IOS)
     static const PlatformID g_currentPlatform = PLATFORM_APPLE_IOS;
 #elif defined(AZ_PLATFORM_APPLE_TV)
@@ -161,7 +164,7 @@ namespace AZ
  * that differ, otherwise you should call directly into functions like strcmp, strstr, etc.
  * If you want guranteed "secure" functions, you should not use those wrappers. In general we recommend using AZStd::string/wstring for manipulating strings.
  */
-#ifdef AZ_COMPILER_MSVC
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
 #   define azsnprintf(_buffer, _size, ...)        _snprintf_s(_buffer, _size, _size-1, __VA_ARGS__)
 #   define azvsnprintf(_buffer, _size, ...)       _vsnprintf_s(_buffer, _size, _size-1, __VA_ARGS__)
 #   define azswnprintf(_buffer, _size, ...)       _snwprintf_s(_buffer, _size, _size-1, __VA_ARGS__)
@@ -300,7 +303,7 @@ namespace AZ
     typedef uint16_t  u16;
     typedef int32_t   s32;
     typedef uint32_t  u32;
-#   if defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) // int64_t is long // ACCEPTED_USE
+#   if defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID_X64) // int64_t is long // ACCEPTED_USE
     typedef signed long long        s64;
     typedef unsigned long long      u64;
 #   else

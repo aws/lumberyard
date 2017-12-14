@@ -111,10 +111,10 @@ namespace EMotionFX
         SkeletalSubMotion* subMotion = mSubMotions[ motionLink->GetSubMotionIndex() ];
 
         // get position
-        KeyTrackLinear<MCore::Vector3, MCore::Vector3>* posTrack = subMotion->GetPosTrack();
+        auto* posTrack = subMotion->GetPosTrack();
         if (posTrack)
         {
-            outTransform->mPosition = posTrack->GetValueAtTime(timeValue);
+            outTransform->mPosition = AZ::Vector3(posTrack->GetValueAtTime(timeValue));
         }
         else
         {
@@ -134,10 +134,10 @@ namespace EMotionFX
 
     #ifndef EMFX_SCALE_DISABLED
         // get scale
-        KeyTrackLinear<MCore::Vector3, MCore::Vector3>* scaleTrack = subMotion->GetScaleTrack();
+        auto* scaleTrack = subMotion->GetScaleTrack();
         if (scaleTrack)
         {
-            outTransform->mScale = scaleTrack->GetValueAtTime(timeValue);
+            outTransform->mScale = AZ::Vector3(scaleTrack->GetValueAtTime(timeValue));
         }
         else
         {
@@ -150,8 +150,8 @@ namespace EMotionFX
         {
             const Transform& bindPoseTransform = bindPose->GetLocalTransform(nodeIndex);
 
-            MCore::Vector3 posOffset(0.0f, 0.0f, 0.0f);
-            MCore::Vector3 nodeOrgPos = bindPoseTransform.mPosition;
+            AZ::Vector3 posOffset(0.0f, 0.0f, 0.0f);
+            AZ::Vector3 nodeOrgPos = bindPoseTransform.mPosition;
 
             /*      // if we deal with the root node
                     if (actor->GetRetargetRootIndex() == nodeIndex)
@@ -170,7 +170,7 @@ namespace EMotionFX
 
             EMFX_SCALECODE
             (
-                MCore::Vector3 scaleOffset = bindPoseTransform.mScale - subMotion->GetBindPoseScale();
+                AZ::Vector3 scaleOffset = bindPoseTransform.mScale - subMotion->GetBindPoseScale();
                 outTransform->mScale += scaleOffset;
             )
 
@@ -183,8 +183,8 @@ namespace EMotionFX
         {
             const Actor::NodeMirrorInfo& mirrorInfo = actor->GetNodeMirrorInfo(nodeIndex);
             Transform mirrored = bindPose->GetLocalTransform(nodeIndex);
-            MCore::Vector3 mirrorAxis(0.0f, 0.0f, 0.0f);
-            mirrorAxis[mirrorInfo.mAxis] = 1.0f;
+            AZ::Vector3 mirrorAxis(0.0f, 0.0f, 0.0f);
+            mirrorAxis.SetElement(mirrorInfo.mAxis, 1.0f);
             const uint32 motionSource = actor->GetNodeMirrorInfo(nodeIndex).mSourceNode;
             mirrored.ApplyDeltaMirrored(bindPose->GetLocalTransform(motionSource), *outTransform, mirrorAxis, mirrorInfo.mFlags);
             *outTransform = mirrored;
@@ -437,10 +437,10 @@ namespace EMotionFX
             SkeletalSubMotion* subMotion = mSubMotions[ link->GetSubMotionIndex() ];
 
             // get position
-            KeyTrackLinear<MCore::Vector3, MCore::Vector3>* posTrack = subMotion->GetPosTrack();
+            auto* posTrack = subMotion->GetPosTrack();
             if (posTrack)
             {
-                outTransform.mPosition = posTrack->GetValueAtTime(timeValue);
+                outTransform.mPosition = AZ::Vector3(posTrack->GetValueAtTime(timeValue));
             }
             else
             {
@@ -465,10 +465,10 @@ namespace EMotionFX
 
         #ifndef EMFX_SCALE_DISABLED
             // get scale
-            KeyTrackLinear<MCore::Vector3, MCore::Vector3>* scaleTrack = subMotion->GetScaleTrack();
+            auto* scaleTrack = subMotion->GetScaleTrack();
             if (scaleTrack)
             {
-                outTransform.mScale = scaleTrack->GetValueAtTime(timeValue);
+                outTransform.mScale = AZ::Vector3(scaleTrack->GetValueAtTime(timeValue));
             }
             else
             {
@@ -481,8 +481,8 @@ namespace EMotionFX
             {
                 const Transform& bindPoseTransform = bindPose->GetLocalTransform(nodeNumber);
 
-                MCore::Vector3 posOffset(0.0f, 0.0f, 0.0f);
-                MCore::Vector3 nodeOrgPos = bindPoseTransform.mPosition;
+                AZ::Vector3 posOffset(0.0f, 0.0f, 0.0f);
+                AZ::Vector3 nodeOrgPos = bindPoseTransform.mPosition;
                 /*
                             // if we deal with the root node
                             if (instance->GetRetargetRootIndex() == nodeNumber)
@@ -519,7 +519,7 @@ namespace EMotionFX
 
                 EMFX_SCALECODE
                 (
-                    MCore::Vector3 scaleOffset = bindPoseTransform.mScale - subMotion->GetBindPoseScale();
+                    AZ::Vector3 scaleOffset = bindPoseTransform.mScale - subMotion->GetBindPoseScale();
                     outTransform.mScale += scaleOffset;
                 )
 
@@ -815,11 +815,14 @@ namespace EMotionFX
             const Transform& bindTransform = bindPose.GetLocalTransform(nodeNr);
 
             // compare the bind pose translation of the node with the one from the submotion
-            MCore::Vector3 nodeTranslation          = bindTransform.mPosition;
-            MCore::Vector3 submotionTranslation = subMotion->GetBindPosePos();
-            if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(submotionTranslation, nodeTranslation, MCore::Math::epsilon) == false)
+            AZ::Vector3 nodeTranslation         = bindTransform.mPosition;
+            AZ::Vector3 submotionTranslation    = subMotion->GetBindPosePos();
+            if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(submotionTranslation, nodeTranslation, MCore::Math::epsilon) == false)
             {
-                MCore::LogWarning("Bind pose translation of the node '%s' (%f, %f, %f) does not match the skeletal submotion bind pose translation (%f, %f, %f).", node->GetName(), nodeTranslation.x, nodeTranslation.y, nodeTranslation.z, submotionTranslation.x, submotionTranslation.y, submotionTranslation.z);
+                MCore::LogWarning("Bind pose translation of the node '%s' (%f, %f, %f) does not match the skeletal submotion bind pose translation (%f, %f, %f).",
+                    node->GetName(),
+                    nodeTranslation.GetX(), nodeTranslation.GetY(), nodeTranslation.GetZ(),
+                    submotionTranslation.GetX(), submotionTranslation.GetY(), submotionTranslation.GetZ());
                 bindPosesMatching = false;
             }
 
@@ -835,11 +838,14 @@ namespace EMotionFX
             EMFX_SCALECODE
             (
                 // compare the bind pose scale of the node with the one from the submotion
-                MCore::Vector3 nodeScale        = bindTransform.mScale;
-                MCore::Vector3 submotionScale   = subMotion->GetBindPoseScale();
-                if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(submotionScale, nodeScale, MCore::Math::epsilon) == false)
+                AZ::Vector3 nodeScale        = bindTransform.mScale;
+                AZ::Vector3 submotionScale   = subMotion->GetBindPoseScale();
+                if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(submotionScale, nodeScale, MCore::Math::epsilon) == false)
                 {
-                    MCore::LogWarning("Bind pose scale of the node '%s' (%f, %f, %f) does not match the skeletal submotion bind pose scale (%f, %f, %f).", node->GetName(), nodeScale.x, nodeScale.y, nodeScale.z, submotionScale.x, submotionScale.y, submotionScale.z);
+                    MCore::LogWarning("Bind pose scale of the node '%s' (%f, %f, %f) does not match the skeletal submotion bind pose scale (%f, %f, %f).",
+                        node->GetName(),
+                        nodeScale.GetX(), nodeScale.GetY(), nodeScale.GetZ(),
+                        submotionScale.GetX(), submotionScale.GetY(), submotionScale.GetZ());
                     bindPosesMatching = false;
                 }
                 /*
@@ -985,8 +991,8 @@ namespace EMotionFX
             const Actor::NodeMirrorInfo& mirrorInfo = actor->GetNodeMirrorInfo(nodeNumber);
 
             Transform mirrored = bindPose->GetLocalTransform(nodeNumber);
-            MCore::Vector3 mirrorAxis(0.0f, 0.0f, 0.0f);
-            mirrorAxis[mirrorInfo.mAxis] = 1.0f;
+            AZ::Vector3 mirrorAxis(0.0f, 0.0f, 0.0f);
+            mirrorAxis.SetElement(mirrorInfo.mAxis, 1.0f);
             mirrored.ApplyDeltaMirrored(bindPose->GetLocalTransform(mirrorInfo.mSourceNode), unmirroredPose.GetLocalTransform(mirrorInfo.mSourceNode), mirrorAxis, mirrorInfo.mFlags);
 
             inOutPose->SetLocalTransformDirect(nodeNumber, mirrored);
@@ -1129,7 +1135,7 @@ namespace EMotionFX
                 for (uint32 k = 0; k < numKeys; ++k)
                 {
                     auto key = posTrack->GetKey(k);
-                    key->SetValue(key->GetValue() * scaleFactor);
+                    key->SetValue(AZ::PackedVector3f(AZ::Vector3(key->GetValue()) * scaleFactor));
                 }
             }
         }

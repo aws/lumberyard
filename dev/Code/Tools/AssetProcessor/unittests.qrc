@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="/">
+    <file>testdata/config_broken_badplatform.ini</file>
+    <file>testdata/config_broken_noscans.ini</file>
+    <file>testdata/config_broken_recognizers.ini</file>
+    <file>testdata/config_broken_noplatform.ini</file>
+    <file>testdata/config_regular.ini</file>
+    <file>testdata/config_overrides.ini</file>
+  </qresource>
+</RCC>

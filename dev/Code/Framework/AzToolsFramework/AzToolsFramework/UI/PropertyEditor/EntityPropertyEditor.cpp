@@ -34,6 +34,7 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/Slice/SliceDataFlagsCommand.h>
@@ -216,11 +217,14 @@ namespace AzToolsFramework
         m_gui->m_entityIdEditor->setReadOnly(true);
         m_gui->m_entityNameEditor->setReadOnly(false);
         m_gui->m_entityDetailsLabel->setObjectName("LabelEntityDetails");
+        m_gui->m_entitySearchBox->setReadOnly(false);
         EnableEditor(true);
         m_sceneIsNew = true;
 
         connect(m_gui->m_entityIcon, &QPushButton::clicked, this, &EntityPropertyEditor::BuildEntityIconMenu);
         connect(m_gui->m_addComponentButton, &QPushButton::clicked, this, &EntityPropertyEditor::OnAddComponent);
+        connect(m_gui->m_entitySearchBox, &QLineEdit::textChanged, this, &EntityPropertyEditor::OnSearchTextChanged);
+        connect(m_gui->m_buttonClearFilter, &QPushButton::clicked, this, &EntityPropertyEditor::ClearSearchFilter);
 
         m_componentPalette = aznew ComponentPaletteWidget(this, true);
         connect(m_componentPalette, &ComponentPaletteWidget::OnAddComponentEnd, this, [this]()
@@ -238,6 +242,9 @@ namespace AzToolsFramework
         AZ::EntitySystemBus::Handler::BusConnect();
 
         m_spacer = nullptr;
+
+        m_emptyIcon = QIcon();
+        m_clearIcon = QIcon(":/AssetBrowser/Resources/close.png");
 
         m_serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
@@ -454,6 +461,8 @@ namespace AzToolsFramework
         m_gui->m_entityIcon->setVisible(hasEntitiesDisplayed);
         m_gui->m_startActiveLabel->setVisible(hasEntitiesDisplayed);
         m_gui->m_initiallyActiveCheckbox->setVisible(hasEntitiesDisplayed);
+        m_gui->m_entitySearchBox->setVisible(hasEntitiesDisplayed);
+        m_gui->m_buttonClearFilter->setVisible(hasEntitiesDisplayed);
 
         if (hasEntitiesDisplayed)
         {
@@ -765,6 +774,26 @@ namespace AzToolsFramework
         }
     }
 
+    bool EntityPropertyEditor::ComponentMatchesCurrentFilter(SharedComponentInfo& sharedComponentInfo) const
+    {
+        if (m_filterString.size() == 0)
+        {
+            return true;
+        }
+
+        if (sharedComponentInfo.m_instances.front())
+        {
+            AZStd::string componentName = GetFriendlyComponentName(sharedComponentInfo.m_instances.front());
+
+            if (componentName.size() == 0 || AzFramework::StringFunc::Find(componentName.c_str(), m_filterString.c_str()) != AZStd::string::npos)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void EntityPropertyEditor::BuildSharedComponentUI(SharedComponentArray& sharedComponentArray)
     {
         // last-known widget, for the sake of tab-ordering
@@ -772,15 +801,14 @@ namespace AzToolsFramework
 
         for (auto& sharedComponentInfo : sharedComponentArray)
         {
+            bool componentInFilter = ComponentMatchesCurrentFilter(sharedComponentInfo);
+
             auto componentEditor = CreateComponentEditor();
 
             // Add instances to componentEditor
             auto& componentInstances = sharedComponentInfo.m_instances;
             for (AZ::Component* componentInstance : componentInstances)
             {
-                // Map the component to the editor
-                m_componentToEditorMap[componentInstance] = componentEditor;
-
                 // non-first instances are aggregated under the first instance
                 AZ::Component* aggregateInstance = componentInstance != componentInstances.front() ? componentInstances.front() : nullptr;
 
@@ -796,8 +824,22 @@ namespace AzToolsFramework
             // Refresh editor
             componentEditor->AddNotifications();
             componentEditor->UpdateExpandability();
-            componentEditor->InvalidateAll();
-            componentEditor->show();
+            componentEditor->InvalidateAll(!componentInFilter ? m_filterString.c_str() : nullptr);
+
+            if (!componentEditor->GetPropertyEditor()->HasFilteredOutNodes() || componentEditor->GetPropertyEditor()->HasVisibleNodes())
+            {
+                for (AZ::Component* componentInstance : componentInstances)
+                {
+                    // Map the component to the editor
+                    m_componentToEditorMap[componentInstance] = componentEditor;
+                }
+                componentEditor->show();
+            }
+            else
+            {
+                componentEditor->hide();
+                componentEditor->ClearInstances(true);
+            }
         }
     }
 
@@ -1168,7 +1210,7 @@ namespace AzToolsFramework
         const AZ::SerializeContext::ClassData* componentClassData,
         QMenu& menu)
     {
-        if (!fieldNode || !fieldNode->GetComparisonNode())
+		if (!fieldNode || (!fieldNode->GetComparisonNode() && !fieldNode->IsNewVersusComparison()))
         {
             return;
         }
@@ -1208,12 +1250,9 @@ namespace AzToolsFramework
         AZStd::string sliceAssetPath;
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, ancestors.front().m_sliceAddress.first->GetSliceAsset().GetId());
 
-        bool hasChanges = fieldNode->HasChangesVersusComparison(false);
-        bool isLeafNode = !fieldNode->GetClassMetadata()->m_container && fieldNode->GetClassMetadata()->m_serializer;
-
         AZ::EntityId entityId = entity->GetId();
         QAction* pushAction = menu.addAction(tr("Push to slice..."));
-        pushAction->setEnabled(hasChanges);
+		pushAction->setEnabled(fieldNode->HasChangesVersusComparison(true));
         connect(pushAction, &QAction::triggered, this, [this, entityId, fieldNode]()
             {
                 SliceUtilities::PushEntitiesModal({ entityId }, nullptr);
@@ -1221,6 +1260,9 @@ namespace AzToolsFramework
             );
 
         menu.addSeparator();
+
+		bool hasChanges = fieldNode->HasChangesVersusComparison(false);
+		bool isLeafNode = !fieldNode->GetClassMetadata()->m_container && fieldNode->GetClassMetadata()->m_serializer;
 
         if (!hasChanges && isLeafNode)
         {
@@ -1375,9 +1417,15 @@ namespace AzToolsFramework
                         widgetsToNotify.push_back(top);
                     }
 
-                    for (auto* childWidget : top->GetChildrenRows())
+                    // Only add children widgets for notification if the newly updated parent has children
+                    // otherwise the instance data nodes will have disappeared out from under the widgets
+                    // They will be cleaned up when we refresh the entire tree after the notifications go out
+                    if (!topWidgetNode || topWidgetNode->GetChildren().size() > 0)
                     {
-                        widgetStack.push_back(childWidget);
+                        for (auto* childWidget : top->GetChildrenRows())
+                        {
+                            widgetStack.push_back(childWidget);
+                        }
                     }
                 }
 
@@ -2654,6 +2702,45 @@ namespace AzToolsFramework
         return true;
     }
 
+    // this helper function checks what can be spawned in mimedata and only calls the callback for the creatable ones.
+    void EntityPropertyEditor::GetCreatableAssetEntriesFromMimeData(const QMimeData* mimeData, ProductCallback callbackFunction) const
+    {
+        if (mimeData->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType()))
+        {
+            // extra special case:  MTLs from FBX drags are ignored.  are we dragging a FBX file?
+            bool isDraggingFBXFile = false;
+            AssetBrowser::AssetBrowserEntry::ForEachEntryInMimeData<AssetBrowser::SourceAssetBrowserEntry>(mimeData, [&](const AssetBrowser::SourceAssetBrowserEntry* source)
+            {
+                isDraggingFBXFile = isDraggingFBXFile || AzFramework::StringFunc::Equal(source->GetExtension().c_str(), ".fbx", false);
+            });
+
+            // the usual case - we only allow asset browser drops of assets that have actually been associated with a kind of component.
+            AssetBrowser::AssetBrowserEntry::ForEachEntryInMimeData<AssetBrowser::ProductAssetBrowserEntry>(mimeData, [&](const AssetBrowser::ProductAssetBrowserEntry* product)
+            {
+                bool canCreateComponent = false;
+                AZ::AssetTypeInfoBus::EventResult(canCreateComponent, product->GetAssetType(), &AZ::AssetTypeInfo::CanCreateComponent, product->GetAssetId());
+
+                AZ::Uuid componentTypeId = AZ::Uuid::CreateNull();
+                AZ::AssetTypeInfoBus::EventResult(componentTypeId, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
+                
+                if (canCreateComponent && !componentTypeId.IsNull())
+                {
+                    // we have a component type that handles this asset.
+                    // but we disallow it if its a MTL file from a FBX and the FBX itself is being dragged.  Its still allowed
+                    // to drag the actual MTL.
+                    EBusFindAssetTypeByName materialAssetTypeResult("Material");
+                    AZ::AssetTypeInfoBus::BroadcastResult(materialAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
+                    AZ::Data::AssetType materialAssetType = materialAssetTypeResult.GetAssetType();
+
+                    if ((!isDraggingFBXFile) || (product->GetAssetType() != materialAssetType))
+                    {
+                        callbackFunction(product);
+                    }
+                }
+            });
+        }
+    }
+
     bool EntityPropertyEditor::IsDropAllowed(const QMimeData* mimeData, const QPoint& globalPos) const
     {
         const QRect globalRect(globalPos, globalPos);
@@ -2674,6 +2761,19 @@ namespace AzToolsFramework
             return false;
         }
 
+        if (mimeData->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType()))
+        {
+            bool hasAny = false;
+            GetCreatableAssetEntriesFromMimeData(mimeData, [&](const AssetBrowser::ProductAssetBrowserEntry* /*entry*/)
+            {
+                hasAny = true;
+            });
+
+            if (!hasAny)
+            {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -2916,6 +3016,17 @@ namespace AzToolsFramework
         drag->setMimeData(mimeData);
         drag->setPixmap(QPixmap::fromImage(dragImage));
         drag->exec(Qt::MoveAction, Qt::MoveAction);
+
+        //mark dragged components after drag completed to stop drawing indicators
+        for (AZ::s32 index : componentEditorIndices)
+        {
+            auto componentEditor = GetComponentEditorsFromIndex(index);
+            if (componentEditor)
+            {
+                componentEditor->SetDragged(false);
+            }
+        }
+        UpdateOverlay();
         return true;
     }
 
@@ -2985,36 +3096,36 @@ namespace AzToolsFramework
 
     bool EntityPropertyEditor::HandleDropForAssetBrowserEntries(QDropEvent* event)
     {
+        // do we need to create an undo?
+        bool createdAny = false;
         const QMimeData* mimeData = event->mimeData();
-        if (mimeData && mimeData->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType()))
+        if ((!mimeData) || (!mimeData->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType())))
         {
-            AZStd::vector<AssetBrowser::AssetBrowserEntry*> entries;
-            if (AssetBrowser::AssetBrowserEntry::FromMimeData(mimeData, entries))
-            {
-                ScopedUndoBatch undo("Add component from asset browser");
+            return false;
+        }
 
-                //create new components from dropped assets
-                for (auto entry : entries)
+        // before we start, find out whether any in the mimedata are even appropriate so we can execute an undo
+        // note that the product pointers are only valid during this callback, so there is no point in caching them here.
+        GetCreatableAssetEntriesFromMimeData(mimeData, 
+            [&](const AssetBrowser::ProductAssetBrowserEntry* /*product*/)
+            {
+                createdAny = true;
+            });
+
+        if (createdAny)
+        {
+            // create one undo to wrap the entire operation since we detected a valid asset.
+            ScopedUndoBatch undo("Add component from asset browser");
+            GetCreatableAssetEntriesFromMimeData(mimeData, 
+                [&](const AssetBrowser::ProductAssetBrowserEntry* product)
                 {
-                    AZStd::vector<const AssetBrowser::ProductAssetBrowserEntry*> products;
-                    if (azrtti_istypeof<const AssetBrowser::ProductAssetBrowserEntry*>(entry))
-                    {
-                        products.push_back(azrtti_cast<const AssetBrowser::ProductAssetBrowserEntry*>(entry));
-                    }
-                    else
-                    {
-                        entry->GetChildren<AssetBrowser::ProductAssetBrowserEntry>(products);
-                    }
-                    for (auto product : products)
-                    {
-                        AZ::Uuid componentType;
-                        AZ::AssetTypeInfoBus::EventResult(componentType, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
-                        CreateComponentWithAsset(componentType, product->GetAssetId());
-                    }
-                }
-            }
+                    AZ::Uuid componentType;
+                    AZ::AssetTypeInfoBus::EventResult(componentType, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
+                    CreateComponentWithAsset(componentType, product->GetAssetId());
+                });
             return true;
         }
+
         return false;
     }
 
@@ -3153,6 +3264,20 @@ namespace AzToolsFramework
         UpdateSelectionCache();
         UpdateActions();
         UpdateOverlay();
+    }
+	
+    void EntityPropertyEditor::OnSearchTextChanged()
+    {
+        m_filterString = m_gui->m_entitySearchBox->text().toLatin1().data();
+        UpdateContents();
+        m_gui->m_buttonClearFilter->setIcon(m_filterString.size() == 0 ?
+            m_emptyIcon :
+            m_clearIcon);
+    }
+
+    void EntityPropertyEditor::ClearSearchFilter()
+    {
+        m_gui->m_entitySearchBox->setText("");
     }
 }
 

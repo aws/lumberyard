@@ -233,7 +233,7 @@ namespace EMotionFX
                 invertFactor = -1.0f;
             }
 
-            MCore::Vector3 axis(1.0f, 0.0f, 0.0f);
+            AZ::Vector3 axis(1.0f, 0.0f, 0.0f);
             const int32 mode = GetAttributeFloatAsInt32(ATTRIB_ROTATE_AXIS);
             switch (mode)
             {
@@ -270,7 +270,7 @@ namespace EMotionFX
                 invertFactor = -1.0f;
             }
 
-            MCore::Vector3 axis(1.0f, 0.0f, 0.0f);
+            AZ::Vector3 axis(1.0f, 0.0f, 0.0f);
             const int32 mode = GetAttributeFloatAsInt32(ATTRIB_TRANSLATE_AXIS);
             switch (mode)
             {
@@ -288,8 +288,7 @@ namespace EMotionFX
             }
 
             axis *= (inputAmount - 0.5f) * invertFactor;
-            uniqueData->mAdditiveTransform.mPosition += MCore::LinearInterpolate<MCore::Vector3>(MCore::Vector3(0.0f, 0.0f, 0.0f), axis, uniqueData->mDeltaTime * factor);
-            ;
+            uniqueData->mAdditiveTransform.mPosition += MCore::LinearInterpolate<AZ::Vector3>(AZ::Vector3::CreateZero(), axis, uniqueData->mDeltaTime * factor);
             outputTransform.mPosition = inputTransform.mPosition + uniqueData->mAdditiveTransform.mPosition;
         }
 
@@ -309,7 +308,7 @@ namespace EMotionFX
                     invertFactor = -1.0f;
                 }
 
-                MCore::Vector3 axis(1.0f, 1.0f, 1.0f);
+                AZ::Vector3 axis(1.0f, 1.0f, 1.0f);
                 const int32 mode = GetAttributeFloatAsInt32(ATTRIB_SCALE_AXIS);
                 switch (mode)
                 {
@@ -330,7 +329,7 @@ namespace EMotionFX
                 }
 
                 axis *= (inputAmount - 0.5f) * invertFactor;
-                uniqueData->mAdditiveTransform.mScale += MCore::LinearInterpolate<MCore::Vector3>(MCore::Vector3(0.0f, 0.0f, 0.0f), axis, uniqueData->mDeltaTime * factor);
+                uniqueData->mAdditiveTransform.mScale += MCore::LinearInterpolate<AZ::Vector3>(AZ::Vector3::CreateZero(), axis, uniqueData->mDeltaTime * factor);
                 outputTransform.mScale = inputTransform.mScale + uniqueData->mAdditiveTransform.mScale;
             }
         )
@@ -414,7 +413,7 @@ namespace EMotionFX
             mLastRotateAxis     = GetAttributeFloatAsInt32(ATTRIB_ROTATE_AXIS);
             uniqueData->mAdditiveTransform.Identity();
 
-            EMFX_SCALECODE(uniqueData->mAdditiveTransform.mScale.Zero();
+            EMFX_SCALECODE(uniqueData->mAdditiveTransform.mScale.CreateZero();
                 )
         }
     }

@@ -211,10 +211,10 @@ void ScriptHelpModel::Reload()
     while (pCurrent)
     {
         Item item;
-        item.command = QString(pCurrent->m_name.c_str());
+        item.command = pCurrent->m_name;
         item.module = QString(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name.c_str());
-        item.description = QString(pCurrent->m_description.c_str());
-        item.example = QString(pCurrent->m_example.c_str());
+        item.description = pCurrent->m_description;
+        item.example = pCurrent->m_example;
         m_items.push_back(item);
         pCurrent = pCurrent->m_pNext;
     }
@@ -240,7 +240,7 @@ ScriptTableView::ScriptTableView(QWidget* parent)
     setSelectionBehavior(QAbstractItemView::SelectRows);
     setSelectionMode(QAbstractItemView::ContiguousSelection); // Not very useful for this dialog, but the MFC code allowed to select many rows
 
-    static const std::array<int, ScriptHelpModel::ColumnCount> colWidths = { 100, 60, 300, 200 };
+    static const std::array<int, ScriptHelpModel::ColumnCount> colWidths = { { 100, 60, 300, 200 } };
     for (int col = 0; col < ScriptHelpModel::ColumnCount; ++col)
     {
         setColumnWidth(col, colWidths[col]);

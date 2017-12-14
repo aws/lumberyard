@@ -20,10 +20,10 @@ namespace LmbrCentral
      * Configuration data for EditorRigidPhysicsComponent.
      */
     struct EditorRigidPhysicsConfig
-        : public RigidPhysicsConfig
+        : public AzFramework::RigidPhysicsConfig
     {
         AZ_CLASS_ALLOCATOR(EditorRigidPhysicsConfig, AZ::SystemAllocator, 0);
-        AZ_RTTI(EditorRigidPhysicsConfig, "{B2FA5441-9B99-5EFA-A606-82752CA23EE8}", RigidPhysicsConfig);
+        AZ_RTTI(EditorRigidPhysicsConfig, "{B2FA5441-9B99-5EFA-A606-82752CA23EE8}", AzFramework::RigidPhysicsConfig);
         static void Reflect(AZ::ReflectContext* context);
 
         // currently, there's no difference between EditorRigidPhysicsConfig and its base class.
@@ -36,7 +36,7 @@ namespace LmbrCentral
         : public EditorPhysicsComponent
     {
     public:
-        AZ_EDITOR_COMPONENT(EditorRigidPhysicsComponent, EditorRigidPhysicsComponentTypeId, EditorPhysicsComponent);
+        AZ_EDITOR_COMPONENT(EditorRigidPhysicsComponent, AzFramework::EditorRigidPhysicsComponentTypeId, EditorPhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         EditorRigidPhysicsComponent() = default;

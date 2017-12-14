@@ -29,6 +29,14 @@
       <bool>true</bool>
      </property>
      <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>671</width>
+        <height>534</height>
+       </rect>
+      </property>
       <layout class="QVBoxLayout" name="scrollAreaVerticalLayout">
        <property name="spacing">
         <number>0</number>
@@ -156,7 +164,7 @@
   <customwidget>
    <class>AzToolsFramework::AssetBrowser::AssetBrowserTreeView</class>
    <extends>QTreeView</extends>
-   <header>AzToolsFramework/AssetBrowser/AssetBrowserTreeView.h</header>
+   <header>AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h</header>
   </customwidget>
   <customwidget>
    <class>PreviewWidget</class>

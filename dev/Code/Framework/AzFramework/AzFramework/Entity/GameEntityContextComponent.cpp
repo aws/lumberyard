@@ -48,6 +48,7 @@ namespace AzFramework
         {
             behaviorContext->EBus<GameEntityContextRequestBus>("GameEntityContextRequestBus")
                 ->Event("CreateGameEntity", &GameEntityContextRequestBus::Events::CreateGameEntityForBehaviorContext)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("DestroyGameEntity", &GameEntityContextRequestBus::Events::DestroyGameEntity)
                 ->Event("DestroyGameEntityAndDescendants", &GameEntityContextRequestBus::Events::DestroyGameEntityAndDescendants)
                 ->Event("ActivateGameEntity", &GameEntityContextRequestBus::Events::ActivateGameEntity)
@@ -113,6 +114,7 @@ namespace AzFramework
     {
         ResetContext();
 
+        SliceInstantiationResultBus::MultiHandler::BusDisconnect();
         m_instantiatingDynamicSlices.clear();
     }
 
@@ -268,7 +270,7 @@ namespace AzFramework
             for (AZStd::vector<AZ::EntityId>::reverse_iterator entityIdIter = entityIdsToBeDeleted.rbegin();
                  entityIdIter != entityIdsToBeDeleted.rend(); ++entityIdIter)
             {
-                EntityContext::DestroyEntity(*entityIdIter);
+                EntityContext::DestroyEntityById(*entityIdIter);
             }
         };
 
@@ -304,9 +306,12 @@ namespace AzFramework
                 }
 
                 // Queue Slice deletion until next tick. This prevents deleting a dynamic slice from an active entity within that slice.
-                AZStd::function<void()> destroySlice = [rootSlice, sliceInstance]()
+                AZStd::function<void()> destroySlice = [this, sliceInstance]()
                 {
-                    rootSlice->RemoveSliceInstance(sliceInstance);
+                    if (AZ::SliceComponent* rootSlice = GetRootSlice())
+                    {
+                        rootSlice->RemoveSliceInstance(sliceInstance);
+                    }
                 };
 
                 AZ::TickBus::QueueFunction(destroySlice);
@@ -340,22 +345,34 @@ namespace AzFramework
     {
         if (sliceAsset.GetId().IsValid())
         {
-            m_instantiatingDynamicSlices.push_back(AZStd::make_pair(sliceAsset, worldTransform));
-
             const SliceInstantiationTicket ticket = InstantiateSlice(sliceAsset, customIdMapper);
             if (ticket)
             {
-                SliceInstantiationResultBus::MultiHandler::BusConnect(ticket);
-            }
+                InstantiatingDynamicSliceInfo& info = m_instantiatingDynamicSlices[ticket];
+                info.m_asset = sliceAsset;
+                info.m_transform = worldTransform;
 
-            return ticket;
+                SliceInstantiationResultBus::MultiHandler::BusConnect(ticket);
+
+                return ticket;
+            }
         }
 
         return SliceInstantiationTicket();
     }
 
     //=========================================================================
-    // EntityContextEventBus::ResetContext
+    // GameEntityContextRequestBus::CancelDynamicSliceInstantiation
+    //=========================================================================
+    void GameEntityContextComponent::CancelDynamicSliceInstantiation(const SliceInstantiationTicket& ticket)
+    {
+        // Cleanup of m_instantiatingDynamicSlices will be handled by OnSliceInstantiationFailed()
+
+        CancelSliceInstantiation(ticket);
+    }
+
+    //=========================================================================
+    // EntityContextEventBus::LoadFromStream
     //=========================================================================
     bool GameEntityContextComponent::LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds)
     {
@@ -399,55 +416,53 @@ namespace AzFramework
     //=========================================================================
     // EntityContextEventBus::OnSlicePreInstantiate
     //=========================================================================
-    void GameEntityContextComponent::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
+    void GameEntityContextComponent::OnSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
     {
-        for (auto instantiatingIter = m_instantiatingDynamicSlices.begin(); instantiatingIter != m_instantiatingDynamicSlices.end(); ++instantiatingIter)
+        const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
+
+        auto instantiatingIter = m_instantiatingDynamicSlices.find(ticket);
+        if (instantiatingIter != m_instantiatingDynamicSlices.end())
         {
-            if (instantiatingIter->first.GetId() == sliceAssetId)
+            InstantiatingDynamicSliceInfo& instantiating = instantiatingIter->second;
+
+            const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+
+            // If the context was loaded from a stream and Ids were remapped, fix up entity Ids in that slice that
+            // point to entities in the stream (i.e. level entities).
+            if (!m_loadedEntityIdMap.empty())
             {
-                const AZ::Transform& worldTransform = instantiatingIter->second;
-
-                const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
-
-                // If the context was loaded from a stream and Ids were remapped, fix up entity Ids in that slice that
-                // point to entities in the stream (i.e. level entities).
-                if (!m_loadedEntityIdMap.empty())
-                {
-                    AZ::EntityUtils::SerializableEntityContainer instanceEntities;
-                    instanceEntities.m_entities = entities;
-                    AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&instanceEntities,
-                        [this](const AZ::EntityId& originalId, bool isEntityId, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
-                        {
-                            if (!isEntityId)
-                            {
-                                auto iter = m_loadedEntityIdMap.find(originalId);
-                                if (iter != m_loadedEntityIdMap.end())
-                                {
-                                    return iter->second;
-                                }
-                            }
-                            return originalId;
-
-                        }, m_serializeContext, false);
-                }
-
-                // Set initial transform for slice root entity based on the requested root transform for the instance.
-                for (AZ::Entity* entity : entities)
-                {
-                    auto* transformComponent = entity->FindComponent<AzFramework::TransformComponent>();
-                    if (transformComponent)
+                AZ::EntityUtils::SerializableEntityContainer instanceEntities;
+                instanceEntities.m_entities = entities;
+                AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&instanceEntities,
+                    [this](const AZ::EntityId& originalId, bool isEntityId, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
                     {
-                        // Non-root entities will be positioned relative to their parents.
-                        // NOTE: The second expression (parentId == entity->Id) is needed only due to backward data compatibility.
-                        if (!transformComponent->GetParentId().IsValid() || transformComponent->GetParentId() == entity->GetId())
+                        if (!isEntityId)
                         {
-                            // Note: Root slice entity always has translation at origin, so this maintains scale & rotation.
-                            transformComponent->SetWorldTM(worldTransform * transformComponent->GetWorldTM());
+                            auto iter = m_loadedEntityIdMap.find(originalId);
+                            if (iter != m_loadedEntityIdMap.end())
+                            {
+                                return iter->second;
+                            }
                         }
+                        return originalId;
+
+                    }, m_serializeContext, false);
+            }
+
+            // Set initial transform for slice root entity based on the requested root transform for the instance.
+            for (AZ::Entity* entity : entities)
+            {
+                auto* transformComponent = entity->FindComponent<AzFramework::TransformComponent>();
+                if (transformComponent)
+                {
+                    // Non-root entities will be positioned relative to their parents.
+                    // NOTE: The second expression (parentId == entity->Id) is needed only due to backward data compatibility.
+                    if (!transformComponent->GetParentId().IsValid() || transformComponent->GetParentId() == entity->GetId())
+                    {
+                        // Note: Root slice entity always has translation at origin, so this maintains scale & rotation.
+                        transformComponent->SetWorldTM(instantiating.m_transform * transformComponent->GetWorldTM());
                     }
                 }
-
-                break;
             }
         }
     }
@@ -461,14 +476,9 @@ namespace AzFramework
 
         SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 
-        for (auto instantiatingIter = m_instantiatingDynamicSlices.begin(); instantiatingIter != m_instantiatingDynamicSlices.end(); ++instantiatingIter)
+        if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
-            if (instantiatingIter->first.GetId() == sliceAssetId)
-            {                
-                EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiated, sliceAssetId, instance, ticket);
-                m_instantiatingDynamicSlices.erase(instantiatingIter);
-                break;
-            }
+            EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiated, sliceAssetId, instance, ticket);
         }
     }
 
@@ -481,15 +491,9 @@ namespace AzFramework
 
         SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 
-        for (auto instantiatingIter = m_instantiatingDynamicSlices.begin(); instantiatingIter != m_instantiatingDynamicSlices.end(); ++instantiatingIter)
+        if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
-            if (instantiatingIter->first.GetId() == sliceAssetId)
-            {
-                EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiationFailed, sliceAssetId, ticket);
-
-                m_instantiatingDynamicSlices.erase(instantiatingIter);
-                break;
-            }
+            EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiationFailed, sliceAssetId, ticket);
         }
     }
 } // namespace AzFramework

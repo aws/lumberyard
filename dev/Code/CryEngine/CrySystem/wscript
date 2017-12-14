@@ -27,7 +27,8 @@ def build(bld):
         pch                     = 'StdAfx.cpp',
         defines                 = ['ENGINE_EXPORTS'],
         use                     = ['AzFramework',
-                                   'GridMate'],
+                                   'GridMate',
+                                   'ToolsCrashHandler'],
         uselib                  = ['LZ4',
                                    'TIFF',
                                    'TOMCRYPT',
@@ -60,7 +61,6 @@ def build(bld):
        
        
 
-        android_use             = [ 'SDL2', 'SDL2Ext' ],
         android_file_list       = [ 'platformos_pc.waf_files', 'autodetect_android.waf_files' ],
         android_includes        = [bld.Path('/Code/CryEngine/CrySystem/JobManager'),
                                    bld.Path('/Code/CryEngine/CrySystem/XML/Expat'),

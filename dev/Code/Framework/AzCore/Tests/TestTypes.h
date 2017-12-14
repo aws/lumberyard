@@ -20,6 +20,21 @@
 #include <AzCore/Memory/MemoryDriller.h>
 #include <AzCore/Memory/AllocationRecords.h>
 
+#if defined(HAVE_BENCHMARK)
+
+#if defined(AZ_COMPILER_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif // clang
+
+#include <benchmark/benchmark.h>
+
+#if defined(AZ_COMPILER_CLANG)
+#pragma clang diagnostic pop
+#endif // clang
+
+#endif // HAVE_BENCHMARK
+
 namespace UnitTest
 {
     static const bool EnableLeakTracking = false;

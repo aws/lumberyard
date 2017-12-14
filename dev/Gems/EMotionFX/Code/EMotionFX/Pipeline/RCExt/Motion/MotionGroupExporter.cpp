@@ -1,5 +1,3 @@
-
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -40,7 +38,6 @@ namespace EMotionFX
         MotionGroupExporter::MotionGroupExporter()
         {
             BindToCall(&MotionGroupExporter::ProcessContext);
-            ActivateBindings();
         }
 
         void MotionGroupExporter::Reflect(AZ::ReflectContext* context)
@@ -101,5 +98,5 @@ namespace EMotionFX
 
             return result.GetResult();
         }
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

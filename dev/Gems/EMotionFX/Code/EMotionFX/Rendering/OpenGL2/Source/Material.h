@@ -51,8 +51,8 @@ namespace RenderGL
     // StandardVertex
     struct RENDERGL_API StandardVertex
     {
-        MCore::Vector3 mPosition;
-        MCore::Vector3 mNormal;
+        AZ::Vector3 mPosition;
+        AZ::Vector3 mNormal;
         AZ::Vector4 mTangent;
         AZ::Vector2 mUV;
     };
@@ -61,8 +61,8 @@ namespace RenderGL
     // SkinnedVertex
     struct RENDERGL_API SkinnedVertex
     {
-        MCore::Vector3  mPosition;
-        MCore::Vector3  mNormal;
+        AZ::Vector3  mPosition;
+        AZ::Vector3  mNormal;
         AZ::Vector4 mTangent;
         AZ::Vector2 mUV;
         float           mWeights[4];

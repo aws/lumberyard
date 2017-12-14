@@ -17,6 +17,7 @@
 #include "../../XRenderD3D9/DriverD3D.h"
 #include "RootOpticsElement.h"
 #include "../Textures/Texture.h"
+#include "../Common/Textures/TextureManager.h"
 #include "FlareSoftOcclusionQuery.h"
 
 #if defined(FLARES_SUPPORT_EDITING)
@@ -335,7 +336,7 @@ void COpticsElement::ApplyOcclusionPattern(CShader* shader)
     }
     else
     {
-        CTexture::s_ptexBlack->Apply(5, CTexture::GetTexState(bilinearTS));
+        CTextureManager::Instance()->GetBlackTexture()->Apply(5, CTexture::GetTexState(bilinearTS));
     }
 }
 

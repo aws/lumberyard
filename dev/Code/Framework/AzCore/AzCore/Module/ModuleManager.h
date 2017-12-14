@@ -47,6 +47,17 @@ namespace AZ
     }
 
     /**
+     * Checks if a component should be used as a System Component in a given context.
+     *
+     * \param descriptor    The descriptor for the component being checked
+     * \param requiredTags  The tags the component must have one of for true to be returned
+     * \param serialize     The serialize context to pull attributes for the component from
+     *
+     * \returns whether the component represented by descriptor has at least one tag that is present in required tags
+     */
+    bool ShouldUseSystemComponent(const ComponentDescriptor& descriptor, const AZStd::vector<Crc32>& requiredTags, const SerializeContext& serialize);
+
+    /**
      * ModuleEntity is an Entity that carries a module class id along with it.
      * This we do so that when the System Entity Editor saves out an entity,
      * when it's loaded from the stream, we can use that id to associate the
@@ -136,6 +147,13 @@ namespace AZ
         // To be called by the Component Application when it deserializes an entity
         void AddModuleEntity(ModuleEntity* moduleEntity);
 
+        // To be called by the Component Application on startup
+        template <typename CrcCollection>
+        void SetSystemComponentTags(const CrcCollection& tags)
+        {
+            m_systemComponentTags.insert(m_systemComponentTags.end(), tags.begin(), tags.end());
+        }
+
     protected:
         ////////////////////////////////////////////////////////////////////////
         // ModuleManagerRequestBus
@@ -158,11 +176,16 @@ namespace AZ
         ////////////////////////////////////////////////////////////////////////
 
         // Helper function for initializing module entities
-        void ActivateEntities(const AZStd::vector<AZStd::shared_ptr<ModuleDataImpl>>& modulesToInit, bool doDependencySort);
+        void ActivateEntities(const AZStd::vector<AZStd::shared_ptr<ModuleDataImpl>>& modulesToInit);
 
         // Helper function to preprocess the module names to handle any special processing
         static AZ::OSString PreProcessModule(const AZ::OSString& moduleName);
 
+        // Tags to look for when activating system components
+        AZStd::vector<Crc32> m_systemComponentTags;
+
+        /// System components we own and are responsible for shutting down
+        AZ::Entity::ComponentArrayType m_systemComponents;
 
         /// The modules we own
         AZStd::vector<AZStd::shared_ptr<ModuleDataImpl>> m_ownedModules;

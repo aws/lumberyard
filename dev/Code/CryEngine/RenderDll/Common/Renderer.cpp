@@ -34,10 +34,14 @@
 #include "PostProcess/PostEffects.h"
 #include "RendElements/CRELensOptics.h"
 #include "IStereoRenderer.h"
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
 
 #include <LoadScreenBus.h>
 
 #include "RendElements/OpticsFactory.h"
+
+#include "GraphicsPipeline/FurBendData.h"
 
 #include "IGeomCache.h"
 #include "ITimeOfDay.h"
@@ -61,13 +65,16 @@
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <Common/Memory/VRAMDriller.h>
+#include "Maestro/Types/AnimParamType.h"
 
-#if   defined(OPENGL) // Scrubber friendly define negation
-#else
-#   ifdef ENABLE_FRAME_PROFILER_LABELS
-// This is need for D3DPERF_ functions
-LINK_SYSTEM_LIBRARY(d3d9.lib)
-#   endif
+#if defined(AZ_PLATFORM_WINDOWS) // Scrubber friendly define negation
+    #if defined(OPENGL) // Scrubber friendly define negation
+    #else
+        #ifdef ENABLE_FRAME_PROFILER_LABELS
+        // This is need for D3DPERF_ functions
+        LINK_SYSTEM_LIBRARY(d3d9.lib)
+        #endif
+    #endif
 #endif
 
 namespace
@@ -482,6 +489,7 @@ int CRenderer::CV_r_shadersuseinstancelookuptable;
 int CRenderer::CV_r_shaderslogcachemisses;
 int CRenderer::CV_r_shadersImport;
 int CRenderer::CV_r_shadersExport;
+int CRenderer::CV_r_shadersCacheUnavailableShaders;
 
 AllocateConstIntCVar(CRenderer, CV_r_meshprecache);
 int CRenderer::CV_r_meshpoolsize;
@@ -508,11 +516,8 @@ int CRenderer::CV_r_AntialiasingMode_CB;
 int CRenderer::CV_r_AntialiasingMode;
 int CRenderer::CV_r_AntialiasingTAAJitterPattern;
 float CRenderer::CV_r_AntialiasingTAAClampingFactor;
-float CRenderer::CV_r_AntialiasingTAANewFrameFalloff;
+float CRenderer::CV_r_AntialiasingTAANewFrameWeight;
 float CRenderer::CV_r_AntialiasingTAASharpening;
-float CRenderer::CV_r_AntialiasingTAAMotionDifferenceMax;
-float CRenderer::CV_r_AntialiasingTAAMotionDifferenceMaxWeight;
-float CRenderer::CV_r_AntialiasingTAALuminanceMax;
 AllocateConstIntCVar(CRenderer, CV_r_AntialiasingTAAUseAntiFlickerFilter);
 AllocateConstIntCVar(CRenderer, CV_r_AntialiasingTAAUseJitterMipBias);
 AllocateConstIntCVar(CRenderer, CV_r_AntialiasingTAAUseVarianceClamping);
@@ -523,7 +528,9 @@ AllocateConstIntCVar(CRenderer, CV_r_AntialiasingModeEditor);
 Vec2 CRenderer::s_overscanBorders(0, 0);
 
 AllocateConstIntCVar(CRenderer, CV_r_MotionVectors);
+AllocateConstIntCVar(CRenderer, CV_r_MotionVectorsTransparency);
 AllocateConstIntCVar(CRenderer, CV_r_MotionVectorsDebug);
+float CRenderer::CV_r_MotionVectorsTransparencyAlphaThreshold;
 int CRenderer::CV_r_MotionBlur;
 int CRenderer::CV_r_MotionBlurScreenShot;
 int CRenderer::CV_r_MotionBlurQuality;
@@ -621,15 +628,12 @@ float CRenderer::CV_r_waterupdateDistance;
 float CRenderer::CV_r_envcmupdateinterval;
 float CRenderer::CV_r_envtexupdateinterval;
 AllocateConstIntCVar(CRenderer, CV_r_waterreflections);
-AllocateConstIntCVar(CRenderer, CV_r_waterreflections_mgpu);
 AllocateConstIntCVar(CRenderer, CV_r_waterreflections_quality);
-AllocateConstIntCVar(CRenderer, CV_r_waterreflections_use_min_offset);
 float CRenderer::CV_r_waterreflections_min_visible_pixels_update;
 float CRenderer::CV_r_waterreflections_minvis_updatefactormul;
 float CRenderer::CV_r_waterreflections_minvis_updatedistancemul;
-int CRenderer::CV_r_watercaustics;
+int CRenderer::CV_r_watercaustics; //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.
 float CRenderer::CV_r_watercausticsdistance;
-int CRenderer::CV_r_watercausticsdeferred;
 int CRenderer::CV_r_watervolumecaustics;
 int CRenderer::CV_r_watervolumecausticsdensity;
 int CRenderer::CV_r_watervolumecausticsresolution;
@@ -637,7 +641,6 @@ float CRenderer::CV_r_watervolumecausticssnapfactor;
 float CRenderer::CV_r_watervolumecausticsmaxdistance;
 AllocateConstIntCVar(CRenderer, CV_r_water_godrays);
 float CRenderer::CV_r_water_godrays_distortion;
-int CRenderer::CV_r_WaterUpdateThread;
 AllocateConstIntCVar(CRenderer, CV_r_texNoAnisoAlphaTest);
 AllocateConstIntCVar(CRenderer, CV_r_reflections);
 AllocateConstIntCVar(CRenderer, CV_r_reflections_quality);
@@ -773,6 +776,17 @@ float CRenderer::CV_r_CubeDepthMapFarPlane;
 
 //  Confetti BEGIN: Igor Lobanchikov :END is respected by OpenGL ES only
 int CRenderer::CV_r_ForceFixedPointRenderTargets;
+
+// Fur control parameters
+int CRenderer::CV_r_Fur;
+int CRenderer::CV_r_FurShellPassCount;
+int CRenderer::CV_r_FurShowBending;
+int CRenderer::CV_r_FurDebug;
+int CRenderer::CV_r_FurDebugOneShell;
+int CRenderer::CV_r_FurFinPass;
+int CRenderer::CV_r_FurFinShadowPass;
+float CRenderer::CV_r_FurMovementBendingBias;
+float CRenderer::CV_r_FurMaxViewDist;
 
 #if defined(ENABLE_RENDER_AUX_GEOM)
 int CRenderer::CV_r_enableauxgeom;
@@ -1867,23 +1881,14 @@ void CRenderer::InitRenderer()
     DefineConstIntCVar3("r_AntialiasingTAAUseAntiFlickerFilter", CV_r_AntialiasingTAAUseAntiFlickerFilter, 1, VF_NULL,
         "Enables TAA anti-flicker filtering.\n");
 
-    REGISTER_CVAR3("r_AntialiasingTAAClampingFactor", CV_r_AntialiasingTAAClampingFactor, 1.5f, VF_NULL,
+    REGISTER_CVAR3("r_AntialiasingTAAClampingFactor", CV_r_AntialiasingTAAClampingFactor, 1.25f, VF_NULL,
         "Controls the history clamping factor for TAA. Higher values will cause more ghosting but less flickering. Acceptable values between 0.75 and 2.0\n");
 
-    REGISTER_CVAR3("r_AntialiasingTAANewFrameFalloff", CV_r_AntialiasingTAANewFrameFalloff, 0.15f, VF_NULL,
-        "The falloff is a time value (in seconds) that controls when the moving average reaches ~63% convergence.\n");
+    REGISTER_CVAR3("r_AntialiasingTAANewFrameWeight", CV_r_AntialiasingTAANewFrameWeight, 0.05f, VF_NULL,
+        "The weight controlling how much of the current frame is used when integrating with the exponential history buffer.\n");
 
-    REGISTER_CVAR3("r_AntialiasingTAASharpening", CV_r_AntialiasingTAASharpening, 0.2f, VF_NULL,
+    REGISTER_CVAR3("r_AntialiasingTAASharpening", CV_r_AntialiasingTAASharpening, 0.1f, VF_NULL,
         "Enables TAA sharpening.\n");
-
-    REGISTER_CVAR3("r_AntialiasingTAAMotionDifferenceMax", CV_r_AntialiasingTAAMotionDifferenceMax, 10.0f, VF_NULL,
-        "The motion vector length difference (in pixels) at which the current pixel is considered fully disoccluded.\n");
-
-    REGISTER_CVAR3("r_AntialiasingTAAMotionDifferenceMaxWeight", CV_r_AntialiasingTAAMotionDifferenceMaxWeight, 0.5f, VF_NULL,
-        "The blend weight for the current frame at the maximum velocity difference. The value [0, 1] controls the blend towards the current frame.");
-
-    REGISTER_CVAR3("r_AntialiasingTAALuminanceMax", CV_r_AntialiasingTAALuminanceMax, 100.0f, VF_NULL,
-        "Clamps the input luminance before temporal filtering. This helps image stability, as super hot pixels can ghost and cause artifacts.");
 
     DefineConstIntCVar3("CV_r_AntialiasingModeEditor", CV_r_AntialiasingModeEditor, 1, VF_NULL,
         "Sets antialiasing modes to editing mode (disables jitter on modes using camera jitter which can cause flickering of helper objects)\n"
@@ -1891,6 +1896,14 @@ void CRenderer::InitRenderer()
 
     DefineConstIntCVar3("r_MotionVectors", CV_r_MotionVectors, 1, VF_NULL,
         "Enables generation of motion vectors for dynamic objects\n");
+
+    DefineConstIntCVar3("r_MotionVectorsTransparency", CV_r_MotionVectorsTransparency, 1, VF_NULL,
+        "Enables generation of motion vectors for transparent objects\n");
+
+    REGISTER_CVAR3("r_MotionVectorsTransparencyAlphaThreshold", CV_r_MotionVectorsTransparencyAlphaThreshold, 0.25f, VF_NULL,
+        "Transparent object alpha threshold. If the alpha is above this threshold the object will generate motion vectors.\n"
+        "Usage: r_MotionVectorsTransparencyAlphaThreshold (val)\n"
+        "Default is 0.25.  0 - disabled\n");
 
     DefineConstIntCVar3("r_MotionVectorsDebug", CV_r_MotionVectorsDebug, 0, VF_NULL,
         "Enables motion vector debug visualization.\n");
@@ -2678,6 +2691,9 @@ void CRenderer::InitRenderer()
     REGISTER_CVAR3("r_ShadersExport", CV_r_shadersExport, 1, VF_NULL,
         "0 off, 1 allow shader export during shader cache generation - Currently 360 only.");
 
+    REGISTER_CVAR3("r_ShadersCacheUnavailableShaders", CV_r_shadersCacheUnavailableShaders, 0, VF_NULL,
+        "0 off (default), 1 cache unavailable shaders to avoid requesting their compilation in future executions.");
+
     DefineConstIntCVar3("r_DebugRenderMode", CV_r_debugrendermode, 0, VF_CHEAT, "");
     DefineConstIntCVar3("r_DebugRefraction", CV_r_debugrefraction, 0, VF_CHEAT,
         "Debug refraction usage. Displays red instead of refraction\n"
@@ -2764,19 +2780,10 @@ void CRenderer::InitRenderer()
         "Usage: r_WaterReflections [0/1]\n"
         "Default is 1 (water reflects).");
 
-    // deprecated - we update every frame now on mgpu mode - todo: remove all related code
-    DefineConstIntCVar3("r_WaterReflectionsMGPU", CV_r_waterreflections_mgpu, 0, VF_DUMPTODISK,
-        "Toggles water reflections.multi-gpu support\n"
-        "Usage: r_WaterReflectionsMGPU [0/1/2]\n"
-        "Default is 0 (single render update), 1 (multiple render updates)");
-
     DefineConstIntCVar3("r_WaterReflectionsQuality", CV_r_waterreflections_quality, WATERREFLQUAL_DEFAULT_VAL, VF_DUMPTODISK,
         "Activates water reflections quality setting.\n"
         "Usage: r_WaterReflectionsQuality [0/1/2/3]\n"
         "Default is 0 (terrain only), 1 (terrain + particles), 2 (terrain + particles + brushes), 3 (everything)");
-
-    DefineConstIntCVar3("r_WaterReflectionsUseMinOffset", CV_r_waterreflections_use_min_offset, 1, VF_DUMPTODISK,
-        "Activates water reflections use min distance offset.");
 
     REGISTER_CVAR3("r_WaterReflectionsMinVisiblePixelsUpdate", CV_r_waterreflections_min_visible_pixels_update, 0.05f, VF_DUMPTODISK,
         "Activates water reflections if visible pixels above a certain threshold.");
@@ -2786,7 +2793,7 @@ void CRenderer::InitRenderer()
     REGISTER_CVAR3("r_WaterReflectionsMinVisUpdateDistanceMul", CV_r_waterreflections_minvis_updatedistancemul, 10.0f, VF_DUMPTODISK,
         "Activates update distance multiplier when water mostly occluded.");
 
-    REGISTER_CVAR3("r_WaterCaustics", CV_r_watercaustics, 1, VF_RENDERER_CVAR,
+    REGISTER_CVAR3("r_WaterCaustics", CV_r_watercaustics, 1, VF_RENDERER_CVAR, // deprecating soon, moving to the Water Gem
         "Toggles under water caustics.\n"
         "Usage: r_WaterCaustics [0/1]\n"
         "Default is 1 (enabled).");
@@ -2795,11 +2802,6 @@ void CRenderer::InitRenderer()
         "Toggles under water caustics max distance.\n"
         "Usage: r_WaterCausticsDistance\n"
         "Default is 100.0 meters");
-
-    REGISTER_CVAR3("r_WaterCausticsDeferred", CV_r_watercausticsdeferred, 2, VF_NULL,
-        "Toggles under water caustics deferred pass.\n"
-        "Usage: r_WaterCausticsDeferred [0/1/2]\n"
-        "Default is 0 (disabled). 1 - enables. 2 - enables with stencil pre-pass");
 
     REGISTER_CVAR3("r_WaterVolumeCaustics", CV_r_watervolumecaustics, WATERVOLCAUSTICS_DEFAULT_VAL, VF_NULL,
         "Toggles advanced water caustics for watervolumes.\n"
@@ -2826,20 +2828,19 @@ void CRenderer::InitRenderer()
         "Usage: r_WaterVolumeCausticsMaxDist [n]\n"
         "Default is 35");
 
-    DefineConstIntCVar3("r_WaterGodRays", CV_r_water_godrays, 1, VF_NULL,
-        "Enables under water god rays.\n"
-        "Usage: r_WaterGodRays [0/1]\n"
-        "Default is 1 (enabled).");
+    if (!OceanToggle::IsActive())
+    {
+        DefineConstIntCVar3("r_WaterGodRays", CV_r_water_godrays, 1, VF_NULL,
+            "Enables under water god rays.\n"
+            "Usage: r_WaterGodRays [0/1]\n"
+            "Default is 1 (enabled).");
 
-    REGISTER_CVAR3("r_WaterGodRaysDistortion", CV_r_water_godrays_distortion, 1, VF_NULL,
-        "Set the amount of distortion when underwater.\n"
-        "Usage: r_WaterGodRaysDistortion [n]\n"
-        "Default is 1.");
+        REGISTER_CVAR3("r_WaterGodRaysDistortion", CV_r_water_godrays_distortion, 1, VF_NULL,
+            "Set the amount of distortion when underwater.\n"
+            "Usage: r_WaterGodRaysDistortion [n]\n"
+            "Default is 1.");
+    }
 
-    REGISTER_CVAR3("r_WaterUpdateThread", CV_r_WaterUpdateThread, 5, VF_NULL,
-        "Enables water updating on separate thread (when MT supported).\n"
-        "Usage: r_WaterUpdateThread [0/1/2/3/4/n]\n"
-        "Default is 5 (enabled and on 5 hw thread).");
 
     DefineConstIntCVar3("r_Reflections", CV_r_reflections, 1, VF_DUMPTODISK,
         "Toggles reflections.\n"
@@ -2930,15 +2931,18 @@ void CRenderer::InitRenderer()
         "Range is from 0 to 1", OnChange_CV_r_FlaresTessellationRatio);
 
     REGISTER_CVAR3("r_Gamma", CV_r_gamma, 1.0f, VF_DUMPTODISK,
-        "Adjusts the graphics card gamma correction (fast, needs hardware support, affects also HUD and desktop)\n"
+        "Adjusts the graphics card gamma correction (fast, needs hardware support, also affects HUD and desktop)\n"
+        "r_NoHWGamma must be set to 0 for this to have an effect.\n"
         "Usage: r_Gamma 1.0\n"
         "1 off (default)");
     REGISTER_CVAR3("r_Brightness", CV_r_brightness, 0.5f, VF_DUMPTODISK,
-        "Sets the display brightness.\n"
+        "Sets the display brightness (fast, needs hardware support, also affects HUD and desktop)\n"
+        "r_NoHWGamma must be set to 0 for this to have an effect.\n"
         "Usage: r_Brightness 0.5\n"
         "Default is 0.5.");
     REGISTER_CVAR3("r_Contrast", CV_r_contrast, 0.5f, VF_DUMPTODISK,
-        "Sets the display contrast.\n"
+        "Sets the display contrast (fast, needs hardware support, also affects HUD and desktop)\n"
+        "r_NoHWGamma must be set to 0 for this to have an effect.\n"
         "Usage: r_Contrast 0.5\n"
         "Default is 0.5.");
 
@@ -3379,8 +3383,47 @@ void CRenderer::InitRenderer()
         "0 Off\n"
         "1 ON\n");
 
+    REGISTER_CVAR3("r_Fur", CV_r_Fur, 1, VF_NULL,
+        "Specifies how fur is rendered:\n"
+        "0: Fur is disabled - objects using Fur shader appear similar to Illum\n"
+        "1: Alpha blended transparent passes\n"
+        "2: Alpha tested opaque passes");
+
+    REGISTER_CVAR3("r_FurShellPassCount", CV_r_FurShellPassCount, 64, VF_NULL,
+        "Number of passes to perform for rendering fur shells");
+
+    REGISTER_CVAR3("r_FurShowBending", CV_r_FurShowBending, 0, VF_DEV_ONLY,
+        "Toggles visibility of fur bending vectors.");
+
+    REGISTER_CVAR3("r_FurDebug", CV_r_FurDebug, 0, VF_DEV_ONLY,
+        "Debug visualizers for fur.\n"
+        "0: off\n"
+        "1: base/tip sample validity (red = base valid; green = tip valid; yellow = both valid)\n"
+        "2: base/tip selection (red = base chosen; green = tip chosen)\n"
+        "3: show offscreen UVs for base deferred sample (gray = onscreen)\n"
+        "4: show offscreen UVs for tip deferred sample (gray = onscreen)\n"
+        "5: show final lighting with all base lighting selected\n"
+        "6: show final lighting with all tip lighting selected\n"
+        "7: visualize fur length scaling\n"
+        "8: visualize fur animation bending velocity");
+
+    REGISTER_CVAR3("r_FurDebugOneShell", CV_r_FurDebugOneShell, 0, VF_DEV_ONLY,
+        "Debug cvar to draw only the specified shell number for fur. 0 = disabled.");
+
+    REGISTER_CVAR3("r_FurFinPass", CV_r_FurFinPass, 0, VF_NULL,
+        "Toggles view orthogonal fin pass for fur. 0 = disabled.");
+
+    REGISTER_CVAR3("r_FurFinShadowPass", CV_r_FurFinShadowPass, 1, VF_NULL,
+        "Toggles view orthogonal fin pass for fur in shadow passes. 0 = disabled.");
+
+    REGISTER_CVAR3("r_FurMovementBendingBias", CV_r_FurMovementBendingBias, 0.1f, VF_NULL,
+        "Bias for fur bending from animation & movement. Closer to 1 causes fur to bend back faster.");
+
+    REGISTER_CVAR3("r_FurMaxViewDist", CV_r_FurMaxViewDist, 32.0f, VF_NULL,
+        "Maximum view distance for fur shell passes.");
+
     REGISTER_CVAR3("r_EnableComputeDownSampling", CV_r_EnableComputeDownSampling, 0, VF_NULL,
-        "Metal compute down samplen"
+        "Metal compute down sample\n"
         "Usage: \n"
         "0 Off\n"
         "1 ON\n");
@@ -3469,7 +3512,6 @@ void CRenderer::InitRenderer()
     m_CurFontColor = Col_White;
 
     m_bUseHWSkinning = CV_r_usehwskinning != 0;
-    m_bWaterCaustics = CV_r_watercaustics != 0;
 
     m_bSwapBuffers = true;
     for (uint32 id = 0; id < RT_COMMAND_BUF_COUNT; ++id)
@@ -3591,8 +3633,6 @@ void CRenderer::InitRenderer()
 
     m_nMeshPoolTimeoutCounter = nMeshPoolMaxTimeoutCounter;
 
-    m_pTextureManager = new CTextureManager;
-
     // Init Thread Safe Worker Containers
     threadID nThreadId = CryGetCurrentThreadId();
     for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
@@ -3601,9 +3641,6 @@ void CRenderer::InitRenderer()
         m_RP.m_arrCustomShadowMapFrustumData[i].SetNonWorkerThreadID(nThreadId);
         m_RP.m_TempObjects[i].Init();
         m_RP.m_TempObjects[i].SetNonWorkerThreadID(nThreadId);
-
-        m_RP.m_ModifiedObjects[i].Init();
-        m_RP.m_ModifiedObjects[i].SetNonWorkerThreadID(nThreadId);
     }
     for (int i = 0; i < RT_COMMAND_BUF_COUNT; i++)
     {
@@ -3637,6 +3674,7 @@ CRenderer::~CRenderer()
 void CRenderer::PostInit()
 {
     LOADING_TIME_PROFILE_SECTION;
+
     //////////////////////////////////////////////////////////////////////////
     // Initialize the shader system
     //////////////////////////////////////////////////////////////////////////
@@ -3656,12 +3694,6 @@ void CRenderer::PostInit()
         {
             CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, "Error getting default font");
         }
-    }
-
-    // load all default textures
-    if (!m_bShaderCacheGen && m_pTextureManager)
-    {
-        m_pTextureManager->PreloadDefaultTextures();
     }
 
     if (!m_bShaderCacheGen)
@@ -4272,6 +4304,12 @@ void CRenderer::ForceSwapBuffers()
     ForceFlushRTCommands();
 }
 
+// Initializes the default textures as well as texture semantics
+void CRenderer::InitTexturesSemantics()
+{
+    CTextureManager::Instance()->LoadMaterialTexturesSemantics();
+}
+
 void CRenderer::InitSystemResources(int nFlags)
 {
     LOADING_TIME_PROFILE_SECTION;
@@ -4287,7 +4325,11 @@ void CRenderer::InitSystemResources(int nFlags)
         m_cEF.mfLoadBasicSystemShaders();
         m_cEF.mfLoadDefaultSystemShaders();
 
+        // The following two lines will initiate the Texture manager instance and load all 
+        // default textures and create engine textures
+        CTextureManager::Instance()->Init();
         CTexture::LoadDefaultSystemTextures();
+
         m_pRT->RC_CreateRenderResources();
         m_pRT->RC_PrecacheDefaultShaders();
         m_pRT->RC_CreateSystemTargets();
@@ -4407,6 +4449,7 @@ void CRenderer::FreeResources(int nFlags)
     if (nFlags & (FRR_SYSTEM | FRR_OBJECTS))
     {
         CMotionBlur::FreeData();
+        FurBendData::Get().FreeData();
 
         for (int i = 0; i < 3; ++i)
         {
@@ -4423,7 +4466,6 @@ void CRenderer::FreeResources(int nFlags)
         for (int i = 0; i < RT_COMMAND_BUF_COUNT; i++)
         {
             m_RP.m_TempObjects[i].clear(SDeleteNonePoolRenderObjs(pObjPoolStart, pObjPoolEnd));
-            m_RP.m_ModifiedObjects[i].clear();
         }
     }
 
@@ -4438,7 +4480,6 @@ void CRenderer::FreeResources(int nFlags)
         for (uint32 j = 0; j < RT_COMMAND_BUF_COUNT; j++)
         {
             m_RP.m_TempObjects[j].clear();
-            m_RP.m_ModifiedObjects[j].clear();
         }
         if (m_RP.m_ObjectsPool)
         {
@@ -4453,7 +4494,6 @@ void CRenderer::FreeResources(int nFlags)
             SAFE_DELETE(m_RP.m_pIdendityRenderObject);
             m_RP.m_nNumObjectsInPool = 0;
         }
-        //FX_PipelineShutdown();
     }
 
     if (nFlags == FRR_ALL)
@@ -4895,13 +4935,6 @@ ITexture* CRenderer::EF_GetTextureByName(const char* nameTex, uint32 flags)
 
 ITexture* CRenderer::EF_LoadTexture(const char* nameTex, const uint32 flags)
 {
-#if defined (NULL_RENDERER)
-    if (CTexture::s_ptexNoTexture)
-    {
-        return CTexture::s_ptexNoTexture;
-    }
-    else
-#endif
     if (nameTex)
     {
         INDENT_LOG_DURING_SCOPE(true, "While trying to load texture '%s' flags=0x%x...", nameTex, flags);
@@ -4916,20 +4949,50 @@ ITexture* CRenderer::EF_LoadTexture(const char* nameTex, const uint32 flags)
             cry_strcat(nameDDS, ".dds");
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-            EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            if (GetISystem() && GetISystem()->GetGlobalEnvironment() && GetISystem()->GetGlobalEnvironment()->mMainThreadId == CryGetCurrentThreadId())
+            {
+                EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            }
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
             return CTexture::ForName(nameDDS, flags, eTF_Unknown);
         }
         else
         {
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-            EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            if (GetISystem() && GetISystem()->GetGlobalEnvironment() && GetISystem()->GetGlobalEnvironment()->mMainThreadId == CryGetCurrentThreadId())
+            {
+                EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+            }
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
             return CTexture::ForName(nameTex, flags, eTF_Unknown);
         }
     }
 
     return NULL;
+}
+
+ITexture* CRenderer::EF_LoadDefaultTexture(const char* nameTex)
+{
+    if (nameTex)
+    {
+        return CTextureManager::Instance()->GetDefaultTexture(nameTex);
+    }
+    return nullptr;
+}
+
+ITexture* CRenderer::EF_LoadCubemapTexture(const char* nameTex, const uint32 flags)
+{
+    ITexture* cubeMap = EF_LoadTexture(nameTex, flags);
+    // Explicitly set the texture type for the texture for the cases where it is not loaded
+    // at this time but the renderer still tries to bind it. On devices running Metal not doing this
+    // causes the metal validation to fail as the texture uses black, a 2D texture, as a replacement
+    // for an unloaded cubemap. Now the texture can choose to use black cubemap instead and make
+    // the validation layer happy.
+    if (cubeMap)
+    {
+        cubeMap->SetTextureType(eTT_Cube);
+    }
+    return cubeMap;
 }
 
 bool SShaderItem::Update()
@@ -4976,11 +5039,9 @@ void CRenderer::EF_StartEf(const SRenderingPassInfo& passInfo)
         CRenderView::CurrentFillView()->ClearRenderItems();
 
         m_RP.m_TempObjects[nThreadID].resize(0);
-        m_RP.m_ModifiedObjects[nThreadID].resize(0);
         m_nShadowGenId[nThreadID] = 0;
 
         //SG frustums
-        //SRendItem::m_ShadowGenRecurLevel[nThreadID] = 0;
         for (i = 0; i < MAX_SHADOWMAP_FRUSTUMS; i++)
         {
             SRendItem::m_ShadowsStartRI[nThreadID][i] = 0;
@@ -5026,6 +5087,7 @@ void CRenderer::EF_StartEf(const SRenderingPassInfo& passInfo)
     m_RP.m_DeferredDecals[nThreadID][nR].clear();
     m_RP.m_isDeferrredNormalDecals[nThreadID][nR] = false;
 
+    FurBendData::Get().OnBeginFrame();
 
     CPostEffectsMgr* pPostEffectMgr = PostEffectMgr();
 
@@ -5153,16 +5215,6 @@ CRendElementBase* CRenderer::EF_CreateRE(EDataType edt)
 #endif
     }
     return re;
-}
-
-float CRenderer::EF_GetWaterZElevation(float fX, float fY)
-{
-    I3DEngine* eng = (I3DEngine*)gEnv->p3DEngine;
-    if (!eng)
-    {
-        return 0;
-    }
-    return eng->GetWaterLevel();
 }
 
 void CRenderer::EF_RemovePolysFromScene()
@@ -5367,7 +5419,7 @@ void CRenderer::EF_AddClientPolys(const SRenderingPassInfo& passInfo)
 
         if (pl->m_Shader.m_nPreprocessFlags & FSPR_MASK)
         {
-            passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, nullptr, pl->m_Shader, EFSLIST_PREPROCESS, 0, FB_GENERAL, passInfo, pl->rendItemSorter);
+            passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, pl->m_Shader, EFSLIST_PREPROCESS, 0, FB_GENERAL, passInfo, pl->rendItemSorter);
         }
 
         if (pShader->GetFlags() & EF_DECAL) // || pl->m_pObject && (pl->m_pObject->m_ObjFlags & FOB_DECAL))
@@ -5379,11 +5431,11 @@ void CRenderer::EF_AddClientPolys(const SRenderingPassInfo& passInfo)
 
             if (!passInfo.IsShadowPass() && !(pl->m_nCPFlags & CREClientPoly::efShadowGen))
             {
-                passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, nullptr, pl->m_Shader, EFSLIST_DECAL, pl->m_nCPFlags & CREClientPoly::efAfterWater, nBatchFlags, passInfo, pl->rendItemSorter);
+                passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, pl->m_Shader, EFSLIST_DECAL, pl->m_nCPFlags & CREClientPoly::efAfterWater, nBatchFlags, passInfo, pl->rendItemSorter);
             }
             else if (passInfo.IsShadowPass() && (pl->m_nCPFlags & CREClientPoly::efShadowGen))
             {
-                passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, nullptr, pl->m_Shader, EFSLIST_SHADOW_GEN, SG_SORT_GROUP, FB_GENERAL, passInfo, pl->rendItemSorter);
+                passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, pl->m_Shader, EFSLIST_SHADOW_GEN, SG_SORT_GROUP, FB_GENERAL, passInfo, pl->rendItemSorter);
             }
         }
         else
@@ -5394,7 +5446,7 @@ void CRenderer::EF_AddClientPolys(const SRenderingPassInfo& passInfo)
                 list = EFSLIST_TRANSP;
             }
             nBatchFlags |= FB_TRANSPARENT;
-            passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, nullptr, pl->m_Shader, list, pl->m_nCPFlags & CREClientPoly::efAfterWater, nBatchFlags, passInfo, pl->rendItemSorter);
+            passInfo.GetRenderView()->AddRenderItem(pl, pl->m_pObject, pl->m_Shader, list, pl->m_nCPFlags & CREClientPoly::efAfterWater, nBatchFlags, passInfo, pl->rendItemSorter);
         }
     }
 #endif
@@ -5455,9 +5507,17 @@ void CRenderer::EF_CheckLightMaterial(CDLight* pLight, uint16 nRenderLightID, co
                 pLight->m_Flags |= DLF_LIGHT_BEAM;
             }
 
-            const float fWaterLevel = gEnv->p3DEngine->GetWaterLevel();
-            const float fCamZ = m_RP.m_TI[nThreadID].m_cam.GetPosition().z;
-            const int32 nAW = ((fCamZ - fWaterLevel) * (pLight->m_Origin.z - fWaterLevel) > 0) ? 1 : 0;
+            int32 nAW;
+            if (OceanToggle::IsActive() && !OceanRequest::OceanIsEnabled())
+            {
+                nAW = 1;
+            }
+            else
+            {
+                const float fWaterLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : gEnv->p3DEngine->GetWaterLevel();
+                const float fCamZ = m_RP.m_TI[nThreadID].m_cam.GetPosition().z;
+                nAW = ((fCamZ - fWaterLevel) * (pLight->m_Origin.z - fWaterLevel) > 0) ? 1 : 0;
+            }
 
             EF_AddEf(pRE, pLight->m_Shader, pLight->m_pObject[recursiveLevel], passInfo, nList, nAW, rendItemSorter);
         }
@@ -5535,7 +5595,7 @@ bool CRenderer::EF_AddDeferredDecal(const SDeferredDecal& rDecal)
             return false;
         }
 
-        if (SEfResTexture* pNormalRes0 = sItem.m_pShaderResources->GetTexture(EFTT_NORMALS))
+        if (SEfResTexture* pNormalRes0 = sItem.m_pShaderResources->GetTextureResource((uint16)EFTT_NORMALS))
         {
             if (pNormalRes0->m_Sampler.m_pITex)
             {
@@ -5548,7 +5608,7 @@ bool CRenderer::EF_AddDeferredDecal(const SDeferredDecal& rDecal)
             }
         }
 
-        if (SEfResTexture* pSpecularRes0 = sItem.m_pShaderResources->GetTexture(EFTT_SPECULAR))
+        if (SEfResTexture* pSpecularRes0 = sItem.m_pShaderResources->GetTextureResource((uint16)EFTT_SPECULAR))
         {
             if (pSpecularRes0->m_Sampler.m_pITex)
             {
@@ -5627,13 +5687,13 @@ bool CRenderer::EF_UpdateDLight(SRenderLight* dl)
     IF (pLightAnimNode, 0)
     {
         //TODO: This may require further optimizations.
-        IAnimTrack* pPosTrack = pLightAnimNode->GetTrackForParameter(eAnimParamType_Position);
-        IAnimTrack* pRotTrack = pLightAnimNode->GetTrackForParameter(eAnimParamType_Rotation);
-        IAnimTrack* pColorTrack = pLightAnimNode->GetTrackForParameter(eAnimParamType_LightDiffuse);
-        IAnimTrack* pDiffMultTrack = pLightAnimNode->GetTrackForParameter(eAnimParamType_LightDiffuseMult);
-        IAnimTrack* pRadiusTrack = pLightAnimNode->GetTrackForParameter(eAnimParamType_LightRadius);
-        IAnimTrack* pSpecMultTrack = pLightAnimNode->GetTrackForParameter(eAnimParamType_LightSpecularMult);
-        IAnimTrack* pHDRDynamicTrack = pLightAnimNode->GetTrackForParameter(eAnimParamType_LightHDRDynamic);
+        IAnimTrack* pPosTrack = pLightAnimNode->GetTrackForParameter(AnimParamType::Position);
+        IAnimTrack* pRotTrack = pLightAnimNode->GetTrackForParameter(AnimParamType::Rotation);
+        IAnimTrack* pColorTrack = pLightAnimNode->GetTrackForParameter(AnimParamType::LightDiffuse);
+        IAnimTrack* pDiffMultTrack = pLightAnimNode->GetTrackForParameter(AnimParamType::LightDiffuseMult);
+        IAnimTrack* pRadiusTrack = pLightAnimNode->GetTrackForParameter(AnimParamType::LightRadius);
+        IAnimTrack* pSpecMultTrack = pLightAnimNode->GetTrackForParameter(AnimParamType::LightSpecularMult);
+        IAnimTrack* pHDRDynamicTrack = pLightAnimNode->GetTrackForParameter(AnimParamType::LightHDRDynamic);
 
         Range timeRange = const_cast<IAnimNode*>(pLightAnimNode)->GetSequence()->GetTimeRange();
         float time = (dl->m_Flags & DLF_TRACKVIEW_TIMESCRUBBING) ? dl->m_fTimeScrubbed : fTime;
@@ -5727,6 +5787,10 @@ bool CRenderer::EF_UpdateDLight(SRenderLight* dl)
 
         ls->mfUpdate(fTime);
 
+        // It's possible the use of m_Color could be broken if ls->m_Color.a is being used for blending/fading, 
+        // because we moved probe blending out of the alpha channel into m_fProbeAttenuation. This code wasn't tested 
+        // after those changes as it only appears to be used in legacy code paths (light animation via old ScriptBind
+        // system and/or legacy LensFlareComponent). (9/20/2017, see LY-64767)
         dl->m_Color = dl->m_BaseColor * ls->m_Color;
         dl->m_SpecMult = dl->m_BaseSpecMult * ls->m_Color.a;
         dl->m_Origin = dl->m_BaseOrigin + ls->m_vPosOffset;
@@ -6471,18 +6535,18 @@ _smart_ptr<IRenderMesh> CRenderer::CreateRenderMeshInitialized(
 
 void CRenderer::SetWhiteTexture()
 {
-    m_pRT->RC_SetTexture(CTexture::s_ptexWhite->GetID(), 0);
+    m_pRT->RC_SetTexture(CTextureManager::Instance()->GetWhiteTexture()->GetID(), 0);
 }
 
 int CRenderer::GetWhiteTextureId() const
 {
-    const int textureId = (CTexture::s_ptexWhite) ? CTexture::s_ptexWhite->GetID() : -1;
+    const int textureId = (CTextureManager::Instance()->GetWhiteTexture()) ? CTextureManager::Instance()->GetWhiteTexture()->GetID() : -1;
     return textureId;
 }
 
 int CRenderer::GetBlackTextureId() const
 {
-    const int textureId = (CTexture::s_ptexBlack) ? CTexture::s_ptexBlack->GetID() : -1;
+    const int textureId = (CTextureManager::Instance()->GetBlackTexture()) ? CTextureManager::Instance()->GetBlackTexture()->GetID() : -1;
     return textureId;
 }
 
@@ -6556,20 +6620,17 @@ bool CRenderer::EF_PrecacheResource(IRenderMesh* _pPB, _smart_ptr<IMaterial> pMa
         {
             continue;
         }
+
         pSR->m_fMinMipFactorLoad = fMipFactor;
-        for (int j = 0; j <= pSR->m_nLastTexture; j++)
+        for (auto& iter : pSR->m_TexturesResourcesMap )
         {
-            if (!pSR->m_Textures[j])
-            {
-                continue;
-            }
-            CTexture* tp = pSR->m_Textures[j]->m_Sampler.m_pTex;
+            SEfResTexture*  	pTexture = &(iter.second);
+            CTexture*           tp = static_cast<CTexture*> (pTexture->m_Sampler.m_pITex);
             if (!tp)
             {
                 continue;
             }
-            fMipFactor *= pSR->m_Textures[j]->GetTiling(0) * pSR->m_Textures[j]->GetTiling(1);
-
+            fMipFactor *= pTexture->GetTiling(0) * pTexture->GetTiling(1);
             m_pRT->RC_PrecacheResource(tp, fMipFactor, 0, nFlags, nUpdateId);
         }
     }
@@ -7331,9 +7392,8 @@ void S3DEngineCommon::Update(threadID nThreadID)
     }
 
     // Update ocean info
-    m_OceanInfo.m_fWaterLevel = p3DEngine->GetWaterLevel(&gRenDev->GetViewParameters().vOrigin);
+    m_OceanInfo.m_fWaterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(gRenDev->GetViewParameters().vOrigin) : p3DEngine->GetWaterLevel(&gRenDev->GetViewParameters().vOrigin);
     m_OceanInfo.m_nOceanRenderFlags = p3DEngine->GetOceanRenderFlags();
-    m_OceanInfo.m_vCausticsParams = p3DEngine->GetCausticsParams();
 
     if (CRenderer::CV_r_rain)
     {
@@ -7595,8 +7655,19 @@ void S3DEngineCommon::UpdateRainOccInfo(int nThreadID)
                 m_RainInfo.bApplyOcclusion = m_RainOccluders.m_nNumOccluders > 0;
 
                 geomBB.ClipToBox(bbArea);
+
                 // Clip to ocean level
-                geomBB.min.z = max(geomBB.min.z, gEnv->p3DEngine->GetWaterLevel()) - 0.5f;
+                if (OceanToggle::IsActive())
+                {
+                    if (OceanRequest::OceanIsEnabled())
+                    {
+                        geomBB.min.z = max(geomBB.min.z, OceanRequest::GetOceanLevel()) - 0.5f;
+                    }
+                }
+                else
+                {
+                    geomBB.min.z = max(geomBB.min.z, gEnv->p3DEngine->GetWaterLevel()) - 0.5f;
+                }
 
                 float fWaterOffset = m_OceanInfo.m_fWaterLevel - geomBB.min.z;
                 fWaterOffset = (float)fsel(fWaterOffset, fWaterOffset, 0.0f);
@@ -7735,16 +7806,13 @@ void CRenderer::GetRenderTimes(SRenderTimes& outTimes)
 //////////////////////////////////////////////////////////////////////////
 void CRenderer::PreShutDown()
 {
-    if (m_pTextureManager)
-    {
-        m_pTextureManager->ReleaseDefaultTextures();
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CRenderer::PostShutDown()
 {
-    SAFE_DELETE(m_pTextureManager);
+    if (CTextureManager::InstanceExists())
+        CTextureManager::Instance()->Release();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -8037,17 +8105,30 @@ void CRenderer::ClearShaderItem(SShaderItem* pShaderItem)
         {
             gRenDev->m_RP.m_pShaderResources = nullptr;
         }
+
         for (int i = 0; i < EFTT_MAX; ++i)
         {
-            if (gRenDev->m_RP.m_ShaderTexResources[i] == shaderResources->m_Textures[i])
+            SEfResTexture*  	pTexture = shaderResources->GetTextureResource(i);
+            if (gRenDev->m_RP.m_ShaderTexResources[i] == pTexture)
             {
                 gRenDev->m_RP.m_ShaderTexResources[i] = nullptr;
             }
         }
+/* @barled - adibugbug - put back in place!!!
+        for (auto iter = shaderResources->m_TexturesResourcesMap.begin(); iter != shaderResources->m_TexturesResourcesMap.end(); ++iter)
+        {
+            SEfResTexture*  	pTexture = &iter->second;
+            uint16              nSlot = iter->first;
+            if (gRenDev->m_RP.m_ShaderTexResources[nSlot] == pTexture)
+            {   // Notice the usage of pointer for the comparison - should be revisited?
+                gRenDev->m_RP.m_ShaderTexResources[nSlot] = nullptr;
+            }
+        }
+*/
     }
 }
 
-void CRenderer::UpdateShaderItem(SShaderItem* pShaderItem)
+void CRenderer::UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial)
 {
     bool bShaderReloaded = false;
 #if !defined(_RELEASE) || (defined(WIN32) || defined(WIN64))
@@ -8060,28 +8141,29 @@ void CRenderer::UpdateShaderItem(SShaderItem* pShaderItem)
 
     if (pShaderItem->m_nPreprocessFlags == -1 || bShaderReloaded)
     {
-        CRenderer::ForceUpdateShaderItem(pShaderItem);
+        CRenderer::ForceUpdateShaderItem(pShaderItem, pMaterial);
     }
 }
 
-void CRenderer::RefreshShaderResourceConstants(SShaderItem* shaderItem)
+void CRenderer::RefreshShaderResourceConstants(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial)
 {
-    m_pRT->EnqueueRenderCommand([shaderItem]()
+    AZ_Assert(pMaterial->GetNumRefs() > 0, "ref is 0");
+    m_pRT->EnqueueRenderCommand([pShaderItem, pMaterial]()
         {
-            CShader* shader = static_cast<CShader*>(shaderItem->m_pShader);
+            CShader* shader = static_cast<CShader*>(pShaderItem->m_pShader);
             if (shader)
             {
-                if (shaderItem->RefreshResourceConstants())
+                if (pShaderItem->RefreshResourceConstants())
                 {
-                    shaderItem->m_pShaderResources->UpdateConstants(shader);
+                    pShaderItem->m_pShaderResources->UpdateConstants(shader);
                 }
             }
         });
 }
 
-void CRenderer::ForceUpdateShaderItem(SShaderItem* pShaderItem)
+void CRenderer::ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial)
 {
-    m_pRT->RC_UpdateShaderItem(pShaderItem);
+    m_pRT->RC_UpdateShaderItem(pShaderItem, pMaterial);
 }
 
 void CRenderer::RT_UpdateShaderItem(SShaderItem* pShaderItem)
@@ -8102,7 +8184,7 @@ CRenderView* CRenderer::GetRenderViewForThread(int nThreadID)
 
 bool CRenderer::UseHalfFloatRenderTargets()
 {
-#if defined(AZ_PLATFORM_ANDROID)
+#if defined(OPENGL_ES)
     return RenderCapabilities::SupportsHalfFloatRendering() && (!CRenderer::CV_r_ForceFixedPointRenderTargets);
 #else
     return true;
@@ -8141,12 +8223,38 @@ void CRenderer::UpdateCachedShadowsLodCount(int nGsmLods) const
 
 ITexture* CRenderer::GetWhiteTexture()
 {
-    return CTexture::s_ptexWhite;
+    return CTextureManager::Instance()->GetWhiteTexture();
 }
 
 ITexture* CRenderer::GetTextureForName(const char* name, uint32 nFlags, ETEX_Format eFormat)
 {
     return CTexture::ForName(name, nFlags, eFormat);
+}
+
+int CRenderer::GetRecursionLevel()
+{
+    return SRendItem::m_RecurseLevel[GetRenderPipeline()->m_nProcessThreadID];
+}
+
+int CRenderer::GetIntegerConfigurationValue(const char* varName, int defaultValue)
+{
+    ICVar* var = varName ? gEnv->pConsole->GetCVar(varName) : nullptr;
+    AZ_Assert(var, "Unable to find cvar: %s", varName)
+    return var ? var->GetIVal() : defaultValue;
+}
+
+float CRenderer::GetFloatConfigurationValue(const char* varName, float defaultValue)
+{
+    ICVar* var = varName ? gEnv->pConsole->GetCVar(varName) : nullptr;
+    AZ_Assert(var, "Unable to find cvar: %s", varName)
+    return var ? var->GetFVal() : defaultValue;
+}
+
+bool CRenderer::GetBooleanConfigurationValue(const char* varName, bool defaultValue)
+{
+    ICVar* var = varName ? gEnv->pConsole->GetCVar(varName) : nullptr;
+    AZ_Assert(var, "Unable to find cvar: %s", varName)
+    return var ? (var->GetIVal() != 0) : defaultValue;
 }
 
 #ifndef _RELEASE

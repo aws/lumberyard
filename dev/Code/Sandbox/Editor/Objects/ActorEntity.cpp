@@ -156,7 +156,7 @@ void CActorEntity::OnFileChange(QString filename)
 
 //////////////////////////////////////////////////////////////////////////
 //! Analyze errors for this object.
-void CActorEntity::Validate(CErrorReport* report)
+void CActorEntity::Validate(IErrorReport* report)
 {
     CEntityObject::Validate(report);
 

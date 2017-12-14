@@ -33,13 +33,13 @@
 #include "BreakableGlassRenderNode.h"
 #include "FogVolumeRenderNode.h"
 #include "terrain_water.h"
-#include "WaterWaveRenderNode.h"
 #include "RopeRenderNode.h"
 #include "MergedMeshRenderNode.h"
 #include "LightEntity.h"
 #include "RoadRenderNode.h"
 #include "WaterVolumeRenderNode.h"
 #include "DistanceCloudRenderNode.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #include <IJobManager_JobDelegator.h>
 DECLARE_JOB("RenderContent", TRenderContentJob, COctreeNode::RenderContentJobEntry);
@@ -1031,9 +1031,25 @@ int16 CObjManager::GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, b
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CObjManager::IsAfterWater(const Vec3& vPos, const Vec3& vCamPos, const SRenderingPassInfo& passInfo, float fUserWaterLevel)
+bool CObjManager::IsAfterWater(const Vec3& vPos, const SRenderingPassInfo& passInfo)
 {
-    float fWaterLevel = fUserWaterLevel == WATER_LEVEL_UNKNOWN && GetTerrain() ? GetTerrain()->GetWaterLevel() : fUserWaterLevel;
+    // considered "after water" if any of the following is true:
+    //    - Position & camera are on the same side of the water surface on recursive level 0
+    //    - Position & camera are on opposite sides of the water surface on recursive level 1
+
+    float fWaterLevel;
+    if (OceanToggle::IsActive())
+    {
+        if (!OceanRequest::OceanIsEnabled())
+        {
+            return true;
+        }
+        fWaterLevel = OceanRequest::GetOceanLevel();
+    }
+    else
+    {
+        fWaterLevel = GetTerrain() ? GetTerrain()->GetWaterLevel() : WATER_LEVEL_UNKNOWN;
+    }
 
     return (0.5f - passInfo.GetRecursiveLevel()) * (0.5f - passInfo.IsCameraUnderWater()) * (vPos.z - fWaterLevel) > 0;
 }
@@ -1416,7 +1432,8 @@ void COctreeNode::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CL
                     Vec3 vProbeExtents = pLight->m_ProbeExtents;
                     if (fabs(vCenterOBBSpace.x) < vProbeExtents.x && fabs(vCenterOBBSpace.y) < vProbeExtents.y && fabs(vCenterOBBSpace.z) < vProbeExtents.z)
                     {
-                        if (pLight->m_nSortPriority > nMaxPriority)
+                        if (pLight->m_nSortPriority > nMaxPriority 
+                            && pLight->m_fProbeAttenuation > 0) // Don't return a probe that is disabled/invisible. In particular this provides better results when lighting particles.
                         {
                             pNearestLight = (CLightEntity*)pObj;
                             nMaxPriority = pLight->m_nSortPriority;
@@ -1812,37 +1829,6 @@ Vec3 CWaterVolumeRenderNode::GetPos(bool bWorldOnly) const
 
 ///////////////////////////////////////////////////////////////////////////////
 _smart_ptr<IMaterial> CWaterVolumeRenderNode::GetMaterial(Vec3* pHitPos)
-{
-    return m_pMaterial;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-void CWaterWaveRenderNode::FillBBox(AABB& aabb)
-{
-    aabb = CWaterWaveRenderNode::GetBBox();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-EERType CWaterWaveRenderNode::GetRenderNodeType()
-{
-    return eERType_WaterWave;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-float CWaterWaveRenderNode::GetMaxViewDist()
-{
-    return max(GetCVars()->e_ViewDistMin, CWaterWaveRenderNode::GetBBox().GetRadius() * GetCVars()->e_ViewDistRatio * GetViewDistanceMultiplier());
-}
-
-///////////////////////////////////////////////////////////////////////////////
-Vec3 CWaterWaveRenderNode::GetPos(bool bWorldOnly) const
-{
-    return m_pParams.m_pPos;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-_smart_ptr<IMaterial> CWaterWaveRenderNode::GetMaterial(Vec3* pHitPos)
 {
     return m_pMaterial;
 }

@@ -18,13 +18,16 @@
 #include <QtWidgets/qpushbutton.h>
 #include "PropertyEditorAPI.h"
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetReference.h>
 
+#include <QLabel>
+
 class QPushButton;
-class QLabel;
 class QDragEnterEvent;
+class QMimeData;
 
 namespace AzToolsFramework
 {
@@ -80,8 +83,8 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         // AssetSystemBus
-        void SourceFileChanged(AZStd::string assetId, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
-        void SourceFileFailed(AZStd::string assetId, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
+        void SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
+        void SourceFileFailed(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
         //////////////////////////////////////////////////////////////////////////
 
     public slots:
@@ -98,7 +101,6 @@ namespace AzToolsFramework
         void ClearAsset();
         void UpdateAssetDisplay();
         void OnEditButtonClicked();
-        void SetEnableEdit(bool enabled);
         void ShowContextMenu(const QPoint& pos);
     };
 

@@ -24,7 +24,11 @@
             "Source/Shadows.cpp",
             "Source/Shadows.h",
             "Source/PostEffects.cpp",
-            "Source/PostEffects.h"
+            "Source/PostEffects.h",
+            "Source/TimeOfDay.cpp",
+            "Source/TimeOfDay.h",
+            "Source/Utilities.cpp",
+            "Source/Utilities.h"
         ]
     }
 }

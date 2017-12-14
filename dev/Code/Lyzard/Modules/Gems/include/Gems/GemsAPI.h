@@ -185,17 +185,18 @@ namespace Gems
         *
         * \returns                 True if the search succeeded, False if any errors occurred.
         */
-        virtual bool RefreshProjectSettings(Projects::ProjectId project) = 0;
+        virtual Lyzard::StringOutcome RefreshProjectSettings(Projects::ProjectId project) = 0;
 
         /**
          * Loads Gems for the specified project.
          * May be called for multiple projects.
          *
-         * \param[in] project   The ID of the project project to load Gems for.
+         * \param[in] project                   The ID of the project project to load Gems for.
+         * \param[in] resetPreviousProjects     Flag to reset all the gems that were from any previous project loads
          *
          * \returns             Void on success, error message on failure.
          */
-        virtual Lyzard::StringOutcome LoadProjectGems(Projects::ProjectId project) = 0;
+        virtual Lyzard::StringOutcome LoadProjectGems(Projects::ProjectId project, bool resetPreviousProjects) = 0;
 
         /**
          * Gets the description for a Gem.

@@ -76,7 +76,7 @@ private:
     void SaveUiState();
     void RestoreUiState();
 
-    bool ValidateIPAddress(QString& ipAddressString);
+    bool ValidateIPAddress(const QString& ipAddressString);
 
     QScopedPointer<Ui::DeploymentToolWindow> m_ui;
     QIcon m_openIcon;

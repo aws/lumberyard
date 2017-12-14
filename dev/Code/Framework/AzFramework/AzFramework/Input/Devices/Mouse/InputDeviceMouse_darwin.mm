@@ -12,6 +12,7 @@
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
+#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/std/parallel/thread.h>
@@ -19,6 +20,7 @@
 #include <AppKit/NSApplication.h>
 #include <AppKit/NSEvent.h>
 #include <AppKit/NSScreen.h>
+#include <AppKit/NSView.h>
 #include <AppKit/NSWindow.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,6 +41,89 @@ namespace
     static const NSEventType NSEventTypeRightMouseDragged   = NSRightMouseDragged;
     static const NSEventType NSEventTypeOtherMouseDragged   = NSOtherMouseDragged;
 #endif // __MAC_OS_X_VERSION_MAX_ALLOWED < 101200
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Get the main application view that should be used to clip and/or normalize the cursor.
+    //! \return The NSView that should currently be considered as the applictaion's main view.
+    NSView* GetSystemCursorMainContentView()
+    {
+        void* systemCursorMainContentView = nullptr;
+        AzFramework::InputSystemCursorConstraintRequestBus::BroadcastResult(
+            systemCursorMainContentView,
+            &AzFramework::InputSystemCursorConstraintRequests::GetSystemCursorConstraintWindow);
+        return systemCursorMainContentView ?
+               static_cast<NSView*>(systemCursorMainContentView) :
+               NSApplication.sharedApplication.mainWindow.contentView;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Convert point from the global screen co-ordinate space of the Core Graphics Framework to the
+    //! local co-ordinate space of an NSView. It is assumed the y co-ordinate of the point passed to
+    //! this function is measured from the top-left corner of the screen, and all necessary flipping
+    //! operations will be performed internally to ensure the y co-ordinate of the point returned is
+    //! measured from the top-left corner of the NSView (which may not be expected if then used with
+    //! an NSView that is not using flipped co-ordinates, so care should be taken using the result).
+    //! However, the optional 'relativeToScreenTop' arg can instead be set to false to indicate that
+    //! pointInScreenSpace should be assumed relative to the bottom-left of the screen.
+    //! \param[in] pointInScreenSpace A point relative to the top-left corner of global screen space
+    //! \param[in] view The view whose local co-ordinate space the screen point will be converted to
+    //! \param[in] relativeToScreenTop True if the point is relative to the screen top, false bottom
+    //! \return The point relative to the top-left corner of the local co-ordinate space of the view
+    NSPoint ConvertPointFromScreenSpaceToViewSpace(const NSPoint& pointInScreenSpace,
+                                                   NSView* view,
+                                                   bool relativeToScreenTop = true)
+    {
+        NSRect pointInScreenSpaceAsRect;
+        pointInScreenSpaceAsRect.size = NSZeroSize;
+        pointInScreenSpaceAsRect.origin = pointInScreenSpace;
+        if (relativeToScreenTop)
+        {
+            // The AppKit framework measures y co-ordinates from the bottom of the screen so we must
+            // ensure our point is also relative to the bottom before converting it to window space.
+            pointInScreenSpaceAsRect.origin.y = NSScreen.mainScreen.frame.size.height - pointInScreenSpace.y;
+        }
+
+        // Convert the point into window space then view space
+        NSPoint pointInWindowSpace = [view.window convertRectFromScreen: pointInScreenSpaceAsRect].origin;
+        NSPoint pointInViewSpace = [view convertPoint: pointInWindowSpace fromView: nil];
+
+        // Make point relative to the top of the view unless it's already using flipped co-ordinates
+        if (!view.isFlipped)
+        {
+            pointInViewSpace.y = view.frame.size.height - pointInViewSpace.y;
+        }
+        return pointInViewSpace;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Convert point from the local co-ordinate space of an NSView to the global screen co-ordinate
+    //! space of the Core Graphics Framework. It is assumed the y co-ordinate of the point passed to
+    //! this function is measured from the top-left corner of the NSView, and all necessary flipping
+    //! operations will be performed internally to ensure the y co-ordinate of the point returned is
+    //! measured from the top-left corner of the screen (as expected by the Core Graphics Framework).
+    //! \param[in] pointInViewSpace A point relative to the top-left of a view's co-ordinate space
+    //! \param[in] view The NSView whose local co-ordinate space the point will be converted from
+    //! \return The point relative to the top-left corner of the screen's global co-ordinate space
+    NSPoint ConvertPointFromViewSpaceToScreenSpace(NSPoint pointInViewSpace, NSView* view)
+    {
+        if (!view.isFlipped)
+        {
+            // The AppKit framework measures y co-ordinates from the bottom of the screen, and while
+            // NSViews can be set to use flipped co-ordinates NSWindows cannot. So before converting
+            // it to window space we must ensure our point is relative to the view's top-left corner.
+            pointInViewSpace.y = view.frame.size.height - pointInViewSpace.y;
+        }
+
+        // Convert the point into window space
+        NSRect pointInWindowSpaceAsRect;
+        pointInWindowSpaceAsRect.size = NSZeroSize;
+        pointInWindowSpaceAsRect.origin = [view convertPoint: pointInViewSpace toView: nil];
+
+        // Convert the point into screen space, then make it relative to the screen's top-left corner
+        NSPoint pointInScreenSpace = [view.window convertRectToScreen: pointInWindowSpaceAsRect].origin;
+        pointInScreenSpace.y = NSScreen.mainScreen.frame.size.height - pointInScreenSpace.y;
+        return pointInScreenSpace;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +287,7 @@ namespace AzFramework
         }
 
         m_systemCursorState = systemCursorState;
+        UpdateSystemCursorVisibility();
         const bool shouldBeDisabled = (m_systemCursorState == SystemCursorState::ConstrainedAndHidden) ||
                                       (m_systemCursorState == SystemCursorState::ConstrainedAndVisible);
         if (!shouldBeDisabled)
@@ -227,7 +313,7 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceMouseOsx::SetSystemCursorPositionNormalized(AZ::Vector2 positionNormalized)
     {
-        CGPoint cursorPositionScreen;
+        CGPoint newPositionInScreenSpace;
         if (m_systemCursorState == SystemCursorState::ConstrainedAndHidden)
         {
             // Because osx does not provide a way to properly constrain the system cursor inside of
@@ -235,20 +321,24 @@ namespace AzFramework
             // incoming mouse events so they cannot cause the application window to lose focus. So
             // if the cursor is also hidden we simply need to de-normalize the position relative to
             // the entire screen. See comment in InputDeviceMouseOsx::SetSystemCursorState for more.
-            CGRect cursorBounds = NSScreen.mainScreen.frame;
-            cursorPositionScreen.x = positionNormalized.GetX() * cursorBounds.size.width;
-            cursorPositionScreen.y = positionNormalized.GetY() * cursorBounds.size.height;
+            NSSize cursorFrameSize = NSScreen.mainScreen.frame.size;
+            newPositionInScreenSpace.x = positionNormalized.GetX() * cursorFrameSize.width;
+            newPositionInScreenSpace.y = positionNormalized.GetY() * cursorFrameSize.height;
+            m_disabledSystemCursorPosition = newPositionInScreenSpace;
         }
         else
         {
             // However, if the system cursor is visible or not constrained, we need to de-normalize
-            // the desired position relative to the content rect of the application's main window.
-            NSWindow* mainWindow = NSApplication.sharedApplication.mainWindow;
-            CGRect cursorBounds = [mainWindow contentRectForFrameRect: mainWindow.frame];
-            cursorPositionScreen = [mainWindow convertRectToScreen: NSMakeRect(positionNormalized.GetX() * cursorBounds.size.width, positionNormalized.GetY() * cursorBounds.size.height, 0, 0)].origin;
+            // the desired position relative to the content rect of the application's main view and
+            // then convert it to screen space.
+            NSView* mainView = GetSystemCursorMainContentView();
+            NSSize cursorFrameSize = mainView.frame.size;
+            NSPoint newPositionInViewSpace = NSMakePoint(positionNormalized.GetX() * cursorFrameSize.width,
+                                                         positionNormalized.GetY() * cursorFrameSize.height);
+            newPositionInScreenSpace = ConvertPointFromViewSpaceToScreenSpace(newPositionInViewSpace, mainView);
         }
 
-        CGWarpMouseCursorPosition(cursorPositionScreen);
+        CGWarpMouseCursorPosition(newPositionInScreenSpace);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -262,22 +352,24 @@ namespace AzFramework
         // entire screen, but we must use the disabled position because calling CGEventSetLocation
         // (see DisabledSysetmCursorEventTapCallback) results in NSEvent.mouseLocation returning
         // the clamped position (along with CGEventGetLocation and CGEventGetUnflippedLocation).
-        NSRect cursorBounds = NSScreen.mainScreen.frame;
+        NSSize cursorFrameSize = NSScreen.mainScreen.frame.size;
         NSPoint cursorPosition = m_disabledSystemCursorPosition;
 
         if (m_systemCursorState != SystemCursorState::ConstrainedAndHidden)
         {
             // However, if the system cursor is visible or not constrained, we need to normalize
-            // the clamped position relative to the content rect of the application's main window.
-            // (which in this case can be obtained from NSEvent.mouseLocation)
-            NSWindow* mainWindow = NSApplication.sharedApplication.mainWindow;
-            cursorBounds = [mainWindow contentRectForFrameRect: mainWindow.frame];
-            cursorPosition = [mainWindow convertRectFromScreen: NSMakeRect(NSEvent.mouseLocation.x, NSEvent.mouseLocation.y, 0, 0)].origin;
+            // the cursor position (which in this case can be obtained by NSEvent.mouseLocation)
+            // relative to the content rect of the application's main view.
+            NSView* mainView = GetSystemCursorMainContentView();
+            cursorFrameSize = mainView.frame.size;
+            cursorPosition = ConvertPointFromScreenSpaceToViewSpace(NSEvent.mouseLocation,
+                                                                    mainView,
+                                                                    false);
         }
 
-        // Normalize the cursor position and flip the y component so it is relative to the top
-        const float cursorPostionNormalizedX = cursorBounds.size.width != 0.0f ? cursorPosition.x / cursorBounds.size.width : 0.0f;
-        const float cursorPostionNormalizedY = cursorBounds.size.height != 0.0f ? 1.0f - (cursorPosition.y / cursorBounds.size.height) : 0.0f;
+        // Normalize the cursor position
+        const float cursorPostionNormalizedX = cursorFrameSize.width != 0.0f ? cursorPosition.x / cursorFrameSize.width : 0.0f;
+        const float cursorPostionNormalizedY = cursorFrameSize.height != 0.0f ? cursorPosition.y / cursorFrameSize.height : 0.0f;
 
         return AZ::Vector2(cursorPostionNormalizedX, cursorPostionNormalizedY);
     }
@@ -288,7 +380,7 @@ namespace AzFramework
         // The osx event loop has just been pumped in InputSystemComponentOsx::PreTickInputDevices,
         // so we now just need to process any raw events that have been queued since the last frame
         const bool hadFocus = m_hasFocus;
-        m_hasFocus = NSApplication.sharedApplication.mainWindow.keyWindow;
+        m_hasFocus = NSApplication.sharedApplication.active;
         if (m_hasFocus)
         {
             // Update the visibility of the system cursor, which unfortunately must be done every
@@ -375,16 +467,13 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool IsPointInsideActiveWindow(NSPoint point)
+    bool IsPointInsideMainView(const NSPoint& pointInScreenSpace, bool relativeToTopLeft = true)
     {
-        NSWindow* mainWindow = NSApplication.sharedApplication.mainWindow;
-        if (mainWindow == nil || !mainWindow.keyWindow)
-        {
-            return false;
-        }
-
-        NSRect contentRect = [mainWindow contentRectForFrameRect: mainWindow.frame];
-        return NSPointInRect(point, contentRect);
+        NSView* mainView = GetSystemCursorMainContentView();
+        NSPoint pointInViewSpace = ConvertPointFromScreenSpaceToViewSpace(pointInScreenSpace,
+                                                                          mainView,
+                                                                          relativeToTopLeft);
+        return NSPointInRect(pointInViewSpace, mainView.bounds);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -400,12 +489,12 @@ namespace AzFramework
             break;
             case SystemCursorState::ConstrainedAndVisible:
             {
-                shouldCursorBeVisible = IsPointInsideActiveWindow(m_disabledSystemCursorPosition);
+                shouldCursorBeVisible = IsPointInsideMainView(m_disabledSystemCursorPosition);
             }
             break;
             case SystemCursorState::UnconstrainedAndHidden:
             {
-                shouldCursorBeVisible = !IsPointInsideActiveWindow(NSEvent.mouseLocation);
+                shouldCursorBeVisible = !IsPointInsideMainView(NSEvent.mouseLocation, false);
             }
             break;
             case SystemCursorState::UnconstrainedAndVisible:
@@ -454,37 +543,45 @@ namespace AzFramework
             break;
         }
 
-        // Get the location of the event relative to the bottom-left corner of the screen,
-        // and store it before it is (potentially) modified below. This is needed because
-        // calling CGEventSetLocation results in subsequent calls to CGEventGetLocation,
-        // CGEventGetUnflippedLocation, or NSEvent::mouseLocation returning the clamped
-        // position we just set instead of where the system has positioned the cursor.
+        if (!NSApplication.sharedApplication.active)
+        {
+            // Do nothing if the application is not active
+            return eventRef;
+        }
+
+        NSView* mainView = GetSystemCursorMainContentView();
+        if (mainView == nil || mainView.window == nil)
+        {
+            // Do nothing if we don't have a main view
+            return eventRef;
+        }
+
+        // Store the location of the event before it is (potentially) modified below using
+        // CGEventSetLocation. This is needed so that the un-clamped position can still be
+        // used to get/set the system cursor position while it is ConstrainedAndHidden.
+        CGPoint eventLocationRelativeToTopLeft = CGEventGetLocation(eventRef);
+        inputDeviceMouse->SetDisabledSystemCursorPosition(eventLocationRelativeToTopLeft);
+
+        // Get the location of the event relative to the bottom left of the screen, needed
+        // so that it can be checked against the cursor bounds from this co-ordinate space.
         CGPoint eventLocation = CGEventGetUnflippedLocation(eventRef);
-        inputDeviceMouse->SetDisabledSystemCursorPosition(eventLocation);
-
-        NSWindow* mainWindow = NSApplication.sharedApplication.mainWindow;
-        if (mainWindow == nil || !mainWindow.keyWindow)
+        NSRect cursorBoundsInWindowSpace = [mainView convertRect: mainView.bounds toView: nil];
+        NSRect cursorBounds = [mainView.window convertRectToScreen: cursorBoundsInWindowSpace];
+        if (NSPointInRect(NSPointFromCGPoint(eventLocation), cursorBounds))
         {
-            // Do nothing if this application's main window does not have focus
+            // Do nothing if the event occured inside of the application's main view
             return eventRef;
         }
 
-        NSRect contentRect = [mainWindow contentRectForFrameRect: mainWindow.frame];
-        if (NSPointInRect(NSPointFromCGPoint(eventLocation), contentRect))
-        {
-            // Do nothing if the event occured inside of the main window's content rect
-            return eventRef;
-        }
-
-        // Constrain the event location to the content rect, adjusting MaxX by -1 to account for
+        // Constrain the event location to the cursor bounds, adjusting MaxX by -1 to account for
         // the right edge being considered outside the boundary, adjusting MinY by +1 to account
         // for the bottom edge being considerd outside the boundary, and then MinY by another +2
         // to account for the bottom corners of osx windows being rounded by 2 pixels. Basically,
         // if we don't make these adjustments then it is still possible for the user to deselect
         // the application by clicking outside of its main window, which is what we're trying to
         // prevent with this whole event tap/event location adjustment in the first place.
-        eventLocation.x = AZ::GetClamp(eventLocation.x, NSMinX(contentRect), NSMaxX(contentRect) - 1.0f);
-        eventLocation.y = AZ::GetClamp(eventLocation.y, NSMinY(contentRect) + 3.0f, NSMaxY(contentRect));
+        eventLocation.x = AZ::GetClamp(eventLocation.x, NSMinX(cursorBounds), NSMaxX(cursorBounds) - 1.0f);
+        eventLocation.y = AZ::GetClamp(eventLocation.y, NSMinY(cursorBounds) + 3.0f, NSMaxY(cursorBounds));
 
         // Reset the event location after flipping it back to be relative to the top of the screen
         eventLocation.y = NSMaxY(NSScreen.mainScreen.frame) - eventLocation.y;
@@ -538,7 +635,7 @@ namespace AzFramework
 
         // Initialize the constrained system cursor position
         CGEventRef event = CGEventCreate(nil);
-        m_disabledSystemCursorPosition = CGEventGetUnflippedLocation(event);
+        m_disabledSystemCursorPosition = CGEventGetLocation(event);
         CFRelease(event);
 
         return true;

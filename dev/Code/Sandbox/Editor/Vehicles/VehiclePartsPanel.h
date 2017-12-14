@@ -21,6 +21,7 @@
 #include "VehicleDialogComponent.h"
 
 #include <QDialog>
+#include <QTreeWidgetItem>
 
 class CVehicleEditorDialog;
 class CVehicleHelper;
@@ -28,8 +29,6 @@ class CVehiclePart;
 class CVehiclePartsPanel;
 class CVehicleWeapon;
 class CVehicleSeat;
-
-class QTreeWidgetItem;
 
 namespace Ui
 {

@@ -10,10 +10,8 @@
 *
 */
 
-#ifndef __EMFX_ACTORCOMMANDS_H
-#define __EMFX_ACTORCOMMANDS_H
+#pragma once
 
-// include the required headers
 #include "CommandSystemConfig.h"
 #include <MCore/Source/Command.h>
 #include <EMotionFX/Source/Node.h>
@@ -23,13 +21,13 @@
 
 namespace CommandSystem
 {
-    // adjust the given actor
-        MCORE_DEFINECOMMAND_START(CommandAdjustActor, "Adjust actor", true)
+    // Adjust the given actor.
+    MCORE_DEFINECOMMAND_START(CommandAdjustActor, "Adjust actor", true)
     uint32                                          mOldMotionExtractionNodeIndex;
     uint32                                          mOldTrajectoryNodeIndex;
-    MCore::String                                   mOldAttachmentNodes;
-    MCore::String                                   mOldExcludedFromBoundsNodes;
-    MCore::String                                   mOldName;
+    AZStd::string                                   mOldAttachmentNodes;
+    AZStd::string                                   mOldExcludedFromBoundsNodes;
+    AZStd::string                                   mOldName;
     MCore::Array<EMotionFX::Actor::NodeMirrorInfo>  mOldMirrorSetup;
     bool                                            mOldDirtyFlag;
 
@@ -37,27 +35,33 @@ namespace CommandSystem
     void                                            SetIsExcludedFromBoundsNode(EMotionFX::Actor* actor, bool excludedFromBounds);
     MCORE_DEFINECOMMAND_END
 
-
-    // set the collision meshes of the given actor
-        MCORE_DEFINECOMMAND_START(CommandActorSetCollisionMeshes, "Actor set collison meshes", true)
-    MCore::String   mOldNodeList;
+    // Set the collision meshes of the given actor.
+    MCORE_DEFINECOMMAND_START(CommandActorSetCollisionMeshes, "Actor set collison meshes", true)
+    AZStd::string   mOldNodeList;
     bool            mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
+    // Reset actor instance to bind pose.
+    MCORE_DEFINECOMMAND(CommandResetToBindPose, "ResetToBindPose", "Reset actor instance to bind pose", false)
 
-    // remove actor
-        MCORE_DEFINECOMMAND_START(CommandRemoveActor, "Remove actor", true)
-public:
-    MCore::String   mData;
-    uint32          mPreviouslyUsedID;
-    MCore::String   mOldFileName;
-    bool            mOldDirtyFlag;
-    bool            mOldWorkspaceDirtyFlag;
+    // this will be called in case all render actors need to get removed and reconstructed completely
+    MCORE_DEFINECOMMAND(CommandReInitRenderActors, "ReInitRenderActors", "Reinit render actors", false)
+
+    // Will be called in case an actor got removed and we have to remove a render actor or in case there is a new actor we need to create a render actor for, all current render actors won't get touched.
+    MCORE_DEFINECOMMAND(CommandUpdateRenderActors, "UpdateRenderActors", "Update render actors", false)
+
+    // Remove actor.
+    MCORE_DEFINECOMMAND_START(CommandRemoveActor, "Remove actor", true)
+    public:
+        uint32          mPreviouslyUsedID;
+        AZStd::string   mOldFileName;
+        bool            mOldDirtyFlag;
+        bool            mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
 
-    // scale actor data
-        MCORE_DEFINECOMMAND_START(CommandScaleActorData, "Scale actor data", true)
+    // Scale actor data.
+    MCORE_DEFINECOMMAND_START(CommandScaleActorData, "Scale actor data", true)
 public:
     MCore::String   mOldUnitType;
     uint32          mActorID;
@@ -66,18 +70,6 @@ public:
     bool            mUseUnitType;
     MCORE_DEFINECOMMAND_END
 
-
-    // reset actor instance to bind pose
-        MCORE_DEFINECOMMAND(CommandResetToBindPose, "ResetToBindPose", "Reset actor instance to bind pose", false)
-
-
-    // this will be called in case all render actors need to get removed and reconstructed completely
-    MCORE_DEFINECOMMAND(CommandReInitRenderActors, "ReInitRenderActors", "Reinit render actors", false)
-
-
-    // will be called in case an actor got removed and we have to remove a render actor or in case there is a new actor we need to create a render actor for, all current render actors won't get touched
-    MCORE_DEFINECOMMAND(CommandUpdateRenderActors, "UpdateRenderActors", "Update render actors", false)
-
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Helper functions
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +77,3 @@ public:
     void COMMANDSYSTEM_API PrepareCollisionMeshesNodesString(EMotionFX::Actor* actor, uint32 lod, MCore::String* outNodeNames);
     void COMMANDSYSTEM_API PrepareExcludedNodesString(EMotionFX::Actor* actor, MCore::String* outNodeNames);
 } // namespace CommandSystem
-
-
-#endif

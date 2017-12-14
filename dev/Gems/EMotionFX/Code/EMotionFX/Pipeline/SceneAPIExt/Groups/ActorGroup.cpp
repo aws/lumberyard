@@ -101,7 +101,7 @@ namespace EMotionFX
 
                 serializeContext->Class<IActorGroup, AZ::SceneAPI::DataTypes::ISceneNodeGroup>()->Version(2, SceneNodeVersionConverter);
 
-                serializeContext->Class<ActorGroup, IActorGroup>()->Version(2, ActorVersionConverter)
+                serializeContext->Class<ActorGroup, IActorGroup>()->Version(3, ActorVersionConverter)
                     ->Field("name", &ActorGroup::m_name)
                     ->Field("selectedRootBone", &ActorGroup::m_selectedRootBone)
                     ->Field("nodeSelectionList", &ActorGroup::m_nodeSelectionList)
@@ -156,6 +156,11 @@ namespace EMotionFX
                 if (version < 2)
                 {
                     result = result && classElement.AddElementWithData<AZ::Uuid>(context, "id", AZ::Uuid::CreateNull()) != -1;
+                }
+
+                if (version < 3)
+                {
+                    classElement.RemoveElementByName(AZ_CRC("loadMorphTargets", 0xfd19aef8));
                 }
 
                 return result;

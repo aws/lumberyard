@@ -17,7 +17,7 @@
 
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QLineEdit>
-#include <QtWidgets/QTextEdit>
+#include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QPushButton>
 
 #include <QAbstractTableModel>
@@ -67,7 +67,7 @@ private:
 };
 
 class ConsoleTextEdit
-    : public QTextEdit
+    : public QPlainTextEdit
 {
     Q_OBJECT
 public:

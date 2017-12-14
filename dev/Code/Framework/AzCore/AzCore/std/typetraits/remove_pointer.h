@@ -15,5 +15,6 @@
 namespace AZStd
 {
     using std::remove_pointer;
-    using std::remove_pointer_t;
+    template<class Type>
+    using remove_pointer_t = std::remove_pointer_t<Type>;
 }

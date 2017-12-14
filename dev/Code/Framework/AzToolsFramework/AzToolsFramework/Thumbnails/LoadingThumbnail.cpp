@@ -11,7 +11,6 @@
 */
 
 #include <AzToolsFramework/Thumbnails/LoadingThumbnail.h>
-#include <QPainter>
 
 namespace AzToolsFramework
 {
@@ -27,15 +26,28 @@ namespace AzToolsFramework
             , m_angle(0)
         {
             m_loadingMovie.setFileName(LOADING_ICON_PATH);
+            m_loadingMovie.setCacheMode(QMovie::CacheMode::CacheAll);
             m_loadingMovie.start();
             m_pixmap = m_loadingMovie.currentPixmap().scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);
             m_state = State::Ready;
+
+            BusConnect();
         }
 
-        void LoadingThumbnail::UpdateTime(float /*deltaTime*/)
+        LoadingThumbnail::~LoadingThumbnail()
+        {
+            BusDisconnect();
+        }
+
+        void LoadingThumbnail::UpdateTime(float)
         {
             m_pixmap = m_loadingMovie.currentPixmap().scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);
             Q_EMIT Updated();
+        }
+
+        void LoadingThumbnail::OnTick(float deltaTime, AZ::ScriptTimePoint /*time*/)
+        {
+            UpdateTime(deltaTime);
         }
     } // namespace Thumbnailer
 } // namespace AzToolsFramework

@@ -66,34 +66,34 @@ namespace AzFramework
          * Gets the ID of the game entity context.
          * @return The ID of the game entity context.
          */
-        virtual EntityContextId GetGameEntityContextId() { return EntityContextId(); }
+        virtual EntityContextId GetGameEntityContextId() = 0;
 
         /**
          * Creates an entity in the game context.
          * @param name A name for the new entity.
          * @return A pointer to a new entity.
          */
-        virtual AZ::Entity* CreateGameEntity(const char* /*name*/) { return nullptr; }
+        virtual AZ::Entity* CreateGameEntity(const char* /*name*/) = 0;
 
         /**
          * Creates an entity in the game context.
          * @param name A name for the new entity.
          * @return An entity wrapper for use within the BehaviorContext.
          */
-        virtual BehaviorEntity CreateGameEntityForBehaviorContext(const char* /*name*/) { return BehaviorEntity(); }
+        virtual BehaviorEntity CreateGameEntityForBehaviorContext(const char* /*name*/) = 0;
 
         /**
          * Adds an existing entity to the game context.
          * @param entity A pointer to the entity to add to the game context.
          */
-        virtual void AddGameEntity(AZ::Entity* /*entity*/) {}
+        virtual void AddGameEntity(AZ::Entity* /*entity*/) = 0;
 
         /**
          * Destroys an entity. 
          * The entity is immediately deactivated and will be destroyed on the next tick.
          * @param id The ID of the entity to destroy.
          */
-        virtual void DestroyGameEntity(const AZ::EntityId& /*id*/) {}
+        virtual void DestroyGameEntity(const AZ::EntityId& /*id*/) = 0;
 
         /**
          * Destroys an entity and all of its descendants. 
@@ -101,26 +101,26 @@ namespace AzFramework
          * destroyed on the next tick.
          * @param id The ID of the entity to destroy.
          */
-        virtual void DestroyGameEntityAndDescendants(const AZ::EntityId& /*id*/) {}
+        virtual void DestroyGameEntityAndDescendants(const AZ::EntityId& /*id*/) = 0;
 
         /**
          * Activates the game entity.
          * @param id The ID of the entity to activate.
          */
-        virtual void ActivateGameEntity(const AZ::EntityId& /*id*/) {}
+        virtual void ActivateGameEntity(const AZ::EntityId& /*id*/) = 0;
         
         /**
          * Deactivates the game entity.
          * @param id The ID of the entity to deactivate.
          */
-        virtual void DeactivateGameEntity(const AZ::EntityId& /*id*/) {}
+        virtual void DeactivateGameEntity(const AZ::EntityId& /*id*/) = 0;
 
         /**
          * Destroys an entire dynamic slice instance given the ID of any entity within the slice.
          * @param id The ID of the entity whose dynamic slice instance you want to destroy.
          * @return True if the dynamic slice instance was successfully destroyed. Otherwise, false.
          */
-        virtual bool DestroyDynamicSliceByEntity(const AZ::EntityId& /*id*/) { return false; }
+        virtual bool DestroyDynamicSliceByEntity(const AZ::EntityId& /*id*/) = 0;
         
         /**
          * Instantiates a dynamic slice asynchronously.
@@ -131,7 +131,14 @@ namespace AzFramework
          * subscribe to the AzFramework::SliceInstantiationResultBus for this ticket to receive results 
          * for this request. 
          */
-        virtual SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& /*sliceAsset*/, const AZ::Transform& /*worldTransform*/, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& /*customIdMapper*/) { return SliceInstantiationTicket(); }
+        virtual SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& /*sliceAsset*/, const AZ::Transform& /*worldTransform*/, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& /*customIdMapper*/) = 0;
+
+        /**
+         * Cancels the asynchronous instantiation of a dynamic slice.
+         * This call has no effect if the slice has already finished instantiation.
+         * @param ticket The ticket that identifies the slice instantiation request.
+         */
+        virtual void CancelDynamicSliceInstantiation(const SliceInstantiationTicket& /*ticket*/) = 0;
 
         /**
          * Loads game entities from a stream.
@@ -140,20 +147,20 @@ namespace AzFramework
          * @return True if the stream successfully loaded. Otherwise, false. This operation  
          * can fail if the source file is corrupt or the data could not be up-converted.
          */
-        virtual bool LoadFromStream(AZ::IO::GenericStream& /*stream*/, bool /*remapIds*/) { return false; }
+        virtual bool LoadFromStream(AZ::IO::GenericStream& /*stream*/, bool /*remapIds*/) = 0;
 
         /**
          * Completely resets the game context. 
          * This includes deleting all slices and entities.
          */
-        virtual void ResetGameContext() {}
+        virtual void ResetGameContext() = 0;
 
         /**
          * Specifies that a given entity should not be activated by default 
          * after it is created.
          * @param entityId The entity that should not be activated by default.
          */
-        virtual void MarkEntityForNoActivation(AZ::EntityId /*entityId*/) {}
+        virtual void MarkEntityForNoActivation(AZ::EntityId /*entityId*/) = 0;
 
         /**
          * Returns the entity's name.
@@ -161,7 +168,7 @@ namespace AzFramework
          * @return The name of the entity. Returns an empty string if the entity 
          * cannot be found.
          */
-        virtual AZStd::string GetEntityName(const AZ::EntityId&) { return AZStd::string(); }
+        virtual AZStd::string GetEntityName(const AZ::EntityId&) = 0;
 
         /// @cond EXCLUDE_DOCS
         /**

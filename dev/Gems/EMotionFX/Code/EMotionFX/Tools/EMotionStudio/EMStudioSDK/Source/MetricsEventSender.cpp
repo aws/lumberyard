@@ -67,7 +67,7 @@ namespace EMStudio
             if (morphSetup)
             {
                 numMorphTargets = morphSetup->GetNumMorphTargets();
-                for (uint32 i=0; i<numMorphTargets; ++i)
+                for (uint32 i = 0; i < numMorphTargets; ++i)
                 {
                     const EMotionFX::MorphTarget* morphTarget = morphSetup->GetMorphTarget(i);
 
@@ -93,7 +93,7 @@ namespace EMStudio
         uint32 numTotalSubMeshes        = 0;
         uint32 numTotalOriginalVertices = 0;
         uint32 maxNumSkinInfluences     = 0;
-        for (uint32 i=0; i<numNodes; i++)
+        for (uint32 i = 0; i < numNodes; i++)
         {
             const EMotionFX::Node* node = skeleton->GetNode(i);
             const uint32 nodeIndex = node->GetNodeIndex();
@@ -149,7 +149,7 @@ namespace EMStudio
         const uint32 numNodeGroups  = actor->GetNumNodeGroups();
         AZStd::to_string(tempString, numNodeGroups);
         LyMetrics_AddAttribute(eventId, "NumNodeGroups", tempString.c_str());
-        
+
         LyMetrics_SubmitEvent(eventId);
     }
 
@@ -176,14 +176,14 @@ namespace EMStudio
         {
             const EMotionFX::SkeletalMotion* skeletalMotion = static_cast<const EMotionFX::SkeletalMotion*>(motion);
             numSubMotions += skeletalMotion->GetNumSubMotions();
-            
-            for (uint32 i=0; i<numSubMotions; ++i)
+
+            for (uint32 i = 0; i < numSubMotions; ++i)
             {
                 const EMotionFX::SkeletalSubMotion* subMotion = skeletalMotion->GetSubMotion(i);
 
-                EMotionFX::KeyTrackLinear<MCore::Vector3, MCore::Vector3>* posKeytrack = subMotion->GetPosTrack();
+                auto* posKeytrack = subMotion->GetPosTrack();
                 EMotionFX::KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>* rotKeytrack = subMotion->GetRotTrack();
-                EMotionFX::KeyTrackLinear<MCore::Vector3, MCore::Vector3>* scaleKeytrack = subMotion->GetScaleTrack();
+                auto* scaleKeytrack = subMotion->GetScaleTrack();
 
                 if (posKeytrack || rotKeytrack || scaleKeytrack)
                 {
@@ -225,7 +225,7 @@ namespace EMStudio
         if (eventTable)
         {
             numEventTracks = eventTable->GetNumTracks();
-            for (uint32 i=0; i<numEventTracks; ++i)
+            for (uint32 i = 0; i < numEventTracks; ++i)
             {
                 const EMotionFX::MotionEventTrack* eventTrack = eventTable->GetTrack(i);
 
@@ -254,13 +254,13 @@ namespace EMStudio
         outNumTotalMotionEntries += static_cast<AZ::u32>(motionSet->GetNumMotionEntries());
 
         const uint32 numChildSets = motionSet->GetNumChildSets();
-        for (uint32 i=0; i<numChildSets; ++i)
+        for (uint32 i = 0; i < numChildSets; ++i)
         {
             const EMotionFX::MotionSet* childSet = motionSet->GetChildSet(i);
 
             AZ::u32 numChildMotionEntries = 0;
             AZ::u32 childHierarchyDepth = 0;
-            CalcMotionSetStatistics(childSet, numChildMotionEntries, childHierarchyDepth, hierarchyLevel+1);
+            CalcMotionSetStatistics(childSet, numChildMotionEntries, childHierarchyDepth, hierarchyLevel + 1);
         }
 
         outMaxHierarchyDepth = MCore::Max<AZ::u32>(hierarchyLevel, outMaxHierarchyDepth);
@@ -277,11 +277,11 @@ namespace EMStudio
         AZStd::string tempString;
         LyMetricIdType eventId = LyMetrics_CreateEvent("SaveMotionSet");
 
-        uint32 numTotalMotionEntries= 0;
+        uint32 numTotalMotionEntries = 0;
         uint32 numEmptyEntries      = 0;
         uint32 maxHierarchyDepth    = 0;
         CalcMotionSetStatistics(motionSet, numTotalMotionEntries, maxHierarchyDepth);
-        
+
         // NumMotionEntries
         AZStd::to_string(tempString, numTotalMotionEntries);
         LyMetrics_AddAttribute(eventId, "NumMotionEntries", tempString.c_str());
@@ -394,7 +394,7 @@ namespace EMStudio
         AZStd::string tempString;
 
         LyMetricIdType eventId = LyMetrics_CreateEvent("StopRecorder");
-        
+
         // SessionId
         tempString = EMotionFX::GetRecorder().GetSessionUuid().ToString<AZStd::string>();
         LyMetrics_AddAttribute(eventId, "RecordingSessionId", tempString.c_str());

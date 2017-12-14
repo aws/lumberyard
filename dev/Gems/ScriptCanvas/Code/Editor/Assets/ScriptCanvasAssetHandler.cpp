@@ -57,10 +57,6 @@ namespace ScriptCanvasEditor
             assetData->SetScriptCanvasEntity(scriptCanvasEntity);
         }
 
-        ScriptCanvasAssetFileInfo scFileInfo;
-        scFileInfo.m_fileModificationState = ScriptCanvasFileState::NEW;
-        DocumentContextRequestBus::Broadcast(&DocumentContextRequests::RegisterScriptCanvasAsset, id, scFileInfo);
-        DocumentContextRequestBus::Broadcast(&DocumentContextRequests::SetScriptCanvasAssetModificationState, id, scFileInfo.m_fileModificationState);
         return assetData;
     }
 
@@ -72,13 +68,6 @@ namespace ScriptCanvasEditor
         {
             stream->Seek(0U, AZ::IO::GenericStream::ST_SEEK_BEGIN);
             bool loadSuccess = AZ::Utils::LoadObjectFromStreamInPlace(*stream, scriptCanvasAsset->GetScriptCanvasData(), m_serializeContext, assetLoadFilterCB);
-            if (loadSuccess)
-            {
-                ScriptCanvasAssetFileInfo scFileInfo;
-                scFileInfo.m_fileModificationState = ScriptCanvasFileState::UNMODIFIED;
-                DocumentContextRequestBus::Broadcast(&DocumentContextRequests::RegisterScriptCanvasAsset, asset.GetId(), scFileInfo);
-                DocumentContextRequestBus::Broadcast(&DocumentContextRequests::SetScriptCanvasAssetModificationState, asset.GetId(), scFileInfo.m_fileModificationState);
-            }
             return loadSuccess;
         }
         return false;
@@ -90,13 +79,14 @@ namespace ScriptCanvasEditor
         AZ::IO::FileIOStream stream;
         if (AzFramework::StringFunc::Path::IsRelative(assetPath))
         {
-            bool pathFound = false;
-            AZStd::string_view relPath = assetPath;
-
-            AZStd::string fullAssetPath;
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(pathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, relPath, fullAssetPath);
-            if (pathFound)
+            AZStd::string watchFolder;
+            bool sourceInfoFound{};
+            AZ::Data::AssetInfo assetInfo;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, assetPath, assetInfo, watchFolder);
+            if (sourceInfoFound)
             {
+                AZStd::string fullAssetPath;
+                AzFramework::StringFunc::Path::Join(watchFolder.data(), assetInfo.m_relativePath.data(), fullAssetPath);
                 stream.Open(fullAssetPath.data(), AZ::IO::OpenMode::ModeRead);
             }
         }

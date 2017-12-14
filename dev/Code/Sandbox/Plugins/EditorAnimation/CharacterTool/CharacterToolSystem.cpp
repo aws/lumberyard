@@ -40,6 +40,8 @@
 #include "SourceAssetContent.h"
 #include "AnimationCompressionManager.h"
 #include "CharacterGizmoManager.h"
+#include "DependencyManager.h"
+#include "../EditorCommon/QPropertyTree/QPropertyTree.h"
 #include "../EditorCommon/Serialization/Decorators/INavigationProvider.h"
 
 namespace CharacterTool

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzFramework/Entity/EntityContextBus.h>
@@ -29,27 +30,41 @@ namespace LmbrCentral
         : public AZ::Component
         , private SpawnerComponentRequestBus::Handler
         , private AzFramework::SliceInstantiationResultBus::MultiHandler
+        , private AZ::EntityBus::MultiHandler
     {
     public:
-        AZ_COMPONENT(SpawnerComponent, "{8022A627-FA7D-4516-A155-657A0927A3CA}");
+        AZ_COMPONENT(SpawnerComponent, SpawnerComponentTypeId);
 
         SpawnerComponent();
+        SpawnerComponent(const AZ::Data::Asset<AZ::DynamicSliceAsset>& sliceAsset, bool spawnOnActivate);
         ~SpawnerComponent() override = default;
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
+
+        bool ReadInConfig(const AZ::ComponentConfig* spawnerConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outSpawnerConfig) const override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
         // SpawnerComponentRequestBus::Handler
+        void SetDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& dynamicSliceAsset) override;
+        void SetSpawnOnActivate(bool spawnOnActivate) override;
+        bool GetSpawnOnActivate() override;
         AzFramework::SliceInstantiationTicket Spawn() override;
         AzFramework::SliceInstantiationTicket SpawnRelative(const AZ::Transform& relative) override;
         AzFramework::SliceInstantiationTicket SpawnAbsolute(const AZ::Transform& world) override;
         AzFramework::SliceInstantiationTicket SpawnSlice(const AZ::Data::Asset<AZ::Data::AssetData>& slice) override;
         AzFramework::SliceInstantiationTicket SpawnSliceRelative(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative) override;
         AzFramework::SliceInstantiationTicket SpawnSliceAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world) override;
+        void DestroySpawnedSlice(const AzFramework::SliceInstantiationTicket& ticket) override;
+        void DestroyAllSpawnedSlices() override;
+        AZStd::vector<AzFramework::SliceInstantiationTicket> GetCurrentlySpawnedSlices() override;
+        bool HasAnyCurrentlySpawnedSlices() override;
+        AZStd::vector<AZ::EntityId> GetCurrentEntitiesFromSpawnedSlice(const AzFramework::SliceInstantiationTicket& ticket) override;
+        AZStd::vector<AZ::EntityId> GetAllCurrentlySpawnedEntities();
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -59,6 +74,10 @@ namespace LmbrCentral
         void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId) override;
         //////////////////////////////////////////////////////////////////////////
 
+        //////////////////////////////////////////////////////////////////////////
+        // EntityBus::MultiHandler
+        void OnEntityDestruction(const AZ::EntityId& entityId) override;
+        //////////////////////////////////////////////////////////////////////////
     private:
 
         //////////////////////////////////////////////////////////////////////////
@@ -73,8 +92,16 @@ namespace LmbrCentral
         AzFramework::SliceInstantiationTicket SpawnSliceInternal(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative);
         //////////////////////////////////////////////////////////////////////////
 
+        //////////////////////////////////////////////////////////////////////////
         // Serialized members
         AZ::Data::Asset<AZ::DynamicSliceAsset> m_sliceAsset;
         bool m_spawnOnActivate = false;
+        bool m_destroyOnDeactivate = false;
+
+        //////////////////////////////////////////////////////////////////////////
+        // Runtime-only members
+        AZStd::vector<AzFramework::SliceInstantiationTicket> m_activeTickets; ///< tickets listed in order they were spawned
+        AZStd::unordered_map<AZ::EntityId, AzFramework::SliceInstantiationTicket> m_entityToTicketMap; ///< map from entity to ticket that spawned it
+        AZStd::unordered_map<AzFramework::SliceInstantiationTicket, AZStd::unordered_set<AZ::EntityId>> m_ticketToEntitiesMap; ///< map from ticket to entities it spawned
     };
 } // namespace LmbrCentral

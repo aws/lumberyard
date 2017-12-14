@@ -221,44 +221,44 @@ namespace LmbrCentral
         return m_materialBusHandler->GetMaterialHandle();
     }
 
-    void DecalComponent::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value)
+    void DecalComponent::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamVector4(name, value);
+        m_materialBusHandler->SetMaterialParamVector4(name, value, materialId);
     }
 
-    void DecalComponent::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value)
+    void DecalComponent::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamVector3(name, value);
+        m_materialBusHandler->SetMaterialParamVector3(name, value, materialId);
     }
 
-    void DecalComponent::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value)
+    void DecalComponent::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamColor(name, value);
+        m_materialBusHandler->SetMaterialParamColor(name, value, materialId);
     }
 
-    void DecalComponent::SetMaterialParamFloat(const AZStd::string& name, float value)
+    void DecalComponent::SetMaterialParamFloat(const AZStd::string& name, float value, int materialId)
     {
-        m_materialBusHandler->SetMaterialParamFloat(name, value);
+        m_materialBusHandler->SetMaterialParamFloat(name, value, materialId);
     }
 
-    AZ::Vector4 DecalComponent::GetMaterialParamVector4(const AZStd::string& name)
+    AZ::Vector4 DecalComponent::GetMaterialParamVector4(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamVector4(name);
+        return m_materialBusHandler->GetMaterialParamVector4(name, materialId);
     }
 
-    AZ::Vector3 DecalComponent::GetMaterialParamVector3(const AZStd::string& name)
+    AZ::Vector3 DecalComponent::GetMaterialParamVector3(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamVector3(name);
+        return m_materialBusHandler->GetMaterialParamVector3(name, materialId);
     }
 
-    AZ::Color DecalComponent::GetMaterialParamColor(const AZStd::string& name)
+    AZ::Color DecalComponent::GetMaterialParamColor(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamColor(name);
+        return m_materialBusHandler->GetMaterialParamColor(name, materialId);
     }
 
-    float DecalComponent::GetMaterialParamFloat(const AZStd::string& name)
+    float DecalComponent::GetMaterialParamFloat(const AZStd::string& name, int materialId)
     {
-        return m_materialBusHandler->GetMaterialParamFloat(name);
+        return m_materialBusHandler->GetMaterialParamFloat(name, materialId);
     }
 
 

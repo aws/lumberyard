@@ -242,6 +242,21 @@ IPostEffectGroup* PostEffectGroupManager::GetGroup(const char* name)
     return LoadGroup(name);
 }
 
+IPostEffectGroup* PostEffectGroupManager::GetGroup(const unsigned int index)
+{
+    if (index < m_groups.size())
+    {
+        return m_groups[index].get();
+    }
+
+    return nullptr;
+}
+
+const unsigned int PostEffectGroupManager::GetGroupCount()
+{
+    return m_groups.size();
+}
+
 IPostEffectGroup* PostEffectGroupManager::LoadGroup(const char* name, PostEffectGroup* groupToLoadInto)
 {
     XmlNodeRef root = GetISystem()->LoadXmlFromFile(name);

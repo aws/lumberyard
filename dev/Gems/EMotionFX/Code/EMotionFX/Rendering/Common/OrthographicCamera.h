@@ -102,9 +102,9 @@ namespace MCommon
 
         void AutoUpdateLimits() override;
 
-        void StartFlight(float distance, const MCore::Vector3& position, float flightTime);
+        void StartFlight(float distance, const AZ::Vector3& position, float flightTime);
         bool GetIsFlightActive() const                                          { return mFlightActive; }
-        void SetFlightTargetPosition(const MCore::Vector3& targetPos)           { mFlightTargetPosition = targetPos; }
+        void SetFlightTargetPosition(const AZ::Vector3& targetPos)              { mFlightTargetPosition = targetPos; }
         float FlightTimeLeft() const
         {
             if (mFlightActive == false)
@@ -131,14 +131,13 @@ namespace MCommon
         float           mMinDistance;       /**< The minimum distance from the orbit camera to its target in the orbit sphere. */
         float           mMaxDistance;       /**< The maximum distance from the orbit camera to its target in the orbit sphere. */
         float           mCurrentDistance;   /**< The current distance from the orbit camera to its target in the orbit sphere. */
-
         bool            mFlightActive;
         float           mFlightMaxTime;
         float           mFlightCurrentTime;
         float           mFlightSourceDistance;
-        MCore::Vector3  mFlightSourcePosition;
+        AZ::Vector3     mFlightSourcePosition;
         float           mFlightTargetDistance;
-        MCore::Vector3  mFlightTargetPosition;
+        AZ::Vector3     mFlightTargetPosition;
     };
 } // namespace MCommon
 

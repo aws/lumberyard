@@ -21,6 +21,7 @@
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/UiAssetTypes.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
+#include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
 
 namespace SliceBuilder
 {
@@ -51,8 +52,8 @@ namespace SliceBuilder
 
         AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Handler::RegisterBuilderInformation, uiBuilderDescriptor);
 
-        AssetBuilderSDK::ToolsAssetSystemBus::Broadcast(&AssetBuilderSDK::ToolsAssetSystemBus::Handler::RegisterSourceAssetType, azrtti_typeid<AZ::SliceAsset>(), AZ::SliceAsset::GetFileFilter());
-        AssetBuilderSDK::ToolsAssetSystemBus::Broadcast(&AssetBuilderSDK::ToolsAssetSystemBus::Handler::RegisterSourceAssetType, azrtti_typeid<LyShine::CanvasAsset>(), LyShine::CanvasAsset::GetFileFilter());
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, azrtti_typeid<AZ::SliceAsset>(), AZ::SliceAsset::GetFileFilter());
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, azrtti_typeid<LyShine::CanvasAsset>(), LyShine::CanvasAsset::GetFileFilter());
     }
 
     void BuilderPluginComponent::Deactivate()
@@ -60,8 +61,8 @@ namespace SliceBuilder
         // Finish all queued work
         AZ::Data::AssetBus::ExecuteQueuedEvents();
 
-        AssetBuilderSDK::ToolsAssetSystemBus::Broadcast(&AssetBuilderSDK::ToolsAssetSystemBus::Handler::UnregisterSourceAssetType, azrtti_typeid<AZ::SliceAsset>());
-        AssetBuilderSDK::ToolsAssetSystemBus::Broadcast(&AssetBuilderSDK::ToolsAssetSystemBus::Handler::UnregisterSourceAssetType, azrtti_typeid<LyShine::CanvasAsset>());
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, azrtti_typeid<AZ::SliceAsset>());
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, azrtti_typeid<LyShine::CanvasAsset>());
 
         m_uiSliceBuilder.BusDisconnect();
         m_sliceBuilder.reset();

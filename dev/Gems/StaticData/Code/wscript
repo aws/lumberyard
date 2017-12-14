@@ -27,11 +27,11 @@ def build(bld):
     bld.DefineGem(
         uselib          = ['AWS_CPP_SDK_CORE'],
         includes        = [bld.Path('Code/CryEngine/CryAction'),
-                           bld.Path('Gems/StaticData/Code/EditorPlugin')],
+                           bld.Path('Gems/StaticData/Code/EditorPlugin'),
+        ],
         file_list       = file_list,
         pch             = '',
 
-        shared_settings = ['awsgem.json']
     )
 
     bld.recurse(SUBFOLDERS)

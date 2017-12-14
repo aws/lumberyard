@@ -139,9 +139,15 @@ void CMotionBlur::RenderObjectsVelocity()
         renderTarget->GetWidth() <= depthTarget->nWidth &&
         renderTarget->GetHeight() <= depthTarget->nHeight)
     {
-        // Render object velocities
-        gcpRendD3D->FX_PushRenderTarget(0, renderTarget, depthTarget);
-
+         // Render object velocities
+        
+        
+        //The render targets are already in memory for gmem mode
+        if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+        {
+            gcpRendD3D->FX_PushRenderTarget(0, renderTarget, depthTarget);
+        }
+        
         uint64 nSaveFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
         int iTempX, iTempY, iWidth, iHeight;
         gcpRendD3D->GetViewport(&iTempX, &iTempY, &iWidth, &iHeight);
@@ -182,7 +188,11 @@ void CMotionBlur::RenderObjectsVelocity()
         }
 
         gRenDev->m_RP.m_FlagsShader_RT = nSaveFlagsShader_RT;
-        gcpRendD3D->FX_PopRenderTarget(0);
+        
+        if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+        {
+            gcpRendD3D->FX_PopRenderTarget(0);
+        }
     }
 }
 
@@ -210,6 +220,12 @@ void CMotionBlurPass::Reset()
 
 float CMotionBlurPass::ComputeMotionScale()
 {
+    static float storedMotionScale = 0.0f;
+    if (gEnv->pTimer->IsTimerPaused(ITimer::ETIMER_GAME))
+    {
+        return storedMotionScale;
+    }
+
     // The length of the generated motion vectors is proportional to the current time step, so we need
     // to rescale the motion vectors to simulate a constant camera exposure time
 
@@ -218,7 +234,8 @@ float CMotionBlurPass::ComputeMotionScale()
 
     exposureTime *= gEnv->pTimer->GetTimeScale();
 
-    return exposureTime / timeStep;
+    storedMotionScale = exposureTime / timeStep;
+    return storedMotionScale;
 }
 
 void CMotionBlurPass::Execute()

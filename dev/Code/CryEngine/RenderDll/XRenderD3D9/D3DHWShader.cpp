@@ -20,11 +20,15 @@
 #include "D3DPostProcess.h"
 #include "ParticleParams.h"
 #include "../Common/Textures/TextureHelpers.h"
+#include "../Common/Textures/TextureManager.h"
 #include "../Common/Include_HLSL_CPP_Shared.h"
 #include "../Common/TypedConstantBuffer.h"
+#include "GraphicsPipeline/FurBendData.h"
+#include "GraphicsPipeline/FurPasses.h"
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 #define MAX_PF_TEXTURES     (32)
 #define MAX_PF_SAMPLERS     (4)
@@ -1021,6 +1025,41 @@ namespace
 #endif
     }
 
+    void sGetPrevObjWorldData(UFloat4* sData, SRenderPipeline& rRP)
+    {
+        CRenderObject* pObj = rRP.m_pCurObject;
+
+        Matrix44A mObjPrev;
+        if ((rRP.m_FlagsPerFlush & RBSI_CUSTOM_PREVMATRIX) == 0)
+        {
+            FurBendData::Get().GetPrevObjToWorldMat(*pObj, mObjPrev);
+        }
+        else
+        {
+            mObjPrev = *rRP.m_pPrevMatrix;
+        }
+
+        float* pData = mObjPrev.GetData();
+#if defined(_CPU_SSE) && !defined(_DEBUG)
+        sData[0].m128 = _mm_load_ps(&pData[0]);
+        sData[1].m128 = _mm_load_ps(&pData[4]);
+        sData[2].m128 = _mm_load_ps(&pData[8]);
+#else
+        sData[0].f[0] = pData[0];
+        sData[0].f[1] = pData[1];
+        sData[0].f[2] = pData[2];
+        sData[0].f[3] = pData[3];
+        sData[1].f[0] = pData[4];
+        sData[1].f[1] = pData[5];
+        sData[1].f[2] = pData[6];
+        sData[1].f[3] = pData[7];
+        sData[2].f[0] = pData[8];
+        sData[2].f[1] = pData[9];
+        sData[2].f[2] = pData[10];
+        sData[2].f[3] = pData[11];
+#endif
+    }
+
     NO_INLINE void sVisionParams(UFloat4* sData)
     {
         CRenderObject* pObj = gRenDev->m_RP.m_pCurObject;
@@ -1107,21 +1146,21 @@ namespace
         sData[0].f[1] = sData[0].f[2] = 0.0f;
     }
 
-    NO_INLINE void sTexelsPerMeterInfo(UFloat4 *sData)
+    NO_INLINE void sTexelsPerMeterInfo(UFloat4 *sData, uint32 texIdx)
     {
         sData[0].f[0] = sData[0].f[1] = sData[0].f[2] = sData[0].f[3] = 0;
-        CShaderResources *pRes = gRenDev->m_RP.m_pShaderResources;
-        if (pRes && pRes->m_Textures[EFTT_DIFFUSE])
+        CShaderResources*   pRes = gRenDev->m_RP.m_pShaderResources;
+        SEfResTexture*      pTextureRes = pRes ? pRes->GetTextureResource(texIdx) : nullptr;
+
+        if (pTextureRes && pTextureRes->m_Sampler.m_pTex)
         {
-            CTexture* pTexture(pRes->m_Textures[EFTT_DIFFUSE]->m_Sampler.m_pTex);
-            if (pTexture)
-            {
-                int texWidth(pTexture->GetWidth());
-                int texHeight(pTexture->GetHeight());
-                float ratio = 0.5f / CRenderer::CV_r_TexelsPerMeter;
-                sData[0].f[0] = (float)texWidth * ratio;
-                sData[0].f[1] = (float)texHeight * ratio;
-            }
+            CTexture*   pTexture = pTextureRes->m_Sampler.m_pTex;
+
+            int texWidth(pTexture->GetWidth());
+            int texHeight(pTexture->GetHeight());
+            float ratio = 0.5f / CRenderer::CV_r_TexelsPerMeter;
+            sData[0].f[0] = (float)texWidth * ratio;
+            sData[0].f[1] = (float)texHeight * ratio;
         }
     }
 
@@ -1169,37 +1208,45 @@ namespace
         sAppendClipSpaceAdaptation(pMat);
     }
 
+    // Filling texture dimensions and inverse dimensions to CB
     NO_INLINE void sResInfo(UFloat4 *sData, int texIdx)  // EFTT_DIFFUSE, EFTT_GLOSS, ... etc (but NOT EFTT_BUMP!)
     {
         sIdentityLine(sData);
         CShaderResources *pRes = gRenDev->m_RP.m_pShaderResources;
-        if (pRes && pRes->m_Textures[texIdx])
+        if (!pRes)
+            return;
+
+        SEfResTexture*  pTextureRes = pRes->GetTextureResource(texIdx);
+        if (!pTextureRes)
+            return;
+
+        ITexture*   pTexture(pTextureRes->m_Sampler.m_pTex);
+        if (pTexture)
         {
-            ITexture* pTexture(pRes->m_Textures[texIdx]->m_Sampler.m_pTex);
-            if (pTexture)
+            int texWidth(pTexture->GetWidth());
+            int texHeight(pTexture->GetHeight());
+            sData[0].f[0] = (float)texWidth;
+            sData[0].f[1] = (float)texHeight;
+            if (texWidth && texHeight)
             {
-                int texWidth(pTexture->GetWidth());
-                int texHeight(pTexture->GetHeight());
-                sData[0].f[0] = (float)texWidth;
-                sData[0].f[1] = (float)texHeight;
-                if (texWidth && texHeight)
-                {
-                    sData[0].f[2] = 1.0f / (float)texWidth;
-                    sData[0].f[3] = 1.0f / (float)texHeight;
-                }
+                sData[0].f[2] = 1.0f / (float)texWidth;
+                sData[0].f[3] = 1.0f / (float)texHeight;
             }
         }
     }
 
-    NO_INLINE void sTexelDensityParam(UFloat4 *sData)
+    NO_INLINE void sTexelDensityParam(UFloat4 *sData, uint32 texIdx)
     {
         sIdentityLine(sData);
 
         CShaderResources *pRes = gRenDev->m_RP.m_pShaderResources;
+        if (!pRes)
+            return;
 
-        if (pRes && pRes->m_Textures[EFTT_DIFFUSE])
+        SEfResTexture*  pTextureRes = pRes->GetTextureResource(texIdx);
+        if (pTextureRes)
         {
-            CRenderChunk *pRenderChunk = NULL;
+            CRenderChunk*   pRenderChunk = NULL;
             int texWidth = 512;
             int texHeight = 512;
             int mipLevel = 0;
@@ -1231,7 +1278,8 @@ namespace
                     float distance = pCurObject->m_fDistance * TANGENT30_2 / scale;
                     int screenHeight = gRenDev->GetHeight();
 
-                    weight = pRenderChunk->m_texelAreaDensity * distance * distance * texWidth * texHeight * pRes->m_Textures[EFTT_DIFFUSE]->GetTiling(0) * pRes->m_Textures[EFTT_DIFFUSE]->GetTiling(1) / (screenHeight * screenHeight);
+                    weight = pRenderChunk->m_texelAreaDensity * distance * distance * texWidth * texHeight * 
+                        pTextureRes->GetTiling(0) *pTextureRes->GetTiling(1) / (screenHeight * screenHeight);
                 }
 
                 mipLevel = fastround_positive(0.5f * logf(max(weight, 1.0f)) / LN2);
@@ -1252,13 +1300,16 @@ namespace
         }
     }
 
-    NO_INLINE void sTexelDensityColor(UFloat4 *sData)
+    NO_INLINE void sTexelDensityColor(UFloat4 *sData, uint32 texIdx)
     {
         sOneLine(sData);
 
         CShaderResources *pRes = gRenDev->m_RP.m_pShaderResources;
+        if (!pRes)
+            return;
 
-        if (pRes && pRes->m_Textures[EFTT_DIFFUSE])
+        SEfResTexture*  pTextureRes = pRes->GetTextureResource(texIdx);
+        if (pTextureRes)
         {
             if (CRenderer::CV_e_DebugTexelDensity == 2 || gcpRendD3D->CV_e_DebugTexelDensity == 4)
             {
@@ -1294,7 +1345,8 @@ namespace
                         float distance = pCurObject->m_fDistance * TANGENT30_2 / scale;
                         int screenHeight = gRenDev->GetHeight();
 
-                        weight = pRenderChunk->m_texelAreaDensity * distance * distance * texWidth * texHeight * pRes->m_Textures[EFTT_DIFFUSE]->GetTiling(0) * pRes->m_Textures[EFTT_DIFFUSE]->GetTiling(1) / (screenHeight * screenHeight);
+                        weight = pRenderChunk->m_texelAreaDensity * distance * distance * texWidth * texHeight * 
+                            pTextureRes->GetTiling(0) * pTextureRes->GetTiling(1) / (screenHeight * screenHeight);
                     }
 
                     mipLevel = fastround_positive(0.5f * logf(max(weight, 1.0f)) / LN2);
@@ -1324,6 +1376,7 @@ namespace
             }
         }
     }
+
     NO_INLINE void sNumInstructions(UFloat4* sData)
     {
         sData[0].f[0] = gRenDev->m_RP.m_NumShaderInstructions / CRenderer::CV_r_measureoverdrawscale / 256.0f;
@@ -1839,13 +1892,13 @@ namespace
                     sResInfo(result, EFTT_DIFFUSE);
                     break;
                 case ECGP_PB_TexelDensityParam:
-                    sTexelDensityParam(result);
+                    sTexelDensityParam(result, EFTT_DIFFUSE);
                     break;
                 case ECGP_PB_TexelDensityColor:
-                    sTexelDensityColor(result);
+                    sTexelDensityColor(result, EFTT_DIFFUSE);
                     break;
                 case ECGP_PB_TexelsPerMeterInfo:
-                    sTexelsPerMeterInfo(result);
+                    sTexelsPerMeterInfo(result, EFTT_DIFFUSE);
                     break;
                 ///!
 
@@ -2023,6 +2076,9 @@ void CHWShader_D3D::UpdatePerInstanceConstants(
             sGetMotionBlurData(result, r, instanceInfo, rRP);
 
             break;
+        case ECGP_PI_PrevObjWorldMatrix:
+            sGetPrevObjWorldData(result, rRP);
+            break;
         case ECGP_Matr_PI_TexMatrix:
             sGetTexMatrix(result, r, parameter);
             break;
@@ -2066,6 +2122,68 @@ void CHWShader_D3D::UpdatePerInstanceConstants(
         case ECGP_Matr_PI_OceanMat:
             sOceanMat(result);
             break;
+
+        case ECGP_PI_FurLODInfo:
+        {
+            // FurLODInfo contains LOD values for the current object to adjust fur rendering:
+            //   x - Current object's first LOD distance
+            //   y - Current object's max view distance
+            // Presently, this is used to control self-shadowing as a function of distance and LOD.
+            if (rRP.m_pCurObject)
+            {
+                if (IRenderNode* pRenderNode = rRP.m_pCurObject->m_pRenderNode)
+                {
+                    /// Fix it! should not access the memory pointed by IRenderNode in render thread.
+                    // Scale number of shell passes by object's distance to camera and LOD ratio
+                    float lodRatio = pRenderNode->GetLodRatioNormalized();
+                    if (lodRatio > 0.0f)
+                    {
+                        static ICVar* pTargetSize = gEnv->pConsole->GetCVar("e_LodFaceAreaTargetSize");
+                        if (pTargetSize)
+                        {
+                            lodRatio *= pTargetSize->GetFVal();
+                        }
+                    }
+
+                    float maxDistance = CD3D9Renderer::CV_r_FurMaxViewDist * pRenderNode->GetViewDistanceMultiplier();
+                    float lodDistance = AZ::GetClamp(pRenderNode->GetFirstLodDistance() / lodRatio, 0.0f, maxDistance);
+
+                    result[0].f[0] = lodDistance;
+                    result[0].f[1] = maxDistance;
+                }
+            }
+            break;
+        }
+
+        case ECGP_PI_FurParams:
+        {
+            // FurParams contains common information for fur rendering:
+            //   x, y, z - wind direction and strength in world space, for wind bending of fur
+            //   w - distance of current shell between base and outermost shell, in the range [0, 1]
+            AABB instanceBboxWorld(AABB::RESET);
+            Vec3 vWindWorld(ZERO);
+            if (rRP.m_pRE)
+            {
+                rRP.m_pRE->mfGetBBox(instanceBboxWorld.min, instanceBboxWorld.max);
+                instanceBboxWorld.min = instanceInfo.m_Matrix * instanceBboxWorld.min;
+                instanceBboxWorld.max = instanceInfo.m_Matrix * instanceBboxWorld.max;
+            }
+            if (instanceBboxWorld.IsReset())
+            {
+                vWindWorld = gEnv->p3DEngine->GetGlobalWind(false);
+            }
+            else
+            {
+                vWindWorld = gEnv->p3DEngine->GetWind(instanceBboxWorld, false);
+            }
+
+            result[0].f[0] = vWindWorld.x;
+            result[0].f[1] = vWindWorld.y;
+            result[0].f[2] = vWindWorld.z;
+            result[0].f[3] = FurPasses::GetInstance().GetFurShellPassPercent();
+            break;
+        }
+
         default:
             assert(0);
             break;
@@ -2137,7 +2255,7 @@ void CD3D9Renderer::UpdatePerFrameParameters()
         return;
     }
 
-    PF.m_WaterLevel = Vec3(p3DEngine->GetWaterLevel());
+    PF.m_WaterLevel = Vec3(OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : p3DEngine->GetWaterLevel());
 
     {
         // Caustics are done with projection from sun - ence they update too fast with regular
@@ -2153,9 +2271,6 @@ void CD3D9Renderer::UpdatePerFrameParameters()
 
         PF.m_CausticsSunDirection += (realtimeSunDirNormalized - PF.m_CausticsSunDirection) * 0.005f * gEnv->pTimer->GetFrameTime();
         PF.m_CausticsSunDirection.Normalize();
-
-        Vec4 causticsParams = p3DEngine->GetCausticsParams();
-        PF.m_CausticsParams = Vec4(CRenderer::CV_r_watercausticsdistance, causticsParams.z, causticsParams.y, causticsParams.x);
     }
 
     {
@@ -2220,11 +2335,11 @@ void CD3D9Renderer::ForceUpdateGlobalShaderParameters()
     gRenDev->m_pRT->EnqueueRenderCommand([this]()
     {
         FX_PreRender(1);
-        CHWShader_D3D::UpdatePerFrameConstantBuffer();
+        CHWShader_D3D::UpdatePerFrameResourceGroup();
     });
 }
 
-void CHWShader_D3D::UpdatePerFrameConstantBuffer()
+void CHWShader_D3D::UpdatePerFrameResourceGroup()
 {
     mfSetTextures(s_PF_Textures, eHWSC_Pixel);
     mfSetSamplers_Old(s_PF_Samplers, eHWSC_Pixel);
@@ -2244,7 +2359,7 @@ void CHWShader_D3D::UpdatePerMaterialConstantBuffer()
     CDeviceManager& deviceManager = rd->m_DevMan;
     if (shaderResources)
     {
-        AzRHI::ConstantBuffer* constantBuffer = shaderResources->m_ConstantBuffer;
+        AzRHI::ConstantBuffer* constantBuffer = shaderResources->GetConstantBuffer();
         deviceManager.BindConstantBuffer(eHWSC_Vertex, constantBuffer, eConstantBufferShaderSlot_PerMaterial);
         deviceManager.BindConstantBuffer(eHWSC_Pixel, constantBuffer, eConstantBufferShaderSlot_PerMaterial);
         
@@ -2544,6 +2659,20 @@ bool CHWShader_D3D::mfSetSamplers(const std::vector<SCGSampler>& Samplers, EHWSh
     return true;
 }
 
+//------------------------------------------------------------------------------
+// This is the final texture prep and bind point to the shader, using the 
+// function call 'CTexture::ApplyTexture'.
+//
+// This method runs over the list of parsed textures and bind them to the HW stage
+// Materials textures are handled the same and if do not exist they use a default.
+// The rest of the textures (engine / per frame ..) are specifically handled.
+// [Shader System] - this method should go data driven and have the same handling per texture.
+//
+// Observations:
+// 1. The binding indices here are determined by ECGTexture while textures contexts
+//      are derived by EEfResTextures - they do NOT exactly match!  
+//      It seems that the order can be switched without side effect - TEST!
+//------------------------------------------------------------------------------
 bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWShaderClass eSHClass)
 {
     DETAILED_PROFILE_MARKER("mfSetTextures");
@@ -2570,6 +2699,9 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
             nResViewKey = SResourceView::DefaultViewSRGB;
         }
 
+        // This case handles texture names parsed from the shader that are not contextually predefined 
+        // [Shader System] - can be used for the per material stage once the texture Id is not 
+        // contextual anymore, hence not hard coded.
         if (pTexBind->m_eCGTextureType == ECGT_Unknown)
         {
             CTexture* pTexture = pTexBind->GetTexture();
@@ -2601,16 +2733,15 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
         case ECGT_MatSlot_Occlusion:
         case ECGT_MatSlot_Specular2:
         {
-            EEfResTextures texType = EEfResTextures(pTexBind->m_eCGTextureType - 1);
-
-            CTexture* pTex = (pSR && pSR->m_Textures[texType])
-                ? pSR->m_Textures[texType]->m_Sampler.m_pTex
-                : TextureHelpers::LookupTexDefault(texType);
+            uint32          texSlot = EEfResTextures(pTexBind->m_eCGTextureType - 1);
+            SEfResTexture*  pTextureRes = pSR ? pSR->GetTextureResource(texSlot) : nullptr;
+            CTexture*       pTex = pTextureRes ? 
+                pTextureRes->m_Sampler.m_pTex : 
+                TextureHelpers::LookupTexDefault((EEfResTextures)texSlot);
 
             if (pTex)
             {
-                uint32 textureSlot = IShader::GetTextureSlot(texType);
-                pTex->ApplyTexture(textureSlot, eSHClass, nResViewKey);
+                pTex->ApplyTexture(texSlot, eSHClass, nResViewKey);
             }
         }
         break;
@@ -2642,7 +2773,7 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
         {
             CTexture* tex = CTexture::IsTextureExist(CTexture::s_ptexShadowMask)
                 ? CTexture::s_ptexShadowMask
-                : CTexture::s_ptexBlack;
+                : CTextureManager::Instance()->GetBlackTexture();
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;
@@ -2662,6 +2793,17 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
         case ECGT_ZTargetScaled:
         {
             CTexture* tex = CTexture::s_ptexZTargetScaled;
+            tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
+        }
+        break;
+        case ECGT_ShadowMaskZTarget:
+        {
+            // Returns FurZTarget if fur rendering is present in frame, otherwise ZTarget is returned
+            CTexture* tex = CTexture::s_ptexZTarget;
+            if (FurPasses::GetInstance().IsRenderingFur())
+            {
+                tex = CTexture::s_ptexFurZTarget;
+            }
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;
@@ -2694,14 +2836,14 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
         case ECGT_SceneDiffuseAcc:
         {
             const uint32 nLightsCount = CDeferredShading::Instance().GetLightsCount();
-            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneDiffuseAccMap : CTexture::s_ptexBlack;
+            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneDiffuseAccMap : CTextureManager::Instance()->GetBlackTexture();
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;
         case ECGT_SceneSpecularAcc:
         {
             const uint32 nLightsCount = CDeferredShading::Instance().GetLightsCount();
-            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneSpecularAccMap : CTexture::s_ptexBlack;
+            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneSpecularAccMap : CTextureManager::Instance()->GetBlackTexture();
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;
@@ -2715,14 +2857,14 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
         case ECGT_SceneDiffuseAccMS:
         {
             const uint32 nLightsCount = CDeferredShading::Instance().GetLightsCount();
-            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneDiffuseAccMapMS : CTexture::s_ptexBlack;
+            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneDiffuseAccMapMS : CTextureManager::Instance()->GetBlackTexture();
             tex->ApplyTexture(nTUnit, eSHClass, SResourceView::DefaultViewMS);
         }
         break;
         case ECGT_SceneSpecularAccMS:
         {
             const uint32 nLightsCount = CDeferredShading::Instance().GetLightsCount();
-            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneSpecularAccMapMS : CTexture::s_ptexBlack;
+            CTexture* tex = nLightsCount ? CTexture::s_ptexSceneSpecularAccMapMS : CTextureManager::Instance()->GetBlackTexture();
             tex->ApplyTexture(nTUnit, eSHClass, SResourceView::DefaultViewMS);
         }
         break;
@@ -2744,7 +2886,7 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
         case ECGT_VolumetricFogGlobalEnvProbe0:
         {
             CTexture* tex = rd->GetVolumetricFog().GetGlobalEnvProbeTex0();
-            tex = (tex != NULL) ? tex : CTexture::s_ptexBlackCM;
+            tex = (tex != NULL) ? tex : CTextureManager::Instance()->GetNoTextureCM();
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;
@@ -2752,7 +2894,7 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
         case ECGT_VolumetricFogGlobalEnvProbe1:
         {
             CTexture* tex = rd->GetVolumetricFog().GetGlobalEnvProbeTex1();
-            tex = (tex != NULL) ? tex : CTexture::s_ptexBlackCM;
+            tex = (tex != NULL) ? tex : CTextureManager::Instance()->GetNoTextureCM();
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;
@@ -2773,22 +2915,24 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
     DETAILED_PROFILE_MARKER("mfSetSamplers_Old");
     FUNCTION_PROFILER_RENDER_FLAT
 
-        const uint32 nSize = Samplers.size();
+    const uint32 nSize = Samplers.size();
     if (!nSize)
     {
         return true;
     }
-    CD3D9Renderer* __restrict rd = gcpRendD3D;
-    CShaderResources* __restrict pSR = rd->m_RP.m_pShaderResources;
+
+    CD3D9Renderer* __restrict       rd = gcpRendD3D;
+    CShaderResources* __restrict    pSR = rd->m_RP.m_pShaderResources;
 
     uint32 i;
     const STexSamplerRT* pSamp = &Samplers[0];
+
     // Loop counter increments moved to resolve an issue where the compiler introduced
     // load hit stores by storing the counters as the last instruction in the loop then
-    // immediated reloading and incrementing them after the branch back to the top
-    for (i = 0; i < nSize; /*i++, pSamp++*/)
+    // immediately reloading and incrementing them after the branch back to the top
+    for (i = 0; i < nSize; )
     {
-        CTexture* tx = pSamp->m_pTex;
+        CTexture*   tx = pSamp->m_pTex;
         assert(tx);
         if (!tx)
         {
@@ -2796,7 +2940,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
             ++i;
             continue;
         }
-        //int nSetID = -1;
+
         int nTexMaterialSlot = EFTT_UNKNOWN;
         const STexSamplerRT* pSM = pSamp++;
         int nSUnit = pSM->m_nSamplerSlot;
@@ -2804,23 +2948,25 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
         assert(nTUnit >= 0);
         int nTState = pSM->m_nTexState;
         const ETEX_Type smpTexType = (ETEX_Type)pSM->m_eTexType;
+
         ++i;
 
         if (tx >= &CTexture::s_ShaderTemplates[0] && tx <= &CTexture::s_ShaderTemplates[EFTT_MAX - 1])
         {
             nTexMaterialSlot = (int)(tx - &CTexture::s_ShaderTemplates[0]);
 
-            if (!pSR || !pSR->m_Textures[nTexMaterialSlot])
+            SEfResTexture*      pTextureRes = pSR ? pSR->GetTextureResource(nTexMaterialSlot) : nullptr;
+            if (!pTextureRes)
             {
                 tx = TextureHelpers::LookupTexDefault((EEfResTextures)nTexMaterialSlot);
             }
             else if (rd->CV_r_TexturesDebugBandwidth > 0)
             {
-                tx = CTexture::s_ptexGray;
+                tx = CTextureManager::Instance()->GetDefaultTexture("Gray");
             }
             else
             {
-                pSM = &pSR->m_Textures[nTexMaterialSlot]->m_Sampler;
+                pSM = &pTextureRes->m_Sampler;
                 tx = pSM->m_pTex;
 
                 if (nTState < 0 || !CTexture::s_TexStates[nTState].m_bActive)
@@ -3006,7 +3152,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 {
                     CTexture* pTex = CTexture::IsTextureExist(CTexture::s_ptexShadowMask)
                         ? CTexture::s_ptexShadowMask
-                        : CTexture::s_ptexBlack;
+                        : CTextureManager::Instance()->GetBlackTexture();
 
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                 }
@@ -3016,7 +3162,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_SCENE_DIFFUSE_ACC:
                 {
                     const uint32 nLightsCount = CDeferredShading::Instance().GetLightsCount();
-                    CTexture* pTex = nLightsCount ? CTexture::s_ptexCurrentSceneDiffuseAccMap : CTexture::s_ptexBlack;
+                    CTexture* pTex = nLightsCount ? CTexture::s_ptexCurrentSceneDiffuseAccMap : CTextureManager::Instance()->GetBlackTexture();
                     if (sCanSet(pSM, pTex))
                     {
                         if (!(nLightsCount && nCustomID == TO_SCENE_DIFFUSE_ACC_MS))
@@ -3035,7 +3181,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_SCENE_SPECULAR_ACC:
                 {
                     const uint32 nLightsCount = CDeferredShading::Instance().GetLightsCount();
-                    CTexture* pTex = nLightsCount ? CTexture::s_ptexSceneSpecularAccMap : CTexture::s_ptexBlack;
+                    CTexture* pTex = nLightsCount ? CTexture::s_ptexSceneSpecularAccMap : CTextureManager::Instance()->GetBlackTexture();
                     if (sCanSet(pSM, pTex))
                     {
                         if (!(nLightsCount && nCustomID == TO_SCENE_SPECULAR_ACC_MS))
@@ -3055,7 +3201,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     CTexture* tex = CTexture::s_ptexCurrSceneTarget;
                     if (!tex)
                     {
-                        tex = CTexture::s_ptexWhite;
+                        tex = CTextureManager::Instance()->GetWhiteTexture();
                     }
 
                     tex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
@@ -3084,7 +3230,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_FROMOBJ:
                 {
-                    CTexture* pTex = CTexture::s_ptexBlack;
+                    CTexture* pTex = CTextureManager::Instance()->GetBlackTexture();
                     if (rd->m_RP.m_pCurObject)
                     {
                         nCustomID = rd->m_RP.m_pCurObject->m_nTextureID;
@@ -3099,7 +3245,8 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_FROMOBJ_CM:
                 {
-                    CTexture* pTex = CTexture::s_ptexNoTextureCM;
+                    SEfResTexture*  overloadTexture = nullptr;
+                    CTexture*       pTex = CTextureManager::Instance()->GetNoTextureCM();
                     if (rd->m_RP.m_pCurObject)
                     {
                         nCustomID = rd->m_RP.m_pCurObject->m_nTextureID;
@@ -3107,19 +3254,21 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                         {
                             pTex = CTexture::GetByID(nCustomID);
                         }
-                        else if ((nTUnit < EFTT_MAX) && pSR && pSR->m_Textures[EFTT_ENV])
+                        else if ((nTUnit < EFTT_MAX) && pSR && (overloadTexture = pSR->GetTextureResource(EFTT_ENV)))
                         {
                             // Perhaps user wanted a specific cubemap instead?
                             // This should still be allowed even if the sampler is "TO_FROMOBJ_CM" as the
                             // end user can still select specific cubemaps from the material editor.
-                            SEfResTexture* overloadTexture = pSR->m_Textures[EFTT_ENV];
-                            overloadTexture->m_Sampler.m_pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
-
+                            CTexture* tex = overloadTexture->m_Sampler.m_pTex;
+                            if (tex)
+                            {
+                                tex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                            }
                             nCustomID = -1;
                         }
                         else if (nCustomID == 0)
                         {
-                            pTex = CTexture::s_ptexBlackCM;
+                            pTex = CTextureManager::Instance()->GetNoTextureCM();
                         }
                     }
                     if (nCustomID >= 0)
@@ -3140,7 +3289,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     }
                     else
                     {
-                        CTexture::s_ptexWhite->Apply(nTUnit, nTState);
+                        CTextureManager::Instance()->GetWhiteTexture()->Apply(nTUnit, nTState);
                     }
                 }
                 break;
@@ -3152,7 +3301,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_WATERVOLUMEREFLMAP:
                 {
                     const uint32 nCurrWaterVolID = gRenDev->GetFrameID(false) % 2;
-                    CTexture* pTex = CTexture::s_ptexWaterVolumeRefl[nCurrWaterVolID] ? CTexture::s_ptexWaterVolumeRefl[nCurrWaterVolID] : CTexture::s_ptexBlack;
+                    CTexture* pTex = CTexture::s_ptexWaterVolumeRefl[nCurrWaterVolID] ? CTexture::s_ptexWaterVolumeRefl[nCurrWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, CTexture::GetTexState(STexState(FILTER_ANISO16X, true)), nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;
@@ -3160,7 +3309,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_WATERVOLUMEREFLMAPPREV:
                 {
                     const uint32 nPrevWaterVolID = (gRenDev->GetFrameID(false) + 1) % 2;
-                    CTexture* pTex = CTexture::s_ptexWaterVolumeRefl[nPrevWaterVolID] ? CTexture::s_ptexWaterVolumeRefl[nPrevWaterVolID] : CTexture::s_ptexBlack;
+                    CTexture* pTex = CTexture::s_ptexWaterVolumeRefl[nPrevWaterVolID] ? CTexture::s_ptexWaterVolumeRefl[nPrevWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;
@@ -3198,7 +3347,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     }
                     else
                     {
-                        CTexture::s_ptexFlatBump->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
+                        CTextureManager::Instance()->GetDefaultTexture("FlatBump")->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                     }
                 }
                 break;
@@ -3211,7 +3360,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     }
                     else
                     {
-                        CTexture::s_ptexWhite->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
+                        CTextureManager::Instance()->GetWhiteTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                     }
                 }
                 break;
@@ -3221,7 +3370,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_BACKBUFFERSCALED_D8:
                 {
                     const uint32 nTargetID = nCustomID - TO_BACKBUFFERSCALED_D2;
-                    CTexture* pTex = CTexture::s_ptexBackBufferScaled[nTargetID] ? CTexture::s_ptexBackBufferScaled[nTargetID] : CTexture::s_ptexBlack;
+                    CTexture* pTex = CTexture::s_ptexBackBufferScaled[nTargetID] ? CTexture::s_ptexBackBufferScaled[nTargetID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
                 break;
@@ -3232,7 +3381,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     if (setupCloudShadows)
                     {
                         // cloud shadow map
-                        CTexture* pCloudShadowTex(rd->GetCloudShadowTextureId() > 0 ? CTexture::GetByID(rd->GetCloudShadowTextureId()) : CTexture::s_ptexWhite);
+                        CTexture* pCloudShadowTex(rd->GetCloudShadowTextureId() > 0 ? CTexture::GetByID(rd->GetCloudShadowTextureId()) : CTextureManager::Instance()->GetWhiteTexture());
                         assert(pCloudShadowTex);
 
                         STexState pTexStateLinearClamp;
@@ -3244,14 +3393,14 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     }
                     else
                     {
-                        CTexture::s_ptexWhite->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
+                        CTextureManager::Instance()->GetWhiteTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                     }
 
                     break;
                 }
 
                 case TO_MIPCOLORS_DIFFUSE:
-                    CTexture::s_ptexWhite->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                    CTextureManager::Instance()->GetWhiteTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                     break;
 
                 case TO_BACKBUFFERMAP:
@@ -3309,7 +3458,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     }
                     if (!texBound)
                     {
-                        CTexture::s_ptexWhite->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                        CTextureManager::Instance()->GetWhiteTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                     }
                     break;
                 }
@@ -3328,7 +3477,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                         }
                     }
                     CRenderer::CV_r_colorgrading_charts = 0;
-                    CTexture::s_ptexWhite->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                    CTextureManager::Instance()->GetWhiteTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                     break;
                 }
 
@@ -3345,7 +3494,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                             break;
                         }
                     }
-                    CTexture::s_ptexBlack->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                    CTextureManager::Instance()->GetBlackTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                     break;
                 }
 
@@ -3363,7 +3512,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                             break;
                         }
                     }
-                    CTexture::s_ptexBlack->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                    CTextureManager::Instance()->GetBlackTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                     break;
                 }
 
@@ -3372,7 +3521,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 #if defined(VOLUMETRIC_FOG_SHADOWS)
                     const bool enabled = gRenDev->m_bVolFogShadowsEnabled;
                     assert(enabled);
-                    CTexture* pTex = enabled ? CTexture::s_ptexVolFogShadowBuf[0] : CTexture::s_ptexWhite;
+                    CTexture* pTex = enabled ? CTexture::s_ptexVolFogShadowBuf[0] : CTextureManager::Instance()->GetWhiteTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                     break;
 #else
@@ -3387,16 +3536,22 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                     // This is not supported by default, and changing the behavior generically breaks other systems that depend on this behavior.
                     // For the default environment probe texture declaration, we need to check if someone has tried to bind a new texture to the shader
                     // (which would happen either via C++ code or by overloading the environment map slot on the envcube.mtl material)
-                    if ((nSUnit == nTUnit) && (nTUnit < EFTT_MAX) && pSR &&
-                        pSR->m_Textures[EFTT_ENV] &&
-                        pSR->m_Textures[EFTT_ENV]->m_Sampler.m_pTex->GetDevTexture())
+                    SEfResTexture*      pTextureRes = pSR ? pSR->GetTextureResource(EFTT_ENV) : nullptr;
+
+                    if ((nSUnit == nTUnit) && (nTUnit < EFTT_MAX) && 
+                        pTextureRes && pTextureRes->m_Sampler.m_pTex &&
+                        pTextureRes->m_Sampler.m_pTex->GetDevTexture())
                     {
-                        SEfResTexture* overloadTexture = pSR->m_Textures[EFTT_ENV];
+                        SEfResTexture*  overloadTexture = pTextureRes;
                         overloadTexture->m_Sampler.m_pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
                     }
-                    else if (CTexture::s_defaultEnvironmentProbe)
+                    else 
                     {
-                        CTexture::s_defaultEnvironmentProbe->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                        CTexture* defaultEnvironmentProbe = CTextureManager::Instance()->GetDefaultTexture("DefaultProbeCM");
+                        if (defaultEnvironmentProbe)
+                        {
+                            defaultEnvironmentProbe->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+                        }
                     }
                 }
                 break;
@@ -3420,39 +3575,41 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
     return true;
 }
 
+//------------------------------------------------------------------------------
+// Going over the samplers and making sure that dependent slots exist and
+// represent the same texture (normals and smoothness/
+// [Shader System] - TO DO: 
+// 1. Seems like dependency on second smoothness is missing
+// 2. Move this to be data driven based on flagged slots
+//------------------------------------------------------------------------------
 bool CHWShader_D3D::mfUpdateSamplers(CShader* shader)
 {
     DETAILED_PROFILE_MARKER("mfUpdateSamplers");
     FUNCTION_PROFILER_RENDER_FLAT
-        if (!m_pCurInst)
-        {
-            return false;
-        }
-    SHWSInstance* pInst = m_pCurInst;
-    if (!pInst->m_pSamplers.size())
+    if (!m_pCurInst)
+    {
+        return false;
+    }
+
+    SHWSInstance*       pInst = m_pCurInst;
+    CShaderResources*   pSRes = gRenDev->m_RP.m_pShaderResources;
+    if (!pInst->m_pSamplers.size() || !pSRes)
     {
         return true;
     }
 
-    CD3D9Renderer* rd = gcpRendD3D;
+    CD3D9Renderer*                      rd = gcpRendD3D;
     SRenderPipeline& RESTRICT_REFERENCE rRP = rd->m_RP;
-    SThreadInfo& RESTRICT_REFERENCE rTI = rRP.m_TI[rRP.m_nProcessThreadID];
+    SThreadInfo& RESTRICT_REFERENCE     rTI = rRP.m_TI[rRP.m_nProcessThreadID];
+    STexSamplerRT*                      pSamp = &pInst->m_pSamplers[0];
 
-    STexSamplerRT* pSamp = &pInst->m_pSamplers[0];
+    const uint32                        samplerCount = pInst->m_pSamplers.size();
+    bool                                bDiffuseSlotUpdated = false;
 
-    CShaderResources* shaderResources = gRenDev->m_RP.m_pShaderResources;
-
-    const uint32 samplerCount = pInst->m_pSamplers.size();
-    bool bDiffuseSlotUpdated = false;
-
-    if (shaderResources)
+    if (pSRes)
     {
-        AZ::u32 updateCount = 0;
-        struct UpdateEntry
-        {
-            SEfResTexture* texture;
-            EEfResTextures slot;
-        } updates[EFTT_MAX];
+        AZ::u32                             updateCount = 0;
+        AZStd::map<uint16, SEfResTexture*>  UpdatedTMap;
 
         for (AZ::u32 i = 0; i < samplerCount; i++, pSamp++)
         {
@@ -3461,53 +3618,82 @@ bool CHWShader_D3D::mfUpdateSamplers(CShader* shader)
             {
                 continue;
             }
+
+            //  [Shader System TO DO] - replace with proper data driven code reflected from the shaders 
             if (tx >= &CTexture::s_ShaderTemplates[0] && tx <= &CTexture::s_ShaderTemplates[EFTT_MAX - 1])
             {
-                int nSlot = (int)(tx - &CTexture::s_ShaderTemplates[0]);
-                if (shaderResources->m_Textures[nSlot])
-                {
-                    updates[updateCount].texture = shaderResources->m_Textures[nSlot];
-                    updates[updateCount].slot = EEfResTextures(nSlot);
-                    updateCount++;
+                int             nSlot = (int)(tx - &CTexture::s_ShaderTemplates[0]);
+                int16           replacementSlot = -1;
+                SEfResTexture*  pTextureRes = pSRes->GetTextureResource(nSlot);
 
+                if (pTextureRes)
+                {
+                    // Default inserting and indexing - because we force some slots (Normal, Diffuse..), this 
+                    // operation might be done twice (same data). 
+                    UpdatedTMap[nSlot] = pTextureRes;   
+
+                    //----------------------------------------------------------
+                    // Force adding samplers / textures if they indirectly assumed to be used 
+                    //----------------------------------------------------------
+                    //  [Shader System TO DO] - replace with data driven reflection (i.e. a texture should be 
+                    // able to specify that it is driven by another texture and not hard code it)
                     if (nSlot == EFTT_HEIGHT || nSlot == EFTT_SMOOTHNESS)
                     {
-                        updates[updateCount].texture = shaderResources->m_Textures[EFTT_NORMALS];
-                        updates[updateCount].slot = EFTT_NORMALS;
-                        updateCount++;
+                        replacementSlot = EFTT_NORMALS;
                     }
                     else if (nSlot == EFTT_DIFFUSE)
-                    {
+                    {   // marked as updated - no need to look for replacement 
                         bDiffuseSlotUpdated = true;
                     }
 
-                    if ((rTI.m_PersFlags & RBPF_ZPASS) && nSlot == EFTT_NORMALS && !bDiffuseSlotUpdated)
+                    // Force uploading the diffuse when the normal already exist (Really?)
+                    if ((rTI.m_PersFlags & RBPF_ZPASS) && (nSlot == EFTT_NORMALS) && !bDiffuseSlotUpdated)
                     {
-                        updates[updateCount].texture = shaderResources->m_Textures[EFTT_DIFFUSE];
-                        updates[updateCount].slot = EFTT_DIFFUSE;
-                        updateCount++;
+                        replacementSlot = EFTT_DIFFUSE;
                     }
+ 
+                    // Using the following block we can now drive forced slots to be data driven!
+                    if (replacementSlot != -1)
+                    {
+                        SEfResTexture*  replacementTexRes = pSRes->GetTextureResource(replacementSlot);
+                        if (replacementTexRes)
+                        {
+                            UpdatedTMap[replacementSlot] = replacementTexRes;   // inserting and indexing
+                        }
+/*                      [Shader System] - this is a good warning, however it will repeat every frame and drop fps.
+                        else
+                        {
+                            AZ_Warning("ShadersSystem", false, "CHWShader_D3D::mfUpdateSamplers - [%s] using texture slot %d without existing forced texture %d",
+                                pSRes->m_szMaterialName, nSlot, replacementSlot);
+                        }
+*/
+                    }
+
                 }
             }
         }
 
-        bool bNeedsConstantUpdate = false;
-        for (AZ::u32 i = 0; i < updateCount; ++i)
+        // Next run over all existing textures and explore if they have dynamic modulators 
+        // which will force shader resource constants update.
+        bool    bNeedsConstantUpdate = false;
+        for (auto iter = UpdatedTMap.begin(); iter != UpdatedTMap.end(); ++iter)
         {
-            if (!updates[i].texture)
-                continue;
-            updates[i].texture->Update(updates[i].slot);
-            bNeedsConstantUpdate |= updates[i].texture->IsNeedTexTransform();
+            SEfResTexture*  	pTexture = iter->second;
+
+            pTexture->Update(iter->first);
+            bNeedsConstantUpdate |= pTexture->IsNeedTexTransform();
         }
 
+        // Rebuild shader resources - there was at least one transform modulator request
         if (bNeedsConstantUpdate)
         {
-            shaderResources->Rebuild(shader);
+            pSRes->Rebuild(shader);
         }
     }
 
     return true;
 }
+
 
 bool CHWShader_D3D::mfAddGlobalTexture(SCGTexture& Texture)
 {
@@ -4370,7 +4556,7 @@ ED3DShError CHWShader_D3D::mfFallBack(SHWSInstance*& pInst, int nStatus)
     //  - ShadowGen pass
     //  - Z-prepass
     //  - Shadow-pass
-    if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3)) // ACCEPTED_USE
+    if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3 | SF_METAL)) // ACCEPTED_USE
     {
         //assert(gRenDev->m_cEF.m_nCombinationsProcess >= 0);
         return ED3DShError_CompilingError;
@@ -5212,3 +5398,4 @@ void CHWShader_D3D::mfUpdatePreprocessFlags(SShaderTechnique* pTech)
         pTech->m_nPreprocessFlags |= nFlags;
     }
 }
+

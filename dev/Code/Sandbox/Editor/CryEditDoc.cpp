@@ -55,9 +55,16 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Component/TransformBus.h>
+#include <AzCore/EBus/EBus.h>
+#include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Asset/AssetTypeInfoBus.h>
 
-#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+
+#include <LmbrCentral/Rendering/EditorLightComponentBus.h>
 
 #include <QDateTime>
 #include <QMessageBox>
@@ -80,6 +87,14 @@ static const char* kHoldFolder = "_hold";
 static const char* kSaveBackupFolder = "_savebackup";
 static const char* kResizeTempFolder = "_tmpresize";
 
+static const char* kBackupOrTempFolders[] = 
+{
+    kAutoBackupFolder,
+    kHoldFolder,
+    kSaveBackupFolder,
+    kResizeTempFolder
+};
+
 /////////////////////////////////////////////////////////////////////////////
 // CCryEditDoc construction/destruction
 
@@ -92,6 +107,8 @@ CCryEditDoc::CCryEditDoc()
     , m_boLevelExported(true)
     , m_mission(NULL)
     , m_modified(false)
+    , m_envProbeHeight(200.0f)
+    , m_envProbeSliceFullPath("@devroot@/Engine/EngineAssets/Slices/DefaultLevelSetup.slice")
 {
     ////////////////////////////////////////////////////////////////////////
     // Set member variables to initial values
@@ -129,6 +146,8 @@ CCryEditDoc::~CCryEditDoc()
     delete m_pLevelShaderCache;
     SAFE_DELETE(m_pClouds);
     CLogFile::WriteLine("Document destroyed");
+
+    AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
 }
 
 bool CCryEditDoc::IsModified() const
@@ -149,7 +168,7 @@ QString CCryEditDoc::GetPathName() const
 void CCryEditDoc::SetPathName(const QString& pathName)
 {
     m_pathName = pathName;
-    SetTitle(pathName.isEmpty() ? tr("Untitled") : PathUtil::GetFileName(pathName.toLatin1().data()).c_str());
+    SetTitle(pathName.isEmpty() ? tr("Untitled") : PathUtil::GetFileName(pathName.toUtf8().data()).c_str());
 }
 
 QString CCryEditDoc::GetTitle() const
@@ -160,6 +179,19 @@ QString CCryEditDoc::GetTitle() const
 void CCryEditDoc::SetTitle(const QString& title)
 {
     m_title = title;
+}
+
+bool CCryEditDoc::IsBackupOrTempLevelSubdirectory(const QString& folderName)
+{
+    for (const char* backupOrTempFolderName : kBackupOrTempFolders)
+    {
+        if (!folderName.compare(backupOrTempFolderName, Qt::CaseInsensitive))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool CCryEditDoc::DoSave(const QString& pathName, bool replace)
@@ -179,7 +211,7 @@ bool CCryEditDoc::DoSave(const QString& pathName, bool replace)
 
 bool CCryEditDoc::Save()
 {
-    return OnSaveDocument(GetPathName().toLatin1().data()) == TRUE;
+    return OnSaveDocument(GetPathName().toUtf8().data()) == TRUE;
 }
 
 void CCryEditDoc::ChangeMission()
@@ -328,7 +360,7 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
 
     HEAP_CHECK
 
-    CLogFile::FormatLine("Loading from %s...", szFilename.toLatin1().data());
+    CLogFile::FormatLine("Loading from %s...", szFilename.toUtf8().data());
     QString currentMissionName;
     QString szLevelPath = Path::GetPath(szFilename);
 
@@ -338,7 +370,7 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
         ICVar* sv_map = gEnv->pConsole->GetCVar("sv_map");
         if (sv_map)
         {
-            sv_map->Set(szGameLevelName.toLatin1().data());
+            sv_map->Set(szGameLevelName.toUtf8().data());
         }
     }
 
@@ -350,7 +382,7 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
         const ICVar* pShowErrorDialogOnLoad = gEnv->pConsole->GetCVar("ed_showErrorDialogOnLoad");
         CErrorsRecorder errorsRecorder(pShowErrorDialogOnLoad && (pShowErrorDialogOnLoad->GetIVal() != 0));
         AZStd::string levelPakPath;
-        if (AzFramework::StringFunc::Path::ConstructFull(gEnv->pFileIO->GetAlias("@assets@"), szLevelPath.toLatin1().data(), "level", "pak", levelPakPath, true))
+        if (AzFramework::StringFunc::Path::ConstructFull(szLevelPath.toUtf8().data(), "level", "pak", levelPakPath, true))
         {
             //Check whether level.pak is present
             if (!gEnv->pFileIO->Exists(levelPakPath.c_str()))
@@ -369,9 +401,9 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
         Audio::AudioSystemRequestBus::BroadcastResult(controlsPath, &Audio::AudioSystemRequestBus::Events::GetControlsPath);
         QString sAudioLevelPath(controlsPath);
         sAudioLevelPath += "levels/";
-        string const sLevelNameOnly = PathUtil::GetFileName(fileName.toLatin1().data());
+        string const sLevelNameOnly = PathUtil::GetFileName(fileName.toUtf8().data());
         sAudioLevelPath += sLevelNameOnly;
-        QByteArray path = sAudioLevelPath.toLatin1();
+        QByteArray path = sAudioLevelPath.toUtf8();
         Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oAMData(path, Audio::eADS_LEVEL_SPECIFIC);
         Audio::SAudioRequest oAudioRequestData;
         oAudioRequestData.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING); // Needs to be blocking so data is available for next preloading request!
@@ -424,7 +456,7 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
 
         {
             CAutoLogTime logtime("Game Engine level load");
-            GetIEditor()->GetGameEngine()->LoadLevel(szLevelPath, currentMissionName, true, true);
+            GetIEditor()->GetGameEngine()->LoadLevel(currentMissionName, true, true);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -514,7 +546,7 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
 
         {
             QByteArray str;
-            str = tr("Activating Mission %1").arg(currentMissionName).toLatin1();
+            str = tr("Activating Mission %1").arg(currentMissionName).toUtf8();
 
             CAutoLogTime logtime(str.data());
 
@@ -782,7 +814,7 @@ void CCryEditDoc::SerializeMissions(TDocMultiArchive& arrXmlAr, QString& current
 
         //! Store current mission name.
         currentMissionName = GetCurrentMission()->GetName();
-        node->setAttr("Current", currentMissionName.toLatin1().data());
+        node->setAttr("Current", currentMissionName.toUtf8().data());
 
         // Write all surface types.
         for (int i = 0; i < m_missions.size(); i++)
@@ -832,7 +864,7 @@ void CCryEditDoc::SerializeShaderCache(CXmlArchive& xmlAr)
 
         if (!buf.isEmpty())
         {
-            xmlAr.pNamedData->AddDataBlock("ShaderCache", buf.toLatin1().data(), buf.toLatin1().count());
+            xmlAr.pNamedData->AddDataBlock("ShaderCache", buf.toUtf8().data(), buf.toUtf8().count());
         }
     }
 }
@@ -941,7 +973,7 @@ bool CCryEditDoc::BeforeOpenDocument(const QString& lpszPathName, TOpenDocContex
     //ensure we close any open packs
     if (!GetIEditor()->GetLevelFolder().isEmpty())
     {
-        GetIEditor()->GetSystem()->GetIPak()->ClosePack((GetIEditor()->GetLevelFolder() + "\\level.pak").toLatin1().data());
+        GetIEditor()->GetSystem()->GetIPak()->ClosePack((GetIEditor()->GetLevelFolder() + "\\level.pak").toUtf8().data());
     }
 
     // restore directory to root.
@@ -949,7 +981,7 @@ bool CCryEditDoc::BeforeOpenDocument(const QString& lpszPathName, TOpenDocContex
 
     QString absoluteLevelPath = lpszPathName;
     QString friendlyDisplayName = Path::GetRelativePath(absoluteLevelPath, true);
-    CLogFile::FormatLine("Opening document %s", friendlyDisplayName.toLatin1().data());
+    CLogFile::FormatLine("Opening document %s", friendlyDisplayName.toUtf8().data());
 
     absoluteLevelPath = Path::GamePathToFullPath(friendlyDisplayName);
 
@@ -961,24 +993,23 @@ bool CCryEditDoc::BeforeOpenDocument(const QString& lpszPathName, TOpenDocContex
 bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& context)
 {
     CTimeValue& loading_start_time = context.loading_start_time;
-    QString& absoluteLevelCryFilePath = context.absoluteLevelPath;
+    QByteArray absoluteLevelCryFilePath = context.absoluteLevelPath.toUtf8().data();
+    AZ::IO::FileIOBase::GetDirectInstance()->ConvertToAlias(absoluteLevelCryFilePath.data(), absoluteLevelCryFilePath.capacity());
 
     // write the full filename and path to the log
     m_bLoadFailed = false;
 
     ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
     QString levelPath = Path::GetPath(absoluteLevelCryFilePath);
-    QString relativeLevelCryFilePath = Path::GetRelativePath(absoluteLevelCryFilePath, true);
-    QString relativeLevelPath = Path::GetRelativePath(levelPath, true);
 
     // if the level pack exists, open that, too.
-    QString levelPackPath = levelPath + "level.pak";
+    QString levelPackPath = levelPath + QString("level.pak");
 
     // load the pack if available.  Note that it is okay for it to be missing at this point
     // we may still be generating it.  Note that it mounts it in "@assets@" so that game code continues functioning,
     // even though it lives in the dev folder.
 
-    pIPak->OpenPack((QString("@assets@/") + relativeLevelPath).toLatin1().data(), levelPackPath.toLatin1().data());
+    pIPak->OpenPack(levelPath.toUtf8().data(), levelPackPath.toUtf8().data());
 
     TDocMultiArchive arrXmlAr = {};
     if (!LoadXmlArchiveArray(arrXmlAr, absoluteLevelCryFilePath, levelPath))
@@ -987,14 +1018,14 @@ bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& c
         return FALSE;
     }
 
-    IGameFramework* pGameframework = GetISystem()->GetIGame() ? GetISystem()->GetIGame()->GetIGameFramework() : NULL;
+    IGameFramework* pGameframework = GetISystem()->GetIGame() ? GetISystem()->GetIGame()->GetIGameFramework() : nullptr;
 
     if (pGameframework)
     {
-        string level = absoluteLevelCryFilePath.toLatin1().data();
+        string level = context.absoluteLevelPath.toUtf8().data();
         pGameframework->SetEditorLevel(PathUtil::GetFileName(level).c_str(), PathUtil::GetPath(level).c_str());
     }
-    if (!LoadLevel(arrXmlAr, absoluteLevelCryFilePath))
+    if (!LoadLevel(arrXmlAr, context.absoluteLevelPath))
     {
         m_bLoadFailed = true;
     }
@@ -1017,7 +1048,7 @@ bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& c
     CTimeValue loading_end_time = gEnv->pTimer->GetAsyncTime();
 
     CLogFile::FormatLine("-----------------------------------------------------------");
-    CLogFile::FormatLine("Successfully opened document %s", levelPath.toLatin1().data());
+    CLogFile::FormatLine("Successfully opened document %s", levelPath.toUtf8().data());
     CLogFile::FormatLine("Level loading time: %.2f seconds", (loading_end_time - loading_start_time).GetSeconds());
     CLogFile::FormatLine("-----------------------------------------------------------");
 
@@ -1079,7 +1110,7 @@ bool CCryEditDoc::BeforeSaveDocument(const QString& lpszPathName, TSaveDocContex
         return false;
     }
 
-    CryLog("Saving to %s...", levelPath.toLatin1().data());
+    CryLog("Saving to %s...", levelPath.toUtf8().data());
     GetIEditor()->Notify(eNotify_OnBeginSceneSave);
 
     bool bSaved(true);
@@ -1174,7 +1205,7 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
     BackupBeforeSave();
 
     QString levelAbsoluteFolder = Path::GetPath(fullPathName);
-    CFileUtil::CreateDirectory(levelAbsoluteFolder.toLatin1().data());
+    CFileUtil::CreateDirectory(levelAbsoluteFolder.toUtf8().data());
     GetIEditor()->GetGameEngine()->SetLevelPath(levelAbsoluteFolder);
 
     // need to copy existing level data before saving to different folder
@@ -1196,7 +1227,7 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         const QString oldLevelName = Path::GetFile(GetPathName());
         const QString oldLevelXml = Path::ReplaceExtension(oldLevelName, "xml");
         _finddata_t findData;
-        intptr_t findHandle = pIPak->FindFirst(oldLevelPattern.toLatin1().data(), &findData, 0, true);
+        intptr_t findHandle = pIPak->FindFirst(oldLevelPattern.toUtf8().data(), &findData, 0, true);
         if (findHandle >= 0)
         {
             do
@@ -1206,13 +1237,12 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
                 if (findData.attrib & _A_SUBDIR)
                 {
                     bool skipDir = sourceName == "." || sourceName == "..";
-                    skipDir |= sourceName == kSaveBackupFolder || sourceName == kAutoBackupFolder || sourceName == kHoldFolder;   // ignore backups / autosaves
-                    skipDir |= (sourceName.compare(kResizeTempFolder, Qt::CaseInsensitive) == 0); // skip resize temp folder
+                    skipDir |= IsBackupOrTempLevelSubdirectory(sourceName);
                     skipDir |= sourceName == "Layers"; // layers folder will be created and written out as part of saving
                     if (!skipDir)
                     {
-                        CFileUtil::CreateDirectory(Path::AddSlash(levelAbsoluteFolder + sourceName).toLatin1().data());
-                        CFileUtil::CopyTree((oldLevelAbsoluteFolder + sourceName).toLatin1().data(), Path::AddSlash(levelAbsoluteFolder + sourceName).toLatin1().data());
+                        CFileUtil::CreateDirectory(Path::AddSlash(levelAbsoluteFolder + sourceName).toUtf8().data());
+                        CFileUtil::CopyTree((oldLevelAbsoluteFolder + sourceName).toUtf8().data(), Path::AddSlash(levelAbsoluteFolder + sourceName).toUtf8().data());
                     }
                     continue;
                 }
@@ -1227,7 +1257,7 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
                 // no stale cached metadata in the pak system
                 if (sourceName.contains(".pak"))
                 {
-                    pIPak->ClosePack(sourceName.toLatin1().data());
+                    pIPak->ClosePack(sourceName.toUtf8().data());
                 }
 
                 QString destName = sourceName;
@@ -1262,9 +1292,9 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
 
     CPakFile pakFile;
 
-    if (!pakFile.Open(tempSaveFile.toLatin1().data(), false))
+    if (!pakFile.Open(tempSaveFile.toUtf8().data(), false))
     {
-        gEnv->pLog->LogWarning("Unable to open pack file %s for writing", tempSaveFile.toLatin1().data());
+        gEnv->pLog->LogWarning("Unable to open pack file %s for writing", tempSaveFile.toUtf8().data());
         return false;
     }
 
@@ -1290,12 +1320,12 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         }
         else
         {
-            gEnv->pLog->LogWarning("Unable to write the level data to file %s", tempSaveFile.toLatin1().data());
+            gEnv->pLog->LogWarning("Unable to write the level data to file %s", tempSaveFile.toUtf8().data());
         }
     }
     else
     {
-        gEnv->pLog->LogWarning("Unable to generate entity data for level save", tempSaveFile.toLatin1().data());
+        gEnv->pLog->LogWarning("Unable to generate entity data for level save %s", tempSaveFile.toUtf8().data());
     }
 
     pakFile.Close();
@@ -1325,7 +1355,7 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
 
     if (!succeeded)
     {
-        gEnv->pLog->LogWarning("Unable to move file %s to %s when saving", tempSaveFile.toLatin1().data(), fullPathName.toLatin1().data());
+        gEnv->pLog->LogWarning("Unable to move file %s to %s when saving", tempSaveFile.toUtf8().data(), fullPathName.toUtf8().data());
         return false;
     }
 
@@ -1355,13 +1385,13 @@ bool CCryEditDoc::LoadEntities(const QString& levelPakFile)
     bool loadedSuccessfully = false;
 
     ICryPak* pakSystem = GetIEditor()->GetSystem()->GetIPak();
-    bool pakOpened = pakSystem->OpenPack(levelPakFile.toLatin1().data());
+    bool pakOpened = pakSystem->OpenPack(levelPakFile.toUtf8().data());
     if (pakOpened)
     {
         const QString entityFilename = Path::GetPath(levelPakFile) + "LevelEntities.editor_xml";
 
         CCryFile entitiesFile;
-        if (entitiesFile.Open(entityFilename.toLatin1().data(), "rt"))
+        if (entitiesFile.Open(entityFilename.toUtf8().data(), "rt"))
         {
             AZStd::vector<char> fileBuffer;
             fileBuffer.resize(entitiesFile.GetLength());
@@ -1375,22 +1405,22 @@ bool CCryEditDoc::LoadEntities(const QString& levelPakFile)
                 }
                 else
                 {
-                    AZ_Error("Editor", "Failed to load level entities because the file \"%s\" could not be read.", entityFilename.toLatin1().data());
+                    AZ_Error("Editor", "Failed to load level entities because the file \"%s\" could not be read.", entityFilename.toUtf8().data());
                 }
             }
             else
             {
-                AZ_Error("Editor", "Failed to load level entities because the file \"%s\" is empty.", entityFilename.toLatin1().data());
+                AZ_Error("Editor", "Failed to load level entities because the file \"%s\" is empty.", entityFilename.toUtf8().data());
             }
 
             entitiesFile.Close();
         }
         else
         {
-            AZ_Error("Editor", "Failed to load level entities because the file \"%s\" was not found.", entityFilename.toLatin1().data());
+            AZ_Error("Editor", "Failed to load level entities because the file \"%s\" was not found.", entityFilename.toUtf8().data());
         }
 
-        pakSystem->ClosePack(levelPakFile.toLatin1().data());
+        pakSystem->ClosePack(levelPakFile.toUtf8().data());
     }
 
     return loadedSuccessfully;
@@ -1407,7 +1437,7 @@ bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteC
     OnStartLevelResourceList();
 
     // Load next level resource list.
-    pIPak->GetResourceList(ICryPak::RFOM_NextLevel)->Load(Path::Make(relativeFolder, "resourcelist.txt").toLatin1().data());
+    pIPak->GetResourceList(ICryPak::RFOM_NextLevel)->Load(Path::Make(relativeFolder, "resourcelist.txt").toUtf8().data());
     GetIEditor()->Notify(eNotify_OnBeginLoad);
     //GetISystem()->GetISystemEventDispatcher()->OnSystemEvent( ESYSTEM_EVENT_LEVEL_LOAD_START,0,0 );
     DeleteContents();
@@ -1423,6 +1453,8 @@ bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteC
     SetDocumentReady(true);
     GetIEditor()->Notify(eNotify_OnEndLoad);
 
+    GetIEditor()->SetStatusText("Ready");
+
     return true;
 }
 
@@ -1434,7 +1466,10 @@ void CCryEditDoc::Hold(const QString& holdName)
     }
 
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
-    QString holdPath = levelPath + "/" + holdName + "/";
+    char resolvedLevelPath[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(levelPath.toUtf8().data(), resolvedLevelPath, AZ_MAX_PATH_LEN);
+
+    QString holdPath = QString::fromUtf8(resolvedLevelPath) + "/" + holdName + "/";
     QString holdFilename = holdPath + holdName + GetIEditor()->GetGameEngine()->GetLevelExtension();
 
     // never auto-backup while we're trying to hold.
@@ -1454,7 +1489,10 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
     }
 
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
-    QString holdPath = levelPath + "/" + holdName + "/";
+    char resolvedLevelPath[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(levelPath.toUtf8().data(), resolvedLevelPath, AZ_MAX_PATH_LEN);
+
+    QString holdPath = QString::fromUtf8(resolvedLevelPath) + "/" + holdName + "/";
     QString holdFilename = holdPath + holdName + GetIEditor()->GetGameEngine()->GetLevelExtension();
 
     {
@@ -1497,7 +1535,7 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
 
     if (bDelHoldFolder)
     {
-        CFileUtil::Deltree(holdPath.toLatin1().data(), true);
+        CFileUtil::Deltree(holdPath.toUtf8().data(), true);
     }
 }
 
@@ -1522,7 +1560,7 @@ namespace {
     {
         QString folderMask(sourceFolder);
         _finddata_t fileinfo;
-        intptr_t handle = gEnv->pCryPak->FindFirst((folderMask + "/*.*").toLatin1().data(), &fileinfo);
+        intptr_t handle = gEnv->pCryPak->FindFirst((folderMask + "/*.*").toUtf8().data(), &fileinfo);
         if (handle != -1)
         {
             do
@@ -1560,16 +1598,18 @@ bool CCryEditDoc::BackupBeforeSave(bool force)
         return false;
     }
 
+    char resolvedLevelPath[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(levelPath.toUtf8().data(), resolvedLevelPath, AZ_MAX_PATH_LEN);
     QWaitCursor wait;
 
-    QString saveBackupPath = levelPath + "/" + kSaveBackupFolder;
+    QString saveBackupPath = QString::fromUtf8(resolvedLevelPath) + "/" + kSaveBackupFolder;
 
     std::vector<SFolderTime> folders;
-    CollectAllFoldersByTime(saveBackupPath.toLatin1().data(), folders);
+    CollectAllFoldersByTime(saveBackupPath.toUtf8().data(), folders);
 
     for (int i = int(folders.size()) - gSettings.backupOnSaveMaxCount; i >= 0; --i)
     {
-        CFileUtil::Deltree(QStringLiteral("%1/%2/").arg(saveBackupPath, folders[i].folder).toLatin1().data(), true);
+        CFileUtil::Deltree(QStringLiteral("%1/%2/").arg(saveBackupPath, folders[i].folder).toUtf8().data(), true);
     }
 
     QDateTime theTime = QDateTime::currentDateTime();
@@ -1577,9 +1617,9 @@ bool CCryEditDoc::BackupBeforeSave(bool force)
 
     QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
     QString backupPath = saveBackupPath + "/" + subFolder + "/";
-    gEnv->pCryPak->MakeDir(backupPath.toLatin1().data());
+    gEnv->pCryPak->MakeDir(backupPath.toUtf8().data());
 
-    QString sourcePath = levelPath + "/";
+    QString sourcePath = QString::fromUtf8(resolvedLevelPath) + "/";
     QString ignoredFiles(kAutoBackupFolder);
     ignoredFiles += "|";
     ignoredFiles += kSaveBackupFolder;
@@ -1587,10 +1627,10 @@ bool CCryEditDoc::BackupBeforeSave(bool force)
     ignoredFiles += kHoldFolder;
 
     // copy that whole tree:
-    AZ_TracePrintf("Editor", "Saving level backup to '%s'...\n", backupPath.toLatin1().data());
-    if (IFileUtil::ETREECOPYOK != CFileUtil::CopyTree(sourcePath, backupPath, true, false, ignoredFiles.toLatin1().data()))
+    AZ_TracePrintf("Editor", "Saving level backup to '%s'...\n", backupPath.toUtf8().data());
+    if (IFileUtil::ETREECOPYOK != CFileUtil::CopyTree(sourcePath, backupPath, true, false, ignoredFiles.toUtf8().data()))
     {
-        gEnv->pLog->LogWarning("Attempting to save backup to %s before saving, but could not write all files.", backupPath.toLatin1().data());
+        gEnv->pLog->LogWarning("Attempting to save backup to %s before saving, but could not write all files.", backupPath.toUtf8().data());
         return false;
     }
     return true;
@@ -1624,11 +1664,11 @@ void CCryEditDoc::SaveAutoBackup(bool bForce)
     // collect all subfolders
     std::vector<SFolderTime> folders;
 
-    CollectAllFoldersByTime(autoBackupPath.toLatin1().data(), folders);
+    CollectAllFoldersByTime(autoBackupPath.toUtf8().data(), folders);
 
     for (int i = int(folders.size()) - gSettings.autoBackupMaxCount; i >= 0; --i)
     {
-        CFileUtil::Deltree(QStringLiteral("%1/%2/").arg(autoBackupPath, folders[i].folder).toLatin1().data(), true);
+        CFileUtil::Deltree(QStringLiteral("%1/%2/").arg(autoBackupPath, folders[i].folder).toUtf8().data(), true);
     }
 
     // save new backup
@@ -1709,7 +1749,7 @@ CMission*   CCryEditDoc::FindMission(const QString& name) const
 {
     for (int i = 0; i < m_missions.size(); i++)
     {
-        if (QString::compare(name.toLatin1().data(), m_missions[i]->GetName(), Qt::CaseInsensitive) == 0)
+        if (QString::compare(name.toUtf8().data(), m_missions[i]->GetName(), Qt::CaseInsensitive) == 0)
         {
             return m_missions[i];
         }
@@ -1766,12 +1806,12 @@ void CCryEditDoc::LogLoadTime(int time)
     QString filename = Path::Make(exePath, "LevelLoadTime.log");
     QString level = GetIEditor()->GetGameEngine()->GetLevelPath();
 
-    CLogFile::FormatLine("[LevelLoadTime] Level %s loaded in %d seconds", level.toLatin1().data(), time / 1000);
+    CLogFile::FormatLine("[LevelLoadTime] Level %s loaded in %d seconds", level.toUtf8().data(), time / 1000);
 #if defined(AZ_PLATFORM_WINDOWS)
-    SetFileAttributes(filename.toLatin1().data(), FILE_ATTRIBUTE_ARCHIVE);
+    SetFileAttributes(filename.toUtf8().data(), FILE_ATTRIBUTE_ARCHIVE);
 #endif
 
-    FILE* file = fopen(filename.toLatin1().data(), "at");
+    FILE* file = fopen(filename.toUtf8().data(), "at");
 
     if (file)
     {
@@ -1782,7 +1822,7 @@ void CCryEditDoc::LogLoadTime(int time)
 
         time = time / 1000;
         text = QStringLiteral("\n[%1] Level %2 loaded in %3 seconds").arg(version, level).arg(time);
-        fwrite(text.toLatin1().data(), text.toLatin1().length(), 1, file);
+        fwrite(text.toUtf8().data(), text.toUtf8().length(), 1, file);
         fclose(file);
     }
 }
@@ -1903,8 +1943,8 @@ const char* CCryEditDoc::GetTemporaryLevelName() const
 void CCryEditDoc::DeleteTemporaryLevel()
 {
     QString tempLevelPath = (Path::GetEditingGameDataFolder() + "/Levels/" + GetTemporaryLevelName()).c_str();
-    GetIEditor()->GetSystem()->GetIPak()->ClosePacks(tempLevelPath.toLatin1().data(), ICryPak::EPathResolutionRules::FLAGS_ADD_TRAILING_SLASH);
-    CFileUtil::Deltree(tempLevelPath.toLatin1().data(), true);
+    GetIEditor()->GetSystem()->GetIPak()->ClosePacks(tempLevelPath.toUtf8().data(), ICryPak::EPathResolutionRules::FLAGS_ADD_TRAILING_SLASH);
+    CFileUtil::Deltree(tempLevelPath.toUtf8().data(), true);
 }
 
 void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
@@ -1953,12 +1993,11 @@ void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
         GetIEditor()->GetGameEngine()->SetLevelCreated(false);
 
         // Default time of day.
-        XmlNodeRef root = GetISystem()->LoadXmlFromFile("@devroot@/Editor/default_time_of_day.xml");
+        XmlNodeRef root = GetISystem()->LoadXmlFromFile("@engroot@/Editor/default_time_of_day.xml");
         if (root)
         {
             ITimeOfDay* pTimeOfDay = gEnv->p3DEngine->GetTimeOfDay();
             pTimeOfDay->Serialize(root, true);
-            pTimeOfDay->SetTime(13.5f, true);  // Set to 1:30pm for new level
         }
     }
 
@@ -1985,6 +2024,27 @@ void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
     SetModifiedModules(eModifiedNothing);
 
     GetIEditor()->SetStatusText("Ready");
+}
+
+void CCryEditDoc::CreateDefaultLevelAssets(int resolution, int unitSize)
+{
+    AZ::Data::AssetCatalogRequestBus::BroadcastResult(m_envProbeSliceAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, m_envProbeSliceFullPath, azrtti_typeid<AZ::SliceAsset>(), true);
+    if (m_envProbeSliceAssetId.IsValid())
+    {
+        AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(m_envProbeSliceAssetId, false);
+        if (asset)
+        {
+            m_terrainSize = resolution * unitSize;
+            const float halfTerrainSize = m_terrainSize / 2.0f;
+
+            AZ::Transform worldTransform = AZ::Transform::CreateIdentity();
+            worldTransform = AZ::Transform::CreateTranslation(AZ::Vector3(halfTerrainSize, halfTerrainSize, m_envProbeHeight / 2));
+            
+            AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+            GetIEditor()->SuspendUndo();
+            AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::InstantiateEditorSlice, asset, worldTransform);
+        }
+    }
 }
 
 void CCryEditDoc::OnEnvironmentPropertyChanged(IVariable* pVar)
@@ -2036,13 +2096,13 @@ void CCryEditDoc::OnEnvironmentPropertyChanged(IVariable* pVar)
         QString buff;
         QColor gammaColor = ColorLinearToGamma(ColorF(value.x, value.y, value.z));
         buff = QStringLiteral("%1,%2,%3").arg(gammaColor.red()).arg(gammaColor.green()).arg(gammaColor.blue());
-        childNode->setAttr("value", buff.toLatin1().data());
+        childNode->setAttr("value", buff.toUtf8().data());
     }
     else
     {
         QString value;
         pVar->Get(value);
-        childNode->setAttr("value", value.toLatin1().data());
+        childNode->setAttr("value", value.toUtf8().data());
     }
 
     GetIEditor()->GetGameEngine()->ReloadEnvironment();
@@ -2069,12 +2129,10 @@ BOOL CCryEditDoc::LoadXmlArchiveArray(TDocMultiArchive& arrXmlAr, const QString&
 
         CXmlArchive& xmlAr = *pXmlAr;
         xmlAr.bLoading = true;
-        QString relPath = Path::GetRelativePath(absoluteLevelPath, true);
 
         // bound to the level folder, as if it were the assets folder.
         // this mounts (whateverlevelname.ly) as @assets@/Levels/whateverlevelname/ and thus it works...
-        QString bindRootRel = Path::GetPath(relPath);
-        bool openLevelPakFileSuccess = pIPak->OpenPack((QString("@assets@/") + bindRootRel).toLatin1().data(), absoluteLevelPath.toLatin1().data());
+        bool openLevelPakFileSuccess = pIPak->OpenPack(levelPath.toUtf8().data(), absoluteLevelPath.toUtf8().data());
         if (!openLevelPakFileSuccess)
         {
             return FALSE;
@@ -2082,8 +2140,8 @@ BOOL CCryEditDoc::LoadXmlArchiveArray(TDocMultiArchive& arrXmlAr, const QString&
 
         CPakFile pakFile;
         bool loadFromPakSuccess;
-        loadFromPakSuccess = xmlAr.LoadFromPak(bindRootRel, pakFile);
-        pIPak->ClosePack(absoluteLevelPath.toLatin1().data());
+        loadFromPakSuccess = xmlAr.LoadFromPak(levelPath, pakFile);
+        pIPak->ClosePack(absoluteLevelPath.toUtf8().data());
         if (!loadFromPakSuccess)
         {
             return FALSE;
@@ -2116,6 +2174,48 @@ void CCryEditDoc::RepositionVegetation()
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
+// AzToolsFramework::EditorEntityContextNotificationBus interface implementation
+void CCryEditDoc::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/)
+{
+    if (m_envProbeSliceAssetId == sliceAssetId)
+    {
+        const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::Uuid editorEnvProbeComponentId("{8DBD6035-583E-409F-AFD9-F36829A0655D}");
+        AzToolsFramework::EntityIdList entityIdList;
+        for (const AZ::Entity* entity : entities)
+        {
+            if (entity->FindComponent(editorEnvProbeComponentId))
+            {
+                // Update Probe Area size to cover the whole terrain
+                LmbrCentral::EditorLightComponentRequestBus::Event(entity->GetId(), &LmbrCentral::EditorLightComponentRequests::SetProbeAreaDimensions, AZ::Vector3(m_terrainSize, m_terrainSize, m_envProbeHeight));
+
+                // Force update the light to apply cubemap
+                LmbrCentral::EditorLightComponentRequestBus::Event(entity->GetId(), &LmbrCentral::EditorLightComponentRequests::RefreshLight);
+            }
+            entityIdList.push_back(entity->GetId());
+        }
+        //Detach instantiated env probe entities from engine slice
+        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::DetachSliceEntities, entityIdList);
+        SetModifiedFlag(true);
+        SetModifiedModules(eModifiedEntities);
+        
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
+    }
+    GetIEditor()->ResumeUndo();
+}
+
+
+void CCryEditDoc::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& /*ticket*/)
+{
+    if (m_envProbeSliceAssetId == sliceAssetId)
+    {
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
+        AZ_Warning("Editor", false, "Failed to instantiate default environment probe slice.");
+    }
+    GetIEditor()->ResumeUndo();
+}
+//////////////////////////////////////////////////////////////////////////
 
 namespace
 {

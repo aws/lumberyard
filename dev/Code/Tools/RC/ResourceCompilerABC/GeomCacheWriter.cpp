@@ -21,376 +21,100 @@
 #include <AzCore/std/parallel/lock.h>
 
 GeomCacheDiskWriteThread::GeomCacheDiskWriteThread(const string& fileName)
-    : m_fileName(fileName)
-    , m_bExit(false)
-    , m_currentReadBuffer(0)
-    , m_currentWriteBuffer(0)
-    , m_outstandingWrites(0)
+    : m_bExit(false)
 {
-    for (unsigned int i = 0; i < m_kNumBuffers; ++i)
-    {
-        m_futures[i] = 0;
-        m_offsets[i] = 0;
-        m_origins[i] = SEEK_CUR;
-    }
-
-    // Start disk writer thread
-    AZStd::thread_desc threadDescription;
-    threadDescription.m_name = "GeomCacheDiskWriteThread";
-    auto threadFunction = AZStd::bind(ThreadFunc, this);
-    m_thread = AZStd::thread(threadFunction, &threadDescription);
+    m_fileHandle = fopen(fileName, "w+b");
 }
 
 GeomCacheDiskWriteThread::~GeomCacheDiskWriteThread()
 {
-    Flush();
-
-    m_bExit = true;
+    assert(m_bExit);
+    fclose(m_fileHandle);
 }
 
-unsigned int __stdcall GeomCacheDiskWriteThread::ThreadFunc(void* pParam)
+void GeomCacheDiskWriteThread::Write(std::vector<char>& buffer, long offset, int origin)
 {
-    GeomCacheDiskWriteThread* pSelf = reinterpret_cast<GeomCacheDiskWriteThread*>(pParam);
-    pSelf->Run();
-    return 0;
-}
-
-void GeomCacheDiskWriteThread::Run()
-{
-    FILE* pFileHandle = fopen(m_fileName, "w+b");
-
-    while (true)
-    {
-        AZStd::mutex& criticalSection = m_criticalSections[m_currentReadBuffer];
-        criticalSection.lock();
-
-        // Wait until the current read buffer becomes filled or we need to exit
-        while (m_buffers[m_currentReadBuffer].empty() && !IsReadyToExit())
-        {
-            AZStd::unique_lock<AZStd::mutex> uniqueLock(criticalSection, AZStd::defer_lock_t());
-            m_dataAvailableCV.wait(uniqueLock);
-        }
-
-        m_outstandingWritesCS.lock();
-
-        if (!IsReadyToExit())
-        {
-            // Seek to write position
-            fseek(pFileHandle, m_offsets[m_currentReadBuffer], m_origins[m_currentReadBuffer]);
-
-            // Fill future
-            DiskWriteFuture* pFuture = m_futures[m_currentReadBuffer];
-            if (pFuture)
-            {
-                fpos_t position;
-                fgetpos(pFileHandle, &position);
-                pFuture->m_position = (uint64)position;
-            }
-
-            // Write and clear current read buffer
-            const size_t bufferSize = m_buffers[m_currentReadBuffer].size();
-            m_bytesWritten += bufferSize;
-            size_t bytesWritten = fwrite(m_buffers[m_currentReadBuffer].data(), 1, bufferSize, pFileHandle);
-            //RCLog("Written %Iu/%Iu bytes from buffer %d, %d", bytesWritten, bufferSize, m_currentReadBuffer, ferror(pFileHandle));
-
-            if (pFuture)
-            {
-                pFuture->m_size = (uint32)bytesWritten;
-            }
-
-            m_buffers[m_currentReadBuffer].clear();
-
-            // Proceed to next buffer
-            m_currentReadBuffer = (m_currentReadBuffer + 1) % m_kNumBuffers;
-
-            --m_outstandingWrites;
-        }
-        else
-        {
-            m_outstandingWritesCS.unlock();
-            criticalSection.unlock();
-            break;
-        }
-
-        m_outstandingWritesCS.unlock();
-        criticalSection.unlock();
-        m_dataWrittenCV.notify_all();
-    }
-
-    fclose(pFileHandle);
-}
-
-void GeomCacheDiskWriteThread::Write(std::vector<char>& buffer, DiskWriteFuture* pFuture, long offset, int origin)
-{
-    assert(!buffer.empty() && !m_bExit);
     if (buffer.empty() || m_bExit)
     {
         return;
     }
 
-    ++m_outstandingWrites;
+    fseek(m_fileHandle, offset, origin);
 
-    AZStd::mutex& criticalSection = m_criticalSections[m_currentWriteBuffer];
+    // Write and clear current read buffer
+    const size_t bufferSize = buffer.size();
+    m_bytesWritten += bufferSize;
+    size_t bytesWritten = fwrite(buffer.data(), 1, bufferSize, m_fileHandle);
 
-    {
-        AZStd::unique_lock<AZStd::mutex> uniqueLock(criticalSection);
-        
-        while (!m_buffers[m_currentWriteBuffer].empty())
-        {
-            m_dataWrittenCV.wait(uniqueLock);
-        }
-        
-        assert(!buffer.empty());
-        buffer.swap(m_buffers[m_currentWriteBuffer]);
-        m_futures[m_currentWriteBuffer] = pFuture;
-        m_offsets[m_currentWriteBuffer] = offset;
-        m_origins[m_currentWriteBuffer] = origin;
-        
-        //RCLog("Updated buffer %u", m_currentWriteBuffer);
-        
-        m_currentWriteBuffer = (m_currentWriteBuffer + 1) % m_kNumBuffers;
-    }
-
-    m_dataAvailableCV.notify_one();
-}
-
-void GeomCacheDiskWriteThread::Flush()
-{
-    AZStd::unique_lock<AZStd::mutex> lock(m_outstandingWritesCS);
-    long desiredValue = 0;
-    while (!m_outstandingWrites.compare_exchange_weak(desiredValue, 0l))
-    {
-        // There is a subtle race condition in the code where we can end up
-        // waiting on the cond var after it was notified and it will not be
-        // notified again. To break out of this deadlock wait for a max time
-        // of ten seconds so that we check the loop conditions again
-        AZStd::chrono::seconds tenSeconds(10);
-        m_dataWrittenCV.wait_for(lock, tenSeconds);
-    }
+    //RCLog("Written %Iu/%Iu bytes with error: %d", bytesWritten, bufferSize, ferror(m_fileHandle));
 }
 
 void GeomCacheDiskWriteThread::EndThread()
 {
-    for (unsigned int i = 0; i < m_kNumBuffers; ++i)
-    {
-        m_criticalSections[i].lock();
-    }
-
     m_bExit = true;
-
-    for (unsigned int i = 0; i < m_kNumBuffers; ++i)
-    {
-        m_criticalSections[i].unlock();
-    }
-
-    m_dataAvailableCV.notify_one();
-
-    m_thread.join();
     RCLog("  Disk write thread exited");
 }
 
-bool GeomCacheDiskWriteThread::IsReadyToExit()
+uint64 GeomCacheDiskWriteThread::GetCurrentPosition() const
 {
-    long desiredValue = 0;
-    return m_bExit && m_outstandingWrites.compare_exchange_strong(desiredValue, 0l);
+    fpos_t position;
+    fgetpos(m_fileHandle, &position);
+    return static_cast<uint64>(position);
 }
 
-GeomCacheBlockCompressionWriter::GeomCacheBlockCompressionWriter(ThreadUtils::StealingThreadPool& threadPool,
-    IGeomCacheBlockCompressor* pBlockCompressor, GeomCacheDiskWriteThread& diskWriteThread)
-    : m_threadPool(threadPool)
-    , m_pBlockCompressor(pBlockCompressor)
+GeomCacheBlockCompressionWriter::GeomCacheBlockCompressionWriter(IGeomCacheBlockCompressor* pBlockCompressor, GeomCacheDiskWriteThread& diskWriteThread)
+    : m_pBlockCompressor(pBlockCompressor)
     , m_diskWriteThread(diskWriteThread)
-    , m_nextBlockIndex(0)
-    , m_nextJobIndex(0)
-    , m_bExit(false)
-    , m_nextBlockToWrite(0)
-    , m_numJobsRunning(0)
 {
-    m_jobData.resize(m_threadPool.GetNumThreads() * 2);
-
-    const uint numJobs = m_jobData.size();
-    for (uint i = 0; i < numJobs; ++i)
-    {
-        m_jobData[i].m_dataIndex = i;
-        m_jobData[i].m_pPrevJobData = &m_jobData[(i > 0) ? (i - 1) : (numJobs - 1)];
-        m_jobData[i].m_pCompressionWriter = this;
-    }
-
-    // Start compression writer control thread
-    AZStd::thread_desc threadDescription;
-    threadDescription.m_name = "GeomCacheBlockCompressionWriter";
-    auto threadFunction = AZStd::bind(ThreadFunc, this);
-    m_thread = AZStd::thread(threadFunction, &threadDescription);
 }
 
 GeomCacheBlockCompressionWriter::~GeomCacheBlockCompressionWriter()
 {
-    Flush();
-
-    m_bExit = true;
-    m_jobFinishedCV.notify_all();
-
-    m_thread.join();
-}
-
-unsigned int __stdcall GeomCacheBlockCompressionWriter::ThreadFunc(void* pParam)
-{
-    GeomCacheBlockCompressionWriter* pSelf = reinterpret_cast<GeomCacheBlockCompressionWriter*>(pParam);
-    pSelf->Run();
-    return 0;
-}
-
-void GeomCacheBlockCompressionWriter::Run()
-{
-    AZStd::unique_lock<AZStd::mutex> uniqueLock(m_jobFinishedCS);
-    while (!m_bExit || m_numJobsRunning > 0)
-    {
-        PushCompletedBlocks();
-
-        if (!m_bExit || m_numJobsRunning > 0)
-        {
-            m_jobFinishedCV.wait(uniqueLock);
-        }
-    }
-}
-
-void GeomCacheBlockCompressionWriter::Flush()
-{
-    // Just wait until write thread has no more jobs running
-    AZStd::unique_lock<AZStd::mutex> uniqueJobLock(m_jobFinishedCS);
-    while (m_numJobsRunning > 0)
-    {
-        PushCompletedBlocks();
-
-        if (m_numJobsRunning > 0)
-        {
-            m_jobFinishedCV.wait(uniqueJobLock);
-        }
-    }
-}
-
-void GeomCacheBlockCompressionWriter::PushCompletedBlocks()
-{
-    std::vector<JobData*> unwrittenFinishedJobs;
-
-    const uint numJobs = m_jobData.size();
-    for (uint i = 0; i < numJobs; ++i)
-    {
-        JobData& jobData = m_jobData[i];
-        if (jobData.m_bFinished && !jobData.m_bWritten)
-        {
-            unwrittenFinishedJobs.push_back(&jobData);
-        }
-    }
-
-    std::sort(unwrittenFinishedJobs.begin(), unwrittenFinishedJobs.end(),
-        [=](const JobData* pA, const JobData* pB)
-        {
-            return pA->m_blockIndex < pB->m_blockIndex;
-        }
-        );
-
-    for (uint i = 0; i < unwrittenFinishedJobs.size(); ++i)
-    {
-        JobData& jobData = *unwrittenFinishedJobs[i];
-        if (jobData.m_blockIndex == m_nextBlockToWrite)
-        {
-            m_diskWriteThread.Write(jobData.m_data, jobData.m_pWriteFuture, jobData.m_offset, jobData.m_origin);
-
-            --m_numJobsRunning;
-            jobData.m_bWritten = true;
-            ++m_nextBlockToWrite;
-            m_jobFinishedCV.notify_all();
-        }
-        else
-        {
-            break;
-        }
-    }
 }
 
 void GeomCacheBlockCompressionWriter::PushData(const void* data, size_t size)
 {
     size_t writePosition = m_data.size();
     m_data.resize(m_data.size() + size);
-    memcpy((void*)&m_data[writePosition], data, size);
+    memcpy(&m_data[writePosition], data, size);
 }
 
-uint64 GeomCacheBlockCompressionWriter::WriteBlock(bool bCompress, DiskWriteFuture* pFuture, long offset, int origin)
+DataBlockFileInfo GeomCacheBlockCompressionWriter::WriteBlock(bool bCompress, long offset, int origin)
 {
-    uint64 blockSize = m_data.size();
+    DataBlockFileInfo diskStats;
+    diskStats.m_size = m_data.size(); 
 
     if (m_data.empty())
     {
-        return blockSize;
+        return diskStats;
     }
 
-    JobData* jobData = nullptr;
-
-    {
-        AZStd::unique_lock<AZStd::mutex> uniqueLock(m_jobFinishedCS);
-
-        const uint numJobs = m_jobData.size();
-        while (m_numJobsRunning == numJobs)
-        {
-            m_jobFinishedCV.wait(uniqueLock);
-        }
-
-        // Fill job data
-        jobData = &m_jobData[m_nextJobIndex];
-        jobData->m_bFinished = false;
-        jobData->m_bWritten = false;
-        jobData->m_blockIndex = m_nextBlockIndex++;
-        jobData->m_pWriteFuture = pFuture;
-        jobData->m_offset = offset;
-        jobData->m_origin = origin;
-        jobData->m_data.swap(m_data);
-
-        m_nextJobIndex = (m_nextJobIndex + 1) % numJobs;
-        ++m_numJobsRunning;
-    }
-
+    // Fill job data
     if (bCompress)
     {
-        // If we have only one thread in the pool then we need to run the job
-        // otherwise we will get in a race condition/deadlock with ourselves adding
-        // a job to process but trying to process more jobs and waiting on the above
-        // conditional variable forever.
-        if (m_threadPool.GetNumThreads() == 1)
-        {
-            RunJob(jobData);
-        }
-        else
-        {
-            m_threadPool.Submit(&GeomCacheBlockCompressionWriter::RunJob, jobData);
-        }
-    }
-    else
-    {
-        // Just directly pass to write thread
-        m_jobFinishedCS.lock();
-        jobData->m_bFinished = true;
-        m_jobFinishedCS.unlock();
-        m_jobFinishedCV.notify_all();
+        CompressData();
     }
 
-    return blockSize;
+    diskStats.m_position = m_diskWriteThread.GetCurrentPosition();
+    diskStats.m_size = m_data.size();
+
+    m_diskWriteThread.Write(m_data, offset, origin);
+
+    m_totalBytesWritten += diskStats.m_size;
+
+    m_data.clear();
+
+    return diskStats;
 }
 
-void GeomCacheBlockCompressionWriter::RunJob(JobData* pJobData)
-{
-    pJobData->m_pCompressionWriter->CompressJob(pJobData);
-}
-
-void GeomCacheBlockCompressionWriter::CompressJob(JobData* pJobData)
+void GeomCacheBlockCompressionWriter::CompressData()
 {
     // Remember uncompressed size
-    const uint32 uncompressedSize = pJobData->m_data.size();
+    const uint32 uncompressedSize = m_data.size();
 
     // Compress job data
     std::vector<char> compressedData;
-    m_pBlockCompressor->Compress(pJobData->m_data, compressedData);
-    pJobData->m_data.clear();
+    m_pBlockCompressor->Compress(m_data, compressedData);
 
     std::vector<char> dataBuffer;
     dataBuffer.reserve(sizeof(GeomCacheFile::SCompressedBlockHeader) + compressedData.size());
@@ -402,17 +126,12 @@ void GeomCacheBlockCompressionWriter::CompressJob(JobData* pJobData)
 
     dataBuffer.insert(dataBuffer.begin() + sizeof(GeomCacheFile::SCompressedBlockHeader), compressedData.begin(), compressedData.end());
 
-    pJobData->m_data = dataBuffer;
-    m_jobFinishedCS.lock();
-    pJobData->m_bFinished = true;
-    m_jobFinishedCS.unlock();
-    m_jobFinishedCV.notify_all();
+    m_data = dataBuffer;
 }
 
 GeomCacheWriter::GeomCacheWriter(const string& filename, GeomCacheFile::EBlockCompressionFormat compressionFormat,
-    ThreadUtils::StealingThreadPool& threadPool, const uint numFrames, const bool bPlaybackFromMemory, const bool b32BitIndices)
+    const uint numFrames, const bool bPlaybackFromMemory, const bool b32BitIndices)
     : m_compressionFormat(compressionFormat)
-    , m_pFileHandle(0)
     , m_totalUncompressedAnimationSize(0)
 {
     m_animationAABB.Reset();
@@ -435,7 +154,7 @@ GeomCacheWriter::GeomCacheWriter(const string& filename, GeomCacheFile::EBlockCo
         break;
     }
 
-    m_pCompressionWriter.reset(new GeomCacheBlockCompressionWriter(threadPool, m_pBlockCompressor.get(), *m_pDiskWriteThread));
+    m_pCompressionWriter.reset(new GeomCacheBlockCompressionWriter(m_pBlockCompressor.get(), *m_pDiskWriteThread));
 
     for (uint i = 0; i < m_kNumProgressStatusReports; ++i)
     {
@@ -447,14 +166,11 @@ GeomCacheWriterStats GeomCacheWriter::FinishWriting()
 {
     GeomCacheWriterStats stats = {0};
 
-    // Flush disk write thread and thereby make all write future valid
-    m_pCompressionWriter->Flush();
-    m_pDiskWriteThread->Flush();
-
     // Write frame offsets
     RCLog("  Writing frame offsets/sizes...");
     if (!WriteFrameInfos())
     {
+        m_pDiskWriteThread->EndThread();
         return stats;
     }
 
@@ -467,24 +183,19 @@ GeomCacheWriterStats GeomCacheWriter::FinishWriting()
         m_fileHeader.m_aabbMax[i] = m_animationAABB.max[i];
     }
     m_pCompressionWriter->PushData((void*)&m_fileHeader, sizeof(GeomCacheFile::SHeader));
-    m_pCompressionWriter->WriteBlock(false, nullptr, 0, SEEK_SET);
+
+    uint64 currentBytesWritten = m_pCompressionWriter->GetTotalBytesWritten();
+    m_pCompressionWriter->WriteBlock(false, 0, SEEK_SET);
+    uint64 animationBytesWritten = m_pCompressionWriter->GetTotalBytesWritten() - currentBytesWritten;
 
     // Destroy compression writer and block compressor
     m_pCompressionWriter.reset(nullptr);
     m_pBlockCompressor.reset(nullptr);
 
-    // End disk write thread
     m_pDiskWriteThread->EndThread();
 
-    uint64 animationBytesWritten = 0;
-    for (auto iter = m_frameWriteFutures.begin(); iter != m_frameWriteFutures.end(); ++iter)
-    {
-        uint64 blockSize = (*iter)->GetSize();
-        animationBytesWritten += (*iter)->GetSize();
-    }
-
-    stats.m_headerDataSize = m_headerWriteFuture.GetSize() + m_frameInfosWriteFuture.GetSize() + m_staticNodeDataFuture.GetSize();
-    stats.m_staticDataSize = m_staticMeshDataFuture.GetSize();
+    stats.m_headerDataSize = m_headerWriteSize + m_placeholderForFrameInfos.m_size + m_staticNodeDataSize;
+    stats.m_staticDataSize = m_staticMeshDataSize;
     stats.m_animationDataSize = animationBytesWritten;
     stats.m_uncompressedAnimationSize = m_totalUncompressedAnimationSize;
 
@@ -495,19 +206,23 @@ void GeomCacheWriter::WriteStaticData(const std::vector<Alembic::Abc::chrono_t>&
 {
     RCLog("Writing static data to disk...");
 
+    DataBlockFileInfo stats;
     // Write header with 0 signature, to avoid the engine to read incomplete caches.
     // Correct signature will be written in FinishWriting at the end
     m_fileHeader.m_blockCompressionFormat = m_compressionFormat;
     m_fileHeader.m_numFrames = frameTimes.size();
     m_pCompressionWriter->PushData((void*)&m_fileHeader, sizeof(GeomCacheFile::SHeader));
-    m_pCompressionWriter->WriteBlock(false, &m_headerWriteFuture);
+    stats = m_pCompressionWriter->WriteBlock(false);
+    m_headerWriteSize = stats.m_size;
 
-    // Leave space for frame offsets/sizes (don't know them until frames were written)
+    m_diskInfoForFrames.resize(frameTimes.size());
+
+    // Leave space for frame offsets/sizes (don't know them until frames are written)
     // and pass future object to get write position for WriteFrameOffsets later
     std::vector<GeomCacheFile::SFrameInfo> frameInfos(frameTimes.size());
     memset(frameInfos.data(), 0, sizeof(GeomCacheFile::SFrameInfo) * frameInfos.size());
     m_pCompressionWriter->PushData(frameInfos.data(), sizeof(GeomCacheFile::SFrameInfo) * frameInfos.size());
-    m_pCompressionWriter->WriteBlock(false, &m_frameInfosWriteFuture);
+    m_placeholderForFrameInfos = m_pCompressionWriter->WriteBlock(false);
 
     // Reserve frame type array and store frame times
     m_frameTypes.resize(frameTimes.size(), 0);
@@ -516,19 +231,21 @@ void GeomCacheWriter::WriteStaticData(const std::vector<Alembic::Abc::chrono_t>&
     // Write compressed physics geometries and node data
     RCLog("  Writing node data");
     WriteNodeStaticDataRec(rootNode, meshes);
-    m_pCompressionWriter->WriteBlock(true, &m_staticNodeDataFuture);
+    stats = m_pCompressionWriter->WriteBlock(true);
+    m_staticNodeDataSize = stats.m_size;
 
     // Write compressed static mesh data
     RCLog("  Writing mesh data (%u meshes)", (uint)meshes.size());
     WriteMeshesStaticData(meshes);
-    m_pCompressionWriter->WriteBlock(true, &m_staticMeshDataFuture);
+    stats = m_pCompressionWriter->WriteBlock(true);
+    m_staticMeshDataSize = stats.m_size;
 }
 
 void GeomCacheWriter::WriteFrameTimes(const std::vector<Alembic::Abc::chrono_t>& frameTimes)
 {
     RCLog("  Writing frame times");
 
-    uint32 numFrameTimes = frameTimes.size();
+    const uint32 numFrameTimes = frameTimes.size();
     m_pCompressionWriter->PushData((void*)&numFrameTimes, sizeof(uint32));
 
     // Convert frame times to float
@@ -545,15 +262,15 @@ void GeomCacheWriter::WriteFrameTimes(const std::vector<Alembic::Abc::chrono_t>&
 
 bool GeomCacheWriter::WriteFrameInfos()
 {
-    const size_t numFrames = m_frameWriteFutures.size();
+    const size_t numFrames = m_diskInfoForFrames.size();
 
     std::vector<GeomCacheFile::SFrameInfo> frameInfos(numFrames);
 
     for (size_t i = 0; i < numFrames; ++i)
     {
         frameInfos[i].m_frameType = m_frameTypes[i];
-        frameInfos[i].m_frameOffset = m_frameWriteFutures[i]->GetPosition();
-        frameInfos[i].m_frameSize = m_frameWriteFutures[i]->GetSize();
+        frameInfos[i].m_frameOffset = m_diskInfoForFrames[i].m_position;
+        frameInfos[i].m_frameSize = m_diskInfoForFrames[i].m_size;
         frameInfos[i].m_frameTime = (float)m_frameTimes[i];
 
         if (frameInfos[i].m_frameOffset == 0 || frameInfos[i].m_frameSize == 0)
@@ -565,14 +282,14 @@ bool GeomCacheWriter::WriteFrameInfos()
     m_pCompressionWriter->PushData(frameInfos.data(), sizeof(GeomCacheFile::SFrameInfo) * frameInfos.size());
 
     // Overwrite space left free for frame infos
-    m_pCompressionWriter->WriteBlock(false, 0, (long)m_frameInfosWriteFuture.GetPosition(), SEEK_SET);
+    m_pCompressionWriter->WriteBlock(false, (long)m_placeholderForFrameInfos.m_position, SEEK_SET);
 
     return true;
 }
 
 void GeomCacheWriter::WriteMeshesStaticData(const std::vector<GeomCache::Mesh*>& meshes)
 {
-    uint32 numMeshes = meshes.size();
+    const uint32 numMeshes = meshes.size();
     m_pCompressionWriter->PushData((void*)&numMeshes, sizeof(uint32));
 
     for (auto iter = meshes.begin(); iter != meshes.end(); ++iter)
@@ -702,8 +419,8 @@ void GeomCacheWriter::WriteFrame(const uint frameIndex, const AABB& frameAABB, c
         m_pCompressionWriter->PushData(paddingData.data(), paddingData.size());
     }
 
-    m_frameWriteFutures.push_back(std::unique_ptr<DiskWriteFuture>(new DiskWriteFuture()));
-    m_totalUncompressedAnimationSize += m_pCompressionWriter->WriteBlock(true, m_frameWriteFutures.back().get());
+    m_totalUncompressedAnimationSize += m_pCompressionWriter->GetCurrentDataSize();
+    m_diskInfoForFrames[frameIndex] = m_pCompressionWriter->WriteBlock(true);
 
     const uint fraction = uint((float)m_kNumProgressStatusReports * ((float)(frameIndex + 1) / (float)m_fileHeader.m_numFrames));
     if (fraction > 0 && !m_bShowedStatus[fraction - 1])

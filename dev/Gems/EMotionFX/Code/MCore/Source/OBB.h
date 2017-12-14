@@ -52,7 +52,7 @@ namespace MCore
          * @param extents The extents of the box, which start at the center of the box.
          * @param rot The matrix, representing the transformation of the box.
          */
-        MCORE_INLINE OBB(const Vector3& center, const Vector3& extents, const Matrix& rot)
+        MCORE_INLINE OBB(const AZ::Vector3& center, const AZ::Vector3& extents, const Matrix& rot)
             : mRotation(rot)
             , mExtents(extents)
             , mCenter(center)    {}
@@ -69,14 +69,14 @@ namespace MCore
          * @param points The set of points to fit the box to.
          * @param numPoints The number of points inside array specified as first parameter.
          */
-        void InitFromPoints(const Vector3* points, uint32 numPoints);
+        void InitFromPoints(const AZ::Vector3* points, uint32 numPoints);
 
         /**
          * Check if this box OBB contains a given point or not.
          * @param p The point to check.
          * @result Returns true when the point is inside this box, otherwise false is returned.
          */
-        bool Contains(const Vector3& p) const;
+        bool Contains(const AZ::Vector3& p) const;
 
         /**
          * Check if this OBB is inside another specified box.
@@ -118,13 +118,13 @@ namespace MCore
          * Set the center of the box.
          * @param center The new center of the box.
          */
-        MCORE_INLINE void SetCenter(const Vector3& center)                                      { mCenter = center; }
+        MCORE_INLINE void SetCenter(const AZ::Vector3& center)                                      { mCenter = center; }
 
         /**
          * Set the extents of the box.
          * @param extents The new extents of the box.
          */
-        MCORE_INLINE void SetExtents(const Vector3& extents)                                    { mExtents = extents; }
+        MCORE_INLINE void SetExtents(const AZ::Vector3& extents)                                    { mExtents = extents; }
 
         /**
          * Set the transformation of the box.
@@ -136,13 +136,13 @@ namespace MCore
          * Get the center of the box.
          * @result The center point of the box.
          */
-        MCORE_INLINE const Vector3& GetCenter() const                                           { return mCenter; }
+        MCORE_INLINE const AZ::Vector3& GetCenter() const                                           { return mCenter; }
 
         /**
          * Get the extents of the box.
          * @result The extents of the box, which start at the center.
          */
-        MCORE_INLINE const Vector3& GetExtents() const                                          { return mExtents; }
+        MCORE_INLINE const AZ::Vector3& GetExtents() const                                          { return mExtents; }
 
         /**
          * Get the transformation of the box.
@@ -167,7 +167,7 @@ namespace MCore
          * </pre>
          * @param outPoints the array of at least 8 vectors to write the points in.
          */
-        void CalcCornerPoints(Vector3* outPoints) const;
+        void CalcCornerPoints(AZ::Vector3* outPoints) const;
 
         /**
          * Calculate the rotated minimum and maximum points of the box.
@@ -189,12 +189,12 @@ namespace MCore
          * @param outMin The vector that we will write the minimum point to.
          * @param outMax The vector that we will write the maximum point to.
          */
-        void CalcMinMaxPoints(Vector3* outMin, Vector3* outMax) const;
+        void CalcMinMaxPoints(AZ::Vector3* outMin, AZ::Vector3* outMax) const;
 
     private:
         Matrix      mRotation; /**< The rotation of the box. */     // TODO: store the center inside the translation component and extents inside last column?
-        Vector3     mExtents;   /**< The extents of the box. */
-        Vector3     mCenter;    /**< The center of the box. */
+        AZ::Vector3 mExtents;   /**< The extents of the box. */
+        AZ::Vector3 mCenter;    /**< The center of the box. */
 
         /**
          * Calculate the three eigen vectors for a symmetric matrix.
@@ -203,7 +203,7 @@ namespace MCore
          * @param v2 The second output eigen vector.
          * @param v3 The third output eigen vector.
          */
-        void GetRealSymmetricEigenvectors(const float A[6], Vector3& v1, Vector3& v2, Vector3& v3);
+        void GetRealSymmetricEigenvectors(const float A[6], AZ::Vector3& v1, AZ::Vector3& v2, AZ::Vector3& v3);
 
         /**
          * Calculate the eigen vector from a symmetric matrix.
@@ -212,7 +212,7 @@ namespace MCore
          * @param eigenValue The eigen value.
          * @param v1 The output eigen vector.
          */
-        void CalcSymmetricEigenVector(const float A[6], float eigenValue, Vector3& v1);
+        void CalcSymmetricEigenVector(const float A[6], float eigenValue, AZ::Vector3& v1);
 
         /**
          * Calculate the pair of eigen vectors from a symmetric matrix.
@@ -222,7 +222,7 @@ namespace MCore
          * @param v1 The first output eigen vector.
          * @param v2 The second output eigen vector.
          */
-        void CalcSymmetricEigenPair(const float A[6], float eigenValue, Vector3& v1, Vector3& v2);
+        void CalcSymmetricEigenPair(const float A[6], float eigenValue, AZ::Vector3& v1, AZ::Vector3& v2);
 
         /**
          * Calculate the covariance matrix from a set of points.
@@ -231,9 +231,9 @@ namespace MCore
          * @param mean The statistical mean will be output in this vector.
          * @param C The covariance matrix values that will be written to. Since the matrix is symmetric we only output one triangle of the 3x3 matrix.
          */
-        void CovarianceMatrix(const Vector3* points, uint32 numPoints, Vector3& mean, float C[6]);
+        void CovarianceMatrix(const AZ::Vector3 * points, uint32 numPoints, AZ::Vector3 & mean, float C[6]);
 
-        void InitFromPointsRange(const Vector3* points, uint32 numPoints, float xDegrees, float* outMinArea, AABB* outMinBox, Matrix* outMinMatrix);
+        void InitFromPointsRange(const AZ::Vector3* points, uint32 numPoints, float xDegrees, float* outMinArea, AABB* outMinBox, Matrix* outMinMatrix);
     };
 
     // include the inline code

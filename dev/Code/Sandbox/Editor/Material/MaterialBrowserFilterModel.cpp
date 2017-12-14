@@ -21,6 +21,7 @@
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 
 #include <QPainter>
 
@@ -82,25 +83,28 @@ MaterialBrowserFilterModel::MaterialBrowserFilterModel(QObject* parent)
     : AzToolsFramework::AssetBrowser::AssetBrowserFilterModel(parent)
 {
     using namespace AzToolsFramework::AssetBrowser;
+    using namespace AzToolsFramework::MaterialBrowser;
 
     MaterialBrowserSourceControlBus::Handler::BusConnect();
     AssetBrowserModelNotificationsBus::Handler::BusConnect();
+    MaterialBrowserRequestsBus::Handler::BusConnect();
+    AzFramework::AssetCatalogEventBus::Handler::BusConnect();
 
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_00.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_01.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_02.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_03.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_04.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_05.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_06.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/material_07.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/filestatus_00.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/filestatus_01.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/filestatus_02.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/filestatus_03.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/filestatus_04.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/filestatus_05.png"));
-    m_imageList.push_back(QPixmap(":/MaterialBrowser/filestatus_06.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_00.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_01.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_02.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_03.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_04.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_05.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_06.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_07.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/filestatus_00.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/filestatus_01.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/filestatus_02.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/filestatus_03.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/filestatus_04.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/filestatus_05.png"));
+    m_imageList.push_back(QPixmap(":/MaterialBrowser/images/filestatus_06.png"));
 
 
     // Create an asset type filter for materials
@@ -122,6 +126,8 @@ MaterialBrowserFilterModel::~MaterialBrowserFilterModel()
 
     AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler::BusDisconnect();
     MaterialBrowserSourceControlBus::Handler::BusDisconnect();
+    AzToolsFramework::MaterialBrowser::MaterialBrowserRequestsBus::Handler::BusDisconnect();
+    AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
 }
 
 void MaterialBrowserFilterModel::UpdateRecord(const QModelIndex& filterModelIndex)
@@ -204,7 +210,7 @@ QVariant MaterialBrowserFilterModel::data(const QModelIndex& index, int role /* 
     if (index.isValid())
     {
         // Use the base AssetBrowserFilterModel::data function for display role
-        if (role != Qt::DisplayRole)
+        if (role != AzToolsFramework::AssetBrowser::AssetBrowserModel::Roles::EntryRole)
         {
             QModelIndex modelIndex = mapToSource(index);
             AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry = static_cast<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>(modelIndex.internalPointer());
@@ -224,70 +230,6 @@ QVariant MaterialBrowserFilterModel::data(const QModelIndex& index, int role /* 
                     else
                     {
                         return QVariant();
-                    }
-                }
-                else if (role == Qt::DecorationRole)
-                {
-                    // If this is a material that has already been loaded, get the custom icon for it
-                    if (found)
-                    {
-                        int icon = ITEM_IMAGE_MATERIAL;
-                        if (record.m_material && record.m_material->IsMultiSubMaterial())
-                        {
-                            icon = ITEM_IMAGE_MULTI_MATERIAL;
-                        }
-
-                        QPixmap pixmap = m_imageList[icon];
-
-
-                        icon = -1;
-                        if (record.m_material)
-                        {
-                            int secondsSinceLastUpdated = record.m_lastCheckedSCCAttributes.secsTo(QDateTime::currentDateTime());
-                            // Queue an update of the record if it's source control/writable status is out of date
-                            if (secondsSinceLastUpdated > g_timeRefreshSCCStatus || secondsSinceLastUpdated < 0)
-                            {
-                                bool isSourceControlActive = false;
-                                AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(isSourceControlActive, &AzToolsFramework::SourceControlConnectionRequestBus::Events::IsActive);
-
-                                if (isSourceControlActive && AzToolsFramework::SourceControlCommandBus::FindFirstHandler() != nullptr)
-                                {
-                                    // Async call to get the source control status
-                                    bool sourceControlOperationComplete = false;
-                                    AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::GetFileInfo, record.GetFullSourcePath().c_str(), [this, assetId](bool succeeded, const AzToolsFramework::SourceControlFileInfo& fileInfo)
-                                        {
-                                            // When the source control operation completes, broadcast an event for the filter model to update the underlying record
-                                            MaterialBrowserSourceControlBus::Broadcast(&MaterialBrowserSourceControlEvents::UpdateSourceControlFileInfoCallback, assetId, fileInfo);
-                                        }
-                                        );
-                                    // Update the last checked time now instead of waiting for the result so that additional source control requests are not made in the meantime
-                                    MaterialBrowserSourceControlBus::Broadcast(&MaterialBrowserSourceControlEvents::UpdateSourceControlLastCheckedTime, assetId, QDateTime::currentDateTime());
-                                }
-                                else
-                                {
-                                    // If source control is not available, still update the file info to get the latest writable status and update the last checked time, but with default source control values
-                                    MaterialBrowserSourceControlBus::Broadcast(&MaterialBrowserSourceControlEvents::UpdateSourceControlFileInfoCallback, assetId, AzToolsFramework::SourceControlFileInfo());
-                                }
-                            }
-
-                            // Add an overlay if the file is checked out or read-only
-                            if (record.m_lastCachedSCCAttributes.m_status == AzToolsFramework::SourceControlStatus::SCS_OpenByUser)
-                            {
-                                icon = ITEM_IMAGE_OVERLAY_CHECKEDOUT;
-                            }
-                            else if (record.m_lastCachedFileAttributes & SCC_FILE_ATTRIBUTE_READONLY || record.m_lastCachedFileAttributes & SCC_FILE_ATTRIBUTE_INPAK)
-                            {
-                                icon = ITEM_IMAGE_OVERLAY_READONLY;
-                            }
-                        }
-                        // If there is a source control overlay, draw it on top of the material icon
-                        if (icon != -1)
-                        {
-                            const QPixmap pixmapOverlay = m_imageList[icon];
-                            QPainter p(&pixmap);
-                            p.drawPixmap(pixmap.rect(), pixmapOverlay);
-                        }
-                        return pixmap;
                     }
                 }
             }
@@ -409,16 +351,16 @@ void MaterialBrowserFilterModel::EntryAdded(const AzToolsFramework::AssetBrowser
     // If the entry is a product material
     if (entry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product && m_assetTypeFilter->Match(entry))
     {
+        // capture the data here, so that entry cannot disappear before we actually get to the job.
+        MaterialBrowserRecordAssetBrowserData assetBrowserData;
+        assetBrowserData.assetId = GetMaterialProductAssetIdFromAssetBrowserEntry(entry);
+        assetBrowserData.relativeFilePath = entry->GetRelativePath();
+        assetBrowserData.fullSourcePath = entry->GetFullPath();
+        assetBrowserData.filterModelIndex = GetFilterModelIndex(assetBrowserData.assetId);
+
         // Create a job to add/update the entry in the underlying map
-        AZ::Job* updateEntryJob = AZ::CreateJobFunction([this, entry]()
+        AZ::Job* updateEntryJob = AZ::CreateJobFunction([this, assetBrowserData]()
                 {
-                    MaterialBrowserRecordAssetBrowserData assetBrowserData;
-                    assetBrowserData.assetId = GetMaterialProductAssetIdFromAssetBrowserEntry(entry);
-
-                    assetBrowserData.relativeFilePath = entry->GetRelativePath();
-                    assetBrowserData.fullSourcePath = entry->GetFullPath();
-                    assetBrowserData.filterModelIndex = GetFilterModelIndex(assetBrowserData.assetId);
-
                     CMaterialBrowserRecord record;
                     record.SetAssetBrowserData(assetBrowserData);
                     record.m_material = GetIEditor()->GetMaterialManager()->LoadMaterialWithFullSourcePath(record.GetRelativeFilePath().c_str(), record.GetFullSourcePath().c_str());
@@ -438,20 +380,39 @@ void MaterialBrowserFilterModel::EntryAdded(const AzToolsFramework::AssetBrowser
         {
             updateEntryJob->Start();
         }
-
-        // Force the tree view to refresh with the new entry
-        invalidateFilter();
     }
 }
 
-void MaterialBrowserFilterModel::EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry)
+
+void MaterialBrowserFilterModel::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
 {
-    // If the entry is a material
-    if (m_assetTypeFilter->Match(entry))
+    CMaterialBrowserRecord record;
+    bool found = m_materialRecordMap.find(assetId, &record);
+    if (found)
     {
-        // Force the tree view to refresh without the deleted entry
-        invalidateFilter();
+        record.m_material->Reload();
+        //Send out event to notify UI update if it's currently selected
+        MaterialBrowserWidgetBus::Broadcast(&MaterialBrowserWidgetEvents::MaterialFinishedProcessing, record.m_material, record.GetFilterModelIndex());
     }
+}
+
+bool MaterialBrowserFilterModel::HasRecord(const AZ::Data::AssetId& assetId) 
+{
+    return m_materialRecordMap.find(assetId);
+}
+
+bool MaterialBrowserFilterModel::IsMultiMaterial(const AZ::Data::AssetId& assetId) 
+{
+    CMaterialBrowserRecord record;
+    bool found = m_materialRecordMap.find(assetId, &record);
+    if (found)
+    {
+        if (record.m_material && record.m_material->IsMultiSubMaterial())
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool MaterialBrowserFilterModel::TryGetRecordFromMaterial(_smart_ptr<CMaterial> material, CMaterialBrowserRecord& record) const
@@ -491,20 +452,43 @@ void MaterialBrowserFilterModel::SetRecord(const CMaterialBrowserRecord& record)
 
 void MaterialBrowserFilterModel::SetSearchFilter(const AzToolsFramework::AssetBrowser::SearchWidget* searchWidget)
 {
+    /*
+     *   The filter matches the following rule:
+     *   A. If the entry is a material
+     *       1. The material's name matches the search text
+     *       2. The sub material's name matches the search text
+     *   B. If the entry is a folder:
+     *       1. The folder's name matches the search text
+     *       2. The folder contains a material matching A
+     *       3. The folder contains a folder matching B.1 & B.2
+     */
+
     using namespace AzToolsFramework::AssetBrowser;
 
     m_searchWidget = searchWidget;
 
-    // Create a search filter where either a standard search OR a search for a sub-material name returns a match
-    CompositeFilter* compositeSearchFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::OR);
-    compositeSearchFilter->AddFilter(m_searchWidget->GetFilter());
-    compositeSearchFilter->AddFilter(FilterConstType(m_subMaterialSearchFilter));
+    // Create a search filter where a search text either matches entry/entry parent's name or sub material name
+    CompositeFilter* nameFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::OR);
+    QSharedPointer<CompositeFilter> searchWidgetFilter = m_searchWidget->GetFilter();
+    // The default setting for search widget filter is Down
+    // Since now we only need to match for the entry itself in this filter, set back to None
+    searchWidgetFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::None);
+    nameFilter->AddFilter(FilterConstType(m_subMaterialSearchFilter));
+    nameFilter->AddFilter(FilterConstType(searchWidgetFilter));
 
-    // Create a composite filter where a match must be a material AND match one of the searches
+    EntryTypeFilter* productsFilter = new EntryTypeFilter();
+    productsFilter->SetEntryType(AssetBrowserEntry::AssetEntryType::Product);
+    InverseFilter* noProductsFilter = new InverseFilter();
+    noProductsFilter->SetFilter(FilterConstType(productsFilter));
+
+    // Create a filter where the entry needs to match the previous name filter and it needs to be material itself or it contains material.
     CompositeFilter* isMaterialAndMatchesSearchFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::AND);
-    isMaterialAndMatchesSearchFilter->AddFilter(m_assetTypeFilter);
-    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(compositeSearchFilter));
-    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(new ProductsFilter));
+    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(nameFilter));
+    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(m_assetTypeFilter));
+    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(noProductsFilter));
+    // Make sure any folder contains the matching result is included
+    isMaterialAndMatchesSearchFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
+
     // Set the filter for the MaterialBrowserFilterModel
     SetFilter(FilterConstType(isMaterialAndMatchesSearchFilter));
 }
@@ -548,7 +532,13 @@ void MaterialBrowserFilterModel::InitializeRecordUpdateJob()
 
 void MaterialBrowserFilterModel::StartRecordUpdateJobs()
 {
-    m_mainUpdateRecordJob = aznew MaterialBrowserUpdateJobCreator(this, m_jobContext);
+    // Generate a list of file paths, assetId's, and asset browser model indices
+    // This must be done on the main thread, otherwise it can lead to a crash when the tree view UI is being initialized
+    AZStd::vector<MaterialBrowserRecordAssetBrowserData> files;
+    GetRelativeFilePaths(files);
+    
+    // Kick off the background process that will iterate over the list of file paths and update the material record map
+    m_mainUpdateRecordJob = aznew MaterialBrowserUpdateJobCreator(this, files, m_jobContext);
     m_mainUpdateRecordJob->Start();
 }
 
@@ -564,28 +554,27 @@ void MaterialBrowserFilterModel::ClearRecordMap()
     m_materialRecordMap.clear();
 }
 
-MaterialBrowserUpdateJobCreator::MaterialBrowserUpdateJobCreator(MaterialBrowserFilterModel* model, AZ::JobContext* context /*= NULL*/)
+MaterialBrowserUpdateJobCreator::MaterialBrowserUpdateJobCreator(MaterialBrowserFilterModel* model, AZStd::vector<MaterialBrowserRecordAssetBrowserData>& files, AZ::JobContext* context /*= NULL*/)
     : Job(true, context)
+    , m_files(files)
     , m_filterModel(model)
 {
 }
 
 void MaterialBrowserUpdateJobCreator::Process()
 {
-    AZStd::vector<MaterialBrowserRecordAssetBrowserData> files;
-    m_filterModel->GetRelativeFilePaths(files);
-
+    // Split the files to be processed evenly among threads
     int numJobs = GetContext()->GetJobManager().GetNumWorkerThreads();
-    int materialsPerJob = (files.size() / numJobs) + 1;
+    int materialsPerJob = (m_files.size() / numJobs) + 1;
 
-    for (auto it = files.begin(); it <= files.end(); it += materialsPerJob)
+    for (auto it = m_files.begin(); it <= m_files.end(); it += materialsPerJob)
     {
         // Create a subset of the list of material files to be processed by another job
         auto start = it;
         auto end = it + materialsPerJob;
-        if (end > files.end())
+        if (end > m_files.end())
         {
-            end = files.end();
+            end = m_files.end();
         }
         AZStd::vector<MaterialBrowserRecordAssetBrowserData> subset(start, end);
 
@@ -597,6 +586,8 @@ void MaterialBrowserUpdateJobCreator::Process()
     }
 
     WaitForChildren();
+
+    MaterialBrowserWidgetBus::Broadcast(&MaterialBrowserWidgetEvents::MaterialRecordUpdateFinished);
 }
 
 MaterialBrowserUpdateJob::MaterialBrowserUpdateJob(MaterialBrowserFilterModel* model, AZStd::vector<MaterialBrowserRecordAssetBrowserData>& files, AZ::JobContext* context /*= NULL*/)

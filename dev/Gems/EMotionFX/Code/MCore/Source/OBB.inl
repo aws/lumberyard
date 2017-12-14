@@ -14,27 +14,27 @@
 // this creates an invalid box (with negative extents) so the IsValid method will return false
 MCORE_INLINE void OBB::Init()
 {
-    mCenter.Set(0.0f, 0.0f, 0.0f);
-    mExtents.Set(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-    mRotation.Identity();
+	mCenter.Set(0.0f, 0.0f, 0.0f);
+	mExtents.Set(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	mRotation.Identity();
 }
 
 
 // check if the OBB is valid
 MCORE_INLINE bool OBB::CheckIfIsValid() const
 {
-    if (mExtents.x < 0.0f)
+    if (mExtents.GetX() < 0.0f)
     {
         return false;
     }
-    if (mExtents.y < 0.0f)
+    if (mExtents.GetY() < 0.0f)
     {
         return false;
     }
-    if (mExtents.z < 0.0f)
+    if (mExtents.GetZ() < 0.0f)
     {
         return false;
     }
-    return true;
+	return true;
 }
 

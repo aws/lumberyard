@@ -79,8 +79,8 @@ public: //types
         AZ::Vector2 lineSize;                      //!< Pixel size of entire line of text
     };
 
-    using DrawBatchLineContainer = AZStd::list < DrawBatchLine > ;
-    using FontFamilyRefSet = AZStd::set < FontFamilyPtr > ;
+    using DrawBatchLineContainer = AZStd::list < DrawBatchLine >;
+    using FontFamilyRefSet = AZStd::set < FontFamilyPtr >;
 
     //! A collection of batch lines used for multi-line rendering of DrawBatch objects.
     //! A single line of text contains a list of batches, and multi-line rendering requires
@@ -348,7 +348,7 @@ private: // data
 
     AZStd::string m_text;
     AZStd::string m_locText;                  //!< Language-specific localized text (if applicable), keyed by m_text. May contain word-wrap formatting (if enabled).
-   
+
     DrawBatchLines m_drawBatchLines;                //!< Lists of DrawBatches across multiple lines for rendering text.
 
     AZ::Color m_color;
@@ -382,14 +382,14 @@ private: // data
 
     int m_selectionStart;                           //!< UTF8 character/element index in the displayed string. This index
                                                     //! marks the beggining of a text selection, such as when this component
-                                                    //! is associated with a text input component. If the displayed string 
-                                                    //! contains UTF8 multi-byte characters, then this index will not 
+                                                    //! is associated with a text input component. If the displayed string
+                                                    //! contains UTF8 multi-byte characters, then this index will not
                                                     //!< match 1:1 with an index into the raw string buffer.
 
     int m_selectionEnd;                             //!< UTF8 character/element index in the displayed string. This index
                                                     //! marks the end of a text selection, such as when this component
-                                                    //! is associated with a text input component. If the displayed string 
-                                                    //! contains UTF8 multi-byte characters, then this index will not 
+                                                    //! is associated with a text input component. If the displayed string
+                                                    //! contains UTF8 multi-byte characters, then this index will not
                                                     //!< match 1:1 with an index into the raw string buffer.
 
     int m_cursorLineNumHint;

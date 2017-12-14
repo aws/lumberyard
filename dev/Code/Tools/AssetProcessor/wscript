@@ -14,10 +14,9 @@ import os
 
 SUBFOLDERS = [
     'Builders',
-    'AssetBuilderSDK'
+    'AssetBuilderSDK',
+    'AssetBuilder'
 ]
-
-
 
 def build(bld):
 
@@ -44,10 +43,11 @@ def build(bld):
         darwin_file_list = ['assetprocessor_macos.waf_files'],
         disable_pch      = True,
         features         = ['qt5', 'link_running_program'],
-
+        includes         = [bld.Path('Code/Tools/GemRegistry/include')],
         use             = ['AzToolsFramework',
-                           'AzQtComponents_static',
-                           'AssetBuilderSDK'],
+                           'AzQtComponents',
+                           'AssetBuilderSDK',
+                           'ToolsCrashHandler'],
         uselib          = ['QTMAIN',
                            'QT5CORE',
                            'QT5GUI',
@@ -56,8 +56,8 @@ def build(bld):
                            'QT5WIDGETS',
                            'QT5XML',
                            'BOOST',
-                           'SQLITE',
-                           'CRASHPAD'],
+                           'SQLITE'
+                           ],
         defines         = defines,
 
         # Platform Specific
@@ -65,10 +65,6 @@ def build(bld):
                                      'Bin64/D3DCompiler_43.dll',
                                      'Bin64/d3dcompiler_46.dll',
                                      'Bin64/d3dcompiler_47.dll',
-                                     'Bin64/libEGL.dll',
-                                     'Bin64/libEGLd.dll',
-                                     'Bin64/libGLESv2.dll',
-                                     'Bin64/libGLESv2d.dll',
                                      'Bin64/libeay32.dll',
                                      'Bin64/LuaCompiler.exe',
                                      'Bin64/ffmpeg.exe',
@@ -79,7 +75,7 @@ def build(bld):
         win_includes    = ['native'],  # for the resource.h file
         win_lib         = ['shell32'],
 
-        darwin_rpath    = ['@executable_path', '@executable_path/../BinMac64/qtlibs/lib' ],
+        darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworks = ['CoreServices'],
     )
 
@@ -96,6 +92,8 @@ def build(bld):
         configurations  = ['debug_all', 'profile_all'],
         disable_pch     = True,
         features        = ['qt5'],
+        includes        = [bld.Path('Code/Tools/GemRegistry/include')],
+
         win_features    = ['generate_rc_file', 'crcfix'],
         win_includes    = ['native'],  # for the resource.h file
         use             = ['AzToolsFramework',
@@ -108,13 +106,16 @@ def build(bld):
         defines         = console_defines,
 
         # Platform Specific
-        darwin_rpath    = ['@executable_path', '@executable_path/../BinMac64/qtlibs/lib' ],
+        darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworks = ['CoreServices'],
 
         # ==============================
         # Testing
         # ==============================
-        win_test_all_file_list = ['assetprocessor_test.waf_files']
+        win_test_all_file_list = ['assetprocessor_test.waf_files'],
+
+        #because gmock still crashes (unrelated to AP) in Darwin-Debug, we'll at least enable tests in profile_test.
+        darwin_test_profile_file_list = ['assetprocessor_test.waf_files']
 
     )
 

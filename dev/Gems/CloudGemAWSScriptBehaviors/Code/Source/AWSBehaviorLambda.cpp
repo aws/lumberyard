@@ -85,6 +85,9 @@ namespace CloudGemAWSScriptBehaviors
 
         using LambdaInvokeRequestJob = AWS_API_REQUEST_JOB(Lambda, Invoke);
         LambdaInvokeRequestJob::Config config(LambdaInvokeRequestJob::GetDefaultConfig());
+        AZStd::string region;
+        EBUS_EVENT_RESULT(region, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "region");
+        config.region = region.c_str();
 
         auto job = LambdaInvokeRequestJob::Create(
             [](LambdaInvokeRequestJob* job) // OnSuccess handler

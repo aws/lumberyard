@@ -13,9 +13,13 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/Spline.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzToolsFramework/Picking/Manipulators/ManipulatorBounds.h>
 
 #include "BoundInterface.h"
 
@@ -33,15 +37,8 @@ namespace AzToolsFramework
 
             BoundRequestShapeBase() {}
             virtual ~BoundRequestShapeBase() {}
-        };
 
-        class BoundShapeBoundingBox : public BoundRequestShapeBase
-        {
-        public:
-            AZ_RTTI(BoundShapeBoundingBox, "{AABD319C-4ADC-4235-B3B1-52010A151B3B}", BoundRequestShapeBase);
-            AZ_CLASS_ALLOCATOR(BoundShapeBoundingBox, AZ::SystemAllocator, 0);
-
-            AZStd::vector<AZ::Vector3> m_PointsToGenerateBoxFrom;
+            virtual AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const = 0;
         };
 
         class BoundShapeBox : public BoundRequestShapeBase
@@ -50,7 +47,15 @@ namespace AzToolsFramework
             AZ_RTTI(BoundShapeBox, "{6BF78BC6-5100-41A1-84E1-6F4E552E2FC5}", BoundRequestShapeBase);
             AZ_CLASS_ALLOCATOR(BoundShapeBox, AZ::SystemAllocator, 0);
 
-            AZ::Transform m_transform;
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> box = AZStd::make_shared<ManipulatorBoundBox>(id);
+                box->SetShapeData(*this);
+                return box;
+            }
+            
+            AZ::Vector3 m_center;
+            AZ::Quaternion m_orientation;
             AZ::Vector3 m_halfExtents;
         };
 
@@ -60,20 +65,32 @@ namespace AzToolsFramework
             AZ_RTTI(BoundShapeSphere, "{786168B7-46BB-4C0E-9642-5A7B94BF00FA}", BoundRequestShapeBase);
             AZ_CLASS_ALLOCATOR(BoundShapeSphere, AZ::SystemAllocator, 0);
 
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> sphere = AZStd::make_shared<ManipulatorBoundSphere>(id);
+                sphere->SetShapeData(*this);
+                return sphere;
+            }
+
+            AZ::Vector3 m_center;
             float m_radius;
-            AZ::Transform m_transform;
         };
 
-        class BoundShapeCapsule : public BoundRequestShapeBase
-        {
-        public:
-            AZ_RTTI(BoundShapeCapsule, "{76825889-EAE6-497B-996E-A1E08537B42B}", BoundRequestShapeBase);
-            AZ_CLASS_ALLOCATOR(BoundShapeCapsule, AZ::SystemAllocator, 0);
+        // No Bound Shape Interface Provided for this yet
+        //class BoundShapeCapsule : public BoundRequestShapeBase
+        //{
+        //public:
+        //    AZ_RTTI(BoundShapeCapsule, "{76825889-EAE6-497B-996E-A1E08537B42B}", BoundRequestShapeBase);
+        //    AZ_CLASS_ALLOCATOR(BoundShapeCapsule, AZ::SystemAllocator, 0);
 
-            float m_height;
-            float m_radius;
-            AZ::Transform m_transform;
-        };
+        //    AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+        //    {
+        //    }
+
+        //    float m_height;
+        //    float m_radius;
+        //    AZ::Transform m_transform;
+        //};
 
         class BoundShapeCylinder : public BoundRequestShapeBase
         {
@@ -81,9 +98,17 @@ namespace AzToolsFramework
             AZ_RTTI(BoundShapeCylinder, "{3D9A8328-4371-4EC5-BEC2-783998B19200}", BoundRequestShapeBase);
             AZ_CLASS_ALLOCATOR(BoundShapeCylinder, AZ::SystemAllocator, 0);
 
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> cylinder = AZStd::make_shared<ManipulatorBoundCylinder>(id);
+                cylinder->SetShapeData(*this);
+                return cylinder;
+            }
+
+            AZ::Vector3 m_axis;
+            AZ::Vector3 m_base;
             float m_height;
             float m_radius;
-            AZ::Transform m_transform;
         };
 
         class BoundShapeCone : public BoundRequestShapeBase
@@ -92,9 +117,17 @@ namespace AzToolsFramework
             AZ_RTTI(BoundShapeCone, "{68D67118-EAC9-4384-BE99-2CAB72A0450A}", BoundRequestShapeBase);
             AZ_CLASS_ALLOCATOR(BoundShapeCone, AZ::SystemAllocator, 0);
 
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> cone = AZStd::make_shared<ManipulatorBoundCone>(id);
+                cone->SetShapeData(*this);
+                return cone;
+            }
+
+            AZ::Vector3 m_axis;
+            AZ::Vector3 m_base;
             float m_height;
             float m_radius;
-            AZ::Transform m_transform;
         };
 
         /**
@@ -105,13 +138,41 @@ namespace AzToolsFramework
         class BoundShapeQuad : public BoundRequestShapeBase
         {
         public:
-            AZ_RTTI(BoundShapeQuad, "{D1F73C4B-3B42-4493-B1D1-38EE59F2C7F3}", BoundRequestShapeBase);
-            AZ_CLASS_ALLOCATOR(BoundShapeQuad, AZ::SystemAllocator, 0);
+            AZ_RTTI(BoundShapeQuad, "{D1F73C4B-3B42-4493-B1D1-38EE59F2C7F3}", BoundRequestShapeBase)
+            AZ_CLASS_ALLOCATOR(BoundShapeQuad, AZ::SystemAllocator, 0)
+
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> quad = AZStd::make_shared<ManipulatorBoundQuad>(id);
+                quad->SetShapeData(*this);
+                return quad;
+            }
 
             AZ::Vector3 m_corner1;
             AZ::Vector3 m_corner2;
             AZ::Vector3 m_corner3;
             AZ::Vector3 m_corner4;
+        };
+
+        /**
+         * The line segment consists of two points in 3D space defining a line the user can interact with.
+         */
+        class BoundShapeLineSegment : public BoundRequestShapeBase
+        {
+        public:
+            AZ_RTTI(BoundShapeLineSegment, "{BC5DCB8B-E9F7-41BB-AD93-00D3EAB108D3}", BoundRequestShapeBase)
+            AZ_CLASS_ALLOCATOR(BoundShapeLineSegment, AZ::SystemAllocator, 0)
+
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> lineSegment = AZStd::make_shared<ManipulatorBoundLineSegment>(id);
+                lineSegment->SetShapeData(*this);
+                return lineSegment;
+            }
+
+            AZ::Vector3 m_start;
+            AZ::Vector3 m_end;
+            float m_width;
         };
 
         /**
@@ -121,12 +182,42 @@ namespace AzToolsFramework
         class BoundShapeTorus : public BoundRequestShapeBase
         {
         public:
-            AZ_RTTI(BoundShapeTorus, "{2EF456F8-87D4-44CD-9929-FC45981289D4}", BoundRequestShapeBase);
-            AZ_CLASS_ALLOCATOR(BoundShapeTorus, AZ::SystemAllocator, 0);
+            AZ_RTTI(BoundShapeTorus, "{2EF456F8-87D4-44CD-9929-FC45981289D4}", BoundRequestShapeBase)
+            AZ_CLASS_ALLOCATOR(BoundShapeTorus, AZ::SystemAllocator, 0)
 
-            float m_height;
-            float m_radius;
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> torus = AZStd::make_shared<ManipulatorBoundTorus>(id);
+                torus->SetShapeData(*this);
+                return torus;
+            }
+
+            AZ::Vector3 m_axis;
+            AZ::Vector3 m_center;
+            float m_majorRadius;
+            float m_minorRadius;
+        };
+
+        /**
+         * The spline is specified by a number of vertices. A piecewise approximation of the curve
+         * is computed by using a number of linear steps (defined by the granularity of the curve).
+         */
+        class BoundShapeSpline : public BoundRequestShapeBase
+        {
+        public:
+            AZ_RTTI(BoundShapeSpline, "{65CBF85A-5126-4F2A-AA2E-047367435DEC}", BoundRequestShapeBase)
+            AZ_CLASS_ALLOCATOR(BoundShapeSpline, AZ::SystemAllocator, 0)
+
+            AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
+            {
+                AZStd::shared_ptr<BoundShapeInterface> spline = AZStd::make_shared<ManipulatorBoundSpline>(id);
+                spline->SetShapeData(*this);
+                return spline;
+            }
+
+            AZStd::weak_ptr<const AZ::Spline> m_spline;
             AZ::Transform m_transform;
+            float m_width;
         };
 
         struct RaySelectInfo

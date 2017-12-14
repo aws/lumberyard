@@ -2,7 +2,7 @@
     "GemFormatVersion": 3,
     "Uuid": "bf49ab6b1b624e16854dcbaa94b1aa24",
     "Name": "CloudGemTextToSpeech",
-    "DisplayName": "Cloud Gem Text-To-Speech",
+    "DisplayName": "Cloud Gem Text To Speech",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
     "Summary": "Enable your game with runtime text to speech functionality or generate all your dialogs with lifelike synthesized voices in a few clicks. This Cloud Gem uses Amazon Polly to generate the audio speech files and speech marks for animated character lipsync.",
@@ -27,6 +27,13 @@
                 "~>0.1"
             ],
             "_comment": "CloudGemDynamicContent"
+        },
+        {
+            "Uuid": "044a63ea67d04479aa5daf62ded9d9ca",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "EMotionFX"
         },
         {
             "Uuid": "ff06785f7145416b9d46fde39098cb0c",

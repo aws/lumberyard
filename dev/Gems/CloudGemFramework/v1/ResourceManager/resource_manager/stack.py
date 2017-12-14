@@ -844,6 +844,28 @@ class StackContext(object):
         return impacted_references
 
 
+    def has_changed_or_deleted_resources(self,
+        stack_id,
+        stack_description,
+        args,
+        pending_resource_status,
+        ignore_resource_types = []
+    ):
+        for resource_name, resource_description in pending_resource_status.iteritems():
+            resource_type = resource_description.get('ResourceType', '')
+
+            if resource_type in ignore_resource_types:
+                continue
+
+            if resource_type.startswith('AWS::IAM::'):
+                are_iam_resources = True
+
+            pending_action = resource_description.get('PendingAction')
+            if pending_action:
+                return True
+        
+        return False
+
     def confirm_stack_operation(
         self,
         stack_id,

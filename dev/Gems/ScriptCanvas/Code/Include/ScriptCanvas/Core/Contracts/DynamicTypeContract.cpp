@@ -31,11 +31,10 @@ namespace ScriptCanvas
             return AZ::Success();
         }
 
-        AZStd::string errorMessage = AZStd::string::format("Connection cannot be created between source slot \"%s\" and target slot \"%s\", slot does not support type: %s. (%s)"
+        AZStd::string errorMessage = AZStd::string::format("Connection cannot be created between source slot \"%s\" and target slot \"%s\", slot does not support type: %s."
             , sourceSlot.GetName().data()
             , targetSlot.GetName().data()
-            , targetType.GetAZType().ToString<AZStd::string>().data()
-            , RTTI_GetTypeName()
+            , Data::GetName(targetType)
         );
 
         return AZ::Failure(errorMessage);

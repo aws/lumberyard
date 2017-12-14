@@ -72,7 +72,7 @@ protected:
 
     const char* GetSourceDataBuffer() const override { return kLegacyPhysicsComponentWithRigidBehavior; }
 
-    RigidPhysicsConfig m_rigidPhysicsConfig;
+    AzFramework::RigidPhysicsConfig m_rigidPhysicsConfig;
 };
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, Application_IsRunning)
@@ -97,7 +97,7 @@ TEST_F(LoadRigidPhysicsComponentFromLegacyData, EnabledInitially_MatchesSourceDa
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, SpecifyMassOrDensity_MatchesSourceData)
 {
-    EXPECT_EQ(m_rigidPhysicsConfig.m_specifyMassOrDensity, static_cast<RigidPhysicsConfig::MassOrDensity>(0));
+    EXPECT_EQ(m_rigidPhysicsConfig.m_specifyMassOrDensity, static_cast<AzFramework::RigidPhysicsConfig::MassOrDensity>(0));
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, Mass_MatchesSourceData)

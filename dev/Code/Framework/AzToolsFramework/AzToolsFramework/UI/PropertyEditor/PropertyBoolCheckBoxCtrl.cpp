@@ -82,21 +82,10 @@ namespace AzToolsFramework
     template<class ValueType>
     void PropertyCheckBoxHandlerCommon<ValueType>::ConsumeAttribute(PropertyBoolCheckBoxCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool value;
-            if (attrValue->Read<bool>(value))
-            {
-                GUI->m_pCheckBox->setEnabled(value);
-            }
-            else
-            {
-                // emit a warning!
-                (void)debugName;
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into string combo box", debugName);
-            }
-            return;
-        }
+        Q_UNUSED(GUI);
+        Q_UNUSED(attrib);
+        Q_UNUSED(attrValue);
+        Q_UNUSED(debugName);
     }
 
     QWidget* BoolPropertyCheckBoxHandler::CreateGUI(QWidget* pParent)

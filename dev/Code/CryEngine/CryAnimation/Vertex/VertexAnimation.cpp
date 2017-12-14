@@ -397,6 +397,11 @@ void CVertexAnimation::UpdateFrameWeightsFromPose(const CCharInstance& charInsta
     }
 }
 
+void CVertexAnimation::ClearFrameStates()
+{
+    m_frameStates.clear();
+}
+
 SVertexSkinData::SVertexSkinData(const SRenderObjData* objectData, const CSoftwareMesh& geometry)
 {
     pTransformations = objectData->m_pSkinningData->pBoneQuatsS;

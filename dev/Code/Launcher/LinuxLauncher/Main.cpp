@@ -26,6 +26,8 @@
 #include <IGameFramework.h>
 #include <IConsole.h>
 #include <IEditorGame.h>
+#include <ITimer.h>
+#include <LumberyardLauncher.h>
 #include <sys/types.h>
 #include <netdb.h>
 #include <sys/resource.h>
@@ -398,9 +400,6 @@ int RunGame(const char* commandLine)
         EditorGameRequestBus::BroadcastResult(pGameStartup, &EditorGameRequestBus::Events::CreateGameStartup);
     }
 
-    const char* const szAutostartLevel
-        = linux_autoload_level[0] ? linux_autoload_level : NULL;
-
     if (!pGameStartup)
     {
         fprintf(stderr, "ERROR: Failed to create the GameStartup Interface!\n");
@@ -411,20 +410,28 @@ int RunGame(const char* commandLine)
     IGame* game = pGameStartup->Init(startupParams);
     if (game)
     {
-        exitCode = pGameStartup->Run(szAutostartLevel);
-        pGameStartup->Shutdown();
-        pGameStartup = 0;
-        RunGame_EXIT(exitCode);
+#if !defined(SYS_ENV_AS_STRUCT)
+        gEnv = startupParams.pSystem->GetGlobalEnvironment();
+#endif
+
+        // Execute autoexec.cfg to load the initial level
+        gEnv->pConsole->ExecuteString("exec autoexec.cfg");
+
+        // Run the main loop
+        LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
+    }
+    else
+    {
+        fprintf(stderr, "ERROR: Failed to initialize the GameStartup Interface!\n");
     }
 
     // if initialization failed, we still need to call shutdown
     pGameStartup->Shutdown();
     pGameStartup = 0;
 
-    fprintf(stderr, "ERROR: Failed to initialize the GameStartup Interface!\n");
-    RunGame_EXIT(exitCode);
-
     gameApp.Stop();
+
+    RunGame_EXIT(exitCode);
 }
 
 // An unreferenced function.  This function is needed to make sure that

@@ -53,7 +53,7 @@ public:
     ModuleHandle(const ModuleHandle&) = delete;
     ModuleHandle& operator=(const ModuleHandle&) = delete;
 
-    ~ModuleHandle()
+    ~ModuleHandle() override
     {
         if (m_libHandle)
         {
@@ -85,9 +85,7 @@ public:
     FunctionHandle(const FunctionHandle&) = delete;
     FunctionHandle& operator=(const FunctionHandle&) = delete;
 
-    ~FunctionHandle()
-    {
-    }
+    ~FunctionHandle() override = default;
 
     int operator()(int argc, char** argv) override
     {

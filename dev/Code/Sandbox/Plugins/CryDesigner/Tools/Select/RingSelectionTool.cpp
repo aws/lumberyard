@@ -25,7 +25,7 @@ void RingSelectionTool::Enter()
     CD::GetDesigner()->SwitchToPrevTool();
 }
 
-void RingSelectionTool::RingSelection(CD::SMainContext& mc)
+void RingSelectionTool::RingSelection(const CD::SMainContext& mc)
 {
     int nSelectedElementCount = mc.pSelected->GetCount();
 
@@ -45,7 +45,7 @@ void RingSelectionTool::RingSelection(CD::SMainContext& mc)
     }
 }
 
-void RingSelectionTool::SelectRing(CD::SMainContext& mc, const BrushEdge3D& inputEdge)
+void RingSelectionTool::SelectRing(const CD::SMainContext& mc, const BrushEdge3D& inputEdge)
 {
     BrushEdge3D edge(inputEdge);
 
@@ -108,7 +108,7 @@ void RingSelectionTool::SelectRing(CD::SMainContext& mc, const BrushEdge3D& inpu
     }
 }
 
-void SelectLoopFromOnePolygon(CD::SMainContext& mc, const std::vector<CD::SVertex>& quad, CD::PolygonPtr pQuadPolygon, int nEdgeIndex)
+void SelectLoopFromOnePolygon(const CD::SMainContext& mc, const std::vector<CD::SVertex>& quad, CD::PolygonPtr pQuadPolygon, int nEdgeIndex)
 {
     std::vector<CD::PolygonPtr> adjacentPolygons;
     mc.pModel->QueryPolygonsSharingEdge(BrushEdge3D(quad[(nEdgeIndex + 1) % 4].pos, quad[(nEdgeIndex + 2) % 4].pos), adjacentPolygons);
@@ -129,7 +129,7 @@ void SelectLoopFromOnePolygon(CD::SMainContext& mc, const std::vector<CD::SVerte
     }
 }
 
-void RingSelectionTool::SelectFaceRing(CD::SMainContext& mc)
+void RingSelectionTool::SelectFaceRing(const CD::SMainContext& mc)
 {
     int nSelectedElementCount = mc.pSelected->GetCount();
 

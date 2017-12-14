@@ -18,6 +18,7 @@
 #include <AudioProxy.h>
 
 #include <AzCore/std/bind/bind.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 namespace Audio
 {
@@ -136,6 +137,7 @@ namespace Audio
 
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::PushRequestBlocking - called from non-Main thread!");
         AZ_Assert(0 != (request.nFlags & eARF_EXECUTE_BLOCKING), "AudioSystem::PushRequestBlocking - called without EXECUTE_BLOCKING flag!");
+        AZ_Assert(0 == (request.nFlags & eARF_THREAD_SAFE_PUSH), "AudioSystem::PushRequestBlocking - called with THREAD_SAFE_PUSH flag!");
 
         ProcessRequestBlocking(request);
     }
@@ -154,33 +156,32 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystem::AddRequestListener(
         AudioRequestCallbackType func,
-        void* const pObjectToListenTo,
+        void* const callbackOwner,
         const EAudioRequestType requestType,
         const TATLEnumFlagsType specificRequestMask)
     {
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::AddRequestListener - called from a non-Main thread!");
 
-        SAudioRequest oRequest;
-        oRequest.nFlags = (eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING);
-        SAudioManagerRequestData<eAMRT_ADD_REQUEST_LISTENER> oRequestData(pObjectToListenTo, func, requestType, specificRequestMask);
-        oRequest.pOwner = pObjectToListenTo; // This makes sure that the listener is notified.
-        oRequest.pData = &oRequestData;
-
-        PushRequestBlocking(oRequest);
+        if (func)
+        {
+            SAudioEventListener listener;
+            listener.m_callbackOwner = callbackOwner;
+            listener.m_fnOnEvent = func;
+            listener.m_requestType = requestType;
+            listener.m_specificRequestMask = specificRequestMask;
+            m_oATL.AddRequestListener(listener);
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystem::RemoveRequestListener(AudioRequestCallbackType func, void* const pObjectToListenTo)
+    void CAudioSystem::RemoveRequestListener(AudioRequestCallbackType func, void* const callbackOwner)
     {
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::RemoveRequestListener - called from a non-Main thread!");
 
-        SAudioRequest oRequest;
-        oRequest.nFlags = (eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING);
-        SAudioManagerRequestData<eAMRT_REMOVE_REQUEST_LISTENER> oRequestData(pObjectToListenTo, func);
-        oRequest.pOwner = pObjectToListenTo; // This makes sure that the listener is notified.
-        oRequest.pData = &oRequestData;
-
-        PushRequestBlocking(oRequest);
+        SAudioEventListener listener;
+        listener.m_callbackOwner = callbackOwner;
+        listener.m_fnOnEvent = func;
+        m_oATL.RemoveRequestListener(listener);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -404,9 +405,42 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystem::UpdateControlsPath()
     {
-        string controlsPath("libs/gameaudio/");
+        AZStd::string controlsPath("libs/gameaudio/");
         controlsPath += m_oATL.GetControlsImplSubPath();
-        m_sControlsPath = PathUtil::ToNativePath(controlsPath).c_str();
+        if (AzFramework::StringFunc::RelativePath::Normalize(controlsPath))
+        {
+            m_sControlsPath = controlsPath.c_str();
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_ERROR, "AudioSystem::UpdateControlsPath - failed to normalize the controls path '%s'!", controlsPath.c_str());
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioSystem::RefreshAudioSystem(const char* const levelName)
+    {
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::RefreshAudioSystem - called from a non-Main thread!");
+
+        // Get the controls path and a level-specific preload Id first.
+        // This will be passed with the request so that it doesn't have to lookup this data
+        // and punch the AudioSystemRequestBus from the Audio Thread.
+        const char* audioControlsPath = nullptr;
+        Audio::AudioSystemRequestBus::BroadcastResult(audioControlsPath, &Audio::AudioSystemRequestBus::Events::GetControlsPath);
+
+        Audio::TAudioPreloadRequestID levelPreloadId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
+        if (levelName && levelName[0] != '\0')
+        {
+            Audio::AudioSystemRequestBus::BroadcastResult(levelPreloadId, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, levelName);
+        }
+
+        Audio::SAudioManagerRequestData<Audio::eAMRT_REFRESH_AUDIO_SYSTEM> requestData(audioControlsPath, levelName, levelPreloadId);
+        Audio::SAudioRequest request;
+        request.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING);
+        request.pData = &requestData;
+        Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, request);
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

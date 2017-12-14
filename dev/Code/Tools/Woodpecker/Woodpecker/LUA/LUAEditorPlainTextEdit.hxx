@@ -14,6 +14,7 @@
 #include <QtWidgets\QPlainTextEdit>
 #include <QtWidgets\qcompleter.h>
 #include "AzToolsFramework/UI/UICore/PlainTextEdit.hxx"
+#include <AzCore/std/functional.h>
 
 #pragma once
 

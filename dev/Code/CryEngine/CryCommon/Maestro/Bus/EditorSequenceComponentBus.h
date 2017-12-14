@@ -16,6 +16,7 @@
 #include <IMovieSystem.h>
 
 #include "SequenceComponentBus.h"
+enum class AnimValueType;
 
 namespace Maestro
 {
@@ -47,8 +48,8 @@ namespace Maestro
         //! Fills in a list of all animatable component ids for the given entity.
         virtual void GetAnimatableComponents(AZStd::vector<AZ::ComponentId>& componentIds, AZ::EntityId id) = 0;
 
-        //! Return the EAnimValue type for the given address
-        virtual EAnimValue GetValueType(const AZStd::string& animatableAddress) = 0;
+        //! Return the AnimValueType type for the given address
+        virtual AnimValueType GetValueType(const AZStd::string& animatableAddress) = 0;
     };
 
     using EditorSequenceComponentRequestBus = AZ::EBus<EditorSequenceComponentRequests>;

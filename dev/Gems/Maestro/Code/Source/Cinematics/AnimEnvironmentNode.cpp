@@ -20,13 +20,16 @@
 #include "AnimLightNode.h"
 #include "AnimSplineTrack.h"
 #include <ITimeOfDay.h>
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 namespace AnimEnvironmentNode
 {
     bool s_environmentNodeParamsInit = false;
     std::vector<CAnimNode::SParamInfo> s_environmentNodeParams;
 
-    void AddSupportedParam(const char* sName, int paramId, EAnimValue valueType)
+    void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -42,7 +45,7 @@ CAnimEnvironmentNode::CAnimEnvironmentNode()
 }
 
 CAnimEnvironmentNode::CAnimEnvironmentNode(const int id)
-    : CAnimNode(id, eAnimNodeType_Environment)
+    : CAnimNode(id, AnimNodeType::Environment)
     , m_oldSunLongitude(0.0f)
     , m_oldSunLatitude(0.0f)
 {
@@ -56,10 +59,10 @@ void CAnimEnvironmentNode::Initialize()
     {
         AnimEnvironmentNode::s_environmentNodeParamsInit = true;
         AnimEnvironmentNode::s_environmentNodeParams.reserve(2);
-        AnimEnvironmentNode::AddSupportedParam("Sun Longitude", eAnimParamType_SunLongitude, eAnimValue_Float);
-        AnimEnvironmentNode::AddSupportedParam("Sun Latitude", eAnimParamType_SunLatitude, eAnimValue_Float);
-        AnimEnvironmentNode::AddSupportedParam("Moon Longitude", eAnimParamType_MoonLongitude, eAnimValue_Float);
-        AnimEnvironmentNode::AddSupportedParam("Moon Latitude", eAnimParamType_MoonLatitude, eAnimValue_Float);
+        AnimEnvironmentNode::AddSupportedParam("Sun Longitude", AnimParamType::SunLongitude, AnimValueType::Float);
+        AnimEnvironmentNode::AddSupportedParam("Sun Latitude", AnimParamType::SunLatitude, AnimValueType::Float);
+        AnimEnvironmentNode::AddSupportedParam("Moon Longitude", AnimParamType::MoonLongitude, AnimValueType::Float);
+        AnimEnvironmentNode::AddSupportedParam("Moon Latitude", AnimParamType::MoonLatitude, AnimValueType::Float);
     }
 }
 //////////////////////////////////////////////////////////////////////////
@@ -81,10 +84,10 @@ void CAnimEnvironmentNode::Animate(SAnimContext& ac)
     float& moonLongitude = v.y;
     float& moonLatitude = v.x;
 
-    IAnimTrack* pSunLongitudeTrack = GetTrackForParameter(eAnimParamType_SunLongitude);
-    IAnimTrack* pSunLatitudeTrack = GetTrackForParameter(eAnimParamType_SunLatitude);
-    IAnimTrack* pMoonLongitudeTrack = GetTrackForParameter(eAnimParamType_MoonLongitude);
-    IAnimTrack* pMoonLatitudeTrack = GetTrackForParameter(eAnimParamType_MoonLatitude);
+    IAnimTrack* pSunLongitudeTrack = GetTrackForParameter(AnimParamType::SunLongitude);
+    IAnimTrack* pSunLatitudeTrack = GetTrackForParameter(AnimParamType::SunLatitude);
+    IAnimTrack* pMoonLongitudeTrack = GetTrackForParameter(AnimParamType::MoonLongitude);
+    IAnimTrack* pMoonLatitudeTrack = GetTrackForParameter(AnimParamType::MoonLatitude);
 
     bool bUpdateSun = false;
     bool bUpdateMoon = false;
@@ -131,8 +134,8 @@ void CAnimEnvironmentNode::Animate(SAnimContext& ac)
 
 void CAnimEnvironmentNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_SunLatitude);
-    CreateTrack(eAnimParamType_SunLongitude);
+    CreateTrack(AnimParamType::SunLatitude);
+    CreateTrack(AnimParamType::SunLongitude);
 }
 
 void CAnimEnvironmentNode::Activate(bool bActivate)
@@ -159,7 +162,7 @@ CAnimParamType CAnimEnvironmentNode::GetParamType(unsigned int nIndex) const
         return AnimEnvironmentNode::s_environmentNodeParams[nIndex].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 bool CAnimEnvironmentNode::GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const
@@ -190,19 +193,19 @@ void CAnimEnvironmentNode::InitializeTrack(IAnimTrack* pTrack, const CAnimParamT
 
     if (pFloatTrack)
     {
-        if (paramType == eAnimParamType_SunLongitude)
+        if (paramType == AnimParamType::SunLongitude)
         {
             pFloatTrack->SetDefaultValue(Vec2(0.0f, sunLongitude));
         }
-        else if (paramType == eAnimParamType_SunLatitude)
+        else if (paramType == AnimParamType::SunLatitude)
         {
             pFloatTrack->SetDefaultValue(Vec2(0.0f, sunLatitude));
         }
-        else if (paramType == eAnimParamType_MoonLongitude)
+        else if (paramType == AnimParamType::MoonLongitude)
         {
             pFloatTrack->SetDefaultValue(Vec2(0.0f, moonLongitude));
         }
-        else if (paramType == eAnimParamType_MoonLatitude)
+        else if (paramType == AnimParamType::MoonLatitude)
         {
             pFloatTrack->SetDefaultValue(Vec2(0.0f, moonLatitude));
         }

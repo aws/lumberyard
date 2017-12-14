@@ -260,6 +260,10 @@ public:
     virtual const int GetDeviceDataSize() const  = 0;
     virtual const int GetDataSize() const = 0;
     virtual const ETEX_Type GetTextureType() const = 0;
+    // Sets the texture type of the texture to be used before the texture is loaded.
+    // Once the texture is loaded the type from the file will overwrite whatever
+    // value was set here.
+    virtual void SetTextureType(ETEX_Type type) = 0;
     virtual const bool IsTextureLoaded() const = 0;
     virtual void PrecacheAsynchronously(float fMipFactor, int nFlags, int nUpdateId, int nCounter = 1) = 0;
     virtual uint8* GetData32(int nSide = 0, int nLevel = 0, uint8* pDst = NULL, ETEX_Format eDstFormat = eTF_R8G8B8A8) = 0;

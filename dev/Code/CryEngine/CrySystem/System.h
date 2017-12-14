@@ -137,7 +137,6 @@ struct SSystemCVars
     int sys_float_exceptions;
     int sys_no_crash_dialog;
     int sys_dump_aux_threads;
-    int sys_keyboard_break;
     int sys_WER;
     int sys_dump_type;
     int sys_ai;
@@ -288,7 +287,8 @@ public:
 
     virtual SSystemGlobalEnvironment* GetGlobalEnvironment() { return &m_env; }
 
-    virtual bool Update(int updateFlags = 0, int nPauseMode = 0);
+    virtual bool UpdatePreTickBus(int updateFlags = 0, int nPauseMode = 0);
+    virtual bool UpdatePostTickBus(int updateFlags = 0, int nPauseMode = 0);
     virtual bool UpdateLoadtime();
     virtual void DoWorkDuringOcclusionChecks();
     virtual bool NeedDoWorkDuringOcclusionChecks() { return m_bNeedDoWorkDuringOcclusionChecks; }
@@ -366,8 +366,6 @@ public:
     IScriptSystem* GetIScriptSystem(){ return m_env.pScriptSystem; }
     I3DEngine* GetI3DEngine(){ return m_env.p3DEngine; }
     ICharacterManager* GetIAnimationSystem() {return m_env.pCharacterManager; }
-    Audio::IAudioSystem* GetIAudioSystem() { return m_env.pAudioSystem; }
-    Audio::IMusicSystem* GetIMusicSystem(){ return m_env.pMusicSystem; }
     IPhysicalWorld* GetIPhysicalWorld(){ return m_env.pPhysicalWorld; }
     IMovieSystem* GetIMovieSystem() { return m_env.pMovieSystem; };
     IAISystem* GetAISystem(){ return m_env.pAISystem; }
@@ -485,7 +483,6 @@ public:
     }
 
     void IgnoreUpdates(bool bIgnore) { m_bIgnoreUpdates = bIgnore; };
-    void SetGCFrequency(const float fRate);
 
     void SetIProcess(IProcess* process);
     IProcess* GetIProcess(){ return m_pProcess; }
@@ -527,6 +524,8 @@ public:
     virtual ESystemConfigSpec GetMaxConfigSpec() const;
     virtual ESystemConfigPlatform GetConfigPlatform() const;
     virtual void SetConfigPlatform(const ESystemConfigPlatform platform);
+    virtual AZStd::unordered_map<AZStd::string, CVarInfo>* GetGraphicsSettingsMap() const;
+    virtual void SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* map);
     //////////////////////////////////////////////////////////////////////////
 
     virtual int SetThreadState(ESubsystem subsys, bool bActive);
@@ -566,7 +565,7 @@ public:
     void SetVersionInfo(const char* const szVersion);
 #endif
 
-    virtual bool InitializeEngineModule(const char* dllName, const char* moduleClassName, const SSystemInitParams& initParams, bool bQuitIfNotFound = true) override;
+    virtual bool InitializeEngineModule(const char* dllName, const char* moduleClassName, const SSystemInitParams& initParams) override;
     virtual bool UnloadEngineModule(const char* dllName, const char* moduleClassName);
     virtual const IImageHandler* GetImageHandler() const override { return m_imageHandler.get(); }
 
@@ -578,7 +577,6 @@ public:
     virtual void* GetRootWindowMessageHandler();
     virtual void RegisterWindowMessageHandler(IWindowMessageHandler* pHandler);
     virtual void UnregisterWindowMessageHandler(IWindowMessageHandler* pHandler);
-    virtual int PumpWindowMessage(bool bAll, WIN_HWND hWnd);
 
     // IWindowMessageHandler
 #if defined(WIN32)
@@ -599,8 +597,6 @@ private:
     //@{
 
     bool InitNetwork(const SSystemInitParams& startupParams);
-    bool InitOnline(const SSystemInitParams& startupParams);
-    bool InitLobby(const SSystemInitParams& startupParams);
     bool InitInput(const SSystemInitParams& startupParams);
 
     bool InitConsole();
@@ -609,7 +605,6 @@ private:
     bool InitPhysicsRenderer(const SSystemInitParams& initParams);
 
     bool InitFont(const SSystemInitParams& initParams);
-    bool InitFlash();
     bool InitAISystem(const SSystemInitParams& initParams);
     bool InitScriptSystem(const SSystemInitParams& initParams);
     bool InitFileSystem(const SSystemInitParams& initParams);
@@ -633,9 +628,7 @@ private:
 
     CHEAT_PROTECTION_EXPORT bool OpenRenderLibrary(const char* t_rend, const SSystemInitParams& initParams);
 
-    bool CloseRenderLibrary();
     //@}
-    bool ParseSystemConfig(string& sFileName);
 
     //////////////////////////////////////////////////////////////////////////
     // Threading functions.
@@ -654,14 +647,13 @@ private:
     void RenderJobStats();
     void RenderMemStats();
     void RenderThreadInfo();
-    WIN_HMODULE LoadDLL(const char* dllName, bool bQuitIfNotFound = true);
+    WIN_HMODULE LoadDLL(const char* dllName);
     bool UnloadDLL(const char* dllName);
     void FreeLib(WIN_HMODULE hLibModule);
     void QueryVersionInfo();
     void LogVersion();
     void LogBuildInfo();
     void SetDevMode(bool bEnable);
-    void InitScriptDebugger();
 
     void CreatePhysicsThread();
     void KillPhysicsThread();
@@ -677,9 +669,6 @@ private:
     void LogSystemInfo();
     void UpdateAudioSystems();
 
-    // recursive
-    // Arguments:
-    //   sPath - e.g. "Game/Config/CVarGroups"
     void AddCVarGroupDirectory(const string& sPath);
 
     WIN_HMODULE LoadDynamiclibrary(const char* dllName) const;
@@ -746,8 +735,6 @@ public:
 
     
     std::shared_ptr<AZ::IO::FileIOBase> CreateLocalFileIO();
-
-    void ForceMaxFps(bool enable, int maxFps) override;
 
     // Gets the dimensions (in pixels) of the primary physical display.
     // Returns true if this info is available, returns false otherwise.
@@ -996,6 +983,8 @@ private: // ------------------------------------------------------
     ESystemConfigSpec m_nMaxConfigSpec;
     ESystemConfigPlatform m_ConfigPlatform;
 
+    AZStd::unordered_map<AZStd::string, CVarInfo>* m_GraphicsSettingsMap;
+
     std::unique_ptr<CServerThrottle> m_pServerThrottle;
 
     CProfilingSystem m_ProfilingSystem;
@@ -1037,7 +1026,7 @@ public:
     bool CompressDataBlock(const void* input, size_t inputSize, void* output, size_t& outputSize, int level);
     bool DecompressDataBlock(const void* input, size_t inputSize, void* output, size_t& outputSize);
 
-    void InitVTuneProfiler();
+    bool InitVTuneProfiler();
 
     void OpenBasicPaks();
     void OpenLanguagePak(const char* sLanguage);
@@ -1151,9 +1140,6 @@ protected: // -------------------------------------------------------------
     std::vector<IWindowMessageHandler*> m_windowMessageHandlers;
     bool m_initedOSAllocator = false;
     bool m_initedSysAllocator = false;
-
-    bool m_forceMaxFps = false;
-    int m_forcedMaxFps = 0;
 };
 
 /*extern static */ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index);

@@ -42,7 +42,7 @@ SSubdivisionContext SubdivisionModifier::CreateSubdividedMesh(SSubdivisionContex
 
     SSubdivisionContext next_sc;
     next_sc.fullPatches = new HalfEdgeMesh;
-    next_sc.transitionPatches = sc.transitionPatches ? sc.transitionPatches : new HalfEdgeMesh;
+    next_sc.transitionPatches = sc.transitionPatches ? sc.transitionPatches : _smart_ptr<HalfEdgeMesh>(new HalfEdgeMesh);
     std::vector<HE_Position>& he_fp_positions = next_sc.fullPatches->GetPositions();
 
     CalculateNextLocations(sc.fullPatches, he_fp_positions, vNextFaceLocations, vNextEdgeLocations, vNextVertexLocations);

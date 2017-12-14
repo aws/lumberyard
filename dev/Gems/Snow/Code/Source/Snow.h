@@ -49,6 +49,10 @@ public:
 
     //~IGameObjectExtension
 
+    inline bool GetEnabled() { return m_bEnabled; }
+    void GetSnowSurfaceParams(float& fRadius, float& fSnowAmount, float& fFrostAmount, float& fSurfaceFreezing);
+    void GetSnowFallParams(int& nSnowFlakeCount, float& fSnowFlakeSize, float& fSnowFallBrightness, float& fSnowFallGravityScale, float& fSnowFallWindScale, float& fSnowFallTurbulence, float& fSnowFallTurbulenceFreq);
+
     bool Reset();
 
 protected:

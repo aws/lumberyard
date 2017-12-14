@@ -63,10 +63,6 @@ def load_android_clang_common_settings(conf):
         os.path.join(stl_root, 'libs', env['ANDROID_ARCH']),
     ]
 
-    env['LINKFLAGS'] += [
-        '-Wl,--gc-sections,--icf=safe', # --gc-sections will discard unused sections. --icf=safe will remove duplicate code
-    ]
-
     # these aren't defined in the common clang settings
     env['SHLIB_MARKER'] = '-Wl,-Bdynamic'
     env['STLIB_MARKER'] = '-Wl,-Bstatic'

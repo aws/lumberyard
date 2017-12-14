@@ -95,7 +95,7 @@ protected:
     void CancelCreation();
 
     bool IsSeparateStatus() const;
-    virtual void StoreSeparateStatus() { m_bSeparatedNewShape = GetPickedPolygon() && !GetAsyncKeyState(VK_SHIFT) ? false : true; }
+    virtual void StoreSeparateStatus() { m_bSeparatedNewShape = GetPickedPolygon() && !(Qt::ShiftModifier & QApplication::queryKeyboardModifiers()) ? false : true; }
     void Separate1stStep();
     void Separate2ndStep();
 

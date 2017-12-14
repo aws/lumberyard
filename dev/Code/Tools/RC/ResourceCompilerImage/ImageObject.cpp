@@ -703,6 +703,15 @@ void ImageToProcess::ConvertFormatWithSpecifiedCompressor(const CImageProperties
         return;
     }
 
+    //The target pixel format may require power of two but the preset doesn't set powof2 to 1
+    const uint32 mipCount = CPixelFormats::ComputeMaxMipCount(fmtDst, dwWidth, dwHeight, get()->GetCubemap() == ImageObject::eCubemap_Yes);
+    if (mipCount == 0)
+    {
+        RCLogError("The target pixel format required power of two image");
+        set(0);
+        return;
+    }
+
     // CTSquish is the only compressor managing to de/compress these formats at the moment
     if ((fmtDst == ePixelFormat_BC6UH) || (get()->GetPixelFormat() == ePixelFormat_BC6UH) ||
         (fmtDst == ePixelFormat_BC7) || (get()->GetPixelFormat() == ePixelFormat_BC7) ||

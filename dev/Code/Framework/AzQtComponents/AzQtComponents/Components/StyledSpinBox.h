@@ -43,9 +43,13 @@ namespace AzQtComponents
         bool isMouseOnSlider();
         void SetCustomSliderRange(double min, double max);
 
+        void SetDisplayDecimals(int precision);
+        QString textFromValue(double value) const override;
+
     protected:
         void showEvent(QShowEvent* ev) override;
         void resizeEvent(QResizeEvent* ev) override;
+        void focusInEvent(QFocusEvent* event) override;
         double GetSliderMinimum();
         double GetSliderRange();
 
@@ -53,6 +57,9 @@ namespace AzQtComponents
         double m_customSliderMinValue;
         double m_customSliderMaxValue;
         bool m_hasCustomSliderRange;
+
+    private Q_SLOTS:
+        void UpdateToolTip(double value);
 
     private:
         void initSlider();
@@ -63,11 +70,14 @@ namespace AzQtComponents
         void updateValueFromSlider(int newVal);
         int ConvertToSliderValue(double spinBoxValue);
         double ConvertFromSliderValue(int sliderValue);
+        QString StringValue(double value, bool truncated = false) const;
+        bool SliderEnabled() const;
 
         bool m_justPassFocusSlider = false;
         StyledSliderPrivate* m_slider;
         bool m_ignoreNextUpdateFromSlider;
         bool m_ignoreNextUpdateFromSpinBox;
+        int m_displayDecimals;
     };
 
     class AZ_QT_COMPONENTS_API StyledSpinBox

@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
-#include "ShapeTool.h."
+#include "ShapeTool.h"
 #include "Tools/DesignerTool.h"
 #include "ViewManager.h"
 #include "Core/Model.h"
@@ -21,6 +21,7 @@
 #include "Tools/Misc/ResetXFormTool.h"
 #include "Tools/Select/SelectTool.h"
 #include "Core/SmoothingGroupManager.h"
+#include "Objects/DesignerObject.h"
 
 void ShapeTool::Enter()
 {

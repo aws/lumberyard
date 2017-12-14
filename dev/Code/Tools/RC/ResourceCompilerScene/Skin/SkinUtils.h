@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,8 +10,10 @@
 *
 */
 
+#pragma once
+
 #include <AzCore/std/string/string.h>
-#include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
+#include <SceneAPI/SceneCore/Events/ProcessingResult.h>
 
 class CContentCGF;
 struct CNodeCGF;
@@ -26,6 +26,6 @@ namespace AZ
         void ConfigureSkinContent(CContentCGF& content);
         void MergeToFirstNodeMesh(CContentCGF& content);
         void RemoveRedundantNodes(CContentCGF& content);
-        SceneAPI::Events::ProcessingResult ProcessSkins(SkinGroupExportContext& context, CContentCGF& content, AZStd::vector<AZStd::string>& targetNodes);
-    }
-}
+        AZ::SceneAPI::Events::ProcessingResult ProcessSkins(SkinGroupExportContext& context, CContentCGF& content, AZStd::vector<AZStd::string>& targetNodes);
+    } // namespace RC
+} // namespace AZ

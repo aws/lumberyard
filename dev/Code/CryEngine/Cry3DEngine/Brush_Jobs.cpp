@@ -22,6 +22,7 @@
 #include "IndexedMesh.h"
 #include "Brush.h"
 #include "terrain.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #include <IJobManager_JobDelegator.h>
 
@@ -55,12 +56,7 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
     const Vec3 vObjPos = CBrush::GetPos();
     CRNTmpData::SRNUserData& userData = m_pRNTmpData->userData;
 
-    CRenderObject* pObj;
-    if (GetObjManager()->CheckCreateRenderObject(userData.m_arrPermanentRenderObjects, MAX_STATOBJ_LODS_NUM, pObj, &lodValue, passInfo, rendItemSorter))
-    {
-        return;
-    }
-
+    CRenderObject* pObj = gEnv->pRenderer->EF_GetObject_Temp(passInfo.ThreadID());
     pObj->m_fDistance = sqrt_tpl(Distance::Point_AABBSq(vCamPos, CBrush::GetBBox())) * passInfo.GetZoomFactor();
 
     pObj->m_pRenderNode = this;
@@ -141,7 +137,7 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
     }
 
     // check the object against the water level
-    if (GetObjManager()->IsAfterWater(vObjCenter, vCamPos, passInfo, Get3DEngine()->GetWaterLevel()))
+    if (GetObjManager()->IsAfterWater(vObjCenter, passInfo))
     {
         pObj->m_ObjFlags |= FOB_AFTER_WATER;
     }
@@ -219,7 +215,7 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
 void CBrush::Render_JobEntry(CRenderObject* pObj, const CLodValue lodValue, SRenderingPassInfo passInfo, SRendItemSorter rendItemSorter)
 {
     CStatObj* pStatObj = (CStatObj*)CBrush::GetEntityStatObj();
-    pStatObj->RenderInternal(pObj, 0, lodValue, passInfo, rendItemSorter);
+    pStatObj->RenderInternal(pObj, 0, lodValue, passInfo, rendItemSorter, false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

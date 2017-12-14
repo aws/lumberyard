@@ -23,7 +23,7 @@ namespace ProcessLifeManagement
     class ProcessLifeManagementGem
         : public CryHooksModule
         , public AzFramework::ApplicationLifecycleEvents::Bus::Handler
-        , public AzFramework::InputChannelEventNotificationBus::Handler
+        , public AzFramework::InputChannelNotificationBus::Handler
     {
         AZ_RTTI(ProcessLifeManagementGem, "{D2BE47BB-53A7-4121-977D-95C94DF65155}", CryHooksModule)
 

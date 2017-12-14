@@ -23,7 +23,7 @@
 #include "Editor/Translation/TranslationHelper.h"
 #include "Editor/View/Windows/EBusHandlerActionMenu.h"
 #include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
-#include <Editor/View/Windows/ui_EBusHandlerActionListWidget.h>
+#include <Editor/View/Windows/ui_ebushandleractionlistwidget.h>
 
 #include <ScriptCanvas/Bus/RequestBus.h>
 

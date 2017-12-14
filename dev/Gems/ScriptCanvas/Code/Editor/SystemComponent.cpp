@@ -18,6 +18,8 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/EBus/Results.h>
 
+#include <AzFramework/Entity/EntityContextBus.h>
+
 #include <AzToolsFramework/API/ViewPaneOptions.h>
 
 #include "SystemComponent.h"
@@ -30,6 +32,7 @@
 
 #include <Libraries/Libraries.h>
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
+#include <ScriptCanvas/Core/Datum.h>
 #include <Editor/Assets/ScriptCanvasAssetHolder.h>
 #include <Editor/Assets/ScriptCanvasAssetReference.h>
 #include <Editor/Assets/ScriptCanvasAssetInstance.h>
@@ -56,7 +59,7 @@ namespace ScriptCanvasEditor
 
     SystemComponent::~SystemComponent()
     {
-        AzToolsFramework::UnregisterViewPane(GetViewPaneName());
+        AzToolsFramework::UnregisterViewPane(LyViewPane::ScriptCanvas);
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
     }
 
@@ -96,6 +99,7 @@ namespace ScriptCanvasEditor
 
         // Specific Mime Event Implementations
         CreateClassMethodMimeEvent::Reflect(context);
+        CreateBlockCommentNodeMimeEvent::Reflect(context);
         CreateCommentNodeMimeEvent::Reflect(context);
         CreateCustomNodeMimeEvent::Reflect(context);
         CreateEBusHandlerMimeEvent::Reflect(context);
@@ -146,6 +150,7 @@ namespace ScriptCanvasEditor
     {
         SystemRequestBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
+
         m_documentContext.Activate();
     }
 
@@ -157,7 +162,7 @@ namespace ScriptCanvasEditor
         options.showInMenu = true;
         options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-        AzToolsFramework::RegisterViewPane<ScriptCanvasEditor::MainWindow>(GetViewPaneName(), LyViewPane::CategoryTools, options);
+        AzToolsFramework::RegisterViewPane<ScriptCanvasEditor::MainWindow>(LyViewPane::ScriptCanvas, LyViewPane::CategoryTools, options);
     }
 
     void SystemComponent::Deactivate()

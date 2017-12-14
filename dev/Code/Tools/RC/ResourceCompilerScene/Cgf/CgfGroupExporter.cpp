@@ -34,7 +34,6 @@ namespace AZ
 {
     namespace RC
     {
-        namespace SceneEvents = AZ::SceneAPI::Events;
         namespace SceneUtil = AZ::SceneAPI::Utilities;
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
         namespace SceneContainers = AZ::SceneAPI::Containers;
@@ -42,8 +41,7 @@ namespace AZ
         const AZStd::string CgfGroupExporter::s_fileExtension = "cgf";
 
         CgfGroupExporter::CgfGroupExporter(IAssetWriter* writer)
-            : CallProcessorBinder()
-            , m_assetWriter(writer)
+            : m_assetWriter(writer)
         {
             BindToCall(&CgfGroupExporter::ProcessContext);
             ActivateBindings();
@@ -110,5 +108,5 @@ namespace AZ
             }
             return result.GetResult();
         }
-    }// RC
-} // AZ
+    } // namespace RC
+} // namespace AZ

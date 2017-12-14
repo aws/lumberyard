@@ -23,7 +23,9 @@
 #include "ICrypto.h"
 #include <CrySystemBus.h>
 #include <ITimeDemoRecorder.h>
+#include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/API/ApplicationAPI_win.h>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
 
 #ifdef WIN32
@@ -53,7 +55,6 @@
 #include <IInput.h>
 #include <ILog.h>
 #include <IAudioSystem.h>
-#include <IMusicSystem.h>
 #include "NullImplementation/NULLAudioSystems.h"
 #include <ICryAnimation.h>
 #include <IScriptSystem.h>
@@ -496,6 +497,8 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 #endif
 
     m_ConfigPlatform = CONFIG_INVALID_PLATFORM;
+
+    m_GraphicsSettingsMap = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -807,8 +810,7 @@ void CSystem::ShutDown()
 
     if (m_env.pInput)
     {
-        m_env.pInput->ShutDown();
-        delete m_env.pInput;
+        CryLegacyInputRequestBus::Broadcast(&CryLegacyInputRequests::ShutdownInput, m_env.pInput);
         m_env.pInput = NULL;
     }
 
@@ -847,12 +849,7 @@ void CSystem::ShutDown()
 
     // Audio System Shutdown!
     // Shut down audio as late as possible but before the streaming system and console get released!
-    SAFE_RELEASE(m_env.pMusicSystem);
-    SAFE_RELEASE(m_env.pAudioSystem);   // deprecated!
     Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::Release);
-
-    // Shut down the CryPak system after audio!
-    SAFE_DELETE(m_env.pCryPak);
 
     // Shut down the streaming system and console as late as possible and after audio!
     SAFE_DELETE(m_pStreamEngine);
@@ -865,6 +862,9 @@ void CSystem::ShutDown()
         m_env.pLog->FlushAndClose();
     }
     SAFE_RELEASE(m_env.pLog);   // creates log backup
+
+    // Shut down the CryPak system after audio and log system!
+    SAFE_DELETE(m_env.pCryPak);
 
     ShutdownFileSystem();
 
@@ -931,8 +931,6 @@ void CSystem::Quit()
     //Post a WM_QUIT message to the Win32 api which causes the message loop to END
     //This is not the same as handling a WM_DESTROY event which destroys a window
     //but keeps the message loop alive.
-    //This essentially ends up making it so that the PumpWindowMessage call in 
-    //GameStartup::Run will return -1 and shutdown will initiate
     PostQuitMessage(0);
 #endif
 }
@@ -1313,10 +1311,8 @@ void CSystem::SleepIfInactive()
             break;
         }
 
-        if (m_hWnd)
-        {
-            PumpWindowMessage(true, m_hWnd);
-        }
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
+
         if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
         {
             // During the time demo, do not sleep even in inactive window.
@@ -1384,89 +1380,12 @@ void CSystem::SleepIfNeeded()
     m_lastTickTime = pTimer->GetAsyncTime();
 }
 
-//////////////////////////////////////////////////////////////////////
-#ifdef WIN32
-HWND g_hBreakWnd;
-WNDPROC g_prevWndProc;
-LRESULT CALLBACK BreakWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (msg == WM_HOTKEY)
-#ifdef WIN64
-    {
-        DebugBreak();
-    }
-#else
-    {
-        __asm int 3;
-    }
-#endif
-    return CallWindowProc(g_prevWndProc, hWnd, msg, wParam, lParam);
-}
-
-HANDLE g_hBreakHotkeyThread = 0;
-DWORD WINAPI BreakHotkeyThreadProc(void*)
-{
-    g_hBreakWnd = CreateWindowExW(0, L"Message", L"", 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, HWND_MESSAGE, 0, GetModuleHandleW(0), 0);
-    g_prevWndProc = (WNDPROC)SetWindowLongPtrW(g_hBreakWnd, GWLP_WNDPROC, (LONG_PTR)BreakWndProc);
-    RegisterHotKey(g_hBreakWnd, 0, 0, VK_PAUSE);
-    MSG msg;
-    while (GetMessageW(&msg, g_hBreakWnd, 0, 0))
-    {
-        TranslateMessage(&msg);
-        DispatchMessageW(&msg);
-    }
-    UnregisterHotKey(g_hBreakWnd, 0);
-    return 0;
-}
-#endif
-
-class BreakListener
-    : public IInputEventListener
-{
-    bool OnInputEvent(const SInputEvent& ie)
-    {
-        if (ie.deviceType == eIDT_Keyboard && ie.keyId == eKI_Pause && ie.state & (eIS_Pressed | eIS_Down))
-        {
-            CryDebugBreak();
-        }
-        return true;
-    }
-} g_BreakListener;
-
-volatile int g_lockInput = 0;
-
-struct SBreakListenerTask
-    : public IThreadTask
-{
-    SBreakListenerTask() { m_bStop = 0; m_nBreakIdle = 0; }
-    virtual void OnUpdate()
-    {
-        do
-        {
-            Sleep(200);
-            if (++m_nBreakIdle > 1)
-            {
-                WriteLock lock(g_lockInput);
-                gEnv->pInput->Update(true);
-                m_nBreakIdle = 0;
-            }
-        } while (!m_bStop);
-    }
-    virtual void Stop() { m_bStop = 1; }
-    virtual SThreadTaskInfo* GetTaskInfo() { return &m_TaskInfo; }
-    volatile int m_bStop;
-    int m_nBreakIdle;
-    SThreadTaskInfo m_TaskInfo;
-};
-SBreakListenerTask g_BreakListenerTask;
-bool g_breakListenerOn = false;
-
 extern DWORD g_idDebugThreads[];
 extern int g_nDebugThreads;
 int prev_sys_float_exceptions = -1;
 
 //////////////////////////////////////////////////////////////////////
-bool CSystem::Update(int updateFlags, int nPauseMode)
+bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
 {
     CRYPROFILE_SCOPE_PROFILE_MARKER("CSystem::Update()");
 
@@ -1502,47 +1421,10 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
     }
 #endif //CAPTURE_REPLAY_LOG
 
-    AZ::ComponentApplication* app = nullptr;
-    EBUS_EVENT_RESULT(app, AZ::ComponentApplicationBus, GetApplication);
-    if (app && !gEnv->IsEditor())
-    {
-        app->TickSystem();
-    }
-
     gEnv->pOverloadSceneManager->Update();
 
     m_pPlatformOS->Tick(m_Time.GetRealFrameTime());
 
-#ifndef EXCLUDE_UPDATE_ON_CONSOLE
-    if (g_cvars.sys_keyboard_break && !g_breakListenerOn)
-    {
-#ifdef WIN32
-        if (m_bEditor)
-        {
-            g_hBreakHotkeyThread = CreateThread(0, 1024, BreakHotkeyThreadProc, 0, 0, 0);
-        }
-#endif //WIN32
-        SThreadTaskParams ttp;
-        ttp.name = "BreakListenerThread";
-        ttp.nFlags = THREAD_TASK_BLOCKING;
-        g_BreakListenerTask.m_bStop = 0;
-        GetIThreadTaskManager()->RegisterTask(&g_BreakListenerTask, ttp);
-        gEnv->pInput->AddEventListener(&g_BreakListener);
-        g_breakListenerOn = true;
-    }
-    else if (!g_cvars.sys_keyboard_break && g_breakListenerOn)
-    {
-#ifdef WIN32
-        if (g_hBreakHotkeyThread)
-        {
-            TerminateThread(g_hBreakHotkeyThread, 0);
-        }
-#endif //WIN32
-        gEnv->pInput->RemoveEventListener(&g_BreakListener);
-        GetIThreadTaskManager()->UnregisterTask(&g_BreakListenerTask);
-        g_breakListenerOn = false;
-    }
-#endif //EXCLUDE_UPDATE_ON_CONSOLE
 #ifdef WIN32
     // enable/disable SSE fp exceptions (#nan and /0)
     // need to do it each frame since sometimes they are being reset
@@ -1581,8 +1463,6 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
     }
 #endif //EXCLUDE_UPDATE_ON_CONSOLE
        //////////////////////////////////////////////////////////////////////////
-
-    CTimeValue updateStart = gEnv->pTimer->GetAsyncTime();
 
     EBUS_EVENT(AzFramework::AssetSystemRequestBus, UpdateQueuedEvents);
 
@@ -1648,12 +1528,8 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
         {
             static bool bVtunePaused = true;
 
-            bool bPaused = false;
-
-            if (GetISystem()->GetIInput())
-            {
-                bPaused = !(GetKeyState(VK_SCROLL) & 1);
-            }
+            const AzFramework::InputChannel* inputChannelScrollLock = AzFramework::InputChannelRequests::FindInputChannel(AzFramework::InputDeviceKeyboard::Key::WindowsSystemScrollLock);
+            const bool bPaused = (inputChannelScrollLock ? inputChannelScrollLock->IsActive() : false);
 
             {
                 if (bVtunePaused && !bPaused)
@@ -1715,18 +1591,6 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
     //  bPause = true;
     m_bNoUpdate = bNoUpdate;
 #endif //EXCLUDE_UPDATE_ON_CONSOLE
-    
-#ifdef WIN32
-    // process window messages
-    {
-        FRAME_PROFILER("SysUpdate:PeekMessageW", this, PROFILE_SYSTEM);
-
-        if (m_hWnd && ::IsWindow((HWND)m_hWnd))
-        {
-            PumpWindowMessage(true, m_hWnd);
-        }
-    }
-#endif //WIN32
 
     //check if we are quitting from the game
     if (IsQuitting())
@@ -1756,12 +1620,6 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
         {
             int32 maxFPS = pSysMaxFPS->GetIVal();
             uint32 vSync = pVSync->GetIVal();
-
-            // force the max fps, if a force was enabled, if it's valid, and if the sys_MaxFPS variable wasn't specified
-            if (maxFPS == -1 && m_forceMaxFps && m_forcedMaxFps > 0)
-            {
-                maxFPS = m_forcedMaxFps;
-            }
 
             if (maxFPS == 0 && vSync == 0)
             {
@@ -1822,29 +1680,6 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
         FRAME_PROFILER("IScriptSystem::Update", gEnv->pSystem, PROFILE_SYSTEM);
         m_env.pScriptSystem->Update();
     }
-
-    if (m_env.pInput)
-    {
-        bool updateInput = !(updateFlags & ESYSUPDATE_EDITOR);
-        if (updateInput)
-        {
-            //////////////////////////////////////////////////////////////////////
-            //update input system
-#ifndef WIN32
-            EBUS_EVENT(AzFramework::InputSystemRequestBus, TickInput);
-            m_env.pInput->Update(true);
-#else
-            bool bFocus = (::GetForegroundWindow() == m_hWnd) || m_bEditor;
-            {
-                WriteLock lock(g_lockInput);
-                EBUS_EVENT(AzFramework::InputSystemRequestBus, TickInput);
-                m_env.pInput->Update(bFocus);
-                g_BreakListenerTask.m_nBreakIdle = 0;
-            }
-#endif //WIN32
-        }
-    }
-
 
     if (m_env.pRenderer->GetIStereoRenderer()->IsRenderingToHMD())
     {
@@ -2163,13 +1998,13 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
         UpdateMovieSystem(updateFlags, fMovieFrameTime, true);
     }
 
-    //////////////////////////////////////////////////////////////////////
-    // Tick the component application (which in turn updates the TickBus).
-    if (app)
-    {
-        AZ_TRACE_METHOD_NAME("AZ::ComponentApplication Tick");
-        app->Tick(m_Time.GetFrameTime(ITimer::ETIMER_GAME));
-    }
+    return !m_bQuit;
+}
+
+//////////////////////////////////////////////////////////////////////
+bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
+{
+    CTimeValue updateStart = gEnv->pTimer->GetAsyncTime();
 
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE
     if (nPauseMode != 1)
@@ -2177,22 +2012,23 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
     {
         //////////////////////////////////////////////////////////////////////
         //update entity system
-        if (m_env.pEntitySystem && !bNoUpdate && g_cvars.sys_entitysystem)
+        if (m_env.pEntitySystem && !m_bNoUpdate && g_cvars.sys_entitysystem)
         {
             m_env.pEntitySystem->Update();
         }
     }
 
     // Run movie system post-update
-    if (!bNoUpdate)
+    if (!m_bNoUpdate)
     {
+        const float fMovieFrameTime = m_Time.GetFrameTime(ITimer::ETIMER_UI);
         FRAME_PROFILER("SysUpdate:UpdateMovieSystem", this, PROFILE_SYSTEM);
         UpdateMovieSystem(updateFlags, fMovieFrameTime, false);
     }
 
     //////////////////////////////////////////////////////////////////////
     //update process (3D engine)
-    if (!(updateFlags & ESYSUPDATE_EDITOR) && !bNoUpdate)
+    if (!(updateFlags & ESYSUPDATE_EDITOR) && !m_bNoUpdate)
     {
         FRAME_PROFILER("SysUpdate:Update3DEngine", this, PROFILE_SYSTEM);
 
@@ -2230,7 +2066,7 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
 
     //////////////////////////////////////////////////////////////////////
     //update sound system part 2
-    if (!g_cvars.sys_deferAudioUpdateOptim && !bNoUpdate)
+    if (!g_cvars.sys_deferAudioUpdateOptim && !m_bNoUpdate)
     {
         FRAME_PROFILER("SysUpdate:UpdateAudioSystems", this, PROFILE_SYSTEM);
         UpdateAudioSystems();
@@ -2249,7 +2085,7 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
     }
 
 #ifdef DOWNLOAD_MANAGER
-    if (m_pDownloadManager && !bNoUpdate)
+    if (m_pDownloadManager && !m_bNoUpdate)
     {
         FRAME_PROFILER("SysUpdate:DownloadManagerUpdate", this, PROFILE_SYSTEM);
         m_pDownloadManager->Update();
@@ -2320,37 +2156,10 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
     return !m_bQuit;
 }
 
-void CSystem::ForceMaxFps(bool enable, int maxFps)
-{
-    m_forceMaxFps = enable;
-    m_forcedMaxFps = maxFps;
-}
-
 
 bool CSystem::UpdateLoadtime()
 {
     m_pPlatformOS->Tick(m_Time.GetRealFrameTime());
-
-    /*
-        // uncomment this code if input processing is required
-        // during level loading
-        if (m_env.pInput)
-        {
-            //////////////////////////////////////////////////////////////////////
-            //update input system
-    #ifndef WIN32
-            m_env.pInput->Update(true);
-    #else
-            bool bFocus = (GetFocus()==m_hWnd) || m_bEditor;
-            {
-                WriteLock lock(g_lockInput);
-                m_env.pInput->Update(bFocus);
-                g_BreakListenerTask.m_nBreakIdle = 0;
-            }
-    #endif //WIN32
-        }
-    */
-
     return !m_bQuit;
 }
 
@@ -2369,12 +2178,6 @@ void CSystem::UpdateAudioSystems()
     AZ_TRACE_METHOD();
     FRAME_PROFILER_LEGACYONLY("SysUpdate:Audio", this, PROFILE_SYSTEM);
     Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::ExternalUpdate);
-
-    if (m_env.pMusicSystem)
-    {
-        FRAME_PROFILER("SysUpdate:Music", this, PROFILE_SYSTEM);
-        m_env.pMusicSystem->Update();
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2602,12 +2405,10 @@ void CSystem::WarningV(EValidatorModule module, EValidatorSeverity severity, int
         m_pValidator->Report(record);
     }
 
-#if !defined(_RELEASE)
     if (bDbgBreak && g_cvars.sys_error_debugbreak)
     {
-        __debugbreak();
+        AZ::Debug::Trace::Break();
     }
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2883,6 +2684,18 @@ void CSystem::SetConfigPlatform(const ESystemConfigPlatform platform)
 ESystemConfigPlatform CSystem::GetConfigPlatform() const
 {
     return m_ConfigPlatform;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CSystem::SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* map)
+{
+    m_GraphicsSettingsMap = map;
+}
+
+//////////////////////////////////////////////////////////////////////////
+AZStd::unordered_map<AZStd::string, CVarInfo>* CSystem::GetGraphicsSettingsMap() const
+{
+    return m_GraphicsSettingsMap;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3250,55 +3063,6 @@ void CSystem::UnregisterWindowMessageHandler(IWindowMessageHandler* pHandler)
 }
 
 //////////////////////////////////////////////////////////////////////////
-int CSystem::PumpWindowMessage(bool bAll, WIN_HWND opaqueHWnd)
-{
-#if defined(WIN32)
-    int count = 0;
-    const HWND hWnd = (HWND)opaqueHWnd;
-    const bool bUnicode = hWnd != NULL ?
-        IsWindowUnicode(hWnd) != FALSE :
-        !(gEnv && gEnv->IsEditor());
-#if defined(UNICODE) || defined(_UNICODE)
-    // Once we compile as Unicode app on Windows, we should detect non-Unicode windows
-    assert(bUnicode && "The window is not Unicode, this is most likely a bug");
-#endif
-
-    // Pick the correct function for handling messages
-    typedef BOOL (WINAPI * PeekMessageFunc)(MSG*, HWND, UINT, UINT, UINT);
-    typedef LRESULT (WINAPI * DispatchMessageFunc)(const MSG*);
-    const PeekMessageFunc pfnPeekMessage = bUnicode ? PeekMessageW : PeekMessageA;
-    const DispatchMessageFunc pfnDispatchMessage = bUnicode ? DispatchMessageW : DispatchMessageA;
-
-    do
-    {
-        // Get a new message
-        MSG msg;
-        BOOL bHasMessage = pfnPeekMessage(&msg, hWnd, 0, 0, PM_REMOVE);
-        if (bHasMessage == FALSE)
-        {
-            break;
-        }
-        ++count;
-
-        // Special case for WM_QUIT
-        if (msg.message == WM_QUIT)
-        {
-            return -1;
-        }
-
-        // Dispatch the message
-        TranslateMessage(&msg);
-        pfnDispatchMessage(&msg);
-    } while (bAll);
-
-    return count;
-#else
-    // No window message support on this platform
-    return 0;
-#endif
-}
-
-//////////////////////////////////////////////////////////////////////////
 #if defined(WIN32)
 bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
@@ -3328,16 +3092,14 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
         switch (wParam)
         {
         case SIZE_MINIMIZED:
-        {
             EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnMinimized);
             break;
-        }
         case SIZE_MAXIMIZED:
-        case SIZE_RESTORED:
-        {
-            EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnMaximizedOrRestored);
+            EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnMaximized);
             break;
-        }
+        case SIZE_RESTORED:
+            EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnRestored);
+            break;
         }
         return false;
     case WM_WINDOWPOSCHANGED:
@@ -3352,8 +3114,12 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
         GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_ACTIVATE, LOWORD(wParam) != WA_INACTIVE, HIWORD(wParam));
         return true;
     case WM_SETFOCUS:
+        EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnSetFocus);
+        GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_CHANGE_FOCUS, 1, 0);
+        return false;
     case WM_KILLFOCUS:
-        GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_CHANGE_FOCUS, uMsg == WM_SETFOCUS, 0);
+        EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnKillFocus);
+        GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_CHANGE_FOCUS, 0, 0);
         return false;
     case WM_INPUTLANGCHANGE:
         GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LANGUAGE_CHANGE, wParam, lParam);

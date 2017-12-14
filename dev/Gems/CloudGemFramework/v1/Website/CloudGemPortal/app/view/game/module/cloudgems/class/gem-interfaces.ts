@@ -49,7 +49,7 @@ export interface Gemifiable {
     module: typeof NgModule,    
     annotations: any,
     thumbnail: typeof Component,
-    index: typeof Component,
+    index: typeof Component
     
 }
 

@@ -34,6 +34,9 @@
 #include <IConsole.h>
 #include <ICryPak.h>
 #include <IEditorGame.h>
+#include <IGameFramework.h>
+#include <ITimer.h>
+#include <LumberyardLauncher.h>
 #include <platform_impl.h>
 #include <StringUtils.h>
 
@@ -70,7 +73,7 @@ STRUCT_INFO_T_INSTANTIATE(Color_tpl, <float>)
 STRUCT_INFO_T_INSTANTIATE(Color_tpl, <uint8>)
 #endif // AZ_MONOLITHIC_BUILD
 
-int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExeFileName)
+int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExeFileName, AzGameFramework::GameApplication& gameApp)
 {
     //restart parameters
     static const size_t MAX_RESTART_LEVEL_NAME = 256;
@@ -194,30 +197,11 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
             pRestartLevelName = fileName;
         }
 
-        CryStackStringT<char, 256> newCommandLine;
-        const char* substr = oaRun ? 0 : strstr(commandLine, "restart");
-        if (substr != NULL)
-        {
-            int len = (int)(substr - commandLine);
-            newCommandLine.assign(commandLine, len);
-            newCommandLine.append(commandLine + len + 7);
-            pGameStartup->Run(newCommandLine.c_str());  //restartLevel to be loaded
-        }
-        else
-        {
-            const char* loadstr = oaRun ? 0 : strstr(commandLine, "load");
-            if (loadstr != NULL)
-            {
-                int len = (int)(loadstr - commandLine);
-                newCommandLine.assign(commandLine, len);
-                newCommandLine.append(commandLine + len + 4);
-                pGameStartup->Run(newCommandLine.c_str()); //restartLevel to be loaded
-            }
-            else
-            {
-                pGameStartup->Run(NULL);
-            }
-        }
+        // Execute autoexec.cfg to load the initial level
+        gEnv->pConsole->ExecuteString("exec autoexec.cfg");
+
+        // Run the main loop
+        LumberyardLauncher::RunMainLoop(gameApp, *gEnv->pGame->GetIGameFramework());
 
         bool isLevelRequested = pGameStartup->GetRestartLevel(&pRestartLevelName);
         if (pRestartLevelName)
@@ -238,6 +222,7 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
             si.cb = sizeof(si);
             PROCESS_INFORMATION pi;
 
+            CryStackStringT<char, 256> newCommandLine;
             if (isLevelRequested)
             {
                 newCommandLine.assign("restart ");
@@ -424,18 +409,18 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         if (pos != NULL)
         {
             Sleep(5000); //wait for old instance to be deleted
-            nRes = RunGame(lpCmdLine, engineCfg, szExeFileName);  //pass the restart level if restarting
+            nRes = RunGame(lpCmdLine, engineCfg, szExeFileName, gameApp);  //pass the restart level if restarting
         }
         else
         {
             pos = strstr(lpCmdLine, " -load ");// commandLine.find("load");
             if (pos != NULL)
             {
-                nRes = RunGame(lpCmdLine, engineCfg, szExeFileName);
+                nRes = RunGame(lpCmdLine, engineCfg, szExeFileName, gameApp);
             }
             else
             {
-                nRes = RunGame(GetCommandLineA(), engineCfg, szExeFileName);
+                nRes = RunGame(GetCommandLineA(), engineCfg, szExeFileName, gameApp);
             }
         }
 

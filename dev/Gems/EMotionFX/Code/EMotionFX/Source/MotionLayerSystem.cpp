@@ -377,7 +377,7 @@ namespace EMotionFX
                     // compensate for motion extraction
                     if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled)
                     {
-                        tempActorPose->CompensateForMotionExtractionDirect();
+                        tempActorPose->CompensateForMotionExtractionDirect(instance->GetMotion()->GetMotionExtractionFlags());
                     }
 
                     // perform the blending based on settings in the motion instance
@@ -406,7 +406,7 @@ namespace EMotionFX
                     // compensate for motion extraction
                     if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled)
                     {
-                        finalPose->CompensateForMotionExtractionDirect();
+                        finalPose->CompensateForMotionExtractionDirect(instance->GetMotion()->GetMotionExtractionFlags());
                     }
                 }
                 else
@@ -435,7 +435,7 @@ namespace EMotionFX
                     // compensate for motion extraction
                     if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled)
                     {
-                        tempActorPose->CompensateForMotionExtractionDirect();
+                        tempActorPose->CompensateForMotionExtractionDirect(instance->GetMotion()->GetMotionExtractionFlags());
                     }
 
                     // perform the blending based on settings in the motion instance

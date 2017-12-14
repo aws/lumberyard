@@ -6,6 +6,7 @@
     "defines": [],
     "lib_required": "True",
     "shared_required": "True",
+    "suppress_warning": "True",
     "platform": {
         "win_x64_vs2015": {
             "sharedlibpath": ["bin"],

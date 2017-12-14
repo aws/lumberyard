@@ -14,7 +14,7 @@
 #              integrated since it is unique for each branch
 #
 ########### Below are various getter to expose the global values ############
-from waflib.Configure import conf
+from waflib.Configure import conf, ConfigurationContext
 from waflib import Context, Utils, Logs
 from cry_utils import append_to_unique_list, split_comma_delimited_string
 
@@ -55,17 +55,18 @@ for additional_copyright_org in ADDITIONAL_COPYRIGHT_TABLE:
 PLATFORM_SHORTCUT_ALIASES = {
     'win': [
         'win_x64_vs2015',
-        'win_x64_vs2013'
+        'win_x64_vs2013',
     ],
     'darwin': [
-        'darwin_x64'
+        'darwin_x64',
     ],
     'android': [
         'android_armv7_gcc',
-        'android_armv7_clang'
+        'android_armv7_clang',
+        'android_armv8_clang',
     ],
     'linux': [
-        'linux_x64'
+        'linux_x64',
     ],
     'all': [
         'darwin_x64',
@@ -74,8 +75,25 @@ PLATFORM_SHORTCUT_ALIASES = {
         'win_x64_vs2015',
         'win_x64_vs2013',
         'android_armv7_gcc',
-        'android_armv7_clang'
-    ]
+        'android_armv7_clang',
+        'android_armv8_clang',
+    ],
+
+    # Compilers
+    'msvc': [
+        'win_x64_vs2015',
+        'win_x64_vs2013',
+    ],
+    'clang': [
+        'darwin_x64',
+        'ios',
+        'appletv',
+        'android_armv7_clang',
+        'android_armv8_clang',
+    ],
+    'gcc': [
+        'android_armv7_gcc'
+    ],
 }
 
 
@@ -447,6 +465,10 @@ def get_android_ndk_platform(conf):
 @conf
 def get_android_project_relative_path(self):
     return self.options.android_studio_project_folder + '/' + self.options.android_studio_project_name
+
+@conf
+def get_android_project_absolute_path(self):
+    return self.path.make_node(self.options.android_studio_project_folder + '/' + self.options.android_studio_project_name).abspath()
 
 @conf
 def get_android_patched_libraries_relative_path(self):
@@ -844,6 +866,17 @@ def preprocess_configuration_list(ctx, target, target_platform, configurations, 
 
     return processed_configurations
 
+VC120_CAPABILITY = ('vc120','Visual Studio 2013')
+VC140_CAPABILITY = ('vc140','Visual Studio 2015')
+ANDROID_CAPABILITY = ('compileandroid','Compile For Android')
+
+PLATFORM_TO_CAPABILITY_MAP = {
+    'win_x64_vs2015':       VC140_CAPABILITY,
+    'win_x64_vs2013':       VC120_CAPABILITY,
+    'android_armv7_gcc':    ANDROID_CAPABILITY,
+    'android_armv7_clang':  ANDROID_CAPABILITY,
+    'android_armv8_clang':  ANDROID_CAPABILITY,
+}
 
 VALIDATED_CONFIGURATIONS_FILENAME = "valid_configuration_platforms.json"
 AVAILABLE_PLATFORMS = None
@@ -857,24 +890,43 @@ def get_validated_platforms_node(conf):
 @conf
 def get_available_platforms(conf):
 
+    is_configure_context = isinstance(conf, ConfigurationContext)
+    validated_platforms_node = conf.get_validated_platforms_node()
+    validated_platforms_json = conf.parse_json_file(validated_platforms_node) if os.path.exists(validated_platforms_node.abspath()) else None
+
     global AVAILABLE_PLATFORMS
     if AVAILABLE_PLATFORMS is None:
-        # Check to see if there is already a validated platform list and set the available platforms to that
-        # if possible, otherwise initialize with the default supported platform for the current host platform
-        validated_platforms = []
-        try:
-            validated_platforms_node = conf.get_validated_platforms_node()
-            parsed_validated_platforms = conf.parse_json_file(validated_platforms_node)
-            validated_platforms = [x.encode('ascii') for x in parsed_validated_platforms]  # Loaded data is unicode so convert it to ASCII
-        except:
-            pass
 
-        if len(validated_platforms) == 0:
-            host = Utils.unversioned_sys_platform()
-            validated_platforms = list(PLATFORMS[host])
+        # Get all of the available target platforms for the current host platform
+        host_platform = Utils.unversioned_sys_platform()
+
+        # fallback option for android if the bootstrap params is empty
+        android_enabled_var = conf.get_env_file_var('ENABLE_ANDROID', required=False, silent=True)
+        android_enabled = (android_enabled_var == 'True')
+
+        # Check the enabled capabilities from the bootstrap parameter.  This value is set by the setup assistant
+        enabled_capabilities = conf.get_enabled_capabilities()
+        validated_platforms = []
+        for platform in PLATFORMS[host_platform]:
+
+            platform_capability = PLATFORM_TO_CAPABILITY_MAP.get(platform,None)
+            if platform_capability is not None:
+                if len(enabled_capabilities) > 0 and platform_capability[0] not in enabled_capabilities:
+                    Logs.warn('[WARN] Removing target platform {} due to "{}" not checked in Setup Assistant.'
+                              .format(platform, platform_capability[1]))
+                    continue
+
+            # Perform extra validation of platforms that can be disabled through options
+            if platform.startswith('android') and not android_enabled:
+                continue
+
+            if not is_configure_context and validated_platforms_json:
+                if platform not in validated_platforms_json:
+                    continue
+
+            validated_platforms.append(platform)
 
         AVAILABLE_PLATFORMS = validated_platforms
-
     return AVAILABLE_PLATFORMS
 
 
@@ -904,4 +956,3 @@ def update_validated_platforms(conf):
     except Exception as e:
         # If the file cannot be written to, warn, but dont fail.
         Logs.warn("[WARN] Unable to update validated configurations file '{}' ({})".format(validated_platforms_node.abspath(),e.message))
-

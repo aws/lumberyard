@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include "ViewportInteraction.h"
+
 class ViewportElement
 {
 public:

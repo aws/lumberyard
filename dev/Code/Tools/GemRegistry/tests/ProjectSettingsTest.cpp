@@ -195,7 +195,7 @@ TEST_F(ProjectSettingsTest, ParseTest)
 
     rapidjson::Document json(rapidjson::kObjectType);
     GenerateJson(json, id, v1, path, GJF_All);
-    AZ::Outcome<void, AZStd::string> outcome = ps.ParseJson(json);
+    AZ::Outcome<void, AZStd::string> outcome = ps.ParseGemsJson(json);
     ASSERT_TRUE(outcome.IsSuccess())                << m_errDescriptionParseFailed << outcome.GetError().c_str();
     auto gemMap = ps.GetGems();
     EXPECT_EQ(gemMap.size(), 1)                     << m_errDescriptionParseFailed << outcome.GetError().c_str();
@@ -203,16 +203,16 @@ TEST_F(ProjectSettingsTest, ParseTest)
     EXPECT_EQ(gemMap.begin()->second.m_version, v1) << m_errDescriptionParseFailed << outcome.GetError().c_str();
 
     GenerateJson(json, id, v1, path, GJF_IncludeVersion | GJF_IncludePath);
-    EXPECT_FALSE(ps.ParseJson(json))                << m_errInvalidDescriptionParseSucceeded;
+    EXPECT_FALSE(ps.ParseGemsJson(json))                << m_errInvalidDescriptionParseSucceeded;
 
     GenerateJson(json, id, v1, path, GJF_IncludeID | GJF_IncludePath);
-    EXPECT_FALSE(ps.ParseJson(json))                << m_errInvalidDescriptionParseSucceeded;
+    EXPECT_FALSE(ps.ParseGemsJson(json))                << m_errInvalidDescriptionParseSucceeded;
 
     GenerateJson(json, id, v1, path, GJF_IncludeVersion | GJF_IncludeID);
-    EXPECT_FALSE(ps.ParseJson(json))                << m_errInvalidDescriptionParseSucceeded;
+    EXPECT_FALSE(ps.ParseGemsJson(json))                << m_errInvalidDescriptionParseSucceeded;
 
     GenerateJson(json, id, v1, path, GJF_IncludeID | GJF_IncludeVersion | GJF_IncludePath);
-    EXPECT_TRUE(ps.ParseJson(json))                 << m_errDescriptionParseFailed;
+    EXPECT_TRUE(ps.ParseGemsJson(json))                 << m_errDescriptionParseFailed;
 }
 
 TEST_F(ProjectSettingsTest, SaveTest)
@@ -230,7 +230,7 @@ TEST_F(ProjectSettingsTest, SaveTest)
 
     rapidjson::Document json(rapidjson::kObjectType);
     GenerateJson(json, id, v1, path, GJF_All);
-    ASSERT_TRUE(ps.ParseJson(json))                             << m_errDescriptionParseFailed;
+    ASSERT_TRUE(ps.ParseGemsJson(json))                             << m_errDescriptionParseFailed;
     EXPECT_TRUE(json.HasMember(GPF_TAG_LIST_FORMAT_VERSION))    << m_errDescriptionParseFailed;
     EXPECT_TRUE(json[GPF_TAG_LIST_FORMAT_VERSION].IsInt())      << m_errDescriptionParseFailed;
     EXPECT_EQ(json[GPF_TAG_LIST_FORMAT_VERSION].GetInt(), GEMS_PROJECT_FILE_VERSION) << m_errDescriptionParseFailed;

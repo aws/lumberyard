@@ -15,6 +15,7 @@
 #include "DetailWidget.h"
 
 #include <IAWSResourceManager.h>
+#include <ResourceManagementView.h>
 
 #include "StackEventsSplitter.h"
 
@@ -24,6 +25,9 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QFrame>
+#include <QTextEdit>
+#include <QResizeEvent>
+#include <QPushButton>
 
 class DetailTextEditWidget
     : public QTextEdit

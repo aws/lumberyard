@@ -26,6 +26,8 @@
 #include <CryPath.h>
 #include "Components/IComponentRender.h"
 
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+
 #define PHYS_FOREIGN_ID_BOID PHYS_FOREIGN_ID_USER - 1
 
 #define MAX_SPEED 15
@@ -77,7 +79,7 @@ CFlock::CFlock(IEntity* pEntity, EFlockType flockType)
 
     m_bc.engine = gEnv->p3DEngine;
     m_bc.physics = gEnv->pPhysicalWorld;
-    m_bc.waterLevel = m_bc.engine->GetWaterLevel(&m_origin);
+    m_bc.waterLevel = OceanRequest::GetWaterLevel(m_origin);
     m_bc.fBoidMass = 1;
     m_bc.fBoidRadius = 1;
     m_bc.fBoidThickness = 1;
@@ -365,7 +367,7 @@ void CFlock::Update(CCamera* pCamera)
     m_bc.playerPos =
         GetISystem()->GetViewCamera().GetMatrix().GetTranslation(); // Player position is position of camera.
     m_bc.flockPos = m_origin;
-    m_bc.waterLevel = m_bc.engine->GetWaterLevel(&m_origin);
+    m_bc.waterLevel = OceanRequest::GetWaterLevel(m_origin);
 
     m_bounds.min = Vec3(FLT_MAX, FLT_MAX, FLT_MAX);
     m_bounds.max = Vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);

@@ -390,16 +390,19 @@ PyGameSubMaterial::PyGameSubMaterial(void* pMat, int id)
         m_matParams[iter2->first] = value2;
     }
 
-    for (int i = 0; i < EFTT_MAX; i++)
+    SInputShaderResources&      sr = pMaterial->GetShaderResources();
+    for (auto &iter : sr.m_TexturesResourcesMap )
     {
-        if (!pMaterial->GetShaderResources().m_Textures[i].m_Name.empty())
+        SEfResTexture*  	pTextureRes = &(iter.second);
+        if (!pTextureRes->m_Name.empty())
         {
-            m_matTextures.push_back(PyScript::CreatePyGameTexture(&pMaterial->GetShaderResources().m_Textures[i]));
+            ResourceSlotIndex  nSlot = iter.first;
+            m_matTextures[nSlot] = PyScript::CreatePyGameTexture(pTextureRes);
         }
     }
 
     // Grab all Public Variables.
-    CVarBlock* varBlockPublic = pMaterial->GetPublicVars(pMaterial->GetShaderResources());
+    CVarBlock* varBlockPublic = pMaterial->GetPublicVars(sr);
 
     if (varBlockPublic != NULL && !varBlockPublic->IsEmpty())
     {
@@ -476,12 +479,10 @@ void PyGameSubMaterial::UpdateSubMaterial()
     shdResources.m_LMaterial.m_Specular.b = m_matParams["Specular"]->property.colorValue.b;
 
     // Update all modify texture paths
-    for (int i = 0; i < m_matTextures.size(); i++)
+    for (auto &iter : m_matTextures )
     {
-        if (QString::compare(shdResources.m_Textures[i].m_Name.c_str(), m_matTextures[i]->GetName()) != 0)
-        {
-            shdResources.m_Textures[i].m_Name = m_matTextures[i]->GetName().toLatin1().data();
-        }
+        uint16          nSlot = iter.first;
+        shdResources.m_TexturesResourcesMap[nSlot].m_Name = iter.second->GetName().toLatin1().data();
     }
 
     // Check for updates to all material public variables.
@@ -1567,26 +1568,26 @@ namespace PyScript
 
         template<size_t N>
         static PyObject* Convert(const QString& s);
-
-        template<>
-        static PyObject* Convert<2>(const QString& s)
-        {
-            return PyUnicode_FromUnicode(reinterpret_cast<const Py_UNICODE*>(s.constData()), s.size());
-        }
-
-        template<>
-        static PyObject* Convert<4>(const QString& s)
-        {
-            const QVector<uint> ucs4 = s.toUcs4();
-            return PyUnicode_FromUnicode(reinterpret_cast<const Py_UNICODE*>(ucs4.constData()), ucs4.size());
-        }
-
-        static PyObject* convert(QString const& s)
-        {
-            return Convert<sizeof(Py_UNICODE)>(s);
-        }
-
+        static PyObject* convert(QString const& s);
     };
+
+    template<>
+    PyObject* CQStringToPythonConverter::Convert<2>(const QString& s)
+    {
+        return PyUnicode_FromUnicode(reinterpret_cast<const Py_UNICODE*>(s.constData()), s.size());
+    }
+
+    template<>
+    PyObject* CQStringToPythonConverter::Convert<4>(const QString& s)
+    {
+        const QVector<uint> ucs4 = s.toUcs4();
+        return PyUnicode_FromUnicode(reinterpret_cast<const Py_UNICODE*>(ucs4.constData()), ucs4.size());
+    }
+
+    PyObject* CQStringToPythonConverter::convert(QString const& s)
+    {
+        return Convert<sizeof(Py_UNICODE)>(s);
+    }
 
     /////////////////////////////////////////////////////////////////////////
     // Converter for Python type <-> Property Type
@@ -2786,7 +2787,7 @@ namespace PyScript
         }
     }
      
-    void InitializePython()
+    void InitializePython(const QString& rootEngineDir)
     {
 
         // Determine PYTHONHOME
@@ -2816,7 +2817,7 @@ namespace PyScript
 #ifdef WIN32
             pythonHome = DEFAULT_LY_PYTHONHOME;
             pythonHome.replace('/', '\\');
-            pythonHome.replace("@root@", Path::GetExecutableParentDirectoryUnicode());
+            pythonHome.replace("@root@", rootEngineDir);
 #else
             pythonHome = getenv("PYTHONHOME");
 #endif
@@ -2908,3 +2909,4 @@ DECLARE_PYTHON_MODULE(lodtools);
 DECLARE_PYTHON_MODULE(prefab);
 DECLARE_PYTHON_MODULE(vegetation);
 DECLARE_PYTHON_MODULE(shape);
+

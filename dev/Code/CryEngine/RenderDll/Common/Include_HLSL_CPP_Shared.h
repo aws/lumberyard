@@ -165,7 +165,6 @@ hlsl_cbuffer(PerFrameConstantBuffer)
     hlsl_float4(PerFrame_CloudShadowParams);
     hlsl_float4(PerFrame_CloudShadowAnimParams);
 
-    hlsl_float4(PerFrame_CausticsParams);
     hlsl_float4(PerFrame_CausticsSmoothSunDirection);
 
     hlsl_float4(PerFrame_DecalZFightingRemedy);

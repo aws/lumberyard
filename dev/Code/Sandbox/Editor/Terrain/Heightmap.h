@@ -48,8 +48,16 @@ struct SSectorInfo
     int surfaceTextureSize;
 };
 
+// Interface to access CHeightmap from gems
+class IHeightmap
+{
+public:
+    virtual void UpdateEngineTerrain(int x1, int y1, int width, int height, bool bElevation, bool bInfoBits) = 0;
+    virtual void RecordUndo(int x1, int y1, int width, int height, bool bInfo) = 0;
+};
+
 // Editor data structure to keep the heights, detail layer information/holes, terrain texture
-class CHeightmap
+class CHeightmap : public IHeightmap
 {
 public:
     CHeightmap();
@@ -102,6 +110,9 @@ public:
     //   trgRect Target rectangle in scaled heightmap.
     bool GetData(const QRect& trgRect, const int resolution, const QPoint& vTexOffset, CFloatImage& hmap, bool bSmooth = true, bool bNoise = true);
 
+    //! resets the height map data, ocean, and mods
+    void Reset(int resolution, int unitSize);
+
     //////////////////////////////////////////////////////////////////////////
     // Terrain Grid functions.
     //////////////////////////////////////////////////////////////////////////
@@ -126,7 +137,7 @@ public:
 
     float CalcHeightScale() const;
 
-    bool GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth = true, bool bNoise = true, QRect* pUpdateRect = NULL, bool bShowWater = false, bool bUseScaledRange = true);
+    bool GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth = true, bool bNoise = true, QRect* pUpdateRect = NULL, bool bShowOcean = false, bool bUseScaledRange = true);
 
     void GetWeightmapBlock(int x, int y, int width, int height, Weightmap& map);
 
@@ -225,7 +236,7 @@ public:
     void PasteLayerIds(CByteImage* pIds, const Matrix34& transform);
 
     //! Update terrain block in engine terrain.
-    void UpdateEngineTerrain(int x1, int y1, int width, int height, bool bElevation, bool bInfoBits);
+    void UpdateEngineTerrain(int x1, int y1, int width, int height, bool bElevation, bool bInfoBits) override;
     //! Update all engine terrain.
     void UpdateEngineTerrain(bool bOnlyElevation = true, bool boUpdateReloadSurfacertypes = true);
 
@@ -235,8 +246,8 @@ public:
     //! Synchronize engine hole bit with bit stored in editor heightmap.
     void UpdateEngineHole(int x1, int y1, int width, int height);
 
-    void SetWaterLevel(float waterLevel);
-    float GetWaterLevel() const { return m_fWaterLevel; }
+    void SetOceanLevel(float oceanLevel);
+    float GetOceanLevel() const;
 
     void CopyData(t_hmap* pDataOut) const
     {
@@ -252,7 +263,7 @@ public:
 
     void GetMemoryUsage(ICrySizer* pSizer);
 
-    void RecordUndo(int x1, int y1, int width, int height, bool bInfo = false);
+    void RecordUndo(int x1, int y1, int width, int height, bool bInfo = false) override;
 
     CRGBLayer* GetRGBLayer() { return &m_TerrainBGRTexture; }
 
@@ -294,7 +305,7 @@ private:
     // Initialization
     void InitNoise() const;
 
-    float m_fWaterLevel;
+    float m_fOceanLevel;
     float m_fMaxHeight;
 
     std::vector<t_hmap> m_pHeightmap;

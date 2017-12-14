@@ -70,7 +70,7 @@ public:
     bool IsPhaseFirstStepOnPrimitiveCreation() const override { return m_Phase == eRectanglePhase_PlaceFirstPoint; }
     bool EnabledSeamlessSelection() const override { return m_Phase == eRectanglePhase_PlaceFirstPoint && !IsModelEmpty() ? true : false; }
 
-    void StoreSeparateStatus() override { m_bSeparatedNewShape = !GetPickedPolygon() && GetAsyncKeyState(VK_SHIFT); }
+    void StoreSeparateStatus() override { m_bSeparatedNewShape = !GetPickedPolygon() && (Qt::ShiftModifier & QApplication::queryKeyboardModifiers()); }
     void UpdateRectangle(const BrushVec3& v0, const BrushVec3& v1, bool bRenderFace, bool bUpdateUIs);
 
     void Serialize(Serialization::IArchive& ar)

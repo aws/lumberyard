@@ -134,6 +134,15 @@ void CTrackViewCurveEditor::UpdateSplines()
 
     if (!pSequence || m_bLevelClosing)
     {
+        // No sequence selected, remove any splines.
+        if (nullptr != m_ui)
+        {
+            if (nullptr != m_ui->m_wndSpline)
+            {
+                m_ui->m_wndSpline->RemoveAllSplines();
+            }
+        }
+
         return;
     }
 

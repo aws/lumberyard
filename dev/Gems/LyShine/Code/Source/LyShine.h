@@ -62,6 +62,7 @@ public:
     AZ::EntityId FindLoadedCanvasByPathName(const string& assetIdPathname) override;
 
     void ReleaseCanvas(AZ::EntityId canvas, bool forEditor) override;
+    void ReleaseCanvasDeferred(AZ::EntityId canvas) override;
 
     ISprite* LoadSprite(const string& pathname) override;
     ISprite* CreateSprite(const string& renderTargetName) override;

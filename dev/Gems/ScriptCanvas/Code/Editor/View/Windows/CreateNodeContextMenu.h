@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Math/Vector2.h>
 
 #include <QMenu>
 #include <QWidgetAction>
@@ -124,6 +125,18 @@ namespace ScriptCanvasEditor
         bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
     };
 
+    class CreateBlockCommentAction
+        : public CreateNodeAction
+    {
+        Q_OBJECT
+    public:
+        CreateBlockCommentAction(QObject* parent);
+        virtual ~CreateBlockCommentAction() = default;
+
+        void RefreshAction(const AZ::EntityId& sceneId) override;
+        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+    };
+
     class CreateNodeContextMenu
         : public QMenu
     {
@@ -137,6 +150,7 @@ namespace ScriptCanvasEditor
         void DisableCreateActions();
         void RefreshActions(const AZ::EntityId& sceneId);
 
+        void ResetSourceSlotFilter();
         void FilterForSourceSlot(const AZ::EntityId& sceneId, const AZ::EntityId& sourceSlotId);
         const Widget::NodePalette* GetNodePalette() const;
 

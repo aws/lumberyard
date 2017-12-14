@@ -28,11 +28,12 @@ namespace LmbrCentral
 
         const auto entityId = GetEntityId();
 
+        m_configuration.SetEntityId(entityId);
+        m_configuration.UpdateSizeFromEntityShape();
+
         m_fogVolume.SetEntityId(entityId);
         m_fogVolume.CreateFogVolumeRenderNode(m_configuration);
 
-        m_configuration.SetEntityId(entityId);
-        m_configuration.UpdateSizeFromEntityShape();
         RefreshFog();
 
         RenderNodeRequestBus::Handler::BusConnect(entityId);
@@ -72,11 +73,11 @@ namespace LmbrCentral
                 editContext->Class<EditorFogVolumeComponent>(
                     "Fog Volume", "Allows to specify an area with a fog")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/ColliderBox.png")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Box.png")
-                        // Disabled for v1.11
-                        //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::Category, "Environment")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/FogVolume.png")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/FogVolume.png")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/fog-volume-component")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement(0, &EditorFogVolumeComponent::m_configuration, "Settings", "Fog configuration")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
@@ -154,7 +155,7 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &FogVolumeConfiguration::m_volumeType,
                         "Volume type", "Shape of the fog")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
-                        ->EnumAttribute(FogVolumeType::RectangularPrism, "Rectangular prism")
+                        ->EnumAttribute(FogVolumeType::RectangularPrism, "Cuboid")
                         ->EnumAttribute(FogVolumeType::Ellipsoid, "Ellipsoid")
 
                     ->DataElement(AZ::Edit::UIHandlers::Color, &FogVolumeConfiguration::m_color, 
@@ -164,13 +165,6 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &FogVolumeConfiguration::m_useGlobalFogColor, 
                         "Use global fog color", "If true, the Color property is ignored. Instead, the current global fog color is used")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
-
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_hdrDynamic,
-                        "HDR Dynamic", "Specifies how much brighter than the default 255,255,255 white the fog is")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
-                        ->Attribute(AZ::Edit::Attributes::Min, 10.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 20.0f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_globalDensity,
                         "Fog Density", "Controls the density of the fog. The higher the value the more dense the fog and the less you'll be able to see objects behind or inside the fog volume")
@@ -201,7 +195,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_windInfluence,
-                        "Wind influence", "Controls the influence of the wind")
+                        "Wind influence (Volumetric Fog only)", "Controls the influence of the wind (Volumetric Fog only)")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 20.0f)
@@ -233,43 +227,53 @@ namespace LmbrCentral
                         ->EnumAttribute(EngineSpec::Medium, "Medium")
                         ->EnumAttribute(EngineSpec::Low, "Low")
 
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_hdrDynamic,
+                        "HDR Dynamic (Non-Volumetric Fog)", "Specifies how much brighter than the default 255,255,255 white the fog is (Non-Volumetric Fog only)")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 20.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Fall Off Settings")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_fallOffDirLong,
-                        "Fall off longitude", "Controls the longitude of the world space fall off direction of the fog. 0 represents East, rotation is counter-clockwise")
+                        "Longitude", "Controls the longitude of the world space fall off direction of the fog. 0 represents East, rotation is counter-clockwise")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_fallOffDirLatitude,
-                        "Fall off latitude", "Controls the latitude of the world space fall off direction of the fog. 90 lets the fall off direction point upwards in world space")
+                        "Latitude", "Controls the latitude of the world space fall off direction of the fog. 90 lets the fall off direction point upwards in world space")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_fallOffShift,
-                        "Fall off shift", "Controls how much to shift the fog density distribution along the fall off direction in world units")
+                        "Shift", "Controls how much to shift the fog density distribution along the fall off direction in world units")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
-                        ->Attribute(AZ::Edit::Attributes::Min, -100.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+                        ->Attribute(AZ::Edit::Attributes::Min, -50.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 50.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                         ->Attribute(AZ::Edit::Attributes::Suffix, "m")
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_fallOffScale,
-                        "Fall off scale", "Scales the density distribution along the fall off direction. Higher values will make the fog fall off more rapidly and generate thicker fog layers along the negative fall off direction")
+                        "Scale", "Scales the density distribution along the fall off direction. Higher values will make the fog fall off more rapidly and generate thicker fog layers along the negative fall off direction")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
-                        ->Attribute(AZ::Edit::Attributes::Min, -100.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+                        ->Attribute(AZ::Edit::Attributes::Min, -50.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 50.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
-                    ->ClassElement(AZ::Edit::ClassElements::Group, "Ramp")
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Ramp (Volumetric Fog only)")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_rampStart,
-                        "Ramp start", "Specifies the start distance of fog density ramp in world units")
+                        "Start", "Specifies the start distance of fog density ramp in world units")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 30000.0f)
@@ -277,7 +281,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Suffix, "m")
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_rampEnd,
-                        "Ramp end", "Specifies the end distance of fog density ramp in world units")
+                        "End", "Specifies the end distance of fog density ramp in world units")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 30000.0f)
@@ -285,38 +289,38 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Suffix, "m")
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_rampInfluence,
-                        "Ramp influence", "Controls the influence of fog density ramp")
+                        "Influence", "Controls the influence of fog density ramp")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
-                    ->ClassElement(AZ::Edit::ClassElements::Group, "Density")
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Density Noise (Volumetric Fog only)")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_densityNoiseScale,
-                        "Noise density scale", "Scales the noise for the density")
+                        "Scale", "Scales the noise for the density")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 10.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_densityNoiseOffset,
-                        "Noise density offset", "Offsets the noise for the density")
+                        "Offset", "Offsets the noise for the density")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, -2.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 2.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_densityNoiseTimeFrequency,
-                        "Noise density t. freq.", "Controls the time frequency of the noise for the density")
+                        "Time frequency", "Controls the time frequency of the noise for the density")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &FogVolumeConfiguration::m_densityNoiseFrequency,
-                        "Noise density sp. freq.", "Controls the spatial frequency of the noise for the density")
+                        "Spatial frequency", "Controls the spatial frequency of the noise for the density")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 10000.0f)

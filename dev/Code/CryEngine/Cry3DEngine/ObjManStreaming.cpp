@@ -415,18 +415,16 @@ static bool AreTexturesStreamed(_smart_ptr<IMaterial> pMaterial, float fMipFacto
     {
         if (IRenderShaderResources* pRes = pMaterial->GetShaderItem().m_pShaderResources)
         {
-            for (int iSlot = 0; iSlot < EFTT_MAX; ++iSlot)
+            for ( auto iter=pRes->GetTexturesResourceMap()->begin() ; iter!= pRes->GetTexturesResourceMap()->end() ; ++iter )
             {
-                if (SEfResTexture* pResTex = pRes->GetTexture(iSlot))
+                SEfResTexture*  pResTex = &(iter->second);
+                if (ITexture* pITex = pResTex->m_Sampler.m_pITex)
                 {
-                    if (ITexture* pITex = pResTex->m_Sampler.m_pITex)
-                    {
-                        float fCurMipFactor = fMipFactor * pResTex->GetTiling(0) * pResTex->GetTiling(1);
+                    float fCurMipFactor = fMipFactor * pResTex->GetTiling(0) * pResTex->GetTiling(1);
 
-                        if (!pITex->IsParticularMipStreamed(fCurMipFactor))
-                        {
-                            return false;
-                        }
+                    if (!pITex->IsParticularMipStreamed(fCurMipFactor))
+                    {
+                        return false;
                     }
                 }
             }
@@ -804,20 +802,27 @@ void CObjManager::ProcessObjectsStreaming_Finish()
         {
             IStreamable* pStatObj = m_arrStreamableToRelease.back();
             m_arrStreamableToRelease.DeleteLast();
-            pStatObj->ReleaseStreamableContent();
+            if (pStatObj)
+            {
+                pStatObj->ReleaseStreamableContent();
 
 #ifdef OBJMAN_STREAM_STATS
-            if (m_pStreamListener)
-            {
-                m_pStreamListener->OnUnloadedStreamedObject(pStatObj);
-            }
+                if (m_pStreamListener)
+                {
+                    m_pStreamListener->OnUnloadedStreamedObject(pStatObj);
+                }
 #endif
 
-            if (GetCVars()->e_StreamCgfDebug == 2)
+                if (GetCVars()->e_StreamCgfDebug == 2)
+                {
+                    string sName;
+                    pStatObj->GetStreamableName(sName);
+                    PrintMessage("Unloaded: %s", sName.c_str());
+                }
+            }
+            else
             {
-                string sName;
-                pStatObj->GetStreamableName(sName);
-                PrintMessage("Unloaded: %s", sName.c_str());
+                CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_WARNING, "ProcessObjectsStreaming_Finish is trying to release streamable content of a deleted pStatObj");
             }
         }
 
@@ -1352,12 +1357,6 @@ void CObjManager::UpdateRenderNodeStreamingPriority(IRenderNode* pObj, float fEn
         }
         fObjScale = max(0.001f, ((CDecalRenderNode*)pObj)->CDecalRenderNode::GetMatrix().GetColumn0().GetLength());
         break;
-    case eERType_WaterWave:
-        if (!passInfo.RenderWaterWaves())
-        {
-            return;
-        }
-        break;
     case eERType_WaterVolume:
         if (!passInfo.RenderWaterVolumes())
         {
@@ -1477,9 +1476,16 @@ void CObjManager::UpdateRenderNodeStreamingPriority(IRenderNode* pObj, float fEn
             PrecacheCharacter(pObj, fImportance, pChar, pSlotMat, matParent, fEntPrecacheDistance, fObjScale, bDrawNear ? 4 : 2, bFullUpdate, bDrawNear, nLod);
         }
 #if defined(USE_GEOM_CACHES)
+        //This is the legacy case where the CGeomCacheRenderNode is a slot in a CComponentRenderer
         else if (CGeomCacheRenderNode* pGeomCacheRenderNode = static_cast<CGeomCacheRenderNode*>(pObj->GetGeomCacheRenderNode(nEntSlot, &matParent, false)))
         {
             pGeomCacheRenderNode->UpdateStreamableComponents(fImportance, fEntDistance, bFullUpdate, nLod, fInvObjScale, bFullUpdate);
+        }
+        //For the newer AZ systems CGeomCacheRenderNodes are not tied to the CComponentRenderer
+        else if (nodeType == eERType_GeomCache)
+        {
+            CGeomCacheRenderNode* geomCacheRenderNode = static_cast<CGeomCacheRenderNode*>(pObj);
+            geomCacheRenderNode->UpdateStreamableComponents(fImportance, fEntDistance, bFullUpdate, nLod, fInvObjScale, bFullUpdate);
         }
 #endif
         else if (pSlotMat)

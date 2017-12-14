@@ -103,9 +103,9 @@ namespace EMotionFX
         if (mapping.mPosIndex != MCORE_INVALIDINDEX16)
         {
             const uint32 offset = mapping.mPosIndex * mNumSamples;
-            const MCore::Vector3& posA = mPositions[offset + firstSampleIndex];
-            const MCore::Vector3& posB = mPositions[offset + secondSampleIndex];
-            outTransform->mPosition = MCore::LinearInterpolate<MCore::Vector3>(posA, posB, t) + subMotion->GetPosePos();
+            const AZ::Vector3& posA = AZ::Vector3(mPositions[offset + firstSampleIndex]);
+            const AZ::Vector3& posB = AZ::Vector3(mPositions[offset + secondSampleIndex]);
+            outTransform->mPosition = MCore::LinearInterpolate<AZ::Vector3>(posA, posB, t) + subMotion->GetPosePos();
         }
         else
         {
@@ -142,9 +142,9 @@ namespace EMotionFX
             if (mapping.mScaleIndex != MCORE_INVALIDINDEX16)
             {
                 const uint32 offset = mapping.mScaleIndex * mNumSamples;
-                const MCore::Vector3& scaleA = mScales[offset + firstSampleIndex];
-                const MCore::Vector3& scaleB = mScales[offset + secondSampleIndex];
-                outTransform->mScale  = MCore::LinearInterpolate<MCore::Vector3>(scaleA, scaleB, t) + subMotion->GetPoseScale();
+                const AZ::Vector3& scaleA = AZ::Vector3(mScales[offset + firstSampleIndex]);
+                const AZ::Vector3& scaleB = AZ::Vector3(mScales[offset + secondSampleIndex]);
+                outTransform->mScale  = MCore::LinearInterpolate<AZ::Vector3>(scaleA, scaleB, t) + subMotion->GetPoseScale();
             }
             else
             {
@@ -202,9 +202,9 @@ namespace EMotionFX
         if (mapping.mPosIndex != MCORE_INVALIDINDEX16)
         {
             const uint32 offset = mapping.mPosIndex * mNumSamples;
-            const MCore::Vector3& posA = mPositions[offset + firstSampleIndex];
-            const MCore::Vector3& posB = mPositions[offset + secondSampleIndex];
-            outTransform->mPosition = MCore::LinearInterpolate<MCore::Vector3>(posA, posB, t) + subMotion->GetPosePos();
+            const AZ::Vector3& posA = AZ::Vector3(mPositions[offset + firstSampleIndex]);
+            const AZ::Vector3& posB = AZ::Vector3(mPositions[offset + secondSampleIndex]);
+            outTransform->mPosition = MCore::LinearInterpolate<AZ::Vector3>(posA, posB, t) + subMotion->GetPosePos();
         }
         else
         {
@@ -241,9 +241,9 @@ namespace EMotionFX
             if (mapping.mScaleIndex != MCORE_INVALIDINDEX16)
             {
                 const uint32 offset = mapping.mScaleIndex * mNumSamples;
-                const MCore::Vector3& scaleA = mScales[offset + firstSampleIndex];
-                const MCore::Vector3& scaleB = mScales[offset + secondSampleIndex];
-                outTransform->mScale  = MCore::LinearInterpolate<MCore::Vector3>(scaleA, scaleB, t) + subMotion->GetPoseScale();
+                const AZ::Vector3& scaleA = AZ::Vector3(mScales[offset + firstSampleIndex]);
+                const AZ::Vector3& scaleB = AZ::Vector3(mScales[offset + secondSampleIndex]);
+                outTransform->mScale  = MCore::LinearInterpolate<AZ::Vector3>(scaleA, scaleB, t) + subMotion->GetPoseScale();
             }
             else
             {

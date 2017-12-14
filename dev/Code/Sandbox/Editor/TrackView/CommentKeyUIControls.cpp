@@ -15,6 +15,8 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 //////////////////////////////////////////////////////////////////////////
 class CCommentKeyUIControls
@@ -58,9 +60,9 @@ public:
         }
         AddVariable(mv_table, mv_font, "Font");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_CommentText;
+        return paramType == AnimParamType::CommentText;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -92,7 +94,7 @@ bool CCommentKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_CommentText)
+        if (paramType == AnimParamType::CommentText)
         {
             ICommentKey commentKey;
             keyHandle.GetKey(&commentKey);
@@ -113,9 +115,9 @@ bool CCommentKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
 // Called when UI variable changes.
 void CCommentKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!pSequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
     {
         return;
     }
@@ -125,7 +127,7 @@ void CCommentKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_CommentText)
+        if (paramType == AnimParamType::CommentText)
         {
             ICommentKey commentKey;
             keyHandle.GetKey(&commentKey);
@@ -152,8 +154,18 @@ void CCommentKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             commentKey.m_color.Set(color.x, color.y, color.z, commentKey.m_color.GetA());
             SyncValue(mv_size, commentKey.m_size, false, pVar);
 
-            CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-            keyHandle.SetKey(&commentKey);
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&commentKey);
+            }
+            else
+            {
+                // Let the AZ Undo system manage the nodes on the sequence entity
+                AzToolsFramework::ScopedUndoBatch undoBatch("Change key");
+                keyHandle.SetKey(&commentKey);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
         }
     }
 }

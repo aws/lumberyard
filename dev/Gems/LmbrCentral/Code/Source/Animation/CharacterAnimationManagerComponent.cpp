@@ -23,14 +23,17 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Plane.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 
 #include "CharacterAnimationManagerComponent.h"
 
 namespace LmbrCentral
 {
+    using AzFramework::PhysicsSystemEventBus;
+
     class CharacterAnimationNotificationBusHandler : public CharacterAnimationNotificationBus::Handler, public AZ::BehaviorEBusHandler
     {
     public:
@@ -232,7 +235,7 @@ namespace LmbrCentral
 
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::OnPrePhysicsUpdate()
     {
-        ISkeletonAnim* skeletonAnim = m_characterInstance->GetISkeletonAnim();
+        ISkeletonAnim* skeletonAnim = m_characterInstance ? m_characterInstance->GetISkeletonAnim() : nullptr;
 
         if (!skeletonAnim)
         {

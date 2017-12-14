@@ -336,7 +336,14 @@ namespace LmbrCentral
 
     void SkinnedMeshComponentRenderNode::CreateMesh()
     {
-        if (m_characterDefinitionAsset.GetId().IsValid())
+        //keep from hooking up component data when the component could be
+        //not activated on initialization due to component incompatibility
+        if (!m_attachedToEntityId.IsValid())
+        {
+            return;
+        }
+
+        if(m_characterDefinitionAsset.GetId().IsValid())
         {
             if (!AZ::Data::AssetBus::Handler::BusIsConnected())
             {
@@ -364,6 +371,11 @@ namespace LmbrCentral
         {
             // Character instance should be considered invalid at this point, as the
             // m_characterDefinitionAsset may've just been reassigned (see SetMeshAsset).
+            if (AZ::CharacterBoundsNotificationBus::Handler::BusIsConnectedId(m_characterInstance.get()))
+            {
+                AZ::CharacterBoundsNotificationBus::Handler::BusDisconnect(m_characterInstance.get());
+            }
+
             m_characterInstance = nullptr;
 
             EBUS_EVENT(SkinnedMeshInformationBus, OnSkinnedMeshDestroyed, m_attachedToEntityId);

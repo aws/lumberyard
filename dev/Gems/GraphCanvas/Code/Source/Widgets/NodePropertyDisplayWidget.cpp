@@ -83,6 +83,8 @@ namespace GraphCanvas
 
     void NodePropertyDisplayWidget::LockEditState(NodePropertyDisplay* propertyDisplay)
     {
+        SceneNotificationBus::Event(propertyDisplay->GetSceneId(), &SceneNotifications::OnNodeIsBeingEdited, true);
+
         m_forceEditSet.insert(propertyDisplay);
     }
 
@@ -94,6 +96,8 @@ namespace GraphCanvas
         if (count > 0 && m_forceEditSet.empty())
         {
             m_layoutTimer.start();
+
+            SceneNotificationBus::Event(propertyDisplay->GetSceneId(), &SceneNotifications::OnNodeIsBeingEdited, false);
         }
     }
     

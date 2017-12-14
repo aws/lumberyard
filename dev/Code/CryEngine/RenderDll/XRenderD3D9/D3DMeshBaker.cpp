@@ -18,6 +18,8 @@
 #include "IIndexedMesh.h"
 #include "IShader.h"
 #include "Common/RenderView.h"
+#include "Common/Textures/TextureManager.h"
+
 class CREBaker
     : public CRendElementBase
 {
@@ -195,7 +197,7 @@ bool CREBaker::mfDraw(CShader* ef, SShaderPass* sfm)
             Matrix44* pTexMtx = NULL;
             if (rd->m_RP.m_pShaderResources)
             {
-                SEfResTexture* pTex = rd->m_RP.m_pShaderResources->GetTexture(0);
+                SEfResTexture* pTex = rd->m_RP.m_pShaderResources->GetTextureResource(EFTT_DIFFUSE);
                 if (pTex && pTex->IsHasModificators())
                 {
                     SEfTexModificator* mod = pTex->m_Ext.m_pTexModifier;
@@ -501,7 +503,7 @@ static bool Dilate(CTexture* pTex, CTexture* pOutput, int nPhase, std::vector<II
         rd->FX_SetStencilState(nStencilState, 0, 0xFFFFFFFF, 0xFFFFFFFF);
         rd->FX_SetState(GS_NODEPTHTEST | GS_STENCIL);
         pSH->FXBeginPass(nPassPassthrough);
-        CTexture::s_ptexWhite->Apply(0);
+        CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
         pSH->FXSetPSFloat(tintColourName, &missColour, 1);
         rd->FX_Commit();
         rd->DrawQuad(0.0f, 0.0f, 1.0f, 1.0f, ColorF(1, 1, 1, 1));
@@ -570,7 +572,7 @@ static bool Dilate(CTexture* pTex, CTexture* pOutput, int nPhase, std::vector<II
         rd->FX_SetStencilState(nStencilState, 0, 0xFFFFFFFF, 0xFFFFFFFF);
         rd->FX_SetState(GS_NODEPTHTEST | GS_STENCIL | GS_COLMASK_A);
         pSH->FXBeginPass(nPassPassthrough);
-        CTexture::s_ptexWhite->Apply(0);
+        CTextureManager::Instance()->GetWhiteTexture()->Apply(0);
         pSH->FXSetPSFloat(tintColourName, &zeroAlpha, 1);
         rd->FX_Commit();
         EtchAlphas(pInputIndexedMesh, pMaterial, params, numParams);
@@ -838,9 +840,9 @@ bool CD3D9Renderer::BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBa
 
                     if (pShader->m_Flags & EF_DECAL)
                     {
-                        const bool bHasDiffuse = (pR && pR->GetTexture(EFTT_DIFFUSE)) ? true : false;
-                        const bool bHasNormal = (pR && pR->GetTexture(EFTT_NORMALS)) ? true : false;
-                        const bool bHasGloss = (pR && pR->GetTexture(EFTT_SMOOTHNESS)) ? true : false;
+                        const bool bHasDiffuse = pR ? pR->TextureSlotExists((uint16)EFTT_DIFFUSE) : false;
+                        const bool bHasNormal = pR ? pR->TextureSlotExists((uint16)EFTT_NORMALS) : false;
+                        const bool bHasGloss = pR ? pR->TextureSlotExists((uint16)EFTT_SMOOTHNESS) : false;
 
                         // emulate gbuffer blend masking (since we don't MRT, this won't work correctly
                         // in the normal pipeline)

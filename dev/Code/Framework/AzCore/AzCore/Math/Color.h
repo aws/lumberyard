@@ -57,6 +57,9 @@ namespace AZ
         ///Copies r,g,b components from a Vector3, specify w separately
         static const Color CreateFromVector3AndFloat(const Vector3& v, const VectorFloat& w);
 
+        /// r,g,b,a to u32 => 0xAABBGGRR (COLREF format)
+        static u32 CreateU32(u8 r, u8 g, u8 b, u8 a);
+
         //===============================================================
         // Store
         //===============================================================
@@ -127,7 +130,8 @@ namespace AZ
         explicit operator Vector3() const { return m_color.GetAsVector3(); }
         explicit operator Vector4() const { return m_color; }
 
-        Color& operator=(const Vector3& rhs) {
+        Color& operator=(const Vector3& rhs)
+        {
             Set(rhs);
             return *this;
         }

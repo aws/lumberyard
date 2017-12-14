@@ -14,6 +14,7 @@
 #pragma once
 
 #include <AzCore/base.h>
+#include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/string/string.h>
 #include "Cry_Math.h"
 #include "BaseTypes.h"
@@ -167,6 +168,15 @@ namespace Audio
         eAES_PLAYING_DELAYED    = 2,
         eAES_LOADING            = 3,
         eAES_UNLOADING          = 4,
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    enum class ObstructionType : TATLEnumFlagsType
+    {
+        Ignore = 0,
+        SingleRay,
+        MultiRay,
+        Count,
     };
 
 
@@ -428,3 +438,10 @@ namespace Audio
     };
 
 } // namespace Audio
+
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(Audio::ObstructionType, "{8C056768-40E2-4B2D-AF01-9F7A6817BAAA}");
+} // namespace AZ
+

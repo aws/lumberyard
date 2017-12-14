@@ -12,7 +12,7 @@
 
 #include <MacLumberyardApplication.h>
 
-#include <AppleLauncher.h>
+#include <AppleLaunchersCommon/AppleLauncher.h>
 
 #if defined(AZ_TESTS_ENABLED)
 #include <AzTest/AzTest.h>

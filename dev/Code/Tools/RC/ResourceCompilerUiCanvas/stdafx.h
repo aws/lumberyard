@@ -16,10 +16,7 @@
 // are changed infrequently
 //
 
-
 #pragma once
-
-#include <STLPortConfig.h>
 
 #include <assert.h>
 

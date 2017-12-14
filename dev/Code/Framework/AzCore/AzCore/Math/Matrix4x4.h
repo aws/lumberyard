@@ -279,6 +279,13 @@ namespace AZ
         void MultiplyByScale(const Vector3& scale);
 
         //-------------------------------------------------------
+        // Matrix interpolation
+        //-------------------------------------------------------
+
+        ///Interpolates between two matrices: linearly for scale/translation; spherically for rotation
+        static const Matrix4x4 CreateInterpolated(const Matrix4x4& m1, const Matrix4x4& m2, float t);
+
+        //-------------------------------------------------------
         // Compare
         //-------------------------------------------------------
 

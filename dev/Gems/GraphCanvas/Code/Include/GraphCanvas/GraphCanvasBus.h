@@ -90,6 +90,13 @@ namespace GraphCanvas
             return InitActivateEntity(CreateCommentNode());
         }
 
+        virtual AZ::Entity* CreateBlockCommentNode() const = 0;
+
+        AZ::Entity* CreateBlockCommentNodeAndActivate() const
+        {
+            return InitActivateEntity(CreateBlockCommentNode());
+        }
+
         //! Create a wrapper node.
         //! A wrapped node is node that can wrap other nodes to provide some extension of functionality.
         virtual AZ::Entity* CreateWrapperNode(const char* nodeType) const = 0;
@@ -139,7 +146,7 @@ namespace GraphCanvas
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateReadOnlyNodePropertyDisplay(ReadOnlyDataInterface* dataInterface) const = 0;
 
-        //! Creates a StringDataSlotProperty display using the specified StringDataInterface
+        //! Creates a StringNodeSlotProperty display using the specified StringDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateStringNodePropertyDisplay(StringDataInterface* dataInterface) const = 0;

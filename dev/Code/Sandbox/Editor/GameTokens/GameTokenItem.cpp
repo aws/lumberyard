@@ -106,7 +106,7 @@ public:
 
     void Visit(double& i)
     {
-        m_ok = 1 == sscanf(m_data, "%f", &i);
+        m_ok = 1 == sscanf(m_data, "%lf", &i);
     }
 
     void Visit(EntityId& i)
@@ -116,7 +116,9 @@ public:
 
     void Visit(FlowEntityId& i)
     {
-        m_ok = 1 == sscanf(m_data, "%p", &i);
+        FlowEntityId* scannedEntityPtr;
+        m_ok = 1 == sscanf(m_data, "%p", &scannedEntityPtr);
+        i = *scannedEntityPtr;
     }
 
     void Visit(AZ::Vector3& v)

@@ -18,6 +18,8 @@
 #include <QLabel>
 #include "../ContextMenu.h"
 
+#include <functional>
+
 class QKeySequenceCaptureWidget
     : public QLabel
 {

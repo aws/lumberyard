@@ -32,6 +32,8 @@
             "Source/Audio/EditorAudioEnvironmentComponent.cpp",
             "Source/Audio/EditorAudioListenerComponent.h",
             "Source/Audio/EditorAudioListenerComponent.cpp",
+            "Source/Audio/EditorAudioPreloadComponent.h",
+            "Source/Audio/EditorAudioPreloadComponent.cpp",
             "Source/Audio/EditorAudioRtpcComponent.h",
             "Source/Audio/EditorAudioRtpcComponent.cpp",
             "Source/Audio/EditorAudioSwitchComponent.h",
@@ -87,7 +89,9 @@
             "Source/Rendering/EditorHighQualityShadowComponent.h",
             "Source/Rendering/EditorHighQualityShadowComponent.cpp",
             "Source/Rendering/EditorFogVolumeComponent.h",
-            "Source/Rendering/EditorFogVolumeComponent.cpp"
+            "Source/Rendering/EditorFogVolumeComponent.cpp",
+            "Source/Rendering/EditorGeomCacheComponent.h",
+            "Source/Rendering/EditorGeomCacheComponent.cpp"
         ],
         "Source/Scripting":
         [
@@ -95,6 +99,8 @@
             "Source/Scripting/EditorFlowGraphComponent.cpp",
             "Source/Scripting/EditorLookAtComponent.h",
             "Source/Scripting/EditorLookAtComponent.cpp",
+            "Source/Scripting/EditorRandomTimedSpawnerComponent.cpp",
+            "Source/Scripting/EditorRandomTimedSpawnerComponent.h",
             "Source/Scripting/EditorTagComponent.h",
             "Source/Scripting/EditorTagComponent.cpp",
             "Source/Scripting/EditorTriggerAreaComponent.h",
@@ -116,7 +122,9 @@
             "Source/Shape/EditorSplineComponent.h",
             "Source/Shape/EditorSplineComponent.cpp",
             "Source/Shape/EditorPolygonPrismShapeComponent.h",
-            "Source/Shape/EditorPolygonPrismShapeComponent.cpp"
+            "Source/Shape/EditorPolygonPrismShapeComponent.cpp",
+            "Source/Shape/ShapeComponentConverters.h",
+            "Source/Shape/ShapeComponentConverters.cpp"
         ],
         "source/Ai": [
             "Source/Ai/EditorNavigationSeedComponent.h",

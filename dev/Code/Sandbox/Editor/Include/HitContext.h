@@ -22,8 +22,11 @@ class CGizmo;
 class CBaseObject;
 struct IDisplayViewport;
 class CDeepSelection;
+struct AABB;
+class CCamera;
 
 #include <QRect>
+#include <platform.h>
 
 //! Flags used in HitContext for nSubObjFlags member.
 enum ESubObjHitFlags

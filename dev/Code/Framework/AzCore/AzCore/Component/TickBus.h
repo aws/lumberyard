@@ -35,6 +35,8 @@ namespace AZ
 
         TICK_PLACEMENT      = 50,      ///< Suggested tick handler position for components that need to be early in the tick order.
 
+        TICK_INPUT          = 75,      ///< Suggested tick handler position for input components.
+
         TICK_ANIMATION      = 100,     ///< Suggested tick handler position for animation components.
 
         TICK_PHYSICS        = 200,     ///< Suggested tick handler position for physics components.

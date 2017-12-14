@@ -27,54 +27,6 @@ namespace AzToolsFramework
         class AssetJobsInfoResponse;
         class AssetJobsInfoRequest;
 
-        //! This struct is used for responses and requests about source assets
-        struct SourceFileInfo
-        {
-            AZ_TYPE_INFO(SourceFileInfo, "{163A7399-0481-4315-BB94-5C07AC3C4B1B}")
-
-            SourceFileInfo() = default;
-            SourceFileInfo(const SourceFileInfo& other) = default;
-            SourceFileInfo& operator=(const SourceFileInfo& other) = default;
-
-            SourceFileInfo(SourceFileInfo&& other)
-            {
-                *this = AZStd::move(other);
-            }
-
-            SourceFileInfo& operator=(SourceFileInfo&& other)
-            {
-                if (this != &other)
-                {
-                    m_watchFolder = AZStd::move(other.m_watchFolder);
-                    m_relativePath = AZStd::move(other.m_relativePath);
-                    m_sourceGuid = other.m_sourceGuid;
-                }
-                return *this;
-            }
-
-            static void Reflect(AZ::ReflectContext* context)
-            {
-                AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
-                if (serialize)
-                {
-                    serialize->Class<SourceFileInfo>()
-                        ->Version(1)
-                        ->Field("watchFolder", &SourceFileInfo::m_watchFolder)
-                        ->Field("relativePath", &SourceFileInfo::m_relativePath)
-                        ->Field("sourceGuid", &SourceFileInfo::m_sourceGuid);
-                }
-            }
-
-            //! The folder that's monitored for changes to the source file.
-            AZStd::string m_watchFolder;
-
-            //! The relative path to the source file. This is relative to the watch folder.
-            AZStd::string m_relativePath;
-
-            //! The unique identifier for the source file.
-            AZ::Uuid m_sourceGuid = AZ::Uuid::CreateNull();
-        };
-
         //! A bus to talk to the asset system as a tool or editor
         //! This contains things that only tools or editors should be given access to
         //! If you want to talk to it as if a game engine component or runtime component
@@ -111,12 +63,20 @@ namespace AzToolsFramework
 
             //! Send out queued events
             virtual void UpdateQueuedEvents() = 0;
+            
+            //! retrieve an Az::Data::AssetInfo class for the given assetId.  this may map to source too in which case rootFilePath will be non-empty.
+            virtual bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) = 0;
 
-            //! Retrieve the watch folder and relative path for the source asset
-            virtual bool GetSourceAssetInfoById(const AZ::Uuid& guid, AZStd::string& watchFolder, AZStd::string& relativePath) = 0;
-
-            //! Retrieve information about the source file from the source path.
-            virtual bool GetSourceFileInfoByPath(SourceFileInfo& result, const char* sourcePath) = 0;
+            /**
+            * Given a path to a source file, retrieve its actual watch folder path and details.
+            * @param sourcePath is either a relative or absolute path to a source file.
+            * @param assetInfo is a /ref AZ::Data::AssetInfo filled out with details about the asset including its relative path to its watch folder
+            *   note that inside assetInfo is a AssetId, but only the UUID-part will ever have a value since we are dealing with a source file (no subid)
+            * @param watchFolder is the scan folder that it was found inside (the path in the assetInfo is relative to this folder).
+            *   If you Path::Join the watchFolder and the assetInfo relative path, you get the full path.
+            * returns false if it cannot find the source, true otherwise.
+            */
+            virtual bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) = 0;
         };
         
 
@@ -134,11 +94,11 @@ namespace AzToolsFramework
             virtual ~AssetSystemNotifications() = default;
 
             //! Called by the AssetProcessor when a source of an asset has been modified.
-            virtual void SourceFileChanged(AZStd::string /*assetId*/, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/) {}
+            virtual void SourceFileChanged(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/) {}
             //! Called by the AssetProcessor when a source of an asset has been removed.
-            virtual void SourceFileRemoved(AZStd::string /*assetId*/, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/) {}
+            virtual void SourceFileRemoved(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/) {}
             //! This will be used by the asset processor to notify whenever a source file fails to process.
-            virtual void SourceFileFailed(AZStd::string /*assetId*/, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/) {}
+            virtual void SourceFileFailed(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid /*sourceUUID*/) {}
         };
 
         //! This enum have all the different job states

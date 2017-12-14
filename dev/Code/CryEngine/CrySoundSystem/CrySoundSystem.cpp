@@ -18,6 +18,7 @@
 #include <CryExtension/Impl/ClassWeaver.h>
 
 #include <AzCore/Memory/OSAllocator.h>
+#include <AzFramework/API/ApplicationAPI.h>
 
 #include <AudioSystem.h>
 #include <SoundCVars.h>
@@ -39,8 +40,14 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CSystemEventListener_Audio
         : public ISystemEventListener
+        , public AzFramework::ApplicationLifecycleEvents::Bus::Handler
     {
     public:
+        ~CSystemEventListener_Audio()
+        {
+            AzFramework::ApplicationLifecycleEvents::Bus::Handler::BusDisconnect();
+        }
+
         ///////////////////////////////////////////////////////////////////////////////////////////////
         void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override
         {
@@ -61,42 +68,19 @@ namespace Audio
                     cry_random_seed(gEnv->bNoRandomSeed ? 0 : (uint32)wparam);
                     break;
                 }
-                case ESYSTEM_EVENT_ACTIVATE:
-                {
-                    // When Alt+Tabbing out of the application while it's in fullscreen mode
-                    // ESYSTEM_EVENT_ACTIVATE is sent instead of ESYSTEM_EVENT_CHANGE_FOCUS.
-
-                    // wparam != 0 is active, wparam == 0 is inactive
-                    // lparam != 0 is minimized, lparam == 0 is not minimized
-
-                    if (wparam == 0 || lparam != 0)
-                    {
-                        //lost focus
-                        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, m_oLoseFocusRequest);
-                    }
-                    else
-                    {
-                        // got focus
-                        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, m_oGetFocusRequest);
-                    }
-                    break;
-                }
-                case ESYSTEM_EVENT_CHANGE_FOCUS:
-                {
-                    // wparam != 0 is focused, wparam == 0 is not focused
-                    if (wparam == 0)
-                    {
-                        // lost focus
-                        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, m_oLoseFocusRequest);
-                    }
-                    else
-                    {
-                        // got focus
-                        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, m_oGetFocusRequest);
-                    }
-                    break;
-                }
             }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        void OnApplicationConstrained(Event /*lastEvent*/) override
+        {
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, m_oLoseFocusRequest);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        void OnApplicationUnconstrained(Event /*lastEvent*/) override
+        {
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, m_oGetFocusRequest);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,6 +91,8 @@ namespace Audio
 
             m_oGetFocusRequest.nFlags = eARF_PRIORITY_HIGH;
             m_oGetFocusRequest.pData = &m_oAMGetFocusData;
+
+            AzFramework::ApplicationLifecycleEvents::Bus::Handler::BusConnect();
         }
 
     private:
@@ -219,7 +205,7 @@ class CEngineModule_CrySoundSystem
 
             // Load the Audio Implementation Module.  If it fails to load, don't consider CrySoundSystem as a failure too.
             s_currentModuleName = m_cvAudioSystemImplementationName->GetString();
-            if (env.pSystem->InitializeEngineModule(s_currentModuleName.c_str(), s_currentModuleName.c_str(), initParams, false))
+            if (env.pSystem->InitializeEngineModule(s_currentModuleName.c_str(), s_currentModuleName.c_str(), initParams))
             {
                 PrepareAudioSystem();
 
@@ -270,7 +256,7 @@ class CEngineModule_CrySoundSystem
         // Then initialize the new engine module.
         SSystemInitParams oSystemInitParams;
         s_currentModuleName = pAudioSystemImplementationName->GetString();
-        if (!GetISystem()->InitializeEngineModule(s_currentModuleName.c_str(), s_currentModuleName.c_str(), oSystemInitParams, false))
+        if (!GetISystem()->InitializeEngineModule(s_currentModuleName.c_str(), s_currentModuleName.c_str(), oSystemInitParams))
         {
             g_audioLogger.Log(eALT_ERROR, "Failed to load Audio System Implementation Module named: %s\n"
                 "Check the spelling of the module (case sensitive!), and make sure it's correct.", s_currentModuleName.c_str());

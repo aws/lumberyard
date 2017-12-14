@@ -57,7 +57,7 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     virtual void SetName(const QString& name);
-    bool IsScalable() { return false; }
+    bool IsScalable() const override { return false; }
 
     void BeginEditParams(IEditor* ie, int flags);
     void EndEditParams(IEditor* ie);
@@ -202,8 +202,8 @@ public:
     void Display(DisplayContext& disp);
     bool HitTest(HitContext& hc);
     void GetBoundBox(AABB& box);
-    bool IsScalable() { return false; }
-    bool IsRotatable() { return false; }
+    bool IsScalable() const override { return false; }
+    bool IsRotatable() const override { return false; }
     void Serialize(CObjectArchive& ar);
     //////////////////////////////////////////////////////////////////////////
 

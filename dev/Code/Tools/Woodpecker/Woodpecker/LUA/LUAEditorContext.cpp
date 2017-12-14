@@ -991,24 +991,21 @@ namespace LUAEditor
 
     void Context::DocumentCheckOutRequested(const AZStd::string& assetId)
     {
-        (void)assetId;
-
         DocumentInfoMap::iterator docInfoIter = m_documentInfoMap.find(assetId);
         AZ_Assert(docInfoIter != m_documentInfoMap.end(), "Invalid document lookup.");
-
-        DocumentInfo& docInfo = docInfoIter->second;
-        AZ_TracePrintf(LUAEditorDebugName, "LUAEditor DocumentCheckOutRequested: %s\n", docInfo.m_assetName.c_str());
-
-        docInfo.m_bSourceControl_BusyRequestingEdit = true;
 
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         AZ_Assert(fileIO, "FileIO system is not present.");
 
         if (fileIO && !fileIO->Exists(assetId.c_str()))
         {
-            AZ_Assert(false, "%s : Script Not found.", assetId.c_str());
+            AZ_Warning(LUAEditorInfoName, false, "%s : Unable to check out file from source control, it may need to be saved first.", assetId.c_str());
             return;
         }
+
+        DocumentInfo& docInfo = docInfoIter->second;
+        AZ_TracePrintf(LUAEditorDebugName, "LUAEditor DocumentCheckOutRequested: %s\n", docInfo.m_assetName.c_str());
+        docInfo.m_bSourceControl_BusyRequestingEdit = true;
 
         AZStd::string sourceFile;
         bool fileFound = false;
@@ -1204,9 +1201,7 @@ namespace LUAEditor
         }
         else
         {
-            doc.m_bSourceControl_CanCheckOut = (fileInfo.m_status == AzToolsFramework::SCS_Tracked &&
-                                                !(fileInfo.m_flags & AzToolsFramework::SCF_OutOfDate));
-
+            doc.m_bSourceControl_CanCheckOut = (fileInfo.IsManaged() && !(fileInfo.m_flags & AzToolsFramework::SCF_OutOfDate));
             doc.m_bSourceControl_CanCheckOut = fileInfo.m_flags & AzToolsFramework::SCF_MultiCheckOut || doc.m_bSourceControl_CanCheckOut;
         }
 
@@ -1235,7 +1230,7 @@ namespace LUAEditor
         doc.m_bSourceControl_BusyRequestingEdit = false;
 
         //check file info flags to see if we can write
-        doc.m_bSourceControl_CanWrite = (fileInfo.m_flags & AzToolsFramework::SCF_Writeable) != 0;
+        doc.m_bSourceControl_CanWrite = !fileInfo.IsReadOnly();
 
         doc.m_sourceControlInfo = fileInfo;
 
@@ -1248,10 +1243,9 @@ namespace LUAEditor
         }
         else
         {
-            doc.m_bSourceControl_CanCheckOut = (fileInfo.m_status == AzToolsFramework::SCS_Tracked &&
-                                               !(fileInfo.m_flags & AzToolsFramework::SCF_OutOfDate));
+            doc.m_bSourceControl_CanCheckOut = fileInfo.IsManaged() && !fileInfo.HasFlag(AzToolsFramework::SCF_OutOfDate);
 
-            doc.m_bSourceControl_CanCheckOut = fileInfo.m_flags & AzToolsFramework::SCF_MultiCheckOut || doc.m_bSourceControl_CanCheckOut;
+            doc.m_bSourceControl_CanCheckOut = fileInfo.HasFlag(AzToolsFramework::SCF_MultiCheckOut) || doc.m_bSourceControl_CanCheckOut;
         }
 
         if (!doc.m_bSourceControl_Ready)
@@ -1260,7 +1254,7 @@ namespace LUAEditor
         }
         if (!doc.m_bSourceControl_CanWrite)
         {
-            if (doc.m_sourceControlInfo.m_status != AzToolsFramework::SCS_OpenByUser)
+            if (!doc.m_sourceControlInfo.HasFlag(AzToolsFramework::SCF_OpenByUser))
             {
                 QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "This file is ReadOnly you cannot write to this file.");
             }
@@ -1279,7 +1273,7 @@ namespace LUAEditor
             {
                 QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "Perforce Connection is not trusted.\nFile will be saved.\nYou must reconcile with Perforce later!");
             }
-            else if (doc.m_sourceControlInfo.m_status != AzToolsFramework::SCS_OpenByUser)
+            else if (!doc.m_sourceControlInfo.HasFlag(AzToolsFramework::SCF_OpenByUser))
             {
                 QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "Perforce says that you cannot write to this file.");
             }

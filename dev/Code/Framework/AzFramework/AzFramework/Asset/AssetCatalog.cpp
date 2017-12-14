@@ -233,6 +233,55 @@ namespace AzFramework
         return AZ::Data::AssetId();
     }
 
+    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetDirectProductDependencies(const AZ::Data::AssetId& id)
+    {
+        auto itr = m_registry->m_assetDependencies.find(id);
+
+        if (itr == m_registry->m_assetDependencies.end())
+        {
+            return AZ::Failure<AZStd::string>("Failed to find asset in dependency map");
+        }
+
+        return AZ::Success(itr->second);
+    }
+    
+    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetAllProductDependencies(const AZ::Data::AssetId& id)
+    {
+        AZStd::vector<AZ::Data::ProductDependency> dependencyList;
+        AZStd::unordered_set<AZ::Data::AssetId> assetSet;
+
+        AddAssetDependencies(id, assetSet, dependencyList);
+
+        // dependencyList will be appended to while looping, so use a traditional loop
+        for(size_t i = 0; i < dependencyList.size(); ++i)
+        {
+            AddAssetDependencies(dependencyList[i].m_assetId, assetSet, dependencyList);
+        }
+
+        return AZ::Success(AZStd::move(dependencyList));
+    }
+
+    void AssetCatalog::AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList)
+    {
+        using namespace AZ::Data;
+        auto itr = m_registry->m_assetDependencies.find(searchAssetId);
+
+        if (itr != m_registry->m_assetDependencies.end())
+        {
+            AZStd::vector<ProductDependency> assetDependencyList = itr->second;
+
+            for (const ProductDependency& dependency : assetDependencyList)
+            {
+                // Only proceed if we haven't encountered this assetId before
+                if (assetSet.find(dependency.m_assetId) == assetSet.end())
+                {
+                    assetSet.insert(dependency.m_assetId); // add to the set of already-encountered assets
+                    dependencyList.push_back(dependency); // put it in the flat list of dependencies we've found
+                }
+            }
+        }
+    }
+
     //=========================================================================
     // GenerateAssetIdTEMP
     //=========================================================================
@@ -340,8 +389,6 @@ namespace AzFramework
         {
             AZ_ErrorOnce("AssetCatalog", false, "Unable to load the asset catalog from %s!", catalogRegistryFile);
         }
-
-        StartMonitoringAssets();
     }
 
     //=========================================================================
@@ -511,7 +558,10 @@ namespace AzFramework
             newData.m_assetType = assetType;
             newData.m_relativePath = message.m_data;
             newData.m_sizeBytes = message.m_sizeBytes;
+
             m_registry->RegisterAsset(assetId, newData);
+            m_registry->SetAssetDependencies(assetId, message.m_dependencies);
+
             for (const auto& mapping : message.m_legacyAssetIds)
             {
                 m_registry->RegisterLegacyAssetMapping(mapping, assetId);
@@ -577,6 +627,18 @@ namespace AzFramework
     //=========================================================================
     bool AssetCatalog::LoadCatalog(const char* catalogRegistryFile)
     {
+        // right before we load the catalog, make sure you are listening for update events, so that you don't miss any in the gap 
+        // that happens AFTER the catalog is saved but BEFORE you start monitoring them:
+        StartMonitoringAssets();
+
+        // it does not matter if this call fails - it will succeed if it can.  In release builds or builds where the user has turned off the
+        // asset processing system because they have precompiled all assets, the call will fail but there will still be a valid catalog.
+        // for this reason, we use AZ_Warning, as that is removed automatically from release builds.  We still show it as it may aid debugging
+        // in the general case.
+        bool catalogSavedOK = false;
+        AzFramework::AssetSystemRequestBus::BroadcastResult(catalogSavedOK, &AzFramework::AssetSystem::AssetSystemRequests::SaveCatalog);
+        AZ_WarningOnce("AssetCatalog", catalogSavedOK, "Asset catalog was not saved.  This is only okay if running with pre-built assets.");
+
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         if (fileIO && fileIO->Exists(catalogRegistryFile))
         {

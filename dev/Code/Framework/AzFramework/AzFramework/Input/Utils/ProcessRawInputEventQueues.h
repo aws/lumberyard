@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <AzFramework/Input/Buses/Notifications/InputTextEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputTextNotificationBus.h>
 #include <AzFramework/Input/Channels/InputChannelId.h>
 
 #include <AzCore/Debug/Trace.h>
@@ -90,9 +90,9 @@ namespace AzFramework
         for (const AZStd::string& rawTextEvent : rawTextEventQueue)
         {
             bool hasBeenConsumed = false;
-            InputTextEventNotificationBus::Broadcast(&InputTextEventNotifications::OnInputTextEvent,
-                                                     rawTextEvent,
-                                                     hasBeenConsumed);
+            InputTextNotificationBus::Broadcast(&InputTextNotifications::OnInputTextEvent,
+                                                rawTextEvent,
+                                                hasBeenConsumed);
         }
         rawTextEventQueue.clear();
     }

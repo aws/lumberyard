@@ -29,6 +29,8 @@
 #include <Components/Connections/DataConnections/DataConnectionVisualComponent.h>
 
 #include <Components/Nodes/NodeComponent.h>
+#include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
+#include <Components/Nodes/Comment/BlockCommentNodeLayoutComponent.h>
 #include <Components/Nodes/Comment/CommentNodeLayoutComponent.h>
 #include <Components/Nodes/General/GeneralNodeLayoutComponent.h>
 #include <Components/Nodes/General/GeneralSlotLayoutComponent.h>
@@ -53,6 +55,7 @@
 #include <Styling/PseudoElement.h>
 #include <Styling/Parser.h>
 
+#include <Types/EntitySaveData.h>
 #include <Types/TranslationTypes.h>
 
 #include <Widgets/GraphCanvasTreeModel.h>
@@ -66,6 +69,17 @@ namespace GraphCanvas
             serializeContext->Class<GraphCanvasSystemComponent, AZ::Component>()
                 ->Version(1)
                 ;
+
+            // Reflect information for the stripped down saving
+            serializeContext->Class<ComponentSaveData>()
+                ->Version(1)
+                ;
+
+            serializeContext->Class<EntitySaveDataContainer>()
+                ->Version(1)
+                ->Field("ComponentData", &EntitySaveDataContainer::m_entityData)
+                ;
+            ////
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -85,6 +99,8 @@ namespace GraphCanvas
             Styling::CompoundSelector::Reflect(serializeContext);
             Styling::NestedSelector::Reflect(serializeContext);
             TranslationKeyedString::Reflect(serializeContext);
+            Styling::Style::Reflect(serializeContext);
+
         }
 
         GraphCanvasTreeModel::Reflect(context);
@@ -131,6 +147,11 @@ namespace GraphCanvas
     AZ::Entity* GraphCanvasSystemComponent::CreateCommentNode() const
     {
         return CommentNodeLayoutComponent::CreateCommentNodeEntity();
+    }
+
+    AZ::Entity* GraphCanvasSystemComponent::CreateBlockCommentNode() const
+    {
+        return BlockCommentNodeLayoutComponent::CreateBlockCommentNodeEntity();
     }
 
     AZ::Entity* GraphCanvasSystemComponent::CreateWrapperNode(const char* nodeType) const

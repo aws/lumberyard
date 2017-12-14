@@ -44,9 +44,7 @@
             "Entity/EntityContext.cpp",
             "Entity/EntityContext.h",
             "Entity/EntityContextBus.h",
-            "Entity/EntityDebugDisplayBus.h",
-            "Entity/EntityReference.h",
-            "Entity/EntityReference.cpp"
+            "Entity/EntityDebugDisplayBus.h"
         ],
         "Driller": [
             "Driller/RemoteDrillerInterface.cpp",
@@ -65,14 +63,19 @@
             "Components/ConsoleBus.h",
             "Components/ConsoleBus.cpp"
         ],
+        "FileFunc": [
+            "FileFunc/FileFunc.h",
+            "FileFunc/FileFunc.cpp"
+        ],
         "StringFunc": [
             "StringFunc/StringFunc.h",
             "StringFunc/StringFunc.cpp"
         ],
         "Input/Buses/Notifications": [
-            "Input/Buses/Notifications/InputChannelEventNotificationBus.h",
-            "Input/Buses/Notifications/InputDeviceEventNotificationBus.h",
-            "Input/Buses/Notifications/InputTextEventNotificationBus.h"
+            "Input/Buses/Notifications/InputChannelNotificationBus.h",
+            "Input/Buses/Notifications/InputDeviceNotificationBus.h",
+            "Input/Buses/Notifications/InputSystemNotificationBus.h",
+            "Input/Buses/Notifications/InputTextNotificationBus.h"
         ],
         "Input/Buses/Requests": [
             "Input/Buses/Requests/InputChannelRequestBus.h",
@@ -207,22 +210,48 @@
             "Logging/LogFile.cpp",
             "Logging/LogFile.h",
             "Logging/LoggingComponent.cpp",
-            "Logging/LoggingComponent.h"
+            "Logging/LoggingComponent.h",
+            "Logging/StartupLogSinkReporter.cpp",
+            "Logging/StartupLogSinkReporter.h"
         ],
-        "Script":
-        [
-            "Script/ScriptComponent.h",
-            "Script/ScriptComponent.cpp",
-            "Script/ScriptDebugAgentBus.h",
-            "Script/ScriptDebugMsgReflection.cpp",
-            "Script/ScriptDebugMsgReflection.h",
-            "Script/ScriptMarshal.h",
-            "Script/ScriptMarshal.cpp",
-            "Script/ScriptNetBindings.h",
-            "Script/ScriptNetBindings.cpp",
-            "Script/ScriptRemoteDebugging.cpp",
-            "Script/ScriptRemoteDebugging.h"
-        ]
+      "Script": [
+        "Script/ScriptComponent.h",
+        "Script/ScriptComponent.cpp",
+        "Script/ScriptDebugAgentBus.h",
+        "Script/ScriptDebugMsgReflection.cpp",
+        "Script/ScriptDebugMsgReflection.h",
+        "Script/ScriptMarshal.h",
+        "Script/ScriptMarshal.cpp",
+        "Script/ScriptNetBindings.h",
+        "Script/ScriptNetBindings.cpp",
+        "Script/ScriptRemoteDebugging.cpp",
+        "Script/ScriptRemoteDebugging.h"
+      ],
+      "Physics": [
+        "Physics/Action.h",
+        "Physics/Base.h",
+        "Physics/Character.h",
+        "Physics/CollisionFilter.cpp",
+        "Physics/CollisionFilter.h",
+        "Physics/DefaultDebugDrawSettings.h",
+        "Physics/Ghost.h",
+        "Physics/Material.cpp",
+        "Physics/Material.h",
+        "Physics/RigidBody.h",
+        "Physics/ShapeConfiguration.h",
+        "Physics/ShapeIdHierarchy.h",
+        "Physics/SystemBus.h",
+        "Physics/SystemComponent.cpp",
+        "Physics/SystemComponent.h",
+        "Physics/World.h",
+        "Physics/WorldBody.cpp",
+        "Physics/WorldBody.h",
+        "Physics/ColliderComponentBus.h",
+        "Physics/ConstraintComponentBus.h",
+        "Physics/PhysicsComponentBus.h",
+        "Physics/PhysicsSystemComponentBus.h",
+        "Physics/RagdollPhysicsBus.h"
+      ]
     },
     "AzFramework_Uber_misc0.cpp": {
         "TargetManagement": [

@@ -19,7 +19,6 @@
 #include <AzCore/std/string/string.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 
-
 namespace AssetBuilderSDK
 {
     struct ProcessJobRequest;
@@ -27,6 +26,8 @@ namespace AssetBuilderSDK
 }
 namespace AZ
 {
+    class Entity;
+
     namespace SceneAPI
     {
         namespace Containers
@@ -61,7 +62,7 @@ namespace AZ
             : public ICompiler
         {
         public:
-            explicit SceneCompiler(const AZStd::shared_ptr<ISceneConfig>& config);
+            SceneCompiler(const AZStd::shared_ptr<ISceneConfig>& config, const char* appRoot);
 
             void Release() override;
 
@@ -72,9 +73,10 @@ namespace AZ
             IConvertContext* GetConvertContext() override;
 
         protected:
-            virtual bool PrepareForExporting(RCToolApplication& application);
+            virtual bool PrepareForExporting(const char* configFilePath, RCToolApplication& application, const AZStd::string& appRoot);
+            virtual AZ::Entity* CreateSceneSystemEntity(const char* configFilePath);
             virtual bool LoadAndExportScene(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
-            virtual bool ExportScene(AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, int platformId);
+            virtual bool ExportScene(AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, const char* platformIdentifier);
             
             // Several file produced by this compiler used to have their sub id automatically assigned by the AP. This was causing problems with keeping
             //      the sub id stable and the sub id was changed to be provided by this compiler. However these new sub ids differ from the original sub id
@@ -90,6 +92,7 @@ namespace AZ
 
             ConvertContext m_context;
             AZStd::shared_ptr<ISceneConfig> m_config;
+            AZStd::string m_appRoot;
 
         private:
         };

@@ -26,10 +26,7 @@ class MagnetTool
 {
 public:
 
-    MagnetTool(CD::EDesignerTool tool)
-        : SelectTool(tool)
-    {
-    }
+    MagnetTool(CD::EDesignerTool tool);
 
     void Enter() override;
     void Leave() override;

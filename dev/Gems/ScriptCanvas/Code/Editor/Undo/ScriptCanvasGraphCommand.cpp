@@ -117,10 +117,10 @@ namespace ScriptCanvasEditor
         m_scriptCanvasEntityId = scriptCanvasEntity->GetId();
 
         UndoCache* undoCache{};
-        UndoRequestBus::BroadcastResult(undoCache, &UndoRequests::GetUndoCache);
+        UndoRequestBus::BroadcastResult(undoCache, &UndoRequests::GetSceneUndoCache, m_scriptCanvasEntityId);
         if (!undoCache)
         {
-            AZ_Assert(false, "Unable to find ScriptCanvas Undo Cache. Most likely the ScriptCanvasEditor Undo Manager has not been created");
+            AZ_Error("Script Canvas", false, "Unable to find ScriptCanvas Undo Cache. Most likely the Undo Manager has no active scene");
             return;
         }
 
@@ -189,7 +189,7 @@ namespace ScriptCanvasEditor
             ActivateRestoredGraphData(restoreData);
 
             UndoCache* undoCache{};
-            UndoRequestBus::BroadcastResult(undoCache, &UndoRequests::GetUndoCache);
+            UndoRequestBus::BroadcastResult(undoCache, &UndoRequests::GetSceneUndoCache, m_scriptCanvasEntityId);
             if (!undoCache)
             {
                 AZ_Assert(false, "Unable to find ScriptCanvas Undo Cache. Most likely the ScriptCanvasEditor Undo Manager has not been created");

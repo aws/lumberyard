@@ -74,6 +74,10 @@ namespace AzFramework
         void Deactivate() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AZ::TickEvents::GetTickOrder
+        int GetTickOrder() override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AZ::TickEvents::OnTick
         void OnTick(float deltaTime, AZ::ScriptTimePoint scriptTimePoint) override;
 
@@ -120,44 +124,5 @@ namespace AzFramework
         // Other Variables
         bool m_currentlyUpdatingInputDevices;   //!< Are we currently updating input devices?
         bool m_recreateInputDevicesAfterUpdate; //!< Should we recreate devices after update?
-
-    public:
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Base class for platform specific implementations of the input system component
-        class Implementation
-        {
-        public:
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Factory create method
-            //! \param[in] inputSystem Reference to the input system component
-            static Implementation* Create(InputSystemComponent& inputSystem);
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Constructor
-            //! \param[in] inputSystem Reference to the input system component
-            Implementation(InputSystemComponent& inputSystem) : m_inputSystemComponent(inputSystem) {}
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Disable copying
-            AZ_DISABLE_COPY_MOVE(Implementation);
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Default destructor
-            virtual ~Implementation() = default;
-
-            ////////////////////////////////////////////////////////////////////////////////////////////
-            //! Called once each frame prior to InputDeviceRequests::TickInputDevice being broadcast
-            virtual void PreTickInputDevices() {}
-
-        protected:
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Variables
-            InputSystemComponent& m_inputSystemComponent; //!< Reference to the input system
-        };
-
-    private:
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Private pointer to the platform specific implementation
-        AZStd::unique_ptr<Implementation> m_pimpl;
     };
 } // namespace AzFramework

@@ -33,5 +33,5 @@ public:
     }
 
     virtual void Enter() override;
-    static void Weld(CD::SMainContext& mc, const BrushVec3& vSrc, const BrushVec3& vTarget);
+    static void Weld(const CD::SMainContext& mc, const BrushVec3& vSrc, const BrushVec3& vTarget);
 };

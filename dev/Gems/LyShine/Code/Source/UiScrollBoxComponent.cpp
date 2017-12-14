@@ -30,8 +30,10 @@
 #include "UiSerialize.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiScrollBoxNotificationBus Behavior context handler class 
-class BehaviorUiScrollBoxNotificationBusHandler : public UiScrollBoxNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiScrollBoxNotificationBus Behavior context handler class
+class BehaviorUiScrollBoxNotificationBusHandler
+    : public UiScrollBoxNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiScrollBoxNotificationBusHandler, "{15CA0E45-F673-4E18-922F-D9DB1272CFEA}", AZ::SystemAllocator,
@@ -49,8 +51,10 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiScrollableNotificationBus Behavior context handler class 
-class BehaviorUiScrollableNotificationBusHandler : public UiScrollableNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiScrollableNotificationBus Behavior context handler class
+class BehaviorUiScrollableNotificationBusHandler
+    : public UiScrollableNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiScrollableNotificationBusHandler, "{7F130E59-778C-4951-BB62-B2E57E530BC0}", AZ::SystemAllocator,
@@ -998,9 +1002,9 @@ void UiScrollBoxComponent::HandleDescendantReceivedHoverByNavigation(AZ::EntityI
                 descendantRect.bottom = descendantPoints.GetAxisAlignedBottomRight().GetY();
 
                 bool descendantInsideH = (descendantRect.left >= contentParentRect.left &&
-                    descendantRect.right <= contentParentRect.right);
+                                          descendantRect.right <= contentParentRect.right);
                 bool descendantInsideV = (descendantRect.top >= contentParentRect.top &&
-                    descendantRect.bottom <= contentParentRect.bottom);
+                                          descendantRect.bottom <= contentParentRect.bottom);
 
                 if (!descendantInsideH || !descendantInsideV)
                 {

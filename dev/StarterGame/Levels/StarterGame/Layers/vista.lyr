@@ -37,10 +37,10 @@
      <Size x="1" y="1" z="1"/>
     </Properties>
    </Object>
-   <Object Type="Entity" Layer="Vista" LayerGUID="{b4bc4952-7c96-4892-81d8-2e4e0f8e895a}" Id="{dbe90a85-1ba3-405c-b902-6aeaeec45a4b}" Name="FogVolume7" HideOrder="0" Pos="1124.2954,783.14185,55.19997" FloorNumber="-1" Rotate="0.67548722,0.012867267,-0.011790673,0.73716515" Scale="59.441143,132.90532,101.03862" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="FogVolume">
+   <Object Type="Entity" Layer="Vista" LayerGUID="{b4bc4952-7c96-4892-81d8-2e4e0f8e895a}" Id="{dbe90a85-1ba3-405c-b902-6aeaeec45a4b}" Name="FogVolume7" HideOrder="0" Pos="1188.5873,929.23816,49.067169" FloorNumber="-1" Rotate="0.13050631,0.003777395,-0.017038718,0.99129385" Scale="59.441143,132.9053,101.03865" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="FogVolume">
     <Properties bActive="1" bAffectsThisAreaOnly="1" color_Color="0.658375,0.730461,0.53948" DensityNoiseOffset="1" DensityNoiseScale="1" DensityNoiseTimeFrequency="1" DensityOffset="1" FallOffDirLati="90" FallOffDirLong="0" FallOffScale="0.3" FallOffShift="1" GlobalDensity="0.1" fHDRDynamic="0" bIgnoresVisAreas="0" NearCutoff="0" RampEnd="50" RampInfluence="1" RampStart="0" SoftEdges="1" bUseGlobalFogColor="1" eiVolumeType="0" WindInfluence="1">
      <DensityNoiseFrequency x="10" y="10" z="10"/>
-     <Size x="1" y="1" z="1"/>
+     <Size x="0.7" y="0.8" z="0.5"/>
     </Properties>
    </Object>
    <Object Type="Entity" Layer="Vista" LayerGUID="{b4bc4952-7c96-4892-81d8-2e4e0f8e895a}" Id="{f6500e86-2eb9-4bac-b6c6-4e9426fe23ea}" Name="FogVolume8" HideOrder="0" Pos="1251.5209,1003.2045,46.458523" FloorNumber="-1" Rotate="0.39067137,0.0081934109,-0.015409557,0.92036474" Scale="33.072536,146.52165,68.304077" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="FogVolume">
@@ -67,10 +67,10 @@
      <Size x="1" y="1" z="1"/>
     </Properties>
    </Object>
-   <Object Type="Entity" Layer="Vista" LayerGUID="{b4bc4952-7c96-4892-81d8-2e4e0f8e895a}" Id="{a2cd55cd-76a7-4ef2-9aa2-eaccfefb014d}" Name="FogVolume5" HideOrder="0" Pos="1111.7645,818.80139,53.037094" FloorNumber="-1" Rotate="0.67559022,0,0,0.73727739" Scale="88.993553,86.376099,32.718212" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="FogVolume">
+   <Object Type="Entity" Layer="Vista" LayerGUID="{b4bc4952-7c96-4892-81d8-2e4e0f8e895a}" Id="{a2cd55cd-76a7-4ef2-9aa2-eaccfefb014d}" Name="FogVolume5" HideOrder="0" Pos="1161.73,864.1861,53.037094" FloorNumber="-1" Rotate="0.83867055,0,0,0.54463911" Scale="88.993576,86.376129,32.718212" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="FogVolume">
     <Properties bActive="1" bAffectsThisAreaOnly="1" color_Color="0.658375,0.730461,0.53948" DensityNoiseOffset="1" DensityNoiseScale="1" DensityNoiseTimeFrequency="1" DensityOffset="1" FallOffDirLati="90" FallOffDirLong="0" FallOffScale="1" FallOffShift="1" GlobalDensity="0.1" fHDRDynamic="0" bIgnoresVisAreas="0" NearCutoff="0" RampEnd="50" RampInfluence="1" RampStart="0" SoftEdges="1" bUseGlobalFogColor="1" eiVolumeType="0" WindInfluence="1">
      <DensityNoiseFrequency x="10" y="10" z="10"/>
-     <Size x="1" y="1" z="1"/>
+     <Size x="0.6" y="0.6" z="0.6"/>
     </Properties>
    </Object>
    <Object Type="Entity" Layer="Vista" LayerGUID="{b4bc4952-7c96-4892-81d8-2e4e0f8e895a}" Id="{89e388da-360f-4852-a5e9-e8345e54a0ee}" Name="FogVolume14" HideOrder="0" Pos="1258.447,688.47656,29.720724" FloorNumber="-1" Rotate="0.63013512,0.0098235356,0.088570654,-0.77135497" Scale="76.647842,168.00188,95.79908" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="1" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="FogVolume">

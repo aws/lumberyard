@@ -16,6 +16,7 @@
 #include "DisplayContext.h"
 #include "TrackView/TrackViewAnimNode.h"
 #include "AnimationContext.h"
+#include "Maestro/Types/AnimParamType.h"
 
 #include "../Viewport.h"
 #include "../DisplaySettings.h"
@@ -83,7 +84,7 @@ void CTrackGizmo::Display(DisplayContext& dc)
     m_keysSelected = false;
 
     // Must have non empty position track.
-    CTrackViewTrack* pTrack = m_pAnimNode->GetTrackForParameter(eAnimParamType_Position);
+    CTrackViewTrack* pTrack = m_pAnimNode->GetTrackForParameter(AnimParamType::Position);
     if (!pTrack)
     {
         return;

@@ -12,7 +12,6 @@
             "CachedConnection.h",
             "DBAPI.h",
             "DBAPIHelper.h",
-            "DBAPIHelpers.h",
             "DBTypes.h",
             "IDBConnection.h",
             "IDBResultSet.h",

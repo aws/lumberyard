@@ -328,7 +328,7 @@ void UiStateActionManager::ClearStates()
     {
         if (stateActions)
         {
-            for (UiInteractableStateAction* stateAction : *stateActions)
+            for (UiInteractableStateAction* stateAction : * stateActions)
             {
                 delete stateAction;
             }
@@ -354,7 +354,7 @@ void UiStateActionManager::InitStateActions()
     {
         if (stateActions)
         {
-            for (UiInteractableStateAction* stateAction : *stateActions)
+            for (UiInteractableStateAction* stateAction : * stateActions)
             {
                 stateAction->Init(m_entityId);
             }

@@ -10,65 +10,140 @@
 *
 */
 
-#include "ApplicationAPI.h"
-#include "ApplicationAPI_win.h"
+#include <AzFramework/API/ApplicationAPI_win.h>
+#include <AzFramework/Application/Application.h>
 
+#include <Windows.h>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    class ApplicationLifecycleEventsHandler::Pimpl
-        : public WindowsLifecycleEvents::Bus::Handler
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    class ApplicationWindows
+        : public Application::Implementation
+        , public WindowsLifecycleEvents::Bus::Handler
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_CLASS_ALLOCATOR(ApplicationWindows, AZ::SystemAllocator, 0);
+        ApplicationWindows();
+        ~ApplicationWindows() override;
 
-        Pimpl()
-            : m_lastEvent(ApplicationLifecycleEvents::Event::None)
-        {
-            WindowsLifecycleEvents::Bus::Handler::BusConnect();
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // WindowsLifecycleEvents
+        void OnMinimized() override; // Suspend
+        void OnRestored() override;  // Resume
 
-        ~Pimpl() override
-        {
-            WindowsLifecycleEvents::Bus::Handler::BusDisconnect();
-        }
+        void OnKillFocus() override; // Constrain
+        void OnSetFocus() override;  // Unconstrain
 
-        void OnMinimized() override
-        {
-            // I have been unable to confirm whether we can assume windows
-            // WM_SIZE events with wParam == SIZE_MINIMIZED will be paired
-            // with a matching WM_SIZE event with wParam == SIZE_MAXIMIZED,
-            // so guard against the possibility of this not being the case.
-            if (m_lastEvent != ApplicationLifecycleEvents::Event::Constrain)
-            {
-                EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
-                m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
-            }
-        }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Application::Implementation
+        void PumpSystemEventLoopOnce() override;
+        void PumpSystemEventLoopUntilEmpty() override;
 
-        void OnMaximizedOrRestored() override
-        {
-            // I have been unable to confirm whether we can assume windows
-            // WM_SIZE events with wParam == SIZE_MINIMIZED will be paired
-            // with a matching WM_SIZE event with wParam == SIZE_MAXIMIZED,
-            // so guard against the possibility of this not being the case.
-            if (m_lastEvent != ApplicationLifecycleEvents::Event::Unconstrain)
-            {
-                EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
-                m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
-            }
-        }
+    protected:
+        void ProcessSystemEvent(MSG& msg); // Returns true if an event was processed, false otherwise
 
     private:
         ApplicationLifecycleEvents::Event m_lastEvent;
     };
 
-    ApplicationLifecycleEventsHandler::ApplicationLifecycleEventsHandler()
-        : m_pimpl(aznew Pimpl())
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    Application::Implementation* Application::Implementation::Create()
     {
+        return aznew ApplicationWindows();
     }
 
-    ApplicationLifecycleEventsHandler::~ApplicationLifecycleEventsHandler()
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationWindows::ApplicationWindows()
+        : m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
-        delete m_pimpl;
+        WindowsLifecycleEvents::Bus::Handler::BusConnect();
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ApplicationWindows::~ApplicationWindows()
+    {
+        WindowsLifecycleEvents::Bus::Handler::BusDisconnect();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationWindows::OnMinimized()
+    {
+        // guard against duplicate events
+        if (m_lastEvent != ApplicationLifecycleEvents::Event::Suspend)
+        {
+            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
+            m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationWindows::OnRestored()
+    {
+        // guard against duplicate events
+        if (m_lastEvent != ApplicationLifecycleEvents::Event::Resume)
+        {
+            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
+            m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationWindows::OnKillFocus()
+    {
+        // guard against duplicate events
+        if (m_lastEvent != ApplicationLifecycleEvents::Event::Constrain)
+        {
+            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
+            m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationWindows::OnSetFocus()
+    {
+        // guard against duplicate events
+        if (m_lastEvent != ApplicationLifecycleEvents::Event::Unconstrain)
+        {
+            EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
+            m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationWindows::PumpSystemEventLoopOnce()
+    {
+        MSG msg;
+        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            ProcessSystemEvent(msg);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationWindows::PumpSystemEventLoopUntilEmpty()
+    {
+        MSG msg;
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            ProcessSystemEvent(msg);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationWindows::ProcessSystemEvent(MSG& msg)
+    {
+        if (msg.message == WM_QUIT)
+        {
+            ApplicationRequests::Bus::Broadcast(&ApplicationRequests::ExitMainLoop);
+        }
+        else
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
 } // namespace AzFramework

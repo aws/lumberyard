@@ -28,8 +28,10 @@
 #include "UiSerialize.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiCheckboxNotificationBus Behavior context handler class 
-class UiCheckboxNotificationBusBehaviorHandler : public UiCheckboxNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiCheckboxNotificationBus Behavior context handler class
+class UiCheckboxNotificationBusBehaviorHandler
+    : public UiCheckboxNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiCheckboxNotificationBusBehaviorHandler, "{718A00EF-119B-4616-9235-F55790640A1E}", AZ::SystemAllocator,

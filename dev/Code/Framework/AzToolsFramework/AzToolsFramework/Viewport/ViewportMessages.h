@@ -37,59 +37,98 @@ namespace AzToolsFramework
                 float m_verticalFovRadian = 0.0f; ///< when the camera is in perspective
                 float m_zoom; ///< when the camera is in orthographic
             };
+            
+            AZ::Vector2 m_viewportSize = AZ::Vector2::CreateZero();
             float m_nearClip = 0.01f;
             float m_farClip = 100.0f;
             bool m_valid = false;
             bool m_isOrthographic = false;
-            AZ::Vector2 m_viewportSize = AZ::Vector2::CreateZero();
         };
 
-        enum Modifiers
+        enum class KeyboardModifier : AZ::u32
         {
-            MI_NONE = 0,
-            MI_LEFT_BUTTON = 0x01,
-            MI_MIDDLE_BUTTON = 0x02,
-            MI_RIGHT_BUTTON = 0x04,
-            MI_ALT = 0x08,
-            MI_SHIFT = 0x10,
-            MI_CTRL = 0x20
+            None = 0,
+            Alt = 0x01,
+            Shift = 0x02,
+            Ctrl = 0x04
+        };
+
+        struct KeyboardModifiers
+        {
+            KeyboardModifiers() = default;
+            explicit KeyboardModifiers(AZ::u32 keyModifiers) { m_keyModifiers = keyModifiers; }
+
+            bool Alt() const { return (m_keyModifiers & static_cast<AZ::u32>(KeyboardModifier::Alt)) != 0; }
+            bool Shift() const { return (m_keyModifiers & static_cast<AZ::u32>(KeyboardModifier::Shift)) != 0; }
+            bool Ctrl() const { return (m_keyModifiers & static_cast<AZ::u32>(KeyboardModifier::Ctrl)) != 0; }
+            bool None() const { return m_keyModifiers == static_cast<AZ::u32>(KeyboardModifier::None); }
+
+            bool operator==(const KeyboardModifiers& keyboardModifiers) const 
+            { 
+                return m_keyModifiers == keyboardModifiers.m_keyModifiers; 
+            }
+
+            bool operator!=(const KeyboardModifiers& keyboardModifiers) const
+            {
+                return m_keyModifiers != keyboardModifiers.m_keyModifiers;
+            }
+            
+            AZ::u32 m_keyModifiers = 0;
+        };
+
+        enum class MouseButton : AZ::u32
+        {
+            None = 0,
+            Left = 0x01,
+            Middle = 0x02,
+            Right = 0x04
+        };
+
+        struct MouseButtons
+        {
+            MouseButtons() = default;
+            explicit MouseButtons(AZ::u32 mouseButtons) { m_mouseButtons = mouseButtons; }
+
+            bool Left() const { return (m_mouseButtons & static_cast<AZ::u32>(MouseButton::Left)) != 0; }
+            bool Middle() const { return (m_mouseButtons & static_cast<AZ::u32>(MouseButton::Middle)) != 0; }
+            bool Right() const { return (m_mouseButtons & static_cast<AZ::u32>(MouseButton::Right)) != 0; }
+            bool None() const { return m_mouseButtons == static_cast<AZ::u32>(MouseButton::None); }
+            
+            AZ::u32 m_mouseButtons = 0;
+        };
+
+        struct InteractionId
+        {
+            InteractionId() {}
+            InteractionId(AZ::EntityId cameraId, int viewportId)
+                : m_cameraId(cameraId), m_viewportId(viewportId) {}
+
+            AZ::EntityId m_cameraId;
+            int m_viewportId = 0;
+        };
+
+        struct MousePick
+        {
+            AZ::Vector3 m_rayOrigin = AZ::Vector3::CreateZero(); ///< world space
+            AZ::Vector3 m_rayDirection = AZ::Vector3::CreateZero(); ///< world space, unit length
+            AZ::Vector2 m_screenCoordinates = AZ::Vector2::CreateZero();
         };
 
         struct MouseInteraction
         {
-            AZ::EntityId m_cameraID = AZ::EntityId();
-            int m_viewportID = 0;
-
-            AZ::Vector3 m_rayOrigin = AZ::Vector3::CreateZero(); ///< in world space
-            AZ::Vector3 m_rayDirection = AZ::Vector3::CreateZero(); ///< in world space, unit length
-
-            AZ::Vector2 m_screenCoordinates = AZ::Vector2::CreateZero();
-            int m_keyModifiers = 0;
-            float m_interactionData = 0.0f;
-
-            int IsLeftButton() const { return m_keyModifiers & MI_LEFT_BUTTON; }
-            int IsMiddleButton() const { return m_keyModifiers & MI_MIDDLE_BUTTON; }
-            int IsRightButton() const { return m_keyModifiers & MI_RIGHT_BUTTON; }
-
-            bool IsAlt() const { return (m_keyModifiers & MI_ALT) != 0; }
-            bool IsShift() const { return (m_keyModifiers & MI_SHIFT) != 0; }
-            bool IsCtrl() const { return (m_keyModifiers & MI_CTRL) != 0; }
+            MousePick m_mousePick;
+            MouseButtons m_mouseButtons;
+            InteractionId m_interactionId;
+            KeyboardModifiers m_keyboardModifiers;
         };
-
 
         struct KeyboardInteraction
         {
-            AZ::EntityId m_cameraID;
-            AZ::u32 m_viewportID;
-            int m_keyCode;
-            int m_keyModifiers;
-            float m_interactionData;
-
+            int m_keyCode = 0;
             int AsAscii() const { return m_keyCode; }
 
-            bool IsAlt() const { return (m_keyModifiers & MI_ALT) != 0; }
-            bool IsShift() const { return (m_keyModifiers & MI_SHIFT) != 0; }
-            bool IsCtrl() const { return (m_keyModifiers & MI_CTRL) != 0; }
+            InteractionId m_interactionId;
+            KeyboardModifiers m_keyboardModifiers;
         };
     }
 
@@ -105,7 +144,10 @@ namespace AzToolsFramework
         virtual ~ViewportInteractionRequests() = default;
 
         virtual ViewportInteraction::CameraState GetCameraState() = 0;
+        virtual bool GridSnappingEnabled() = 0;
+        virtual float GridSize() = 0;
+        virtual AZ::Vector3 PickSurface(const AZ::Vector2& point) = 0;
+        virtual float TerrainHeight(const AZ::Vector2& position) = 0;
     };
     using ViewportInteractionRequestBus = AZ::EBus<ViewportInteractionRequests>;
 }
-

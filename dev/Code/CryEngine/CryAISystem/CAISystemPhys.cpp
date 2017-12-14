@@ -11,12 +11,14 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-// Description : should contaioin all the methods of CAISystem which have to deal with Physics
+// Description : should contain all the methods of CAISystem which have to deal with Physics
 
 
 #include "StdAfx.h"
 #include "CAISystem.h"
 #include "Puppet.h"
+
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 //===================================================================
 // GetWaterOcclusionValue
@@ -29,7 +31,7 @@ float CAISystem::GetWaterOcclusionValue(const Vec3& targetPos) const
 
     if (gAIEnv.CVars.WaterOcclusionEnable > 0)
     {
-        const float waterLevel = gEnv->p3DEngine->GetWaterLevel(&targetPos);
+        const float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(targetPos) : gEnv->p3DEngine->GetWaterLevel(&targetPos);
         const float inWaterDepth = waterLevel - targetPos.z;
 
         if (inWaterDepth > FLT_EPSILON)

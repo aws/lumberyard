@@ -1197,9 +1197,15 @@ void QViewport::keyReleaseEvent(QKeyEvent* ev)
 void QViewport::resizeEvent(QResizeEvent* ev)
 {
     QWidget::resizeEvent(ev);
-    
-    int cx = ev->size().width();
-    int cy = ev->size().height();
+
+#if defined(AZ_PLATFORM_WINDOWS)
+    // Needed for high DPI mode on windows
+    const qreal ratio = devicePixelRatioF();
+#else
+    const qreal ratio = 1.0f;
+#endif
+    int cx = ev->size().width() * ratio;
+    int cy = ev->size().height() * ratio;
     if (cx == 0 || cy == 0)
     {
         return;

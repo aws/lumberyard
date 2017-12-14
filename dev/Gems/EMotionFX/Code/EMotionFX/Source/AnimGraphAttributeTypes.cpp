@@ -10,7 +10,8 @@
 *
 */
 
-// include required headers
+#include <AZCore/Casting/numeric_cast.h>
+
 #include "EMotionFXConfig.h"
 #include "AnimGraphAttributeTypes.h"
 #include "AnimGraphNodeGroup.h"
@@ -23,7 +24,6 @@
 #include "Importer/SharedFileFormatStructs.h"
 #include "AnimGraph.h"
 
-
 namespace EMotionFX
 {
     // static create
@@ -34,7 +34,7 @@ namespace EMotionFX
 
 
     // static create
-    AttributeRotation* AttributeRotation::Create(const MCore::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order)
+    AttributeRotation* AttributeRotation::Create(const AZ::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order)
     {
         AttributeRotation* result = static_cast<AttributeRotation*>(MCore::GetAttributePool().RequestNew(AttributeRotation::TYPE_ID));
         result->SetDirect(angles, quat, order);
@@ -46,7 +46,7 @@ namespace EMotionFX
     AttributeRotation* AttributeRotation::Create(float xDeg, float yDeg, float zDeg)
     {
         AttributeRotation* result = static_cast<AttributeRotation*>(MCore::GetAttributePool().RequestNew(AttributeRotation::TYPE_ID));
-        result->SetRotationAngles(MCore::Vector3(xDeg, yDeg, zDeg), true);
+        result->SetRotationAngles(AZ::Vector3(xDeg, yDeg, zDeg), true);
         return result;
     }
 
@@ -57,45 +57,45 @@ namespace EMotionFX
         switch (mOrder)
         {
         case ROTATIONORDER_ZYX:
-            mRotation = MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.z)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.y)) *
-                MCore::Quaternion(MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.x));
+            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
+                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX()));
             break;
 
         case ROTATIONORDER_ZXY:
-            mRotation = MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.z)) *
-                MCore::Quaternion(MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.x)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.y));
+            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
+                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY()));
             break;
 
         case ROTATIONORDER_YZX:
-            mRotation = MCore::Quaternion(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.y)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.z)) *
-                MCore::Quaternion(MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.x));
+            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
+                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX()));
             break;
 
         case ROTATIONORDER_YXZ:
-            mRotation = MCore::Quaternion(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.y)) *
-                MCore::Quaternion(MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.x)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.z));
+            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
+                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ()));
             break;
 
         case ROTATIONORDER_XYZ:
-            mRotation = MCore::Quaternion(MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.x)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.y)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.z));
+            mRotation = MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ()));
             break;
 
         case ROTATIONORDER_XZY:
-            mRotation = MCore::Quaternion(MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.x)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.z)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.y));
+            mRotation = MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY()));
             break;
 
         default:
-            mRotation = MCore::Quaternion(MCore::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.z)) *
-                MCore::Quaternion(MCore::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.y)) *
-                MCore::Quaternion(MCore::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.x));
+            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
+                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
+                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX()));
             MCORE_ASSERT(false);
         }
         ;
@@ -106,7 +106,7 @@ namespace EMotionFX
     uint32 AttributeRotation::GetDataSize() const
     {
         //     rotation angles          rotation quat               rotation order
-        return sizeof(MCore::Vector3) + sizeof(MCore::Quaternion) + sizeof(uint8);
+        return sizeof(AZ::Vector3) + sizeof(MCore::Quaternion) + sizeof(uint8);
     }
 
 
@@ -116,8 +116,8 @@ namespace EMotionFX
         if (version == 1)
         {
             // read the value
-            MCore::Vector3 streamValue;
-            if (stream->Read(&streamValue, sizeof(MCore::Vector3)) == 0)
+            AZ::PackedVector3f streamValue;
+            if (stream->Read(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
             {
                 return false;
             }
@@ -126,22 +126,22 @@ namespace EMotionFX
             MCore::Endian::ConvertVector3(&streamValue, streamEndianType);
 
             // read only the degrees, automatically calculate the quaternion
-            mDegrees = streamValue;
-            mRotation.SetEuler(MCore::Math::DegreesToRadians(mDegrees.x), MCore::Math::DegreesToRadians(mDegrees.y), MCore::Math::DegreesToRadians(mDegrees.z));
+            mDegrees = AZ::Vector3(streamValue);
+            mRotation.SetEuler(MCore::Math::DegreesToRadians(mDegrees.GetX()), MCore::Math::DegreesToRadians(mDegrees.GetY()), MCore::Math::DegreesToRadians(mDegrees.GetZ()));
         }
         else
         if (version == 2)
         {
             // read the value
-            MCore::Vector3 streamValue;
-            if (stream->Read(&streamValue, sizeof(MCore::Vector3)) == 0)
+            AZ::PackedVector3f streamValue;
+            if (stream->Read(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
             {
                 return false;
             }
 
             // convert endian
             MCore::Endian::ConvertVector3(&streamValue, streamEndianType);
-            mDegrees = streamValue;
+            mDegrees = AZ::Vector3(streamValue);
 
             // read the quaternion
             MCore::Quaternion streamValueQ;
@@ -158,15 +158,15 @@ namespace EMotionFX
         if (version == 3)
         {
             // read the value
-            MCore::Vector3 streamValue;
-            if (stream->Read(&streamValue, sizeof(MCore::Vector3)) == 0)
+            AZ::PackedVector3f streamValue;
+            if (stream->Read(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
             {
                 return false;
             }
 
             // convert endian
             MCore::Endian::ConvertVector3(&streamValue, streamEndianType);
-            mDegrees = streamValue;
+            mDegrees = AZ::Vector3(streamValue);
 
             // read the quaternion
             MCore::Quaternion streamValueQ;
@@ -197,9 +197,9 @@ namespace EMotionFX
     bool AttributeRotation::WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const
     {
         // write the degrees
-        MCore::Vector3 streamValue = mDegrees;
+        AZ::PackedVector3f streamValue(mDegrees);
         MCore::Endian::ConvertVector3To(&streamValue, targetEndianType);
-        if (stream->Write(&streamValue, sizeof(MCore::Vector3)) == 0)
+        if (stream->Write(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
         {
             return false;
         }
@@ -1254,33 +1254,33 @@ namespace EMotionFX
     AttributeBlendSpaceMotion* AttributeBlendSpaceMotion::Create(const AZStd::string& motionName)
     {
         AttributeBlendSpaceMotion* result = static_cast<AttributeBlendSpaceMotion*>(MCore::GetAttributePool().RequestNew(AttributeBlendSpaceMotion::TYPE_ID));
-        result->Set(motionName, AZ::Vector2(0.0, 0.0), 0);
+        result->Set(motionName, AZ::Vector2(0.0, 0.0));
         return result;
     }
 
-    AttributeBlendSpaceMotion* AttributeBlendSpaceMotion::Create(const AZStd::string& motionName, const AZ::Vector2& coordinates, AZ::u8 typeFlags)
+    AttributeBlendSpaceMotion* AttributeBlendSpaceMotion::Create(const AZStd::string& motionName, const AZ::Vector2& coordinates, TypeFlags typeFlags)
     {
         AttributeBlendSpaceMotion* result = static_cast<AttributeBlendSpaceMotion*>(MCore::GetAttributePool().RequestNew(AttributeBlendSpaceMotion::TYPE_ID));
         result->Set(motionName, coordinates, typeFlags);
         return result;
     }
 
-    void AttributeBlendSpaceMotion::Set(const AZStd::string& motionId, const AZ::Vector2& coordinates, AZ::u8 typeFlags)
+    void AttributeBlendSpaceMotion::Set(const AZStd::string& motionId, const AZ::Vector2& coordinates, TypeFlags typeFlags)
     {
-        m_motionId      = motionId;
-        m_coordinates   = coordinates;
-        mTypeFlags      = typeFlags;
+        m_motionId = motionId;
+        m_coordinates = coordinates;
+        m_TypeFlags = typeFlags;
     }
 
     void AttributeBlendSpaceMotion::MarkXCoordinateSetByUser(bool setByUser)
     {
         if (setByUser)
         {
-            mTypeFlags |= UserSetCoordinateX;
+            SetFlag(TypeFlags::UserSetCoordinateX);
         }
         else
         {
-            mTypeFlags &= ~UserSetCoordinateX;
+            UnsetFlag(TypeFlags::UserSetCoordinateX);
         }
     }
 
@@ -1288,31 +1288,35 @@ namespace EMotionFX
     {
         if (setByUser)
         {
-            mTypeFlags |= UserSetCoordinateY;
+            SetFlag(TypeFlags::UserSetCoordinateY);
         }
         else
         {
-            mTypeFlags &= ~UserSetCoordinateY;
+            UnsetFlag(TypeFlags::UserSetCoordinateY);
         }
     }
 
     bool AttributeBlendSpaceMotion::IsXCoordinateSetByUser() const
     {
-        return (mTypeFlags & UserSetCoordinateX) != 0;
+        return TestFlag(TypeFlags::UserSetCoordinateX);
     }
 
     bool AttributeBlendSpaceMotion::IsYCoordinateSetByUser() const
     {
-        return (mTypeFlags & UserSetCoordinateY) != 0;
+        return TestFlag(TypeFlags::UserSetCoordinateY);
     }
 
     int AttributeBlendSpaceMotion::GetDimension() const
     {
-        if (mTypeFlags & BlendSpace1D)
+        if (TestFlag(TypeFlags::BlendSpace1D))
+        {
             return 1;
+        }
 
-        if (mTypeFlags & BlendSpace2D)
+        if (TestFlag(TypeFlags::BlendSpace2D))
+        {
             return 2;
+        }
 
         return 0;
     }
@@ -1321,14 +1325,14 @@ namespace EMotionFX
     {
         switch (dimension)
         {
-            case 1:
-                mTypeFlags |= BlendSpace1D;
-                break;
-            case 2:
-                mTypeFlags |= BlendSpace2D;
-                break;
-            default:
-                AZ_Assert(false, "Unexpected value for dimension");
+        case 1:
+            SetFlag(TypeFlags::BlendSpace1D);
+            break;
+        case 2:
+            SetFlag(TypeFlags::BlendSpace2D);
+            break;
+        default:
+            AZ_Assert(false, "Unexpected value for dimension");
         }
     }
 
@@ -1343,7 +1347,7 @@ namespace EMotionFX
 
         m_motionId  = blendMotion->m_motionId;
         m_coordinates  = blendMotion->m_coordinates;
-        mTypeFlags  = blendMotion->mTypeFlags;
+        m_TypeFlags  = blendMotion->m_TypeFlags;
 
         return true;
     }
@@ -1363,25 +1367,27 @@ namespace EMotionFX
             return false;
         }
 
+        m_motionId = AZStd::string(values[0].AsChar());
+
         m_coordinates.SetElement(0, values[1].ToFloat());
         m_coordinates.SetElement(1, values[2].ToFloat());
 
-        mTypeFlags = (AZ::u8)values[3].ToInt();
+        m_TypeFlags = aznumeric_cast<TypeFlags>(values[3].ToInt());
 
         return true;
     }
 
     bool AttributeBlendSpaceMotion::ConvertToString(MCore::String& outString) const
-    { 
-        outString.Format("%s,%.8f,%.8f,%d", m_motionId.c_str(), m_coordinates.GetX(), m_coordinates.GetY(), mTypeFlags);
-        return true; 
+    {
+        outString.Format("%s,%.8f,%.8f,%d", m_motionId.c_str(), m_coordinates.GetX(), m_coordinates.GetY(), m_TypeFlags);
+        return true;
     }
 
     uint32 AttributeBlendSpaceMotion::GetDataSize() const
     {
         return sizeof(AZ::u32) + static_cast<AZ::u32>(m_motionId.size()) // motionId
-            + sizeof(FileFormat::FileVector2) // coordinates
-            + sizeof(uint8); // flags
+               + sizeof(FileFormat::FileVector2) // coordinates
+               + sizeof(uint8); // flags
     }
 
     bool AttributeBlendSpaceMotion::ReadData(MCore::Stream* stream, MCore::Endian::EEndianType streamEndianType, uint8 version)
@@ -1424,7 +1430,7 @@ namespace EMotionFX
         {
             return false;
         }
-        mTypeFlags = streamTypeFlags;
+        m_TypeFlags = static_cast<TypeFlags>(streamTypeFlags);
 
         return true;
     }
@@ -1454,7 +1460,7 @@ namespace EMotionFX
             return false;
         }
 
-        if (stream->Write(&mTypeFlags, sizeof(AZ::u8)) == 0)
+        if (stream->Write(&m_TypeFlags, sizeof(AZ::u8)) == 0)
         {
             return false;
         }
@@ -1465,15 +1471,15 @@ namespace EMotionFX
     AttributeBlendSpaceMotion::AttributeBlendSpaceMotion()
         : MCore::Attribute(TYPE_ID)
         , m_coordinates(0.0f, 0.0f)
-        , mTypeFlags(0)
+        , m_TypeFlags(TypeFlags::None)
     {
     }
 
-    AttributeBlendSpaceMotion::AttributeBlendSpaceMotion(const AZStd::string& motionId, const AZ::Vector2& coordinates, AZ::u8 typeFlags)
+    AttributeBlendSpaceMotion::AttributeBlendSpaceMotion(const AZStd::string& motionId, const AZ::Vector2& coordinates, TypeFlags typeFlags)
         : MCore::Attribute(TYPE_ID)
         , m_motionId(motionId)
         , m_coordinates(coordinates)
-        , mTypeFlags(typeFlags)
+        , m_TypeFlags(typeFlags)
     {
     }
 } // namespace EMotionFX

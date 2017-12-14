@@ -1,0 +1,30 @@
+{
+    "none":
+    {
+        "Source":
+        [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto":
+    {
+        "Include":
+        [
+            "Include/OccluderAreaComponentBus.h",
+            "Include/PortalComponentBus.h",
+            "Include/VisAreaComponentBus.h"
+        ],
+        "Source":
+        [
+            "Source/OccluderAreaComponent.h",
+            "Source/OccluderAreaComponent.cpp",
+            "Source/PortalComponent.h",
+            "Source/PortalComponent.cpp",
+            "Source/VisAreaComponent.h",
+            "Source/VisAreaComponent.cpp",
+            "Source/VisibilityGem.h",
+            "Source/VisibilityGem.cpp"
+        ]
+    }
+}

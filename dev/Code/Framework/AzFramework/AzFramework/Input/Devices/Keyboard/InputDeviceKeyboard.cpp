@@ -22,6 +22,12 @@ namespace AzFramework
     const InputDeviceId InputDeviceKeyboard::Id("keyboard");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceKeyboard::IsKeyboardDevice(const InputDeviceId& inputDeviceId)
+    {
+        return (inputDeviceId.GetNameCrc32() == Id.GetNameCrc32());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     // Alphanumeric Keys
     const InputChannelId InputDeviceKeyboard::Key::Alphanumeric0("keyboard_key_alphanumeric_0");
     const InputChannelId InputDeviceKeyboard::Key::Alphanumeric1("keyboard_key_alphanumeric_1");

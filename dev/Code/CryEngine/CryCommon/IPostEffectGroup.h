@@ -44,7 +44,8 @@ public:
     virtual ~IPostEffectGroupManager(){}
 
     virtual IPostEffectGroup* GetGroup(const char* name) = 0;
-
+    virtual IPostEffectGroup* GetGroup(const unsigned int index) = 0;
+    virtual const unsigned int GetGroupCount() = 0;
     // Returns a list of IPostEffectGroups who had their Enabled state toggled this frame
     virtual const PostEffectGroupList& GetGroupsToggledThisFrame() = 0;
 };

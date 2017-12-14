@@ -10,9 +10,10 @@
 *
 */
 
-
 #include "StdAfx.h"
 #include "VisualiseRangeComponent.h"
+
+#include "StarterGameUtility.h"
 
 #include <IRenderAuxGeom.h>
 #include <MathConversion.h>
@@ -102,6 +103,9 @@ namespace StarterGameGem
 
     void VisualiseRangeComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
+        if (!GetEntityId().IsValid())
+            return;
+
 		IRenderAuxGeom* renderAuxGeom = gEnv->pRenderer->GetIRenderAuxGeom();
 		SAuxGeomRenderFlags flags;
 		flags.SetAlphaBlendMode(e_AlphaBlended);
@@ -110,8 +114,9 @@ namespace StarterGameGem
 		flags.SetFillMode(e_FillModeWireframe);		// render them all as wireframe otherwise we can't see the inner shapes
 		renderAuxGeom->SetRenderFlags(flags);
 
-		Vec3 pos = AZVec3ToLYVec3(m_currentEntityTransform.GetPosition()) + Vec3(0.0f, 0.0f, 1.5f);
-		Vec3 forward = AZVec3ToLYVec3(m_currentEntityTransform.GetColumn(1).GetNormalized());
+        AZ::Transform tm = StarterGameUtility::GetJointWorldTM(GetEntityId(), "head");
+		Vec3 pos = AZVec3ToLYVec3(tm.GetPosition());
+		Vec3 forward = AZVec3ToLYVec3(tm.GetColumn(1).GetNormalized());
 
 		static ICVar* const cvarSight = gEnv->pConsole->GetCVar("ai_debugDrawSightRange");
 		if (cvarSight && m_rangeSight > 0.0f && m_rangeAggro > 0.0f)

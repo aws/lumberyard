@@ -436,6 +436,10 @@ int CLightEntity::UpdateGSMLightSourceCachedShadowFrustum(int nFirstLod, int nLo
         {
             Get3DEngine()->m_nCachedShadowsUpdateStrategy = ShadowMapFrustum::ShadowCacheData::eManualUpdate;
         }
+        else if (GetCVars()->e_ShadowsCacheRequireManualUpdate == 2)
+        {
+            Get3DEngine()->m_nCachedShadowsUpdateStrategy = ShadowMapFrustum::ShadowCacheData::eManualOrDistanceUpdate;
+        }
         else
         {
             Get3DEngine()->m_nCachedShadowsUpdateStrategy = ShadowMapFrustum::ShadowCacheData::eIncrementalUpdate;
@@ -1787,6 +1791,7 @@ void CLightEntity::Render(const SRendParams& rParams, const SRenderingPassInfo& 
     int16 forwardLightCount = Get3DEngine()->GetSunEntity() ? 1 : 0;
     m_light.m_Id = int16(forwardLightCount + GetRenderer()->EF_GetDeferredLightsNum());
 
+    bool castShadows = false;
     if (passInfo.RenderShadows() && (m_light.m_Flags & DLF_CASTSHADOW_MAPS) && m_light.m_Id >= 0)
     {
         UpdateGSMLightSourceShadowFrustum(passInfo);
@@ -1795,6 +1800,8 @@ void CLightEntity::Render(const SRendParams& rParams, const SRenderingPassInfo& 
         {
             m_light.m_pShadowMapFrustums = m_pShadowMapInfo->pGSM;
         }
+
+        castShadows = true;
     }
 
     if (GetCVars()->e_DynamicLights && m_fWSMaxViewDist)
@@ -1804,7 +1811,7 @@ void CLightEntity::Render(const SRendParams& rParams, const SRenderingPassInfo& 
             CDLight* pL = &m_light;
             float fSize = 0.05f * (sinf(GetCurTimeSec() * 10.f) + 2.0f);
             DrawSphere(pL->m_Origin, fSize, pL->m_Color);
-            GetRenderer()->DrawLabel(pL->m_Origin, 1.3f, "id=%d, rad=%.1f, vdm=%.1f, mvd=%.1f", pL->m_Id, pL->m_fRadius, m_fViewDistanceMultiplier, m_fWSMaxViewDist);
+            GetRenderer()->DrawLabel(pL->m_Origin, 1.3f, "id=%d, rad=%.1f, vdm=%.1f, mvd=%.1f, shadows=%i", pL->m_Id, pL->m_fRadius, m_fViewDistanceMultiplier, m_fWSMaxViewDist, castShadows);
         }
 
         const float mult = SATURATE(6.f * (1.f - (rParams.fDistance / m_fWSMaxViewDist)));

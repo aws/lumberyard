@@ -12,7 +12,8 @@
 #include "StdAfx.h"
 #include "PhysicsSystemComponent.h"
 
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <AzCore/Casting/numeric_cast.h>
@@ -35,6 +36,10 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::PhysicsComponentNotificationBus;
+    using AzFramework::PhysicsSystemRequestBus;
+    using AzFramework::PhysicsSystemEventBus;
+
     // Class for putting ent_* flags on
     class PhysicalEntityTypesHolder
     {
@@ -49,30 +54,30 @@ namespace LmbrCentral
     AZ::u32 EntFromEntityTypes(AZ::u32 types)
     {
         // Shortcut when requesting all entities
-        if (types == PhysicalEntityTypes::All)
+        if (types == AzFramework::PhysicalEntityTypes::All)
         {
             return ent_all;
         }
 
         AZ::u32 result = 0;
 
-        if (types & PhysicalEntityTypes::Static)
+        if (types & AzFramework::PhysicalEntityTypes::Static)
         {
             result |= ent_static;
         }
-        if (types & PhysicalEntityTypes::Dynamic)
+        if (types & AzFramework::PhysicalEntityTypes::Dynamic)
         {
             result |= ent_rigid | ent_sleeping_rigid;
         }
-        if (types & PhysicalEntityTypes::Living)
+        if (types & AzFramework::PhysicalEntityTypes::Living)
         {
             result |= ent_living;
         }
-        if (types & PhysicalEntityTypes::Independent)
+        if (types & AzFramework::PhysicalEntityTypes::Independent)
         {
             result |= ent_independent;
         }
-        if (types & PhysicalEntityTypes::Terrain)
+        if (types & AzFramework::PhysicalEntityTypes::Terrain)
         {
             result |= ent_terrain;
         }
@@ -107,12 +112,12 @@ namespace LmbrCentral
     // Overrides for functions that take indices, to account for Lua's 1-based indexing.
     namespace RayCastResultScriptOverrides
     {
-        static const PhysicsSystemRequests::RayCastHit* GetHit(PhysicsSystemRequests::RayCastResult* self, int index)
+        static const AzFramework::PhysicsSystemRequests::RayCastHit* GetHit(AzFramework::PhysicsSystemRequests::RayCastResult* self, int index)
         {
             return self->GetHit(index - 1);
         }
 
-        static const PhysicsSystemRequests::RayCastHit* GetPiercingHit(PhysicsSystemRequests::RayCastResult* self, int index)
+        static const AzFramework::PhysicsSystemRequests::RayCastHit* GetPiercingHit(AzFramework::PhysicsSystemRequests::RayCastResult* self, int index)
         {
             return self->GetPiercingHit(index - 1);
         }
@@ -212,12 +217,12 @@ namespace LmbrCentral
             behaviorContext->Class<PhysicalEntityTypesHolder>("PhysicalEntityTypes")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                ->Constant("Static", BehaviorConstant(PhysicalEntityTypes::Static))
-                ->Constant("Dynamic", BehaviorConstant(PhysicalEntityTypes::Dynamic))
-                ->Constant("Living", BehaviorConstant(PhysicalEntityTypes::Living))
-                ->Constant("Independent", BehaviorConstant(PhysicalEntityTypes::Independent))
-                ->Constant("Terrain", BehaviorConstant(PhysicalEntityTypes::Terrain))
-                ->Constant("All", BehaviorConstant(PhysicalEntityTypes::All))
+                ->Constant("Static", BehaviorConstant(AzFramework::PhysicalEntityTypes::Static))
+                ->Constant("Dynamic", BehaviorConstant(AzFramework::PhysicalEntityTypes::Dynamic))
+                ->Constant("Living", BehaviorConstant(AzFramework::PhysicalEntityTypes::Living))
+                ->Constant("Independent", BehaviorConstant(AzFramework::PhysicalEntityTypes::Independent))
+                ->Constant("Terrain", BehaviorConstant(AzFramework::PhysicalEntityTypes::Terrain))
+                ->Constant("All", BehaviorConstant(AzFramework::PhysicalEntityTypes::All))
                 ;
 
             behaviorContext->EBus<PhysicsSystemRequestBus>("PhysicsSystemRequestBus")
@@ -310,7 +315,7 @@ namespace LmbrCentral
             {
                 return 0;
             }
-			
+            
             return mat->GetSurfaceType()->GetId();
         }
 
@@ -330,7 +335,7 @@ namespace LmbrCentral
                 return ContinueEventProcessing;
             }
 
-            PhysicsComponentNotifications::Collision collision;
+            AzFramework::PhysicsComponentNotifications::Collision collision;
 
             collision.m_position = LYVec3ToAZVec3(collisionIn.pt);
             collision.m_normal = LYVec3ToAZVec3(collisionIn.n);
@@ -420,7 +425,7 @@ namespace LmbrCentral
         for (const AZ::EntityId& entityId : configuration.m_ignoreEntityIds)
         {
             IPhysicalEntity* physicalEntity = nullptr;
-            EBUS_EVENT_ID_RESULT(physicalEntity, entityId, CryPhysicsComponentRequestBus, GetPhysicalEntity);
+            EBUS_EVENT_ID_RESULT(physicalEntity, entityId, LmbrCentral::CryPhysicsComponentRequestBus, GetPhysicalEntity);
             if (physicalEntity)
             {
                 ignorePhysicalEntities.push_back(physicalEntity);

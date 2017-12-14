@@ -126,6 +126,40 @@ namespace AZStd
         };
     }
 
+    // The structure that encapsulates index lists
+    template <size_t... Is>
+    struct index_sequence
+    {
+    };
+
+    // Collects internal details for generating index ranges [MIN, MAX)
+    namespace Internal
+    {
+        // Declare primary template for index range builder
+        template <size_t MIN, size_t N, size_t... Is>
+        struct range_builder;
+
+        // Base step
+        template <size_t MIN, size_t... Is>
+        struct range_builder<MIN, MIN, Is...>
+        {
+            typedef index_sequence<Is...> type;
+        };
+
+        // Induction step
+        template <size_t MIN, size_t N, size_t... Is>
+        struct range_builder : public range_builder<MIN, N - 1, N - 1, Is...>
+        {
+        };
+    }
+
+    // Create index range [0,N]
+    template<size_t N>
+    using make_index_sequence = typename Internal::range_builder<0, N>::type;
+
+    struct piecewise_construct_t {};
+    static const piecewise_construct_t piece_construct{};
+
     template<class T1, class T2>
     struct pair
     {   // store a pair of values
@@ -140,7 +174,7 @@ namespace AZStd
         /// Constructs only the first element, default the second.
         AZ_FORCE_INLINE pair(const T1& value1)
             : first(value1)
-            , second(T2())    {}
+            , second(T2()) {}
         /// Construct from specified values.
         AZ_FORCE_INLINE pair(const T1& value1, const T2& value2)
             : first(value1)
@@ -153,7 +187,7 @@ namespace AZStd
         template<class Other1, class Other2>
         AZ_FORCE_INLINE pair(const pair<Other1, Other2>& rhs)
             : first(rhs.first)
-            , second(rhs.second)    {}
+            , second(rhs.second) {}
 
 #ifdef AZ_HAS_RVALUE_REFS
         typedef typename AZStd::remove_reference<T1>::type TT1;
@@ -179,6 +213,16 @@ namespace AZStd
         pair(pair<Other1, Other2>&& rhs)
             : first(AZStd::forward<Other1>(rhs.first))
             , second(AZStd::forward<Other2>(rhs.second)) {}
+
+        template<template<class...> class TupleType, class... Args1, class... Args2>
+        pair(piecewise_construct_t,
+            TupleType<Args1...> first_args,
+            TupleType<Args2...> second_args);
+
+        template<template<class...> class TupleType, class... Args1, class... Args2, size_t... I1, size_t... I2>
+        pair(piecewise_construct_t, TupleType<Args1...>& first_args,
+            TupleType<Args2...>& second_args, AZStd::index_sequence<I1...>,
+            AZStd::index_sequence<I2...>);
 
         this_type& operator=(this_type&& rhs)
         {
@@ -294,8 +338,6 @@ namespace AZStd
     {   // test if left >= right for pairs
         return !(left < right);
     }
-
-    // todo add tuple specializations for the pairs
 
 #ifndef AZSTD_HAS_TYPE_TRAITS_INTRINSICS
     // Without compiler help we should help a little.
@@ -474,37 +516,6 @@ namespace AZStd
     }
 #endif // AZ_HAS_RVALUE_REFS
        //////////////////////////////////////////////////////////////////////////
-
-    // The structure that encapsulates index lists
-    template <size_t... Is>
-    struct index_sequence
-    {
-    };
-
-    // Collects internal details for generating index ranges [MIN, MAX)
-    namespace Internal
-    {
-        // Declare primary template for index range builder
-        template <size_t MIN, size_t N, size_t... Is>
-        struct range_builder;
-
-        // Base step
-        template <size_t MIN, size_t... Is>
-        struct range_builder<MIN, MIN, Is...>
-        {
-            typedef index_sequence<Is...> type;
-        };
-
-        // Induction step
-        template <size_t MIN, size_t N, size_t... Is>
-        struct range_builder : public range_builder<MIN, N - 1, N - 1, Is...>
-        {
-        };
-    }
-
-    // Create index range [0,N]
-    template<size_t N>
-    using make_index_sequence = typename Internal::range_builder<0, N>::type;
 
     template<class T, bool isEnum = AZStd::is_enum<T>::value>
     struct RemoveEnum

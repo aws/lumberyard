@@ -188,15 +188,6 @@ void CSequencerKeyPropertiesDlg::OnKeySelectionChange()
     {
         PopulateVariables();
     }
-
-    if (selectedKeys.keys.size() > 1 || !bAssigned)
-    {
-        m_wndProps->SetDisplayOnlyModified(true);
-    }
-    else
-    {
-        m_wndProps->SetDisplayOnlyModified(false);
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////

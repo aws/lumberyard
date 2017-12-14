@@ -51,13 +51,12 @@ namespace Audio
         , m_eCurrentLipSyncMethod(eLSM_None)
         , m_nCurrentLipSyncID(INVALID_AUDIO_CONTROL_ID)
     {
-        //TODO: optimize this, by moving this to a manager-class (pool) so that not every proxy itself connects/disconnects to this event, but only one global manager takes care of it
-        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::AddRequestListener, &CAudioProxy::OnAudioEvent, this, eART_AUDIO_MANAGER_REQUEST, eAMRT_RESERVE_AUDIO_OBJECT_ID);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CAudioProxy::~CAudioProxy()
     {
+        // Just in case the callback was never recieved...
         AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::RemoveRequestListener, &CAudioProxy::OnAudioEvent, this);
 
         AZ_Assert(m_nAudioObjectID == INVALID_AUDIO_OBJECT_ID, "Expected AudioObjectID [%d] to be invalid when the audio proxy is destructed.", m_nAudioObjectID);
@@ -72,6 +71,9 @@ namespace Audio
             if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
             {
                 m_nFlags |= eAPF_WAITING_FOR_ID;
+
+                // Add the request listener to receive callback when the audio object has been created...
+                AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::AddRequestListener, &CAudioProxy::OnAudioEvent, this, eART_AUDIO_MANAGER_REQUEST, eAMRT_RESERVE_AUDIO_OBJECT_ID);
 
                 SAudioRequest oRequest;
                 SAudioManagerRequestData<eAMRT_RESERVE_AUDIO_OBJECT_ID> oRequestData(&m_nAudioObjectID, sObjectName);
@@ -783,6 +785,8 @@ namespace Audio
 
                 if (pAudioProxy)
                 {
+                    // Remove the request listener once the audio manager has reserved the audio object for this proxy.
+                    AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::RemoveRequestListener, &CAudioProxy::OnAudioEvent, pAudioProxy);
                     pAudioProxy->ExecuteQueuedCommands();
                 }
             }

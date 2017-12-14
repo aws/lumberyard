@@ -33,14 +33,3 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
     return new StaticDataMonitorEditorPlugin(pInitParam->pIEditorInterface);
 }
 
-//------------------------------------------------------------------
-HINSTANCE g_hInstance = 0;
-BOOL __stdcall DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
-{
-    if (fdwReason == DLL_PROCESS_ATTACH)
-    {
-        g_hInstance = hinstDLL;
-    }
-
-    return TRUE;
-}

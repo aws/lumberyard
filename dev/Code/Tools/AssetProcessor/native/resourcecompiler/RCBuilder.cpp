@@ -25,6 +25,7 @@
 
 #include <AzToolsFramework/Process/ProcessCommunicator.h>
 #include <AzToolsFramework/Process/ProcessWatcher.h>
+#include <AzToolsFramework/Application/ToolsApplication.h>
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
@@ -33,6 +34,7 @@
 
 #include "native/utilities/assetUtils.h"
 #include "native/utilities/AssetBuilderInfo.h"
+#include "native/utilities/CommunicatorTracePrinter.h"
 
 #if defined (AZ_PLATFORM_WINDOWS)
 #define LEGACY_RC_RELATIVE_PATH "/rc/rc.exe"    // Location of the legacy RC compiler relative to the BinXX folder the asset processor resides in
@@ -64,86 +66,14 @@ namespace AssetProcessor
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
     // remove the above IFDEF as soon as the AzToolsFramework ProcessCommunicator functions on OSX, along with the rest of the similar IFDEFs in this file.
 
-    //! CommunicatorTracePrinter listens to stderr and stdout of a running process and writes its output to the AZ_Trace system
-    //! Importantly, it does not do any blocking operations.
-    class CommunicatorTracePrinter
-    {
-    public:
-        CommunicatorTracePrinter(AzToolsFramework::ProcessCommunicator* communicator)
-            : m_communicator(communicator)
-        {
-            m_stringBeingConcatenated.reserve(1024);
-        }
-
-        ~CommunicatorTracePrinter()
-        {
-            WriteCurrentString();
-        }
-
-        // call this periodically to drain the buffers and write them.
-        void Pump()
-        {
-            if (m_communicator->IsValid())
-            {
-                // Don't call readOutput unless there is output or else it will block...
-                while (m_communicator->PeekOutput())
-                {
-                    AZ::u32 readSize = m_communicator->ReadOutput(m_streamBuffer, AZ_ARRAY_SIZE(m_streamBuffer));
-                    ParseDataBuffer(readSize);
-                }
-                while (m_communicator->PeekError())
-                {
-                    AZ::u32 readSize = m_communicator->ReadError(m_streamBuffer, AZ_ARRAY_SIZE(m_streamBuffer));
-                    ParseDataBuffer(readSize);
-                }
-            }
-        }
-
-        // drains the buffer into the string thats being built, then traces the string when it hits a newline.
-        void ParseDataBuffer(AZ::u32 readSize)
-        {
-            if (readSize > AZ_ARRAY_SIZE(m_streamBuffer))
-            {
-                AZ_ErrorOnce("ERROR", false, "Programmer bug:  Read size is overflowing in traceprintf communicator.");
-                return;
-            }
-            for (size_t pos = 0; pos < readSize; ++pos)
-            {
-                if ((m_streamBuffer[pos] == '\n') || (m_streamBuffer[pos] == '\r'))
-                {
-                    WriteCurrentString();
-                }
-                else
-                {
-                    m_stringBeingConcatenated.push_back(m_streamBuffer[pos]);
-                }
-            }
-        }
-
-        void WriteCurrentString()
-        {
-            if (!m_stringBeingConcatenated.empty())
-            {
-                AZ_TracePrintf("RC Builder", "%s", m_stringBeingConcatenated.c_str());
-            }
-            m_stringBeingConcatenated.clear();
-        }
-
-
-    private:
-        AzToolsFramework::ProcessCommunicator* m_communicator = nullptr;
-        char m_streamBuffer[128];
-        AZStd::string m_stringBeingConcatenated;
-    };
-
 #endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_APPLE
 
     namespace Internal
     {
-        void PopulateCommonDescriptorParams(AssetBuilderSDK::JobDescriptor& descriptor, int platform, const AssetPlatformSpec& platformSpec, const InternalAssetRecognizer* const recognizer)
+        void PopulateCommonDescriptorParams(AssetBuilderSDK::JobDescriptor& descriptor, const QString& platformIdentifier, const AssetPlatformSpec& platformSpec, const InternalAssetRecognizer* const recognizer)
         {
-            descriptor.m_jobKey = recognizer->m_name.toUtf8().data();
-            descriptor.m_platform = platform;
+            descriptor.m_jobKey = recognizer->m_name.toUtf8().constData();
+            descriptor.SetPlatformIdentifier(platformIdentifier.toUtf8().constData());
             descriptor.m_priority = recognizer->m_priority;
             descriptor.m_checkExclusiveLock = recognizer->m_testLockSource;
 
@@ -161,7 +91,7 @@ namespace AssetProcessor
 
             descriptor.m_priority = recognizer->m_priority;
 
-            descriptor.m_additionalFingerprintInfo = AZStd::string(extraInformationForFingerprinting.toUtf8().data());
+            descriptor.m_additionalFingerprintInfo = AZStd::string(extraInformationForFingerprinting.toUtf8().constData());
 
             bool isCopyJob = (platformSpec.m_extraRCParams.compare(ASSET_PROCESSOR_CONFIG_KEYWORD_COPY) == 0);
 
@@ -236,12 +166,9 @@ namespace AssetProcessor
 #endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
     }
 
-
-    bool NativeLegacyRCCompiler::Execute(const QString& inputFile, const QString& watchFolder, int platformId, 
+    bool NativeLegacyRCCompiler::Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, 
         const QString& params, const QString& dest, const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const
     {
-        QString platform = AssetUtilities::ComputePlatformName(platformId);
-
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
         if (!this->m_resourceCompilerInitialized)
         {
@@ -252,7 +179,7 @@ namespace AssetProcessor
         }
 
         // build the command line:
-        QString commandString = NativeLegacyRCCompiler::BuildCommand(inputFile, watchFolder, platform, platformId, params, dest);
+        QString commandString = NativeLegacyRCCompiler::BuildCommand(inputFile, watchFolder, platformIdentifier, params, dest);
 
         AzToolsFramework::ProcessLauncher::ProcessLaunchInfo processLaunchInfo;
 
@@ -285,7 +212,7 @@ namespace AssetProcessor
         // it created the process, wait for it to exit:
         bool finishedOK = false;
         {
-            CommunicatorTracePrinter tracer(watcher->GetCommunicator()); // allow this to go out of scope...
+            CommunicatorTracePrinter tracer(watcher->GetCommunicator(), "RC Builder"); // allow this to go out of scope...
             while ((!m_requestedQuit) && (!finishedOK))
             {
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(NativeLegacyRCCompiler::s_maxSleepTime));
@@ -350,8 +277,7 @@ namespace AssetProcessor
 #endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_APPLE
     }
 
-    QString NativeLegacyRCCompiler::BuildCommand(const QString& inputFile, const QString& watchFolder, const QString& platform, 
-        int platformId, const QString& params, const QString& dest)
+    QString NativeLegacyRCCompiler::BuildCommand(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest)
     {
         QString cmdLine;
         if (!dest.isEmpty())
@@ -364,12 +290,14 @@ namespace AssetProcessor
             QDir assetRoot;
             AssetUtilities::ComputeAssetRoot(assetRoot);
             QString gameRoot = assetRoot.absoluteFilePath(AssetUtilities::ComputeGameName());
-            cmdLine = QString("\"%1\" /p=%2 /pi=%9 %3 /unattended=true /threads=1 /gameroot=\"%4\" /watchfolder=\"%6\" /targetroot=\"%5\" /logprefix=\"%5/\" /port=%7 /gamesubdirectory=\"%8\"");
-            cmdLine = cmdLine.arg(inputFile, platform, params, gameRoot, dest, watchFolder).arg(portNumber).arg(gameName).arg(platformId);
+            AZStd::string appBranchToken;
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::CalculateBranchTokenForAppRoot, appBranchToken);
+            cmdLine = QString("\"%1\" /p=%2 %3 /unattended=true /threads=1 /gameroot=\"%4\" /watchfolder=\"%6\" /targetroot=\"%5\" /logprefix=\"%5/\" /port=%7 /gamesubdirectory=\"%8\" /branchtoken=\"%9\"");
+            cmdLine = cmdLine.arg(inputFile, platformIdentifier, params, gameRoot, dest, watchFolder).arg(portNumber).arg(gameName).arg(appBranchToken.c_str());
         }
         else
         {
-            cmdLine = QString("\"%1\" /p=%2 /pi=%4 %3 /threads=1").arg(inputFile, platform, params).arg(platformId);
+            cmdLine = QString("\"%1\" /p=%2 %3 /threads=1").arg(inputFile, platformIdentifier, params);
         }
         return cmdLine;
     }
@@ -444,14 +372,12 @@ namespace AssetProcessor
         : AssetRecognizer(src.m_name, src.m_testLockSource, src.m_priority, src.m_isCritical, src.m_supportsCreateJobs, src.m_patternMatcher, src.m_version, src.m_productAssetType)
         , m_builderId(builderId)
     {
-        for (auto iterSrcPlatformSpec = assetPlatformSpecByPlatform.begin();
-             iterSrcPlatformSpec != assetPlatformSpecByPlatform.end();
-             iterSrcPlatformSpec++)
-        {
-            int convertedSrcPlatformFlag = AssetUtilities::ComputePlatformFlag(iterSrcPlatformSpec.key());
-            this->m_platformSpecsByPlatform[convertedSrcPlatformFlag] = *iterSrcPlatformSpec;
-        }
-        this->m_paramID = CalculateCRC();
+        // assetPlatformSpecByPlatform is a hash table like
+        // "pc" --> (settings to compile on pc)
+        // "ios" --> settings to compile on ios)
+        // and so is m_platformSpecsByPlatform
+        m_platformSpecsByPlatform = assetPlatformSpecByPlatform;
+        m_paramID = CalculateCRC();
     }
 
     AZ::u32 InternalAssetRecognizer::CalculateCRC() const
@@ -475,7 +401,7 @@ namespace AssetProcessor
         , m_rcCompiler(new NativeLegacyRCCompiler())
         , m_internalRecognizerBuilderUuid(internalBuilderUuid)
     {
-        for (BuilderIdAndName builder : inputBuilderByIdMap.values())
+        for (BuilderIdAndName builder : inputBuilderByIdMap)
         {
             m_builderById[builder.GetId()] = inputBuilderByIdMap[builder.GetId()];
         }
@@ -523,37 +449,46 @@ namespace AssetProcessor
         this->m_rcCompiler->RequestQuit();
     }
 
+    bool InternalRecognizerBasedBuilder::FindRC(QString& systemRootOut, QString& rcAbsolutePathOut)
+    {
+        QDir systemRootDir;
+        bool computeRootResult = AssetUtilities::ComputeEngineRoot(systemRootDir);
+        AZ_Assert(computeRootResult, "AssetUtilities::ComputeEngineRoot failed");
+
+        QString testRcPath = systemRootDir.absoluteFilePath(QString(BINFOLDER_NAME LEGACY_RC_RELATIVE_PATH));
+
+        if (AZ::IO::SystemFile::Exists(testRcPath.toUtf8().data()))
+        {
+            systemRootOut = systemRootDir.absolutePath();
+            rcAbsolutePathOut = testRcPath;
+        }
+        else
+        {
+            AZ_Warning(AssetProcessor::ConsoleChannel, false, "Unable to find rc.exe from the engine root (%s).  Attempting to locate in the relative rc subfolder", systemRootDir.absolutePath().toUtf8().data());
+            QDir currentExePath(QCoreApplication::applicationDirPath());
+            systemRootOut = currentExePath.absolutePath();
+            rcAbsolutePathOut = currentExePath.absoluteFilePath(LEGACY_RC_RELATIVE_PATH);
+            
+        }
+        return AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data());
+    }
+
     bool InternalRecognizerBasedBuilder::Initialize(const RecognizerConfiguration& recognizerConfig)
     {
         InitializeAssetRecognizers(recognizerConfig.GetAssetRecognizerContainer());
 
         // Get the engine root since rc.exe will exist there and not in any external project folder
-        QDir systemRoot;
-        bool computeRootResult = AssetUtilities::ComputeEngineRoot(systemRoot);
-        AZ_Assert(computeRootResult, "AssetUtilities::ComputeEngineRoot failed");
+        QString systemRoot;
+        QString rcFullPath;
 
-#if defined(RUN_ENGINE_LOCAL_RC)
-        QString assetRoot;
-        QString appName;
-        QString binFolder;
-        AssetUtilities::ComputeAppRootAndBinFolderFromApplication(assetRoot, appName, binFolder);
-
-        QString rcExecutableFullPath;
-        if (systemRoot.cd(binFolder))
+        // Validate that the engine root contains the necessary rc.exe
+        if (!FindRC(systemRoot, rcFullPath))
         {
-            rcExecutableFullPath = systemRoot.absolutePath() + LEGACY_RC_RELATIVE_PATH;
+            return false;
         }
-        else
+        if (!m_rcCompiler->Initialize(systemRoot, rcFullPath))
         {
-            rcExecutableFullPath = QCoreApplication::applicationDirPath() + LEGACY_RC_RELATIVE_PATH;
-        }
-#else
-        QString rcExecutableFullPath = QCoreApplication::applicationDirPath() + LEGACY_RC_RELATIVE_PATH;
-#endif
-
-        if (!m_rcCompiler->Initialize(systemRoot.canonicalPath(), rcExecutableFullPath))
-        {
-            AssetBuilderSDK::BuilderLog(m_internalRecognizerBuilderUuid, "Unable to find rc.exe from the engine root (%1).", rcExecutableFullPath.toUtf8().data());
+            AssetBuilderSDK::BuilderLog(m_internalRecognizerBuilderUuid, "Unable to find rc.exe from the engine root (%1).", rcFullPath.toUtf8().data());
             return false;
         }
         return true;
@@ -564,8 +499,45 @@ namespace AssetProcessor
     {
         // Split the asset recognizers that were scanned in into 'buckets' for each of the 3 builder ids based on
         // either the custom fixed rc params or the standard rc param ('copy','skip', or others)
+
         QHash<QString, InternalAssetRecognizerList> internalRecognizerListByType;
         InternalRecognizerBasedBuilder::BuildInternalAssetRecognizersByType(assetRecognizers, internalRecognizerListByType);
+
+        // note that the QString key to this map is actually the builder ID (as in the QString "Internal Copy Builder" for example)
+        // and the key of the map is actually a AZStd::list for InternalAssetRecognizer* which belong to that builder
+        // inside of each such recognizer is a map of [platform] --> options for that platform.
+        // so visualizing this whole struct in summary might look something like
+
+        // "Internal RC Builder" : 
+        // {
+        //      {                  <----- list of recognizers for that RC builder starts here
+        //        regex: "*.tif",
+        //        builderUUID : "12345-12354-123145", 
+        //        platformSpecsByPlatform : 
+        //        { 
+        //          "pc"  : "streaming = 1",
+        //          "ios" : "streaming = 0"
+        //        }
+        //      },
+        //      { 
+        //        regex: "*.png",
+        //        builderUUID : "12345-12354-123145", 
+        //        platformSpecsByPlatform : 
+        //        { 
+        //          "pc"  : "split=1"
+        //        }
+        //      },
+        // },
+        // "Internal Copy Builder",
+        //      { 
+        //        regex: "*.cfg",
+        //        builderUUID : "12345-12354-123145", 
+        //        platformSpecsByPlatform : 
+        //        { 
+        //          "pc"  : "copy",
+        //          "ios" : "copy"
+        //        }
+        //      },
 
         for (auto internalRecognizerList = internalRecognizerListByType.begin();
              internalRecognizerList != internalRecognizerListByType.end();
@@ -576,8 +548,10 @@ namespace AssetProcessor
             QString builderName = builderInfo.GetName();
             AZStd::vector<AssetBuilderSDK::AssetBuilderPattern> builderPatterns;
 
-            for (auto internalAssetRecognizer : * internalRecognizerList)
+            for (auto internalAssetRecognizer : *internalRecognizerList)
             {
+                // so referring to the structure explanation above, internalAssetRecognizer is 
+                // one of those objects that has the regex in it, (along with list of commands to apply per platform)
                 if (internalAssetRecognizer->m_platformSpecsByPlatform.size() == 0)
                 {
                     delete internalAssetRecognizer;
@@ -586,6 +560,7 @@ namespace AssetProcessor
                 }
 
                 // Ignore duplicate recognizers
+                // note that m_paramID is the CRC of a bunch of values inside the recognizer, so different recognizers should have a different paramID.
                 if (m_assetRecognizerDictionary.contains(internalAssetRecognizer->m_paramID))
                 {
                     delete internalAssetRecognizer;
@@ -621,32 +596,37 @@ namespace AssetProcessor
         }
     }
 
-    bool InternalRecognizerBasedBuilder::GetMatchingRecognizers(int platformFlags, const QString fileName, InternalRecognizerPointerContainer& output) const
+    bool InternalRecognizerBasedBuilder::GetMatchingRecognizers(const AZStd::vector<AssetBuilderSDK::PlatformInfo>& platformInfos, const QString& fileName, InternalRecognizerPointerContainer& output) const
     {
         AZ_Assert(fileName.contains('\\') == false, "fileName must not contain backslashes: %s", fileName.toUtf8().constData());
 
         bool foundAny = false;
+        // assetRecognizerDictionary is a key value pair dictionary where
+        // [key] is m_paramID of a recognizer - that is, a unique id of an internal asset recognizer
+        // and [value] is the actual recognizer.
+        // inside recognizers are the pattern that they match, as well as the various platforms that they compile for.
         for (const InternalAssetRecognizer* recognizer : m_assetRecognizerDictionary)
         {
+            // so this platform is supported.  Check if the file matches the regex in MatchesPath.
             if (recognizer->m_patternMatcher.MatchesPath(fileName))
             {
-                bool matchPlatform = false;
-                // found a match, now match the platform
-                for (auto iterPlatformKeys = recognizer->m_platformSpecsByPlatform.keyBegin();
-                     iterPlatformKeys != recognizer->m_platformSpecsByPlatform.keyEnd();
-                     iterPlatformKeys++)
+                // this recognizer does match that particular file name.
+                // do we know how to compile it for any of the platforms?
+                for (const AssetBuilderSDK::PlatformInfo& platformInfo : platformInfos)
                 {
-                    if (platformFlags & (*iterPlatformKeys))
+                    // recognizer->m_platformSpecsByplatform is a dictionary like
+                    // ["pc"] -> what to do with the asset on PC.
+                    // ["ios"] -> what to do wiht the asset on ios
+                    if (recognizer->m_platformSpecsByPlatform.find(platformInfo.m_identifier.c_str()) != recognizer->m_platformSpecsByPlatform.end())
                     {
-                        matchPlatform = true;
+                        // yes, we have at least one platform that overlaps with the enabled platform list.
+                        output.push_back(recognizer);
+                        foundAny = true;
                         break;
                     }
                 }
-                if (matchPlatform)
-                {
-                    output.push_back(recognizer);
-                }
-                foundAny = true;
+
+                
             }
         }
         return foundAny;
@@ -673,7 +653,7 @@ namespace AssetProcessor
         
         // Locate recognizers that match the file
         InternalRecognizerPointerContainer  recognizers;
-        if (!GetMatchingRecognizers(request.m_platformFlags, normalizedPath, recognizers))
+        if (!GetMatchingRecognizers(request.m_enabledPlatforms, normalizedPath, recognizers))
         {
             AssetBuilderSDK::BuilderLog(m_internalRecognizerBuilderUuid, "Cannot find recognizer for %s.", request.m_sourceFile.c_str());
             return;
@@ -723,7 +703,7 @@ namespace AssetProcessor
                     iterPlatformSpec != recognizer->m_platformSpecsByPlatform.cend();
                     iterPlatformSpec++)
                 {
-                    if (iterPlatformSpec.key() & request.m_platformFlags)
+                    if (request.HasPlatform(iterPlatformSpec.key().toUtf8().constData()))
                     {
                         QString rcParam = iterPlatformSpec.value().m_extraRCParams;
 
@@ -787,7 +767,7 @@ namespace AssetProcessor
                 return;
             }
 
-            if (this->m_assetRecognizerDictionary.find(jobParam->first) == this->m_assetRecognizerDictionary.end())
+            if (m_assetRecognizerDictionary.find(jobParam->first) == m_assetRecognizerDictionary.end())
             {
                 AZ_TracePrintf(AssetProcessor::ConsoleChannel,
                     "Job request for %s in builder %s has invalid job parameter (%ld).",
@@ -796,13 +776,13 @@ namespace AssetProcessor
                     jobParam->first);
                 continue;
             }
-            InternalAssetRecognizer* assetRecognizer = this->m_assetRecognizerDictionary[jobParam->first];
-            if (!assetRecognizer->m_platformSpecsByPlatform.contains(request.m_jobDescription.m_platform))
+            InternalAssetRecognizer* assetRecognizer = m_assetRecognizerDictionary[jobParam->first];
+            if (!assetRecognizer->m_platformSpecsByPlatform.contains(request.m_jobDescription.GetPlatformIdentifier().c_str()))
             {
                 // Skip due to platform restrictions
                 continue;
             }
-            QString rcParam = assetRecognizer->m_platformSpecsByPlatform[request.m_jobDescription.m_platform].m_extraRCParams;
+            QString rcParam = assetRecognizer->m_platformSpecsByPlatform[request.m_jobDescription.GetPlatformIdentifier().c_str()].m_extraRCParams;
 
             //
             if (rcParam.compare(ASSET_PROCESSOR_CONFIG_KEYWORD_COPY) == 0)
@@ -812,7 +792,7 @@ namespace AssetProcessor
             else if (rcParam.compare(ASSET_PROCESSOR_CONFIG_KEYWORD_SKIP) == 0)
             {
                 // This should not occur because 'skipped' jobs should not be processed
-                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job ID %lld Failed, encountered an invalid 'skip' parameter during job processing", AssetProcessor::GetThreadLocalJobId());
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job ID %lld Failed, encountered an invalid 'skip' parameter during job processing\n", AssetProcessor::GetThreadLocalJobId());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             }
             else
@@ -867,7 +847,7 @@ namespace AssetProcessor
         QString params = QString("%1=\"%2\"").arg(createJobsParam).arg(requestPath);
 
         //Platform and platform id are hard coded to PC because it doesn't matter, the actual platform info is in the CreateJobsRequest
-        if ((!this->m_rcCompiler->Execute(normalizedPath, watchFolder, AssetBuilderSDK::Platform_PC, rcParam.append(params), workFolder, nullptr, rcResult)) || (rcResult.m_exitCode != 0))
+        if ((!this->m_rcCompiler->Execute(normalizedPath, watchFolder, "pc", rcParam.append(params), workFolder, nullptr, rcResult)) || (rcResult.m_exitCode != 0))
         {
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Job ID %lld Failed with exit code %d\n", AssetProcessor::GetThreadLocalJobId(), rcResult.m_exitCode);
             response.m_result = AssetBuilderSDK::CreateJobsResultCode::Failed;
@@ -925,34 +905,20 @@ namespace AssetProcessor
     {
         // Process this job
         QString inputFile = QString(request.m_fullPath.c_str());
-        int platformId = request.m_jobDescription.m_platform;
+        QString platformIdentifier = request.m_jobDescription.GetPlatformIdentifier().c_str();
         QString dest = request.m_tempDirPath.c_str();
         QString watchFolder = request.m_watchFolder.c_str();
         NativeLegacyRCCompiler::Result  rcResult;
 
-        // Temporary solution to get around the fact that we don't have job dependencies
-        if (!s_TempSolution_CopyJobsFinished)
-        {
-            int copyJobActivityCounter = 0;
-
-            do {
-                copyJobActivityCounter = s_TempSolution_CopyJobActivityCounter;
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1000));
-            } while (copyJobActivityCounter != s_TempSolution_CopyJobActivityCounter);
-
-            s_TempSolution_CopyJobsFinished = true;
-        }
-
         QDir workDir(dest);
-     
+
         if (!SaveProcessJobRequestFile(dest.toUtf8().constData(), AssetBuilderSDK::s_processJobRequestFileName, request))
         {
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             return;
         }
 
-       
-        if ((!this->m_rcCompiler->Execute(inputFile, watchFolder, platformId, rcParam, dest, &jobCancelListener, rcResult)) || (rcResult.m_exitCode != 0))
+        if ((!this->m_rcCompiler->Execute(inputFile, watchFolder, platformIdentifier, rcParam, dest, &jobCancelListener, rcResult)) || (rcResult.m_exitCode != 0))
         {
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Job ID %lld Failed with exit code %d\n", AssetProcessor::GetThreadLocalJobId(), rcResult.m_exitCode);
             if (jobCancelListener.IsCancelled())
@@ -1211,7 +1177,9 @@ namespace AssetProcessor
 
     void InternalRecognizerBasedBuilder::RegisterInternalAssetRecognizerToMap(const AssetRecognizer& assetRecognizer, const QString& builderId, QHash<QString, AssetPlatformSpec>& sourceAssetPlatformSpecs, QHash<QString, InternalAssetRecognizerList>& internalRecognizerListByType)
     {
+        // this is called to say that the internal builder with builderID is to handle assets recognized by the givne recognizer.
         InternalAssetRecognizer* newAssetRecognizer = new InternalAssetRecognizer(assetRecognizer, builderId, sourceAssetPlatformSpecs);
+        // the list is keyed off the builderID.
         internalRecognizerListByType[builderId].push_back(newAssetRecognizer);
     }
 
@@ -1221,6 +1189,9 @@ namespace AssetProcessor
         // assert recognizer into
         for (const AssetRecognizer& assetRecognizer : assetRecognizers)
         {
+            // these hashes are keyed on the same key as the incoming asset recognizers list, which is
+            // [ name in ini file ] --> [regognizer details]
+            // so like "rc png" --> [details].  Specifically, the QString key is the name of the entry in the INI file and NOT a platform name.
             QHash<QString, AssetPlatformSpec>   copyAssetPlatformSpecs;
             QHash<QString, AssetPlatformSpec>   skipAssetPlatformSpecs;
             QHash<QString, AssetPlatformSpec>   rcAssetPlatformSpecs;

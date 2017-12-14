@@ -171,11 +171,26 @@ namespace AZ
                 , m_classData(classData)
                 , m_classElement(classElement)
                 , m_editElement(nullptr)
-            {}
+            {
+                AZ_Assert(context, "context cannot be null");
+            }
+
+            ClassBuilder()
+                : m_context(nullptr)
+                , m_classData(nullptr)
+                , m_classElement(nullptr)
+                , m_editElement(nullptr)
+            {
+                // The default constructor represents a no-op class builder which will cause this object to behave as a simple pass through
+                // in cases where the edit context is in the process of un-reflecting
+            }
+
             EditContext*                    m_context;
             SerializeContext::ClassData*    m_classData;
             Edit::ClassData*                m_classElement;
             Edit::ElementData*              m_editElement;
+
+            bool IsValid() const { return m_context != nullptr; }
 
             Edit::ClassData* FindClassData(const Uuid& typeId);
 
@@ -304,10 +319,23 @@ namespace AZ
             EnumBuilder(EditContext* editContext, Edit::ElementData* elementData)
                 : m_context(editContext)
                 , m_elementData(elementData)
-            {}
+            {
+                AZ_Assert(editContext, "The edit context cannot be null");
+            }
+
+            EnumBuilder()
+                : m_context(nullptr)
+                , m_elementData(nullptr)
+            {
+                // The default constructor represents a no-op class builder which will cause this object to behave as a simple pass through
+                // in cases where the edit context is in the process of un-reflecting
+            }
+
 
             EditContext* m_context;
             Edit::ElementData* m_elementData;
+
+            bool IsValid() const { return m_context != nullptr; }
         public:
             EnumBuilder* operator->() { return this; }
 
@@ -351,19 +379,27 @@ namespace AZ
     EditContext::ClassBuilder
     EditContext::Class(const char* displayName, const char* description)
     {
-        // find the class data in the serialize context.
-        SerializeContext::UuidToClassMap::iterator classDataIter = m_serializeContext.m_uuidMap.find(AzTypeInfo<T>::Uuid());
-        AZ_Assert(classDataIter != m_serializeContext.m_uuidMap.end(), "Class %s is not reflected in the serializer yet! Edit context can be set after the class is reflected!", AzTypeInfo<T>::Name());
-        SerializeContext::ClassData* serializeClassData = &classDataIter->second;
+        if (m_serializeContext.IsRemovingReflection())
+        {
+            return EditContext::ClassBuilder();
+        }
+        else
+        {
+            // find the class data in the serialize context.
+            SerializeContext::UuidToClassMap::iterator classDataIter = m_serializeContext.m_uuidMap.find(AzTypeInfo<T>::Uuid());
+            AZ_Assert(classDataIter != m_serializeContext.m_uuidMap.end(), "Class %s is not reflected in the serializer yet! Edit context can be set after the class is reflected!", AzTypeInfo<T>::Name());
+            SerializeContext::ClassData* serializeClassData = &classDataIter->second;
 
-        m_classData.push_back();
-        Edit::ClassData& editClassData = m_classData.back();
-        editClassData.m_name = displayName;
-        editClassData.m_description = description;
-        editClassData.m_editDataProvider = nullptr;
-        editClassData.m_classData = serializeClassData;
-        serializeClassData->m_editData = &editClassData;
-        return EditContext::ClassBuilder(this, serializeClassData, &editClassData);
+            m_classData.push_back();
+            Edit::ClassData& editClassData = m_classData.back();
+            editClassData.m_name = displayName;
+            editClassData.m_description = description;
+            editClassData.m_editDataProvider = nullptr;
+            editClassData.m_classData = serializeClassData;
+            serializeClassData->m_editData = &editClassData;
+            return EditContext::ClassBuilder(this, serializeClassData, &editClassData);
+        }
+        
     }
 
     //=========================================================================
@@ -375,15 +411,25 @@ namespace AZ
     {
         AZ_STATIC_ASSERT(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPE_INFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");
         const AZ::Uuid& enumId = azrtti_typeid<E>();
-        AZ_Assert(m_enumData.find(enumId) == m_enumData.end(), "Enum %s has already been reflected to EditContext", displayName);
-        Edit::ElementData& enumData = m_enumData[enumId];
-        
-        // Set the elementId to the Crc of the typeId, this indicates that it's globally reflected
-        const Crc32 typeCrc = Internal::UuidToCrc32(enumId);
-        enumData.m_elementId = typeCrc;
-        enumData.m_name = displayName;
-        enumData.m_description = description;
-        return EditContext::EnumBuilder(this, &enumData);
+        if (m_serializeContext.IsRemovingReflection())
+        {
+            // If the serialize context is unreflecting, then the enum needs to be removed
+            AZ_Assert(m_enumData.find(enumId) != m_enumData.end(), "Enum %s not found during unreflection", displayName);
+            m_enumData.erase(enumId);
+            return EditContext::EnumBuilder();
+        }
+        else
+        {
+            AZ_Assert(m_enumData.find(enumId) == m_enumData.end(), "Enum %s has already been reflected to EditContext", displayName);
+            Edit::ElementData& enumData = m_enumData[enumId];
+
+            // Set the elementId to the Crc of the typeId, this indicates that it's globally reflected
+            const Crc32 typeCrc = Internal::UuidToCrc32(enumId);
+            enumData.m_elementId = typeCrc;
+            enumData.m_name = displayName;
+            enumData.m_description = description;
+            return EditContext::EnumBuilder(this, &enumData);
+        }
     }
 
     //=========================================================================
@@ -392,11 +438,14 @@ namespace AZ
     inline EditContext::ClassBuilder*
     EditContext::ClassBuilder::ClassElement(Crc32 elementIdCrc, const char* description)
     {
-        m_classElement->m_elements.push_back();
-        Edit::ElementData& ed = m_classElement->m_elements.back();
-        ed.m_elementId = elementIdCrc;
-        ed.m_description = description;
-        m_editElement = &ed;
+        if (IsValid())
+        {
+            m_classElement->m_elements.push_back();
+            Edit::ElementData& ed = m_classElement->m_elements.back();
+            ed.m_elementId = elementIdCrc;
+            ed.m_description = description;
+            m_editElement = &ed;
+        }
         return this;
     }
 
@@ -417,6 +466,11 @@ namespace AZ
     EditContext::ClassBuilder*
     EditContext::ClassBuilder::DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
+
         using ElementTypeInfo = typename SerializeInternal::ElementInfo<T>;
         using EnumElementType = typename AZStd::Utils::if_c<AZStd::is_enum<typename ElementTypeInfo::Type>::value, typename ElementTypeInfo::Type, void>::type;
         AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", name);
@@ -463,6 +517,11 @@ namespace AZ
     template<class T>
     EditContext::ClassBuilder* EditContext::ClassBuilder::DataElement(const char* uiId, T memberVariable)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
+
         using ElementTypeInfo = typename SerializeInternal::ElementInfo<T>;
         using ElementType = typename AZStd::Utils::if_c<AZStd::is_enum<typename ElementTypeInfo::Type>::value, typename ElementTypeInfo::Type, typename ElementTypeInfo::ElementType>::type;
         AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", AzTypeInfo<typename ElementTypeInfo::ValueType>::Name());
@@ -491,6 +550,11 @@ namespace AZ
     template<class T>
     EditContext::ClassBuilder* EditContext::ClassBuilder::DataElement(Crc32 uiIdCrc, T memberVariable)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
+
         typedef typename SerializeInternal::ElementInfo<T>  ElementTypeInfo;
         AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", AzTypeInfo<typename ElementTypeInfo::ValueType>::Name());
 
@@ -512,6 +576,11 @@ namespace AZ
     inline EditContext::ClassBuilder*
     EditContext::ClassBuilder::SetDynamicEditDataProvider(Edit::DynamicEditDataProvider* pHandler)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
+
         m_classElement->m_editDataProvider = pHandler;
         return this;
     }
@@ -533,11 +602,13 @@ namespace AZ
     EditContext::ClassBuilder*
     EditContext::ClassBuilder::Attribute(Crc32 idCrc, T value)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
+
         AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti), "Attribute (0x%08x) doesn't belong to '%s' class! You can't reference other classes!", idCrc, m_classData->m_name);
-        typedef typename AZStd::Utils::if_c<AZStd::is_member_pointer<T>::value,
-            typename AZStd::Utils::if_c<AZStd::is_member_function_pointer<T>::value, Edit::AttributeMemberFunction<T>, Edit::AttributeMemberData<T> >::type,
-            typename AZStd::Utils::if_c<AZStd::is_function<typename AZStd::remove_pointer<T>::type>::value, Edit::AttributeFunction<typename AZStd::remove_pointer<T>::type>, Edit::AttributeData<T> >::type
-            >::type ContainerType;
+        using ContainerType = AttributeContainerType<T>;
         AZ_Assert(m_editElement, "You can attach attributes only to UiElements!");
         if (m_editElement)
         {
@@ -580,6 +651,11 @@ namespace AZ
     EditContext::ClassBuilder*
     EditContext::ClassBuilder::EnumAttribute(T value, const char* description)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
+
         AZ_STATIC_ASSERT(AZStd::is_enum<T>::value, "Type passed to EnumAttribute is not an enum.");
         // If the name of the element is the same as the class name, then this is the global reflection (see EditContext::Enum<E>())
         const bool isReflectedGlobally = m_editElement->m_serializeClassElement && m_editElement->m_elementId == Internal::UuidToCrc32(m_editElement->m_serializeClassElement->m_typeId);
@@ -604,6 +680,7 @@ namespace AZ
     typename AZStd::enable_if<AZStd::is_enum<E>::value>::type
     EditContext::ClassBuilder::CopyEnumValues(Edit::ElementData* ed)
     {
+        AZ_Assert(IsValid(), "Cannot perform CopyEnumValues from an invalid ClassBuilder");
         AZ_STATIC_ASSERT(AZStd::is_enum<E>::value, "You cannot copy enum values for a non-enum type!");
         using ContainerType = Edit::AttributeData<Edit::EnumConstant<E>>;
         auto enumIter = m_context->m_enumData.find(AzTypeInfo<E>::Uuid());
@@ -627,6 +704,10 @@ namespace AZ
     EditContext::ClassBuilder*
     EditContext::ClassBuilder::ElementAttribute(const char* id, T value)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
         AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti), "ElementAttribute (%s) doesn't belong to '%s' class! You can't reference other classes!", id, m_classData->m_name);
         return ElementAttribute(Crc32(id), value);
     }
@@ -638,6 +719,10 @@ namespace AZ
     EditContext::ClassBuilder*
     EditContext::ClassBuilder::ElementAttribute(Crc32 idCrc, T value)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
         AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti), "ElementAttribute (0x%08u) doesn't belong to '%s' class! You can't reference other classes!", idCrc, m_classData->m_name);
         typedef typename AZStd::Utils::if_c<AZStd::is_member_pointer<T>::value,
             typename AZStd::Utils::if_c<AZStd::is_member_function_pointer<T>::value, Edit::AttributeMemberFunction<T>, Edit::AttributeMemberData<T> >::type,
@@ -663,6 +748,10 @@ namespace AZ
     EditContext::EnumBuilder*
     EditContext::EnumBuilder::Value(const char* name, E value)
     {
+        if (!IsValid())
+        {
+            return this;
+        }
         AZ_STATIC_ASSERT(AZStd::is_enum<E>::value, "Only values that are part of an enum are valid as value attributes");
         AZ_STATIC_ASSERT(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPEINFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");
         AZ_Assert(m_elementData, "Attempted to add a value attribute (%s) to a non-existent enum element data", name);

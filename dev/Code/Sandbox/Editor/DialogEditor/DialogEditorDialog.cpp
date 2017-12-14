@@ -75,7 +75,7 @@ CDialogEditorDialog::CDialogEditorDialog(QWidget* parent)
     , m_scriptListModel(new ScriptListModel(m_dialogManager, this))
     , m_scriptDock(new ScriptsDock(this, m_scriptTreeModel, this))
 {
-    setWindowTitle(tr("Dialog Editor"));
+    setWindowTitle(DIALOG_EDITOR_NAME);
     m_scriptTreeModel->setSourceModel(m_scriptListModel);
     m_view->setModel(m_model);
     setCentralWidget(m_view);
@@ -624,7 +624,6 @@ bool CDialogEditorDialog::SaveCurrent()
     {
         m_model->SaveToScript();
         // also save a backup of previous file
-        DoSourceControlOp(curScript, ESCM_CHECKOUT);
         if (!m_dialogManager->SaveScript(curScript, true, true))
         {
             string id = curScript->GetID();
@@ -816,10 +815,17 @@ void ScriptListModel::Reload()
 
 void ScriptListModel::Reload(CEditorDialogScript* script)
 {
-    int idx = m_items.indexOf(script);
-    if (idx != -1)
+    if (script)
     {
-        emit dataChanged(index(idx, 0), index(idx, 0));
+        int idx = m_items.indexOf(script);
+        if (idx != -1)
+        {
+            emit dataChanged(index(idx, 0), index(idx, 0));
+        }
+    }
+    else
+    {
+        Reload();
     }
 }
 

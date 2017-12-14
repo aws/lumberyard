@@ -29,7 +29,7 @@ namespace MCore
     // the default constructor
     MatrixDecomposer::MatrixDecomposer()
     {
-        mTranslation.Zero();
+        mTranslation = AZ::Vector3::CreateZero();
         mScale.Set(1.0f, 1.0f, 1.0f);
         //mRotation.Identity();
         //mScaleRotation.Identity();
@@ -61,7 +61,7 @@ namespace MCore
 
         // do some cleanup:
         //if scale is close/equal to identity, scaleRotation may be ignored as well
-        if ((mScale - Vector3(1, 1, 1)).SquareLength() <=  Math::epsilon)
+        if ((mScale - AZ::Vector3::CreateOne()).GetLengthSq() <=  Math::epsilon)
         {
             // wipe them clean
             mScaleRotation.Identity();
@@ -71,10 +71,10 @@ namespace MCore
         {
             //if scale.x=scale.y=scale.z, scaleRotation may be ignored as well:
             //   in that case: SR*Scale*inv(SR) = Scale*SR*inv(SR) = Scale
-            float delta = mScale.x - mScale.y;
+            float delta = mScale.GetX() - mScale.GetY();
             if ((delta * delta) <= Math::epsilon)
             {
-                delta = mScale.x - mScale.z;
+                delta = mScale.GetX() - mScale.GetZ();
                 if ((delta * delta) <= Math::epsilon)
                 {
                     mScaleRotation.Identity();

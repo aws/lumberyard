@@ -45,7 +45,7 @@ namespace NCryMetal
     };
     //  Confetti End: Igor Lobanchikov
 
-    static const int FASTBUFFER_SIZE_THRESHHOLD = 512;
+    static const int FASTBUFFER_SIZE_THRESHHOLD = 4*1024;
     
     typedef SBlendState SBlendCache;
 
@@ -428,6 +428,7 @@ namespace NCryMetal
 
             void    OnFrameStart(int iCurrentFrameSlot, int iNextFrameSlot);
             void*   Allocate(int iCurrentFrameSlot, unsigned int size, size_t& ringBufferOffsetOut, unsigned int alignment = 0);
+            void*   AllocateTemp(int iCurrentFrameSlot, unsigned int size, size_t& ringBufferOffsetOut, unsigned int alignment = 0);
 
             id<MTLBuffer>   m_Buffer;
             unsigned int    m_uiFreePositionPointer;

@@ -17,9 +17,10 @@
 #include <INavigationSystem.h>
 #include <MathConversion.h>
 
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Component/TransformBus.h>
+#include <AzCore/Script/ScriptContextAttributes.h>
 
 namespace LmbrCentral
 {
@@ -31,16 +32,16 @@ namespace LmbrCentral
                 ->Version(1)
                 ->Field("Agent Type", &EditorNavigationSeedComponent::m_agentType);
 
-            AZ::EditContext* edit = serializeContext->GetEditContext();
-            if (edit)
+            if (auto editContext = serializeContext->GetEditContext())
             {
-                edit->Class<EditorNavigationSeedComponent>("Navigation Seed", "Determines reachable navigation nodes")
+                editContext->Class<EditorNavigationSeedComponent>("Navigation Seed", "Determines reachable navigation nodes")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    // Disabled for v1.11
-                    //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) 
+                    //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.12
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview) // Hidden for v1.12
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/nav-seed-component")
                     ->Attribute(AZ::Edit::Attributes::Category, "AI")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Navigation.png")
-                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Navigation.png")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NavigationSeed.png")
+                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NavigationSeed.png")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(0, &EditorNavigationSeedComponent::m_agentType, "Agent Type", "Describes the type of the Entity for navigation purposes.")
                         ->Attribute("ChangeNotify", &EditorNavigationSeedComponent::OnAgentTypeChanged);

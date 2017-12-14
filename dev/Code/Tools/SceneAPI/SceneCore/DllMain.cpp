@@ -58,13 +58,46 @@
 #include <SceneAPI/SceneCore/Utilities/PatternMatcher.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
+static class EntityMonitor* g_entityMonitor = nullptr;
 static AZ::Entity* g_behaviors = nullptr;
+static AZ::EntityId g_behaviorsId;
 static AZ::SceneAPI::Import::ManifestImportRequestHandler* g_manifestImporter = nullptr;
 static AZStd::vector<AZ::ComponentDescriptor*> g_componentDescriptors;
+
+class EntityMonitor : public AZ::ComponentApplicationEventBus::Handler
+{
+public:
+    AZ_CLASS_ALLOCATOR(EntityMonitor, AZ::SystemAllocator, 0);
+
+    EntityMonitor()
+    {
+        BusConnect();
+    }
+
+    ~EntityMonitor()
+    {
+        BusDisconnect();
+    }
+
+    void OnEntityRemoved(const AZ::EntityId& entityId) override
+    {
+        if (entityId == g_behaviorsId)
+        {
+            // Another part of the code has claimed and deleted this entity already.
+            g_behaviors = nullptr;
+            g_behaviorsId.SetInvalid();
+        }
+    }
+};
 
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
     AZ::Environment::Attach(static_cast<AZ::EnvironmentInstance>(env));
+
+    if (!g_entityMonitor)
+    {
+        g_entityMonitor = aznew EntityMonitor();
+    }
 
     // Explicitly creating this component early as this currently needs to be available to the 
     //      RC before Gems are loaded in order to know the file extension.
@@ -153,6 +186,8 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
         AZ::SceneAPI::SceneCore::PatternMatcher::Reflect(context);
     }
 
+    // Descriptor registration is done in Reflect instead of Initialize because the ResourceCompilerScene initializes the libraries before
+    // there's an application.
     if (g_componentDescriptors.empty())
     {
         g_componentDescriptors.push_back(AZ::SceneAPI::Export::MaterialExporterComponent::CreateDescriptor());
@@ -171,6 +206,7 @@ extern "C" AZ_DLL_EXPORT void Activate()
     }
     g_behaviors = AZ::SceneAPI::SceneCore::EntityConstructor::BuildEntityRaw("Scene Behaviors", 
         AZ::SceneAPI::SceneCore::BehaviorComponent::TYPEINFO_Uuid());
+    g_behaviorsId = g_behaviors->GetId();
 }
 
 extern "C" AZ_DLL_EXPORT void Deactivate()
@@ -180,16 +216,26 @@ extern "C" AZ_DLL_EXPORT void Deactivate()
         g_behaviors->Deactivate();
         delete g_behaviors;
         g_behaviors = nullptr;
+        g_behaviorsId.SetInvalid();
     }
 }
 
 extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
 {
+    AZ::SerializeContext* context = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    if (context)
+    {
+        context->EnableRemoveReflection();
+        Reflect(context);
+        context->DisableRemoveReflection();
+    }
+
     if (!g_componentDescriptors.empty())
     {
         for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
         {
-            AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Handler::UnregisterComponentDescriptor, descriptor);
+            descriptor->ReleaseDescriptor();
         }
         g_componentDescriptors.clear();
         g_componentDescriptors.shrink_to_fit();
@@ -200,6 +246,12 @@ extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
         g_manifestImporter->Deactivate();
         delete g_manifestImporter;
         g_manifestImporter = nullptr;
+    }
+
+    if (g_entityMonitor)
+    {
+        delete g_entityMonitor;
+        g_entityMonitor = nullptr;
     }
 
     AZ::Environment::Detach();

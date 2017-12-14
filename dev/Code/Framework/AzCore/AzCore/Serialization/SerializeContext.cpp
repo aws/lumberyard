@@ -30,6 +30,8 @@
 
 namespace AZ
 {
+    AZ_THREAD_LOCAL void* Internal::AZStdArrayEvents::m_indices = nullptr;
+
     //////////////////////////////////////////////////////////////////////////
     // Integral types serializers
 
@@ -496,11 +498,6 @@ namespace AZ
     //=========================================================================
     EditContext* SerializeContext::GetEditContext() const
     {
-        if (IsRemovingReflection())
-        {
-            return nullptr;
-        }
-
         return m_editContext;
     }
 
@@ -516,23 +513,23 @@ namespace AZ
             return;
         }
 
-            UuidToClassMap::pair_iter_bool result = m_uuidMap.insert_key(typeUuid);
-            AZ_Assert(result.second, "This class type %s has already been registered", name /*,typeUuid.ToString()*/);
+        UuidToClassMap::pair_iter_bool result = m_uuidMap.insert_key(typeUuid);
+        AZ_Assert(result.second, "This class type %s has already been registered", name /*,typeUuid.ToString()*/);
 
-            ClassData& cd = result.first->second;
-            cd.m_name = name;
-            cd.m_typeId = typeUuid;
-            cd.m_version = VersionClassDeprecated;
-            cd.m_converter = converter;
-            cd.m_serializer = nullptr;
-            cd.m_factory = nullptr;
-            cd.m_container = nullptr;
-            cd.m_azRtti = nullptr;
-            cd.m_eventHandler = nullptr;
-            cd.m_editData = nullptr;
+        ClassData& cd = result.first->second;
+        cd.m_name = name;
+        cd.m_typeId = typeUuid;
+        cd.m_version = VersionClassDeprecated;
+        cd.m_converter = converter;
+        cd.m_serializer = nullptr;
+        cd.m_factory = nullptr;
+        cd.m_container = nullptr;
+        cd.m_azRtti = nullptr;
+        cd.m_eventHandler = nullptr;
+        cd.m_editData = nullptr;
 
-            m_classNameToUuid.emplace(AZ::Crc32(name), typeUuid);
-        }
+        m_classNameToUuid.emplace(AZ::Crc32(name), typeUuid);
+    }
 
     //=========================================================================
     // FindClassId
@@ -567,9 +564,9 @@ namespace AZ
                 if (parent->m_container)
                 {
                     const SerializeContext::ClassElement* classElement = parent->m_container->GetElement(elementNameCrc);
-                    if (classElement && classElement->m_typeId == classId)
+                    if (classElement && classElement->m_genericClassInfo)
                     {
-                        if (classElement->m_genericClassInfo)
+                        if (classElement->m_genericClassInfo->CanStoreType(classId))
                         {
                             cd = classElement->m_genericClassInfo->GetClassData();
                         }
@@ -580,9 +577,9 @@ namespace AZ
                     for (size_t i = 0; i < parent->m_elements.size(); ++i)
                     {
                         const SerializeContext::ClassElement& classElement = parent->m_elements[i];
-                        if (classElement.m_nameCrc == elementNameCrc && classElement.m_typeId == classId)
+                        if (classElement.m_nameCrc == elementNameCrc && classElement.m_genericClassInfo)
                         {
-                            if (classElement.m_genericClassInfo)
+                            if (classElement.m_genericClassInfo->CanStoreType(classId))
                             {
                                 cd = classElement.m_genericClassInfo->GetClassData();
                             }
@@ -625,6 +622,25 @@ namespace AZ
         }
 
         return nullptr;
+    }
+
+    void SerializeContext::RegisterGenericClassInfo(const Uuid& classId, GenericClassInfo* genericClassInfo, const CreateAnyFunc& createAnyFunc)
+    {
+        if (genericClassInfo)
+        {
+            if (IsRemovingReflection())
+            {
+                m_uuidGenericMap.erase(classId);
+                m_uuidAnyCreationMap.erase(classId);
+                m_classNameToUuid.erase(Crc32(genericClassInfo->GetClassData()->m_name));
+            }
+            else
+            {
+                m_uuidGenericMap.emplace(classId, genericClassInfo);
+                m_uuidAnyCreationMap.emplace(classId, createAnyFunc);
+                m_classNameToUuid.emplace(genericClassInfo->GetClassData()->m_name, classId);
+            }
+        }
     }
 
     AZStd::any SerializeContext::CreateAny(const Uuid& classId)
@@ -771,7 +787,6 @@ namespace AZ
         , m_byteStream(&m_buffer)
     {
         m_id = rhs.m_id;
-        m_specializedId = rhs.m_specializedId;
         m_version = rhs.m_version;
         m_dataType = rhs.m_dataType;
 
@@ -800,7 +815,6 @@ namespace AZ
         m_id = rhs.m_id;
         m_version = rhs.m_version;
         m_dataSize = rhs.m_dataSize;
-        m_specializedId = rhs.m_specializedId;
         m_dataType = rhs.m_dataType;
 
         AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
@@ -831,7 +845,6 @@ namespace AZ
         , m_byteStream(&m_buffer)
     {
         m_id = rhs.m_id;
-        m_specializedId = AZStd::move(rhs.m_specializedId);
         m_version = rhs.m_version;
         m_dataType = rhs.m_dataType;
         if (rhs.m_stream == &rhs.m_byteStream)
@@ -853,7 +866,6 @@ namespace AZ
         rhs.m_id = Uuid::CreateNull();
         rhs.m_version = 0;
         rhs.m_dataSize = 0;
-        rhs.m_specializedId = Uuid::CreateNull();
         rhs.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
         if (m_stream == &m_byteStream)
         {
@@ -875,7 +887,6 @@ namespace AZ
         m_id = rhs.m_id;
         m_version = rhs.m_version;
         m_dataSize = rhs.m_dataSize;
-        m_specializedId = AZStd::move(rhs.m_specializedId);
         m_dataType = rhs.m_dataType;
         if (rhs.m_stream == &rhs.m_byteStream)
         {
@@ -897,7 +908,6 @@ namespace AZ
         rhs.m_id = Uuid::CreateNull();
         rhs.m_version = 0;
         rhs.m_dataSize = 0;
-        rhs.m_specializedId = Uuid::CreateNull();
         rhs.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
         if (m_stream == &m_byteStream)
         {
@@ -964,7 +974,6 @@ namespace AZ
         m_element.m_nameCrc = nameCrc;
         m_element.m_id = id;
         m_element.m_dataSize = 0;
-        m_element.m_specializedId = id;
         m_element.m_buffer.clear();
         m_element.m_stream = &m_element.m_byteStream;
 
@@ -1079,7 +1088,6 @@ namespace AZ
         node.m_element.m_name = name;
         node.m_element.m_nameCrc = nameCrc;
         node.m_element.m_id = classData.m_typeId;
-        node.m_element.m_specializedId = classData.m_typeId;
         node.m_classData = &classData;
         node.m_element.m_version = classData.m_version;
 
@@ -1103,7 +1111,6 @@ namespace AZ
         node.m_element.m_name = name.data();
         node.m_element.m_nameCrc = nameCrc;
         node.m_element.m_id = genericClassInfo->GetClassData()->m_typeId;
-        node.m_element.m_specializedId = genericClassInfo->GetSpecializedTypeId();
         node.m_classData = genericClassInfo->GetClassData();
         node.m_element.m_version = node.m_classData->m_version;
 
@@ -1595,7 +1602,7 @@ namespace AZ
     // EnumerateInstanceConst
     // [10/31/2012]
     //=========================================================================
-    bool SerializeContext::EnumerateInstanceConst(const void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler)
+    bool SerializeContext::EnumerateInstanceConst(const void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler) const
     {
         AZ_Assert((accessFlags & ENUM_ACCESS_FOR_WRITE) == 0, "You are asking the serializer to lock the data for write but you only have a const pointer!");
         return EnumerateInstance(const_cast<void*>(ptr), classId, beginElemCB, endElemCB, accessFlags, classData, classElement, errorHandler);
@@ -1605,7 +1612,7 @@ namespace AZ
     // EnumerateInstance
     // [10/31/2012]
     //=========================================================================
-    bool SerializeContext::EnumerateInstance(void* ptr, const Uuid& _classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler)
+    bool SerializeContext::EnumerateInstance(void* ptr, const Uuid& _classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler) const
     {
         // if useClassData is provided, just use it, otherwise try to find it using the classId provided.
         void* objectPtr = ptr;
@@ -2112,6 +2119,12 @@ namespace AZ
     //=========================================================================
     void SerializeContext::ClassData::ClearAttributes()
     {
+        for (auto& attributePair : m_attributes)
+        {
+            delete attributePair.second;
+        }
+        m_attributes.clear();
+
         for (ClassElement& classElement : m_elements)
         {
             for (auto& attributePair : classElement.m_attributes)

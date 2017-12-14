@@ -6,7 +6,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 
 #include "CloudGemInGameSurveySystemComponent.h"
-#include "AWS/ServiceAPI/CloudGemInGameSurveyClientComponent.h"
+#include "AWS/ServiceApi/CloudGemInGameSurveyClientComponent.h"
 
 namespace CloudGemInGameSurvey
 {

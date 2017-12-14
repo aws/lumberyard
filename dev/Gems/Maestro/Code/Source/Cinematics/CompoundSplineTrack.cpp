@@ -13,11 +13,15 @@
 
 #include "StdAfx.h"
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Math/Transform.h>
+#include <AzFramework/Math/MathUtils.h>
 
 #include "CompoundSplineTrack.h"
 #include "AnimSplineTrack.h"
+#include "Maestro/Types/AnimParamType.h"
+#include "Maestro/Types/AnimValueType.h"
 
-CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS])
+CCompoundSplineTrack::CCompoundSplineTrack(int nDims, AnimValueType inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS])
     : m_refCount(0)
 {
     assert(nDims > 0 && nDims <= MAX_SUBTRACKS);
@@ -25,7 +29,7 @@ CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CA
     m_nDimensions = nDims;
     m_valueType = inValueType;
 
-    m_nParamType = eAnimNodeType_Invalid;
+    m_nParamType = AnimParamType::Invalid;
     m_flags = 0;
 
     m_subTracks.resize(MAX_SUBTRACKS);
@@ -34,7 +38,7 @@ CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CA
         m_subTracks[i].reset(aznew C2DSplineTrack());
         m_subTracks[i]->SetParameterType(subTrackParamTypes[i]);
 
-        if (inValueType == eAnimValue_RGB)
+        if (inValueType == AnimValueType::RGB)
         {
             m_subTracks[i]->SetKeyValueRange(0.0f, 255.f);
         }
@@ -56,7 +60,7 @@ CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CA
 CCompoundSplineTrack::CCompoundSplineTrack()
     : m_refCount(0)
     , m_nDimensions(0)
-    , m_valueType(eAnimValue_Float)
+    , m_valueType(AnimValueType::Float)
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
     , m_bCustomColorSet(false)
 #endif
@@ -272,6 +276,97 @@ void CCompoundSplineTrack::OffsetKeyPosition(const Vec3& offset)
     else
     {
         assert(0);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCompoundSplineTrack::UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM)
+{
+    AZ_Assert(m_nDimensions == 3, "Expected 3 dimensions, position, rotation or scale.");
+
+    // Get the inverse of the new parent world transform.
+    AZ::Transform newParentInverseWorldTM = newParentWorldTM;
+    newParentInverseWorldTM.InvertFull();
+
+    // Collect all times that have key data on any track.
+    AZStd::vector<float> allTimes;
+    for (int i = 0; i < 3; i++)
+    {
+        IAnimTrack* subTrack = m_subTracks[i].get();
+        for (int k = 0, num = subTrack->GetNumKeys(); k < num; k++)
+        {
+            // If this key time is not already in the list, add it.
+            float time = subTrack->GetKeyTime(k);
+            if (AZStd::find(allTimes.begin(), allTimes.end(), time) == allTimes.end())
+            {
+                allTimes.push_back(time);
+            }
+        }
+    }
+
+    // Set or create key data for each time gathered from the keys.
+    for (float time : allTimes)
+    {
+        IAnimTrack* subTrack[3]{ m_subTracks[0].get(), m_subTracks[1].get(), m_subTracks[2].get() };
+
+        // Create a 3 float vector with values from the 3 tracks.
+        AZ::Vector3 vector;
+        for (int i = 0; i < 3; i++)
+        {
+            float value = 0;
+            subTrack[i]->GetValue(time, value);
+            vector.SetElement(i, value);
+        }
+
+        // Different track types need to be handled slightly differently
+        switch (m_nParamType.GetType())
+        {
+
+        case AnimParamType::Position:
+        {
+            // Use the old parent world transform to get the current key data into world space.
+            AZ::Vector3 worldPosition = oldParentWorldTM * vector;
+
+            // Use the inverse transform of the new parent to convert the world space
+            // key data into local space relative to the new parent.
+            vector = newParentInverseWorldTM * worldPosition;
+        }
+        break;
+
+        case AnimParamType::Rotation:
+        {
+           // Use the old parent world rotation to get the key data into world space.
+            AZ::Vector3 worldRoation = AzFramework::ConvertTransformToEulerDegrees(oldParentWorldTM) + vector;
+
+            // Remove the world rotation of the the new parent to convert the world space
+            // key data into local space relative to the new parent.
+            vector = AzFramework::ConvertTransformToEulerDegrees(newParentInverseWorldTM) + worldRoation;        
+        }
+        break;
+
+        case AnimParamType::Scale:
+        {
+            // Use the old parent world transform scale to get the key data into world space.
+            AZ::Vector3 worldScale = oldParentWorldTM.RetrieveScaleExact() * vector;
+
+            // Use the inverse transform scale of the new parent to convert the world space
+            // key data into local space relative to the new parent.
+            vector = newParentInverseWorldTM.RetrieveScaleExact() * worldScale;
+        }
+        break;
+        
+        default:
+            AZ_Assert(false, "Unsupported Anim Param Type: %s", m_nParamType.GetName());
+
+        }
+
+        // Update all of the tracks with the new float values.
+        // This may create a new key if there was not one before.
+        for (int i = 0; i < 3; i++)
+        {
+            // Update track key data
+            subTrack[i]->SetValue(time, vector.GetElement(i));
+        }
     }
 }
 

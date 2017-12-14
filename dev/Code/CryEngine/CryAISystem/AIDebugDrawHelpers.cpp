@@ -20,6 +20,7 @@
 #include <IRenderer.h>
 #include <Cry_Vector3.h>
 #include "AIDebugDrawHelpers.h"
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 
 static float g_drawOffset = 0.1f;
@@ -558,7 +559,7 @@ float GetDebugDrawZ(const Vec3& pt, bool useTerrain)
         }
         I3DEngine* pEngine = gEnv->p3DEngine;
         float terrainZ = pEngine->GetTerrainElevation(pt.x, pt.y);
-        float waterZ = pEngine->GetWaterLevel(&pt);
+        float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pt) : pEngine->GetWaterLevel(&pt);
         return max(terrainZ, waterZ) + gAIEnv.CVars.DebugDrawOffset;
     }
     else

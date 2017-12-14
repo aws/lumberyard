@@ -40,7 +40,7 @@ namespace LmbrCentral
         FogVolumeType m_volumeType = FogVolumeType::Ellipsoid;
         AZ::Color m_color = AZ::Color(1.f, 1.f, 1.f, 1.f);
         // Size is not reflected: taken from BoxShape
-        AZ::Vector3 m_size;
+        AZ::Vector3 m_size = AZ::Vector3(1.0f, 1.0f, 1.0f);
 
         float m_hdrDynamic = false;
         bool m_useGlobalFogColor = false;

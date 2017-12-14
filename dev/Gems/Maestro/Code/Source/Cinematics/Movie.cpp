@@ -43,6 +43,9 @@
 #include <IGameFramework.h>
 #include <IGame.h>
 #include "../CryAction/IViewSystem.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/SequenceType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 int CMovieSystem::m_mov_NoCutscenes = 0;
 float CMovieSystem::m_mov_cameraPrecacheTime = 1.f;
@@ -79,21 +82,21 @@ static SMovieSequenceAutoComplete s_movieSequenceAutoComplete;
 
 //////////////////////////////////////////////////////////////////////////
 // Serialization for anim nodes & param types
-#define REGISTER_NODE_TYPE(name) assert(g_animNodeEnumToStringMap.find(eAnimNodeType_ ## name) == g_animNodeEnumToStringMap.end()); \
-    g_animNodeEnumToStringMap[eAnimNodeType_ ## name] = STRINGIFY(name);                                                            \
-    g_animNodeStringToEnumMap[STRINGIFY(name)] = eAnimNodeType_ ## name;
+#define REGISTER_NODE_TYPE(name) assert(g_animNodeEnumToStringMap.find(AnimNodeType::name) == g_animNodeEnumToStringMap.end()); \
+    g_animNodeEnumToStringMap[AnimNodeType::name] = STRINGIFY(name);                                                            \
+    g_animNodeStringToEnumMap[STRINGIFY(name)] = AnimNodeType::name;
 
-#define REGISTER_PARAM_TYPE(name) assert(g_animParamEnumToStringMap.find(eAnimParamType_ ## name) == g_animParamEnumToStringMap.end()); \
-    g_animParamEnumToStringMap[eAnimParamType_ ## name] = STRINGIFY(name);                                                              \
-    g_animParamStringToEnumMap[STRINGIFY(name)] = eAnimParamType_ ## name;
+#define REGISTER_PARAM_TYPE(name) assert(g_animParamEnumToStringMap.find(AnimParamType::name) == g_animParamEnumToStringMap.end()); \
+    g_animParamEnumToStringMap[AnimParamType::name] = STRINGIFY(name);                                                              \
+    g_animParamStringToEnumMap[STRINGIFY(name)] = AnimParamType::name;
 
 namespace
 {
-    AZStd::unordered_map<int, string> g_animNodeEnumToStringMap;
-    std::map<string, EAnimNodeType, stl::less_stricmp<string> > g_animNodeStringToEnumMap;
+    AZStd::unordered_map<AnimNodeType, string> g_animNodeEnumToStringMap;
+    std::map<string, AnimNodeType, stl::less_stricmp<string> > g_animNodeStringToEnumMap;
 
-    AZStd::unordered_map<int, string> g_animParamEnumToStringMap;
-    std::map<string, EAnimParamType, stl::less_stricmp<string> > g_animParamStringToEnumMap;
+    AZStd::unordered_map<AnimParamType, string> g_animParamEnumToStringMap;
+    std::map<string, AnimParamType, stl::less_stricmp<string> > g_animParamStringToEnumMap;
 
     // If you get an assert in this function, it means two node types have the same enum value.
     void RegisterNodeTypes()
@@ -296,7 +299,7 @@ bool CMovieSystem::Load(const char* pszFile, const char* pszMission)
 }
 
 //////////////////////////////////////////////////////////////////////////
-IAnimSequence* CMovieSystem::CreateSequence(const char* pSequenceName, bool bLoad, uint32 id, ESequenceType sequenceType)
+IAnimSequence* CMovieSystem::CreateSequence(const char* pSequenceName, bool bLoad, uint32 id, SequenceType sequenceType, AZ::EntityId entityId)
 {
     if (!bLoad)
     {
@@ -305,6 +308,11 @@ IAnimSequence* CMovieSystem::CreateSequence(const char* pSequenceName, bool bLoa
 
     IAnimSequence* pSequence = aznew CAnimSequence(this, id, sequenceType);
     pSequence->SetName(pSequenceName);
+
+    if (sequenceType == SequenceType::SequenceComponent)
+    {
+        pSequence->SetSequenceEntityId(entityId);
+    }
     m_sequences.push_back(pSequence);
     return pSequence;
 }
@@ -330,7 +338,7 @@ IAnimSequence* CMovieSystem::LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty)
     // Delete previous sequence with the same name.
     const char* pFullName = pSequence->GetName();
 
-    IAnimSequence* pPrevSeq = FindSequence(pFullName);
+    IAnimSequence* pPrevSeq = FindLegacySequenceByName(pFullName);
     if (pPrevSeq)
     {
         RemoveSequence(pPrevSeq);
@@ -341,7 +349,7 @@ IAnimSequence* CMovieSystem::LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty)
 }
 
 //////////////////////////////////////////////////////////////////////////
-IAnimSequence* CMovieSystem::FindSequence(const char* pSequenceName) const
+IAnimSequence* CMovieSystem::FindLegacySequenceByName(const char* pSequenceName) const
 {
     assert(pSequenceName);
     if (!pSequenceName)
@@ -367,12 +375,11 @@ IAnimSequence* CMovieSystem::FindSequence(const char* pSequenceName) const
 IAnimSequence* CMovieSystem::FindSequence(const AZ::EntityId& componentEntitySequenceId) const
 {
     IAnimSequence* retSequence = nullptr;
-    AZ_Assert(componentEntitySequenceId.IsValid(), "Invalid Entity Id passed to CMovieSystem::FindSequence()");
     if (componentEntitySequenceId.IsValid())
     {
         for (Sequences::const_iterator it = m_sequences.begin(); it != m_sequences.end(); ++it)
         {
-            const AZ::EntityId& seqOwnerId = it->get()->GetOwnerId();
+            const AZ::EntityId& seqOwnerId = it->get()->GetSequenceEntityId();
             if (seqOwnerId == componentEntitySequenceId)
             {
                 retSequence = it->get();
@@ -548,13 +555,13 @@ int CMovieSystem::OnSequenceRenamed(const char* before, const char* after)
         for (int k = 0; k < (*it)->GetNodeCount(); ++k)
         {
             IAnimNode* node = (*it)->GetNode(k);
-            if (node->GetType() != eAnimNodeType_Director)
+            if (node->GetType() != AnimNodeType::Director)
             {
                 continue;
             }
 
             // If there is a director node, check whether it has a sequence track.
-            IAnimTrack* track = node->GetTrackForParameter(eAnimParamType_Sequence);
+            IAnimTrack* track = node->GetTrackForParameter(AnimParamType::Sequence);
             if (track)
             {
                 for (int m = 0; m < track->GetNumKeys(); ++m)
@@ -562,7 +569,7 @@ int CMovieSystem::OnSequenceRenamed(const char* before, const char* after)
                     ISequenceKey seqKey;
                     track->GetKey(m, &seqKey);
                     // For each key that refers the sequence, update the name.
-                    if (_stricmp(seqKey.szSelection.c_str(), before) == 0)
+                    if (!seqKey.szSelection.empty() && (_stricmp(seqKey.szSelection.c_str(), before) == 0))
                     {
                         seqKey.szSelection = after;
                         track->SetKey(m, &seqKey);
@@ -589,13 +596,13 @@ int CMovieSystem::OnCameraRenamed(const char* before, const char* after)
         {
             IAnimNode* node = (*it)->GetNode(k);
 
-            if (node->GetType() != eAnimNodeType_Director)
+            if (node->GetType() != AnimNodeType::Director)
             {
                 continue;
             }
 
             // If there is a director node, check whether it has a camera track.
-            IAnimTrack* track = node->GetTrackForParameter(eAnimParamType_Camera);
+            IAnimTrack* track = node->GetTrackForParameter(AnimParamType::Camera);
             if (track)
             {
                 for (int m = 0; m < track->GetNumKeys(); ++m)
@@ -623,7 +630,7 @@ int CMovieSystem::OnCameraRenamed(const char* before, const char* after)
         {
             IAnimNode* node = (*it)->GetNode(k);
 
-            if (node->GetType() != eAnimNodeType_Camera)
+            if (node->GetType() != AnimNodeType::Camera)
             {
                 continue;
             }
@@ -664,7 +671,7 @@ void CMovieSystem::RemoveAllSequences()
 //////////////////////////////////////////////////////////////////////////
 void CMovieSystem::PlaySequence(const char* pSequenceName, IAnimSequence* pParentSeq, bool bResetFx, bool bTrackedSequence, float startTime, float endTime)
 {
-    IAnimSequence* pSequence = FindSequence(pSequenceName);
+    IAnimSequence* pSequence = FindLegacySequenceByName(pSequenceName);
     if (pSequence)
     {
         PlaySequence(pSequence, pParentSeq, bResetFx, bTrackedSequence, startTime, endTime);
@@ -763,9 +770,9 @@ void CMovieSystem::NotifyListeners(IAnimSequence* pSequence, IMovieListener::EMo
 
     /////////////////////////////////////
     // SequenceComponentNotification EBus
-    if (pSequence->GetSequenceType() == eSequenceType_SequenceComponent)
+    if (pSequence->GetSequenceType() == SequenceType::SequenceComponent)
     {
-        const AZ::EntityId& sequenceComponentEntityId = pSequence->GetOwnerId();
+        const AZ::EntityId& sequenceComponentEntityId = pSequence->GetSequenceEntityId();
         switch (event)
         {
             /*
@@ -794,7 +801,7 @@ void CMovieSystem::NotifyListeners(IAnimSequence* pSequence, IMovieListener::EMo
 //////////////////////////////////////////////////////////////////////////
 bool CMovieSystem::StopSequence(const char* pSequenceName)
 {
-    IAnimSequence* pSequence = FindSequence(pSequenceName);
+    IAnimSequence* pSequence = FindLegacySequenceByName(pSequenceName);
     if (pSequence)
     {
         return StopSequence(pSequence);
@@ -1248,8 +1255,6 @@ void CMovieSystem::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOld
         XmlNodeRef seqNode = xmlNode->findChild("SequenceData");
         if (seqNode)
         {
-            RemoveAllSequences();
-
             INDENT_LOG_DURING_SCOPE(true, "SequenceData tag contains %u sequences", seqNode->getChildCount());
 
             for (int i = 0; i < seqNode->getChildCount(); i++)
@@ -1267,9 +1272,13 @@ void CMovieSystem::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOld
         XmlNodeRef sequencesNode = xmlNode->newChild("SequenceData");
         for (int i = 0; i < GetNumSequences(); ++i)
         {
+            // Only serialize legacy object sequences. Sequence Components will be saved through AZ::Serialization
             IAnimSequence* pSequence = GetSequence(i);
-            XmlNodeRef sequenceNode = sequencesNode->newChild("Sequence");
-            pSequence->Serialize(sequenceNode, false);
+            if (pSequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                XmlNodeRef sequenceNode = sequencesNode->newChild("Sequence");
+                pSequence->Serialize(sequenceNode, false);
+            }
         }
     }
 }
@@ -1669,7 +1678,7 @@ int CMovieSystem::GetEntityNodeParamCount() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMovieSystem::SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xmlNode, bool bLoading, const uint version, int flags)
+void CMovieSystem::SerializeNodeType(AnimNodeType& animNodeType, XmlNodeRef& xmlNode, bool bLoading, const uint version, int flags)
 {
     static const char* kType = "Type";
 
@@ -1679,21 +1688,21 @@ void CMovieSystem::SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xm
         // defined in IMovieSystem.h, but needed for conversion:
         static const int kOldParticleNodeType = 0x18;
 
-        animNodeType = eAnimNodeType_Invalid;
+        animNodeType = AnimNodeType::Invalid;
 
         // In old versions there was special code for particles
         // that is now handles by generic entity node code
-        if (version == 0 && animNodeType == kOldParticleNodeType)
+        if (version == 0 && static_cast<int>(animNodeType) == kOldParticleNodeType)
         {
-            animNodeType = eAnimNodeType_Entity;
+            animNodeType = AnimNodeType::Entity;
             return;
         }
 
         // Convert light nodes that are not part of a light
         // animation set to common entity nodes
-        if (version <= 1 && animNodeType == eAnimNodeType_Light && !(flags & IAnimSequence::eSeqFlags_LightAnimationSet))
+        if (version <= 1 && animNodeType == AnimNodeType::Light && !(flags & IAnimSequence::eSeqFlags_LightAnimationSet))
         {
-            animNodeType = eAnimNodeType_Entity;
+            animNodeType = AnimNodeType::Entity;
             return;
         }
 
@@ -1702,7 +1711,7 @@ void CMovieSystem::SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xm
             int type;
             if (xmlNode->getAttr(kType, type))
             {
-                animNodeType = (EAnimNodeType)type;
+                animNodeType = (AnimNodeType)type;
             }
 
             return;
@@ -1713,7 +1722,7 @@ void CMovieSystem::SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xm
             if (xmlNode->getAttr(kType, nodeTypeString))
             {
                 assert(g_animNodeStringToEnumMap.find(nodeTypeString.c_str()) != g_animNodeStringToEnumMap.end());
-                animNodeType = stl::find_in_map(g_animNodeStringToEnumMap, nodeTypeString.c_str(), eAnimNodeType_Invalid);
+                animNodeType = stl::find_in_map(g_animNodeStringToEnumMap, nodeTypeString.c_str(), AnimNodeType::Invalid);
             }
         }
     }
@@ -1737,7 +1746,7 @@ void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const Xml
 {
     static const char* kByNameAttrName = "paramIdIsName";
 
-    animParamType.m_type = eAnimParamType_Invalid;
+    animParamType.m_type = AnimParamType::Invalid;
 
     if (version <= 6)
     {
@@ -1748,7 +1757,7 @@ void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const Xml
             XmlString name;
             if (xmlNode->getAttr(kParamId, name))
             {
-                animParamType.m_type = eAnimParamType_ByString;
+                animParamType.m_type = AnimParamType::ByString;
                 animParamType.m_name = name.c_str();
             }
         }
@@ -1756,7 +1765,7 @@ void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const Xml
         {
             int type;
             xmlNode->getAttr(kParamId, type);
-            animParamType.m_type = (EAnimParamType)type;
+            animParamType.m_type = (AnimParamType)type;
         }
     }
     else
@@ -1768,7 +1777,7 @@ void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const Xml
         {
             if (paramTypeString == "ByString")
             {
-                animParamType.m_type = eAnimParamType_ByString;
+                animParamType.m_type = AnimParamType::ByString;
 
                 XmlString userValue;
                 xmlNode->getAttr(CAnimParamTypeXmlNames::kParamUserValue, userValue);
@@ -1776,11 +1785,11 @@ void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const Xml
             }
             else if (paramTypeString == "User")
             {
-                animParamType.m_type = eAnimParamType_User;
+                animParamType.m_type = AnimParamType::User;
 
                 int type;
                 xmlNode->getAttr(CAnimParamTypeXmlNames::kParamUserValue, type);
-                animParamType.m_type = (EAnimParamType)type;
+                animParamType.m_type = (AnimParamType)type;
             }
             else
             {
@@ -1791,7 +1800,7 @@ void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const Xml
                 }
 
                 assert(g_animParamStringToEnumMap.find(paramTypeString.c_str()) != g_animParamStringToEnumMap.end());
-                animParamType.m_type = stl::find_in_map(g_animParamStringToEnumMap, paramTypeString.c_str(), eAnimParamType_Invalid);
+                animParamType.m_type = stl::find_in_map(g_animParamStringToEnumMap, paramTypeString.c_str(), AnimParamType::Invalid);
             }
         }
     }
@@ -1803,12 +1812,12 @@ void CMovieSystem::SaveParamTypeToXml(const CAnimParamType& animParamType, XmlNo
     static const char* kParamType = "paramType";
     const char* pTypeString = "Invalid";
 
-    if (animParamType.m_type == eAnimParamType_ByString)
+    if (animParamType.m_type == AnimParamType::ByString)
     {
         pTypeString = "ByString";
         xmlNode->setAttr(CAnimParamTypeXmlNames::kParamUserValue, animParamType.m_name.c_str());
     }
-    else if (animParamType.m_type >= eAnimParamType_User)
+    else if (animParamType.m_type >= AnimParamType::User)
     {
         pTypeString = "User";
         xmlNode->setAttr(CAnimParamTypeXmlNames::kParamUserValue, (int)animParamType.m_type);
@@ -1817,7 +1826,7 @@ void CMovieSystem::SaveParamTypeToXml(const CAnimParamType& animParamType, XmlNo
     {
         if (!animParamType.m_name.empty())
         {
-            // we have a named parameter that is NOT an eAnimParamType_ByString (handled above). This is used for VirtualProperty names for Component Entities.
+            // we have a named parameter that is NOT an AnimParamType::ByString (handled above). This is used for VirtualProperty names for Component Entities.
             xmlNode->setAttr(CAnimParamTypeXmlNames::kVirtualPropertyName, animParamType.m_name.c_str());
         }
 
@@ -1845,11 +1854,11 @@ void CMovieSystem::SerializeParamType(CAnimParamType& animParamType, XmlNodeRef&
 //////////////////////////////////////////////////////////////////////////
 const char* CMovieSystem::GetParamTypeName(const CAnimParamType& animParamType)
 {
-    if (animParamType.m_type == eAnimParamType_ByString)
+    if (animParamType.m_type == AnimParamType::ByString)
     {
         return animParamType.GetName();
     }
-    else if (animParamType.m_type >= eAnimParamType_User)
+    else if (animParamType.m_type >= AnimParamType::User)
     {
         return "User";
     }
@@ -1874,7 +1883,7 @@ CAnimParamType CMovieSystem::GetEntityNodeParamType(int index) const
         return info.paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2055,17 +2064,17 @@ IAnimNode::ESupportedParamFlags CMovieSystem::GetEntityNodeParamFlags(int index)
 
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
 //////////////////////////////////////////////////////////////////////////
-EAnimNodeType CMovieSystem::GetNodeTypeFromString(const char* pString) const
+AnimNodeType CMovieSystem::GetNodeTypeFromString(const char* pString) const
 {
-    return stl::find_in_map(g_animNodeStringToEnumMap, pString, eAnimNodeType_Invalid);
+    return stl::find_in_map(g_animNodeStringToEnumMap, pString, AnimNodeType::Invalid);
 }
 
 //////////////////////////////////////////////////////////////////////////
 CAnimParamType CMovieSystem::GetParamTypeFromString(const char* pString) const
 {
-    const EAnimParamType paramType = stl::find_in_map(g_animParamStringToEnumMap, pString, eAnimParamType_Invalid);
+    const AnimParamType paramType = stl::find_in_map(g_animParamStringToEnumMap, pString, AnimParamType::Invalid);
 
-    if (paramType != eAnimParamType_Invalid)
+    if (paramType != AnimParamType::Invalid)
     {
         return CAnimParamType(paramType);
     }

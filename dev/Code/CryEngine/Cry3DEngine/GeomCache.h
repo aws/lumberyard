@@ -132,7 +132,9 @@ public:
     uint64 GetCompressedAnimationDataSize() const;
 
     // Gets the max extend of the geom cache through the entire animation
-    AABB GetAABB() const;
+    const AABB& GetAABB() const override;
+
+    void SetProcessedByRenderNode(bool processedByRenderNode) override { m_processedByRenderNode = processedByRenderNode; }
 
     // Returns frame for specific time. Rounds to ceil or floor
     uint GetFloorFrameIndex(const float time) const;
@@ -298,6 +300,9 @@ private:
 
     // Animation data (memory playback)
     std::vector<char> m_animationData;
+
+    // Only matters when e_streamCGF is 0
+    bool m_processedByRenderNode = true;
 };
 
 #endif

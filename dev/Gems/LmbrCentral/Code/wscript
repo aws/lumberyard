@@ -23,7 +23,7 @@ def build(bld):
             platforms   = ['win', 'darwin'],
             features    = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
 
-            use         = ['AzToolsFramework', 'AzQtComponents'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
+            use         = ['AzToolsFramework', 'AzQtComponents'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
             includes    = ['include',
                            'Source',
                            bld.Path('Code/Sandbox'),
@@ -38,14 +38,14 @@ def build(bld):
                           'QT5QML',
                           'QT5GUI',
                           'QT5WIDGETS'],
-            defines     =['LMBR_CENTRAL_EDITOR'],
+            defines     =['LMBR_CENTRAL_EDITOR', 'METRICS_SYSTEM_COMPONENT_ENABLED'],
 
-            darwin_uselib   =['AWS_CPP_SDK_CORE'],
+            darwin_uselib   =['AWS_CPP_SDK_CORE',
+                              'AWS_CPP_SDK_COGNITO_IDENTITY_STATIC',
+                              'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                              'AWS_CPP_SDK_MOBILEANALYTICS'],
 
-            shared_settings = ['awsgem.json'],
-            win_uselib      =['XTP'],
-            win_features    =['crcfix'],
-            win_defines     = ['METRICS_SYSTEM_COMPONENT_ENABLED']
+            win_features    =['crcfix']
         ),
     )
-		
+        

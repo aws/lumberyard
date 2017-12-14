@@ -51,7 +51,7 @@
             "Editor/Components/IconComponent.h",
             "Editor/Components/IconComponent.cpp"
         ],
-        "Editor/GraphCanvas/": [
+        "Editor/GraphCanvas": [
             "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h",
             "Editor/GraphCanvas/PropertySlotIds.h"
         ],
@@ -140,7 +140,8 @@
             "Editor/View/Dialogs/UnsavedChangesDialog.ui"
         ],
         "Editor/View/Widgets": [
-            "Editor/View/Widgets/WidgetBus.h",
+            "Editor/View/Widgets/AutoElidingLabel.cpp",
+            "Editor/View/Widgets/AutoElidingLabel.h",
             "Editor/View/Widgets/CanvasWidget.ui",
             "Editor/View/Widgets/CanvasWidget.h",
             "Editor/View/Widgets/CanvasWidget.cpp",
@@ -171,7 +172,8 @@
             "Editor/View/Widgets/NodePalette.h",
             "Editor/View/Widgets/NodePalette.ui",            
             "Editor/View/Widgets/NodeTreeView.cpp",
-            "Editor/View/Widgets/NodeTreeView.h"
+            "Editor/View/Widgets/NodeTreeView.h",
+            "Editor/View/Widgets/WidgetBus.h"
         ],
         "Editor/View/Widgets/NodePalette": [        
             "Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.cpp",

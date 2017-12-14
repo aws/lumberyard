@@ -6,6 +6,7 @@
 
 #include "Undo/UndoVariableChange.h"
 #include <AzToolsFramework/UI/PropertyEditor/PropertyRowWidget.hxx>
+#include <AzCore/Debug/Trace.h>
 
 // default number of increments to cover the range of a property - determined experimentally by feel
 const float ReflectedPropertyItem::s_DefaultNumStepIncrements = 500.0f;
@@ -512,7 +513,6 @@ void ReflectedPropertyItem::OnVariableChange(IVariable* pVar)
 
 void ReflectedPropertyItem::OnVariableEnumChange(IVariable* pVar)
 {
-    assert(pVar != 0 && pVar == m_pVariable);
 
     if (m_reflectedVarAdapter && m_reflectedVarAdapter->UpdateReflectedVarEnums())
     {

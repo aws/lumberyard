@@ -17,7 +17,6 @@
 #include <Core/ScriptCanvasBus.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -72,7 +71,7 @@ namespace ScriptCanvasEditor
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorScriptCanvasComponent>("Script Canvas", "A Script Canvas")
+                editContext->Class<EditorScriptCanvasComponent>("Script Canvas", "The Script Canvas component allows you to add a Script Canvas asset to a component, and have it execute on the specified entity.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/ScriptCanvas.png")
@@ -81,11 +80,27 @@ namespace ScriptCanvasEditor
                     ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, ScriptCanvasAssetHandler::GetAssetTypeStatic())
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
-                    ->DataElement("AssetRef", &EditorScriptCanvasComponent::m_scriptCanvasAssetHolder, "Script Canvas Asset", "Script Canvas asset associated with this component")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorScriptCanvasComponent::m_scriptCanvasAssetHolder, "Script Canvas Asset", "Script Canvas asset associated with this component")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ;
             }
         }
+    }
+
+    EditorScriptCanvasComponent::EditorScriptCanvasComponent()
+        : EditorScriptCanvasComponent(AZ::Data::Asset<ScriptCanvasAsset>())
+    {
+    }
+
+    EditorScriptCanvasComponent::EditorScriptCanvasComponent(AZ::Data::Asset<ScriptCanvasAsset> asset)
+        : m_scriptCanvasAssetHolder(asset)
+    {
+        m_scriptCanvasAssetHolder.SetScriptChangedCB([this](const AZ::Data::Asset<ScriptCanvasAsset>& asset) { OnScriptCanvasAssetChanged(asset); });
+    }
+
+    EditorScriptCanvasComponent::~EditorScriptCanvasComponent()
+    {
+        AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
     }
 
     void EditorScriptCanvasComponent::UpdateName()
@@ -135,39 +150,10 @@ namespace ScriptCanvasEditor
         }
     }
 
-    EditorScriptCanvasComponent::EditorScriptCanvasComponent()
-        : EditorScriptCanvasComponent(AZ::Data::Asset<ScriptCanvasAsset>())
-    {
-    }
-
-    EditorScriptCanvasComponent::EditorScriptCanvasComponent(AZ::Data::Asset<ScriptCanvasAsset> asset)
-        : m_scriptCanvasAssetHolder(asset)
-    {
-    }
-
-    EditorScriptCanvasComponent::~EditorScriptCanvasComponent()
-    {
-        AzFramework::AssetCatalogEventBus::Handler::BusDisconnect(); 
-    }
-
     void EditorScriptCanvasComponent::Init()
     {
         EditorComponentBase::Init();
         AzFramework::AssetCatalogEventBus::Handler::BusConnect();
-        auto scriptCanvasAsset = GetAsset();
-        if (!scriptCanvasAsset.IsReady())
-        {
-            // Load the Asset if the Id is valid
-            AZ::Data::AssetInfo assetInfo;
-            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, scriptCanvasAsset.GetId());
-            if (assetInfo.m_assetId.IsValid())
-            {
-                DocumentContextRequestBus::BroadcastResult(scriptCanvasAsset, &DocumentContextRequests::LoadScriptCanvasAssetById, scriptCanvasAsset.GetId(), true);
-                m_scriptCanvasAssetHolder.SetAsset(scriptCanvasAsset);
-            }
-
-            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree_NewContent);
-        }
 
         m_scriptCanvasAssetHolder.Init();
     }
@@ -184,6 +170,21 @@ namespace ScriptCanvasEditor
             EditorScriptCanvasRequestBus::Handler::BusConnect(graphId);
         }
 
+        auto scriptCanvasAsset = GetAsset();
+        if (scriptCanvasAsset.GetId().IsValid())
+        {
+            // Connections Policies which auto invoke an OnAssetReady function is dangerous, as it may
+            // invoke the callback twice if the OnAssetReady function is queued in the AssetBus
+            EditorScriptCanvasAssetNotificationBus::Handler::BusConnect(scriptCanvasAsset.GetId());
+
+            // IsReady also checks the ReadyPreNotify state which signifies that the asset is ready
+            // but the AssetBus::OnAssetReady event has not been dispatch
+            // Here we only want to invoke the method if the OnAsseteReady event has been dispatch
+            if (scriptCanvasAsset.GetStatus() == AZ::Data::AssetData::AssetStatus::Ready)
+            {
+                OnScriptCanvasAssetReady(scriptCanvasAsset);
+            }
+        }
         UpdateName();
     }
 
@@ -192,6 +193,7 @@ namespace ScriptCanvasEditor
     {
         EditorComponentBase::Deactivate();
 
+        EditorScriptCanvasAssetNotificationBus::Handler::BusDisconnect();
         EditorContextMenuRequestBus::Handler::BusDisconnect();
         EditorScriptCanvasRequestBus::Handler::BusDisconnect();
     }
@@ -202,23 +204,8 @@ namespace ScriptCanvasEditor
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
-        // A game entity can be created due to the slice compiler and therefore the m_scriptCanvasAsset may not be loaded
-        // So attempt to loaded it and copy the Graph Component to the game entity
+        m_scriptCanvasAssetHolder.Load(true);
         auto scriptCanvasAsset = GetAsset();
-        if (!scriptCanvasAsset.IsReady())
-        {
-            AZ::Data::AssetInfo assetInfo;
-            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, scriptCanvasAsset.GetId());
-            if (assetInfo.m_assetId.IsValid())
-            {
-                // The DocumentContextRequestBus is not available in the SliceBuilder as the ScriptCanvasEditor::SystemComponent is not a required component in that application
-                // Therefore a direct call to the AssetManager is used to load ScriptCanvas asset when adding a ScriptCanvasComponent to a dynamic slice
-                scriptCanvasAsset = AZ::Data::AssetManager::Instance().GetAsset(assetInfo.m_assetId, ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, &AZ::ObjectStream::AssetFilterDefault, true);
-                m_scriptCanvasAssetHolder.SetAsset(scriptCanvasAsset);
-            }
-        }
-
-        scriptCanvasAsset = GetAsset();
         if (!scriptCanvasAsset.IsReady())
         {
             AZ_Warning("Script Canvas", !scriptCanvasAsset.GetId().IsValid(), "ScriptCanvasComponent on Entity %s is missing valid asset[%s]. There is no ScriptCanvas Graph Component that can be added to the game entity", GetEntityId().ToString().data(), scriptCanvasAsset.GetId().ToString<AZStd::string>().data());
@@ -233,7 +220,13 @@ namespace ScriptCanvasEditor
             if (newGraph)
             {
                 gameEntity->AddComponent(newGraph);
-                ScriptCanvasEditor::GeneralGraphEventBus::Broadcast(&ScriptCanvasEditor::GeneralGraphEvents::OnBuildGameEntity, scriptCanvasAsset.Get()->GetPath(), buildGraph->GetUniqueId(), newGraph->GetUniqueId());
+
+                AZ::Data::AssetInfo assetInfo;
+                AZStd::string rootFilePath;
+                AzToolsFramework::AssetSystemRequestBus::Broadcast(&AzToolsFramework::AssetSystemRequestBus::Events::GetAssetInfoById, scriptCanvasAsset.GetId(), azrtti_typeid<ScriptCanvasAsset>(), assetInfo, rootFilePath);
+                AZStd::string absolutePath;
+                AzFramework::StringFunc::Path::Join(rootFilePath.data(), assetInfo.m_relativePath.data(), absolutePath);
+                ScriptCanvasEditor::GeneralGraphEventBus::Broadcast(&ScriptCanvasEditor::GeneralGraphEvents::OnBuildGameEntity, absolutePath, buildGraph->GetUniqueId(), newGraph->GetUniqueId());
             }
         }
     }
@@ -256,7 +249,7 @@ namespace ScriptCanvasEditor
             auto scriptCanvasAsset = AZ::Data::AssetManager::Instance().FindAsset(assetId);
             if (!scriptCanvasAsset.IsReady())
             {
-                DocumentContextRequestBus::BroadcastResult(scriptCanvasAsset, &DocumentContextRequests::LoadScriptCanvasAssetById, assetId, false);
+                scriptCanvasAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, &AZ::ObjectStream::AssetFilterDefault, false);
             }
             m_scriptCanvasAssetHolder.SetAsset(scriptCanvasAsset);
         }
@@ -269,9 +262,32 @@ namespace ScriptCanvasEditor
         return m_scriptCanvasAssetHolder.GetGraphId();
     }
 
-    void EditorScriptCanvasComponent::SetAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset)
+    AZ::EntityId EditorScriptCanvasComponent::GetGraphEntityId() const
     {
-        m_scriptCanvasAssetHolder.SetAsset(scriptCanvasAsset);
+        AZ::Entity* scriptCanvasEntity{};
+        if (GetAsset().IsReady())
+        {
+             scriptCanvasEntity = GetAsset().Get()->GetScriptCanvasEntity();
+        }
+
+        return scriptCanvasEntity ? scriptCanvasEntity->GetId() : AZ::EntityId();
+    }
+
+    void EditorScriptCanvasComponent::OnScriptCanvasAssetChanged(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset)
+    {   
+        EditorScriptCanvasAssetNotificationBus::Handler::BusDisconnect();
+        if (scriptCanvasAsset.GetId().IsValid())
+        {
+            EditorScriptCanvasAssetNotificationBus::Handler::BusConnect(scriptCanvasAsset.GetId());
+            
+            // IsReady also checks the ReadyPreNotify state which signifies that the asset is ready
+            // but the AssetBus::OnAssetReady event has not been dispatch
+            // Here we only want to invoke the method if the OnAsseteReady event has been dispatch
+            if (scriptCanvasAsset.GetStatus() == AZ::Data::AssetData::AssetStatus::Ready)
+            {
+                OnScriptCanvasAssetReady(scriptCanvasAsset);
+            }
+        }
 
         AZ::EntityId graphId(GetGraphId());
         if (graphId.IsValid())
@@ -286,5 +302,39 @@ namespace ScriptCanvasEditor
     AZ::Data::Asset<ScriptCanvasAsset> EditorScriptCanvasComponent::GetAsset() const
     {
         return m_scriptCanvasAssetHolder.GetAsset();
+    }
+
+    void EditorScriptCanvasComponent::OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& asset)
+    {
+        ScriptCanvasData& scriptCanvasData = asset.Get()->GetScriptCanvasData();
+        AZ::Entity* scriptCanvasEntity = asset.Get()->GetScriptCanvasEntity();
+        if (scriptCanvasEntity)
+        {
+            if (scriptCanvasEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
+            {
+                AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_entityIdMap;
+                AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&scriptCanvasData, m_entityIdMap);
+            }
+
+            // During startup the logging an Error message will caused StartupTraceHandler to eventually follow a path where 
+            // ComponentApplication::Tick function is called therefore causing the OnAssetReady callback to be called for this ScriptCanvas Asset
+            // The OnAssetReady function will call this function again causing the GenerateNewIdsAndFixRefs logic to be run twice
+            // Therefore the ES_CONSTRUCTED state is checked again to workaround the issue where the recursive call Inits the ScriptCanvas Entity
+            // that is loaded on the asset
+            if (scriptCanvasEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
+            {
+                scriptCanvasEntity->Init();
+            }
+
+            if (scriptCanvasEntity->GetState() == AZ::Entity::ES_INIT)
+            {
+                scriptCanvasEntity->Activate();
+            }
+        }
+    }
+
+    void EditorScriptCanvasComponent::OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& asset)
+    {
+        OnScriptCanvasAssetReady(asset);
     }
 }

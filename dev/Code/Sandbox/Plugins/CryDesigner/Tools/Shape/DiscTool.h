@@ -70,7 +70,7 @@ public:
 
     void RegisterDrawnPolygonToDesigner();
 
-    void StoreSeparateStatus() override { m_bSeparatedNewShape = !GetPickedPolygon() && GetAsyncKeyState(VK_SHIFT); }
+    void StoreSeparateStatus() override { m_bSeparatedNewShape = !GetPickedPolygon() && (Qt::ShiftModifier & QApplication::queryKeyboardModifiers()); }
     void OnChangeParameter(bool continuous) override { Update(); }
     void Serialize(Serialization::IArchive& ar)
     {

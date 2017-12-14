@@ -155,7 +155,6 @@ struct CVars
     int e_CoverageBufferVersion;
     DeclareConstFloatCVar(e_FoliageBrokenBranchesDamping);
     float e_ShadowsCastViewDistRatio;
-    int e_WaterTessellationAmountY;
     float e_OnDemandMaxSize;
     float e_MaxViewDistSpecLerp;
     float e_StreamAutoMipFactorSpeedThreshold;
@@ -228,7 +227,6 @@ struct CVars
     int e_StreamPredictionAlwaysIncludeOutside;
     DeclareConstIntCVar(e_DynamicLights, 1);
     int e_DynamicLightsFrameIdVisTest;
-    DeclareConstIntCVar(e_WaterWavesTessellationAmount, 5);
     DeclareConstIntCVar(e_ShadowsLodBiasInvis, 0);
     float e_CoverageBufferBias;
     int e_DynamicLightsMaxEntityLights;
@@ -259,7 +257,6 @@ struct CVars
     int e_CoverageBufferEarlyOut;
     float e_CoverageBufferEarlyOutDelay;
     float e_CoverageBufferTerrainExpand;
-    DeclareConstIntCVar(e_WaterWaves, 0);
     int e_Dissolve;
     int e_GsmCastFromTerrain;
     float e_TerrainLodRatio;
@@ -364,10 +361,9 @@ struct CVars
     DeclareConstFloatCVar(e_StreamPredictionAheadDebug);
     float e_ShadowsSlopeBias;
     float e_ShadowsSlopeBiasHQ;
-    DeclareConstIntCVar(e_ShadowsOnWater, 0);
     DeclareConstIntCVar(e_GsmDepthBoundsDebug, 0);
     DeclareConstIntCVar(e_TimeOfDayDebug, 0);
-    int e_WaterTessellationAmount;
+    int e_WaterTessellationAmount;  // being deprecated by Water gem
     DeclareConstIntCVar(e_TerrainTextureDebug, 0);
     int e_Entities;
     int e_CoverageBuffer;
@@ -451,7 +447,6 @@ struct CVars
     DeclareConstFloatCVar(e_DissolveDistMax);
     DeclareConstFloatCVar(e_DissolveDistMin);
     DeclareConstFloatCVar(e_DissolveDistband);
-    int e_WaterTessellationAmountX;
     int e_ScreenShotMinSlices;
     int e_DecalsMaxUpdatesPerFrame;
     DeclareConstIntCVar(e_SkyType, 1);

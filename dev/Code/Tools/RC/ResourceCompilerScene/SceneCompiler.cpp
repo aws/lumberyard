@@ -116,12 +116,12 @@ namespace AZ
 
         void RCToolApplication::ResolveModulePath(AZ::OSString& modulePath)
         {
-            modulePath = AZ::OSString("../") + modulePath;  // first, pre-pend the .. to it.
             AzToolsFramework::ToolsApplication::ResolveModulePath(modulePath); // the base class will prepend the path to executable.
         }
 
-        SceneCompiler::SceneCompiler(const AZStd::shared_ptr<ISceneConfig>& config)
+        SceneCompiler::SceneCompiler(const AZStd::shared_ptr<ISceneConfig>& config, const char* appRoot)
             : m_config(config)
+            , m_appRoot(appRoot)
         {
         }
 
@@ -139,8 +139,13 @@ namespace AZ
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Starting scene processing.\n");
             AssetBuilderSDK::ProcessJobResponse response;
 
+            const char* gameFolder = m_context.pRC->GetSystemEnvironment()->pFileIO->GetAlias("@devassets@");
+            char configPath[AZ_MAX_PATH_LEN];
+            sprintf_s(configPath, "%s/config/editor.xml", gameFolder);
+            AZ_TraceContext("Gem config file", configPath);
+
             RCToolApplication application;
-            if (!PrepareForExporting(application))
+            if (!PrepareForExporting(configPath, application, m_appRoot))
             {
                 return WriteResponse(m_context.GetOutputFolder().c_str(), response, false);
             }
@@ -156,18 +161,23 @@ namespace AZ
             // Active components, load the scene then process and export it.
             {
                 AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Creating scene system modules.\n");
-                // Entity pointer is a unique_ptr that will activate the component on construction and deactivate + destroy it when it goes out
-                //      of scope.
-                AZ::SceneAPI::SceneCore::EntityConstructor::EntityPointer systemEntity = AZ::SceneAPI::SceneCore::EntityConstructor::BuildEntity(
-                    "Scene System", AZ::SceneAPI::SceneCore::SceneSystemComponent::TYPEINFO_Uuid());
+                AZ::Entity* systemEntity = CreateSceneSystemEntity(configPath);
+                if (systemEntity)
+                {
+                    systemEntity->Init();
+                    systemEntity->Activate();
 
-                AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Activating scene modules.\n");
-                m_config->ActivateSceneModules();
+                    AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Processing scene file.\n");
+                    result = LoadAndExportScene(*request, response);
 
-                result = LoadAndExportScene(*request, response);
-
-                AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Deactivating scene modules.\n");
-                m_config->DeactivateSceneModules();
+                    systemEntity->Deactivate();
+                    delete systemEntity;
+                }
+                else
+                {
+                    AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to create a system component for the SceneAPI.\n");
+                    result = false;
+                }
             }
 
             if (!result || m_config->GetErrorCount() > 0)
@@ -189,7 +199,7 @@ namespace AZ
             return &m_context;
         }
 
-        bool SceneCompiler::PrepareForExporting(RCToolApplication& application)
+        bool SceneCompiler::PrepareForExporting(const char* configFilePath, RCToolApplication& application, const AZStd::string& appRoot)
         {
             // Not all Gems shutdown properly and leak memory, but this shouldn't
             //      prevent this builder from completing.
@@ -199,26 +209,28 @@ namespace AZ
             AZ::ComponentApplication::Descriptor descriptor;
             descriptor.m_useExistingAllocator = true;
             descriptor.m_enableScriptReflection = false;
-            application.Start(descriptor);
+
+            AZ::ComponentApplication::StartupParameters startupParam;
+            startupParam.m_appRootOverride = appRoot.c_str();
+
+            application.Start(descriptor, startupParam);
 
             // Register the AssetBuilderSDK structures needed later on.
             AssetBuilderSDK::InitializeSerializationContext();
 
-            AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Initializing serialize and edit context.\n");
-            m_config->ReflectSceneModules(application.GetSerializeContext());
-
-            const char* gameFolder = m_context.pRC->GetSystemEnvironment()->pFileIO->GetAlias("@devassets@");
-            char configPath[2048];
-            sprintf_s(configPath, "%s/config/editor.xml", gameFolder);
-            AZ_TraceContext("Gem config file", configPath);
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Loading Gems.\n");
-            if (!application.ReflectModulesFromAppDescriptor(configPath))
+            if (!application.ReflectModulesFromAppDescriptor(configFilePath))
             {
                 AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to load Gems for scene processing.\n");
                 return false;
             }
 
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Connecting to asset processor.\n");
+            string branchToken = m_context.config->GetAsString("branchtoken", "", "");
+            if (!branchToken.empty())
+            {
+                AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystemRequestBus::Events::SetBranchToken, branchToken.c_str());
+            }
             if (!ResourceCompilerUtil::ConnectToAssetProcessor(m_context.config->GetAsInt("port", 0, 0), "RC Scene Compiler"))
             {
                 AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to connect to Asset Processor on port %i.\n", m_context.config->GetAsInt("port", 0, 0));
@@ -236,15 +248,124 @@ namespace AZ
             return true;
         }
 
+        AZ::Entity* SceneCompiler::CreateSceneSystemEntity(const char* configFilePath)
+        {
+            SerializeContext* context = nullptr;
+            ComponentApplicationBus::BroadcastResult(context, &ComponentApplicationBus::Events::GetSerializeContext);
+            if (!context)
+            {
+                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to retrieve serialize context.");
+                return nullptr;
+            }
+
+            // Starting all system components would be too expensive for a builder/ResourceCompiler, so only the system components needed
+            // for the SceneAPI will be created. Some of these components can be configured through the Project Configurator's Advanced
+            // Settings, so this is a two step process. First load the entire configuration for the project, but throw everything but the
+            // specific needed components out. This still leaves components that are not configured so look over the SerializeContext for
+            // all components that haven't been added to the final entity yet.
+            AZStd::unique_ptr<Entity> entity(aznew AZ::Entity("Scene System"));
+
+            AZ::ObjectStream::InplaceLoadRootInfoCB inplaceLoadCb = [](void** rootAddress, const AZ::SerializeContext::ClassData**, const AZ::Uuid& classId, AZ::SerializeContext*)
+            {
+                if (!rootAddress)
+                {
+                    return;
+                }
+
+                if (classId == azrtti_typeid<AZ::ComponentApplication::Descriptor>())
+                {
+                    // ComponentApplication::Descriptor is normally a singleton.
+                    // Force a unique instance to be created.
+                    *rootAddress = aznew AZ::ComponentApplication::Descriptor();
+                }
+            };
+            AZ::ObjectStream::ClassReadyCB classReadyCb = [&entity](void* classPtr, const AZ::Uuid& classId, AZ::SerializeContext* context)
+            {
+                if (AZ::ModuleEntity* moduleEntity = context->Cast<AZ::ModuleEntity*>(classPtr, classId))
+                {
+                    AZ::Entity::ComponentArrayType components = moduleEntity->GetComponents();
+                    for (AZ::Component* component : components)
+                    {
+                        if (component->RTTI_IsTypeOf(azrtti_typeid<AZ::SceneAPI::SceneCore::SceneSystemComponent>()))
+                        {
+                            moduleEntity->RemoveComponent(component);
+                            entity->AddComponent(component);
+                        }
+                    }
+                    // All components that are needed have been safely moved to the new entity so delete the loaded one, which will also 
+                    // take care of all the remaining components it has.
+                    delete moduleEntity;
+                }
+                // The only required information is the deserialized SceneAPI system components, the rest can be deleted again.
+                else
+                {
+                    const AZ::SerializeContext::ClassData* classData = context->FindClassData(classId);
+                    if (classData && classData->m_factory)
+                    {
+                        classData->m_factory->Destroy(classPtr);
+                    }
+                    else
+                    {
+                        AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, 
+                            "Unable to destroy class (%s) that was deserialized from the project configuration.", classId.ToString<AZStd::string>().c_str());
+                    }
+                }
+            };
+
+            AZ::IO::FileIOStream fileStream;
+            if (!fileStream.Open(configFilePath, IO::OpenMode::ModeRead | IO::OpenMode::ModeText))
+            {
+                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to open gem config file.");
+                return nullptr;
+            }
+
+            AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+            if (!AZ::ObjectStream::LoadBlocking(&fileStream, *context, classReadyCb, loadFilter, inplaceLoadCb))
+            {
+                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to load gem config file.");
+                return nullptr;
+            }
+            
+            const Uuid sceneSystemComponentType = azrtti_typeid<AZ::SceneAPI::SceneCore::SceneSystemComponent>();
+            context->EnumerateDerived(
+                [&entity](const AZ::SerializeContext::ClassData* data, const AZ::Uuid& typeId) -> bool
+            {
+                AZ_UNUSED(typeId);
+                // Before adding a new instance of a SceneSystemComponent, first check if the entity already has
+                // a component of the same type. Just like regular system components, there should only ever be
+                // a single instance of a SceneSystemComponent.
+                bool alreadyAdded = false;
+                for (const Component* component : entity->GetComponents())
+                {
+                    if (component->RTTI_GetType() == data->m_typeId)
+                    {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!alreadyAdded)
+                {
+                    entity->CreateComponent(data->m_typeId);
+                }
+                return true;
+            }, sceneSystemComponentType, sceneSystemComponentType);
+            return entity.release();
+        }
+
         bool SceneCompiler::LoadAndExportScene(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
         {
             const string platformName = m_context.config->GetAsString("p", "<unknown>", "<invalid>");
-            int platformId = m_context.config->GetAsInt("pi", AssetBuilderSDK::AllPlatforms, -1);
             AZ_TraceContext("Platform", platformName.c_str());
-            AZ_TraceContext("Platform ID", platformId);
-            if (platformId == -1)
+
+            if (platformName == "<unknown>")
             {
-                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Invalid target platform provided.\n");
+                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "No target platform provided - this compiler requires the /p=platformIdentifier option\n");
+                return false;
+            }
+
+            if (platformName == "<invalid>")
+            {
+                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Invalid target platform provided (Parse error reading command line)\n");
                 return false;
             }
 
@@ -267,7 +388,7 @@ namespace AZ
             }
 
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Exporting loaded data to engine specific formats.\n");
-            if (!ExportScene(response, *scene, azlossy_caster(platformId)))
+            if (!ExportScene(response, *scene, platformName.c_str()))
             {
                 AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to convert and export scene\n");
                 return false;
@@ -275,7 +396,7 @@ namespace AZ
             return true;
         }
 
-        bool SceneCompiler::ExportScene(AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, int platformId)
+        bool SceneCompiler::ExportScene(AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, const char* platformIdentifier)
         {
             AZ_TraceContext("Output folder", m_context.GetOutputFolder().c_str());
             AZ_Assert(m_context.pRC->GetAssetWriter() != nullptr, "Invalid IAssetWriter initialization.");
@@ -288,11 +409,11 @@ namespace AZ
             AZ::SceneAPI::SceneCore::EntityConstructor::EntityPointer exporter = AZ::SceneAPI::SceneCore::EntityConstructor::BuildEntity(
                 "Scene Exporters", AZ::SceneAPI::SceneCore::ExportingComponent::TYPEINFO_Uuid());
 
-            AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Registering export processors.\n");
-
             // Register additional processors. Will be automatically unregistered when leaving scope.
             //      These have not yet been converted to components as they need special attention due
             //      to the arguments they currently need.
+            AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Registering export processors.\n");
+
             CgfExporter cgfProcessor(&m_context);
             CgfGroupExporter meshGroupExporter(m_context.pRC->GetAssetWriter());
             CgfLodExporter meshLodExporter(m_context.pRC->GetAssetWriter());
@@ -312,11 +433,11 @@ namespace AZ
             SceneAPI::Events::ExportProductList productList;
             SceneEvents::ProcessingResultCombiner result;
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Preparing for export.\n");
-            result += SceneEvents::Process<SceneEvents::PreExportEventContext>(productList, m_context.GetOutputFolder().c_str(), scene, platformId);
+            result += SceneEvents::Process<SceneEvents::PreExportEventContext>(productList, m_context.GetOutputFolder().c_str(), scene, platformIdentifier);
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Exporting...\n");
-            result += SceneEvents::Process<SceneEvents::ExportEventContext>(productList, m_context.GetOutputFolder().c_str(), scene, platformId);
+            result += SceneEvents::Process<SceneEvents::ExportEventContext>(productList, m_context.GetOutputFolder().c_str(), scene, platformIdentifier);
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Finalizing export process.\n");
-            result += SceneEvents::Process<SceneEvents::PostExportEventContext>(productList, m_context.GetOutputFolder().c_str(), platformId);
+            result += SceneEvents::Process<SceneEvents::PostExportEventContext>(productList, m_context.GetOutputFolder().c_str(), platformIdentifier);
 
             AZStd::map<AZStd::string, size_t> preSubIdFiles;
             for (const auto& it : productList.GetProducts())

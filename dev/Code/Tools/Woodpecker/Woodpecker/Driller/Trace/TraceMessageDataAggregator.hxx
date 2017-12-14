@@ -18,6 +18,10 @@
 
 #include "TraceMessageDataParser.h"
 
+#include <AzCore/RTTI/RTTI.h>
+
+namespace AZ { class ReflectContext; }
+
 namespace Driller
 {
     class TraceMessageDataAggregatorSavedState;

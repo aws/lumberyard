@@ -346,7 +346,7 @@ namespace CharacterTool
             float delay;
             float weight;
 
-            ImpactJoint(const string& joint);
+            ImpactJoint(const string& joint = "");
 
             void Serialize(IArchive& ar);
         };

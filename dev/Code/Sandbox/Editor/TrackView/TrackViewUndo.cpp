@@ -22,6 +22,9 @@
 #include "TrackViewTrack.h"
 #include "Objects/ObjectLayer.h"
 #include "Objects/EntityObject.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimParamType.h"
+#include "Maestro/Types/SequenceType.h"
 
 //////////////////////////////////////////////////////////////////////////
 CUndoSequenceSettings::CUndoSequenceSettings(CTrackViewSequence* pSequence)
@@ -255,7 +258,7 @@ void CAbstractUndoSequenceTransaction::AddSequence()
 
     // We only need to add the sequence for legacy sequences because restored adds for Component Entity Sequences will restore
     // the Sequence Components, which are added back to TrackView and the movie system by the Sequence Component's Init() method
-    if (m_pSequence->GetSequenceType() == eSequenceType_Legacy)
+    if (m_pSequence->GetSequenceType() == SequenceType::Legacy)
     {
         CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
 
@@ -374,7 +377,7 @@ void CAbstractUndoAnimNodeTransaction::RemoveNode(bool bAquireOwnership)
             // stashed animNode data (which we acquire ownership of) for restore
             m_pParentNode->m_childNodes.erase(iter);
 
-            if (m_pNode->GetType() == eAnimNodeType_AzEntity)
+            if (m_pNode->GetType() == AnimNodeType::AzEntity)
             {
                 // Disconnect the AzEntity from the EntityBus - this needs to happen before we remove it from the parent sequence
                 static_cast<AZ::EntityBus::Handler*>(m_pNode)->BusDisconnect(m_pNode->GetAzEntityId());

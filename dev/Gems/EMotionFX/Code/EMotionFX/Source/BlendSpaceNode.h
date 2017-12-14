@@ -85,6 +85,7 @@ namespace EMotionFX
     protected:
         void RegisterCalculationMethodAttribute(const char* name, const char* internalName, const char* description);
         void RegisterBlendSpaceEvaluatorAttribute(const char* name, const char* internalName, const char* description);
+        ECalculationMethod GetBlendSpaceCalculationMethod(uint32 attribIndex) const;
         BlendSpaceParamEvaluator* GetBlendSpaceParamEvaluator(uint32 attribIndex) const;
 
         void RegisterBlendSpaceEventFilterAttribute();
@@ -102,9 +103,7 @@ namespace EMotionFX
 
         static void ClearMotionInfos(MotionInfos& motionInfos);
         static void AddMotionInfo(MotionInfos& motionInfos, MotionInstance* motionInstance);
-
-        static void RemoveMotionsFromAttributeArray(const AZStd::vector<AZStd::string>& motionsToDelete, MCore::AttributeArray* attributeArray);
-
+        
         static bool DoAllMotionsHaveSyncTracks(const MotionInfos& motionInfos);
 
         static void DoClipBasedSyncOfMotionsToMaster(AZ::u32 masterIdx, MotionInfos& motionInfos);

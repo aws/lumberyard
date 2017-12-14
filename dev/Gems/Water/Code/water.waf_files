@@ -1,0 +1,25 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/Water/WaterModule.h",
+            "Include/Water/WaterSystemComponent.h",
+            "Include/Water/WaterOceanComponent.h",
+            "Include/Water/WaterOceanComponentData.h",
+            "Include/Water/WaterVolumeComponentBus.h"
+        ],
+        "Source": [
+            "Source/WaterModule.cpp",
+            "Source/WaterSystemComponent.cpp",
+            "Source/WaterOceanComponent.cpp",
+            "Source/WaterOceanComponentData.cpp",
+            "Source/WaterVolumeComponent.h",
+            "Source/WaterVolumeComponent.cpp"
+        ]
+    }
+}

@@ -15,7 +15,6 @@
 #include <ScriptCanvas/Libraries/Libraries.h>
 
 #include "Core.h"
-#include <AzCore/Math/Vector3.h>
 
 namespace ScriptCanvas
 {

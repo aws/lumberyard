@@ -19,14 +19,6 @@ import os.path
 def build(bld):
     bld.recurse('Tests')
 
-    msvc_cxx_flags = [
-        '/W4', # warning level
-    ]
-    clang_flags = [
-        '-Werror',  # warnings as errors
-        '-Wall'     # warning level
-    ]
-
     bld.CryEngineStaticLibrary(
         # Settings
         target          = 'GridMate',
@@ -40,19 +32,23 @@ def build(bld):
         uselib          = ['OPENSSL'],
         export_includes = ['.'],
 
+        # Compiler Specific
+        msvc_cxxflags   = [
+                           '/W4', # warning level
+                          ],
+        clang_cxxflags  = [
+                           '-Werror',  # warnings as errors
+                           '-Wall',    # warning level
+                          ],
+
         # Platform Specific
-        win_cxxflags                = msvc_cxx_flags,
         win_features                = ['crcfix'],
 
        
        
 
        
-        android_cxxflags            = clang_flags,
-        
-        ios_cxxflags                = clang_flags,
-        
-        appletv_cxxflags            = clang_flags,
-        
-        darwin_cxxflags             = clang_flags
+
+        darwin_enable_rtti          = True,
+
     )

@@ -74,7 +74,7 @@ bool CSequenceObject::CreateGameObject()
 
     if (m_pSequence)
     {
-        m_pSequence->SetOwner(this);
+        m_pSequence->SetLegacySequenceObject(this);
     }
 
     return true;
@@ -87,8 +87,8 @@ void CSequenceObject::Done()
 
     if (m_pSequence)
     {
-        GetIEditor()->GetSequenceManager()->OnDeleteSequenceObject(m_pSequence->GetOwnerId());
-        m_pSequence->SetOwner(nullptr);
+        GetIEditor()->GetSequenceManager()->OnDeleteSequenceEntity(m_pSequence->GetSequenceEntityId());
+        m_pSequence->SetLegacySequenceObject(nullptr);
     }
 
     m_pSequence = nullptr;
@@ -215,6 +215,12 @@ void CSequenceObject::PostLoad(CObjectArchive& ar)
         if (pTrackViewSequence)
         {
             pTrackViewSequence->Load();
+        }
+
+        CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
+        if (pSequenceManager != nullptr)
+        {
+            pSequenceManager->OnLegacySequencePostLoad(pTrackViewSequence, ar.bUndo);
         }
     }
 }

@@ -35,6 +35,9 @@
 #include "AnimAZEntityNode.h"
 #include "AnimComponentNode.h"
 #include "Movie.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 #include <AzCore/Math/MathUtils.h>
 
@@ -51,7 +54,7 @@ namespace {
     bool s_nodeParamsInitialized = false;
     std::vector<CAnimNode::SParamInfo> s_nodeParams;
 
-    void AddSupportedParam(const char* sName, int paramId, EAnimValue valueType, int flags = 0)
+    void AddSupportedParam(const char* sName, AnimParamType paramId, AnimValueType valueType, int flags = 0)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -288,7 +291,7 @@ namespace {
 
 //////////////////////////////////////////////////////////////////////////
 CAnimSceneNode::CAnimSceneNode(const int id)
-    : CAnimNode(id, eAnimNodeType_Director)
+    : CAnimNode(id, AnimNodeType::Director)
 {
     m_lastCameraKey = -1;
     m_lastEventKey = -1;
@@ -330,22 +333,22 @@ void CAnimSceneNode::Initialize()
     {
         s_nodeParamsInitialized = true;
         s_nodeParams.reserve(9);
-        AddSupportedParam("Camera", eAnimParamType_Camera, eAnimValue_Select);
-        AddSupportedParam("Event", eAnimParamType_Event, eAnimValue_Unknown);
-        AddSupportedParam("Sound", eAnimParamType_Sound, eAnimValue_Unknown);
-        AddSupportedParam("Sequence", eAnimParamType_Sequence, eAnimValue_Unknown);
-        AddSupportedParam("Console", eAnimParamType_Console, eAnimValue_Unknown);
-        AddSupportedParam("GoTo", eAnimParamType_Goto, eAnimValue_DiscreteFloat);
-        AddSupportedParam("Capture", eAnimParamType_Capture, eAnimValue_Unknown);
-        AddSupportedParam("Timewarp", eAnimParamType_TimeWarp, eAnimValue_Float);
-        AddSupportedParam("FixedTimeStep", eAnimParamType_FixedTimeStep, eAnimValue_Float);
+        AddSupportedParam("Camera", AnimParamType::Camera, AnimValueType::Select);
+        AddSupportedParam("Event", AnimParamType::Event, AnimValueType::Unknown);
+        AddSupportedParam("Sound", AnimParamType::Sound, AnimValueType::Unknown);
+        AddSupportedParam("Sequence", AnimParamType::Sequence, AnimValueType::Unknown);
+        AddSupportedParam("Console", AnimParamType::Console, AnimValueType::Unknown);
+        AddSupportedParam("GoTo", AnimParamType::Goto, AnimValueType::DiscreteFloat);
+        AddSupportedParam("Capture", AnimParamType::Capture, AnimValueType::Unknown);
+        AddSupportedParam("Timewarp", AnimParamType::TimeWarp, AnimValueType::Float);
+        AddSupportedParam("FixedTimeStep", AnimParamType::FixedTimeStep, AnimValueType::Float);
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CAnimSceneNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_Camera);
+    CreateTrack(AnimParamType::Camera);
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -362,7 +365,7 @@ CAnimParamType CAnimSceneNode::GetParamType(unsigned int nIndex) const
         return s_nodeParams[nIndex].paramType;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -390,7 +393,7 @@ void CAnimSceneNode::Activate(bool bActivate)
         CAnimParamType paramId = m_tracks[paramIndex]->GetParameterType();
         IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
-        if (paramId.GetType() != eAnimParamType_Sequence)
+        if (paramId.GetType() != AnimParamType::Sequence)
         {
             continue;
         }
@@ -400,10 +403,10 @@ void CAnimSceneNode::Activate(bool bActivate)
         for (int currKey = 0; currKey < pSequenceTrack->GetNumKeys(); currKey++)
         {
             ISequenceKey key;
-
             pSequenceTrack->GetKey(currKey, &key);
 
-            IAnimSequence* pSequence = GetMovieSystem()->FindSequence(key.szSelection.c_str());
+            IAnimSequence* pSequence = GetSequenceFromSequenceKey(key);
+            
             if (pSequence)
             {
                 if (bActivate)
@@ -427,12 +430,31 @@ void CAnimSceneNode::Activate(bool bActivate)
                 }
             }
         }
-
-        if (m_cvar_t_FixedStep == NULL)
-        {
-            m_cvar_t_FixedStep = gEnv->pConsole->GetCVar("t_FixedStep");
-        }
     }
+
+    if (m_cvar_t_FixedStep == NULL)
+    {
+        m_cvar_t_FixedStep = gEnv->pConsole->GetCVar("t_FixedStep");
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+// This can be removed when Legacy Object Sequences are deprecated.
+bool CAnimSceneNode::UpConvertSequenceTrack()
+{
+    bool keysChanged = false;
+
+    if (!m_sequenceTrackUpConverted)
+    {
+        IAnimTrack* seqTrack = GetTrackForParameter(AnimParamType::Sequence);
+        if (seqTrack)
+        {
+            keysChanged = static_cast<CSequenceTrack*>(seqTrack)->UpConvertKeys();
+        }
+        m_sequenceTrackUpConverted = true;
+    }
+
+    return keysChanged;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -442,6 +464,11 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
     {
         return;
     }
+
+    // all sequence ID's need to be resolved before UpConverting a SequenceTrack, so we defer the
+    // upconversion until the first Animate() call - m_sequenceTrackUpConverted is set so this is
+    // only done once. When legacy sequence objects are deprecated, we can remove this.
+    UpConvertSequenceTrack();
 
     CSelectTrack* cameraTrack = NULL;
     CEventTrack* pEventTrack = NULL;
@@ -483,26 +510,26 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
 
         switch (paramId.GetType())
         {
-        case eAnimParamType_Camera:
+        case AnimParamType::Camera:
             cameraTrack = (CSelectTrack*)pTrack;
             break;
-        case eAnimParamType_Event:
+        case AnimParamType::Event:
             pEventTrack = (CEventTrack*)pTrack;
             break;
-        case eAnimParamType_Sequence:
+        case AnimParamType::Sequence:
             pSequenceTrack = (CSequenceTrack*)pTrack;
             break;
-        case eAnimParamType_Console:
+        case AnimParamType::Console:
             pConsoleTrack = (CConsoleTrack*)pTrack;
             break;
-        case eAnimParamType_Capture:
+        case AnimParamType::Capture:
             pCaptureTrack = (CCaptureTrack*)pTrack;
             break;
-        case eAnimParamType_Goto:
+        case AnimParamType::Goto:
             pGotoTrack = (CGotoTrack*)pTrack;
             break;
 
-        case eAnimParamType_Sound:
+        case AnimParamType::Sound:
 
             ++nNumAudioTracks;
             if (nNumAudioTracks > m_SoundInfo.size())
@@ -514,7 +541,7 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
 
             break;
 
-        case eAnimParamType_TimeWarp:
+        case AnimParamType::TimeWarp:
         {
             float timeScale = 1.0f;
             pTrack->GetValue(ec.time, timeScale);
@@ -533,7 +560,7 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
             
         }
         break;
-        case eAnimParamType_FixedTimeStep:
+        case AnimParamType::FixedTimeStep:
         {
             float timeStep = 0;
             pTrack->GetValue(ec.time, timeStep);
@@ -627,7 +654,7 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
     {
         ISequenceKey key;
         int nSequenceKey = pSequenceTrack->GetActiveKey(ec.time, &key);
-        IAnimSequence* pSequence = GetMovieSystem()->FindSequence(key.szSelection.c_str());
+        IAnimSequence* pSequence = GetSequenceFromSequenceKey(key);
 
         if (!gEnv->IsEditing() && (nSequenceKey != m_lastSequenceKey || !GetMovieSystem()->IsPlaying(pSequence)))
         {
@@ -714,7 +741,7 @@ void CAnimSceneNode::OnReset()
                 CAnimParamType paramId = m_tracks[paramIndex]->GetParameterType();
                 IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
-                if (paramId.GetType() != eAnimParamType_Sequence)
+                if (paramId.GetType() != AnimParamType::Sequence)
                 {
                     continue;
                 }
@@ -723,7 +750,11 @@ void CAnimSceneNode::OnReset()
                 ISequenceKey prevKey;
 
                 pSequenceTrack->GetKey(m_lastSequenceKey, &prevKey);
-                GetMovieSystem()->StopSequence(prevKey.szSelection.c_str());
+                IAnimSequence* sequence = GetSequenceFromSequenceKey(prevKey);
+                if (sequence)
+                {
+                    GetMovieSystem()->StopSequence(sequence);
+                }
             }
         }
     }
@@ -743,7 +774,7 @@ void CAnimSceneNode::OnReset()
     m_bLastCapturingEnded = true;
     m_legacyCurrentCameraEntityId = INVALID_ENTITYID;
 
-    if (GetTrackForParameter(eAnimParamType_TimeWarp))
+    if (GetTrackForParameter(AnimParamType::TimeWarp))
     {
         gEnv->pTimer->SetTimeScale(1.0f, ITimer::eTSC_Trackview);
         if (m_cvar_t_FixedStep)
@@ -751,7 +782,7 @@ void CAnimSceneNode::OnReset()
             m_cvar_t_FixedStep->Set(0);
         }
     }
-    if (GetTrackForParameter(eAnimParamType_FixedTimeStep) && m_cvar_t_FixedStep)
+    if (GetTrackForParameter(AnimParamType::FixedTimeStep) && m_cvar_t_FixedStep)
     {
         m_cvar_t_FixedStep->Set(0);
     }
@@ -823,7 +854,7 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
 
     static const float EPSILON_TIME = 0.01f;            // consider times within EPSILON_TIME of beginning of blend time to be at the beginning of blend time
     float interpolatedFoV;
-    const bool isFirstAnimNodeACamera = (firstCameraAnimNode && firstCameraAnimNode->GetType() == eAnimNodeType_Camera);
+    const bool isFirstAnimNodeACamera = (firstCameraAnimNode && firstCameraAnimNode->GetType() == AnimNodeType::Camera);
 
     ISceneCamera* secondCamera = secondKey.cameraAzEntityId.IsValid() 
                                 ? static_cast<ISceneCamera*>(new CComponentEntitySceneCamera(secondKey.cameraAzEntityId))
@@ -840,8 +871,8 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
     t = pow(t, 3) * (t * (t * 6 - 15) + 10);                // use a cubic curve for the camera blend
 
     bool haveStashedInterpData = (m_InterpolatingCameraStartStates.find(m_CurrentSelectTrackKeyNumber) != m_InterpolatingCameraStartStates.end());
-    const bool haveFirstCameraAnimNodeFoV = (isFirstAnimNodeACamera && firstCameraAnimNode->GetTrackForParameter(eAnimParamType_FOV));
-    const bool haveFirstCameraAnimNodeNearZ = (isFirstAnimNodeACamera && firstCameraAnimNode->GetTrackForParameter(eAnimParamType_NearZ));
+    const bool haveFirstCameraAnimNodeFoV = (isFirstAnimNodeACamera && firstCameraAnimNode->GetTrackForParameter(AnimParamType::FOV));
+    const bool haveFirstCameraAnimNodeNearZ = (isFirstAnimNodeACamera && firstCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ));
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // at the start of the blend, stash the starting point first camera data to use throughout the interpolation
@@ -853,18 +884,18 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
         camData.m_interpolatedCamFirstRot = firstCamera->GetRotation();     
 
         // stash FoV, from track if it exists, otherwise from the first camera entity
-        if (haveFirstCameraAnimNodeFoV && firstCameraAnimNode->GetTrackForParameter(eAnimParamType_FOV)->GetNumKeys() > 0)
+        if (haveFirstCameraAnimNodeFoV && firstCameraAnimNode->GetTrackForParameter(AnimParamType::FOV)->GetNumKeys() > 0)
         {
-            firstCameraAnimNode->GetParamValue(time, eAnimParamType_FOV, camData.m_FoV);
+            firstCameraAnimNode->GetParamValue(time, AnimParamType::FOV, camData.m_FoV);
         }
         else
         {
             camData.m_FoV = firstCamera->GetFoV();
         }
         // stash nearZ
-        if (haveFirstCameraAnimNodeNearZ && firstCameraAnimNode->GetTrackForParameter(eAnimParamType_NearZ)->GetNumKeys() > 0)
+        if (haveFirstCameraAnimNodeNearZ && firstCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ)->GetNumKeys() > 0)
         {
-            firstCameraAnimNode->GetParamValue(time, eAnimParamType_NearZ, camData.m_nearZ);
+            firstCameraAnimNode->GetParamValue(time, AnimParamType::NearZ, camData.m_nearZ);
         }
         else
         {
@@ -887,12 +918,12 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
         secondCameraAnimNode = m_pSequence->FindNodeByName(secondKey.szSelection.c_str(), NULL);
     }
 
-    const bool isSecondAnimNodeACamera = (secondCameraAnimNode && secondCameraAnimNode->GetType() == eAnimNodeType_Camera);
+    const bool isSecondAnimNodeACamera = (secondCameraAnimNode && secondCameraAnimNode->GetType() == AnimNodeType::Camera);
 
-    if (isSecondAnimNodeACamera && secondCameraAnimNode->GetTrackForParameter(eAnimParamType_FOV)
-        && secondCameraAnimNode->GetTrackForParameter(eAnimParamType_FOV)->GetNumKeys() > 0)
+    if (isSecondAnimNodeACamera && secondCameraAnimNode->GetTrackForParameter(AnimParamType::FOV)
+        && secondCameraAnimNode->GetTrackForParameter(AnimParamType::FOV)->GetNumKeys() > 0)
     {
-        secondCameraAnimNode->GetParamValue(time, eAnimParamType_FOV, secondCameraFOV);
+        secondCameraAnimNode->GetParamValue(time, AnimParamType::FOV, secondCameraFOV);
     }
     else
     {
@@ -905,17 +936,17 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
 
     if (haveFirstCameraAnimNodeFoV)
     {
-        firstCameraAnimNode->SetParamValue(time, eAnimParamType_FOV, interpolatedFoV);
+        firstCameraAnimNode->SetParamValue(time, AnimParamType::FOV, interpolatedFoV);
     }
 
     /////////////////////
     // interpolate NearZ
     float secondCameraNearZ;
 
-    if (isSecondAnimNodeACamera && secondCameraAnimNode->GetTrackForParameter(eAnimParamType_NearZ)
-        && secondCameraAnimNode->GetTrackForParameter(eAnimParamType_NearZ)->GetNumKeys() > 0)
+    if (isSecondAnimNodeACamera && secondCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ)
+        && secondCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ)->GetNumKeys() > 0)
     {
-        secondCameraAnimNode->GetParamValue(time, eAnimParamType_NearZ, secondCameraNearZ);
+        secondCameraAnimNode->GetParamValue(time, AnimParamType::NearZ, secondCameraNearZ);
     }
     else
     {
@@ -926,7 +957,7 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
 
     if (haveFirstCameraAnimNodeNearZ)
     {
-        firstCameraAnimNode->SetParamValue(time, eAnimParamType_NearZ, retInterpolatedCameraParams.fNearZ);
+        firstCameraAnimNode->SetParamValue(time, AnimParamType::NearZ, retInterpolatedCameraParams.fNearZ);
     }
 
     // update the Camera entity's component FOV and nearZ directly if needed (if they weren't set via anim node SetParamValue() above)
@@ -937,14 +968,14 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
     Vec3 vFirstCamPos = stashedInterpCamData.m_interpolatedCamFirstPos;
     if (isFirstAnimNodeACamera)
     {
-        firstCameraAnimNode->GetParamValue(time, eAnimParamType_Position, vFirstCamPos);
+        firstCameraAnimNode->GetParamValue(time, AnimParamType::Position, vFirstCamPos);
         firstCamera->TransformPositionFromLocalToWorldSpace(vFirstCamPos);
     }
 
     Vec3 secondKeyPos = secondCamera->GetPosition();
     if (isSecondAnimNodeACamera)
     {
-        secondCameraAnimNode->GetParamValue(time, eAnimParamType_Position, secondKeyPos);
+        secondCameraAnimNode->GetParamValue(time, AnimParamType::Position, secondKeyPos);
         secondCamera->TransformPositionFromLocalToWorldSpace(secondKeyPos);
     }
 
@@ -963,7 +994,7 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
     Quat firstCameraRotation = stashedInterpCamData.m_interpolatedCamFirstRot;
     Quat secondCameraRotation;
 
-    IAnimTrack* pOrgRotationTrack = (firstCameraAnimNode ? firstCameraAnimNode->GetTrackForParameter(eAnimParamType_Rotation) : 0);
+    IAnimTrack* pOrgRotationTrack = (firstCameraAnimNode ? firstCameraAnimNode->GetTrackForParameter(AnimParamType::Rotation) : 0);
     if (pOrgRotationTrack)
     {
         pOrgRotationTrack->GetValue(time, firstCameraRotation);
@@ -976,7 +1007,7 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
 
     secondCameraRotation = secondCamera->GetRotation();
     
-    IAnimTrack* pRotationTrack = (secondCameraAnimNode ? secondCameraAnimNode->GetTrackForParameter(eAnimParamType_Rotation) : 0);
+    IAnimTrack* pRotationTrack = (secondCameraAnimNode ? secondCameraAnimNode->GetTrackForParameter(AnimParamType::Rotation) : 0);
     if (pRotationTrack)
     {
         pRotationTrack->GetValue(time, secondCameraRotation);
@@ -1065,15 +1096,15 @@ void CAnimSceneNode::ApplyCameraKey(ISelectKey& key, SAnimContext& ec)
     }
 
     // get FOV - prefer track data for Legacy Cameras. For Component Cameras, retrieving from the component is fine.
-    if (firstCameraAnimNode && firstCameraAnimNode->GetType() == eAnimNodeType_Camera)
+    if (firstCameraAnimNode && firstCameraAnimNode->GetType() == AnimNodeType::Camera)
     {
         float fFirstCameraFOV = RAD2DEG(DEFAULT_FOV);
         float fFirstCameraNearZ = DEFAULT_NEAR;
 
-        firstCameraAnimNode->GetParamValue(ec.time, eAnimParamType_NearZ, fFirstCameraNearZ);
+        firstCameraAnimNode->GetParamValue(ec.time, AnimParamType::NearZ, fFirstCameraNearZ);
         cameraParams.fNearZ = fFirstCameraNearZ;
 
-        firstCameraAnimNode->GetParamValue(ec.time, eAnimParamType_FOV, fFirstCameraFOV);
+        firstCameraAnimNode->GetParamValue(ec.time, AnimParamType::FOV, fFirstCameraFOV);
         cameraParams.fFOV = DEG2RAD(fFirstCameraFOV);
     }
     else if (firstSceneCamera)
@@ -1130,9 +1161,9 @@ void CAnimSceneNode::ApplyCameraKey(ISelectKey& key, SAnimContext& ec)
                 prevCameraAnimNode = m_pSequence->FindNodeByName(prevKey.szSelection.c_str(), NULL);
             }
 
-            if (prevCameraAnimNode && prevCameraAnimNode->GetType() == eAnimNodeType_Camera && prevCameraAnimNode->GetTrackForParameter(eAnimParamType_FOV))
+            if (prevCameraAnimNode && prevCameraAnimNode->GetType() == AnimNodeType::Camera && prevCameraAnimNode->GetTrackForParameter(AnimParamType::FOV))
             {
-                prevCameraAnimNode->SetParamValue(ec.time, eAnimParamType_FOV, stashedData.m_FoV);
+                prevCameraAnimNode->SetParamValue(ec.time, AnimParamType::FOV, stashedData.m_FoV);
             }
             else if (prevSceneCamera)
             {
@@ -1194,9 +1225,9 @@ void CAnimSceneNode::ApplyAudioKey(char const* const sTriggerName, bool const bP
 //////////////////////////////////////////////////////////////////////////
 void CAnimSceneNode::ApplySequenceKey(IAnimTrack* pTrack, int nPrevKey, int nCurrKey, ISequenceKey& key, SAnimContext& ec)
 {
-    if (nCurrKey >= 0 && !key.szSelection.empty())
+    if (nCurrKey >= 0)
     {
-        IAnimSequence* pSequence = GetMovieSystem()->FindSequence(key.szSelection.c_str());
+        IAnimSequence* pSequence = GetSequenceFromSequenceKey(key);
         if (pSequence)
         {
             float startTime = -FLT_MAX;
@@ -1263,11 +1294,11 @@ bool CAnimSceneNode::GetEntityTransform(IAnimSequence* pSequence, IEntity* pEnti
     {
         IAnimNode* pNode = pSequence->GetNode(i);
 
-        if (pNode && pNode->GetType() == eAnimNodeType_Camera && pNode->GetEntity() == pEntity)
+        if (pNode && pNode->GetType() == AnimNodeType::Camera && pNode->GetEntity() == pEntity)
         {
-            pNode->GetParamValue(time, eAnimParamType_Position, vCamPos);
+            pNode->GetParamValue(time, AnimParamType::Position, vCamPos);
 
-            IAnimTrack* pOrgRotationTrack = pNode->GetTrackForParameter(eAnimParamType_Rotation);
+            IAnimTrack* pOrgRotationTrack = pNode->GetTrackForParameter(AnimParamType::Rotation);
             if (pOrgRotationTrack != NULL)
             {
                 pOrgRotationTrack->GetValue(time, qCamRot);
@@ -1293,7 +1324,7 @@ bool CAnimSceneNode::GetEntityTransform(IEntity* pEntity, float time, Vec3& vCam
     for (uint trackIndex = 0; trackIndex < numTracks; ++trackIndex)
     {
         IAnimTrack* pAnimTrack = GetTrackByIndex(trackIndex);
-        if (pAnimTrack->GetParameterType() == eAnimParamType_Sequence)
+        if (pAnimTrack->GetParameterType() == AnimParamType::Sequence)
         {
             CSequenceTrack* pSequenceTrack = static_cast<CSequenceTrack*>(pAnimTrack);
 
@@ -1303,7 +1334,7 @@ bool CAnimSceneNode::GetEntityTransform(IEntity* pEntity, float time, Vec3& vCam
                 ISequenceKey key;
                 pSequenceTrack->GetKey(keyIndex, &key);
 
-                CAnimSequence* pSubSequence = static_cast<CAnimSequence*>(GetMovieSystem()->FindSequence(key.szSelection.c_str()));
+                CAnimSequence* pSubSequence = static_cast<CAnimSequence*>(GetSequenceFromSequenceKey(key));
                 if (pSubSequence)
                 {
                     bool bSubSequence = GetEntityTransform(pSubSequence, pEntity, time, vCamPos, qCamRot);
@@ -1349,7 +1380,7 @@ void CAnimSceneNode::PrecacheStatic(float startTime)
     for (uint trackIndex = 0; trackIndex < numTracks; ++trackIndex)
     {
         IAnimTrack* pAnimTrack = GetTrackByIndex(trackIndex);
-        if (pAnimTrack->GetParameterType() == eAnimParamType_Sequence)
+        if (pAnimTrack->GetParameterType() == AnimParamType::Sequence)
         {
             CSequenceTrack* pSequenceTrack = static_cast<CSequenceTrack*>(pAnimTrack);
 
@@ -1359,7 +1390,7 @@ void CAnimSceneNode::PrecacheStatic(float startTime)
                 ISequenceKey key;
                 pSequenceTrack->GetKey(keyIndex, &key);
 
-                CAnimSequence* pSubSequence = static_cast<CAnimSequence*>(GetMovieSystem()->FindSequence(key.szSelection.c_str()));
+                CAnimSequence* pSubSequence = static_cast<CAnimSequence*>(GetSequenceFromSequenceKey(key));
                 if (pSubSequence)
                 {
                     pSubSequence->PrecacheStatic(startTime - (key.fStartTime + key.time));
@@ -1377,7 +1408,7 @@ void CAnimSceneNode::PrecacheDynamic(float time)
     for (uint trackIndex = 0; trackIndex < numTracks; ++trackIndex)
     {
         IAnimTrack* pAnimTrack = GetTrackByIndex(trackIndex);
-        if (pAnimTrack->GetParameterType() == eAnimParamType_Sequence)
+        if (pAnimTrack->GetParameterType() == AnimParamType::Sequence)
         {
             CSequenceTrack* pSequenceTrack = static_cast<CSequenceTrack*>(pAnimTrack);
 
@@ -1387,14 +1418,14 @@ void CAnimSceneNode::PrecacheDynamic(float time)
                 ISequenceKey key;
                 pSequenceTrack->GetKey(keyIndex, &key);
 
-                CAnimSequence* pSubSequence = static_cast<CAnimSequence*>(GetMovieSystem()->FindSequence(key.szSelection.c_str()));
+                CAnimSequence* pSubSequence = static_cast<CAnimSequence*>(GetSequenceFromSequenceKey(key));
                 if (pSubSequence)
                 {
                     pSubSequence->PrecacheDynamic(time - (key.fStartTime + key.time));
                 }
             }
         }
-        else if (pAnimTrack->GetParameterType() == eAnimParamType_Camera)
+        else if (pAnimTrack->GetParameterType() == AnimParamType::Camera)
         {
             const float fPrecacheCameraTime = CMovieSystem::m_mov_cameraPrecacheTime;
             if (fPrecacheCameraTime > 0.f)
@@ -1432,10 +1463,29 @@ void CAnimSceneNode::PrecacheDynamic(float time)
 
 void CAnimSceneNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAnimParamType& paramType)
 {
-    if (paramType.GetType() == eAnimParamType_TimeWarp)
+    if (paramType.GetType() == AnimParamType::TimeWarp)
     {
         pTrack->SetValue(0.0f, 1.0f, true);
     }
+}
+
+/*static*/ IAnimSequence* CAnimSceneNode::GetSequenceFromSequenceKey(const ISequenceKey& sequenceKey)
+{
+    IAnimSequence* retSequence = nullptr;
+    if (gEnv && gEnv->pMovieSystem)
+    {
+        if (sequenceKey.sequenceEntityId.IsValid())
+        {
+            retSequence = gEnv->pMovieSystem->FindSequence(sequenceKey.sequenceEntityId);
+        }
+        else if (!sequenceKey.szSelection.empty())
+        {
+            // legacy Deprecate ISequenceKey used names to identify sequences
+            retSequence = gEnv->pMovieSystem->FindLegacySequenceByName(sequenceKey.szSelection.c_str());
+        }
+    }
+    
+    return retSequence;
 }
 
 #undef s_nodeParamsInitialized

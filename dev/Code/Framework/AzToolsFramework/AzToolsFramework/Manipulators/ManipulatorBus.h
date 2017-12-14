@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzToolsFramework/Picking/BoundInterface.h>
 
@@ -19,25 +20,85 @@ namespace AzToolsFramework
     class ManipulatorManager;
     class BaseManipulator;
 
-    using ManipulatorId = AZ::u32;
-    static const ManipulatorId InvalidManipulatorId = 0;
-
-    using ManipulatorManagerId = AZ::u32;
-    static const ManipulatorManagerId InvalidManipulatorManagerId = 0;
-
-    enum class TransformManipulatorMode
+    /**
+     * Provide unique type alias for AZ::u32 for manipulator and manager.
+     */
+    template<typename T>
+    class ManipulatorIdType
     {
-        None,
-        Translation,
-        Scale,
-        Rotation
+    public:
+        explicit ManipulatorIdType(AZ::u32 id = 0)
+            : m_id(id) {}
+        operator AZ::u32() const { return m_id; }
+
+        bool operator==(ManipulatorIdType other) const { return m_id == other.m_id; }
+        bool operator!=(ManipulatorIdType other) const { return m_id != other.m_id; }
+        ManipulatorIdType& operator++() // pre-increment
+        {
+            ++m_id;
+            return *this;
+        }
+        ManipulatorIdType operator++(int) // post-increment
+        {
+            ManipulatorIdType temp = *this;
+            ++*this;
+            return temp;
+        }
+    private:
+        AZ::u32 m_id;
     };
 
-    enum class ManipulatorReferenceSpace
+    using ManipulatorId = ManipulatorIdType<struct ManipulatorType>;
+    static const ManipulatorId InvalidManipulatorId = ManipulatorId(0);
+
+    using ManipulatorManagerId = ManipulatorIdType<struct ManipulatorManagerType>;
+    static const ManipulatorManagerId InvalidManipulatorManagerId = ManipulatorManagerId(0);
+
+    enum class ManipulatorSpace
     {
         Local,
         World
     };
+
+    /**
+     * Requests made to adjust the current manipulators.
+     */
+    class ManipulatorRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual ~ManipulatorRequests() = default;
+
+        /**
+         * Clear/remove the active manipulator.
+         */
+        virtual void ClearSelected() = 0;
+
+        /**
+         * Set the position of the currently selected manipulator (must be transformed to local space of entity)
+         */
+        virtual void SetSelectedPosition(const AZ::Vector3&) = 0;
+    };
+
+    using ManipulatorRequestBus = AZ::EBus<ManipulatorRequests>;
+
+    /**
+     * Provide interface for destructive manipulator actions - for example if a point/vertex
+     * can be removed from a container.
+     */
+    class DestructiveManipulatorRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual ~DestructiveManipulatorRequests() = default;
+
+        /**
+         * Clear/remove the active manipulator and destroy the thing associated with it (E.g. Remove vertex).
+         */
+        virtual void DestroySelected() = 0;
+    };
+
+    using DestructiveManipulatorRequestBus = AZ::EBus<DestructiveManipulatorRequests>;
 
     /**
      * EBus interface used to send requests to ManipulatorManager.
@@ -47,10 +108,10 @@ namespace AzToolsFramework
     {
     public:
 
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById; /**< We can have multiple manipulator managers. 
-                                                                                             In the case where there are multiple viewports, each displaying 
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById; /**< We can have multiple manipulator managers.
+                                                                                             In the case where there are multiple viewports, each displaying
                                                                                              a different set of entities, a different manipulator manager is required
-                                                                                             to provide a different collision space for each viewport so that mouse 
+                                                                                             to provide a different collision space for each viewport so that mouse
                                                                                              hit detection can be handled properly. */
         using BusIdType = ManipulatorManagerId;
 
@@ -70,7 +131,10 @@ namespace AzToolsFramework
          */
         virtual void UnregisterManipulator(BaseManipulator& manipulator) = 0;
 
-        virtual void SetActiveManipulator(BaseManipulator* ptrManip) = 0;
+        /**
+         * Override what the currently bound active manipulator is, or set to nullptr.
+         */
+        virtual void SetActiveManipulator(BaseManipulator* manipulator) = 0;
 
         /**
          * Delete a manipulator bound.
@@ -78,68 +142,67 @@ namespace AzToolsFramework
         virtual void DeleteManipulatorBound(Picking::RegisteredBoundId boundId) = 0;
 
         /**
-         * Mark the bound of a manipulator dirty so it's excluded from mouse hit detection. 
+         * Mark the bound of a manipulator dirty so it's excluded from mouse hit detection.
          * This should be called whenever a manipulator is moved.
          */
         virtual void SetBoundDirty(Picking::RegisteredBoundId boundId) = 0;
 
         /**
-         * Mark bounds of all manipulators dirty. 
+         * Mark bounds of all manipulators dirty.
          */
-        virtual void SetAllManipulatorBoundsDirty() = 0;
+        virtual void SetAllBoundsDirty() = 0;
 
         /**
          * Update the bound for a manipulator.
          * If \ref boundId hasn't been registered before or it's invalid, a new bound is created and set using \ref boundShapeData
          * @param manipulatorId The id of the manipulator whose bound needs to update.
-         * @param boundId The id of the bound that needs to update. 
+         * @param boundId The id of the bound that needs to update.
          * @param boundShapeData The pointer to the new bound shape data.
          * @return If \ref boundId has been registered return the same id, otherwise create a new bound and return its id.
          */
-        virtual Picking::RegisteredBoundId UpdateManipulatorBound(ManipulatorId manipulatorId, Picking::RegisteredBoundId boundId, const Picking::BoundRequestShapeBase& boundShapeData) = 0;
+        virtual Picking::RegisteredBoundId UpdateBound(
+            ManipulatorId manipulatorId, Picking::RegisteredBoundId boundId,
+            const Picking::BoundRequestShapeBase& boundShapeData) = 0;
 
         /**
-         * Set the mode of TransformManipulator to either Translation, Scale or Rotation. This will effect all TransformManipulators currently displayed in the viewport.
-         * @param mode The mode of TransformManipulator to set to.
+         * Set the space in which Manipulators' directions will be defined.
          */
-        virtual void SetTransformManipulatorMode(TransformManipulatorMode mode) = 0;
+        virtual void SetManipulatorSpace(ManipulatorSpace referenceSpace) = 0;
 
         /**
-         * Get the TransformManipulator mode.
-         * @return The current mode of TransformManipulator.
+         * Get the manipulator transform space.
          */
-        virtual TransformManipulatorMode GetTransformManipulatorMode() = 0;
-
-        /**
-         * Set the reference space in which Manipulators' directions will be defined.
-         */
-        virtual void SetManipulatorReferenceSpace(ManipulatorReferenceSpace referenceSpace) = 0;
-
-        /**
-         * Get the TransformManipulator mode.
-         */
-        virtual ManipulatorReferenceSpace GetManipulatorReferenceSpace() = 0;
+        virtual ManipulatorSpace GetManipulatorSpace() = 0;
     };
+
     using ManipulatorManagerRequestBus = AZ::EBus<ManipulatorManagerRequests>;
 
     /**
-     * ...
+     * Utility for accessing manipulator space.
+     */
+    inline ManipulatorSpace GetManipulatorSpace(ManipulatorManagerId managerId)
+    {
+        ManipulatorSpace manipulatorSpace;
+        ManipulatorManagerRequestBus::EventResult(
+            manipulatorSpace, managerId,
+            &ManipulatorManagerRequestBus::Events::GetManipulatorSpace);
+        return manipulatorSpace;
+    }
+
+    /**
+     * Notification of events occuring in the manipulator manager.
      */
     class ManipulatorManagerNotifications
         : public AZ::EBusTraits
     {
     public:
+        virtual ~ManipulatorManagerNotifications() = default;
 
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = ManipulatorManagerId;
 
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-
-        /**
-         * Set the mode of TransformManipulator to either Translation, Scale or Rotation. This will effect all TransformManipulators currently displayed in the viewport.
-         * @param mode The mode of TransformManipulator to set to.
-         */
-        virtual void OnTransformManipulatorModeChanged(TransformManipulatorMode previousMode, TransformManipulatorMode currentMode) = 0;
     };
+
     using ManipulatorManagerNotificationBus = AZ::EBus<ManipulatorManagerNotifications>;
 }

@@ -15,12 +15,11 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace AZ
 {
-    void VertexContainerReflect(SerializeContext& context)
+    void VertexContainerReflect(ReflectContext* context)
     {
         VertexContainer<Vector2>::Reflect(context);
         VertexContainer<Vector3>::Reflect(context);

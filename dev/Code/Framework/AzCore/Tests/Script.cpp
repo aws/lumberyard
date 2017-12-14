@@ -296,6 +296,8 @@ namespace UnitTest
         virtual BehaviorTestClass OnEventWithClassResult() { return BehaviorTestClass(); }
 
         virtual AZStd::string OnEventWithDefaultValueAndStringResult(AZStd::string_view view1, AZStd::string_view) { return AZStd::string::format("Default Value: %s", view1.data()); }
+
+        virtual void OnEventConst() const {};
     };
 
     typedef AZ::EBus<BehaviorTestBusEvents> BehaviorTestBus;
@@ -676,6 +678,7 @@ namespace UnitTest
                 ->Event("OnEventWithDefaultValueAndStringResult", &BehaviorTestBus::Events::OnEventWithDefaultValueAndStringResult,
                 { {{"view1", "string_view without string trait", aznew BehaviorDefaultValue(defaultStringViewValue), AZ::BehaviorParameter::TR_NONE, AZ::BehaviorParameter::TR_STRING},
                     {"view2", "string_view with string trait", aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"))}} }) // Remove string trait from parameter
+                ->Event("OnEventConst", &BehaviorTestBus::Events::OnEventConst)
                 ;
 
             // Calls
@@ -885,8 +888,8 @@ namespace UnitTest
             method->InvokeResult(defaultStringResultValue, testId);
             EXPECT_EQ(expectedDefaultValueAndStringResult, defaultStringResultValue);
 
-            EXPECT_EQ(3, method->GetNumArguments());
-            EXPECT_EQ(1, method->GetMinNumberOfArguments());
+            EXPECT_EQ(3u, method->GetNumArguments());
+            EXPECT_EQ(1u, method->GetMinNumberOfArguments());
             EXPECT_TRUE(method->HasResult());
             const AZ::BehaviorParameter* stringResultParam = method->GetResult();
             EXPECT_NE(nullptr, stringResultParam);
@@ -901,6 +904,18 @@ namespace UnitTest
             const AZ::BehaviorParameter* stringView2Param = method->GetArgument(2);
             EXPECT_NE(nullptr, stringView2Param);
             EXPECT_TRUE(AZ::BehaviorContextHelper::IsStringParameter(*stringView2Param));
+
+            method = behaviorEBus->m_events.find("OnEventConst")->second.m_event;
+            EXPECT_TRUE(method->m_isConst);
+
+            method = behaviorEBus->m_events.find("OnEventConst")->second.m_broadcast;
+            EXPECT_TRUE(method->m_isConst);
+
+            method = behaviorEBus->m_events.find("OnEventConst")->second.m_queueEvent;
+            EXPECT_TRUE(method->m_isConst);
+
+            method = behaviorEBus->m_events.find("OnEventConst")->second.m_queueBroadcast;
+            EXPECT_TRUE(method->m_isConst);
 
             BehaviorTestBus::ExecuteQueuedEvents();
 
@@ -1126,6 +1141,7 @@ testBusHandler = TestBus.Connect(testBusHandler,1)
                     RequestBus("ClassRequestEBus");
                 
                 behaviorContext.EBus<ClassRequestEBus>("ClassRequestEBus")->
+                    Attribute(AZ::Script::Attributes::DisallowBroadcast, true)->
                     Event("GetData", &ClassRequestEBus::Events::GetData)->
                     Event("SetData", &ClassRequestEBus::Events::SetData)->
                     VirtualProperty("data", "GetData", "SetData");
@@ -1137,6 +1153,10 @@ testBusHandler = TestBus.Connect(testBusHandler,1)
                 BehaviorEBus* classRequestBus = behaviorContext.m_ebuses.find("ClassRequestEBus")->second;
                 AZ_TEST_ASSERT(classRequestBus->m_virtualProperties.size() == 1);
                 const BehaviorEBus::VirtualProperty& virtualEBusProperty = classRequestBus->m_virtualProperties.find("data")->second;
+
+                AZ_TEST_START_ASSERTTEST;
+                sc.Execute("ClassRequestEBus.Broadcast.GetData()");
+                AZ_TEST_STOP_ASSERTTEST(1);
 
                 {
                     ClassInteractingWithEBus classInstance; // setup a listener, otherwise property value can't be stored
@@ -3839,6 +3859,7 @@ namespace UnitTest
             AllocatorsFixture::SetUp();
 
             m_behavior = aznew BehaviorContext();
+            m_behavior->Method("AZTestAssert", &AZTestAssert);
             SetupBehaviorContext(*m_behavior);
 
             m_script = aznew ScriptContext();
@@ -3857,6 +3878,18 @@ namespace UnitTest
 
         virtual void SetupBehaviorContext(BehaviorContext& bc) { (void)bc; }
     };
+
+    TEST_F(BaseScriptTest, Unreflect)
+    {
+        m_behavior->Class<ScriptClass>();
+        m_script->Execute("AZTestAssert(ScriptClass ~= nil)");
+
+        m_behavior->EnableRemoveReflection();
+        m_behavior->Class<ScriptClass>();
+        m_behavior->DisableRemoveReflection();
+
+        m_script->Execute("AZTestAssert(ScriptClass == nil)");
+    }
 
     class MathScriptTest
         : public BaseScriptTest
@@ -4091,7 +4124,7 @@ namespace UnitTest
         EXPECT_TRUE(lua_isnil(m_lua, -1)) << "First assignable element is not empty";
         lua_pop(m_lua, 1);
 
-        EXPECT_EQ(2, lua_objlen(m_lua, -1)) << "Cache table contains more than just header";
+        EXPECT_EQ(2u, lua_objlen(m_lua, -1)) << "Cache table contains more than just header";
 
         lua_pop(m_lua, 1);
     }

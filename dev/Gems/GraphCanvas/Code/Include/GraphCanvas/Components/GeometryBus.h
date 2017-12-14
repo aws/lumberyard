@@ -30,28 +30,12 @@ namespace GraphCanvas
 
         //! Get the position of the entity in scene space.
         virtual AZ::Vector2 GetPosition() const = 0;
-    };
-
-    using GeometryRequestBus = AZ::EBus<GeometryRequests>;
-
-    //! GeometryCommands
-    //! Commands that are issued to entities with geometry and are handled by multiple components.
-    //! For example, the commands are handled by the Geometry component and by some visuals, in order to keep things in
-    //! sync.
-    class GeometryCommands : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
-
-        // Multiple handlers. Events received in defined order.
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
 
         //! Set the entity's position in scene space.
         virtual void SetPosition(const AZ::Vector2&) = 0;
     };
 
-    using GeometryCommandBus = AZ::EBus<GeometryCommands>;
+    using GeometryRequestBus = AZ::EBus<GeometryRequests>;
 
     //! GeometryNorifications
     //! Notifications regarding changes to an entity's geometry.

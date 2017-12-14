@@ -15,6 +15,7 @@
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Slice/SliceTransaction.h>
 
 #pragma once
 
@@ -47,8 +48,10 @@ namespace AzToolsFramework
 
         /**
          * Utility function to gather all referenced entities given a set of entities.
-         * This will expand parent/child relationships and any entity Id reference.
-         * \param entitiesWithREferences - input/output set containing all referenced entities.
+         * This flood searches entity id references, so if you pass in Entity1 that references
+         * Entity2, and Entity2 references Entity3, Entity3 is also visited and added to output as
+         * a referenced entity.
+         * \param entitiesWithReferences - input/output set containing all referenced entities.
          * \param serializeContext - serialize context to use to traverse reflected data.
          */
         void GatherAllReferencedEntities(AZStd::unordered_set<AZ::EntityId>& entitiesWithReferences,
@@ -83,6 +86,24 @@ namespace AzToolsFramework
          * \return AZ::Success if push is completed successfully, otherwise AZ::Failure with an AZStd::string payload.
          */
         AZ::Outcome<void, AZStd::string> PushEntitiesBackToSlice(const AzToolsFramework::EntityIdList& entityIdList, const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset);
+
+        /**
+         * PreSaveCallback for SliceTransaction::Commits with default world entity rules.
+         * Rules include verifying there's a single root entity, making sure root entities have 
+         * no translation and clearing out cached world transforms of all entities.
+         *
+         * If needing custom logic for a PreSaveCallback for world entities, make sure to include this with your own callback:
+         *
+         * auto myPreSaveCallback = [&](SliceTransaction::TransactionPtr transaction, const char* fullPath, SliceTransaction::SliceAssetPtr& asset) -> SliceTransaction::Result {
+         *    // <pre-default-checks custom code here>
+         *    auto result = SliceUtilities::SlicePreSaveCallbackForWorldEntities(transaction, fullPath, asset);
+         *    if (!result)
+         *       return result;
+         *    // <post-default-checks custom code here>
+         *    return AZ::Success();
+         * }
+         */
+        SliceTransaction::Result SlicePreSaveCallbackForWorldEntities(SliceTransaction::TransactionPtr transaction, const char* fullPath, SliceTransaction::SliceAssetPtr& asset);
 
         /**
          * Returns true if the entity has no transform parent.

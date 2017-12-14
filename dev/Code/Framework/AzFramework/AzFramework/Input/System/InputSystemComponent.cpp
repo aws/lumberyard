@@ -12,6 +12,8 @@
 
 #include <AzFramework/Input/System/InputSystemComponent.h>
 
+#include <AzFramework/Input/Buses/Notifications/InputSystemNotificationBus.h>
+
 #include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 #include <AzFramework/Input/Devices/Motion/InputDeviceMotion.h>
@@ -115,7 +117,6 @@ namespace AzFramework
         , m_virtualKeyboardEnabled(true)
         , m_currentlyUpdatingInputDevices(false)
         , m_recreateInputDevicesAfterUpdate(false)
-        , m_pimpl()
     {
     }
 
@@ -127,9 +128,6 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputSystemComponent::Activate()
     {
-        // Create the platform specific implementation
-        m_pimpl.reset(InputSystemComponent::Implementation::Create(*this));
-
         // Create all enabled input devices
         CreateEnabledInputDevices();
 
@@ -145,29 +143,28 @@ namespace AzFramework
 
         // Destroy all enabled input devices
         DestroyEnabledInputDevices();
+    }
 
-        // Destroy the platform specific implementation
-        m_pimpl.reset(nullptr);
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    int InputSystemComponent::GetTickOrder()
+    {
+        return AZ::ComponentTickBus::TICK_INPUT;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputSystemComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*scriptTimePoint*/)
     {
-        // At some point we should remove InputSystemRequests::TickInput and use the OnTick function
-        // instead, but for now we must update input independently to maintain existing frame order.
+        TickInput();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputSystemComponent::TickInput()
     {
-        if (m_pimpl)
-        {
-            m_pimpl->PreTickInputDevices();
-        }
-
+        InputSystemNotificationBus::Broadcast(&InputSystemNotifications::OnPreInputUpdate);
         m_currentlyUpdatingInputDevices = true;
         InputDeviceRequestBus::Broadcast(&InputDeviceRequests::TickInputDevice);
         m_currentlyUpdatingInputDevices = false;
+        InputSystemNotificationBus::Broadcast(&InputSystemNotifications::OnPostInputUpdate);
 
         if (m_recreateInputDevicesAfterUpdate)
         {

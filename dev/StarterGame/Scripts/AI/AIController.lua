@@ -36,6 +36,7 @@ local aicontroller =
 				Combat =
 				{
 					MoveSpeed = { default = 4.0 },
+					MoveSpeedChasing = { default = 4.0, description = "Movement speed when attempting to get in range of the player." },
 					AngleBeforeReCentering = { default = 50.0, description = "How far before the A.I. turns towards the target.", suffix = " degrees" },
 					MinCombatTimer = { default = 5.0, description = "The minimum amount of time to spend in combat." },
 					
@@ -78,6 +79,9 @@ local aicontroller =
 		},
 		SoundResponses =
 		{
+			SimilarRejectionAngle = { default = 30.0, description = "Similar sounds will be rejected if their angle from the current sound is less than this.", suffix = " deg" },
+			SimilarRejectionDistance = { default = 6.0, description = "Similar sounds will be rejected if their distance from the current sound is less than this.", suffix = " m" },
+			
 			WhizzPast =
 			{
 				Initial = { default = 0.5, description = "Distance A.I. will walk towards the shot's origin if heard while Idle.", suffix = " m" },
@@ -148,6 +152,9 @@ local aicontroller =
 				
 				-- Reset the suspicious location as we're not suspicious of anything.
 				sm.UserData.suspiciousLocation = nil;
+				
+				sm.UserData.performingWaypointEvents = false;
+				sm.UserData.currentWaypointEvent = WaypointEventSettings();
 			end,
 			
 			OnExit = function(self, sm)
@@ -209,6 +216,7 @@ local aicontroller =
 				
 				-- If entering this state because of a sound then react to it before we perform our
 				-- update as it will likely change our suspicious location.
+				sm.UserData.isFirstSuspiciousSound = true;
 				if (sm.UserData.reactToRecentSound == true) then
 					sm.UserData:SuspiciousReactionToSound();
 				end
@@ -218,6 +226,10 @@ local aicontroller =
 				-- If we are currently navigating somewhere then stop (the next state has no
 				-- responsibility to control the navigation initiated by this state).
 				sm.UserData:CancelNavigation();
+				
+				-- In case we were in the middle of a suspicious animation, cancel it so the aim IK
+				-- doesn't go wrong.
+				sm.UserData:PlayAnim("Idle", true);
 				
 				-- Reset this variable.
 				sm.UserData.suspiciousFromBeingShot = false;
@@ -270,8 +282,14 @@ local aicontroller =
 		
 		Combat =
 		{
-			OnEnter = function(self, sm)
+			OnEnter = function(self, sm, prevState)
 				VisualiseAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Combat);
+				
+				if (prevState ~= "Tracking") then
+					sm.UserData:AdjustPersistentDataCount(sm.UserData.AIStates.AwareOfPlayerCount, 1);
+				end
+				
+				sm.UserData.isChasing = false;
 				
 				self.minimumCombatTimer = sm.UserData.Properties.StateMachines.AI.Combat.MinCombatTimer;
 				sm.UserData:SetMoveSpeed(sm.UserData.Properties.StateMachines.AI.Combat.MoveSpeed);
@@ -295,7 +313,11 @@ local aicontroller =
 				GameplayNotificationBus.Event.OnEventBegin(sm.UserData.assistNearbyAllyEventId, sm.UserData.entityId);
 			end,
 			
-			OnExit = function(self, sm)
+			OnExit = function(self, sm, nextState)
+				if (nextState ~= "Tracking") then
+					sm.UserData:AdjustPersistentDataCount(sm.UserData.AIStates.AwareOfPlayerCount, -1);
+				end
+				
 				sm.UserData.aimAtPlayer = false;
 				-- If we are currently navigating somewhere then stop (the next state has no
 				-- responsibility to control the navigation initiated by this state).
@@ -342,7 +364,11 @@ local aicontroller =
 		
 		Tracking =
 		{
-			OnEnter = function(self, sm)
+			OnEnter = function(self, sm, prevState)
+				if (prevState ~= "Combat") then
+					sm.UserData:AdjustPersistentDataCount(sm.UserData.AIStates.AwareOfPlayerCount, 1);
+				end
+				
 				VisualiseAIStatesSystemRequestBus.Broadcast.SetAIState(sm.UserData.entityId, AIStates.Tracking);
 				
 				sm.UserData:SetMoveSpeed(sm.UserData.Properties.StateMachines.AI.Tracking.MoveSpeed);
@@ -351,12 +377,17 @@ local aicontroller =
 				
 				-- If entering this state because of a sound then react to it before we perform our
 				-- update as it will likely change our suspicious location.
+				sm.UserData.isFirstSuspiciousSound = true;
 				if (self.reactToRecentSound == true) then
 					self:SuspiciousReactionToSound();
 				end
 			end,
 			
-			OnExit = function(self, sm)
+			OnExit = function(self, sm, nextState)
+				if (nextState ~= "Combat") then
+					sm.UserData:AdjustPersistentDataCount(sm.UserData.AIStates.AwareOfPlayerCount, -1);
+				end
+				
 				-- If we are currently navigating somewhere then stop (the next state has no
 				-- responsibility to control the navigation initiated by this state).
 				sm.UserData:CancelNavigation();
@@ -417,11 +448,9 @@ local aicontroller =
 				-- "Heroes never die"... shame you're not a hero.
 			},
 		},
+			
+		AwareOfPlayerCount = "AI_AwareOfPlayerCount",
 	},
-	
-	-- The player's position is at his feet. The correct way of getting the player's height
-	-- would be to query the player entity for it, but this is just a quick solution.
-	PlayerHeight = 1.5,
 }
 
 --------------------------------------------------
@@ -438,6 +467,8 @@ function aicontroller:OnActivate()
 	-- Listen for which spawner created us.
 	self.spawnedEventId = GameplayNotificationId(self.entityId, "AISpawned", "float");
 	self.spawnedHandler = GameplayNotificationBus.Connect(self, self.spawnedEventId);
+	self.startFightingEventId = GameplayNotificationId(self.entityId, "FightPlayer", "float");
+	self.startFightingHandler = GameplayNotificationBus.Connect(self, self.startFightingEventId);
 	self.setAlertIdEventId = GameplayNotificationId(self.entityId, "SetAlertId", "float");
 	self.setAlertIdHandler = GameplayNotificationBus.Connect(self, self.setAlertIdEventId);
 	self.alertIdEventId = nil;
@@ -487,11 +518,14 @@ function aicontroller:OnActivate()
 	self.sendingSuspiciousLocHandler = GameplayNotificationBus.Connect(self, self.sendingSuspiciousLocEventId);
 	
 	AISoundManagerSystemRequestBus.Broadcast.RegisterEntity(self.entityId);
+	self.Properties.SoundResponses.SimilarRejectionAngle = Math.DegToRad(self.Properties.SoundResponses.SimilarRejectionAngle);
+	self.Properties.SoundResponses.SimilarRejectionDistanceSq = self.Properties.SoundResponses.SimilarRejectionDistance * self.Properties.SoundResponses.SimilarRejectionDistance;
 	self.justGotShotBy = EntityId();
 	self.suspiciousFromBeingShot = false;
 	self.soundHeard = nil;
 	self.soundHeardJustNow = nil;
 	self.reactToRecentSound = false;
+	self.isFirstSuspiciousSound = true;
 	self.shouldAssistAlly = EntityId();
 	self.alertedOfTarget = false;
 	self.alertedLocation = nil;
@@ -520,6 +554,10 @@ function aicontroller:OnActivate()
 	self.timeUntilSentryTurns = self.Properties.StateMachines.AI.Idle.SentryTurnRate;
 	--self.Properties.StateMachines.AI.Idle.SentryTurnAngle = Math.DegToRad(self.Properties.StateMachines.AI.Idle.SentryTurnAngle);
 	
+	self.performingWaypointEvents = false;
+	self.currentWaypointEvent = WaypointEventSettings();
+	self.setIdleAnimEventId = GameplayNotificationId(self.entityId, "SetIdleAnim", "float");
+	
 	-- Ensure the movement values are initialised.
 	self.moveSpeed = 0.0;
 	self:SetMovement(0.0, 0.0);
@@ -530,6 +568,15 @@ function aicontroller:OnActivate()
 	self.shouldLog = false;
 	self.shouldLogEventId = GameplayNotificationId(self.entityId, "ShouldLog", "float");
 	self.shouldLogHandler = GameplayNotificationBus.Connect(self, self.shouldLogEventId);
+	self.aiSkeletonNS = "";
+	if(StarterGameUtility.IsLegacyCharacter(self.entityId) == false) then
+		self.aiSkeletonNS = utilities.EMFXNamespace;
+	end
+	self.playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
+	self.playerSkeletonNS = "";
+	if(StarterGameUtility.IsLegacyCharacter(self.playerId) == false) then
+		self.playerSkeletonNS = utilities.EMFXNamespace;
+	end
 end
 
 function aicontroller:OnDeactivate()
@@ -620,6 +667,10 @@ function aicontroller:OnDeactivate()
 		self.setAlertIdHandler:Disconnect();
 		self.setAlertIdHandler = nil;
 	end
+	if (self.startFightingHandler ~= nil) then
+		self.startFightingHandler:Disconnect();
+		self.startFightingHandler = nil;
+	end
 	if (self.spawnedHandler ~= nil) then
 		self.spawnedHandler:Disconnect();
 		self.spawnedHandler = nil;
@@ -689,7 +740,9 @@ function aicontroller:OnTick(deltaTime, timePoint)
 		-- Initialise the navigation variables and start the A.I. state machine.
 		self.navHandler = NavigationComponentNotificationBus.Connect(self, self.entityId);
 		self.rsNavHandler = StarterGameNavigationComponentNotificationBus.Connect(self, self.entityId);
+		self.arrivalDistanceThreshold = StarterGameAIUtility.GetArrivalDistanceThreshold(self.entityId);
 		self.requestId = 0;
+		self.navPath = nil;
 		self.searchingForPath = false;
 		self.reachedWaypoint = false;
 		self.navCancelled = false;
@@ -727,30 +780,71 @@ function aicontroller:OnTick(deltaTime, timePoint)
 	
 	-- Determine how much the A.I. has moved in the last frame and in which direction.
 	self:CalculateCurrentMovement(deltaTime);
-
 	self:UpdateMovement();
 	self:UpdateWeaponAim();
+	self:SetStrafeFacing();
 end
 
 function aicontroller:CalculateCurrentMovement(deltaTime)
 
 	local tm = TransformBus.Event.GetWorldTM(self.entityId);
 	if (self:IsNavigating() and not self.searchingForPath) then
-		local diff = tm:GetTranslation() - self.prevTm:GetTranslation();
-		diff.z = 0.0;
-		
-		-- Guard for coincident vectors.
-		if (diff == Vector3(1.0, 0.0, 0.0)) then
-			diff = Vector3(0.0, 0.0, 0.0);
-		end
-		
-		if (diff:GetLength() > 0.001) then
-			local res = diff:GetNormalized();	-- not sure if we want this
-			self:SetMovement(res.x, res.y);
+		local validMovement = false;
+		while (not self.reachedWaypoint and not validMovement) do
+			-- This inner 'while' is to emulate a 'continue' because Lua doesn't have one.
+			while (true) do
+				local pathPoint = self.navPath:GetCurrentPoint();
+				local dir = pathPoint - tm:GetTranslation();
+				dir.z = 0.0;
+				local distToPoint = dir:GetLengthSq();
+				if (distToPoint < self.arrivalDistanceThreshold) then
+					-- If we're already there then move on to the next point and break out of the
+					-- inner loop so we restart the process of determining which direction we need
+					-- to travel.
+					-- If it happens to have been the last point then we'll exit out of both loops.
+					if (self.navPath:IsLastPoint()) then
+						self:OnTraversalComplete(self.requestId);
+					else
+						self.navPath:ProgressToNextPoint();
+					end
+					break;
+				end
+				
+				-- Set the direction we want to move in.
+				dir = dir:GetNormalized();
+				self:SetMovement(dir.x, dir.y);
+				validMovement = true;
+				
+				-- Check if we'll reach our destination within a frame.
+				local moveLocal = self:GetInputVector();
+				local moveDistNextFrame = moveLocal:GetLengthSq() * deltaTime;
+				if (moveDistNextFrame >= distToPoint) then
+					-- If that was the last point then complete pathing.
+					if (self.navPath:IsLastPoint()) then
+						self:OnTraversalComplete(self.requestId);
+					else
+						-- If it wasn't then we need to start moving to the next point.
+						self.navPath:ProgressToNextPoint();
+						
+						pathPoint, dir = self:GetPathPointAndDir(tm);
+						dir = dir:GetNormalized();
+						self:SetMovement(dir.x, dir.y);
+					end
+				end
+				break;
+			end
 		end
 	end
 	self.prevTm = tm;
 	
+end
+
+function aicontroller:GetPathPointAndDir(tm)
+	local pathPoint = self.navPath:GetCurrentPoint();
+	local dir = pathPoint - tm:GetTranslation();
+	dir.z = 0.0;
+	
+	return pathPoint, dir;
 end
 
 function aicontroller:UpdateMovement()
@@ -773,13 +867,9 @@ function aicontroller:UpdateWeaponAim()
 	if (not playerId:IsValid()) then
 		return;
 	end
-	local pos = TransformBus.Event.GetWorldTM(playerId):GetTranslation();
-	pos.z = pos.z + self.PlayerHeight;	-- the player position is at his feet...
+	local pos = StarterGameUtility.GetJointWorldTM(playerId, self.playerSkeletonNS..utilities.Joint_Torso_Upper):GetTranslation();
 	-- Get the position we're aiming from (i.e. the A.I.).
-	local aiTM = TransformBus.Event.GetWorldTM(self.entityId);
-	local aiPos = aiTM:GetTranslation();
-	aiPos.z = aiPos.z + self.PlayerHeight;	-- the A.I.'s position is at his feet...
-	--aiPos = TransformBus.Event.GetWorldTM(self.activeWeapon.Weapon):GetTranslation();
+	local aiPos = StarterGameUtility.GetJointWorldTM(self.entityId, self.aiSkeletonNS..utilities.Joint_Torso_Upper):GetTranslation();
 	self.aimDirection = (pos - aiPos):GetNormalized();
 	self.aimOrigin = aiPos + (self.aimDirection * 0.5);
 end
@@ -793,12 +883,22 @@ function aicontroller:WeaponFired(value)
 end
 
 function aicontroller:OnEventBegin(value)
-
+	
 	if (GameplayNotificationBus.GetCurrentBusId() == self.spawnedEventId) then
 		-- Copy the waypoints, that the A.I. should navigate around, from the spawner.
 		WaypointsComponentRequestsBus.Event.CloneWaypoints(self.entityId, value);
 		self.sentry = WaypointsComponentRequestsBus.Event.IsSentry(self.entityId);
 		self.lazySentry = WaypointsComponentRequestsBus.Event.IsLazySentry(self.entityId);
+	elseif (GameplayNotificationBus.GetCurrentBusId() == self.startFightingEventId) then
+		-- Only if the debug manager says so...
+		if (utilities.GetDebugManagerBool("EnableAICombat", true)) then
+			-- We know that the A.I. only target the player.
+			local playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
+			if (playerId:IsValid()) then
+				self.suspiciousLocation = TransformBus.Event.GetWorldTM(playerId):GetTranslation();
+				self.Properties.StateMachines.AI.InitialState = "Combat";
+			end
+		end
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.setAlertIdEventId) then
 		if (value ~= nil and value ~= "") then
 			self.alertIdEventId = GameplayNotificationId(EntityId(), value, "float");
@@ -807,7 +907,27 @@ function aicontroller:OnEventBegin(value)
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.broadcastAlertEventId) then
 		-- Send an alert to all allies on the alert system.
 		if (self.alertIdEventId ~= nil) then
-			GameplayNotificationBus.Event.OnEventBegin(self.alertIdEventId, self.suspiciousLocation);
+			--Debug.Log(tostring(self.entityId) .. "BROADCASTING ALERT!");
+			-- If our suspicious location is nil then it means we went from out-of-combat to below
+			-- the broadcast alert threshold in one hit. As a result, we should use the
+			-- 'justGotShotBy' entity's position because it's likely that that was the reason why
+			-- we got hurt. If that's also nil then just take the position of the player.
+			local location = self.suspiciousLocation;
+			if (location == nil) then
+				if (self.justGotShotBy:IsValid()) then
+					location = TransformBus.Event.GetWorldTM(self.justGotShotBy):GetTranslation();
+				else
+					local playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
+					if (playerId:IsValid()) then
+						location = TransformBus.Event.GetWorldTM(playerId):GetTranslation();
+					else
+						-- Absolute fall-back (should only occur in test levels where the player
+						-- doesn't exit.
+						location = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
+					end
+				end
+			end
+			GameplayNotificationBus.Event.OnEventBegin(self.alertIdEventId, location);
 		end
 	end
 	
@@ -858,7 +978,7 @@ function aicontroller:OnEventBegin(value)
 	end
 	
 	if (GameplayNotificationBus.GetCurrentBusId() == self.requestSuspiciousLocEventId) then
-		GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(value, self.Properties.Events.SendingSuspiciousLoc), self.suspiciousLocation, "float");
+		GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(value, self.Properties.Events.SendingSuspiciousLoc, "float"), self.suspiciousLocation);
 	elseif (GameplayNotificationBus.GetCurrentBusId() == self.sendingSuspiciousLocEventId) then
 		self.suspiciousLocation = value;
 	end
@@ -900,78 +1020,171 @@ end
 function aicontroller:OnEnable()
 	self.tickBusHandler = TickBus.Connect(self);
 	self.AIStateMachine:Resume();
+	if (self.AIStateMachine.CurrentStateName == "Combat" or self.AIStateMachine.CurrentStateName == "Tracking") then
+		self:AdjustPersistentDataCount(self.AIStates.AwareOfPlayerCount, 1);
+	end
 	AISoundManagerSystemRequestBus.Broadcast.RegisterEntity(self.entityId);
 	self.justEnabled = true;
 end
 
 function aicontroller:OnDisable()
 	AISoundManagerSystemRequestBus.Broadcast.UnregisterEntity(self.entityId);
+	if (self.AIStateMachine.CurrentStateName == "Combat" or self.AIStateMachine.CurrentStateName == "Tracking") then
+		self:AdjustPersistentDataCount(self.AIStates.AwareOfPlayerCount, -1);
+	end
 	self.AIStateMachine:Stop();
 	self.tickBusHandler:Disconnect();
+end
+
+function aicontroller:AdjustPersistentDataCount(key, adjustment)
+	local value = 0;
+	if (PersistentDataSystemRequestBus.Broadcast.HasData(key)) then
+		value = PersistentDataSystemRequestBus.Broadcast.GetData(key);
+		-- Currently the manipulator will create a 'nil' data element when it's activated
+		-- so we have to check for that.
+		if (value == nil) then
+			value = 0;
+		end
+	end
+	value = value + adjustment;
+	local res = PersistentDataSystemRequestBus.Broadcast.SetData(key, value, true);
+	--Debug.Log("Set " .. tostring(key) .. " to " .. tostring(value) .. "? " .. tostring(res));
 end
 
 --------------------------------------------------------
 --------------------------------------------------------
 
 function aicontroller:UpdatePatrolling(deltaTime)
-	if (self.sentry == true or self.lazySentry == true) then
-		-- If we're turning then reset the movement values so we don't start moving
-		-- in that direction once we've finished turning.
-		if (self.isTurningToFace == true) then
-			self:SetMovement(0.0, 0.0);
+	-- Start performing the waypoint events, if there are any.
+	if (self.reachedWaypoint == true and not self.performingWaypointEvents) then
+		if (StarterGameEntityUtility.EntityHasComponent(self.currentWaypoint, "WaypointSettingsComponent")) then
+			if (WaypointSettingsComponentRequestsBus.Event.HasEvents(self.currentWaypoint, self.entityId)) then
+				self.currentWaypointEvent = WaypointSettingsComponentRequestsBus.Event.GetNextEvent(self.currentWaypoint, self.entityId);
+				if (self.currentWaypointEvent:IsValid()) then
+					self.performingWaypointEvents = true;
+				end
+			end
+		end
+	end
+	
+	if (self.performingWaypointEvents) then
+		local completedEvent = false;
+		--Debug.Log("WaypointEvent: Type: " .. tostring(self.currentWaypointEvent.type));
+		if (self.currentWaypointEvent.type == WaypointEventType.Wait) then
+			self.currentWaypointEvent.duration = self.currentWaypointEvent.duration - deltaTime;
+			if (self.currentWaypointEvent.duration <= 0.0) then
+				completedEvent = true;
+			end
+		elseif (self.currentWaypointEvent.type == WaypointEventType.TurnToFace) then
+			if (self.justFinishedTurning) then
+				self:SetMovement(0.0, 0.0);
+				self.justFinishedTurning = false;
+				completedEvent = true;
+				--Debug.Log("WaypointEvent: TurnToFace completed");
+			elseif (not self.isTurningToFace) then
+				local pos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation() + self.currentWaypointEvent.directionToFace;
+				if (self.currentWaypointEvent.turnTowardsEntity) then
+					pos = TransformBus.Event.GetWorldTM(self.currentWaypointEvent.entityToFace):GetTranslation();
+				end
+				self:TurnTowardsLocation(pos);
+				
+				-- If we still haven't started turning then it means we're already facing the
+				-- correct direction.
+				if (not self.isTurningToFace) then
+					completedEvent = true;
+				end
+				--Debug.Log("WaypointEvent: TurnToFace started: " .. tostring(completedEvent));
+			end
+		elseif (self.currentWaypointEvent.type == WaypointEventType.PlayAnim) then
+			self:PlayAnim(self.currentWaypointEvent.animName, true);
+			completedEvent = true;
+		else
+			-- If this case is hit then it means we don't know how to react to the given event type.
+			completedEvent = true;
 		end
 		
-		-- If the A.I. is a sentry then stand in one place and occasionally turn.
-		-- If we're not already navigating then check we're a reasonable distance
-		-- from our sentry position.
-		if (not self:IsNavigating()) then
-			local pos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
-			local wpPos = TransformBus.Event.GetWorldTM(self.currentWaypoint):GetTranslation();
-			local distSq = (wpPos - pos):GetLengthSq();
-			local threshold = self.Properties.StateMachines.AI.Idle.SentryArrivalThreshold * self.Properties.StateMachines.AI.Idle.SentryArrivalThreshold;
-			if (distSq > threshold) then
+		-- If the event is completed then acquire the next one.
+		if (completedEvent) then
+			-- If that was the last event then exit the waypoints events state.
+			self.currentWaypointEvent = WaypointSettingsComponentRequestsBus.Event.GetNextEvent(self.currentWaypoint, self.entityId);
+			if (not self.currentWaypointEvent:IsValid()) then
+				self.performingWaypointEvents = false;
+			end
+		end
+	end
+	
+	-- This must be a separate check because the value of 'self.performingWaypointEvents' can be
+	-- changed above.
+	if (not self.performingWaypointEvents) then
+		if (self.sentry == true or self.lazySentry == true) then
+			-- If we're turning then reset the movement values so we don't start moving
+			-- in that direction once we've finished turning.
+			if (self.isTurningToFace == true) then
+				self:SetMovement(0.0, 0.0);
+			end
+			
+			-- If the A.I. is a sentry then stand in one place and occasionally turn.
+			-- If we're not already navigating then check we're a reasonable distance
+			-- from our sentry position.
+			if (not self:IsNavigating()) then
+				local pos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
+				local wpPos = TransformBus.Event.GetWorldTM(self.currentWaypoint):GetTranslation();
+				local distSq = (wpPos - pos):GetLengthSq();
+				local threshold = self.Properties.StateMachines.AI.Idle.SentryArrivalThreshold * self.Properties.StateMachines.AI.Idle.SentryArrivalThreshold;
+				if (distSq > threshold) then
+					self:TravelToCurrentWaypoint();
+				end
+			end
+			
+			if (self.sentry == true) then
+				-- Turn every so often.
+				-- We need to check again if we're navigating as the previous 'if' may have
+				-- started navigation.
+				if (not self:IsNavigating() and not self.isTurningToFace) then
+					if (self.reachedWaypoint == true) then
+						self.timeUntilSentryTurns = self.Properties.StateMachines.AI.Idle.SentryTurnRate;
+						self.reachedWaypoint = false;
+					end
+					
+					self.timeUntilSentryTurns = self.timeUntilSentryTurns - deltaTime;
+					if (self.timeUntilSentryTurns <= 0.0) then
+						local tm = TransformBus.Event.GetWorldTM(self.entityId);
+						local forward = tm:GetColumn(1):GetNormalized() * Transform.CreateRotationZ(self.NoTurnIdleAngle + 0.01);
+						--self:TravelToNavMarker(tm:GetTranslation() + forward);
+						forward.z = 0.0;
+						forward = forward:GetNormalized();
+						self:SetMovement(forward.x, forward.y);
+						
+						self.timeUntilSentryTurns = self.Properties.StateMachines.AI.Idle.SentryTurnRate;
+					end
+				end
+			end
+		else
+			-- If not a sentry then patrol through the given waypoints.
+			if (self.justFinishedTurning == true or self.justEnabled == true) then
+				self:TravelToCurrentWaypoint();
+				self.justFinishedTurning = false;
+			elseif (self.reachedWaypoint == true) then
+				self:TravelToNextWaypoint();
+			elseif (self.pathfindingFailed == true and not self.isTurningToFace) then
+				-- This case covers the possibility that the navigation system failed to find a
+				-- path to the desired waypoint.
+				-- It seems the navigation system can occasionally respond with "no path found" yet
+				-- succeed when told to try again. As a result, it's difficult to implement a "remove
+				-- bad waypoints" system when the waypoints may actually be good but something goes
+				-- goes awry in the pathfinding system.
+				-- As a result, we'll just try to travel to the same waypoint again.
 				self:TravelToCurrentWaypoint();
 			end
 		end
-		
-		if (self.sentry == true) then
-			-- Turn every so often.
-			-- We need to check again if we're navigating as the previous 'if' may have
-			-- started navigation.
-			if (not self:IsNavigating() and not self.isTurningToFace) then
-				if (self.reachedWaypoint == true) then
-					self.timeUntilSentryTurns = self.Properties.StateMachines.AI.Idle.SentryTurnRate;
-					self.reachedWaypoint = false;
-				end
-				
-				self.timeUntilSentryTurns = self.timeUntilSentryTurns - deltaTime;
-				if (self.timeUntilSentryTurns <= 0.0) then
-					local tm = TransformBus.Event.GetWorldTM(self.entityId);
-					local forward = tm:GetColumn(1):GetNormalized() * Transform.CreateRotationZ(self.NoTurnIdleAngle + 0.01);
-					self:TravelToNavMarker(tm:GetTranslation() + forward);
-					
-					self.timeUntilSentryTurns = self.Properties.StateMachines.AI.Idle.SentryTurnRate;
-				end
-			end
-		end
-	else
-		-- If not a sentry then patrol through the given waypoints.
-		if (self.justFinishedTurning == true or self.justEnabled == true) then
-			self:TravelToCurrentWaypoint();
-			self.justFinishedTurning = false;
-		elseif (self.reachedWaypoint == true) then
-			self:TravelToNextWaypoint();
-		elseif (self.pathfindingFailed == true and not self.isTurningToFace) then
-			-- This case covers the possibility that the navigation system failed to find a
-			-- path to the desired waypoint.
-			-- It seems the navigation system can occasionally respond with "no path found" yet
-			-- succeed when told to try again. As a result, it's difficult to implement a "remove
-			-- bad waypoints" system when the waypoints may actually be good but something goes
-			-- goes awry in the pathfinding system.
-			-- As a result, we'll just try to travel to the same waypoint again.
-			self:TravelToCurrentWaypoint();
-		end
 	end
+end
+
+function aicontroller:PlayAnim(name, looping)
+	local params = PlayAnimParams();
+	params.animName = name;
+	params.loop = looping;
+	GameplayNotificationBus.Event.OnEventBegin(self.setIdleAnimEventId, params);
 end
 
 function aicontroller:CancelNavigation()
@@ -981,6 +1194,7 @@ function aicontroller:CancelNavigation()
 		-- the temporary variable.
 		local id = self.requestId;
 		self.requestId = 0;
+		self:OnTraversalCancelled(id);
 		NavigationComponentRequestBus.Event.Stop(self.entityId, id);
 	end
 end
@@ -1006,9 +1220,9 @@ function aicontroller:IsEnemyClose()
 	if (not playerId:IsValid()) then
 		return false;
 	end
-	local charHeight = Vector3(0.0, 0.0, 0.0);
-	local playerPos = TransformBus.Event.GetWorldTM(playerId):GetTranslation() + charHeight;
-	local aiPos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation() + charHeight;
+	local playerPos = StarterGameUtility.GetJointWorldTM(playerId, self.playerSkeletonNS..utilities.Joint_Torso_Upper):GetTranslation();
+	local aiTM = StarterGameUtility.GetJointWorldTM(self.entityId, self.aiSkeletonNS..utilities.Joint_Head);
+	local aiPos = aiTM:GetTranslation();
 	local aiToPlayer = playerPos - aiPos;
 	local distSq = aiToPlayer:GetLengthSq();
 	
@@ -1018,7 +1232,7 @@ function aicontroller:IsEnemyClose()
 	-- Otherwise, check if the player is within the broad suspicion range.
 	elseif (distSq <= utilities.Sqr(self.Properties.StateMachines.AI.Suspicious.SuspicionRange)) then
 		-- The player is nearby. Now check if they're in front of the A.I.
-		local aiForward = TransformBus.Event.GetWorldTM(self.entityId):GetColumn(1);
+		local aiForward = aiTM:GetColumn(1);
 		aiForward.z = 0.0;
 		aiForward:Normalize();
 		local aiToPlayerFlat = aiToPlayer;
@@ -1054,10 +1268,9 @@ end
 
 function aicontroller:HasLoSOfPlayer(range)
 	local hasLoS = false;
-	local charHeight = Vector3(0.0, 0.0, 1.5);
 	local playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
-	local playerPos = TransformBus.Event.GetWorldTM(playerId):GetTranslation() + charHeight;
-	local aiPos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation() + charHeight;
+	local playerPos = StarterGameUtility.GetJointWorldTM(playerId, self.playerSkeletonNS..utilities.Joint_Torso_Upper):GetTranslation();
+	local aiPos = StarterGameUtility.GetJointWorldTM(self.entityId, self.aiSkeletonNS..utilities.Joint_Head):GetTranslation();
 	local aiToPlayer = playerPos - aiPos;
 	local mask = PhysicalEntityTypes.Static + PhysicalEntityTypes.Dynamic + PhysicalEntityTypes.Living + PhysicalEntityTypes.Terrain;
 	local dir = aiToPlayer:GetNormalized();
@@ -1073,8 +1286,9 @@ function aicontroller:HasLoSOfPlayer(range)
 	rayCastConfig.piercesSurfacesGreaterThan = 13;
 	local hits = PhysicsSystemRequestBus.Broadcast.RayCast(rayCastConfig);
 	if (hits:HasBlockingHit()) then
+		local hitId = hits:GetBlockingHit().entityId;
 		-- Make sure that it was the player the raycast hit...
-		if (hits:GetBlockingHit().entityId == playerId) then
+		if (hitId == playerId) then
 			-- ... if it was then the A.I. has L.o.S. of the player.
 			hasLoS = true;
 		end
@@ -1092,6 +1306,8 @@ function aicontroller:UpdateSuspicions(deltaTime)
 			self:CancelNavigation();
 			self:SuspiciousReactionToSound();
 			
+			self.isFirstSuspiciousSound = false;
+			
 			-- This is ill-advised but it means I don't have to duplicate the 'turning and
 			-- navigating' code. It should also get reset within the if statement below so there's
 			-- a very small window for anything to go wrong.
@@ -1100,7 +1316,7 @@ function aicontroller:UpdateSuspicions(deltaTime)
 	end
 	
 	if (self.justBecomeSuspicious == true) then
-		self:TurnTowardsSuspiciousLocation();
+		self:TurnTowardsLocation(self.suspiciousLocation);
 		
 		-- Perhaps move this to be later in the state so the A.I. will look at
 		-- the location for a second or two before moving towards it.
@@ -1142,6 +1358,11 @@ function aicontroller:UpdateSuspicions(deltaTime)
 			self.navCancelled = false;
 		elseif (self.reachedWaypoint == true) then
 			utilities.LogIf(self, "Suspicious: reached waypoint");
+			-- Play a 'looking around' animation.
+			if (self.timeBeforeSuspicionReset >= self.Properties.StateMachines.AI.Suspicious.DurationOfSuspicion) then
+				self:PlayAnim("IdleAmbientLookSuspicious", false);
+			end
+			
 			-- If the A.I. has reached the waypoint and is still in the suspicion state
 			-- then it means it hasn't come close enough to the target to enter combat.
 			-- Therefore we can now count down before we decide to return to patrolling.
@@ -1163,8 +1384,8 @@ function aicontroller:UpdateSuspicions(deltaTime)
 	
 end
 
-function aicontroller:TurnTowardsSuspiciousLocation()
-	local a = self.suspiciousLocation;
+function aicontroller:TurnTowardsLocation(location)
+	local a = location;
 	local b = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
 	if (a == nil) then
 		Debug.Log("Suspicious Location is nil");
@@ -1205,7 +1426,7 @@ function aicontroller:WantsToFight(range)
 	-- If a nearby ally has just called for help then assist them.
 	if (self.shouldAssistAlly:IsValid()) then
 		-- Get the ally's suspicious location.
-		GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(self.shouldAssistAlly, self.Properties.Events.RequestSuspiciousLoc), self.entityId, "float");
+		GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(self.shouldAssistAlly, self.Properties.Events.RequestSuspiciousLoc, "float"), self.entityId);
 		
 		self.shouldAssistAlly = EntityId();
 		return true;
@@ -1221,14 +1442,14 @@ function aicontroller:WantsToFight(range)
 	if (not playerId:IsValid()) then
 		return false;
 	end
-	local playerPos = TransformBus.Event.GetWorldTM(playerId):GetTranslation();
-	local aiPos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
+	local playerPos = StarterGameUtility.GetJointWorldTM(playerId, self.playerSkeletonNS..utilities.Joint_Torso_Upper):GetTranslation();
+	local aiTM = StarterGameUtility.GetJointWorldTM(self.entityId, self.aiSkeletonNS..utilities.Joint_Head);
+	local aiPos = aiTM:GetTranslation();
 	local aiToPlayer = playerPos - aiPos;
 	local distSq = aiToPlayer:GetLengthSq();
-	
 	-- If the player is in range then check if they're also in front of the A.I.
 	if (distSq <= utilities.Sqr(range)) then
-		local aiForward = TransformBus.Event.GetWorldTM(self.entityId):GetColumn(1);
+		local aiForward = aiTM:GetColumn(1);
 		aiForward.z = 0.0;
 		aiForward:Normalize();
 		aiToPlayer.z = 0.0;
@@ -1292,8 +1513,15 @@ function aicontroller:UpdateCombat(deltaTime)
 		self.justFinishedTurning = false;
 	end
 	
+	local closeEnoughToJuke = self:UpdateGoldilocksPositioning(deltaTime);
+	-- Change movement speed if finished chasing.
+	if (not self:IsNavigating() and not self.isTurningToFace and self.isChasing) then
+		self.isChasing = false;
+		self:SetMoveSpeed(self.Properties.StateMachines.AI.Combat.MoveSpeed);
+	end
+	
 	-- If we're already inside the Goldilocks range then do some juking.
-	if (self:UpdateGoldilocksPositioning(deltaTime)) then
+	if (closeEnoughToJuke) then
 		-- If we're already moving then don't do anything.
 		-- If we AREN'T moving then wait for a randomised period of time before
 		-- moving to a randomised position (ensuring that position is also within
@@ -1307,7 +1535,7 @@ function aicontroller:UpdateCombat(deltaTime)
 			if (self.timeBeforeNextJuke <= 0.0) then
 				-- Calculate a position to juke to.
 				-- 1. Choose left or right.
-				local left = StarterGameUtility.randomF(0.0, 1.0) > 0.5;
+				local left = math.random(0.0, 1.0) > 0.5;
 				-- 2. Choose random distance.
 				local variance = utilities.RandomPlusMinus(self.Properties.StateMachines.AI.Combat.Juking.JukeDistanceVariance, 0.5);
 				local jukeDist = self.Properties.StateMachines.AI.Combat.Juking.JukeDistance + variance;
@@ -1327,7 +1555,7 @@ function aicontroller:UpdateCombat(deltaTime)
 				--		within the Goldilocks range.
 				local jukePosToPlayer = (jukePos - playerPos):GetNormalized();
 				local minRange, maxRange = self:GetGoldilocksMinMax();
-				jukePos = playerPos + (jukePosToPlayer * StarterGameUtility.randomF(minRange, maxRange));
+				jukePos = playerPos + (jukePosToPlayer * ((math.random() * (maxRange - minRange)) + minRange));
 				
 				-- 5. Move to it.
 				self:TravelToNavMarker(jukePos);
@@ -1339,21 +1567,6 @@ function aicontroller:UpdateCombat(deltaTime)
 			end
 		end
 	end
-	
-	-- TEMPORARILY REMOVED vvvvvvvvvvvvvvvvv
-	-- While at a location (i.e. after juking) turn to look at the enemy.
-	if (false) then
-	if (not self:IsNavigating() and not self.isTurningToFace) then
-		local pos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
-		local toTarget = (self.suspiciousLocation - pos):GetNormalized();
-		local forward = TransformBus.Event.GetWorldTM(self.entityId):GetColumn(1):GetNormalized();
-		local angle = Math.ArcCos(forward:Dot(toTarget));
-		if (angle >= self.Properties.StateMachines.AI.Combat.AngleBeforeReCentering) then
-			self:TurnTowardsSuspiciousLocation();
-		end
-	end
-	end
-	-- TEMPORARILY REMOVED ^^^^^^^^^^^^^^^^^
 end
 
 function aicontroller:CalculateTimeUntilNextShot(firstShot)
@@ -1431,9 +1644,14 @@ function aicontroller:UpdateGoldilocksPositioning(deltaTime)
 		-- Chase!
 		elseif (dist > maxRange) then
 			offsetDist = (dist - maxRange);
+			self.isChasing = true;
 		end
 		local offset = dir:GetNormalized() * offsetDist;
 		local targetPos = pos + offset;
+		
+		if (self.isChasing) then
+			self:SetMoveSpeed(self.Properties.StateMachines.AI.Combat.MoveSpeedChasing);
+		end
 		
 		self:TravelToNavMarker(targetPos);
 		self.isJuking = false;
@@ -1451,10 +1669,8 @@ end
 function aicontroller:HasLostSightOfTarget()
 	local isBlind = true;
 	local playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
-	local playerPos = TransformBus.Event.GetWorldTM(playerId):GetTranslation();
-	playerPos.z = playerPos.z + self.PlayerHeight;	-- the player's position is at his feet
-	local aiPos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
-	aiPos.z = aiPos.z + self.PlayerHeight;	-- the A.I.'s position is at his feet
+	local playerPos = StarterGameUtility.GetJointWorldTM(playerId, self.playerSkeletonNS..utilities.Joint_Torso_Upper):GetTranslation();
+	local aiPos = StarterGameUtility.GetJointWorldTM(self.entityId, self.aiSkeletonNS..utilities.Joint_Head):GetTranslation();
 	local aiToPlayer = playerPos - aiPos;
 	local distSq = aiToPlayer:GetLengthSq();
 	
@@ -1501,7 +1717,26 @@ function aicontroller:NewSoundIsSuspicious()
 		return false;
 	end
 	
-	-- Basically, as it stands, any sound will make the A.I. suspicious.
+	local oldSound = self.soundHeard;
+	local newSound = self.soundHeardJustNow;
+	if (not self.isFirstSuspiciousSound and oldSound ~= nil) then
+		if (newSound.type == oldSound.type) then
+			-- Ignore the new sound if it's approximately the same (origin, direction, etc.).
+			local pos = TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
+			local dirToOld = (pos - oldSound.origin):GetNormalized();
+			local dirToNew = (pos - newSound.origin):GetNormalized();
+			local angleInRads = Math.ArcCos(dirToOld:Dot(dirToNew));
+			--Debug.Log("Angle: " .. tostring(angleInRads) .. ", " .. tostring(self.Properties.SoundResponses.SimilarRejectionAngle));
+			--Debug.Log("Distance: " .. tostring((oldSound.origin - newSound.origin):GetLengthSq()) .. ", " .. tostring(self.Properties.SoundResponses.SimilarRejectionDistanceSq));
+			if (angleInRads < self.Properties.SoundResponses.SimilarRejectionAngle) then
+				return false;
+			elseif ((oldSound.origin - newSound.origin):GetLengthSq() < self.Properties.SoundResponses.SimilarRejectionDistanceSq) then
+				return false;
+			end
+		end
+	end
+	
+	-- If the sound hasn't been rejected by any checks in the function, be suspicious of it.
 	return true;
 end
 
@@ -1578,25 +1813,31 @@ function aicontroller:SetMoveSpeed(speed)
 	self.moveSpeed = speed / 5.6;
 end
 
-function aicontroller:OnPathFoundFirstPoint(navRequestId, firstPos)
+function aicontroller:OnPathFoundFirstPoint(navRequestId, path)
 	--Debug.Log("Navigation Path Found: First pos = " .. tostring(firstPos));
 	self.searchingForPath = false;
-	-- If we're already moving then we can turn while continuing to move towards the destination.
-	if (self:IsMoving()) then
-		return true;
-	end
 	
-	-- If we're not already moving then we need to stop it and perform an idle turn first.
-	local dir = firstPos - TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
-	local isFacing = self:IsFacing(dir);
-	if (not isFacing) then
-		--Debug.Log("Navigation path found: not close enough: " .. tostring(firstPos) .. ". Turning to: " .. tostring(dir));
-		self:SetTurning(true, "turning towards first pathing point");
-		self:SetMovement(dir.x, dir.y);
-	else
-		self:SetTurning(false, "already facing first pathing point");
-	end
-	return isFacing;
+	self.navPath = path;
+	VisualisePathSystemRequestBus.Broadcast.AddPath(self.entityId, path);
+	self.cancelSentByOnPathFound = true;
+	return false;
+	
+	---- If we're already moving then we can turn while continuing to move towards the destination.
+	--if (self:IsMoving()) then
+	--	return true;
+	--end
+	
+	---- If we're not already moving then we need to stop it and perform an idle turn first.
+	--local dir = firstPos - TransformBus.Event.GetWorldTM(self.entityId):GetTranslation();
+	--local isFacing = self:IsFacing(dir);
+	--if (not isFacing) then
+	--	--Debug.Log("Navigation path found: not close enough: " .. tostring(firstPos) .. ". Turning to: " .. tostring(dir));
+	--	self:SetTurning(true, "turning towards first pathing point");
+	--	self:SetMovement(dir.x, dir.y);
+	--else
+	--	self:SetTurning(false, "already facing first pathing point");
+	--end
+	--return isFacing;
 end
 
 function aicontroller:OnTraversalStarted(navRequestId)
@@ -1610,12 +1851,20 @@ end
 function aicontroller:OnTraversalComplete(navRequestId)
 	--Debug.Log("Navigation Complete " .. tostring(navRequestId));
 	self.requestId = 0;
+	self.navPath = nil;
+	VisualisePathSystemRequestBus.Broadcast.ClearPath(self.entityId);
 	self.reachedWaypoint = true;
 	self:SetMovement(0.0, 0.0);
 end
 
 function aicontroller:OnTraversalCancelled(navRequestId)
 	--Debug.Log("Navigation Cancelled " .. tostring(self.requestId));
+	-- Ignore the traversal cancellation if it occured because we rejected allowing the navigation
+	-- system to push us along the path.
+	if (self.cancelSentByOnPathFound) then
+		self.cancelSentByOnPathFound = false;
+		return;
+	end
 	
 	self.searchingForPath = false;
 	self.navCancelled = true;
@@ -1634,6 +1883,8 @@ function aicontroller:OnTraversalCancelled(navRequestId)
 	
 	-- Reset the request ID as we don't want to store an invalid ID.
 	self.requestId = 0;
+	self.navPath = nil;
+	VisualisePathSystemRequestBus.Broadcast.ClearPath(self.entityId);
 end
 
 function aicontroller:TravelToFirstWaypoint()
@@ -1657,7 +1908,7 @@ end
 
 function aicontroller:TravelToNavMarker(pos)
 	local closestPoint = Vector3(0.0);
-	local success = StarterGameUtility.GetClosestPointInNavMesh(pos, closestPoint);
+	local success = StarterGameAIUtility.GetClosestPointInNavMesh(pos, closestPoint);
 	if (success) then
 		pos = closestPoint;
 	end
@@ -1675,6 +1926,7 @@ end
 function aicontroller:StartNavigation(dest)
 	if (dest ~= nil and dest:IsValid()) then
 		self.requestId = NavigationComponentRequestBus.Event.FindPathToEntity(self.entityId, dest);
+		self.navPath = nil;
 		self.searchingForPath = true;
 		self.reachedWaypoint = false;
 		self.navCancelled = false;
@@ -1711,4 +1963,8 @@ function aicontroller:SetTurning(isTurning, reason)
 	end
 end
 
+function aicontroller:SetStrafeFacing()
+	self.setStrafeFacingId = GameplayNotificationId(self.entityId, "SetStrafeFacing", "float");
+	GameplayNotificationBus.Event.OnEventBegin(self.setStrafeFacingId, self.aimDirection);
+end
 return aicontroller;

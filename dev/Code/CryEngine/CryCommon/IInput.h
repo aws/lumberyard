@@ -24,6 +24,7 @@
 
 #include <platform.h>
 #include <CryName.h>
+#include <AzCore/EBus/EBus.h>
 
 struct ISystem;
 
@@ -1549,7 +1550,6 @@ struct IInput
     virtual INaturalPointInput* GetNaturalPointInput() = 0;
 
     //////////////////////////////////////////////////////////////////////////
-    // SDL
     virtual bool GrabInput(bool bGrab) = 0;
 
     //////////////////////////////////////////////////////////////////////////
@@ -1559,7 +1559,25 @@ struct IInput
     // </interfuscator:shuffle>
 };
 
+class CryLegacyInputRequests
+    : public AZ::EBusTraits
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    //////////////////////////////////////////////////////////////////////////
 
+    //////////////////////////////////////////////////////////////////////////
+    // Creates and initializes a legacy IInput instance
+    virtual IInput* InitInput() = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Shuts down and destroys a legacy IInput instance
+    virtual void ShutdownInput(IInput* input) = 0;
+};
+using CryLegacyInputRequestBus = AZ::EBus<CryLegacyInputRequests>;
 
 #ifdef __cplusplus
 extern "C" {

@@ -15,6 +15,7 @@
 
 #include <jni.h>
 #include <android/asset_manager.h>
+#include <android/native_window.h>
 
 
 namespace AZ
@@ -66,6 +67,21 @@ namespace AZ
             //! Searches application storage and the APK for bootstrap.cfg.  Will return nullptr
             //! if bootstrap.cfg is not found.
             const char* FindAssetsDirectory();
+
+            //! Calls into Java to show the splash screen on the main UI (Java) thread
+            void ShowSplashScreen();
+
+            //! Calls into Java to dismiss the splash screen on the main UI (Java) thread
+            void DismissSplashScreen();
+
+            //! Get the native android window
+            ANativeWindow* GetWindow();
+
+            //! Query the pixel dimensions of the window
+            //! \param[out] widthPixels Returns the pixel width of the window
+            //! \param[out] heightPixels Returns the pixel height of the window
+            //! \return True if successful, False otherwise
+            bool GetWindowSize(int& widthPixels, int& heightPixels);
 
 
             // ----

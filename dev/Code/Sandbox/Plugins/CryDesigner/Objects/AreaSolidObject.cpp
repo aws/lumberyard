@@ -38,7 +38,6 @@ public:
         : QWidget(pParent)
         , ui(new Ui::AreaSolidPanel)
     {
-        RESOURCEHANDLER_RECONSTRUCTOR;
         m_pAreaSolid = pSolid;
 
         ui->setupUi(this);
@@ -200,7 +199,7 @@ void AreaSolidObject::BeginEditParams(IEditor* ie, int flags)
     if (!m_pActivateEditAreaSolidPanel)
     {
         m_pActivateEditAreaSolidPanel = new AreaSolidPanel(this);
-        m_nActivateEditAreaSolidRollUpID = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, _T("Activate Edit Tool"), m_pActivateEditAreaSolidPanel, false);
+        m_nActivateEditAreaSolidRollUpID = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, tr("Activate Edit Tool"), m_pActivateEditAreaSolidPanel, false);
         if (GetModel()->IsEmpty())
         {
             m_pActivateEditAreaSolidPanel->GotoEditModeAsync();

@@ -83,7 +83,7 @@
   <customwidget>
    <class>CUiAnimViewNodesTreeWidget</class>
    <extends>QTreeWidget</extends>
-   <header>UiAnimViewNodes.h</header>
+   <header>Animation/UiAnimViewNodes.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

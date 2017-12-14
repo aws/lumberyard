@@ -69,7 +69,6 @@ namespace CommandSystem
         static bool ApplyMetaData(AZ::u32 objectId, const char* objectIdKeyword, AZStd::string metaDataString);
 
         static void GenerateNodeGroupMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
-        static void GenerateLODMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GeneratePhonemeMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GenerateAttachmentMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GenerateMotionExtractionMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);

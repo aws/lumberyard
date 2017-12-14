@@ -21,7 +21,6 @@
 #include "BaseLibraryItem.h"
 #include "BaseLibraryManager.h"
 #include "ISourceControl.h"
-#include "SourceControlAddDlg.h"
 #include "GameEngine.h"
 #include "QtUtilWin.h"
 #include <QThreadPool>
@@ -1120,6 +1119,10 @@ void CLayersListBox::StartFileAttributeUpdateJob(QString layerName, SCacheLayerA
         {
             request.layerPath = AZStd::string::format("%s\\%s%s", pEngine->GetLevelPath().toUtf8().data(), pEngine->GetLevelName().toUtf8().data(), pEngine->GetLevelExtension().toUtf8().data());
         }
+
+        char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
+        AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(request.layerPath.c_str(), resolvedPath, AZ_MAX_PATH_LEN);
+        request.layerPath = resolvedPath;
 
         m_layerRequestQueue.push(request);
         attribute.queuedRefresh = true;

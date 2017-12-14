@@ -16,7 +16,11 @@
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 
+{% if json_object.HasStdAfx %}
 #include "StdAfx.h"
+{% else %}
+#include "{{ json_object.namespace }}_precompiled.h"
+{% endif %}
 
 
 #include "AWS/ServiceAPI/{{ json_object.componentClass }}.h"

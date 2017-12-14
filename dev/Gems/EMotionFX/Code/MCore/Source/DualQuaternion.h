@@ -76,7 +76,7 @@ namespace MCore
          * @param rotation The rotation quaternion, which does not need to be normalized, unless you want this to be a normalized dual quaternion.
          * @param translation The translation vector.
          */
-        MCORE_INLINE DualQuaternion(const Quaternion& rotation, const Vector3& translation);
+        MCORE_INLINE DualQuaternion(const Quaternion& rotation, const AZ::Vector3& translation);
 
         /**
          * Set the real and dual part of the dual quaternion.
@@ -166,7 +166,7 @@ namespace MCore
          * @param pos The translation vector.
          * @note It is allowed to pass an un-normalized quaternion to the rotation parameter. This however will also result in a non-normalized dual quaternion.
          */
-        MCORE_INLINE void FromRotationTranslation(const Quaternion& rot, const Vector3& pos)    { *this = DualQuaternion::ConvertFromRotationTranslation(rot, pos); }
+        MCORE_INLINE void FromRotationTranslation(const Quaternion& rot, const AZ::Vector3& pos)    { *this = DualQuaternion::ConvertFromRotationTranslation(rot, pos); }
 
         /**
          * Convert this dual quaternion into a 4x4 matrix.
@@ -181,7 +181,7 @@ namespace MCore
          * @result The transformed point.
          * @note If you want to transform a vector instead of a point, please use the TransformVector method.
          */
-        MCORE_INLINE Vector3 TransformPoint(const Vector3& point) const;
+        MCORE_INLINE AZ::Vector3 TransformPoint(const AZ::Vector3& point) const;
 
         /**
          * Transform a 3D vector with this dual quaternion.
@@ -192,7 +192,7 @@ namespace MCore
          * @param v The input vector.
          * @result The transformed vector.
          */
-        MCORE_INLINE Vector3 TransformVector(const Vector3& v) const;
+        MCORE_INLINE AZ::Vector3 TransformVector(const AZ::Vector3& v) const;
 
         /**
          * Extract the rotation and translation from this dual quaternion.
@@ -201,7 +201,7 @@ namespace MCore
          * @param outRot A pointer to the quaternion in which we will store the output rotation.
          * @param outPos A pointer to the vector in which we will store the output translation.
          */
-        void ToRotationTranslation(Quaternion* outRot, Vector3* outPos) const;
+        void ToRotationTranslation(Quaternion* outRot, AZ::Vector3* outPos) const;
 
         /**
          * Extract the rotation and translation from this dual normalized quaternion.
@@ -210,7 +210,7 @@ namespace MCore
          * @param outRot A pointer to the quaternion in which we will store the output rotation.
          * @param outPos A pointer to the vector in which we will store the output translation.
          */
-        void NormalizedToRotationTranslation(Quaternion* outRot, Vector3* outPos) const;
+        void NormalizedToRotationTranslation(Quaternion* outRot, AZ::Vector3* outPos) const;
 
         /**
          * Convert a matrix into a quaternion.
@@ -228,7 +228,7 @@ namespace MCore
          * @result A dual quaternion representing the same rotation and translation.
          * @note If your input quaternion is not normalized, then the dual quaternion will also not be normalized.
          */
-        static DualQuaternion ConvertFromRotationTranslation(const Quaternion& rotation, const Vector3& translation);
+        static DualQuaternion ConvertFromRotationTranslation(const Quaternion& rotation, const AZ::Vector3& translation);
 
         // operators
         MCORE_INLINE const DualQuaternion&  operator=(const Matrix& m)                          { FromMatrix(m); return *this; }

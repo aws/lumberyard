@@ -7,7 +7,6 @@
     "platform": {
         "win_x64_vs2013": {
             "includes": [
-                "include/ly_handler",
                 "include/vs2013",
                 "include/vs2013/third_party/mini_chromium/mini_chromium/"
             ],
@@ -29,7 +28,6 @@
         "win_x64_vs2015": {
             "includes": [
                 "include",
-                "include/ly_handler",
                 "include/third_party/mini_chromium/mini_chromium/"
             ],
             "libpath_debug": [

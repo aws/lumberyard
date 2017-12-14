@@ -55,8 +55,6 @@ namespace Audio
         eAMRT_INIT_AUDIO_IMPL           = BIT(0),
         eAMRT_RELEASE_AUDIO_IMPL        = BIT(1),
         eAMRT_RESERVE_AUDIO_OBJECT_ID   = BIT(2),
-        eAMRT_ADD_REQUEST_LISTENER      = BIT(3),
-        eAMRT_REMOVE_REQUEST_LISTENER   = BIT(4),
         eAMRT_CREATE_SOURCE             = BIT(5),
         eAMRT_DESTROY_SOURCE            = BIT(6),
         eAMRT_PARSE_CONTROLS_DATA       = BIT(7),
@@ -221,44 +219,6 @@ namespace Audio
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     template<>
-    struct SAudioManagerRequestData<eAMRT_ADD_REQUEST_LISTENER>
-        : public SAudioManagerRequestDataBase
-    {
-        SAudioManagerRequestData(const void* const pPassedObjectToListenTo, AudioRequestCallbackType passedFunc, EAudioRequestType passedRequestType, TATLEnumFlagsType passedSpecificRequestMask)
-            : SAudioManagerRequestDataBase(eAMRT_ADD_REQUEST_LISTENER)
-            , pObjectToListenTo(pPassedObjectToListenTo)
-            , func(passedFunc)
-            , requestType(passedRequestType)
-            , specificRequestMask(passedSpecificRequestMask)
-        {}
-
-        ~SAudioManagerRequestData<eAMRT_ADD_REQUEST_LISTENER>()override {}
-
-        const void* const pObjectToListenTo;
-        AudioRequestCallbackType func;
-        const EAudioRequestType requestType;
-        const TATLEnumFlagsType specificRequestMask;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    template<>
-    struct SAudioManagerRequestData<eAMRT_REMOVE_REQUEST_LISTENER>
-        : public SAudioManagerRequestDataBase
-    {
-        SAudioManagerRequestData(const void* const pPassedObjectToListenTo, AudioRequestCallbackType passedFunc)
-            : SAudioManagerRequestDataBase(eAMRT_REMOVE_REQUEST_LISTENER)
-            , pObjectToListenTo(pPassedObjectToListenTo)
-            , func(passedFunc)
-        {}
-
-        ~SAudioManagerRequestData<eAMRT_REMOVE_REQUEST_LISTENER>()override {}
-
-        const void* const pObjectToListenTo;
-        AudioRequestCallbackType func;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    template<>
     struct SAudioManagerRequestData<eAMRT_CREATE_SOURCE>
         : public SAudioManagerRequestDataBase
     {
@@ -403,14 +363,18 @@ namespace Audio
     struct SAudioManagerRequestData<eAMRT_REFRESH_AUDIO_SYSTEM>
         : public SAudioManagerRequestDataBase
     {
-        SAudioManagerRequestData(const char* const sPassedLevelName)
+        SAudioManagerRequestData(const char* const controlsPath, const char* const levelName, TAudioPreloadRequestID preloadId)
             : SAudioManagerRequestDataBase(eAMRT_REFRESH_AUDIO_SYSTEM)
-            , sLevelName(sPassedLevelName)
+            , m_controlsPath(controlsPath)
+            , m_levelName(levelName)
+            , m_levelPreloadId(preloadId)
         {}
 
         ~SAudioManagerRequestData<eAMRT_REFRESH_AUDIO_SYSTEM>()override {}
 
-        const char* const sLevelName;
+        const char* const m_controlsPath;
+        const char* const m_levelName;
+        const TAudioPreloadRequestID m_levelPreloadId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -962,6 +926,7 @@ namespace Audio
         virtual void GetInfo(SAudioSystemInfo& rAudioSystemInfo) = 0;
         virtual const char* GetControlsPath() const = 0;
         virtual void UpdateControlsPath() = 0;
+        virtual void RefreshAudioSystem(const char* const levelName) = 0;
 
         virtual IAudioProxy* GetFreeAudioProxy() = 0;
         virtual void FreeAudioProxy(IAudioProxy* const pIAudioProxy) = 0;

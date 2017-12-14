@@ -14,6 +14,7 @@
 #include "stdafx.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CTimeRangeKeyUIControls
@@ -35,9 +36,9 @@ public:
         AddVariable(mv_table, mv_bLoop, "Loop");
         mv_timeScale->SetLimits(0.001f, 100.f);
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_TimeRanges;
+        return paramType == AnimParamType::TimeRanges;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -68,7 +69,7 @@ bool CTimeRangeKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_TimeRanges)
+        if (paramType == AnimParamType::TimeRanges)
         {
             ICharacterKey timeRangeKey;
             keyHandle.GetKey(&timeRangeKey);
@@ -99,7 +100,7 @@ void CTimeRangeKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_TimeRanges)
+        if (paramType == AnimParamType::TimeRanges)
         {
             ITimeRangeKey timeRangeKey;
             keyHandle.GetKey(&timeRangeKey);

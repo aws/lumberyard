@@ -34,5 +34,5 @@ public:
 
     void Enter() override;
 
-    static void SelectConnectedPolygons(CD::SMainContext& mc);
+    static void SelectConnectedPolygons(const CD::SMainContext& mc);
 };

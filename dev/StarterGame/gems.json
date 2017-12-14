@@ -2,6 +2,12 @@
     "GemListFormatVersion": 2,
     "Gems": [
         {
+            "Path": "Gems/EMotionFX",
+            "Uuid": "044a63ea67d04479aa5daf62ded9d9ca",
+            "Version": "0.1.0",
+            "_comment": "EMotionFX"
+        },
+        {
             "Path": "Gems/AudioAnimationEvents",
             "Uuid": "0549200795a94b7f902727db81d5d6d8",
             "Version": "0.1.0",
@@ -40,7 +46,7 @@
         {
             "Path": "Gems/StarterGameGem",
             "Uuid": "5c539192ddda40aaa2e92eb71f8e3170",
-            "Version": "0.1.0",
+            "Version": "1.12.0",
             "_comment": "StarterGameGem"
         },
         {
@@ -48,6 +54,12 @@
             "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
             "Version": "0.1.0",
             "_comment": "UiBasics"
+        },
+        {
+            "Path": "Gems/SceneProcessing",
+            "Uuid": "7c2578f634df4345aca98d671e39b8ab",
+            "Version": "0.1.0",
+            "_comment": "SceneProcessing"
         },
         {
             "Path": "Gems/ScriptCanvas",
@@ -78,6 +90,18 @@
             "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
             "Version": "0.1.0",
             "_comment": "UserLoginDefault"
+        },
+        {
+            "Path": "Gems/ScriptCanvasDiagnosticLibrary",
+            "Uuid": "d969b997bb7f4342ba0b3eedc378025d",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasDiagnosticLibrary"
+        },
+        {
+            "Path": "Gems/ScriptCanvasDeveloper",
+            "Uuid": "f905c05883b94fd6bddc91052c3c5a86",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasDeveloperGem"
         },
         {
             "Path": "Gems/Camera",

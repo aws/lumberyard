@@ -1,0 +1,19 @@
+﻿<div>
+    <h2 class="setting">{{title}}</h2>
+    <div *ngIf="editable" class="prompt-config-input">
+        <input class="prompt-content form-control" type="text" [(ngModel)]="newPromptMessage" placeholder="Enter your prompt message here" />
+        <button class="btn l-primary basic-button add-button" (click)="addNewPromptMessage()" data-toggle="tooltip" data-placement="top" title="Add a new prompt message">Add</button>
+    </div>
+    <div *ngIf="promptContent && promptContent['messages']" class="prompt-config-input">
+        <div *ngFor="let promptMessage of promptContent['messages'] let i = index">
+            <input class="prompt-content form-control" type="text" [(ngModel)]="promptContent['messages'][i]['content']" (ngModelChange)="promptMessageChange($event, i)"/>
+            <i *ngIf="editable" class="fa fa-trash-o" aria-hidden="true" (click)="removePromptMessage(i)"></i>
+        </div>
+    </div>
+    <div *ngIf="showMaxAttempts">
+        <h2 class="setting">Maximum number of retries</h2>
+        <div class="prompt-config-input">
+            <input class="prompt-content form-control" type="number" [(ngModel)]="promptContent['maxAttempts']" />
+        </div>
+    </div>
+</div>

@@ -22,6 +22,7 @@
         ],
         "Include/GraphCanvas/Components":
         [
+            "Include/GraphCanvas/Components/EntitySaveDataBus.h",
             "Include/GraphCanvas/Components/GeometryBus.h",
             "Include/GraphCanvas/Components/GraphCanvasPropertyBus.h",
             "Include/GraphCanvas/Components/GridBus.h",
@@ -88,6 +89,7 @@
         "Include/GraphCanvas/Types":
         [
             "Include/GraphCanvas/Types/Endpoint.h",
+            "Include/GraphCanvas/Types/EntitySaveData.h",
             "Include/GraphCanvas/Types/SceneData.h",
             "Include/GraphCanvas/Types/SceneSerialization.h",
             "Include/GraphCanvas/Types/TranslationTypes.h",
@@ -131,7 +133,7 @@
             "Source/Components/SceneComponent.cpp",
             "Source/Components/SceneComponent.h",
             "Source/Components/StylingComponent.cpp",
-            "Source/Components/StylingComponent.h"
+            "Source/Components/StylingComponent.h"			
         ],
         "Source/Components/ColorPaletteManager":
         [
@@ -182,6 +184,12 @@
         ],
         "Source/Components/Nodes/Comment":
         [
+            "Source/Components/Nodes/Comment/BlockCommentNodeFrameComponent.cpp",
+            "Source/Components/Nodes/Comment/BlockCommentNodeFrameComponent.h",
+            "Source/Components/Nodes/Comment/BlockCommentNodeLayoutComponent.cpp",
+            "Source/Components/Nodes/Comment/BlockCommentNodeLayoutComponent.h",
+            "Source/Components/Nodes/Comment/CommentNodeFrameComponent.cpp",
+            "Source/Components/Nodes/Comment/CommentNodeFrameComponent.h",
             "Source/Components/Nodes/Comment/CommentNodeLayoutComponent.cpp",
             "Source/Components/Nodes/Comment/CommentNodeLayoutComponent.h",
             "Source/Components/Nodes/Comment/CommentNodeTextComponent.cpp",
@@ -262,8 +270,10 @@
         ],
         "Source/Widgets":
         [
+            "Source/Widgets/GraphCanvasCheckBox.cpp",
+            "Source/Widgets/GraphCanvasCheckBox.h",
             "Source/Widgets/GraphCanvasLabel.cpp",
-            "Source/Widgets/GraphCanvasLabel.h",
+            "Source/Widgets/GraphCanvasLabel.h",            
             "Source/Widgets/NodePropertyDisplayWidget.cpp",
             "Source/Widgets/NodePropertyDisplayWidget.h"
         ]

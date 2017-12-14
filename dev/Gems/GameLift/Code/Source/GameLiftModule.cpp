@@ -20,6 +20,10 @@
 #include <GameLift/Session/GameLiftServerSession.h>
 #include <GameLift/Session/GameLiftServerService.h>
 
+#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#include <AWSNativeSDKInit/AWSnativeSDKInit.h>
+#endif
+
 namespace GameLift
 {
     /**
@@ -29,7 +33,9 @@ namespace GameLift
     void GameLiftModule::OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams)
     {
         CryHooksModule::OnCrySystemInitialized(system, systemInitParams);
-
+#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+        AWSNativeSDKInit::InitializationManager::InitAwsApi();
+#endif
         // Can't interact with GridMate until CrySystem is fully initialized.
         GameLiftRequestBus::Handler::BusConnect();
     }
@@ -39,12 +45,17 @@ namespace GameLift
         // Need to shut down before GridMate.
         GameLiftRequestBus::Handler::BusDisconnect();
 
+
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
         StopClientService();
 #endif
 
 #if BUILD_GAMELIFT_SERVER
         StopServerService();
+#endif
+
+#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+        AWSNativeSDKInit::InitializationManager::Shutdown();
 #endif
 
         CryHooksModule::OnCrySystemShutdown(system);
@@ -55,7 +66,7 @@ namespace GameLift
 #if BUILD_GAMELIFT_SERVER
         return m_serverService != nullptr;
 #else
-        return false;   
+        return false;
 #endif
     }
 
@@ -92,17 +103,16 @@ namespace GameLift
         GridMate::IGridMate* gridMate = gEnv->pNetwork->GetGridMate();
         AZ_Assert(gridMate, "No gridMate instance");
 
+        // Reconnection logic requires stopping prior instance
+        if (m_clientService)
+        {
+            StopClientService();
+        }
+
+        m_clientService = GridMate::StartGridMateService<GridMate::GameLiftClientService>(gridMate, desc);
         if (!m_clientService)
         {
-            m_clientService = GridMate::StartGridMateService<GridMate::GameLiftClientService>(gridMate, desc);
-            if (!m_clientService)
-            {
-                CryLog("Failed to start GameLift client service.");
-            }
-        }
-        else
-        {
-            CryLog("GameLift Service is already started.");
+            CryLog("Failed to start GameLift client service.");
         }
 
         return m_clientService;

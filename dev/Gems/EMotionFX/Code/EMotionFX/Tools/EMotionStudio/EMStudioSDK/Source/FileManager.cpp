@@ -249,12 +249,12 @@ namespace EMStudio
     }
 
 
-    void FileManager::SourceFileChanged(AZStd::string assetId, AZStd::string scanFolder, AZ::Uuid sourceUuid)
+    void FileManager::SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUuid)
     {
         AZStd::string filename;
         AZStd::string assetSourcePath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
         AzFramework::StringFunc::AssetDatabasePath::Normalize(assetSourcePath);
-        AzFramework::StringFunc::AssetDatabasePath::Join(assetSourcePath.c_str(), assetId.c_str(), filename, true);
+        AzFramework::StringFunc::AssetDatabasePath::Join(assetSourcePath.c_str(), relativePath.c_str(), filename, true);
 
         // Skip re-loading the file, in case it not loaded currently.
         if (!IsSourceAssetLoaded(filename.c_str()))
@@ -355,7 +355,14 @@ namespace EMStudio
         // Update the default location for the load and save dialogs.
         AZStd::string folderPath;
         AzFramework::StringFunc::Path::GetFullPath(filename, folderPath);
-        outLastFolder = folderPath.c_str();
+
+        // Only update the last used folder in case a valid folder path got extracted from the filename.
+        // When canceling the file dialog, an empty filename will be passed to this function, the path extraction will fail.
+        // Don't update the last used folder in this case.
+        if (!folderPath.empty())
+        {
+            outLastFolder = folderPath.c_str();
+        }
     }
 
 
@@ -364,7 +371,7 @@ namespace EMStudio
         // In case we didn't open up the file dialog yet, default to the asset source folder.
         if (lastUsedFolder.isEmpty())
         {
-            const AZStd::string& assetSourceFolder = EMotionFX::GetEMotionFX().GetAssetCacheFolder();
+            const AZStd::string& assetSourceFolder = EMotionFX::GetEMotionFX().GetAssetSourceFolder();
             if (!assetSourceFolder.empty())
             {
                 return assetSourceFolder.c_str();
@@ -406,7 +413,9 @@ namespace EMStudio
 
     AZStd::string FileManager::LoadActorFileDialog(QWidget* parent)
     {
+        GetManager()->SetAvoidRendering(true);
         AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::ActorAsset>::Uuid(), false);
+        GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {
             return AZStd::string();
@@ -418,13 +427,16 @@ namespace EMStudio
 
     AZStd::vector<AZStd::string> FileManager::LoadActorsFileDialog(QWidget* parent)
     {
-        return SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::ActorAsset>::Uuid(), true);
+        GetManager()->SetAvoidRendering(true);
+        auto result = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::ActorAsset>::Uuid(), true);
+        GetManager()->SetAvoidRendering(false);
+        return result;
     }
 
 
     AZStd::string FileManager::SaveActorFileDialog(QWidget* parent)
     {
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -435,7 +447,7 @@ namespace EMStudio
                                                                     &selectedFilter,
                                                                     options).toUtf8().data();
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         UpdateLastUsedFolder(filename.c_str(), mLastActorFolder);
 
@@ -462,6 +474,8 @@ namespace EMStudio
 
     AZStd::string FileManager::LoadWorkspaceFileDialog(QWidget* parent)
     {
+        GetManager()->SetAvoidRendering(true);
+
         QFileDialog::Options options;
         QString selectedFilter;
         AZStd::string filename = QFileDialog::getOpenFileName(parent,                                                   // parent
@@ -472,13 +486,14 @@ namespace EMStudio
                                                               options).toUtf8().data();
 
         UpdateLastUsedFolder(filename.c_str(), mLastWorkspaceFolder);
+        GetManager()->SetAvoidRendering(false);
         return filename;
     }
 
 
     AZStd::string FileManager::SaveWorkspaceFileDialog(QWidget* parent)
     {
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -489,7 +504,7 @@ namespace EMStudio
                                                               &selectedFilter,
                                                               options).toUtf8().data();
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         if (IsFileInAssetCache(filename))
         {
@@ -521,7 +536,9 @@ namespace EMStudio
 
     AZStd::string FileManager::LoadMotionFileDialog(QWidget* parent)
     {
+        GetManager()->SetAvoidRendering(true);
         AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::MotionAsset>::Uuid(), false);
+        GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {
             return AZStd::string();
@@ -533,27 +550,31 @@ namespace EMStudio
 
     AZStd::vector<AZStd::string> FileManager::LoadMotionsFileDialog(QWidget* parent)
     {
-        return SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::MotionAsset>::Uuid(), true);
+        GetManager()->SetAvoidRendering(true);
+        auto result = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::MotionAsset>::Uuid(), true);
+        GetManager()->SetAvoidRendering(false);
+        return result;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     AZStd::string FileManager::LoadMotionSetFileDialog(QWidget* parent)
     {
+        GetManager()->SetAvoidRendering(true);
         AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::MotionSetAsset>::Uuid(), false);
+        GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {
             return AZStd::string();
         }
 
-        UpdateLastUsedFolder(filenames[0].c_str(), mLastMotionSetFolder);
         return filenames[0];
     }
 
 
     AZStd::string FileManager::SaveMotionSetFileDialog(QWidget* parent)
     {
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -564,7 +585,7 @@ namespace EMStudio
                                                               &selectedFilter,
                                                               options).toUtf8().data();
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         UpdateLastUsedFolder(filename.c_str(), mLastMotionSetFolder);
 
@@ -616,20 +637,21 @@ namespace EMStudio
     
     AZStd::string FileManager::LoadAnimGraphFileDialog(QWidget* parent)
     {
+        GetManager()->SetAvoidRendering(true);
         AZStd::vector<AZStd::string> filenames = SelectProductsOfType(AZ::AzTypeInfo<EMotionFX::Integration::AnimGraphAsset>::Uuid(), false);
+        GetManager()->SetAvoidRendering(false);
         if (filenames.empty())
         {
             return AZStd::string();
         }
         
-        UpdateLastUsedFolder(filenames[0].c_str(), mLastAnimGraphFolder);
         return filenames[0];
     }
 
 
     AZStd::string FileManager::SaveAnimGraphFileDialog(QWidget* parent)
     {
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -640,7 +662,7 @@ namespace EMStudio
                                                               &selectedFilter,
                                                               options).toUtf8().data();
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         UpdateLastUsedFolder(filename.c_str(), mLastAnimGraphFolder);
 
@@ -651,7 +673,7 @@ namespace EMStudio
     // load a node map file
     AZStd::string FileManager::LoadNodeMapFileDialog(QWidget* parent)
     {
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -662,7 +684,7 @@ namespace EMStudio
                                                                     &selectedFilter,
                                                                     options).toUtf8().data();
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         UpdateLastUsedFolder(filename.c_str(), mLastNodeMapFolder);
         return filename;
@@ -672,7 +694,7 @@ namespace EMStudio
     // save a node map file
     AZStd::string FileManager::SaveNodeMapFileDialog(QWidget* parent)
     {
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -683,7 +705,7 @@ namespace EMStudio
                                                                     &selectedFilter,
                                                                     options).toUtf8().data();
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         UpdateLastUsedFolder(filename.c_str(), mLastNodeMapFolder);
         return filename;
@@ -702,7 +724,7 @@ namespace EMStudio
             dir = EMotionFX::GetEMotionFX().GetAssetSourceFolder().c_str();
         }
 
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -713,7 +735,7 @@ namespace EMStudio
                                                               &selectedFilter,
                                                               options);
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         MCore::String filename;
         FromQtString(filenameString, &filename);
@@ -734,7 +756,7 @@ namespace EMStudio
             dir = EMotionFX::GetEMotionFX().GetAssetSourceFolder().c_str();
         }
 
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
 
         QFileDialog::Options options;
         QString selectedFilter;
@@ -745,7 +767,7 @@ namespace EMStudio
                                                         &selectedFilter,
                                                         options);
 
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         return FromQtString(filename);
     }

@@ -16,35 +16,10 @@
 
 #include "Objects/DecalObject.h"
 
-#include <ui_DecalObjectPanel.h>
-
 
 //////////////////////////////////////////////////////////////////////////
 // CDecalObjectTool dialog
 //////////////////////////////////////////////////////////////////////////
-
-
-class CDecalObjectTool
-    : public CEditTool
-{
-    Q_OBJECT
-public:
-    CDecalObjectTool();
-
-    virtual void Display(DisplayContext& dc) {};
-    virtual bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    virtual void SetUserData(const char* userKey, void* userData);
-
-protected:
-    virtual ~CDecalObjectTool();
-    void DeleteThis() { delete this; };
-
-private:
-    CDecalObject* m_pDecalObj;
-};
-
 
 //////////////////////////////////////////////////////////////////////////
 

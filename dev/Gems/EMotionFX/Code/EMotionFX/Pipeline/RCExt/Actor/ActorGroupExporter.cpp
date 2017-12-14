@@ -37,7 +37,6 @@ namespace EMotionFX
         ActorGroupExporter::ActorGroupExporter()
         {
             BindToCall(&ActorGroupExporter::ProcessContext);
-            ActivateBindings();
         }
 
         void ActorGroupExporter::Reflect(AZ::ReflectContext* context)
@@ -112,5 +111,5 @@ namespace EMotionFX
 
             return result.GetResult();
         }
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

@@ -141,14 +141,17 @@ CTerrainLighting::CTerrainLighting(QWidget* pParent)
     ui->DAWN_DUR_SLIDER->setMinimum(0);
     ui->DAWN_DUR_SLIDER->setMaximum(60);
 
+    // Maximum for dusk is 23:59
     ui->DUSK_SLIDER->setMinimum(0);
-    ui->DUSK_SLIDER->setMaximum(12 * 60);
+    ui->DUSK_SLIDER->setMaximum((12 * 60) - 1);
 
     ui->DUSK_DUR_SLIDER->setMinimum(0);
     ui->DUSK_DUR_SLIDER->setMaximum(60);
 
+    // Maximum time is 23:59 converted to a float scale
+    static const float maxTime = ((24 * 60) - 1) / 60.0f;
     ui->LIGHTING_TIME_OF_DAY->setMinimum(0);
-    ui->LIGHTING_TIME_OF_DAY->setMaximum(24 * SLIDER_SCALE);
+    ui->LIGHTING_TIME_OF_DAY->setMaximum(maxTime * SLIDER_SCALE);
 
     ui->DAWN_DUR_INFO->setMinimum(0);
     ui->DAWN_DUR_INFO->setMaximum(60);
@@ -472,6 +475,13 @@ void CTerrainLighting::GenerateMoonSunTransition(bool drawOntoDialog)
 
 void CTerrainLighting::OnHSlidersScroll()
 {
+    // Prevent lighting setting values from being reset on accident while
+    // the level is loading
+    if (!GetIEditor()->GetDocument()->IsDocumentReady())
+    {
+        return;
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // Update the document with the values from the sliders
     ////////////////////////////////////////////////////////////////////////
@@ -731,6 +741,13 @@ void CTerrainLighting::SetTime(const float fHour, const bool bforceSkyUpate)
 
 void CTerrainLighting::UpdateScrollBarsFromEdits()
 {
+    // Prevent lighting setting values from being reset on accident while
+    // the level is loading
+    if (!GetIEditor()->GetDocument()->IsDocumentReady())
+    {
+        return;
+    }
+
     float fTime = 0.0f;
     if (!convertTimeOfDayStringToTime(ui->TIME_OF_DAY_EDIT->text(), fTime))
     {

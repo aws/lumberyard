@@ -18,19 +18,13 @@
 #include "SettingsManagerHelpers.h"
 #include "EngineSettingsManager.h"
 
+#include <codecvt>
+#include <locale>
+#include <string>
+
 #if defined(AZ_PLATFORM_WINDOWS)
-#define KDAB_MAC_PORT 1
-#endif
-
-#ifdef KDAB_MAC_PORT
 #include <windows.h>
-#endif // KDAB_MAC_PORT
-
-#ifdef QT_VERSION
-#include <QProcess>
-#else
 #include <shellapi.h> //ShellExecuteW()
-
 #pragma comment(lib, "Shell32.lib")
 #endif
 
@@ -59,30 +53,22 @@ void SettingsManagerHelpers::ConvertUtf16ToUtf8(const wchar_t* src, CCharBuffer 
     {
         dst[0] = 0;
     }
-#ifdef KDAB_MAC_PORT
     else
     {
-        const int srclen = int(wcslen(src));
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        std::string utf8String = converter.to_bytes(src);
         const int dstsize = int(dst.getSizeInBytes());
-        const int byteCount = WideCharToMultiByte(
-                CP_UTF8,
-                0,
-                src,
-                srclen,
-                dst.getPtr(), // output buffer
-                dstsize - 1, // size of the output buffer in bytes
-                NULL,
-                NULL);
+        const int byteCount = int(utf8String.size());
         if (byteCount <= 0 || byteCount >= dstsize)
         {
             dst[0] = 0;
         }
         else
         {
+            std::strcpy(dst.getPtr(), utf8String.c_str());
             dst[byteCount] = 0;
         }
     }
-#endif // KDAB_MAC_PORT
 }
 
 
@@ -97,28 +83,22 @@ void SettingsManagerHelpers::ConvertUtf8ToUtf16(const char* src, CWCharBuffer ds
     {
         dst[0] = 0;
     }
-#ifdef KDAB_MAC_PORT
     else
     {
-        const int srclen = int(strlen(src));
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        std::wstring utf16String = converter.from_bytes(src);
         const int dstsize = int(dst.getSizeInElements());
-        const int charCount = MultiByteToWideChar(
-                CP_UTF8,
-                0,
-                src,
-                srclen,
-                dst.getPtr(), // output buffer
-                dstsize - 1); // size of the output buffer in characters
+        const int charCount = int(utf16String.size());
         if (charCount <= 0 || charCount >= dstsize)
         {
             dst[0] = 0;
         }
         else
         {
+            std::wcscpy(dst.getPtr(), utf16String.c_str());
             dst[charCount] = 0;
         }
     }
-#endif // KDAB_MAC_PORT
 }
 
 
@@ -141,7 +121,7 @@ void SettingsManagerHelpers::GetAsciiFilename(const wchar_t* wfilename, CCharBuf
         return;
     }
 
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
     // The path is non-ASCII unicode, so let's resort to short filenames (they are always ASCII-only, I hope)
     wchar_t shortW[MAX_PATH];
     const int bufferCharCount = sizeof(shortW) / sizeof(shortW[0]);
@@ -160,7 +140,9 @@ void SettingsManagerHelpers::GetAsciiFilename(const wchar_t* wfilename, CCharBuf
     }
 
     ConvertUtf16ToUtf8(shortW, buffer);
-#endif // KDAB_MAC_PORT
+#else
+    buffer[0] = 0;
+#endif
 }
 
 
@@ -249,12 +231,15 @@ bool CSettingsManagerTools::GetInstalledBuildPathAscii(const int index, Settings
 //////////////////////////////////////////////////////////////////////////
 static bool FileExists(const wchar_t* filename)
 {
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
     const DWORD dwAttrib = GetFileAttributesW(filename);
     return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 #else
-    return false;
-#endif // KDAB_MAC_PORT
+    char utf8Filename[MAX_PATH];
+    SettingsManagerHelpers::ConvertUtf16ToUtf8(filename, SettingsManagerHelpers::CCharBuffer(utf8Filename, sizeof(utf8Filename)));
+    struct stat buffer;
+    return (stat(utf8Filename, &buffer) == 0);
+#endif
 }
 
 
@@ -309,7 +294,10 @@ void CSettingsManagerTools::GetEditorExecutable(SettingsManagerHelpers::CWCharBu
 //////////////////////////////////////////////////////////////////////////
 bool CSettingsManagerTools::CallEditor(void** pEditorWindow, void* hParent, const char* pWindowName, const char* pFlag)
 {
-#ifdef KDAB_MAC_PORT
+#if !defined(AZ_PLATFORM_WINDOWS)
+    AZ_Assert(false, "CSettingsManagerTools::CallEditor is not supported on this platform!");
+    return false;
+#else
     HWND window = ::FindWindowA(NULL, pWindowName);
     if (window)
     {
@@ -317,7 +305,6 @@ bool CSettingsManagerTools::CallEditor(void** pEditorWindow, void* hParent, cons
         return true;
     }
     else
-#endif // KDAB_MAC_PORT
     {
         *pEditorWindow = 0;
 
@@ -330,25 +317,20 @@ bool CSettingsManagerTools::CallEditor(void** pEditorWindow, void* hParent, cons
 
         if (buffer[0] != '\0')
         {
-#ifdef QT_VERSION
-            if (QProcess::startDetached(QString::fromWCharArray(buffer), { QString::fromUtf8(pFlag) }))
-#else
             INT_PTR hIns = (INT_PTR)ShellExecuteW(NULL, L"open", buffer, wFlags.c_str(), NULL, SW_SHOWNORMAL);
             if (hIns > 32)
-#endif
             {
                 return true;
             }
             else
             {
-#ifdef KDAB_MAC_PORT
                 MessageBoxA(0, "Editor.exe was not found.\n\nPlease verify CryENGINE root path.", "Error", MB_ICONERROR | MB_OK);
-#endif // KDAB_MAC_PORT
             }
         }
     }
 
     return false;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -359,7 +341,7 @@ bool CSettingsManagerTools::Is64bitWindows()
 #if defined(_WIN64)
     // 64-bit programs run only on 64-bit Windows
     return true;
-#elif !defined(KDAB_MAC_PORT)
+#elif !defined(AZ_PLATFORM_WINDOWS)
     return false;
 #else
     // 32-bit programs run on both 32-bit and 64-bit Windows

@@ -60,7 +60,7 @@ public:
 };
 
 
-#define PROJECT_CONFIGURATOR_GEM_PAGE "Gems settings"
+#define PROJECT_CONFIGURATOR_GEM_PAGE "Gems Settings"
 
 
 /**
@@ -106,6 +106,7 @@ public:
 
     static CCryEditApp* instance();
 
+    bool GetRootEnginePath(QDir& rootEnginePath) const;
     void OnToggleSelection(bool hide);
     bool CreateLevel(bool& wasCreateLevelOperationCancelled);
     void LoadFile(QString fileName);
@@ -159,6 +160,7 @@ public:
     bool ToExternalToolSave();
     bool OpenProjectConfigurator(const char* startPage) const;
     bool OpenSetupAssistant() const;
+    QString GetRootEnginePath() const;
 
     // Overrides
     // ClassWizard generated virtual function overrides
@@ -225,7 +227,6 @@ public:
     void SelectExportPlatform();
     void OnRealtimeAutoSync();
     void OnRealtimeAutoSyncUpdateUI(/*CCmdUI* pCmdUI*/);
-    void OnToggleFullScreenMainWindow();
     void OnExportSelectedObjects();
     void OnExportTerrainArea();
     void OnExportTerrainAreaWithObjects();
@@ -356,7 +357,6 @@ public:
     void OnVisualizeNavigationAccessibilityUpdate(QAction* action);
     void OnAINavigationDisplayAgent();
     void OnAINavigationDisplayAgentUpdate(QAction* action);
-    void OnSwitchPhysics();
     void OnSwitchPhysicsUpdate(QAction* action);
     void OnSyncPlayer();
     void OnSyncPlayerUpdate(QAction* action);
@@ -473,6 +473,7 @@ private:
     CQuickAccessBar* m_pQuickAccessBar;
     int m_initSegmentsToOpen;
     IEventLoopHook* m_pEventLoopHook;
+    QString m_rootEnginePath;
 
     class CMannequinChangeMonitor* m_pChangeMonitor;
 
@@ -572,6 +573,7 @@ private:
     void OnValidatelevel();
     void OnValidateObjectPositions();
     void OnToolsPreferences();
+    void OnGraphicsSettings();
     void OnEditInvertselection();
     void OnPrefabsMakeFromSelection();
     void OnUpdatePrefabsMakeFromSelection(QAction* action);
@@ -599,9 +601,6 @@ private:
     void OnOpenMaterialEditor();
     void OnOpenMannequinEditor();
     void OnOpenCharacterTool();
-#if defined(EMOTIONFX_GEM_ENABLED)
-    void OnOpenEMotionFXEditor();
-#endif // EMOTIONFX_GEM_ENABLED
     void OnOpenDataBaseView();
     void OnOpenFlowGraphView();
     void OnOpenAssetBrowserView();

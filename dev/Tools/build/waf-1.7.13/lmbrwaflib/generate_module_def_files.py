@@ -15,7 +15,7 @@ import json
 
 from waflib.Build import BuildContext
 from waflib import Context, TaskGen, Logs
-from waflib.Task import Task
+from waflib.Task import Task, RUN_ME, SKIP_ME
 from waflib.Configure import conf
 
 #############################################################################
@@ -109,6 +109,15 @@ def get_module_configurations(ctx, target, platform=None, preprocess=True):
         return ctx.preprocess_configuration_list(target, platform, configurations)
     else:
         return configurations
+
+@conf
+def get_module_def_uses(ctx, target):
+
+    uses = []
+    module_def = read_module_def_file(ctx, target)
+    if module_def is not None:
+        uses += module_def['uses']
+    return uses
 
 
 def _read_module_def_file(ctx, target_name, parent_module, parent_spec):
@@ -308,6 +317,29 @@ class gen_module_def_file(Task):
         use_map_content = self.generate_use_map_json()
         self.outputs[0].write(use_map_content)
         return 0
+
+    def runnable_status(self):
+        result = super(gen_module_def_file, self).runnable_status()
+
+        if result == SKIP_ME:
+            def _are_same(lhs, rhs):
+                filtered_lhs = list(set(lhs))
+                filtered_rhs = list(set(rhs))
+                return (cmp(filtered_lhs, filtered_rhs) == 0)
+
+            bld = self.generator.bld
+
+            cached_platforms = bld.get_module_platforms(self.TARGET)
+            current_platforms = bld.preprocess_platform_list(self.PLATFORM_LIST)
+            if not _are_same(cached_platforms, current_platforms):
+                return RUN_ME
+
+            cached_uses = bld.get_module_def_uses(self.TARGET)
+            current_uses = self.USE_MAP_LIST
+            if not _are_same(cached_uses, current_uses):
+                return RUN_ME
+
+        return result
 
 
 @conf

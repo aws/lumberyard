@@ -17,6 +17,7 @@
 #include <qstring.h>
 
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 
 #include "Editor/GraphCanvas/Components/EBusHandlerNodeDescriptorComponent.h"
 
@@ -243,6 +244,8 @@ namespace ScriptCanvasEditor
             if (userData)
             {
                 (*userData) = m_scriptCanvasId;
+
+                GraphCanvas::NodeDataSlotRequestBus::Event(wrappedNode, &GraphCanvas::NodeDataSlotRequests::RecreatePropertyDisplay);
             }
         }
         // If we are wrapping the same node twice for just ignore it and log a message

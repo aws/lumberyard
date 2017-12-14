@@ -14,6 +14,7 @@ local debugmanager =
 		{
 			InfiniteEnergy = { default = false, description = "If true, player does not lose energy when firing." },
 			GodMode = { default = false, description = "If true, the player can't lose health." },
+			StartWithLauncher = { default = false, description = "If true, the player will start with the launcher enabled." },
 		},
 		
 		Rendering =
@@ -32,15 +33,36 @@ function debugmanager:OnActivate()
 	-- As a result, we have to wait for a callback from the DebugManagerComponent saying that it's
 	-- been activated (which SHOULD be before anything is ticked).
 	self.debugHandler = DebugManagerComponentNotificationBus.Connect(self, self.entityId);
+	
+	self.tickBusHandler = TickBus.Connect(self);
 end
 
 function debugmanager:OnDeactivate()
-
+	
+	if (self.tickBusHandler ~= nil) then
+		self.tickBusHandler:Disconnect();
+		self.tickBusHandler = nil;
+	end
+	
 	if (self.debugHandler ~= nil) then
 		self.debugHandler:Disconnect();
 		self.debugHandler = nil;
 	end
+	
+end
 
+function debugmanager:OnTick(deltaTime, timePoint)
+	
+	if (self.Properties.Player.StartWithLauncher) then
+		local playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
+		if (playerId:IsValid()) then
+			GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(playerId, "EventEnableWeapon", "float"), "Grenade");
+		end
+	end
+	
+	self.tickBusHandler:Disconnect();
+	self.tickBusHandler = nil;
+	
 end
 
 function debugmanager:OnDebugManagerComponentActivated()
@@ -52,6 +74,7 @@ function debugmanager:OnDebugManagerComponentActivated()
 	
 	self:StoreDebugVarBool("InfiniteEnergy", self.Properties.Player.InfiniteEnergy, mt.Player.InfiniteEnergy.default);
 	self:StoreDebugVarBool("GodMode", self.Properties.Player.GodMode, mt.Player.GodMode.default);
+	self:StoreDebugVarBool("StartWithLauncher", self.Properties.Player.StartWithLauncher, mt.Player.StartWithLauncher.default);
 	
 	self:StoreDebugVarBool("EnableDynamicDecals", self.Properties.Rendering.EnableDynamicDecals, mt.Rendering.EnableDynamicDecals.default);
 	

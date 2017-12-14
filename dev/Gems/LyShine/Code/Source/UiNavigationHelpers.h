@@ -63,6 +63,4 @@ namespace UiNavigationHelpers
 
     //! Find the first ancestor that's a navigable interactable
     AZ::EntityId FindAncestorNavigableInteractable(AZ::EntityId childInteractable, bool ignoreAutoActivatedAncestors = false);
-
-
 } // namespace UiNavigationHelpers

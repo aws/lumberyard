@@ -70,9 +70,6 @@
 // Igor: Metal requires that all RTs and depth buffer have the same size.
 #define CRY_OPENGL_DO_NOT_ALLOW_LARGER_RT
 
-// Igor: this is required to tell renderer we use SDL
-#define DXGL_USE_SDL
-
 typedef ID3D10Blob* LPD3D10BLOB;
 typedef ID3D10Blob ID3DBlob;
 

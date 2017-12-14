@@ -11,6 +11,8 @@
 */
 #include "FileWatcher.h"
 
+#include "../utilities/BatchApplicationManager.h"
+
 #include <AzCore/Debug/Trace.h>
 #include <CoreServices/CoreServices.h>
 

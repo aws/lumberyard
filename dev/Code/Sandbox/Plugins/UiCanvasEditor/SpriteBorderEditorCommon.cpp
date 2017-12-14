@@ -18,13 +18,13 @@ bool IsBorderVertical(SpriteBorder border)
             (border == SpriteBorder::Right));
 }
 
-float GetBorderValueInPixels(ISprite* sprite, SpriteBorder b, float totalSizeInPixels)
+float GetBorderValueInPixels(ISprite* sprite, SpriteBorder b, float totalSizeInPixels, AZ::u32 cellIndex)
 {
     // IMPORTANT: We CAN'T replace totalSizeInPixels with
     // sprite->GetTexture()->GetWidth()/GetHeight() because
     // it DOESN'T return the original texture file's size.
 
-    ISprite::Borders sb = sprite->GetBorders();
+    ISprite::Borders sb = sprite->GetCellUvBorders(cellIndex);
 
     float* f = nullptr;
 
@@ -53,13 +53,13 @@ float GetBorderValueInPixels(ISprite* sprite, SpriteBorder b, float totalSizeInP
     return (*f * totalSizeInPixels);
 }
 
-void SetBorderValue(ISprite* sprite, SpriteBorder b, float pixelPosition, float totalSizeInPixels)
+void SetBorderValue(ISprite* sprite, SpriteBorder b, float pixelPosition, float totalSizeInPixels, AZ::u32 cellIndex)
 {
     // IMPORTANT: We CAN'T replace totalSizeInPixels with
     // sprite->GetTexture()->GetWidth()/GetHeight() because
     // it DOESN'T return the original texture file's size.
 
-    ISprite::Borders sb = sprite->GetBorders();
+    ISprite::Borders sb = sprite->GetCellUvBorders(cellIndex);
 
     float* f = nullptr;
 
@@ -85,8 +85,8 @@ void SetBorderValue(ISprite* sprite, SpriteBorder b, float pixelPosition, float 
         f = nullptr;
     }
 
-    *f = (pixelPosition / totalSizeInPixels);
-    sprite->SetBorders(sb);
+    *f = AZ::GetMin<float>(pixelPosition / totalSizeInPixels, 1.0f);
+    sprite->SetCellBorders(cellIndex, sb);
 }
 
 const char* SpriteBorderToString(SpriteBorder b)

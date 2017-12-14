@@ -155,7 +155,7 @@ namespace AZStd
     /// Return number of physical processors
     unsigned thread::hardware_concurrency()
     {
-        SYSTEM_INFO info = {0};
+        SYSTEM_INFO info = {};
         GetSystemInfo(&info);
         return info.dwNumberOfProcessors;
     }

@@ -67,6 +67,9 @@ namespace AzFramework
         AZStd::string GetAssetPathById(const AZ::Data::AssetId& id) override;
         AZ::Data::AssetInfo GetAssetInfoById(const AZ::Data::AssetId& id) override;
         AZ::Data::AssetId GetAssetIdByPath(const char* path, const AZ::Data::AssetType& typeToRegister, bool autoRegisterIfNotFound) override;
+        AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetDirectProductDependencies(const AZ::Data::AssetId& asset) override;
+        AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetAllProductDependencies(const AZ::Data::AssetId& asset) override;
+
         AZ::Data::AssetId GenerateAssetIdTEMP(const char* /*path*/) override;
         void EnumerateAssets(BeginAssetEnumerationCB beginCB, AssetEnumerationCB enumerateCB, EndAssetEnumerationCB endCB) override;
         //////////////////////////////////////////////////////////////////////////
@@ -88,6 +91,9 @@ namespace AzFramework
         /// \return true if the specified filename's extension matches those handled
         /// by the catalog.
         bool IsTrackedAssetType(const char* assetFilename) const;
+
+        /// Helper function that adds all of searchAssetId's dependencies to the depedencySet/List (leaving out ones that are already in the list)
+        void AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList);
 
     private:
 

@@ -14,8 +14,6 @@
 #include "StdAfx.h"
 #include "StandardGraphicsPipeline.h"
 
-#include "ShadowMap.h"
-#include "SceneGBuffer.h"
 #include "AutoExposure.h"
 #include "Bloom.h"
 #include "ScreenSpaceObscurance.h"
@@ -36,8 +34,6 @@
 
 void CStandardGraphicsPipeline::Init()
 {
-    RegisterPass<CShadowMapPass>(m_pShadowMapPass);
-    RegisterPass<CSceneGBufferPass>(m_pSceneGBufferPass);
     RegisterPass<CAutoExposurePass>(m_pAutoExposurePass);
     RegisterPass<CBloomPass>(m_pBloomPass);
     RegisterPass<CScreenSpaceObscurancePass>(m_pScreenSpaceObscurancePass);
@@ -100,20 +96,6 @@ void CStandardGraphicsPipeline::Reset()
     {
         pass->Reset();
     }
-}
-
-bool CStandardGraphicsPipeline::CreatePipelineStates(DevicePipelineStatesArray* pStatesArray, const SGraphicsPipelineStateDescription& stateDesc, CGraphicsPipelineStateLocalCache* pStateCache)
-{
-    SGraphicsPipelineStateDescription tempDesc(stateDesc);
-
-    tempDesc.technique = TTYPE_Z;
-    int numStates = m_pSceneGBufferPass->CreatePipelineStates(pStatesArray[RS_TECH_GBUFPASS], tempDesc, pStateCache);
-    if (numStates == 0 || !pStatesArray[RS_TECH_GBUFPASS][0])
-    {
-        return false;
-    }
-
-    return true;
 }
 
 static const SRenderLight* FindSunLight(SRenderPipeline& renderPipeline)
@@ -191,7 +173,6 @@ void CStandardGraphicsPipeline::UpdatePerFrameConstantBuffer(const PerFrameParam
     cb->PerFrame_CloudShadowParams = perFrameParams.m_CloudShadowParams;
     cb->PerFrame_CloudShadowAnimParams = perFrameParams.m_CloudShadowAnimParams;
 
-    cb->PerFrame_CausticsParams = perFrameParams.m_CausticsParams;
     cb->PerFrame_CausticsSmoothSunDirection = Vec4(perFrameParams.m_CausticsSunDirection, 0.0f);
 
     cb->PerFrame_DecalZFightingRemedy = Vec4(perFrameParams.m_DecalZFightingRemedy, CD3D9Renderer::CV_r_ssdoAmountDirect);
@@ -455,12 +436,6 @@ void CStandardGraphicsPipeline::ResetRenderState()
     CHWShader::s_pCurCS = nullptr;
 
     CDeviceObjectFactory::GetInstance().GetCoreGraphicsCommandList()->Reset();
-}
-
-void CStandardGraphicsPipeline::RenderGBuffer()
-{
-    m_pSceneGBufferPass->Execute();
-    ResetRenderState();
 }
 
 void CStandardGraphicsPipeline::RenderAutoExposure()

@@ -16,9 +16,15 @@
 
 #pragma once
 
+#include <AzToolsFramework/API/EditorVegetationRequestsBus.h>
 
 #define RAD2BYTE(x) ((x) * 255.0f / float(g_PI2))
 #define BYTE2RAD(x) ((x) * float(g_PI2) / 255.0f)
+
+// Magic number restriction to prevent crash (https://jira.agscollab.com/browse/LY-19536)
+// should eventually be able to remove this once vegetation is componentized and
+// refactored to be streamed in as needed
+#define MAX_VEGETATION_INSTANCES 2000000
 
 
 class CVegetationObject;
@@ -28,6 +34,7 @@ struct CVegetationInstance;
         It keeps a list of all allocated geometry objects and all places instances.
 */
 class CVegetationMap
+    : public AzToolsFramework::EditorVegetation::EditorVegetationRequestsBus::Handler
 {
 public:
     CVegetationMap();
@@ -115,8 +122,6 @@ public:
 
     //! Place single object at specified location.
     CVegetationInstance* PlaceObjectInstance(const Vec3& worldPos, CVegetationObject* brush);
-    //! Clone object instance
-    CVegetationInstance* CloneInstance(CVegetationInstance* pOriginal);
     void DeleteObjInstance(CVegetationInstance* obj);
     void RemoveDuplVegetation(int x1 = -1, int y1 = -1, int x2 = -1, int y2 = -1);
     //! Find object instances closest to the point within given radius.
@@ -142,7 +147,7 @@ public:
     void ClearRotateInstances(CVegetationObject* object);
 
     //! Paint objects on rectangle using given brush.
-    void PaintBrush(QRect& rc, bool bCircle, CVegetationObject* brush, Vec3* pPos = 0);
+    bool PaintBrush(QRect& rc, bool bCircle, CVegetationObject* brush, Vec3* pPos = 0);
 
     //! Clear objects in rectangle using given brush.
     //! @param brush Object to remove, if NULL all object will be cleared.
@@ -214,6 +219,10 @@ public:
 
     uint32 GetFilterLayerId() const { return m_uiFilterLayerId; }
     void SetFilterLayerId(uint32 uiFilterLayerId) { m_uiFilterLayerId = uiFilterLayerId; }
+
+    // EditorVegetationRequestsBus implementation
+    AZStd::vector<CVegetationInstance*> GetObjectInstances(const AZ::Vector2& min, const AZ::Vector2& max) override;
+    void DeleteObjectInstance(CVegetationInstance* instance) override;
 
 private:
     struct SectorInfo

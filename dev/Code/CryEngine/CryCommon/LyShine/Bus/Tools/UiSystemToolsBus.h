@@ -52,10 +52,17 @@ public:
     //! Get the slice entity for a loaded canvas
     virtual AZ::Entity* GetRootSliceEntity(CanvasAssetHandle* canvas) = 0;
 
+    //! Get the canvas entity for a loaded canvas
+    virtual AZ::Entity* GetCanvasEntity(CanvasAssetHandle* canvas) = 0;
+
     //! Replace the slice component with a new one. The old slice component is not deleted.
     //! The client is responsible for that.
     virtual void ReplaceRootSliceSliceComponent(CanvasAssetHandle* canvas, AZ::SliceComponent* newSliceComponent) = 0;
 
+    //! Replace the canvas entity with a new one. The old canvas entity is not deleted.
+    //! The client is responsible for that.
+    virtual void ReplaceCanvasEntity(CanvasAssetHandle* canvas, AZ::Entity* newCanvasEntity) = 0;
+    
     //! Delete the canvas file object and its canvas entity and slice entity.
     virtual void DestroyCanvas(CanvasAssetHandle* canvas) = 0;
 };

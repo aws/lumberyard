@@ -107,6 +107,7 @@ namespace Amazon {
     public:
         LoginDialog(QWidget& parent);
         const QString& GetAccessToken() const { return m_oauthToken; };
+        ~LoginDialog();
     public slots:
         void urlChanged(const QUrl& url);
         void networkFinished(QNetworkReply* reply);
@@ -121,7 +122,7 @@ namespace Amazon {
         LoginFooterText m_footerText;
         QVBoxLayout m_layout;
         AmazonLoginWebPage m_page;
-        QNetworkAccessManager m_nam;
+        QNetworkAccessManager* m_nam;
         LoginWelcomeText m_loadingInfoLbl;
         LoginWelcomeText m_loadingLbl;
         QPushButton m_loadingRetry;

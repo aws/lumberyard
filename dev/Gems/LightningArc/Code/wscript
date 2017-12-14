@@ -13,6 +13,25 @@
 def build(bld):
 
     bld.DefineGem(
-        includes    = [ bld.Path('Code/CryEngine/CryAction')],
-        pch         = 'source/StdAfx.cpp',
+        #==============================
+        # Common
+        #==============================
+        includes    = [ 'Include' ,
+                        bld.Path('Code/CryEngine/CryCommon'),
+                        bld.Path('Code/CryEngine/CryAction'),
+                        bld.Path('Gems/LmbrCentral/Code/include')
+                        ],
+        
+        editor = dict(
+            defines     = ['LIGHTNING_EDITOR'],
+            includes    = ['Include',
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/CryEngine/CryAction'),
+                           bld.Path('Gems/LmbrCentral/Code/include'),
+                           bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                           bld.Path('Code/Sandbox'),
+                           bld.Path('Code/Sandbox/Editor'),
+                           bld.Path('Code/Sandbox/Editor/Include')
+                           ],
+        ),
     )

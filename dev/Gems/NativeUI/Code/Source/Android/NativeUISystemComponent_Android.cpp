@@ -18,7 +18,8 @@
 #include <AzCore/Android/AndroidEnv.h>
 #include <AzCore/Android/Utils.h>
 
-#include <SDL_events.h>
+#include <AzFramework/API/ApplicationAPI.h>
+
 
 namespace NativeUI
 {
@@ -44,7 +45,6 @@ namespace NativeUI
         while (userSelection.empty())
         {
             userSelection = object.InvokeStaticStringMethod("GetUserSelection");
-            SDL_PumpEvents();
         }
 
         for (int i = 0; i < options.size(); i++)

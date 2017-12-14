@@ -22,7 +22,7 @@
 #include <MultiThread_Containers.h>
 
 //////////////////////////////////////////////////////////////////////
-#if defined(ANDROID)
+#if defined(ANDROID) || defined(AZ_PLATFORM_APPLE_OSX)
     #define MAX_TEMP_LENGTH_SIZE    4098
 #else
     #define MAX_TEMP_LENGTH_SIZE    8196

@@ -13,21 +13,34 @@
 #include "stdafx.h"
 
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/std/chrono/clocks.h>
 
-#include "ProgressShield.hxx"
+#include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <UI/UICore/ui_ProgressShield.h>
 
 namespace AzToolsFramework
 {
+    namespace ProgressShieldInternal
+    {
+        void PumpEvents()
+        {
+            // re: 16 msec - pump QueuedEvents at a min of ~60 FPS
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents | QEventLoop::WaitForMoreEvents, 16);
+            AZ::TickBus::ExecuteQueuedEvents();
+        }
+    } // namespace ProgressShieldInternal
+
     ProgressShield::ProgressShield(QWidget* pParent)
-        : QWidget(pParent)
+        : QWidget(pParent, Qt::WindowFlags(Qt::ToolTip | Qt::BypassWindowManagerHint | Qt::FramelessWindowHint))
     {
         AZ_Assert(pParent && parentWidget(), "There must be a parent.");
         if (pParent && parentWidget())
         {
             uiConstructor = azcreate(Ui::progressShield, ());
             uiConstructor->setupUi(this);
-            setAttribute(Qt::WA_StyledBackground, true);
+            setAttribute(Qt::WA_TranslucentBackground);
+            setAttribute(Qt::WA_TransparentForMouseEvents);
+            setAttribute(Qt::WA_NoSystemBackground);
             int width = parentWidget()->geometry().width();
             int height = parentWidget()->geometry().height();
             this->setGeometry(0, 0, width, height);
@@ -43,21 +56,37 @@ namespace AzToolsFramework
         azdestroy(uiConstructor);
     }
 
-    void ProgressShield::LegacyShowAndWait(QWidget* parent, QString label, AZStd::function<bool(int& current, int& max)> completeCallback)
+    void ProgressShield::LegacyShowAndWait(QWidget* parent, QString label, AZStd::function<bool(int& current, int& max)> completeCallback, int delayMS)
     {
-        ProgressShield shield(parent);
+        using AzSysClock = AZStd::chrono::system_clock;
+        using AzMillisec = AZStd::chrono::milliseconds;
+        bool showShield = false;
 
+        // delay showing the progress shield when we have callbacks that complete quickly
         int current = 0, max = 0;
-        shield.show();
-
+        AzSysClock::time_point start = AzSysClock::now();
         while (!completeCallback(current, max))
         {
-            shield.setProgress(current, max, label);
+            ProgressShieldInternal::PumpEvents();
+            if (AZStd::chrono::duration_cast<AzMillisec>(AzSysClock::now() - start) > AzMillisec(delayMS))
+            {
+                showShield = true;
+                break;
+            }
+        }
 
-            // re: 16 msec - pump QueuedEvents at a min of ~60 FPS
+        // we've exceeded the delay, show the progress shield and wait for callback to complete
+        if (showShield)
+        {
+            ProgressShield shield(parent);
+            current = max = 0;
 
-            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents |QEventLoop::WaitForMoreEvents, 16);
-            AZ::TickBus::ExecuteQueuedEvents();
+            shield.show();
+            while (!completeCallback(current, max))
+            {
+                shield.setProgress(current, max, label);
+                ProgressShieldInternal::PumpEvents();
+            }
         }
     }
 
@@ -87,5 +116,6 @@ namespace AzToolsFramework
         uiConstructor->progressBar->setMaximum(max);
         uiConstructor->progressBar->setValue(current);
     }
-}
+} // namespace AzToolsFramework
+
 #include <UI/UICore/ProgressShield.moc>

@@ -32,7 +32,7 @@ namespace MobileSysInspect
         AZ::Android::JNI::Object obj("android/os/Build");
         obj.RegisterStaticField(s_javaFieldName, "Ljava/lang/String;");
         AZStd::string name = obj.GetStaticStringField(s_javaFieldName);
-        buffer = device_spec_map[AZStd::hash<AZStd::string>()(name)];
+        buffer = device_spec_map[name];
         AZ_Printf("Mobile", "Model name for this device is %s", name.c_str());
         return !buffer.empty();
     }

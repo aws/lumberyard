@@ -430,9 +430,9 @@ void QTopRendererWnd::Draw(DisplayContext& dc)
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3    QTopRendererWnd::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh) const
+Vec3    QTopRendererWnd::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh, bool* collideWithObject) const
 {
-    Vec3 wp = Q2DViewport::ViewToWorld(vp, collideWithTerrain, onlyTerrain, bSkipVegetation, bTestRenderMesh);
+    Vec3 wp = Q2DViewport::ViewToWorld(vp, collideWithTerrain, onlyTerrain, bSkipVegetation, bTestRenderMesh, collideWithObject);
     wp.z = GetIEditor()->GetTerrainElevation(wp.x, wp.y);
     return wp;
 }

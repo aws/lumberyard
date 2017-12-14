@@ -191,6 +191,7 @@ namespace CharacterTool {
         Q_OBJECT
     public:
         Explorer();
+        ~Explorer();
 
         void AddProvider(int subtree, IExplorerEntryProvider* provider);
         int AddColumn(const char* label, ExplorerColumn::Format format, bool visibleByDefault, const ExplorerColumnValue* values = 0, size_t numValues = 0);
@@ -230,17 +231,17 @@ namespace CharacterTool {
         //  callback passed in will be triggered to after everything is complete and will tell you if the source control operation
         //  and the save operation were both successful.
         void SaveEntry(ExplorerEntry* entry);
-        void SaveEntry(ExplorerEntry* entry, AZStd::shared_ptr<AZ::ActionOutput>& errorInfo);
+        void SaveEntry(ExplorerEntry* entry, const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo);
         void SaveEntry(ExplorerEntry* entry, AZ::SaveCompleteCallback onSaveComplete);
-        void SaveEntry(ExplorerEntry* entry, AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete);
+        void SaveEntry(ExplorerEntry* entry, const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete);
 
         // Saves all entries and marks them for edit in source control. Because the source control operations are asynchronous, the
         //  callback passed in will be triggered to after everything is complete and will tell you if the source control operations
         //  and the save operations were successful for every entry that needed to be saved.
         void SaveAll();
-        void SaveAll(AZStd::shared_ptr<AZ::ActionOutput>& errorInfo);
+        void SaveAll(const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo);
         void SaveAll(AZ::SaveCompleteCallback onSaveComplete);
-        void SaveAll(AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete);
+        void SaveAll(const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete);
 
         void GetUnsavedEntries(ExplorerEntries* unsavedEntries);
         void GetSaveFilenames(std::vector<string>* filenames, const ExplorerEntries& entries) const;

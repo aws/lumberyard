@@ -1,40 +1,36 @@
 {
+    "none": 
+    {
+        "API": [
+            "API/ApplicationAPI_win.h"
+        ],
+        "Application": [
+            "Application/Application_win.cpp"
+        ]
+    },
     "auto":
     {
-        "Root":
-        [
-        ],
-        "API": [
-            "API/ApplicationAPI_win.h",
-            "API/ApplicationAPI_win.cpp"
-        ],
         "Input/Buses/Notifications": [
             "Input/Buses/Notifications/RawInputNotificationBus_win.h"
         ],
-        "Input/Buses/Requests": [
-            "Input/Buses/Requests/RawInputRequestBus_win.h"
-        ],
         "Input/Devices/Gamepad": [
-            "Input/Devices/Gamepad/InputDeviceGamepad_pimpl_win.cpp"
+            "Input/Devices/Gamepad/InputDeviceGamepad_win.cpp"
         ],
         "Input/Devices/Keyboard": [
-            "Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_win.cpp",
-            "Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_win_common.inl"
+            "Input/Devices/Keyboard/InputDeviceKeyboard_win.cpp",
+            "Input/Devices/Keyboard/InputDeviceKeyboard_win_common.inl"
         ],
         "Input/Devices/Motion": [
-            "Input/Devices/Motion/InputDeviceMotion_pimpl_none.cpp"
+            "Input/Devices/Motion/InputDeviceMotion_none.cpp"
         ],
         "Input/Devices/Mouse": [
-            "Input/Devices/Mouse/InputDeviceMouse_pimpl_win.cpp"
+            "Input/Devices/Mouse/InputDeviceMouse_win.cpp"
         ],
         "Input/Devices/Touch": [
-            "Input/Devices/Touch/InputDeviceTouch_pimpl_none.cpp"
+            "Input/Devices/Touch/InputDeviceTouch_none.cpp"
         ],
         "Input/Devices/VirtualKeyboard": [
-            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_pimpl_none.cpp"
-        ],
-        "Input/System": [
-            "Input/System/InputSystemComponent_pimpl_none.cpp"
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_none.cpp"
         ]
     }
 }

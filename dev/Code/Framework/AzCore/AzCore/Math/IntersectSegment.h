@@ -22,6 +22,41 @@ namespace AZ
 {
     namespace Intersect
     {
+        /**
+         * LineToPointDistancTime computes the time of the shortest distance from point 'p' to segment (s1,s2)
+         * To calculate the point of intersection:
+         * P = s1 + u (s2 - s1)
+         * \param s1 segment start point
+         * \param s2 segment end point
+         * \param p point to find the closest time to.
+         * \return time (on the segment) for the shortest distance from 'p' to (s1,s2)  [0.0f (s1),1.0f (s2)]
+         */
+        AZ_MATH_FORCE_INLINE VectorFloat    LineToPointDistanceTime(const Vector3& s1, const Vector3& s21, const Vector3& p)
+        {
+            Vector3 ps1 = p - s1;
+            // so u = (p.x - s1.x)*(s2.x - s1.x) + (p.y - s1.y)*(s2.y - s1.y) + (p.z-s1.z)*(s2.z-s1.z) /  |s2-s1|^2
+            return s21.Dot(ps1) / s21.Dot(s21);
+        }
+
+        /**
+         * LineToPointDistance computes the closest point to 'p' from a segment (s1,s2).
+         * \param s1 segment start point
+         * \param s2 segment end point
+         * \param p point to find the closest time to.
+         * \param u time (on the segment) for the shortest distance from 'p' to (s1,s2)  [0.0f (s1),1.0f (s2)]
+         * \return the closest point
+         */
+        AZ_MATH_FORCE_INLINE Vector3 LineToPointDistance(const Vector3& s1, const Vector3& s2, const Vector3& p, VectorFloat& u)
+        {
+            Vector3 s21 = s2 - s1;
+            // we assume seg1 and seg2 are NOT coincident
+            AZ_Assert(!s21.IsClose(Vector3(0.0f), 1e-4f), "OK we agreed that we will pass valid segments! (s1 != s2)");
+
+            u = LineToPointDistanceTime(s1, s21, p);
+
+            return s1 + u * s21;
+        }
+
         //enum SegmentTriangleIsectTypes
         //{
         //  ISECT_TRI_SEGMENT_NONE = 0, // no intersection
@@ -318,6 +353,16 @@ namespace AZ
         void ClosestSegmentSegment(const Vector3& segment1Start, const Vector3& segment1End, 
                                    const Vector3& segment2Start, const Vector3& segment2End, 
                                    VectorFloat& segment1Proportion, VectorFloat& segment2Proportion, 
+                                   Vector3& closestPointSegment1, Vector3& closestPointSegment2,
+                                   VectorFloat epsilon = VectorFloat(1e-4f));
+
+        /**
+        * Calculate the line segment closestPointSegment1<->closestPointSegment2 that is the shortest route between
+        * two segments segment1Start<->segment1End and segment2Start<->segment2End.
+        * If segments are parallel returns a solution.
+        */
+        void ClosestSegmentSegment(const Vector3& segment1Start, const Vector3& segment1End,
+                                   const Vector3& segment2Start, const Vector3& segment2End,
                                    Vector3& closestPointSegment1, Vector3& closestPointSegment2,
                                    VectorFloat epsilon = VectorFloat(1e-4f));
 

@@ -13,14 +13,17 @@
 
 #include "StdAfx.h"
 #include "ATL.h"
-#include "SoundCVars.h"
-#include "AudioProxy.h"
-#include "ATLAudioObject.h"
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include <SoundCVars.h>
+#include <AudioProxy.h>
+#include <ATLAudioObject.h>
 #include <IAudioSystemImplementation.h>
 #include <ISystem.h>
 #include <IPhysics.h>
-#include <IRenderer.h>
 #include <IRenderAuxGeom.h>
+
 
 namespace Audio
 {
@@ -289,6 +292,18 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioTranslationLayer::AddRequestListener(const SAudioEventListener& listener)
+    {
+        m_oAudioEventListenerMgr.AddRequestListener(listener);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioTranslationLayer::RemoveRequestListener(const SAudioEventListener& listener)
+    {
+        m_oAudioEventListenerMgr.RemoveRequestListener(listener);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     EAudioRequestStatus CAudioTranslationLayer::ParseControlsData(const char* const pConfigFolderPath, const EATLDataScope eDataScope)
     {
         m_oXmlProcessor.ParseControlsData(pConfigFolderPath, eDataScope);
@@ -317,11 +332,9 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const char* const CAudioTranslationLayer::GetControlsImplSubPath() const
+    const AZStd::string& CAudioTranslationLayer::GetControlsImplSubPath() const
     {
-        const char* subPath = nullptr;
-        AudioSystemImplementationRequestBus::BroadcastResult(subPath, &AudioSystemImplementationRequestBus::Events::GetImplSubPath);
-        return subPath;
+        return m_implSubPath;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -354,6 +367,7 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioTranslationLayer::NotifyListener(const CAudioRequestInternal& rRequest)
     {
+        // This should always be the main thread!
         TATLEnumFlagsType nSpecificAudioRequest = INVALID_AUDIO_ENUM_FLAG_TYPE;
         TAudioControlID nAudioControlID = INVALID_AUDIO_CONTROL_ID;
         TAudioEventID audioEventID = INVALID_AUDIO_EVENT_ID;
@@ -451,18 +465,6 @@ namespace Audio
                 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     break;
                 }
-                case eAMRT_ADD_REQUEST_LISTENER:
-                {
-                    auto const pRequestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_ADD_REQUEST_LISTENER>*>(rRequest.pData.get());
-                    eResult = m_oAudioEventListenerMgr.AddRequestListener(pRequestData);
-                    break;
-                }
-                case eAMRT_REMOVE_REQUEST_LISTENER:
-                {
-                    auto const pRequestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_REMOVE_REQUEST_LISTENER>*>(rRequest.pData.get());
-                    eResult = m_oAudioEventListenerMgr.RemoveRequestListener(pRequestData->func, pRequestData->pObjectToListenTo);
-                    break;
-                }
                 case eAMRT_CREATE_SOURCE:
                 {
                     auto const pRequestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_CREATE_SOURCE>*>(rRequest.pData.get());
@@ -498,8 +500,12 @@ namespace Audio
                 }
                 case eAMRT_REFRESH_AUDIO_SYSTEM:
                 {
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
                     auto const pRequestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_REFRESH_AUDIO_SYSTEM>*>(rRequest.pData.get());
-                    eResult = RefreshAudioSystem(pRequestData->sLevelName);
+                    eResult = RefreshAudioSystem(pRequestData->m_controlsPath.c_str(), pRequestData->m_levelName.c_str(), pRequestData->m_levelPreloadId);
+                #else
+                    eResult = eARS_FAILURE_INVALID_REQUEST;
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     break;
                 }
                 case eAMRT_LOSE_FOCUS:
@@ -1198,6 +1204,9 @@ namespace Audio
             m_oFileCacheMgr.Initialize();
 
             SetImplLanguage();
+
+            // Update the implementation subpath for locating ATL controls...
+            AudioSystemImplementationRequestBus::BroadcastResult(m_implSubPath, &AudioSystemImplementationRequestBus::Events::GetImplSubPath);
         }
         else
         {
@@ -1232,6 +1241,8 @@ namespace Audio
         m_oAudioEventMgr.Release();
         m_oFileCacheMgr.Release();
         m_oXmlProcessor.Release();
+
+        m_implSubPath.clear();
 
         EAudioRequestStatus eResult = eARS_FAILURE;
         AudioSystemImplementationRequestBus::BroadcastResult(eResult, &AudioSystemImplementationRequestBus::Events::ShutDown);
@@ -1946,68 +1957,6 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    EAudioRequestStatus CAudioTranslationLayer::RefreshAudioSystem(const char* const sLevelName)
-    {
-        g_audioLogger.Log(eALT_ALWAYS, "$8Beginning to refresh the AudioSystem!");
-
-        EAudioRequestStatus eResult = eARS_FAILURE;
-        AudioSystemImplementationRequestBus::BroadcastResult(eResult, &AudioSystemImplementationRequestBus::Events::StopAllSounds);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to StopAllSounds!");
-
-        eResult = m_oFileCacheMgr.UnloadDataByScope(eADS_LEVEL_SPECIFIC);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to unload old level data!");
-
-        eResult = m_oFileCacheMgr.UnloadDataByScope(eADS_GLOBAL);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to unload old global data!");
-
-        eResult = ClearControlsData(eADS_ALL);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to clear old controls data!");
-
-        eResult = ClearPreloadsData(eADS_ALL);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to clear old preloads data!");
-
-        AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemRefresh);
-
-        SetImplLanguage();
-
-        const char* controlsPath = nullptr;
-        AudioSystemRequestBus::BroadcastResult(controlsPath, &AudioSystemRequestBus::Events::GetControlsPath);
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sControlsPath(controlsPath);
-        eResult = ParseControlsData(sControlsPath.c_str(), eADS_GLOBAL);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh global controls data!");
-
-        eResult = ParsePreloadsData(sControlsPath.c_str(), eADS_GLOBAL);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh global preloads data!");
-
-        eResult = m_oFileCacheMgr.TryLoadRequest(SATLInternalControlIDs::nGlobalPreloadRequestID, true, true);
-        AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to load fresh global preloads!");
-
-        if (sLevelName && sLevelName[0] != '\0')
-        {
-            sControlsPath.append("levels/");
-            sControlsPath.append(sLevelName);
-            eResult = ParseControlsData(sControlsPath.c_str(), eADS_LEVEL_SPECIFIC);
-            AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh level controls data!");
-
-            eResult = ParsePreloadsData(sControlsPath.c_str(), eADS_LEVEL_SPECIFIC);
-            AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh level preloads data!");
-
-            TAudioPreloadRequestID nPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
-
-            AudioSystemRequestBus::BroadcastResult(nPreloadRequestID, &AudioSystemRequestBus::Events::GetAudioPreloadRequestID, sLevelName);
-            if (nPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
-            {
-                eResult = m_oFileCacheMgr.TryLoadRequest(nPreloadRequestID, true, true);
-                AZ_Assert(eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to load fresh level preloads!");
-            }
-        }
-
-        g_audioLogger.Log(eALT_ALWAYS, "$3Done refreshing the AudioSystem!");
-
-        return eARS_SUCCESS;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioTranslationLayer::SetImplLanguage()
     {
         if (ICVar* pCVar = gEnv->pConsole->GetCVar("g_languageAudio"))
@@ -2038,7 +1987,10 @@ namespace Audio
                 m_oAudioObjectMgr.ReleasePendingRays();
                 break;
             }
-            case ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED:
+            // Disable Obstruction raycasts in AI/Physics mode (LY-66446)
+            // Bugs were discovered related to async obstruction raycasting,
+            // deeper discovery and fixes are needed, this is a temporary patch.
+            //case ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED:
             case ESYSTEM_EVENT_EDITOR_GAME_MODE_CHANGED:
             {
                 if (wparam)
@@ -2062,6 +2014,72 @@ namespace Audio
     }
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    EAudioRequestStatus CAudioTranslationLayer::RefreshAudioSystem(const char* const controlsPath, const char* const levelName, TAudioPreloadRequestID levelPreloadId)
+    {
+        g_audioLogger.Log(eALT_ALWAYS, "$8Beginning to refresh the AudioSystem!");
+
+        if (!controlsPath || controlsPath[0] == '\0')
+        {
+            g_audioLogger.Log(eALT_ERROR, "ATL RefreshAudioSystem - Controls path is null, can't complete the refresh!");
+            return eARS_FAILURE;
+        }
+
+        EAudioRequestStatus eResult = eARS_FAILURE;
+        AudioSystemImplementationRequestBus::BroadcastResult(eResult, &AudioSystemImplementationRequestBus::Events::StopAllSounds);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to StopAllSounds!");
+
+        eResult = m_oFileCacheMgr.UnloadDataByScope(eADS_LEVEL_SPECIFIC);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to unload old level data!");
+
+        eResult = m_oFileCacheMgr.UnloadDataByScope(eADS_GLOBAL);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to unload old global data!");
+
+        eResult = ClearControlsData(eADS_ALL);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to clear old controls data!");
+
+        eResult = ClearPreloadsData(eADS_ALL);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to clear old preloads data!");
+
+        AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemRefresh);
+
+        SetImplLanguage();
+
+        eResult = ParseControlsData(controlsPath, eADS_GLOBAL);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh global controls data!");
+
+        eResult = ParsePreloadsData(controlsPath, eADS_GLOBAL);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh global preloads data!");
+
+        eResult = m_oFileCacheMgr.TryLoadRequest(SATLInternalControlIDs::nGlobalPreloadRequestID, true, true);
+        AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to load fresh global preloads!");
+
+        if (levelName && levelName[0] != '\0')
+        {
+            AZStd::string levelControlsPath(controlsPath);
+            levelControlsPath.append("levels/");
+            levelControlsPath.append(levelName);
+            AzFramework::StringFunc::RelativePath::Normalize(levelControlsPath);
+
+            eResult = ParseControlsData(levelControlsPath.c_str(), eADS_LEVEL_SPECIFIC);
+            AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh level controls data!");
+
+            eResult = ParsePreloadsData(levelControlsPath.c_str(), eADS_LEVEL_SPECIFIC);
+            AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh level preloads data!");
+
+            if (levelPreloadId != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+            {
+                eResult = m_oFileCacheMgr.TryLoadRequest(levelPreloadId, true, true);
+                AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to load fresh level preloads!");
+            }
+        }
+
+        g_audioLogger.Log(eALT_ALWAYS, "$3Done refreshing the AudioSystem!");
+
+        return eARS_SUCCESS;
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     bool CAudioTranslationLayer::ReserveAudioObjectID(TAudioObjectID& rAudioObjectID, const char* const sAudioObjectName)
     {
@@ -2164,7 +2182,7 @@ namespace Audio
 
             fPosY += fLineHeight;
             pAuxGeom->Draw2dLabel(fPosX, fPosY, 1.35f, fColorNumbers, false,
-                "Objects: %3" PRISIZE_T "/%3" PRISIZE_T " Events: %3" PRISIZE_T " EventListeners %3" PRISIZE_T " Listeners: %" PRISIZE_T " | SyncRays: %3.1f AsyncRays: %3.1f",
+                "Objects: %3" PRISIZE_T "/%3" PRISIZE_T " | Events: %3" PRISIZE_T "  EventListeners %3" PRISIZE_T " | Listeners: %" PRISIZE_T " | SyncRays: %3.1f  AsyncRays: %3.1f",
                 nNumActiveAudioObjects, nNumAudioObjects, nEvents, nNumEventListeners, nListeners, fSyncRays, fAsyncRays);
 
             fPosY += fLineHeight;

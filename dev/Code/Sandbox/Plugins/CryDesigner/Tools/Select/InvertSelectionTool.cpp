@@ -17,7 +17,7 @@
 #include "Util/ElementManager.h"
 #include "Tools/Select/SelectTool.h"
 
-void InvertSelectionTool::InvertSelection(CD::SMainContext& mc)
+void InvertSelectionTool::InvertSelection(const CD::SMainContext& mc)
 {
     int nSelectedElementCount = mc.pSelected->GetCount();
     ElementManager newSelectionList;

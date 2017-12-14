@@ -65,7 +65,9 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
             CEditorPreferencesPage_ViewportGizmo::Reflect(*serializeContext);
             CEditorPreferencesPage_ViewportMovement::Reflect(*serializeContext);
             CEditorPreferencesPage_ViewportDebug::Reflect(*serializeContext);
+#ifdef ENABLE_LEGACY_ANIMATION
             CEditorPreferencesPage_MannequinGeneral::Reflect(*serializeContext);
+#endif //ENABLE_LEGACY_ANIMATION
             CEditorPreferencesPage_ExperimentalLighting::Reflect(*serializeContext);
             CEditorPreferencesPage_FlowGraphGeneral::Reflect(*serializeContext);
             CEditorPreferencesPage_FlowGraphColors::Reflect(*serializeContext);

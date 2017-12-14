@@ -17,7 +17,7 @@
 #include "Tools/DesignerTool.h"
 #include "Core/PolygonDecomposer.h"
 
-void WeldTool::Weld(CD::SMainContext& mc, const BrushVec3& vSrc, const BrushVec3& vTarget)
+void WeldTool::Weld(const CD::SMainContext& mc, const BrushVec3& vSrc, const BrushVec3& vTarget)
 {
     BrushEdge3D e(vSrc, vTarget);
     std::vector<CD::PolygonPtr> unnecessaryPolygonList;

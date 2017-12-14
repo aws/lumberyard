@@ -26,6 +26,8 @@
 #include <IAWSResourceManager.h>
 #include "EditorCoreAPI.h"
 
+#include "AzCore/Math/Guid.h"
+
 class QHBoxLayout;
 class QItemSelection;
 class QLineEdit;
@@ -124,7 +126,7 @@ public:
     QString GetDefaultProfile() { return (m_profileModel->GetDefaultProfile()); }
 
     // Given a resource type name and field name, provides a validation regexp and a help string explaining the validation requirements
-    bool GetResourceValidationData(const string& resourceType, const string& resourceField, string& outRegEx, string& outHelp, int& outMinLen);
+    bool GetResourceValidationData(const QString& resourceType, const QString& resourceField, QString& outRegEx, QString& outHelp, int& outMinLen);
 
     void SendUpdatedSourceStatus(const QString& filePath);
 
@@ -390,7 +392,7 @@ private:
     QString m_waitingForDeployment;
     QString m_waitingForPath;
 
-    // Resource name validation data stored in @devroot@/Gems/CloudGemFramework/v1/ResourceManager/resource_manager/config/aws_name_validation_rules.json
+    // Resource name validation data stored in @engroot@/Gems/CloudGemFramework/v1/ResourceManager/resource_manager/config/aws_name_validation_rules.json
     QJsonObject m_resourceValidation;
     void LoadResourceValidationData();
 
@@ -497,11 +499,11 @@ private:
     friend class StackListWidget;
     friend class StackResourcesWidget;
 
-    static const int ResourceManagementView::SEARCH_LIGHTER_VALUE;
-    static const int ResourceManagementView::DETAIL_STRETCH_FACTOR;
-    static const int ResourceManagementView::TREE_STRETCH_FACTOR;
-    static const int ResourceManagementView::CREATE_DEPLOYMENT_DIALOG_MINIMUM_HEIGHT;
-    static const int ResourceManagementView::CREATE_DEPLOYMENT_DIALOG_MINIMUM_WIDTH;
+    static const int SEARCH_LIGHTER_VALUE;
+    static const int DETAIL_STRETCH_FACTOR;
+    static const int TREE_STRETCH_FACTOR;
+    static const int CREATE_DEPLOYMENT_DIALOG_MINIMUM_HEIGHT;
+    static const int CREATE_DEPLOYMENT_DIALOG_MINIMUM_WIDTH;
 };
 
 class ToolTipMenu

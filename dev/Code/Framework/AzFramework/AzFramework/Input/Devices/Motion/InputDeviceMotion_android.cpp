@@ -164,14 +164,8 @@ namespace AzFramework
         , m_packedSensorDataArray(nullptr)
         , m_motionSensorManager()
     {
-        // Get the motion sensor manager Java object and Java class through the Java activity
-        AZ::Android::JNI::Object activity(AZ::Android::Utils::GetActivityClassRef(), AZ::Android::Utils::GetActivityRef());
-        activity.RegisterMethod(s_javaFuntionNameGetMotionSensorManager, "()Lcom/amazon/lumberyard/input/MotionSensorManager;");
-        jobject motionSensorManagerObject = activity.InvokeObjectMethod<jobject>(s_javaFuntionNameGetMotionSensorManager);
-        jclass motionSensorManagerClass = AZ::Android::JNI::LoadClass("com/amazon/lumberyard/input/MotionSensorManager");
-
         // Create a JNI object reference to the motion sensor manager
-        m_motionSensorManager.reset(aznew AZ::Android::JNI::Object(motionSensorManagerClass, motionSensorManagerObject, true));
+        m_motionSensorManager.reset(aznew AZ::Android::JNI::Object("com/amazon/lumberyard/input/MotionSensorManager"));
 
         // Regsiter the Java methods that are required to enable and query for motion sensor data
         m_motionSensorManager->RegisterMethod(s_javaFuntionNameRefreshMotionSensors, "(FIIIIIIII)V");
@@ -183,6 +177,10 @@ namespace AzFramework
         AZ_Assert(packedSensorDataLength == PackedSensorDataLength,
             "InputDeviceMotionAndroid::PackedSensorDataLength != MotionSensorManager::MOTION_SENSOR_DATA_PACKED_LENGTH");
         m_packedSensorDataArray = new float[packedSensorDataLength];
+
+        // create the java instance
+        bool ret = m_motionSensorManager->CreateInstance("(Landroid/app/Activity;)V", AZ::Android::Utils::GetActivityRef());
+        AZ_Assert(ret, "Failed to create the MotionSensorManager Java instance.");
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

@@ -81,7 +81,6 @@ namespace AzToolsFramework
              */
             enum SliceCommitFlags
             {
-                ApplyWorldSliceTransformRules = (1<<0),      ///< Apply standard root transform rules. Zero out root entity translation, ensure single root, ensure slice root has no parent in slice.
             };
 
             ~SliceTransaction();
@@ -221,9 +220,6 @@ namespace AzToolsFramework
             /// Locate an entity's corresponding ancestor in the transaction's target slice.
             /// If the ancestor is found, the corresponding Id entry is added to the provided idMap.
             AZ::EntityId FindTargetAncestorAndUpdateInstanceIdMap(AZ::EntityId id, AZ::SliceComponent::EntityIdToEntityIdMap& idMap, const AZ::SliceComponent::SliceInstanceAddress* ignoreSliceInstance = nullptr) const;
-
-            /// Applies standard root entity transform logic if kCommitFlag_RootEntityTransforms is set.
-            bool VerifyAndApplyWorldTransformRules(SliceAssetPtr& asset);
 
             /// Resets the transaction.
             void Reset();

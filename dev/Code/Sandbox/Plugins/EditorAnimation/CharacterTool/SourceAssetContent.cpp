@@ -17,7 +17,8 @@
 #include <IEditor.h>
 #include "CharacterToolSystem.h"
 #include "ExplorerFileList.h"
-#include <Windows.h> // Sleep
+
+#include <QThread>
 
 namespace CharacterTool
 {
@@ -203,7 +204,7 @@ namespace CharacterTool
 
         ETaskResult Work() override
         {
-            Sleep(1000);
+            QThread::msleep(1000);
             return eTaskResult_Completed;
         }
 

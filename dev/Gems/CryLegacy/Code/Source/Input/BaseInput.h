@@ -22,6 +22,7 @@
 #pragma once
 
 #include <platform.h>
+#include <IInput.h>
 
 
 struct IInputDevice;

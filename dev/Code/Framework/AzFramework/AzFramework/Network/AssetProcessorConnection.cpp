@@ -159,8 +159,13 @@ namespace AzFramework
         AZ::u32 AssetProcessorConnection::GetNextSerial()
         {
             AZ::u32 nextSerial = m_requestSerial++;
-            // prevent a serial of 0 due to wraparound
-            return (nextSerial == 0 || nextSerial == AssetSystem::NEGOTIATION_SERIAL) ? GetNextSerial() : nextSerial;
+
+            // Avoid special-case serials
+            return (nextSerial == AzFramework::AssetSystem::DEFAULT_SERIAL
+                || nextSerial == AssetSystem::NEGOTIATION_SERIAL
+                || (nextSerial & AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG))
+                ? GetNextSerial() // re-roll, we picked a special serial
+                : nextSerial;
         }
 
         bool AssetProcessorConnection::Connect(const char* address, AZ::u16 port)
@@ -478,7 +483,7 @@ namespace AzFramework
             MessageBuffer apBuffer;
             bool received = false;
             AddResponseHandler(apInfo.GetMessageType(), NEGOTIATION_SERIAL,
-                [this, &wait, &received, &apBuffer](AZ::u32 typeId, const void* buffer, AZ::u32 bufferSize)
+                [this, &wait, &received, &apBuffer](AZ::u32 typeId, AZ::u32 /*serial*/, const void* buffer, AZ::u32 bufferSize)
                 {
                     (void)typeId;
                     DebugMessage("AssetProcessorConnection::NegotiateWithClient - negotiation callback fired");
@@ -921,14 +926,21 @@ namespace AzFramework
                     {
                         // Got a complete payload
                         DebugMessage("AzSockConnection::Recv: Recv'ed type=0x%08x, serial=%u, size=%u", currentMessageType, currentMessageSerial, currentPayloadSize);
-                        if (currentMessageSerial != 0)
+                        
+                        // This is for backward compatibility, since we should always negotiate and invoke the response handler
+                        if (currentMessageType == NegotiationMessage::MessageType())
                         {
+                            InvokeResponseHandler(currentMessageType, currentMessageSerial, messageBuffer.data(), currentPayloadSize);
+                        }
+                        else if (currentMessageSerial & AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG)
+                        {
+                            currentMessageSerial &= ~AzFramework::AssetSystem::RESPONSE_SERIAL_FLAG; // Clear the bit
                             InvokeResponseHandler(currentMessageType, currentMessageSerial, messageBuffer.data(), currentPayloadSize);
                         }
                         else
                         {
                             // Call message callback - This will provide a valid buffer pointer but no payload size
-                            InvokeMessageHandler(currentMessageType, messageBuffer.data(), currentPayloadSize);
+                            InvokeMessageHandler(currentMessageType, currentMessageSerial, messageBuffer.data(), currentPayloadSize);
                         }
 
                         // Remove data, only if we had a payload
@@ -964,14 +976,27 @@ namespace AzFramework
 
         bool AssetProcessorConnection::SendMsg(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength)
         {
-            QueueMessageForSend(typeId, 0, dataBuffer, dataLength);
+            return SendMsg(typeId, AzFramework::AssetSystem::DEFAULT_SERIAL, dataBuffer, dataLength);
+        }
+
+        bool AssetProcessorConnection::SendMsg(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength)
+        {
+            QueueMessageForSend(typeId, serial, dataBuffer, dataLength);
 
             return true;
         }
 
         bool AssetProcessorConnection::SendRequest(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength, TMessageCallback handler)
         {
-            AZ::u32 requestSerial = GetNextSerial();
+            AZ::u32 requestSerial;
+            if (typeId == NegotiationMessage::MessageType())
+            {
+                requestSerial = AssetSystem::NEGOTIATION_SERIAL;
+            }
+            else
+            {
+                requestSerial = GetNextSerial();
+            }
             return SendRequest(typeId, requestSerial, dataBuffer, dataLength, handler);
         }
 
@@ -988,13 +1013,13 @@ namespace AzFramework
 
             AZStd::binary_semaphore wait;
             bool responseArrived = false;
-            AddResponseHandler(typeId, serial, [&wait, &handler, &responseArrived](AZ::u32 response_typeId, const void* response_dataBuffer, AZ::u32 response_dataLength)
+            AddResponseHandler(typeId, serial, [&wait, &handler, &responseArrived](AZ::u32 response_typeId, AZ::u32 response_serial, const void* response_dataBuffer, AZ::u32 response_dataLength)
                 {
                     responseArrived = (response_typeId != 0);
 
                     if (responseArrived)
                     {
-                        handler(response_typeId, response_dataBuffer, response_dataLength);
+                        handler(response_typeId, response_serial, response_dataBuffer, response_dataLength);
                     }
 
                     wait.release();
@@ -1087,7 +1112,7 @@ namespace AzFramework
             DebugMessage("AzSockConnection::RemoveMessageHandler - Tried to remove a type callback that didn't exist");
         }
 
-        void AssetProcessorConnection::InvokeMessageHandler(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength)
+        void AssetProcessorConnection::InvokeMessageHandler(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength)
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
 
@@ -1097,7 +1122,7 @@ namespace AzFramework
             auto handlerRange = m_messageHandlers.equal_range(typeId);
             for (auto callbackIterator = handlerRange.first; callbackIterator != handlerRange.second; ++callbackIterator)
             {
-                callbackIterator->second.second(typeId, dataBuffer, dataLength);
+                callbackIterator->second.second(typeId, serial, dataBuffer, dataLength);
             }
 
             m_shouldQueueHandlerChanges = false;
@@ -1181,7 +1206,7 @@ namespace AzFramework
             if (callbackIt != m_responseHandlers.end())
             {
                 DebugMessage("AzSockConnection::InvokeResponseHandler - invoking handler for (type 0x%08x, %u)", typeId, serial);
-                callbackIt->second(typeId, dataBuffer, dataLength);
+                callbackIt->second(typeId, AzFramework::AssetSystem::DEFAULT_SERIAL, dataBuffer, dataLength);
                 // remove callback automatically, as it is no longer needed
                 m_responseHandlers.erase(callbackIt);
             }
@@ -1212,7 +1237,7 @@ namespace AzFramework
             for (auto callback : m_responseHandlers)
             {
                 // send a 0, nullptr to each callback, which is the signal for "the request failed"
-                callback.second(0, nullptr, 0);
+                callback.second(0, AzFramework::AssetSystem::DEFAULT_SERIAL,  nullptr, 0);
             }
             m_responseHandlers.clear();
         }

@@ -24,7 +24,6 @@
 #include "AttributeVector3.h"
 #include "AttributeVector4.h"
 #include "AttributeQuaternion.h"
-#include "AttributeMatrix.h"
 #include "AttributeColor.h"
 #include "AttributePointer.h"
 #include "AttributeArray.h"
@@ -192,7 +191,6 @@ namespace MCore
         RegisterAttribute(new AttributeVector3());
         RegisterAttribute(new AttributeVector4());
         RegisterAttribute(new AttributeQuaternion());
-        RegisterAttribute(new AttributeMatrix());
         RegisterAttribute(new AttributeColor());
         RegisterAttribute(new AttributePointer());
         RegisterAttribute(new AttributeArray());

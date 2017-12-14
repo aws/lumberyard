@@ -35,19 +35,29 @@ namespace AZ
         typedef AZStd::recursive_mutex MutexType;
         //////////////////////////////////////////////////////////////////////////
 
+        //! this is the same type Id (uuid) as your AssetData-derived class's RTTI type.
         virtual AZ::Data::AssetType GetAssetType() const = 0;
 
         //! Retrieve the friendly name for the asset type.
         virtual const char* GetAssetTypeDisplayName() const { return "Unknown"; }
 
+        //! This is the group or category that this kind of asset appears under for filtering and displaying in the browser.
         virtual const char* GetGroup() const { return "Other"; }
 
+        //!  You can implement this to apply a specific icon to all assets of your type instead of using built in heuristics
         virtual const char* GetBrowserIcon() const { return ""; }
 
+        //!  you can return the kind of component best suited to spawn on an entity if this kind of asset is dragged
+        //!  to the viewport or to the component entity area.
         virtual AZ::Uuid GetComponentTypeId() const { return AZ::Uuid::CreateNull(); }
 
         //! Retrieve file extensions for the asset type.
         virtual void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) { (void)extensions; }
+
+        //! Determines if a component can be created from the asset type
+        //! This will be called before attempting to create a component from an asset (drag&drop, etc)
+        //! You can use this to filter by subIds or do your own validation here if needed
+        virtual bool CanCreateComponent(const AZ::Data::AssetId& /*assetId*/) const { return true; }
     };
 
     using AssetTypeInfoBus = AZ::EBus<AssetTypeInfo>;

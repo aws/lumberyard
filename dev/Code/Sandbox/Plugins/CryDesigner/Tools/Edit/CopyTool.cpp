@@ -39,7 +39,7 @@ void CopyTool::Enter()
     CD::GetDesigner()->SwitchToSelectTool();
 }
 
-void CopyTool::Copy(CD::SMainContext& mc, ElementManager* pOutCopiedElements)
+void CopyTool::Copy(const CD::SMainContext& mc, ElementManager* pOutCopiedElements)
 {
     DESIGNER_ASSERT(pOutCopiedElements);
     if (!pOutCopiedElements)

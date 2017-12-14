@@ -16,6 +16,7 @@
 
 #include "TrackViewAnimNode.h"
 #include "TrackViewTrack.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //-----------------------------------------------------------------------------
 //!
@@ -33,9 +34,9 @@ class CScreenFaderKeyUIControls
 public:
     //-----------------------------------------------------------------------------
     //!
-    virtual bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    virtual bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_ScreenFader;
+        return paramType == AnimParamType::ScreenFader;
     }
 
     //-----------------------------------------------------------------------------
@@ -100,7 +101,7 @@ bool CScreenFaderKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& keys)
         const CTrackViewKeyHandle& keyHandle = keys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_ScreenFader)
+        if (paramType == AnimParamType::ScreenFader)
         {
             IScreenFaderKey screenFaderKey;
             keyHandle.GetKey(&screenFaderKey);
@@ -131,7 +132,7 @@ void CScreenFaderKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle&
         CTrackViewKeyHandle selectedKey = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = selectedKey.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_ScreenFader)
+        if (paramType == AnimParamType::ScreenFader)
         {
             IScreenFaderKey screenFaderKey;
             selectedKey.GetKey(&screenFaderKey);

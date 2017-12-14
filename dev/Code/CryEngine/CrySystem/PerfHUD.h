@@ -23,7 +23,7 @@
 
 #ifdef USE_PERFHUD
 
-#include "IInput.h"
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include "MiniGUI/MiniInfoBox.h"
 #include "MiniGUI/MiniTable.h"
 
@@ -61,7 +61,7 @@
 class CPerfHUD
     : public ICryPerfHUD
     , public minigui::IMiniGUIEventListener
-    , public IInputEventListener
+    , public AzFramework::InputChannelEventListener
 {
 public:
     CRYINTERFACE_BEGIN()
@@ -121,8 +121,9 @@ public:
     virtual void OnCommand(minigui::SCommand& cmd);
     //////////////////////////////////////////////////////////////////////////
 
-    // IInputEventListener
-    virtual bool OnInputEvent(const SInputEvent& rInputEvent);
+    // AzFramework::InputChannelEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+    AZ::s32 GetPriority() const override { return AzFramework::InputChannelEventListener::GetPriorityUI(); }
 
     //////////////////////////////////////////////////////////////////////////
     // CLICK CALLBACKS

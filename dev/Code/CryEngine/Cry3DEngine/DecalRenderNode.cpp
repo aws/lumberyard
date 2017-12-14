@@ -17,6 +17,7 @@
 #include "ObjMan.h"
 #include "MatMan.h"
 #include "terrain.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 int CDecalRenderNode::m_nFillBigDecalIndicesCounter = 0;
 
@@ -212,7 +213,7 @@ bool CDecalRenderNode::CheckForceDeferred()
                 return false;
             }
 
-            if (SEfResTexture* pEnvRes0 = sItem.m_pShaderResources->GetTexture(EFTT_ENV))
+            if (SEfResTexture* pEnvRes0 = sItem.m_pShaderResources->GetTextureResource(EFTT_ENV))
             {
                 if (pEnvRes0->m_Sampler.m_pITex == NULL)
                 {
@@ -384,13 +385,12 @@ void CDecalRenderNode::Render(const SRendParams& rParam, const SRenderingPassInf
         ProcessUpdateRequest();
     }
 
-    float waterLevel(m_p3DEngine->GetWaterLevel());
     if (m_decal && 0 != m_decal->m_pMaterial)
     {
         m_decal->m_vAmbient.x = rParam.AmbientColor.r;
         m_decal->m_vAmbient.y = rParam.AmbientColor.g;
         m_decal->m_vAmbient.z = rParam.AmbientColor.b;
-        bool bAfterWater = GetObjManager()->IsAfterWater(m_decal->m_vWSPos, passInfo.GetCamera().GetPosition(), passInfo, waterLevel);
+        bool bAfterWater = GetObjManager()->IsAfterWater(m_decal->m_vWSPos, passInfo);
 
         m_decal->Render(0, bAfterWater, distFading, rParam.fDistance, passInfo, SRendItemSorter(rParam.rendItemSorter));
     }

@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.11.0.0", 
+            "default_value": "1.12.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -76,6 +76,36 @@
             "attribute": "enable_msvc_timings", 
             "default_value": "False", 
             "description": "Output timing information for msvc compile and link operations"
+        }, 
+        {
+            "long_form": "--use-bullseye-coverage", 
+            "attribute": "use_bullseye_coverage", 
+            "default_value": "False", 
+            "description": "Tweaks build settings to use Bullseye"
+        }, 
+        {
+            "long_form": "--bullseye-excluded-modules", 
+            "attribute": "bullseye_excluded_modules", 
+            "default_value": "AzCoreTests", 
+            "description": "Tells bullseye not to process specific modules. Comma separated list."
+        }, 
+        {
+            "long_form": "--bullseye-included-modules", 
+            "attribute": "bullseye_included_modules", 
+            "default_value": "", 
+            "description": "Tells bullseye a list of specific modules to process. Comma separted list. If empty applies to all modules not excluded."
+        }, 
+        {
+            "long_form": "--bullseye-cov-file", 
+            "attribute": "bullseye_cov_file", 
+            "default_value": "coverage.cov", 
+            "description": "Tells bullseye the name of the coverage data file to create. Relative to the project root."
+        }, 
+        {
+            "long_form": "--bullseye-coverage-regions", 
+            "attribute": "bullseye_coverage_regions", 
+            "default_value": "!*/Tests:, !**/Tests:, !*/UnitTests:, !**/UnitTests:, !*/SDKs:, !**/SDKs:/, !*/Mocks:, !**/Mocks:, !*/qt5:, !**/qt5:", 
+            "description": "Comma separated list of bullseye coverage region expressions. If empty Bullseye will process all code in included modules."
         }, 
         {
             "long_form": "--use-recode", 
@@ -131,6 +161,12 @@
             "attribute": "external_crash_reporting", 
             "default_value": "", 
             "description": "Zip/Upload symbols and build client with external crash reporting enabled.  Value set here will be used as an additional build tag passed through to the crash reporter system."
+        }, 
+        {
+            "long_form": "--symbol-token", 
+            "attribute": "symbol_token", 
+            "default_value": "", 
+            "description": "Command line override for token used for uploading symbols"
         }, 
         {
             "long_form": "--always-build-engine-and-tools", 
@@ -199,6 +235,12 @@
             "attribute": "out_folder_android_armv7_clang", 
             "default_value": "BinAndroidClang", 
             "description": "Absolute or relative Android ARMv7 clang build output path"
+        }, 
+        {
+            "long_form": "--output-folder-android-armv8-clang", 
+            "attribute": "out_folder_android_armv8_clang", 
+            "default_value": "BinAndroidArmv8Clang", 
+            "description": "Absolute or relative Android ARMv8 clang build output path"
         }, 
         {
             "long_form": "--output-folder-ext-debug", 
@@ -395,12 +437,6 @@
             "attribute": "mac_build_monolithic", 
             "default_value": "False", 
             "description": "Flag to generate a monolithic or a nonmonolithic build for Mac, options are True or False"
-        }, 
-        {
-            "long_form": "--mac-build-renderer", 
-            "attribute": "mac_build_renderer", 
-            "default_value": "METAL", 
-            "description": "If building a monolithic build this option is used to select the type of renderer, options are GL or METAL"
         }
     ], 
     "Mac Project Generator": [

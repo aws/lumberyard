@@ -50,7 +50,7 @@ namespace GraphCanvas
         GridRequestBus::EventResult(m_minorPitch, GetEntityId(), &GridRequests::GetMinorPitch);
 
         VisualRequestBus::Handler::BusConnect(GetEntityId());
-        RootVisualRequestBus::Handler::BusConnect(GetEntityId());
+        SceneMemberUIRequestBus::Handler::BusConnect(GetEntityId());
         GridNotificationBus::Handler::BusConnect(GetEntityId());
 
         m_gridVisualUi->Activate();
@@ -59,7 +59,7 @@ namespace GraphCanvas
     void GridVisualComponent::Deactivate()
     {
         VisualRequestBus::Handler::BusDisconnect();
-        RootVisualRequestBus::Handler::BusDisconnect();
+        SceneMemberUIRequestBus::Handler::BusDisconnect();
         GridNotificationBus::Handler::BusDisconnect();
 
         m_gridVisualUi->Deactivate();
@@ -83,6 +83,15 @@ namespace GraphCanvas
     QGraphicsLayoutItem* GridVisualComponent::GetRootGraphicsLayoutItem()
     {
         return nullptr;
+    }
+
+    void GridVisualComponent::SetSelected(bool)
+    {
+    }
+
+    bool GridVisualComponent::IsSelected() const
+    {
+        return false;
     }
 
     void GridVisualComponent::OnMajorPitchChanged(const AZ::Vector2& pitch)
@@ -117,6 +126,7 @@ namespace GraphCanvas
         , m_gridVisual(gridVisual)
     {
         setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);
+        setCacheMode(QGraphicsItem::CacheMode::DeviceCoordinateCache);
         setZValue(-10000);
         setAcceptHoverEvents(false);
         setData(GraphicsItemName, QStringLiteral("DefaultGridVisual/%1").arg(static_cast<AZ::u64>(GetEntityId()), 16, 16, QChar('0')));

@@ -219,7 +219,6 @@ void QCurveEditorImp::syncToVar()
     }
 
     SelfCallFence(m_ignoreSetCallback);
-    QString undoDesc = QString().sprintf("%s Modified", m_var->GetName());
 
     //suspend undo so for widgets share this same IVariable won't trigger same undo multiple times
     EBUS_EVENT(EditorLibraryUndoRequestsBus, Suspend, true);

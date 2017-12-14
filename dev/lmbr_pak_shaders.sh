@@ -12,6 +12,18 @@
 #
 #
 
+# Extract an optional external engine path if present, otherwise use the cwd as the engine dir
+EXTERNAL_ENGINE_PATH=`cat engine.json | grep "ExternalEnginePath" | awk -F":" '{ print $2 }' | sed "s/,//g" | sed "s/\"//g" | xargs echo -n`
+if [ -z $EXTERNAL_ENGINE_PATH ]; then
+    ENGINE_DIR=$(dirname "$0")
+elif [ -d $EXTERNAL_ENGINE_PATH ]; then
+    ENGINE_DIR=$EXTERNAL_ENGINE_PATH
+else
+    echo External Path in engine.json "$EXTERNAL_ENGINE_PATH" does not exist
+    exit 1
+fi
+
+
 shader_type="$1"
 game="$2"
 platform="$3"
@@ -21,4 +33,4 @@ fi
 source="Cache/$game/$platform/user/cache/shaders/cache"
 output="Build/$platform/$game"
 
-env python Tools/PakShaders/pak_shaders.py $output -r $source -s $shader_type
+env python $ENGINE_DIR/Tools/PakShaders/pak_shaders.py $output -r $source -s $shader_type

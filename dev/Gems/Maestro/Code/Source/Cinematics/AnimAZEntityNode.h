@@ -48,13 +48,13 @@ public:
 
     void SetEntityId(const int id) override {};
     void         SetAzEntityId(const AZ::EntityId& id) override { m_entityId = id; }
-    AZ::EntityId GetAzEntityId() override { return m_entityId; }
+    AZ::EntityId GetAzEntityId() const override { return m_entityId; }
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from IAnimNode
     // AzEntityNodes don't have any animatable params - they are all handled by their children components
-    // return eAnimParamType_Invalid for this pure virtual for the legacy system
-    CAnimParamType GetParamType(unsigned int nIndex) const override { return eAnimParamType_Invalid; };
+    // return AnimParamType::Invalid for this pure virtual for the legacy system
+    CAnimParamType GetParamType(unsigned int nIndex) const override;
 
     // search this Entity and append any componentId's that are animated outside of the behavior context
     void AppendNonBehaviorAnimatableComponents(AZStd::vector<AZ::ComponentId>& animatableComponents) const override;
@@ -63,8 +63,11 @@ public:
     void SetRotate(float time, const Quat& quat) override;
     void SetScale(float time, const Vec3& scale) override;
 
+    Vec3 GetOffsetPosition(const Vec3& position) override;
+
     Vec3 GetPos() override;
     Quat GetRotate() override;
+    Quat GetRotate(float time) override;
     Vec3 GetScale() override;
     //////////////////////////////////////////////////////////////////////////
 

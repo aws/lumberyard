@@ -25,7 +25,6 @@
 #include <AzCore/Math/Crc.h>
 
 #include <cstdio> // for snprintf
-#include <tuple> // for specialization of typeinfo of tuple that clang builds will accept
 
 // VS2013 needs atomics for TypeIdHolder
 #if defined(AZ_COMPILER_MSVC) && _MSC_VER <= 1800
@@ -616,8 +615,6 @@ namespace AZ
     AZ_INTERNAL_FIXED_SPECIALIZATION_2(AZStd::array, "{911B2EA8-CCB1-4F0C-A535-540AD00173AE}");
     AZ_INTERNAL_FIXED_SPECIALIZATION_1(AZStd::bitset, "{6BAE9836-EC49-466A-85F2-F4B1B70839FB}");
     AZ_INTERNAL_FUNCTION_VARIATION_SPECIALIZATION(AZStd::function, "AZStd::function", "{C9F9C644-CCC3-4F77-A792-F5B5DBCA746E}");
-
-    AZ_INTERNAL_VARIATION_SPECIALIZATION_TEMPLATE(std::tuple, tuple, "{F99F9308-DC3E-4384-9341-89CBF1ABD51E}");
 }
 
 #define AZ_TYPE_INFO_1(_ClassName) AZ_STATIC_ASSERT(false, "You must provide a ClassName,ClassUUID")

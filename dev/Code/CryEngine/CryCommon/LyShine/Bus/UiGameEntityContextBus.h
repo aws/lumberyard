@@ -78,3 +78,33 @@ public:
 };
 
 using UiGameEntityContextNotificationBus = AZ::EBus<UiGameEntityContextNotifications>;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//! Bus for receiving notifications from the UI game entity context component. This bus is used
+//! by the UiSpawnerComponent that depends on the UiGameEntityContext fixing entities up before
+//! it sends out notifications to listeners on the UiSpawnerNotificationBus
+class UiGameEntityContextSliceInstantiationResults
+    : public AZ::EBusTraits
+{
+public:
+
+    virtual ~UiGameEntityContextSliceInstantiationResults() = default;
+
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides. Addressed by SliceInstantiationTicket
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+    typedef AzFramework::SliceInstantiationTicket BusIdType;
+    //////////////////////////////////////////////////////////////////////////
+
+    //! Signals that a slice was successfully instantiated prior to entity registration.
+    virtual void OnEntityContextSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/) {}
+
+    //! Signals that a slice was successfully instantiated after entity registration.
+    virtual void OnEntityContextSliceInstantiated(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/) {}
+
+    //! Signals that a slice could not be instantiated.
+    virtual void OnEntityContextSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/) {}
+};
+
+using UiGameEntityContextSliceInstantiationResultsBus = AZ::EBus<UiGameEntityContextSliceInstantiationResults>;

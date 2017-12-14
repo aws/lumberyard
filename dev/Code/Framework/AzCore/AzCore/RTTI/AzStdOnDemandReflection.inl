@@ -249,7 +249,7 @@ namespace AZ
             {
                 if (dc.IsString(0))
                 {
-                    typename ContainerType::basic_string str;
+                    AZStd::basic_string<Element, Traits, AZStd::allocator> str;
                     dc.ReadArg(0, str);
                     new(thisPtr) ContainerType(str);
                 }
@@ -442,27 +442,15 @@ namespace AZ
     {
         using ContainerType = AZStd::vector<T, A>;
 
-        // TODO: Count reflection types for a proper un-reflect 
-
-        // vector (like most containers uses size_t for an index, currently in script we handle u64 specially (which we should address), till then we need a wrapper
-        static T& ScriptAt(ContainerType* thisPtr, int index)
-        {
-            return thisPtr->at(index - 1);
-        }
-
         // resize the container to the appropriate size if needed and set the element
         static void Insert(ContainerType* thisPtr, int index, T& value)
         {
-            if (thisPtr->size() <= index)
+            size_t uindex = static_cast<size_t>(index);
+            if (thisPtr->size() <= uindex)
             {
-                thisPtr->resize(index + 1);
+                thisPtr->resize(uindex + 1);
             }
-            (*thisPtr)[index] = value;
-        }
-
-        static void LuaInsert(ContainerType* thisPtr, int index, T& value)
-        {
-            Insert(thisPtr, index - 1, value);
+            (*thisPtr)[uindex] = value;
         }
 
         static void Reflect(ReflectContext* context)
@@ -476,12 +464,10 @@ namespace AZ
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn)
                     ->template Method<void(ContainerType::*)(typename ContainerType::const_reference)>("push_back", &ContainerType::push_back)
                     ->Method("pop_back", &ContainerType::pop_back)
-                    ->template Method<typename ContainerType::reference(ContainerType::*)(typename ContainerType::size_type)>("at", &ContainerType::at)
+                    ->template Method<typename ContainerType::reference(ContainerType::*)(typename ContainerType::size_type)>("at", &ContainerType::at, {{ { "Index", "The index to read from", nullptr, BehaviorParameter::Traits::TR_INDEX } }})
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::IndexRead)
-                        ->Attribute(AZ::Script::Attributes::MethodOverride, &ScriptAt)
-                    ->Method("insert", &Insert)
+                    ->Method("insert", &Insert, {{ {}, { "Index", "The index to read from", nullptr, BehaviorParameter::Traits::TR_INDEX } }})
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::IndexWrite)
-                        ->Attribute(AZ::Script::Attributes::MethodOverride, &LuaInsert)
                     ->Method("size", [](ContainerType* thisPtr) { return aznumeric_cast<int>(thisPtr->size()); })
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length)
                     ->Method("clear", &ContainerType::clear)
@@ -497,13 +483,6 @@ namespace AZ
     {
         using ContainerType = AZStd::array<T, N>;
 
-        // TODO: Count reflection types for a proper un-reflect 
-
-        static T& ScriptAt(ContainerType* thisPtr, int index)
-        {
-            return thisPtr->at(index - 1);
-        }
-
         static void Reflect(ReflectContext* context)
         {
             BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context);
@@ -513,9 +492,8 @@ namespace AZ
                 behaviorContext->Class<ContainerType>()
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn)
-                    ->template Method<typename ContainerType::reference(ContainerType::*)(typename ContainerType::size_type)>("at", &ContainerType::at)
+                    ->template Method<typename ContainerType::reference(ContainerType::*)(typename ContainerType::size_type)>("at", &ContainerType::at, {{ { "Index", "The index to read from", nullptr, BehaviorParameter::Traits::TR_INDEX } }})
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::IndexRead)
-                        ->Attribute(AZ::Script::Attributes::MethodOverride, &ScriptAt)
                     ->Method("size", [](ContainerType*) { return aznumeric_cast<int>(N); })
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length)
                     /// ... iterate

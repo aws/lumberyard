@@ -18,7 +18,7 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE const Color Color::CreateZero()            { return Color(0.0f); }
     AZ_MATH_FORCE_INLINE const Color Color::CreateOne()         { return Color(1.0f); }
-    AZ_MATH_FORCE_INLINE const Color Color::CreateFromFloat4(const float values[])
+    AZ_MATH_FORCE_INLINE const Color Color::CreateFromFloat4(const float* values)
     {
         Color result;
         result.Set(values);
@@ -36,6 +36,12 @@ namespace AZ
         result.Set(v, w);
         return result;
     }
+
+    AZ_MATH_FORCE_INLINE u32 Color::CreateU32(u8 r, u8 g, u8 b, u8 a)
+    {
+        return (a << 24) | (b << 16) | (g << 8) | r;
+    }
+
     AZ_MATH_FORCE_INLINE void Color::StoreToFloat4(float* values) const
     {
         m_color.StoreToFloat4(values);
@@ -98,7 +104,7 @@ namespace AZ
     }
 
     // Color to u32 => 0xAABBGGRR (COLREF format)
-    AZ_MATH_FORCE_INLINE u32 Color::ToU32()  const { return (GetA8() << 24) | (GetB8() << 16) | (GetG8() << 8) | GetR8(); }
+    AZ_MATH_FORCE_INLINE u32 Color::ToU32()  const { return CreateU32(GetR8(), GetG8(), GetB8(), GetA8()); }
 
     // Color from u32 => 0xAABBGGRR (COLREF format)
     AZ_MATH_FORCE_INLINE void Color::FromU32(u32 c) 

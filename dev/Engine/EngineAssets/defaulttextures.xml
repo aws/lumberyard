@@ -1,5 +1,16 @@
-<textures> 
-	<entry>EngineAssets/Textures/caustics_sampler.dds</entry>
+<TextureGroups>
+	<!--  The following are parallel to texturesFromFile array existed in ITexture.h and now moved to be loaded by the TextureManager.cpp/
+        It should be replaced by data driven file (this one) and loaded by the CTextureManager code  /-->
+	<DefaultTextures> 
+		<TextureEntry> Usage="NoTextureCM", FileName="EngineAssets/TextureMsg/ReplaceMeCM.dds", Flags="FT_DONT_RELEASE | FT_DONT_STREAM" </TextureEntry>
+	</DefaultTextures> 
+	
+	<!-- The following are parallel to the needless list of static CTexture pointers located within CTexture and used as default engine textures  /-->
+	<EngineTextures>
+	</EngineTextures>
+
+  <!-- Bellow are the original textures that were loaded by the old TextureManager and never used anywhere - to be loaded or removed    /-->
+  <entry>EngineAssets/Textures/caustics_sampler.dds</entry>
 	<entry nomips="1">EngineAssets/Textures/default_cch.dds</entry>
 	<entry>EngineAssets/Textures/detailDecalVariation.dds</entry>
 	<entry>EngineAssets/Textures/dither_2.dds</entry>
@@ -61,6 +72,8 @@
 	<entry>engineassets/textures/hex_grad.dds</entry>
 	<entry>engineassets/textures/perlinnoise_sum_small.dds</entry>
 	<entry>engineassets/textures/fogvolshadowjitter.dds</entry>
-</textures>
+
+</TextureGroups>
+	
 
 	

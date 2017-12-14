@@ -1591,10 +1591,20 @@ SGeomCacheFrameHeader* CGeomCacheManager::GetFrameDecompressHeader(SGeomCacheStr
 
     if (!pHandle)
     {
-        return NULL;
+        return nullptr;
+    }
+
+    //If the start frame is greater than the frame index 
+    //we're going to crash because frameOffset will overflow and 
+    //access pHandle->pBuffer beyond its limits
+    //This can happen if the user sets the start frame too high
+    if (pHandle->m_startFrame > frameIndex)
+    {
+        return nullptr;
     }
 
     const uint frameOffset = frameIndex - pHandle->m_startFrame;
+    
     SGeomCacheFrameHeader* pHeader = reinterpret_cast<SGeomCacheFrameHeader*>(
             pHandle->m_pBuffer + (frameOffset * sizeof(SGeomCacheFrameHeader)));
     return pHeader;

@@ -30,6 +30,8 @@ namespace GraphCanvas
         : public NodeLayoutComponent
         , public NodeNotificationBus::Handler
         , public StyleNotificationBus::Handler
+        , public AZ::EntityBus::Handler
+
     {
     public:
         AZ_COMPONENT(CommentNodeLayoutComponent, "{6926658C-372A-43D5-8758-FB67DDE3D857}", NodeLayoutComponent);
@@ -57,6 +59,11 @@ namespace GraphCanvas
         void Activate();
         void Deactivate();
         ////
+
+        // EntityBus
+        void OnEntityExists(const AZ::EntityId& entityId) override;
+        ////
+
 
         // StyleNotificationBus
         void OnStyleChanged() override;

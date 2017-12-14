@@ -23,7 +23,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #include <MathConversion.h>
@@ -34,6 +34,8 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::PhysicsComponentRequestBus;
+    
     bool RenameElement(AZ::SerializeContext::DataElementNode& classElement, AZ::Crc32 srcCrc, const char* newName)
     {
         AZ::SerializeContext::DataElementNode* eleNode = classElement.FindSubElement(srcCrc);
@@ -115,29 +117,7 @@ namespace LmbrCentral
                 ;
         }
     }
-
-    //////////////////////////////////////////////////////////////////////////
-
-    SpawnParams ParticleEmitterSettings::GetPropertiesAsSpawnParams() const
-    {
-        SpawnParams params;
-        params.colorTint = Vec3(m_color.GetR(), m_color.GetG(), m_color.GetB());
-        params.bEnableAudio = m_enableAudio;
-        params.bRegisterByBBox = m_registerByBBox;
-        params.fCountScale = m_countScale;
-        params.fSizeScale = m_sizeScale;
-        params.fSpeedScale = m_speedScale;
-        params.fTimeScale = m_timeScale;
-        params.fPulsePeriod = m_pulsePeriod;
-        params.fStrength = m_strength;
-        params.sAudioRTPC = m_audioRTPC.c_str();
-        params.particleSizeScale.x = m_particleSizeScaleX;
-        params.particleSizeScale.y = m_particleSizeScaleY;
-        params.particleSizeScaleRandom = m_particleSizeScaleRandom;
-        params.useLOD = m_useLOD;
-        return params;
-    }
-
+    
     void ParticleEmitterSettings::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -553,8 +533,9 @@ namespace LmbrCentral
         // Given a valid effect, we'll spawn a new emitter
         if (m_effect)
         {
-            // Check if the current platform supports compute shaders for GPU Particles.
-            if (m_effect->GetParticleParams().eEmitterType == ParticleParams::EEmitterType::GPU && ((gEnv->pRenderer->GetFeatures() & RFT_COMPUTE_SHADERS) == 0))
+            // Check if the current platform supports compute shaders for GPU Particles and Structured Buffers in the Vertex Shader.
+            int featureMask = RFT_COMPUTE_SHADERS | RFT_HW_VERTEX_STRUCTUREDBUF;
+            if (m_effect->GetParticleParams().eEmitterType == ParticleParams::EEmitterType::GPU && (gEnv->pRenderer->GetFeatures() & featureMask) != featureMask)
             {
                 AZ_Warning("Particle Component", "GPU Particles are not supported for this platform. Emitter using GPU particles is: %s", emitterName.c_str());
                 return;
@@ -566,6 +547,27 @@ namespace LmbrCentral
         {
             AZ_Warning("Particle Component", "Could not find particle emitter: %s", emitterName.c_str());
         }
+    }
+    
+    //////////////////////////////////////////////////////////////////////////
+
+    SpawnParams ParticleEmitter::GetPropertiesAsSpawnParams(const ParticleEmitterSettings& settings) const
+    {
+        SpawnParams params;
+        params.colorTint = Vec3(settings.m_color.GetR(), settings.m_color.GetG(), settings.m_color.GetB());
+        params.bEnableAudio = settings.m_enableAudio;
+        params.bRegisterByBBox = settings.m_registerByBBox;
+        params.fCountScale = settings.m_countScale;
+        params.fSizeScale = settings.m_sizeScale;
+        params.fSpeedScale = settings.m_speedScale;
+        params.fTimeScale = settings.m_timeScale;
+        params.fPulsePeriod = settings.m_pulsePeriod;
+        params.fStrength = settings.m_strength;
+        params.sAudioRTPC = settings.m_audioRTPC.c_str();
+        params.particleSizeScale.x = settings.m_particleSizeScaleX;
+        params.particleSizeScale.y = settings.m_particleSizeScaleY;
+        params.particleSizeScaleRandom = settings.m_particleSizeScaleRandom;
+        return params;
     }
 
     void ParticleEmitter::SpawnEmitter(const ParticleEmitterSettings& settings)
@@ -612,7 +614,7 @@ namespace LmbrCentral
         EBUS_EVENT_ID_RESULT(parentTransform, m_attachedToEntityId, AZ::TransformBus, GetWorldTM);
         
         // Spawn the particle emitter
-        SpawnParams spawnParams = settings.GetPropertiesAsSpawnParams();
+        SpawnParams spawnParams = GetPropertiesAsSpawnParams(settings);
         m_emitter = m_effect->Spawn(QuatTS(AZTransformToLYTransform(parentTransform)), emmitterFlags, &spawnParams);
 
 
@@ -701,7 +703,7 @@ namespace LmbrCentral
         target.vTarget.Set(targetEntityTransform.GetPosition().GetX(), targetEntityTransform.GetPosition().GetY(), targetEntityTransform.GetPosition().GetZ());
 
         AZ::Vector3 velocity(0);
-        LmbrCentral::PhysicsComponentRequestBus::EventResult(velocity, m_targetEntity, &LmbrCentral::PhysicsComponentRequests::GetVelocity);
+        PhysicsComponentRequestBus::EventResult(velocity, m_targetEntity, &AzFramework::PhysicsComponentRequests::GetVelocity);
         target.vVelocity.Set(velocity.GetX(), velocity.GetY(), velocity.GetZ());
         
         AZ::Aabb bounds = AZ::Aabb::CreateNull();
@@ -755,7 +757,7 @@ namespace LmbrCentral
         //connect to the appropriate target entity
         m_targetEntityHandler.Setup(m_emitter, settings.m_targetEntity);
 
-        SpawnParams spawnParams = settings.GetPropertiesAsSpawnParams();
+        SpawnParams spawnParams = GetPropertiesAsSpawnParams(settings);
         m_emitter->SetSpawnParams(spawnParams);
 
         //visibility and enable is not part of spawn params. set here.

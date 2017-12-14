@@ -682,27 +682,27 @@ namespace MysticQt
         widget->setObjectName("TransparentWidget");
         CreateStandardLayout(widget, attributeSettings);
 
-        MCore::Vector3  value       = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(0.0f, 0.0f, 0.0f);
-        MCore::Vector3  minValue    = (attributeSettings->GetMinValue()) ? static_cast<MCore::AttributeVector3*>(attributeSettings->GetMinValue())->GetValue() : MCore::Vector3(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
-        MCore::Vector3  maxValue    = (attributeSettings->GetMaxValue()) ? static_cast<MCore::AttributeVector3*>(attributeSettings->GetMaxValue())->GetValue() : MCore::Vector3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+        AZ::Vector3     value       = (mFirstAttribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) : AZ::Vector3::CreateZero();
+        AZ::Vector3     minValue    = (attributeSettings->GetMinValue()) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(attributeSettings->GetMinValue())->GetValue()) : AZ::Vector3(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
+        AZ::Vector3     maxValue    = (attributeSettings->GetMaxValue()) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(attributeSettings->GetMaxValue())->GetValue()) : AZ::Vector3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
         float           stepSize    = 0.1f;
 
-        spinBoxX->setRange(minValue.x, maxValue.x);
-        spinBoxX->setValue(value.x);
+        spinBoxX->setRange(minValue.GetX(), maxValue.GetX());
+        spinBoxX->setValue(value.GetX());
         spinBoxX->setSingleStep(stepSize);
         //spinBoxX->setPrefix("x: ");
         spinBoxX->setEnabled(!readOnly);
         spinBoxX->setDecimals(6);
 
-        spinBoxY->setRange(minValue.y, maxValue.y);
-        spinBoxY->setValue(value.y);
+        spinBoxY->setRange(minValue.GetY(), maxValue.GetY());
+        spinBoxY->setValue(value.GetY());
         spinBoxY->setSingleStep(stepSize);
         //spinBoxY->setPrefix("y: ");
         spinBoxY->setEnabled(!readOnly);
         spinBoxY->setDecimals(6);
 
-        spinBoxZ->setRange(minValue.z, maxValue.z);
-        spinBoxZ->setValue(value.z);
+        spinBoxZ->setRange(minValue.GetZ(), maxValue.GetZ());
+        spinBoxZ->setValue(value.GetZ());
         spinBoxZ->setSingleStep(stepSize);
         //spinBoxZ->setPrefix("z: ");
         spinBoxZ->setEnabled(!readOnly);
@@ -719,21 +719,21 @@ namespace MysticQt
 
     void Vector3AttributeWidget::SetValue(MCore::Attribute* attribute)
     {
-        MCore::Vector3 value = (attribute) ? static_cast<MCore::AttributeVector3*>(attribute)->GetValue() : MCore::Vector3(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 value = (attribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(attribute)->GetValue()) : AZ::Vector3::CreateZero();
 
-        if (MCore::Compare<float>::CheckIfIsClose(value.x, mSpinBoxX->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(value.GetX(), mSpinBoxX->value(), 0.000001f) == false)
         {
-            mSpinBoxX->setValue(value.x);
+            mSpinBoxX->setValue(value.GetX());
         }
 
-        if (MCore::Compare<float>::CheckIfIsClose(value.y, mSpinBoxY->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(value.GetY(), mSpinBoxY->value(), 0.000001f) == false)
         {
-            mSpinBoxY->setValue(value.y);
+            mSpinBoxY->setValue(value.GetY());
         }
 
-        if (MCore::Compare<float>::CheckIfIsClose(value.z, mSpinBoxZ->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(value.GetZ(), mSpinBoxZ->value(), 0.000001f) == false)
         {
-            mSpinBoxZ->setValue(value.z);
+            mSpinBoxZ->setValue(value.GetZ());
         }
     }
 
@@ -748,14 +748,14 @@ namespace MysticQt
 
     void Vector3AttributeWidget::OnDoubleSpinnerX(double value)
     {
-        MCore::Vector3 curValue = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
-        curValue.x = value;
+        AZ::Vector3 curValue = (mFirstAttribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) : AZ::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
+        curValue.SetX(value);
 
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(curValue);
+            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(AZ::PackedVector3f(curValue));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -769,14 +769,14 @@ namespace MysticQt
 
     void Vector3AttributeWidget::OnDoubleSpinnerY(double value)
     {
-        MCore::Vector3 curValue = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
-        curValue.y = value;
+        AZ::Vector3 curValue = (mFirstAttribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) : AZ::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
+        curValue.SetY(value);
 
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(curValue);
+            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(AZ::PackedVector3f(curValue));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -790,14 +790,14 @@ namespace MysticQt
 
     void Vector3AttributeWidget::OnDoubleSpinnerZ(double value)
     {
-        MCore::Vector3 curValue = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
-        curValue.z = value;
+        AZ::Vector3 curValue = (mFirstAttribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) : AZ::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
+        curValue.SetZ(value);
 
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(curValue);
+            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(AZ::PackedVector3f(curValue));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);

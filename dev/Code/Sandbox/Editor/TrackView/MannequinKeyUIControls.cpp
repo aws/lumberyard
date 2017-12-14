@@ -15,6 +15,7 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "IAnimatedCharacter.h"
 #include "ICryMannequin.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CMannequinKeyUIControls
@@ -34,9 +35,9 @@ public:
         AddVariable(mv_table, mv_tags, "fragment tags");
         AddVariable(mv_table, mv_priority, "priority");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_Mannequin;
+        return paramType == AnimParamType::Mannequin;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -67,7 +68,7 @@ bool CMannequinKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Mannequin)
+        if (paramType == AnimParamType::Mannequin)
         {
             IMannequinKey key;
             keyHandle.GetKey(&key);
@@ -97,7 +98,7 @@ void CMannequinKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Mannequin)
+        if (paramType == AnimParamType::Mannequin)
         {
             IMannequinKey key;
             keyHandle.GetKey(&key);

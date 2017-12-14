@@ -23,7 +23,9 @@
 #include <CrySystemBus.h> // Immediate-mode CryRendering only
 
 #if defined (EMOTIONFXANIMATION_EDITOR)
+#   include <AzCore/Debug/Timer.h>
 #   include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#   include <AzToolsFramework/API/EditorAnimationSystemRequestBus.h>
 #endif // EMOTIONFXANIMATION_EDITOR
 
 namespace AZ
@@ -46,6 +48,7 @@ namespace EMotionFX
             , private EMotionFXRequestBus::Handler
 #if defined (EMOTIONFXANIMATION_EDITOR)
             , private AzToolsFramework::EditorEvents::Bus::Handler
+            , private AzToolsFramework::EditorAnimationSystemRequestsBus::Handler
 #endif // EMOTIONFXANIMATION_EDITOR
         {
         public:
@@ -86,20 +89,23 @@ namespace EMotionFX
 
             ////////////////////////////////////////////////////////////////////////
             // EMotionFXBus
-            void RegisterAnimGraphNodeType(EMotionFX::AnimGraphNode* nodeTemplate) override;
+            void RegisterAnimGraphObjectType(EMotionFX::AnimGraphObject* objectTemplate) override;
             ////////////////////////////////////////////////////////////////////////
 
             void RegisterAssetTypesAndHandlers();
             void SetMediaRoot(const char* alias);
 
 #if defined (EMOTIONFXANIMATION_EDITOR)
+            void UpdateAnimationEditorPlugins(float delta);
             void NotifyRegisterViews() override;
+            bool IsSystemActive(EditorAnimationSystemRequests::AnimationSystem systemType);
+
+            AZ::Debug::Timer m_updateTimer;
 #endif // EMOTIONFXANIMATION_EDITOR
 
             AZ::u32 m_numThreads;
 
         private:
-
             AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler> > m_assetHandlers;
         };
     }

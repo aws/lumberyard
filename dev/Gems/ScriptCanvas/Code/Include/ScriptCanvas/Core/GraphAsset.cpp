@@ -13,53 +13,31 @@
 #include "precompiled.h"
 
 #include "GraphAsset.h"
-#include "Graph.h"
 
-#include <AzCore/Component/EntityId.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/Entity.h>
 
 namespace ScriptCanvas
 {
-
     GraphAsset::GraphAsset(const AZ::Data::AssetId& assetId, AZ::Data::AssetData::AssetStatus status)
         : AZ::Data::AssetData(assetId, status)
     {
-
     }
 
-    GraphAsset::GraphAsset(GraphAsset&& other)
-        : m_scriptCanvasData(AZStd::move(other.m_scriptCanvasData))
+    GraphAsset::~GraphAsset()
     {
-
-    }
-
-    void GraphAsset::Reflect(AZ::ReflectContext* context)
-    {
-        if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+        for (auto& nodeRef : m_graphData.m_nodes)
         {
-            serialize->Class<ScriptCanvasData>()
-                ->Version(0)
-                ->Field("m_graph", &ScriptCanvasData::m_graph)
-                ;
+            delete nodeRef;
+        }
+
+        for (auto& connectionRef : m_graphData.m_connections)
+        {
+            delete connectionRef;
         }
     }
 
-    void GraphAsset::SetGraph(AZ::Entity* graph)
+    void GraphAsset::SetGraphData(const GraphData& graphData)
     {
-        if (graph != m_scriptCanvasData.m_graph.GetEntity())
-        {
-            delete m_scriptCanvasData.m_graph.GetEntity();
-        }
-        m_scriptCanvasData.m_graph = graph;
-    }
-
-    GraphAsset& GraphAsset::operator=(GraphAsset&& other)
-    {
-        if (this != &other)
-        {
-            m_scriptCanvasData = AZStd::move(other.m_scriptCanvasData);
-        }
-
-        return *this;
+        m_graphData = graphData;
     }
 }

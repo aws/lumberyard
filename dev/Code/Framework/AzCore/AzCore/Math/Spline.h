@@ -20,15 +20,17 @@
 namespace AZ
 {
     class Aabb;
-    class SerializeContext;
-    void SplineReflect(SerializeContext& context);
+    class ReflectContext;
+    void SplineReflect(ReflectContext* context);
 
     /**
      * Interface for representing a specific position on a spline.
      */
     struct SplineAddress
     {
-        size_t m_segmentIndex = 0; ///< Which segment along the spline you are on.
+        AZ_TYPE_INFO(SplineAddress, "{865BA2EC-43C5-4E1F-9B6F-2D63F6DC2E70}")
+
+        u64 m_segmentIndex = 0; ///< Which segment along the spline you are on.
         float m_segmentFraction = 0.0f; ///< Percentage along a given segment - range [0, 1].
 
         SplineAddress() = default;
@@ -41,10 +43,42 @@ namespace AZ
         bool operator==(const SplineAddress& splineAddress) const
         {
             return m_segmentIndex == splineAddress.m_segmentIndex
-                   && IsClose(m_segmentFraction, splineAddress.m_segmentFraction, c_segmentFractionEpsilon);
+                   && IsClose(m_segmentFraction, splineAddress.m_segmentFraction, s_segmentFractionEpsilon);
         }
 
-        static const float c_segmentFractionEpsilon; ///< Epsilon value for segment fraction spline address comparison.
+        static const float s_segmentFractionEpsilon; ///< Epsilon value for segment fraction spline address comparison.
+    };
+
+    /**
+     * Result object for querying a position on a spline using a position/point.
+     */
+    struct PositionSplineQueryResult
+    {
+        AZ_TYPE_INFO(PositionSplineQueryResult, "{E35DCF28-1AC3-49E8-A0AB-2F6115348F45}")
+
+        PositionSplineQueryResult() = default;
+        explicit PositionSplineQueryResult(const SplineAddress& splineAddress, VectorFloat distanceSq)
+            : m_splineAddress(splineAddress), m_distanceSq(distanceSq) {}
+
+        SplineAddress m_splineAddress; ///< The returned spline address from the query (closest point on spline to query).
+        VectorFloat m_distanceSq = VectorFloat::CreateZero(); ///< The shortest distance from the query to the spline.
+    };
+
+    /**
+     * Result object for querying a position on a spline using a ray.
+     * Includes same data as position query.
+     */
+    struct RaySplineQueryResult
+        : public PositionSplineQueryResult
+    {
+        AZ_TYPE_INFO(RaySplineQueryResult, "{FE862126-C838-4999-9B7B-4AEEA5507A49}")
+
+        RaySplineQueryResult() = default;
+        explicit RaySplineQueryResult(const SplineAddress& splineAddress, VectorFloat distanceSq, VectorFloat rayDistance)
+            : PositionSplineQueryResult(splineAddress, distanceSq)
+            , m_rayDistance(rayDistance) {}
+
+        VectorFloat m_rayDistance = VectorFloat::CreateZero(); ///< The distance along the ray the point closest to the spline is.
     };
 
     /**
@@ -66,13 +100,14 @@ namespace AZ
          * @param localRayDir Direction of ray in local space of spline (must be transformed prior to being passed).
          * @return SplineAddress closest to given ray on spline.
          */
-        virtual SplineAddress GetNearestAddress(const Vector3& localRaySrc, const Vector3& localRayDir) const = 0;
+        virtual RaySplineQueryResult GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const = 0;
+
         /**
          * Return nearest address on spline from position (local space).
          * @param localPos Position in local space of spline (must be transformed prior to being passed).
          * @return SplineAddress closest to given position on spline.
          */
-        virtual SplineAddress GetNearestAddress(const Vector3& localPos) const = 0;
+        virtual PositionSplineQueryResult GetNearestAddressPosition(const Vector3& localPos) const = 0;
 
         /**
          * Return address at distance value - range [0, splineLength].
@@ -80,6 +115,7 @@ namespace AZ
          * @return SplineAddress corresponding to distance.
          */
         virtual SplineAddress GetAddressByDistance(float distance) const = 0;
+
         /**
          * Return address at fractional value - range [0, 1].
          * @param fraction fraction/proportion/percentage along the spline.
@@ -93,12 +129,14 @@ namespace AZ
          * @return Position of given SplineAddress in local space.
          */
         virtual Vector3 GetPosition(const SplineAddress& splineAddress) const = 0;
+
         /**
          * Return normal at SplineAddress (local space).
          * @param splineAddress Address representing a point on the spline.
          * @return Normal of given SplineAddress in local space.
          */
         virtual Vector3 GetNormal(const SplineAddress& splineAddress) const = 0;
+
         /**
          * Return tangent at SplineAddress (local space).
          * @param splineAddress Address representing a point on the spline.
@@ -107,54 +145,78 @@ namespace AZ
         virtual Vector3 GetTangent(const SplineAddress& splineAddress) const = 0;
 
         /**
+         * Returns spline length from the beginning to the specific point.
+         * @param splineAddress Address of the point to get the distance to.
+         * @return Distance to the address specified along the spline
+         */
+        virtual float GetLength(const SplineAddress& splineAddress) const = 0;
+
+        /**
          * Returns total length of spline.
          */
         virtual float GetSplineLength() const = 0;
+
         /**
          * Returns length the segment between vertices - [index, index + 1].
          */
         virtual float GetSegmentLength(size_t index) const = 0;
+
         /**
          * Return number of Segments along spline.
          * Explicitly returns the number of valid/real segments in the spline
-         * Some splines technically have invalid segments (e.g. that lie in the range [0 - 1]
-         * and [vertexCount - 2, vertexCount -1] - these will be ignored in the segment count calculation.
+         * Some splines technically have invalid segments (example: that lie in the range [0 - 1]
+         * and [vertexCount - 2, vertexCount -1] - these will be ignored in the segment count calculation).
          */
         virtual size_t GetSegmentCount() const = 0;
+
         /**
-        * Return the number of parts (lines) that make up a segment (higher granularity - smoother curve).
-        */
+         * Return the number of parts (lines) that make up a segment (higher granularity - smoother curve).
+         */
         virtual u16 GetSegmentGranularity() const = 0;
+
         /**
          * Gets the Aabb of the vertices in the spline.
          * @param aabb out param of filled aabb.
          */
         virtual void GetAabb(Aabb& aabb, const Transform& transform = Transform::CreateIdentity()) const = 0;
+
         /**
          * Set whether the spline is closed or not - should its last vertex connect to the first
          */
         void SetClosed(bool closed);
+
         /**
          * Return if the spline is closed (looping) or not
          */
         AZ_MATH_FORCE_INLINE bool IsClosed() const { return m_closed; }
+
         /**
          * Return number of vertices composing the spline.
          */
         AZ_MATH_FORCE_INLINE size_t GetVertexCount() const { return m_vertexContainer.Size(); }
+
         /**
          * Return immutable stored vertices (local space).
          */
         AZ_MATH_FORCE_INLINE const AZStd::vector<Vector3>& GetVertices() const { return m_vertexContainer.GetVertices(); }
+
         /**
          * Return immutable position of vertex at index (local space).
          */
         AZ_MATH_FORCE_INLINE const Vector3& GetVertex(size_t index) const { return m_vertexContainer.GetVertices()[index]; }
-        
+
         /**
-         * Override callbacks to be used when spline changes/is modified.
+         * Override callbacks to be used when spline changes/is modified (general).
          */
         void SetCallbacks(const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer);
+
+        /**
+         * Override callbacks to be used when spline changes/is modified (specific).
+         * (use if you need more fine grained control over modifications to the container)
+         */
+        void SetCallbacks(const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
+            const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
+            const AZStd::function<void()>& OnClearVertices);
 
         VertexContainer<Vector3> m_vertexContainer; ///< Vertices representing the spline.
 
@@ -166,7 +228,7 @@ namespace AZ
         virtual void OnSplineChanged();
 
     protected:
-        static const float c_splineEpsilon; ///< Epsilon value for splines to use to check approximate results.
+        static const float s_splineEpsilon; ///< Epsilon value for splines to use to check approximate results.
 
         virtual void OnVertexAdded(size_t index); ///< Internal function to be overridden by derived spline spline to handle custom logic when a vertex is added.
         virtual void OnVerticesSet(); ///< Internal function to be overridden by derived spline spline to handle custom logic when all vertices are set.
@@ -197,14 +259,15 @@ namespace AZ
             : Spline(spline) {}
         ~LinearSpline() override {}
 
-        SplineAddress GetNearestAddress(const Vector3& localRaySrc, const Vector3& localRayDir) const override;
-        SplineAddress GetNearestAddress(const Vector3& localPos) const override;
+        RaySplineQueryResult GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const override;
+        PositionSplineQueryResult GetNearestAddressPosition(const Vector3& localPos) const override;
         SplineAddress GetAddressByDistance(float distance) const override;
         SplineAddress GetAddressByFraction(float fraction) const override;
 
         Vector3 GetPosition(const SplineAddress& splineAddress) const override;
         Vector3 GetNormal(const SplineAddress& splineAddress) const override;
         Vector3 GetTangent(const SplineAddress& splineAddress) const override;
+        float GetLength(const SplineAddress& splineAddress) const override;
 
         float GetSplineLength() const override;
         float GetSegmentLength(size_t index) const override;
@@ -234,19 +297,20 @@ namespace AZ
             : Spline() {}
         explicit BezierSpline(const BezierSpline& spline)
             : Spline(spline)
-            , m_bezierData(spline.m_bezierData.begin(), spline.m_bezierData.end()) 
+            , m_bezierData(spline.m_bezierData.begin(), spline.m_bezierData.end())
             , m_granularity(spline.m_granularity) {}
         explicit BezierSpline(const Spline& spline);
         ~BezierSpline() override {}
 
-        SplineAddress GetNearestAddress(const Vector3& localRaySrc, const Vector3& localRayDir) const override;
-        SplineAddress GetNearestAddress(const Vector3& localPos) const override;
+        RaySplineQueryResult GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const override;
+        PositionSplineQueryResult GetNearestAddressPosition(const Vector3& localPos) const override;
         SplineAddress GetAddressByDistance(float distance) const override;
         SplineAddress GetAddressByFraction(float fraction) const override;
 
         Vector3 GetPosition(const SplineAddress& splineAddress) const override;
         Vector3 GetNormal(const SplineAddress& splineAddress) const override;
         Vector3 GetTangent(const SplineAddress& splineAddress) const override;
+        float GetLength(const SplineAddress& splineAddress) const override;
 
         float GetSplineLength() const override;
         float GetSegmentLength(size_t index) const override;
@@ -322,14 +386,15 @@ namespace AZ
         explicit CatmullRomSpline(const Spline& spline);
         ~CatmullRomSpline() override {}
 
-        SplineAddress GetNearestAddress(const Vector3& localRaySrc, const Vector3& localRayDir) const override;
-        SplineAddress GetNearestAddress(const Vector3& localPos) const override;
+        RaySplineQueryResult GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const override;
+        PositionSplineQueryResult GetNearestAddressPosition(const Vector3& localPos) const override;
         SplineAddress GetAddressByDistance(float distance) const override;
         SplineAddress GetAddressByFraction(float fraction) const override;
 
         Vector3 GetPosition(const SplineAddress& splineAddress) const override;
         Vector3 GetNormal(const SplineAddress& splineAddress) const override;
         Vector3 GetTangent(const SplineAddress& splineAddress) const override;
+        float GetLength(const SplineAddress& splineAddress) const override;
 
         float GetSplineLength() const override;
         float GetSegmentLength(size_t index) const override;

@@ -21,6 +21,7 @@
 #include <qpainter.h>
 #include <qevent.h>
 #include <QCoreApplication>
+#include <QCompleter>
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -35,6 +36,8 @@
 #include <GraphCanvas/Widgets/GraphCanvasTreeModel.h>
 
 #include <Editor/Model/NodePalette/NodePaletteSortFilterProxyModel.h>
+
+#include <Editor/Nodes/NodeUtils.h>
 
 #include <Editor/View/Widgets/ui_NodePalette.h>
 #include <Editor/View/Widgets/NodeTreeView.h>
@@ -55,9 +58,19 @@
 #include <Libraries/Libraries.h>
 
 // Primitive data types we are hard coding for now
-#include <Libraries/Logic/Boolean.h>
-#include <Libraries/Math/Number.h>
 #include <Libraries/Core/String.h>
+#include <Libraries/Logic/Boolean.h>
+#include <Libraries/Math/AABBNode.h>
+#include <Libraries/Math/CRCNode.h>
+#include <Libraries/Math/ColorNode.h>
+#include <Libraries/Math/Matrix3x3Node.h>
+#include <Libraries/Math/Matrix4x4Node.h>
+#include <Libraries/Math/OBBNode.h>
+#include <Libraries/Math/PlaneNode.h>
+#include <Libraries/Math/Rotation.h>
+#include <Libraries/Math/Transform.h>
+#include <Libraries/Math/Number.h>
+#include <Libraries/Math/Vector.h>
 
 namespace
 {
@@ -97,15 +110,16 @@ namespace
         const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(typeId);
         if (classData && classData->m_editData)
         {            
-            auto editorElementData = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
-          
-            if (auto excludeAttribute = editorElementData->FindAttribute(AZ::Script::Attributes::ExcludeFrom))
+            if (auto editorElementData = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
             {
-                auto excludeAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<AZ::Script::Attributes::ExcludeFlags>*>(excludeAttribute);
-                return excludeAttributeData && ShouldExcludeFromNodeList(excludeAttributeData, typeId, showExcludedPreviewNodes);
+                if (auto excludeAttribute = editorElementData->FindAttribute(AZ::Script::Attributes::ExcludeFrom))
+                {
+                    auto excludeAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<AZ::Script::Attributes::ExcludeFlags>*>(excludeAttribute);
+                    return excludeAttributeData && ShouldExcludeFromNodeList(excludeAttributeData, typeId, showExcludedPreviewNodes);
+                }
             }
         }
-
+        
         return false;
     }
 
@@ -264,6 +278,7 @@ namespace
             ScriptCanvasEditor::NodePaletteTreeItem* utilitiesRoot = GetCategoryNode("Utilities", root, categoryRoots);
 
             utilitiesRoot->CreateChildNode<ScriptCanvasEditor::CommentNodePaletteTreeItem>("Comment", QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(AZ::Uuid()).c_str()));
+            utilitiesRoot->CreateChildNode<ScriptCanvasEditor::BlockCommentNodePaletteTreeItem>("Block Comment", QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(AZ::Uuid()).c_str()));
 
             ScriptCanvasEditor::NodePaletteTreeItem* variableRoot = GetCategoryNode<ScriptCanvasEditor::VariableCategoryNodePaletteTreeItem>("Variables", root, categoryRoots);
 
@@ -293,6 +308,8 @@ namespace
             // Children
             for (auto& node : ScriptCanvas::Library::LibraryDefinition::GetNodes(type.second.m_uuid))
             {
+                ScriptCanvasEditor::NodePaletteTreeItem* nodeParent = nullptr;
+                
                 if (HasExcludeFromNodeListAttribute(serializeContext, node.first, showExcludedPreviewNodes))
                 {
                     continue;
@@ -301,25 +318,62 @@ namespace
                 // Pass in the associated class data so we can do more intensive lookups?
                 const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(node.first);
 
-                QString name = QString(node.second.c_str());
+                AZStd::string name = node.second;
+                QString toolTip;
 
+                bool isToolTipSet(false);
+
+                bool isMissingEntry(false);
+                bool isMissingTooltip(false);
+                
                 if (classData && classData->m_editData && classData->m_editData->m_name)
                 {
-                    name = classData->m_editData->m_name;
-                    
-                    auto editorElementData = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
-                    if (editorElementData)
-                    {
-                        if (auto categoryAttribute = editorElementData->FindAttribute(AZ::Edit::Attributes::Category))
-                        {
-                            if (auto categoryAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(categoryAttribute))
-                            {
-                                const char* category = categoryAttributeData->Get(nullptr);
-                                parentItem = GetCategoryNode(category, root, categoryRoots);
-                            }
-                        }
+                    auto nodeContextName = ScriptCanvasEditor::Nodes::GetContextName(*classData);
+                    auto contextName = ScriptCanvasEditor::TranslationHelper::GetContextName(ScriptCanvasEditor::TranslationContextGroup::ClassMethod, nodeContextName);
 
-                        if (auto categoryStyleAttribute = editorElementData->FindAttribute(AZ::Edit::Attributes::CategoryStyle))
+                    GraphCanvas::TranslationKeyedString nodeKeyedString({}, contextName);
+                    nodeKeyedString.m_key = ScriptCanvasEditor::TranslationHelper::GetKey(ScriptCanvasEditor::TranslationContextGroup::ClassMethod, nodeContextName, classData->m_editData->m_name, ScriptCanvasEditor::TranslationItemType::Node, ScriptCanvasEditor::TranslationKeyId::Name);
+                    name = nodeKeyedString.GetDisplayString();
+
+                    isMissingEntry = name.empty();
+
+                    GraphCanvas::TranslationKeyedString tooltipKeyedString(AZStd::string(), nodeKeyedString.m_context);
+                    tooltipKeyedString.m_key = ScriptCanvasEditor::TranslationHelper::GetKey(ScriptCanvasEditor::TranslationContextGroup::ClassMethod, nodeContextName, classData->m_editData->m_name, ScriptCanvasEditor::TranslationItemType::Node, ScriptCanvasEditor::TranslationKeyId::Tooltip);
+
+                    auto toolTipTranslated = tooltipKeyedString.GetDisplayString();
+                    isMissingTooltip = toolTipTranslated.empty();
+                    if (!isMissingTooltip)
+                    {
+                        toolTip = QString(toolTipTranslated.c_str());
+                    }
+
+                    if (name.empty())
+                    {
+                        name = classData->m_editData->m_name;
+                    }
+
+                    GraphCanvas::TranslationKeyedString categoryKeyedString(ScriptCanvasEditor::Nodes::GetCategoryName(*classData), nodeKeyedString.m_context);
+                    categoryKeyedString.m_key = ScriptCanvasEditor::TranslationHelper::GetKey(ScriptCanvasEditor::TranslationContextGroup::ClassMethod, nodeContextName, classData->m_editData->m_name, ScriptCanvasEditor::TranslationItemType::Node, ScriptCanvasEditor::TranslationKeyId::Category);
+                    auto categoryName = categoryKeyedString.GetDisplayString();
+
+                    if (categoryName.empty())
+                    {
+                        categoryName = contextName;
+                    }
+                    
+                    if (!categoryName.empty())
+                    {
+                        // a better category name may have been found
+                        nodeParent = GetCategoryNode(categoryName.c_str(), root, categoryRoots);
+                    }
+                    else
+                    {
+                        nodeParent = parentItem;
+                    }
+                    
+                    if (auto editorDataElement = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+                    {
+                        if (auto categoryStyleAttribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::CategoryStyle))
                         {
                             if (auto categoryAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(categoryStyleAttribute))
                             {
@@ -328,41 +382,35 @@ namespace
                         }
                     }
                 }
-
+                
                 // Need to detect primitive types.
-                if (classData->m_azRtti && 
-                    (classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Logic::Boolean>()
-                     || classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Math::Number>()
-                     || classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Core::String>()))
+                if (classData->m_azRtti && classData->m_azRtti->IsTypeOf<ScriptCanvas::PureData>())
                 {
-                    ScriptCanvasEditor::VariablePrimitiveNodePaletteTreeItem* varItem = variableTypeRoot->CreateChildNode<ScriptCanvasEditor::VariablePrimitiveNodePaletteTreeItem>(node.first, name, QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(node.first).c_str()));
+                    ScriptCanvasEditor::VariablePrimitiveNodePaletteTreeItem* varItem = variableTypeRoot->CreateChildNode<ScriptCanvasEditor::VariablePrimitiveNodePaletteTreeItem>(node.first, QString(name.c_str()), QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(node.first).c_str()));
 
-                    const char* displayTooltip;
+                    if (toolTip.isEmpty())
+                    {
+                        AZStd::string displayTooltip;
 
-                    // TODO: move to and consolidate these in the translation file
-                    if (classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Logic::Boolean>())
-                    {
-                        displayTooltip = "A variable that stores one of two values: True or False";
-                    }
-                    else if (classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Math::Number>())
-                    {
-                        displayTooltip = "A variable that stores a number";
-                    }
-                    else if (classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Core::String>())
-                    {
-                        displayTooltip = "A variable that stores a text string";
+                        // TODO: move to and consolidate these in the translation file
+                        if (classData->m_editData && classData->m_editData->m_description)
+                        {
+                            toolTip = classData->m_editData->m_description;
+                        }
                     }
 
-                    varItem->SetToolTip(displayTooltip);
+                    varItem->SetToolTip(toolTip);
                 }
                 else
                 {
-                    ScriptCanvasEditor::CustomNodePaletteTreeItem* customItem = parentItem->CreateChildNode<ScriptCanvasEditor::CustomNodePaletteTreeItem>(node.first, name, QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(node.first).c_str()));
+                    ScriptCanvasEditor::CustomNodePaletteTreeItem* customItem = nodeParent->CreateChildNode<ScriptCanvasEditor::CustomNodePaletteTreeItem>(node.first, QString(name.c_str()), QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(node.first).c_str()));
 
-                    if (classData->m_editData->m_description)
+                    if (toolTip.isEmpty() && classData->m_editData->m_description)
                     {
-                        customItem->SetToolTip(classData->m_editData->m_description);
+                        toolTip = classData->m_editData->m_description;
                     }
+
+                    customItem->SetToolTip(toolTip);
                 }
             }
         }
@@ -396,23 +444,35 @@ namespace
                     {
                         skipBuses.insert(AZ::Crc32(requestBus.c_str()));
                     }
-                    continue; // skip this class
-                }
 
+                    continue;
+                }
+                
                 // Objects and Object methods
                 {
                     bool canCreate = serializeContext->FindClassData(behaviorClass->m_typeId) != nullptr;
-                    
-                    // Do not allow variable creation for data that derives from AZ::Component
-                    for (auto base : behaviorClass->m_baseClasses)
+                
+                    // createable variables must have full memory support
+                    canCreate = canCreate && 
+                        ( behaviorClass->m_allocate
+                        && behaviorClass->m_cloner
+                        && behaviorClass->m_mover
+                        && behaviorClass->m_destructor
+                        && behaviorClass->m_deallocate);
+
+                    if (canCreate)
                     {
-                        if (AZ::Component::TYPEINFO_Uuid() == base)
+                        // Do not allow variable creation for data that derives from AZ::Component
+                        for (auto base : behaviorClass->m_baseClasses)
                         {
-                            canCreate = false;
-                            break;
+                            if (AZ::Component::TYPEINFO_Uuid() == base)
+                            {
+                                canCreate = false;
+                                break;
+                            }
                         }
                     }
-
+                    
                     AZStd::string categoryPath;
                     
                     AZStd::string translationContext = ScriptCanvasEditor::TranslationHelper::GetContextName(ScriptCanvasEditor::TranslationContextGroup::ClassMethod, behaviorClass->m_name);
@@ -466,8 +526,22 @@ namespace
                         {
                             continue; // skip this method
                         }
-
-                        objectItem->CreateChildNode<ScriptCanvasEditor::ClassMethodEventPaletteTreeItem>(QString(classIter.first.c_str()), QString(method.first.c_str()));
+                        
+                        GraphCanvas::TranslationKeyedString methodCategoryString;
+                        methodCategoryString.m_context = ScriptCanvasEditor::TranslationHelper::GetContextName(ScriptCanvasEditor::TranslationContextGroup::ClassMethod, classIter.first.c_str());
+                        methodCategoryString.m_key = ScriptCanvasEditor::TranslationHelper::GetKey(ScriptCanvasEditor::TranslationContextGroup::ClassMethod, classIter.first.c_str(), method.first.c_str(), ScriptCanvasEditor::TranslationItemType::Node, ScriptCanvasEditor::TranslationKeyId::Category);
+                        
+                        AZStd::string methodCategoryPath = methodCategoryString.GetDisplayString();
+                        
+                        if (methodCategoryPath.empty())
+                        {
+                            objectItem->CreateChildNode<ScriptCanvasEditor::ClassMethodEventPaletteTreeItem>(QString(classIter.first.c_str()), QString(method.first.c_str()));
+                        }
+                        else
+                        {
+                            ScriptCanvasEditor::NodePaletteTreeItem* methodParentItem = GetCategoryNode(methodCategoryPath.c_str(), root, categoryRoots);
+                            methodParentItem->CreateChildNode<ScriptCanvasEditor::ClassMethodEventPaletteTreeItem>(QString(classIter.first.c_str()), QString(method.first.c_str()));
+                        }
                     }
 
                     if (objectItem->GetNumChildren() == 0)
@@ -723,71 +797,6 @@ namespace ScriptCanvasEditor
 {
     namespace Widget
     {
-        ///////////////////
-        // AutoElidedText
-        ///////////////////
-
-        AutoElidedText::AutoElidedText(QWidget* parent, Qt::WindowFlags flags)
-            : QLabel(parent, flags)
-        {
-            setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-        }
-
-        AutoElidedText::~AutoElidedText()
-        {
-        }
-
-        QString AutoElidedText::fullText() const
-        {
-            return m_fullText;
-        }
-
-        void AutoElidedText::setFullText(const QString& text)
-        {
-            m_fullText = text;
-            RefreshLabel();
-        }
-
-        void AutoElidedText::resizeEvent(QResizeEvent* resizeEvent)
-        {
-            RefreshLabel();
-            QLabel::resizeEvent(resizeEvent);
-        }
-
-        QSize AutoElidedText::minimumSizeHint() const
-        {
-            QSize retVal = QLabel::minimumSizeHint();
-            retVal.setWidth(0);
-
-            return retVal;
-        }
-
-        QSize AutoElidedText::sizeHint() const
-        {
-            QSize retVal = QLabel::sizeHint();
-            retVal.setWidth(0);
-
-            return retVal;
-        }
-
-        void AutoElidedText::RefreshLabel()
-        {
-            QFontMetrics metrics(font());
-
-            int left = 0;
-            int top = 0;
-            int right = 0;
-            int bottom = 0;
-
-            getContentsMargins(&left, &top, &right, &bottom);
-
-            int labelWidth = width();
-
-            QString elidedText = metrics.elidedText(m_fullText, Qt::ElideRight, (width() - (left + right)));
-
-            setText(elidedText);
-        }
-
         ////////////////////////////
         // NodePaletteTreeDelegate
         ////////////////////////////
@@ -835,10 +844,6 @@ namespace ScriptCanvasEditor
         ////////////////
         NodePalette::NodePalette(const QString& windowLabel, QWidget* parent, bool inContextMenu)
             : AzQtComponents::StyledDockWidget(parent)
-            , m_sliding(false)
-            , m_scrollRange(0)
-            , m_scrollbarHeight(1)
-            , m_offsetCounter(0)
             , ui(new Ui::NodePalette())
             , m_contextMenuCreateEvent(nullptr)
             , m_view(nullptr)
@@ -857,7 +862,6 @@ namespace ScriptCanvasEditor
             ui->setupUi(this);
 
             QObject::connect(ui->m_quickFilter, &QLineEdit::textChanged, this, &NodePalette::OnQuickFilterChanged);
-            QObject::connect(ui->m_quickFilter, &QLineEdit::returnPressed, this, &NodePalette::UpdateFilter);
 
             QAction* clearAction = ui->m_quickFilter->addAction(QIcon(":/ScriptCanvasEditorResources/Resources/lineedit_clear.png"), QLineEdit::TrailingPosition);
             QObject::connect(clearAction, &QAction::triggered, this, &NodePalette::ClearFilter);
@@ -868,9 +872,19 @@ namespace ScriptCanvasEditor
             GraphCanvas::GraphCanvasTreeModelRequestBus::Handler::BusConnect(sourceModel);
 
             m_model->setSourceModel(sourceModel);
+            m_model->PopulateUnfilteredModel();
 
             m_view->setModel(m_model);
             m_view->setItemDelegate(aznew NodePaletteTreeDelegate(this));
+
+            if (!inContextMenu)
+            {
+                QObject::connect(ui->m_quickFilter, &QLineEdit::returnPressed, this, &NodePalette::UpdateFilter);
+            }
+            else
+            {
+                QObject::connect(ui->m_quickFilter, &QLineEdit::returnPressed, this, &NodePalette::TrySpawnItem);
+            }
 
             if (inContextMenu)
             {
@@ -882,10 +896,7 @@ namespace ScriptCanvasEditor
                 QObject::connect(m_view->selectionModel(), &QItemSelectionModel::selectionChanged, this, &NodePalette::OnSelectionChanged);
             }
 
-            m_view->verticalScrollBar()->installEventFilter(this);
             QObject::connect(m_view->verticalScrollBar(), &QScrollBar::valueChanged, this, &NodePalette::OnScrollChanged);
-            QObject::connect(m_view->verticalScrollBar(), &QScrollBar::sliderPressed, [this]() { this->m_sliding = true; });
-            QObject::connect(m_view->verticalScrollBar(), &QScrollBar::sliderReleased, [this]() { this->m_sliding = false; });
 
             ui->contentLayout->addWidget(m_view);
 
@@ -901,6 +912,8 @@ namespace ScriptCanvasEditor
             }
 
             m_view->PauseTreeViewSaving();
+
+            ui->m_categoryLabel->SetElideMode(Qt::ElideLeft);
         }
 
         NodePalette::~NodePalette()
@@ -923,7 +936,7 @@ namespace ScriptCanvasEditor
                 QSignalBlocker blocker(ui->m_quickFilter);
                 ui->m_quickFilter->clear();
 
-                m_model->m_filter.clear();
+                m_model->ClearFilter();
                 m_model->invalidate();
             }
 
@@ -933,10 +946,7 @@ namespace ScriptCanvasEditor
             }
 
             m_view->collapseAll();
-            for (QLabel* label : m_floatingLabels)
-            {
-                label->setVisible(false);
-            }
+            ui->m_categoryLabel->setFullText("");
 
             setVisible(true);
         }
@@ -944,6 +954,18 @@ namespace ScriptCanvasEditor
         GraphCanvas::GraphCanvasMimeEvent* NodePalette::GetContextMenuEvent() const
         {
             return m_contextMenuCreateEvent;
+        }
+
+        void NodePalette::ResetSourceSlotFilter()
+        {
+            m_model->ResetSourceSlotFilter();
+            ui->m_quickFilter->setCompleter(m_model->GetCompleter());
+        }
+
+        void NodePalette::FilterForSourceSlot(const AZ::EntityId& sceneId, const AZ::EntityId& sourceSlotId)
+        {
+            m_model->FilterForSourceSlot(sceneId, sourceSlotId);
+            ui->m_quickFilter->setCompleter(m_model->GetCompleter());
         }
 
         void NodePalette::PreOnActiveSceneChanged()
@@ -964,7 +986,7 @@ namespace ScriptCanvasEditor
             m_view->ApplyTreeViewSnapshot();
             m_view->PauseTreeViewSaving();
 
-            if (!m_model->m_filter.isEmpty())
+            if (m_model->HasFilter())
             {
                 UpdateFilter();
             }
@@ -996,94 +1018,12 @@ namespace ScriptCanvasEditor
             QModelIndex sourceModelIndex = m_model->mapToSource(index);
 
             NodePaletteTreeItem* nodePaletteItem = static_cast<NodePaletteTreeItem*>(sourceModelIndex.internalPointer());
-            
-            m_contextMenuCreateEvent = nodePaletteItem->CreateMimeEvent();
-
-            if (m_contextMenuCreateEvent)
-            {
-                emit OnContextMenuSelection();
-            }
+            HandleSelectedItem(nodePaletteItem);
         }
 
         void NodePalette::OnScrollChanged(int scrollPosition)
         {
             RefreshFloatingHeader();
-        }
-
-        bool NodePalette::eventFilter(QObject* object, QEvent* event)
-        {
-            bool consumeEvent = false;
-
-            // The floating headers make the scrollbar a bit of a nightmare to use
-            // since they resize the scroll bar from underneath of you.
-            //
-            // We can't really pre-allocate a lot of space. So to get around that.
-            // We're going to fake being the scroll bar, and manage it independently from the widget
-            // to make it a consistent feel.
-            //
-            // Basic idea: We calculate our scroll by using deltas in global space(not local space since that gets modified).
-            // Then we translate our screen deltas into scroll bar deltas(using the original sizing) which we then apply.
-            if (event->type() == QEvent::MouseButtonPress)
-            {
-                QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-                m_lastPosition = mouseEvent->globalPos();
-
-                m_topRight = m_view->mapToGlobal(m_view->contentsRect().topRight());
-                m_bottomRight = m_view->mapToGlobal(m_view->contentsRect().bottomRight());
-
-                m_offsetCounter = 0;
-                m_scrollbarHeight = AZ::GetMax(1, m_view->verticalScrollBar()->size().height());
-                m_scrollRange = (m_view->verticalScrollBar()->maximum() - m_view->verticalScrollBar()->minimum()) + m_view->verticalScrollBar()->pageStep();
-            }
-            else if (event->type() == QEvent::MouseMove && m_sliding)
-            {
-                consumeEvent = true;
-
-                QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-                QPointF currentPos = mouseEvent->globalPos();
-
-                if (currentPos.y() < m_topRight.y())
-                {
-                    m_lastPosition = currentPos;
-                    m_offsetCounter = 0;
-                    m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->minimum());
-                }
-                else if (currentPos.y() > m_bottomRight.y())
-                {
-                    m_lastPosition = currentPos;
-                    m_offsetCounter = 0;
-                    m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->maximum());
-                }
-                else
-                {
-                    qreal delta = m_lastPosition.y() - currentPos.y();
-                    qreal percent = delta / m_scrollbarHeight;
-
-                    m_offsetCounter += (m_scrollRange * percent);
-
-                    int valueOffset = 0;
-
-                    if (std::fabs(m_offsetCounter) > 1.0)
-                    {
-                        valueOffset = static_cast<int>(m_offsetCounter);
-                        m_offsetCounter -= valueOffset;
-                        m_lastPosition = currentPos;
-                    }
-
-                    if (valueOffset != 0)
-                    {
-                        m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->value() - valueOffset);
-
-                        if (m_view->verticalScrollBar()->value() == m_view->verticalScrollBar()->maximum()
-                            || m_view->verticalScrollBar()->value() == m_view->verticalScrollBar()->minimum())
-                        {
-                            m_offsetCounter = 0;
-                        }
-                    }
-                }
-            }
-
-            return consumeEvent;
         }
 
         void NodePalette::RefreshFloatingHeader()
@@ -1094,21 +1034,9 @@ namespace ScriptCanvasEditor
             QModelIndex modelIndex = m_model->mapToSource(proxyIndex);
             NodePaletteTreeItem* currentItem = static_cast<NodePaletteTreeItem*>(modelIndex.internalPointer());
 
-            // Assume everything is in order.
-            // Once we hit an invisible item. No need to reset it, or anything after it since they weren't used.
-            for (QLabel* label : m_floatingLabels)
-            {
-                if (label->isVisible())
-                {
-                    label->setContentsMargins(0, 0, 0, 0);
-                }
-                else
-                {
-                    break;
-                }
-            }
+            QString fullPathString;
 
-            int counter = 0;
+            bool needsSeparator = false;
 
             while (currentItem && currentItem->GetParent() != nullptr)
             {
@@ -1120,34 +1048,16 @@ namespace ScriptCanvasEditor
                     break;
                 }
 
-                if (counter >= m_floatingLabels.size())
+                if (needsSeparator)
                 {
-                    AutoElidedText* label = aznew AutoElidedText(ui->floatingHeaderFrame);
-                    label->setVisible(false);
-
-                    m_floatingLabels.push_back(label);
-                    static_cast<QVBoxLayout*>(ui->floatingHeaderFrame->layout())->insertWidget(0, label);
+                    fullPathString.prepend("/");
                 }
 
-                AutoElidedText* displayLabel = m_floatingLabels[counter];
-                displayLabel->setFullText(currentItem->GetName());
-                displayLabel->setVisible(true);
-                ++counter;
+                fullPathString.prepend(currentItem->GetName());
+                needsSeparator = true;
             }
 
-            for (int i = 0; i < m_floatingLabels.size(); ++i)
-            {
-                if (i < counter)
-                {
-                    int margin = 16 * (counter - (i + 1));
-                    QLabel* tabLabel = m_floatingLabels[i];
-                    tabLabel->setContentsMargins(margin, 0, 0, 0);
-                }
-                else
-                {
-                    m_floatingLabels[i]->setVisible(false);
-                }
-            }
+            ui->m_categoryLabel->setFullText(fullPathString);
         }
 
         void NodePalette::OnQuickFilterChanged()
@@ -1158,17 +1068,39 @@ namespace ScriptCanvasEditor
 
         void NodePalette::UpdateFilter()
         {
-            if (m_model->m_filter.isEmpty())
+            if (!m_model->HasFilter())
             {
                 m_view->UnpauseTreeViewSaving();
                 m_view->CaptureTreeViewSnapshot();
                 m_view->PauseTreeViewSaving();
             }
 
-            m_model->m_filter = ui->m_quickFilter->text();
+            QString text = ui->m_quickFilter->text();
+            
+            // The QCompleter doesn't seem to update the completion prefix when you delete anything, only when thigns are added.
+            // To get it to update correctly when the user deletes something, I'm using the combination of things:
+            //
+            // 1) If we have a completion, that text will be auto filled into the quick filter because of the completion model.
+            // So, we will compare those two values, and if they match, we know we want to search using the completion prefix.
+            //
+            // 2) If they don't match, it means that user deleted something, and the Completer didn't update it's internal state, so we'll just
+            // use whatever is in the text box.
+            //
+            // 3) When the text field is set to empty, the current completion gets invalidated, but the prefix doesn't, so that gets special cased out.
+            //
+            // Extra fun: If you type in something, "Like" then delete a middle character, "Lie", and then put the k back in. It will auto complete the E
+            // visually but the completion prefix will be the entire word.
+            if (ui->m_quickFilter->completer() 
+                && ui->m_quickFilter->completer()->currentCompletion().compare(text, Qt::CaseInsensitive) == 0
+                && !text.isEmpty())
+            {
+                text = ui->m_quickFilter->completer()->completionPrefix();
+            }
+
+            m_model->SetFilter(text);
             m_model->invalidate();
 
-            if (m_model->m_filter.isEmpty())
+            if (!m_model->HasFilter())
             {
                 m_view->UnpauseTreeViewSaving();
                 m_view->ApplyTreeViewSnapshot();
@@ -1187,10 +1119,52 @@ namespace ScriptCanvasEditor
             {
                 QSignalBlocker blocker(ui->m_quickFilter);
                 ui->m_quickFilter->setText("");
-                m_model->m_filter.clear();
             }
 
             UpdateFilter();
+        }
+
+        void NodePalette::TrySpawnItem()
+        {
+            QCompleter* completer = ui->m_quickFilter->completer();
+            QModelIndex modelIndex = completer->currentIndex();
+
+            if (modelIndex.isValid())
+            {
+                // The docs say this is fine. So here's hoping.
+                QAbstractProxyModel* proxyModel = qobject_cast<QAbstractProxyModel*>(completer->completionModel());
+
+                if (proxyModel)
+                {
+                    QModelIndex sourceIndex = proxyModel->mapToSource(modelIndex);
+
+                    if (sourceIndex.isValid())
+                    {
+                        Model::NodePaletteAutoCompleteModel* autoCompleteModel = qobject_cast<Model::NodePaletteAutoCompleteModel*>(proxyModel->sourceModel());
+
+                        const GraphCanvas::GraphCanvasTreeItem* treeItem = autoCompleteModel->FindItemForIndex(sourceIndex);
+
+                        if (treeItem)
+                        {
+                            HandleSelectedItem(treeItem);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                UpdateFilter();
+            }
+        }
+
+        void NodePalette::HandleSelectedItem(const GraphCanvas::GraphCanvasTreeItem* treeItem)
+        {
+            m_contextMenuCreateEvent = treeItem->CreateMimeEvent();
+
+            if (m_contextMenuCreateEvent)
+            {
+                emit OnContextMenuSelection();
+            }
         }
 
         void NodePalette::ResetModel()
@@ -1203,6 +1177,7 @@ namespace ScriptCanvasEditor
             delete m_model;
             m_model = aznew Model::NodePaletteSortFilterProxyModel(this);
             m_model->setSourceModel(sourceModel);
+            m_model->PopulateUnfilteredModel();
             
             GraphCanvas::GraphCanvasTreeModelRequestBus::Handler::BusConnect(sourceModel);
 

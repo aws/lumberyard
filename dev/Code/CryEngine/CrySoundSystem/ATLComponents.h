@@ -184,8 +184,8 @@ namespace Audio
         CAudioEventListenerManager(const CAudioEventListenerManager& other) = delete;               // Copy protection
         CAudioEventListenerManager& operator=(const CAudioEventListenerManager& other) = delete;    // Copy protection
 
-        EAudioRequestStatus AddRequestListener(const SAudioManagerRequestDataInternal<eAMRT_ADD_REQUEST_LISTENER>* const pRequestData);
-        EAudioRequestStatus RemoveRequestListener(AudioRequestCallbackType func, void const* const pObjectToListenTo);
+        void AddRequestListener(const SAudioEventListener& listener);
+        void RemoveRequestListener(const SAudioEventListener& listener);
         void NotifyListener(const SAudioRequestInfo* const pRequestInfo);
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)

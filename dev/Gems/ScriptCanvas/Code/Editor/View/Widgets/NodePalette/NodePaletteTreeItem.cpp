@@ -89,6 +89,8 @@ namespace ScriptCanvasEditor
             {
                 return m_toolTip;
             }
+        case Qt::EditRole:
+            return GetName();
         }
 
         return OnData(index, row);

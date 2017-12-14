@@ -112,7 +112,7 @@ namespace AZ
 
         void* GetFunctionAddress(const char* functionName) const override
         {
-            return GetProcAddress(m_handle, functionName);
+            return reinterpret_cast<void*>(::GetProcAddress(m_handle, functionName));
         }
 
         HMODULE m_handle;

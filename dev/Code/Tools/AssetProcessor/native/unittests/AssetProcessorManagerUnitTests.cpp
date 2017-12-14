@@ -145,12 +145,12 @@ namespace AssetProcessor
             qSort(processResults.begin(), processResults.end(),
                 [](const JobDetails& first, const JobDetails& second)
                 {
-                    if (QString::compare(first.m_jobEntry.m_platform, second.m_jobEntry.m_platform, Qt::CaseInsensitive) == 0)
+                    if (first.m_jobEntry.m_platformInfo.m_identifier == second.m_jobEntry.m_platformInfo.m_identifier)
                     {
                         return first.m_jobEntry.m_jobKey.toLower() < second.m_jobEntry.m_jobKey.toLower();
                     }
 
-                    return first.m_jobEntry.m_platform.toLower() < second.m_jobEntry.m_platform.toLower();
+                    return first.m_jobEntry.m_platformInfo.m_identifier < second.m_jobEntry.m_platformInfo.m_identifier;
                 });
 
             //AZ_TracePrintf("test", "-------------------------\n");
@@ -172,8 +172,8 @@ namespace AssetProcessor
 
             //Calculating fingerprints for the file for pc and es3 platforms
             AZ::Uuid sourceId = AZ::Uuid("{2206A6E0-FDBC-45DE-B6FE-C2FC63020BD5}");
-            JobEntry jobEntryPC(filePath, relPath, 0, "pc", "", 0, 1, sourceId);
-            JobEntry jobEntryES3(filePath, relPath, 0, "es3", "", 0, 2, sourceId);
+            JobEntry jobEntryPC(filePath, relPath, 0, { "pc", {"desktop", "renderer"} }, "", 0, 1, sourceId);
+            JobEntry jobEntryES3(filePath, relPath, 0, { "es3", {"mobile", "renderer"} }, "", 0, 2, sourceId);
 
             JobDetails jobDetailsPC;
             jobDetailsPC.m_extraInformationForFingerprinting = extraInfoForPC;
@@ -236,6 +236,11 @@ namespace AssetProcessor
         AssetUtilities::ResetAssetRoot();
         QDir newRoot;
         AssetUtilities::ComputeAssetRoot(newRoot, &tempPath);
+
+        // create a dummy file in the cache folder, so the folder structure gets created
+        QDir projectCacheRoot;
+        AssetUtilities::ComputeProjectCacheRoot(projectCacheRoot);
+        CreateDummyFile(projectCacheRoot.absoluteFilePath("placeholder.txt"));
 
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
         // should create cache folder in the root, and read everything from there.
@@ -313,9 +318,9 @@ namespace AssetProcessor
         config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "",          false, true, -1)); // subfolder1 overrides root
         config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),         "temp",       "tempfolder", "",          true, false, 0)); // add the root
 
-        config.EnablePlatform("pc", true);
-        config.EnablePlatform("es3", true);
-        config.EnablePlatform("durango", false); // ACCEPTED_USE
+        config.EnablePlatform({ "pc", { "desktop", "renderer" } }, true);
+        config.EnablePlatform({ "es3", { "mobile", "renderer" } }, true);
+        config.EnablePlatform({ "fandago", { "console", "renderer" } }, false);
 
         config.AddMetaDataType("exportsettings", QString());
 
@@ -499,7 +504,7 @@ namespace AssetProcessor
         sortAssetToProcessResultList(processResults);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1); // 1, since we have one recognizer for .ignore, but the 'es3' platform is marked as skip
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc"));
 
 
         // block until no more events trickle in:
@@ -520,12 +525,12 @@ namespace AssetProcessor
         sortAssetToProcessResultList(processResults);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // 2 each for pc and es3,since we have two recognizer for .txt file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
 
 
         QList<int> es3JobsIndex;
@@ -536,7 +541,7 @@ namespace AssetProcessor
             UNIT_TEST_EXPECT_TRUE(processResults[checkIdx].m_jobEntry.m_jobRunKey != 0);
             UNIT_TEST_EXPECT_TRUE(processResults[checkIdx].m_jobEntry.m_absolutePathToFile == inputFilePath);
             UNIT_TEST_EXPECT_TRUE(processResults[checkIdx].m_jobEntry.m_relativePathToFile == "uniquefile.txt");
-            QString platformFolder = cacheRoot.filePath(processResults[checkIdx].m_jobEntry.m_platform + "/" + gameName.toLower());
+            QString platformFolder = cacheRoot.filePath(QString::fromUtf8(processResults[checkIdx].m_jobEntry.m_platformInfo.m_identifier.c_str()) + "/" + gameName.toLower());
             platformFolder = AssetUtilities::NormalizeDirectoryPath(platformFolder);
             UNIT_TEST_EXPECT_TRUE(processResults[checkIdx].m_destinationPath.startsWith(platformFolder));
             UNIT_TEST_EXPECT_TRUE(processResults[checkIdx].m_jobEntry.m_computedFingerprint != 0);
@@ -554,7 +559,7 @@ namespace AssetProcessor
                 info.m_jobRunKey = processResults[checkIdx].m_jobEntry.m_jobRunKey;
                 info.m_builderGuid = processResults[checkIdx].m_jobEntry.m_builderGuid;
                 info.m_jobKey = processResults[checkIdx].m_jobEntry.m_jobKey.toUtf8().data();
-                info.m_platform = processResults[checkIdx].m_jobEntry.m_platform.toUtf8().data();
+                info.m_platform = processResults[checkIdx].m_jobEntry.m_platformInfo.m_identifier.c_str();
                 info.m_sourceFile = processResults[checkIdx].m_jobEntry.m_relativePathToFile.toUtf8().data();
 
                 AZStd::string logFolder = AZStd::string::format("%s/%s", AssetUtilities::ComputeJobLogFolder().c_str(), AssetUtilities::ComputeJobLogFileName(info).c_str());
@@ -624,7 +629,7 @@ namespace AssetProcessor
                 for (const JobDetails& details : processResults)
                 {
                     if ((QString::compare(jobInfo.m_sourceFile.c_str(), details.m_jobEntry.m_relativePathToFile, Qt::CaseInsensitive) == 0) &&
-                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platform, Qt::CaseInsensitive) == 0) &&
+                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platformInfo.m_identifier.c_str(), Qt::CaseInsensitive) == 0) &&
                         (QString::compare(jobInfo.m_jobKey.c_str(), details.m_jobEntry.m_jobKey, Qt::CaseInsensitive) == 0) &&
                         (jobInfo.m_builderGuid == details.m_jobEntry.m_builderGuid) &&
                         (jobInfo.m_jobRunKey == details.m_jobEntry.m_jobRunKey) &&
@@ -767,7 +772,7 @@ namespace AssetProcessor
                 for (const JobDetails& details : processResults)
                 {
                     if ((QString::compare(jobInfo.m_sourceFile.c_str(), details.m_jobEntry.m_relativePathToFile, Qt::CaseInsensitive) == 0) &&
-                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platform, Qt::CaseInsensitive) == 0) &&
+                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platformInfo.m_identifier.c_str(), Qt::CaseInsensitive) == 0) &&
                         (QString::compare(jobInfo.m_jobKey.c_str(), details.m_jobEntry.m_jobKey, Qt::CaseInsensitive) == 0) &&
                         (jobInfo.m_builderGuid == details.m_jobEntry.m_builderGuid) &&
                         (jobInfo.GetHash() == details.m_jobEntry.GetHash()))
@@ -904,7 +909,7 @@ namespace AssetProcessor
                     const JobDetails& details = processResults[detailsIdx];
 
                     if ((QString::compare(jobInfo.m_sourceFile.c_str(), details.m_jobEntry.m_relativePathToFile, Qt::CaseInsensitive) == 0) &&
-                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platform, Qt::CaseInsensitive) == 0) &&
+                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platformInfo.m_identifier.c_str(), Qt::CaseInsensitive) == 0) &&
                         (QString::compare(jobInfo.m_jobKey.c_str(), details.m_jobEntry.m_jobKey, Qt::CaseInsensitive) == 0) &&
                         (jobInfo.m_builderGuid == details.m_jobEntry.m_builderGuid) &&
                         (jobInfo.GetHash() == details.m_jobEntry.GetHash()))
@@ -1063,7 +1068,7 @@ namespace AssetProcessor
                 for (const JobDetails& details : processResults)
                 {
                     if ((QString::compare(jobInfo.m_sourceFile.c_str(), details.m_jobEntry.m_relativePathToFile, Qt::CaseInsensitive) == 0) &&
-                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platform, Qt::CaseInsensitive) == 0) &&
+                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platformInfo.m_identifier.c_str(), Qt::CaseInsensitive) == 0) &&
                         (QString::compare(jobInfo.m_jobKey.c_str(), details.m_jobEntry.m_jobKey, Qt::CaseInsensitive) == 0) &&
                         (jobInfo.m_builderGuid == details.m_jobEntry.m_builderGuid) &&
                         (jobInfo.GetHash() == details.m_jobEntry.GetHash()))
@@ -1125,7 +1130,7 @@ namespace AssetProcessor
 
         // should have asked to launch only the PC process because the other assets are already done for the other plat
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1);
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc");
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(processResults[0].m_jobEntry.m_absolutePathToFile) == AssetUtilities::NormalizeFilePath(inputFilePath));
 
         UNIT_TEST_EXPECT_TRUE(CreateDummyFile(pcouts[0], "products2"));
@@ -1179,12 +1184,12 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // 2 each for pc and es3,since we have two recognizer for .txt file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_computedFingerprint != 0);
         UNIT_TEST_EXPECT_TRUE(processResults[1].m_jobEntry.m_computedFingerprint != 0);
 
@@ -1192,7 +1197,7 @@ namespace AssetProcessor
         {
             QString processFile1 = processResults[checkIdx].m_jobEntry.m_absolutePathToFile;
             UNIT_TEST_EXPECT_TRUE(processFile1 == inputFilePath);
-            QString platformFolder = cacheRoot.filePath(processResults[checkIdx].m_jobEntry.m_platform + "/" + gameName.toLower());
+            QString platformFolder = cacheRoot.filePath(QString::fromUtf8(processResults[checkIdx].m_jobEntry.m_platformInfo.m_identifier.c_str()) + "/" + gameName.toLower());
             platformFolder = AssetUtilities::NormalizeDirectoryPath(platformFolder);
             processFile1 = processResults[checkIdx].m_destinationPath;
             UNIT_TEST_EXPECT_TRUE(processFile1.startsWith(platformFolder));
@@ -1322,12 +1327,12 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // pc and es3
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_computedFingerprint != 0);
 
         // send all the done messages simultaneously:
@@ -1335,7 +1340,7 @@ namespace AssetProcessor
         {
             QString processFile1 = processResults[checkIdx].m_jobEntry.m_absolutePathToFile;
             UNIT_TEST_EXPECT_TRUE(processFile1 == inputFilePath);
-            QString platformFolder = cacheRoot.filePath(processResults[checkIdx].m_jobEntry.m_platform + "/" + gameName.toLower());
+            QString platformFolder = cacheRoot.filePath(QString::fromUtf8(processResults[checkIdx].m_jobEntry.m_platformInfo.m_identifier.c_str()) + "/" + gameName.toLower());
             platformFolder = AssetUtilities::NormalizeDirectoryPath(platformFolder);
             processFile1 = processResults[checkIdx].m_destinationPath;
             UNIT_TEST_EXPECT_TRUE(processFile1.startsWith(platformFolder));
@@ -1382,12 +1387,12 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // 2 each for pc and es3,since we have two recognizer for .txt file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_computedFingerprint != 0);
         UNIT_TEST_EXPECT_TRUE(processResults[1].m_jobEntry.m_computedFingerprint != 0);
 
@@ -1486,12 +1491,12 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // 2 each for pc and es3,since we have two recognizer for .txt file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_computedFingerprint != 0);
 
         UNIT_TEST_EXPECT_TRUE(CreateDummyFile(es3outs[0], "newfile."));
@@ -1577,7 +1582,7 @@ namespace AssetProcessor
                     const JobDetails& details = processResults[detailsIdx];
 
                     if ((QString::compare(jobInfo.m_sourceFile.c_str(), details.m_jobEntry.m_relativePathToFile, Qt::CaseInsensitive) == 0) &&
-                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platform, Qt::CaseInsensitive) == 0) &&
+                        (QString::compare(jobInfo.m_platform.c_str(), details.m_jobEntry.m_platformInfo.m_identifier.c_str(), Qt::CaseInsensitive) == 0) &&
                         (QString::compare(jobInfo.m_jobKey.c_str(), details.m_jobEntry.m_jobKey, Qt::CaseInsensitive) == 0) &&
                         (jobInfo.m_builderGuid == details.m_jobEntry.m_builderGuid) &&
                         (jobInfo.GetHash() == details.m_jobEntry.GetHash()))
@@ -1636,7 +1641,7 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1); // pc only
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc");
 
         UNIT_TEST_EXPECT_TRUE(CreateDummyFile(pcouts[0], "new1"));
 
@@ -1672,7 +1677,7 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1); // 1 for pc
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc");
 
         pcouts.clear();
 
@@ -1712,12 +1717,12 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // 2 each for pc and es3,since we have two recognizer for .txt file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_computedFingerprint != 0);
 
         es3outs.clear();
@@ -1806,19 +1811,19 @@ namespace AssetProcessor
 
         // --------- same result as above ----------
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // 2 each for pc and es3,since we have two recognizer for .txt file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_computedFingerprint != 0);
 
         for (int checkIdx = 0; checkIdx < 4; ++checkIdx)
         {
             QString processFile1 = processResults[checkIdx].m_jobEntry.m_absolutePathToFile;
             UNIT_TEST_EXPECT_TRUE(processFile1 == expectedReplacementInputFile);
-            QString platformFolder = cacheRoot.filePath(processResults[checkIdx].m_jobEntry.m_platform + "/" + gameName.toLower());
+            QString platformFolder = cacheRoot.filePath(QString::fromUtf8(processResults[checkIdx].m_jobEntry.m_platformInfo.m_identifier.c_str()) + "/" + gameName.toLower());
             platformFolder = AssetUtilities::NormalizeDirectoryPath(platformFolder);
             processFile1 = processResults[checkIdx].m_destinationPath;
             UNIT_TEST_EXPECT_TRUE(processFile1.startsWith(platformFolder));
@@ -1852,12 +1857,12 @@ namespace AssetProcessor
         sortAssetToProcessResultList(processResults);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // // 2 each for pc and es3,since we have two recognizer for .xxx file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
 
         config.RemoveRecognizer("xxx files 2 (builder2)");
         UNIT_TEST_EXPECT_TRUE(mockAppManager.UnRegisterAssetRecognizerAsBuilder("xxx files 2 (builder2)"));
@@ -1878,12 +1883,12 @@ namespace AssetProcessor
         sortAssetToProcessResultList(processResults);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 4); // // 2 each for pc and es3,since we have two recognizer for .xxx file
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platform == processResults[3].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platform == "pc"));
-        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE(processResults[2].m_jobEntry.m_platformInfo.m_identifier == processResults[3].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[2].m_jobEntry.m_platformInfo.m_identifier == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[3].m_jobEntry.m_platformInfo.m_identifier == "pc"));
 
         // tell it that all those assets are now successfully done:
         for (auto processResult : processResults)
@@ -1932,7 +1937,7 @@ namespace AssetProcessor
         sortAssetToProcessResultList(processResults);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1); // only 1 for pc
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc"));
 
         // ---------------------
 
@@ -1958,9 +1963,9 @@ namespace AssetProcessor
         QMetaObject::invokeMethod(&apm, "AssessModifiedFile", Qt::QueuedConnection, Q_ARG(QString, inputFilePath));
         UNIT_TEST_EXPECT_TRUE(BlockUntil(idling, 5000));
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 2); // pc and es3
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform != processResults[1].m_jobEntry.m_platform);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "pc") || (processResults[0].m_jobEntry.m_platform == "es3"));
-        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platform == "pc") || (processResults[1].m_jobEntry.m_platform == "es3"));
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier != processResults[1].m_jobEntry.m_platformInfo.m_identifier);
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc") || (processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3"));
+        UNIT_TEST_EXPECT_TRUE((processResults[1].m_jobEntry.m_platformInfo.m_identifier == "pc") || (processResults[1].m_jobEntry.m_platformInfo.m_identifier == "es3"));
 
         unsigned int newfingerprintForPCAfterVersionChange = 0;
         unsigned int newfingerprintForES3AfterVersionChange = 0;
@@ -2063,273 +2068,6 @@ namespace AssetProcessor
 
                 apm.OnRequestAssetExists(requestId, "pc", testCase);
                 UNIT_TEST_EXPECT_FALSE(foundIt);
-            }
-        }
-
-        // ----- Test the get asset path functions, which given a full path to an asset, checks the mappings and turns it into an Asset ID ---
-        {
-            // sanity check - make sure it does not crash or misbehave when given empty names
-            QString fileToCheck = "";
-            {
-                UnitTestUtils::AssertAbsorber absorb;
-                // empty requests should generate an assert.
-                GetRelativeProductPathFromFullSourceOrProductPathRequest request(fileToCheck.toUtf8().constData());
-                UNIT_TEST_EXPECT_TRUE(absorb.m_numAssertsAbsorbed == 1);
-                GetFullSourcePathFromRelativeProductPathRequest sourceRequest(fileToCheck.toUtf8().constData());
-                UNIT_TEST_EXPECT_TRUE(absorb.m_numAssertsAbsorbed == 2);
-            }
-                        
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == false);
-                UNIT_TEST_EXPECT_TRUE(relPath == "");
-            }
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPath == "");
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == false);
-            }
-            
-            fileToCheck = tempPath.absoluteFilePath("subfolder3/BaseFile.txt");
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "basefilez.arc2" ||
-                    relPath == "basefileaz.azm2" ||
-                    relPath == "basefile.arc2" ||
-                    relPath == "basefile.azm2");
-            }
-
-            fileToCheck = tempPath.absoluteFilePath("subfolder2/aaa/basefile.txt");
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "aaa/basefile.txt");
-            }
-
-#if defined(AZ_PLATFORM_WINDOWS)
-            fileToCheck = "d:\\test.txt";
-#else
-            fileToCheck = "/test.txt"; // rooted
-#endif
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == false);
-                UNIT_TEST_EXPECT_TRUE(relPath == fullPath);
-            }
-
-            //feed it a relative path
-            fileToCheck = "\test.txt";
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "\test.txt");
-            }
-
-            //feed it a product path with gamename
-            fileToCheck = normalizedCacheRootDir.filePath("pc/" + gameName + "/aaa/basefile.txt");
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "aaa/basefile.txt");
-            }
-
-            //feed it a product path without gamename
-            fileToCheck = normalizedCacheRootDir.filePath("pc/basefile.txt");
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "basefile.txt");
-            }
-
-
-            //feed it a product path with gamename but poor casing (test 1:  the pc platform is not matching case)
-            fileToCheck = normalizedCacheRootDir.filePath("Pc/" + gameName + "/aaa/basefile.txt");
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "aaa/basefile.txt");
-            }
-
-            //feed it a product path with gamename but poor casing (test 2:  the gameName is not matching case)
-            fileToCheck = normalizedCacheRootDir.filePath("pc/" + gameName.toUpper() + "/aaa/basefile.txt");
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "aaa/basefile.txt");
-            }
-
-            //feed it a product path that resolves to a directory name instead of a file.
-            fileToCheck = normalizedCacheRootDir.filePath("pc/" + gameName.toUpper() + "/aaa");
-            {
-                bool relPathfound = false;
-                AZStd::string relPath;
-                AZStd::string fullPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relPath);
-                UNIT_TEST_EXPECT_TRUE(relPathfound == true);
-                UNIT_TEST_EXPECT_TRUE(relPath == "aaa");
-            }
-
-            // ----- Test the ProcessGetFullAssetPath function
-
-            //feed it an relative product, and expect a full, absolute source file path in return.
-            fileToCheck = "subfolder3/randomfileoutput.random1";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it another relative product
-            fileToCheck = "subfolder3/randomfileoutput.random2";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it the same relative product with different separators
-            fileToCheck = "subfolder3\\randomfileoutput.random2";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it a full path
-            fileToCheck = tempPath.filePath("somefolder/somefile.txt");
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "somefolder/somefile.txt");
-            }
-
-            //feed it a path with alias and asset id
-            fileToCheck = "@assets@/subfolder3/randomfileoutput.random1";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it a path with some random alias and asset id
-            fileToCheck = "@somerandomalias@/subfolder3/randomfileoutput.random1";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it a path with some random alias and asset id but no separator
-            fileToCheck = "@somerandomalias@subfolder3/randomfileoutput.random1";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it a path with alias and input name
-            fileToCheck = "@assets@/somerandomfile.random";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it an absolute path with cacheroot
-            fileToCheck = normalizedCacheRootDir.filePath("pc/" + gameName + "/subfolder3/randomfileoutput.random1");
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
-            }
-
-            //feed it a productName directly
-            fileToCheck = "pc/" + gameName + "/subfolder3/randomfileoutput.random1";
-            {
-                bool fullPathfound = false;
-                AZStd::string fullPath;
-                AZStd::string relPath(fileToCheck.toUtf8().data());
-                EBUS_EVENT_RESULT(fullPathfound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, relPath, fullPath);
-                UNIT_TEST_EXPECT_TRUE(fullPathfound == true);
-                QString output(fullPath.c_str());
-                output.remove(0, tempPath.path().length() + 1);//adding one for the native separator
-                UNIT_TEST_EXPECT_TRUE(output == "subfolder3/somerandomfile.random");
             }
         }
 
@@ -2446,21 +2184,13 @@ namespace AssetProcessor
 
         sortAssetToProcessResultList(processResults);
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 2); // should result in 2 removed products inside the cache folder (but only the PC ones!)
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
-        UNIT_TEST_EXPECT_TRUE(processResults.size() == 2); // ONLY the PC files need to be re-processed because only those were renamed.
+        // at this point, we should NOT get 2 removed products - we should only get those messages later
+        // once the processing queue actually processes these assets - not prematurely as it discovers them missing.
+        UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 0);
 
-        for (auto element : assetMessages)
-        {
-            // we should only get removed messages because we haven't actually added the files or processed them yet.
-            UNIT_TEST_EXPECT_TRUE(element.second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
-        }
 
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == "pc");
-        UNIT_TEST_EXPECT_TRUE(processResults[1].m_jobEntry.m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc");
+        UNIT_TEST_EXPECT_TRUE(processResults[1].m_jobEntry.m_platformInfo.m_identifier == "pc");
 
         // -----------------------------------------------------------------------------------------------
         // -------------------------------------- FOLDER RENAMING TEST -----------------------------------
@@ -2512,9 +2242,9 @@ namespace AssetProcessor
 
         sortAssetToProcessResultList(processResults);
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages.size() != 0); // should result in removed products inside the cache folder
+        UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 0); // we don't prematurely emit "AssetRemoved" until we actually finish process.
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1); // ONLY the PC files need to be re-processed because only those were renamed.
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc");
 
         // --------------------------------------------------------------------------------------------------
         // ------------------------------ TEST DELETED SOURCE RESULTING IN DELETED PRODUCTS -----------------
@@ -2743,8 +2473,8 @@ namespace AssetProcessor
         sortAssetToProcessResultList(processResults);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 2); // 1 for pc and es3
-        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platform == "es3");
-        UNIT_TEST_EXPECT_TRUE(processResults[1].m_jobEntry.m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_platformInfo.m_identifier == "es3");
+        UNIT_TEST_EXPECT_TRUE(processResults[1].m_jobEntry.m_platformInfo.m_identifier == "pc");
         UNIT_TEST_EXPECT_TRUE(QString::compare(processResults[0].m_jobEntry.m_absolutePathToFile, inputFilePath, Qt::CaseInsensitive) == 0);
         UNIT_TEST_EXPECT_TRUE(QString::compare(processResults[1].m_jobEntry.m_absolutePathToFile, inputFilePath, Qt::CaseInsensitive) == 0);
         UNIT_TEST_EXPECT_TRUE(QString::compare(QString(processResults[0].m_jobEntry.m_jobKey), QString(abt_rec1.m_name)) == 0);
@@ -2792,7 +2522,7 @@ namespace AssetProcessor
         config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1)); // subfolder1 overrides root
         config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, 0)); // add the root
 
-        config.EnablePlatform("pc", true);
+        config.EnablePlatform({ "pc" , { "desktop", "renderer"} }, true);
 
         AssetProcessorManager_Test apm(&config);
 
@@ -2847,7 +2577,7 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 2);
         for (int idx = 0; idx < processResults.size(); idx++)
         {
-            UNIT_TEST_EXPECT_TRUE((processResults[idx].m_jobEntry.m_platform == "pc"));
+            UNIT_TEST_EXPECT_TRUE((processResults[idx].m_jobEntry.m_platformInfo.m_identifier == "pc"));
             UNIT_TEST_EXPECT_TRUE(processResults[idx].m_jobEntry.m_relativePathToFile.startsWith("basefile.foo"));
         }
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_jobKey.compare(processResults[1].m_jobEntry.m_jobKey) != 0);
@@ -2928,7 +2658,7 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1); // We should only have one job to process here
         for (int idx = 0; idx < processResults.size(); idx++)
         {
-            UNIT_TEST_EXPECT_TRUE((processResults[idx].m_jobEntry.m_platform == "pc"));
+            UNIT_TEST_EXPECT_TRUE((processResults[idx].m_jobEntry.m_platformInfo.m_identifier == "pc"));
             UNIT_TEST_EXPECT_TRUE(processResults[idx].m_jobEntry.m_relativePathToFile.startsWith("basefile.foo"));
         }
 
@@ -2963,7 +2693,7 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1); // We should see a job to process here
         for (int idx = 0; idx < processResults.size(); idx++)
         {
-            UNIT_TEST_EXPECT_TRUE((processResults[idx].m_jobEntry.m_platform == "pc"));
+            UNIT_TEST_EXPECT_TRUE((processResults[idx].m_jobEntry.m_platformInfo.m_identifier == "pc"));
             UNIT_TEST_EXPECT_TRUE(processResults[idx].m_jobEntry.m_relativePathToFile.startsWith("basefile.foo"));
         }
 
@@ -3222,10 +2952,12 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(sourceFiles[0].compare("FileA.txt", Qt::CaseInsensitive) == 0 || sourceFiles[0].compare("FileC.txt", Qt::CaseInsensitive) == 0);
         UNIT_TEST_EXPECT_TRUE(sourceFiles[1].compare("FileA.txt", Qt::CaseInsensitive) == 0 || sourceFiles[1].compare("FileC.txt", Qt::CaseInsensitive) == 0);
 
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> PCInfos = { { "pc", { "desktop", "renderer" } } };
+
         {
             // here we are just providing the source file dependency path which is not relative to any watch folders in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileB.txt"; //path is not relative to the watch folder
@@ -3244,7 +2976,7 @@ namespace AssetProcessor
         {
             // here we are just providing the source file dependency path which is relative to one of the watch folders in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "subfolder2/FileB.txt"; //path is relative to the watch folder
@@ -3263,7 +2995,7 @@ namespace AssetProcessor
         {
             // here we are providing source uuid instead of a file path in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyUUID = fileBUuid; //file uuid instead of file path
@@ -3281,7 +3013,7 @@ namespace AssetProcessor
         {
             // here we are providing an invalid path in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "subfolder1/FileB.txt"; 
@@ -3298,7 +3030,7 @@ namespace AssetProcessor
         {
             // here we are providing an absolute path in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = sourceFileBPath.toUtf8().data();
@@ -3317,7 +3049,7 @@ namespace AssetProcessor
         {
             // here we are emitting a source file dependency on a file which AP only becomes aware of later on 
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyUUID = fileEUuid;//FileE is not present in the database and AP has never seen any such file
@@ -3390,7 +3122,7 @@ namespace AssetProcessor
             // since FileA depends on FileB.txt and FileE. Here we are adding another dependency to FileE i.e FileE depends on FileD 
             // therefore when we process FileA we should see only the following dependencies FileB, FileE and FileD 
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileE.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileEUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileE.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileEUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "subfolder2/FileD.txt";
@@ -3432,7 +3164,7 @@ namespace AssetProcessor
             // since FileA depends on FileB.txt and FileE.And FileE depends on FileD. We are adding another dependency to FileD i.e FileD depends on FileA.
             // This can result on circular dependency but when we process FileA we should see only the following dependencies FileB, FileE and FileD. 
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileA.txt";
@@ -3487,7 +3219,7 @@ namespace AssetProcessor
         {
             // Process a file that outputs 2 dependencies
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileFUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileFUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileG.txt";
@@ -3520,7 +3252,7 @@ namespace AssetProcessor
         {
             // Now process the same file again, but this time remove a dependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileFUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileFUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileG.txt";
@@ -3549,7 +3281,7 @@ namespace AssetProcessor
         {
             // And again the same file, but with a different builder
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builder2Uuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileFUuid);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builder2Uuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), PCInfos, fileFUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileH.txt";
@@ -3625,7 +3357,7 @@ namespace AssetProcessor
         // note: the crux of this test is that we ar redirecting output into the cache at a different location instead of default.
         // so our scan folder has a "redirected" folder.
         config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "redirected", false, true, -1)); 
-        config.EnablePlatform("pc", true);
+        config.EnablePlatform({ "pc", {"desktop", "renderer"} }, true);
 
         AssetProcessorManager_Test apm(&config);
 
@@ -3676,7 +3408,7 @@ namespace AssetProcessor
         QCoreApplication::processEvents(QEventLoop::AllEvents);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_relativePathToFile.startsWith("redirected/basefile.foo"));
 
         QStringList pcouts;
@@ -3722,7 +3454,7 @@ namespace AssetProcessor
         QCoreApplication::processEvents(QEventLoop::AllEvents);
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_relativePathToFile.startsWith("redirected/basefile.foo"));
         
         pcouts.push_back(cacheRoot.filePath(QString("pc/") + gameName + "/redirected/basefile.arc1"));
@@ -3766,13 +3498,10 @@ namespace AssetProcessor
         // block until no more events trickle in:
         QCoreApplication::processEvents(QEventLoop::AllEvents);
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 1);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "redirected/basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+        UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 0); // asset removed is delayed until actual processing occurs.
 
         UNIT_TEST_EXPECT_TRUE(processResults.size() == 1);
-        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platform == "pc"));
+        UNIT_TEST_EXPECT_TRUE((processResults[0].m_jobEntry.m_platformInfo.m_identifier == "pc"));
         UNIT_TEST_EXPECT_TRUE(processResults[0].m_jobEntry.m_relativePathToFile.startsWith("redirected/basefile.foo"));
 
         pcouts.push_back(cacheRoot.filePath(QString("pc/") + gameName + "/redirected/basefile.arc1"));

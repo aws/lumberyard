@@ -36,7 +36,7 @@ public:
     ModuleHandle(const ModuleHandle&) = delete;
     ModuleHandle& operator=(const ModuleHandle&) = delete;
 
-    ~ModuleHandle()
+    ~ModuleHandle() override
     {
         if (m_libHandle)
         {
@@ -72,9 +72,7 @@ public:
     FunctionHandle(const FunctionHandle&) = delete;
     FunctionHandle& operator=(const FunctionHandle&) = delete;
 
-    ~FunctionHandle()
-    {
-    }
+    ~FunctionHandle() override = default;
 
     int operator()(int argc, char** argv) override
     {
@@ -103,9 +101,9 @@ std::shared_ptr<AZ::Test::IFunctionHandle> ModuleHandle::GetFunction(const std::
     return std::make_shared<FunctionHandle>(*this, name);
 }
 
-namespace AZ 
-{ 
-    namespace Test 
+namespace AZ
+{
+    namespace Test
     {
 
         Platform& GetPlatform()

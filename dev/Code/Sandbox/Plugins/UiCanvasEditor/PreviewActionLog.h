@@ -11,6 +11,11 @@
 */
 #pragma once
 
+#include <QTextEdit>
+#include <LyShine/Bus/UiCanvasBus.h>
+
+class EditorWindow;
+
 class PreviewActionLog
     : public QTextEdit
     , public UiCanvasNotificationBus::Handler

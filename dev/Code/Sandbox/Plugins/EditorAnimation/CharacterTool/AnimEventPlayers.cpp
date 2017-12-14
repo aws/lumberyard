@@ -103,7 +103,7 @@ namespace CharacterTool {
     static Vec3 GetBonePosition(ICharacterInstance* character, const QuatTS& physicalLocation, const char* boneName)
     {
         int jointId = -1;
-        if (boneName != '\0')
+        if (boneName && boneName[0] != '\0')
         {
             jointId = character->GetIDefaultSkeleton().GetJointIDByName(boneName);
         }

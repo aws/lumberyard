@@ -43,7 +43,6 @@ def build(bld):
         win_defines = ['USE_MONITOR'],
 
         defines     = ['QT_NO_DEBUG',
-                       'QT_LARGEFILE_SUPPORT',
                        'QT_DLL',
                        'QT_NO_EMIT',
                        'EDITOR_COMMON_IMPORTS',

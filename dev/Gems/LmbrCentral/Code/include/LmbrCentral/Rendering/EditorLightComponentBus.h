@@ -145,6 +145,9 @@ namespace LmbrCentral
         virtual void SetProbeAttenuationFalloff(float newAttenuationFalloff) { (void)newAttenuationFalloff; }
         virtual float GetProbeAttenuationFalloff() { return FLT_MAX; }
 
+        virtual void SetProbeFade(float fade) { (void)fade; }
+        virtual float GetProbeFade() { return 1.0f; }
+
         // Environment Light Specific Modifiers (probes)
         virtual void SetProbeArea(const AZ::Vector3& /*probeArea*/) {}
         virtual AZ::Vector3 GetProbeArea() { return AZ::Vector3::CreateZero(); }

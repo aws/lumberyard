@@ -46,6 +46,11 @@ namespace ScriptCanvas
                     }
                 }
 
+                void Visit(NodeVisitor& visitor) const override
+                {
+                    visitor.Visit(*this);
+                }
+
             protected:
                 Datum Evaluate(const Datum& lhs, const Datum& rhs) override
                 {

@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,8 +10,10 @@
 *
 */
 
+#pragma once
+
 #include <AzCore/std/string/string.h>
-#include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
+#include <SceneAPI/SceneCore/Events/ProcessingResult.h>
 
 class CContentCGF;
 
@@ -25,8 +25,8 @@ namespace AZ
         struct CgfGroupExportContext;
 
         void ConfigureCgfContent(CContentCGF& content);
-        SceneAPI::Events::ProcessingResult ProcessMeshes(CgfGroupExportContext& context, CContentCGF& content, AZStd::vector<AZStd::string>& targetNodes, AZStd::vector<AZStd::string>& physTargetNodes);
+        AZ::SceneAPI::Events::ProcessingResult ProcessMeshes(CgfGroupExportContext& context, CContentCGF& content, AZStd::vector<AZStd::string>& targetNodes, AZStd::vector<AZStd::string>& physTargetNodes);
         void ProcessMeshType(ContainerExportContext& context, CContentCGF& content, AZStd::vector<AZStd::string>& targetNodes, EPhysicsGeomType physicalizeType);
         void SetNodeName(const AZStd::string& name, CNodeCGF& node);
-    } // RC
-} // AZ
+    } // namespace RC
+} // namespace AZ

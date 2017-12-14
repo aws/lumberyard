@@ -22,6 +22,7 @@
 #include "D3DTiledShading.h"
 #include "../Common/Include_HLSL_CPP_Shared.h"
 #include "../Common/TypedConstantBuffer.h"
+#include "../Common/Textures/TextureManager.h"
 
 CSvoRenderer* CSvoRenderer::s_pInstance = 0;
 
@@ -429,10 +430,6 @@ void CSvoRenderer::ExecuteComputeShader(CShader* pSH, const char* szTechFinalNam
         {
             pDeviceCtx->CSSetUnorderedAccessViews(0, 1, &vp_RGB0.pUAV, &UAVInitialCounts);
         }
-		if (vp_RGB1.pUAV)
-		{
-			pDeviceCtx->CSSetUnorderedAccessViews(1, 1, &vp_RGB1.pUAV, &UAVInitialCounts);
-		}
         SetupSvoTexturesForRead(m_texInfo, eHWSC_Compute, 1); // input
         if (vp_RGB2.pUAV)
         {
@@ -457,14 +454,14 @@ void CSvoRenderer::ExecuteComputeShader(CShader* pSH, const char* szTechFinalNam
         {
             pDeviceCtx->CSSetUnorderedAccessViews(0, 1, &vp_RGB0.pUAV, &UAVInitialCounts);
         }
-        if (vp_RGB1.pUAV)
-        {
-            pDeviceCtx->CSSetUnorderedAccessViews(1, 1, &vp_RGB1.pUAV, &UAVInitialCounts);
-        }
         SetupSvoTexturesForRead(m_texInfo, eHWSC_Compute, 2); // input
         if (vp_RGB3.pUAV)
         {
             pDeviceCtx->CSSetUnorderedAccessViews(5, 1, &vp_RGB3.pUAV, &UAVInitialCounts);
+        }
+        if (vp_ALDI.pUAV)
+        {
+            pDeviceCtx->CSSetUnorderedAccessViews(6, 1, &vp_ALDI.pUAV, &UAVInitialCounts);
         }
         if (vp_DYNL.pUAV)
         {
@@ -862,8 +859,8 @@ void CSvoRenderer::ConeTracePass(SSvoTargetsSet* pTS)
                 static int nPrevWidth = 0;
                 if (nPrevWidth != (pTS->pRT_ALD_1->GetWidth() + e_svoTI_Diffuse_Cache))
                 {
-                    CTexture::s_ptexWhite->Apply(10, m_nTexStateLinear);
-                    CTexture::s_ptexWhite->Apply(11, m_nTexStateLinear);
+                    CTextureManager::Instance()->GetWhiteTexture()->Apply(10, m_nTexStateLinear);
+                    CTextureManager::Instance()->GetWhiteTexture()->Apply(11, m_nTexStateLinear);
                     nPrevWidth = pTS->pRT_ALD_1->GetWidth() + e_svoTI_Diffuse_Cache;
                 }
                 else
@@ -911,7 +908,7 @@ void CSvoRenderer::ConeTracePass(SSvoTargetsSet* pTS)
             }
             else
             {
-                SD3DPostEffectsUtils::SetTexture(CTexture::s_ptexBlack, 12, FILTER_LINEAR, TADDR_BORDER);
+                SD3DPostEffectsUtils::SetTexture(CTextureManager::Instance()->GetBlackTexture(), 12, FILTER_LINEAR, TADDR_BORDER);
             }
         }
 
@@ -920,7 +917,7 @@ void CSvoRenderer::ConeTracePass(SSvoTargetsSet* pTS)
             if (setupCloudShadows)
             {
                 // cloud shadow map
-                CTexture* pCloudShadowTex(rd->GetCloudShadowTextureId() > 0 ? CTexture::GetByID(rd->GetCloudShadowTextureId()) : CTexture::s_ptexWhite);
+                CTexture* pCloudShadowTex(rd->GetCloudShadowTextureId() > 0 ? CTexture::GetByID(rd->GetCloudShadowTextureId()) : CTextureManager::Instance()->GetWhiteTexture());
                 assert(pCloudShadowTex);
 
                 STexState pTexStateLinearClamp;
@@ -932,7 +929,7 @@ void CSvoRenderer::ConeTracePass(SSvoTargetsSet* pTS)
             }
             else
             {
-                CTexture::s_ptexWhite->Apply(15, m_nTexStateLinearWrap);
+                CTextureManager::Instance()->GetWhiteTexture()->Apply(15, m_nTexStateLinearWrap);
             }
         }
 
@@ -1243,7 +1240,7 @@ void CSvoRenderer::SetupSvoTexturesForRead(I3DEngine::SSvoStaticTexInfo& texInfo
 {
     ((CTexture*)texInfo.pTexTree)->Apply(0, m_nTexStatePoint, -1, -1, -1, eShaderClass);
 
-    CTexture::s_ptexBlack->Apply(1, m_nTexStateLinear, -1, -1, -1, eShaderClass);
+    CTextureManager::Instance()->GetBlackTexture()->Apply(1, m_nTexStateLinear, -1, -1, -1, eShaderClass);
 
 #ifdef FEATURE_SVO_GI_ALLOW_HQ
 
@@ -1732,7 +1729,7 @@ bool CSvoRenderer::SetSamplers(int nCustomID, EHWShaderClass eSHClass, int nTUni
     case TO_SVONORM:
     case TO_SVOOPAC:
     {
-        CTexture* pTex = CTexture::s_ptexBlack;
+        CTexture* pTex = CTextureManager::Instance()->GetBlackTexture();
 
         if (pSR->m_texInfo.pTexTree)
         {
@@ -1891,7 +1888,7 @@ void CSvoRenderer::UpScalePass(SSvoTargetsSet* pTS)
     }
     else
     {
-        CTexture::s_ptexBlack->Apply(15, m_nTexStatePoint);
+        CTextureManager::Instance()->GetBlackTexture()->Apply(15, m_nTexStatePoint);
     }
 
     {
@@ -2006,9 +2003,9 @@ void CSvoRenderer::SetupRsmSun(const EHWShaderClass eShClass)
     }
     else
     {
-        CTexture::s_ptexBlack->Apply(12, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
-        CTexture::s_ptexBlack->Apply(13, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
-        CTexture::s_ptexBlack->Apply(9, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
+        CTextureManager::Instance()->GetBlackTexture()->Apply(12, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
+        CTextureManager::Instance()->GetBlackTexture()->Apply(13, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
+        CTextureManager::Instance()->GetBlackTexture()->Apply(9, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
         SetShaderFloat(eShClass, lightProjParamName, alias_cast<Vec4*>(&shadowMat), 4);
 
         Vec4 ttt(0, 0, 0, 0);

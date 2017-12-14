@@ -24,6 +24,7 @@
 #include "TrackView/TrackViewSequence.h"
 #include "TrackView/TrackViewDialog.h"
 #include "TrackView/CommentNodeAnimator.h"
+#include "Maestro/Types/SequenceType.h"
 
 #include "RenderViewport.h"
 #include "Viewport.h"
@@ -321,7 +322,7 @@ void CAnimationContext::TimeChanged(float newTime)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAnimationContext::OnSequenceLoaded(AZ::EntityId entityId)
+void CAnimationContext::OnSequenceActivated(AZ::EntityId entityId)
 {
     // If nothing is selected and there is a valid most recent selected
     // try to find that sequence by id and select it. This is useful
@@ -596,7 +597,7 @@ void CAnimationContext::SetAutoRecording(bool bEnable, float fTimeStep)
         m_fRecordingTimeStep = fTimeStep;
 
         // Enables physics/ai if legacy sequence. Don't enable for Component Entity Sequences because Editor position/rotation gizmos would disappear
-        if (m_pSequence && m_pSequence->GetSequenceType() == eSequenceType_Legacy)
+        if (m_pSequence && m_pSequence->GetSequenceType() == SequenceType::Legacy)
         {
             GetIEditor()->GetGameEngine()->SetSimulationMode(true);
         }
@@ -608,7 +609,7 @@ void CAnimationContext::SetAutoRecording(bool bEnable, float fTimeStep)
         m_fRecordingTimeStep = 0;
 
         // Disables physics/ai mode (enabled only for Legacy sequences)
-        if (m_pSequence && m_pSequence->GetSequenceType() == eSequenceType_Legacy)
+        if (m_pSequence && m_pSequence->GetSequenceType() == SequenceType::Legacy)
         {
             GetIEditor()->GetGameEngine()->SetSimulationMode(false);
         }
@@ -739,14 +740,14 @@ void CAnimationContext::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnBeginLayerExport:
         if (m_pSequence)
         {
-            m_sequenceName = m_pSequence->GetName();
+            m_sequenceToRestore = m_pSequence->GetSequenceComponentEntityId();
         }
         else
         {
-            m_sequenceName = "";
+            m_sequenceToRestore.SetInvalid();
         }
 
-        m_sequenceTime = GetTime();
+        m_sequenceRestoreTime = GetTime();
 
         m_bSavedRecordingState = m_recording;
         SetRecordingInternal(false);
@@ -756,9 +757,9 @@ void CAnimationContext::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnEndGameMode:
     case eNotify_OnEndSceneSave:
     case eNotify_OnEndLayerExport:
-        m_currTime = m_sequenceTime;
-        SetSequence(GetIEditor()->GetSequenceManager()->GetSequenceByName(m_sequenceName), true, true);
-        SetTime(m_sequenceTime);
+        m_currTime = m_sequenceRestoreTime;
+        SetSequence(GetIEditor()->GetSequenceManager()->GetSequenceByEntityId(m_sequenceToRestore), true, true);
+        SetTime(m_sequenceRestoreTime);
 
         SetRecordingInternal(m_bSavedRecordingState);
         break;

@@ -21,7 +21,7 @@
 
 #include <IAWSResourceManager.h>
 
-#include <DetailWidget\StackStatusWidget.moc>
+#include <DetailWidget/StackStatusWidget.moc>
 
 StackStatusWidget::StackStatusWidget(QSharedPointer<IStackStatusModel> stackStatusModel)
     : m_stackStatusModel{stackStatusModel}

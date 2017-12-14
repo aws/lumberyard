@@ -14,6 +14,7 @@
 #include <QThread>
 #include <QElapsedTimer>
 #include "native/utilities/assetUtilEBusHelper.h"
+#include <QHostAddress>
 
 #include <QTimer>
 #include <QString>
@@ -75,7 +76,7 @@ class Connection
     Q_PROPERTY(qint64 numOpenFiles MEMBER m_numOpenFiles NOTIFY NumOpenFilesChanged)
 
 public:
-    explicit Connection(AssetProcessor::PlatformConfiguration* platformConfig = nullptr, bool inProxyMode = false, qintptr socketDescriptor = -1, QString proxyInfo = QString(), int defaultProxyPort = -1, QObject* parent = 0);
+    explicit Connection(AssetProcessor::PlatformConfiguration* platformConfig = nullptr, qintptr socketDescriptor = -1, QObject* parent = 0);
     virtual ~Connection();
 
     enum ConnectionStatus
@@ -165,7 +166,12 @@ public:
     size_t SendRaw(unsigned int type, unsigned int serial, const QByteArray& data) override;
     size_t SendPerPlatform(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const QString& platform) override;
     size_t SendRawPerPlatform(unsigned int type, unsigned int serial, const QByteArray& data, const QString& platform) override;
+    //! callback runs on the main thread, be sure to keep the work to an absolute minimum
+    unsigned int SendRequest(const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const AssetProcessor::ConnectionBusTraits::ResponseCallback& callback) override;
+    size_t SendResponse(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message) override;
+    void RemoveResponseHandler(unsigned int serial) override;
 
+    void InvokeResponseHandler(AZ::u32 serial, AZ::u32 type, QByteArray data);
 Q_SIGNALS:
     void IdentifierChanged();
     void IpAddressChanged();
@@ -176,7 +182,6 @@ Q_SIGNALS:
     void DisplayNameChanged();
     void ElapsedChanged();
     void NormalConnectionRequested(QString IpAddress, quint16 Port);
-    void ProxyConnectionRequested(QString proxyAddr, quint16 port);
 
     void connectionEnded();
     void TerminateConnection();
@@ -185,7 +190,6 @@ Q_SIGNALS:
     void ConnectionDestroyed(unsigned int connId);
     void DisconnectConnection(unsigned int connId);
     void AddGameMessageToOutgoingQueue();
-    void ProxyModeChanged(bool value);
     void Error(unsigned int connId, QString errorString);
 
     // the token is just any identifier to identify a particular connection, potentially from the same host.
@@ -228,8 +232,6 @@ public Q_SLOTS:
     void SetStatus(ConnectionStatus Status);
     void SetAssetPlatform(QString assetPlatform);
     void SetAutoConnect(bool AutoConnect);
-    void SetProxyInformation(QString proxyInformation);
-    void SetProxyMode(bool proxyMode);
     void OnConnectionDisconnect();
     void OnConnectionEstablished(QString ipAddress, quint16 port);
     void ReceiveMessage(unsigned int type, unsigned int serial, QByteArray payload);
@@ -239,16 +241,14 @@ public Q_SLOTS:
 
 private:
 
+    AZ::u32 GetNextSerial();
+
     AssetProcessor::PlatformConfiguration* m_platformConfig = nullptr;
 
     unsigned int m_connectionId;
     QString m_identifier;
     QString m_ipAddress;
     quint16 m_port;
-    bool m_inProxyMode;
-    int m_defaultProxyPort;
-    QString m_proxyAddress;
-    quint16 m_proxyPort;
     ConnectionStatus m_status;
     QString m_assetPlatform;
     bool m_autoConnect;
@@ -259,6 +259,9 @@ private:
     qint64 m_elapsed;
     QString m_elapsedDisplay;
     bool m_queuedReconnect = false;
+
+    AZStd::mutex m_responseHandlerMutex;
+    AZStd::unordered_map<AZ::u32, AssetProcessor::ConnectionBusTraits::ResponseCallback> m_responseHandlerMap;
 
     //metrics
     qint64 m_numOpenRequests;

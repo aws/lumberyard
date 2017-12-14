@@ -115,8 +115,7 @@ void CObjManager::RenderDecalAndRoad(IRenderNode* pEnt,
     DrawParams.pRenderNode = pEnt;
 
     // set lights bit mask
-    //DrawParams.restLightInfo.refPoint = m_p3DEngine->GetEntityRegisterPoint( pEnt );
-    DrawParams.nAfterWater = IsAfterWater(objBox.GetCenter(), vCamPos, passInfo) ? 1 : 0;
+    DrawParams.nAfterWater = IsAfterWater(objBox.GetCenter(), passInfo) ? 1 : 0;
 
     // draw bbox
     if (GetCVars()->e_BBoxes)// && eERType != eERType_Light)
@@ -212,12 +211,6 @@ void CObjManager::RenderObject(IRenderNode* pEnt,
         break;
     case eERType_Decal:
         if (!passInfo.RenderDecals())
-        {
-            return;
-        }
-        break;
-    case eERType_WaterWave:
-        if (!passInfo.RenderWaterWaves())
         {
             return;
         }
@@ -389,7 +382,7 @@ void CObjManager::RenderObject(IRenderNode* pEnt,
         }
     }
 
-    DrawParams.nAfterWater = IsAfterWater(objBox.GetCenter(), vCamPos, passInfo) ? 1 : 0;
+    DrawParams.nAfterWater = IsAfterWater(objBox.GetCenter(), passInfo) ? 1 : 0;
 
     if (nRndFlags & ERF_SELECTED)
     {

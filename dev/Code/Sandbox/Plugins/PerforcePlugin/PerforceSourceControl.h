@@ -11,12 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_PERFORCEPLUGIN_PERFORCESOURCECONTROL_H
-#define CRYINCLUDE_PERFORCEPLUGIN_PERFORCESOURCECONTROL_H
 #pragma once
-
-
-// CRC TODO: Retab! file
 
 #define USERNAME_LENGTH 64
 
@@ -28,8 +23,6 @@
 #include "Include/ISourceControl.h"
 
 #include <QPixmap>
-
-struct CPerforceThread;
 
 class CMyClientUser
     : public ClientUser
@@ -92,7 +85,6 @@ class CPerforceSourceControl
     , public IClassDesc
 {
 public:
-    typedef std::unordered_map<uint, connectivityChangedFunction> CallbackMap;
     // constructor
     CPerforceSourceControl();
     virtual ~CPerforceSourceControl();
@@ -103,23 +95,11 @@ public:
     void Init();
     bool CheckConnectionAndNotifyListeners();
 
-    // from ISourceControl
-    uint32 GetFileAttributes(const char* filename) override;
-
-    // Thread processing
-    void GetFileAttributesThread(const char* filename);
-
-    bool DoesChangeListExist(const char* pDesc, char* changeid, int nLen);
-    bool CreateChangeList(const char* pDesc, char* changeid, int nLen);
-    bool Add(const char* filename, const char* desc, int nFlags, char* changelistId = NULL);
     bool CheckOut(const char* filename, int nFlags, char* changelistId = NULL);
     bool UndoCheckOut(const char* filename, int nFlags);
     bool Rename(const char* filename, const char* newfilename, const char* desc, int nFlags);
     bool GetLatestVersion(const char* filename, int nFlags);
-    bool GetOtherUser(const char* filename, char* outUser, int nOutUserSize);
 
-    virtual uint RegisterCallback(connectivityChangedFunction func) override;
-    virtual void UnRegisterCallback(uint handle) override;
     virtual void SetSourceControlState(SourceControlState state) override;
     virtual ConnectivityState GetConnectivityState() override;
 
@@ -163,15 +143,11 @@ protected:
     bool IsFileCheckedOutByUser(const char* sFilename, bool* isByAnotherUser = 0, bool* isForAdd = 0, bool* isForMove = 0);
     bool IsFileLatestVersion(const char* sFilename);
     void ConvertFileNameCS(char* sDst, const char* sSrcFilename);
-    void MakePathCS(char* sDst, const char* sSrcFilename);
-    void RenameFolders(const char* path, const char* oldPath);
     bool FindFile(char* clientFile, const char* folder, const char* file);
     bool FindDir(char* clientFile, const char* folder, const char* dir);
     bool IsSomeTimePassed();
-    void NotifyListeners();
-    void CacheData();
 
-    const char* GetErrorByGenericCode(int nGeneric);
+    static const char* GetErrorByGenericCode(int nGeneric);
 
 private:
     CMyClientUser m_ui;
@@ -183,27 +159,13 @@ private:
     bool m_bIsFailConnectionLogged;
     bool m_configurationInvalid;
 
-    CPerforceThread* m_thread;
-    uint32 m_unRetValue;
-    bool m_isSetuped;
-    bool m_isSecondThread;
-    bool m_isSkipThread;
     DWORD m_dwLastAccessTime;
     QPixmap m_p4Icon;
     QPixmap m_p4ErrorIcon;
 
     ULONG m_ref;
-
-    void LoadSettingsIfAvailable();
-
     uint m_nextHandle;
 
-    CallbackMap m_callbacks;
     bool m_lastWorkOfflineResult;
     bool m_lastWorkOfflineBecauseOfConnectionLossResult;
 };
-
-
-
-
-#endif // CRYINCLUDE_PERFORCEPLUGIN_PERFORCESOURCECONTROL_H

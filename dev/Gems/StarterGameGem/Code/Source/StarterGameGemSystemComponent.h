@@ -10,7 +10,6 @@
 *
 */
 
-
 #pragma once
 
 #include <AzCore/Component/Component.h>

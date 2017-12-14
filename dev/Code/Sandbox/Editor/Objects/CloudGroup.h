@@ -61,7 +61,10 @@ public:
     void UpdateRenderObject();
     XmlNodeRef GenerateXml();
     void Generate();
+
+    using CBaseObject::Export;
     void Export();
+
     void Import();
     bool ImportFS(const QString& name);
     bool ImportExportFolder(const QString& fileName);

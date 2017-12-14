@@ -24,7 +24,7 @@ def build(bld):
     USE = ['EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework']
     USE = USE + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity'])
 
-    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'NOT_USE_CRY_MEMORY_MANAGER', 'AZCORE_ENABLE_MEMORY_TRACKING']
+    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'NOT_USE_CRY_MEMORY_MANAGER', 'AZCORE_ENABLE_MEMORY_TRACKING', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
 
     CODEGEN_FILE_LIST = [    
             'Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h',
@@ -48,7 +48,7 @@ def build(bld):
 
         platforms       = ['all'],
         configurations  = ['all'],
-        file_list       = ['scriptcanvasgem_common.waf_files'],
+        file_list       = ['scriptcanvasgem_common.waf_files', 'scriptcanvasgem_corebuilder.waf_files'],
         defines         = COMMON_DEFINES,
         export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
@@ -88,7 +88,7 @@ def build(bld):
         pch                 = 'Source/precompiled.cpp',
         win_features        = ['crcfix'],
 
-        file_list           = ['scriptcanvasgem_game.waf_files', 'scriptcanvasgem_corebuilder.waf_files' ],
+        file_list           = ['scriptcanvasgem_game.waf_files' ],
         test_all_file_list  = ['scriptcanvasgem_tests.waf_files'],
 
 
@@ -104,7 +104,7 @@ def build(bld):
 
             autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
 
-            file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_builder.waf_files', 'scriptcanvasgem_corebuilder.waf_files'],
+            file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_builder.waf_files'],
             includes        = [ 'Include',
                                 'Include/ScriptCanvas',
                                 'Editor/Include',

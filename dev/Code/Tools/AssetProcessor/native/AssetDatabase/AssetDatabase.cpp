@@ -24,6 +24,7 @@
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/algorithm.h>
 #include "native/assetprocessor.h"
+#include <native/utilities/assetUtils.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <QFileInfo>
 
@@ -128,6 +129,17 @@ namespace AssetProcessor
             "    Source                        TEXT NOT NULL collate nocase, "
             "    DependsOnSource               TEXT NOT NULL collate nocase); ";
 
+        static const char* CREATE_PRODUCT_DEPENDENCY_TABLE = "AssetProcessor::CreateProductDependencyTable";
+        static const char* CREATE_PRODUCT_DEPENDENCY_TABLE_STATEMENT =
+            "CREATE TABLE IF NOT EXISTS ProductDependencies("
+            "    ProductDependencyID  INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "    ProductPK            INTEGER NOT NULL, "
+            "    DependencySourceGuid BLOB NOT NULL, "
+            "    DependencySubID      INTEGER NOT NULL, "
+            "    DependencyFlags      INTEGER NOT NULL, "
+            "    FOREIGN KEY (ProductPK) REFERENCES "
+            "        Products(ProductID) ON DELETE CASCADE);";
+
         //////////////////////////////////////////////////////////////////////////
         //indices
         static const char* CREATEINDEX_DEPENDSONSOURCE_SOURCEDEPENDENCY = "AssetProcesser::CreateIndexDependsOnSource_SourceDependency";
@@ -173,6 +185,15 @@ namespace AssetProcessor
             "CREATE INDEX IF NOT EXISTS Products_ProductName ON Products (ProductName);";
         static const char* DROPINDEX_PRODUCT_NAME_STATEMENT =
             "DROP INDEX IF EXISTS Products_ProductName_idx;";
+
+        static const char* CREATEINDEX_PRODUCT_SUBID = "AssetProcessor::CreateIndexProductSubID";
+        static const char* CREATEINDEX_PRODUCT_SUBID_STATEMENT =
+            "CREATE INDEX IF NOT EXISTS Products_SubID ON Products (SubID);";
+
+        static const char* CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK = "AssetProcessor::CreateIndexProductDependenciesProductPK";
+        static const char* CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK_STATEMENT =
+            "CREATE INDEX IF NOT EXISTS ProductDependencies_ProductPK ON ProductDependencies (ProductPK);";
+
 
         //////////////////////////////////////////////////////////////////////////
         //insert/set/update/delete
@@ -340,6 +361,28 @@ namespace AssetProcessor
             "DELETE FROM LegacySubIDs WHERE "
             "ProductPK = :productPK;";
 
+        static const char* INSERT_PRODUCT_DEPENDENCY = "AssetProcessor::InsertProductDependency";
+        static const char* INSERT_PRODUCT_DEPENDENCY_STATEMENT =
+            "INSERT INTO ProductDependencies (ProductPK, DependencySourceGuid, DependencySubID, DependencyFlags) "
+            "VALUES (:productPK, :dependencySourceGuid, :dependencySubID, :dependencyFlags);";
+
+        static const char* UPDATE_PRODUCT_DEPENDENCY = "AssetProcessor::UpdateProductDependency";
+        static const char* UPDATE_PRODUCT_DEPENDENCY_STATEMENT =
+            "UPDATE ProductDependencies SET "
+            "ProductPK = :productPK, "
+            "DependencySourceGuid = :dependencySourceGuid, "
+            "DependencySubID = :dependencySubID, "
+            "DependencyFlags = :dependencyFlags, WHERE "
+            "ProductDependencyID = :productDependencyID;";
+
+        static const char* DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID = "AssetProcessor::DeleteProductDependencyByProductId";
+        static const char* DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT =
+            "DELETE FROM ProductDependencies WHERE "
+            "ProductPK = :productpk;";
+
+        static const char* DELETE_AUTO_SUCCEED_JOBS = "AssetProcessor::DeleteAutoSucceedJobs";
+        static const char* DELETE_AUTO_SUCCEED_JOBS_STATEMENT =
+            "DELETE FROM Jobs WHERE JobKey LIKE 'CreateJobs_success_'";
     }
 
     AssetDatabaseConnection::AssetDatabaseConnection()
@@ -433,6 +476,22 @@ namespace AssetProcessor
                 )
             {
                 foundVersion = DatabaseVersion::AddedLegacySubIDsTable;
+            }
+        }
+
+        if (foundVersion == DatabaseVersion::AddedLegacySubIDsTable)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(CREATE_PRODUCT_DEPENDENCY_TABLE))
+            {
+                foundVersion = DatabaseVersion::AddedProductDependencyTable;
+            }
+        }
+
+        if (foundVersion == DatabaseVersion::AddedProductDependencyTable)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(DELETE_AUTO_SUCCEED_JOBS))
+            {
+                foundVersion = DatabaseVersion::ClearAutoSucceedJobs;
             }
         }
         
@@ -589,6 +648,16 @@ namespace AssetProcessor
         m_databaseConnection->AddStatement(DELETE_LEGACYSUBIDS_BY_PRODUCTID, DELETE_LEGACYSUBIDS_BY_PRODUCTID_STATEMENT);
 
         // ---------------------------------------------------------------------------------------------
+        //                   Product Dependency table
+        // ---------------------------------------------------------------------------------------------
+        m_databaseConnection->AddStatement(CREATE_PRODUCT_DEPENDENCY_TABLE, CREATE_PRODUCT_DEPENDENCY_TABLE_STATEMENT);
+        m_createStatements.push_back(CREATE_PRODUCT_DEPENDENCY_TABLE);
+
+        m_databaseConnection->AddStatement(INSERT_PRODUCT_DEPENDENCY, INSERT_PRODUCT_DEPENDENCY_STATEMENT);
+        m_databaseConnection->AddStatement(UPDATE_PRODUCT_DEPENDENCY, UPDATE_PRODUCT_DEPENDENCY_STATEMENT);
+        m_databaseConnection->AddStatement(DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID, DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT);
+
+        // ---------------------------------------------------------------------------------------------
         //                   Indices
         // ---------------------------------------------------------------------------------------------
         m_databaseConnection->AddStatement(CREATEINDEX_DEPENDSONSOURCE_SOURCEDEPENDENCY, CREATEINDEX_DEPENDSONSOURCE_SOURCEDEPENDENCY_STATEMENT);
@@ -621,6 +690,14 @@ namespace AssetProcessor
         
         m_databaseConnection->AddStatement(CREATEINDEX_PRODUCT_NAME, CREATEINDEX_PRODUCT_NAME_STATEMENT);
         m_createStatements.push_back(CREATEINDEX_PRODUCT_NAME);
+
+        m_databaseConnection->AddStatement(CREATEINDEX_PRODUCT_SUBID, CREATEINDEX_PRODUCT_SUBID_STATEMENT);
+        m_createStatements.push_back(CREATEINDEX_PRODUCT_SUBID);
+
+        m_databaseConnection->AddStatement(CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK, CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK_STATEMENT);
+        m_createStatements.push_back(CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK);
+
+        m_databaseConnection->AddStatement(DELETE_AUTO_SUCCEED_JOBS, DELETE_AUTO_SUCCEED_JOBS_STATEMENT);
     }
 
     void AssetDatabaseConnection::VacuumAndAnalyze()
@@ -955,7 +1032,7 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourcesBySourceName(QString exactSourceName, SourceDatabaseEntryContainer& container)
     {
         bool found = false;
-        bool succeeded = QuerySourceBySourceName(exactSourceName.toUtf8().constData(),
+        bool succeeded = QuerySourceBySourceName(AssetUtilities::NormalizeFilePath(exactSourceName).toUtf8().constData(),
             [&](SourceDatabaseEntry& source)
         {
             found = true;
@@ -2505,7 +2582,7 @@ namespace AssetProcessor
 
         if (entry.m_sourceDependencyID == -1)
         {
-            //they didn't supply an id, check to make sure that an entry exists in the database and than delete it
+            //they didn't supply an id, check to make sure that an entry exists in the database and then delete it
             SourceFileDependencyEntry existingEntry;
             if (GetSourceFileDependency(entry, existingEntry))
             {
@@ -2586,7 +2663,7 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourceFileDependenciesByDependsOnSource(const QString& dependsOnSource, SourceFileDependencyEntryContainer& container)
     {
         bool found = false;
-        bool succeeded = QuerySourceDependencyByDependsOnSource(dependsOnSource.toUtf8().constData(),
+        bool succeeded = QuerySourceDependencyByDependsOnSource(dependsOnSource.toUtf8().constData(),nullptr,
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
@@ -2600,7 +2677,7 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetDependsOnSourceBySource(const QString& source, AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container)
     {
         bool found = false;
-        bool succeeded = QueryDependsOnSourceBySourceDependency(source.toUtf8().constData(),
+        bool succeeded = QueryDependsOnSourceBySourceDependency(source.toUtf8().constData(),nullptr,
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
@@ -2774,6 +2851,223 @@ namespace AssetProcessor
         return true;
     }
 
+    // ProductDependencies
+    bool AssetDatabaseConnection::GetProductDependencies(ProductDependencyDatabaseEntryContainer& container)
+    {
+        bool found = false;
+        bool succeeded = QueryProductDependenciesTable([&](AZ::Data::AssetId& assetId, ProductDependencyDatabaseEntry& entry)
+        {
+            found = true;
+            container.push_back();
+            container.back() = AZStd::move(entry);
+            return true;//all
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetProductDependencyByProductDependencyID(AZ::s64 productDependencyID, ProductDependencyDatabaseEntry& productDependencyEntry)
+    {
+        bool found = false;
+        bool succeeded = QueryProductDependencyByProductDependencyId(productDependencyID,
+            [&](ProductDependencyDatabaseEntry& entry)
+        {
+            found = true;
+            productDependencyEntry = AZStd::move(entry);
+            return false;//one
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetProductDependenciesByProductID(AZ::s64 productID, ProductDependencyDatabaseEntryContainer& container)
+    {
+        bool found = false;
+        bool succeeded = QueryProductDependencyByProductId(productID,
+            [&](ProductDependencyDatabaseEntry& entry)
+        {
+            found = true;
+            container.push_back();
+            container.back() = AZStd::move(entry);
+            return true;//all
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetDirectProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container)
+    {
+        bool found = false;
+        bool succeeded = QueryDirectProductDependencies(productID,
+            [&](ProductDatabaseEntry& entry)
+        {
+            found = true;
+            container.push_back();
+            container.back() = AZStd::move(entry);
+            return true;//all 
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetAllProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container)
+    {
+        bool found = false;
+        bool succeeded = QueryAllProductDependencies(productID,
+            [&](ProductDatabaseEntry& entry)
+        {
+            found = true;
+            container.push_back();
+            container.back() = AZStd::move(entry);
+            return true;//all 
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::SetProductDependency(ProductDependencyDatabaseEntry& entry)
+    {
+        if (!ValidateDatabaseTable(INSERT_PRODUCT_DEPENDENCY, "Products"))
+        {
+            AZ_Error(LOG_NAME, false, "Could not find Products table");
+            return false;
+        }
+
+        if (entry.m_productDependencyID == -1)
+        {
+            //they didn't set an id, add to database
+
+            //make sure its not already in the database
+            ProductDependencyDatabaseEntryContainer existingProductDependencies;
+            if (GetProductDependenciesByProductID(entry.m_productPK, existingProductDependencies))
+            {
+                for (const auto& existingProductDependency : existingProductDependencies)
+                {
+                    if (existingProductDependency == entry)
+                    {
+                        //this product already exists
+                        entry.m_productDependencyID = existingProductDependency.m_productDependencyID;
+                        return true;
+                    }
+                }
+            }
+
+            // scope created for the statement.
+            StatementAutoFinalizer autoFinalizer(*m_databaseConnection, INSERT_PRODUCT_DEPENDENCY);
+            Statement* statement = autoFinalizer.Get();
+            AZ_Assert(statement, "Statement not found: %s", INSERT_PRODUCT_DEPENDENCY);
+
+            if (!statement->BindNamedInt64(":productPK", entry.m_productPK)) { return false; }
+            if (!statement->BindNamedUuid(":dependencySourceGuid", entry.m_dependencySourceGuid)) { return false; }
+            if (!statement->BindNamedInt(":dependencySubID", entry.m_dependencySubID)) { return false; }
+            if (!statement->BindNamedInt64(":dependencyFlags", entry.m_dependencyFlags.to_ullong())) { return false; }
+
+            if (statement->Step() == Statement::SqlError)
+            {
+                AZ_Warning(LOG_NAME, false, "Failed to execute the INSERT_PRODUCT_DEPENDENCY statement");
+                return false;
+            }
+
+            //now read it from the database
+            existingProductDependencies.clear();
+            if (GetProductDependenciesByProductID(entry.m_productPK, existingProductDependencies))
+            {
+                for (const auto& existingProductDependency : existingProductDependencies)
+                {
+                    if (existingProductDependency == entry)
+                    {
+                        entry.m_productDependencyID = existingProductDependency.m_productDependencyID;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+        else
+        {
+            //they supplied an id, see if it exists in the database
+            ProductDependencyDatabaseEntry existingEntry;
+            if (!GetProductDependencyByProductDependencyID(entry.m_productDependencyID, existingEntry))
+            {
+                AZ_Error(LOG_NAME, false, "Failed to write the product into the database.");
+                return false;
+            }
+
+            //if the product is now different update it
+            if (existingEntry == entry)
+            {
+                return true;
+            }
+
+            //its in the database already, update the database
+            // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_PRODUCT_DEPENDENCY);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_PRODUCT_DEPENDENCY);
+                return false;
+            }
+
+            if (!statement->BindNamedInt64(":productPK", entry.m_productPK) || 
+                !statement->BindNamedUuid(":dependencySourceGuid", entry.m_dependencySourceGuid) ||
+                !statement->BindNamedInt(":dependencySubID", entry.m_dependencySubID) ||
+                !statement->BindNamedInt64(":dependencyFlags", entry.m_dependencyFlags.to_ullong()) ||
+                !statement->BindNamedInt64(":productDependencyID", entry.m_productDependencyID))
+            { 
+                return false;
+            }
+
+            if (statement->Step() == Statement::SqlError)
+            {
+                AZ_Warning(LOG_NAME, false, "Failed to execute %s to update (key %i)", UPDATE_PRODUCT_DEPENDENCY, entry.m_productDependencyID);
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    bool AssetDatabaseConnection::SetProductDependencies(ProductDependencyDatabaseEntryContainer& container)
+    {
+        bool succeeded = true;
+        for (auto& entry : container)
+        {
+            succeeded = succeeded && SetProductDependency(entry);
+        }
+        return succeeded;
+    }
+
+    bool AssetDatabaseConnection::RemoveProductDependencyByProductId(AZ::s64 productID)
+    {
+        if (!ValidateDatabaseTable(DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID, "ProductDependencies"))
+        {
+            AZ_Error(LOG_NAME, false, "Could not find Product Dependency table");
+            return false;
+        }
+
+        ScopedTransaction transaction(m_databaseConnection);
+
+        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
+        Statement* statement = autoFinal.Get();
+        if (!statement)
+        {
+            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
+            return false;
+        }
+
+        if (!statement->BindNamedInt64(":productpk", productID))
+        {
+            AZ_Error(LOG_NAME, false, "could not find %s in statement %s", "productpk", DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
+            return false;
+        }
+
+        if (statement->Step() == Statement::SqlError)
+        {
+            AZ_Warning(LOG_NAME, false, "Failed to RemoveProductDependency from the database");
+            return false;
+        }
+
+        transaction.Commit();
+
+        return true;
+    }
 
 }//namespace AssetProcessor
 

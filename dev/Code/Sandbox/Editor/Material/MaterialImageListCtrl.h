@@ -100,6 +100,7 @@ private:
     _smart_ptr<CMaterial> m_tempTerrainMaterial;
     QScopedPointer<MaterialPreviewModelView> m_renderCtrl; // Used to draw the swatches for all the sub-materials
     int m_nColor;
+    bool m_updatingGeometries = false;
     ModelType m_modelType = ModelType::Default;
     MaterialBrowserWidget* m_materialBrowserWidget;
     QTimer* m_resizeTimer; // Used to stall a resizeEvent from firing until RESIZE_TIMEOUT ms have passed since resizing stopped

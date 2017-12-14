@@ -25,6 +25,7 @@
 #include "CREParticleGPU.h"
 #include "D3DGPUParticleEngine.h"
 #include "../Common/Renderer.h"
+#include "../Common/Textures/TextureManager.h"
 
 #pragma warning(disable: 4244)
 
@@ -89,7 +90,7 @@ bool CRESky::mfDraw(CShader* ef, SShaderPass* sfm)
 
     if (rd->m_RP.m_nBatchFilter & FB_Z)
     {
-        CTexture::s_ptexBlack->Apply(0, texStateID);
+        CTextureManager::Instance()->GetBlackTexture()->Apply(0, texStateID);
         { // top
             SVF_P3F_C4B_T2F data[] =
             {
@@ -1142,8 +1143,8 @@ bool CREWaterVolume::mfDraw(CShader* ef, SShaderPass* sfm)
         return false;
     }
 
+    //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.
     bool bCaustics = CRenderer::CV_r_watercaustics &&
-        CRenderer::CV_r_watercausticsdeferred &&
         CRenderer::CV_r_watervolumecaustics &&
         m_pParams->m_caustics &&
         (-m_pParams->m_fogPlane.d >= 1.0f);              // unfortunately packing to RG8 limits us to heights over 1 meter, so we just disable if volume goes below.
@@ -1301,7 +1302,7 @@ bool CREWaterVolume::mfDraw(CShader* ef, SShaderPass* sfm)
 
     if (bCaustics)
     {
-        Vec4 pCausticsParams = Vec4(CRenderer::CV_r_watercausticsdistance, m_pParams->m_causticIntensity, m_pParams->m_causticTiling, m_pParams->m_causticHeight);
+        Vec4 pCausticsParams = Vec4(0.0f /* Not used */, m_pParams->m_causticIntensity, m_pParams->m_causticTiling, m_pParams->m_causticHeight);
 
         static CCryNameR m_pCausticParams("vCausticParams");
         ef->FXSetPSFloat(m_pCausticParams,  &pCausticsParams, 1);
@@ -1513,19 +1514,9 @@ void CREWaterOcean::Create(uint32 nVerticesCount, SVF_P3F_C4B_T2F* pVertices, ui
 void CREWaterOcean::FrameUpdate()
 {
     static bool bInitialize = true;
-    static Vec4 pParams0(0, 0, 0, 0), pParams1(0, 0, 0, 0);
-
-    Vec4 pCurrParams0, pCurrParams1;
-    gEnv->p3DEngine->GetOceanAnimationParams(pCurrParams0, pCurrParams1);
-
-    // why no comparison operator on Vec4 ??
-    if (bInitialize || pCurrParams0.x != pParams0.x || pCurrParams0.y != pParams0.y ||
-        pCurrParams0.z != pParams0.z || pCurrParams0.w != pParams0.w || pCurrParams1.x != pParams1.x ||
-        pCurrParams1.y != pParams1.y || pCurrParams1.z != pParams1.z || pCurrParams1.w != pParams1.w)
+    if (bInitialize)
     {
-        pParams0 = pCurrParams0;
-        pParams1 = pCurrParams1;
-        WaterSimMgr()->Create(1.0, pParams0.x, pParams0.z, 1.0f, 1.0f);
+        WaterSimMgr()->Create(1.0, 1.0f, 1.0f);
         bInitialize = false;
     }
 
@@ -1544,16 +1535,17 @@ void CREWaterOcean::FrameUpdate()
     // Copy data..
     if (CTexture::IsTextureExist(pTexture))
     {
-        const float fUpdateTime = 0.125f * gEnv->pTimer->GetCurrTime();// / clamp_tpl<float>(pParams1.x, 0.55f, 1.0f);
-        int nFrameID = gRenDev->GetFrameID();
-        void* pRawPtr = NULL;
-        WaterSimMgr()->Update(nFrameID, fUpdateTime, false, pRawPtr);
-
         Vec4* pDispGrid = WaterSimMgr()->GetDisplaceGrid();
-        if (pDispGrid == NULL)
+        if (pDispGrid == nullptr)
         {
             return;
         }
+
+        const auto oceanData = gEnv->p3DEngine->GetOceanAnimationParams();
+        const float fUpdateTime = 0.125f * gEnv->pTimer->GetCurrTime() * oceanData.fWavesSpeed;
+        int nFrameID = gRenDev->GetFrameID();
+        void* pRawPtr = NULL;
+        WaterSimMgr()->Update(nFrameID, fUpdateTime, false, pRawPtr);
 
         uint32 pitch = 4 * sizeof(f32) * nGridSize;
         uint32 width = nGridSize;
@@ -2329,10 +2321,11 @@ bool CREBeam::mfDraw(CShader* ef, SShaderPass* sl)
 
         if (nCurPass == nStartPass && pLowResRT)
         {
-            rd->FX_ClearTarget(pLowResRT, Clr_Transparent);
-            rd->FX_ClearTarget(pCurrDepthSurf, CLEAR_ZBUFFER);
             rd->FX_PushRenderTarget(0, pLowResRT, pCurrDepthSurf, -1, false, 1);
             rd->FX_SetColorDontCareActions(0, false, false); //Check gmem path for performance when using this pass.
+            rd->FX_ClearTarget(pLowResRT, Clr_Transparent);
+            rd->FX_ClearTarget(pCurrDepthSurf, CLEAR_ZBUFFER);
+            
         }
 
         uint32 nState = (nCurPass == FinalPass) ? (GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA) : 0;

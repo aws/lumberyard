@@ -24,6 +24,7 @@
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
+#include "GraphicsPipeline/FurPasses.h"
 
 #define MAX_VIS_AREAS 32
 
@@ -342,19 +343,23 @@ uint32 CDeferredShading::AddLight(const CDLight& pDL, float fMult, const SRender
         rArray[idx].AcquireResources();
     }
 
-    IF_LIKELY ((pDL.m_Flags & (DLF_DEFERRED_CUBEMAPS | DLF_AMBIENT)) == 0)
+    IF_LIKELY (eDLT_DeferredLight == LightType)
     {
         rArray[idx].m_Color *= fMult;
         rArray[idx].m_SpecMult *= fMult;
     }
-    else if (pDL.m_Flags & DLF_AMBIENT)
+    else if (eDLT_DeferredAmbientLight == LightType)
     {
         ColorF origCol(rArray[idx].m_Color);
         rArray[idx].m_Color.lerpFloat(Col_White, origCol, fMult);
     }
+    else if (eDLT_DeferredCubemap == LightType)
+    {
+        rArray[idx].m_fProbeAttenuation *= fMult;
+    }
     else
     {
-        rArray[idx].m_Color.a = fMult;  // store fade-out constant separately in alpha channel for deferred cubemaps
+        AZ_Assert(false, "Unhandled eDeferredLightType %d", LightType);
     }
 
     gcpRendD3D->EF_CheckLightMaterial(const_cast<CDLight*>(&pDL), idx, passInfo, rendItemSorter);
@@ -618,7 +623,15 @@ void CDeferredShading::SetupPasses()
     m_pLBufferDiffuseRT = CTexture::s_ptexCurrentSceneDiffuseAccMap;
     m_pLBufferSpecularRT = CTexture::s_ptexSceneSpecularAccMap;
     m_pNormalsRT = CTexture::s_ptexSceneNormalsMap;
-    m_pDepthRT = CTexture::s_ptexZTarget;
+
+    if (FurPasses::GetInstance().IsRenderingFur())
+    {
+        m_pDepthRT = CTexture::s_ptexFurZTarget;
+    }
+    else
+    {
+        m_pDepthRT = CTexture::s_ptexZTarget;
+    }
 
     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
@@ -735,7 +748,7 @@ void CDeferredShading::FilterGBuffer()
     rd->FX_SetState(GS_NODEPTHTEST);
     SPostEffectsUtils::SetTexture(CTexture::s_ptexSceneNormalsMap, 0, FILTER_POINT, 0);
     SPostEffectsUtils::SetTexture(pSceneSpecular, 1, FILTER_POINT, 0);
-    SPostEffectsUtils::SetTexture(CTexture::s_ptexZTarget, 2, FILTER_POINT, 0);
+    SPostEffectsUtils::SetTexture(m_pDepthRT, 2, FILTER_POINT, 0);
 
     // Bind sampler directly so that it works with DX11 style texture objects
     ID3D11SamplerState* pSamplers[1] = { (ID3D11SamplerState*)CTexture::s_TexStates[m_nTexStatePoint].m_pDeviceState };
@@ -1851,7 +1864,7 @@ void CDeferredShading::RenderPortalBlendValues(int nClipAreaReservedStencilBit)
 
     static CCryNameTSCRC TechName0 = "PortalBlendVal";
     SD3DPostEffectsUtils::ShBeginPass(m_pShader, TechName0, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
-    SD3DPostEffectsUtils::SetTexture(CTexture::s_ptexZTarget, 3, FILTER_POINT);
+    SD3DPostEffectsUtils::SetTexture(m_pDepthRT, 3, FILTER_POINT);
 
     for (int nCurrVolume = pClipVolumes.size() - 1; nCurrVolume >= 0; --nCurrVolume)
     {
@@ -2239,9 +2252,10 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
     {
         CTexture* const texDiffuse = (CTexture*)pGlobalCubemap->GetDiffuseCubemap();
         CTexture* const texSpecular = (CTexture*)pGlobalCubemap->GetSpecularCubemap();
+        CTexture* const texNoTextureCM = CTextureManager::Instance()->GetNoTextureCM();
 
-        SD3DPostEffectsUtils::SetTexture(texDiffuse->GetTextureType() < eTT_Cube ? CTexture::s_ptexNoTextureCM : texDiffuse, 1, FILTER_BILINEAR, 1, texDiffuse->IsSRGB());
-        SD3DPostEffectsUtils::SetTexture(texSpecular->GetTextureType() < eTT_Cube ? CTexture::s_ptexNoTextureCM : texSpecular, 2, FILTER_TRILINEAR, 1, texSpecular->IsSRGB());
+        SD3DPostEffectsUtils::SetTexture(texDiffuse->GetTextureType() < eTT_Cube ? texNoTextureCM : texDiffuse, 1, FILTER_BILINEAR, 1, texDiffuse->IsSRGB());
+        SD3DPostEffectsUtils::SetTexture(texSpecular->GetTextureType() < eTT_Cube ? texNoTextureCM : texSpecular, 2, FILTER_TRILINEAR, 1, texSpecular->IsSRGB());
 
         SD3DPostEffectsUtils::ShSetParamPS(m_pParamLightDiffuse, pLightDiffuse);
         const Vec4 vCubemapParams(IntegerLog2((uint32)texSpecular->GetWidthNonVirtual()) - 2, 0, 0, 0);     // Use 4x4 mip for lowest gloss values
@@ -2273,7 +2287,7 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
         m_pMSAAMaskRT->Apply(5, m_nTexStatePoint);
     }
 
-    CTexture::s_ptexEnvironmentBRDF->Apply(10, m_nTexStateLinear);
+    CTextureManager::Instance()->GetDefaultTexture("EnvironmentBRDF")->Apply(10, m_nTexStateLinear);
 
     //  Confetti BEGIN: Igor Lobanchikov
     //  Igor: this is expected by Mali drivers
@@ -2316,8 +2330,12 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
         rd->FX_PopRenderTarget(0);
     }
 
-    CTexture::s_ptexBlack->Apply(3, m_nTexStatePoint);
-    CTexture::s_ptexBlack->Apply(4, m_nTexStatePoint);
+    CTexture* const     pBlack = CTextureManager::Instance()->GetBlackTexture();
+    if (pBlack)
+    {
+        pBlack->Apply(3, m_nTexStatePoint);
+        pBlack->Apply(4, m_nTexStatePoint);
+    }
 
     //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
@@ -2463,7 +2481,7 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
         rd->SetDepthBoundTest(pDepthBounds.x, pDepthBounds.z, true);
     }
 
-    const float fFadeout = pDL->m_Color.a;  // fade-out intensity stored in alpha
+    const float fFadeout = pDL->m_fProbeAttenuation;
     const float fLuminance = pDL->m_Color.Luminance() * fFadeout;
 
     if (fLuminance * pLightDiffuse.w >= 0.03f)  // if specular intensity is too low, skip it
@@ -2614,7 +2632,7 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
         }
     }
 
-    CTexture::s_ptexEnvironmentBRDF->Apply(10, m_nTexStateLinear);
+    CTextureManager::Instance()->GetDefaultTexture("EnvironmentBRDF")->Apply(10, m_nTexStateLinear);
 
     //  Confetti BEGIN: Igor Lobanchikov
     //  If the texture is not loaded Metal runtime will assert
@@ -2880,7 +2898,8 @@ void CDeferredShading::ApplySSReflections()
     m_pNormalsRT->Apply(2, m_nTexStatePoint);
     m_pDiffuseRT->Apply(3, m_nTexStatePoint);
     m_pSpecularRT->Apply(4, m_nTexStatePoint);
-    CTexture::s_ptexEnvironmentBRDF->Apply(5, m_nTexStateLinear);
+
+    CTextureManager::Instance()->GetDefaultTexture("EnvironmentBRDF")->Apply(5, m_nTexStateLinear);
 
     //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
@@ -3019,7 +3038,7 @@ void CDeferredShading::HeightMapOcclusionPass(ShadowMapFrustum*& pHeightMapFrust
             }
 
             rd->D3DSetCull(eCULL_Back);
-            rd->FX_SetState(0);
+            rd->FX_SetState(GS_NODEPTHTEST);
 
             Vec4 v(0, 0, tpSrc->GetWidth(), tpSrc->GetHeight());
             static CCryNameR Param1Name("PixelOffset");
@@ -3082,6 +3101,9 @@ void CDeferredShading::DirectionalOcclusionPass()
     rd->m_RP.m_FlagsShader_RT |= CRenderer::CV_r_ssdoHalfRes ? g_HWSR_MaskBit[HWSR_SAMPLE0] : 0;
     rd->m_RP.m_FlagsShader_RT |= pHeightMapFrustum ? g_HWSR_MaskBit[HWSR_SAMPLE1] : 0;
 
+    bool isRenderingFur = FurPasses::GetInstance().IsRenderingFur();
+    rd->m_RP.m_FlagsShader_RT |= isRenderingFur ? g_HWSR_MaskBit[HWSR_SAMPLE2] : 0;
+
     // Extreme magnification as happening with small FOVs will cause banding issues with half-res depth
     if (CRenderer::CV_r_ssdoHalfRes == 2 && RAD2DEG(rd->GetCamera().GetFov()) < 30)
     {
@@ -3104,8 +3126,8 @@ void CDeferredShading::DirectionalOcclusionPass()
 
     rd->FX_SetState(GS_NODEPTHTEST);
     m_pNormalsRT->Apply(0, m_nTexStatePoint);
-    m_pDepthRT->Apply(1, m_nTexStatePoint);
-    SPostEffectsUtils::SetTexture(CTexture::s_ptexAOVOJitter, 3, FILTER_POINT, 0);
+    CTexture::s_ptexZTarget->Apply(1, m_nTexStatePoint);
+    SPostEffectsUtils::SetTexture(CTextureManager::Instance()->GetDefaultTexture("AOVOJitter"), 3, FILTER_POINT, 0);
     if (bLowResOutput)
     {
         CTexture::s_ptexZTargetScaled2->Apply(5, m_nTexStatePoint);
@@ -3113,6 +3135,12 @@ void CDeferredShading::DirectionalOcclusionPass()
     else
     {
         CTexture::s_ptexZTargetScaled->Apply(5, m_nTexStatePoint);
+    }
+
+    if (isRenderingFur)
+    {
+        // Bind fur Z target - difference of the two Z targets indicates a stipple that needs avoided for SSDO
+        CTexture::s_ptexFurZTarget->Apply(2, m_nTexStatePoint);
     }
 
     Matrix44A matView;
@@ -3183,8 +3211,10 @@ void CDeferredShading::DirectionalOcclusionPass()
     {
         CShader* pSH = rd->m_cEF.s_ShaderShadowBlur;
         CTexture* tpSrc = pDstSSDO;
-        const int32 nSizeX = CTexture::s_ptexZTarget->GetWidth();
-        const int32 nSizeY = CTexture::s_ptexZTarget->GetHeight();
+
+        const int32 nSizeX = m_pDepthRT->GetWidth();
+        const int32 nSizeY = m_pDepthRT->GetHeight();
+
         const int32 nSrcSizeX = tpSrc->GetWidth();
         const int32 nSrcSizeY = tpSrc->GetHeight();
 
@@ -3222,7 +3252,7 @@ void CDeferredShading::DirectionalOcclusionPass()
         PostProcessUtils().StretchRect(pDstSSDO, CTexture::s_ptexSceneNormalsBent);
     }
 
-    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1]);
+    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2]);
 
     if (CRenderer::CV_r_ssdoColorBleeding)
     {
@@ -3291,8 +3321,14 @@ void CDeferredShading::DeferredSubsurfaceScattering(CTexture* tmpTex)
     }
     static CCryNameR paramDebug("LightingDebugParams");
 
+#if defined (CRY_USE_METAL)
+    //Need to clear this texture as it can have undefined or bad data on load. 
+    rd->FX_ClearTarget(CTexture::s_ptexSceneTargetR11G11B10F[1], Clr_Empty);
+#endif
+
     // Horizontal pass
     rd->FX_PushRenderTarget(0, CTexture::s_ptexSceneTargetR11G11B10F[1], NULL);
+    
     tmpTex->Apply(0, m_nTexStatePoint);  // Irradiance
     SD3DPostEffectsUtils::ShBeginPass(m_pShader, techBlur, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
     m_pShader->FXSetPSFloat(viewspaceParamName, &vViewSpaceParam, 1);
@@ -3369,9 +3405,12 @@ void CDeferredShading::DeferredShadingPass()
     {
         deferredSSS = false; // Explicitly disable deferredSSS as it's not currently supported on GMEM path
     }
-    if (deferredSSS)
+
+    bool isRenderingFur = FurPasses::GetInstance().IsRenderingFur();
+    if (deferredSSS || isRenderingFur)
     {
-        rd->FX_PushRenderTarget(1, tmpTexSSS, NULL);
+        // Output diffuse accumulation if SSS is enabled or if there are render items using fur
+        rd->FX_PushRenderTarget(1, tmpTexSSS, nullptr);
     }
 
     PROFILE_LABEL_PUSH("COMPOSITION");
@@ -3388,7 +3427,7 @@ void CDeferredShading::DeferredShadingPass()
         // CONFETTI END
     }
 
-    if (deferredSSS)
+    if (deferredSSS || isRenderingFur)
     {
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE1];
     }
@@ -3482,13 +3521,14 @@ void CDeferredShading::DeferredShadingPass()
         rd->SetDepthBoundTest(0.0f, DBT_SKY_CULL_DEPTH, false);
     }
 
-    if (deferredSSS)
+    if (deferredSSS || isRenderingFur)
     {
         rd->FX_PopRenderTarget(1);
         rd->FX_SetActiveRenderTargets();
-
         DeferredSubsurfaceScattering(tmpTexSSS);
     }
+
+    FurPasses::GetInstance().ExecuteObliteratePass();
 
     rd->m_RP.m_FlagsShader_RT = nFlagsShaderRT;
 
@@ -4122,7 +4162,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
                 SD3DPostEffectsUtils::SetTexture(firstFrustum.pDepthTex, 3, FILTER_POINT, 0);
             }
 
-            SD3DPostEffectsUtils::SetTexture(CTexture::s_ptexShadowJitterMap, 7, FILTER_POINT, 0);
+            SD3DPostEffectsUtils::SetTexture(CTextureManager::Instance()->GetDefaultTexture("ShadowJitterMap"), 7, FILTER_POINT, 0);
         }
         else
         {
@@ -4673,6 +4713,8 @@ void CDeferredShading::Render()
         {
             DeferredSubsurfaceScattering(CTexture::s_ptexSceneTargetR11G11B10F[0]);
         }
+
+        FurPasses::GetInstance().ExecuteObliteratePass();
     }
     else
     {
@@ -4846,7 +4888,7 @@ void CDeferredShading::Debug()
         SD3DPostEffectsUtils::ShBeginPass(m_pShader, m_pDebugTechName, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
         gcpRendD3D->FX_SetState(GS_NODEPTHTEST);
         m_pLBufferDiffuseRT->Apply(0, m_nTexStatePoint);
-        SD3DPostEffectsUtils::SetTexture(CTexture::s_ptexPaletteDebug, 1, FILTER_LINEAR, 1);
+        SD3DPostEffectsUtils::SetTexture( CTextureManager::Instance()->GetDefaultTexture("PaletteDebug"), 1, FILTER_LINEAR, 1);
         SD3DPostEffectsUtils::DrawFullScreenTriWPOS(m_pLBufferDiffuseRT->GetWidth(), m_pLBufferDiffuseRT->GetHeight());
         SD3DPostEffectsUtils::ShEndPass();
     }
@@ -4914,7 +4956,7 @@ ITexture* CDeferredShading::SetTexture(const SShaderItem& sItem, EEfResTextures 
 
     ITexture* pTexture = nullptr;
 
-    if (SEfResTexture* pResTexture = sItem.m_pShaderResources->GetTexture(tex))
+    if (SEfResTexture* pResTexture = sItem.m_pShaderResources->GetTextureResource((uint16)tex))
     {
         if (pResTexture->m_Sampler.m_pITex)
         {

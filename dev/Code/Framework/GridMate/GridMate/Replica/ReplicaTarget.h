@@ -19,7 +19,28 @@
 namespace GridMate
 {
     class ReplicaPeer;
+    class TargetCallback final : public TargetCallbackBase
+    {
+        friend ReplicaTarget;
+    public:
+        GM_CLASS_ALLOCATOR(TargetCallback);
+        TargetCallback(AZ::u64 revision, AZ::u64 *replicaStamp)
+            : m_revision(revision)
+            , m_currentRevision(replicaStamp) {}
 
+        AZ_FORCE_INLINE void operator()() override
+        {
+            AZ_Warning("GridMate", m_revision >= *m_currentRevision, "Cannot decrease Replica revision. Possible network re-ordering: %u<%u.", m_revision, m_currentRevision);
+
+            if (m_revision > *m_currentRevision)
+            {
+                *m_currentRevision = m_revision;
+            }
+        }
+    private:
+        AZ::u64     m_revision;
+        AZ::u64     *m_currentRevision;
+    };
     /**
     *  ReplicaTarget: keeps replica's marshaling target (peer) and related meta data,
     *  Replica itself keeps an intrusive list of targets it needs to be forwarded to
@@ -44,6 +65,38 @@ namespace GridMate
         // Destroys current target. Target will be removed both from peer and replica
         void Destroy();
 
+        // Create Callback
+        AZStd::weak_ptr<TargetCallbackBase> CreateCallback(AZ::u64 revision)
+        {
+            AZ_Assert(IsAckEnabled(), "ACK disabled.")  //Shouldn't happen
+            AZ_Assert(m_replicaRevision <= revision, "Cannot decrease replica revision");
+
+            if(!m_callback || m_callback->m_revision != revision)
+            {
+                m_callback = AZStd::make_shared<TargetCallback>(revision, &m_replicaRevision);
+            }
+            //else, the version hasn't changed so re-use the callback
+
+            return m_callback;
+        }
+
+        // Checks replica stamp
+        AZ_FORCE_INLINE AZ::u64 GetRevision() const
+        {
+            return m_replicaRevision;
+        }
+
+        // Checks replica stamp
+        AZ_FORCE_INLINE bool HasOldRevision(AZ::u64 newRevision) const
+        {
+            return m_replicaRevision < newRevision;
+        }
+
+        AZ_FORCE_INLINE static bool IsAckEnabled()
+        {
+            return k_enableAck;
+        }
+
         // Intrusive hooks to keep this target node both in replica and peer
         AZStd::intrusive_list_node<ReplicaTarget> m_replicaHook;
         AZStd::intrusive_list_node<ReplicaTarget> m_peerHook;
@@ -63,10 +116,15 @@ namespace GridMate
             TargetRemoved    = 1 << 1, // target was removed
         };
 
-        ReplicaPeer* m_peer; // need to hold peer ptr for marshaling until marshaling is fully moved under peers, it is safe to keep raw ptr as this node will be auto-destroyed when its peer goes away
-        AZ::u32 m_flags;
+        ReplicaPeer*                        m_peer;             ///< Holds peer ptr for marshaling until marshaling is fully moved under peers,
+                                                                ///  it is safe to keep raw ptr as this node will be auto-destroyed when its peer goes away
+        AZ::u32                             m_flags;
 
-        AZ::u32 m_slotMask;
+        AZ::u32                             m_slotMask;
+
+        static bool                         k_enableAck;
+        AZStd::shared_ptr<TargetCallback>   m_callback;
+        AZ::u64                             m_replicaRevision; ///< Last ACK'd replica stamp; 0 means NULL
     };
 
 

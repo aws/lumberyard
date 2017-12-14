@@ -44,11 +44,8 @@ public:     // member functions
     // Get the root slice for the canvas
     AZ::SliceComponent* GetRootSlice() const;
 
-    AzToolsFramework::EntityIdSet UiSliceManager::GatherEntitiesAndAllDescendents(const AzToolsFramework::EntityIdList& inputEntities);
+    AzToolsFramework::EntityIdSet GatherEntitiesAndAllDescendents(const AzToolsFramework::EntityIdList& inputEntities);
     
-    void GatherAllReferencedEntities(AZStd::unordered_set<AZ::EntityId>& entitiesWithReferences,
-                                     AZ::SerializeContext& serializeContext);
-
     void PushEntitiesModal(const AzToolsFramework::EntityIdList& entities,
                            AZ::SerializeContext* serializeContext = nullptr);
 
@@ -59,6 +56,8 @@ public:     // member functions
     bool IsRootEntity(const AZ::Entity& entity) const;
 
     bool RootEntityTransforms(AZ::Data::Asset<AZ::SliceAsset>& targetSlice, const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& liveToAssetIdMap);
+
+    void SetEntityContextId(AzFramework::EntityContextId entityContextId);
 
     AzFramework::EntityContextId GetEntityContextId() const { return m_entityContextId; }
     

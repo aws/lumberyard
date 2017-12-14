@@ -496,6 +496,9 @@ public:
     virtual int GetIDMatBreakable() { return m_idmatBreakable; };
     virtual unsigned int GetBreakableByGame() { return m_bBreakableByGame; };
 
+    //Note: This function checks both the children and root data
+    //It should really be 'has any deformable objects' 
+    //Should eventually be refactored as part of an eventual statobj refactor.
     virtual bool IsDeformable() override;
 
     // Loader
@@ -508,11 +511,11 @@ public:
     const _smart_ptr<IMaterial> GetMaterial() const { return m_pMaterial; }
     //////////////////////////////////////////////////////////////////////////
 
-    void RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHideMask, const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter);
-    void RenderObjectInternal(CRenderObject* pRenderObject, int nLod, uint8 uLodDissolveRef, bool dissolveOut, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter);
+    void RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHideMask, const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw);
+    void RenderObjectInternal(CRenderObject* pRenderObject, int nLod, uint8 uLodDissolveRef, bool dissolveOut, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw);
     void RenderSubObject(CRenderObject* pRenderObject, int nLod,
-        int nSubObjId, const Matrix34A& renderTM, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter);
-    void RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter);
+        int nSubObjId, const Matrix34A& renderTM, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw);
+    void RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw);
     virtual void Render(const SRendParams& rParams, const SRenderingPassInfo& passInfo);
     void RenderRenderMesh(CRenderObject* pObj, struct SInstancingInfo* pInstInfo, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter);
     phys_geometry* GetPhysGeom(int nGeomType = PHYS_GEOM_TYPE_DEFAULT) { return m_arrPhysGeomInfo[nGeomType]; }

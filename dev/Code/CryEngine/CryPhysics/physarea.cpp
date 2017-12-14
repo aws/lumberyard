@@ -1695,7 +1695,7 @@ void CPhysArea::Update(float dt)
             {
                 for (int j = 0; j < pents[i]->GetUsedPartsCount(iCaller); j++)
                 {
-                    if (pents[i]->m_parts[j1 = pents[i]->GetUsedPart(iCaller, j)].flags & geom_floats && AABB_overlap(m_BBox, pents[i]->m_parts[j1].BBox))
+                    if (nullptr != m_pContainerParts && pents[i]->m_parts[j1 = pents[i]->GetUsedPart(iCaller, j)].flags & geom_floats && AABB_overlap(m_BBox, pents[i]->m_parts[j1].BBox))
                     {
                         int i1, id = pents[i]->m_id << 8 | j1;
                         for (i1 = 0; i1 < m_nContainerParts && m_pContainerParts[i1] != id; i1++)
@@ -1923,11 +1923,17 @@ void CPhysArea::Update(float dt)
             BBox[1] = max(BBox[1], m_pt[i]);
         }
         float dim = max(BBox[1].x - BBox[0].x, BBox[1].y - BBox[0].y) * m_scale;
-        int nCells = float2int(dim * (1.0f + m_sizeReserve) / m_szCell) + 1 | 1;
+        
+        const float minCellSize = (dim * (1.0f + m_sizeReserve)) / (CWaterMan::s_MaxCells - 1);
+
+        m_szCell = AZStd::max(m_szCell, minCellSize);
+
+        int nCells = float2int((dim * (1.0f + m_sizeReserve)) / m_szCell) + 1 | 1;
         if (nCells <= 1)
         {
             return;
         }
+
         WriteLock lock(m_pWorld->m_lockWaterMan);
         m_pWaterMan = new CWaterMan(m_pWorld, this);
         m_pWaterMan->m_prev = m_pWorld->m_pWaterMan;
@@ -1957,12 +1963,15 @@ void CPhysArea::Update(float dt)
     {
         pe_status_waterman swm;
         m_pWaterMan->GetStatus(&swm);
-        int nvtx = sqr(swm.nCells) * sqr(swm.nTiles * 2 + 1);
+        const AZ::u32 nvtx = sqr(swm.nCells) * sqr(swm.nTiles * 2 + 1);
         if (!m_pSurface)
         {
             Vec3* pvtx = new Vec3[nvtx + (nvtx * 2) / 3 + 1];
             memset(pvtx, 0, nvtx * sizeof(Vec3));
-            Vec3_tpl<index_t>* pTris = new Vec3_tpl<index_t>[sqr(swm.nCells - 1) * 2];
+            AZ::u32 cellCount = swm.nCells - 1;
+            AZ::u32 triCount = sqr(cellCount) * 2;
+
+            Vec3_tpl<index_t>* pTris = new Vec3_tpl<index_t>[triCount];
             for (int i = 0; i < swm.nCells - 1; i++)
             {
                 for (int j = 0; j < swm.nCells - 1; j++)
@@ -1971,7 +1980,7 @@ void CPhysArea::Update(float dt)
                     pTris[(i * (swm.nCells - 1) + j) * 2 + 1].Set(i * swm.nCells + j + 1, (i + 1) * swm.nCells + j + 1, (i + 1) * swm.nCells + j);
                 }
             }
-            m_pSurface = (CTriMesh*)m_pWorld->CreateMesh(pvtx, (index_t*)pTris, 0, 0, sqr(swm.nCells - 1) * 2, mesh_SingleBB | mesh_shared_vtx | mesh_shared_idx | mesh_no_vtx_merge | mesh_no_filter, 0);
+            m_pSurface = (CTriMesh*)m_pWorld->CreateMesh(pvtx, (index_t*)pTris, 0, 0, triCount, mesh_SingleBB | mesh_shared_vtx | mesh_shared_idx | mesh_no_vtx_merge | mesh_no_filter, 0);
             m_pSurface->m_flags &= ~(mesh_shared_vtx | mesh_shared_idx);
         }
         m_pWaterMan->GenerateSurface(0, m_pSurface->m_pVertices.data, (Vec3_tpl<index_t>*)m_pSurface->m_pIndices, m_pt, m_npt, (swm.origin - m_offset) * m_R, (Vec2*)(m_pSurface->m_pVertices.data + nvtx));

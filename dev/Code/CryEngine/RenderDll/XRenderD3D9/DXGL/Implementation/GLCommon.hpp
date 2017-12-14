@@ -31,10 +31,6 @@
 #include <WinGDI.h>
 #endif //WIN32
 
-#if defined(MOBILE) && defined(DXGL_USE_SDL)
-#define DXGL_SINGLEWINDOW
-#endif
-
 #define DXGL_NSIGHT_VERSION_3_0      30
 #define DXGL_NSIGHT_VERSION_3_1      31
 #define DXGL_NSIGHT_VERSION_3_2      32
@@ -58,20 +54,12 @@
 
 #include "GLFeatures.hpp"
 
-#if defined(DXGL_USE_SDL)
-#include <SDL.h>
-#endif
-
 namespace NCryOpenGL
 {
-#if DXGL_USE_ES_EMULATOR
+#if defined(DXGL_USE_EGL)
     struct SDisplayConnection;
     typedef _smart_ptr<SDisplayConnection> TWindowContext;
     typedef EGLContext TRenderingContext;
-#elif defined(DXGL_USE_SDL)
-    struct IWindowContext;
-    typedef AZStd::shared_ptr<IWindowContext> TWindowContext;
-    typedef SDL_GLContext TRenderingContext;
 #elif defined(WIN32)
     typedef HDC TWindowContext;
     typedef HGLRC TRenderingContext;

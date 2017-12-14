@@ -15,7 +15,7 @@
 
 CommandHierarchyItemToggleIsVisible::CommandHierarchyItemToggleIsVisible(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    HierarchyItemRawPtrList& items)
+    const HierarchyItemRawPtrList& items)
     : QUndoCommand()
     , m_stack(stack)
     , m_hierarchy(hierarchy)
@@ -67,7 +67,7 @@ void CommandHierarchyItemToggleIsVisible::SetIsVisible(bool isVisible)
 
 void CommandHierarchyItemToggleIsVisible::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    HierarchyItemRawPtrList& items)
+    const HierarchyItemRawPtrList& items)
 {
     if (stack->GetIsExecuting())
     {

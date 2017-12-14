@@ -15,7 +15,9 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <QtWidgets/QWidget>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <QWidget>
 
 #include <Woodpecker/Driller/ChartTypes.hxx>
 

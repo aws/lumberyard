@@ -1,0 +1,17 @@
+{
+	"none":
+	{
+		"Root":
+		[
+			"AssetBuilderApplication.h",
+			"AssetBuilderApplication.cpp",
+			"AssetBuilderComponent.h",
+			"AssetBuilderComponent.cpp",
+			"main.cpp",
+			"AssetBuilderInfo.h",
+			"AssetBuilderInfo.cpp",
+			"TraceMessageHook.h",
+			"TraceMessageHook.cpp"
+		]
+	}
+}

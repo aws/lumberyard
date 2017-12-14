@@ -23,6 +23,7 @@
 #include <SceneAPIExt/Rules/IMotionScaleRule.h>
 #include <SceneAPIExt/Rules/IMotionCompressionSettingsRule.h>
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
+#include <SceneAPIExt/Rules/MotionRangeRule.h>
 #include <RCExt/Motion/MotionDataBuilder.h>
 #include <RCExt/ExportContexts.h>
 #include <RCExt/CoordinateSystemConverter.h>
@@ -55,7 +56,6 @@ namespace EMotionFX
         MotionDataBuilder::MotionDataBuilder()
         {
             BindToCall(&MotionDataBuilder::BuildMotionData);
-            ActivateBindings();
         }
 
         void MotionDataBuilder::Reflect(AZ::ReflectContext* context)
@@ -132,7 +132,7 @@ namespace EMotionFX
 
                 // Currently only get the first (one) AnimationData
                 auto childView = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(graph, graph.ConvertToNodeIndex(it.GetHierarchyIterator()),
-                    graph.GetContentStorage().begin(), true);
+                        graph.GetContentStorage().begin(), true);
                 auto result = AZStd::find_if(childView.begin(), childView.end(), SceneContainers::DerivedTypeFilter<SceneDataTypes::IAnimationData>());
                 if (result == childView.end())
                 {
@@ -167,8 +167,8 @@ namespace EMotionFX
                 subMotion->CreateScaleTrack();
                 subMotion->CreateRotTrack();
 
-                EMotionFX::KeyTrackLinear<MCore::Vector3, MCore::Vector3>* posTrack = subMotion->GetPosTrack();
-                EMotionFX::KeyTrackLinear<MCore::Vector3, MCore::Vector3>* scaleTrack = subMotion->GetScaleTrack();
+                EMotionFX::KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* posTrack = subMotion->GetPosTrack();
+                EMotionFX::KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* scaleTrack = subMotion->GetScaleTrack();
                 EMotionFX::KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>* rotTrack = subMotion->GetRotTrack();
 
                 if (!posTrack || !scaleTrack || !rotTrack)
@@ -176,15 +176,40 @@ namespace EMotionFX
                     return SceneEvents::ProcessingResult::Failure;
                 }
 
-                const AZ::u32 startFrame = motionGroup.GetStartFrame();
-                const AZ::u32 numFrames = (motionGroup.GetEndFrame() - startFrame) + 1;
+                const AZ::u32 sceneFrameCount = aznumeric_caster(animation->GetKeyFrameCount());
+                AZ::u32 startFrame, endFrame;
+                if (motionGroup.GetRuleContainerConst().ContainsRuleOfType<const Rule::MotionRangeRule>())
+                {
+                    AZStd::shared_ptr<const Rule::MotionRangeRule> motionRangeRule = motionGroup.GetRuleContainerConst().FindFirstByType<const Rule::MotionRangeRule>();
+                    startFrame = motionRangeRule->GetStartFrame();
+                    endFrame = motionRangeRule->GetEndFrame();
+                    // Sanity check
+                    if (startFrame >= sceneFrameCount)
+                    {
+                        AZ_TracePrintf(SceneUtil::ErrorWindow, "Start frame %d is greater or equal than the actual number of frames %d in animation.\n", startFrame, sceneFrameCount);
+                        return SceneEvents::ProcessingResult::Failure;
+                    }
+                    if (endFrame >= sceneFrameCount)
+                    {
+                        AZ_TracePrintf(SceneUtil::WarningWindow, "End frame %d is greater or equal than the actual number of frames %d in animation. Clamping the end frame to %d\n", endFrame, sceneFrameCount, sceneFrameCount - 1);
+                        endFrame = sceneFrameCount - 1;
+                    }
+                }
+                else
+                {
+                    startFrame = 0;
+                    endFrame = sceneFrameCount - 1;
+                }
+
+                const AZ::u32 numFrames = (endFrame - startFrame) + 1;
+
                 posTrack->SetNumKeys(numFrames);
                 scaleTrack->SetNumKeys(numFrames);
                 rotTrack->SetNumKeys(numFrames);
 
                 // Get the bind pose transform in local space.
                 AZ::Transform bindSpaceLocalTransform;
-                const SceneContainers::SceneGraph::NodeIndex parentIndex = graph.GetNodeParent(boneNodeIndex);              
+                const SceneContainers::SceneGraph::NodeIndex parentIndex = graph.GetNodeParent(boneNodeIndex);
                 if (boneNodeIndex != rootBoneNodeIndex)
                 {
                     auto parentNode = graph.GetNodeContent(parentIndex);
@@ -211,14 +236,14 @@ namespace EMotionFX
                     // This is used as optimization so that poses or non-animated submotions do not need any key tracks.
                     if (frame == 0)
                     {
-                        subMotion->SetPosePos(MCore::AzVec3ToEmfxVec3(position));
+                        subMotion->SetPosePos(position);
                         subMotion->SetPoseRot(MCore::AzQuatToEmfxQuat(rotation));
-                        subMotion->SetPoseScale(MCore::AzVec3ToEmfxVec3(scale));
+                        subMotion->SetPoseScale(scale);
                     }
 
-                    posTrack->SetKey(frame, time, MCore::AzVec3ToEmfxVec3(position));
+                    posTrack->SetKey(frame, time, AZ::PackedVector3f(position));
                     rotTrack->SetKey(frame, time, MCore::AzQuatToEmfxQuat(rotation));
-                    scaleTrack->SetKey(frame, time, MCore::AzVec3ToEmfxVec3(scale));
+                    scaleTrack->SetKey(frame, time, AZ::PackedVector3f(scale));
                 }
 
                 // Set the bind pose transform.
@@ -226,12 +251,12 @@ namespace EMotionFX
                 const AZ::Vector3    bindPos   = coordSysConverter.ConvertVector3(bindSpaceLocalTransform.GetTranslation());
                 const AZ::Vector3    bindScale = coordSysConverter.ConvertScale(bindBoneTransformNoScale.ExtractScale());
                 const AZ::Quaternion bindRot   = coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(bindBoneTransformNoScale));
-                subMotion->SetBindPosePos(MCore::AzVec3ToEmfxVec3(bindPos));
+                subMotion->SetBindPosePos(bindPos);
                 subMotion->SetBindPoseRot(MCore::AzQuatToEmfxQuat(bindRot));
-                subMotion->SetBindPoseScale(MCore::AzVec3ToEmfxVec3(bindScale));
+                subMotion->SetBindPoseScale(bindScale);
 
                 posTrack->Init();
-                if (!posTrack->CheckIfIsAnimated(subMotion->GetPosePos(), MCore::Math::epsilon))
+                if (!posTrack->CheckIfIsAnimated(AZ::PackedVector3f(subMotion->GetPosePos()), MCore::Math::epsilon))
                 {
                     subMotion->RemovePosTrack();
                 }
@@ -257,7 +282,7 @@ namespace EMotionFX
                 }
 
                 scaleTrack->Init();
-                if (!scaleTrack->CheckIfIsAnimated(subMotion->GetPoseScale(), MCore::Math::epsilon))
+                if (!scaleTrack->CheckIfIsAnimated(AZ::PackedVector3f(subMotion->GetPoseScale()), MCore::Math::epsilon))
                 {
                     subMotion->RemoveScaleTrack();
                 }
@@ -284,5 +309,5 @@ namespace EMotionFX
 
             return SceneEvents::ProcessingResult::Success;
         }
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

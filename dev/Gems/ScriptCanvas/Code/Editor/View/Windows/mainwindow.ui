@@ -21,8 +21,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>600</width>
-    <height>400</height>
+    <width>0</width>
+    <height>0</height>
    </size>
   </property>
   <property name="acceptDrops">
@@ -71,9 +71,8 @@
       <string>Settings</string>
      </property>
      <property name="icon">
-      <iconset>
-       <normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png</normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png
-      </iconset>
+      <iconset resource="ScriptCanvasEditorResources.qrc">
+       <normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png</normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png</iconset>
      </property>
      <addaction name="action_GlobalPreferences"/>
      <addaction name="action_GraphPreferences"/>
@@ -88,6 +87,8 @@
     <addaction name="action_Delete"/>
     <addaction name="separator"/>
     <addaction name="menuSettings"/>
+    <addaction name="separator"/>
+    <addaction name="action_BatchConversion"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -127,36 +128,29 @@
     <string>&amp;Open</string>
    </property>
   </action>
-   <action name="action_ViewLog">
-     <property name="visible">
-       <bool>false</bool> <!-- disabled until debugging is implemented -->
-     </property>
-     <property name="shortcut">
-       <string>Ctrl+L</string>
-     </property>
-     <property name="checkable">
-       <bool>true</bool>
-     </property>
-     <property name="checked">
-       <bool>false</bool>
-     </property>
-     <property name="icon">
-       <iconset>
-         <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_log.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_log.png
-       </iconset>
-     </property>
-     <property name="text">
-       <string>Log</string>
-     </property>
-   </action>
-   <action name="action_ViewCommandLine">
-     <property name="visible">
-       <bool>false</bool>
-     </property>
-     <property name="shortcut">
-       <string>Ctrl+P</string>
-     </property>
-     <property name="checkable">
+  <action name="action_ViewLog">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_log.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_log.png</iconset>
+   </property>
+   <property name="text">
+    <string>Log</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="action_ViewCommandLine">
+   <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="checked">
@@ -169,12 +163,15 @@
    <property name="text">
     <string>Command Line</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="action_ViewNodePalette">
-    <property name="shortcut">
-      <string>Ctrl+Shift+L</string>
-    </property>
-    <property name="checkable">
+   <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="checked">
@@ -187,12 +184,12 @@
    <property name="text">
     <string>&amp;Node Palette</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+L</string>
+   </property>
   </action>
   <action name="action_ViewOutline">
-    <property name="shortcut">
-      <string>Ctrl+Shift+O</string>
-    </property>
-    <property name="checkable">
+   <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="checked">
@@ -205,12 +202,12 @@
    <property name="text">
     <string>&amp;Node Outliner</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+O</string>
+   </property>
   </action>
   <action name="action_ViewProperties">
-    <property name="shortcut">
-      <string>Ctrl+Shift+I</string>
-    </property>
-    <property name="checkable">
+   <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="checked">
@@ -223,15 +220,12 @@
    <property name="text">
     <string>&amp;Node Inspector</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+I</string>
+   </property>
   </action>
   <action name="action_ViewDebugger">
-    <property name="visible">
-      <bool>false</bool> <!-- disabled until the debugger is implemented -->
-    </property>
-    <property name="shortcut">
-      <string>Ctrl+Shift+D</string>
-    </property>
-    <property name="checkable">
+   <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="checked">
@@ -246,124 +240,124 @@
    <property name="text">
     <string>&amp;Debugger</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+D</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="action_ViewRestoreDefaultLayout">
    <property name="text">
     <string>Restore Default Layout</string>
    </property>
   </action>
-
   <action name="action_Close">
    <property name="text">
     <string>Close</string>
    </property>
   </action>
-
   <action name="action_Undo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Undo</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>
    </property>
+  </action>
+  <action name="action_Redo">
    <property name="enabled">
     <bool>false</bool>
    </property>
-  </action>
-
-  <action name="action_Redo">
    <property name="text">
     <string>Redo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Z</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>
    </property>
-   <property name="shortcut">
-      <string>Ctrl+Shift+Z</string>
-   </property>
+  </action>
+  <action name="action_Cut">
    <property name="enabled">
     <bool>false</bool>
    </property>
-  </action>
-
-  <action name="action_Cut">
    <property name="text">
     <string>Cut</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>
    </property>
+  </action>
+  <action name="action_Copy">
    <property name="enabled">
     <bool>false</bool>
    </property>
-  </action>
-
-  <action name="action_Copy">
    <property name="text">
     <string>Copy</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>
    </property>
+  </action>
+  <action name="action_Paste">
    <property name="enabled">
     <bool>false</bool>
    </property>
-  </action>
-
-  <action name="action_Paste">
    <property name="text">
     <string>Paste</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>
    </property>
+  </action>
+  <action name="action_Duplicate">
    <property name="enabled">
     <bool>false</bool>
    </property>
-  </action>
-
-  <action name="action_Duplicate">
    <property name="text">
     <string>Duplicate</string>
-   </property>
-   <property name="autoRepeat">
-    <bool>false</bool>
-   </property>
-   <property name="enabled">
-    <bool>false</bool>
    </property>
    <property name="shortcut">
     <string>Ctrl+D</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
   </action>
-
   <action name="action_Delete">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Delete</string>
    </property>
    <property name="autoRepeat">
     <bool>false</bool>
    </property>
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
   </action>
-
   <action name="action_GlobalPreferences">
    <property name="text">
     <string>Global Preferences</string>
    </property>
   </action>
-
   <action name="action_GraphPreferences">
-   <property name="text">
-    <string>Graph Preferences</string>
-   </property>
    <property name="enabled">
     <bool>false</bool>
    </property>
+   <property name="text">
+    <string>Graph Preferences</string>
+   </property>
   </action>
-
+  <action name="action_BatchConversion">
+   <property name="text">
+    <string>Batch Conversion</string>
+   </property>
+  </action>
   <addaction name="action_ViewNodePalette"/>
   <addaction name="action_ViewOutline"/>
   <addaction name="action_ViewProperties"/>

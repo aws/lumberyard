@@ -18,8 +18,6 @@
 #include <IPlugin.h>
 #include "AudioSystemEditor_nosound.h"
 
-HINSTANCE g_hInstance = nullptr;
-
 AudioControls::CAudioSystemEditor_nosound* g_pNoSoundInterface = nullptr;
 
 //-----------------------------------------------------------------------------------------------//
@@ -50,12 +48,3 @@ extern "C" PLUGIN_API AudioControls::IAudioSystemEditor * GetAudioInterface(IEdi
     return g_pNoSoundInterface;
 }
 
-//-----------------------------------------------------------------------------------------------//
-BOOL __stdcall DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
-{
-    if (fdwReason == DLL_PROCESS_ATTACH)
-    {
-        g_hInstance = hinstDLL;
-    }
-    return TRUE;
-}

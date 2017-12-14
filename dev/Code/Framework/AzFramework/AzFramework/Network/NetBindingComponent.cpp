@@ -25,7 +25,7 @@
 #include <GridMate/Replica/ReplicaChunkDescriptor.h>
 
 namespace AzFramework
-{    
+{
     void NetBindingComponent::Reflect(AZ::ReflectContext* reflection)
     {
         NetBindable::Reflect(reflection);
@@ -43,7 +43,7 @@ namespace AzFramework
                 editContext->Class<NetBindingComponent>(
                     "Network Binding", "The Network Binding component marks an entity as able to be replicated across the network")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Network")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Networking")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NetBinding.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NetBinding.png")
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-network-binding.html")
@@ -62,7 +62,7 @@ namespace AzFramework
 
                 // Desired, but currently unsupported events.
                 // Seems to be an unsupported type(AZ::u16)
-                //->Event("SetReplicaPriority", &NetBindingHandlerBus::Events::SetReplicaPriority)                
+                //->Event("SetReplicaPriority", &NetBindingHandlerBus::Events::SetReplicaPriority)
                 //->Event("GetReplicaPriority", &NetBindingHandlerBus::Events::GetReplicaPriority)
             ;
         }
@@ -81,11 +81,17 @@ namespace AzFramework
 
     void NetBindingComponent::Init()
     {
+        // This is about as early as we can connect to the bus, since we need EntityId.
+        NetBindingHandlerBus::Handler::BusConnect(GetEntityId());
     }
 
     void NetBindingComponent::Activate()
     {
-        NetBindingHandlerBus::Handler::BusConnect(GetEntityId());
+        if (!NetBindingHandlerBus::Handler::BusIsConnected())
+        {
+            NetBindingHandlerBus::Handler::BusConnect(GetEntityId());
+        }
+
         if (!IsEntityBoundToNetwork())
         {
             bool shouldBind = false;

@@ -161,15 +161,15 @@ class GemContext(object):
         dst_content_path = os.path.join(root_directory_path, 'AWS')
         relative_path = root_directory_path.replace(self.__context.config.gem_directory_path, '')
         relative_returns = ["../"] * (len(relative_path.split(os.path.sep)) + 2)
-
+        
         name_substituions = content_substitutions = {
             '$-GEM-NAME-$': gem_name,
             '$-GEM-NAME-LOWER-CASE-$': gem_name.lower(),
             '$-PROJECT-GUID-$': str(uuid.uuid4()),
             '$-RELATIVE-RETURNS-$': ''.join(relative_returns)
         }
-
-        self.__copy_project_to_solution(content_substitutions, src_content_path, os.path.join(self.__context.config.gem_directory_path, "CloudGemFramework", "v1", "Website", "CloudGemPortal.sln"), '..\..\..{0}\AWS\cgp-resource-code\src'.format(relative_path), '.njsproj')
+        
+        self.__copy_project_to_solution(content_substitutions, src_content_path, os.path.join(self.__context.config.gem_directory_path, "CloudGemFramework", "v1", "Website", "CloudGemPortal.sln"), '..\..\..{0}\AWS\cgp-resource-code\src'.format(relative_path), '.njsproj')        
 
         file_util.copy_directory_content(
             self.__context, 
@@ -249,7 +249,8 @@ class GemContext(object):
             unsupported_waf_files_file_path = os.path.join(root_directory_path, 'Code', 'aws_unsupported.waf_files')
             self.__context.view.saving_file(unsupported_waf_files_file_path)
             with open(unsupported_waf_files_file_path, 'w') as file:
-                file.write(AWS_UNSUPPORTED_WAF_FILES_FILE_CONTENT)
+                aws_unsupported_file_content = AWS_UNSUPPORTED_WAF_FILES_FILE_CONTENT.replace('$-GEM-NAME-$', gem_name)
+                file.write(aws_unsupported_file_content)
 
             gem_file_path = os.path.join(root_directory_path, 'gem.json')
             gem_file_content = util.load_json(gem_file_path, optional = False)
@@ -439,23 +440,23 @@ class GemContext(object):
                 self.__lmbr_exe_path = self.__get_default_lmbr_exe_path()
             return self.__lmbr_exe_path
 
+    @staticmethod
+    def get_lmbr_exe_path_from_root(root_path):
 
-    def __get_default_lmbr_exe_path(self):
-            
-        directory_names = ['Bin64']
-        for compiler in ['vc120', 'vc140']:
-            for build in ['', '.Debug', '.Debug.Test']:
-                directory_names.append('Bin64' + compiler + build)
+        directory_names = []
+        # lmbr.exe now lives in Tools/LmbrSetup/{platform].{compiler}(.Debug)(.Test)
+        baselmbrpath = os.path.join('Tools', 'LmbrSetup')
 
-        directory_names.append(os.path.join('Tools','LmbrSetup','Win'))
-        directory_names.append(os.path.join('Tools','LmbrSetup','Win.vc140'))
-        directory_names.append(os.path.join('Tools','LmbrSetup','Win.vc140.Debug'))
+        for platformname in ['Win','Win.vc120','Win.vc140','Mac','Mac.clang','Linux','Linux.clang','Linux.gcc']:
+            directory_names.append(os.path.join(baselmbrpath,'{}.Debug.Test'.format(platformname)))
+            directory_names.append(os.path.join(baselmbrpath,'{}'.format(platformname)))
+            directory_names.append(os.path.join(baselmbrpath,'{}.Debug'.format(platformname)))
 
         newest_timestamp = None
         newest_path = None
 
         for directory_name in directory_names:
-            path = os.path.join(self.__context.config.root_directory_path, directory_name, 'lmbr.exe')
+            path = os.path.join(root_path, directory_name, 'lmbr.exe')
             if os.path.isfile(path):
                 if newest_path is None:
                     newest_path = path
@@ -468,12 +469,14 @@ class GemContext(object):
 
         if newest_path is None:
             raise HandledError('Could not find lmbr.exe in any of the following subirectories of {}: {}. Please use lmbr_waf to build lmbr.exe.'.format(
-                self.__context.config.root_directory_path,
+                root_path,
                 ', '.join(directory_names)))
 
         return newest_path
 
 
+    def __get_default_lmbr_exe_path(self):
+        return GemContext.get_lmbr_exe_path_from_root(self.__context.config.root_directory_path)
 
     @property
     def __lmbr_aws_path(self):
@@ -656,8 +659,8 @@ AWS_UNSUPPORTED_WAF_FILES_FILE_CONTENT = '''
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/$-GEM-NAME-$_precompiled.cpp",
+            "Source/$-GEM-NAME-$_precompiled.h"
         ]
     },
     "auto": {

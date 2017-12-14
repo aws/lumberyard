@@ -83,7 +83,7 @@ void NewEntityDialog::accept()
     {
         return;
     }
-    const char* devRoot = gEnv->pFileIO->GetAlias("@devroot@");
+    const char* devRoot = gEnv->pFileIO->GetAlias("@engroot@");
     QString devRootPath(devRoot);
     QFile entTemplateFile(devRootPath + "/Editor/NewEntityTemplate.ent_template");
     QFile luaTemplateFile(devRootPath + "/Editor/NewEntityTemplate.lua_template");

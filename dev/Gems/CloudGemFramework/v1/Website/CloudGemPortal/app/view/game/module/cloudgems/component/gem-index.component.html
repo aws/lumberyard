@@ -1,36 +1,44 @@
 <!-- Header dynamically changes if you're looking at a gem or not-->
-<div [class.visibility-hidden]="!(gems.currentGem) ">
-    <div (click)="back()" (click)="$event.preventDefault()" class="gems-back">
-        <a title="Gems" href="#"> Cloud Gems </a>
-    </div>
-</div>
 <div class="row">
-    <h1 class="col-8 gems-heading"> {{ (gems.currentGem) ? (gems.currentGem).displayName : 'Cloud Gems'}} </h1>
-    <div class="col-4">
-        <i *ngIf="gems.currentGem" (click)="model.forceRefresh = !model.forceRefresh" class="fa fa-refresh fa-2x refresh-icon"> </i>
-    </div>
+    <ng-container *ngIf="gems.currentGem">
+        <div class="col-8 gems-heading">
+            <breadcrumbs></breadcrumbs>
+        </div>
+        <div class="col-4">
+            <i *ngIf="gems.currentGem" (click)="forceRefresh = !forceRefresh" class="fa fa-refresh fa-2x refresh-icon"> </i>
+        </div>
+    </ng-container>
+    <ng-container *ngIf="!gems.currentGem">
+        <h1 class="col-8 gems-heading"> {{ (gems.currentGem) ? (gems.currentGem).displayName : 'Cloud Gems'}} </h1>
+    </ng-container>
 </div>
 <!-- Show all the thumbnails of the gems -->
-<div>
-    <div class="thumbnails-container gem-container" *ngIf="!(gems.currentGem)">
-        <div *ngIf="!model.isLoading && model.cloudgems.length == 0">
-            <p>There were no Cloud Gems found.   You can enable Cloud Gems through your Lumberyard Editor Project Configurator.  In the Lumberyard Editor, go to File -> Project Settings -> Configure Gems.</p>
-        </div>        
-        <div>
-            <p *ngIf="!model.isLoading">Enable Cloud Gems for your project through the Lumberyard Project Configurator. For more information, view the <a href="http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-cloud-gems-intro.html" target="_blank">Cloud Gems documentation</a>.</p>            
-            <span *ngFor="let gem of model.cloudgems">
-                <span (click)="load(gem)">
-                    <gem-factory [cloudGem]="gem" [thumbnailOnly]="!(gems.currentGem)" [refreshContent]="model.forceRefresh"></gem-factory>
-                </span>
-            </span>            
+<div class="thumbnails-container gem-container" *ngIf="!(gems.currentGem)">
+    <ng-container [ngSwitch]="gems.currentGems.length === 0 && !gems.isLoading">
+        <!-- Case where there are no gems in the current deployment  -->
+        <div *ngSwitchCase="true">
+            <p>There were no Cloud Gems found.   You can enable Cloud Gems throuh your Lumberyard Editor Project Configurator.  In the Lumberyard Editor, go to File -> Project Settings -> Configure Gems.</p>
+            <p *ngIf="gems.currentGems.length === 0  && !gems.isLoading">Enable Cloud Gems for your project through the Lumberyard Project Configurator. For more information, view the <a href="http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-cloud-gems-intro.html">Cloud Gems documentation</a>.</p>
         </div>
-        <div *ngIf="model.isLoading">
-            <loading-spinner size="lg"></loading-spinner>
+        <!-- Case for when there are could gems in the current deployment -->
+        <div *ngSwitchCase="false">
+            <ng-container [ngSwitch]="gems.isLoading">
+                <div *ngSwitchCase="true">
+                    <loading-spinner size="lg"></loading-spinner>
+                </div>
+                <div *ngSwitchCase="false">
+                    <span *ngFor="let gem of gems.currentGems">
+                        <span [routerLink]="['/game/cloudgems/', gem.context.identifier]">
+                            <gem-factory [cloudGem]="gem" [thumbnailOnly]="!(gems.currentGem)" [refreshContent]="forceRefresh"></gem-factory>
+                        </span>
+                    </span>
+                </div>
+            </ng-container>
         </div>
-    </div>
-    <!-- Show the specific gem the user clicked on -->
-    <span *ngIf="gems.currentGem">
-        <gem-factory [cloudGem]="gems.currentGem" [refreshContent]="model.forceRefresh" ></gem-factory>
-    </span>
-    <router-outlet></router-outlet>            
+    </ng-container>
 </div>
+<!-- Show the specific gem the user clicked on -->
+<span *ngIf="gems.currentGem">
+    <gem-factory [cloudGem]="gems.currentGem" [refreshContent]="forceRefresh" ></gem-factory>
+</span>
+<router-outlet></router-outlet>

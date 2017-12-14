@@ -151,8 +151,9 @@ float CParticle::TravelSlide(SParticleState& state, SSlideInfo& sliding, float f
             ray_hit hit;
             Vec3 vTest = vExtAccel.GetNormalized(fMaxSlide);
             GetContainer().GetCounts().ParticlesClip += 1.f;
+            IPhysicalEntity* pPhysicalEntityHit = sliding.GetPhysicalEntity();
             if (!SPhysEnviron::PhysicsCollision(hit, state.m_Loc.t - vTest, state.m_Loc.t + vTest,
-                    fCOLLIDE_BUFFER_DIST, sliding.pEntity ? ENV_COLLIDE_PHYSICS : ENV_TERRAIN, sliding.pEntity))
+                fCOLLIDE_BUFFER_DIST, pPhysicalEntityHit ? ENV_COLLIDE_PHYSICS : ENV_TERRAIN, pPhysicalEntityHit))
             {
                 sliding.Clear();
                 break;
@@ -478,7 +479,7 @@ bool CParticle::SHitInfo::TestHit(ray_hit& hit, const Vec3& vPos0, const Vec3& v
             hit.n = vNormal;
             hit.pt += hit.n * fRadius;
             hit.surface_idx = nSurfaceIdx;
-            hit.pCollider = pEntity;
+            hit.pCollider = GetPhysicalEntity();
             return true;
         }
     }

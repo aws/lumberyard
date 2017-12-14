@@ -436,7 +436,7 @@ namespace RenderGL
 
 
     // SetUniform
-    void GLSLShader::SetUniform(const char* name, const MCore::Vector3& vector)
+    void GLSLShader::SetUniform(const char* name, const AZ::Vector3& vector)
     {
         ShaderParameter* param = FindUniform(name);
         if (param == nullptr)
@@ -519,7 +519,7 @@ namespace RenderGL
     }
 
 
-    void GLSLShader::SetUniform(const char* name, const MCore::Vector3* values, uint32 numVectors)
+    void GLSLShader::SetUniform(const char* name, const AZ::PackedVector3f* values, uint32 numVectors)
     {
         ShaderParameter* param = FindUniform(name);
         if (param == nullptr)
@@ -528,7 +528,7 @@ namespace RenderGL
         }
 
         // update the value
-        glUniform3fvARB(param->mLocation, numVectors, &values[0].x);
+        glUniform3fvARB(param->mLocation, numVectors, (float*)values);
     }
 
 

@@ -115,7 +115,7 @@ protected:
     void OnFileExportLargePreview();
     void OnGeneratePreview();
     void OnApplyLighting();
-    void OnSetWaterLevel();
+    void OnSetOceanLevel();
     void OnLayerExportTexture();
     void OnShowWater();
     void OnRefineTerrainTextureTiles();

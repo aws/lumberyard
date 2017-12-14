@@ -48,14 +48,14 @@ IAnimSequence* CAnimationSerializer::LoadSequence(const char* szFilePath)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAnimationSerializer::SaveAllSequences(const char* szPath, CPakFile& pakFile)
+void CAnimationSerializer::SaveAllLegacySequences(const char* szPath, CPakFile& pakFile)
 {
     IMovieSystem* movSys = GetIEditor()->GetMovieSystem();
     XmlNodeRef movieNode = XmlHelpers::CreateXmlNode("MovieData");
     for (int i = 0; i < GetIEditor()->GetDocument()->GetMissionCount(); i++)
     {
         CMission* pMission = GetIEditor()->GetDocument()->GetMission(i);
-        pMission->ExportAnimations(movieNode);
+        pMission->ExportLegacyAnimations(movieNode);
     }
     string sFilename = string(szPath) + "MovieData.xml";
     //XmlHelpers::SaveXmlNode(movieNode,sFilename.c_str());

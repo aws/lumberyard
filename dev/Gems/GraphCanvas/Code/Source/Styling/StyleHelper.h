@@ -23,6 +23,7 @@
 #include <QFont>
 #include <QFontInfo>
 #include <QPen>
+#include <qwidget.h>
 
 #include <Components/StyleBus.h>
 #include <Components/SceneBus.h>
@@ -47,6 +48,7 @@ namespace GraphCanvas
         //! Convenience wrapper for a styled entity that resolves its style and then provides easy ways to get common
         //! Qt values out of the style for it.
         class StyleHelper
+            : public StyleSheetNotificationBus::Handler
         {
         public:
             AZ_CLASS_ALLOCATOR(StyleHelper, AZ::SystemAllocator, 0);
@@ -68,12 +70,21 @@ namespace GraphCanvas
                 ReleaseStyle();
             }
 
+            // StyleSheetNotificationBus
+            void OnStyleSheetUnloaded() override
+            {
+                ReleaseStyle();
+            }
+            ////
+
             void SetScene(const AZ::EntityId& sceneId)
             {
                 if (m_scene != sceneId)
                 {
                     ReleaseStyle();
                     m_scene = sceneId;
+
+                    RegisterStyleSheetBus(m_scene);
                 }
             }
 
@@ -145,30 +156,57 @@ namespace GraphCanvas
 #endif
             }
 
-            bool HasAttribute(Styling::Attribute attribute)
+            template<typename Value>
+            void AddAttributeOverride(Styling::Attribute attribute, const Value& defaultValue = Value())
             {
-                bool hasAttribute = false;
-                StyleRequestBus::EventResult(hasAttribute, m_style, &StyleRequests::HasAttribute, static_cast<AZ::u32>(attribute));
+                m_attributeOverride[attribute] = QVariant(defaultValue);
+            }
+
+            void RemoveAttributeOverride(Styling::Attribute attribute)
+            {
+                m_attributeOverride.erase(attribute);
+            }
+
+            bool HasAttribute(Styling::Attribute attribute) const
+            {
+                bool hasAttribute = (m_attributeOverride.find(attribute) != m_attributeOverride.end());
+
+                if (!hasAttribute)
+                {
+                    StyleRequestBus::EventResult(hasAttribute, m_style, &StyleRequests::HasAttribute, static_cast<AZ::u32>(attribute));
+                }
+
                 return hasAttribute;
             }
 
             template<typename Value>
             Value GetAttribute(Styling::Attribute attribute, const Value& defaultValue = Value()) const
             {
-                auto rawAttribute = static_cast<AZ::u32>(attribute);
+                Value retVal = defaultValue;
 
-                bool hasAttribute = false;
-                StyleRequestBus::EventResult(hasAttribute, m_style, &StyleRequests::HasAttribute, rawAttribute);
+                auto overrideIter = m_attributeOverride.find(attribute);
 
-                if (!hasAttribute)
+                if (overrideIter != m_attributeOverride.end())
                 {
-                    return defaultValue;
+                    retVal = overrideIter->second.value<Value>();
+                }
+                else
+                {
+                    bool hasAttribute = false;
+                    auto rawAttribute = static_cast<AZ::u32>(attribute);
+                    
+                    StyleRequestBus::EventResult(hasAttribute, m_style, &StyleRequests::HasAttribute, rawAttribute);
+
+                    if (hasAttribute)
+                    {
+                        QVariant variant;
+                        StyleRequestBus::EventResult(variant, m_style, &StyleRequests::GetAttribute, rawAttribute);
+
+                        retVal = variant.value<Value>();
+                    }
                 }
 
-                QVariant result;
-                StyleRequestBus::EventResult(result, m_style, &StyleRequests::GetAttribute, rawAttribute);
-
-                return result.value<Value>();
+                return retVal;
             }
 
             QColor GetColor(Styling::Attribute color, QColor defaultValue = QColor()) const
@@ -276,7 +314,7 @@ namespace GraphCanvas
                 return QSizeF(GetAttribute(Styling::Attribute::MinWidth, defaultSize.width()), GetAttribute(Styling::Attribute::MinHeight, defaultSize.height()));
             }
 
-            QSizeF GetMaximumSize(QSizeF defaultSize = QSizeF(std::numeric_limits<qreal>::max(), std::numeric_limits<qreal>::max())) const
+            QSizeF GetMaximumSize(QSizeF defaultSize = QSizeF(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)) const
             {
                 return QSizeF(GetAttribute(Styling::Attribute::MaxWidth, defaultSize.width()), GetAttribute(Styling::Attribute::MaxHeight, defaultSize.height()));
             }
@@ -300,12 +338,12 @@ namespace GraphCanvas
                 );
             }
 
-            bool HasTextAlignment()
+            bool HasTextAlignment() const
             {
                 return HasAttribute(Styling::Attribute::TextAlignment) || HasAttribute(Styling::Attribute::TextVerticalAlignment);
             }
 
-            Qt::Alignment GetTextAlignment(Qt::Alignment alignment)
+            Qt::Alignment GetTextAlignment(Qt::Alignment alignment) const
             {
                 bool horizontalAlignment = HasAttribute(Styling::Attribute::TextAlignment);
                 bool verticalAlignment = HasAttribute(Styling::Attribute::TextVerticalAlignment);
@@ -376,6 +414,12 @@ namespace GraphCanvas
                     m_style.SetInvalid();
                 }
             }
+
+            void RegisterStyleSheetBus(const AZ::EntityId& sceneId)
+            {
+                StyleSheetNotificationBus::Handler::BusDisconnect();
+                StyleSheetNotificationBus::Handler::BusConnect(sceneId);
+            }
             
             AZ::EntityId m_scene;
             AZ::EntityId m_styledEntity;
@@ -384,6 +428,7 @@ namespace GraphCanvas
             bool m_deleteStyledEntity = false;
 
             AZStd::unordered_set< AZStd::string > m_styleSelectors;
+            AZStd::unordered_map< Attribute, QVariant > m_attributeOverride;
         };
 
     }

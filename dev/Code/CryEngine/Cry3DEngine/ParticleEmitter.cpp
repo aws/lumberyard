@@ -395,7 +395,6 @@ CParticleEmitter::CParticleEmitter(const IParticleEffect* pEffect, const QuatTS&
     , m_fResetAge(fUNSEEN_EMITTER_RESET_TIME)
     , m_nEmitterFlags(uEmitterFlags)
     , m_pUpdateParticlesJobState(NULL)
-    , m_selectedLod(nullptr)
     , m_isPrimed(false)
 {
     m_nInternalFlags |= IRenderNode::REQUIRES_FORWARD_RENDERING | IRenderNode::REQUIRES_NEAREST_CUBEMAP;
@@ -524,7 +523,7 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
     CLodInfo* _startLod = startLod;
     CLodInfo* _endLod = endLod;
 
-    if (pEffect->HasLevelOfDetail() && GetSpawnParams().useLOD)
+    if (pEffect->HasLevelOfDetail() && !(m_nEmitterFlags & ePEF_DisableLOD))
     {
         //We take the first active lod and give it as the end lod for the base particle.
         //This ensures that this particle will be faded out at the proper camera distance.
@@ -619,12 +618,13 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
         {
             if (CParticleEffect const* pChild = static_cast<const CParticleEffect*>(pEffect->GetChild(i)))
             {
-                AddEffect(pContainer, pChild, bUpdate, bInEditor, nullptr, nullptr);
+                AddEffect(pContainer, pChild, bUpdate, bInEditor, _startLod, _endLod);
             }
         }
     }
-    //Add lod effects
-    if (pEffect->HasLevelOfDetail() && GetSpawnParams().useLOD)
+    //Add lod effects only if this effect is the top effect. The children lod effects will be added through 
+    //the top effect's lod effect since they are the children of that lod effect.
+    if (pEffect->HasLevelOfDetail() && !(m_nEmitterFlags & ePEF_DisableLOD) && pEffect->GetLevelOfDetail(0)->GetTopParticle() == pEffect)
     {
         for (int i = 0; i < pEffect->GetLevelOfDetailCount(); i++)
         {
@@ -1324,23 +1324,19 @@ void CParticleEmitter::Render(SRendParams const& RenParams, const SRenderingPass
             m_Containers.PrefetchLink(m_Containers.next(c));
             PrefetchLine(m_Containers.next(c), 0);
             uint32 nContainerFlags = c->GetEnvironmentFlags();
-            if (!m_selectedLod || (m_selectedLod == c->GetStartLod()) &&
-                !c->GetEffect()->GetParams().bIsCameraNonFacingFadeParticle)
+            if (nContainerFlags & nRenFlags)
             {
-                if (nContainerFlags & nRenFlags)
+                if ((nContainerFlags & nRenRequiredCheckFlags) == nRenRequiredFlags)
                 {
-                    if ((nContainerFlags & nRenRequiredCheckFlags) == nRenRequiredFlags)
+                    if (GetAge() <= c->GetContainerLife())
                     {
-                        if (GetAge() <= c->GetContainerLife())
-                        {
-                            RenderContainer(c, RenParams, PartParams, passInfo);
-                            nThreadJobs += c->NeedJobUpdate();
+                        RenderContainer(c, RenParams, PartParams, passInfo);
+                        nThreadJobs += c->NeedJobUpdate();
 
-                            if (c->GetFadeEffectContainer() != nullptr)
-                            {
-                                RenderContainer(c->GetFadeEffectContainer(), RenParams, PartParams, passInfo);
-                                nThreadJobs += c->GetFadeEffectContainer()->NeedJobUpdate();
-                            }
+                        if (c->GetFadeEffectContainer() != nullptr)
+                        {
+                            RenderContainer(c->GetFadeEffectContainer(), RenParams, PartParams, passInfo);
+                            nThreadJobs += c->GetFadeEffectContainer()->NeedJobUpdate();
                         }
                     }
                 }
@@ -1352,25 +1348,7 @@ void CParticleEmitter::Render(SRendParams const& RenParams, const SRenderingPass
         if (m_pTopEffect->IsEnabled())
         {
             CParticleContainer* selectedContainer = m_Containers.begin();
-
-            //If we have a forced lod, we want to draw the lod container, not the normal container.
-            if (m_selectedLod)
-            {
-                //find the lod particle of the selected container
-                IParticleEffect* effect = selectedContainer->GetEffect()->GetLodParticle(m_selectedLod);
-                if (effect)
-                {
-                    for_all_ptrs(CParticleContainer, pContainer, m_Containers)
-                    {
-                        if (pContainer->GetEffect() == effect)
-                        {
-                            selectedContainer = pContainer;
-                            break;
-                        }
-                    }
-                }
-            }
-
+            
             uint32 nContainerFlags = selectedContainer->GetEnvironmentFlags();
             if (nContainerFlags & nRenFlags)
             {
@@ -1796,17 +1774,6 @@ void CParticleEmitter::OffsetPosition(const Vec3& delta)
 QuatTS CParticleEmitter::GetLocationQuat() const
 {
     return GetLocation();
-}
-
-
-void CParticleEmitter::ForceShowLod(SLodInfo* lod)
-{
-    m_selectedLod = static_cast<CLodInfo*>(lod);
-}
-
-SLodInfo* CParticleEmitter::GetForcedLod()
-{
-    return static_cast<CLodInfo*>(m_selectedLod);
 }
 
 bool CParticleEmitter::GetPreviewMode() const

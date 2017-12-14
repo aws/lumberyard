@@ -60,54 +60,47 @@ namespace AZ
 
             const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
             const SceneDataTypes::IGroup& group = context.m_group;
-
-            AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData> uvs = nullptr;
-            AZStd::string streamName;
+            
+            
             SceneEvents::ProcessingResultCombiner result;
 
-            for (size_t uvIndex = 0; uvIndex < s_uvMaxStreamCount; ++uvIndex)
+            AZStd::vector<AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData>> uvStreams;
+            // Find all uv streams and save them into uvStreams to be used later
+            SceneContainers::SceneGraph::NodeIndex index = graph.GetNodeChild(context.m_nodeIndex);
+            while (index.IsValid())
             {
-                //try to populate a stream with a default stream matching its index order.
-                SceneContainers::SceneGraph::NodeIndex index = graph.GetNodeChild(context.m_nodeIndex);
-                size_t count = 0;
-                while (index.IsValid())
-                {
-                    uvs = azrtti_cast<const SceneDataTypes::IMeshVertexUVData*>(graph.GetNodeContent(index));
-                    if (uvs && count == uvIndex)
-                    {
-                        streamName = graph.GetNodeName(index).GetName();
-                        break;
-                    }
-                    else if (uvs)
-                    {
-                        ++count;
-                    }
+                AZStd::string streamName;
 
-                    index = graph.GetNodeSibling(index);
-                }
+                AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData> uvStream = azrtti_cast<const SceneDataTypes::IMeshVertexUVData*>(graph.GetNodeContent(index));
+                if (uvStream)
+                {
+                    uvStreams.push_back(uvStream);
 
-                if (streamName.empty())
-                {
-                    AZ_TraceContext("UV set", "UVs not used");
-                }
-                else
-                {
+                    streamName = graph.GetNodeName(index).GetName();
                     AZ_TraceContext("UV set", streamName);
-                }
 
-                if (uvs && context.m_mesh.GetVertexCount() != uvs->GetCount())
-                {
-                    AZ_TracePrintf(SceneUtilities::ErrorWindow,
-                        "Number of vertices in the mesh (%i) doesn't match with the number of stored UVs (%i).",
-                        context.m_mesh.GetVertexCount(), uvs->GetCount(), streamName.c_str());
-                    result += SceneEvents::ProcessingResult::Failure;
+                    if (context.m_mesh.GetVertexCount() != uvStream->GetCount())
+                    {
+                        AZ_TracePrintf(SceneUtilities::ErrorWindow,
+                            "Number of vertices in the mesh (%i) doesn't match with the number of stored UVs (%i).",
+                            context.m_mesh.GetVertexCount(), uvStream->GetCount(), streamName.c_str());
+                        result += SceneEvents::ProcessingResult::Failure;
+                    }
                 }
+                index = graph.GetNodeSibling(index);
+            }
+            // Populate a default uv if there is no existing uv stream.
+            if (uvStreams.size() == 0)
+            {
+                AZ_TraceContext("UV set", "UVs not used");
+                uvStreams.emplace_back(nullptr);
+            }
 
-                // Populate the uv stream if it exists, or populate a default stream of 0's if the stream does not exist but the uvIndex is 0
-                if (uvs != nullptr || uvIndex == 0)
-                {
-                    result += PopulateUVStream(context, uvIndex, uvs);
-                }
+            for (size_t uvIndex = 0; uvIndex < AZStd::min((size_t)s_uvMaxStreamCount, uvStreams.size()); ++uvIndex)
+            {
+                AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData> uvs = uvStreams[uvIndex];
+
+                result += PopulateUVStream(context, uvIndex, uvs);
             }
             return result.GetResult();
         }

@@ -16,6 +16,7 @@
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/Slice/SliceBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/FileIO.h>
 
@@ -27,7 +28,6 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
-#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
@@ -198,7 +198,7 @@ namespace AzToolsFramework
                 // Walk up parent transform chain until we find an entity with a slice ancestor in the target slice.
                 // If we don't find one, fail. We need an associated instance so we can fix up Id references.
                 AZ::EntityId parentId;
-                AZ::TransformBus::EventResult(parentId, entity->GetId(), &AZ::TransformBus::Events::GetParentId);
+                AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, entity->GetId(), &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
                 AZ::EntityId ancestorId;
                 AZ::SliceComponent::EntityIdToEntityIdMap liveToAssetIdMap;
                 while (parentId.IsValid())
@@ -212,7 +212,7 @@ namespace AzToolsFramework
                     
                     AZ::EntityId currentParentId = parentId;
                     parentId.SetInvalid();
-                    AZ::TransformBus::EventResult(parentId, currentParentId, &AZ::TransformBus::Events::GetParentId);
+                    AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, currentParentId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
                 }
 
                 if (!ancestorId.IsValid())
@@ -504,7 +504,7 @@ namespace AzToolsFramework
             Result result = PreSave(fullPath, finalAsset, preSaveCallback, sliceCommitFlags);
             if (!result)
             {
-                return AZ::Failure(AZStd::string::format("Pre-save callback reported failure: %s.", result.TakeError().c_str()));
+                return AZ::Failure(AZStd::string::format("Pre-save callback reported failure:\n%s", result.TakeError().c_str()));
             }
 
             result = Internal::SaveSliceToDisk(finalAsset, fullPath, m_serializeContext);
@@ -656,7 +656,7 @@ namespace AzToolsFramework
         }
 
         //=========================================================================
-        SliceTransaction::Result SliceTransaction::PreSave(const char* fullPath, SliceAssetPtr& asset, PreSaveCallback preSaveCallback, AZ::u32 sliceCommitFlags)
+        SliceTransaction::Result SliceTransaction::PreSave(const char* fullPath, SliceAssetPtr& asset, PreSaveCallback preSaveCallback, AZ::u32 /*sliceCommitFlags*/)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -683,15 +683,6 @@ namespace AzToolsFramework
                 if (!preSaveResult)
                 {
                     return preSaveResult;
-                }
-            }
-
-            // Execute any standard pre-save behavior.
-            if (sliceCommitFlags & SliceCommitFlags::ApplyWorldSliceTransformRules)
-            {
-                if (!VerifyAndApplyWorldTransformRules(asset))
-                {
-                    return AZ::Failure(AZStd::string::format("Transform root rules for slice push to asset \"%s\" could not be enforced.", fullPath));
                 }
             }
 
@@ -777,68 +768,6 @@ namespace AzToolsFramework
             }
 
             return AZ::EntityId();
-        }
-
-        //=========================================================================
-        bool SliceTransaction::VerifyAndApplyWorldTransformRules(SliceAssetPtr& targetSlice)
-        {
-            AZ::SliceComponent::EntityList sliceEntities;
-            targetSlice.Get()->GetComponent()->GetEntities(sliceEntities);
-
-            AZ::u32 rootEntityCount = 0;
-            for (AZ::Entity* entity : sliceEntities)
-            {
-                Components::TransformComponent* transformComponent =
-                    entity->FindComponent<Components::TransformComponent>();
-
-                if (transformComponent)
-                {
-                    // Cached world transform is only maintained for once-activated entities, not asset sources.
-                    transformComponent->ClearCachedWorldTransform();
-
-                    // Tally up root (non-child) entities.
-                    if (!transformComponent->GetParentId().IsValid())
-                    {
-                        ++rootEntityCount;
-
-                        // Root entity should be at the origin in the slice.
-                        AZ::Transform transform = transformComponent->GetWorldTM();
-                        transform.SetTranslation(AZ::Vector3::CreateZero());
-                        transformComponent->SetWorldTM(transform);
-                    }
-                }
-            }
-            // Fail if the slice has more than one rule
-            if (rootEntityCount > 1)
-            {
-                return false;
-            }
-
-            // Make sure that the root of a slice never has a parent
-            AzToolsFramework::EntityList targetSliceEntities;
-            targetSlice.Get()->GetComponent()->GetEntities(targetSliceEntities);
-
-            AZ::EntityId commonRoot;
-            AzToolsFramework::EntityList sliceRootEntities;
-
-            bool result = false;
-            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequests::FindCommonRootInactive,
-                                                                             targetSliceEntities, commonRoot, &sliceRootEntities);
-
-            for (auto rootInFinalSlice : sliceRootEntities)
-            {
-                if (rootInFinalSlice)
-                {
-                    AzToolsFramework::Components::TransformComponent* transformComponent = rootInFinalSlice->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-                    if (transformComponent)
-                    {
-                        transformComponent->SetParent(AZ::EntityId());
-                    }
-                }
-            }
-
-            return true;
         }
 
         //=========================================================================

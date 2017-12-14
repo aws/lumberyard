@@ -199,21 +199,6 @@ CModelViewport::CModelViewport(const char* settingsPath, QWidget* parent)
         }
     }
 
-    m_RT = 0.0f;
-    m_LTHUMB    = Vec2(0, 0);
-    m_RTHUMB    = Vec2(0, 0);
-    uint32 size = sizeof(m_arrLTHUMB) / sizeof(Vec2);
-    for (uint32 i = 0; i < size; i++)
-    {
-        m_arrLTHUMB[i] = Vec2(0, 0);
-    }
-
-    if (gEnv->pInput)
-    {
-        gEnv->pInput->AddEventListener(this);
-        uint32 test = gEnv->pInput->HasInputDeviceOfType(eIDT_Gamepad);
-    }
-
     // Audio
     m_pAudioListener = NULL;
 
@@ -423,9 +408,6 @@ CModelViewport::~CModelViewport()
         assert(m_pAudioListener == NULL);
     }
 
-    // Remove input event listener
-    GetISystem()->GetIInput()->RemoveEventListener(this);
-
     gEnv->pPhysicalWorld->GetPhysVars()->helperOffset.zero();
     GetIEditor()->SetConsoleVar("ca_UsePhysics", 1);
 }
@@ -453,39 +435,6 @@ void CModelViewport::ReleaseObject()
         m_weaponModel->Release();
         m_weaponModel = NULL;
     }
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CModelViewport::OnInputEvent(const SInputEvent& rInputEvent)
-{
-    if (rInputEvent.deviceType == eIDT_Gamepad)
-    {
-        uint32 nKeyID = rInputEvent.keyId;
-        if (nKeyID == 0x210)
-        {
-            m_LTHUMB.x = rInputEvent.value;
-        }
-        if (nKeyID == 0x211)
-        {
-            m_LTHUMB.y = rInputEvent.value;
-        }
-
-        if (nKeyID == 0x216)
-        {
-            m_RTHUMB.x = rInputEvent.value;
-        }
-        if (nKeyID == 0x217)
-        {
-            m_RTHUMB.y = rInputEvent.value;
-        }
-
-        if (nKeyID == 0x20f)
-        {
-            m_RT = rInputEvent.value;
-        }
-    }
-
-    return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -605,6 +554,8 @@ void CModelViewport::OnRender()
     ProcessKeys();
     if (m_renderer)
     {
+        PreWidgetRendering();
+
         m_Camera.SetFrustum(m_Camera.GetViewSurfaceX(), m_Camera.GetViewSurfaceZ(), m_Camera.GetFov(), 0.02f, 10000, m_Camera.GetPixelAspectRatio());
         const int w = rc.width();
         const int h = rc.height();
@@ -635,6 +586,8 @@ void CModelViewport::OnRender()
         {
             pCharMan->UpdateStreaming(-1, -1);
         }
+
+        PostWidgetRendering();
     }
 }
 

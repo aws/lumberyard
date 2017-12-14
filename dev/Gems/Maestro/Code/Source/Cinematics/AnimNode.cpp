@@ -39,17 +39,20 @@
 #include <AzCore/Math/MathUtils.h>
 #include <I3DEngine.h>
 #include <ctime>
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 // Old deprecated IDs
 //////////////////////////////////////////////////////////////////////////
-#define APARAM_CHARACTER4 (eAnimParamType_User + 0x10)
-#define APARAM_CHARACTER5 (eAnimParamType_User + 0x11)
-#define APARAM_CHARACTER6 (eAnimParamType_User + 0x12)
-#define APARAM_CHARACTER7 (eAnimParamType_User + 0x13)
-#define APARAM_CHARACTER8 (eAnimParamType_User + 0x14)
-#define APARAM_CHARACTER9 (eAnimParamType_User + 0x15)
-#define APARAM_CHARACTER10 (eAnimParamType_User + 0x16)
+#define APARAM_CHARACTER4 static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + 0x10)
+#define APARAM_CHARACTER5 static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + 0x11)
+#define APARAM_CHARACTER6 static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + 0x12)
+#define APARAM_CHARACTER7 static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + 0x13)
+#define APARAM_CHARACTER8 static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + 0x14)
+#define APARAM_CHARACTER9 static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + 0x15)
+#define APARAM_CHARACTER10 static_cast<AnimParamType>(static_cast<int>(AnimParamType::User) + 0x16)
 
 //////////////////////////////////////////////////////////////////////////
 static const EAnimCurveType DEFAULT_TRACK_TYPE = eAnimCurveType_BezierFloat;
@@ -90,7 +93,7 @@ const char* CAnimNode::GetParamName(const CAnimParamType& paramType) const
     return "Unknown";
 }
 
-EAnimValue CAnimNode::GetParamValueType(const CAnimParamType& paramType) const
+AnimValueType CAnimNode::GetParamValueType(const CAnimParamType& paramType) const
 {
     SParamInfo info;
     if (GetParamInfoFromType(paramType, info))
@@ -98,7 +101,7 @@ EAnimValue CAnimNode::GetParamValueType(const CAnimParamType& paramType) const
         return info.valueType;
     }
 
-    return eAnimValue_Unknown;
+    return AnimValueType::Unknown;
 }
 
 IAnimNode::ESupportedParamFlags CAnimNode::GetParamFlags(const CAnimParamType& paramType) const
@@ -249,8 +252,7 @@ void CAnimNode::RegisterTrack(IAnimTrack* pTrack)
 
 void CAnimNode::SortTracks()
 {
-    AZStd::allocator allocator;
-    AZStd::stable_sort(m_tracks.begin(), m_tracks.end(), TrackOrder, allocator);
+    AZStd::insertion_sort(m_tracks.begin(), m_tracks.end(), TrackOrder);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -281,16 +283,9 @@ void CAnimNode::Reflect(AZ::SerializeContext* serializeContext)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAnimNodeGroup::Reflect(AZ::SerializeContext* serializeContext)
+IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType)
 {
-    serializeContext->Class<CAnimNodeGroup, CAnimNode>()
-        ->Version(1);
-}
-
-//////////////////////////////////////////////////////////////////////////
-IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType)
-{
-    if (valueType == eAnimValue_Unknown)
+    if (valueType == AnimValueType::Unknown)
     {
         SParamInfo info;
 
@@ -308,46 +303,46 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
     switch (paramType.GetType())
     {
     // Create sub-classed tracks
-    case eAnimParamType_Event:
+    case AnimParamType::Event:
         pTrack = aznew CEventTrack(m_pSequence->GetTrackEventStringTable());
         break;
-    case eAnimParamType_Sound:
+    case AnimParamType::Sound:
         pTrack = aznew CSoundTrack;
         break;
-    case eAnimParamType_Animation:
+    case AnimParamType::Animation:
         pTrack = aznew CCharacterTrack;
         break;
-    case eAnimParamType_Mannequin:
+    case AnimParamType::Mannequin:
         pTrack = aznew CMannequinTrack;
         break;
-    case eAnimParamType_Console:
+    case AnimParamType::Console:
         pTrack = aznew CConsoleTrack;
         break;
-    case eAnimParamType_LookAt:
+    case AnimParamType::LookAt:
         pTrack = aznew CLookAtTrack;
         break;
-    case eAnimParamType_TrackEvent:
+    case AnimParamType::TrackEvent:
         pTrack = aznew CTrackEventTrack(m_pSequence->GetTrackEventStringTable());
         break;
-    case eAnimParamType_Sequence:
+    case AnimParamType::Sequence:
         pTrack = aznew CSequenceTrack;
         break;
-    case eAnimParamType_Capture:
+    case AnimParamType::Capture:
         pTrack = aznew CCaptureTrack;
         break;
-    case eAnimParamType_CommentText:
+    case AnimParamType::CommentText:
         pTrack = aznew CCommentTrack;
         break;
-    case eAnimParamType_ScreenFader:
+    case AnimParamType::ScreenFader:
         pTrack = aznew CScreenFaderTrack;
         break;
-    case eAnimParamType_Goto:
+    case AnimParamType::Goto:
         pTrack = aznew CGotoTrack;
         break;
-    case eAnimParamType_TimeRanges:
+    case AnimParamType::TimeRanges:
         pTrack = aznew CTimeRangesTrack;
         break;
-    case eAnimParamType_Float:
+    case AnimParamType::Float:
         pTrack = CreateTrackInternalFloat(trackType);
         break;
 
@@ -355,26 +350,26 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
         // Create standard tracks
         switch (valueType)
         {
-        case eAnimValue_Float:
+        case AnimValueType::Float:
             pTrack = CreateTrackInternalFloat(trackType);
             break;
-        case eAnimValue_RGB:
-        case eAnimValue_Vector:
+        case AnimValueType::RGB:
+        case AnimValueType::Vector:
             pTrack = CreateTrackInternalVector(trackType, paramType, valueType);
             break;
-        case eAnimValue_Quat:
+        case AnimValueType::Quat:
             pTrack = CreateTrackInternalQuat(trackType, paramType);
             break;
-        case eAnimValue_Bool:
+        case AnimValueType::Bool:
             pTrack = aznew CBoolTrack;
             break;
-        case eAnimValue_Select:
+        case AnimValueType::Select:
             pTrack = aznew CSelectTrack;
             break;
-        case eAnimValue_Vector4:
+        case AnimValueType::Vector4:
             pTrack = CreateTrackInternalVector4(paramType);
             break;
-        case eAnimValue_CharacterAnim:
+        case AnimValueType::CharacterAnim:
             pTrack = aznew CCharacterTrack;
             break;
         }
@@ -392,7 +387,7 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
 //////////////////////////////////////////////////////////////////////////
 IAnimTrack* CAnimNode::CreateTrack(const CAnimParamType& paramType)
 {
-    IAnimTrack* pTrack = CreateTrackInternal(paramType, DEFAULT_TRACK_TYPE, eAnimValue_Unknown);
+    IAnimTrack* pTrack = CreateTrackInternal(paramType, DEFAULT_TRACK_TYPE, AnimValueType::Unknown);
     InitializeTrackDefaultValue(pTrack, paramType);
     return pTrack;
 }
@@ -420,23 +415,23 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
 
             MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Animation, 0, CMovieSystem::GetParamTypeName(paramType));
 
-            if (paramType.GetType() == eAnimParamType_Music)
+            if (paramType.GetType() == AnimParamType::Music)
             {
-                // skip loading eAnimParamType_Music - it's deprecated
+                // skip loading AnimParamType::Music - it's deprecated
                 continue;
             }
 
             if (paramTypeVersion == 0) // for old version with sound and animation param ids swapped
             {
-                const int APARAM_ANIMATION_OLD = eAnimParamType_Sound;
-                const int APARAM_SOUND_OLD = eAnimParamType_Animation;
+                AnimParamType APARAM_ANIMATION_OLD = AnimParamType::Sound;
+                AnimParamType APARAM_SOUND_OLD = AnimParamType::Animation;
                 if (paramType.GetType() == APARAM_ANIMATION_OLD)
                 {
-                    paramType = eAnimParamType_Animation;
+                    paramType = AnimParamType::Animation;
                 }
                 else if (paramType.GetType() == APARAM_SOUND_OLD)
                 {
-                    paramType = eAnimParamType_Sound;
+                    paramType = AnimParamType::Sound;
                 }
             }
 
@@ -451,17 +446,17 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
                     //////////////////////////////////////////////////////////////////////////
                     // Legacy animation track.
                     // Collapse parameter ID to the single type
-                    if (paramType.GetType() >= eAnimParamType_Sound && paramType.GetType() <= eAnimParamType_Sound + 2)
+                    if (paramType.GetType() >= AnimParamType::Sound && paramType.GetType() <= static_cast<AnimParamType>(static_cast<int>(AnimParamType::Sound) + 2))
                     {
-                        paramType = eAnimParamType_Sound;
+                        paramType = AnimParamType::Sound;
                     }
-                    if (paramType.GetType() >= eAnimParamType_Animation && paramType.GetType() <= eAnimParamType_Animation + 2)
+                    if (paramType.GetType() >= AnimParamType::Animation && paramType.GetType() <= static_cast<AnimParamType>(static_cast<int>(AnimParamType::Animation) + 2))
                     {
-                        paramType = eAnimParamType_Animation;
+                        paramType = AnimParamType::Animation;
                     }
                     if (paramType.GetType() >= APARAM_CHARACTER4 && paramType.GetType() <= APARAM_CHARACTER10)
                     {
-                        paramType = eAnimParamType_Animation;
+                        paramType = AnimParamType::Animation;
                     }
 
                     // Old tracks always used TCB tracks.
@@ -475,15 +470,15 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
                 // In old versions goto tracks were identified by a curve id
                 if (curveType == OLD_ACURVE_GOTO)
                 {
-                    paramType = eAnimParamType_Goto;
+                    paramType = AnimParamType::Goto;
                     curveType = eAnimCurveType_Unknown;
                 }
             }
 
-            if (paramTypeVersion <= 3 && paramType.GetType() >= OLD_APARAM_USER)
+            if (paramTypeVersion <= 3 && paramType.GetType() >= static_cast<AnimParamType>(OLD_APARAM_USER))
             {
                 // APARAM_USER 100 => 100000
-                paramType = paramType.GetType() + (eAnimParamType_User - OLD_APARAM_USER);
+                paramType = static_cast<AnimParamType>(static_cast<int>(paramType.GetType()) + static_cast<int>(AnimParamType::User) - OLD_APARAM_USER);
             }
 
             if (paramTypeVersion <= 4)
@@ -492,19 +487,19 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
                 // that is now handles by generic entity node code
                 switch (paramType.GetType())
                 {
-                case OLD_APARAM_PARTICLE_COUNT_SCALE:
+                case static_cast<AnimParamType>(OLD_APARAM_PARTICLE_COUNT_SCALE) :
                     paramType = CAnimParamType("ScriptTable:Properties/CountScale");
                     break;
-                case OLD_APARAM_PARTICLE_PULSE_PERIOD:
+                case static_cast<AnimParamType>(OLD_APARAM_PARTICLE_PULSE_PERIOD) :
                     paramType = CAnimParamType("ScriptTable:Properties/PulsePeriod");
                     break;
-                case OLD_APARAM_PARTICLE_SCALE:
+                case static_cast<AnimParamType>(OLD_APARAM_PARTICLE_SCALE) :
                     paramType = CAnimParamType("ScriptTable:Properties/Scale");
                     break;
-                case OLD_APARAM_PARTICLE_SPEED_SCALE:
+                case static_cast<AnimParamType>(OLD_APARAM_PARTICLE_SPEED_SCALE) :
                     paramType = CAnimParamType("ScriptTable:Properties/SpeedScale");
                     break;
-                case OLD_APARAM_PARTICLE_STRENGTH:
+                case static_cast<AnimParamType>(OLD_APARAM_PARTICLE_STRENGTH):
                     paramType = CAnimParamType("ScriptTable:Properties/Strength");
                     break;
                 }
@@ -516,43 +511,43 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
                 // by generic entity node code if this is not a light animation set sequence
                 switch (paramType.GetType())
                 {
-                case eAnimParamType_LightDiffuse:
+                case AnimParamType::LightDiffuse:
                     paramType = CAnimParamType("ScriptTable:Properties/Color/clrDiffuse");
                     break;
-                case eAnimParamType_LightRadius:
+                case AnimParamType::LightRadius:
                     paramType = CAnimParamType("ScriptTable:Properties/Radius");
                     break;
-                case eAnimParamType_LightDiffuseMult:
+                case AnimParamType::LightDiffuseMult:
                     paramType = CAnimParamType("ScriptTable:Properties/Color/fDiffuseMultiplier");
                     break;
-                case eAnimParamType_LightHDRDynamic:
+                case AnimParamType::LightHDRDynamic:
                     paramType = CAnimParamType("ScriptTable:Properties/Color/fHDRDynamic");
                     break;
-                case eAnimParamType_LightSpecularMult:
+                case AnimParamType::LightSpecularMult:
                     paramType = CAnimParamType("ScriptTable:Properties/Color/fSpecularMultiplier");
                     break;
-                case eAnimParamType_LightSpecPercentage:
+                case AnimParamType::LightSpecPercentage:
                     paramType = CAnimParamType("ScriptTable:Properties/Color/fSpecularPercentage");
                     break;
                 }
             }
 
-            if (paramTypeVersion <= 7 && paramType.GetType() == eAnimParamType_Physics)
+            if (paramTypeVersion <= 7 && paramType.GetType() == AnimParamType::Physics)
             {
-                paramType = eAnimParamType_PhysicsDriven;
+                paramType = AnimParamType::PhysicsDriven;
             }
 
-            int valueType = eAnimValue_Unknown;
+            int valueType = static_cast<int>(AnimValueType::Unknown);
             trackNode->getAttr("ValueType", valueType);
 
-            IAnimTrack* pTrack = CreateTrackInternal(paramType, (EAnimCurveType)curveType, (EAnimValue)valueType);
+            IAnimTrack* pTrack = CreateTrackInternal(paramType, (EAnimCurveType)curveType, static_cast<AnimValueType>(valueType));
             bool trackRemoved = false;
             if (pTrack)
             {
                 if (!pTrack->Serialize(trackNode, bLoading, bLoadEmptyTracks))
                 {
                     // Boolean tracks must always be loaded even if empty.
-                    if (pTrack->GetValueType() != eAnimValue_Bool)
+                    if (pTrack->GetValueType() != AnimValueType::Bool)
                     {
                         RemoveTrack(pTrack);
                         trackRemoved = true;
@@ -581,7 +576,7 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
                 int nTrackType = pTrack->GetCurveType();
                 trackNode->setAttr("Type", nTrackType);
                 pTrack->Serialize(trackNode, bLoading);
-                int valueType = pTrack->GetValueType();
+                int valueType = static_cast<int>(pTrack->GetValueType());
                 trackNode->setAttr("ValueType", valueType);
             }
         }
@@ -603,7 +598,7 @@ void CAnimNode::SetTimeRange(Range timeRange)
 //////////////////////////////////////////////////////////////////////////
 // AZ::Serialization requires a default constructor
 CAnimNode::CAnimNode()
-    : CAnimNode(0, eAnimNodeType_Invalid)
+    : CAnimNode(0, AnimNodeType::Invalid)
 {
 }
 
@@ -625,7 +620,7 @@ CAnimNode::CAnimNode(const CAnimNode& other)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CAnimNode::CAnimNode(const int id, EAnimNodeType nodeType)
+CAnimNode::CAnimNode(const int id, AnimNodeType nodeType)
     : m_refCount(0)
     , m_id(id)
     , m_parentNodeId(0)
@@ -711,7 +706,7 @@ bool CAnimNode::SetParamValue(float time, CAnimParamType param, float value)
     }
 
     IAnimTrack* pTrack = GetTrackForParameter(param);
-    if (pTrack && pTrack->GetValueType() == eAnimValue_Float)
+    if (pTrack && pTrack->GetValueType() == AnimValueType::Float)
     {
         // Float track.
         bool bDefault = !(gEnv->pMovieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
@@ -730,7 +725,7 @@ bool CAnimNode::SetParamValue(float time, CAnimParamType param, const Vec3& valu
     }
 
     CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eAnimValue_Vector)
+    if (pTrack && pTrack->GetValueType() == AnimValueType::Vector)
     {
         // Vec3 track.
         bool bDefault = !(gEnv->pMovieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
@@ -749,7 +744,7 @@ bool CAnimNode::SetParamValue(float time, CAnimParamType param, const Vec4& valu
     }
 
     CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eAnimValue_Vector4)
+    if (pTrack && pTrack->GetValueType() == AnimValueType::Vector4)
     {
         // Vec4 track.
         bool bDefault = !(gEnv->pMovieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
@@ -763,7 +758,7 @@ bool CAnimNode::SetParamValue(float time, CAnimParamType param, const Vec4& valu
 bool CAnimNode::GetParamValue(float time, CAnimParamType param, float& value)
 {
     IAnimTrack* pTrack = GetTrackForParameter(param);
-    if (pTrack && pTrack->GetValueType() == eAnimValue_Float && pTrack->GetNumKeys() > 0)
+    if (pTrack && pTrack->GetValueType() == AnimValueType::Float && pTrack->GetNumKeys() > 0)
     {
         // Float track.
         pTrack->GetValue(time, value);
@@ -776,7 +771,7 @@ bool CAnimNode::GetParamValue(float time, CAnimParamType param, float& value)
 bool CAnimNode::GetParamValue(float time, CAnimParamType param, Vec3& value)
 {
     CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eAnimValue_Vector && pTrack->GetNumKeys() > 0)
+    if (pTrack && pTrack->GetValueType() == AnimValueType::Vector && pTrack->GetNumKeys() > 0)
     {
         // Vec3 track.
         pTrack->GetValue(time, value);
@@ -789,7 +784,7 @@ bool CAnimNode::GetParamValue(float time, CAnimParamType param, Vec3& value)
 bool CAnimNode::GetParamValue(float time, CAnimParamType param, Vec4& value)
 {
     CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eAnimValue_Vector4 && pTrack->GetNumKeys() > 0)
+    if (pTrack && pTrack->GetValueType() == AnimValueType::Vector4 && pTrack->GetNumKeys() > 0)
     {
         // Vec4 track.
         pTrack->GetValue(time, value);
@@ -824,7 +819,7 @@ void CAnimNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTra
         m_nLoadedParentNodeId = 0;
         xmlNode->setAttr("Id", m_id);
 
-        EAnimNodeType nodeType = GetType();
+        AnimNodeType nodeType = GetType();
         GetMovieSystem()->SerializeNodeType(nodeType, xmlNode, bLoading, IAnimSequence::kSequenceVersion, m_flags);
 
         xmlNode->setAttr("Name", GetName());
@@ -892,70 +887,70 @@ IAnimTrack* CAnimNode::CreateTrackInternalFloat(int trackType) const
     return aznew C2DSplineTrack;
 }
 
-IAnimTrack* CAnimNode::CreateTrackInternalVector(EAnimCurveType trackType, const CAnimParamType& paramType, const EAnimValue animValue) const
+IAnimTrack* CAnimNode::CreateTrackInternalVector(EAnimCurveType trackType, const CAnimParamType& paramType, const AnimValueType animValue) const
 {
     CAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
     for (unsigned int i = 0; i < MAX_SUBTRACKS; ++i)
     {
-        subTrackParamTypes[i] = eAnimParamType_Float;
+        subTrackParamTypes[i] = AnimParamType::Float;
     }
 
-    if (paramType == eAnimParamType_Position)
+    if (paramType == AnimParamType::Position)
     {
-        subTrackParamTypes[0] = eAnimParamType_PositionX;
-        subTrackParamTypes[1] = eAnimParamType_PositionY;
-        subTrackParamTypes[2] = eAnimParamType_PositionZ;
+        subTrackParamTypes[0] = AnimParamType::PositionX;
+        subTrackParamTypes[1] = AnimParamType::PositionY;
+        subTrackParamTypes[2] = AnimParamType::PositionZ;
     }
-    else if (paramType == eAnimParamType_Scale)
+    else if (paramType == AnimParamType::Scale)
     {
-        subTrackParamTypes[0] = eAnimParamType_ScaleX;
-        subTrackParamTypes[1] = eAnimParamType_ScaleY;
-        subTrackParamTypes[2] = eAnimParamType_ScaleZ;
+        subTrackParamTypes[0] = AnimParamType::ScaleX;
+        subTrackParamTypes[1] = AnimParamType::ScaleY;
+        subTrackParamTypes[2] = AnimParamType::ScaleZ;
     }
-    else if (paramType == eAnimParamType_Rotation)
+    else if (paramType == AnimParamType::Rotation)
     {
-        subTrackParamTypes[0] = eAnimParamType_RotationX;
-        subTrackParamTypes[1] = eAnimParamType_RotationY;
-        subTrackParamTypes[2] = eAnimParamType_RotationZ;
-        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, eAnimValue_Quat, subTrackParamTypes);
+        subTrackParamTypes[0] = AnimParamType::RotationX;
+        subTrackParamTypes[1] = AnimParamType::RotationY;
+        subTrackParamTypes[2] = AnimParamType::RotationZ;
+        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, AnimValueType::Quat, subTrackParamTypes);
         return pTrack;
     }
-    else if (paramType == eAnimParamType_DepthOfField)
+    else if (paramType == AnimParamType::DepthOfField)
     {
-        subTrackParamTypes[0] = eAnimParamType_FocusDistance;
-        subTrackParamTypes[1] = eAnimParamType_FocusRange;
-        subTrackParamTypes[2] = eAnimParamType_BlurAmount;
-        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, eAnimValue_Vector, subTrackParamTypes);
+        subTrackParamTypes[0] = AnimParamType::FocusDistance;
+        subTrackParamTypes[1] = AnimParamType::FocusRange;
+        subTrackParamTypes[2] = AnimParamType::BlurAmount;
+        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, AnimValueType::Vector, subTrackParamTypes);
         pTrack->SetSubTrackName(0, "FocusDist");
         pTrack->SetSubTrackName(1, "FocusRange");
         pTrack->SetSubTrackName(2, "BlurAmount");
         return pTrack;
     }
-    else if (animValue == eAnimValue_RGB || paramType == eAnimParamType_LightDiffuse ||
-             paramType == eAnimParamType_MaterialDiffuse || paramType == eAnimParamType_MaterialSpecular
-             || paramType == eAnimParamType_MaterialEmissive)
+    else if (animValue == AnimValueType::RGB || paramType == AnimParamType::LightDiffuse ||
+             paramType == AnimParamType::MaterialDiffuse || paramType == AnimParamType::MaterialSpecular
+             || paramType == AnimParamType::MaterialEmissive)
     {
-        subTrackParamTypes[0] = eAnimParamType_ColorR;
-        subTrackParamTypes[1] = eAnimParamType_ColorG;
-        subTrackParamTypes[2] = eAnimParamType_ColorB;
-        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, eAnimValue_RGB, subTrackParamTypes);
+        subTrackParamTypes[0] = AnimParamType::ColorR;
+        subTrackParamTypes[1] = AnimParamType::ColorG;
+        subTrackParamTypes[2] = AnimParamType::ColorB;
+        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, AnimValueType::RGB, subTrackParamTypes);
         pTrack->SetSubTrackName(0, "Red");
         pTrack->SetSubTrackName(1, "Green");
         pTrack->SetSubTrackName(2, "Blue");
         return pTrack;
     }
 
-    return aznew CCompoundSplineTrack(3, eAnimValue_Vector, subTrackParamTypes);
+    return aznew CCompoundSplineTrack(3, AnimValueType::Vector, subTrackParamTypes);
 }
 
 IAnimTrack* CAnimNode::CreateTrackInternalQuat(EAnimCurveType trackType, const CAnimParamType& paramType) const
 {
     CAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
-    if (paramType == eAnimParamType_Rotation)
+    if (paramType == AnimParamType::Rotation)
     {
-        subTrackParamTypes[0] = eAnimParamType_RotationX;
-        subTrackParamTypes[1] = eAnimParamType_RotationY;
-        subTrackParamTypes[2] = eAnimParamType_RotationZ;
+        subTrackParamTypes[0] = AnimParamType::RotationX;
+        subTrackParamTypes[1] = AnimParamType::RotationY;
+        subTrackParamTypes[2] = AnimParamType::RotationZ;
     }
     else
     {
@@ -963,7 +958,7 @@ IAnimTrack* CAnimNode::CreateTrackInternalQuat(EAnimCurveType trackType, const C
         assert(0);
     }
 
-    return aznew CCompoundSplineTrack(3, eAnimValue_Quat, subTrackParamTypes);
+    return aznew CCompoundSplineTrack(3, AnimValueType::Quat, subTrackParamTypes);
 }
 
 IAnimTrack* CAnimNode::CreateTrackInternalVector4(const CAnimParamType& paramType) const
@@ -973,35 +968,35 @@ IAnimTrack* CAnimNode::CreateTrackInternalVector4(const CAnimParamType& paramTyp
     CAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
 
     // set up track subtypes
-    if (paramType == eAnimParamType_TransformNoise
-        || paramType == eAnimParamType_ShakeMultiplier)
+    if (paramType == AnimParamType::TransformNoise
+        || paramType == AnimParamType::ShakeMultiplier)
     {
-        subTrackParamTypes[0] = eAnimParamType_ShakeAmpAMult;
-        subTrackParamTypes[1] = eAnimParamType_ShakeAmpBMult;
-        subTrackParamTypes[2] = eAnimParamType_ShakeFreqAMult;
-        subTrackParamTypes[3] = eAnimParamType_ShakeFreqBMult;
+        subTrackParamTypes[0] = AnimParamType::ShakeAmpAMult;
+        subTrackParamTypes[1] = AnimParamType::ShakeAmpBMult;
+        subTrackParamTypes[2] = AnimParamType::ShakeFreqAMult;
+        subTrackParamTypes[3] = AnimParamType::ShakeFreqBMult;
     }
     else
     {
         // default to a Vector4 of floats
         for (unsigned int i = 0; i < MAX_SUBTRACKS; ++i)
         {
-            subTrackParamTypes[i] = eAnimParamType_Float;
+            subTrackParamTypes[i] = AnimParamType::Float;
         }
     }
 
     // create track
-    pTrack = aznew CCompoundSplineTrack(4, eAnimValue_Vector4, subTrackParamTypes);
+    pTrack = aznew CCompoundSplineTrack(4, AnimValueType::Vector4, subTrackParamTypes);
 
     // label subtypes
-    if (paramType == eAnimParamType_TransformNoise)
+    if (paramType == AnimParamType::TransformNoise)
     {
         pTrack->SetSubTrackName(0, "Pos Noise Amp");
         pTrack->SetSubTrackName(1, "Pos Noise Freq");
         pTrack->SetSubTrackName(2, "Rot Noise Amp");
         pTrack->SetSubTrackName(3, "Rot Noise Freq");
     }
-    else if (paramType == eAnimParamType_ShakeMultiplier)
+    else if (paramType == AnimParamType::ShakeMultiplier)
     {
         pTrack->SetSubTrackName(0, "Amplitude A");
         pTrack->SetSubTrackName(1, "Amplitude B");
@@ -1031,14 +1026,14 @@ bool CAnimNode::IsTimeOnSoundKey(float queryTime) const
     {
         CAnimParamType paramType = m_tracks[trackIndex]->GetParameterType();
         IAnimTrack* pTrack = m_tracks[trackIndex].get();
-        if ((paramType.GetType() != eAnimParamType_Sound)
-            || (pTrack->HasKeys() == false && pTrack->GetParameterType() != eAnimParamType_Visibility)
+        if ((paramType.GetType() != AnimParamType::Sound)
+            || (pTrack->HasKeys() == false && pTrack->GetParameterType() != AnimParamType::Visibility)
             || (pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled))
         {
             continue;
         }
 
-        // if we're here, pTrack points to a eAnimParamType_Sound track
+        // if we're here, pTrack points to a AnimParamType::Sound track
         ISoundKey oSoundKey;
         int const nSoundKey = static_cast<CSoundTrack*>(pTrack)->GetActiveKey(queryTime, &oSoundKey);
         if (nSoundKey >= 0)
@@ -1127,7 +1122,7 @@ IAnimNode* CAnimNode::HasDirectorAsParent() const
     IAnimNode* pParent = GetParent();
     while (pParent)
     {
-        if (pParent->GetType() == eAnimNodeType_Director)
+        if (pParent->GetType() == AnimNodeType::Director)
         {
             return pParent;
         }

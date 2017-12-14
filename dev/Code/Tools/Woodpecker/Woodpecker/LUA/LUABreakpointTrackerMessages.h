@@ -19,6 +19,8 @@
 
 #pragma once
 
+namespace AZ { class ReflectContext; }
+
 namespace LUAEditor
 {
     // combined, name+line is a unique breakpoint

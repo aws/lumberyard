@@ -36,7 +36,7 @@ UiTooltipComponent::~UiTooltipComponent()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTooltipComponent::Update()
+void UiTooltipComponent::Update(float deltaTime)
 {
     if (m_displayElementId.IsValid())
     {
@@ -50,7 +50,7 @@ void UiTooltipComponent::OnHoverStart()
     // Get display element
     AZ::EntityId canvasId;
     EBUS_EVENT_ID_RESULT(canvasId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-    
+
     EBUS_EVENT_ID_RESULT(m_displayElementId, canvasId, UiCanvasBus, GetTooltipDisplayElement);
 
     // Show display element
@@ -76,7 +76,6 @@ void UiTooltipComponent::OnPressed()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTooltipComponent::OnReleased()
 {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

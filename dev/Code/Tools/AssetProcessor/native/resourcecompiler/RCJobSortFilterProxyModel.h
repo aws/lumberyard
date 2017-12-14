@@ -13,19 +13,23 @@
 
 #include <QSortFilterProxyModel>
 
-
-
-class RCJobSortFilterProxyModel
-    : public QSortFilterProxyModel
+namespace AssetProcessor
 {
-    Q_OBJECT
+    class JobSortFilterProxyModel
+        : public QSortFilterProxyModel
+    {
+        Q_OBJECT
 
-public:
-    explicit RCJobSortFilterProxyModel(QObject* parent = 0);
+    public:
+        explicit JobSortFilterProxyModel(QObject* parent = nullptr);
+        void OnFilterRegexExpChanged(QRegExp regExp, bool isFilterRegexExpEmpty);
 
 
-protected:
-    //    bool lessThan(const QModelIndex& lhs, const QModelIndex& rhs) const override;
-    bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
-};
+    protected:
+        bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+    private:
+        bool m_filterRegexExpEmpty = true;
+    };
+} // namespace AssetProcessor
+
 

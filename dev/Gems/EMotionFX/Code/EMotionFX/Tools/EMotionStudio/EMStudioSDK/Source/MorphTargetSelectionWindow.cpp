@@ -10,20 +10,14 @@
 *
 */
 
-// include the required headers
 #include "MorphTargetSelectionWindow.h"
 #include "EMStudioManager.h"
-#include <MCore/Source/LogManager.h>
-#include <EMotionFX/Source/Mesh.h>
-#include <QLabel>
-#include <QSizePolicy>
 #include <QPushButton>
 #include <QVBoxLayout>
 
 
 namespace EMStudio
 {
-    // constructor
     MorphTargetSelectionWindow::MorphTargetSelectionWindow(QWidget* parent)
         : QDialog(parent)
     {
@@ -51,34 +45,33 @@ namespace EMStudio
     }
 
 
-    // destructor
     MorphTargetSelectionWindow::~MorphTargetSelectionWindow()
     {
     }
 
 
-    // called whenever the selection changes
     void MorphTargetSelectionWindow::OnSelectionChanged()
     {
-        mSelection.Clear(false);
+        mSelection.clear();
 
-        // get the number of items and iterate through them
-        const uint32 numItems = mListWidget->count();
-        for (uint32 i = 0; i < numItems; ++i)
+        const int numItems = mListWidget->count();
+        mSelection.reserve(numItems);
+        for (int i = 0; i < numItems; ++i)
         {
             QListWidgetItem* item = mListWidget->item(i);
 
             // add the morph target id to the selection array in case the item is selected
             if (item->isSelected())
             {
-                mSelection.Add(item->data(Qt::UserRole).toInt());
+                continue;
             }
+
+            mSelection.push_back(item->data(Qt::UserRole).toInt());
         }
     }
 
 
-    // refill the table with the current morph setup
-    void MorphTargetSelectionWindow::Update(EMotionFX::MorphSetup* morphSetup, const MCore::Array<uint32>& selection)
+    void MorphTargetSelectionWindow::Update(EMotionFX::MorphSetup* morphSetup, const AZStd::vector<uint32>& selection)
     {
         if (morphSetup == nullptr)
         {
@@ -86,36 +79,28 @@ namespace EMStudio
         }
 
         mListWidget->setSelectionMode(QListWidget::ExtendedSelection);
-
         mListWidget->blockSignals(true);
-
-        // remove all old items first
         mListWidget->clear();
 
-        // get the number of morph targets, iterate through and add them to the table
         const uint32 numMorphTargets = morphSetup->GetNumMorphTargets();
         for (uint32 i = 0; i < numMorphTargets; ++i)
         {
             EMotionFX::MorphTarget* morphTarget = morphSetup->GetMorphTarget(i);
             const uint32 morphTargetID = morphTarget->GetID();
 
-            // create the list item and fill it
             QListWidgetItem* item = new QListWidgetItem();
             item->setText(morphTarget->GetName());
             item->setData(Qt::UserRole, morphTargetID);
 
-            // add the item to the list widget
             mListWidget->addItem(item);
 
-            // check if we need to select the item
-            if (selection.Find(morphTargetID) != MCORE_INVALIDINDEX32)
+            if (AZStd::find(mSelection.begin(), mSelection.end(), morphTargetID) != mSelection.end())
             {
                 item->setSelected(true);
             }
         }
 
         mListWidget->blockSignals(false);
-
         mSelection = selection;
     }
 } // namespace EMStudio

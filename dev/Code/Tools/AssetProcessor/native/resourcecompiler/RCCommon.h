@@ -45,6 +45,9 @@ namespace AssetProcessor
         QString GetInputAssetName() const;
         QString GetPlatform() const;
         QString GetJobDescriptor() const;
+        void SetInputAssetName(QString inputAssetName);
+        void SetPlatform(QString platform);
+        void SetJobDescriptor(QString jobDescriptor);
         bool operator==(const QueueElementID& other) const;
         bool operator<(const QueueElementID& other) const;
 

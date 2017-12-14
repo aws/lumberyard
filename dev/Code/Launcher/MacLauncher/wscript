@@ -20,12 +20,10 @@ def build(bld):
         configurations   = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
         mac_launcher     = True,
         includes         = [bld.Path('Code/CryEngine/CrySystem'),
-                            bld.Path('Code/Launcher/AppleLaunchersCommon'),
-                            ],
+                            bld.Path('Code/Launcher')],
         use              = ['AzGameFramework',
                             'TOMCRYPT',
                             'TOMMATH'],
-        uselib           = ['SDL2'],
         rpath            = [ "@executable_path/" ],
 
         cxxflags = [ '-x', 'objective-c++' ],

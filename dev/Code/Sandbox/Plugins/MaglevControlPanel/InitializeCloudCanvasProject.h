@@ -12,6 +12,7 @@
 #pragma once
 #include <QMainWindow>
 
+#include <QUuid>
 #include <WinWidget/WinWidgetId.h>
 
 #include <AzCore/std/containers/vector.h>

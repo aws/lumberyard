@@ -122,8 +122,6 @@
             "Events/ExportProductList.cpp",
             "Events/ImportEventContext.h",
             "Events/ImportEventContext.cpp",
-            "Events/CallProcessorConnector.h",
-            "Events/CallProcessorConnector.cpp",
             "Events/CallProcessorBinder.h",
             "Events/CallProcessorBinder.inl",
             "Events/CallProcessorBinder.cpp",

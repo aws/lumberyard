@@ -132,7 +132,7 @@ namespace AZ
         AsyncSaveRunner& m_owner;
         AZStd::vector<AZStd::shared_ptr<SaveOperationCache>> m_allSaveOperations;
         SaveCompleteCallback m_onSaveComplete;
-        AZStd::atomic<size_t> m_completedCount = 0;
+        AZStd::atomic<size_t> m_completedCount;
         bool m_currentSaveResult = true;
     };
 

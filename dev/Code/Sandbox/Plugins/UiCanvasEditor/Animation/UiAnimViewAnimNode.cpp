@@ -1291,14 +1291,14 @@ CUiAnimViewAnimNodeBundle CUiAnimViewAnimNode::GetAnimNodesByName(const char* pN
 }
 
 //////////////////////////////////////////////////////////////////////////
-char* CUiAnimViewAnimNode::GetParamName(const CUiAnimParamType& paramType) const
+const char* CUiAnimViewAnimNode::GetParamName(const CUiAnimParamType& paramType) const
 {
     const char* pName = m_pAnimNode->GetParamName(paramType);
     return pName ? pName : "";
 }
 
 //////////////////////////////////////////////////////////////////////////
-char* CUiAnimViewAnimNode::GetParamNameForTrack(const CUiAnimParamType& paramType, const IUiAnimTrack* track) const
+const char* CUiAnimViewAnimNode::GetParamNameForTrack(const CUiAnimParamType& paramType, const IUiAnimTrack* track) const
 {
     const char* pName = m_pAnimNode->GetParamNameForTrack(paramType, track);
     return pName ? pName : "";

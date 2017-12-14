@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "NoProfileWidget.h"
 #include "ResourceManagementView.h"
 

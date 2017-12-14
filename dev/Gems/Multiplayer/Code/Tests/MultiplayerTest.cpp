@@ -282,7 +282,8 @@ public:
         Multiplayer::GridMateServiceParams serviceParams(sessionParams, FetchLANParam);
 
         Multiplayer::GridMateLANServiceWrapper gmLANService;
-        GridMate::GridSession* session = gmLANService.CreateServer(GetGridMate(), GridMate::CarrierDesc(), serviceParams);
+        GridMate::CarrierDesc carrierDesc;
+        GridMate::GridSession* session = gmLANService.CreateServer(GetGridMate(), carrierDesc, serviceParams);
         gmLANService.StopSessionService(GetGridMate());
     }
 
@@ -294,7 +295,8 @@ public:
         Multiplayer::GridMateServiceParams serviceParams(sessionParams, FetchLANParam);
 
         Multiplayer::GridMateLANServiceWrapper gmLANService;
-        auto hostSession = gmLANService.CreateServer(GetGridMate(), GridMate::CarrierDesc(), serviceParams);
+        GridMate::CarrierDesc carrierDesc;
+        auto hostSession = gmLANService.CreateServer(GetGridMate(), carrierDesc, serviceParams);
         auto search = gmLANService.ListServers(GetGridMate(), serviceParams);
 
         int i = 0;
@@ -663,6 +665,7 @@ return testlua;
             sessionParams.m_topology = GridMate::ST_CLIENT_SERVER;
             sessionParams.m_numPublicSlots = 2;
             Multiplayer::GridMateServiceParams serviceParams(sessionParams, FetchLANParam);
+            GridMate::CarrierDesc carrierDesc;
 
             auto setup = [&](AZ::BehaviorContext* bc)
             {
@@ -676,7 +679,7 @@ return testlua;
                 };
                 bc->Method("PingFlag", fnPingFlag);
 
-                gmLANService.CreateServer(GetGridMate(), GridMate::CarrierDesc(), serviceParams);
+                gmLANService.CreateServer(GetGridMate(), carrierDesc, serviceParams);
 
                 return k_LuaScript;
             };
@@ -740,8 +743,9 @@ return testlua;
                 sessionParams.m_topology = GridMate::ST_CLIENT_SERVER;
                 sessionParams.m_numPublicSlots = 2;
                 Multiplayer::GridMateServiceParams serviceParams(sessionParams, FetchLANParam);
+                GridMate::CarrierDesc carrierDesc;
 
-                gmLANService.CreateServer(m_gridMate, GridMate::CarrierDesc(), serviceParams);
+                gmLANService.CreateServer(m_gridMate, carrierDesc, serviceParams);
             }
             void Update()
             {

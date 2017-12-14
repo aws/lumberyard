@@ -34,7 +34,7 @@ public:
     void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
 
     void UpdateBackFaceCheckBoxFromContext();
-    void UpdateBackFaceFlag(CD::SMainContext& mc);
+    void UpdateBackFaceFlag(const CD::SMainContext& mc);
 
 private:
 

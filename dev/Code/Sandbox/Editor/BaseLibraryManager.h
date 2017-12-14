@@ -23,6 +23,7 @@
 #include "Util/TRefCountBase.h"
 #include "Util/GuidUtil.h"
 #include "BaseLibrary.h"
+#include "Util/smartptr.h"
 #include <EditorDefs.h>
 #include <QtUtil.h>
 

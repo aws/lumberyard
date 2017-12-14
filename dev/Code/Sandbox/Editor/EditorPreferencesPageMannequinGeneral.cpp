@@ -9,7 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "stdafx.h"
+
+#ifdef ENABLE_LEGACY_ANIMATION
 #include "EditorPreferencesPageMannequinGeneral.h"
 #include <AzCore/Serialization/EditContext.h>
 
@@ -24,7 +27,6 @@ void CEditorPreferencesPage_MannequinGeneral::Reflect(AZ::SerializeContext& seri
     serialize.Class<CEditorPreferencesPage_MannequinGeneral>()
         ->Version(1)
         ->Field("General", &CEditorPreferencesPage_MannequinGeneral::m_general);
-
 
     AZ::EditContext* editContext = serialize.GetEditContext();
     if (editContext)
@@ -64,3 +66,4 @@ void CEditorPreferencesPage_MannequinGeneral::InitializeSettings()
     m_general.m_timelineWheelZoomSpeed = gSettings.mannequinSettings.timelineWheelZoomSpeed;
     m_general.m_trackSize = gSettings.mannequinSettings.trackSize;
 }
+#endif //ENABLE_LEGACY_ANIMATION

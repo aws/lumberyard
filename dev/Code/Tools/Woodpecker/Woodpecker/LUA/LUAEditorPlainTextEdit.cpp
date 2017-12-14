@@ -171,7 +171,7 @@ namespace LUAEditor
                 return;
             }
 
-            if (m_getLUAName && event->key() == Qt::Key::Key_Space && event->modifiers() == Qt::KeyboardModifier::ControlModifier)
+            if ( (m_getLUAName && event->key() == Qt::Key::Key_Space) && (event->modifiers() & Qt::KeyboardModifier::ControlModifier) )
             {
                 auto bounds = cursorRect();
                 bounds.setLeft(bounds.left());
@@ -184,32 +184,37 @@ namespace LUAEditor
             {
                 QPlainTextEdit::keyPressEvent(event);
 
-                auto luaName = m_getLUAName(textCursor());
-                if (!luaName.isEmpty())
+                if (0 == (event->modifiers() & (Qt::KeyboardModifier::ControlModifier | Qt::KeyboardModifier::MetaModifier)))
                 {
-                    m_completer->setCompletionPrefix(luaName);
-                    if ((event->key() >= Qt::Key::Key_0 && event->key() <= Qt::Key::Key_9) ||
-                        (event->key() >= Qt::Key::Key_A && event->key() <= Qt::Key::Key_Z) ||
-                        (event->key() == Qt::Key::Key_Period) || (event->key() == Qt::Key::Key_Colon) ||
-                        (event->key() == Qt::Key::Key_Backspace) || (event->key() == Qt::Key::Key_Delete) ||
-                        m_completer->popup()->isVisible())
+                    // don't proceed into this block and pop up the completer if a hotkey like CTRL+C / CTRL+V is being used.
+
+                    auto luaName = m_getLUAName(textCursor());
+                    if (!luaName.isEmpty())
                     {
-                        if (m_completer->completionCount() == 1 && m_completer->currentCompletion() == m_completer->completionPrefix()) //we have a match already
+                        m_completer->setCompletionPrefix(luaName);
+                        if ((event->key() >= Qt::Key::Key_0 && event->key() <= Qt::Key::Key_9) ||
+                            (event->key() >= Qt::Key::Key_A && event->key() <= Qt::Key::Key_Z) ||
+                            (event->key() == Qt::Key::Key_Period) || (event->key() == Qt::Key::Key_Colon) ||
+                            (event->key() == Qt::Key::Key_Backspace) || (event->key() == Qt::Key::Key_Delete) ||
+                            m_completer->popup()->isVisible())
                         {
-                            m_completer->popup()->hide();
-                        }
-                        else
-                        {
-                            auto bounds = cursorRect();
-                            bounds.setLeft(bounds.left());
-                            bounds.setRight(bounds.left() + 250);
-                            m_completer->complete(bounds);
+                            if (m_completer->completionCount() == 1 && m_completer->currentCompletion() == m_completer->completionPrefix()) //we have a match already
+                            {
+                                m_completer->popup()->hide();
+                            }
+                            else
+                            {
+                                auto bounds = cursorRect();
+                                bounds.setLeft(bounds.left());
+                                bounds.setRight(bounds.left() + 250);
+                                m_completer->complete(bounds);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    m_completer->popup()->hide();
+                    else
+                    {
+                        m_completer->popup()->hide();
+                    }
                 }
             }
         }
@@ -316,7 +321,7 @@ namespace LUAEditor
                     int column = cursor.columnNumber();
 
                     QTextCursor::MoveMode moveMode = QTextCursor::MoveMode::MoveAnchor;
-                    if (event->modifiers() == Qt::KeyboardModifier::ShiftModifier)
+                    if (event->modifiers() & Qt::KeyboardModifier::ShiftModifier)
                     {
                         moveMode = QTextCursor::MoveMode::KeepAnchor;
                     }

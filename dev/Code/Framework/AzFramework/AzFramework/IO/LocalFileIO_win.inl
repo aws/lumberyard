@@ -52,7 +52,7 @@ namespace AZ
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
 
             AZ::OSString searchPattern;
-            if ((!resolvedPath) || (resolvedPath[0] == 0) || (resolvedPath[1] == 0))
+            if ((resolvedPath[0] == 0) || (resolvedPath[1] == 0))
             {
                 return ResultCode::Error; // not a valid path.
             }

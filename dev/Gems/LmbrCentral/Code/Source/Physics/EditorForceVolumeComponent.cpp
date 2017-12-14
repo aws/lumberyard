@@ -12,9 +12,11 @@
 
 #include "StdAfx.h"
 #include "EditorForceVolumeComponent.h"
-#include <AzCore/Serialization/EditContext.h>
-#include "LmbrCentral/Shape/ShapeComponentBus.h"
+
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Script/ScriptContextAttributes.h>
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
 
 namespace LmbrCentral
 {
@@ -23,6 +25,7 @@ namespace LmbrCentral
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorForceVolumeComponent, EditorComponentBase>()
+                ->Field("Visible", &EditorForceVolumeComponent::m_visibleInEditor)
                 ->Field("Configuration", &EditorForceVolumeComponent::m_configuration)
                 ->Version(1)
             ;
@@ -36,10 +39,13 @@ namespace LmbrCentral
                     ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/ForceVolume.png")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/ForceVolume.png")
-                    //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.11
+                    //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.12
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview) // Hidden for v1.12
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/force-volume-component")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("ProximityTriggerService", 0x561f262c))
-                    ->DataElement(0, &EditorForceVolumeComponent::m_configuration, "Configuration", "Configuration for force volume.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorForceVolumeComponent::m_visibleInEditor, "Visible", "Always display this component in the editor viewport")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorForceVolumeComponent::m_configuration, "Configuration", "Configuration for force volume.")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                 ;
 
@@ -52,7 +58,7 @@ namespace LmbrCentral
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Force")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &ForceVolumeConfiguration::m_forceMode, "Mode", "How the direction is calculated. Point it is calculated relative to the center of the volume. Direction is specified manually")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &ForceVolumeConfiguration::m_forceMode, "Mode", "How the direction is calculated. Point it is calculated relative to the center of the volume. Direction is specified manually.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
                     ->EnumAttribute(ForceMode::ePoint, "Point")
                     ->EnumAttribute(ForceMode::eDirection, "Direction")
@@ -62,22 +68,21 @@ namespace LmbrCentral
                     ->EnumAttribute(ForceSpace::eWorldSpace, "World Space")
                     ->EnumAttribute(ForceSpace::eLocalSpace, "Local Space")
 
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &ForceVolumeConfiguration::m_forceMassDependent, "Mass Dependent", "If set, heavier objects receive a larger force, otherwise all objects receive the same force")                    
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &ForceVolumeConfiguration::m_useMass, "Use Mass", "If true, the force scales proportionally with the mass of the entity, otherwise lighter entities will be affected more than heavier ones.")
 
-                    ->DataElement(0, &ForceVolumeConfiguration::m_forceMagnitude, "Magnitude", "The size of the force applied, if 0 it has no effect")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ForceVolumeConfiguration::m_forceMagnitude, "Magnitude", "The size of the force applied, if 0 it has no effect.")
                     ->Attribute(AZ::Edit::Attributes::Suffix, " N")
 
-                    ->DataElement(0, &ForceVolumeConfiguration::m_forceDirection, "Direction", "The direction the force is applied")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ForceVolumeConfiguration::m_forceDirection, "Direction", "The direction the force is applied.")
                     ->Attribute(AZ::Edit::Attributes::Visibility, &ForceVolumeConfiguration::UseDirection)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Resistance")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
-                    ->DataElement(0, &ForceVolumeConfiguration::m_volumeDamping, "Damping", "Applies a force opposite to the objects velocity, if 0 it has no effect")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ForceVolumeConfiguration::m_volumeDamping, "Damping", "Applies a force opposite to the objects velocity, if 0 it has no effect.")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.f)
 
-                    ->DataElement(0, &ForceVolumeConfiguration::m_volumeDensity, "Density", "The density of the volume used to simulate drag, if 0 it has no effect")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ForceVolumeConfiguration::m_volumeDensity, "Density", "The density of the volume used to simulate drag, if 0 it has no effect.")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                     ->Attribute(AZ::Edit::Attributes::Suffix, " kg/m^3")
                 ;
@@ -109,7 +114,7 @@ namespace LmbrCentral
 
     void EditorForceVolumeComponent::DisplayEntity(bool& handled)
     {
-        if (!IsSelected())
+        if (!IsSelected() && !m_visibleInEditor)
         {
             return;
         }
@@ -161,7 +166,7 @@ namespace LmbrCentral
                         );
                     
                     AZ::Vector3 windDir = ForceVolumeComponent::GetWorldForceDirectionAtPoint(m_configuration, worldPoint, volumeAabb.GetCenter(), volumeRotation);
-                    windDir.SetLength(1.0f);
+                    windDir.SetLength(AZ::GetSign(m_configuration.m_forceMagnitude));
 
                     auto isInside = false;
                     ShapeComponentRequestsBus::EventResult(isInside, GetEntityId(), &ShapeComponentRequestsBus::Events::IsPointInside, worldPoint);

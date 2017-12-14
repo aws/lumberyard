@@ -1,0 +1,104 @@
+﻿@import "../../../styles/variables";
+
+.inline-header {
+    display: inline;
+}
+
+.version-list {
+    border: 0;
+    outline: 0;
+    background-color: transparent;
+    text-align-last: right;
+}
+
+version-option {
+    direction: rtl;
+}
+
+.loading-spinner-container {
+    clear: both;
+    text-align: center;
+}
+
+.intent-property {
+    margin-top: 20px;
+    cursor: pointer;
+}
+
+.basic-button {
+    margin-left: 5px;
+    margin-right: 5px;
+    margin-bottom: 20px;
+}
+
+.content-container {
+	margin-bottom: 30px;
+}
+
+table.table {
+    margin-bottom: 30px;
+    thead {
+        display:table-header-group;
+    }
+    tr {
+        .priority-column {
+            width: 10%;
+        }
+        .required-column {
+            width: 10%;
+        }
+        .name-column {
+            width: 25%;
+            .slot-name {
+                width: 70%;
+                margin-top: 2px;
+            }
+        }
+        .slot-type-column {
+            width: 25%;
+            .slot-type-name {
+                width: 60%;
+                height: 20px;
+                margin-top: 2px;
+            }
+        }
+        .prompt-column {
+            width: 30%;
+        }
+    }
+}
+
+.settings-container {
+    margin-left: 15px;
+}
+
+.intent-property-entry {
+    width:60%;
+    margin-top: 2px;
+}
+
+.form-control {
+    display: inline;
+}
+
+.boxed {
+    border: 1px solid $primary-color;
+    height: 50px;
+    line-height: 50px;
+    padding-left: 5px;
+    margin-bottom: 10px;
+    .boxed-content {
+        display: inline-block;
+        vertical-align: middle;
+        line-height: normal;
+    }
+}
+
+.add-button {
+    margin: 0px 0px 0px 0px;
+}
+
+.intent-input {
+    margin-bottom: 10px;
+    vertical-align: baseline;
+}

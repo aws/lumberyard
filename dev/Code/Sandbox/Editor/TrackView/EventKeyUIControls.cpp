@@ -19,6 +19,8 @@
 #include "Objects/EntityScript.h"
 #include "mission.h"
 #include "missionscript.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CEventKeyUIControls
@@ -42,9 +44,9 @@ public:
         AddVariable(mv_deprecated, "Deprecated");
         AddVariable(mv_deprecated, mv_animation, "Animation");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_Event;
+        return paramType == AnimParamType::Event;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -78,7 +80,7 @@ bool CEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Event)
+        if (paramType == AnimParamType::Event)
         {
             mv_event.SetEnumList(NULL);
             mv_animation.SetEnumList(NULL);
@@ -87,7 +89,7 @@ bool CEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
             mv_event->AddEnumItem(QObject::tr("<None>"), "");
             mv_animation->AddEnumItem(QObject::tr("<None>"), "");
 
-            if (keyHandle.GetTrack()->GetAnimNode()->GetType() == eAnimNodeType_Director)
+            if (keyHandle.GetTrack()->GetAnimNode()->GetType() == AnimNodeType::Director)
             {
                 CMission* pMission = GetIEditor()->GetDocument()->GetCurrentMission();
                 if (pMission)
@@ -166,7 +168,7 @@ void CEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Event)
+        if (paramType == AnimParamType::Event)
         {
             IEventKey eventKey;
             keyHandle.GetKey(&eventKey);

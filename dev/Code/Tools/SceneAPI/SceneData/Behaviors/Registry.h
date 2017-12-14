@@ -14,7 +14,6 @@
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <SceneAPI/SceneData/Behaviors/SoftNameTypes.h>
 
 namespace AZ
 {
@@ -31,11 +30,7 @@ namespace AZ
 
                 AZ_CLASS_ALLOCATOR(Registry, SystemAllocator, 0)
 
-                Registry();
                 static void RegisterComponents(ComponentDescriptorList& components);
-
-            private:
-                SoftNameTypes m_softNameTypes;
             };
         } // namespace SceneData
     } // namespace SceneAPI

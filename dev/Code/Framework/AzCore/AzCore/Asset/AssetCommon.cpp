@@ -38,6 +38,29 @@ namespace AZ
                 return AssetManager::Instance().GetAsset(id, type, queueLoad, nullptr, false, isCreate);
             }
 
+            void UpdateAssetInfo(AssetId& id, AZStd::string& assetHint)
+            {
+                // it is possible that the assetID given is legacy / old and we have a new assetId we can use instead for it.
+                // in that case, upgrade the AssetID to the new one, so that future saves are in the new format.
+                // this function should only be invoked if the feature is turned on in the asset manager as it can be (slightly) expensive
+
+                if ((!AssetManager::IsReady()) || (!AssetManager::Instance().GetAssetInfoUpgradingEnabled()))
+                {
+                    return;
+                }
+
+                AZ::Data::AssetInfo assetInfo;
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, id);
+                if (assetInfo.m_assetId.IsValid())
+                {
+                    id = assetInfo.m_assetId;
+                    if (!assetInfo.m_relativePath.empty())
+                    {
+                        assetHint = assetInfo.m_relativePath;
+                    }
+                }
+            }
+
             //=========================================================================
             // ReloadAsset
             //=========================================================================
@@ -71,18 +94,6 @@ namespace AZ
                     }
                 }
                 return nullptr;
-            }
-
-            AZStd::string ResolveAssetHint(const AssetId& id)
-            {
-                AZStd::string assetHint;
-                AZ::Data::AssetInfo assetInfo;
-                AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, id);
-                if (assetInfo.m_assetId.IsValid())
-                {
-                    assetHint = assetInfo.m_relativePath;
-                }
-                return assetHint;
             }
 
             AssetId ResolveAssetId(const AssetId& id)

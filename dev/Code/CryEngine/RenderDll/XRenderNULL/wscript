@@ -15,17 +15,20 @@
 
 def build(bld):
 
-    supported_plats=['win','linux']
-    if bld.is_monolithic_build():
-        if bld.options.mac_build_renderer == 'NULL':
-            supported_plats.append( 'darwin')
-    else:
-        supported_plats.append('darwin');
+    supported_plats = ['win', 'linux']
 
+    platform = bld.env['PLATFORM']
+    if platform == 'project_generator':
+      supported_plats.extend(['darwin', 'android'])
+
+    if not bld.is_monolithic_build():
+      if 'darwin' in platform:
+        supported_plats.append('darwin')
+
+      if 'android' in platform: 
+        supported_plats.append('android')
 
     bld.CryEngineModule(
-
-
         # Settings
         target              = 'CryRenderNULL',
         vs_filter           = 'CryEngine',
@@ -47,7 +50,6 @@ def build(bld):
         uselib              = ['LZMA',
                                'LZSS'],
         additional_settings = bld.Settings( files = '../Common/lzss.cpp', disable_pch = True ),
-
 
         # Platform Specific
         win_cxxflags     = '/Zm200',

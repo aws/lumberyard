@@ -1,5 +1,5 @@
-local utilities = require "scripts/common/utilities"
 require "scripts/Weapons/Weapon"
+local utilities = require "scripts/common/utilities"
 
 local plasmarifle =
 {
@@ -61,7 +61,9 @@ function plasmarifle:DoFire(useForwardForAiming, playerOwned)
 	
 	-- Always use the weapon's direction for A.I.
 	if (not playerOwned or useForwardForAiming == true) then
-		dir = self.weapon:GetJitteredDirection(TransformBus.Event.GetWorldTM(self.entityId):GetColumn(2):GetNormalized());
+	
+		local weaponForward = self.weapon:GetWeaponForward();
+		dir = self.weapon:GetJitteredDirection(weaponForward:GetNormalized());
 		rayCastConfig.origin = endOfBarrelPos;
 		rayCastConfig.direction =  dir;
 		hits = PhysicsSystemRequestBus.Broadcast.RayCast(rayCastConfig);
@@ -104,16 +106,7 @@ function plasmarifle:DoFire(useForwardForAiming, playerOwned)
 	
 	-- Apply an impulse if we hit a physics object.
 	if (hasBlockingHit) then
-		-- send damage event, make sure that i cannot hurt myself
-		local godMode = utilities.GetDebugManagerBool("GodMode", false);
-		
-		if (rch.entityId:IsValid() and ((rch.entityId ~= self.Properties.Owner) and not ((godMode == true) and StarterGameUtility.EntityHasTag(rch.entityId, "PlayerCharacter"))) ) then
-			local eventId = GameplayNotificationId(rch.entityId, self.Properties.Events.DealDamage, "float");
-			--Debug.Log("Damaging [" .. tostring(rch.entityId) .. "] for " .. self.Properties.Firepower.Damage .. " by [" .. tostring(self.Properties.Owner) .. "] message \"" .. self.Properties.Events.DealDamage .. "\", combinedID == " .. tostring(eventId));
-			GameplayNotificationBus.Event.OnEventBegin(eventId, -self.Properties.Firepower.Damage);
-		end
-	
-		if (rch.entityId:IsValid() and (StarterGameUtility.EntityHasTag(rch.entityId, "PlayerCharacter") or StarterGameUtility.EntityHasTag(rch.entityId, "AICharacter"))) then
+		if (rch.entityId:IsValid() and (StarterGameEntityUtility.EntityHasTag(rch.entityId, "PlayerCharacter") or StarterGameEntityUtility.EntityHasTag(rch.entityId, "AICharacter"))) then
 			-- We don't want to apply an impulse to player or A.I. characters.
 			local params = GotShotParams();
 			params.damage = self.Properties.Firepower.Damage;
@@ -124,6 +117,14 @@ function plasmarifle:DoFire(useForwardForAiming, playerOwned)
 		else
 			--Debug.Log("Applying impulse to " .. tostring(rch.entityId) .. " with force " .. dir.x .. ", " .. dir.y .. ", " .. dir.z);
 			PhysicsComponentRequestBus.Event.AddImpulseAtPoint(rch.entityId, dir * self.Properties.Firepower.ForceMultiplier, rch.position);
+		end
+		
+		-- send damage event, make sure that i cannot hurt myself
+		local godMode = utilities.GetDebugManagerBool("GodMode", false);
+		if (rch.entityId:IsValid() and ((rch.entityId ~= self.Properties.Owner) and not ((godMode == true) and StarterGameEntityUtility.EntityHasTag(rch.entityId, "PlayerCharacter"))) ) then
+			local eventId = GameplayNotificationId(rch.entityId, self.Properties.Events.DealDamage, "float");
+			--Debug.Log("Damaging [" .. tostring(rch.entityId) .. "] for " .. self.Properties.Firepower.Damage .. " by [" .. tostring(self.Properties.Owner) .. "] message \"" .. self.Properties.Events.DealDamage .. "\", combinedID == " .. tostring(eventId));
+			GameplayNotificationBus.Event.OnEventBegin(eventId, -self.Properties.Firepower.Damage);
 		end
 	end
 	
@@ -153,7 +154,7 @@ function plasmarifle:DoFire(useForwardForAiming, playerOwned)
 		local params = DecalSpawnerParams();
 		params.event = "SpawnDecalRifleShot";
 		params.transform = MathUtils.CreateLookAt(rayEnd, rayEnd + rch.normal, AxisType.ZPositive);
-		params.surfaceType = StarterGameUtility.GetSurfaceType(rayEnd - (dir * 0.5), dir);
+		params.surfaceType = StarterGameUtility.GetSurfaceFromRayCast(rayEnd - (dir * 0.5), dir);
 		params.attachToEntity = rch.entityId:IsValid();
 		if (params.attachToEntity == true) then
 			params.targetId = rch.entityId;

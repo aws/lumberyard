@@ -38,7 +38,7 @@ namespace MCommon
 
         mMinDistance            = mNearClipDistance;
         mMaxDistance            = mFarClipDistance * 0.5f;
-        mPosition               = MCore::Vector3(0.0f, 0.0f, 0.0f);
+        mPosition               = AZ::Vector3::CreateZero();
         mPositionDelta          = AZ::Vector2(0.0f, 0.0f);
 
         if (flightTime < MCore::Math::epsilon)
@@ -47,7 +47,7 @@ namespace MCommon
             mCurrentDistance        = (float)MCore::Distance::ConvertValue(5.0f, MCore::Distance::UNITTYPE_METERS, EMotionFX::GetEMotionFX().GetUnitType());
             mAlpha                  = GetDefaultAlpha();
             mBeta                   = GetDefaultBeta();
-            mTarget                 = MCore::Vector3(0.0f, 0.0f, 0.0f);
+            mTarget                 = AZ::Vector3::CreateZero();
         }
         else
         {
@@ -57,7 +57,7 @@ namespace MCommon
             mFlightSourceDistance   = mCurrentDistance;
             mFlightTargetDistance   = (float)MCore::Distance::ConvertValue(5.0f, MCore::Distance::UNITTYPE_METERS, EMotionFX::GetEMotionFX().GetUnitType());
             mFlightSourcePosition   = mTarget;
-            mFlightTargetPosition   = MCore::Vector3(0.0f, 0.0f, 0.0f);
+            mFlightTargetPosition   = AZ::Vector3::CreateZero();
             mFlightSourceAlpha      = mAlpha;
             mFlightTargetAlpha      = GetDefaultAlpha();
             mFlightSourceBeta       = mBeta;
@@ -74,7 +74,7 @@ namespace MCommon
     }
 
 
-    void OrbitCamera::StartFlight(float distance, const MCore::Vector3& position, float alpha, float beta, float flightTime)
+    void OrbitCamera::StartFlight(float distance, const AZ::Vector3& position, float alpha, float beta, float flightTime)
     {
         mFlightActive           = true;
         mFlightMaxTime          = flightTime;
@@ -216,14 +216,14 @@ namespace MCommon
         }
 
         // calculate unit direction vector based on our two angles
-        MCore::Vector3 unitSphereVector;
-        unitSphereVector.x  = MCore::Math::Cos(MCore::Math::DegreesToRadians(mAlpha)) * MCore::Math::Cos(MCore::Math::DegreesToRadians(mBeta));
-        unitSphereVector.y  = MCore::Math::Sin(MCore::Math::DegreesToRadians(mAlpha)) * MCore::Math::Cos(MCore::Math::DegreesToRadians(mBeta));
-        unitSphereVector.z  = MCore::Math::Sin(MCore::Math::DegreesToRadians(mBeta));
+        AZ::Vector3 unitSphereVector;
+        unitSphereVector.SetX(MCore::Math::Cos(MCore::Math::DegreesToRadians(mAlpha)) * MCore::Math::Cos(MCore::Math::DegreesToRadians(mBeta)));
+        unitSphereVector.SetY(MCore::Math::Sin(MCore::Math::DegreesToRadians(mAlpha)) * MCore::Math::Cos(MCore::Math::DegreesToRadians(mBeta)));
+        unitSphereVector.SetZ(MCore::Math::Sin(MCore::Math::DegreesToRadians(mBeta)));
 
         // calculate the right and the up vector based on the direction vector
-        MCore::Vector3 rightVec = unitSphereVector.Cross(MCore::Vector3(0.0f, 0.0f, 1.0f)).Normalized();
-        MCore::Vector3 upVec    = rightVec.Cross(unitSphereVector).Normalized();
+        AZ::Vector3 rightVec = unitSphereVector.Cross(AZ::Vector3(0.0f, 0.0f, 1.0f)).GetNormalized();
+        AZ::Vector3 upVec = rightVec.Cross(unitSphereVector).GetNormalized();
 
         // calculate the lookat target and the camera position using our rotation sphere vectors
         mTarget             += (rightVec * mPositionDelta.GetX()) * mTranslationSpeed + (upVec * mPositionDelta.GetY()) * mTranslationSpeed;
@@ -238,7 +238,7 @@ namespace MCommon
 
 
     // set all attributes to define a unique camera transformation and update it afterwards
-    void OrbitCamera::Set(float alpha, float beta, float currentDistance, const MCore::Vector3& target)
+    void OrbitCamera::Set(float alpha, float beta, float currentDistance, const AZ::Vector3& target)
     {
         SetAlpha(alpha);
         SetBeta(beta);

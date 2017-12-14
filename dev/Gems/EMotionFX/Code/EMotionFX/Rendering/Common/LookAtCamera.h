@@ -51,7 +51,7 @@ namespace MCommon
          * @param target The target position, so where the will be camera is looking at.
          * @param up The up vector, describing the roll of the camera, where (0,1,0) would mean the camera is straight up and has no roll. (0,-1,0) would be upside down, etc.
          */
-        void LookAt(const MCore::Vector3& target, const MCore::Vector3& up = MCore::Vector3( 0.0f, 1.0f, 0.0f ));
+        void LookAt(const AZ::Vector3& target, const AZ::Vector3& up = AZ::Vector3( 0.0f, 1.0f, 0.0f ));
 
         /**
          * Update the camera transformation.
@@ -70,29 +70,29 @@ namespace MCommon
          * Set the target position. Note that the camera needs an update after setting a new target.
          * @param[in] target The new camera target.
          */
-        MCORE_INLINE void SetTarget(const MCore::Vector3& target)   { mTarget = target; }
+        MCORE_INLINE void SetTarget(const AZ::Vector3& target)   { mTarget = target; }
 
         /**
          * Get the target position.
          * @return The current camera target.
          */
-        MCORE_INLINE MCore::Vector3 GetTarget() const               { return mTarget; }
+        MCORE_INLINE AZ::Vector3 GetTarget() const               { return mTarget; }
 
         /**
          * Set the up vector for the camera. Note that the camera needs an update after setting a new up vector.
          * @param[in] up The new camera up vector.
          */
-        MCORE_INLINE void SetUp(const MCore::Vector3& up)           { mUp = up; }
+        MCORE_INLINE void SetUp(const AZ::Vector3& up)           { mUp = up; }
 
         /**
          * Get the camera up vector.
          * @return The current up vector.
          */
-        MCORE_INLINE MCore::Vector3 GetUp() const                   { return mUp; }
+        MCORE_INLINE AZ::Vector3 GetUp() const                   { return mUp; }
 
     protected:
-        MCore::Vector3 mTarget; /**< The camera target. */
-        MCore::Vector3 mUp;     /**< The up vector of the camera. */
+        AZ::Vector3 mTarget; /**< The camera target. */
+        AZ::Vector3 mUp;     /**< The up vector of the camera. */
     };
 } // namespace MCommon
 

@@ -197,6 +197,7 @@ CImplementationManager* CAudioControlsEditorPlugin::GetImplementationManager()
 }
 
 //-----------------------------------------------------------------------------------------------//
+template<>
 REFGUID CQtViewClass<AudioControls::CAudioControlsEditorWindow>::GetClassID()
 {
     // {82AD1635-38A6-4642-A801-EAB7A829411B}

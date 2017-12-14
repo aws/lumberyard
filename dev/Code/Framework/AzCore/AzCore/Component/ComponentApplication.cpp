@@ -24,6 +24,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/ObjectStream.h>
 
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/RTTI/AzStdReflectionComponent.h>
 
@@ -58,9 +59,9 @@
 
 #include <AzCore/XML/rapidxml.h>
 
-#if defined(AZCORE_ENABLE_MEMORY_TRACKING)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
 #include <AzCore/Debug/StackTracer.h>
-#endif // defined(AZCORE_ENABLE_MEMORY_TRACKING)
+#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
 
 #if defined(AZ_PLATFORM_APPLE)
 #   include <mach-o/dyld.h>
@@ -430,15 +431,18 @@ namespace AZ
         m_currentTime = AZStd::chrono::system_clock::now();
         TickRequestBus::Handler::BusConnect();
 
-#if defined(AZCORE_ENABLE_MEMORY_TRACKING)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         // Prior to loading more modules, we make sure SymbolStorage
         // is listening for the loads so it can keep track of which
         // modules we may eventually need symbols for
         Debug::SymbolStorage::RegisterModuleListeners();
-#endif // defined(AZCORE_ENABLE_MEMORY_TRACKING)
+#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
+
+        PreModuleLoad();
 
         // Setup the modules list
         m_moduleManager = AZStd::make_unique<ModuleManager>();
+        m_moduleManager->SetSystemComponentTags(m_startupParameters.m_systemComponentTags);
         // Load dynamic modules if appropriate for the platform
         if (m_startupParameters.m_loadDynamicModules)
         {
@@ -485,6 +489,11 @@ namespace AZ
                 delete entity;
             }
         }
+
+        // Force full garbage collect after all game entities destroyed, but before modules are unloaded.
+        // This is to ensure that all references to reflected classes/ebuses are cleaned up before the data is deleted.
+        // This problem could also be solved by using ref-counting for reflected data.
+        ScriptSystemRequestBus::Broadcast(&ScriptSystemRequests::GarbageCollect);
 
         // Uninit and unload any dynamic modules.
         m_moduleManager.reset();
@@ -550,11 +559,11 @@ namespace AZ
 
         m_isStarted = false;
 
-#if defined(AZCORE_ENABLE_MEMORY_TRACKING)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         // Unregister module listeners after allocators are destroyed
         // so that symbol/stack trace information is available at shutdown
         Debug::SymbolStorage::UnregisterModuleListeners();
-#endif // defined(AZCORE_ENABLE_MEMORY_TRACKING)
+#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
     }
 
     //=========================================================================
@@ -925,6 +934,53 @@ namespace AZ
     {
     }
 
+    bool ComponentApplication::ShouldAddSystemComponent(AZ::ComponentDescriptor* descriptor)
+    {
+        // NOTE: This is different than modules! All system components must be listed in GetRequiredSystemComponents, and then AZ::Edit::Attributes::SystemComponentTags may be used to filter down from there
+
+        // If the required tags are empty, it is assumed all components with the attribute are required
+        if (m_startupParameters.m_systemComponentTags.empty())
+        {
+            return true;
+        }
+
+        const SerializeContext::ClassData* classData = m_serializeContext->FindClassData(descriptor->GetUuid());
+        AZ_Warning("ComponentApplication", classData, "Component type %s not reflected to SerializeContext!", descriptor->GetName());
+        if (classData)
+        {
+            if (Attribute* attribute = FindAttribute(Edit::Attributes::SystemComponentTags, classData->m_attributes))
+            {
+                // Read the tags
+                AZStd::vector<AZ::Crc32> tags;
+                AZ::AttributeReader reader(nullptr, attribute);
+                AZ::Crc32 tag;
+                if (reader.Read<AZ::Crc32>(tag))
+                {
+                    tags.emplace_back(tag);
+                }
+                else
+                {
+                    AZ_Verify(reader.Read<AZStd::vector<AZ::Crc32>>(tags), "Attribute \"AZ::Edit::Attributes::SystemComponentTags\" must be of type AZ::Crc32 or AZStd::vector<AZ::Crc32>");
+                }
+
+                // Match tags to required tags
+                for (const AZ::Crc32& requiredTag : m_startupParameters.m_systemComponentTags)
+                {
+                    if (AZStd::find(tags.begin(), tags.end(), requiredTag) != tags.end())
+                    {
+                        // Tag match, add component
+                        return true;
+                    }
+                }
+
+                // If the tags didn't match, don't use the component
+                return false;
+            }
+        }
+        // If attribute not present, assume wanted for all contexts
+        return true;
+    }
+
     //=========================================================================
     // AddRequiredSystemComponents
     //=========================================================================
@@ -933,7 +989,6 @@ namespace AZ
         //
         // Gather required system components from all modules and the application.
         //
-
         for (const Uuid& componentId : GetRequiredSystemComponents())
         {
             ComponentDescriptor* componentDescriptor = nullptr;
@@ -945,10 +1000,13 @@ namespace AZ
                 continue;
             }
 
-            // add component if it's not already present
-            if (!systemEntity->FindComponent(componentId))
+            if (ShouldAddSystemComponent(componentDescriptor))
             {
-                systemEntity->AddComponent(componentDescriptor->CreateComponent());
+                // add component if it's not already present
+                if (!systemEntity->FindComponent(componentId))
+                {
+                    systemEntity->AddComponent(componentDescriptor->CreateComponent());
+                }
             }
         }
 
@@ -986,7 +1044,7 @@ namespace AZ
         char exeDirectory[AZ_MAX_PATH_LEN];
 
         // Platform specific get exe path: http://stackoverflow.com/a/1024937
-#if defined(AZ_COMPILER_MSVC)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
         // https://msdn.microsoft.com/en-us/library/windows/desktop/ms683197(v=vs.85).aspx
         DWORD pathLen = GetModuleFileNameA(nullptr, exeDirectory, AZ_ARRAY_SIZE(exeDirectory));
 #elif defined(AZ_PLATFORM_APPLE)
@@ -1123,13 +1181,12 @@ namespace AZ
         ModuleManager::Reflect(context);
         // reflect descriptor
         Descriptor::Reflect(context, this);
-
-        if (serializeContext)
-        {
-            AZ::SplineReflect(*serializeContext);
-            AZ::VertexContainerReflect(*serializeContext);
-            AZ::PolygonPrismReflect(*serializeContext);
-        }
+        // reflect vertex container
+        VertexContainerReflect(context);
+        // reflect spline and associated data
+        SplineReflect(context);
+        // reflect polygon prism
+        PolygonPrismReflect(context);
 
         // reflect all registered classes
         EBUS_EVENT(ComponentDescriptorBus, Reflect, context);

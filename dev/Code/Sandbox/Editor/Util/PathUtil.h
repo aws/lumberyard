@@ -29,6 +29,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <QRegularExpression>
+#include <QDir>
 
 class QString;
 class QStringList;
@@ -328,7 +329,11 @@ namespace Path
         return sLocalizationFolder;
     }
 
+    //! Returns the aliased path to the user Sandbox folder
     EDITOR_CORE_API QString GetUserSandboxFolder();
+
+    //! Returns the resolved, non-aliased path to the user Sandbox folder
+    EDITOR_CORE_API QString GetResolvedUserSandboxFolder();
 
     //! Convert a path to the uniform form.
     EDITOR_CORE_API QString ToUnixPath(const QString& strPath, bool bCallCaselessPath = true);

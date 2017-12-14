@@ -140,13 +140,8 @@ namespace EMStudio
                 return;
             }
 
-            OutlinerCategory* category = manager->FindCategoryByName("Motion Sets");
-            if (category == nullptr)
-            {
-                return;
-            }
 
-            category->RemoveItem(motionSet->GetID());
+            manager->RemoveItemFromCategory("Motion Sets", motionSet->GetID());
         }
     };
 
@@ -415,10 +410,7 @@ namespace EMStudio
                 continue;
             }
 
-            OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-            outlinerCategoryItem->mID = motionSet->GetID();
-            outlinerCategoryItem->mUserData = motionSet;
-            outlinerCategory->AddItem(outlinerCategoryItem);
+            outlinerCategory->AddItem(motionSet->GetID(), motionSet);
         }
 
         // add the event handler
@@ -660,10 +652,7 @@ namespace EMStudio
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandCreateMotionSet* createMotionSetCommand = static_cast<CommandSystem::CommandCreateMotionSet*>(command);
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(createMotionSetCommand->mPreviouslyUsedID);
-        OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-        outlinerCategoryItem->mID = motionSet->GetID();
-        outlinerCategoryItem->mUserData = motionSet;
-        GetOutlinerManager()->FindCategoryByName("Motion Sets")->AddItem(outlinerCategoryItem);
+        GetOutlinerManager()->AddItemToCategory("Motion Sets", motionSet->GetID(), motionSet);
         return ReInitMotionSetsPlugin();
     }
 
@@ -675,7 +664,7 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandRemoveMotionSet* removeMotionSetCommand = static_cast<CommandSystem::CommandRemoveMotionSet*>(command);
-        GetOutlinerManager()->FindCategoryByName("Motion Sets")->RemoveItem(removeMotionSetCommand->mPreviouslyUsedID);
+        GetOutlinerManager()->RemoveItemFromCategory("Motion Sets", removeMotionSetCommand->mPreviouslyUsedID);
         return ReInitMotionSetsPlugin();
     }
 
@@ -876,10 +865,7 @@ namespace EMStudio
             return false;
         }
 
-        OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-        outlinerCategoryItem->mID = motionSet->GetID();
-        outlinerCategoryItem->mUserData = motionSet;
-        GetOutlinerManager()->FindCategoryByName("Motion Sets")->AddItem(outlinerCategoryItem);
+        GetOutlinerManager()->AddItemToCategory("Motion Sets", motionSet->GetID(), motionSet);
 
         const EMotionFX::MotionSet::EntryMap& motionEntries = motionSet->GetMotionEntries();
         for (const auto& item : motionEntries)
@@ -891,10 +877,7 @@ namespace EMStudio
                 continue;
             }
 
-            OutlinerCategoryItem* motionOutlinerCategoryItem = new OutlinerCategoryItem();
-            motionOutlinerCategoryItem->mID = motion->GetID();
-            motionOutlinerCategoryItem->mUserData = motion;
-            GetOutlinerManager()->FindCategoryByName("Motions")->AddItem(motionOutlinerCategoryItem);
+            GetOutlinerManager()->AddItemToCategory("Motions", motion->GetID(), motion);
         }
 
         EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionSetsWindowPlugin::CLASS_ID);

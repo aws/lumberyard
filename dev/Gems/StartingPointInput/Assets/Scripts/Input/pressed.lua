@@ -26,7 +26,6 @@ function pressed:OnActivate()
 end
 
 function pressed:OnPressed(floatValue)
-	GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(self.entityId, self.Properties.OutgoingGameplayEventName), floatValue)
 	GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(self.entityId, self.Properties.OutgoingGameplayEventName, "float"), floatValue)
 end
 
@@ -34,7 +33,6 @@ function pressed:OnHeld(floatValue)
 end
 
 function pressed:OnReleased(floatValue)
-	GameplayNotificationBus.Event.OnEventEnd(GameplayNotificationId(self.entityId, self.Properties.OutgoingGameplayEventName), floatValue)
 	GameplayNotificationBus.Event.OnEventEnd(GameplayNotificationId(self.entityId, self.Properties.OutgoingGameplayEventName, "float"), floatValue)
 end
 

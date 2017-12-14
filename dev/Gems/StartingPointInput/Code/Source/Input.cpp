@@ -24,6 +24,7 @@
 
 // CryCommon includes
 #include <PlayerProfileRequestBus.h>
+#include <InputTypes.h>
 
 
 namespace Input
@@ -167,23 +168,33 @@ namespace Input
     bool Input::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
     {
         const bool isPressed = fabs(inputChannel.GetValue()) > m_deadZone;
-        const float value = inputChannel.GetValue() * m_eventValueMultiplier;
         if (!m_wasPressed && isPressed)
         {
-            AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnPressed, value);
+            SendEventsInternal(inputChannel, m_outgoingBusId, &AZ::InputEventNotificationBus::Events::OnPressed);
         }
         else if (m_wasPressed && isPressed)
         {
-            AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnHeld, value);
+            SendEventsInternal(inputChannel, m_outgoingBusId, &AZ::InputEventNotificationBus::Events::OnHeld);
         }
         else if (m_wasPressed && !isPressed)
         {
-            AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnReleased, value);
+            SendEventsInternal(inputChannel, m_outgoingBusId, &AZ::InputEventNotificationBus::Events::OnReleased);
         }
         m_wasPressed = isPressed;
 
         // Return false so we don't consume the event. This should perhaps be a configurable option?
         return false;
+    }
+
+    void Input::SendEventsInternal(const AzFramework::InputChannel& inputChannel, const AZ::InputEventNotificationId busId, InputEventType eventType)
+    {
+        const float value = inputChannel.GetValue() * m_eventValueMultiplier;
+        AZ::InputEventNotificationBus::Event(busId, eventType, value);
+        if (busId.m_profileIdCrc != ::Input::BroadcastProfile)
+        {
+            AZ::InputEventNotificationId wildCardBusId = AZ::InputEventNotificationId(::Input::BroadcastProfile, busId.m_actionNameCrc);
+            AZ::InputEventNotificationBus::Event(wildCardBusId, eventType, value);
+        }
     }
 
     void Input::Activate(const AZ::InputEventNotificationId& eventNotificationId)

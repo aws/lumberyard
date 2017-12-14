@@ -43,20 +43,20 @@ namespace MCommon
         mPlaneSelectorPos   = mSize / 2;
 
         // set the bounding volumes of the axes selection
-        mXAxisAABB.SetMax(mPosition + MCore::Vector3(mSize + mArrowLength, mBaseRadius, mBaseRadius));
-        mXAxisAABB.SetMin(mPosition - MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
-        mYAxisAABB.SetMax(mPosition + MCore::Vector3(mBaseRadius, mSize + mArrowLength, mBaseRadius));
-        mYAxisAABB.SetMin(mPosition - MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
-        mZAxisAABB.SetMax(mPosition + MCore::Vector3(mBaseRadius, mBaseRadius, mSize + mArrowLength));
-        mZAxisAABB.SetMin(mPosition - MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mXAxisAABB.SetMax(mPosition + AZ::Vector3(mSize + mArrowLength, mBaseRadius, mBaseRadius));
+        mXAxisAABB.SetMin(mPosition - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mYAxisAABB.SetMax(mPosition + AZ::Vector3(mBaseRadius, mSize + mArrowLength, mBaseRadius));
+        mYAxisAABB.SetMin(mPosition - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mZAxisAABB.SetMax(mPosition + AZ::Vector3(mBaseRadius, mBaseRadius, mSize + mArrowLength));
+        mZAxisAABB.SetMin(mPosition - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
 
         // set bounding volumes for the plane selectors
-        mXYPlaneAABB.SetMax(mPosition + MCore::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, mBaseRadius));
-        mXYPlaneAABB.SetMin(mPosition + 0.3 * MCore::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0) - MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
-        mXZPlaneAABB.SetMax(mPosition + MCore::Vector3(mPlaneSelectorPos, mBaseRadius, mPlaneSelectorPos));
-        mXZPlaneAABB.SetMin(mPosition + 0.3 * MCore::Vector3(mPlaneSelectorPos, 0, mPlaneSelectorPos) - MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
-        mYZPlaneAABB.SetMax(mPosition + MCore::Vector3(mBaseRadius, mPlaneSelectorPos, mPlaneSelectorPos));
-        mYZPlaneAABB.SetMin(mPosition + 0.3 * MCore::Vector3(0, mPlaneSelectorPos, mPlaneSelectorPos) - MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mXYPlaneAABB.SetMax(mPosition + AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, mBaseRadius));
+        mXYPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mXZPlaneAABB.SetMax(mPosition + AZ::Vector3(mPlaneSelectorPos, mBaseRadius, mPlaneSelectorPos));
+        mXZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mPlaneSelectorPos, 0, mPlaneSelectorPos) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mYZPlaneAABB.SetMax(mPosition + AZ::Vector3(mBaseRadius, mPlaneSelectorPos, mPlaneSelectorPos));
+        mYZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(0, mPlaneSelectorPos, mPlaneSelectorPos) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
     }
 
 
@@ -75,12 +75,12 @@ namespace MCommon
 
         // calculate the camera roll ray
         MCore::Ray camRollRay = camera->Unproject(screenWidth / 2, screenHeight / 2);
-        MCore::Vector3 camDir = camRollRay.GetDirection();
+        AZ::Vector3 camDir = camRollRay.GetDirection();
 
         // determine the axis visibility, to disable movement for invisible axes
-        mXAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(MCore::Vector3(1.0f, 0.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
-        mYAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(MCore::Vector3(0.0f, 1.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
-        mZAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(MCore::Vector3(0.0f, 0.0f, 1.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
+        mXAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(AZ::Vector3(1.0f, 0.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
+        mYAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
+        mZAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(AZ::Vector3(0.0f, 0.0f, 1.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
     }
 
 
@@ -141,79 +141,79 @@ namespace MCommon
         if (mXAxisVisible)
         {
             // the x axis consisting of a line, cylinder and plane selectors
-            renderUtil->RenderLine(mPosition, mPosition + MCore::Vector3(mSize, 0.0, 0.0), xAxisColor);
-            renderUtil->RenderCylinder(mBaseRadius, 0, mArrowLength, mPosition + MCore::Vector3(mSize, 0, 0), MCore::Vector3(1, 0, 0), ManipulatorColors::mRed);
-            renderUtil->RenderLine(mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0, 0.0), mPosition + MCore::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0), xyPlaneColorX);
-            renderUtil->RenderLine(mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0, 0.0), mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0, mPlaneSelectorPos), xzPlaneColorX);
+            renderUtil->RenderLine(mPosition, mPosition + AZ::Vector3(mSize, 0.0, 0.0), xAxisColor);
+            renderUtil->RenderCylinder(mBaseRadius, 0, mArrowLength, mPosition + AZ::Vector3(mSize, 0, 0), AZ::Vector3(1, 0, 0), ManipulatorColors::mRed);
+            renderUtil->RenderLine(mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0, 0.0), mPosition + AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0), xyPlaneColorX);
+            renderUtil->RenderLine(mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0, 0.0), mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0, mPlaneSelectorPos), xzPlaneColorX);
 
             // render the axis label for the x axis
-            MCore::Vector3 textPosX = MCore::Project(mPosition + MCore::Vector3(mSize + mArrowLength + mBaseRadius, -mBaseRadius, 0.0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-            renderUtil->RenderText(textPosX.x, textPosX.y, "X", xAxisColor);
+            AZ::Vector3 textPosX = MCore::Project(mPosition + AZ::Vector3(mSize + mArrowLength + mBaseRadius, -mBaseRadius, 0.0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+            renderUtil->RenderText(textPosX.GetX(), textPosX.GetY(), "X", xAxisColor);
         }
 
         if (mYAxisVisible)
         {
             // the y axis consisting of a line, cylinder and plane selectors
-            renderUtil->RenderLine(mPosition, mPosition + MCore::Vector3(0.0, mSize, 0.0), yAxisColor);
-            renderUtil->RenderCylinder(mBaseRadius, 0, mArrowLength, mPosition + MCore::Vector3(0, mSize, 0), MCore::Vector3(0, 1, 0), ManipulatorColors::mGreen);
-            renderUtil->RenderLine(mPosition + MCore::Vector3(0.0, mPlaneSelectorPos, 0.0), mPosition + MCore::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0), xyPlaneColorY);
-            renderUtil->RenderLine(mPosition + MCore::Vector3(0.0, mPlaneSelectorPos, 0.0), mPosition + MCore::Vector3(0.0, mPlaneSelectorPos, mPlaneSelectorPos), yzPlaneColorY);
+            renderUtil->RenderLine(mPosition, mPosition + AZ::Vector3(0.0, mSize, 0.0), yAxisColor);
+            renderUtil->RenderCylinder(mBaseRadius, 0, mArrowLength, mPosition + AZ::Vector3(0, mSize, 0), AZ::Vector3(0, 1, 0), ManipulatorColors::mGreen);
+            renderUtil->RenderLine(mPosition + AZ::Vector3(0.0, mPlaneSelectorPos, 0.0), mPosition + AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0), xyPlaneColorY);
+            renderUtil->RenderLine(mPosition + AZ::Vector3(0.0, mPlaneSelectorPos, 0.0), mPosition + AZ::Vector3(0.0, mPlaneSelectorPos, mPlaneSelectorPos), yzPlaneColorY);
 
             // render the axis label for the y axis
-            MCore::Vector3 textPosY = MCore::Project(mPosition + MCore::Vector3(0.0, mSize + mArrowLength + mBaseRadius, -mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-            renderUtil->RenderText(textPosY.x, textPosY.y, "Y", yAxisColor);
+            AZ::Vector3 textPosY = MCore::Project(mPosition + AZ::Vector3(0.0, mSize + mArrowLength + mBaseRadius, -mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+            renderUtil->RenderText(textPosY.GetX(), textPosY.GetY(), "Y", yAxisColor);
         }
 
         if (mZAxisVisible)
         {
             // the z axis consisting of a line, cylinder and plane selectors
-            renderUtil->RenderLine(mPosition, mPosition + MCore::Vector3(0.0, 0.0, mSize), zAxisColor);
-            renderUtil->RenderCylinder(mBaseRadius, 0, mArrowLength, mPosition + MCore::Vector3(0, 0, mSize), MCore::Vector3(0, 0, 1), ManipulatorColors::mBlue);
-            renderUtil->RenderLine(mPosition + MCore::Vector3(0.0, 0.0, mPlaneSelectorPos), mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0, mPlaneSelectorPos), xzPlaneColorZ);
-            renderUtil->RenderLine(mPosition + MCore::Vector3(0.0, 0.0, mPlaneSelectorPos), mPosition + MCore::Vector3(0.0, mPlaneSelectorPos, mPlaneSelectorPos), yzPlaneColorZ);
+            renderUtil->RenderLine(mPosition, mPosition + AZ::Vector3(0.0, 0.0, mSize), zAxisColor);
+            renderUtil->RenderCylinder(mBaseRadius, 0, mArrowLength, mPosition + AZ::Vector3(0, 0, mSize), AZ::Vector3(0, 0, 1), ManipulatorColors::mBlue);
+            renderUtil->RenderLine(mPosition + AZ::Vector3(0.0, 0.0, mPlaneSelectorPos), mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0, mPlaneSelectorPos), xzPlaneColorZ);
+            renderUtil->RenderLine(mPosition + AZ::Vector3(0.0, 0.0, mPlaneSelectorPos), mPosition + AZ::Vector3(0.0, mPlaneSelectorPos, mPlaneSelectorPos), yzPlaneColorZ);
 
             // render the axis label for the z axis
-            MCore::Vector3 textPosZ = MCore::Project(mPosition + MCore::Vector3(0.0, mBaseRadius, mSize + mArrowLength + mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-            renderUtil->RenderText(textPosZ.x, textPosZ.y, "Z", zAxisColor);
+            AZ::Vector3 textPosZ = MCore::Project(mPosition + AZ::Vector3(0.0, mBaseRadius, mSize + mArrowLength + mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+            renderUtil->RenderText(textPosZ.GetX(), textPosZ.GetY(), "Z", zAxisColor);
         }
 
         // draw transparent quad for the plane selectors
         if (mMode == TRANSLATE_XY)
         {
-            renderUtil->RenderTriangle(mPosition, mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0f, 0.0f), mPosition + MCore::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0f), ManipulatorColors::mSelectionColorDarker);
-            renderUtil->RenderTriangle(mPosition, mPosition + MCore::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0f), mPosition + MCore::Vector3(0.0f, mPlaneSelectorPos, 0.0f), ManipulatorColors::mSelectionColorDarker);
+            renderUtil->RenderTriangle(mPosition, mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0f, 0.0f), mPosition + AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0f), ManipulatorColors::mSelectionColorDarker);
+            renderUtil->RenderTriangle(mPosition, mPosition + AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0.0f), mPosition + AZ::Vector3(0.0f, mPlaneSelectorPos, 0.0f), ManipulatorColors::mSelectionColorDarker);
         }
         else if (mMode == TRANSLATE_XZ)
         {
-            renderUtil->RenderTriangle(mPosition, mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0f, 0.0f), mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0f, mPlaneSelectorPos), ManipulatorColors::mSelectionColorDarker);
-            renderUtil->RenderTriangle(mPosition, mPosition + MCore::Vector3(mPlaneSelectorPos, 0.0f, mPlaneSelectorPos), mPosition + MCore::Vector3(0.0f, 0.0f, mPlaneSelectorPos), ManipulatorColors::mSelectionColorDarker);
+            renderUtil->RenderTriangle(mPosition, mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0f, 0.0f), mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0f, mPlaneSelectorPos), ManipulatorColors::mSelectionColorDarker);
+            renderUtil->RenderTriangle(mPosition, mPosition + AZ::Vector3(mPlaneSelectorPos, 0.0f, mPlaneSelectorPos), mPosition + AZ::Vector3(0.0f, 0.0f, mPlaneSelectorPos), ManipulatorColors::mSelectionColorDarker);
         }
         else if (mMode == TRANSLATE_YZ)
         {
-            renderUtil->RenderTriangle(mPosition + MCore::Vector3(0.0f, 0.0f, mPlaneSelectorPos), mPosition, mPosition + MCore::Vector3(0.0f, mPlaneSelectorPos, 0.0f), ManipulatorColors::mSelectionColorDarker);
-            renderUtil->RenderTriangle(mPosition + MCore::Vector3(0.0f, mPlaneSelectorPos, 0.0f), mPosition + MCore::Vector3(0.0f, mPlaneSelectorPos, mPlaneSelectorPos), mPosition + MCore::Vector3(0.0f, 0.0f, mPlaneSelectorPos), ManipulatorColors::mSelectionColorDarker);
+            renderUtil->RenderTriangle(mPosition + AZ::Vector3(0.0f, 0.0f, mPlaneSelectorPos), mPosition, mPosition + AZ::Vector3(0.0f, mPlaneSelectorPos, 0.0f), ManipulatorColors::mSelectionColorDarker);
+            renderUtil->RenderTriangle(mPosition + AZ::Vector3(0.0f, mPlaneSelectorPos, 0.0f), mPosition + AZ::Vector3(0.0f, mPlaneSelectorPos, mPlaneSelectorPos), mPosition + AZ::Vector3(0.0f, 0.0f, mPlaneSelectorPos), ManipulatorColors::mSelectionColorDarker);
         }
 
         // render the relative position when moving
         if (mCallback)
         {
             // calculate the y-offset of the text position
-            MCore::Vector3 deltaPos = GetPosition() - mCallback->GetOldValueVec();
+            AZ::Vector3 deltaPos = GetPosition() - mCallback->GetOldValueVec();
             uint32 screenHeight = camera->GetScreenHeight();
             float yOffset       = (camera->GetProjectionMode() == MCommon::Camera::PROJMODE_PERSPECTIVE) ? 60.0f * ((float)screenHeight / 720.0f) : 40.0f;
 
             // render the relative movement
-            MCore::Vector3 textPos  = MCore::Project(mPosition + (MCore::Vector3(mSize, mSize, mSize) / 3.0f), camera->GetViewProjMatrix(), camera->GetScreenWidth(), camera->GetScreenHeight());
+            AZ::Vector3 textPos  = MCore::Project(mPosition + (AZ::Vector3(mSize, mSize, mSize) / 3.0f), camera->GetViewProjMatrix(), camera->GetScreenWidth(), camera->GetScreenHeight());
 
             // render delta position of the gizmo of the name if not dragging at the moment
             if (mSelectionLocked && mMode != TRANSLATE_NONE)
             {
-                mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", deltaPos.x, deltaPos.y, deltaPos.z);
-                renderUtil->RenderText(textPos.x, textPos.y + yOffset, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+                mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", deltaPos.GetX(), deltaPos.GetY(), deltaPos.GetZ());
+                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
             }
             else
             {
-                renderUtil->RenderText(textPos.x, textPos.y + yOffset, mName.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mName.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
             }
         }
 
@@ -226,8 +226,8 @@ namespace MCommon
         // render the absolute position of the gizmo/actor instance
         if (mMode != TRANSLATE_NONE)
         {
-            const MCore::Vector3 offsetPos = GetPosition();
-            mTempString.Format("Abs Pos X: %.3f, Y: %.3f, Z: %.3f", offsetPos.x, offsetPos.y, offsetPos.z);
+            const AZ::Vector3 offsetPos = GetPosition();
+            mTempString.Format("Abs Pos X: %.3f, Y: %.3f, Z: %.3f", offsetPos.GetX(), offsetPos.GetY(), offsetPos.GetZ());
             renderUtil->RenderText(10, 10, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f);
         }
     }
@@ -268,38 +268,38 @@ namespace MCommon
             // handle different translation modes
             if (mousePosRay.Intersects(mXYPlaneAABB) && mXAxisVisible && mYAxisVisible)
             {
-                mMovementDirection = MCore::Vector3(1.0f, 1.0f, 0.0f);
-                mMovementPlaneNormal = MCore::Vector3(0.0f, 0.0f, 1.0f);
+                mMovementDirection = AZ::Vector3(1.0f, 1.0f, 0.0f);
+                mMovementPlaneNormal = AZ::Vector3(0.0f, 0.0f, 1.0f);
                 mMode = TRANSLATE_XY;
             }
             else if (mousePosRay.Intersects(mXZPlaneAABB) && mXAxisVisible && mZAxisVisible)
             {
-                mMovementDirection = MCore::Vector3(1.0f, 0.0f, 1.0f);
-                mMovementPlaneNormal = MCore::Vector3(0.0f, 1.0f, 0.0f);
+                mMovementDirection = AZ::Vector3(1.0f, 0.0f, 1.0f);
+                mMovementPlaneNormal = AZ::Vector3(0.0f, 1.0f, 0.0f);
                 mMode = TRANSLATE_XZ;
             }
             else if (mousePosRay.Intersects(mYZPlaneAABB) && mYAxisVisible && mZAxisVisible)
             {
-                mMovementDirection = MCore::Vector3(0.0f, 1.0f, 1.0f);
-                mMovementPlaneNormal = MCore::Vector3(1.0f, 0.0f, 0.0f);
+                mMovementDirection = AZ::Vector3(0.0f, 1.0f, 1.0f);
+                mMovementPlaneNormal = AZ::Vector3(1.0f, 0.0f, 0.0f);
                 mMode = TRANSLATE_YZ;
             }
             else if (mousePosRay.Intersects(mXAxisAABB) && mXAxisVisible)
             {
-                mMovementDirection = MCore::Vector3(1.0f, 0.0f, 0.0f);
-                mMovementPlaneNormal = MCore::Vector3(0.0f, 1.0f, 1.0f).Normalize();
+                mMovementDirection = AZ::Vector3(1.0f, 0.0f, 0.0f);
+                mMovementPlaneNormal = AZ::Vector3(0.0f, 1.0f, 1.0f).GetNormalized();
                 mMode = TRANSLATE_X;
             }
             else if (mousePosRay.Intersects(mYAxisAABB) && mYAxisVisible)
             {
-                mMovementDirection = MCore::Vector3(0.0f, 1.0f, 0.0f);
-                mMovementPlaneNormal = MCore::Vector3(1.0f, 0.0f, 1.0f).Normalize();
+                mMovementDirection = AZ::Vector3(0.0f, 1.0f, 0.0f);
+                mMovementPlaneNormal = AZ::Vector3(1.0f, 0.0f, 1.0f).GetNormalized();
                 mMode = TRANSLATE_Y;
             }
             else if (mousePosRay.Intersects(mZAxisAABB) && mZAxisVisible)
             {
-                mMovementDirection = MCore::Vector3(0.0f, 0.0f, 1.0f);
-                mMovementPlaneNormal = MCore::Vector3(1.0f, 1.0f, 0.0f).Normalize();
+                mMovementDirection = AZ::Vector3(0.0f, 0.0f, 1.0f);
+                mMovementPlaneNormal = AZ::Vector3(1.0f, 1.0f, 0.0f).GetNormalized();
                 mMode = TRANSLATE_Z;
             }
             else
@@ -314,24 +314,24 @@ namespace MCommon
         // move the gizmo
         if (mSelectionLocked == false || mMode == TRANSLATE_NONE)
         {
-            mMousePosRelative = MCore::Vector3(0.0f, 0.0f, 0.0f);
+            mMousePosRelative = AZ::Vector3::CreateZero();
             return;
         }
 
         // init the movement change to zero
-        MCore::Vector3 movement = MCore::Vector3(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 movement = AZ::Vector3::CreateZero();
 
         // handle plane movement
         if (mMode == TRANSLATE_XY || mMode == TRANSLATE_XZ || mMode == TRANSLATE_YZ)
         {
             // generate current translation plane and calculate mouse intersections
             MCore::PlaneEq movementPlane(mMovementPlaneNormal, mPosition);
-            MCore::Vector3 mousePosIntersect, mousePrevPosIntersect;
+            AZ::Vector3 mousePosIntersect, mousePrevPosIntersect;
             mousePosRay.Intersects(movementPlane, &mousePosIntersect);
             mousePrevPosRay.Intersects(movementPlane, &mousePrevPosIntersect);
 
             // calculate the mouse position relative to the gizmo
-            if (MCore::Math::IsFloatZero(mMousePosRelative.SafeLength()))
+            if (MCore::Math::IsFloatZero(MCore::SafeLength(mMousePosRelative)))
             {
                 mMousePosRelative = mousePosIntersect - mPosition;
             }
@@ -346,22 +346,22 @@ namespace MCommon
         {
             // calculate the movement of the mouse on a plane located at the gizmo position
             // and perpendicular to the move direction
-            MCore::Vector3 camDir = camera->Unproject(camera->GetScreenWidth() / 2, camera->GetScreenHeight() / 2).GetDirection();
-            MCore::Vector3 thirdAxis = mMovementDirection.Cross(camDir).Normalize();
-            mMovementPlaneNormal = thirdAxis.Cross(mMovementDirection).Normalize();
-            thirdAxis = mMovementPlaneNormal.Cross(mMovementDirection).Normalize();
+            AZ::Vector3 camDir = camera->Unproject(camera->GetScreenWidth() / 2, camera->GetScreenHeight() / 2).GetDirection();
+            AZ::Vector3 thirdAxis = mMovementDirection.Cross(camDir).GetNormalized();
+            mMovementPlaneNormal = thirdAxis.Cross(mMovementDirection).GetNormalized();
+            thirdAxis = mMovementPlaneNormal.Cross(mMovementDirection).GetNormalized();
 
             MCore::PlaneEq movementPlane(mMovementPlaneNormal, mPosition);
             MCore::PlaneEq movementPlane2(thirdAxis, mPosition);
 
             // calculate the intersection points of the mouse positions with the previously calculated plane
-            MCore::Vector3 mousePosIntersect, mousePosIntersect2;
+            AZ::Vector3 mousePosIntersect, mousePosIntersect2;
             mousePosRay.Intersects(movementPlane, &mousePosIntersect);
             mousePosRay.Intersects(movementPlane2, &mousePosIntersect2);
 
-            if (mousePosIntersect.Length() < camera->GetFarClipDistance())
+            if (mousePosIntersect.GetLength() < camera->GetFarClipDistance())
             {
-                if (MCore::Math::IsFloatZero(mMousePosRelative.SafeLength()))
+                if (MCore::Math::IsFloatZero(MCore::SafeLength(mMousePosRelative)))
                 {
                     mMousePosRelative = movementPlane2.Project(mousePosIntersect) - mPosition;
                 }
@@ -370,7 +370,7 @@ namespace MCommon
             }
             else
             {
-                if (MCore::Math::IsFloatZero(mMousePosRelative.SafeLength()))
+                if (MCore::Math::IsFloatZero(MCore::SafeLength(mMousePosRelative)))
                 {
                     mMousePosRelative = movementPlane.Project(mousePosIntersect2) - mPosition;
                 }
@@ -379,12 +379,12 @@ namespace MCommon
             }
 
             // adjust the movement vector
-            movement = (mousePosIntersect - mMousePosRelative);
+            movement = mousePosIntersect - mMousePosRelative;
         }
 
         // update the position of the gizmo
         movement = movement - mPosition;
-        movement = MCore::Vector3(movement.x * mMovementDirection.x, movement.y * mMovementDirection.y, movement.z * mMovementDirection.z);
+        movement = AZ::Vector3(movement.GetX() * mMovementDirection.GetX(), movement.GetY() * mMovementDirection.GetY(), movement.GetZ() * mMovementDirection.GetZ());
         mPosition += movement;
 
         // update the callback
@@ -392,7 +392,7 @@ namespace MCommon
         {
             // reset the callback position, if the position is too far away from the camera
             float farClip = camera->GetFarClipDistance();
-            if (mPosition.Length() >= farClip)
+            if (mPosition.GetLength() >= farClip)
             {
                 mPosition = mCallback->GetOldValueVec() + mRenderOffset;
             }

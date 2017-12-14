@@ -24,7 +24,7 @@ using namespace AzToolsFramework;
 
 namespace EditorUIPlugin
 {
-    // The Item State URSequencePoint stores the state of an particle item before and after some change to it.
+    // The Item State URSequencePoint stores the state of a particle item before and after some change to it.
     // it does so by serializing the particle item, so its a good "default behavior" that cannot miss any particular change.
     // this Item State Command should be able to capture everything in its entirety.
     class ItemStateCommand
@@ -34,12 +34,14 @@ namespace EditorUIPlugin
         AZ_RTTI(ItemStateCommand, "{4AD0180B-D15A-410E-B6C1-E0C86E5E2486}", UndoSystem::URSequencePoint);
         AZ_CLASS_ALLOCATOR(ItemStateCommand, AZ::SystemAllocator, 0);
 
-        ItemStateCommand(const AZStd::string& friendlyName);
+        explicit ItemStateCommand(const AZStd::string& friendlyName);
         virtual ~ItemStateCommand();
 
         void Undo() override;
         void Redo() override;
 
+        bool Changed() const override { return true; } // always want to record undo
+        
         // capture the initial state - this fills the undo with the initial data if captureUndo is true
         // otherwise is captures the final state.
         void Capture(const AZStd::string& itemId, bool selected, int lodIdx);
@@ -72,11 +74,13 @@ namespace EditorUIPlugin
         AZ_RTTI(ItemGroupChangeCommand, "{DB094B8A-DC44-4360-9B96-02C0D0907741}", UndoSystem::URSequencePoint);
         AZ_CLASS_ALLOCATOR(ItemGroupChangeCommand, AZ::SystemAllocator, 0);
 
-        ItemGroupChangeCommand(const AZStd::string& friendlyName);
+        explicit ItemGroupChangeCommand(const AZStd::string& friendlyName);
         virtual ~ItemGroupChangeCommand();
 
         void Undo() override;
         void Redo() override;
+
+        bool Changed() const override { return true; } // always want to record undo
 
         void Capture(const AZStd::list<AZStd::string>& itemIds);
 

@@ -53,7 +53,7 @@ namespace EMStudio
         mPrevMouseY             = 0;
         mPrevLocalMouseX        = 0;
         mPrevLocalMouseY        = 0;
-        mOldActorInstancePos    = MCore::Vector3(0.0f, 0.0f, 0.0f);
+        mOldActorInstancePos    = AZ::Vector3::CreateZero();
         mCamera                 = nullptr;
         mActiveTransformManip   = nullptr;
         mSkipFollowCalcs        = false;
@@ -170,15 +170,15 @@ namespace EMStudio
             uint32 camMode = GetCameraMode();
             if (camMode == CAMMODE_FRONT || camMode == CAMMODE_BACK)
             {
-                camDist = MCore::Math::Abs(mCamera->GetPosition().y) * gizmoScale;
+                camDist = MCore::Math::Abs(mCamera->GetPosition().GetY()) * gizmoScale;
             }
             else if (camMode == CAMMODE_LEFT || camMode == CAMMODE_RIGHT)
             {
-                camDist = MCore::Math::Abs(mCamera->GetPosition().x) * gizmoScale;
+                camDist = MCore::Math::Abs(mCamera->GetPosition().GetX()) * gizmoScale;
             }
             else
             {
-                camDist = MCore::Math::Abs(mCamera->GetPosition().z) * gizmoScale;
+                camDist = MCore::Math::Abs(mCamera->GetPosition().GetZ()) * gizmoScale;
             }
         }
 
@@ -189,11 +189,11 @@ namespace EMStudio
                 mViewWidget->GetIsCharacterFollowModeActive() == false &&
                 activeManipulator->GetType() == MCommon::TransformationManipulator::GIZMOTYPE_TRANSLATION)
             {
-                camDist = (callback->GetOldValueVec() - mCamera->GetPosition()).Length();
+                camDist = (callback->GetOldValueVec() - mCamera->GetPosition()).GetLength();
             }
             else
             {
-                camDist = (activeManipulator->GetPosition() - mCamera->GetPosition()).Length();
+                camDist = (activeManipulator->GetPosition() - mCamera->GetPosition()).GetLength();
             }
         }
 
@@ -535,7 +535,7 @@ namespace EMStudio
                     const int32 mousePosY = tempMousePos.y();
 
                     EMotionFX::ActorInstance* selectedActorInstance = nullptr;
-                    MCore::Vector3 oldIntersectionPoint;
+                    AZ::Vector3 oldIntersectionPoint;
 
                     const MCore::Ray ray = mCamera->Unproject(mousePosX, mousePosY);
 
@@ -551,10 +551,10 @@ namespace EMStudio
 
                         // update the mesh so that the currently checked actor instance always uses the most up to date mesh (remember: meshes are shared across actor instances)
                         actorInstance->UpdateTransformations(0.0f, true);
-                        actorInstance->UpdateMeshDeformers(0.0f);
+                        actorInstance->UpdateMeshDeformers(0.0f, true);
 
                         // check for an intersection
-                        MCore::Vector3 intersect, normal;
+                        AZ::Vector3 intersect, normal;
                         EMotionFX::Node* intersectionNode = actorInstance->IntersectsMesh(0, ray, &intersect, &normal);
                         if (intersectionNode)
                         {
@@ -566,8 +566,8 @@ namespace EMStudio
                             else
                             {
                                 // find the actor instance closer to the camera
-                                const float distOld = (mCamera->GetPosition() - oldIntersectionPoint).Length();
-                                const float distNew = (mCamera->GetPosition() - intersect).Length();
+                                const float distOld = (mCamera->GetPosition() - oldIntersectionPoint).GetLength();
+                                const float distNew = (mCamera->GetPosition() - intersect).GetLength();
                                 if (distNew < distOld)
                                 {
                                     selectedActorInstance = actorInstance;
@@ -588,10 +588,11 @@ namespace EMStudio
                                 // render the aabb
                                 if (box.CheckIfIsValid())
                                 {
-                                    if (ray.Intersects(box, &intersect, &normal))
+                                    AZ::Vector3 i, n;
+                                    if (ray.Intersects(box, &i, &n))
                                     {
                                         selectedActorInstance = actorInstance;
-                                        oldIntersectionPoint = intersect;
+                                        oldIntersectionPoint = i;
                                     }
                                 }
                             }
@@ -931,7 +932,7 @@ namespace EMStudio
             MCORE_ASSERT(false);
         }
 
-        const MCore::Vector3 axisPosition = UnprojectOrtho(originScreenX, originScreenY, mWidth, mHeight, 0.0f, camera->GetProjectionMatrix(), camera->GetViewMatrix());
+        const AZ::Vector3 axisPosition = UnprojectOrtho(originScreenX, originScreenY, mWidth, mHeight, 0.0f, camera->GetProjectionMatrix(), camera->GetViewMatrix());
         //const MCore::Vector3 axisPosition = Unproject( originScreenX, originScreenY, mWidth, mHeight, camera->GetNearClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
 
         MCore::Matrix inverseCameraMatrix = camera->GetViewMatrix();
@@ -942,8 +943,8 @@ namespace EMStudio
 
         axisRenderingSettings.mSize             = size;
         axisRenderingSettings.mGlobalTM         = globalTM;
-        axisRenderingSettings.mCameraRight      = inverseCameraMatrix.GetRight().Normalized();
-        axisRenderingSettings.mCameraUp         = inverseCameraMatrix.GetUp().Normalized();
+        axisRenderingSettings.mCameraRight      = inverseCameraMatrix.GetRight().GetNormalized();
+        axisRenderingSettings.mCameraUp         = inverseCameraMatrix.GetUp().GetNormalized();
         axisRenderingSettings.mRenderXAxisName  = true;
         axisRenderingSettings.mRenderYAxisName  = true;
         axisRenderingSettings.mRenderZAxisName  = true;
@@ -987,36 +988,27 @@ namespace EMStudio
     {
         if (mViewWidget->GetIsCharacterFollowModeActive())
         {
-            // get the selection list and in case there is an actor instance selected, get it
             const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
             EMotionFX::ActorInstance* followInstance = selectionList.GetFirstActorInstance();
 
-            // follow the selected actor instance
             if (followInstance && mCamera)
             {
                 mPlugin->GetTranslateManipulator()->Init(followInstance->GetLocalPosition());
                 mPlugin->GetRotateManipulator()->Init(followInstance->GetLocalPosition());
                 mPlugin->GetScaleManipulator()->Init(followInstance->GetLocalPosition());
 
-                MCore::Vector3 actorInstancePos;
+                AZ::Vector3 actorInstancePos;
+
                 EMotionFX::Actor* followActor = followInstance->GetActor();
                 const uint32 motionExtractionNodeIndex = followActor->GetMotionExtractionNodeIndex();
-
                 if (motionExtractionNodeIndex != MCORE_INVALIDINDEX32)
                 {
-                    EMotionFX::TransformData*   transformData       = followInstance->GetTransformData();
-                    MCore::Vector3              trajectoryGlobalPos = transformData->GetCurrentPose()->CalcTrajectoryTransform().mPosition;
-
-                    actorInstancePos.x = trajectoryGlobalPos.x;
-                    actorInstancePos.y = trajectoryGlobalPos.y;
-                    actorInstancePos.z = trajectoryGlobalPos.z;
-
+                    actorInstancePos = followInstance->GetGlobalPosition();
                     RenderPlugin::EMStudioRenderActor* emstudioActor = mPlugin->FindEMStudioActor(followActor);
                     if (emstudioActor)
                     {
-                        const float scaledOffsetFromTrajectoryNode = followInstance->GetLocalScale().z * emstudioActor->mOffsetFromTrajectoryNode;
-                        const float offset = scaledOffsetFromTrajectoryNode - trajectoryGlobalPos.z;
-                        actorInstancePos.z = trajectoryGlobalPos.z + offset;
+                        const float scaledOffsetFromTrajectoryNode = followInstance->GetGlobalScale().GetZ() * emstudioActor->mOffsetFromTrajectoryNode;
+                        actorInstancePos.SetZ(actorInstancePos.GetZ() + scaledOffsetFromTrajectoryNode);
                     }
                 }
                 else
@@ -1024,51 +1016,51 @@ namespace EMStudio
                     actorInstancePos = followInstance->GetGlobalPosition();
                 }
 
-                // calculate the actor instance trajectory node delta position movement
-                MCore::Vector3 deltaPos = actorInstancePos - mOldActorInstancePos;
+                // Calculate movement since last frame.
+                AZ::Vector3 deltaPos = actorInstancePos - mOldActorInstancePos;
 
                 if (mSkipFollowCalcs)
                 {
-                    deltaPos = MCore::Vector3(0.0f, 0.0f, 0.0f);
+                    deltaPos = AZ::Vector3::CreateZero();
                     mSkipFollowCalcs = false;
                 }
 
-                // set the current actor instance position as the old one for the next frame
                 mOldActorInstancePos = actorInstancePos;
 
                 switch (mCamera->GetType())
                 {
-                case MCommon::OrbitCamera::TYPE_ID:
-                {
-                    MCommon::OrbitCamera* orbitCamera = static_cast<MCommon::OrbitCamera*>(mCamera);
-
-                    if (orbitCamera->GetIsFlightActive())
+                    case MCommon::OrbitCamera::TYPE_ID:
                     {
-                        orbitCamera->SetFlightTargetPosition(actorInstancePos);
-                    }
-                    else
-                    {
-                        orbitCamera->SetTarget(orbitCamera->GetTarget() + deltaPos);
-                    }
+                        MCommon::OrbitCamera* orbitCamera = static_cast<MCommon::OrbitCamera*>(mCamera);
 
-                    break;
-                }
+                        if (orbitCamera->GetIsFlightActive())
+                        {
+                            orbitCamera->SetFlightTargetPosition(actorInstancePos);
+                        }
+                        else
+                        {
+                            orbitCamera->SetPosition(orbitCamera->GetPosition() + deltaPos);
+                            orbitCamera->SetTarget(orbitCamera->GetTarget() + deltaPos);
+                        }
 
-                case MCommon::OrthographicCamera::TYPE_ID:
-                {
-                    MCommon::OrthographicCamera* orthoCamera = static_cast<MCommon::OrthographicCamera*>(mCamera);
-
-                    if (orthoCamera->GetIsFlightActive())
-                    {
-                        orthoCamera->SetFlightTargetPosition(actorInstancePos);
-                    }
-                    else
-                    {
-                        orthoCamera->SetPosition(orthoCamera->GetPosition() + deltaPos);
+                        break;
                     }
 
-                    break;
-                }
+                    case MCommon::OrthographicCamera::TYPE_ID:
+                    {
+                        MCommon::OrthographicCamera* orthoCamera = static_cast<MCommon::OrthographicCamera*>(mCamera);
+
+                        if (orthoCamera->GetIsFlightActive())
+                        {
+                            orthoCamera->SetFlightTargetPosition(actorInstancePos);
+                        }
+                        else
+                        {
+                            orthoCamera->SetPosition(orthoCamera->GetPosition() + deltaPos);
+                        }
+
+                        break;
+                    }
                 }
             }
         }
@@ -1190,7 +1182,9 @@ namespace EMStudio
         renderUtil->EnableCulling(backfaceCullingEnabled);
 
         EMotionFX::GetAnimGraphManager().SetAnimGraphVisualizationEnabled(true);
-        EMotionFX::GetEMotionFX().Update(0.0f);
+
+        // Only keep the following line when we do not link to the update system component OnTick anymore.
+/////        EMotionFX::GetEMotionFX().Update(0.0f);
 
         // render
         const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
@@ -1258,7 +1252,7 @@ namespace EMStudio
         }
 
         const float unitSize = renderOptions->mGridUnitSize;
-        MCore::Vector3  gridNormal   = MCore::Vector3(0.0f, 0.0f, 1.0f);
+        AZ::Vector3  gridNormal   = AZ::Vector3(0.0f, 0.0f, 1.0f);
 
         if (mCamera->GetType() == MCommon::OrthographicCamera::TYPE_ID)
         {
@@ -1267,13 +1261,13 @@ namespace EMStudio
 
             switch (mCameraMode)
             {
-                case CAMMODE_LEFT:
-                case CAMMODE_RIGHT:
-                    gridNormal = mCamera->GetViewMatrix().GetForward();
-                    break;
+            case CAMMODE_LEFT:
+            case CAMMODE_RIGHT:
+                gridNormal = mCamera->GetViewMatrix().GetForward();
+                break;
 
-                default:
-                    gridNormal = mCamera->GetViewMatrix().GetUp();
+            default:
+                gridNormal = mCamera->GetViewMatrix().GetUp();
             }
             gridNormal.Normalize();
         }
@@ -1282,7 +1276,6 @@ namespace EMStudio
         // render the grid
         AZ::Vector2 gridStart, gridEnd;
         renderUtil->CalcVisibleGridArea(mCamera, mWidth, mHeight, unitSize, &gridStart, &gridEnd);
-
         if (mViewWidget->GetRenderFlag(RenderViewWidget::RENDER_GRID))
         {
             renderUtil->RenderGrid(gridStart, gridEnd, gridNormal, unitSize, renderOptions->mMainAxisColor, renderOptions->mGridColor, renderOptions->mSubStepColor, true);

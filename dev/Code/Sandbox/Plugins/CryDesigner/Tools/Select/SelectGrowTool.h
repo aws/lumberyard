@@ -35,11 +35,11 @@ public:
 
     virtual void Enter() override;
 
-    static void GrowSelection(CD::SMainContext& mc);
+    static void GrowSelection(const CD::SMainContext& mc);
 
 protected:
 
-    static void SelectAdjacentPolygonsFromEdgeVertex(CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections);
-    static bool SelectAdjacentPolygons(CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections);
-    static std::set<CD::PolygonPtr> MakeInitialSelectedSet(CD::SMainContext& mc);
+    static void SelectAdjacentPolygonsFromEdgeVertex(const CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections);
+    static bool SelectAdjacentPolygons(const CD::SMainContext& mc, std::set<CD::PolygonPtr>& selectedSet, bool bAddNewSelections);
+    static std::set<CD::PolygonPtr> MakeInitialSelectedSet(const CD::SMainContext& mc);
 };

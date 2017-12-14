@@ -77,7 +77,7 @@
                 "AndroidManifest.xml"
             ]
         },
-        "android_armv7_gccDebug" :
+        "android_armv7_gcc" :
         {
             "java" :
             {
@@ -87,38 +87,7 @@
                 }
             }
         },
-        "android_armv7_gccProfile" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_GCC.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
-        },
-        "android_armv7_gccPerformance" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_GCC.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
-        },
-        "android_armv7_gccRelease" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_GCC_Release.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
-        },
-
-        "android_armv7_clangDebug" :
+        "android_armv7_clang" :
         {
             "java" :
             {
@@ -128,33 +97,13 @@
                 }
             }
         },
-        "android_armv7_clangProfile" :
+        "android_armv8_clang" :
         {
             "java" :
             {
                 "${ANDROID_PACKAGE_PATH}" :
                 {
                     "ProjectActivity_Clang.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
-        },
-        "android_armv7_clangPerformance" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_Clang.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
-        },
-        "android_armv7_clangRelease" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_Clang_Release.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
                 }
             }
         }

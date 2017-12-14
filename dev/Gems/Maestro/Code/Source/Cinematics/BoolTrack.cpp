@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include "BoolTrack.h"
+#include "Maestro/Types/AnimValueType.h"
 
 //////////////////////////////////////////////////////////////////////////
 CBoolTrack::CBoolTrack()
@@ -27,6 +28,12 @@ void CBoolTrack::GetKeyInfo(int index, const char*& description, float& duration
 {
     description = 0;
     duration = 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+AnimValueType CBoolTrack::GetValueType()
+{
+    return AnimValueType::Bool; 
 }
 
 //////////////////////////////////////////////////////////////////////////

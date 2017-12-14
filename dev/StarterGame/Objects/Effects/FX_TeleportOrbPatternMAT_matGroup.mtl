@@ -1,0 +1,11 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="FX_TeleportOrbPatternMAT" MtlFlags="524416" Shader="Particleimposter" GenMask="2" StringGenMask="" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Opacity="0.99000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/fx_teleportorbpattern_01.dds"/>
+   </Textures>
+   <PublicParams SoftIntersectionFactor="1" AnimSpeed="0" BumpTilling="0.40000001" DiffuseRange="1.12" BumpAnimSpeed="0" AnimAmplitude="0" AnimOffset="0" BumpScale="0.0049999999"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

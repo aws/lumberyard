@@ -10,9 +10,11 @@
 *
 */
 #pragma once
+
+#include "EditorCommon.h"
+
 #include <AzCore/Component/EntityId.h>
 #include <QWidget>
-
 
 class PropertyEntityIdComboBoxCtrl
     : public QWidget

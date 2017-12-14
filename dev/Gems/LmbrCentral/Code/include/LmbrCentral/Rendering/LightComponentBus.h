@@ -121,6 +121,9 @@ namespace LmbrCentral
 
         virtual void SetProbeAttenuationFalloff(float newAttenuationFalloff) { (void)newAttenuationFalloff; }
         virtual float GetProbeAttenuationFalloff() { return FLT_MAX; }
+
+        virtual void SetProbeFade(float fade) { (void)fade; }
+        virtual float GetProbeFade() { return 1.0f; }
         ////////////////////////////////////////////////////////////////////  
     };
 

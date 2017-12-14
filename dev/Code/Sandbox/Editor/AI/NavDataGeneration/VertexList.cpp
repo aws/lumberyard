@@ -65,8 +65,8 @@ const ObstacleData& CVertexList::GetVertex(int index) const
 {
     if (!IsIndexValid(index))
     {
-        AIError("CVertexList::GetVertex Tried to retrieve a non existing vertex (%d) from vertex list (size %ul).Please regenerate the triangulation [Design bug]",
-            index, m_obstacles.size());
+        AIError("CVertexList::GetVertex Tried to retrieve a non existing vertex (%d) from vertex list (size %d).Please regenerate the triangulation [Design bug]",
+            index, (int)m_obstacles.size());
         return m_obstacles[0];
     }
     return m_obstacles[index];
@@ -76,8 +76,8 @@ ObstacleData& CVertexList::ModifyVertex(int index)
 {
     if (!IsIndexValid(index))
     {
-        AIError("CVertexList::ModifyVertex Tried to retrieve a non existing vertex (%d) from vertex list (size %ul).Please regenerate the triangulation [Design bug]",
-            index, m_obstacles.size());
+        AIError("CVertexList::ModifyVertex Tried to retrieve a non existing vertex (%d) from vertex list (size %d).Please regenerate the triangulation [Design bug]",
+            index, (int)m_obstacles.size());
         static ObstacleData od;
         return od;
     }

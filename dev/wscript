@@ -55,24 +55,27 @@ except Exception:
     print traceback.print_exc()
 
 # Load globals from branch spec file if we must
-from waf_branch_spec import SUBFOLDERS, PLATFORM_CONFIGURATION_FILTER, MONOLITHIC_BUILDS
+from waf_branch_spec import SUBFOLDERS, PLATFORM_CONFIGURATION_FILTER, MONOLITHIC_BUILDS, LUMBERYARD_ENGINE_PATH
 
 ###############################################################################
 Configure.autoconfig = True
 
 ###############################################################################
-CRY_WAF_TOOL_DIR='Tools/build/waf-1.7.13/lmbrwaflib'
+CRY_WAF_TOOL_DIR = os.path.normpath('{}/Tools/build/waf-1.7.13/lmbrwaflib'.format(LUMBERYARD_ENGINE_PATH))
 
 ###############################################################################
-CURRENT_WAF_EXECUTABLE = '"{0}" ./Tools/build/waf-1.7.13/lmbr_waf'.format(sys.executable)
+CURRENT_WAF_EXECUTABLE = '"{}" {}/Tools/build/waf-1.7.13/lmbr_waf'.format(sys.executable, LUMBERYARD_ENGINE_PATH)
 
 ###############################################################################
+if LUMBERYARD_ENGINE_PATH != '.':
+    # If the lumberyard engine path external to the current path '.', update the context waf_dir
+    Context.waf_dir = os.path.normpath('{}/Tools/build/waf-1.7.13'.format(LUMBERYARD_ENGINE_PATH))
 
 # Configure Options for WAF
 def options(opt):
-    opt.load('vscode', tooldir=CRY_WAF_TOOL_DIR)
+
     # Load the lmbr waf modules
-    opt.load('lumberyard', tooldir=CRY_WAF_TOOL_DIR)
+    opt.load('lumberyard', tooldir=[CRY_WAF_TOOL_DIR])
     opt.load_lmbr_general_modules()
 
     # Add additional options
@@ -92,16 +95,17 @@ def configure(conf):
 
     conf.load_user_settings()
 
-    # Run the WAF configure workflow
-    conf.configure_settings()
+    if conf.is_option_true('update_user_settings'):
+        conf.update_settings_options_file()
 
+    # Run the WAF configure workflow
     conf.run_bootstrap()
+
+    conf.configure_settings()
 
     conf.add_game_projects_to_specs()
 
     conf.add_gems_to_specs()
-
-    conf.filter_target_platforms()
 
     conf.load_compile_rules_for_supported_platforms(PLATFORM_CONFIGURATION_FILTER)
 
@@ -110,15 +114,18 @@ def configure(conf):
     conf.process_custom_configure_commands()
 
     # Recurse into sub-folders for auto conf when any wscript changes
-    recurse_subfolders = [os.path.join(conf.engine_path,subfolder) for subfolder in SUBFOLDERS]
+    recurse_subfolders = []
+    for subfolder in SUBFOLDERS:
+        if os.path.isabs(subfolder):
+            recurse_subfolders.append(subfolder)
+        else:
+            recurse_subfolders.append(os.path.join(conf.engine_path,subfolder))
+
     conf.recurse(dirs=recurse_subfolders)
 
     conf.configure_game_projects()
 
     conf.process_gems()
-
-    if conf.options.update_user_settings == 'True':
-        conf.update_settings_options_file()
 
     conf.clear_waf_timestamp_files()
         
@@ -209,7 +216,14 @@ def build(bld):
     # Load Core Engine Parts (Engine, Tools, Core Shaders etc)
     bld.game_project = None
 
-    recurse_subfolders = [os.path.join(bld.engine_path,subfolder) for subfolder in SUBFOLDERS]
+    recurse_subfolders = []
+    for subfolder in SUBFOLDERS:
+        if os.path.isabs(subfolder):
+            recurse_subfolders.append(subfolder)
+        else:
+            recurse_subfolders.append(os.path.join(bld.engine_path,subfolder))
+
+
     bld.recurse(recurse_subfolders)
 
     bld.process_gems()
@@ -230,6 +244,10 @@ def deploy(ctx):
     if not hasattr(ctx, 'features') or ctx.features is None:
         ctx.fatal('Deploy task does not have any deployment features attached to it')
     (platform, configuration) = ctx.get_platform_and_configuration()
+
+    # Read the required lmbr configuration
+    ctx.calculate_engine_path()
+
     ctx.env['PLATFORM'] = platform
     ctx.env['CONFIGURATION'] = configuration
     ctx(features=ctx.features)

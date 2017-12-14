@@ -25,7 +25,7 @@ namespace AZStd
     */
 
     //////////////////////////////////////////////////////////////////////////
-    // Min, max
+    // Min, max, clamp
     template<class T>
     T   GetMin(const T& left, const T& right) { return (left < right) ? left : right; }
 
@@ -40,6 +40,9 @@ namespace AZStd
 
     template<class T>
     pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return pair<T, T>((left < right) ? left : right, (left > right) ? left : right); }
+    
+    template<class T>
+    T   clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }
     //////////////////////////////////////////////////////////////////////////
 
     // for_each.  Apply a function to every element of a range.

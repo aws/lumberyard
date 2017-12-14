@@ -40,7 +40,11 @@ namespace GraphCanvas
             Q_OBJECT
         public:
             AZ_CLASS_ALLOCATOR(FocusableTextEdit, AZ::SystemAllocator, 0);
-            FocusableTextEdit() = default;
+            FocusableTextEdit()
+            {
+                setContextMenuPolicy(Qt::ContextMenuPolicy::PreventContextMenu);
+            }
+
             ~FocusableTextEdit() = default;
 
         signals:
@@ -68,6 +72,7 @@ namespace GraphCanvas
     class CommentTextGraphicsWidget
         : public QGraphicsWidget
         , public CommentLayoutRequestBus::Handler
+        , public CommentUIRequestBus::Handler
         , public StyleNotificationBus::Handler
     {
     public:
@@ -83,9 +88,6 @@ namespace GraphCanvas
 
         void OnAddedToScene();
 
-        void SetComment(const AZStd::string& comment);
-        AZStd::string GetComment() const;
-        
         void SetStyle(const AZStd::string& style);
 
         void UpdateLayout();
@@ -93,17 +95,32 @@ namespace GraphCanvas
         void UpdateStyles();
         void RefreshDisplay();
 
+        void SetComment(const AZStd::string& comment);
+        AZStd::string GetComment() const;
+
+        // NOTE: Currently the style helper does not signal out when it's value has changed.
+        //       As such, any modifications to the style helper will need to call OnStyleChanged in order
+        //       to propogate those changes.
+        Styling::StyleHelper& GetStyleHelper();
+
+        const Styling::StyleHelper& GetStyleHelper() const;
+
+        void SetCommentMode(CommentMode commentMode);
+        CommentMode GetCommentMode() const;
+
+        // CommentUIRequestBus
+        void SetEditable(bool editable) override;
+        ////
+
         // CommentLayoutRequestBus
         QGraphicsLayoutItem* GetGraphicsLayoutItem() override;
         ////
-		
-		// StyleNotificationBus
+        
+        // StyleNotificationBus
         void OnStyleChanged() override;
         ////
 
-    protected:
-
-        void SetEditable(bool editable);
+    protected:        
 
         void UpdateSizing();
         void SubmitValue();
@@ -114,6 +131,8 @@ namespace GraphCanvas
 
     private:
         CommentTextGraphicsWidget(const CommentTextGraphicsWidget&) = delete;
+
+        CommentMode m_commentMode;
 
         bool m_editable;
         bool m_layoutLock;

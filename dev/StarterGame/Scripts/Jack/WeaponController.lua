@@ -16,19 +16,9 @@ local weaponcontroller =
 {
     Properties = 
     {
-		Stats =
-		{
-			EnergyMax = { default = 100, description = "Max Energy of the player." },
-			Energy = { default = 100, description = "Current Energy of the player." }, 
-			EnergyRegen = { default = 25, description = "amount of enegy i regen a second.", suffix = " sec" },
-			EnergyRegenDelay = { default = 0.5, description = "Delay in seconds after firing that i will start to regen." },
-			EnergyRegenOverheat = { default = 1.5, description = "Additional Delay in seconds to wait if i try to use enegy when i have none / not enough." },
-		},
-		
 		UIMessages = 
 		{
-			SetEnergyMessage = { default = "SetEnergyEvent", description = "The event used to set the Energy percent (0%-100%)" },
-			SetCrosshairStatusMessage = { default = "SetCrosshairStatusEvent", description = "set the visible crosshair type" },
+			SetWeaponStatusMessage = { default = "SetWeaponStatusEvent", description = "set the visible crosshair type" },
 		},
 		
 		Events =
@@ -314,10 +304,6 @@ function weaponcontroller:OnActivate()
 	self.enableFiringHandler = GameplayNotificationBus.Connect(self, self.enableFiringEventId);
 	self.disableFiringEventId = GameplayNotificationId(self.entityId, "DisableFiring", "float");
 	self.disableFiringHandler = GameplayNotificationBus.Connect(self, self.disableFiringEventId);
-	self.enableFiringEventId = GameplayNotificationId(self.entityId, "EnableFiring", "float");
-	self.enableFiringHandler = GameplayNotificationBus.Connect(self, self.enableFiringEventId);
-	self.disableFiringEventId = GameplayNotificationId(self.entityId, "DisableFiring", "float");
-	self.disableFiringHandler = GameplayNotificationBus.Connect(self, self.disableFiringEventId);
 	self.canFire = true;
 	self.startedShootingWhenDisabled = false;
 
@@ -326,7 +312,7 @@ function weaponcontroller:OnActivate()
 	self.weaponFirePressedHandler = GameplayNotificationBus.Connect(self, self.weaponFirePressedEventId);
 	self.weaponFireReleasedEventId = GameplayNotificationId(self.entityId, "WeaponFireReleased", "float");
 	self.weaponFireReleasedHandler = GameplayNotificationBus.Connect(self, self.weaponFireReleasedEventId);
-	self.ownerDiedEventId = GameplayNotificationId(self.entityId, self.Properties.Weapons.GenericEvents.OwnerDied)
+	self.ownerDiedEventId = GameplayNotificationId(self.entityId, self.Properties.Weapons.GenericEvents.OwnerDied, "float");
 	self.ownerDiedHandler = GameplayNotificationBus.Connect(self, self.ownerDiedEventId);
 
 	-- Tick needed to detect aim timeout
@@ -463,7 +449,7 @@ function weaponcontroller:UpdateAim()
 			end
 			
 			-- if im looking at an enemy, then i need to change the cursor
-			if (hit.entityId:IsValid() and StarterGameUtility.EntityHasTag(hit.entityId, "AICharacter")) then
+			if (hit.entityId:IsValid() and StarterGameEntityUtility.EntityHasTag(hit.entityId, "AICharacter")) then
 				--Debug.Log("Looking At enemy");
 				targetingEnemy = true;
 				if (self.debugFireMessage) then
@@ -474,15 +460,17 @@ function weaponcontroller:UpdateAim()
 			target = self.aimOrigin + self.aimDirection * self.MaxAimRange;
 		end
 		
-		if(self.IsTargetingEnemy ~= targetingEnemy) then
+		--if(self.IsTargetingEnemy ~= targetingEnemy) then
 			self.IsTargetingEnemy = targetingEnemy;
-			--Debug.Log("TargetChanged");
-			local value = 0;
+			--Debug.Log("TargetChanged : " .. tostring(targetingEnemy));
+			local value = Vector2(0, 0);
 			if (targetingEnemy) then
-				value = 1;
+				local distToTarget = (target - self.aimOrigin):GetLength();
+				value = Vector2(1, distToTarget);				
 			end
-			GameplayNotificationBus.Event.OnEventBegin(self.SetCrosshairStatusEventId, value);
-		end
+			
+			GameplayNotificationBus.Event.OnEventBegin(self.SetWeaponStatusEventId, value);
+		--end
 		
 		AimIKComponentRequestBus.Event.SetAimIKTarget(self.entityId, target);
 	
@@ -502,27 +490,24 @@ function weaponcontroller:OnSetupNewWeapon(weapon)
 	self.activeWeaponFireEventId = GameplayNotificationId(weapon, self.Properties.Weapons.GenericEvents.Fire, "float");
  	self.activeWeaponUseWeaponForwardForAimingEventId = GameplayNotificationId(weapon, self.Properties.Weapons.GenericEvents.UseWeaponForwardForAiming, "float");
 	self.activeWeaponReloadEventId = GameplayNotificationId(weapon, self.Properties.Weapons.GenericEvents.Reload, "float");
+	self.SetWeaponStatusEventId = GameplayNotificationId(weapon, self.Properties.UIMessages.SetWeaponStatusMessage, "float");
+ 	local isLegacyCharacterEventId = GameplayNotificationId(weapon, "IsLegacyCharacter", "float");
+	GameplayNotificationBus.Event.OnEventBegin(isLegacyCharacterEventId, 1.0);
 	self.setupComplete = true;
 end
 
 function weaponcontroller:TellWeaponToFire()
-	GameplayNotificationBus.Event.OnEventBegin(self.activeWeaponFireEventId, self.Properties.Stats.Energy);
+	GameplayNotificationBus.Event.OnEventBegin(self.activeWeaponFireEventId, 0);
 end
 
 function weaponcontroller:WeaponFireSuccess(value)
 	self.FirstShotFired = true;
-	if (not utilities.GetDebugManagerBool("InfiniteEnergy", false)) then
-		self.Properties.Stats.Energy = self.Properties.Stats.Energy - value;
-	end
 	
-	self.EnergyRegenTimer = self.Properties.Stats.EnergyRegenDelay;
-	GameplayNotificationBus.Event.OnEventBegin(self.setEnergyEventId, 100 * self.Properties.Stats.Energy / self.Properties.Stats.EnergyMax);
 	self.Fragments.Shoot = MannequinRequestsBus.Event.QueueFragment(self.entityId, 1, "Shoot", "", false);
 end
 
 function weaponcontroller:WeaponFireFail(value)
 	self.FirstShotFired = true;
-	self.EnergyRegenTimer = self.Properties.Stats.EnergyRegenDelay + self.Properties.Stats.EnergyRegenOverheat;
 	
 	-- FOR SOUND - depleated
 	AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, "Play_HUD_energy_depleted");
@@ -551,15 +536,10 @@ end
 function weaponcontroller:OnTick(deltaTime, timePoint)
 	
 	if (not self.performedFirstUpdate) then
-		local uiElement = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("UIPlayer"));
-		
 		local playerId = TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("PlayerCharacter"));
 		self.isPlayerWeapon = (self.entityId == playerId);
 
 		-- Initialise the weapon.
-		self.SetCrosshairStatusEventId = GameplayNotificationId(self.entityId, self.Properties.UIMessages.SetCrosshairStatusMessage, "float");
-
-		self.setEnergyEventId = GameplayNotificationId(uiElement, self.Properties.UIMessages.SetEnergyMessage, "float");
 		
 		-- Make sure we don't do this 'first update' again.
 		self.performedFirstUpdate = true;
@@ -568,27 +548,6 @@ function weaponcontroller:OnTick(deltaTime, timePoint)
 	GameplayNotificationBus.Event.OnEventBegin(self.requestAimUpdateEventId, nil);
 
     self:UpdateAiming(deltaTime); 
-	-- update weapon energy
-	if (self.EnergyRegenTimer > 0) then
-		self.EnergyRegenTimer = self.EnergyRegenTimer - deltaTime;
-		--Debug.Log("Regen delay left " .. self.EnergyRegenTimer);
-		if(self.EnergyRegenTimer <= 0) then
-			-- FOR SOUND - regen starting
-			AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, "Play_HUD_energy_restoring");
-		end
-		
-	elseif (self.Properties.Stats.Energy < self.Properties.Stats.EnergyMax) then
-		self.Properties.Stats.Energy = self.Properties.Stats.Energy + self.Properties.Stats.EnergyRegen * deltaTime;
-		if (self.Properties.Stats.Energy > self.Properties.Stats.EnergyMax) then
-			self.Properties.Stats.Energy = self.Properties.Stats.EnergyMax;
-			--Debug.Log("Regen energy maxed " .. self.Properties.Stats.Energy);
-			-- FOR SOUND -> Energy Level Restored
-			AudioTriggerComponentRequestBus.Event.ExecuteTrigger(self.entityId, "Play_HUD_energy_full");
-		else
-			--Debug.Log("Regen energy currently " .. self.Properties.Stats.Energy);
-		end
-		GameplayNotificationBus.Event.OnEventBegin(self.setEnergyEventId, 100 * self.Properties.Stats.Energy / self.Properties.Stats.EnergyMax);
-	end
 	
 	self.debugFireMessage = false;
 end
@@ -613,8 +572,9 @@ function weaponcontroller:SetControlsEnabled(newControlsEnabled)
 end
 
 function weaponcontroller:OnEventBegin(value)
-	--Debug.Log("weaponcontroller:OnEventBegin " .. tostring(GameplayNotificationBus.GetCurrentBusId()) .. " " .. tostring(value));
-	if (GameplayNotificationBus.GetCurrentBusId() == self.controlsEnabledEventId) then
+	local busId = GameplayNotificationBus.GetCurrentBusId();
+	--Debug.Log("weaponcontroller:OnEventBegin " .. tostring(busId) .. " " .. tostring(value));
+	if (busId == self.controlsEnabledEventId) then
 		--Debug.Log("weaponcontroller:controlsEnabledEventId " .. tostring(value));
 		if (value == 1.0) then
 			self.controlsDisabledCount = self.controlsDisabledCount - 1;
@@ -632,52 +592,52 @@ function weaponcontroller:OnEventBegin(value)
 	end
 
 	if(self.controlsEnabled)then
-		if (GameplayNotificationBus.GetCurrentBusId() == self.weaponFirePressedEventId) and self:IsDead() == false then
+		if (busId == self.weaponFirePressedEventId) and self:IsDead() == false then
 			if (self.canFire) then
 				self.WantsToShoot = true;
 			else
 				self.startedShootingWhenDisabled = true;
 			end
-		elseif (GameplayNotificationBus.GetCurrentBusId() == self.weaponFireReleasedEventId) and self:IsDead() == false then
+		elseif (busId == self.weaponFireReleasedEventId) and self:IsDead() == false then
 			self.WantsToShoot = false;
 			self.startedShootingWhenDisabled = false;
 		end
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.onSetupNewWeaponEventId) then
+	if (busId == self.onSetupNewWeaponEventId) then
 		self:OnSetupNewWeapon(value);
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.setAimDirectionEventId) then
+	elseif (busId == self.setAimDirectionEventId) then
 		self.aimDirection = value;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.setAimOriginEventId) then
+	elseif (busId == self.setAimOriginEventId) then
 		self.aimOrigin = value;
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.weaponFireSuccessEventId) then
+	if (busId == self.weaponFireSuccessEventId) then
 		self:WeaponFireSuccess(value);
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.weaponFireFailEventId) then
+	elseif (busId == self.weaponFireFailEventId) then
 		self:WeaponFireFail(value);    
     end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.enableEventId) then
+	if (busId == self.enableEventId) then
 		self:OnEnable();
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.disableEventId) then
+	elseif (busId == self.disableEventId) then
 		self:OnDisable();
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.enableFiringEventId) then
+	if (busId == self.enableFiringEventId) then
 		self.canFire = true;
 		self.WantsToShoot = self.startedShootingWhenDisabled;
-	elseif (GameplayNotificationBus.GetCurrentBusId() == self.disableFiringEventId) then
+	elseif (busId == self.disableFiringEventId) then
 		self.canFire = false;
 		self.startedShootingWhenDisabled = self.WantsToShoot;
 		self.WantsToShoot = false;
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.ownerDiedEventId) then
+	if (busId == self.ownerDiedEventId) then
 		self.IsOwnerDead = true;
 	end
 	
-	if (GameplayNotificationBus.GetCurrentBusId() == self.debugFireMessageEventId) then
+	if (busId == self.debugFireMessageEventId) then
 		self.debugFireMessage = true;
 	end
 	

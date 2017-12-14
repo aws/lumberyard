@@ -1460,7 +1460,7 @@ void CUiAnimViewNodesCtrl::SetPopupMenuLock(QMenu* menu)
     UINT count = menu->actions().size();
     for (UINT i = 0; i < count; ++i)
     {
-        QAction* a = menu->actions()[i];
+        QAction* a = menu->actions().at(i);
         QString menuString = a->text();
 
         if (menuString != "Expand" && menuString != "Collapse")

@@ -22,7 +22,7 @@
 #include "PipeUser.h"
 #include "Puppet.h"
 #include "DebugDrawContext.h"
-
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 IGoalOp* CGoalOpFactoryG02::GetGoalOp(const char* sGoalOpName, IFunctionHandler* pH, int nFirstParam, GoalParameters& params) const
 {
@@ -951,7 +951,7 @@ bool COPSeekCover::IsInDeepWater(const Vec3& refPos)
         // This is not consistent with the player code, but for performance reasons do not do the ray check here.
         return false;
     }
-    float waterLevel = gEnv->p3DEngine->GetWaterLevel(&refPos);
+    float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(refPos) : gEnv->p3DEngine->GetWaterLevel(&refPos);
     return (waterLevel - terrainLevel) > 0.8f;
 }
 

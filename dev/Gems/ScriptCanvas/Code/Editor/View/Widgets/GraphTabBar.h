@@ -17,7 +17,6 @@
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Asset/AssetCommon.h>
-
 #include <ScriptCanvas/Bus/DocumentContextBus.h>
 
 class QGraphicsView;
@@ -46,16 +45,17 @@ namespace ScriptCanvasEditor
             GraphTabBar(QWidget* parent = nullptr);
 
             // Adds a new tab to the bar
-            void AddGraphTab(const AZ::EntityId& sceneId, const AZ::Data::AssetId& assetId, const AZ::EntityId& graphId, const AZStd::string& tabName);
-            void InsertGraphTab(int tabIndex, const AZ::EntityId& sceneId, const AZ::Data::AssetId& assetId, const AZ::EntityId& graphId, const AZStd::string& tabName);
-            void InsertBlankGraphTab(int tabIndex, const AZ::Data::AssetId& assetId);
+            void AddGraphTab(const AZ::Data::AssetId& assetId, AZStd::string_view tabName = {});
+            void InsertGraphTab(int tabIndex, const AZ::Data::AssetId& assetId, AZStd::string_view tabName = {});
             bool SelectTab(const AZ::Data::AssetId& assetId);
 
             int FindTab(const AZ::Data::AssetId& assetId) const;
             //! Removes all tabs from the bar
             void RemoveAllBars();
 
-            bool SetGraphTabData(const AZ::Data::AssetId& assetId, const AZ::EntityId& sceneId, const AZ::EntityId& graphId, const AZStd::string& tabName);
+            // Updates the tab at the supplied index with the GraphTabMetadata
+            // The host widget field of the tabMetadata is not used and will not overwrite the tab data
+            bool SetGraphTabData(int tabIndex, GraphTabMetadata tabMetadata);
             void SetTabText(int tabIndex, const QString& path, ScriptCanvasFileState fileState = ScriptCanvasFileState::INVALID);
 
             // Closes a tab and cleans up Metadata

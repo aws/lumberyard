@@ -42,17 +42,13 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Component/Entity.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
+#include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-/*
-#   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
-@class NSEvent
- */
-#endif // defined(AZ_PLATFORM_*)
+#endif // defined(AZ_PLATFORM_WINDOWS)
 
 enum
 {
@@ -251,9 +247,14 @@ namespace Editor
     {
         AzToolsFramework::Thumbnailer::ThumbnailerComponent::CreateDescriptor();
         AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor();
+        AzToolsFramework::MaterialBrowser::MaterialBrowserComponent::CreateDescriptor();
+
         m_qtEntity.reset(aznew AZ::Entity());
+
         m_qtEntity->AddComponent(aznew AzToolsFramework::Thumbnailer::ThumbnailerComponent());
         m_qtEntity->AddComponent(aznew AzToolsFramework::AssetBrowser::AssetBrowserComponent());
+        m_qtEntity->AddComponent(aznew AzToolsFramework::MaterialBrowser::MaterialBrowserComponent());
+
         m_qtEntity->Init();
         m_qtEntity->Activate();
     }
@@ -347,23 +348,8 @@ namespace Editor
     }
 
 #if defined(AZ_PLATFORM_WINDOWS)
-    static HWND getHWNDForWidget(const QWidget* widget)
-    {
-        QWindow* window = windowForWidget(widget);
-        if (window && window->handle())
-        {
-            QPlatformNativeInterface* nativeInterface = QGuiApplication::platformNativeInterface();
-            return static_cast<HWND>(nativeInterface->nativeResourceForWindow(QByteArrayLiteral("handle"), window));
-        }
-
-        // Using NULL here because it's Win32 and that's what they use
-        return NULL;
-    }
-#endif
-
     bool EditorQtApplication::nativeEventFilter(const QByteArray& eventType, void* message, long* result)
     {
-#if defined(AZ_PLATFORM_WINDOWS)
         MSG* msg = (MSG*)message;
 
         if (msg->message == WM_MOVING || msg->message == WM_SIZING)
@@ -393,27 +379,21 @@ namespace Editor
             RAWINPUT* rawInput = (RAWINPUT*)rawInputBytes;
             CRY_ASSERT(rawInput);
 
-            EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputEvent, *rawInput);
+            AzFramework::RawInputNotificationBusWin::Broadcast(&AzFramework::RawInputNotificationsWin::OnRawInputEvent, *rawInput);
             return false;
         }
         else if (msg->message == WM_DEVICECHANGE)
         {
             if (msg->wParam == 0x0007) // DBT_DEVNODES_CHANGED
             {
-                EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputDeviceChangeEvent);
+                AzFramework::RawInputNotificationBusWin::Broadcast(&AzFramework::RawInputNotificationsWin::OnRawInputDeviceChangeEvent);
             }
             return true;
         }
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-        // ToDo: Enable this once we need game mode input on OSX
-        // if (GetIEditor()->IsInGameMode())
-        // {
-        //     NSEvent* event = (NSEvent*)message;
-        //     EBUS_EVENT(AzFramework::RawInputNotificationBusOsx, OnRawInputEvent, event);
-        // }
-#endif
+
         return false;
     }
+#endif
 
     void EditorQtApplication::OnEditorNotifyEvent(EEditorNotifyEvent event)
     {

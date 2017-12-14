@@ -24,7 +24,6 @@ def build(bld):
 
         uselib        = ['AWS_CPP_SDK_CORE',
                          'DYAD'],
-        shared_settings = ['awsgem.json'],
 
         file_list     = file_list,
 

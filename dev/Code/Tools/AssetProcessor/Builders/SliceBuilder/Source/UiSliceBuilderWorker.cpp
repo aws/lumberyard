@@ -48,7 +48,7 @@ namespace SliceBuilder
         AzFramework::StringFunc::Path::ConstructFull(request.m_watchFolder.c_str(), request.m_sourceFile.c_str(), fullPath, false);
         AzFramework::StringFunc::Path::Normalize(fullPath);
 
-        AZ_TracePrintf(s_uiSliceBuilder, "CreateJobs for UI canvas \"%s\"", fullPath.c_str());
+        AZ_TracePrintf(s_uiSliceBuilder, "CreateJobs for UI canvas \"%s\"\n", fullPath.c_str());
 
         // Open the source canvas file
         AZ::IO::FileIOStream stream(fullPath.c_str(), AZ::IO::OpenMode::ModeRead);
@@ -72,6 +72,14 @@ namespace SliceBuilder
 
                     response.m_sourceFileDependencyList.push_back(dependency);
                 }
+            }
+            else
+            if (asset.GetType() == AZ::Uuid("{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}")) // ScriptCanvasAsset
+            {
+                AssetBuilderSDK::SourceFileDependency dependency;
+                dependency.m_sourceFileDependencyUUID = asset.GetId().m_guid;
+
+                response.m_sourceFileDependencyList.push_back(dependency);
             }
 
             return false;
@@ -100,15 +108,13 @@ namespace SliceBuilder
         }
 
         const char* compilerVersion = "3";
-        const size_t platformCount = request.GetEnabledPlatformsCount();
-
-        for (size_t i = 0; i < platformCount; ++i)
+        for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
         {
             AssetBuilderSDK::JobDescriptor jobDescriptor;
             jobDescriptor.m_priority = 0;
             jobDescriptor.m_critical = true;
             jobDescriptor.m_jobKey = "RC Slice";
-            jobDescriptor.m_platform = request.GetEnabledPlatformAt(i);
+            jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
             jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion).append(azrtti_typeid<AZ::DynamicSliceAsset>().ToString<AZStd::string>());
 
             response.m_createJobOutputs.push_back(jobDescriptor);
@@ -135,7 +141,7 @@ namespace SliceBuilder
         AzFramework::StringFunc::Path::ConstructFull(request.m_watchFolder.c_str(), request.m_sourceFile.c_str(), fullPath, false);
         AzFramework::StringFunc::Path::Normalize(fullPath);
 
-        AZ_TracePrintf(s_uiSliceBuilder, "Processing UI canvas \"%s\"", fullPath.c_str());
+        AZ_TracePrintf(s_uiSliceBuilder, "Processing UI canvas \"%s\"\n", fullPath.c_str());
 
         // Open the source canvas file
         AZ::IO::FileIOStream stream(fullPath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary);
@@ -145,11 +151,20 @@ namespace SliceBuilder
             return;
         }
 
+        AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+
+        // Asset filter is used to record dependencies.  Only returns true for slices
+        auto assetFilter = [&productDependencies](const AZ::Data::Asset<AZ::Data::AssetData>& filterAsset)
+        {
+            productDependencies.emplace_back(filterAsset.GetId(), 0);
+
+            return AZ::ObjectStream::AssetFilterSlicesOnly(filterAsset);
+        };
+
         // Serialize in the canvas from the stream. This uses the LyShineSystemComponent to do it because
         // it does some complex support for old canvas formats
         UiSystemToolsInterface::CanvasAssetHandle* canvasAsset = nullptr;
-        UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream,
-            AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterSlicesOnly));
+        UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream, AZ::ObjectStream::FilterDescriptor(assetFilter));
         if (!canvasAsset)
         {
             AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to load canvas from stream.", fullPath.c_str());
@@ -313,16 +328,62 @@ namespace SliceBuilder
                     return;
                 }
 
+                // Get the canvas entity from the canvas
+                AZ::Entity* sourceCanvasEntity = nullptr;
+                UiSystemToolsBus::BroadcastResult(sourceCanvasEntity, &UiSystemToolsInterface::GetCanvasEntity, canvasAsset);
+
+                if (!sourceCanvasEntity)
+                {
+                    AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to find the canvas entity.", fullPath.c_str());
+                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
+                    return;
+                }
+
+                // create a new canvas entity that will contain the game components rather than editor components
+                AZ::Entity exportCanvasEntity(sourceCanvasEntity->GetName().c_str());
+                exportCanvasEntity.SetId(sourceCanvasEntity->GetId());
+
+                const AZ::Entity::ComponentArrayType& editorCanvasComponents = sourceCanvasEntity->GetComponents();
+                for (AZ::Component* canvasEntityComponent : editorCanvasComponents)
+                {
+                    auto* asEditorComponent =
+                        azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(canvasEntityComponent);
+
+                    if (asEditorComponent)
+                    {
+                        size_t oldComponentCount = exportCanvasEntity.GetComponents().size();
+                        asEditorComponent->BuildGameEntity(&exportCanvasEntity);
+                        if (exportCanvasEntity.GetComponents().size() > oldComponentCount)
+                        {
+                            AZ::Component* newComponent = exportCanvasEntity.GetComponents().back();
+                            AZ_Error("Export", asEditorComponent->GetId() != AZ::InvalidComponentId, "For entity \"%s\", component \"%s\" doesn't have a valid component id",
+                                sourceCanvasEntity->GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
+                            newComponent->SetId(asEditorComponent->GetId());
+                        }
+                    }
+                    else
+                    {
+                        // The component is already runtime-ready. I.e. it is not an editor component.
+                        // Clone the component and add it to the export entity
+                        AZ::Component* clonedComponent = context->CloneObject(canvasEntityComponent);
+                        exportCanvasEntity.AddComponent(clonedComponent);
+                    }
+                }
+
                 // Save runtime UI canvas to disk.
                 AZ::IO::FileIOStream outputStream(outputPath.c_str(), AZ::IO::OpenMode::ModeWrite);
                 if (outputStream.IsOpen())
                 {
                     exportSliceEntity.RemoveComponent(exportSlice);
                     UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceRootSliceSliceComponent, canvasAsset, exportSlice);
+                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceCanvasEntity, canvasAsset, &exportCanvasEntity);
                     UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::SaveCanvasToStream, canvasAsset, outputStream);
                     outputStream.Close();
 
-                    AZ_TracePrintf(s_uiSliceBuilder, "Output file %s", outputPath.c_str());
+                    // switch them back after we write the file so that the source canvas entity gets freed.
+                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceCanvasEntity, canvasAsset, sourceCanvasEntity);
+
+                    AZ_TracePrintf(s_uiSliceBuilder, "Output file %s\n", outputPath.c_str());
                 }
                 else
                 {
@@ -353,10 +414,23 @@ namespace SliceBuilder
                     }
                 }
 
+                // Do the same for the canvas entity
+                for (AZ::Component* canvasEntityComponent : editorCanvasComponents)
+                {
+                    auto* asEditorComponent =
+                        azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(canvasEntityComponent);
+
+                    if (asEditorComponent)
+                    {
+                        asEditorComponent->FinishedBuildingGameEntity(&exportCanvasEntity);
+                    }
+                }
+
                 AssetBuilderSDK::JobProduct jobProduct(outputPath);
                 jobProduct.m_productAssetType = azrtti_typeid<LyShine::CanvasAsset>();
                 jobProduct.m_productSubID = 0;
-                response.m_outputProducts.push_back(jobProduct);
+                jobProduct.m_dependencies = AZStd::move(productDependencies);
+                response.m_outputProducts.push_back(AZStd::move(jobProduct));
             }
             else
             {
@@ -371,6 +445,6 @@ namespace SliceBuilder
             UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
         }
 
-        AZ_TracePrintf(s_uiSliceBuilder, "Finished processing uicanvas %s", fullPath.c_str());
+        AZ_TracePrintf(s_uiSliceBuilder, "Finished processing uicanvas %s\n", fullPath.c_str());
     }
 }

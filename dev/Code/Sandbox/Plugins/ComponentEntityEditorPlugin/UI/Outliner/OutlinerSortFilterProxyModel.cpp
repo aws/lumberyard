@@ -18,35 +18,32 @@
 
 #include "OutlinerListModel.hxx"
 
-namespace AzToolsFramework
+OutlinerSortFilterProxyModel::OutlinerSortFilterProxyModel(QObject* pParent)
+    : QSortFilterProxyModel(pParent)
 {
-    OutlinerSortFilterProxyModel::OutlinerSortFilterProxyModel(QObject* pParent)
-        : QSortFilterProxyModel(pParent)
-    {
-    }
+}
 
-    void OutlinerSortFilterProxyModel::UpdateFilter()
-    {
-        invalidateFilter();
-    }
+void OutlinerSortFilterProxyModel::UpdateFilter()
+{
+    invalidateFilter();
+}
 
-    bool OutlinerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
-    {
-        QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
-        QVariant visibilityData = sourceModel()->data(index, OutlinerListModel::VisibilityRole);
-        return visibilityData.isValid() ? visibilityData.toBool() : true;
-    }
+bool OutlinerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
+{
+    QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
+    QVariant visibilityData = sourceModel()->data(index, OutlinerListModel::VisibilityRole);
+    return visibilityData.isValid() ? visibilityData.toBool() : true;
+}
 
-    bool OutlinerSortFilterProxyModel::lessThan(const QModelIndex& leftIndex, const QModelIndex& rightIndex) const
-    {
-        return sourceModel()->data(leftIndex) < sourceModel()->data(rightIndex);
-    }
+bool OutlinerSortFilterProxyModel::lessThan(const QModelIndex& leftIndex, const QModelIndex& rightIndex) const
+{
+    return sourceModel()->data(leftIndex) < sourceModel()->data(rightIndex);
+}
 
-    void OutlinerSortFilterProxyModel::sort(int /*column*/, Qt::SortOrder /*order*/)
-    {
-        // override any attempts to change sort
-        QSortFilterProxyModel::sort(OutlinerListModel::ColumnSortIndex, Qt::SortOrder::AscendingOrder);
-    }
+void OutlinerSortFilterProxyModel::sort(int /*column*/, Qt::SortOrder /*order*/)
+{
+    // override any attempts to change sort
+    QSortFilterProxyModel::sort(OutlinerListModel::ColumnSortIndex, Qt::SortOrder::AscendingOrder);
 }
 
 #include <UI/Outliner/OutlinerSortFilterProxyModel.moc>

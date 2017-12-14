@@ -143,7 +143,9 @@ void CUiAnimationContext::ActiveCanvasChanged()
 {
     m_sequenceName = "";
     m_sequenceTime = GetTime();
-    m_bSavedRecordingState = m_recording;
+    m_paused = 0;
+    m_recording = m_bSavedRecordingState = false;
+    m_playing = false;
     SetSequence(nullptr, true, true);
 }
 
@@ -157,10 +159,20 @@ void CUiAnimationContext::SetSequence(CUiAnimViewSequence* pSequence, bool bForc
         return;
     }
 
-    // UI_ANIMATION_REVISIT - check if this ever happens now
     if (!GetUiAnimationSystem())
     {
+        // There is no canvas loaded in editor
         m_pSequence = pSequence;
+
+        if (!bNoNotify)
+        {
+            for (size_t i = 0; i < m_contextListeners.size(); ++i)
+            {
+                m_contextListeners[i]->OnTimeChanged(0.0f);
+                m_contextListeners[i]->OnSequenceChanged(m_pSequence);
+            }
+        }
+
         return;
     }
 

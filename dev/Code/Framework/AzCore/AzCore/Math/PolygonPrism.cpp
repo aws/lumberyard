@@ -27,36 +27,42 @@
 
 namespace AZ
 {
-    void PolygonPrismReflect(SerializeContext& context)
+    void PolygonPrismReflect(ReflectContext* context)
     {
         PolygonPrism::Reflect(context);
     }
 
-    /*static*/ void PolygonPrism::Reflect(SerializeContext& serializeContext)
+    void PolygonPrism::Reflect(ReflectContext* context)
     {
-        serializeContext.Class<PolygonPrism>()
-            ->Version(1)
-            ->Field("Height", &PolygonPrism::m_height)
-            ->Field("VertexContainer", &PolygonPrism::m_vertexContainer);
-
-        if (EditContext* editContext = serializeContext.GetEditContext())
+        if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
         {
-            editContext->Class<PolygonPrism>("PolygonPrism", "Polygon prism shape")
-                ->ClassElement(Edit::ClassElements::EditorData, "")
-                ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
-                ->DataElement(Edit::UIHandlers::Default, &PolygonPrism::m_height, "Height", "Shape Height")
-                ->Attribute(Edit::Attributes::Suffix, " m")
-                ->Attribute(Edit::Attributes::Step, 0.05f)
-                ->Attribute(Edit::Attributes::ChangeNotify, &PolygonPrism::OnChange)
-                ->DataElement(Edit::UIHandlers::Default, &PolygonPrism::m_vertexContainer, "Vertices", "Data representing the polygon, in the entity's local coordinate space")
-                ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(Edit::Attributes::AutoExpand, true);
+            serializeContext->Class<PolygonPrism>()
+                ->Version(1)
+                ->Field("Height", &PolygonPrism::m_height)
+                ->Field("VertexContainer", &PolygonPrism::m_vertexContainer);
+
+            if (EditContext* editContext = serializeContext->GetEditContext())
+            {
+                editContext->Class<PolygonPrism>("PolygonPrism", "Polygon prism shape")
+                    ->ClassElement(Edit::ClassElements::EditorData, "")
+                    ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(Edit::UIHandlers::Default, &PolygonPrism::m_height, "Height", "Shape Height")
+                    ->Attribute(Edit::Attributes::Suffix, " m")
+                    ->Attribute(Edit::Attributes::Step, 0.05f)
+                    ->Attribute(Edit::Attributes::ChangeNotify, &PolygonPrism::OnChangeHeight)
+                    ->DataElement(Edit::UIHandlers::Default, &PolygonPrism::m_vertexContainer, "Vertices", "Data representing the polygon, in the entity's local coordinate space")
+                    ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
+                    ->Attribute(Edit::Attributes::AutoExpand, true);
+            }
         }
 
-        if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(&serializeContext))
+        if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
         {
             behaviorContext->Class<PolygonPrism>()
-                ->Property("height", BehaviorValueProperty(&PolygonPrism::m_height));
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::RuntimeOwn)
+                ->Property("height", BehaviorValueGetter(&PolygonPrism::m_height), nullptr)
+                ->Property("vertexContainer", BehaviorValueGetter(&PolygonPrism::m_vertexContainer), nullptr);
         }
     }
 
@@ -65,19 +71,20 @@ namespace AZ
         if (!IsCloseMag(height, m_height))
         {
             m_height = height;
-            OnChange();
+            OnChangeHeight();
         }
     }
 
-    void PolygonPrism::OnChange() const
+    void PolygonPrism::OnChangeHeight() const
     {
-        if (m_onChangeCallback)
+        if (m_onChangeHeightCallback)
         {
-            m_onChangeCallback();
+            m_onChangeHeightCallback();
         }
     }
 
-    void PolygonPrism::SetCallbacks(const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer)
+    void PolygonPrism::SetCallbacks(const AZStd::function<void()>& OnChangeElement,
+        const AZStd::function<void()>& OnChangeContainer, const AZStd::function<void()>& OnChangeHeight)
     {
         m_vertexContainer.SetCallbacks(
             [OnChangeContainer](size_t) { OnChangeContainer(); },
@@ -86,7 +93,21 @@ namespace AZ
             OnChangeContainer,
             OnChangeContainer);
 
-        m_onChangeCallback = OnChangeElement;
+        m_onChangeHeightCallback = OnChangeHeight;
+    }
+
+    void PolygonPrism::SetCallbacks(const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
+        const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
+        const AZStd::function<void()>& OnClearVertices, const AZStd::function<void()>& OnChangeHeight)
+    {
+        m_vertexContainer.SetCallbacks(
+            OnAddVertex,
+            OnRemoveVertex,
+            OnUpdateVertex,
+            OnSetVertices,
+            OnClearVertices);
+
+        m_onChangeHeightCallback = OnChangeHeight;
     }
 
     AZ_CLASS_ALLOCATOR_IMPL(PolygonPrism, SystemAllocator, 0)
@@ -97,8 +118,8 @@ namespace AZ
         {
             const VertexContainer<Vector2>& vertexContainer = polygonPrism.m_vertexContainer;
 
-            VectorFloat zero = VectorFloat::CreateZero();
-            VectorFloat height = VectorFloat(polygonPrism.GetHeight());
+            const VectorFloat zero = VectorFloat::CreateZero();
+            const VectorFloat height = VectorFloat(polygonPrism.GetHeight());
 
             Aabb aabb = Aabb::CreateNull();
             // check base of prism
@@ -121,8 +142,8 @@ namespace AZ
         {
             using namespace PolygonPrismUtil;
 
-            const VectorFloat c_epsilon = VectorFloat(0.0001f);
-            const VectorFloat c_projectRayLength = VectorFloat(1000.0f);
+            const VectorFloat epsilon = VectorFloat(0.0001f);
+            const VectorFloat projectRayLength = VectorFloat(1000.0f);
             const VectorFloat zero = VectorFloat::CreateZero();
 
             const AZStd::vector<Vector2>& vertices = polygonPrism.m_vertexContainer.GetVertices();
@@ -132,14 +153,14 @@ namespace AZ
             const Vector3 localPoint = transform.GetInverseFast() * point;
 
             // ensure the point is not above or below the prism (in its local space)
-            if (   localPoint.GetZ().IsLessThan(VectorFloat::CreateZero())
-                || localPoint.GetZ().IsGreaterThan(polygonPrism.GetHeight()))
+            if (localPoint.GetZ().IsLessThan(VectorFloat::CreateZero()) ||
+                localPoint.GetZ().IsGreaterThan(polygonPrism.GetHeight()))
             {
                 return false;
             }
 
             const Vector3 localPointFlattened = Vector3(localPoint.GetX(), localPoint.GetY(), zero);
-            const Vector3 localEndFlattened = localPointFlattened + Vector3::CreateAxisX() * c_projectRayLength;
+            const Vector3 localEndFlattened = localPointFlattened + Vector3::CreateAxisX() * projectRayLength;
 
             size_t intersections = 0;
             // use 'crossing test' algorithm to decide if the point lies within the volume or not
@@ -155,7 +176,7 @@ namespace AZ
                 const VectorFloat delta = (closestPosRay - closestPosSegment).GetLengthSq();
 
                 // have we crossed/touched a line on the polygon
-                if (delta.IsLessThan(c_epsilon))
+                if (delta.IsLessThan(epsilon))
                 {
                     const Vector3 highestVertex = segmentStart.GetY().IsGreaterThan(segmentEnd.GetY()) ? segmentStart : segmentEnd;
 
@@ -198,14 +219,14 @@ namespace AZ
                     const VectorFloat distance = fabsf(localPoint.GetZ());
                     return distance * distance;
                 }
-                
+
                 if (localPoint.GetZ().IsGreaterThan(height))
                 {
                     // if it's inside the 2d polygon but above the volume
                     const VectorFloat distance = localPoint.GetZ() - height;
                     return distance * distance;
                 }
-                
+
                 // if it's fully contained, return 0
                 return zero;
             }
@@ -218,8 +239,8 @@ namespace AZ
             VectorFloat minDistanceSq = VectorFloat(FLT_MAX);
             for (size_t i = 0; i < vertexCount; ++i)
             {
-                Vector3 segmentStart = Vector2ToVector3(vertices[i]);
-                Vector3 segmentEnd = Vector2ToVector3(vertices[(i + 1) % vertexCount]);
+                const Vector3 segmentStart = Vector2ToVector3(vertices[i]);
+                const Vector3 segmentEnd = Vector2ToVector3(vertices[(i + 1) % vertexCount]);
 
                 Vector3 position;
                 VectorFloat proportion;

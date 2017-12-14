@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "NoActiveDeploymentWidget.h"
 #include "ResourceManagementView.h"
 

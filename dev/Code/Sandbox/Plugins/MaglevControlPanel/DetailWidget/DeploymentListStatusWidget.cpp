@@ -10,6 +10,8 @@
 *
 */
 
+#include "stdafx.h"
+
 #include "DeploymentListStatusWidget.h"
 
 #include <QPushButton>

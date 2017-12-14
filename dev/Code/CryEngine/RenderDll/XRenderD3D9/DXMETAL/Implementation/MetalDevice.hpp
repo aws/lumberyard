@@ -65,13 +65,10 @@ namespace NCryMetal
         void Shutdown();
         bool Present();
 
-        const NativeViewType* GetCurrentView() const { return m_currentView; }
         const id<MTLDevice> GetMetalDevice() const { return m_metalDevice; }
         const id<MTLCommandQueue> GetMetalCommandQueue() const { return m_commandQueue; }
 
     protected:
-
-
         NativeViewType* m_currentView;
         NativeViewControllerType* m_viewController;
 
@@ -99,10 +96,14 @@ namespace NCryMetal
 ////////////////////////////////////////////////////////////////////////////////
 @interface MetalView : NativeViewType {}
 + (id)layerClass;
-- (id)initWithFrame: (CGRect)frame scale: (CGFloat)scale;
+- (id)initWithFrame: (CGRect)frame scale: (CGFloat)scale device: (id<MTLDevice>)device;
+- (void)setFrameSize: (CGSize) size;
 
 @property  (nonatomic, assign )CAMetalLayer *metalLayer;
 
 @end    // MetalView Interface
 
-
+////////////////////////////////////////////////////////////////////////////////
+@interface MetalViewController : NativeViewControllerType {}
+- (BOOL)prefersStatusBarHidden;
+@end    // MetalViewController Interface

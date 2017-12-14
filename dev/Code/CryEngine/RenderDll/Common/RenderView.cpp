@@ -95,7 +95,7 @@ uint32 CRenderView::GetBatchFlags(int recusrion, int nAfterWater, int nRenderLis
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CRenderView::AddRenderItem(CRendElementBase* pElem, CRenderObject* RESTRICT_POINTER pObj, CCompiledRenderObject* pCompiledObject, const SShaderItem& pSH,
+void CRenderView::AddRenderItem(CRendElementBase* pElem, CRenderObject* RESTRICT_POINTER pObj, const SShaderItem& pSH,
     uint32 nList, int nAafterWater, uint32 nBatchFlags, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter)
 {
     nBatchFlags |= (pSH.m_nPreprocessFlags & FSPR_MASK);
@@ -104,9 +104,6 @@ void CRenderView::AddRenderItem(CRendElementBase* pElem, CRenderObject* RESTRICT
     SRendItem* ri = m_renderItems[nAafterWater][nList].push_back_new(nIndex);
 
     ri->pObj = pObj;
-    //ri->pCompiled = 0;
-    ri->bRecompile = false;
-    ri->pCompiledObject = pCompiledObject;
 
     ri->nOcclQuery = SRendItem::kOcclQueryInvalid;
     if (nList == EFSLIST_TRANSP || nList == EFSLIST_HALFRES_PARTICLES)

@@ -28,6 +28,7 @@
 #include <QSettings>
 #include <QAction>
 #include <QByteArray>
+#include <QList>
 
 #include <LyViewPaneNames.h>
 
@@ -36,11 +37,6 @@
 class QMainWindow;
 struct ViewLayoutState;
 class FancyDocking;
-
-// Widget Names/Contexts supporting DragAndDrop with the DragAndDropEvents Bus
-namespace DragAndDropContexts {
-    static const AZ::Crc32 MainWindow = AZ_CRC("MainWindow", 0xa280a607);
-}
 
 typedef AZStd::function<QWidget*()> ViewPaneFactory;
 
@@ -97,6 +93,7 @@ struct QtViewPane
     ViewPaneFactory m_factoryFunc;
     QPointer<DockWidget> m_dockWidget;
     AzToolsFramework::ViewPaneOptions m_options;
+    QList<DockWidget*> m_dockWidgetInstances;
 
     bool IsValid() const
     {
@@ -128,8 +125,8 @@ struct QtViewPane
         return m_options.isPreview;
     }
 
-    bool IsTabbed() const;
-    AzQtComponents::DockTabWidget* ParentTabWidget() const;
+    static bool IsTabbed(QDockWidget* dockWidget);
+    static AzQtComponents::DockTabWidget* ParentTabWidget(QDockWidget* dockWidget);
 
     bool Close(CloseModes = CloseMode::Destroy);
 };
@@ -143,7 +140,7 @@ class EDITOR_CORE_API QtViewPaneManager
 public:
     explicit QtViewPaneManager(QObject* parent = nullptr);
     ~QtViewPaneManager();
-    void SetMainWindow(QMainWindow*, QSettings* settings, const QByteArray& lastMainWindowState, bool useNewDocking, bool enableLegacyCryEntities);
+    void SetMainWindow(QMainWindow*, QSettings* settings, const QByteArray& lastMainWindowState, bool enableLegacyCryEntities);
     void RegisterPane(const QString &name, const QString &category, ViewPaneFactory, const AzToolsFramework::ViewPaneOptions& = {});
     void UnregisterPane(const QString& name);
     QtViewPane* GetPane(int id);
@@ -160,6 +157,7 @@ public:
      * Returns the view on success, nullptr otherwise
      */
     const QtViewPane* OpenPane(const QString& name, QtViewPane::OpenModes = QtViewPane::OpenMode::None);
+    QDockWidget* InstancePane(const QString& name);
     bool ClosePane(const QString& name, QtViewPane::CloseModes = QtViewPane::CloseMode::None);
 
     /**
@@ -233,7 +231,6 @@ private:
     QList<int> m_knownIdsSet; // Semantically a set, but QList is faster for small collections than QSet
     bool m_restoreInProgress;
 
-    bool m_useNewDocking;
     bool m_enableLegacyCryEntities;
     FancyDocking* m_advancedDockManager;
 };

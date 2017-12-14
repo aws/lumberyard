@@ -14,21 +14,26 @@
 #include "LevelEditorMenuHandler.h"
 #include "MainWindow.h"
 #include "QtViewPaneManager.h"
-#include "QMenuBar"
-#include "QTimer"
 #include "Toolbox.h"
 #include "Viewport.h"
 #include "Controls/RollupBar.h"
 #include "Controls/ConsoleSCB.h"
 
-#include <QSettings>
 #include <NetPromoterScore/NetPromoterScoreDialog.h>
-#include <AzToolsFramework/UI/AssetEditor/AssetEditorWidget.hxx>
+#include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+
 #include <LyMetricsProducer/LyMetricsAPI.h>
+#include <AzQtComponents/Components/SearchLineEdit.h>
 #include <QMap>
+#include <QSettings>
+#include <QMenuBar>
+#include <QTimer>
+#include <QUrlQuery>
+#include <QDesktopServices>
 
 using namespace AZ;
 using namespace AzToolsFramework;
@@ -51,6 +56,48 @@ static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* 
     QObject::connect(action, &QAction::triggered, [name]() {
         QtViewPaneManager::instance()->OpenPane(name);
     });
+}
+
+namespace
+{
+
+    // This helper allows us to watch editor notifications to control action enable states
+    class EditorListener
+        : public QObject
+        , public IEditorNotifyListener
+    {
+    public:
+        explicit EditorListener(QObject* parent, AZStd::function<void(EEditorNotifyEvent)> trigger)
+            : QObject(parent)
+            , m_trigger(trigger)
+        {}
+
+        virtual ~EditorListener()
+        {
+            GetIEditor()->UnregisterNotifyListener(this);
+        }
+
+        void OnEditorNotifyEvent(EEditorNotifyEvent event)
+        {
+            m_trigger(event);
+        }
+
+    private:
+        AZStd::function<void(EEditorNotifyEvent)> m_trigger;
+    };
+
+    void DisableActionWhileLevelChanges(QAction* action, EEditorNotifyEvent e)
+    {
+        if (e == eNotify_OnBeginNewScene || e == eNotify_OnBeginLoad)
+        {
+            action->setDisabled(true);
+        }
+        else if (e == eNotify_OnEndNewScene || e == eNotify_OnEndLoad)
+        {
+            action->setDisabled(false);
+        }
+    }
+
 }
 
 LevelEditorMenuHandler::LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPaneManager* const viewPaneManager, QSettings& settings)
@@ -239,9 +286,15 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     connect(fileMenu, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::OnUpdateOpenRecent);
 
     // New
-    fileMenu.AddAction(ID_FILE_NEW);
+    auto fileNew = fileMenu.AddAction(ID_FILE_NEW);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileNew, [fileNew](EEditorNotifyEvent e) {
+        DisableActionWhileLevelChanges(fileNew, e);
+    }));
     // Open...
-    fileMenu.AddAction(ID_FILE_OPEN_LEVEL);
+    auto fileOpenLevel = fileMenu.AddAction(ID_FILE_OPEN_LEVEL);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileOpenLevel, [fileOpenLevel](EEditorNotifyEvent e) {
+        DisableActionWhileLevelChanges(fileOpenLevel, e);
+    }));
 
     // Open Recent
     m_mostRecentLevelsMenu = fileMenu.AddMenu(tr("Open Recent"));
@@ -282,18 +335,25 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     // Project Settings
     auto projectSettingMenu = fileMenu.AddMenu(tr("Project Settings"));
 
-    // Switch Projects
-    projectSettingMenu.AddAction(ID_PROJECT_CONFIGURATOR_PROJECTSELECTION);
+    // If the current project is external to the engine folder, then do not add options to launch AP or Project Configurator
+    // because this feature is in preview mode.
+    bool isProjectExternal = false;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(isProjectExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
 
-    // Configure Gems
-    auto configureGemSubMenu = projectSettingMenu.Get()->addAction(tr("Configure Gems"));
-    connect(configureGemSubMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateGemConfiguration);
-
-    if (m_enableLegacyCryEntities)
+    if (!isProjectExternal)
     {
-        // Input Mapping
-        auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
-        connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
+        // Switch Projects
+        projectSettingMenu.AddAction(ID_PROJECT_CONFIGURATOR_PROJECTSELECTION);
+
+    	if (m_enableLegacyCryEntities)
+	    {
+        	// Input Mapping
+        	auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
+        	connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
+		}
+        // Configure Gems
+        auto configureGemSubMenu = projectSettingMenu.Get()->addAction(tr("Configure Gems"));
+        connect(configureGemSubMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateGemConfiguration);
     }
 
     // Deployment Tool
@@ -535,6 +595,9 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     // Global Preferences...
     editorSettingsMenu.AddAction(ID_TOOLS_PREFERENCES);
 
+    // Graphics Settings...
+    editorSettingsMenu.AddAction(ID_GRAPHICS_SETTINGS);
+
     // Editor Settings Manager (only shown here in Cry-Free mode)
     if (!m_enableLegacyCryEntities)
     {
@@ -565,15 +628,7 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     iosMenu.AddAction(ID_GAME_IOS_ENABLEMEDIUMSPEC);
     iosMenu.AddAction(ID_GAME_IOS_ENABLELOWSPEC);
 
-    auto xboneMenu = graphicPerformanceSubMenu.AddMenu(tr("Xbox One")); // ACCEPTED_USE
-    xboneMenu.AddAction(ID_GAME_XBONE_ENABLEHIGHSPEC); // ACCEPTED_USE
-    xboneMenu.AddAction(ID_GAME_XBONE_ENABLEMEDIUMSPEC); // ACCEPTED_USE
-    xboneMenu.AddAction(ID_GAME_XBONE_ENABLELOWSPEC); // ACCEPTED_USE
 
-    auto ps4Menu = graphicPerformanceSubMenu.AddMenu(tr("PS4")); // ACCEPTED_USE
-    ps4Menu.AddAction(ID_GAME_PS4_ENABLEHIGHSPEC); // ACCEPTED_USE
-    ps4Menu.AddAction(ID_GAME_PS4_ENABLEMEDIUMSPEC); // ACCEPTED_USE
-    ps4Menu.AddAction(ID_GAME_PS4_ENABLELOWSPEC); // ACCEPTED_USE
 
     graphicPerformanceSubMenu.AddAction(ID_GAME_APPLETV_ENABLESPEC);
 
@@ -590,15 +645,8 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 {
     auto gameMenu = m_actionManager->AddMenu(tr("&Game"));
 
-    // update the Toolbox Macros List
-    connect(gameMenu, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::OnUpdateMacrosMenu);
-
     // Play Game
     gameMenu.AddAction(ID_VIEW_SWITCHTOGAME);
-
-    // Enable Physics/AI
-    gameMenu.AddAction(ID_SWITCH_PHYSICS);
-    gameMenu.AddSeparator();
 
     // Export to Engine
     gameMenu.AddAction(ID_FILE_EXPORTTOGAMENOSURFACETEXTURE);
@@ -723,23 +771,6 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
     gameMenu.AddSeparator();
 
-    // Physics
-    auto physicsMenu = gameMenu.AddMenu(tr("Physics"));
-
-    if (m_enableLegacyCryEntities)
-    {
-        // Get Physics State
-        physicsMenu.AddAction(ID_PHYSICS_GETPHYSICSSTATE);
-
-        // Reset Physics State
-        physicsMenu.AddAction(ID_PHYSICS_RESETPHYSICSSTATE);
-    }
-
-    // Simulate Objects
-    physicsMenu.AddAction(ID_PHYSICS_SIMULATEOBJECTS);
-
-    gameMenu.AddSeparator();
-
     // Prefabs
     if (m_enableLegacyCryEntities)
     {
@@ -848,17 +879,16 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     // minimize window - Ctrl+M
     // Zoom - Ctrl+Plus(+) -> Need the inverse too?
 
+#ifdef FEATURE_ORTHOGRAPHIC_VIEW
     // Cycle Viewports
     viewMenu.AddAction(ID_VIEW_CYCLE2DVIEWPORT);
+#endif
 
     // Center on Selection
     viewMenu.AddAction(ID_MODIFY_GOTO_SELECTION);
 
     // Show Quick Access Bar
     viewMenu.AddAction(ID_OPEN_QUICK_ACCESS_BAR);
-
-    // Enter Full Screen Mode
-    viewMenu.AddAction(ID_DISPLAY_TOGGLEFULLSCREENMAINWINDOW);
 
     // Error Report (In legacy mode, this is in the View menu)
     if (m_enableLegacyCryEntities)
@@ -877,6 +907,8 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
 
     // Viewport
     auto viewportViewsMenuWrapper = viewMenu.AddMenu(tr("Viewport"));
+
+#ifdef FEATURE_ORTHOGRAPHIC_VIEW
     auto viewportTypesMenuWrapper = viewportViewsMenuWrapper.AddMenu(tr("Viewport Type"));
 
     m_viewportViewsMenu = viewportViewsMenuWrapper;
@@ -886,8 +918,9 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     {
         return view.IsViewportPane();
     });
-    viewportViewsMenuWrapper.AddAction(ID_WIREFRAME);
+#endif
 
+    viewportViewsMenuWrapper.AddAction(ID_WIREFRAME);
     viewportViewsMenuWrapper.AddSeparator();
 
     // Ruler
@@ -960,6 +993,50 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
     // Help
     auto helpMenu = m_actionManager->AddMenu(tr("&Help"));
 
+    auto lineEditSearchAction = new QWidgetAction(m_mainWindow);
+    auto lineEdit = new QLineEdit(m_mainWindow);
+    lineEdit->setPlaceholderText(tr("Search documentation"));
+    lineEditSearchAction->setDefaultWidget(lineEdit);
+
+    auto searchButtonAction = new QWidgetAction(m_mainWindow);
+    auto pushButton = new QPushButton(QIcon(":/stylesheet/img/16x16/Search.png"), "", m_mainWindow);
+    searchButtonAction->setDefaultWidget(pushButton);
+    lineEdit->addAction(searchButtonAction, QLineEdit::TrailingPosition);
+
+    auto searchAction = [lineEdit]()
+    {
+        auto text = lineEdit->text();
+        if (text.isEmpty())
+        {
+            QDesktopServices::openUrl(QUrl("https://aws.amazon.com/documentation/lumberyard/"));
+        }
+        else
+        {
+            static const int versionStringSize = 128;
+            char productVersionString[versionStringSize];
+            const SFileVersion& productVersion = gEnv->pSystem->GetProductVersion();
+            productVersion.ToString(productVersionString, versionStringSize);
+
+            QUrl docSearchUrl("https://docs.aws.amazon.com/search/doc-search.html");
+            QUrlQuery docSearchQuery;
+            // The order of these QueryItems matters. wiki Search URL Formatting
+            docSearchQuery.addQueryItem("searchPath", "documentation-product");
+            docSearchQuery.addQueryItem("searchQuery", text);
+            docSearchQuery.addQueryItem("this_doc_product", "Lumberyard");
+            docSearchQuery.addQueryItem("ref", "lye");
+            docSearchQuery.addQueryItem("ev", productVersionString);
+            docSearchUrl.setQuery(docSearchQuery);
+            docSearchUrl.setFragment("facet_doc_product=Lumberyard");
+            QDesktopServices::openUrl(docSearchUrl);
+        }
+        lineEdit->clear();
+    };
+    connect(lineEdit, &QLineEdit::returnPressed, this, searchAction);
+    connect(pushButton, &QAbstractButton::clicked, this, searchAction);
+    connect(helpMenu.Get(), &QMenu::aboutToHide, lineEdit, &QLineEdit::clear);
+    connect(helpMenu.Get(), &QMenu::aboutToShow, lineEdit, &QLineEdit::clearFocus);
+    helpMenu->addAction(lineEditSearchAction);
+
     // Getting Started
     helpMenu.AddAction(ID_DOCUMENTATION_GETTINGSTARTEDGUIDE);
 
@@ -1012,7 +1089,6 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
     return helpMenu;
 }
 
-
 QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
 {
     QAction* action = m_actionManager->HasAction(view->m_id) ? m_actionManager->GetAction(view->m_id) : nullptr;
@@ -1064,7 +1140,7 @@ QAction* LevelEditorMenuHandler::CreateViewPaneMenuItem(ActionManager* actionMan
 {
     QAction* action = CreateViewPaneAction(view);
 
-        menu->addAction(action);
+    menu->addAction(action);
 
     return action;
 }
@@ -1179,14 +1255,6 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
                 EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, LaunchLuaEditor, nullptr);
             });
         };
-
-        // Add Input Editor into the Tools map
-        static const char* inputEditorName = "Input Editor";
-        sortMenuMap[inputEditorName] = [this, &menu]()->void
-        {
-            QAction* inputEditorAction = menu->addAction(tr(inputEditorName));
-            connect(inputEditorAction, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
-        };
     }
 
     // add each menu option into the menu
@@ -1261,7 +1329,7 @@ void LevelEditorMenuHandler::CreateDebuggingSubMenu(ActionManager::MenuWrapper g
         debuggingSubMenu.AddSeparator();
     }
 
-    // Configure Toolbox Marcos
+    // Configure Toolbox Macros
     debuggingSubMenu.AddAction(ID_TOOLS_CONFIGURETOOLS);
 
     // Toolbox Macros
@@ -1273,6 +1341,8 @@ void LevelEditorMenuHandler::CreateDebuggingSubMenu(ActionManager::MenuWrapper g
         // Script Help
         debuggingSubMenu.AddAction(ID_TOOLS_SCRIPTHELP);
     }
+
+    UpdateMacrosMenu();
 }
 
 void LevelEditorMenuHandler::UpdateMRUFiles()
@@ -1314,6 +1384,10 @@ void LevelEditorMenuHandler::UpdateMRUFiles()
             RecentFileList* mruList = cryEdit->GetRecentFileList();
             cryEdit->OpenDocumentFile((*mruList)[i].toLatin1().data());
         });
+
+        GetIEditor()->RegisterNotifyListener(new EditorListener(action, [action](EEditorNotifyEvent e) {
+            DisableActionWhileLevelChanges(action, e);
+        }));
 
         m_mostRecentLevelsMenu->addAction(action);
     }
@@ -1385,13 +1459,8 @@ void LevelEditorMenuHandler::OnUpdateOpenRecent()
 
 void LevelEditorMenuHandler::OnOpenAssetEditor()
 {
-    AZ::SerializeContext* serializeContext = nullptr;
-    EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-
-    AzToolsFramework::AssetEditorDialog* dialog = new AzToolsFramework::AssetEditorDialog(m_mainWindow, serializeContext);
-    
-    connect(dialog, &QDialog::finished, this, [dialog]() {dialog->deleteLater(); });
-    dialog->show();
+    AssetEditor::AssetEditorRequestsBus::Broadcast(
+        &AssetEditor::AssetEditorRequests::OpenAssetEditor, Data::Asset<Data::AssetData>());
 }
 
 void LevelEditorMenuHandler::OnUpdateMacrosMenu()

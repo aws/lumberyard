@@ -34,6 +34,13 @@
 		[
 			"../Common/CommonRender.cpp",
 			"../../CryCommon/EngineSettingsManager.cpp",
+			"../../CryCommon/EngineSettingsManager.h",
+			"../../CryCommon/EngineSettingsBackend.cpp",
+			"../../CryCommon/EngineSettingsBackend.h",
+			"../../CryCommon/EngineSettingsBackendApple.cpp",
+			"../../CryCommon/EngineSettingsBackendApple.h",
+			"../../CryCommon/EngineSettingsBackendWin32.cpp",
+			"../../CryCommon/EngineSettingsBackendWin32.h",
 			"../Common/Renderer.cpp",
 			"../Common/RenderPipeline.cpp",
 			"../Common/RenderThread.cpp",
@@ -42,7 +49,6 @@
 			"../Common/ShadowUtils.cpp",
 			"../Common/TextMessages.cpp",
 			"../Common/WaterUtils.cpp",
-			"../../CryCommon/EngineSettingsManager.h",
 			"../Common/ResFileLookupDataMan.h",
 			"../Common/TextMessages.h"
 		],

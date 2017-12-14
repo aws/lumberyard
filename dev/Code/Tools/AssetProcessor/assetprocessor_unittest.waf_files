@@ -30,7 +30,9 @@
             "native/unittests/MockConnectionHandler.h",
             "native/unittests/MockApplicationManager.cpp",
             "native/unittests/MockApplicationManager.h",
-            "native/unittests/BuilderSDKUnitTests.cpp"
+            "native/unittests/BuilderSDKUnitTests.cpp",
+            "native/unittests/AssetCatalogUnitTests.cpp",
+            "native/unittests/AssetCatalogUnitTests.h"
         ],
         
         "utilities":

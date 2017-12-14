@@ -22,8 +22,8 @@ def build(bld):
         platforms       = ['win', 'darwin'],
         configurations  = ['debug_all', 'profile_all'],
         disable_pch     = True,
-        use             = ['AzToolsFramework', 'AzFramework', 'EMotionFXStaticLib'],
-        export_includes = ['.'],        
+        use             = ['AzToolsFramework'],
+        export_includes = ['.'],
         defines         = defines,
     )
 

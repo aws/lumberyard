@@ -221,15 +221,17 @@ void CLibraryTreeView::fillFromLibrary(bool alphaSort /*= false*/)
         }
     }
 
-    //Create empty item
+    //Create empty item. This is to add empty space in the bottom of library tree. 
     CLibraryTreeViewItem* child = new CLibraryTreeViewItem(m_nameToNode[""], mngr, QTUI_UNPARENT_ITEMNAME, LIBRARY_TREEVIEW_NAME_COLUMN, LIBRARY_TREEVIEW_INDICATOR_COLUMN);
-    child->SetEnabled(false);
+    child->SetEnabled(false); 
+    //make this item unselecteable
+    child->setFlags(Qt::NoItemFlags);
     child->SetItem(nullptr);
     child->SetName("", false); // set display name
     child->FromString(QTUI_UNPARENT_ITEMNAME); //set lookup name
     child->SetLibraryName(libraryName);
     child->SetVirtual(true);
-    m_nameToNode[libraryName + QTUI_UNPARENT_ITEMNAME] = invisibleRootItem();
+    m_nameToNode[libraryName + QTUI_UNPARENT_ITEMNAME] = child;
 
     if (alphaSort)
     {
@@ -479,7 +481,8 @@ void CLibraryTreeView::EndRename()
     //enable all items
     QtRecurseAll(invisibleRootItem(), [&](QTreeWidgetItem* item)
         {
-            if (item == invisibleRootItem())
+            //skip the root and empty item
+            if (item == invisibleRootItem() || item->flags() == Qt::NoItemFlags)
             {
                 return; // skip root
             }
@@ -1286,7 +1289,7 @@ void CLibraryTreeView::DropMetaData(QDropEvent* event, bool dropToLocation /*= t
     // Validate Drop
     QString errorMsg;
     QVector<CBaseLibraryItem*>::iterator _itr = _items.begin();
-    QMap<CBaseLibraryItem*, QString> itemFinalNames;
+    QHash<CBaseLibraryItem*, QString> itemFinalNames;
     QVector<CBaseLibraryItem*> ignoredItems;
     QString ignoredParentName = QTUI_INVALIAD_ITEMNAME;
 

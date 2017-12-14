@@ -103,8 +103,10 @@ const char* GetShaderListName()
 #endif
 }
 
-//==============================================================================================================
-
+//------------------------------------------------------------------------------
+// This is the single method that is used to map a sampler and its HW slot.
+// It is called when parsing a shader / loading from cache.
+//------------------------------------------------------------------------------
 bool CHWShader_D3D::mfAddFXSampler(SHWSInstance* pInst, SShaderFXParams& FXParams, SFXSampler* pr, const char* ParamName, SCGBind* pBind, CShader* ef, EHWShaderClass eSHClass)
 {
     assert(pBind);
@@ -131,7 +133,14 @@ bool CHWShader_D3D::mfAddFXSampler(SHWSInstance* pInst, SShaderFXParams& FXParam
     return bRes;
 }
 
-bool CHWShader_D3D::mfAddFXTexture(SHWSInstance* pInst, SShaderFXParams& FXParams, SFXTexture* pr, const char* ParamName, SCGBind* pBind, CShader* ef, EHWShaderClass eSHClass)
+//------------------------------------------------------------------------------
+// The main texture binding method.
+// This is the single method that is used to map a texture and its HW slot.
+// It is called when going over a shader / loading from cache.
+//------------------------------------------------------------------------------
+bool CHWShader_D3D::mfAddFXTexture(
+    SHWSInstance* pInst, SShaderFXParams& FXParams, SFXTexture* pr, const char* ParamName, 
+    SCGBind* pBind, CShader* ef, EHWShaderClass eSHClass)
 {
     assert(pBind);
     if (!pBind)
@@ -143,17 +152,14 @@ bool CHWShader_D3D::mfAddFXTexture(SHWSInstance* pInst, SShaderFXParams& FXParam
     pParams = &pInst->m_Textures;
     uint32 nOffs = pParams->size();
     bool bRes = gRenDev->m_cEF.mfParseFXTexture(FXParams, pr, ParamName, ef, pBind->m_RegisterCount, pParams, eSHClass);
-    if (!bRes)
-    {
-        int nnn = 0;
-    }
+    
     if (pParams->size() > nOffs)
-    {
+    {   // If the texture was added
         for (uint32 i = 0; i < pParams->size() - nOffs; i++)
         {
             SCGTexture& p = (*pParams)[nOffs + i];
-            p.m_RegisterOffset = pBind->m_RegisterOffset + i;
-            p.m_BindingSlot = pBind->m_BindingSlot;
+            p.m_RegisterOffset = pBind->m_RegisterOffset + i;   // Offset by one and set it for this texture
+            p.m_BindingSlot = pBind->m_BindingSlot;             // Set the passed binding slot 
             p.m_Name = pBind->m_Name;
         }
     }
@@ -161,7 +167,13 @@ bool CHWShader_D3D::mfAddFXTexture(SHWSInstance* pInst, SShaderFXParams& FXParam
     return bRes;
 }
 
-void CHWShader_D3D::mfAddFXParameter(SHWSInstance* pInst, SParamsGroup& OutParams, SShaderFXParams& FXParams, SFXParam* pr, const char* ParamName, SCGBind* pBind, CShader* ef, bool bInstParam, EHWShaderClass eSHClass)
+//------------------------------------------------------------------------------
+// This is the single method that is used to map constant parameter and its HW slot.
+// It is called when parsing a shader / loading from cache.
+//------------------------------------------------------------------------------
+void CHWShader_D3D::mfAddFXParameter( 
+    SHWSInstance* pInst, SParamsGroup& OutParams, SShaderFXParams& FXParams, 
+    SFXParam* pr, const char* ParamName, SCGBind* pBind, CShader* ef, bool bInstParam, EHWShaderClass eSHClass)
 {
     SCGParam CGpr;
 
@@ -2274,12 +2286,8 @@ SShaderDevCache* CHWShader::mfInitDevCache(const char* name, CHWShader* pSH)
 
 SShaderCacheHeaderItem* CHWShader_D3D::mfGetCompressedItem(uint32 nFlags, int32& nSize)
 {
-    SHWSInstance* pInst = m_pCurInst;
-    /*if (pInst->m_GLMask == 0x200000000 && pInst->m_RTMask == 0x800000000000)
-    {
-      int nnn = 0;
-    }*/
-    char name[128];
+    SHWSInstance*   pInst = m_pCurInst;
+    char            name[128];
     {
         strcpy(name, GetName());
         char* s = strchr(name, '(');
@@ -2288,6 +2296,7 @@ SShaderCacheHeaderItem* CHWShader_D3D::mfGetCompressedItem(uint32 nFlags, int32&
             s[0] = 0;
         }
     }
+
     CCryNameTSCRC Name = name;
     FXCompressedShadersItor it = CHWShader::m_CompressedShaders.find(Name);
     if (it == CHWShader::m_CompressedShaders.end())
@@ -3450,9 +3459,9 @@ void CHWShader_D3D::mfSaveCGFile(const char* scr, const char* path)
     else
     {
 #if defined(__GNUC__)
-        sprintf_s(name, "Shaders/Cache/D3D10/fxerror/%s(GL%llx)@(LT%x)(RT%llx)@(MD%x)(MDV%x)(PSS%llx).cg", GetName(), m_pCurInst->m_Ident.m_GLMask, m_pCurInst->m_Ident.m_LightMask, m_pCurInst->m_Ident.m_RTMask, m_pCurInst->m_Ident.m_MDMask, m_pCurInst->m_Ident.m_MDVMask, m_pCurInst->m_Ident.m_pipelineState.opaque);
+        sprintf_s(name, "@cache@/shaders/fxerror/%s(GL%llx)@(LT%x)(RT%llx)@(MD%x)(MDV%x)(PSS%llx).cg", GetName(), m_pCurInst->m_Ident.m_GLMask, m_pCurInst->m_Ident.m_LightMask, m_pCurInst->m_Ident.m_RTMask, m_pCurInst->m_Ident.m_MDMask, m_pCurInst->m_Ident.m_MDVMask, m_pCurInst->m_Ident.m_pipelineState.opaque);
 #else
-        sprintf_s(name, "FXError/%s(GL%I64x)/(LT%x)(RT%I64x)/(MD%x)(MDV%x)(PSS%llx).cg", GetName(), m_pCurInst->m_Ident.m_GLMask, m_pCurInst->m_Ident.m_LightMask, m_pCurInst->m_Ident.m_RTMask, m_pCurInst->m_Ident.m_MDMask, m_pCurInst->m_Ident.m_MDVMask, m_pCurInst->m_Ident.m_pipelineState.opaque);
+        sprintf_s(name, "@cache@/shaders/fxerror/%s(GL%I64x)/(LT%x)(RT%I64x)/(MD%x)(MDV%x)(PSS%llx).cg", GetName(), m_pCurInst->m_Ident.m_GLMask, m_pCurInst->m_Ident.m_LightMask, m_pCurInst->m_Ident.m_RTMask, m_pCurInst->m_Ident.m_MDMask, m_pCurInst->m_Ident.m_MDVMask, m_pCurInst->m_Ident.m_pipelineState.opaque);
 #endif
     }
 
@@ -4263,8 +4272,9 @@ bool CHWShader_D3D::mfCreateShaderEnv(int nThread, SHWSInstance* pInst, LPD3D10B
     {
         mfCreateCacheItem(pInst, InstBindVars, (byte*)pShader->GetBufferPointer(), (uint32)pShader->GetBufferSize(), pSH, bShaderThread);
     }
-    else
+    else if (CRenderer::CV_r_shadersCacheUnavailableShaders)
     {
+        // If the shader is unavailable, cache an invalid item to avoid requesting its compilation again in future executions
         mfCreateCacheItem(pInst, InstBindVars, NULL, 0, pSH, bShaderThread);
     }
 
@@ -5005,9 +5015,9 @@ bool SFXParam::Export(SShaderSerializeContext& SC)
     PR.m_nComps = m_ComponentCount;
     PR.m_nFlags = m_nFlags;
     PR.m_nParameters = m_RegisterCount;
-    PR.m_nRegister[0] = m_RegisterOffset[0];
-    PR.m_nRegister[1] = m_RegisterOffset[1];
-    PR.m_nRegister[2] = m_RegisterOffset[2];
+    PR.m_nRegister[0] = m_Register[0];
+    PR.m_nRegister[1] = m_Register[1];
+    PR.m_nRegister[2] = m_Register[2];
 
     SC.FXParams.push_back(PR);
 
@@ -5027,9 +5037,9 @@ bool SFXParam::Import(SShaderSerializeContext& SC, SSFXParam* pPR)
     m_ComponentCount = pPR->m_nComps;
     m_nFlags = pPR->m_nFlags;
     m_RegisterCount = pPR->m_nParameters;
-    m_RegisterOffset[0] = pPR->m_nRegister[0];
-    m_RegisterOffset[1] = pPR->m_nRegister[1];
-    m_RegisterOffset[2] = pPR->m_nRegister[2];
+    m_Register[0] = pPR->m_nRegister[0];
+    m_Register[1] = pPR->m_nRegister[1];
+    m_Register[2] = pPR->m_nRegister[2];
 
     return bRes;
 }
@@ -5047,9 +5057,9 @@ bool SFXSampler::Export(SShaderSerializeContext& SC)
     PR.m_eType = m_eType;
     PR.m_nArray = m_nArray;
     PR.m_nFlags = m_nFlags;
-    PR.m_nRegister[0] = m_nRegister[0];
-    PR.m_nRegister[1] = m_nRegister[1];
-    PR.m_nRegister[2] = m_nRegister[2];
+    PR.m_nRegister[0] = m_Register[0];
+    PR.m_nRegister[1] = m_Register[1];
+    PR.m_nRegister[2] = m_Register[2];
 
     SC.FXSamplers.push_back(PR);
 
@@ -5067,9 +5077,9 @@ bool SFXSampler::Import(SShaderSerializeContext& SC, SSFXSampler* pPR)
     m_eType = pPR->m_eType;
     m_nArray = pPR->m_nArray;
     m_nFlags = pPR->m_nFlags;
-    m_nRegister[0] = pPR->m_nRegister[0];
-    m_nRegister[1] = pPR->m_nRegister[1];
-    m_nRegister[2] = pPR->m_nRegister[2];
+    m_Register[0] = pPR->m_nRegister[0];
+    m_Register[1] = pPR->m_nRegister[1];
+    m_Register[2] = pPR->m_nRegister[2];
 
     return bRes;
 }
@@ -5089,9 +5099,9 @@ bool SFXTexture::Export(SShaderSerializeContext& SC)
     PR.m_eType = m_eType;
     PR.m_nArray = m_nArray;
     PR.m_nFlags = m_nFlags;
-    PR.m_nRegister[0] = m_nRegister[0];
-    PR.m_nRegister[1] = m_nRegister[1];
-    PR.m_nRegister[2] = m_nRegister[2];
+    PR.m_nRegister[0] = m_Register[0];
+    PR.m_nRegister[1] = m_Register[1];
+    PR.m_nRegister[2] = m_Register[2];
 
     SC.FXTextures.push_back(PR);
 
@@ -5111,9 +5121,9 @@ bool SFXTexture::Import(SShaderSerializeContext& SC, SSFXTexture* pPR)
     m_eType = pPR->m_eType;
     m_nArray = pPR->m_nArray;
     m_nFlags = pPR->m_nFlags;
-    m_nRegister[0] = pPR->m_nRegister[0];
-    m_nRegister[1] = pPR->m_nRegister[1];
-    m_nRegister[2] = pPR->m_nRegister[2];
+    m_Register[0] = pPR->m_nRegister[0];
+    m_Register[1] = pPR->m_nRegister[1];
+    m_Register[2] = pPR->m_nRegister[2];
 
     return bRes;
 }
@@ -5453,3 +5463,4 @@ void CHWShader::RT_PreactivateShaders()
 {
     gRenDev->m_cEF.mfPreloadBinaryShaders();
 }
+

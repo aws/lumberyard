@@ -268,67 +268,6 @@
               </layout>
              </widget>
             </item>
-            <item>
-             <widget class="QFrame" name="proxyData">
-              <layout class="QHBoxLayout" name="horizontalLayout_3">
-               <property name="leftMargin">
-                <number>0</number>
-               </property>
-               <property name="topMargin">
-                <number>0</number>
-               </property>
-               <property name="rightMargin">
-                <number>0</number>
-               </property>
-               <property name="bottomMargin">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="proxyIPLabel">
-                 <property name="font">
-                  <font>
-                   <family>Open Sans</family>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Proxy IP</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="proxyIP">
-                 <property name="font">
-                  <font>
-                   <weight>75</weight>
-                   <bold>true</bold>
-                  </font>
-                 </property>
-                 <property name="inputMask">
-                  <string notr="true"/>
-                 </property>
-                 <property name="placeholderText">
-                  <string notr="true">xxx.xxx.xxx.xxx:xxxxx</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="proxyEnable">
-              <property name="font">
-               <font>
-                <family>Open Sans</family>
-               </font>
-              </property>
-              <property name="styleSheet">
-               <string notr="true"/>
-              </property>
-              <property name="text">
-               <string>Proxy Connect</string>
-              </property>
-             </widget>
-            </item>
            </layout>
           </widget>
          </item>
@@ -652,7 +591,7 @@
                 <item>
                  <widget class="QLabel" name="jobFilterLabel">
                   <property name="text">
-                   <string>View</string>
+                   <string>Filter</string>
                   </property>
                  </widget>
                 </item>
@@ -662,7 +601,7 @@
                    <string/>
                   </property>
                   <property name="placeholderText">
-                   <string>All jobs</string>
+                   <string>Type to search by regex ( . to show all )</string>
                   </property>
                  </widget>
                 </item>
@@ -698,6 +637,13 @@
                  </widget>
                 </item>
                </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="filterLabel">
+               <property name="text">
+                <string/>
+               </property>
               </widget>
              </item>
             </layout>

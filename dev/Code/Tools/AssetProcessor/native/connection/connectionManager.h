@@ -17,9 +17,9 @@
 #include <QMultiMap>
 #include <QObject>
 #include <QString>
+#include <QHostAddress>
 #include <QStringListModel>
 #include <qabstractitemmodel.h>
-#include "native/utilities/assetUtilEBusHelper.h"
 
 class Connection;
 typedef AZStd::function<void(unsigned int, unsigned int, unsigned int, QByteArray, QString)> regFunc;
@@ -35,11 +35,8 @@ namespace AssetProcessor
  */
 class ConnectionManager
     : public QAbstractItemModel
-    , public AssetProcessor::IncomingConnectionInfoBus::Handler
 {
     Q_OBJECT
-    Q_PROPERTY(bool proxyConnect  READ ProxyConnect WRITE SetProxyConnect NOTIFY ProxyConnectChanged)
-    Q_PROPERTY(QString proxyInformation  READ proxyInformation WRITE SetProxyInformation NOTIFY ProxyInfoChanged)
 
 public:
 
@@ -54,7 +51,7 @@ public:
         Max
     };
 
-    explicit ConnectionManager(AssetProcessor::PlatformConfiguration* platformConfig, int defaultProxyPort = -1, QObject* parent = 0);
+    explicit ConnectionManager(AssetProcessor::PlatformConfiguration* platformConfig, QObject* parent = 0);
     virtual ~ConnectionManager();
     // Singleton pattern:
     static ConnectionManager* Get();
@@ -67,9 +64,6 @@ public:
     void SaveConnections();
     void LoadConnections();
     void RegisterService(unsigned int type, regFunc func);
-    bool ProxyConnect();
-    QString proxyInformation();//lowerCamelCase for qml
-    void ReadProxyServerInformation();
 
     //QAbstractItemListModel
     QVariant data(const QModelIndex& index, int role) const override;
@@ -83,20 +77,13 @@ public:
 
     void removeConnection(const QModelIndex& index);
 
-    //////////////////////////////////////////////////////////////////////////
-    // AssetProcessor::IncomingConnectionInfoBus::Handler overrides
-    void OnNewIncomingConnection(QHostAddress hostAddress) override;
-    //////////////////////////////////////////////////////////////////////////
-
 Q_SIGNALS:
     void connectionAdded(unsigned int connectionId, Connection* connection);//lowerCamelCase for qml
     void beforeConnectionRemoved(unsigned int connectionId);//lowerCamelCase for qml
-    void ProxyInfoChanged(QString proxyInfo);//lowerCamelCase for qml
 
     void ConnectionDisconnected(unsigned int connectionId);
     void ConnectionRemoved(unsigned int connectionId);
 
-    void ProxyConnectChanged(bool inProxyMode);
     void ConnectionError(unsigned int connId, QString error);
 
     void ReadyToQuit(QObject* source);
@@ -114,8 +101,6 @@ public Q_SLOTS:
     void RemoveConnectionFromMap(unsigned int connectionId);
     void MakeSureConnectionMapEmpty();
     void NewConnection(qintptr socketDescriptor);
-    void SetProxyConnect(bool value);
-    void SetProxyInformation(QString proxyInformation);
     
     void WhiteListingEnabled(bool enabled);
     void IsAddressWhiteListed(QHostAddress hostAddress, void* token);
@@ -182,14 +167,15 @@ public Q_SLOTS:
     void UpdateWhiteListFromBootStrap();
 
 private:
+
+    bool IsResponse(unsigned int serial);
+    void RouteIncomingMessage(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload);
+
     unsigned int m_nextConnectionId;
     ConnectionMap m_connectionMap;
     RouteMultiMap m_messageRoute;
-    int m_defaultProxyPort;
     QHostAddress m_lastHostAddress = QHostAddress::Null;
     AZ::u64 m_lastConnectionTimeInUTCMilliSecs = 0;
-    bool m_proxyMode;
-    QString m_proxyIPAdressAndPort;
     AssetProcessor::PlatformConfiguration* m_platformConfig = nullptr;
 
 

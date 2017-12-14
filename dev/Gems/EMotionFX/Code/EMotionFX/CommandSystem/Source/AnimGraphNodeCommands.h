@@ -54,7 +54,7 @@ public:
 
 
     // remove a node
-        MCORE_DEFINECOMMAND_START(CommandAnimGraphRemoveNode, "Remove a anim graph node", true)
+    MCORE_DEFINECOMMAND_START(CommandAnimGraphRemoveNode, "Remove a anim graph node", true)
     uint32          mNodeID;
     uint32          mAnimGraphID;
     uint32          mParentID;
@@ -67,6 +67,7 @@ public:
     MCore::String   mOldAttributesString;
     bool            mCollapsed;
     bool            mOldDirtyFlag;
+    bool            mIsEntryNode;
 
 public:
     uint32 GetNodeID() const        { return mNodeID; }

@@ -105,6 +105,13 @@ namespace EMotionFX
             uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
+        else
+        {
+            if (uniqueData->mPreviousNode && FindChildNodeIndex(uniqueData->mPreviousNode) == MCORE_INVALIDINDEX32)
+            {
+                uniqueData->mPreviousNode = nullptr;
+            }
+        }
     }
 
 

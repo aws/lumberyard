@@ -18,6 +18,7 @@
 #include "Cry_Geo.h"
 #include "ObjMan.h"
 #include "ClipVolumeManager.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #include <limits>
 
@@ -514,7 +515,7 @@ void CFogVolumeRenderNode::Render(const SRendParams& rParam, const SRenderingPas
         pRenderObject->m_II.m_Matrix = m_matNodeWS;
         pRenderObject->m_fSort = 0;
 
-        int nAfterWater = GetObjManager()->IsAfterWater(m_pos, passInfo.GetCamera().GetPosition(), passInfo, Get3DEngine()->GetWaterLevel()) ? 1 : 0;
+        int nAfterWater = GetObjManager()->IsAfterWater(m_pos, passInfo) ? 1 : 0;
 
         // TODO: add constant factor to sortID to make fog volumes render before all other alpha transparent geometry (or have separate render list?)
         pRenderObject->m_fSort = WATER_LEVEL_SORTID_OFFSET * 0.5f;

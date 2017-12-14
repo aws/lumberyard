@@ -44,7 +44,7 @@ namespace Audio
         bool bNeedsToUpdateEnvironments;
         const bool bHasPosition;
         const AkGameObjectID nAKID;
-        TEnvironmentImplMap cEnvironemntImplAmounts;
+        TEnvironmentImplMap cEnvironmentImplAmounts;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

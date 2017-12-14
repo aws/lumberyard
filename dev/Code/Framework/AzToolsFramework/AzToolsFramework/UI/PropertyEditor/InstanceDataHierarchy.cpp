@@ -925,6 +925,21 @@ namespace AzToolsFramework
     //-----------------------------------------------------------------------------
     bool InstanceDataHierarchy::DefaultValueComparisonFunction(const InstanceDataNode* sourceNode, const InstanceDataNode* targetNode)
     {
+        // special case - while its possible for instance comparisons to differ, if one has an instance, and the other does not, they are definitely
+        // not equal!
+        if (sourceNode->GetNumInstances() == 0)
+        {
+            if (targetNode->GetNumInstances() == 0)
+            {
+                return true;
+            }
+            return false;
+        }
+        else if (targetNode->GetNumInstances() == 0)
+        {
+            return false;
+        }
+
         return targetNode->m_classData->m_serializer->CompareValueData(sourceNode->FirstInstance(), targetNode->FirstInstance());
     }
 

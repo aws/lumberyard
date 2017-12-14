@@ -109,7 +109,7 @@ private: // --------------------------------------------------------------------
     friend class CMatInfo;
     bool Unregister(_smart_ptr<IMaterial> pMat, bool deleteEditorMaterial = true);
 
-    _smart_ptr<IMaterial> CreateMaterialPlaceholder(const char* materialName, int nMtlFlags, const char* textureName);
+    _smart_ptr<IMaterial> CreateMaterialPlaceholder(const char* materialName, int nMtlFlags, const char* textureName, _smart_ptr<IMaterial> existingMtl = nullptr);
 
     bool LoadMaterialShader(_smart_ptr<IMaterial> pMtl, _smart_ptr<IMaterial> pParentMtl, const char* sShader, uint64 nShaderGenMask, SInputShaderResources& sr, XmlNodeRef& publicsNode);
     bool LoadMaterialLayerSlot(uint32 nSlot, _smart_ptr<IMaterial> pMtl, const char* szShaderName, SInputShaderResources& pBaseResources, XmlNodeRef& pPublicsNode, uint8 nLayerFlags);

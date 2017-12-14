@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_AABBNodeHasProperties = true;
-
             class AABB
-                : public NativeDatumNode<AABB, Data::AABBType, k_AABBNodeHasProperties>
+                : public NativeDatumNode<AABB, Data::AABBType>
             {
             public:
-                using ParentType = NativeDatumNode<AABB, Data::AABBType, k_AABBNodeHasProperties>;
+                using ParentType = NativeDatumNode<AABB, Data::AABBType>;
                 AZ_COMPONENT(AABB, "{AB0C2753-680E-47AD-8277-66B3AC01C659}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
@@ -45,16 +43,9 @@ namespace ScriptCanvas
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/AABB.png")
                                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ;
                         }
                     }
-                }
-
-                void AddProperties()
-                {
-                    AddProperty(&Data::AABBType::GetMin, &Data::AABBType::SetMin, "min");
-                    AddProperty(&Data::AABBType::GetMax, &Data::AABBType::SetMax, "max");
                 }
 
                 void Visit(NodeVisitor& visitor) const override

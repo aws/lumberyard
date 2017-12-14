@@ -441,12 +441,6 @@ bool CDeviceGraphicsPSO_DX12::Init(const CDeviceGraphicsPSODesc& psoDesc)
         // TODO: remove
         m_pHwShaders[shaderClass]         = hwShaders[shaderClass].pHwShader;
         m_pHwShaderInstances[shaderClass] = hwShaders[shaderClass].pHwShaderInstance;
-        // Check we don't have per batch or per instance parameters.
-        if (hwShaders[shaderClass].pHwShaderInstance && CRenderer::CV_r_GraphicsPipeline >= 2)
-        {
-            AZ_Assert(((CHWShader_D3D::SHWSInstance*)hwShaders[shaderClass].pHwShaderInstance)->m_nParams[0] < 0, "Remove per batch parameters");
-            AZ_Assert(((CHWShader_D3D::SHWSInstance*)hwShaders[shaderClass].pHwShaderInstance)->m_nParams[1] < 0, "Remove per batch parameters");
-        }
     }
 
     D3D11_RASTERIZER_DESC rasterizerDesc;

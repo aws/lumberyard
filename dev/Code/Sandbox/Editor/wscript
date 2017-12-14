@@ -41,7 +41,7 @@ def build(bld):
         vs_filter               = 'Sandbox',
         pch                     = 'StdAfx.cpp',
         file_list               = 'editor_core.waf_files',
-        platforms               = ['win'],
+        platforms               = ['win','darwin'],
         configurations          = ['debug', 'debug_test', 'profile', 'profile_test'],
         use                     = ['AzToolsFramework', 'AzQtComponents'],
         uselib                  = ['QT5CORE',
@@ -51,49 +51,45 @@ def build(bld):
                                    'QT5WEBKIT',
                                    'QT5WIDGETS',
                                    'QT5WINEXTRAS',
-                                   'FBXSDK',
                                    'ZLIB'],
         features                = ['qt5'],
         includes                = [bld.Path('Code/Tools/SDKs/squish-ccr'),
                                    'Include',
                                    bld.Path('Code/CryEngine/CryAction'),
                                    
-                                   bld.Path('Code/Tools'),
-                                   bld.Path('Code/CryEngine/CryCommon')],
+                                   bld.Path('Code/Tools')],
 
         darwin_includes         = additional_qt_includes,
         darwin_cxxflags         = ['-Wno-array-bounds'], # Squish includes have this code like this that triggers this warning: sets >= 2? array[sets - 2] : NULL
         darwin_enable_rtti      = True,
 
-        win_cxxflags            = [ '/wd4355'],
+        win_cxxflags            = ['/wd4355'],
 
-        win_features        = ['crcfix'],
-        win_defines     = ['KDAB_MAC_PORT'],
+        win_features            = ['crcfix'],
+        win_defines             = ['KDAB_MAC_PORT'],
 
         # Testing
         test_all_file_list  = ['editor_core_test.waf_files'],
     )
 
-    tsk_gen = bld.CryEditor(
+    bld.CryEditorLib(
         # Settings
-        target                              = 'Editor',
+        target                              = 'EditorLib',
         vs_filter                           = 'Sandbox',
         copyright_org                       = 'Amazon-CryTek',
         pch                                 = 'StdAfx.cpp',
-        file_list                           = 'editor.waf_files',
-        darwin_file_list                    = 'editor_darwin.waf_files',
-        platforms                           = ['win'],
+        file_list                           = 'editor_lib.waf_files',
+        darwin_file_list                    = 'editor_lib_darwin.waf_files',
+        platforms                           = ['win', 'darwin'],
         configurations                      = ['debug', 'debug_test', 'profile', 'profile_test'],
         includes                            = ['.',
                                                '..',
                                                'Include',
-                                               bld.Path('Code/CryEngine/CryCommon'),
                                                bld.Path('Code/CryEngine'),
                                                bld.Path('Code/CryEngine/CryAction'),
                                                bld.Path('Code/CryEngine/CrySystem'),
                                                bld.Path('Gems/LmbrCentral/Code/Include'),
                                                bld.Path('Code/Tools/'),
-                                               bld.Path('Code/Sandbox/Editor'),
                                                bld.Path('Code/Tools/SDKs/squish-ccr'),
                                                bld.Path('Code/Tools/News'),
                                                bld.Path('Code/Tools/GemRegistry/include'),
@@ -103,7 +99,101 @@ def build(bld):
                                                bld.Path('Code/Lyzard/Modules/Engines/include')],
 
         defines                             = ['DONT_BAN_STD_STRING',
-                                               'FBXSDK_NEW_API=1',
+                                               'USE_MEM_ALLOCATOR',
+                                               'IS_NEW_AUDIO_BRANCH' ] + additionalDefines,
+
+        use                                 = ['AzToolsFramework',
+                                               'AzQtComponents',
+                                               'EditorCommon',
+                                               'EditorCore',
+                                               'EditorUI_QT',
+                                               'NewsShared',
+                                               'AWSNativeSDKInit',
+                                               'ToolsCrashHandler'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
+        uselib                              = ['QT5CORE',
+                                               'QT5GUI',
+                                               'QT5NETWORK',
+                                               'QT5QML',
+                                               'QT5WEBKITWIDGETS',
+                                               'QT5WEBKIT',
+                                               'QT5WIDGETS',
+                                               'QT5WINEXTRAS',
+                                               'QT5XML',
+                                               'QT5CONCURRENT',
+                                               'BOOSTPYTHON',
+                                               'TIFF',
+                                               'AWS_CPP_SDK_STS',
+                                               'AWS_CPP_SDK_CORE',
+                                               'AWS_CPP_SDK_COGNITO_IDENTITY',
+                                               'AWS_CPP_SDK_MOBILEANALYTICS',
+                                               'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                                               'AWS_CPP_SDK_IDENTITY_LAMBDA',
+                                               'AWS_CPP_SDK_IDENTITY_METRICS',
+                                               'BOOSTPYTHON',
+                                               'ZLIB'],
+        use_required_gems                   = True,
+        features                            = ['qt5',
+                                               'EmbeddedPython',
+                                               'ExternalLyIdentity', 'ExternalLyMetrics'],
+
+        langname                            = 'en-us',
+
+        win_linkflags                       = ['/SUBSYSTEM:WINDOWS'],
+        win_debug_all_linkflags             = '/NODEFAULTLIB:LIBCMTD.lib',
+        win_ndebug_linkflags                = '/NODEFAULTLIB:LIBCMT.lib',
+        win_cxxflags                        = [ '/Zm200', '/wd4355', '/wd4018', '/wd4267' ],
+
+        # Platform Specific
+        win_features                        = [ 'crcfix' ],
+        winres_defines                      = ['NDEBUG' ],
+        win_defines                         = ['KDAB_MAC_PORT'],
+
+
+        darwin_cxxflags                     = ['-Wno-unused-local-typedef',
+                                               '-Wno-sometimes-uninitialized', # required for squish library to compile
+                                               '-Wno-shift-negative-value', # required for squish library to compile
+                                               '-Wno-null-dereference', # required for squish library to compile
+                                               '-Wno-deprecated-declarations', # using Gesalt macOS calls that are deprecated. 
+                                              ],
+        darwin_x64_lib                      = ['python2.7'],
+        darwin_lib                          = ['curl'],
+        darwin_rpath                        = ['@executable_path/', '@executable_path/qtlibs/lib', '@executable_path/rc'],
+        darwin_includes                     = [bld.Path('Code/Sandbox/Editor/HyperGraph'),
+                                               bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
+                                               bld.Path('Code/Sandbox/Editor/AssetBrowser'),
+                                               bld.Path('Code/Sandbox/Editor/Controls'),
+                                               bld.Path('Code/Sandbox/Editor/AI')] + additional_qt_includes,
+
+        # Testing
+        test_all_file_list  = ['editor_lib_test.waf_files'],
+    )
+
+    tsk_gen = bld.CryEditor(
+        # Settings
+        target                              = 'Editor',
+        vs_filter                           = 'Sandbox',
+        copyright_org                       = 'Amazon-CryTek',
+        file_list                           = 'editor.waf_files',
+        win_file_list                       = ['editor_win.waf_files'],
+        platforms                           = ['win'],
+        configurations                      = ['debug', 'debug_test', 'profile', 'profile_test'],
+        includes                            = ['.',
+                                               '..',
+                                               'Include',
+                                               bld.Path('Code/CryEngine'),
+                                               bld.Path('Code/CryEngine/CryAction'),
+                                               bld.Path('Code/CryEngine/CrySystem'),
+                                               bld.Path('Gems/LmbrCentral/Code/Include'),
+                                               bld.Path('Code/Tools/'),
+                                               bld.Path('Code/Tools/SDKs/squish-ccr'),
+                                               bld.Path('Code/Tools/News'),
+                                               bld.Path('Code/Tools/GemRegistry/include'),
+                                               bld.Path('Code/Lyzard/SDK/include'),
+                                               bld.Path('Code/Lyzard/Modules/Gems/include'),
+                                               bld.Path('Code/Lyzard/Modules/Projects/include'),
+                                               bld.Path('Code/Lyzard/Modules/Engines/include')],
+
+        defines                             = ['DONT_BAN_STD_STRING',
                                                'USE_MEM_ALLOCATOR',
                                                'IS_NEW_AUDIO_BRANCH'] + additionalDefines,
 
@@ -111,8 +201,8 @@ def build(bld):
                                                'AzQtComponents',
                                                'EditorCommon',
                                                'EditorCore',
+                                               'EditorLib',
                                                'EditorUI_QT',
-                                               'PRT',
                                                'NewsShared'],
         uselib                              = ['QT5CORE',
                                                'QT5GUI',
@@ -125,18 +215,14 @@ def build(bld):
                                                'QT5CONCURRENT',
                                                'QT5XML',
                                                'BOOSTPYTHON',
-                                               'FBXSDK',
                                                'AWS_CPP_SDK_STS',
                                                'AWS_CPP_SDK_CORE',
                                                'AWS_CPP_SDK_COGNITO_IDENTITY',
                                                'AWS_CPP_SDK_MOBILEANALYTICS',
                                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
-                                               'AWS_CPP_SDK_IDENTITY_LAMBDA',
-                                               'AWS_CPP_SDK_IDENTITY_METRICS',
                                                'BOOSTPYTHON',
                                                'TIFF',
-                                               'ZLIB',
-                                               'CRASHPAD'
+                                               'ZLIB'
                                                ],
         
         use_required_gems                   = True,
@@ -151,10 +237,6 @@ def build(bld):
                                                 'Bin64/D3DCompiler_43.dll',
                                                 'Bin64/d3dcompiler_46.dll',
                                                 'Bin64/d3dcompiler_47.dll',
-                                                'Bin64/libEGL.dll',
-                                                'Bin64/libEGLd.dll',
-                                                'Bin64/libGLESv2.dll',
-                                                'Bin64/libGLESv2d.dll',
                                                 'Bin64/libeay32.dll',
                                                 'Bin64/LuaCompiler.exe',
                                                 'Bin64/ffmpeg.exe',
@@ -180,15 +262,12 @@ def build(bld):
         darwin_x64_lib                      = ['python2.7'],
         darwin_lib                          = 'curl',
         darwin_rpath                        = ['@executable_path/', '@executable_path/qtlibs/lib', '@executable_path/rc'],
-        darwin_uselib                       = ['TIFF'],
         darwin_use                          = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
         darwin_includes                     = [bld.Path('Code/Sandbox/Editor/HyperGraph'),
                                                bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AssetBrowser'),
                                                bld.Path('Code/Sandbox/Editor/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AI')] + additional_qt_includes,
-        
-        darwin_copy_dependent_files         = ['Bin64/rc/libfbxsdk.dylib'],
     )
 
     if tsk_gen != None:

@@ -14,6 +14,8 @@
 #define CHART_AXIS_H
 
 #include <AzCore/base.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/containers/vector.h>
 
 #include <QObject>
 #include <Woodpecker/Driller/ChartTypes.hxx>

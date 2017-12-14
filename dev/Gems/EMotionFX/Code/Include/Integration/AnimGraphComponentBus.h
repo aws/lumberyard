@@ -18,6 +18,7 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Quaternion.h>
+#include <AzCore/Asset/AssetCommon.h>
 
 namespace EMotionFX
 {

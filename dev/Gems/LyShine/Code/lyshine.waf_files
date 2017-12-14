@@ -50,6 +50,8 @@
             "Source/UiElementComponent.h",
             "Source/UiFaderComponent.cpp",
             "Source/UiFaderComponent.h",
+            "Source/UiFlipbookAnimationComponent.cpp",
+            "Source/UiFlipbookAnimationComponent.h",
             "Source/UiGameEntityContext.cpp",
             "Source/UiGameEntityContext.h",
             "Source/UiImageComponent.cpp",

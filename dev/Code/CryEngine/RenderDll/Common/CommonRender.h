@@ -92,7 +92,7 @@ typedef std::vector<int, stl::STLGlobalAllocator<int> > ResourceIds;
 
 struct SResourceContainer
 {
-    ResourcesList m_RList;           // List of objects for acces by Id's
+    ResourcesList m_RList;           // List of objects for access by Id's
     ResourcesMap  m_RMap;            // Map of objects for fast searching
     ResourceIds   m_AvailableIDs;    // Available object Id's for efficient ID's assigning after deleting
 

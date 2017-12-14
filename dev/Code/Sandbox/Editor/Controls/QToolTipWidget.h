@@ -12,6 +12,8 @@
 #ifndef QToolTipWidget_h__
 #define QToolTipWidget_h__
 
+#include "EditorCoreAPI.h"
+
 #include <QWidget>
 #include <QLabel>
 #include <QString>

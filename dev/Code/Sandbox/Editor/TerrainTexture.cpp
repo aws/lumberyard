@@ -96,8 +96,7 @@ class CTerrainLayersUndoObject
     : public IUndoObject
 {
 public:
-    CTerrainLayersUndoObject(CTerrainTextureDialog* target)
-        : m_target(*target)
+    CTerrainLayersUndoObject()
     {
         m_undo.root = GetISystem()->CreateXmlNode("Undo");
         m_redo.root = GetISystem()->CreateXmlNode("Redo");
@@ -118,7 +117,7 @@ protected:
         m_undo.bLoading = true; // load undo
         GetIEditor()->GetTerrainManager()->SerializeLayerSettings(m_undo);
 
-        m_target.OnUndoUpdate();
+        UpdateTerrainTextureView();
         GetIEditor()->Notify(eNotify_OnInvalidateControls);
     }
     virtual void Redo()
@@ -126,15 +125,29 @@ protected:
         m_redo.bLoading = true; // load redo
         GetIEditor()->GetTerrainManager()->SerializeLayerSettings(m_redo);
 
-        m_target.OnUndoUpdate();
+        UpdateTerrainTextureView();
         GetIEditor()->Notify(eNotify_OnInvalidateControls);
+    }
+    void UpdateTerrainTextureView()
+    {
+        QtViewPane* pane = QtViewPaneManager::instance()->GetPane(LyViewPane::TerrainTextureLayers);
+        if (!pane)
+        {
+            return;
+        }
+
+        CTerrainTextureDialog* dialog = qobject_cast<CTerrainTextureDialog*>(pane->Widget());
+        if (!dialog || dialog->isHidden())
+        {
+            return;
+        }
+
+        dialog->OnUndoUpdate();
     }
 
 private:
     CXmlArchive m_undo;
     CXmlArchive m_redo;
-
-    CTerrainTextureDialog& m_target;
 };
 //////////////////////////////////////////////////////////////////////////
 
@@ -338,7 +351,10 @@ public:
         switch (index.column())
         {
         case ColumnLayerName:
-            layer->SetLayerName(value.toString());
+            if (!value.toString().isEmpty())
+            {
+                layer->SetLayerName(GetIEditor()->GetTerrainManager()->GenerateUniqueLayerName(value.toString()));
+            }
             break;
         case ColumnMinHeight:
             layer->SetLayerStart(value.toFloat());
@@ -630,10 +646,9 @@ void CTerrainTextureDialog::RegisterViewClass()
 {
     AzToolsFramework::ViewPaneOptions opts;
     opts.paneRect = QRect(QPoint(0, 0), QSize(1000, 650));
-    opts.canHaveMultipleInstances = true;
     opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    AzToolsFramework::RegisterViewPane<CTerrainTextureDialog>("Terrain Texture Layers", LyViewPane::CategoryOther, opts);
+    AzToolsFramework::RegisterViewPane<CTerrainTextureDialog>(LyViewPane::TerrainTextureLayers, LyViewPane::CategoryOther, opts);
 }
 
 const GUID& CTerrainTextureDialog::GetClassID()
@@ -662,6 +677,8 @@ CTerrainTextureDialog::CTerrainTextureDialog(QWidget* parent /* = nullptr */)
 {
     m_ui->setupUi(this);
     m_model->enablePreviews(true);
+
+    setContextMenuPolicy(Qt::NoContextMenu);
 
     m_bIgnoreNotify = false;
     GetIEditor()->RegisterNotifyListener(this);
@@ -867,7 +884,7 @@ void CTerrainTextureDialog::OnLoadTexture()
     if (selection.IsValid())
     {
         CUndo undo("Load Layer Texture");
-        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
         // Load the texture
         if (!layers[0]->LoadTexture(selection.GetResult()->GetFullPath().c_str()))
@@ -977,7 +994,7 @@ void CTerrainTextureDialog::OnImport()
         CLogFile::FormatLine("Importing layer settings from %s", file.toLatin1().data());
 
         CUndo undo("Import Texture Layers");
-        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
         CXmlArchive ar;
         if (ar.Load(file.toLatin1().data()))
@@ -1027,7 +1044,7 @@ void CTerrainTextureDialog::OnExport()
     CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "lay", "ExportedLayers.lay", szFilters);
     if (dlg.exec())
     {
-        QString file = dlg.selectedFiles().first();
+        QString file = dlg.selectedFiles().constFirst();
         CLogFile::FormatLine("Exporting layer settings to %s", file.toLatin1().data());
 
         CXmlArchive ar("LayerSettings");
@@ -1056,21 +1073,21 @@ void CTerrainTextureDialog::OnShowWater()
     OnGeneratePreview();
 }
 
-void CTerrainTextureDialog::OnSetWaterLevel()
+void CTerrainTextureDialog::OnSetOceanLevel()
 {
     ////////////////////////////////////////////////////////////////////////
-    // Let the user change the current water level
+    // Let the user change the current ocean level
     ////////////////////////////////////////////////////////////////////////
 
-    float level = GetIEditor()->GetHeightmap()->GetWaterLevel();
+    float level = GetIEditor()->GetHeightmap()->GetOceanLevel();
 
     bool ok = false;
     int fractionalDigitCount = 2;
     level = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Water Level"), QStringLiteral(""), level, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), fractionalDigitCount, &ok));
     if (ok)
     {
-        // Retrieve the new water level from the dialog and save it in the document
-        GetIEditor()->GetHeightmap()->SetWaterLevel(level);
+        // Retrieve the new ocean level from the dialog and save it in the document
+        GetIEditor()->GetHeightmap()->SetOceanLevel(level);
 
         // We modified the document
         GetIEditor()->SetModifiedFlag();
@@ -1125,16 +1142,18 @@ void CTerrainTextureDialog::OnLayerExportTexture()
 void CTerrainTextureDialog::OnLayersNewItem()
 {
     CUndo undo("New Terrain Layer");
-    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
     // Add the layer
+    auto pTerrainManager = GetIEditor()->GetTerrainManager();
+
     CLayer* pNewLayer = new CLayer;
-    pNewLayer->SetLayerName("NewLayer");
+    pNewLayer->SetLayerName(pTerrainManager->GenerateUniqueLayerName(QStringLiteral("NewLayer")));
     pNewLayer->LoadTexture("engineassets/textures/grey.dds");
     pNewLayer->AssignMaterial("Materials/material_terrain_default");
     pNewLayer->GetOrRequestLayerId();
 
-    GetIEditor()->GetTerrainManager()->AddLayer(pNewLayer);
+    pTerrainManager->AddLayer(pNewLayer);
 
     QModelIndex newIndex = m_model->add(pNewLayer);
     m_ui->layerTableView->scrollTo(newIndex);
@@ -1179,7 +1198,7 @@ void CTerrainTextureDialog::OnLayersDeleteItem()
     if (answer == QMessageBox::Yes)
     {
         CUndo undo("Delete Terrain Layer");
-        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
         // Find the layer inside the layer list in the document and remove it.
         m_model->remove(layer);
@@ -1199,7 +1218,7 @@ void CTerrainTextureDialog::OnLayersDeleteItem()
 void CTerrainTextureDialog::OnLayersMoveItemUp()
 {
     CUndo undo("Move Terrain Layer Up");
-    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
     Layers selected = GetSelectedLayers();
 
@@ -1240,7 +1259,7 @@ void CTerrainTextureDialog::OnLayersMoveItemUp()
 void CTerrainTextureDialog::OnLayersMoveItemDown()
 {
     CUndo undo("Move Terrain Layer Down");
-    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
     Layers selected = GetSelectedLayers();
 
@@ -1366,7 +1385,7 @@ void CTerrainTextureDialog::OnAssignMaterial()
 {
     Layers layers = GetSelectedLayers();
     CUndo undo("Assign Layer Material");
-    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
     CMaterial* pMaterial = GetIEditor()->GetMaterialManager()->GetCurrentMaterial();
     assert(pMaterial != NULL);
@@ -1389,17 +1408,20 @@ void CTerrainTextureDialog::OnAssignSplatMap()
 {
     Layers layers = GetSelectedLayers();
     CUndo undo("Assign Layer Mask");
-    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject(this));
+    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
     assert(layers.size() == 1);
-    auto layer = layers[0];
+    CLayer* layer = layers[0];
     QString filePath = layer->GetSplatMapPath();
-
-    auto path = Path::GamePathToFullPath(filePath);
-    auto selectedFile = filePath;
-    if (CFileUtil::SelectFile(QStringLiteral("Bitmap Image File (*.bmp)"), path, selectedFile))
+    if (!filePath.isEmpty())
     {
-        auto newPath = Path::FullPathToGamePath(selectedFile);
+        filePath = Path::GamePathToFullPath(filePath);
+    }
+
+    QString selectedFile = filePath;
+    if (CFileUtil::SelectFile(QStringLiteral("Bitmap Image File (*.bmp)"), filePath, selectedFile))
+    {
+        QString newPath = Path::FullPathToGamePath(selectedFile);
         layer->SetSplatMapPath(newPath);
     }
 }

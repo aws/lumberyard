@@ -45,7 +45,9 @@ namespace ScriptCanvasEditor
 {
     namespace Widget
     {
-        class NodeOutlineModel : public QAbstractTableModel
+        class NodeOutlineModel 
+            : public QAbstractTableModel
+            , public GraphCanvas::NodeTitleNotificationsBus::MultiHandler
         {
             Q_OBJECT
         public:
@@ -65,7 +67,7 @@ namespace ScriptCanvasEditor
                 : QAbstractTableModel(parent)
                 , m_sceneId(sceneId)
             {
-                RefreshNodeIds();                
+                RefreshNodeIds();
             }
 
             static const char* GetMimeType() { return "lumberyard/x-scriptcanvas-outline"; }
@@ -134,6 +136,8 @@ namespace ScriptCanvasEditor
 
             void RefreshNodeIds()
             {
+                GraphCanvas::NodeTitleNotificationsBus::MultiHandler::BusDisconnect();
+
                 GraphCanvas::SceneRequestBus::EventResult(m_nodeIds, m_sceneId, &GraphCanvas::SceneRequests::GetNodes);
 
                 m_nodeIds.erase(
@@ -144,7 +148,38 @@ namespace ScriptCanvasEditor
                     }),
                     m_nodeIds.end()
                 );
+
+                for (const AZ::EntityId& nodeId : m_nodeIds)
+                {
+                    GraphCanvas::NodeTitleNotificationsBus::MultiHandler::BusConnect(nodeId);
+                }
             }
+
+            // NodeTitleNotificationsBus
+            void OnTitleChanged()
+            {
+                const AZ::EntityId* nodeId = GraphCanvas::NodeTitleNotificationsBus::GetCurrentBusId();
+
+                if (nodeId)
+                {
+                    int row = -1;
+
+                    for (size_t i = 0; i < m_nodeIds.size(); ++i)
+                    {
+                        if (m_nodeIds[i] == (*nodeId))
+                        {
+                            row = static_cast<int>(i);
+                            break;
+                        }
+                    }
+
+                    if (row >= 0)
+                    {
+                        dataChanged(createIndex(row, 0), createIndex(row, columnCount() - 1));
+                    }
+                }
+            }
+            ////
 
             private:
                 
@@ -164,7 +199,12 @@ namespace ScriptCanvasEditor
 
             bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
 
+            void SetFilter(const QString& filter);
+            void ClearFilter();
+
+        private:
             QString m_filter;
+            QRegExp m_filterRegex;
         };
 
 
@@ -202,6 +242,7 @@ namespace ScriptCanvasEditor
             // GraphCanvas::SceneNotificationBus
             void OnNodeAdded(const AZ::EntityId& /*nodeId*/) override;
             void OnNodeRemoved(const AZ::EntityId& /*nodeId*/) override;
+            ////
 
         private:
 

@@ -53,6 +53,8 @@ namespace ScriptCanvas
                     const bool* boolValue = value.GetAs<bool>();
                     return Datum::CreateInitializedCopy(boolValue && (!(*boolValue)));
                 }
+
+                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
             }; 
 
 #if defined(EXPRESSION_TEMPLATES_ENABLED)

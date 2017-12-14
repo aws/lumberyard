@@ -448,16 +448,6 @@ namespace EMotionFX
             MCORE_ASSERT(attrib->GetType() == MCore::AttributeQuaternion::TYPE_ID);
             return static_cast<MCore::AttributeQuaternion*>(attrib);
         }
-        MCORE_INLINE MCore::AttributeMatrix*        GetInputMatrix(AnimGraphInstance* animGraphInstance, uint32 portNr) const
-        {
-            MCore::Attribute* attrib = GetInputAttribute(animGraphInstance, portNr);
-            if (attrib == nullptr)
-            {
-                return nullptr;
-            }
-            MCORE_ASSERT(attrib->GetType() == MCore::AttributeMatrix::TYPE_ID);
-            return static_cast<MCore::AttributeMatrix*>(attrib);
-        }
         MCORE_INLINE MCore::AttributeColor*         GetInputColor(AnimGraphInstance* animGraphInstance, uint32 portNr) const
         {
             MCore::Attribute* attrib = GetInputAttribute(animGraphInstance, portNr);
@@ -601,15 +591,6 @@ namespace EMotionFX
             MCORE_ASSERT(mOutputPorts[outputPortIndex].mCompatibleTypes[0] == MCore::AttributeQuaternion::TYPE_ID);
             return static_cast<MCore::AttributeQuaternion*>(mOutputPorts[outputPortIndex].GetAttribute(animGraphInstance));
         }
-        MCORE_INLINE MCore::AttributeMatrix*        GetOutputMatrix(AnimGraphInstance* animGraphInstance, uint32 outputPortIndex) const
-        {
-            if (mOutputPorts[outputPortIndex].GetAttribute(animGraphInstance) == nullptr)
-            {
-                return nullptr;
-            }
-            MCORE_ASSERT(mOutputPorts[outputPortIndex].mCompatibleTypes[0] == MCore::AttributeMatrix::TYPE_ID);
-            return static_cast<MCore::AttributeMatrix*>(mOutputPorts[outputPortIndex].GetAttribute(animGraphInstance));
-        }
         MCORE_INLINE MCore::AttributeColor*         GetOutputColor(AnimGraphInstance* animGraphInstance, uint32 outputPortIndex) const
         {
             if (mOutputPorts[outputPortIndex].GetAttribute(animGraphInstance) == nullptr)
@@ -673,7 +654,7 @@ namespace EMotionFX
         void SetupOutputPortAsMotionInstance(const char* name, uint32 outputPortNr, uint32 portID);
 
         bool GetHasConnection(AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort) const;
-        BlendTreeConnection* FindConnection(AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort);
+        BlendTreeConnection* FindConnection(const AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort) const;
 
         /**
          * Find the connection at the given port.
@@ -761,6 +742,13 @@ namespace EMotionFX
          * @return The index of the child node in case of success, in the other case MCORE_INVALIDINDEX32 will be returned.
          */
         uint32 FindChildNodeIndex(AnimGraphNode* node) const;
+
+        /**
+         * Check if a child node of the given type exists. This will only iterate through the child nodes and isn't a recursive process.
+         * @param[in] uuid The rtti type id of the node to check for.
+         * @return True in case a child node of the given type was found, false if not.
+         */
+        bool HasChildNodeOfType(const AZ::Uuid& uuid) const;
 
         uint32 RecursiveCalcNumNodes() const;
         uint32 RecursiveCalcNumNodeConnections() const;

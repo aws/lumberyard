@@ -480,7 +480,7 @@ void DesignerObject::SetMinSpec(uint32 nSpec, bool bSetChildren)
     }
 }
 
-bool DesignerObject::IsSimilarObject(CBaseObject* pObject) const
+bool DesignerObject::IsSimilarObject(CBaseObject* pObject)
 {
     if (pObject->GetClassDesc() == GetClassDesc() && metaObject() == pObject->metaObject())
     {

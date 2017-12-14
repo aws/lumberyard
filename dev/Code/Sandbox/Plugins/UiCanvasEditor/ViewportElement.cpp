@@ -12,6 +12,8 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "ViewportSnap.h"
+#include "ViewportElement.h"
 
 namespace
 {

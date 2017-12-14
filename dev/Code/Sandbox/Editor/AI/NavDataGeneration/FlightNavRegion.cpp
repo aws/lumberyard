@@ -20,7 +20,6 @@
 #include <ISystem.h>
 #include <IRenderer.h>          // this is needed for debug drawing
 #include <IRenderAuxGeom.h> // this is needed for debug drawing
-//#include <CryFile.h>
 #include <ITimer.h>
 #include <I3DEngine.h>
 #include <Cry_GeoOverlap.h>
@@ -28,6 +27,7 @@
 #include "AICollision.h"
 #include "ISerialize.h"
 #include "Navigation.h"         // NOTE Feb 22, 2008: <pvl> for SpecialArea declaration
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
 
 #define BAI_FNAV_FILE_VERSION_READ 8
 #define BAI_FNAV_FILE_VERSION_WRITE 9
@@ -2222,7 +2222,7 @@ Vec3 CFlightNavRegion::IsSpaceVoid(const Vec3& vPos, const Vec3& vForward, const
     Vec3    vReturnVec(ZERO);
 
     float   terrainHeight = GetISystem()->GetI3DEngine()->GetTerrainZ((int)vPos.x, (int)vPos.y);
-    float   waterHeight = GetISystem()->GetI3DEngine()->GetWaterLevel(&vPos);
+    float   waterHeight = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vPos) : GetISystem()->GetI3DEngine()->GetWaterLevel(&vPos);
     float   height =  max(terrainHeight, waterHeight) + 20.0f;
     float   heightAbove = height + 1000.0f;
 

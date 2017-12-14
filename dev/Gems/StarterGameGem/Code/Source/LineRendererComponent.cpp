@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #include "stdafx.h"
 #include "LineRendererComponent.h"
 
@@ -21,6 +19,7 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TransformBus.h>
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 
 namespace StarterGameGem
@@ -97,8 +96,13 @@ namespace StarterGameGem
         if (m_originalMaterial)
         {
             // setting material to null restores the original material on the mesh
-            LmbrCentral::MaterialOwnerRequestBus::Event(m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, nullptr);
-            m_originalMaterial = 0;
+			bool isReady = false;
+			LmbrCentral::MaterialOwnerRequestBus::EventResult(isReady, m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::IsMaterialOwnerReady);
+			if (isReady)
+			{
+				LmbrCentral::MaterialOwnerRequestBus::Event(m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, nullptr);
+			}
+            m_originalMaterial = nullptr;
         }
         m_clonedMaterial = 0;
         LineRendererRequestBus::Handler::BusDisconnect();
@@ -113,13 +117,18 @@ namespace StarterGameGem
             // If we don't do this then ALL lines will share the same material (and shader values).
             // Apparently I can't do this on the 'Init()' or 'Activate()' callbacks because the
             // material doesn't exist at those points.
-            LmbrCentral::MaterialOwnerRequestBus::EventResult(m_originalMaterial, m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::GetMaterial);
-            if (m_originalMaterial)
-            {
-                m_clonedMaterial = gEnv->p3DEngine->GetMaterialManager()->CloneMaterial(m_originalMaterial);
-                LmbrCentral::MaterialOwnerRequestBus::Event(m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, m_clonedMaterial);
-            }
-            m_firstUpdate = false;
+			bool isReady = false;
+			LmbrCentral::MaterialOwnerRequestBus::EventResult(isReady, m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::IsMaterialOwnerReady);
+			if (isReady)
+			{
+				LmbrCentral::MaterialOwnerRequestBus::EventResult(m_originalMaterial, m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::GetMaterial);
+				if (m_originalMaterial)
+				{
+					m_clonedMaterial = gEnv->p3DEngine->GetMaterialManager()->CloneMaterial(m_originalMaterial);
+					LmbrCentral::MaterialOwnerRequestBus::Event(m_lineId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, m_clonedMaterial);
+				}
+				m_firstUpdate = false;
+			}
         }
 
         if (m_pendingVisible)
@@ -200,11 +209,10 @@ namespace StarterGameGem
             {
                 success &= SetShaderVar(m_clonedMaterial, "age", age);
             }
-        }
-
-        if (!success)
-        {
-            AZ_Warning("StarterGame", false, "Failed to set the LineRendererComponent's shader variables.");
+			if (!success)
+			{
+				AZ_Warning("StarterGame", false, "Failed to set the LineRendererComponent's shader variables.");
+			}
         }
     }
 

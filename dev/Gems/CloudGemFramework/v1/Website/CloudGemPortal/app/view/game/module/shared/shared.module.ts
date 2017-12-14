@@ -11,7 +11,8 @@ import {
     ActionStubItemsComponent,
     PaginationComponent,
     FacetComponent,
-    SearchComponent    
+    SearchComponent,
+    ThumbnailComponent
 } from "./component/index";
 import { DragulaModule, DragulaService } from 'ng2-dragula/ng2-dragula';
 import {
@@ -31,7 +32,8 @@ import { FacetDirective } from './directive/facet.directive'
         ActionStubItemsComponent,
         PaginationComponent,
         SearchComponent,
-        FacetComponent          
+        FacetComponent,
+        ThumbnailComponent
     ],
     declarations: [                  
         DragableComponent,        
@@ -45,7 +47,8 @@ import { FacetDirective } from './directive/facet.directive'
         BodyTreeViewComponent,
         RestApiExplorerComponent,
         CloudWatchLogComponent,
-        MetricComponent       
+        MetricComponent,
+        ThumbnailComponent
     ],
     providers: [
         DragulaService,

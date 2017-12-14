@@ -30,10 +30,7 @@ public:
     explicit CMatEditMainDlg(const QString& title = QString(), QWidget* parent = nullptr);
     ~CMatEditMainDlg();
 
-#ifdef Q_OS_WIN
-    // WM_MATEDITSEND is Windows only. Used by 3ds Max exporter.
     bool nativeEventFilter(const QByteArray& eventType, void* message, long* result) override;
-#endif
 
 protected:
     void closeEvent(QCloseEvent* event) override;

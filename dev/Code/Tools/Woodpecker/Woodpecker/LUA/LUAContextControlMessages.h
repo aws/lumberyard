@@ -15,6 +15,7 @@
 
 #include <AzCore/base.h>
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/std/string/string.h>
 
 #pragma once
 

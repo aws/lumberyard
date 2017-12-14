@@ -17,6 +17,8 @@
 
 namespace LmbrCentral
 {
+    static const AZ::Uuid SpawnerComponentTypeId = "{8022A627-FA7D-4516-A155-657A0927A3CA}";
+
     /*!
      * SpawnerComponentRequests
      * Messages serviced by the SpawnerComponent.
@@ -27,6 +29,15 @@ namespace LmbrCentral
     public:
         virtual ~SpawnerComponentRequests() {}
 
+        //! Set the dynamic slice 
+        virtual void SetDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& dynamicSliceAsset) = 0;
+
+        //! Sets the SpawnOnActivate parameter
+        virtual void SetSpawnOnActivate(bool spawnOnActivate) = 0;
+
+        //! Gets the value of the SpawnOnActivate parameter
+        virtual bool GetSpawnOnActivate() = 0;
+
         //! Spawn the selected slice at the entity's location
         virtual AzFramework::SliceInstantiationTicket Spawn() = 0;
 
@@ -34,16 +45,47 @@ namespace LmbrCentral
         virtual AzFramework::SliceInstantiationTicket SpawnRelative(const AZ::Transform& relative) = 0;
 
         //! Spawn the selected slice at the specified world transform
-        virtual AzFramework::SliceInstantiationTicket SpawnAbsolute(const AZ::Transform& world) { (void)world; return AzFramework::SliceInstantiationTicket(); };
+        virtual AzFramework::SliceInstantiationTicket SpawnAbsolute(const AZ::Transform& world) = 0;
 
         //! Spawn the provided slice at the entity's location
-        virtual AzFramework::SliceInstantiationTicket SpawnSlice(const AZ::Data::Asset<AZ::Data::AssetData>& slice) { (void)slice; return AzFramework::SliceInstantiationTicket(); };
+        virtual AzFramework::SliceInstantiationTicket SpawnSlice(const AZ::Data::Asset<AZ::Data::AssetData>& slice) = 0;
 
         //! Spawn the provided slice at the entity's location with the provided relative offset
-        virtual AzFramework::SliceInstantiationTicket SpawnSliceRelative(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative) { (void)slice; (void)relative; return AzFramework::SliceInstantiationTicket(); };
+        virtual AzFramework::SliceInstantiationTicket SpawnSliceRelative(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative) = 0;
 
         //! Spawn the provided slice at the specified world transform
-        virtual AzFramework::SliceInstantiationTicket SpawnSliceAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world) { (void)slice; (void)world; return AzFramework::SliceInstantiationTicket(); };
+        virtual AzFramework::SliceInstantiationTicket SpawnSliceAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world) = 0;
+
+        //! Destroy all entities from a spawned slice.
+        //! If the slice hasn't finished spawning, it is cancelled.
+        //! This component can only destroy slices that it spawned.
+        virtual void DestroySpawnedSlice(const AzFramework::SliceInstantiationTicket& ticket) = 0;
+
+        //! Destroy all entities that have been spawned by this component
+        //! Any slices that haven't finished spawning are cancelled.
+        virtual void DestroyAllSpawnedSlices() = 0;
+
+        //! Returns tickets for spawned slices that haven't been destroyed yet.
+        //! A slice is considered destroyed once all its entities are destroyed.
+        //! Includes tickets for slices that haven't finished spawning yet.
+        //! Only slices spawned by this component are returned.
+        virtual AZStd::vector<AzFramework::SliceInstantiationTicket> GetCurrentlySpawnedSlices() = 0;
+
+        //! Returns whether this component has spawned any slices that haven't been destroyed.
+        //! A slice is considered destroyed once all its entities are destroyed.
+        //! Returns true if any slices haven't finished spawning yet.
+        virtual bool HasAnyCurrentlySpawnedSlices() = 0;
+
+        //! Returns the IDs of current entities from a spawned slice.
+        //! Note that spawning is not instant, if the slice hasn't finished spawning then no entities are returned.
+        //! If an entity has been destroyed since it was spawned, its ID is not returned.
+        //! Only slices spawned by this component can be queried.
+        virtual AZStd::vector<AZ::EntityId> GetCurrentEntitiesFromSpawnedSlice(const AzFramework::SliceInstantiationTicket& ticket) = 0;
+
+        //! Returns the IDs of all existing entities spawned by this component.
+        //! Note that spawning is not instant, if a slice hasn't finished spawning then none of its entities are returned.
+        //! If an entity has been destroyed since it was spawned, its ID is not returned.
+        virtual AZStd::vector<AZ::EntityId> GetAllCurrentlySpawnedEntities() = 0;
     };
 
     using SpawnerComponentRequestBus = AZ::EBus<SpawnerComponentRequests>;
@@ -67,11 +109,33 @@ namespace LmbrCentral
         virtual void OnSpawnEnd(const AzFramework::SliceInstantiationTicket& /*ticket*/) {}
 
         //! Notify that an entity has spawned, will be called once for each entity spawned in a slice.
-        virtual void OnEntitySpawned(const AzFramework::SliceInstantiationTicket& /*ticket*/, const AZ::EntityId& /*spawnedEntities*/) {}
+        virtual void OnEntitySpawned(const AzFramework::SliceInstantiationTicket& /*ticket*/, const AZ::EntityId& /*spawnedEntity*/) {}
 
         //! Single event notification for an entire slice spawn, providing a list of all resulting entity Ids.
         virtual void OnEntitiesSpawned(const AzFramework::SliceInstantiationTicket& /*ticket*/, const AZStd::vector<AZ::EntityId>& /*spawnedEntities*/) {}
+
+        //! Notify of a spawned slice's destruction.
+        //! This occurs when all entities from a spawn are destroyed, or the slice fails to spawn.
+        virtual void OnSpawnedSliceDestroyed(const AzFramework::SliceInstantiationTicket& /*ticket*/) {}
     };
 
     using SpawnerComponentNotificationBus = AZ::EBus<SpawnerComponentNotifications>;
+    
+    class SpawnerConfig
+        : public AZ::ComponentConfig
+    {
+    public:
+        AZ_RTTI(SpawnerConfig, "{D4D68E8E-9031-448F-9D56-B5575CF4833C}", AZ::ComponentConfig);
+        AZ_CLASS_ALLOCATOR(SpawnerConfig, AZ::SystemAllocator, 0);
+
+        SpawnerConfig() = default;
+
+        ///The slice asset to be spawned
+        AZ::Data::Asset<AZ::DynamicSliceAsset> m_sliceAsset;
+        ///Whether or not to spawn the slice when the component activates
+        bool m_spawnOnActivate = false;
+        ///Whether or not to destroy the slice when the component deactivates
+        bool m_destroyOnDeactivate = false;
+    };
+
 } // namespace LmbrCentral

@@ -61,7 +61,7 @@ namespace Maestro
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceAgentComponent::ConnectSequence(const AZ::EntityId& sequenceEntityId)
     {
-        if (m_sequenceEntityIds.find(sequenceEntityId) != m_sequenceEntityIds.end())
+        if (m_sequenceEntityIds.find(sequenceEntityId) == m_sequenceEntityIds.end())
         {
             m_sequenceEntityIds.insert(sequenceEntityId);
             // connect to EBus between the given SequenceComponent and me

@@ -56,7 +56,7 @@ inline void TAnimSplineTrack<Vec2>::GetValue(float time, float& value, bool appl
 template <>
 inline EAnimCurveType TAnimSplineTrack<Vec2>::GetCurveType() { return eAnimCurveType_BezierFloat; }
 template <>
-inline EAnimValue TAnimSplineTrack<Vec2>::GetValueType() { return eAnimValue_Float; }
+inline AnimValueType TAnimSplineTrack<Vec2>::GetValueType() { return kAnimValueDefault; }
 template <>
 inline void TAnimSplineTrack<Vec2>::SetValue(float time, const float& value, bool bDefault, bool applyMultiplier)
 {

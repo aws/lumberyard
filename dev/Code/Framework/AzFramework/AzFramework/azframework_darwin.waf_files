@@ -5,32 +5,31 @@
         [
         ],
         "API": [
-            "API/ApplicationAPI_darwin.h",
-            "API/ApplicationAPI_darwin.cpp"
+            "API/ApplicationAPI_darwin.h"
+        ],
+        "Application": [
+            "Application/Application_darwin.mm"
         ],
         "Input/Buses/Notifications": [
             "Input/Buses/Notifications/RawInputNotificationBus_darwin.h"
         ],
         "Input/Devices/Gamepad": [
-            "Input/Devices/Gamepad/InputDeviceGamepad_pimpl_apple.mm"
+            "Input/Devices/Gamepad/InputDeviceGamepad_apple.mm"
         ],
         "Input/Devices/Keyboard": [
-            "Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_darwin.mm"
+            "Input/Devices/Keyboard/InputDeviceKeyboard_darwin.mm"
         ],
         "Input/Devices/Motion": [
-            "Input/Devices/Motion/InputDeviceMotion_pimpl_none.cpp"
+            "Input/Devices/Motion/InputDeviceMotion_none.cpp"
         ],
         "Input/Devices/Mouse": [
-            "Input/Devices/Mouse/InputDeviceMouse_pimpl_darwin.mm"
+            "Input/Devices/Mouse/InputDeviceMouse_darwin.mm"
         ],
         "Input/Devices/Touch": [
-            "Input/Devices/Touch/InputDeviceTouch_pimpl_none.cpp"
+            "Input/Devices/Touch/InputDeviceTouch_none.cpp"
         ],
         "Input/Devices/VirtualKeyboard": [
-            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_pimpl_none.cpp"
-        ],
-        "Input/System": [
-            "Input/System/InputSystemComponent_pimpl_darwin.mm"
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_none.cpp"
         ]
     }
 }

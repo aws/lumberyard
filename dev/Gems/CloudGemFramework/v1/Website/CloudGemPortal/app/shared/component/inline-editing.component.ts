@@ -9,16 +9,18 @@ import {ElementRef} from '@angular/core';
             <div *ngSwitchCase="'text'">
                 <textarea #inputField [ngClass]="isEditing ? 'editable-content edit-mode' : 'editable-content view-mode'" [(ngModel)]="content" (ngModelChange)="change()" (mousedown)="editContent()"></textarea>
             </div>
-            <div *ngSwitchCase="'tags'" [ngClass]="isEditing ? 'edit-mode' : 'editable-content'" (click)="editContent()">
+            <div *ngSwitchCase="'tags'" [ngClass]="isEditing ? 'editable-content edit-mode' : 'editable-content view-mode'" (click)="editContent()">
                 <span [ngSwitch]="isEditing">
                     <span *ngSwitchCase="false">
                         <tag *ngFor="let tag of this.tagsInDisplayMode" [tagName]="tag" (click)="changeDisplayOption(tag)"></tag>
                     </span>
                     <span *ngSwitchCase="true">
-                        <tag *ngFor="let tag of this.content" [tagName]="tag" [isEditing]="isEditing ? 'true' : 'false'" (delete)="deleteTag(tag)"></tag>                   
+                        <span *ngFor="let tag of content let i = index">
+                            <tag *ngIf="i < content.length - 1 || (tag != '' && newTagContent == '')" [tagName]="tag" [isEditing]="isEditing ? 'true' : 'false'" (delete)="deleteTag(tag)"></tag>
+                        </span>                 
                     </span>
                 </span>
-                <input #newTag type="text" [ngClass]="content.length == 0 || isEditing ? 'new-tag' : 'new-tag-hide'" (keyup.enter)="addNewTag()" (keyup.backspace)="deleteLastTag()"> 
+                <input #newTag type="text" [ngClass]="content.length == 0 || isEditing ? 'new-tag' : 'new-tag-hide'" [ngModel]="newTagContent" (ngModelChange)="editNewTag($event)" (keyup.enter)="addNewTag()" (keyup.backspace)="deleteLastTag()"> 
             </div>
         </div>
     `,
@@ -35,6 +37,7 @@ export class InlineEditingComponent {
     private originalValue: any;
     private displayMode: boolean;
     private tagsInDisplayMode: string[];
+    private newTagContent: string = "";
 
     @ViewChild('newTag') newTagInputRef: ElementRef;
     @ViewChild('inputField') inputFieldRef: ElementRef;
@@ -43,6 +46,9 @@ export class InlineEditingComponent {
         if (this.type == "tags") {
             if (change.isEditing && !change.isEditing.currentValue) {
                 this.generateTagsInDisplayMode();
+            }
+            else {
+                this.newTagContent = "";
             }
         }
         else if (this.type == "text" && this.inputFieldRef) {
@@ -82,15 +88,22 @@ export class InlineEditingComponent {
         this.startEditing.emit();
     }
 
-    public addNewTag(): void {
-        if (this.newTagInputRef.nativeElement.value != "") {
-            this.content.push(this.newTagInputRef.nativeElement.value);
-            this.newTagInputRef.nativeElement.value = "";
+    public editNewTag($event): void {
+        if (this.newTagContent == "" && $event != "") {
+            this.content.push($event);
         }
+        else {           
+            this.content[this.content.length - 1] = $event;
+        }
+        this.newTagContent = $event;
+    }
+
+    public addNewTag(): void {
+        this.newTagContent = "";
     }
 
     public deleteLastTag(): void {
-        if (this.newTagInputRef.nativeElement.value == "") {
+        if (this.newTagContent == "") {
             this.content.pop();
         }
     }

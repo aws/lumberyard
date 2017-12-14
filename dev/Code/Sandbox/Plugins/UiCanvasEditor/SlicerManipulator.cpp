@@ -21,7 +21,8 @@ SlicerManipulator::SlicerManipulator(SpriteBorder border,
     QSize& unscaledPixmapSize,
     QSize& scaledPixmapSize,
     ISprite* sprite,
-    QGraphicsScene* scene)
+    QGraphicsScene* scene,
+    SlicerEdit* edit)
     : QGraphicsRectItem()
     , m_border(border)
     , m_isVertical(IsBorderVertical(m_border))
@@ -34,7 +35,7 @@ SlicerManipulator::SlicerManipulator(SpriteBorder border,
         (1.0f / m_unscaledOverScaledFactor.y()))
     , m_penFront(Qt::DotLine)
     , m_penBack()
-    , m_edit(nullptr)
+    , m_edit(edit)
 {
     setAcceptHoverEvents(true);
 
@@ -63,6 +64,23 @@ void SlicerManipulator::SetEdit(SlicerEdit* edit)
     m_edit = edit;
 }
 
+void SlicerManipulator::SetPixmapSizes(const QSize& unscaledSize, const QSize& scaledSize)
+{
+    const bool validInputs = unscaledSize.isValid() && scaledSize.isValid();
+    if (!validInputs)
+    {
+        return;
+    }
+
+    m_unscaledPixmapSize = unscaledSize;
+    m_scaledPixmapSize = scaledSize;
+
+    m_unscaledOverScaledFactor = QPointF(((float)m_unscaledPixmapSize.width() / (float)m_scaledPixmapSize.width()),
+        ((float)m_unscaledPixmapSize.height() / (float)m_scaledPixmapSize.height()));
+    m_scaledOverUnscaledFactor = QPointF((1.0f / m_unscaledOverScaledFactor.x()),
+        (1.0f / m_unscaledOverScaledFactor.y()));
+}
+
 void SlicerManipulator::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
 #if UICANVASEDITOR_DRAW_SELECTABLE_AREA_OF_SLICERMANIPULATOR
@@ -73,8 +91,8 @@ void SlicerManipulator::paint(QPainter* painter, const QStyleOptionGraphicsItem*
     if (m_isVertical)
     {
         float x = ((rect().left() + rect().right()) * 0.5f);
-        float y_start = rect().top();
-        float y_end = rect().bottom();
+        float y_start = 0;
+        float y_end = m_scaledPixmapSize.height();
 
         // Back.
         painter->setPen(m_penBack);
@@ -86,8 +104,8 @@ void SlicerManipulator::paint(QPainter* painter, const QStyleOptionGraphicsItem*
     }
     else // Horizontal.
     {
-        float x_start = rect().left();
-        float x_end = rect().right();
+        float x_start = 0.0f;
+        float x_end = m_scaledPixmapSize.width();
         float y = ((rect().top() + rect().bottom()) * 0.5f);
 
         // Back.
@@ -102,8 +120,10 @@ void SlicerManipulator::paint(QPainter* painter, const QStyleOptionGraphicsItem*
 
 void SlicerManipulator::setPixelPosition(float p)
 {
-    setPos((m_isVertical ? (p * m_scaledOverUnscaledFactor.x()) : 0.0f),
-        (m_isVertical ? 0.0f : (p * m_scaledOverUnscaledFactor.y())));
+    float xPos = (m_isVertical ? (p * m_scaledOverUnscaledFactor.x()) : 0.0f);
+    float yPos = (m_isVertical ? 0.0f : (p * m_scaledOverUnscaledFactor.y()));
+
+    setPos(xPos, yPos);
 }
 
 QVariant SlicerManipulator::itemChange(GraphicsItemChange change, const QVariant& value)
@@ -111,18 +131,17 @@ QVariant SlicerManipulator::itemChange(GraphicsItemChange change, const QVariant
     if ((change == ItemPositionChange) &&
         scene())
     {
-        float totalScaledSizeInPixels = (m_isVertical ? m_scaledPixmapSize.width() : m_scaledPixmapSize.height());
+        const float totalScaledSizeInPixels = (m_isVertical ? m_scaledPixmapSize.width() : m_scaledPixmapSize.height());
+        float manipulatorPos = AZ::GetMax<float>(m_isVertical ? value.toPointF().x() : value.toPointF().y(), 0.0f);
+        const float borderValue = m_isVertical ? (manipulatorPos * m_unscaledOverScaledFactor.x()) : (manipulatorPos * m_unscaledOverScaledFactor.y());
+        m_edit->setPixelPosition(borderValue);
 
-        float p = clamp_tpl<float>((m_isVertical ? value.toPointF().x() : value.toPointF().y()),
-                0.0f,
-                totalScaledSizeInPixels);
+        const float cellSize = (m_isVertical ? m_sprite->GetCellSize(m_cellIndex).GetX() : m_sprite->GetCellSize(m_cellIndex).GetY());
+        SetBorderValue(m_sprite, m_border, borderValue, cellSize, m_cellIndex);
 
-        m_edit->setPixelPosition(m_isVertical ? (p * m_unscaledOverScaledFactor.x()) : (p * m_unscaledOverScaledFactor.y()));
-
-        SetBorderValue(m_sprite, m_border, p, totalScaledSizeInPixels);
-
-        return QPointF((m_isVertical ? p : 0.0f),
-            (m_isVertical ? 0.0f : p));
+        manipulatorPos = AZ::GetMin<float>(manipulatorPos, totalScaledSizeInPixels);
+        return QPointF((m_isVertical ? manipulatorPos : 0.0f),
+            (m_isVertical ? 0.0f : manipulatorPos));
     }
 
     return QGraphicsItem::itemChange(change, value);

@@ -52,6 +52,8 @@ namespace ScriptCanvas
 
             // Triggered by the execution signal
             void OnInputSignal(const SlotId& slot) override;
+
+            void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
 
         class UnaryExpression : public UnaryOperator
@@ -68,6 +70,8 @@ namespace ScriptCanvas
             void OnInputSignal(const SlotId& slot) override;
 
             virtual void InitializeUnaryExpression();
+
+            void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
     }
 }

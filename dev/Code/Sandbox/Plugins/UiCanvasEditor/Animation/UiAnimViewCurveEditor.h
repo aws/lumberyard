@@ -81,8 +81,6 @@ private:
 
     // UiEditorAnimListenerInterface
     void OnActiveCanvasChanged() override;
-    void OnCanvasLoaded() override;
-    void OnCanvasUnloading() override;
     // ~UiEditorAnimListenerInterface
 
     void UpdateSplines();

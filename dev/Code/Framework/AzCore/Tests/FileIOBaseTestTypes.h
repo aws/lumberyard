@@ -217,11 +217,6 @@ public:
         }
 
         AZ::IO::SizeType resultValue = filePointer->Tell();
-        if (resultValue == -1)
-        {
-            return AZ::IO::ResultCode::Error;
-        }
-
         offset = static_cast<AZ::u64>(resultValue);
         return AZ::IO::ResultCode::Success;
     }

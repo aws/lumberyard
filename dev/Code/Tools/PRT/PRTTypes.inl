@@ -837,7 +837,7 @@ namespace NSH
 	template<typename CoeffTypeList>
 	inline void CSample_tpl<CoeffTypeList>::Validate()const
 	{
-#if defined(PRT_COMPILE)
+#if defined(_DEBUG)
 		assert(m_Constructed == true);
 #endif
 	}

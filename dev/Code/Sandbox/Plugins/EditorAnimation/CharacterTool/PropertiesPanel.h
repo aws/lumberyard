@@ -23,6 +23,8 @@ class QDockWidget;
 class QToolBar;
 class QPropertyTree;
 class ExplorerActionHandler;
+class QToolButton;
+class QSplitter;
 
 namespace Serialization
 {

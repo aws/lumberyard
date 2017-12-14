@@ -100,9 +100,9 @@ void CFlowNode::Done()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CFlowNode::SetName(const char* sName)
+void CFlowNode::SetName(const QString& sName)
 {
-    if (GetIFlowGraph()->SetNodeName(m_flowNodeId, sName))
+    if (GetIFlowGraph()->SetNodeName(m_flowNodeId, sName.toUtf8().data()))
     {
         CHyperNode::SetName(sName);
     }

@@ -148,18 +148,6 @@ namespace AZ
              * loaded assets map (which is why when we call AssetDatabase::GetAsset it will not be found a new will be create)
              */
             virtual bool IsRegisterReadonlyAndShareable() { return true; }
-            /**
-             * TEMP HACK PRIVATE API
-             * This is only temporary function for allowing an implemented of AZ::Data::AssetData a way to veto a reload when an Asset is changed on disk
-             * Currently an asset that is saved into a monitored project directory will be processed by the AssetProcessorManager which sends an AssetNotificationMessage::AssetChanged message
-             * That message is handled by the AzFramework AssetSystemComponent, which queues an AssetChanged EBus event that is handled by the AzFramework AssetCatalog class
-             * The AzFramework Asset Catalog invokes the AssetManager::ReloadAsset method which reloads the asset.
-             * Also the AssetManager does delay the reloading of an Asset if it is in the middle of a being saved
-             * Override this function to veto an Asset reload when the AssetNotificationMessage::AssetChanged message is processed
-             */
-            // This is still deprecated, some platforms error on the deprecation warning though
-            //AZ_DEPRECATED(virtual bool ShouldVetoAssetReload(), "TEMPORARY PRIVATE API") { return false; }
-            virtual bool ShouldVetoAssetReload() { return false; }
 
             void RemoveFromDB();
 
@@ -226,6 +214,7 @@ namespace AZ
             ~Asset();
 
             Asset& operator=(const Asset& rhs);
+            Asset& operator=(AssetData* assetData);
 
             explicit operator bool() const
             {
@@ -292,6 +281,13 @@ namespace AZ
             /// You can change the flags only when we don't have an asset bound (ie. GetData() == null)
             bool SetFlags(u8 flags);
 
+            /**
+            * Upgrades legacy Ids/hints with the new canonical Ids/hints.
+            * This will search for the assetId and hint in the catalog
+            * and if found, will update it to be the new, canonical one(s)
+            */
+            void UpgradeAssetInfo();
+
         protected:
 
             void SetData(AssetData* assetData);
@@ -313,10 +309,10 @@ namespace AZ
         {
             Asset<AssetData> QueueAssetLoad(AssetData* assetData, const AZ::Data::AssetFilterCB& assetLoadFilterCB = nullptr);
             Asset<AssetData> GetAsset(const AssetId& id, const AssetType& type, bool queueLoad, bool isCreate = false);
+            void UpdateAssetInfo(AssetId& id, AZStd::string& assetHint);
             bool ReloadAsset(AssetData* assetData);
             bool SaveAsset(AssetData* assetData);
             Asset<AssetData> GetAssetData(const AssetId& id);
-            AZStd::string ResolveAssetHint(const AssetId& id);
             AssetId ResolveAssetId(const AssetId& id);
         }
 
@@ -628,6 +624,23 @@ namespace AZ
 
         //=========================================================================
         template<class T>
+        Asset<T>& Asset<T>::operator=(AssetData* assetData)
+        {
+            SetData(assetData);
+
+            if (!m_assetData)
+            {
+                // If assigning null, wipe the asset reference and reset the type to that of the pointer.
+                m_assetId = AssetId();
+                m_assetType = azrtti_typeid<T>();
+                m_assetHint.clear();
+            }
+
+            return *this;
+        }
+
+        //=========================================================================
+        template<class T>
         bool  Asset<T>::IsReady() const
         {
             return m_assetData && m_assetData->IsReady();
@@ -710,6 +723,20 @@ namespace AZ
 
         //=========================================================================
         template<class T>
+        void Asset<T>::UpgradeAssetInfo()
+        {
+            if (!m_assetId.IsValid())
+            {
+                return;
+            }
+
+            // called Internal to de-templatize and also avoid inclusion of AssetManager
+            // into this header.
+            AssetInternal::UpdateAssetInfo(m_assetId, m_assetHint);
+        }
+
+        //=========================================================================
+        template<class T>
         bool Asset<T>::SetFlags(u8 flags)
         {
             if (!m_assetData)
@@ -732,12 +759,14 @@ namespace AZ
 
             if (assetData)
             {
+                // Validate the data type matches or derives from T before assigning.
                 if (assetData->RTTI_IsTypeOf(AzTypeInfo<T>::Uuid()))
                 {
                     m_assetId = assetData->GetId();
                     m_assetType = assetData->RTTI_GetType();
                     assetData->Acquire();
-                    m_assetHint = AssetInternal::ResolveAssetHint(m_assetId);
+
+                    UpgradeAssetInfo();
                 }
                 else
                 {
@@ -751,7 +780,8 @@ namespace AZ
                         AzTypeInfo<T>::Name(), assetTypeIdGUIDStr);
 #endif // AZ_ENABLE_TRACING
                     m_assetId = AssetId();
-                    m_assetType = AssetType::CreateNull();
+                    m_assetType = azrtti_typeid<T>();
+                    m_assetHint.clear();
                     return;
                 }
             }

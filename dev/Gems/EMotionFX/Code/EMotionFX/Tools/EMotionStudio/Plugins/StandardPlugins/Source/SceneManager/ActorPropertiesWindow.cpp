@@ -25,7 +25,6 @@
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include "MirrorSetupWindow.h"
-#include "RetargetSetupWindow.h"
 
 
 namespace EMStudio
@@ -34,15 +33,13 @@ namespace EMStudio
     ActorPropertiesWindow::ActorPropertiesWindow(QWidget* parent, SceneManagerPlugin* plugin)
         : QWidget(parent)
     {
+        mExcludedNodesSelectionWindow       = nullptr;
         mPlugin                             = plugin;
-        mMotionExtractionNodeSelectionWindow = nullptr;
         mActor                              = nullptr;
         mActorInstance                      = nullptr;
         mSelectionList                      = nullptr;
         mMirrorSetupLink                    = nullptr;
         mMirrorSetupWindow                  = nullptr;
-        //mRetargetSetupWindow              = nullptr;
-        //mRetargetSetupLink                = nullptr;
         mCollisionMeshesSetupLink           = nullptr;
     }
 
@@ -57,8 +54,6 @@ namespace EMStudio
     // init after the parent dock window has been created
     void ActorPropertiesWindow::Init()
     {
-        mTempString.Reserve(16384);
-
         QVBoxLayout* mainVerticalLayout = new QVBoxLayout();
         mainVerticalLayout->setMargin(0);
         setLayout(mainVerticalLayout);
@@ -105,13 +100,9 @@ namespace EMStudio
 
         layout->addLayout(extractNodeLayout, rowNr, 1);
 
-        // create the node selection windows
-        mMotionExtractionNodeSelectionWindow = new NodeSelectionWindow(this, true);
-
         // motion extraction node
         connect(mResetMotionExtractionNodeButton,                                                                  SIGNAL(clicked()),                                      this, SLOT(ResetMotionExtractionNode()));
         connect(mMotionExtractionNode,                                                                             SIGNAL(clicked()),                                      this, SLOT(OnSelectMotionExtractionNode()));
-        connect((const QObject*)mMotionExtractionNodeSelectionWindow->GetNodeHierarchyWidget(),                    SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)),   this, SLOT(OnMotionExtractionNodeSelected(MCore::Array<SelectionItem>)));
 
         // bounding box nodes
         rowNr++;
@@ -131,13 +122,8 @@ namespace EMStudio
 
         layout->addLayout(excludedNodesLayout, rowNr, 1);
 
-        mExcludedNodesSelectionWindow = new NodeSelectionWindow(this, false);
-
         connect(mResetExcludedNodesButton,                                                 SIGNAL(clicked()),                                      this, SLOT(ResetExcludedNodes()));
         connect(mExcludedNodesLink,                                                        SIGNAL(clicked()),                                      this, SLOT(OnSelectExcludedNodes()));
-        connect(mExcludedNodesSelectionWindow->GetNodeHierarchyWidget(),                   SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)),   this, SLOT(OnSelectExcludedNodes(MCore::Array<SelectionItem>)));
-        connect(mExcludedNodesSelectionWindow,                                             SIGNAL(rejected()),                                     this, SLOT(OnCancelExcludedNodes()));
-        connect(mExcludedNodesSelectionWindow->GetNodeHierarchyWidget()->GetTreeWidget(),  SIGNAL(itemSelectionChanged()),                         this, SLOT(OnExcludeNodeSelectionChanged()));
 
         // collision meshes nodes
         rowNr++;
@@ -161,17 +147,6 @@ namespace EMStudio
         layout->addWidget(mMirrorSetupLink, rowNr, 1);
         connect(mMirrorSetupLink, SIGNAL(clicked()), this, SLOT(OnMirrorSetup()));
 
-        // retarget setup
-        /*  rowNr++;
-            mRetargetSetupWindow = new RetargetSetupWindow(mPlugin->GetDockWidget(), mPlugin);
-            mRetargetSetupLink = new MysticQt::LinkWidget();
-            mRetargetSetupLink->setMinimumHeight(20);
-            mRetargetSetupLink->setMaximumHeight(20);
-            mRetargetSetupLink->setText("Click to setup");
-            layout->addWidget( new QLabel("Retarget Setup:"), rowNr, 0 );
-            layout->addWidget( mRetargetSetupLink, rowNr, 1 );
-            connect( mRetargetSetupLink, SIGNAL(clicked()), this, SLOT(OnRetargetSetup()) );
-        */
         UpdateInterface();
     }
 
@@ -209,9 +184,6 @@ namespace EMStudio
 
         mMirrorSetupWindow->Reinit();
 
-        //if (mRetargetSetupWindow)
-        //mRetargetSetupWindow->Reinit();
-
         if (mActorInstance == nullptr || mActor == nullptr)
         {
             // reset data and disable interface elements
@@ -234,17 +206,11 @@ namespace EMStudio
             mCollisionMeshesSetupLink->setEnabled(false);
             mMirrorSetupLink->setEnabled(false);
 
-            //if (mRetargetSetupLink)
-            //mRetargetSetupLink->setEnabled(false);
-
             return;
         }
 
         mCollisionMeshesSetupLink->setEnabled(true);
         mMirrorSetupLink->setEnabled(true);
-
-        //if (mRetargetSetupLink)
-        //mRetargetSetupLink->setEnabled(true);
 
         // get the motion extraction node
         EMotionFX::Node* extractionNode = mActor->GetMotionExtractionNode();
@@ -284,8 +250,8 @@ namespace EMStudio
         }
         else
         {
-            mTempString.Format("%i nodes", calcNumExcludedNodes);
-            mExcludedNodesLink->setText(mTempString.AsChar());
+            const QString textLink = QString("%1 nodes").arg(calcNumExcludedNodes);
+            mExcludedNodesLink->setText(textLink);
             mResetExcludedNodesButton->setVisible(true);
         }
         mExcludedNodesLink->setToolTip("Nodes that are excluded from bounding volume calculations");
@@ -325,8 +291,7 @@ namespace EMStudio
         ResetNode("motionExtractionNodeName");
     }
 
-
-    void ActorPropertiesWindow::OpenSelectionWindow(NodeSelectionWindow* nodeSelectionWindow)
+    void ActorPropertiesWindow::OnSelectMotionExtractionNode()
     {
         if (mActorInstance == nullptr)
         {
@@ -351,14 +316,15 @@ namespace EMStudio
         {
             mSelectionList->AddNode(node);
         }
-        nodeSelectionWindow->Update(mActorInstance->GetID(), mSelectionList);
-        nodeSelectionWindow->exec();
-    }
 
+        NodeSelectionWindow motionExtractionNodeSelectionWindow(this, true);
 
-    void ActorPropertiesWindow::OnSelectMotionExtractionNode()
-    {
-        OpenSelectionWindow(mMotionExtractionNodeSelectionWindow);
+        connect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnMotionExtractionNodeSelected(MCore::Array<SelectionItem>)));
+
+        motionExtractionNodeSelectionWindow.Update(mActorInstance->GetID(), mSelectionList);
+        motionExtractionNodeSelectionWindow.exec();
+
+        disconnect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnMotionExtractionNodeSelected(MCore::Array<SelectionItem>)));
     }
 
 
@@ -534,8 +500,20 @@ namespace EMStudio
         PrepareExcludedNodeSelectionList(mActor, &mExcludedNodeSelectionList);
 
         // show the node selection window
-        mExcludedNodesSelectionWindow->Update(mActorInstance->GetID(), &mExcludedNodeSelectionList);
-        mExcludedNodesSelectionWindow->exec();
+        NodeSelectionWindow excludedNodesSelectionWindow(this, false);
+        mExcludedNodesSelectionWindow = &excludedNodesSelectionWindow;
+
+        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnSelectExcludedNodes(MCore::Array<SelectionItem>)));
+        connect(&excludedNodesSelectionWindow, SIGNAL(rejected()), this, SLOT(OnCancelExcludedNodes()));
+        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), SIGNAL(itemSelectionChanged()), this, SLOT(OnExcludeNodeSelectionChanged()));
+
+        excludedNodesSelectionWindow.Update(mActorInstance->GetID(), &mExcludedNodeSelectionList);
+        excludedNodesSelectionWindow.exec();
+
+        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnSelectExcludedNodes(MCore::Array<SelectionItem>)));
+        disconnect(&excludedNodesSelectionWindow, SIGNAL(rejected()), this, SLOT(OnCancelExcludedNodes()));
+        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), SIGNAL(itemSelectionChanged()), this, SLOT(OnExcludeNodeSelectionChanged()));
+        mExcludedNodesSelectionWindow = nullptr;
     }
 
 

@@ -24,6 +24,7 @@
 #include "native/assetprocessor.h"
 #include "native/utilities/assetUtilEBusHelper.h"
 #include "native/utilities/ApplicationManagerAPI.h"
+#include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 
 namespace AzToolsFramework
 {
@@ -41,14 +42,11 @@ namespace AssetProcessor
     class PlatformConfiguration;
     struct AssetRecognizer;
     class JobEntry;
+    class AssetDatabaseConnection;
 }
 
 namespace AssetUtilities
 {
-    //! Compute the current branch token
-    //! This token will be used during negotiation with the game/editor to ensure that we are communicating with the assetprocessor in the correct branch
-    QString GetBranchToken();
-
     //! Compute the root asset folder by scanning for marker files such as root.ini
     //! By Default, this searches the applications root and walks upwards, but you are allowed to instead
     //! supply a different starting root.  in that case, it will start from there instead, and walk upwards.
@@ -78,21 +76,12 @@ namespace AssetUtilities
     bool CheckCanLock(QString filename);
 
     bool InitializeQtLibraries();
-    //! Check the extension of all the products
-    //! return true if any one of the product extension matches the input extension, else return false
-    bool CheckProductsExtension(QStringList productList, QString ext);
 
     //! Updates the branch token in the bootstrap file
     bool UpdateBranchToken();
 
     //! Determine the name of the current game - for example, SamplesProject
     QString ComputeGameName(QString initialFolder = QString(), bool force = false);
-
-    //! Computes the platformname from the platform flag, returns an empty qstring if an invalid flag is inputted
-    QString ComputePlatformName(int platform);
-
-    //! Computes the platformflag from the platform name, returns 0 if an invalid platformname is inputted
-    int ComputePlatformFlag(QString platform);
 
     //! Reads the white list directly from the bootstrap file
     QString ReadWhitelistFromBootstrap(QString initialFolder = QString());
@@ -201,10 +190,15 @@ namespace AssetUtilities
     AZStd::string ComputeJobLogFileName(const AssetProcessor::JobEntry& jobEntry);
     AZStd::string ComputeJobLogFileName(const AssetBuilderSDK::CreateJobsRequest& createJobsRequest);
 
+    void ReadJobLog(AzToolsFramework::AssetSystem::JobInfo& jobInfo, AzToolsFramework::AssetSystem::AssetJobLogResponse& response);
+    void ReadJobLog(const char* absolutePath, AzToolsFramework::AssetSystem::AssetJobLogResponse& response);
+
     //! interrogate a given file, which is specified as a full path name, and generate a fingerprint for it.
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail);
     // Generates a fingerprint for a file without querying the existence of metadata files.  Helper function for GenerateFingerprint.
     unsigned int GenerateBaseFingerprint(QString fullPathToFile, QString extraInfo = QString());
+
+    QString GuessProductNameInDatabase(QString path, AssetProcessor::AssetDatabaseConnection* databaseConnection);
 
     //! This class represents a matching pattern that is based on AssetBuilderSDK::AssetBuilderPattern::PatternType, which can either be a regex
     //! pattern or a wildcard (glob) pattern
@@ -218,7 +212,7 @@ namespace AssetUtilities
 
         typedef AZStd::regex RegexType;
 
-        FilePatternMatcher& operator=(const FilePatternMatcher& copy);
+        FilePatternMatcher& operator=(const FilePatternMatcher& copy) = default;
 
         bool MatchesPath(const AZStd::string& assetPath) const;
         bool MatchesPath(const QString& assetPath) const;
@@ -283,7 +277,7 @@ namespace AssetUtilities
 
         bool OnAssert(const char* message) override;
         bool OnException(const char* message) override;
-        bool OnError(const char* window, const char* message) override;
+        bool OnPreError(const char* window, const char* file, int line, const char* func, const char* message) override;
         bool OnWarning(const char* window, const char* message) override;
         //////////////////////////////////////////////////////////////////////////
 
@@ -297,7 +291,7 @@ namespace AssetUtilities
         // using m_isLogging bool to prevent an infinite loop which can happen if an error/warning happens when trying to create an invalid logFile,
         // because it will cause the appendLog function to be called again, which will again try to create that log file.
         bool m_isLogging = false;
-
+        bool m_inException = false;
         //! If true, log file will be overwritten instead of appended
         bool m_forceOverwriteLog = false;
 

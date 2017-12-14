@@ -67,6 +67,63 @@ namespace AssetBuilderSDK
         return fromSubIndex;
     }
 
+#if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+    // this function exists merely to retain code compatibility with older versions.
+    // it is recommended to upgrade to the new way, which is to just use the m_enabledPlatforms structs.
+    Platform LEGACY_ConvertNewPlatformIdentifierToOldPlatform(const char* newPlatformName)
+    {
+        if (azstricmp(newPlatformName, "pc") == 0)
+        {
+            return AssetBuilderSDK::Platform_PC;
+        }
+        if (azstricmp(newPlatformName, "es3") == 0)
+        {
+            return AssetBuilderSDK::Platform_ES3;
+        }
+        if (azstricmp(newPlatformName, "ios") == 0)
+        {
+            return AssetBuilderSDK::Platform_IOS;
+        }
+        if (azstricmp(newPlatformName, "osx_gl") == 0)
+        {
+            return AssetBuilderSDK::Platform_OSX;
+        }
+        if (azstricmp(newPlatformName, "xboxone") == 0)
+        {
+            return AssetBuilderSDK::Platform_XBOXONE;  // ACCEPTED_USE
+        }
+        if (azstricmp(newPlatformName, "ps4") == 0)
+        {
+            return AssetBuilderSDK::Platform_PS4;  // ACCEPTED_USE
+        }
+
+        return AssetBuilderSDK::Platform_NONE;
+    }
+
+    // this function exists merely to retain code compatibility with older versions.
+    // it is recommended to upgrade to the new way, which is to just use the m_enabledPlatforms structs.
+    const char* LEGACY_ConvertOldPlatformToNewPlatformIdentifier(Platform oldPlatform)
+    {
+        switch (oldPlatform)
+        {
+        case AssetBuilderSDK::Platform_PC:
+            return "pc";
+        case AssetBuilderSDK::Platform_ES3:
+            return "es3";
+        case AssetBuilderSDK::Platform_IOS:
+            return "ios";
+        case AssetBuilderSDK::Platform_OSX:
+            return "osx_gl";
+        case AssetBuilderSDK::Platform_XBOXONE:     // ACCEPTED_USE
+            return "xboxone";
+        case AssetBuilderSDK::Platform_PS4:     // ACCEPTED_USE
+            return "ps4";
+        }
+        return "unknown platform";
+    }
+
+#endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+
     void BuilderLog(AZ::Uuid builderId, const char* message, ...)
     {
         va_list args;
@@ -92,25 +149,99 @@ namespace AssetBuilderSDK
         }
     }
 
-    JobDescriptor::JobDescriptor(AZStd::string additionalFingerprintInfo, int platform, AZStd::string jobKey)
+    /**
+    * New constructor - uses the platform Identifier from the PlatformInfo passed into Create Jobs.
+    */
+    JobDescriptor::JobDescriptor(const AZStd::string& additionalFingerprintInfo, AZStd::string jobKey, const char* platformIdentifier)
+        : m_additionalFingerprintInfo(additionalFingerprintInfo)
+        , m_jobKey(jobKey)
+    {
+        SetPlatformIdentifier(platformIdentifier);
+    }
+
+#if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+    /**
+    * old api constructor.  Still supported for backward compatibility, but do not use in new code.
+    */
+    JobDescriptor::JobDescriptor(AZStd::string additionalFingerprintInfo, int platform, const AZStd::string& jobKey)
         : m_additionalFingerprintInfo(additionalFingerprintInfo)
         , m_platform(platform)
         , m_jobKey(jobKey)
     {
+        SetPlatformIdentifier(LEGACY_ConvertOldPlatformToNewPlatformIdentifier(static_cast<AssetBuilderSDK::Platform>(m_platform)));
+    }
+#endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+
+    void JobDescriptor::SetPlatformIdentifier(const char* platformIdentifier)
+    {
+        if (platformIdentifier)
+        {
+            m_platformIdentifier = platformIdentifier;
+        }
+#if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+        m_platform = LEGACY_ConvertNewPlatformIdentifierToOldPlatform(platformIdentifier);
+#endif
     }
 
-    JobDescriptor::JobDescriptor()
+    const AZStd::string& JobDescriptor::GetPlatformIdentifier() const
     {
+        return m_platformIdentifier;
     }
+
+#if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+    namespace Internal
+    {
+        // for legacy compatibility, we make sure that if only the m_platform field is populated
+        // we go ahead and fill out the new API from the old one.
+        class JobDescriptorSerializeEventHandler
+            : public AZ::SerializeContext::IEventHandler
+        {
+        public:
+            virtual void OnReadBegin(void* classPtr)
+            {
+                JobDescriptor* populatingJobDescriptor = reinterpret_cast<JobDescriptor*>(classPtr);
+                if (populatingJobDescriptor)
+                {
+                    // before we serialize this instance into a stream, lets make sure its converted.
+                    if (populatingJobDescriptor->GetPlatformIdentifier().empty())
+                    {
+                        populatingJobDescriptor->SetPlatformIdentifier(LEGACY_ConvertOldPlatformToNewPlatformIdentifier(static_cast<AssetBuilderSDK::Platform>(populatingJobDescriptor->m_platform)));
+                    }
+                }
+            }
+
+            virtual void OnWriteEnd(void* classPtr)
+            {
+                JobDescriptor* populatingJobDescriptor = reinterpret_cast<JobDescriptor*>(classPtr);
+                if (populatingJobDescriptor)
+                {
+                    // we've finished writing into this instance, lets patch up the platform.
+                    if (populatingJobDescriptor->GetPlatformIdentifier().empty())
+                    {
+                        populatingJobDescriptor->SetPlatformIdentifier(LEGACY_ConvertOldPlatformToNewPlatformIdentifier(static_cast<AssetBuilderSDK::Platform>(populatingJobDescriptor->m_platform)));
+                    }
+                }
+            }
+        };
+
+        static JobDescriptorSerializeEventHandler s_jobDescriptorSerializeEventHandlerInstance;
+    }
+
+#endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+
 
     void JobDescriptor::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<JobDescriptor>()->
-                Version(1)->
+                Version(2)->
                 Field("Additional Fingerprint Info", &JobDescriptor::m_additionalFingerprintInfo)->
-                Field("Platform", &JobDescriptor::m_platform)->
+#if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+            EventHandler(&Internal::s_jobDescriptorSerializeEventHandlerInstance)->
+                Field("Platform", &JobDescriptor::m_platform)->  // note:  deprecated but we still pass it via the network so it must be serialized.
+#endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+            Field("Platform Identifier", &JobDescriptor::m_platformIdentifier)->     // new API
                 Field("Job Key", &JobDescriptor::m_jobKey)->
                 Field("Critical", &JobDescriptor::m_critical)->
                 Field("Priority", &JobDescriptor::m_priority)->
@@ -119,66 +250,120 @@ namespace AssetBuilderSDK
         }
     }
 
-    CreateJobsRequest::CreateJobsRequest(AZ::Uuid builderid, AZStd::string sourceFile, AZStd::string watchFolder, int platformFlags, const AZ::Uuid& sourceFileUUID)
+    CreateJobsRequest::CreateJobsRequest(AZ::Uuid builderid, AZStd::string sourceFile, AZStd::string watchFolder, const AZStd::vector<PlatformInfo>& enabledPlatforms, const AZ::Uuid& sourceFileUUID)
         : m_builderid(builderid)
         , m_sourceFile(sourceFile)
         , m_watchFolder(watchFolder)
-        , m_platformFlags(platformFlags)
+        , m_enabledPlatforms(enabledPlatforms)
         , m_sourceFileUUID(sourceFileUUID)
     {
+        // synthesize m_platformFlags from the rest
     }
 
     CreateJobsRequest::CreateJobsRequest()
     {
     }
 
-    size_t CreateJobsRequest::GetEnabledPlatformsCount() const
+    bool CreateJobsRequest::HasPlatform(const char* platformIdentifier) const
     {
-        size_t enabledPlatformCount = 0;
-        for (AZ::u32 idx = 0; (idx <= 32) && ((1 << idx) <= Platform::AllPlatforms); ++idx)
+        if (!platformIdentifier)
         {
-            AZ::u32 platform = (1 << idx);
-            if (IsPlatformEnabled(platform))
+            AZ_Assert(false, "HasPlatform called with nullptr platformIdentifier.");
+            return false;
+        }
+        for (const PlatformInfo& info : m_enabledPlatforms)
+        {
+            if (azstricmp(info.m_identifier.c_str(), platformIdentifier) == 0)
             {
-                ++enabledPlatformCount;
+                return true;
             }
         }
+        return false;
+    }
 
-        return enabledPlatformCount;
+    bool CreateJobsRequest::HasPlatformWithTag(const char* platformTag) const
+    {
+        if (!platformTag)
+        {
+            AZ_Assert(false, "HasPlatformWithTag called with nullptr platformTag.");
+            return false;
+        }
+
+        for (const PlatformInfo& info : m_enabledPlatforms)
+        {
+            if (info.HasTag(platformTag))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+#if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+    size_t CreateJobsRequest::GetEnabledPlatformsCount() const
+    {
+        return m_enabledPlatforms.size();
     }
 
     AssetBuilderSDK::Platform CreateJobsRequest::GetEnabledPlatformAt(size_t index) const
     {
-        size_t enabledPlatformCount = 0;
-        for (AZ::u32 idx = 0; (idx <= 32) && ((1 << idx) <= Platform::AllPlatforms); ++idx)
+        AZ_WarningOnce(AssetBuilderSDK::WarningWindow, false, "This builder is calling a deprecated function: GetEnabledPlatformAt.  Consider just using the new m_enabledPlatforms member instead.");
+        if (index >= m_enabledPlatforms.size())
         {
-            AZ::u32 platform = (1 << idx);
-            if (IsPlatformEnabled(platform))
-            {
-                if (enabledPlatformCount == index)
-                {
-                    return static_cast<AssetBuilderSDK::Platform>(platform);
-                }
-
-                ++enabledPlatformCount;
-            }
+            // for old compat, we cannot assert here.
+            return AssetBuilderSDK::Platform_NONE;
         }
+        const PlatformInfo& info = m_enabledPlatforms[index];
 
-        return Platform_NONE;
+        return LEGACY_ConvertNewPlatformIdentifierToOldPlatform(info.m_identifier.c_str());
     }
 
     bool CreateJobsRequest::IsPlatformEnabled(AZ::u32 platform) const
     {
-        return (IsPlatformValid(platform)) && ((m_platformFlags & platform) != Platform_NONE);
+        AZ_WarningOnce(AssetBuilderSDK::WarningWindow, false, "This builder is calling a deprecated function: IsPlatformEnabled.  Consider just using the new m_enabledPlatforms member instead.");
+        for (const PlatformInfo& info : m_enabledPlatforms)
+        {
+            if (static_cast<AZ::u32>(LEGACY_ConvertNewPlatformIdentifierToOldPlatform(info.m_identifier.c_str())) == platform)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     bool CreateJobsRequest::IsPlatformValid(AZ::u32 platform) const
     {
+        AZ_WarningOnce(AssetBuilderSDK::WarningWindow, false, "This builder is calling a deprecated function: IsPlatformValid.  Consider just using the new m_enabledPlatforms member instead.");
         return ((platform & AllPlatforms) == platform);
     }
+#endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
+
+    PlatformInfo::PlatformInfo(const char* identifier, const AZStd::unordered_set<AZStd::string>& tags)
+        : m_identifier(identifier)
+        , m_tags(tags)
+    {
+    }
+
+    bool PlatformInfo::HasTag(const char* tag) const
+    {
+        return m_tags.find(tag) != m_tags.end();
+    }
+
+    void PlatformInfo::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<PlatformInfo>()->
+                Version(1)->
+                Field("Platform Identifier", &PlatformInfo::m_identifier)->
+                Field("Tags on Platform", &PlatformInfo::m_tags);
+        }
+    }
+
 
     void CreateJobsRequest::Reflect(AZ::ReflectContext* context)
     {
+        PlatformInfo::Reflect(context);
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<CreateJobsRequest>()->
@@ -186,9 +371,25 @@ namespace AssetBuilderSDK
                 Field("Builder Id", &CreateJobsRequest::m_builderid)->
                 Field("Watch Folder", &CreateJobsRequest::m_watchFolder)->
                 Field("Source File", &CreateJobsRequest::m_sourceFile)->
-                Field("Platform Flags", &CreateJobsRequest::m_platformFlags)->
+                Field("Enabled Platforms", &CreateJobsRequest::m_enabledPlatforms)->
                 Field("Source File UUID", &CreateJobsRequest::m_sourceFileUUID);
+        }
+    }
 
+    ProductDependency::ProductDependency(AZ::Data::AssetId dependencyId, const AZStd::bitset<64>& flags)
+        : m_dependencyId(dependencyId)
+        , m_flags(flags)
+    {
+    }
+
+    void ProductDependency::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<ProductDependency>()->
+                Version(1)->
+                Field("Dependency Id", &ProductDependency::m_dependencyId)->
+                Field("Flags", &ProductDependency::m_flags);
         }
     }
 
@@ -462,7 +663,7 @@ namespace AssetBuilderSDK
                     return behaviorTreeAssetType;
                 }
 
-                if(!azstricmp(xmlRootNode->name(), "LensFlareLibrary"))
+                if (!azstricmp(xmlRootNode->name(), "LensFlareLibrary"))
                 {
                     azdestroy(xmlDoc, AZ::SystemAllocator, AZ::rapidxml::xml_document<char>);
                     return lensFlareAssetType;
@@ -635,11 +836,12 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<JobProduct>()->
-                Version(2)->
+                Version(3)->
                 Field("Product File Name", &JobProduct::m_productFileName)->
                 Field("Product Asset Type", &JobProduct::m_productAssetType)->
                 Field("Product Sub Id", &JobProduct::m_productSubID)->
-                Field("Legacy Sub Ids", &JobProduct::m_legacySubIDs);
+                Field("Legacy Sub Ids", &JobProduct::m_legacySubIDs)->
+                Field("Dependencies", &JobProduct::m_dependencies);
         }
     }
 
@@ -655,12 +857,9 @@ namespace AssetBuilderSDK
             m_productAssetType = AZStd::move(other.m_productAssetType);
             m_productSubID = other.m_productSubID;
             m_legacySubIDs = AZStd::move(other.m_legacySubIDs);
+            m_dependencies = AZStd::move(other.m_dependencies);
         }
         return *this;
-    }
-
-    ProcessJobRequest::ProcessJobRequest()
-    {
     }
 
     void ProcessJobRequest::Reflect(AZ::ReflectContext* context)
@@ -675,14 +874,10 @@ namespace AssetBuilderSDK
                 Field("Builder Guid", &ProcessJobRequest::m_builderGuid)->
                 Field("Job Description", &ProcessJobRequest::m_jobDescription)->
                 Field("Temp Dir Path", &ProcessJobRequest::m_tempDirPath)->
+                Field("Platform Info", &ProcessJobRequest::m_platformInfo)->
                 Field("Source File Dependency List", &ProcessJobRequest::m_sourceFileDependencyList)->
                 Field("Source File UUID", &ProcessJobRequest::m_sourceFileUUID);
         }
-    }
-
-    ProcessJobResponse::ProcessJobResponse(ProcessJobResponse&& other)
-    {
-        *this = AZStd::move(other);
     }
 
     void ProcessJobResponse::Reflect(AZ::ReflectContext* context)
@@ -697,24 +892,9 @@ namespace AssetBuilderSDK
         }
     }
 
-    AssetBuilderSDK::ProcessJobResponse& ProcessJobResponse::operator=(ProcessJobResponse&& other)
+    bool ProcessJobResponse::Succeeded() const
     {
-        if (this != &other)
-        {
-            m_resultCode = other.m_resultCode;
-            m_outputProducts.swap(other.m_outputProducts);
-            m_requiresSubIdGeneration = other.m_requiresSubIdGeneration;
-        }
-        return *this;
-    }
-
-    AssetBuilderSDK::ProcessJobResponse& ProcessJobResponse::operator=(const ProcessJobResponse& other)
-    {
-        if (this != &other)
-        {
-            *this = other;
-        }
-        return *this;
+        return m_resultCode == ProcessJobResultCode::ProcessJobResult_Success;
     }
 
     void InitializeSerializationContext()
@@ -727,7 +907,9 @@ namespace AssetBuilderSDK
         SourceFileDependency::Reflect(serializeContext);
         JobDescriptor::Reflect(serializeContext);
         AssetBuilderPattern::Reflect(serializeContext);
+        ProductDependency::Reflect(serializeContext);
         JobProduct::Reflect(serializeContext);
+        AssetBuilderRegistrationDesc::Reflect(serializeContext);
 
         RegisterBuilderRequest::Reflect(serializeContext);
         RegisterBuilderResponse::Reflect(serializeContext);
@@ -735,6 +917,13 @@ namespace AssetBuilderSDK
         CreateJobsResponse::Reflect(serializeContext);
         ProcessJobRequest::Reflect(serializeContext);
         ProcessJobResponse::Reflect(serializeContext);
+
+        BuilderHelloRequest::Reflect(serializeContext);
+        BuilderHelloResponse::Reflect(serializeContext);
+        CreateJobsNetRequest::Reflect(serializeContext);
+        CreateJobsNetResponse::Reflect(serializeContext);
+        ProcessJobNetRequest::Reflect(serializeContext);
+        ProcessJobNetResponse::Reflect(serializeContext);
     }
 
     AssetBuilderSDK::JobCancelListener::JobCancelListener(AZ::u64 jobId)
@@ -796,17 +985,32 @@ namespace AssetBuilderSDK
         }
     }
 
+    void AssetBuilderRegistrationDesc::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<AssetBuilderRegistrationDesc>()
+                ->Version(1)
+                ->Field("Name", &AssetBuilderRegistrationDesc::m_name)
+                ->Field("Patterns", &AssetBuilderRegistrationDesc::m_patterns)
+                ->Field("BusId", &AssetBuilderRegistrationDesc::m_busId)
+                ->Field("Version", &AssetBuilderRegistrationDesc::m_version);
+        }
+    }
+
     void RegisterBuilderResponse::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<RegisterBuilderResponse>()
                 ->Version(1)
-                ->Field("Name", &RegisterBuilderResponse::m_name)
-                ->Field("Patterns", &RegisterBuilderResponse::m_patterns)
-                ->Field("BusId", &RegisterBuilderResponse::m_busId)
-                ->Field("Version", &RegisterBuilderResponse::m_version);
+                ->Field("Asset Builder Desc List", &RegisterBuilderResponse::m_assetBuilderDescList);
         }
+    }
+
+    bool CreateJobsResponse::Succeeded() const
+    {
+        return m_result == CreateJobsResultCode::Success;
     }
 
     void CreateJobsResponse::Reflect(AZ::ReflectContext* context)
@@ -821,4 +1025,125 @@ namespace AssetBuilderSDK
         }
     }
 
+    void BuilderHelloRequest::Reflect(AZ::ReflectContext* context)
+    {
+        auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serialize)
+        {
+            serialize->Class<BuilderHelloRequest>()
+                ->Version(1)
+                ->Field("UUID", &BuilderHelloRequest::m_uuid);
+        }
+    }
+
+    unsigned int BuilderHelloRequest::MessageType()
+    {
+        static unsigned int messageType = AZ_CRC("AssetBuilderSDK::BuilderHelloRequest", 0x213a7248);
+
+        return messageType;
+    }
+
+    unsigned int BuilderHelloRequest::GetMessageType() const
+    {
+        return MessageType();
+    }
+
+    void BuilderHelloResponse::Reflect(AZ::ReflectContext* context)
+    {
+        auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serialize)
+        {
+            serialize->Class<BuilderHelloResponse>()
+                ->Version(1)
+                ->Field("Accepted", &BuilderHelloResponse::m_accepted)
+                ->Field("UUID", &BuilderHelloResponse::m_uuid);
+        }
+    }
+
+    unsigned int BuilderHelloResponse::GetMessageType() const
+    {
+        return BuilderHelloRequest::MessageType();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    void CreateJobsNetRequest::Reflect(AZ::ReflectContext* context)
+    {
+        auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serialize)
+        {
+            serialize->Class<CreateJobsNetRequest>()
+                ->Version(1)
+                ->Field("Request", &CreateJobsNetRequest::m_request);
+        }
+    }
+
+    unsigned int CreateJobsNetRequest::MessageType()
+    {
+        static unsigned int messageType = AZ_CRC("AssetBuilderSDK::CreateJobsNetRequest", 0xc48209c0);
+
+        return messageType;
+    }
+
+    unsigned int CreateJobsNetRequest::GetMessageType() const
+    {
+        return MessageType();
+    }
+
+    void CreateJobsNetResponse::Reflect(AZ::ReflectContext* context)
+    {
+        auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serialize)
+        {
+            serialize->Class<CreateJobsNetResponse>()
+                ->Version(1)
+                ->Field("Response", &CreateJobsNetResponse::m_response);
+        }
+    }
+
+    unsigned int CreateJobsNetResponse::GetMessageType() const
+    {
+        return CreateJobsNetRequest::MessageType();
+    }
+
+
+
+    void ProcessJobNetRequest::Reflect(AZ::ReflectContext* context)
+    {
+        auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serialize)
+        {
+            serialize->Class<ProcessJobNetRequest>()
+                ->Version(1)
+                ->Field("Request", &ProcessJobNetRequest::m_request);
+        }
+    }
+
+    unsigned int ProcessJobNetRequest::MessageType()
+    {
+        static unsigned int messageType = AZ_CRC("AssetBuilderSDK::ProcessJobNetRequest", 0x479f340f);
+
+        return messageType;
+    }
+
+    unsigned int ProcessJobNetRequest::GetMessageType() const
+    {
+        return MessageType();
+    }
+
+    void ProcessJobNetResponse::Reflect(AZ::ReflectContext* context)
+    {
+        auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serialize)
+        {
+            serialize->Class<ProcessJobNetResponse>()
+                ->Version(1)
+                ->Field("Response", &ProcessJobNetResponse::m_response);
+        }
+    }
+
+    unsigned int ProcessJobNetResponse::GetMessageType() const
+    {
+        return ProcessJobNetRequest::MessageType();
+    }
 }

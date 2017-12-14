@@ -37,14 +37,15 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetMimeDataContainer.h>
-#include <AzToolsFramework/UI/AssetEditor/AssetEditorWidget.hxx>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <AzToolsFramework/UI/Logging/GenericLogPanel.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 
 namespace AzToolsFramework
@@ -437,7 +438,7 @@ namespace AzToolsFramework
         });
     }
 
-    void PropertyAssetCtrl::SourceFileChanged(AZStd::string /*assetId*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
+    void PropertyAssetCtrl::SourceFileChanged(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
     {
         if (GetCurrentAssetID().m_guid == sourceUUID)
         {
@@ -445,7 +446,7 @@ namespace AzToolsFramework
         }
     }
 
-    void PropertyAssetCtrl::SourceFileFailed(AZStd::string /*assetId*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
+    void PropertyAssetCtrl::SourceFileFailed(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
     {
         if (GetCurrentAssetID().m_guid == sourceUUID)
         {
@@ -517,12 +518,11 @@ namespace AzToolsFramework
         {
             if (event->type() == QEvent::MouseButtonDblClick)
             {
-                QMouseEvent* pEvent = static_cast<QMouseEvent*>(event);
-                if (m_browseButton->isEnabled() && pEvent->button() == Qt::LeftButton)
+                // if its filled in with an asset, open the asset.
+                if (m_currentAssetID.IsValid())
                 {
-                    // pop the asset browser.
-                    PopupAssetBrowser();
-                    return true;
+                    bool someoneHandledIt = false;
+                    AssetBrowser::AssetBrowserInteractionNotificationsBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, m_currentAssetID, someoneHandledIt);
                 }
             }
         }
@@ -559,11 +559,8 @@ namespace AzToolsFramework
                     {
                         rootOfAll = nextParent;
                     }
-                    AssetEditorDialog* dialog = aznew AssetEditorDialog(qobject_cast<QWidget*>(rootOfAll), serializeContext);
-                    dialog->SetAsset(asset);
-                    connect(dialog, &QDialog::finished, this, [dialog]() { dialog->deleteLater(); });
-                    dialog->show();
 
+                    AssetEditor::AssetEditorRequestsBus::Broadcast(&AssetEditor::AssetEditorRequests::OpenAssetEditor, asset);
                     return;
                 }
             }
@@ -591,6 +588,7 @@ namespace AzToolsFramework
 
     void PropertyAssetCtrl::ClearAsset()
     {
+        SetCurrentAssetHint(AZStd::string());
         SetCurrentAssetID(AZ::Data::AssetId());
         EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
     }
@@ -642,11 +640,12 @@ namespace AzToolsFramework
             AssetSystem::JobInfoContainer& jobs = jobOutcome.GetValue();
 
             // Get the asset relative path
+            AssetSystem::JobStatus assetStatus = AssetSystem::JobStatus::Completed;
+
             if (!jobs.empty())
             {
                 assetPath = jobs[0].m_sourceFile;
 
-                AssetSystem::JobStatus assetStatus = AssetSystem::JobStatus::Completed;
                 AZStd::string errorLog;
 
                 for (const auto& jobInfo : jobs)
@@ -699,7 +698,9 @@ namespace AzToolsFramework
                     break;
                 }
             }
-            if (!assetPath.empty())
+
+            // Only change the asset name if the asset not found or there's no last known good name for it
+            if (!assetPath.empty() && (assetStatus != AssetSystem::JobStatus::Completed || m_currentAssetHint.empty()))
             {
                 m_currentAssetHint = assetPath;
             }
@@ -744,14 +745,6 @@ namespace AzToolsFramework
     void PropertyAssetCtrl::SetEditButtonTooltip(QString tooltip)
     {
         m_editButton->setToolTip(tooltip);
-    }
-
-    void PropertyAssetCtrl::SetEnableEdit(bool enabled)
-    {
-        m_browseButton->setEnabled(enabled);
-        m_editButton->setEnabled(enabled);
-        m_clearButton->setEnabled(enabled);
-        m_label->setEnabled(enabled);
     }
 
     const AZ::Uuid& AssetPropertyHandlerDefault::GetHandledType() const
@@ -807,14 +800,6 @@ namespace AzToolsFramework
                 GUI->SetEditButtonTooltip(tr(buttonTooltip.c_str()));
             }
         }
-        else if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool value;
-            if (attrValue->Read<bool>(value))
-            {
-                GUI->SetEnableEdit(!value);
-            }
-        }
     }
 
     void AssetPropertyHandlerDefault::WriteGUIValuesIntoProperty(size_t index, PropertyAssetCtrl* GUI, property_t& instance, InstanceDataNode* node)
@@ -867,16 +852,10 @@ namespace AzToolsFramework
 
     void SimpleAssetPropertyHandlerDefault::ConsumeAttribute(PropertyAssetCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        (void)debugName;
-
-        if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool value;
-            if (attrValue->Read<bool>(value))
-            {
-                GUI->SetEnableEdit(!value);
-            }
-        }
+        Q_UNUSED(GUI);
+        Q_UNUSED(attrib);
+        Q_UNUSED(attrValue);
+        Q_UNUSED(debugName);
     }
 
     void SimpleAssetPropertyHandlerDefault::WriteGUIValuesIntoProperty(size_t index, PropertyAssetCtrl* GUI, property_t& instance, InstanceDataNode* node)

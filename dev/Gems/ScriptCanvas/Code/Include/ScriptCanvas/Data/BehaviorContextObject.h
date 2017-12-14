@@ -20,7 +20,6 @@
 #include <AzCore/std/any.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <ScriptCanvas/Data/Data.h>
-#include <ScriptCanvas/SystemComponent.h>
 
 #include "BehaviorContextObjectPtr.h"
 
@@ -31,6 +30,8 @@ namespace AZ
 
 namespace ScriptCanvas
 {
+    class SystemComponent;
+
     class BehaviorContextObject final
     {
         friend struct AZStd::IntrusivePtrCountPolicy<BehaviorContextObject>;
@@ -41,12 +42,12 @@ namespace ScriptCanvas
 
         static void Reflect(AZ::ReflectContext* reflection);
 
-        AZ_INLINE static BehaviorContextObjectPtr Create(const AZ::BehaviorClass& behaviorClass, const void* value = nullptr);
+        static BehaviorContextObjectPtr Create(const AZ::BehaviorClass& behaviorClass, const void* value = nullptr);
 
         template<typename t_Value>
         AZ_INLINE static BehaviorContextObjectPtr Create(const t_Value& value, const AZ::BehaviorClass& behaviorClass);
 
-        AZ_INLINE static BehaviorContextObjectPtr CreateReference(const AZ::Uuid& typeID, void* reference = nullptr);
+        static BehaviorContextObjectPtr CreateReference(const AZ::Uuid& typeID, void* reference = nullptr);
 
         template<typename t_Value>
         AZ_INLINE t_Value* Cast();
@@ -91,7 +92,7 @@ namespace ScriptCanvas
 
         AZ_INLINE static BehaviorContextObject* CreateDefaultHeap(const AZ::BehaviorClass& behaviorClass);
 
-        AZ_FORCE_INLINE static SystemComponent* GetSystemComponent();
+        static SystemComponent* GetSystemComponent();
 
         // use the SSO optimization on behavior class size ALIGNED with a placement new of behavior class create
         AZ_FORCE_INLINE static AnyTypeInfo GetAnyTypeInfoObject(const AZ::BehaviorClass& behaviorClass);
@@ -137,7 +138,7 @@ namespace ScriptCanvas
 
         AZ_FORCE_INLINE void add_ref();
 
-        AZ_FORCE_INLINE void release();
+        void release();
 
     public:
         // no copying allowed, this is here to allow compile time compatibility with storage in of BehaviorContextObjectPtr AZStd::any, only
@@ -266,21 +267,6 @@ namespace ScriptCanvas
         return resultObj;
     }
 
-    AZ_INLINE BehaviorContextObjectPtr BehaviorContextObject::Create(const AZ::BehaviorClass& behaviorClass, const void* value)
-    {
-        CheckClass(behaviorClass);
-
-        if (SystemComponent* scEditorSystemComponent = GetSystemComponent())
-        {
-            BehaviorContextObject* ownedObject = value ? CreateCopy(behaviorClass, value) : CreateDefault(behaviorClass);
-            scEditorSystemComponent->AddOwnedObjectReference(ownedObject->Get(), ownedObject);
-            return BehaviorContextObjectPtr(ownedObject);
-        }
-
-        AZ_Assert(false, "The Script Canvas SystemComponent needs to be part of the SystemEntity!");
-        return nullptr;
-    }
-
     template<typename t_Value>
     AZ_INLINE BehaviorContextObjectPtr BehaviorContextObject::Create(const t_Value& value, const AZ::BehaviorClass& behaviorClass)
     {
@@ -319,16 +305,6 @@ namespace ScriptCanvas
         AZ::BehaviorObject object = InvokeConstructor(behaviorClass, nullptr);
         auto bco = aznew BehaviorContextObject(object.m_address, GetAnyTypeInfoObject(behaviorClass), Owned);
         return bco;
-    }
-
-    AZ_INLINE BehaviorContextObjectPtr BehaviorContextObject::CreateReference(const AZ::Uuid& typeID, void* reference)
-    {
-        const AZ::u32 referenceFlags(0);
-        SystemComponent* scEditorSystemComponent = GetSystemComponent();
-        BehaviorContextObject* ownedObject = scEditorSystemComponent ? scEditorSystemComponent->FindOwnedObjectReference(reference) : nullptr;
-        return ownedObject
-            ? BehaviorContextObjectPtr(ownedObject)
-            : BehaviorContextObjectPtr(aznew BehaviorContextObject(reference, GetAnyTypeInfoReference(typeID), referenceFlags));
     }
 
     AZ_FORCE_INLINE const void* BehaviorContextObject::Get() const
@@ -460,13 +436,6 @@ namespace ScriptCanvas
         };
     }
 
-    AZ_FORCE_INLINE SystemComponent* BehaviorContextObject::GetSystemComponent()
-    {
-        SystemComponent* systemComponent{};
-        SystemRequestBus::BroadcastResult(systemComponent, &SystemRequests::ModSystemComponent);
-        return systemComponent;
-    }
-
     AZ_FORCE_INLINE bool BehaviorContextObject::IsOwned() const
     {
         return (m_flags & Flags::Owned) != 0;
@@ -480,18 +449,6 @@ namespace ScriptCanvas
     AZ_FORCE_INLINE void BehaviorContextObject::add_ref()
     {
         ++m_referenceCount;
-    }
-
-    AZ_FORCE_INLINE void BehaviorContextObject::release()
-    {
-        if (--m_referenceCount == 0)
-        {
-            if (SystemComponent* scEditorSystemComponent = GetSystemComponent())
-            {
-                scEditorSystemComponent->RemoveOwnedObjectReference(Get());
-            }
-            delete this;
-        }
     }
 
 } // namespace ScriptCanvas

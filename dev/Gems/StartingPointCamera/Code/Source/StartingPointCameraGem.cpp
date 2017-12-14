@@ -24,6 +24,7 @@
 #include "CameraLookAtBehaviors/RotateCameraLookAt.h"
 #include "CameraTransformBehaviors/FaceTarget.h"
 
+#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Module/Module.h>
 
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
@@ -47,6 +48,13 @@ namespace StartingPointCamera
             Camera::SlideAlongAxisBasedOnAngle::Reflect(reflection);
             Camera::RotateCameraLookAt::Reflect(reflection);
             Camera::FaceTarget::Reflect(reflection);
+
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
+            {
+                serializeContext->Class<StartingPointCameraGemComponent, AZ::Component>()
+                    ->Version(0)
+                    ;
+            }
         }
         void Activate() override {}
         void Deactivate() override {}

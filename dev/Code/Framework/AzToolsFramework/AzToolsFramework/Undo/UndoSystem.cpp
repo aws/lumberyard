@@ -17,36 +17,36 @@ namespace AzToolsFramework
 {
     namespace UndoSystem
     {
-        URSequencePoint::URSequencePoint(const AZStd::string& friendlyName, URCommandID ID)
+        URSequencePoint::URSequencePoint(const AZStd::string& friendlyName, URCommandID id)
         {
             m_isPosted = false;
-            m_Parent = NULL;
-            m_FriendlyName = friendlyName;
-            m_ID = ID;
+            m_parent = nullptr;
+            m_friendlyName = friendlyName;
+            m_id = id;
 
-            //AZ_TracePrintf("Undo System", "New Root Point %d\n",ID);
+            //AZ_TracePrintf("Undo System", "New Root Point %d\n", id);
         }
-        URSequencePoint::URSequencePoint(URCommandID ID)
+        URSequencePoint::URSequencePoint(URCommandID id)
         {
             m_isPosted = false;
-            m_Parent = NULL;
-            m_ID = ID;
-            m_FriendlyName = AZStd::string("Unknown Undo Command");
+            m_parent = nullptr;
+            m_id = id;
+            m_friendlyName = AZStd::string("Unknown Undo Command");
         }
         URSequencePoint::~URSequencePoint()
         {
-            for (ChildVec::iterator it = m_Children.begin(); it != m_Children.end(); ++it)
+            for (ChildVec::iterator it = m_children.begin(); it != m_children.end(); ++it)
             {
                 URSequencePoint* childPtr = *it;
                 delete childPtr;
             }
-            m_Children.clear();
+            m_children.clear();
         }
 
         void URSequencePoint::RunUndo()
         {
             // reversed children, then me
-            for (ChildVec::reverse_iterator it = m_Children.rbegin(); it != m_Children.rend(); ++it)
+            for (ChildVec::reverse_iterator it = m_children.rbegin(); it != m_children.rend(); ++it)
             {
                 (*it)->RunUndo();
             }
@@ -58,7 +58,7 @@ namespace AzToolsFramework
             // me, then children forward
             Redo();
 
-            for (ChildVec::iterator it = m_Children.begin(); it != m_Children.end(); ++it)
+            for (ChildVec::iterator it = m_children.begin(); it != m_children.end(); ++it)
             {
                 (*it)->RunRedo();
             }
@@ -72,34 +72,34 @@ namespace AzToolsFramework
         {
         }
 
-        URSequencePoint* URSequencePoint::Find(URCommandID ID, const AZ::Uuid& typeOfCommand)
+        URSequencePoint* URSequencePoint::Find(URCommandID id, const AZ::Uuid& typeOfCommand)
         {
-            if ((*this == ID) && (this->RTTI_IsTypeOf(typeOfCommand)))
+            if (*this == id && this->RTTI_IsTypeOf(typeOfCommand))
             {
                 return this;
             }
 
-            for (ChildVec::iterator it = m_Children.begin(); it != m_Children.end(); ++it)
+            for (ChildVec::iterator it = m_children.begin(); it != m_children.end(); ++it)
             {
-                URSequencePoint* cmd = (*it)->Find(ID, typeOfCommand);
+                URSequencePoint* cmd = (*it)->Find(id, typeOfCommand);
                 if (cmd)
                 {
                     return cmd;
                 }
             }
 
-            return NULL;
+            return nullptr;
         }
 
         // does it have children objects that do anything?
         bool URSequencePoint::HasRealChildren() const
         {
-            if (m_Children.empty())
+            if (m_children.empty())
             {
                 return false;
             }
 
-            for (auto it = m_Children.begin(); it != m_Children.end(); ++it)
+            for (auto it = m_children.begin(); it != m_children.end(); ++it)
             {
                 URSequencePoint* pChild = *it;
                 if ((pChild->RTTI_GetType() != AZ::AzTypeInfo<URSequencePoint>::Uuid()) || (pChild->HasRealChildren()))
@@ -112,43 +112,43 @@ namespace AzToolsFramework
 
         void URSequencePoint::SetParent(URSequencePoint* parent)
         {
-            if (m_Parent != nullptr)
+            if (m_parent != nullptr)
             {
-                m_Parent->RemoveChild(this);
+                m_parent->RemoveChild(this);
             }
 
-            m_Parent = parent;
-            m_Parent->AddChild(this);
+            m_parent = parent;
+            m_parent->AddChild(this);
         }
 
         void URSequencePoint::SetName(const AZStd::string& friendlyName)
         {
-            m_FriendlyName = friendlyName;
+            m_friendlyName = friendlyName;
         }
         void URSequencePoint::AddChild(URSequencePoint* child)
         {
-            m_Children.push_back(child);
+            m_children.push_back(child);
         }
 
         void URSequencePoint::RemoveChild(URSequencePoint* child)
         {
-            auto it = AZStd::find(m_Children.begin(), m_Children.end(), child);
-            if (it != m_Children.end())
+            const auto it = AZStd::find(m_children.begin(), m_children.end(), child);
+            if (it != m_children.end())
             {
-                m_Children.erase(it);
+                m_children.erase(it);
             }
         }
 
         AZStd::string& URSequencePoint::GetName()
         {
-            return m_FriendlyName;
+            return m_friendlyName;
         }
 
         void URSequencePoint::ApplyToTree(const ApplyOperationCB& applyCB)
         {
             applyCB(this);
 
-            for (ChildVec::iterator it = m_Children.begin(); it != m_Children.end(); ++it)
+            for (ChildVec::iterator it = m_children.begin(); it != m_children.end(); ++it)
             {
                 (*it)->ApplyToTree(applyCB);
             }
@@ -170,14 +170,14 @@ namespace AzToolsFramework
             for (int idx = 0; idx < int(m_SequencePointsBuffer.size()); ++idx)
             {
                 delete m_SequencePointsBuffer[idx];
-                m_SequencePointsBuffer[idx] = NULL;
+                m_SequencePointsBuffer[idx] = nullptr;
             }
         }
 
         URSequencePoint* UndoStack::Post(URSequencePoint* cmd)
         {
             //AZ_TracePrintf("Undo System", "New command\n");
-            AZ_Assert(cmd, "UndoStack Post( NULL )");
+            AZ_Assert(cmd, "UndoStack Post(nullptr)");
             AZ_Assert(cmd->GetParent() == nullptr, "You may not add undo commands with parents to the undo stack.");
             AZ_Assert(!cmd->IsPosted(), "The given command is posted to the Undo Queue already");
             cmd->m_isPosted = true;
@@ -189,7 +189,7 @@ namespace AzToolsFramework
             if (m_SequencePointsBuffer.full())
             {
                 delete m_SequencePointsBuffer[0];
-                m_SequencePointsBuffer[0] = NULL;
+                m_SequencePointsBuffer[0] = nullptr;
 
                 m_SequencePointsBuffer.pop_front();
                 --m_CleanPoint;
@@ -292,7 +292,7 @@ namespace AzToolsFramework
 #endif
 
             reentryGuard = false;
-            return m_Cursor >= 0 ? m_SequencePointsBuffer[m_Cursor] : NULL;
+            return m_Cursor >= 0 ? m_SequencePointsBuffer[m_Cursor] : nullptr;
         }
         URSequencePoint* UndoStack::Redo()
         {
@@ -322,7 +322,7 @@ namespace AzToolsFramework
             reentryGuard = false;
 
 
-            return NULL;
+            return nullptr;
         }
         void UndoStack::Slice()
         {
@@ -332,7 +332,7 @@ namespace AzToolsFramework
                 for (int idx = m_Cursor + 1; idx < int(m_SequencePointsBuffer.size()); ++idx)
                 {
                     delete m_SequencePointsBuffer[idx];
-                    m_SequencePointsBuffer[idx] = NULL;
+                    m_SequencePointsBuffer[idx] = nullptr;
                 }
                 for (int idx = m_Cursor + 1; idx < int(m_SequencePointsBuffer.size()); )
                 {
@@ -354,17 +354,17 @@ namespace AzToolsFramework
             }
         }
 
-        URSequencePoint* UndoStack::Find(URCommandID ID, const AZ::Uuid& typeOfCommand)
+        URSequencePoint* UndoStack::Find(URCommandID id, const AZ::Uuid& typeOfCommand)
         {
             for (int idx = 0; idx < int(m_SequencePointsBuffer.size()); ++idx)
             {
-                URSequencePoint* cPtr = m_SequencePointsBuffer[idx]->Find(ID, typeOfCommand);
+                URSequencePoint* cPtr = m_SequencePointsBuffer[idx]->Find(id, typeOfCommand);
                 if (cPtr)
                 {
                     return cPtr;
                 }
             }
-            return NULL;
+            return nullptr;
         }
 
         URSequencePoint* UndoStack::GetTop()
@@ -397,7 +397,7 @@ namespace AzToolsFramework
         {
             if (!CanRedo())
             {
-                return NULL;
+                return nullptr;
             }
 
             return m_SequencePointsBuffer[m_Cursor + 1]->GetName().c_str();
@@ -406,7 +406,7 @@ namespace AzToolsFramework
         {
             if (!CanUndo())
             {
-                return NULL;
+                return nullptr;
             }
 
             return m_SequencePointsBuffer[m_Cursor]->GetName().c_str();

@@ -14,8 +14,7 @@
 #include <Components/NodePropertyDisplay/BooleanDataInterface.h>
 #include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
 
-class QPushButton;
-class QGraphicsProxyWidget;
+#include <Widgets/GraphCanvasCheckBox.h>
 
 namespace GraphCanvas
 {
@@ -23,6 +22,7 @@ namespace GraphCanvas
 
     class BooleanNodePropertyDisplay
         : public NodePropertyDisplay 
+        , public GraphCanvasCheckBoxNotificationBus::Handler
     {    
     public:
         AZ_CLASS_ALLOCATOR(BooleanNodePropertyDisplay, AZ::SystemAllocator, 0);
@@ -37,16 +37,19 @@ namespace GraphCanvas
         QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() const override;
         QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() const override;
         ////
+
+        // GraphCanvsCheckBoxNotifications
+        void OnValueChanged(bool value) override;
+        void OnClicked() override;
+        ////
     
     private:
 
         void InvertValue();
     
         BooleanDataInterface*   m_dataInterface;
-    
+
+        GraphCanvasCheckBox*    m_checkBox;    
         GraphCanvasLabel*       m_disabledLabel;
-        GraphCanvasLabel*       m_displayLabel;
-        QPushButton*            m_pushButton;
-        QGraphicsProxyWidget*   m_proxyWidget;
     };
 }

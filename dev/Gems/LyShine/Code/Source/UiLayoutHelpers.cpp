@@ -262,7 +262,7 @@ namespace UiLayoutHelpers
     }
 
     AZStd::vector<float> GetLayoutCellTargetWidths(AZ::EntityId elementId, bool ignoreDefaultLayoutCells)
-    {        
+    {
         AZStd::vector<AZ::EntityId> childEntityIds;
         EBUS_EVENT_ID_RESULT(childEntityIds, elementId, UiElementBus, GetChildEntityIds);
 
@@ -433,7 +433,6 @@ namespace UiLayoutHelpers
                         float neededAmount = layoutCells[i].m_targetSize - sizesOut[i];
                         neededAmounts.push_back(neededAmount);
                         totalNeededAmount += neededAmount;
-
                     }
                 }
 

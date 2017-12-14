@@ -41,6 +41,8 @@
 
 #include "ReplicaBandwidthChartData.h"
 
+namespace AZ { class ReflectContext; }
+
 namespace Driller
 {
     class ReplicaDataAggregator;

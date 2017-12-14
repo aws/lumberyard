@@ -255,7 +255,8 @@ namespace AzFramework
             return;
         }
 
-        if (entity->GetState() != AZ::Entity::ES_ACTIVE)
+        AZ::Entity::State state = entity->GetState();
+        if (state != AZ::Entity::ES_ACTIVE && state != AZ::Entity::ES_ACTIVATING)
         {
             AZ_Warning("Entity", false, "Cannot deactivate entity. Entity (id=%s name='%s') must be in the activated state.", m_entityId.ToString().c_str(), entity->GetName().c_str());
             return;

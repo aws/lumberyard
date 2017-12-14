@@ -69,10 +69,13 @@ namespace UnitTest
         struct RemapIdData
         {
             AZ_TYPE_INFO(RemapIdData, "{0431A85A-C2CC-453A-92A7-807BCEAB46D7}");
+            AZ_CLASS_ALLOCATOR(RemapIdData, AZ::SystemAllocator, 0);
+
             static void Reflect(AZ::SerializeContext& serializeContext)
             {
                 serializeContext.Class<RemapIdData>()
-                    ->Field("m_remappableUuid", &RemapIdData::m_remappableUuid, { {AZ::Edit::Attributes::IdGeneratorFunction, aznew AttributeData<AZ::IdUtils::Remapper<AZ::Uuid>::IdGenerator>(&AZ::Uuid::CreateRandom)} })
+                    ->Field("m_remappableUuid", &RemapIdData::m_remappableUuid)
+                        ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Uuid::CreateRandom)
                     ->Field("m_uuid1", &RemapIdData::m_uuid1)
                     ->Field("m_uuid2", &RemapIdData::m_uuid2)
                     ;
@@ -86,13 +89,17 @@ namespace UnitTest
         struct RemapUuidAndEntityIdData
         {
             AZ_TYPE_INFO(RemapUuidAndEntityIdData, "{6951A116-505C-47E0-9310-2E60D040F390}");
+            AZ_CLASS_ALLOCATOR(RemapUuidAndEntityIdData, AZ::SystemAllocator, 0);
+
             static void Reflect(AZ::SerializeContext& serializeContext)
             {
                 serializeContext.Class<RemapUuidAndEntityIdData>()
-                    ->Field("m_remappableUuid", &RemapUuidAndEntityIdData::m_remappableUuid, { { AZ::Edit::Attributes::IdGeneratorFunction, aznew AttributeData<AZ::IdUtils::Remapper<AZ::Uuid>::IdGenerator>(&AZ::Uuid::CreateRandom) } })
+                    ->Field("m_remappableUuid", &RemapUuidAndEntityIdData::m_remappableUuid)
+                        ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Uuid::CreateRandom)
                     ->Field("m_uuid1", &RemapUuidAndEntityIdData::m_uuid1)
                     ->Field("m_uuid2", &RemapUuidAndEntityIdData::m_uuid2)
-                    ->Field("m_remappbleEntityId", &RemapUuidAndEntityIdData::m_remappableEntityId, { { AZ::Edit::Attributes::IdGeneratorFunction, aznew AttributeData<AZ::IdUtils::Remapper<AZ::EntityId>::IdGenerator>(&AZ::Entity::MakeId) } })
+                    ->Field("m_remappbleEntityId", &RemapUuidAndEntityIdData::m_remappableEntityId)
+                        ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Entity::MakeId)
                     ->Field("m_entityId1", &RemapUuidAndEntityIdData::m_entityId1)
                     ->Field("m_entityId2", &RemapUuidAndEntityIdData::m_entityId2)
                     ->Field("m_entity", &RemapUuidAndEntityIdData::m_entity)

@@ -83,7 +83,7 @@ namespace MCore
     // construct the dual quaternion from a given non-scaled matrix
     DualQuaternion DualQuaternion::ConvertFromMatrix(const Matrix& m)
     {
-        Vector3 pos;
+        AZ::Vector3 pos;
         Quaternion rot;
         m.Decompose(&pos, &rot); // does not allow scale
         return DualQuaternion(rot, pos);
@@ -104,7 +104,7 @@ namespace MCore
 
 
     // convert back into rotation and translation
-    void DualQuaternion::ToRotationTranslation(Quaternion* outRot, Vector3* outPos) const
+    void DualQuaternion::ToRotationTranslation(Quaternion* outRot, AZ::Vector3* outPos) const
     {
         const float invLength = 1.0f / mReal.Length();
         *outRot = mReal * invLength;
@@ -116,7 +116,7 @@ namespace MCore
 
     // special case version for conversion into rotation and translation
     // only works with normalized dual quaternions
-    void DualQuaternion::NormalizedToRotationTranslation(Quaternion* outRot, Vector3* outPos) const
+    void DualQuaternion::NormalizedToRotationTranslation(Quaternion* outRot, AZ::Vector3* outPos) const
     {
         *outRot = mReal;
         outPos->Set(2.0f * (-mDual.w * mReal.x + mDual.x * mReal.w - mDual.y * mReal.z + mDual.z * mReal.y),
@@ -126,8 +126,8 @@ namespace MCore
 
 
     // convert into a dual quaternion from a translation and rotation
-    DualQuaternion DualQuaternion::ConvertFromRotationTranslation(const Quaternion& rotation, const Vector3& translation)
+    DualQuaternion DualQuaternion::ConvertFromRotationTranslation(const Quaternion& rotation, const AZ::Vector3& translation)
     {
-        return DualQuaternion(rotation,  0.5f * (Quaternion(translation.x, translation.y, translation.z, 0.0f) * rotation));
+        return DualQuaternion(rotation,  0.5f * (Quaternion(translation.GetX(), translation.GetY(), translation.GetZ(), 0.0f) * rotation));
     }
 }   // namespace MCore

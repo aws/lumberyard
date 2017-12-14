@@ -118,7 +118,9 @@
             "EBus/EBus.h",
             "EBus/HandlerContainer.h",
             "EBus/Policies.h",
-            "EBus/Results.h"
+            "EBus/Results.h",
+            "EBus/Environment.cpp",
+            "EBus/Environment.h"
         ],
         "IO":
         [
@@ -266,6 +268,7 @@
             "Math/VertexContainer.h",
             "Math/VertexContainer.cpp",
             "Math/VertexContainerInterface.h",
+            "Math/PackedVector3.h",
             "Math/Color.h",
             "Math/VectorFloat.cpp",
             "Math/VectorFloat.h"

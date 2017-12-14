@@ -11,6 +11,15 @@
 */
 #pragma once
 
+#include <QScrollArea>
+
+#include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
+
+class PropertiesWidget;
+class EditorWindow;
+
+#include "EditorCommon.h"
+
 class PropertiesContainer
     : public QScrollArea
 {

@@ -114,6 +114,16 @@ protected:
         }
     };
     std::vector<SRenderItem> m_renderItems;
+
+    // The Possible states a capture can be in.
+    enum class CaptureState
+    {
+        Idle,
+        Starting,
+        Capturing,
+        Ending
+    };
+
     struct SRenderContext
     {
         int currentItemIndex;
@@ -128,6 +138,12 @@ protected:
         IAnimNode* pActiveDirectorBU;
         ICaptureKey captureOptions;
         bool bFFMPEGProcessing;
+        // True if the user canceled a render.
+        bool canceled;
+        // The sequence that triggered the CaptureState::Ending.
+        IAnimSequence* endingSequence;
+        // Current capture state.
+        CaptureState captureState;
 
         bool IsInRendering() const
         { return currentItemIndex >= 0; }
@@ -143,7 +159,10 @@ protected:
             , cvarDisplayInfoBU(0)
             , bWarmingUpAfterResChange(false)
             , timeWarmingUpStarted(0)
-            , bFFMPEGProcessing(false) {}
+            , bFFMPEGProcessing(false)
+            , canceled(false)
+            , endingSequence(nullptr)
+            , captureState(CaptureState::Idle) {}
     };
     SRenderContext m_renderContext;
     // Custom values from resolution/FPS combo boxes
@@ -152,9 +171,13 @@ protected:
 
     void InitializeContext();
     virtual void OnMovieEvent(IMovieListener::EMovieEvent event, IAnimSequence* pSequence);
-    void StartCaptureItem();
-    void ReallyStartCaptureItem();
-    void EndCaptureItem(IAnimSequence* pSequence);
+
+    // Capture State Transitions
+    void OnCaptureItemStarting();
+    void OnCaptureItemStart();
+    void OnCaptureItemEnding(IAnimSequence* pSequence);
+    void OnCaptureItemEnd(IAnimSequence* pSequence);
+
     bool SetUpNewRenderItem(SRenderItem& item);
     void AddItem(const SRenderItem& item);
     QString GetCaptureItemString(const SRenderItem& item) const;

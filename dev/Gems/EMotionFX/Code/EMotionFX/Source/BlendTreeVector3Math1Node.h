@@ -84,7 +84,7 @@ namespace EMotionFX
         AnimGraphObjectData* CreateObjectData() override;
 
     private:
-        typedef void (MCORE_CDECL * BlendTreeVec3Math1Function)(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
+        typedef void (MCORE_CDECL * BlendTreeVec3Math1Function)(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
 
         EMathFunction               mMathFunction;
         BlendTreeVec3Math1Function  mCalculateFunc;
@@ -95,16 +95,16 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void OnUpdateAttributes() override;
 
-        static void MCORE_CDECL CalculateLength(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateSquareLength(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateNormalize(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateZero(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateAbs(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateFloor(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateCeil(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateRandomVector(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateRandomVectorNeg(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateRandomVectorDir(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
-        static void MCORE_CDECL CalculateNegate(const MCore::Vector3& input, MCore::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateLength(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateSquareLength(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateNormalize(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateZero(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateAbs(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateFloor(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateCeil(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateRandomVector(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateRandomVectorNeg(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateRandomVectorDir(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
+        static void MCORE_CDECL CalculateNegate(const AZ::Vector3& input, AZ::Vector3* vectorOutput, float* floatOutput);
     };
 }   // namespace EMotionFX

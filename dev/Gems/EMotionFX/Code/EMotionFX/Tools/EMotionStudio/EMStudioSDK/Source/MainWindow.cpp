@@ -22,6 +22,8 @@
 #include "UnitScaleWindow.h"
 #include "UnitSetupWindow.h"
 
+#include <LyViewPaneNames.h>
+
 // include Qt related
 #include <QMenu>
 #include <QStatusBar>
@@ -63,6 +65,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <ISystem.h>
 
 // Include this on windows to detect device remove and insert messages, used for the game controller support.
@@ -156,7 +159,6 @@ namespace EMStudio
         : QMainWindow(parent, flags)
     {
         mAutosaveTimer                  = nullptr;
-        mRealtimeInterfaceTimer         = nullptr;
         mPreferencesWindow              = nullptr;
         mNodeSelectionWindow            = nullptr;
         mApplicationMode                = nullptr;
@@ -188,15 +190,10 @@ namespace EMStudio
             mAutosaveTimer->stop();
         }
 
-        if (mRealtimeInterfaceTimer)
-        {
-            mRealtimeInterfaceTimer->stop();
-        }
-
         SavePreferences();
 
-        // delete all actor instances
-        for (uint32 i = 0; i < EMotionFX::GetActorManager().GetNumActorInstances(); )
+        // Delete all actor instances back to front which belong to the Animation Editor and are not managed by the asset system yet.
+        for (int i = EMotionFX::GetActorManager().GetNumActorInstances() - 1; i >= 0; i--)
         {
             EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(i);
 
@@ -208,7 +205,8 @@ namespace EMStudio
             actorInstance->Destroy();
         }
 
-        for (uint32 i = 0; i < EMotionFX::GetActorManager().GetNumActors(); )
+        // Same for actors.
+        for (int i = EMotionFX::GetActorManager().GetNumActors() - 1; i >= 0; i--)
         {
             EMotionFX::Actor* actor = EMotionFX::GetActorManager().GetActor(i);
 
@@ -242,7 +240,7 @@ namespace EMStudio
         delete mImportActorCallback;
         delete mRemoveActorCallback;
         delete mRemoveActorInstanceCallback;
-        delete mImportMotionCallback;        
+        delete mImportMotionCallback;
         delete mRemoveMotionCallback;
         delete mCreateMotionSetCallback;
         delete mRemoveMotionSetCallback;
@@ -405,7 +403,7 @@ namespace EMStudio
         // reset the application mode selection and connect it
         mApplicationMode->setCurrentIndex(-1);
         connect(mApplicationMode, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(ApplicationModeChanged(const QString&)));
-        mFirstTimeOpenWindow = true;
+        mLayoutLoaded = false;
 
         // window item
         menu = menuBar->addMenu(tr("&Window"));
@@ -430,11 +428,6 @@ namespace EMStudio
         mAutosaveTimer = new QTimer(this);
         connect(mAutosaveTimer, SIGNAL(timeout()), this, SLOT(OnAutosaveTimeOut()));
 
-        // start the realtime user interface timer
-        mRealtimeInterfaceTimer = new QTimer(this);
-        SetAspiredRenderingFPS(100);
-        connect(mRealtimeInterfaceTimer, SIGNAL(timeout()), this, SLOT(OnRealtimeInterfaceUpdate()));
-
         // load preferences
         LoadPreferences();
 
@@ -458,10 +451,8 @@ namespace EMStudio
         // add the application mode group
         const char* layoutGroupName = "Layouts";
         mShortcutManager->RegisterKeyboardShortcut("AnimGraph", layoutGroupName, Qt::Key_1, false, true, false);
-        mShortcutManager->RegisterKeyboardShortcut("AnimGraph Debug", layoutGroupName, Qt::Key_2, false, true, false);
-        mShortcutManager->RegisterKeyboardShortcut("Animation", layoutGroupName, Qt::Key_3, false, true, false);
-        mShortcutManager->RegisterKeyboardShortcut("Character", layoutGroupName, Qt::Key_4, false, true, false);
-        mShortcutManager->RegisterKeyboardShortcut("LOD", layoutGroupName, Qt::Key_5, false, true, false);
+        mShortcutManager->RegisterKeyboardShortcut("Animation", layoutGroupName, Qt::Key_2, false, true, false);
+        mShortcutManager->RegisterKeyboardShortcut("Character", layoutGroupName, Qt::Key_3, false, true, false);
 
         // create and register the command callbacks
         mImportActorCallback = new CommandImportActorCallback(false);
@@ -493,7 +484,7 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
         GetCommandManager()->RegisterCommandCallback("SaveWorkspace", mSaveWorkspaceCallback);
 
-        QAbstractEventDispatcher::instance()->installNativeEventFilter( new NativeEventFilter(this) );
+        QAbstractEventDispatcher::instance()->installNativeEventFilter(new NativeEventFilter(this));
 
         settings.endGroup();
     }
@@ -502,17 +493,17 @@ namespace EMStudio
     bool NativeEventFilter::nativeEventFilter(const QByteArray& /*eventType*/, void* message, long* /*result*/)
     {
         #ifdef MCORE_PLATFORM_WINDOWS
-            MSG* msg = static_cast<MSG*>(message);
-            if (msg->message == WM_DEVICECHANGE)
+        MSG* msg = static_cast<MSG*>(message);
+        if (msg->message == WM_DEVICECHANGE)
+        {
+            if (msg->wParam == DBT_DEVICEREMOVECOMPLETE || msg->wParam == DBT_DEVICEARRIVAL || msg->wParam == DBT_DEVNODES_CHANGED)
             {
-                if (msg->wParam == DBT_DEVICEREMOVECOMPLETE || msg->wParam == DBT_DEVICEARRIVAL || msg->wParam == DBT_DEVNODES_CHANGED)
-                {
-                    // The reason why there are multiple of such messages is because it emits messages for all related hardware nodes.
-                    // But we do not know the name of the hardware to look for here either, so we can't filter that.
-                    AZ_TracePrintf("EMotionFX", "Hardware changes detected\n");
-                    emit m_MainWindow->HardwareChangeDetected();
-                }
+                // The reason why there are multiple of such messages is because it emits messages for all related hardware nodes.
+                // But we do not know the name of the hardware to look for here either, so we can't filter that.
+                AZ_TracePrintf("EMotionFX", "Hardware changes detected\n");
+                emit m_MainWindow->HardwareChangeDetected();
             }
+        }
         #endif
 
         return false;
@@ -940,15 +931,6 @@ namespace EMStudio
     }
 
 
-    void MainWindow::SetAspiredRenderingFPS(int32 fps)
-    {
-        mAspiredRenderFPS = fps;
-        mRealtimeInterfaceTimer->stop();
-        mRealtimeInterfaceTimer->setTimerType(Qt::PreciseTimer);
-        mRealtimeInterfaceTimer->start(1000.0f / mAspiredRenderFPS);
-    }
-
-
     void MainWindow::OnWorkspaceSaved(const char* filename)
     {
         mRecentWorkspaces.AddRecentFile(filename);
@@ -1152,15 +1134,16 @@ namespace EMStudio
                 const QSize s = dockPlugin->GetInitialWindowSize();
                 dockPlugin->GetDockWidget()->resize(s.width(), s.height());
             }
-
-            // update the window menu
-            UpdateCreateWindowMenu();
         }
         else // (checked == false)
         {
-            // keep it checked, don't change the state to unchecked
-            action->setChecked(true);
+            EMStudioPlugin* plugin = EMStudio::GetPluginManager()->GetActivePluginByTypeString(FromQtString(pluginName).AsChar());
+            AZ_Assert(plugin, "Failed to get plugin, since it was checked it should be active");
+            EMStudio::GetPluginManager()->RemoveActivePlugin(plugin);
         }
+
+        // update the window menu
+        UpdateCreateWindowMenu();
     }
 
     // open the autosave folder
@@ -1196,7 +1179,6 @@ namespace EMStudio
 
             connect(generalPropertyWidget, SIGNAL(ValueChanged(MysticQt::PropertyWidget::Property*)), this, SLOT(OnValueChanged(MysticQt::PropertyWidget::Property*)));
 
-            mAspiredRenderingFPSProperty        = generalPropertyWidget->AddIntProperty("", "Aspired Rendering FPS", mAspiredRenderFPS, 100, 1, 1000);
             mMaxRecentFilesProperty             = generalPropertyWidget->AddIntProperty("", "Maximum Recent Files", GetMaxRecentFiles(), 16, 1, 99);
             mMaxHistoryItemsProperty            = generalPropertyWidget->AddIntProperty("", "Undo History Size", GetCommandManager()->GetMaxHistoryItems(), 256, 0, 9999);
             mNotificationVisibleTimeProperty    = generalPropertyWidget->AddIntProperty("", "Notification Visible Time", mNotificationVisibleTime, 5, 1, 10);
@@ -1232,12 +1214,6 @@ namespace EMStudio
 
     void MainWindow::OnValueChanged(MysticQt::PropertyWidget::Property* property)
     {
-        // set the aspired framerate
-        if (property == mAspiredRenderingFPSProperty)
-        {
-            SetAspiredRenderingFPS(property->AsInt());
-        }
-
         // set the maximum number of recent files
         if (property == mMaxRecentFilesProperty)
         {
@@ -1313,9 +1289,6 @@ namespace EMStudio
         // save the unit type
         settings.setValue("unitType", MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
 
-        // save the aspired render fps
-        settings.setValue("aspiredFPS", mAspiredRenderFPS);
-
         // save the maximum number of items in the command history
         settings.setValue("maxHistoryItems", GetCommandManager()->GetMaxHistoryItems());
 
@@ -1367,10 +1340,6 @@ namespace EMStudio
         MCore::Distance::EUnitType unitType;
         MCore::Distance::StringToUnitType(unitTypeString.toUtf8().data(), &unitType);
         EMotionFX::GetEMotionFX().SetUnitType(unitType);
-
-        // read the aspired render fps
-        const int32 aspiredFPS = settings.value("aspiredFPS", mAspiredRenderFPS).toInt();
-        SetAspiredRenderingFPS(aspiredFPS);
 
         // read the maximum number of items in the command history
         const int32 maxHistoryItems = settings.value("maxHistoryItems", GetCommandManager()->GetMaxHistoryItems()).toInt();
@@ -1483,106 +1452,102 @@ namespace EMStudio
         mRecentActors.AddRecentFile(fileName);
     }
 
-    
+
 
     void MainWindow::LoadCharacter(const AZ::Data::AssetId& actorAssetId, const AZ::Data::AssetId& animgraphId, const AZ::Data::AssetId& motionSetId)
     {
-        if (actorAssetId.IsValid())
+        mCharacterFiles.clear();
+        AZStd::string cachePath = gEnv->pFileIO->GetAlias("@assets@");
+        AZStd::string filename;
+        AzFramework::StringFunc::AssetDatabasePath::Normalize(cachePath);
+
+        AZStd::string actorFilename;
+        EBUS_EVENT_RESULT(actorFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, actorAssetId);
+        AzFramework::StringFunc::AssetDatabasePath::Join(cachePath.c_str(), actorFilename.c_str(), filename, true);
+        actorFilename = filename;
+
+        AZStd::string animgraphFilename;
+        EBUS_EVENT_RESULT(animgraphFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, animgraphId);
+        bool found;
+        if (!animgraphFilename.empty())
         {
-            mCharacterFiles.clear();
-            AZStd::string cachePath = gEnv->pFileIO->GetAlias("@assets@");
-            AZStd::string filename;
-            AzFramework::StringFunc::AssetDatabasePath::Normalize(cachePath);
-
-            AZStd::string actorFilename;
-            EBUS_EVENT_RESULT(actorFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, actorAssetId);
-            AzFramework::StringFunc::AssetDatabasePath::Join(cachePath.c_str(), actorFilename.c_str(), filename, true);
-            actorFilename = filename;
-
-            AZStd::string animgraphFilename;
-            EBUS_EVENT_RESULT(animgraphFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, animgraphId);
-            bool found;
-            if (!animgraphFilename.empty())
+            EBUS_EVENT_RESULT(found, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, animgraphFilename.c_str(), filename);
+            if (found)
             {
-                EBUS_EVENT_RESULT(found, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, animgraphFilename.c_str(), filename);
-                if (found)
-                {
-                    animgraphFilename = filename;
-                }
-            }
-
-            AZStd::string motionSetFilename;
-            EBUS_EVENT_RESULT(motionSetFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, motionSetId);
-            if (!motionSetFilename.empty())
-            {
-                EBUS_EVENT_RESULT(found, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, motionSetFilename.c_str(), filename);
-                if (found)
-                {
-                    motionSetFilename = filename;
-                }
-            }
-
-            // if the name is empty we stop looking for it
-            bool foundActor = actorFilename.empty();
-            bool foundAnimgraph = animgraphFilename.empty();
-            bool foundMotionSet = motionSetFilename.empty();
-
-            // Gather the list of dirty files
-            AZStd::vector<AZStd::string> filenames;
-            AZStd::vector<SaveDirtyFilesCallback::ObjectPointer> objects;
-            AZStd::vector<SaveDirtyFilesCallback::ObjectPointer> dirtyObjects;
-
-            const size_t numDirtyFilesCallbacks = mDirtyFileManager->GetNumCallbacks();
-            for (size_t i = 0; i < numDirtyFilesCallbacks; ++i)
-            {
-                SaveDirtyFilesCallback* callback = mDirtyFileManager->GetCallback(i);
-                callback->GetDirtyFileNames(&filenames, &objects);
-                const size_t numFileNames = filenames.size();
-                for (size_t j = 0; j < numFileNames; ++j)
-                {
-                    // bypass if the filename is empty
-                    // it's the case when the file is not already saved
-                    if (filenames[j].empty())
-                    {
-                        continue;
-                    }
-
-                    if (!foundActor && filenames[j] == actorFilename)
-                    {
-                        foundActor = true;
-                    }
-                    else if (!foundAnimgraph && filenames[j] == animgraphFilename)
-                    {
-                        foundAnimgraph = true;
-                    }
-                    else if (!foundMotionSet && filenames[j] == motionSetFilename)
-                    {
-                        foundMotionSet = true;
-                    }
-                }
-            }
-
-            // Dont reload dirty files that are already open.
-            if (!foundActor)
-            {
-                mCharacterFiles.push_back(actorFilename);
-            }
-            if (!foundAnimgraph)
-            {
-                mCharacterFiles.push_back(animgraphFilename);
-            }
-            if (!foundMotionSet)
-            {
-                mCharacterFiles.push_back(motionSetFilename);
+                animgraphFilename = filename;
             }
         }
 
-        if (isVisible())
+        AZStd::string motionSetFilename;
+        EBUS_EVENT_RESULT(motionSetFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, motionSetId);
+        if (!motionSetFilename.empty())
+        {
+            EBUS_EVENT_RESULT(found, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, motionSetFilename.c_str(), filename);
+            if (found)
+            {
+                motionSetFilename = filename;
+            }
+        }
+
+        // if the name is empty we stop looking for it
+        bool foundActor = actorFilename.empty();
+        bool foundAnimgraph = animgraphFilename.empty();
+        bool foundMotionSet = motionSetFilename.empty();
+
+        // Gather the list of dirty files
+        AZStd::vector<AZStd::string> filenames;
+        AZStd::vector<SaveDirtyFilesCallback::ObjectPointer> objects;
+        AZStd::vector<SaveDirtyFilesCallback::ObjectPointer> dirtyObjects;
+
+        const size_t numDirtyFilesCallbacks = mDirtyFileManager->GetNumCallbacks();
+        for (size_t i = 0; i < numDirtyFilesCallbacks; ++i)
+        {
+            SaveDirtyFilesCallback* callback = mDirtyFileManager->GetCallback(i);
+            callback->GetDirtyFileNames(&filenames, &objects);
+            const size_t numFileNames = filenames.size();
+            for (size_t j = 0; j < numFileNames; ++j)
+            {
+                // bypass if the filename is empty
+                // it's the case when the file is not already saved
+                if (filenames[j].empty())
+                {
+                    continue;
+                }
+
+                if (!foundActor && filenames[j] == actorFilename)
+                {
+                    foundActor = true;
+                }
+                else if (!foundAnimgraph && filenames[j] == animgraphFilename)
+                {
+                    foundAnimgraph = true;
+                }
+                else if (!foundMotionSet && filenames[j] == motionSetFilename)
+                {
+                    foundMotionSet = true;
+                }
+            }
+        }
+
+        // Dont reload dirty files that are already open.
+        if (!foundActor)
+        {
+            mCharacterFiles.push_back(actorFilename);
+        }
+        if (!foundAnimgraph)
+        {
+            mCharacterFiles.push_back(animgraphFilename);
+        }
+        if (!foundMotionSet)
+        {
+            mCharacterFiles.push_back(motionSetFilename);
+        }
+
+        if (isVisible() && mLayoutLoaded)
         {
             LoadCharacterFiles();
         }
     }
-
 
     void MainWindow::OnFileNewWorkspace()
     {
@@ -1914,7 +1879,7 @@ namespace EMStudio
         }
 
         const size_t numFilenames = filenames.size();
-        for (size_t i=0; i<numFilenames; ++i)
+        for (size_t i = 0; i < numFilenames; ++i)
         {
             LoadActor(filenames[i].c_str(), i == 0);
         }
@@ -1980,7 +1945,7 @@ namespace EMStudio
         }
     }
 
-    
+
     void MainWindow::OnRecentFile(QAction* action)
     {
         const AZStd::string filename = action->data().toString().toUtf8().data();
@@ -2546,13 +2511,40 @@ namespace EMStudio
         }
     }
 
-    void MainWindow::StartEditorFirstTime()
+    void MainWindow::LoadLayoutAfterShow()
     {
-        LoadDefaultLayout();
-        if (mCharacterFiles.size())
+        if (!mLayoutLoaded)
         {
-            QApplication::processEvents();
-            LoadCharacterFiles();
+            mLayoutLoaded = true;
+
+            LoadDefaultLayout();
+            if (!mCharacterFiles.empty())
+            {
+                // Need to defer loading the character until the layout is ready. We also
+                // need a couple of initializeGL/paintGL to happen before the character
+                // is being loaded.
+                QTimer::singleShot(500, this, SLOT(LoadCharacterFiles()));
+            }
+        }
+    }
+
+    void MainWindow::RaiseFloatingWidgets()
+    {
+        const QList<MysticQt::DockWidget*> dockWidgetList = findChildren<MysticQt::DockWidget*>();
+        for (MysticQt::DockWidget* dockWidget : dockWidgetList)
+        {
+            if (dockWidget->isFloating())
+            {
+                // There is some weird behavior with floating QDockWidget. After showing it,
+                // the widget doesn't seem to remain when we move/maximize or do some changes in the
+                // window that contains it. Setting it as floating false then true seems to workaround
+                // the problem
+                dockWidget->setFloating(false);
+                dockWidget->setFloating(true);
+
+                dockWidget->show();
+                dockWidget->raise();
+            }
         }
     }
 
@@ -2580,8 +2572,20 @@ namespace EMStudio
 
     void MainWindow::LoadCharacterFiles()
     {
-        LoadFiles(mCharacterFiles, 0, 0, false, true);
-        mCharacterFiles.clear();
+        if (!mCharacterFiles.empty())
+        {
+            LoadFiles(mCharacterFiles, 0, 0, false, true);
+            mCharacterFiles.clear();
+
+            // for all registered plugins, call the after load actors callback
+            PluginManager* pluginManager = GetPluginManager();
+            const uint32 numPlugins = pluginManager->GetNumActivePlugins();
+            for (uint32 p = 0; p < numPlugins; ++p)
+            {
+                EMStudioPlugin* plugin = pluginManager->GetActivePlugin(p);
+                plugin->OnAfterLoadActors();
+            }
+        }
     }
 
 
@@ -2612,24 +2616,21 @@ namespace EMStudio
     {
         // check if we dropped any files to the application
         const QMimeData* mimeData = event->mimeData();
-        if (mimeData->hasUrls())
+
+        AZStd::vector<AzToolsFramework::AssetBrowser::AssetBrowserEntry*> entries;
+        AzToolsFramework::AssetBrowser::AssetBrowserEntry::FromMimeData(mimeData, entries);
+
+        AZStd::vector<AZStd::string> fileNames;
+        for (const auto& entry : entries)
         {
-            // read out the dropped file names
-            QList<QUrl> urls = mimeData->urls();
-            AZStd::vector<AZStd::string> fileNames;
-            const int numUrls = urls.count();
-            fileNames.resize(numUrls);
-
-            // get the number of urls and iterate over them
-            for (int i = 0; i < numUrls; ++i)
+            AZStd::vector<const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*> productEntries;
+            entry->GetChildrenRecursively<AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry>(productEntries);
+            for (const auto& productEntry : productEntries)
             {
-                MCore::String tempString;
-                FromQtString(urls[i].toLocalFile(), &tempString);
-                fileNames[i] = tempString.AsChar();
+                fileNames.emplace_back(FileManager::GetAssetFilenameFromAssetId(productEntry->GetAssetId()));
             }
-
-            LoadFiles(fileNames, event->pos().x(), event->pos().y());
         }
+        LoadFiles(fileNames, event->pos().x(), event->pos().y());
 
         event->acceptProposedAction();
     }
@@ -2644,8 +2645,32 @@ namespace EMStudio
         else
         {
             mAutosaveTimer->stop();
+
+            PluginManager* pluginManager = GetPluginManager();
+            const uint32 numPlugins = pluginManager->GetNumActivePlugins();
+            for (uint32 p = 0; p < numPlugins; ++p)
+            {
+                EMStudioPlugin* plugin = pluginManager->GetActivePlugin(p);
+                AZ_Assert(plugin, "Unexpected null active plugin");
+                plugin->OnMainWindowClosed();
+            }
+
+            // The close event does not hide floating widgets, so we are doing that manually here
+            const QList<MysticQt::DockWidget*> dockWidgetList = findChildren<MysticQt::DockWidget*>();
+            for (MysticQt::DockWidget* dockWidget : dockWidgetList)
+            {
+                if (dockWidget->isFloating())
+                {
+                    dockWidget->hide();
+                }
+            }
+
             QMainWindow::closeEvent(event);
         }
+
+        // We mark it as false so next time is shown the layout is re-loaded if
+        // necessary
+        mLayoutLoaded = false;
     }
 
 
@@ -2659,15 +2684,19 @@ namespace EMStudio
         // EMotionFX dock widget is created the first time it's opened, so we need to load layout after that
         // The singleShot is needed because show event is fired before the dock widget resizes (in the same function dock widget is created)
         // So we want to load layout after that. It's a bit hacky, but most sensible at the moment.
-        if (mFirstTimeOpenWindow)
+        if (!mLayoutLoaded)
         {
-            mFirstTimeOpenWindow = false;
-            QTimer::singleShot(0, this, SLOT(StartEditorFirstTime()));
+            QTimer::singleShot(0, this, SLOT(LoadLayoutAfterShow()));
         }
 
         QMainWindow::showEvent(event);
-    }
 
+        // This show event ends up being called twice from QtViewPaneManager::OpenPane. At the end of the method
+        // is doing a "raise" on this window. Since we cannot intercept that raise (raise is a slot and doesn't
+        // have an event associated) we are deferring a call to RaiseFloatingWidgets which will raise the floating
+        // widgets (this needs to happen after the raise from OpenPane).
+        QTimer::singleShot(0, this, SLOT(RaiseFloatingWidgets()));
+    }
 
     void MainWindow::keyPressEvent(QKeyEvent* event)
     {
@@ -2720,6 +2749,11 @@ namespace EMStudio
         return GetLayoutName(currentLayoutIndex);
     }
 
+    const char* MainWindow::GetEMotionFXPaneName()
+    {
+        return LyViewPane::AnimationEditor;
+    }
+
 
     void MainWindow::OnAutosaveTimeOut()
     {
@@ -2754,7 +2788,9 @@ namespace EMStudio
 
         // Skip directly in case there are no dirty files.
         if (dirtyFileNames.empty() && dirtyObjects.empty())
+        {
             return;
+        }
 
         // create the command group
         AZStd::string command;
@@ -2810,7 +2846,7 @@ namespace EMStudio
                     {
                         // add the file in the list
                         autosaveFileList.append(autosavesFolder + entryList[j]);
-                        AZ_Printf("Appending '%s' #%i\n", entryList[j].toUtf8().data(), numberExtracted);
+                        AZ_Printf("EMotionFX", "Appending '%s' #%i\n", entryList[j].toUtf8().data(), numberExtracted);
 
                         // Update the maximum autosave file number that already exists on disk.
                         maxAutosaveFileNumber = MCore::Max<int>(maxAutosaveFileNumber, numberExtracted);
@@ -2828,7 +2864,7 @@ namespace EMStudio
                 // delete each file
                 for (int j = 0; j < numFilesToDelete; ++j)
                 {
-                    AZ_Printf("Removing '%s'\n", autosaveFileList[j].toUtf8().data());
+                    AZ_Printf("EMotionFX", "Removing '%s'\n", autosaveFileList[j].toUtf8().data());
                     QFile::remove(autosaveFileList[j]);
                 }
             }
@@ -2844,18 +2880,18 @@ namespace EMStudio
             // save the new file
             AZStd::string newFileFilename;
             newFileFilename = AZStd::string::format("%s%s%d.%s", autosavesFolder.AsChar(), startWithAutosave.c_str(), newAutosaveFileNumber, extension.c_str());
-            AZ_Printf("Saving to '%s'\n", newFileFilename.c_str());
+            AZ_Printf("EMotionFX", "Saving to '%s'\n", newFileFilename.c_str());
 
             // Backing up actors and motions doesn't work anymore as we just update the .assetinfos and the asset processor does the rest.
             if (dirtyObjects[i].mMotionSet)
             {
-                command = AZStd::string::format("SaveMotionSet -motionSetID %i -filename \"%s\" -updateFilename false -updateDirtyFlag false", dirtyObjects[i].mMotionSet->GetID(), newFileFilename.c_str());
+                command = AZStd::string::format("SaveMotionSet -motionSetID %i -filename \"%s\" -updateFilename false -updateDirtyFlag false -sourceControl false", dirtyObjects[i].mMotionSet->GetID(), newFileFilename.c_str());
                 commandGroup.AddCommandString(command);
             }
             else if (dirtyObjects[i].mAnimGraph)
             {
                 const uint32 animGraphIndex = EMotionFX::GetAnimGraphManager().FindAnimGraphIndex(dirtyObjects[i].mAnimGraph);
-                command = AZStd::string::format("SaveAnimGraph -index %i -filename \"%s\" -updateFilename false -updateDirtyFlag false", animGraphIndex, newFileFilename.c_str());
+                command = AZStd::string::format("SaveAnimGraph -index %i -filename \"%s\" -updateFilename false -updateDirtyFlag false -sourceControl false", animGraphIndex, newFileFilename.c_str());
                 commandGroup.AddCommandString(command);
             }
             else if (dirtyObjects[i].mWorkspace)
@@ -2878,40 +2914,7 @@ namespace EMStudio
         }
     }
 
-
-    void MainWindow::OnRealtimeInterfaceUpdate()
-    {
-        // get the time since the last call
-        const float timeDelta = mFrameTimer.StampAndGetDeltaTimeInSeconds();
-
-        // sort the active plugins based on their priority
-        PluginManager* pluginManager = GetPluginManager();
-        pluginManager->SortActivePlugins();
-
-        // get the number of active plugins, iterate through them and call the process frame method
-        const uint32 numPlugins = pluginManager->GetNumActivePlugins();
-        for (uint32 p = 0; p < numPlugins; ++p)
-        {
-            EMStudioPlugin* plugin = pluginManager->GetActivePlugin(p);
-            plugin->ProcessFrame(timeDelta);
-        }
-    }
-
-
-    void MainWindow::StopRendering()
-    {
-        mRealtimeInterfaceTimer->stop();
-    }
-
-
-    void MainWindow::StartRendering()
-    {
-        mRealtimeInterfaceTimer->setTimerType(Qt::PreciseTimer);
-        mRealtimeInterfaceTimer->start(1000.0f / mAspiredRenderFPS);
-        mFrameTimer.Stamp();
-    }
-
-
+    
     void MainWindow::moveEvent(QMoveEvent* event)
     {
         MCORE_UNUSED(event);

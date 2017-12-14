@@ -13,6 +13,9 @@
 #include <AzCore/base.h>
 #include <AzCore/Asset/AssetCommon.h>
 
+#include <QSyntaxHighlighter>
+#include <QWidget>
+
 #pragma once
 
 namespace Ui

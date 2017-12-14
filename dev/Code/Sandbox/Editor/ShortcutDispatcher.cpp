@@ -322,8 +322,9 @@ bool ShortcutDispatcher::shortcutFilter(QObject* obj, QShortcutEvent* shortcutEv
     // Here's some debug info :
 
     qWarning() << Q_FUNC_INFO << "Ambiguous shortcut" << shortcutEvent->key() << "; focusWidget="
-    << qApp->focusWidget() << "Candidate =: " << candidates << "; obj = " << obj
-    << "Focused top-level=" << focusWidget;
+               << qApp->focusWidget() << "Candidate =: " << candidates << "; obj = " << obj
+               << "Focused top-level=" << currentFocusWidget;
+
     for (auto ambiguousAction : candidates)
     {
         qWarning() << ambiguousAction << ambiguousAction->parentWidget() << ambiguousAction->associatedWidgets() << ambiguousAction->shortcut();

@@ -20,14 +20,15 @@
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
 
 #include "PhysicsSystemComponent.h"
 
 //CryCommon Includes
 #include <physinterface.h>
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 
 namespace AZ
 {
@@ -43,7 +44,7 @@ namespace LmbrCentral
      */
     class CharacterPhysicsComponent
         : public AZ::Component
-        , private PhysicsComponentRequestBus::Handler
+        , private AzFramework::PhysicsComponentRequestBus::Handler
         , private CryPhysicsComponentRequestBus::Handler
         , private EntityPhysicsEventBus::Handler
         , private AZ::TransformNotificationBus::Handler
@@ -255,19 +256,19 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("PhysicsService"));
-            provided.push_back(AZ_CRC("CharacterPhysicsService"));
+            provided.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
+            provided.push_back(AZ_CRC("CharacterPhysicsService", 0x3cd4f075));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("PhysicsService"));
-            incompatible.push_back(AZ_CRC("CharacterPhysicsService"));
+            incompatible.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
+            incompatible.push_back(AZ_CRC("CharacterPhysicsService", 0x3cd4f075));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("TransformService"));
+            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
     private:

@@ -52,8 +52,6 @@
     #define _ALLOW_INITIALIZER_LISTS
 #endif
 
-#include <STLPortConfig.h>
-
 #if (defined(LINUX) && !defined(ANDROID)) || defined(APPLE)
 #define _FILE_OFFSET_BITS 64 // define large file support > 2GB
 #endif
@@ -362,7 +360,7 @@ static inline void  __dmb()
         #include "Win64specific.h"
     #endif
 
-#if defined(LINUX64)
+#if defined(LINUX64) && !defined(ANDROID)
 #include "Linux64Specific.h"
 #endif
 
@@ -687,52 +685,6 @@ void SetFlags(T& dest, U flags, bool b)
 #   include "CryString.h"
 
 #include <functional>
-
-// The 'string_less' class below provides less functor implementation for
-// 'string' supporting direct comparison against plain C strings and stack
-// strings.  This is most effective in combination with STLPORT, where various
-// 'find' and related methods are templated on the parameter type.  For
-// STLPORT, 'string_less' will be used as a specialization for
-// 'std::less<string>'.
-
-struct string_less
-    : public std::binary_function<string, string, bool>
-{
-    bool operator ()(const string& s1, const char* s2) const
-    {
-        return s1.compare(s2) < 0;
-    }
-    bool operator ()(const char* s1, const string& s2) const
-    {
-        return s2.compare(s1) > 0;
-    }
-    bool operator ()(const string& s1, const string& s2) const
-    {
-        return s1 < s2;
-    }
-
-#if !defined(NOT_USE_CRY_STRING)
-    template <size_t S>
-    bool operator()(const string& s1, const CryStackStringT<char, S>& s2) const
-    {
-        return s1.compare(s2.c_str()) < 0;
-    }
-    template <size_t S>
-    bool operator()(const CryStackStringT<char, S>& s1, const string& s2) const
-    {
-        return s1.compare(s2.c_str()) < 0;
-    }
-#endif // !defined(NOT_USE_CRY_STRING)
-};
-
-#if defined(USING_STLPORT)
-namespace std
-{
-    template <>
-    struct less< ::string >
-        : public string_less { };
-}
-#endif // defined(USING_STLPORT)
 
 // Include support for meta-type data.
 #include "TypeInfo_decl.h"

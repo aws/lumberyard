@@ -29,7 +29,6 @@ namespace LegacyGameInterface
         //////////////////////////////////////////////////////////////////////////
         //! IEditorGame
         bool Init(ISystem* system, IGameToEditorInterface* gameToEditorInterface) override;
-        int Update(bool hasFocus, unsigned int updateFlags) override;
         void Shutdown() override;
         bool SetGameMode(bool isInGame) override;
         IEntity* GetPlayer() override;

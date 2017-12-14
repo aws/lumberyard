@@ -46,6 +46,7 @@ class CTrackViewSequenceManager;
 class CEditorFileMonitor;
 class AzAssetWindow;
 class AzAssetBrowserRequestHandler;
+class AssetEditorRequestsHandler;
 
 namespace Editor
 {
@@ -135,7 +136,7 @@ public:
     QString GetLevelFolder();
     QString GetLevelDataFolder();
     QString GetSearchPath(EEditorPathName path);
-    QString GetUserFolder();
+    QString GetResolvedUserFolder();
     bool ExecuteConsoleApp(const QString& CommandLine, QString& OutputText, bool bNoTimeOut = false, bool bShowWindow = false);
     virtual bool IsInGameMode() override;
     virtual void SetInGameMode(bool inGame) override;
@@ -427,7 +428,6 @@ protected:
     QMap<int, QWidget*> m_panelIds;
 
     EEditMode m_currEditMode;
-    EEditMode m_prevEditMode;
     EOperationMode m_operationMode;
     ISystem* m_pSystem;
     IFileUtil* m_pFileUtil;
@@ -530,6 +530,7 @@ protected:
 
     AssetDatabase::AssetDatabaseLocationListener* m_pAssetDatabaseLocationListener;
     AzAssetBrowserRequestHandler* m_pAssetBrowserRequestHandler;
+    AssetEditorRequestsHandler* m_assetEditorRequestsHandler;
     AZStd::vector<AZStd::unique_ptr<AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::Handler>> m_thumbnailRenderers;
 
     IAssetBrowser* m_pAssetBrowser; // Vladimir@Conffx

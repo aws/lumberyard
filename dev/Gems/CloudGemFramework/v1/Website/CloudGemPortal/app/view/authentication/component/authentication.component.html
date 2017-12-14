@@ -7,20 +7,20 @@
            closeButtonText="Got it!"
            [onClose]="dismissMissingBootstrap"
            [onDismiss]="dismissMissingBootstrap"
-           title="Missing Cloud Gem Portal bootstrap file.">
+           title="Missing Cloud Gem Portal bootstrap information.">
         <div class="modal-body">
-            <p>It seems that either the ./cgp_boostrap.js is missing or the 'boostrap' variable in the file is empty.</p>
+            <p>It seems that either the ./index.html is missing or the 'boostrap' variable in the file is empty.</p>
             
             <h2>Development for the Cloud Gem Portal</h2>
-            <p>If you are developing for the Cloud Gem Portal then this is expected.  You will need to copy the project bootstrap information to the ./cgp_bootstrap.js file.</p>            
+            <p>If you are developing for the Cloud Gem Portal then this is expected.  You will need to copy the project bootstrap information to the ./index.html file.</p>            
             <pre>&lt;LumberyardInstallPath&gt; lmbr_aws cloud-gem-framework cloud-gem-portal --show-configuration --show-url-only</pre>            
             <p>Copy the line of the output that looks like this</p> 
             <pre>{{'{'}}"userPoolId": XX, "firstTimeUse": XX, "region": XX, "clientId": XX, "identityPoolId": XX, "projectConfigBucketId": XX{{'}'}}</pre>
             <p>to the</p>
-            <pre>&lt;LumberyardInstallPath&gt;/Gems/CloudGemFramework/v1/Website/CloudGemPortal/cgp_boostrap.js file</pre>            
+            <pre>&lt;LumberyardInstallPath&gt;/Gems/CloudGemFramework/v1/Website/CloudGemPortal/index.html file</pre>            
             <p>For more information on the topic refer to the link <a herf="http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-cgf-cgp-dev-gs.html" target="_blank">Cloud Gem Portal Development</a></p>
             
-            <h2>Regular Use</h2>
+            <h2>Are you just running the Cloud Gem Portal?</h2>
             <p>Unfortunately this an unexpected behaviour.</p>
             <p>Please head over to our <a href="https://gamedev.amazon.com/forums/spaces/133/cloud-canvas.html">forums</a> and post a question regarding the issue.</p>
         </div>

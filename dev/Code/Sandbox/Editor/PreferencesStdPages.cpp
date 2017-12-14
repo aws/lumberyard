@@ -47,7 +47,9 @@ CStdPreferencesClassDesc::CStdPreferencesClassDesc()
         m_pageCreators.push_back([]() { return new CEditorPreferencesPage_FlowGraphColors(); });
     }
 
+#ifdef ENABLE_LEGACY_ANIMATION
     m_pageCreators.push_back([]() { return new CEditorPreferencesPage_MannequinGeneral(); });
+#endif //ENABLE_LEGACY_ANIMATION
     m_pageCreators.push_back([]() { return new CEditorPreferencesPage_ExperimentalLighting(); });
 }
 

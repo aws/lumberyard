@@ -107,7 +107,8 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     // Set up the filter model
     m_filterModel->setSourceModel(m_assetBrowserModel);
     m_ui->treeView->setModel(m_filterModel.data());
-    m_ui->treeView->SetThumbnailContext("AssetBrowser");
+    m_ui->treeView->SetThumbnailContext("MaterialBrowser");
+    m_ui->treeView->SetShowSourceControlIcons(true);
 
     m_ui->m_searchWidget->Setup(true, false);
     m_filterModel->SetSearchFilter(m_ui->m_searchWidget);
@@ -116,9 +117,7 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     // Call LoadState to initialize the AssetBrowserTreeView's QTreeViewStateSaver
     // This must be done BEFORE StartRecordUpdateJobs(). A race condition from the update jobs was causing a 5-10% crash/hang when opening the Material Editor.
     m_ui->treeView->LoadState("MaterialBrowserTreeView");
-
-    m_filterModel->StartRecordUpdateJobs();
-
+    
     // Override the AssetBrowserTreeView's custom context menu
     disconnect(m_ui->treeView, &QWidget::customContextMenuRequested, 0, 0);
     connect(m_ui->treeView, &QWidget::customContextMenuRequested, [=](const QPoint& point)
@@ -129,6 +128,8 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
         });
 
     connect(m_ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MaterialBrowserWidget::OnSelectionChanged);
+    //Wait for the signal emitted on record update jobs finished, then we can restore the selection for the previous selected item
+    connect(this, SIGNAL(refreshSelection()), this, SLOT(OnRefreshSelection()));
 
     m_bIgnoreSelectionChange = false;
     m_bItemsValid = true;
@@ -146,7 +147,6 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     m_bHighlightMaterial = false;
     m_timeOfHighlight = 0;
 
-    m_fIdleSaveMaterialTime = 0.0f;
     m_bShowOnlyCheckedOut = false;
 
     GetIEditor()->RegisterNotifyListener(this);
@@ -159,12 +159,6 @@ MaterialBrowserWidget::~MaterialBrowserWidget()
     m_filterModel->deleteLater();
     m_ui->treeView->SaveState();
     GetIEditor()->UnregisterNotifyListener(this);
-
-    _smart_ptr<CMaterial> pCurrentMtl = GetCurrentMaterial();
-    if (pCurrentMtl != NULL && pCurrentMtl->IsModified())
-    {
-        pCurrentMtl->Save();
-    }
 
     m_pMaterialImageListCtrl = NULL;
     m_pMatMan->RemoveListener(this);
@@ -236,34 +230,25 @@ void MaterialBrowserWidget::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnIdleUpdate:
     {
         TickRefreshMaterials();
-
-        // Idle save material
-        // If material is changed in less than 1 second (1.0f) it is saved only one time after last change
-        if (m_fIdleSaveMaterialTime > 0.0001f && gEnv->pTimer->GetCurrTime() - m_fIdleSaveMaterialTime > 1.0f)
-        {
-            _smart_ptr<CMaterial> pMtl = GetCurrentMaterial();
-            if (pMtl)
-            {
-                pMtl->Save();
-            }
-            m_fIdleSaveMaterialTime = 0.0f;
-        }
     }
     break;
     case eNotify_OnBeginLoad:
     {
-        m_filterModel->ClearRecordMap();
+        //Need to make sure the selection is cleared before clearing the record map
         SetSelectedItem(nullptr, nullptr, true);
+        m_filterModel->ClearRecordMap();
     }
     break;
     case eNotify_OnCloseScene:
     {
         ClearItems();
         m_ui->treeView->SaveState();
-        m_filterModel->ClearRecordMap();
+        //Need to make sure the selection is cleared before clearing the record map
         SetSelectedItem(nullptr, nullptr, true);
+        m_filterModel->ClearRecordMap();
     }
     break;
+    case eNotify_OnEndNewScene:
     case eNotify_OnEndSceneOpen:
     {
         m_filterModel->StartRecordUpdateJobs();
@@ -271,13 +256,6 @@ void MaterialBrowserWidget::OnEditorNotifyEvent(EEditorNotifyEvent event)
     }
     break;
     }
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-void MaterialBrowserWidget::IdleSaveMaterial()
-{
-    m_fIdleSaveMaterialTime = gEnv->pTimer->GetCurrTime();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -394,6 +372,11 @@ void MaterialBrowserWidget::SetSelectedItem(_smart_ptr<CMaterial> material, cons
         if (!selectInTreeView || validSelection)
         {
             m_pListener->OnBrowserSelectItem(selectedMaterial, false);
+        }
+        //Update the selected item if no material is selected in tree view
+        else if (!selectedMaterial && selectInTreeView)
+        {
+            m_pListener->OnBrowserSelectItem(nullptr, false);
         }
     }
 
@@ -626,6 +609,17 @@ void MaterialBrowserWidget::OnRenameItem()
     {
         StringDlg dlg(tr("Enter New Sub-Material Name"), this);
         dlg.SetString(pMtl->GetName());
+        dlg.SetCheckCallback([this](QString name) -> bool
+        {
+            static const int MAX_REASONABLE_MATERIAL_NAME = 128;
+            if (name.length() >= MAX_REASONABLE_MATERIAL_NAME)
+            {
+                QMessageBox::warning(this, tr("Name too long"), tr("Please enter a name less than %1 characters").arg(MAX_REASONABLE_MATERIAL_NAME));
+                return false;
+            }
+            return true;
+        });
+
         if (dlg.exec() == QDialog::Accepted)
         {
             pMtl->SetName(dlg.GetString());
@@ -663,7 +657,7 @@ void MaterialBrowserWidget::OnRenameItem()
             return;
         }
 
-        if (GetIEditor()->IsSourceControlAvailable() && (pMtl->GetFileAttributes() & SCC_FILE_ATTRIBUTE_MANAGED))
+        if (pMtl->GetFileAttributes() & SCC_FILE_ATTRIBUTE_MANAGED)
         {
             if (pMtl->GetFileAttributes() & SCC_FILE_ATTRIBUTE_CHECKEDOUT)
             {
@@ -674,7 +668,7 @@ void MaterialBrowserWidget::OnRenameItem()
             }
             else
             {
-                GetIEditor()->GetSourceControl()->CheckOut(pMtl->GetFilename().toLatin1().data());
+                CFileUtil::CheckoutFile(pMtl->GetFilename().toLatin1().data(), this);
             }
 
             if (!GetIEditor()->GetSourceControl()->Rename(pMtl->GetFilename().toLatin1().data(), filename.toLatin1().data(), "Rename"))
@@ -790,17 +784,21 @@ void MaterialBrowserWidget::DoSourceControlOp(CMaterialBrowserRecord& record, ES
     {
         if (pMtl && (pMtl->GetFileAttributes() & SCC_FILE_ATTRIBUTE_BYANOTHER))
         {
-            char username[64];
-            if (!GetIEditor()->GetSourceControl()->GetOtherUser(pMtl->GetFilename().toLatin1().data(), username, 64))
+            AZStd::string otherUser("another user");
+            AzToolsFramework::SourceControlFileInfo fileInfo;
+            if (CFileUtil::GetSccFileInfo(pMtl->GetFilename().toUtf8().data(), fileInfo, this))
             {
-                strcpy(username, "another user");
+                // Sanity check the source control api reports the file is checked out by another
+                AZ_Assert(fileInfo.HasFlag(AzToolsFramework::SCF_OtherOpen), "File attributes reporting incorrectly");
+                otherUser = fileInfo.m_StatusUser;
             }
-            if (QMessageBox::question(this, QString(), tr("This file is checked out by %1. Try to continue?").arg(username)) != QMessageBox::Yes)
+
+            if (QMessageBox::question(this, QString(), tr("This file is checked out by %1. Try to continue?").arg(otherUser.c_str())) != QMessageBox::Yes)
             {
                 return;
             }
         }
-        if (bRes = GetIEditor()->GetSourceControl()->GetLatestVersion(path.toLatin1().data()))
+        if (bRes = GetIEditor()->GetSourceControl()->GetLatestVersion(path.toUtf8().data()))
         {
             bRes = CFileUtil::CheckoutFile(path.toUtf8().data(), this);
         }
@@ -917,37 +915,53 @@ void MaterialBrowserWidget::OnDataBaseItemEvent(IDataBaseItem* pItem, EDataBaseI
     case EDB_ITEM_EVENT_ADD:
         break;
     case EDB_ITEM_EVENT_DELETE:
+        {
+            if (pItem)
+            {
+                //If the deleted item is selected, remove selection
+                CMaterial* pMtl = static_cast<CMaterial*>(pItem);
+                CMaterial* selectedMaterial = GetCurrentMaterial();
+                if (selectedMaterial && selectedMaterial->IsPureChild())
+                {
+                    selectedMaterial = selectedMaterial->GetParent();
+                }
+                if (pMtl == selectedMaterial)
+                {
+                    SetSelectedItem(nullptr, nullptr, true);
+                }
+            }
+        }
         break;
     case EDB_ITEM_EVENT_CHANGED:
-    {
-        CMaterial* pMtl = static_cast<CMaterial*>(pItem);
-        CMaterial* selectedMaterial = GetCurrentMaterial();
-        if (selectedMaterial && selectedMaterial->IsPureChild())
         {
-            selectedMaterial = selectedMaterial->GetParent();
-        }
-        // If this is a sub material, refresh parent
-        if (pMtl->IsPureChild())
-        {
-            pMtl = pMtl->GetParent();
-        }
-
-        if (pMtl == selectedMaterial)
-        {
-            if (pMtl->IsMultiSubMaterial())
+            CMaterial* pMtl = static_cast<CMaterial*>(pItem);
+            CMaterial* selectedMaterial = GetCurrentMaterial();
+            if (selectedMaterial && selectedMaterial->IsPureChild())
             {
-                m_pLastActiveMultiMaterial = NULL;
+                selectedMaterial = selectedMaterial->GetParent();
             }
-            RefreshSelected();
+            // If this is a sub material, refresh parent
+            if (pMtl->IsPureChild())
+            {
+                pMtl = pMtl->GetParent();
+            }
+
+            if (pMtl == selectedMaterial)
+            {
+                if (pMtl->IsMultiSubMaterial())
+                {
+                    m_pLastActiveMultiMaterial = NULL;
+                }
+                RefreshSelected();
+            }
+            m_bItemsValid = false;
         }
-    }
-        m_bItemsValid = false;
         break;
     case EDB_ITEM_EVENT_SELECTED:
-    {
-        SelectItem(pItem, NULL);
-    }
-    break;
+        {
+            SelectItem(pItem, NULL);
+        }
+        break;
     }
 }
 
@@ -1052,11 +1066,11 @@ void MaterialBrowserWidget::RefreshSelected()
             if (m_pLastActiveMultiMaterial != pMultiMtl && pMultiMtl != nullptr)
             {
                 // Add all of its submaterials to the previewer
-                for (int i = 0; i < pMultiMtl->GetSubMaterialCount(); i++)
+                for (size_t i = 0; i < pMultiMtl->GetSubMaterialCount(); i++)
                 {
                     if (pMultiMtl->GetSubMaterial(i))
                     {
-                        materialModel->AddMaterial(pMultiMtl->GetSubMaterial(i), (void*)i);
+                        materialModel->AddMaterial(pMultiMtl->GetSubMaterial(i), reinterpret_cast<void*>(i));
                     }
                 }
                 m_pMaterialImageListCtrl->selectionModel()->clear();
@@ -1455,27 +1469,7 @@ void MaterialBrowserWidget::OnContextMenuAction(int command, _smart_ptr<CMateria
 
     if (command != 0) // no need to refresh everything if we canceled menu
     {
-        // force RefreshSelected to repopulate by setting m_pLastActiveMultiMaterial to null
-        // so it thinks we selected a new material.
-        m_pLastActiveMultiMaterial = nullptr;
-
-        //If no material is selected after executing command, clear preview.
-        if (!GetCurrentMaterial())
-        {
-            if (m_pMaterialImageListCtrl)
-            {
-                QMaterialImageListModel* materialModel =
-                    qobject_cast<QMaterialImageListModel*>(m_pMaterialImageListCtrl->model());
-                Q_ASSERT(materialModel);
-                materialModel->DeleteAllItems();
-            }
-        }
-
-        RefreshSelected();
-        if (m_pListener)
-        {
-            m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
-        }
+        OnRefreshSelection();
     }
 }
 
@@ -1509,6 +1503,11 @@ void MaterialBrowserWidget::PopulateItems()
             m_pMatMan->SetHighlightedMaterial(0);
         }
     }
+}
+
+void MaterialBrowserWidget::StartRecordUpdateJobs()
+{
+    m_filterModel->StartRecordUpdateJobs();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1591,6 +1590,33 @@ void MaterialBrowserWidget::OnSelectionChanged()
         // element of the tree view has already been selected. Pass in false for the selectInTreeView argument
         // to prevent SetSelectedItem from trying to re-select the material in the browser
         SetSelectedItem(record.m_material, &markedRecords, false);
+    }
+}
+
+void MaterialBrowserWidget::OnRefreshSelection()
+{
+    // force RefreshSelected to repopulate by setting m_pLastActiveMultiMaterial to null
+    // so it thinks we selected a new material.
+    m_pLastActiveMultiMaterial = nullptr;
+
+    //If no material is selected, clear preview.
+    if (!GetCurrentMaterial())
+    {
+        if (m_pMaterialImageListCtrl)
+        {
+            QMaterialImageListModel* materialModel =
+                qobject_cast<QMaterialImageListModel*>(m_pMaterialImageListCtrl->model());
+            Q_ASSERT(materialModel);
+            materialModel->DeleteAllItems();
+        }
+    }
+
+    RefreshSelected();
+
+    // Force update the material dialog
+    if (m_pListener)
+    {
+        m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
     }
 }
 
@@ -1677,6 +1703,17 @@ void MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane(const QModelIndex
     SetSelectedItem(record.m_material, nullptr, false);
 }
 
+void MaterialBrowserWidget::SaveCurrentMaterial()
+{
+    // Saving might open a modal dialog asking to overwrite, therefore don't run this from DTOR, might crash
+
+    _smart_ptr<CMaterial> pCurrentMtl = GetCurrentMaterial();
+    if (pCurrentMtl && pCurrentMtl->IsModified())
+    {
+        pCurrentMtl->Save();
+    }
+}
+
 void MaterialBrowserWidget::expandAllNotMatchingIndexes(const QModelIndex& parent)
 {
     if (!parent.isValid())
@@ -1711,6 +1748,12 @@ void MaterialBrowserWidget::MaterialFinishedProcessing(_smart_ptr<CMaterial> mat
         // but ignore the tree-view selection since the current index is already the correct one for this material
         SetSelectedItem(material, nullptr, false);
 
+        // Force update the material dialog
+        if (m_pListener)
+        {
+            m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
+        }
+
         if (material != m_delayedSelection)
         {
             // If the current selection that just finished processing was not the delayed selection, restore the delayed selection
@@ -1723,7 +1766,21 @@ void MaterialBrowserWidget::MaterialFinishedProcessing(_smart_ptr<CMaterial> mat
         // Re-select the material to update the material dialogue
         // and also select the material in the tree-view
         SetSelectedItem(material, nullptr, true);
+
+        // Force update the material dialog
+        if (m_pListener)
+        {
+            m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
+        }
     }
 }
+
+void MaterialBrowserWidget::MaterialRecordUpdateFinished()
+{
+    //The event is sent by a AZJob working thread, need to emit a signal here for qt to catch later.
+    //It can make sure all the qt functions need to be called at this point are only executed in the qt thread. 
+    emit refreshSelection();
+}
+
 
 #include <Material/MaterialBrowser.moc>

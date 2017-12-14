@@ -17,10 +17,11 @@
 
 #include <AzToolsFramework/Debug/TraceContext.h>
 
-#include <SceneAPI/SceneCore/DataTypes/Groups/ISkinGroup.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
+#include <SceneAPI/SceneCore/DataTypes/Groups/ISkinGroup.h>
+#include <SceneAPI/SceneCore/Events/ExportEventContext.h>
 
 #include <RC/ResourceCompilerScene/Skin/SkinExportContexts.h>
 
@@ -30,37 +31,29 @@ namespace AZ
     {
         namespace SceneContainers = AZ::SceneAPI::Containers;
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
-        namespace SceneEvents = AZ::SceneAPI::Events;
 
         SkinExporter::SkinExporter(IConvertContext* convertContext)
-            : CallProcessorConnector()
-            , m_convertContext(convertContext)
+            : m_convertContext(convertContext)
         {
+            BindToCall(&SkinExporter::ProcessContext);
+            ActivateBindings();
         }
 
-        SceneEvents::ProcessingResult SkinExporter::Process(SceneEvents::ICallContext* context)
+        SceneEvents::ProcessingResult SkinExporter::ProcessContext(SceneEvents::ExportEventContext& context)
         {
-            SceneEvents::ExportEventContext* exportContext = azrtti_cast<SceneEvents::ExportEventContext*>(context);
-            if (exportContext)
-            {
-                const SceneContainers::SceneManifest& manifest = exportContext->GetScene().GetManifest();
-                auto valueStorage = manifest.GetValueStorage();
-                auto view = SceneContainers::MakeDerivedFilterView<SceneDataTypes::ISkinGroup>(valueStorage);
+            const SceneContainers::SceneManifest& manifest = context.GetScene().GetManifest();
+            auto valueStorage = manifest.GetValueStorage();
+            auto view = SceneContainers::MakeDerivedFilterView<SceneDataTypes::ISkinGroup>(valueStorage);
 
-                SceneEvents::ProcessingResultCombiner result;
-                for (const SceneDataTypes::ISkinGroup& skinGroup : view)
-                {
-                    AZ_TraceContext("Skin Group", skinGroup.GetName());
-                    result += SceneEvents::Process<SkinGroupExportContext>(*exportContext, skinGroup, Phase::Construction);
-                    result += SceneEvents::Process<SkinGroupExportContext>(*exportContext, skinGroup, Phase::Filling);
-                    result += SceneEvents::Process<SkinGroupExportContext>(*exportContext, skinGroup, Phase::Finalizing);
-                }
-                return result.GetResult();
-            }
-            else
+            SceneEvents::ProcessingResultCombiner result;
+            for (const SceneDataTypes::ISkinGroup& skinGroup : view)
             {
-                return SceneEvents::ProcessingResult::Ignored;
+                AZ_TraceContext("Skin Group", skinGroup.GetName());
+                result += SceneEvents::Process<SkinGroupExportContext>(context, skinGroup, Phase::Construction);
+                result += SceneEvents::Process<SkinGroupExportContext>(context, skinGroup, Phase::Filling);
+                result += SceneEvents::Process<SkinGroupExportContext>(context, skinGroup, Phase::Finalizing);
             }
+            return result.GetResult();
         }
-    }
-}
+    } // namespace RC
+} // namespace AZ

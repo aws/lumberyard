@@ -91,13 +91,13 @@ public:
 
     ISystem* GetSystem() { return m_pSystem; }
 
-    IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, ESequenceType = eSequenceType_Legacy);
+    IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, SequenceType = kSequenceTypeDefault, AZ::EntityId entityId = AZ::EntityId());
     IAnimSequence* LoadSequence(const char* pszFilePath);
     IAnimSequence* LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty = true);
 
     void AddSequence(IAnimSequence* pSequence);
     void RemoveSequence(IAnimSequence* pSequence);
-    IAnimSequence* FindSequence(const char* sequence) const override;
+    IAnimSequence* FindLegacySequenceByName(const char* sequence) const override;
     IAnimSequence* FindSequence(const AZ::EntityId& componentEntitySequenceId) const override;
     IAnimSequence* FindSequenceById(uint32 id) const override;
     IAnimSequence* GetSequence(int i) const;
@@ -199,7 +199,7 @@ public:
 
     ILightAnimWrapper* CreateLightAnimWrapper(const char* name) const;
 
-    void SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xmlNode, bool bLoading, const uint version, int flags) override;
+    void SerializeNodeType(AnimNodeType& animNodeType, XmlNodeRef& xmlNode, bool bLoading, const uint version, int flags) override;
     virtual void LoadParamTypeFromXml(CAnimParamType& animParamType, const XmlNodeRef& xmlNode, const uint version) override;
     virtual void SaveParamTypeToXml(const CAnimParamType& animParamType, XmlNodeRef& xmlNode) override;
     virtual void SerializeParamType(CAnimParamType& animParamType, XmlNodeRef& xmlNode, bool bLoading, const uint version);
@@ -237,7 +237,7 @@ private:
     void UpdateInternal(const float dt, const bool bPreUpdate);
 
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
-    virtual EAnimNodeType GetNodeTypeFromString(const char* pString) const;
+    virtual AnimNodeType GetNodeTypeFromString(const char* pString) const;
     virtual CAnimParamType GetParamTypeFromString(const char* pString) const;
 #endif
 

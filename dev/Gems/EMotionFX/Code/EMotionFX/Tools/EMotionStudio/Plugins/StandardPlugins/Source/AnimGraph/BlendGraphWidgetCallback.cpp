@@ -288,8 +288,8 @@ namespace EMStudio
                 case MCore::AttributeVector3::TYPE_ID:
                 {
                     MCore::AttributeVector3* vecAttribute = static_cast<MCore::AttributeVector3*>(attribute);
-                    MCore::Vector3 vec = vecAttribute->GetValue();
-                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", vec.x, vec.y, vec.z);
+                    AZ::PackedVector3f vec = vecAttribute->GetValue();
+                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", vec.GetX(), vec.GetY(), vec.GetZ());
                     break;
                 }
 
@@ -314,7 +314,7 @@ namespace EMStudio
                 case EMotionFX::AttributeRotation::TYPE_ID:
                 {
                     EMotionFX::AttributeRotation* rotAttribute = static_cast<EMotionFX::AttributeRotation*>(attribute);
-                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", rotAttribute->GetRotationAngles().x, rotAttribute->GetRotationAngles().y, rotAttribute->GetRotationAngles().z);
+                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", rotAttribute->GetRotationAngles().GetX(), rotAttribute->GetRotationAngles().GetY(), rotAttribute->GetRotationAngles().GetZ());
                     break;
                 }
 

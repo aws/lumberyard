@@ -13,7 +13,7 @@
 #include "EditorSequenceAgentComponent.h"
 #include "SequenceAgentComponent.h"
 
-#include <AzCore/Rtti/BehaviorContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -22,6 +22,7 @@
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzCore/Component/Entity.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
+#include <Maestro/Types/AnimParamType.h>
 
 namespace Maestro
 {
@@ -178,7 +179,7 @@ namespace Maestro
                 // all behavior properties as string params with the virtual property name as the string
                 IAnimNode::SParamInfo paramInfo;
 
-                // by default set up paramType as an eAnimParamType_ByString with the name as the Virtual Property name
+                // by default set up paramType as an AnimParamType::ByString with the name as the Virtual Property name
                 paramInfo.paramType = propertyIter->first.GetVirtualPropertyName().c_str();
 
                 // check for paramType specialization attributes on the getter method of the virtual property. if found, reset
@@ -187,17 +188,17 @@ namespace Maestro
                 {
                     if (virtualProperty->m_getter->m_attributes[i].first == AZ::Crc32("Position"))
                     {
-                        paramInfo.paramType = eAnimParamType_Position;
+                        paramInfo.paramType = AnimParamType::Position;
                         break;
                     }
                     else if (virtualProperty->m_getter->m_attributes[i].first == AZ::Crc32("Rotation"))
                     {
-                        paramInfo.paramType = eAnimParamType_Rotation;
+                        paramInfo.paramType = AnimParamType::Rotation;
                         break;
                     }
                     else if (virtualProperty->m_getter->m_attributes[i].first == AZ::Crc32("Scale"))
                     {
-                        paramInfo.paramType = eAnimParamType_Scale;
+                        paramInfo.paramType = AnimParamType::Scale;
                         break;
                     }
                 }

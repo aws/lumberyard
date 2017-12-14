@@ -23,76 +23,57 @@ namespace LmbrCentral
         : public AZ::ComponentBus
     {
     public:
-
         /**
-         *  Sets an ellipsoidal falloff
+         * Sets the falloff. Only affects the wind speed in the volume. A value of 0 will reduce the speed from the center towards the edge of the volume.
+         * A value of 1 or greater will have no effect.
          */
-        virtual void SetEllipsoidal(bool ellipsoidal) = 0;
+        virtual void SetFalloff(float falloff) = 0;
 
         /**
-         * Returns true if the volume is ellipsoidal          
+         * Gets the falloff.
          */
-        virtual bool GetEllipsoidal() = 0;
+        virtual float GetFalloff() = 0;
 
         /**
-         * Sets the distance after which the distance-based falloff begins
-         */
-        virtual void SetFalloffInner(float falloffInner) = 0;
-
-        /**
-         * Gets the distance after which the distance-based falloff begins
-         */
-        virtual float GetFalloffInner() = 0;
-
-        /**
-         * Sets the speed of the wind
+         * Sets the speed of the wind. The air resistance must be non zero to affect physical objects.
          */
         virtual void SetSpeed(float speed) = 0;
 
         /**
-         * Gets the speed of the wind
+         * Gets the speed of the wind.
          */
         virtual float GetSpeed() = 0;
 
         /** 
-         * Sets the air resistance causing light physicalised objects to experience a bouyancy force
+         * Sets the air resistance causing objects moving through the volume to slow down.
          */ 
         virtual void SetAirResistance(float airResistance) = 0;
 
         /** 
-         * Gets the air resistance
+         * Gets the air resistance.
          */
         virtual float GetAirResistance() = 0;
 
         /**
-         * Sets the air density causing physicalised objects to experience a slow down
+         * Sets the density of the volume. 
+         * Objects with lower density will experience a buoyancy force. Objects with higher density will sink.
          */
         virtual void SetAirDensity(float airDensity) = 0;
 
         /**
-         * Gets the air density
+         * Gets the air density.
          */
         virtual float GetAirDensity() = 0;
 
         /**
-         * Sets the direction the wind is blowing. If zero, then the direction is considered omnidirectional
+         * Sets the direction the wind is blowing. If zero, then the direction is considered omnidirectional.
          */
         virtual void SetWindDirection(const AZ::Vector3& direction) = 0;
 
         /**
-         * Gets the direction the wind is blowing. If zero, then the direction is considered omnidirectional
+         * Gets the direction the wind is blowing.
          */
         virtual const AZ::Vector3& GetWindDirection() = 0;
-
-        /** 
-         * Sets the size of the wind volume. [-size.x, -size.y, -size.z] -> [size.x, size.y, size.z]
-         */
-        virtual void SetVolumeSize(const AZ::Vector3& size) = 0;
-
-        /** 
-         * Gets the size of the wind volume
-         */
-        virtual const AZ::Vector3& GetVolumeSize() = 0;
     };
 
     using WindVolumeRequestBus = AZ::EBus<WindVolumeRequests>;

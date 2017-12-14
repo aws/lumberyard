@@ -13,7 +13,7 @@
 #define AZSTD_TYPE_TRAITS_FUNCTION_TRAITS_INCLUDED
 
 #include <AzCore/std/typetraits/is_function.h>
-#include <AzCore/std/typetraits/add_pointer.h>
+#include <AzCore/std/typetraits/remove_pointer.h>
 #include <AzCore/std/typetraits/internal/type_sequence_traits.h>
 
 namespace AZStd
@@ -23,22 +23,42 @@ namespace AZStd
         template <typename Function>
         struct function_traits_helper : function_traits_helper<decltype(&Function::operator())> {};
 
-        template <typename C, typename R, typename... Args>
-        struct function_traits_helper<R(C::*)(Args...) const> : function_traits_helper<R(*)(Args...)>
-        {
-            using class_fp_type = R(C::*)(Args...) const;
-            using class_type = C;
-        };
+        #define AZSTD_FUNCTION_TRAIT_NOARG
 
-        template <typename C, typename R, typename... Args>
-        struct function_traits_helper<R(C::*)(Args...)> : function_traits_helper<R(*)(Args...)>
-        {
-            using class_fp_type = R(C::*)(Args...);
-            using class_type = C;
-        };
+        #define AZSTD_FUNCTION_TRAIT_HELPER(cv_ref_qualifier) \
+            template <typename C, typename R, typename... Args> \
+            struct function_traits_helper<R(C::*)(Args...) cv_ref_qualifier> : function_traits_helper<R(Args...)> \
+            { \
+                using class_fp_type = R(C::*)(Args...) cv_ref_qualifier; \
+                using class_type = C; \
+            }; \
+            template <typename C, typename R, typename... Args> \
+            struct function_traits_helper<R(C::*)(Args..., ...) cv_ref_qualifier> : function_traits_helper<R(Args...)> \
+            { \
+                using class_fp_type = R(C::*)(Args..., ...) cv_ref_qualifier; \
+                using class_type = C; \
+            };
+
+        // specializations for functions with const volatile ref qualifiers
+        AZSTD_FUNCTION_TRAIT_HELPER(AZSTD_FUNCTION_TRAIT_NOARG);
+        AZSTD_FUNCTION_TRAIT_HELPER(const);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile);
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC >= 1900
+        AZSTD_FUNCTION_TRAIT_HELPER(&);
+        AZSTD_FUNCTION_TRAIT_HELPER(const&);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile&);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&);
+        AZSTD_FUNCTION_TRAIT_HELPER(&&);
+        AZSTD_FUNCTION_TRAIT_HELPER(const&&);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile&&);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&&);
+#endif
+        #undef AZSTD_FUNCTION_TRAIT_HELPER
+        #undef AZSTD_FUNCTION_TRAIT_NOARG
 
         template <typename R, typename ...Args>
-        struct function_traits_helper<R(*)(Args...)>
+        struct function_traits_helper<R(Args...)>
         {
             AZSTD_STATIC_CONSTANT(size_t, arity = sizeof...(Args));
             AZSTD_STATIC_CONSTANT(size_t, num_args = sizeof...(Args));
@@ -49,13 +69,26 @@ namespace AZStd
             using get_arg_t = pack_traits_get_arg_t<index, Args...>;
             using arg_sequence = pack_traits_arg_sequence<Args...>;
         };
+
+        template <typename R, typename ...Args>
+        struct function_traits_helper<R(Args..., ...)>
+        {
+            AZSTD_STATIC_CONSTANT(size_t, arity = sizeof...(Args));
+            AZSTD_STATIC_CONSTANT(size_t, num_args = sizeof...(Args));
+            using result_type = R;
+            using raw_fp_type = result_type(*)(Args...);
+
+            template<size_t index>
+            using get_arg_t = pack_traits_get_arg_t<index, Args...>;
+            using arg_sequence = pack_traits_arg_sequence<Args...>;
+        };
     }
 
     template <typename Function>
     struct function_traits : public Internal::function_traits_helper<Function>{};
 
-    template <typename R, typename ...Args>
-    struct function_traits<R(Args...)> : public Internal::function_traits_helper<add_pointer_t<R(Args...)>>{};
+    template <typename Function>
+    struct function_traits<Function*> : public Internal::function_traits_helper<remove_pointer_t<Function>> {};
 
     template <typename Function>
     using function_traits_get_result_t = typename function_traits<Function>::result_type;

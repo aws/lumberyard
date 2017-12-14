@@ -31,8 +31,7 @@ namespace AZ
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
 
         CafExporter::CafExporter(IConvertContext* convertContext)
-            : CallProcessorBinder()
-            , m_convertContext(convertContext)
+            : m_convertContext(convertContext)
         {
             BindToCall(&CafExporter::ProcessContext);
             ActivateBindings();
@@ -55,5 +54,5 @@ namespace AZ
             }
             return result.GetResult();
         }
-    }
-}
+    } // namespace RC
+} // namespace AZ

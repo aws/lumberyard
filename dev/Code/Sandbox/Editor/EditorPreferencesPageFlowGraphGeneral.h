@@ -25,6 +25,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_FlowGraphGeneral();
+    virtual ~CEditorPreferencesPage_FlowGraphGeneral() = default;
 
     virtual const char* GetCategory() override { return "Flow Graph"; }
     virtual const char* GetTitle() override { return "General"; }

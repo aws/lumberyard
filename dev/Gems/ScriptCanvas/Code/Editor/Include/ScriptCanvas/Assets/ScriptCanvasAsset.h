@@ -31,6 +31,9 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(ScriptCanvasData, AZ::SystemAllocator, 0);
         ScriptCanvasData();
         ~ScriptCanvasData();
+        ScriptCanvasData(ScriptCanvasData&& other);
+        ScriptCanvasData& operator=(ScriptCanvasData&& other);
+
         static void Reflect(AZ::ReflectContext* reflectContext);
 
         AZ::Entity* GetScriptCanvasEntity() const { return m_scriptCanvasEntity.get(); }
@@ -46,6 +49,9 @@ namespace ScriptCanvasEditor
     class ScriptCanvasAsset
         : public AZ::Data::AssetData
     {
+        // The Document Context is friended to allow it to set the AssetStauts state to Ready,
+        // as it is responsible for creating new Script Canvas assets in the SC editor
+        friend class DocumentContext; 
     public:
         AZ_RTTI(ScriptCanvasAsset, "{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}", AZ::Data::AssetData);
         AZ_CLASS_ALLOCATOR(ScriptCanvasAsset, AZ::SystemAllocator, 0);
@@ -59,22 +65,12 @@ namespace ScriptCanvasEditor
       
         static const char* GetFileExtension() { return "scriptcanvas"; }
         static const char* GetFileFilter() { return "*.scriptcanvas"; }
-
-        AZStd::string GetPath();
-        void SetPath(const AZStd::string& path);
         
         AZ::Entity* GetScriptCanvasEntity() const;
         void SetScriptCanvasEntity(AZ::Entity* scriptCanvasEntity);
 
         ScriptCanvasData& GetScriptCanvasData();
         const ScriptCanvasData& GetScriptCanvasData() const;
-
-    protected:
-        // TODO: AZ_DEPRECATED This is a workaround for the issue of a ScriptCanvasAsset being reloaded as soon as it is saved
-        // and sometimes crashing as result of reloading during the middle of a save.
-        // This function is used to veto the ScriptCanvas from reload if the AssetSystemComponent handles the AssetChangedMessage
-        // Assets can still reload in other ways.
-        bool ShouldVetoAssetReload() override;
 
     private:
         ScriptCanvasData m_data;

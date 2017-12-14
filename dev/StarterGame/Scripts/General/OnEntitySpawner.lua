@@ -46,7 +46,7 @@ function onentityspawner:OnEventBegin(value)
 			-- This would need to be changed if we had flying enemies (obviously).
 			-- I want this to be an assert, but apparently asserts and warnings don't
 			-- do anything so I'll have to keep it as a log.
-			Debug.Log("OnEntitySpawner: '" .. tostring(StarterGameUtility.GetEntityName(value)) .. "' couldn't find a point to spawn the Item, spawning at my initial position.");
+			Debug.Log("OnEntitySpawner: '" .. tostring(StarterGameEntityUtility.GetEntityName(value)) .. "' couldn't find a point to spawn the Item, spawning at my initial position.");
 			self.spawnTicket = SpawnerComponentRequestBus.Event.SpawnAbsolute(self.entityId, self.originalTransform);
 			if (self.spawnTicket == nil) then
 				Debug.Log("Spawn failed");

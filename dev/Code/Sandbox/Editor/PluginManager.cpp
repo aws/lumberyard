@@ -110,32 +110,7 @@ namespace
     {
         QString m_path;
         QString m_name;
-        QStringList m_dependencies;
     };
-
-    void ParseManifest(const QString& manifestPath, SPlugin& plugin)
-    {
-        if (!CFileUtil::FileExists(manifestPath))
-        {
-            return;
-        }
-
-        XmlNodeRef manifest = XmlHelpers::LoadXmlFromFile(manifestPath.toLatin1().data());
-
-        if (manifest)
-        {
-            const uint numElements = manifest->getChildCount();
-            for (uint i = 0; i < numElements; ++i)
-            {
-                XmlNodeRef element = manifest->getChild(i);
-                if (_stricmp(element->getTag(), "Dependency") == 0)
-                {
-                    const char* dependencyName = element->getContent();
-                    stl::push_back_unique(plugin.m_dependencies, dependencyName);
-                }
-            }
-        }
-    }
 
     // This does a topological sort on the plugin list. It will also remove plugins that have
     // missing dependencies or there is a cycle in the dependency tree.
@@ -146,41 +121,13 @@ namespace
 
         while (!plugins.empty())
         {
-            bool bCantReduce = true;
-
             for (auto iter = plugins.begin(); iter != plugins.end(); )
             {
-                auto& dependencies = iter->m_dependencies;
-                auto newEnd = std::remove_if(dependencies.begin(), dependencies.end(), [&](const QString& dependency)
-                        {
-                            return (loadedPlugins.find(dependency) != loadedPlugins.end());
-                        });
-
-                dependencies.erase(newEnd, dependencies.end());
-
-                if (dependencies.empty())
-                {
-                    bCantReduce = false;
-                    finalList.push_back(*iter);
-                    loadedPlugins.insert(iter->m_name);
-                    iter = plugins.erase(iter);
-                }
-                else
-                {
-                    ++iter;
-                }
-            }
-
-            if (bCantReduce)
-            {
-                for (auto iter = plugins.begin(); iter != plugins.end(); ++iter)
-                {
-                    CLogFile::FormatLine("[Plugin Manager] Can't load plugin DLL '%s' because of missing or cyclic dependencies", iter->m_path.toLatin1().data());
-                }
-                break;
+                finalList.push_back(*iter);
+                loadedPlugins.insert(iter->m_name);
+                iter = plugins.erase(iter);
             }
         }
-
         plugins = finalList;
     }
 }
@@ -188,7 +135,7 @@ namespace
 bool CPluginManager::LoadPlugins(const char* pPathWithMask)
 {
     QString strPath = QtUtil::ToQString(PathUtil::GetPath(pPathWithMask));
-    QString strMask = QString::fromLatin1(PathUtil::GetFile(pPathWithMask));
+    QString strMask = QString::fromUtf8(PathUtil::GetFile(pPathWithMask));
 
     CLogFile::WriteLine("[Plugin Manager] Loading plugins...");
 
@@ -203,7 +150,6 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
         CFileEnum cDLLFiles;
         QFileInfo sFile;
         QString szFilePath;
-
         if (cDLLFiles.StartEnumeration(strPath, strMask, &sFile))
         {
             do
@@ -225,15 +171,12 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
             } while (cDLLFiles.GetNextFile(&sFile));
         }
     }
-
-    const QString pluginsDir = Path::GetPath(Path::GetExecutableFullPath()) + "EditorPlugins\\";
-
-    // Loop over found plugins and parse their manifests
-    for (auto iter = plugins.begin(); iter != plugins.end(); ++iter)
+    if (plugins.size() == 0)
     {
-        QString maniFestPath = pluginsDir + iter->m_name + ".mf";
-        ParseManifest(maniFestPath, *iter);
+        CLogFile::FormatLine("[Plugin Manager] Cannot find any plugins in plugin directory '%s'", strPath.toUtf8().data());
+        return false;
     }
+
 
     // Sort plugins by dependency
     SortPluginsByDependency(plugins);
@@ -243,9 +186,12 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
         // Load the plugin's DLL
         QLibrary *hPlugin = new QLibrary(iter->m_path);
 
+        AZStd::string pathUtf8(iter->m_path.toUtf8().constData());
+
         if (!hPlugin->load())
         {
-            CLogFile::FormatLine("[Plugin Manager] Can't load plugin DLL '%s' message '%s' !", iter->m_path.toLatin1().data(), hPlugin->errorString().toLatin1().data());
+            AZStd::string errorMsg(hPlugin->errorString().toUtf8().constData());
+            CLogFile::FormatLine("[Plugin Manager] Can't load plugin DLL '%s' message '%s' !", pathUtf8.c_str(), errorMsg.c_str());
             delete hPlugin;
             continue;
         }
@@ -262,7 +208,7 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
             pfnQuerySettings(settings);
             if (!settings.autoLoad)
             {
-                CLogFile::FormatLine("[Plugin Manager] Skipping plugin DLL '%s' because it is marked as non-autoLoad!", iter->m_path.toLatin1().data());
+                CLogFile::FormatLine("[Plugin Manager] Skipping plugin DLL '%s' because it is marked as non-autoLoad!", pathUtf8.c_str());
                 hPlugin->unload();
                 delete hPlugin;
                 continue;
@@ -274,7 +220,7 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
 
         if (!pfnFactory)
         {
-            CLogFile::FormatLine("[Plugin Manager] Cannot query plugin DLL '%s' factory pointer (is it a Sandbox plugin?)", iter->m_path.toLatin1().data());
+            CLogFile::FormatLine("[Plugin Manager] Cannot query plugin DLL '%s' factory pointer (is it a Sandbox plugin?)", pathUtf8.c_str());
             hPlugin->unload();
             delete hPlugin;
             continue;
@@ -296,7 +242,7 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
 
         catch (...)
         {
-            CLogFile::FormatLine("[Plugin Manager] Cannot initialize plugin '%s'! Possible binary version incompatibility. Please reinstall this plugin.", iter->m_path);
+            CLogFile::FormatLine("[Plugin Manager] Cannot initialize plugin '%s'! Possible binary version incompatibility. Please reinstall this plugin.", pathUtf8.c_str());
             assert(pPlugin);
             hPlugin->unload();
             delete hPlugin;
@@ -307,11 +253,11 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
         {
             if (sInitParam.outErrorCode == IPlugin::eError_VersionMismatch)
             {
-                CLogFile::FormatLine("[Plugin Manager] Cannot create instance of plugin DLL '%s'! Version mismatch. Please update the plugin.", iter->m_path);
+                CLogFile::FormatLine("[Plugin Manager] Cannot create instance of plugin DLL '%s'! Version mismatch. Please update the plugin.", pathUtf8.c_str());
             }
             else
             {
-                CLogFile::FormatLine("[Plugin Manager] Cannot create instance of plugin DLL '%s'! Error code %u.", iter->m_path, sInitParam.outErrorCode);
+                CLogFile::FormatLine("[Plugin Manager] Cannot create instance of plugin DLL '%s'! Error code %u.", pathUtf8.c_str(), sInitParam.outErrorCode);
             }
 
             assert(pPlugin);

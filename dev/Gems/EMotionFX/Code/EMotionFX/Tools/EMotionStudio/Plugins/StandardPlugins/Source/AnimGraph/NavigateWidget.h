@@ -62,8 +62,8 @@ namespace EMStudio
 
         QTreeWidgetItem* FindItem(const QString& name);
 
-        void ShowGraph(const char* nodeName, bool updateInterface);
         void ShowGraph(EMotionFX::AnimGraphNode* node, bool updateInterface);
+        void ShowGraphByNodeName(const AZStd::string& nodeName, bool updateInterface);
 
         static QTreeWidgetItem* InsertNode(QTreeWidget* treeWidget, QTreeWidgetItem* parentItem, EMotionFX::AnimGraphNode* node, bool recursive, uint32 visibilityFilterNodeID = MCORE_INVALIDINDEX32, bool showStatesOnly = false, const char* searchFilterString = nullptr);
 

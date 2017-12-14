@@ -109,6 +109,8 @@ namespace AzToolsFramework
 
     void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, bool forceAddToBack = false);
 
+    void RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex);
+
     void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId);
 
     void SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children);
@@ -118,5 +120,7 @@ namespace AzToolsFramework
     void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, std::list<AZ::u64>& location);
 
     void SortEntitiesByLocationInHierarchy(EntityIdList& entityIds);
+
+    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType);
 
 }; // namespace AzToolsFramework

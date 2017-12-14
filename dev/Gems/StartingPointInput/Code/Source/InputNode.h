@@ -60,7 +60,6 @@ namespace InputNodes
 
         //////////////////////////////////////////////////////////////////////////
         /// ScriptCanvas_Node
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
         void OnInputSignal(const ScriptCanvas::SlotId& slotId) override;
 
     protected:

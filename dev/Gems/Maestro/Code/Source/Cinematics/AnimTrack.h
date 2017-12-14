@@ -33,7 +33,7 @@ public:
     TAnimTrack();
 
     virtual EAnimCurveType GetCurveType() { return eAnimCurveType_Unknown; };
-    virtual EAnimValue GetValueType() { return eAnimValue_Unknown; }
+    virtual AnimValueType GetValueType() { return kAnimValueUnknown; }
 
     void SetNode(IAnimNode* node) override { m_node = node; }
     // Return Animation Node that owns this Track.
@@ -155,6 +155,7 @@ public:
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); };
 
     virtual void OffsetKeyPosition(const Vec3& value) { assert(0); };
+    virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM) { assert(0); };
 
     /** Assign active time range for this track.
     */

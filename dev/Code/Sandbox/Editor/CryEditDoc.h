@@ -16,6 +16,7 @@
 #pragma once
 
 #include "DocMultiArchive.h"
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
 class CFrameWnd;
 class CMission;
@@ -28,6 +29,7 @@ struct LightingSettings;
 
 class SANDBOX_API CCryEditDoc
     : public QObject
+    , protected AzToolsFramework::EditorEntityContextNotificationBus::Handler
 {
     Q_OBJECT
     Q_PROPERTY(bool modified READ IsModified WRITE SetModifiedFlag);
@@ -48,9 +50,11 @@ public: // Create from serialization only
     QString GetTitle() const;
     void SetTitle(const QString& title);
 
+    static bool IsBackupOrTempLevelSubdirectory(const QString& folderName);
+
     bool DoSave(const QString& pathName, bool replace);
 
-// ClassWizard generated virtual function overrides
+    // ClassWizard generated virtual function overrides
     virtual bool OnOpenDocument(const QString& lpszPathName);
     // Currently it's not possible to disable one single flag and eModifiedModule is ignored
     // if bModified is false.
@@ -78,6 +82,7 @@ public: // Create from serialization only
     const char* GetTemporaryLevelName() const;
     void DeleteTemporaryLevel();
     void InitEmptyLevel(int resolution = 0, int unitSize = 0, bool bUseTerrain = false);
+    void CreateDefaultLevelAssets(int resolution = 0, int unitSize = 0);
     bool IsLevelExported() const;
     void SetLevelExported(bool boExported = true);
     int GetModifiedModule();
@@ -163,6 +168,12 @@ public: // Create from serialization only
 
     const bool IsLevelLoadFailed() const { return m_bLoadFailed; }
 
+    //////////////////////////////////////////////////////////////////////////
+    // EditorEntityContextNotificationBus::Handler
+    void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
+    void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
+    //////////////////////////////////////////////////////////////////////////
+
 private:
     QString m_strMasterCDFolder;
     bool m_bLoadFailed;
@@ -182,6 +193,10 @@ private:
     bool m_modified;
     QString m_pathName;
     QString m_title;
+    AZ::Data::AssetId m_envProbeSliceAssetId;
+    float m_terrainSize;
+    const char* m_envProbeSliceFullPath;
+    const float m_envProbeHeight;
 };
 
 class CAutoDocNotReady

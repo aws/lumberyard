@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QtWidgets/QFrame>
+#include <AzCore/std/string/string.h>
 
 class QHBoxLayout;
 class QLabel;

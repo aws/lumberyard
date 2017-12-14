@@ -33,7 +33,6 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("StylusMode", &GeneralSettings::m_stylusMode)
         ->Field("LayerDoubleClicking", &GeneralSettings::m_bLayerDoubleClicking)
         ->Field("ShowNews", &GeneralSettings::m_bShowNews)
-        ->Field("EnableQtDocking", &GeneralSettings::m_enableQtDocking)
         ->Field("ShowFlowgraphNotification", &GeneralSettings::m_showFlowGraphNotification)
         ->Field("EnableSceneInspector", &GeneralSettings::m_enableSceneInspector);
 
@@ -96,7 +95,6 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_stylusMode, "Stylus Mode", "Stylus Mode for tablets and other pointing devices")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_bLayerDoubleClicking, "Enable Double Clicking in Layer Editor", "Enable Double Clicking in Layer Editor")
                 ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
-            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableQtDocking, "Enable Legacy Docking (RESTART REQUIRED)", "Enables the older, legacy (Qt) docking system. Use at your own risk")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_showFlowGraphNotification, "Show FlowGraph Notification", "Display the FlowGraph notification regarding scripting.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableSceneInspector, "Enable Scene Inspector (EXPERIMENTAL)", "Enable the option to inspect the internal data loaded from scene files like .fbx. This is an experimental feature. Restart the Scene Settings if the option is not visible under the Help menu.");
@@ -152,7 +150,6 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.bShowDashboardAtStartup = m_generalSettings.m_showDashboard;
     gSettings.bAutoloadLastLevelAtStartup = m_generalSettings.m_autoLoadLastLevel;
     gSettings.stylusMode = m_generalSettings.m_stylusMode;
-    gSettings.enableQtDocking = m_generalSettings.m_enableQtDocking;
     gSettings.showFlowgraphNotification = m_generalSettings.m_showFlowGraphNotification;
     gSettings.enableSceneInspector = m_generalSettings.m_enableSceneInspector;
 
@@ -196,7 +193,6 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_showDashboard = gSettings.bShowDashboardAtStartup;
     m_generalSettings.m_autoLoadLastLevel = gSettings.bAutoloadLastLevelAtStartup;
     m_generalSettings.m_stylusMode = gSettings.stylusMode;
-    m_generalSettings.m_enableQtDocking = gSettings.enableQtDocking;
     m_generalSettings.m_showFlowGraphNotification = gSettings.showFlowgraphNotification;
     m_generalSettings.m_enableSceneInspector = gSettings.enableSceneInspector;
 

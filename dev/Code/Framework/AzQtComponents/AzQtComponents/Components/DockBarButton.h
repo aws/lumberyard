@@ -36,9 +36,14 @@ namespace AzQtComponents
             MinimizeButton,
             DividerButton
         };
+        Q_ENUM(WindowDecorationButton)
 
-        explicit DockBarButton(DockBarButton::WindowDecorationButton buttonType, QWidget* parent = nullptr);
+        explicit DockBarButton(DockBarButton::WindowDecorationButton buttonType, QWidget* parent = nullptr, bool darkStyle = false);
 
+        /*
+        * Expose the button type using a QT property so that test automation can read it
+        */
+        Q_PROPERTY(WindowDecorationButton buttonType MEMBER m_buttonType CONSTANT)
     protected:
         void enterEvent(QEvent*) override;
         void leaveEvent(QEvent*) override;
@@ -52,5 +57,6 @@ namespace AzQtComponents
         QPixmap pixmapForButton(bool pressed = false, bool hovered = false) const;
         void handleButtonClick();
         const DockBarButton::WindowDecorationButton m_buttonType;
+        bool m_isDarkStyle;
     };
 } // namespace AzQtComponents

@@ -16,9 +16,7 @@
             "native/AssetManager/AssetRequestHandler.cpp",
             "native/AssetManager/AssetRequestHandler.h",
             "native/AssetManager/AssetCatalog.h",
-            "native/AssetManager/AssetCatalog.cpp",
-            "native/AssetManager/ToolsAssetSystemComponent.h",
-            "native/AssetManager/ToolsAssetSystemComponent.cpp"
+            "native/AssetManager/AssetCatalog.cpp"
         ],
 
         "connection": [
@@ -68,7 +66,9 @@
             "native/resourcecompiler/RCCommon.cpp",
             "native/resourcecompiler/RCCommon.h",
             "native/resourcecompiler/RCBuilder.cpp",
-            "native/resourcecompiler/RCBuilder.h"
+            "native/resourcecompiler/RCBuilder.h",
+            "native/resourcecompiler/JobsModel.cpp",
+            "native/resourcecompiler/JobsModel.h"
         ],
         "utilities": [
             "native/utilities/ApplicationManagerAPI.h",
@@ -78,6 +78,9 @@
             "native/utilities/ApplicationServer.h",
             "native/utilities/BatchApplicationManager.cpp",
             "native/utilities/BatchApplicationManager.h",
+            "native/utilities/BuilderManager.cpp",
+            "native/utilities/BuilderManager.inl",
+            "native/utilities/BuilderManager.h",
             "native/utilities/PlatformConfiguration.cpp",
             "native/utilities/PlatformConfiguration.h",
             "native/utilities/ThreadHelper.cpp",
@@ -90,7 +93,9 @@
             "native/utilities/ByteArrayStream.h",
             "native/utilities/ByteArrayStream.cpp",
             "native/utilities/AssetBuilderInfo.h",
-            "native/utilities/AssetBuilderInfo.cpp"
+            "native/utilities/AssetBuilderInfo.cpp",
+            "native/utilities/CommunicatorTracePrinter.h",
+            "native/utilities/CommunicatorTracePrinter.cpp"
         ]
 
     }

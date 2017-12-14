@@ -16,6 +16,8 @@
 #include "RemoteCompiler.h"
 #include "../RenderCapabilities.h"
 
+#include <AzFramework/API/ApplicationAPI.h>
+
 uint32 SShaderCombIdent::PostCreate()
 {
     FUNCTION_PROFILER_RENDER_FLAT
@@ -1900,7 +1902,7 @@ void CShaderMan::_PrecacheShaderList(bool bStatsOnly)
 #ifdef WIN32
                         if (!m_bActivatePhase)
                         {
-                            gEnv->pSystem->PumpWindowMessage(true);
+                            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
                         }
 #endif
                     }

@@ -27,6 +27,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_General();
+    virtual ~CEditorPreferencesPage_General() = default;
 
     virtual const char* GetCategory() override { return "General Settings"; }
     virtual const char* GetTitle() override { return "General"; }
@@ -63,7 +64,6 @@ private:
         bool m_stylusMode;
         bool m_bLayerDoubleClicking;
         bool m_bShowNews;
-        bool m_enableQtDocking;
         bool m_showFlowGraphNotification;
         bool m_enableSceneInspector;
     };

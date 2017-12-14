@@ -19,6 +19,7 @@
 #include "Controls/ToolButton.h"
 
 #include "EntityPanel.h"
+#include "EditTool.h"
 
 #include <QWidget>
 
@@ -37,29 +38,84 @@ namespace Ui
     class RopePanel;
 }
 
-#ifdef Q_MOC_RUN
 class CEditShapeObjectTool
     : public CEditTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CEditShapeObjectTool();
+    CEditShapeObjectTool();
+
+    // Ovverides from CEditTool
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
+    virtual void SetUserData(const char* key, void* userData);
+
+    virtual void BeginEditParams(IEditor* ie, int flags) {};
+    virtual void EndEditParams() {};
+
+    virtual void Display(DisplayContext& dc) {};
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+    bool IsNeedToSkipPivotBoxForObjects()   override {  return true; }
+
+protected:
+    virtual ~CEditShapeObjectTool();
+    void DeleteThis() { delete this; };
+
+private:
+    CShapeObject* m_shape;
+    bool m_modifying;
+    QPoint m_mouseDownPos;
+    Vec3 m_pointPos;
 };
+
 class CMergeShapeObjectsTool
     : public CEditTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CMergeShapeObjectsTool();
+    CMergeShapeObjectsTool();
+
+    // Ovverides from CEditTool
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    virtual void SetUserData(const char* key, void* userData);
+    virtual void BeginEditParams(IEditor* ie, int flags) {};
+    virtual void EndEditParams() {};
+    virtual void Display(DisplayContext& dc) {};
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+
+protected:
+    virtual ~CMergeShapeObjectsTool();
+    void DeleteThis() { delete this; };
+
+    int m_curPoint;
+    CShapeObject* m_shape;
+
+private:
 };
+
 class CSplitShapeObjectTool
     : public CEditTool
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE CSplitShapeObjectTool();
+    CSplitShapeObjectTool();
+
+    // Ovverides from CEditTool
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    virtual void SetUserData(const char* key, void* userData);
+    virtual void BeginEditParams(IEditor* ie, int flags) {};
+    virtual void EndEditParams() {};
+    virtual void Display(DisplayContext& dc) {};
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+
+protected:
+    virtual ~CSplitShapeObjectTool();
+    void DeleteThis() { delete this; };
+
+private:
+    CShapeObject* m_shape;
+    int m_curPoint;
 };
-#endif
 
 class ShapeEditSplitPanel
 {

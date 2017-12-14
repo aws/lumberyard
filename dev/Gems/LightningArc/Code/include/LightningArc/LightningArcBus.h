@@ -14,18 +14,23 @@
 
 class CLightningGameEffect;
 class CScriptBind_LightningArc;
+class LightningGameEffectAZ;
+struct LightningArcParams;
 
 class LightningArcRequests
     : public AZ::EBusTraits
 {
 public:
-    //////////////////////////////////////////////////////////////////////////
     // EBusTraits overrides
     static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
     static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-    //////////////////////////////////////////////////////////////////////////
 
     virtual CScriptBind_LightningArc* GetScriptBind() const = 0;
     virtual CLightningGameEffect* GetGameEffect() const = 0;
+    virtual AZStd::shared_ptr<LightningGameEffectAZ> GetGameEffectAZ() const = 0;
+
+    virtual void LoadArcPresets() = 0;
+    virtual const AZStd::vector<AZStd::string>& GetArcPresetNames() const = 0;
+    virtual bool GetArcParamsForName(const AZStd::string& arcName, const LightningArcParams*& params) const = 0;
 };
 using LightningArcRequestBus = AZ::EBus<LightningArcRequests>;

@@ -28,21 +28,22 @@
         "Include/Audio": [
             "include/LmbrCentral/Audio/AudioEnvironmentComponentBus.h",
             "include/LmbrCentral/Audio/AudioListenerComponentBus.h",
+            "include/LmbrCentral/Audio/AudioPreloadComponentBus.h",
             "include/LmbrCentral/Audio/AudioProxyComponentBus.h",
             "include/LmbrCentral/Audio/AudioRtpcComponentBus.h",
             "include/LmbrCentral/Audio/AudioSwitchComponentBus.h",
             "include/LmbrCentral/Audio/AudioTriggerComponentBus.h"
         ],
         "Include/Physics": [
-            "include/LmbrCentral/Physics/RagdollPhysicsBus.h",
             "include/LmbrCentral/Physics/ColliderComponentBus.h",
             "include/LmbrCentral/Physics/ConstraintComponentBus.h",
+            "include/LmbrCentral/Physics/CryCharacterPhysicsBus.h",
+            "include/LmbrCentral/Physics/CryPhysicsComponentRequestBus.h",
+            "include/LmbrCentral/Physics/WindVolumeRequestBus.h",
+            "include/LmbrCentral/Physics/ForceVolumeRequestBus.h",
             "include/LmbrCentral/Physics/PhysicsComponentBus.h",
             "include/LmbrCentral/Physics/PhysicsSystemComponentBus.h",
-            "include/LmbrCentral/Physics/PhysicsSystemComponentBus.inl",
-            "include/LmbrCentral/Physics/CryCharacterPhysicsBus.h",
-            "include/LmbrCentral/Physics/WindVolumeRequestBus.h",
-            "include/LmbrCentral/Physics/ForceVolumeRequestBus.h"
+            "include/LmbrCentral/Physics/RagdollPhysicsBus.h"
         ],
         "Include/Rendering": [
             "include/LmbrCentral/Rendering/DecalComponentBus.h",
@@ -58,12 +59,14 @@
             "include/LmbrCentral/Rendering/ParticleComponentBus.h",
             "include/LmbrCentral/Rendering/RenderNodeBus.h",
             "include/LmbrCentral/Rendering/FogVolumeComponentBus.h",
-            "include/LmbrCentral/Rendering/HighQualityShadowComponentBus.h"
+            "include/LmbrCentral/Rendering/HighQualityShadowComponentBus.h",
+            "include/LmbrCentral/Rendering/GeomCacheComponentBus.h"
         ],
         "Include/Scripting": [
             "include/LmbrCentral/Scripting/EditorTagComponentBus.h",
             "include/LmbrCentral/Scripting/SimpleStateComponentBus.h",
             "include/LmbrCentral/Scripting/SpawnerComponentBus.h",
+            "include/LmbrCentral/Scripting/RandomTimedSpawnerComponentBus.h",
             "include/LmbrCentral/Scripting/TagComponentBus.h",
             "include/LmbrCentral/Scripting/TriggerAreaComponentBus.h",
             "include/LmbrCentral/Scripting/FlowGraphSerialization.h",
@@ -112,6 +115,8 @@
             "Source/Audio/AudioEnvironmentComponent.cpp",
             "Source/Audio/AudioListenerComponent.h",
             "Source/Audio/AudioListenerComponent.cpp",
+            "Source/Audio/AudioPreloadComponent.h",
+            "Source/Audio/AudioPreloadComponent.cpp",
             "Source/Audio/AudioProxyComponent.h",
             "Source/Audio/AudioProxyComponent.cpp",
             "Source/Audio/AudioRtpcComponent.h",
@@ -141,6 +146,8 @@
             "Source/Physics/RigidPhysicsComponent.cpp",
             "Source/Physics/StaticPhysicsComponent.h",
             "Source/Physics/StaticPhysicsComponent.cpp",
+            "Source/Physics/WindVolume.h",
+            "Source/Physics/WindVolume.cpp",
             "Source/Physics/WindVolumeComponent.h",
             "Source/Physics/WindVolumeComponent.cpp",
             "Source/Physics/ForceVolumeComponent.h",
@@ -151,6 +158,10 @@
             "Source/Physics/Colliders/MeshColliderComponent.cpp",
             "Source/Physics/Colliders/PrimitiveColliderComponent.h",
             "Source/Physics/Colliders/PrimitiveColliderComponent.cpp"
+        ],
+        "Source/Physics/BusForwarding": [
+            "Source/Physics/BusForwarding/BusForwarding.h",
+            "Source/Physics/BusForwarding/BusForwarding.cpp"
         ],
         "Source/Rendering": [
             "Source/Rendering/DecalComponent.h",
@@ -185,13 +196,17 @@
             "Source/Rendering/StereoRendererComponent.h",
             "Source/Rendering/StereoRendererComponent.cpp",
             "Source/Rendering/HighQualityShadowComponent.h",
-            "Source/Rendering/HighQualityShadowComponent.cpp"
+            "Source/Rendering/HighQualityShadowComponent.cpp",
+            "Source/Rendering/GeomCacheComponent.h",
+            "Source/Rendering/GeomCacheComponent.cpp"
         ],
         "Source/Scripting": [
             "Source/Scripting/FlowGraphComponent.h",
             "Source/Scripting/FlowGraphComponent.cpp",
             "Source/Scripting/LookAtComponent.h",
             "Source/Scripting/LookAtComponent.cpp",
+            "Source/Scripting/RandomTimedSpawnerComponent.cpp",
+            "Source/Scripting/RandomTimedSpawnerComponent.h",
             "Source/Scripting/SimpleStateComponent.h",
             "Source/Scripting/SimpleStateComponent.cpp",
             "Source/Scripting/SpawnerComponent.h",
@@ -253,8 +268,6 @@
             "Source/Unhandled/Other/EntityPrototypeLibraryAssetTypeInfo.h",
             "Source/Unhandled/Other/GameTokenAssetTypeInfo.cpp",
             "Source/Unhandled/Other/GameTokenAssetTypeInfo.h",
-            "Source/Unhandled/Other/GeomCacheAssetTypeInfo.cpp",
-            "Source/Unhandled/Other/GeomCacheAssetTypeInfo.h",
             "Source/Unhandled/Other/GroupAssetTypeInfo.cpp",
             "Source/Unhandled/Other/GroupAssetTypeInfo.h",
             "Source/Unhandled/Other/PrefabsLibraryAssetTypeInfo.cpp",

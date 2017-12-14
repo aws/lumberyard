@@ -32,8 +32,6 @@
 
 #include <QMessageBox>
 
-HINSTANCE g_hInst = NULL;
-
 #ifndef AZ_TESTS_ENABLED
 DECLARE_PYTHON_MODULE(designer);
 #endif
@@ -154,6 +152,9 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
     return pDesignerPlugin;
 }
 
+#if defined(AZ_PLATFORM_WINDOWS)
+HINSTANCE g_hInst = NULL;
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 {
     if (fdwReason == DLL_PROCESS_ATTACH)
@@ -163,3 +164,4 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 
     return TRUE;
 }
+#endif

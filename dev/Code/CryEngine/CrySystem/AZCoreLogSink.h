@@ -10,9 +10,6 @@
 *
 */
 
-#ifndef AZCORELOGSINK_HEADER
-#define AZCORELOGSINK_HEADER
-
 #pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
@@ -32,7 +29,6 @@ class AZCoreLogSink
     : public AZ::Debug::TraceMessageBus::Handler
 {
 public:
-
     inline static void Connect()
     {
         GetInstance().m_ignoredAsserts = new IgnoredAssertMap();
@@ -58,13 +54,6 @@ public:
 
     bool OnPreAssert(const char* fileName, int line, const char* func, const char* message) override
     {
-        if (!IsCryLogReady())
-        {
-            return false;
-        }
-
-        CryLogAlways("%s", message);
-
 #if defined(USE_CRY_ASSERT) && (defined(WIN32) || defined(DURANGO) || defined(APPLE) || defined(LINUX))
         AZ::Crc32 crc;
         crc.Add(&line, sizeof(line));
@@ -87,52 +76,81 @@ public:
 
         if (!(*ignore))
         {
+            using namespace AZ::Debug;
+
+            Trace::Output(nullptr, "\n==================================================================\n");
+            AZ::OSString outputMsg = AZ::OSString::format("Trace::Assert\n %s(%d): '%s'\n%s\n", fileName, line, func, message);
+            Trace::Output(nullptr, outputMsg.c_str());
+
+            // Suppress 3 in stack depth - this function, the bus broadcast that got us here, and Trace::Assert
+            Trace::Output(nullptr, "------------------------------------------------\n");
+            Trace::PrintCallstack(nullptr, 3);
+            Trace::Output(nullptr, "\n==================================================================\n");
+
+            // Note - CryAssertTrace doesn't actually print any info to logging
+            // it just stores the message internally for the message box in CryAssert to use
             CryAssertTrace("%s", message);
             if (CryAssert("Assertion failed", fileName, line, ignore))
             {
-                AZ::Debug::Trace::Break();
+                Trace::Break();
             }
         }
 
-        return true;
+        return true; // suppress default AzCore behavior.
 #else
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, message);
-        return true;
+        AZ_UNUSED(fileName);
+        AZ_UNUSED(line);
+        AZ_UNUSED(func);
+        AZ_UNUSED(message);
+        return false; // allow AZCore to do its default behavior.   This usually results in an application shutdown.
 #endif // defined(USE_CRY_ASSERT) && (defined(WIN32) || defined(DURANGO) || defined(APPLE) || defined(LINUX))
-    }
-
-    bool OnException(const char* message) override
-    {
-        CryFatalError("%s", message);
-        return true;
     }
 
     bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message) override
     {
-        (void)window;
-        return OnPreAssert(fileName, line, func, message);
-    }
-
-    bool OnWarning(const char* window, const char* message) override
-    {
-        (void)window;
+        AZ_UNUSED(fileName);
+        AZ_UNUSED(line);
+        AZ_UNUSED(func);
         if (!IsCryLogReady())
         {
-            return false;
+            return false; // allow AZCore to do its default behavior.
         }
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "%s", message);
-        return true;
+        gEnv->pLog->LogError("(%s) - %s", window, message);
+        return true; // suppress default AzCore behavior.
     }
 
-    bool OnPrintf(const char* window, const char* message) override
+    bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message) override
     {
-        (void)window;
+        AZ_UNUSED(fileName);
+        AZ_UNUSED(line);
+        AZ_UNUSED(func);
+
         if (!IsCryLogReady())
         {
-            return false;
+            return false; // allow AZCore to do its default behavior.
         }
-        CryLog("%s", message);
-        return true;
+
+        CryWarning(VALIDATOR_MODULE_UNKNOWN, VALIDATOR_WARNING, "(%s) - %s", window, message);
+        return true; // suppress default AzCore behavior.
+    }
+
+    bool OnOutput(const char* window, const char* message)  override
+    {
+        if (!IsCryLogReady())
+        {
+            return false; // allow AZCore to do its default behavior.
+        }
+
+        if (window == AZ::Debug::Trace::GetDefaultSystemWindow())
+        {
+            CryLogAlways("%s", message);
+        }
+        else
+        {
+            CryLog("(%s) - %s", window, message);
+        }
+
+        return true; // suppress default AzCore behavior.
     }
 
 private:
@@ -140,5 +158,3 @@ private:
     using IgnoredAssertMap = AZStd::unordered_map<AZ::Crc32, bool, AZStd::hash<AZ::Crc32>, AZStd::equal_to<AZ::Crc32>, AZ::OSStdAllocator>;
     IgnoredAssertMap* m_ignoredAsserts;
 };
-
-#endif // AZCORELOGSINK_HEADER

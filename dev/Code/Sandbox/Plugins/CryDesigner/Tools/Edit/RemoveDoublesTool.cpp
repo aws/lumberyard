@@ -57,7 +57,7 @@ bool RemoveDoublesTool::RemoveDoubles()
     return true;
 }
 
-void RemoveDoublesTool::RemoveDoubles(CD::SMainContext& mc, float fDistance)
+void RemoveDoublesTool::RemoveDoubles(const CD::SMainContext& mc, float fDistance)
 {
     ElementManager* pSelected = CD::GetDesigner()->GetSelectedElements();
 

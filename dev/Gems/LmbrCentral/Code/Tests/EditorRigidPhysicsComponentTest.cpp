@@ -86,7 +86,7 @@ protected:
     }
 
     EditorRigidPhysicsComponent* m_editorPhysicsComponent = nullptr;
-    RigidPhysicsConfig m_rigidPhysicsConfig;
+    AzFramework::RigidPhysicsConfig m_rigidPhysicsConfig;
 
 };
 
@@ -112,7 +112,7 @@ TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, EnabledInitially_MatchesSo
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, SpecifyMassOrDensity_MatchesSourceData)
 {
-    EXPECT_EQ(m_rigidPhysicsConfig.m_specifyMassOrDensity, static_cast<RigidPhysicsConfig::MassOrDensity>(0));
+    EXPECT_EQ(m_rigidPhysicsConfig.m_specifyMassOrDensity, static_cast<AzFramework::RigidPhysicsConfig::MassOrDensity>(0));
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, Mass_MatchesSourceData)

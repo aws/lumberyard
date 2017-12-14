@@ -396,9 +396,6 @@ namespace AZ
 
         using SliceList = AZStd::list<SliceReference>; // we use list as we need stable iterators
 
-        /// @deprecated Use SliceList
-        using PrefabList = SliceList;
-
         /**
          * Map from entity ID to entity and slice address (if it comes from a slice).
          */
@@ -624,6 +621,19 @@ namespace AZ
         */
         bool Instantiate();
         bool IsInstantiated() const;
+        /**
+         * Generate new entity Ids and remap references
+         * \param previousToNewIdMap Output map of previous entityIds to newly generated entityIds
+         */
+        void GenerateNewEntityIds(EntityIdToEntityIdMap* previousToNewIdMap = nullptr);
+
+        /**
+        * Newly created slices and legacy slices won't have required metadata components. This will check to see if
+        * necessary components to the function of the metadata entities are present and
+        * \param instance Source slice instance
+        */
+        void InitMetadata();
+
     protected:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
         // Workaround for VS2013 - Delete the copy constructor and make it private
@@ -656,13 +666,6 @@ namespace AZ
         void BuildEntityInfoMap();
 
         /**
-        * Newly created slices and legacy slices won't have required metadata components. This will check to see if
-        * necessary components to the function of the metadata entities are present and
-        * \param instance Source slice instance
-        */
-        void InitMetadata();
-
-        /**
         * During instance instantiation, entities from root slices may be removed by data patches. We need to remove these
         * from the metadata associations in our newly cloned instance metadata entities.
         */
@@ -673,6 +676,9 @@ namespace AZ
 
         /// Returns the reference associated with the specified asset Id. If none is present, one will be created.
         SliceReference* AddOrGetSliceReference(const Data::Asset<SliceAsset>& sliceAsset);
+
+        /// Removes a slice reference (and all instances) by iterator.
+        void RemoveSliceReference(SliceComponent::SliceList::iterator sliceReferenceIt);
 
         /// Utility function to apply a EntityIdToEntityIdMap to a EntityIdToEntityIdMap (the mapping will override values in the destination)
         static void ApplyEntityMapId(EntityIdToEntityIdMap& destination, const EntityIdToEntityIdMap& mapping);

@@ -17,14 +17,16 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <IPhysics.h>
 #include <MathConversion.h>
 #include "I3DEngine.h"
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
 #include "LmbrCentral/Shape/ShapeComponentBus.h"
 
 namespace LmbrCentral
 {
+    using AzFramework::PhysicsComponentRequestBus;
+
     //Wikipedia: https://en.wikipedia.org/wiki/Drag_coefficient
     static const auto s_sphereDragCoefficient = 0.47f;
 
@@ -34,13 +36,13 @@ namespace LmbrCentral
         {
             serializeContext->Class<ForceVolumeConfiguration>()
                 ->Version(1)
-                ->Field("Force Mode", &ForceVolumeConfiguration::m_forceMode)
-                ->Field("Force Space", &ForceVolumeConfiguration::m_forceSpace)
-                ->Field("Force Apply", &ForceVolumeConfiguration::m_forceMassDependent)
-                ->Field("Force Scale", &ForceVolumeConfiguration::m_forceMagnitude)
-                ->Field("Force Direction", &ForceVolumeConfiguration::m_forceDirection)
-                ->Field("Volume Damping", &ForceVolumeConfiguration::m_volumeDamping)
-                ->Field("Volume Density", &ForceVolumeConfiguration::m_volumeDensity)
+                ->Field("ForceMode", &ForceVolumeConfiguration::m_forceMode)
+                ->Field("ForceSpace", &ForceVolumeConfiguration::m_forceSpace)
+                ->Field("UseMass", &ForceVolumeConfiguration::m_useMass)
+                ->Field("ForceMagnitude", &ForceVolumeConfiguration::m_forceMagnitude)
+                ->Field("ForceDirection", &ForceVolumeConfiguration::m_forceDirection)
+                ->Field("VolumeDamping", &ForceVolumeConfiguration::m_volumeDamping)
+                ->Field("VolumeDensity", &ForceVolumeConfiguration::m_volumeDensity)
             ;
         }
     }
@@ -65,8 +67,8 @@ namespace LmbrCentral
                 ->Event("GetForceMode", &ForceVolumeRequestBus::Events::GetForceMode)
                 ->Event("SetForceMagnitude", &ForceVolumeRequestBus::Events::SetForceMagnitude)
                 ->Event("GetForceMagnitude", &ForceVolumeRequestBus::Events::GetForceMagnitude)
-                ->Event("SetForceMassDependent", &ForceVolumeRequestBus::Events::SetForceMassDependent)
-                ->Event("GetForceMassDependent", &ForceVolumeRequestBus::Events::GetForceMassDependent)
+                ->Event("SetUseMass", &ForceVolumeRequestBus::Events::SetUseMass)
+                ->Event("GetUseMass", &ForceVolumeRequestBus::Events::GetUseMass)
                 ->Event("SetForceDirection", &ForceVolumeRequestBus::Events::SetForceDirection)
                 ->Event("GetForceDirection", &ForceVolumeRequestBus::Events::GetForceDirection)
                 ->Event("SetAirResistance", &ForceVolumeRequestBus::Events::SetVolumeDamping)
@@ -102,14 +104,14 @@ namespace LmbrCentral
         return m_configuration.m_forceSpace;
     }
 
-    void ForceVolumeComponent::SetForceMassDependent(bool massDependent)
+    void ForceVolumeComponent::SetUseMass(bool useMass)
     {
-        m_configuration.m_forceMassDependent = massDependent;
+        m_configuration.m_useMass = useMass;
     }
 
-    bool ForceVolumeComponent::GetForceMassDependent()
+    bool ForceVolumeComponent::GetUseMass()
     {
-        return m_configuration.m_forceMassDependent;
+        return m_configuration.m_useMass;
     }
 
     void ForceVolumeComponent::SetForceMagnitude(float forceMagnitude)
@@ -200,7 +202,7 @@ namespace LmbrCentral
             auto totalForce = AZ::Vector3::CreateZero();
 
             // Force
-            if (m_configuration.m_forceMagnitude > 0.f)
+            if (!AZ::IsClose(m_configuration.m_forceMagnitude, 0.f, AZ_FLT_EPSILON))
             {
                 totalForce += CalculateForce(entityId, deltaTime);
             }
@@ -219,7 +221,7 @@ namespace LmbrCentral
 
             if (!totalForce.IsZero())
             {
-                PhysicsComponentRequestBus::Event(entityId, &PhysicsComponentRequests::AddImpulse, totalForce);
+                PhysicsComponentRequestBus::Event(entityId, &AzFramework::PhysicsComponentRequests::AddImpulse, totalForce);
             }
         }
     }
@@ -234,9 +236,9 @@ namespace LmbrCentral
         AZ::TransformBus::EventResult(entityPos, entityId, &AZ::TransformBus::Events::GetWorldTranslation);
         ShapeComponentRequestsBus::EventResult(volumeAabb, GetEntityId(), &ShapeComponentRequestsBus::Events::GetEncompassingAabb);
         AZ::TransformBus::EventResult(volumeRotation, GetEntityId(), &AZ::TransformBus::Events::GetWorldRotationQuaternion);
-        if (m_configuration.m_forceMassDependent)
+        if (m_configuration.m_useMass)
         {
-            PhysicsComponentRequestBus::EventResult(entityMass, entityId, &PhysicsComponentRequestBus::Events::GetMass);
+            PhysicsComponentRequestBus::EventResult(entityMass, entityId, &AzFramework::PhysicsComponentRequestBus::Events::GetMass);
         }        
 
         auto force = GetWorldForceDirectionAtPoint(m_configuration, entityPos, volumeAabb.GetCenter(), volumeRotation);
@@ -248,7 +250,7 @@ namespace LmbrCentral
     AZ::Vector3 ForceVolumeComponent::CalculateDamping(const AZ::EntityId& entityId, float deltaTime)
     {
         AZ::Vector3 damping;
-        PhysicsComponentRequestBus::EventResult(damping, entityId, &PhysicsComponentRequestBus::Events::GetVelocity);
+        PhysicsComponentRequestBus::EventResult(damping, entityId, &AzFramework::PhysicsComponentRequestBus::Events::GetVelocity);
 
         float speed = damping.NormalizeWithLength();
         damping *= -m_configuration.m_volumeDamping * speed;
@@ -259,8 +261,8 @@ namespace LmbrCentral
     {
         AZ::Vector3 velocity;
         AZ::Aabb aabb;
-        PhysicsComponentRequestBus::EventResult(velocity, entityId, &LmbrCentral::PhysicsComponentRequestBus::Events::GetVelocity);
-        PhysicsComponentRequestBus::EventResult(aabb, entityId, &LmbrCentral::PhysicsComponentRequestBus::Events::GetAabb);
+        PhysicsComponentRequestBus::EventResult(velocity, entityId, &AzFramework::PhysicsComponentRequestBus::Events::GetVelocity);
+        PhysicsComponentRequestBus::EventResult(aabb, entityId, &AzFramework::PhysicsComponentRequestBus::Events::GetAabb);
 
         // Aproximate shape as a sphere
         AZ::Vector3 center;

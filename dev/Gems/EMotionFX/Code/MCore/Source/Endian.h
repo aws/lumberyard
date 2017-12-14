@@ -87,11 +87,11 @@ namespace MCore
         static MCORE_INLINE void ConvertVector2(AZ::Vector2* value, uint32 count = 1);
 
         /**
-         * Swap the endian of one or more Vector3 objects.
+         * Swap the endian of one or more PackedVector3f objects.
          * @param value The value to convert the endian for.
          * @param count The number of items to convert. Please note that the array specified by value must be large enough!
          */
-        static MCORE_INLINE void ConvertVector3(MCore::Vector3* value, uint32 count = 1);
+        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, uint32 count = 1);
 
         /**
          * Swap the endian of one or more Vector4 objects.
@@ -210,12 +210,12 @@ namespace MCore
         static MCORE_INLINE void ConvertVector2(AZ::Vector2* value, EEndianType sourceEndianType, uint32 count = 1);
 
         /**
-         * Convert a Vector3 object into the endian used by our current platform.
-         * @param value The object to convert the endian for.
-         * @param sourceEndianType The endian type where the object is currently stored in.
-         * @param count The number of objects to convert. This allows conversion of arrays at once.
-         */
-        static MCORE_INLINE void ConvertVector3(MCore::Vector3* value, EEndianType sourceEndianType, uint32 count = 1);
+        * Convert a PackedVector3f object into the endian used by our current platform.
+        * @param value The object to convert the endian for.
+        * @param sourceEndianType The endian type where the object is currently stored in.
+        * @param count The number of objects to convert. This allows conversion of arrays at once.
+        */
+        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, EEndianType sourceEndianType, uint32 count = 1);
 
         /**
          * Convert a Vector4 object into the endian used by our current platform.
@@ -312,7 +312,7 @@ namespace MCore
          * @param targetEndianType The endian type that the value should be converted into.
          * @param count The number of objects to convert. This allows conversion of arrays at once.
          */
-        static MCORE_INLINE void ConvertVector3(MCore::Vector3* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count = 1);
 
         /**
          * Convert a Vector4 object into another endian type.
@@ -406,7 +406,7 @@ namespace MCore
          * @param targetEndianType The endian type that the value should be converted into.
          * @param count The number of objects to convert. This allows conversion of arrays at once.
          */
-        static MCORE_INLINE void ConvertVector3To(MCore::Vector3* value, EEndianType targetEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertVector3To(AZ::PackedVector3f* value, EEndianType targetEndianType, uint32 count = 1);
 
         /**
          * Convert a Vector4 object into another endian type.

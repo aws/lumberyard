@@ -1559,15 +1559,16 @@ withRange: range];
             if (kCache.m_RateriserDirty & SRasterizerCache::RS_SCISSOR_ENABLE_DIRTY)
             {
                 kCache.m_RateriserDirty &= ~SRasterizerCache::RS_SCISSOR_ENABLE_DIRTY;
+                MTLViewport& viewport = m_kStateCache.m_bViewportDefault? m_kStateCache.m_DefaultViewport : m_kStateCache.m_CurrentViewport;
                 if (kCache.scissorEnable)
                 {
                     DXMETAL_TODO("this is a hack to fix engine bugs. Can remove it if the bugs are fixed.");
                     MTLScissorRect rect = kCache.m_scissorRect;
                     {
-                        if (kCache.m_scissorRect.x + kCache.m_scissorRect.width > m_kStateCache.m_DefaultViewport.width)
+                        if (kCache.m_scissorRect.x + kCache.m_scissorRect.width > viewport.width)
                         {
                             //DXGL_WARNING("Metal: Warning: Scissor rect (x(%d) + width(%d))(%d) must be <= %d", (int)kCache.m_scissorRect.x, (int)kCache.m_scissorRect.width, (int)(kCache.m_scissorRect.x+kCache.m_scissorRect.width), //(int)m_kStateCache.m_DefaultViewport.width);
-                            rect.width = m_kStateCache.m_DefaultViewport.width - kCache.m_scissorRect.x;
+                            rect.width = viewport.width - kCache.m_scissorRect.x;
                             if (!rect.width)
                             {
                                 rect.width = 1;
@@ -1575,10 +1576,10 @@ withRange: range];
                             }
                         }
 
-                        if (kCache.m_scissorRect.y + kCache.m_scissorRect.height > m_kStateCache.m_DefaultViewport.height)
+                        if (kCache.m_scissorRect.y + kCache.m_scissorRect.height > viewport.height)
                         {
                             //DXGL_WARNING("Metal: Warning: Scissor rect (y(%d) + height(%d))(%d) must be <= %d", (int)kCache.m_scissorRect.y, (int)kCache.m_scissorRect.height, (int)(kCache.m_scissorRect.y+kCache.m_scissorRect.height), (int)m_kStateCache.m_DefaultViewport.height);
-                            rect.height = m_kStateCache.m_DefaultViewport.height - kCache.m_scissorRect.y;
+                            rect.height = viewport.height - kCache.m_scissorRect.y;
                             if (!rect.height)
                             {
                                 rect.height = 1;
@@ -1591,7 +1592,6 @@ withRange: range];
                 }
                 else
                 {
-                    MTLViewport& viewport = m_kStateCache.m_DefaultViewport;
                     MTLScissorRect rect = {viewport.originX, viewport.originY, viewport.width, viewport.height};
                     [m_CurrentEncoder setScissorRect: rect];
                 }
@@ -1603,9 +1603,9 @@ withRange: range];
         {
             m_kStateCache.m_bBlendColorDirty = false;
             [m_CurrentEncoder setBlendColorRed: m_kStateCache.m_akBlendColor.m_afRGBA[0]
-green: m_kStateCache.m_akBlendColor.m_afRGBA[1]
-blue: m_kStateCache.m_akBlendColor.m_afRGBA[2]
-alpha: m_kStateCache.m_akBlendColor.m_afRGBA[3]];
+                                         green: m_kStateCache.m_akBlendColor.m_afRGBA[1]
+                                          blue: m_kStateCache.m_akBlendColor.m_afRGBA[2]
+                                         alpha: m_kStateCache.m_akBlendColor.m_afRGBA[3]];
         }
 
         //  Flush viewport if needed
@@ -2730,10 +2730,10 @@ threadsPerThreadgroup: threadsPerGroup];
         m_spIndexBufferResource->GetBufferAndOffset(*this, m_uIndexOffset, uStartIndexLocation, m_uIndexStride, tmpBuffer, offset);
 
         [m_CurrentEncoder drawIndexedPrimitives: m_MetalPrimitiveType
-indexCount: uIndexCount
-indexType: m_MetalIndexType
-indexBuffer: tmpBuffer
-indexBufferOffset: offset];
+                                     indexCount: uIndexCount
+                                      indexType: m_MetalIndexType
+                                    indexBuffer: tmpBuffer
+                              indexBufferOffset: offset];
 
         // David: assert that all transient mapped data was bound for this draw call
         CRY_ASSERT(m_spIndexBufferResource->m_pTransientMappedData.empty());
@@ -2744,7 +2744,7 @@ indexBufferOffset: offset];
     void CContext::Draw(uint32 uVertexCount, uint32 uBaseVertexLocation)
     {
         DXGL_SCOPED_PROFILE("CContext::Draw")
-        SetVertexOffset(uBaseVertexLocation);
+        SetVertexOffset(0); // No need to use uBaseVertexLocation for vertex offset as it is used to indicate which vertex is the starting vertex when calling drawPrimitives below
         
         FlushDrawState();
         //  Confetti BEGIN: Igor Lobanchikov
@@ -2771,9 +2771,13 @@ vertexCount: uVertexCount];
         id<MTLBuffer> tmpBuffer = nil;
         m_spIndexBufferResource->GetBufferAndOffset(*this, m_uIndexOffset, uStartIndexLocation, m_uIndexStride, tmpBuffer, offset);
 
-#if defined(AZ_PLATFORM_APPLE_IOS)
+
         id<MTLDevice> mtlDevice = m_pDevice->GetMetalDevice();
+#if defined(AZ_PLATFORM_APPLE_IOS)
         bool baseInstSupported = [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1];
+#else
+        bool baseInstSupported = true; //This feature is supported on osx gpu families
+#endif
         if (baseInstSupported)
         {
             // `-[MTLDebugRenderCommandEncoder drawPrimitives:vertexStart:vertexCount:instanceCount:baseInstance:] is only supported on MTLFeatureSet_iOS_GPUFamily3_v1 and later'... (This is most likely related to the new A9 GPUS.)
@@ -2787,9 +2791,7 @@ instanceCount: uInstanceCount
              baseVertex : 0
 baseInstance: uStartInstanceLocation];
         }
-        else
-#endif
-        if (uStartInstanceLocation == 0)
+        else if (uStartInstanceLocation == 0)
         {
             [m_CurrentEncoder drawIndexedPrimitives: m_MetalPrimitiveType
 indexCount: uIndexCountPerInstance
@@ -2812,25 +2814,27 @@ instanceCount: uInstanceCount];
     void CContext::DrawInstanced(uint32 uVertexCountPerInstance, uint32 uInstanceCount, uint32 uStartVertexLocation, uint32 uStartInstanceLocation)
     {
         DXGL_SCOPED_PROFILE("CContext::DrawInstanced")
-
+        SetVertexOffset(0); // No need to use uBaseVertexLocation for vertex offset as it is used to indicate which vertex is the starting vertex when calling drawPrimitives below
         FlushDrawState();
 
-#if defined(AZ_PLATFORM_APPLE_IOS)
+
         id<MTLDevice> mtlDevice = m_pDevice->GetMetalDevice();
+#if defined(AZ_PLATFORM_APPLE_IOS)
         bool baseInstSupported = [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1];
+#else
+        bool baseInstSupported = true; //This feature is supported on osx gpu families
+#endif
         if (baseInstSupported)
         {
             // `-[MTLDebugRenderCommandEncoder drawPrimitives:vertexStart:vertexCount:instanceCount:baseInstance:] is only supported on MTLFeatureSet_iOS_GPUFamily3_v1 and later'... (This is most likely related to the new A9 GPUS.)
             // https://developer.apple.com/library/ios/documentation/Metal/Reference/MTLDevice_Ref/index.html#//apple_ref/c/econst/MTLFeatureSet_iOS_GPUFamily2_v1
             [m_CurrentEncoder drawPrimitives: m_MetalPrimitiveType
-vertexStart: uStartVertexLocation
-vertexCount: uVertexCountPerInstance
-instanceCount: uInstanceCount
-baseInstance: uStartInstanceLocation];
+                                 vertexStart: uStartVertexLocation
+                                 vertexCount: uVertexCountPerInstance
+                               instanceCount: uInstanceCount
+                                baseInstance: uStartInstanceLocation];
         }
-        else
-#endif
-        if (uStartInstanceLocation == 0)
+        else if (uStartInstanceLocation == 0)
         {
             [m_CurrentEncoder drawPrimitives: m_MetalPrimitiveType
 vertexStart: uStartVertexLocation
@@ -3011,7 +3015,7 @@ instanceCount: uInstanceCount];
         return m_RingBufferShared.Allocate(m_iCurrentFrameSlot, size, ringBufferOffsetOut);
 #endif
     }
-    
+
     id <MTLBuffer> CContext::GetRingBuffer(MemRingBufferStorage memAllocMode)
     {
 #if defined(AZ_PLATFORM_APPLE_OSX)

@@ -12,8 +12,9 @@
 
 #pragma once
 
+#include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
-// include MCore related files
+#include <AzCore/RTTI/TypeInfo.h>
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Quaternion.h>
@@ -24,7 +25,6 @@
 #include "Transform.h"
 #include "AnimGraphPosePool.h"
 
-#include <AzCore/RTTI/TypeInfo.h>
 
 MCORE_FORWARD_DECLARE(AttributeSet);
 
@@ -33,11 +33,8 @@ namespace EMotionFX
     // forward declarations
     class MotionSystem;
     class Attachment;
-    class LocalSpaceController;
-    class GlobalSpaceController;
     class AnimGraphInstance;
     class EyeBlinker;
-    class GlobalPose;
     class MorphSetupInstance;
 
 
@@ -67,7 +64,7 @@ namespace EMotionFX
             BOUNDS_STATIC_BASED         = 5     /**< Calculate the bounding volumes based on an approximate box, based on the mesh bounds, and move this box along with the actor instance position. */
         };
 
-        static ActorInstance* Create(Actor* actor, uint32 threadIndex = 0);
+        static ActorInstance* Create(Actor* actor, AZ::EntityId entityId = AZ::EntityId(), uint32 threadIndex = 0);
 
         /**
          * Get a pointer to the actor from which this is an instance.
@@ -214,6 +211,12 @@ namespace EMotionFX
         //--------------------------------
 
         /**
+         * Get the entity id to which the given actor instance belongs to.
+         * @result Entity id of the actor instance. EntityId::InvalidEntityId in case the actor instance is used without the entity component system.
+         */
+        AZ::EntityId GetEntityId() const;
+
+        /**
          * Set a pointer to some custom data you want to store and link with this actor instance object.
          * Custom data can for example link a game or engine object with this EMotion FX ActorInstance object.
          * An example is when EMotion FX triggers a motion event. You know the actor that triggered the event, but
@@ -223,13 +226,7 @@ namespace EMotionFX
          * The pointer that you specify will not be deleted when the actor instance is being destructed.
          * @param customData A void pointer to the custom data to link with this actor instance.
          */
-        void SetCustomData(void* customData, const AZ::Uuid& typeId);
-
-        template<typename T>
-        void SetCustomData(T* customData)
-        {
-            SetCustomData(customData, AZ::AzTypeInfo<T>::Uuid());
-        }
+        void SetCustomData(void* customData);
 
         /**
          * Get a pointer to the custom data you stored and linked with this actor instance object.
@@ -242,29 +239,6 @@ namespace EMotionFX
          * @result A void pointer to the custom data you have specified.
          */
         void* GetCustomData() const;
-
-        /**
-         * Typesafe version.
-         * Use GetCustomData<T> to retrieve custom data in a type-safe manner. Null will be returned
-         * if stored custom data is not of the requested type.
-         */
-        template <typename T>
-        T* GetCustomData() const
-        {
-            if (mCustomDataType == AZ::AzTypeInfo<T>::Uuid())
-            {
-                return static_cast<T*>(mCustomData);
-            }
-            return nullptr;
-        }
-
-        /**
-         * Retrieves the Uuid of the type currently stored in custom data.
-         */
-        const AZ::Uuid& GetCustomDataType() const
-        {
-            return mCustomDataType;
-        }
 
         //-------------------------------------------------------------------------------------------
 
@@ -299,13 +273,6 @@ namespace EMotionFX
          * actor instance where this actor is attached to.
          */
         void UpdateGlobalMatricesForNonRoots();
-
-        /**
-         * Update the global space controllers.
-         * Global space controllers will modify the global space transformation matrices of the nodes.
-         * @param timePassedInSeconds The time passed in seconds, since the last update.
-         */
-        void UpdateGlobalSpaceControllers(float timePassedInSeconds);
 
         /**
          * If this is a skin attachment, it will update the global space matrices of this actor instance
@@ -346,7 +313,7 @@ namespace EMotionFX
          & @param scale The scale factor for each axis.
          * @param outMatrix A pointer to the matrix that will contain the local space matrix after executing this method.
          */
-        void CalcLocalTM(uint32 nodeIndex, const MCore::Vector3& pos, const MCore::Quaternion& rot, const MCore::Vector3& scale, MCore::Matrix* outMatrix) const;
+        void CalcLocalTM(uint32 nodeIndex, const AZ::Vector3& pos, const MCore::Quaternion& rot, const AZ::Vector3& scale, MCore::Matrix* outMatrix) const;
 
         //-------------------------------------------------------------------------------------------
 
@@ -368,8 +335,9 @@ namespace EMotionFX
          * All deformations happen on the CPU. So if you use pure GPU processing, you should not be calling this method.
          * Also invisible actor instances should not update their mesh deformers, as this can be very CPU intensive.
          * @param timePassedInSeconds The time passed in seconds, since the last frame or update.
+         * @param processDisabledDeformers When set to true, even mesh deformers that are disabled will even be processed.
          */
-        void UpdateMeshDeformers(float timePassedInSeconds);
+        void UpdateMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers=false);
 
         //-------------------------------------------------------------------------------------------
 
@@ -575,151 +543,12 @@ namespace EMotionFX
 
         //-------------------------------------------------------------------------------------------
 
-        // local space controllers
-        /**
-         * Add a local space controller.
-         * Please keep in mind that you have to activate your controller before it will have any influence.
-         * Activating your controller can be done using the LocalSpaceController::Activate() method.
-         * Also note that you don't have to delete the controller yourself, as it will be deleted automatically from memory
-         * when deleting the actor instance.
-         * The order in which you add the local space controllers is not important. You can control the priority level of the
-         * controller when using the LocalSpaceController::Activate() method. A controller is basically just a motion, and the motion
-         * priorities can be used to define what motions overwrite others.
-         * @param controller The local space controller to add.
-         */
-        void AddLocalSpaceController(LocalSpaceController* controller);
-
-        /**
-         * Get the number of local space controllers that have been added.
-         * @result The number of local space controllers.
-         */
-        uint32 GetNumLocalSpaceControllers() const;
-
-        /**
-         * Get a local space controller that has been added to this actor before.
-         * @param nr The controller number, which must be in range of [0..GetNumLocalSpaceControllers()-1].
-         * @result A pointer to the controller.
-         */
-        LocalSpaceController* GetLocalSpaceController(uint32 nr) const;
-
-        /**
-         * Remove a given local space controller that has been added before.
-         * @param nr The controller number, which must be in range of [0..GetNumLocalSpaceControllers()-1].
-         * @param delFromMem Set this to true when you want the controller that gets removed also to be deleted from memory.
-         *                   When you set this to false, it will not be deleted from memory, but only removed from the array of controllers
-         *                   that is stored locally inside this actor instance.
-         */
-        void RemoveLocalSpaceController(uint32 nr, bool delFromMem = true);
-
-        /**
-         * Remove a given local space controller that has been added before.
-         * The specified controller has to be part of this actor instance, otherwise an assert will occur.
-         * @param controller The pointer to the controller to remove.
-         * @param delFromMem Set this to true when you want the controller that gets removed also to be deleted from memory.
-         *                   When you set this to false, it will not be deleted from memory, but only removed from the array of controllers
-         *                   that is stored locally inside this actor instance.
-         */
-        void RemoveLocalSpaceController(LocalSpaceController* controller, bool delFromMem = true);
-
-        /**
-         * Remove all local space controllers that have been added to this actor instance.
-         * @param delFromMem Set this to true when you want the controller that gets removed also to be deleted from memory.
-         *                   When you set this to false, it will not be deleted from memory, but only removed from the array of controllers
-         *                   that is stored locally inside this actor instance.
-         */
-        void RemoveAllLocalSpaceControllers(bool delFromMem = true);
-
-        //-------------------------------------------------------------------------------------------
-
-        // global space controllers
-        /**
-         * Add a given global space controller to this actor instance.
-         * The order in which you add global space controllers is important!
-         * They will be executed in the order you add them. Where the first one you add will get executed first.
-         * This method will add it to the back of the list, so that it will be executed as last.
-         * If you need to control the position in the list where it should insert the controller, use the
-         * InsertGlobalSpaceController method instead.
-         * @param controller The global space controller to add to the back of the controller list.
-         */
-        void AddGlobalSpaceController(GlobalSpaceController* controller);
-
-        /**
-         * Insert a global space controller inside the list of global space controllers.
-         * This will allow you to control in what order the controllers have to be executed.
-         * @param insertIndex The insert location, which must be in range of [0..GetNumGlobalSpaceControllers()-1].
-         * @param controller The global space controller to insert.
-         */
-        void InsertGlobalSpaceController(uint32 insertIndex, GlobalSpaceController* controller);
-
-        /**
-         * Get the number of global space controllers inside this actor instance.
-         * @result The number of global space controllers.
-         */
-        uint32 GetNumGlobalSpaceControllers() const;
-
-        /**
-         * Get a given global space controller.
-         * @param nr The global space controller number/index, which must be in range of [0..GetNumGlobalSpaceControllers()-1].
-         * @result A pointer to the global space controller.
-         */
-        GlobalSpaceController* GetGlobalSpaceController(uint32 nr) const;
-
-        /**
-         * Has a global space controller of the given type.
-         * @param typeID The global space controller type to check for.
-         * @result True in case there is a global space controller of the given type, false if not.
-         */
-        bool GetHasGlobalSpaceController(uint32 typeID) const;
-
-        /**
-         * Find the first global space controller of the given type.
-         * @param typeID The global space controller type to search for.
-         * @result A pointer to the global space controller of the given type.
-         */
-        GlobalSpaceController* FindGlobalSpaceControllerByType(uint32 typeID) const;
-
-        /**
-         * Find the index of the first global space controller of the given type.
-         * @param typeID The global space controller type to search for.
-         * @result The index of the global space controller with the given type.
-         */
-        uint32 FindGlobalSpaceControllerIndexByType(uint32 typeID) const;
-
-        /**
-         * Remove a given global space controller.
-         * @param nr The controller number, which must be in range of [0..GetNumGlobalSpaceControllers()-1].
-         * @param delFromMem Set this to true when you want the controller that gets removed also to be deleted from memory.
-         *                   When you set this to false, it will not be deleted from memory, but only removed from the array of controllers
-         *                   that is stored locally inside this actor instance.
-         */
-        void RemoveGlobalSpaceController(uint32 nr, bool delFromMem = true);
-
-        /**
-         * Remove a given global space controller that has been added before.
-         * The specified controller has to be part of this actor instance, otherwise an assert will occur.
-         * @param controller The pointer to the controller to remove.
-         * @param delFromMem Set this to true when you want the controller that gets removed also to be deleted from memory.
-         *                   When you set this to false, it will not be deleted from memory, but only removed from the array of controllers
-         *                   that is stored locally inside this actor instance.
-         */
-        void RemoveGlobalSpaceController(GlobalSpaceController* controller, bool delFromMem = true);
-
-        /**
-         * Remove all global space controllers that have been added to this actor instance.
-         * @param delFromMem Set this to true when you want the controller that gets removed also to be deleted from memory.
-         *                   When you set this to false, it will not be deleted from memory, but only removed from the array of controllers
-         *                   that is stored locally inside this actor instance.
-         */
-        void RemoveAllGlobalSpaceControllers(bool delFromMem = true);
-
-        //-------------------------------------------------------------------------------------------
-
         /**
          * Set the local space position of this actor instance.
          * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
          * @param position The position/translation to use.
          */
-        MCORE_INLINE void SetLocalPosition(const MCore::Vector3& position)          { mLocalTransform.mPosition = position; }
+        MCORE_INLINE void SetLocalPosition(const AZ::Vector3& position)          { mLocalTransform.mPosition = position; }
 
         /**
          * Set the local rotation of this actor instance.
@@ -735,7 +564,7 @@ namespace EMotionFX
              * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
              * @param scale The scale to use.
              */
-            MCORE_INLINE void SetLocalScale(const MCore::Vector3 & scale)            {
+            MCORE_INLINE void SetLocalScale(const AZ::Vector3 & scale)            {
                 mLocalTransform.mScale = scale;
             }
 
@@ -744,7 +573,8 @@ namespace EMotionFX
              * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
              * @result The local space scale factor for each axis.
              */
-            MCORE_INLINE const MCore::Vector3& GetLocalScale() const                { return mLocalTransform.mScale;
+            // KB TODO: This has to wait till I get to the transforms since it is a ref result.
+            MCORE_INLINE const AZ::Vector3& GetLocalScale() const                   { return mLocalTransform.mScale;
             }
         )
 
@@ -753,7 +583,7 @@ namespace EMotionFX
          * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
          * @result The local space position.
          */
-        MCORE_INLINE const MCore::Vector3 & GetLocalPosition() const                 {
+        MCORE_INLINE const AZ::Vector3 & GetLocalPosition() const                 {
             return mLocalTransform.mPosition;
         }
 
@@ -765,11 +595,11 @@ namespace EMotionFX
         MCORE_INLINE const MCore::Quaternion& GetLocalRotation() const              { return mLocalTransform.mRotation; }
 
 
-        MCORE_INLINE const MCore::Vector3& GetGlobalPosition() const                { return mGlobalTransform.mPosition;    }
+        MCORE_INLINE const AZ::Vector3& GetGlobalPosition() const                   { return mGlobalTransform.mPosition; }
         MCORE_INLINE const MCore::Quaternion& GetGlobalRotation() const             { return mGlobalTransform.mRotation;    }
         EMFX_SCALECODE
         (
-            MCORE_INLINE const MCore::Vector3 & GetGlobalScale() const               { return mGlobalTransform.mScale;
+            MCORE_INLINE const AZ::Vector3 & GetGlobalScale() const                 { return mGlobalTransform.mScale;
             }
         )
 
@@ -781,6 +611,22 @@ namespace EMotionFX
         //-------------------------------------------------------------------------------------------
 
         // attachments
+        /**
+         * Check if we can safely attach an attachment that uses the specified actor instance.
+         * This will check for infinite recursion/circular chains.
+         * @param attachmentInstance The actor instance we are trying to attach to this actor instance.
+         * @result Returns true when we can safely attach the specified actor instance, otherwise false is returned.
+         */
+        bool CheckIfCanHandleAttachment(const ActorInstance* attachmentInstance) const;
+
+        /**
+         * Check if this actor instance has a specific attachment that uses a specified actor instance.
+         * This function is recursive, so it also checks the attachments of the attachments, etc.
+         * @param attachmentInstance The actor instance you want to check with, which represents the attachment.
+         * @result Returns true when the specified actor instance is being used as attachment down the hierarchy, otherwise false is returned.
+         */
+        bool RecursiveHasAttachment(const ActorInstance* attachmentInstance) const;
+
         /**
          * Add an attachment to this actor.
          * Please note that each attachment can only belong to one actor instance.
@@ -900,40 +746,6 @@ namespace EMotionFX
          */
         Actor::Dependency* GetDependency(uint32 nr);
 
-        //-------------------------------------------------------------------------------------------
-
-        /**
-         * Calculate the global space scale values by applying forward kinematics on the local space scale values.
-         * This will output a scale value for each node in the actor where this is an instance from.
-         * @param outScales The array to store the scale values in. The size of this array must be at least the value returned by GetNumNodes().
-         */
-        void CalcGlobalScales(MCore::Vector3* outScales) const;
-
-        /**
-         * This will calculate the global space scale values and return them.
-         * No calculation is done when they already have been calculated.
-         * You should not free the pointer that is returned.
-         * @result A pointer to the global space scale values.
-         */
-        MCore::Vector3* CalcGlobalScales();
-
-        // clone data from another actor instance
-        /**
-         * Clone all local space controllers that have been added to another actor instance, and add them to this actor instance.
-         * Already existing controllers inside this actor instance will remain and will not be removed.
-         * @param sourceActor The source actor, where to copy over the controllers from.
-         * @param neverActivate When set to true, the cloned controllers will not be activated in case they are active inside the specified sourceActor.
-         *                      When set to false, the cloned controllers will also be activated when the they are currently active in the sourceActor.
-         */
-        void CloneLocalSpaceControllers(ActorInstance* sourceActor, bool neverActivate = false);
-
-        /**
-         * Clone all global space controllers that have been added to another actor instance, and add them to this actor instance.
-         * Already existing controllers inside this actor instance will remain and will not be removed.
-         * @param sourceActor The source actor, where to copy over the controllers from.
-         */
-        void CloneGlobalSpaceControllers(ActorInstance* sourceActor);
-
         /**
          * Recursively update the global space matrix.
          * This will update the global space matrix of a given node, and go down the hierarchy to update all child nodes as well.
@@ -954,8 +766,6 @@ namespace EMotionFX
          * @result A pointer to the morph setup instance object for this actor instance.
          */
         MorphSetupInstance* GetMorphSetupInstance() const;
-
-        //-----------------------------------------------------------------
 
         /**
          * Check for an intersection between the collision mesh of this actor and a given ray.
@@ -984,7 +794,7 @@ namespace EMotionFX
          *                   A value of nullptr is allowed, which will skip storing the resulting triangle indices.
          * @return A pointer to the node we detected the closest intersection with, or nullptr when no intersection found.
          */
-        Node* IntersectsCollisionMesh(uint32 lodLevel, const MCore::Ray& ray, MCore::Vector3* outIntersect, MCore::Vector3* outNormal = nullptr, AZ::Vector2* outUV = nullptr, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outIndices = nullptr) const;
+        Node* IntersectsCollisionMesh(uint32 lodLevel, const MCore::Ray& ray, AZ::Vector3* outIntersect, AZ::Vector3* outNormal = nullptr, AZ::Vector2* outUV = nullptr, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outIndices = nullptr) const;
 
         /**
          * Check for an intersection between the real mesh (if present) of this actor and a given ray.
@@ -1014,7 +824,7 @@ namespace EMotionFX
          *                   A value of nullptr is allowed, which will skip storing the resulting triangle indices.
          * @return A pointer to the node we detected the closest intersection with, or nullptr when no intersection found.
          */
-        Node* IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray, MCore::Vector3* outIntersect, MCore::Vector3* outNormal = nullptr, AZ::Vector2* outUV = nullptr, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outStartIndex = nullptr) const;
+        Node* IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray, AZ::Vector3* outIntersect, AZ::Vector3* outNormal = nullptr, AZ::Vector2* outUV = nullptr, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outStartIndex = nullptr) const;
 
         void SetParentGlobalTransform(const Transform& transform);
         const Transform& GetParentGlobalTransform() const;
@@ -1039,8 +849,6 @@ namespace EMotionFX
          */
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
         bool GetIsOwnedByRuntime() const;
-
-        //-------------
 
         /**
          * Enable a specific node.
@@ -1099,8 +907,8 @@ namespace EMotionFX
         void DrawSkeleton(Pose& pose, uint32 color);
         void ApplyMotionExtractionDelta(const Transform& trajectoryDelta);
         void ApplyMotionExtractionDelta();
-        void MotionExtractionCompensate();
-        void MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform);
+        void MotionExtractionCompensate(EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
+        void MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
 
         void SetMotionExtractionEnabled(bool enabled);
         bool GetMotionExtractionEnabled() const;
@@ -1116,16 +924,6 @@ namespace EMotionFX
         AnimGraphPose* RequestPose(uint32 threadIndex);
         void FreePose(uint32 threadIndex, AnimGraphPose* pose);
 
-        /**
-         * Get the global space pose blend buffer.
-         * This is used to blend between global space controllers.
-         * Global space controllers will output into this global pose object, on which blending is performed to smoothly
-         * fade in and fade out global space controllers when they get activated or deactivated.
-         * If you are trying to get the global space transformations for a node, use the TransformData class instead.
-         * @result A pointer to the global space pose blend buffer.
-         */
-        GlobalPose* GetGlobalPose() const;
-
         void SetMotionSamplingTimer(float timeInSeconds);
         void SetMotionSamplingRate(float updateRateInSeconds);
         float GetMotionSamplingTimer() const;
@@ -1136,7 +934,7 @@ namespace EMotionFX
         void UpdateVisualizeScale();                    // not automatically called on creation for performance reasons (this method relatively is slow as it updates all meshes)
         float GetVisualizeScale() const;
         void SetVisualizeScale(float factor);
- 
+
 
     private:
         TransformData*          mTransformData;         /**< The transformation data for this instance. */
@@ -1152,8 +950,6 @@ namespace EMotionFX
 
         MCore::Array<Attachment*>               mAttachments;       /**< The attachments linked to this actor instance. */
         MCore::Array<Actor::Dependency>         mDependencies;      /**< The actor dependencies, which specify which Actor objects this instance is dependent on. */
-        MCore::Array<LocalSpaceController*>     mLocalControllers;  /**< The collection of controllers that have been added to this actor instance. */
-        MCore::Array<GlobalSpaceController*>    mGlobalControllers; /**< The collection of global space controllers. */
         MorphSetupInstance*                     mMorphSetup;        /**< The  morph setup instance. */
         MCore::Array<uint16>                    mEnabledNodes;      /**< The list of nodes that are enabled. */
 
@@ -1163,10 +959,9 @@ namespace EMotionFX
         MotionSystem*           mMotionSystem;          /**< The motion system, that handles all motion playback and blending etc. */
         EyeBlinker*             mEyeBlinker;            /**< A procedural eyeblinker, can be nullptr. */
         AnimGraphInstance*      mAnimGraphInstance;     /**< A pointer to the anim graph instance, which can be nullptr when there is no anim graph instance. */
-        GlobalPose*             mGlobalPose;            /**< The global pose. */
         MCore::Mutex            mLock;                  /**< The multithread lock. */
         void*                   mCustomData;            /**< A pointer to custom data for this actor. This could be a pointer to your engine or game object for example. */
-        AZ::Uuid                mCustomDataType;        /**< Type Id of custom data assigned to this actor instance. */
+        AZ::EntityId            m_entityId;             /**< The entity id to which the actor instance belongs to. */
         float                   mBoundsUpdateFrequency; /**< The bounds update frequency. Which is a time value in seconds. */
         float                   mBoundsUpdatePassedTime;/**< The time passed since the last bounds update. */
         float                   mMotionSamplingRate;    /**< The motion sampling rate in seconds, where 0.1 would mean to update 10 times per second. A value of 0 or lower means to update every frame. */
@@ -1203,7 +998,7 @@ namespace EMotionFX
          * @param actor The actor where this actor instance should be created from.
          * @param threadIndex The thread index to create the instance on.
          */
-        ActorInstance(Actor* actor, uint32 threadIndex = 0);
+        ActorInstance(Actor* actor, AZ::EntityId entityId, uint32 threadIndex = 0);
 
         /**
          * The destructor.

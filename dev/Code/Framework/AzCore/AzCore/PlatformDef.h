@@ -22,7 +22,12 @@
 #if   defined(_WIN32)
 
 #define AZ_PLATFORM_WINDOWS
-#define AZ_COMPILER_MSVC        _MSC_VER
+
+#if defined(__clang__)
+#   define AZ_COMPILER_CLANG    __clang_major__
+#elif defined(_MSC_VER)
+#   define AZ_COMPILER_MSVC     _MSC_VER
+#endif
 
 //#ifndef _CRT_SECURE_NO_WARNINGS
 //# define _CRT_SECURE_NO_WARNINGS
@@ -45,6 +50,14 @@
 #elif defined(__ANDROID__)
 
 #define AZ_PLATFORM_ANDROID
+
+#if defined(__aarch64__)
+    #define AZ_PLATFORM_ANDROID_X64
+#elif defined(__ARM_ARCH_7A__)
+    #define AZ_PLATFORM_ANDROID_X32
+#else
+    #error This plaform is not supported
+#endif
 
 #if defined(__clang__)
 #   define AZ_COMPILER_CLANG    __clang_major__
@@ -99,6 +112,20 @@
 
 #define AZ_INLINE       inline
 
+/// DLL import/export macros
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#   if defined(AZ_COMPILER_CLANG)
+#       define AZ_DLL_EXPORT __attribute__ ((dllexport))
+#       define AZ_DLL_IMPORT __attribute__ ((dllimport))
+#   elif defined(AZ_COMPILER_MSVC)
+#       define AZ_DLL_EXPORT __declspec(dllexport)
+#       define AZ_DLL_IMPORT __declspec(dllimport)
+#   endif
+#else
+#   define AZ_DLL_EXPORT __attribute__ ((visibility ("default")))
+#   define AZ_DLL_IMPORT __attribute__ ((visibility ("default")))
+#endif
+
 #if defined(AZ_COMPILER_MSVC)
 
 #   define AZ_FORCE_INLINE  __forceinline
@@ -116,9 +143,6 @@
 #   define AZ_MAY_ALIAS
 /// Deprecated macro
 #   define AZ_DEPRECATED(_decl, _message)    __declspec(deprecated(_message)) _decl
-/// DLL import/export macros
-#   define AZ_DLL_EXPORT __declspec(dllexport)
-#   define AZ_DLL_IMPORT __declspec(dllimport)
 /// Function signature macro
 #   define AZ_FUNCTION_SIGNATURE    __FUNCSIG__
 
@@ -206,9 +230,6 @@
 
 /// Deprecated macro
 #   define AZ_DEPRECATED(_decl, _message) __attribute__((deprecated)) _decl
-/// DLL import/export macros
-#   define AZ_DLL_EXPORT __attribute__ ((visibility ("default")))
-#   define AZ_DLL_IMPORT __attribute__ ((visibility ("default")))
 /// Function signature macro
 #   define AZ_FUNCTION_SIGNATURE    __PRETTY_FUNCTION__
 
@@ -237,9 +258,6 @@
 #   define AZ_HAS_NULLPTR_T
 /// std::underlying_type for enums
 #   define AZSTD_UNDERLAYING_TYPE
-/// DLL import/export macros
-#   define AZ_DLL_EXPORT __attribute__ ((visibility ("default")))
-#   define AZ_DLL_IMPORT __attribute__ ((visibility ("default")))
 /// Function signature macro
 #   define AZ_FUNCTION_SIGNATURE    __PRETTY_FUNCTION__
 /// Enabled if we have initializers list support
@@ -279,7 +297,7 @@
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
 #   define AZ_THREAD_LOCAL  __declspec(thread)
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_OSX) // ACCEPTED_USE
+#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
 #   define AZ_THREAD_LOCAL  __thread
 #endif
 
@@ -315,6 +333,24 @@
 #if !defined(AZ_COMMAND_LINE_LEN)
 #   define AZ_COMMAND_LINE_LEN 2048
 #endif
+
+// Determine the dynamic library/module extension by platform
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+  #define AZ_DYNAMIC_LIBRARY_PREFIX
+  #define AZ_DYNAMIC_LIBRARY_EXTENSION  ".dll"
+#elif defined(AZ_PLATFORM_LINUX)
+  #define AZ_DYNAMIC_LIBRARY_PREFIX     "lib"
+  #define AZ_DYNAMIC_LIBRARY_EXTENSION  ".so"
+#elif defined(AZ_PLATFORM_ANDROID)
+  #define AZ_DYNAMIC_LIBRARY_PREFIX     "lib"
+  #define AZ_DYNAMIC_LIBRARY_EXTENSION  ".so"
+#elif defined(AZ_PLATFORM_APPLE)
+  #define AZ_DYNAMIC_LIBRARY_PREFIX     "lib"
+  #define AZ_DYNAMIC_LIBRARY_EXTENSION  ".dylib"
+#else 
+  #pragma error("Unrecognized platform for library extension")
+#endif
+
 
 #endif // AZCORE_PLATFORM_DEF_H
 #pragma once

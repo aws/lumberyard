@@ -37,7 +37,6 @@ namespace AZ
     {
         namespace SceneData
         {
-            //The following strings need to be kept in sync with the strings in the VirtualTypes.h/.cpp files. 
             static AZStd::fixed_vector < AZ::Crc32, LodRule::m_maxLods > s_lodVirtualTypeKeys =
             {
                 AZ_CRC("LODMesh1", 0xcbea988c),
@@ -201,6 +200,15 @@ namespace AZ
                         }
                     }
                 }
+            }
+
+            void LodRuleBehavior::GetVirtualTypeName(AZStd::string& name, Crc32 type)
+            {
+                if (type == AZ_CRC("LODMesh1", 0xcbea988c)) { name = "LODMesh1"; }
+                else if (type == AZ_CRC("LODMesh2", 0x52e3c936)) { name = "LODMesh2"; }
+                else if (type == AZ_CRC("LODMesh3", 0x25e4f9a0)) { name = "LODMesh3"; }
+                else if (type == AZ_CRC("LODMesh4", 0xbb806c03)) { name = "LODMesh4"; }
+                else if (type == AZ_CRC("LODMesh5", 0xcc875c95)) { name = "LODMesh5"; }
             }
 
             void LodRuleBehavior::GetAllVirtualTypes(AZStd::set<Crc32>& types)

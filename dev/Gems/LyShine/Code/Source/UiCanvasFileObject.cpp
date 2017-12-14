@@ -36,7 +36,7 @@ UiCanvasFileObject* UiCanvasFileObject::LoadCanvasFromStream(AZ::IO::GenericStre
 
     // null terminate in case we perform string operations.
     // this is not necessary on ObjectStream, but loading legacy files often requires string ops.
-    buffer[bytesRead] = 0; 
+    buffer[bytesRead] = 0;
 
     // if ReadRaw read the file ok then load the entity from the buffer using AZ
     // serialization
@@ -46,7 +46,10 @@ UiCanvasFileObject* UiCanvasFileObject::LoadCanvasFromStream(AZ::IO::GenericStre
         // Check to see if this is an old format canvas file that cannot be handled simply in the
         // version convert functions
 
-        enum class FileFormat { ReallyOld, Old, CanvasObject };
+        enum class FileFormat
+        {
+            ReallyOld, Old, CanvasObject
+        };
         FileFormat fileFormat = FileFormat::CanvasObject;
 
         // All canvas files start with this (at least up to the introduction of the UiCanvasFileObject)
@@ -238,7 +241,7 @@ UiCanvasFileObject* UiCanvasFileObject::LoadCanvasEntitiesFromOldFormatFile(cons
     {
         // not an exact match - this can happen, for example if the entity version is not 2
         // it can have a missing version
-        // This is a more forgiving way to do the test. It could replace the code above but 
+        // This is a more forgiving way to do the test. It could replace the code above but
         // that code has been working for a while so we add this code as a backup
         const char* typeStart = strstr(buffer, typeString);
         if (!typeStart)
@@ -248,11 +251,11 @@ UiCanvasFileObject* UiCanvasFileObject::LoadCanvasEntitiesFromOldFormatFile(cons
             {
                 // Something is very wrong. The file is shorter that the expected prefix.
                 // note that we must use AZ_Warning here as this code is shared in tools which don't have gEnv.
-                AZ_Warning("UI",false, "Error converting canvas file. File appears to be truncated.");
+                AZ_Warning("UI", false, "Error converting canvas file. File appears to be truncated.");
             }
             else
             {
-                // Print out the start of the file for help in debugging 
+                // Print out the start of the file for help in debugging
                 // user reported issues
                 AZStd::string messageBuffer(buffer, strlen(prefixToRemove2));
                 AZ_Warning("UI", false, "Error converting canvas file. Prefix is:\r\n%s", messageBuffer.c_str());
@@ -477,7 +480,7 @@ bool UiCanvasFileObject::VersionConverter(AZ::SerializeContext& context, AZ::Ser
         {
             return false;
         }
-            
+
         // All UI element entities will be copied to this container and then added to the slice component
         AZStd::vector<AZ::SerializeContext::DataElementNode> copiedEntities;
 
@@ -494,7 +497,7 @@ bool UiCanvasFileObject::VersionConverter(AZ::SerializeContext& context, AZ::Ser
             return false;
         }
     }
-    
+
     return true;
 }
 

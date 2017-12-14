@@ -310,17 +310,18 @@ namespace UnitTest
 
             AssetId     m_assetId;
             AssetType   m_assetType;
-            int         m_ready;
-            int         m_moved;
-            int         m_reloaded;
-            int         m_saved;
-            int         m_unloaded;
-            int         m_error;
+            AZStd::atomic_int         m_ready;
+            AZStd::atomic_int         m_moved;
+            AZStd::atomic_int         m_reloaded;
+            AZStd::atomic_int         m_saved;
+            AZStd::atomic_int         m_unloaded;
+            AZStd::atomic_int         m_error;
         };
 
         struct MyAssetHolder
         {
             AZ_TYPE_INFO(MyAssetHolder, "{1DA71115-547B-4f32-B230-F3C70608AD68}");
+            AZ_CLASS_ALLOCATOR(MyAssetHolder, AZ::SystemAllocator, 0);
             Asset<MyAssetType>  m_asset1;
             Asset<MyAssetType>  m_asset2;
         };
@@ -413,8 +414,25 @@ namespace UnitTest
                     AssetManager::Instance().DispatchEvents();
                     AZStd::this_thread::yield();
                 }
-                EXPECT_TRUE(assetStatus1.m_ready == 0 && assetStatus1.m_moved == 0 && assetStatus1.m_reloaded == 0 && assetStatus1.m_saved == 1 && assetStatus1.m_unloaded == 0 && assetStatus1.m_error == 0);
-                EXPECT_TRUE(assetStatus2.m_ready == 0 && assetStatus2.m_moved == 0 && assetStatus2.m_reloaded == 0 && assetStatus2.m_saved == 1 && assetStatus2.m_unloaded == 0 && assetStatus2.m_error == 0);
+                EXPECT_EQ(0, assetStatus1.m_ready);
+                EXPECT_EQ(0, assetStatus1.m_moved);
+                EXPECT_EQ(0, assetStatus1.m_reloaded);
+                EXPECT_EQ(1, assetStatus1.m_saved);
+                EXPECT_EQ(0, assetStatus1.m_unloaded);
+                EXPECT_EQ(0, assetStatus1.m_error);
+                EXPECT_EQ(0, assetStatus2.m_ready);
+                EXPECT_EQ(0, assetStatus2.m_moved);
+                EXPECT_EQ(0, assetStatus2.m_reloaded);
+                EXPECT_EQ(1, assetStatus2.m_saved);
+                EXPECT_EQ(0, assetStatus2.m_unloaded);
+                EXPECT_EQ(0, assetStatus2.m_error);
+            }
+
+            // Allow asset1 and asset2 to release their data
+            while (assetStatus1.m_unloaded < 1 || assetStatus2.m_unloaded < 1)
+            {
+                AssetManager::Instance().DispatchEvents();
+                AZStd::this_thread::yield();
             }
 
             // Try to load the assets back in
@@ -430,8 +448,18 @@ namespace UnitTest
                     AssetManager::Instance().DispatchEvents();
                     AZStd::this_thread::yield();
                 }
-                EXPECT_TRUE(assetStatus1.m_ready == 1 && assetStatus1.m_moved == 0 && assetStatus1.m_reloaded == 0 && assetStatus1.m_saved == 1 && assetStatus1.m_unloaded == 1 && assetStatus1.m_error == 0);
-                EXPECT_TRUE(assetStatus2.m_ready == 1 && assetStatus2.m_moved == 0 && assetStatus2.m_reloaded == 0 && assetStatus2.m_saved == 1 && assetStatus2.m_unloaded == 1 && assetStatus2.m_error == 0);
+                EXPECT_EQ(1, assetStatus1.m_ready); // asset1 should be ready...
+                EXPECT_EQ(0, assetStatus1.m_moved);
+                EXPECT_EQ(0, assetStatus1.m_reloaded);
+                EXPECT_EQ(1, assetStatus1.m_saved);
+                EXPECT_EQ(1, assetStatus1.m_unloaded); // ...and unloaded once because the prior asset1 went out of scope
+                EXPECT_EQ(0, assetStatus1.m_error);
+                EXPECT_EQ(1, assetStatus2.m_ready); // asset2 should be ready...
+                EXPECT_EQ(0, assetStatus2.m_moved);
+                EXPECT_EQ(0, assetStatus2.m_reloaded);
+                EXPECT_EQ(1, assetStatus2.m_saved);
+                EXPECT_EQ(1, assetStatus2.m_unloaded); // ...and unloaded once because the prior asset2 went out of scope
+                EXPECT_EQ(0, assetStatus2.m_error);
 
                 assetHolder.m_asset1 = asset1;
                 assetHolder.m_asset2 = asset2;
@@ -439,8 +467,18 @@ namespace UnitTest
 
             // We should still be holding to both assets so nothing should have changed
             AssetManager::Instance().DispatchEvents();
-            EXPECT_TRUE(assetStatus1.m_ready == 1 && assetStatus1.m_moved == 0 && assetStatus1.m_reloaded == 0 && assetStatus1.m_saved == 1 && assetStatus1.m_unloaded == 1 && assetStatus1.m_error == 0);
-            EXPECT_TRUE(assetStatus2.m_ready == 1 && assetStatus2.m_moved == 0 && assetStatus2.m_reloaded == 0 && assetStatus2.m_saved == 1 && assetStatus2.m_unloaded == 1 && assetStatus2.m_error == 0);
+            EXPECT_EQ(1, assetStatus1.m_ready);
+            EXPECT_EQ(0, assetStatus1.m_moved);
+            EXPECT_EQ(0, assetStatus1.m_reloaded);
+            EXPECT_EQ(1, assetStatus1.m_saved);
+            EXPECT_EQ(1, assetStatus1.m_unloaded);
+            EXPECT_EQ(0, assetStatus1.m_error);
+            EXPECT_EQ(1, assetStatus2.m_ready);
+            EXPECT_EQ(0, assetStatus2.m_moved);
+            EXPECT_EQ(0, assetStatus2.m_reloaded);
+            EXPECT_EQ(1, assetStatus2.m_saved);
+            EXPECT_EQ(1, assetStatus2.m_unloaded);
+            EXPECT_EQ(0, assetStatus2.m_error);
 
             // test serializing out assets
             SerializeContext sc;
@@ -462,8 +500,18 @@ namespace UnitTest
             assetHolder.m_asset1 = nullptr;
             assetHolder.m_asset2 = nullptr;
             AssetManager::Instance().DispatchEvents();
-            EXPECT_TRUE(assetStatus1.m_ready == 1 && assetStatus1.m_moved == 0 && assetStatus1.m_reloaded == 0 && assetStatus1.m_saved == 1 && assetStatus1.m_unloaded == 2 && assetStatus1.m_error == 0);
-            EXPECT_TRUE(assetStatus2.m_ready == 1 && assetStatus2.m_moved == 0 && assetStatus2.m_reloaded == 0 && assetStatus2.m_saved == 1 && assetStatus2.m_unloaded == 2 && assetStatus2.m_error == 0);
+            EXPECT_EQ(1, assetStatus1.m_ready);
+            EXPECT_EQ(0, assetStatus1.m_moved);
+            EXPECT_EQ(0, assetStatus1.m_reloaded);
+            EXPECT_EQ(1, assetStatus1.m_saved);
+            EXPECT_EQ(2, assetStatus1.m_unloaded); // asset should be unloaded now
+            EXPECT_EQ(0, assetStatus1.m_error);
+            EXPECT_EQ(1, assetStatus2.m_ready);
+            EXPECT_EQ(0, assetStatus2.m_moved);
+            EXPECT_EQ(0, assetStatus2.m_reloaded);
+            EXPECT_EQ(1, assetStatus2.m_saved);
+            EXPECT_EQ(2, assetStatus2.m_unloaded); // asset should be unloaded now
+            EXPECT_EQ(0, assetStatus2.m_error);
 
             // load back the saved data
             {
@@ -556,7 +604,7 @@ namespace UnitTest
                     AZ_TEST_STOP_ASSERTTEST(1);
                     EXPECT_TRUE(incompatibleAsset.Get() == nullptr);
                     EXPECT_TRUE(!incompatibleAsset.GetId().IsValid());
-                    EXPECT_TRUE(incompatibleAsset.GetType().IsNull());
+                    EXPECT_EQ(AzTypeInfo<MyAssetType>::Uuid(), incompatibleAsset.GetType());
                 }
 
                 EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);

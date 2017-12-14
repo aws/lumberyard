@@ -13,21 +13,20 @@
 #include "SphereShapeComponent.h"
 #include "EditorSphereShapeComponent.h"
 
-#include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/Serialization/EditContext.h>
+
+#include "ShapeComponentConverters.h"
 
 namespace LmbrCentral
 {
-    namespace ClassConverters
-    {
-        static bool DeprecateEditorSphereColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-    }
-
     void EditorSphereShapeComponent::Reflect(AZ::ReflectContext* context)
     {
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
+            // Note: this must be called by the first EditorShapeComponent to have it's reflect function called. Which happens to be this one for now.
+            EditorBaseShapeComponent::Reflect(*serializeContext);
+
             // Deprecate: EditorSphereColliderComponent -> EditorSphereShapeComponent
             serializeContext->ClassDeprecate(
                 "EditorSphereColliderComponent",
@@ -35,8 +34,8 @@ namespace LmbrCentral
                 &ClassConverters::DeprecateEditorSphereColliderComponent
                 );
 
-            serializeContext->Class<EditorSphereShapeComponent, EditorComponentBase>()
-                ->Version(1)
+            serializeContext->Class<EditorSphereShapeComponent, EditorBaseShapeComponent>()
+                ->Version(2, &ClassConverters::UpgradeEditorSphereShapeComponent)
                 ->Field("Configuration", &EditorSphereShapeComponent::m_configuration)
                 ;
 
@@ -58,6 +57,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ;
             }
+            
         }
     }
 
@@ -83,7 +83,8 @@ namespace LmbrCentral
 
     void EditorSphereShapeComponent::ConfigurationChanged()
     {
-        SphereShape::InvalidateCache(SphereIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);        
+        SphereShape::InvalidateCache(SphereIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
+        ShapeComponentNotificationsBus::Event(GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
 
     void EditorSphereShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -94,49 +95,4 @@ namespace LmbrCentral
             component->SetConfiguration(m_configuration);
         }
     }
-
-    namespace ClassConverters
-    {
-        static bool DeprecateEditorSphereColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
-        {
-            /*
-            Old:
-            <Class name="EditorSphereColliderComponent" field="element" version="1" type="{9A12FC39-60D2-4237-AC79-11FEDFEDB851}">
-             <Class name="SphereColliderConfiguration" field="Configuration" version="1" type="{0319AE62-3355-4C98-873D-3139D0427A53}">
-              <Class name="float" field="Radius" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-             </Class>
-            </Class>
-
-            New:
-            <Class name="EditorSphereShapeComponent" field="element" version="1" type="{2EA56CBF-63C8-41D9-84D5-0EC2BECE748E}">
-             <Class name="SphereShapeConfig" field="Configuration" version="1" type="{4AADFD75-48A7-4F31-8F30-FE4505F09E35}">
-              <Class name="float" field="Radius" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-             </Class>
-            </Class>
-            */
-
-            // Cache the Configuration
-            SphereShapeConfig configuration;
-            int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
-            if (configIndex != -1)
-            {
-                classElement.GetSubElement(configIndex).GetData<SphereShapeConfig>(configuration);
-            }
-
-            // Convert to EditorSphereShapeComponent
-            bool result = classElement.Convert<EditorSphereShapeComponent>(context);
-            if (result)
-            {
-                configIndex = classElement.AddElement<SphereShapeConfig>(context, "Configuration");
-                if (configIndex != -1)
-                {
-                    classElement.GetSubElement(configIndex).SetData<SphereShapeConfig>(context, configuration);
-                }
-                return true;
-            }
-            return false;
-        }
-
-    } // namespace ClassConverters
-
 } // namespace LmbrCentral

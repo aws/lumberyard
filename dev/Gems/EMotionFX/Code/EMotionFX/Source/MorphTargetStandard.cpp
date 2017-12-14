@@ -143,13 +143,13 @@ namespace EMotionFX
 
                 // check if the mesh has differences
                 uint32 numDifferent = 0;
-                const MCore::Vector3*   neutralPositions = (MCore::Vector3*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
-                const MCore::Vector3*   neutralNormals   = (MCore::Vector3*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
-                const uint32*           neutralOrgVerts  = (uint32*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
-                const AZ::Vector4*      neutralTangents  = static_cast<AZ::Vector4*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
-                const MCore::Vector3*   targetPositions  = (MCore::Vector3*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
-                const MCore::Vector3*   targetNormals    = (MCore::Vector3*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
-                const AZ::Vector4*      targetTangents   = (AZ::Vector4*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS);
+                const AZ::PackedVector3f*   neutralPositions = (AZ::PackedVector3f*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
+                const AZ::PackedVector3f*   neutralNormals   = (AZ::PackedVector3f*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
+                const uint32*               neutralOrgVerts  = (uint32*)neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS);
+                const AZ::Vector4*          neutralTangents  = static_cast<AZ::Vector4*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
+                const AZ::PackedVector3f*   targetPositions  = (AZ::PackedVector3f*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
+                const AZ::PackedVector3f*   targetNormals    = (AZ::PackedVector3f*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
+                const AZ::Vector4*          targetTangents   = (AZ::Vector4*)targetMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS);
 
                 //--------------------------------------------------
 
@@ -184,10 +184,10 @@ namespace EMotionFX
                     const uint32 orgVertex = neutralOrgVerts[v];
 
                     // calculate the delta vector between the two positions
-                    const MCore::Vector3 deltaVec = targetPositions[ morphVerts[orgVertex][0] ] - neutralPositions[v];
+                    const AZ::Vector3 deltaVec = AZ::Vector3(targetPositions[ morphVerts[orgVertex][0] ]) - AZ::Vector3(neutralPositions[v]);
 
                     // check if the vertex positions are different, so if there are mesh changes
-                    if (deltaVec.SafeLength() > /*0.0001f*/ epsilon)
+                    if (MCore::SafeLength(deltaVec) > /*0.0001f*/ epsilon)
                     {
                         box.Encapsulate(deltaVec);
                         numDifferent++;
@@ -202,10 +202,10 @@ namespace EMotionFX
                 }
 
                 // calculate the minimum and maximum value
-                const MCore::Vector3& boxMin = box.GetMin();
-                const MCore::Vector3& boxMax = box.GetMax();
-                float minValue = MCore::Min3<float>(boxMin.x, boxMin.y, boxMin.z);
-                float maxValue = MCore::Max3<float>(boxMax.x, boxMax.y, boxMax.z);
+                const AZ::Vector3& boxMin = box.GetMin();
+                const AZ::Vector3& boxMax = box.GetMax();
+                float minValue = MCore::Min3<float>(boxMin.GetX(), boxMin.GetY(), boxMin.GetZ());
+                float maxValue = MCore::Max3<float>(boxMax.GetX(), boxMax.GetY(), boxMax.GetZ());
 
                 // make sure the values won't be too small
                 if (maxValue - minValue < 1.0f)
@@ -236,10 +236,10 @@ namespace EMotionFX
                     const uint32 orgVertex = neutralOrgVerts[v];
 
                     // calculate the delta vector between the two positions
-                    const MCore::Vector3 deltaVec = targetPositions[ morphVerts[orgVertex][0] ] - neutralPositions[v];
+                    const AZ::Vector3 deltaVec = AZ::Vector3(targetPositions[ morphVerts[orgVertex][0] ]) - AZ::Vector3(neutralPositions[v]);
 
                     // check if the vertex positions are different, so if there are mesh changes
-                    if (deltaVec.SafeLength() > /*0.0001f*/ epsilon)
+                    if (MCore::SafeLength(deltaVec) > /*0.0001f*/ epsilon)
                     {
                         uint32 duplicateIndex = 0;
                         uint32 targetIndex = 0;
@@ -254,13 +254,13 @@ namespace EMotionFX
                         targetIndex = morphVerts[orgVertex][duplicateIndex];
 
                         // calculate the delta normal tangent
-                        MCore::Vector3 deltaNormal  = targetNormals[targetIndex] - neutralNormals[v];
-                        MCore::Vector3 deltaTangent(0.0f, 0.0f, 0.0f);
+                        AZ::Vector3 deltaNormal  = AZ::Vector3(targetNormals[targetIndex]) - AZ::Vector3(neutralNormals[v]);
+                        AZ::Vector3 deltaTangent(0.0f, 0.0f, 0.0f);
                         if (hasTangents)
                         {
-                            deltaTangent.x = targetTangents[targetIndex].GetX() - neutralTangents[v].GetX();
-                            deltaTangent.y = targetTangents[targetIndex].GetY() - neutralTangents[v].GetY();
-                            deltaTangent.z = targetTangents[targetIndex].GetZ() - neutralTangents[v].GetZ();
+                            deltaTangent.SetX(targetTangents[targetIndex].GetX() - neutralTangents[v].GetX());
+                            deltaTangent.SetY(targetTangents[targetIndex].GetY() - neutralTangents[v].GetY());
+                            deltaTangent.SetZ(targetTangents[targetIndex].GetZ() - neutralTangents[v].GetZ());
                         }
 
                         // setup the deform data for this vertex
@@ -358,21 +358,21 @@ namespace EMotionFX
                 const Transform& neutralTransform   = neutralBindPose.GetLocalTransform(neutralNodeIndex);
                 const Transform& targetTransform    = targetBindPose.GetLocalTransform(targetNodeIndex);
 
-                MCore::Vector3      neutralPos      = neutralTransform.mPosition;
-                MCore::Vector3      targetPos       = targetTransform.mPosition;
+                AZ::Vector3      neutralPos         = neutralTransform.mPosition;
+                AZ::Vector3      targetPos          = targetTransform.mPosition;
                 MCore::Quaternion   neutralRot      = neutralTransform.mRotation;
                 MCore::Quaternion   targetRot       = targetTransform.mRotation;
 
                 EMFX_SCALECODE
                 (
-                    MCore::Vector3      neutralScale    = neutralTransform.mScale;
-                    MCore::Vector3      targetScale     = targetTransform.mScale;
+                    AZ::Vector3      neutralScale    = neutralTransform.mScale;
+                    AZ::Vector3      targetScale     = targetTransform.mScale;
                     //MCore::Quaternion neutralScaleRot = neutralTransform.mScaleRotation;
                     //MCore::Quaternion targetScaleRot  = targetTransform.mScaleRotation;
                 )
 
                 // check if the position changed
-                bool changed = (MCore::Compare<MCore::Vector3>::CheckIfIsClose(neutralPos, targetPos, MCore::Math::epsilon) == false);
+                bool changed = (MCore::Compare<AZ::Vector3>::CheckIfIsClose(neutralPos, targetPos, MCore::Math::epsilon) == false);
 
                 // check if the rotation changed
                 if (changed == false)
@@ -385,7 +385,7 @@ namespace EMotionFX
                     // check if the scale changed
                     if (changed == false)
                     {
-                        changed = (MCore::Compare<MCore::Vector3>::CheckIfIsClose(neutralScale, targetScale, MCore::Math::epsilon) == false);
+                        changed = (MCore::Compare<AZ::Vector3>::CheckIfIsClose(neutralScale, targetScale, MCore::Math::epsilon) == false);
                     }
 
                     // check if the scale rotation changed
@@ -682,7 +682,7 @@ namespace EMotionFX
 
     // apply the relative transformation to the specified node
     // store the result in the position, rotation and scale parameters
-    void MorphTargetStandard::ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, MCore::Vector3& position, MCore::Quaternion& rotation, MCore::Vector3& scale, float weight)
+    void MorphTargetStandard::ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, AZ::Vector3& position, MCore::Quaternion& rotation, AZ::Vector3& scale, float weight)
     {
         // calculate the normalized weight (in range of 0..1)
         const float newWeight = MCore::Clamp<float>(weight, mRangeMin, mRangeMax); // make sure its within the range
@@ -1001,7 +1001,7 @@ namespace EMotionFX
             for (uint32 v = 0; v < numVerts; ++v)
             {
                 // decompress
-                MCore::Vector3 decompressed = deltas[v].mPosition.ToVector3(deformData->mMinValue, deformData->mMaxValue);
+                AZ::Vector3 decompressed = deltas[v].mPosition.ToVector3(deformData->mMinValue, deformData->mMaxValue);
 
                 // scale
                 decompressed *= scaleFactor;

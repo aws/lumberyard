@@ -1120,9 +1120,6 @@ BEGIN
     EDITTEXT        IDC_MOVE_SPEED,432,2,28,12,ES_AUTOHSCROLL | NOT WS_BORDER,WS_EX_STATICEDGE
     LTEXT           "Speed:",IDC_STATIC,408,4,24,8
     PUSHBUTTON      "Coll",IDC_TERRAIN_COLLISION,503,2,16,12,NOT WS_TABSTOP
-    PUSHBUTTON      "AI/Physics",IDC_PHYSICS,523,2,50,12,NOT WS_TABSTOP
-    PUSHBUTTON      "||",IDC_SINGLE_STEP_PHYS,573,2,12,12,NOT WS_TABSTOP
-    PUSHBUTTON      "|>",IDC_DO_STEP_PHYS,585,2,12,12,NOT WS_TABSTOP
     PUSHBUTTON      "No Sync Player",IDC_SYNCPLAYER,601,2,55,12,NOT WS_TABSTOP
     PUSHBUTTON      "Goto position",IDC_GOTOPOSITION,657,2,55,12,NOT WS_TABSTOP
     PUSHBUTTON      ".1",IDC_SPEED_01,461,2,11,12,NOT WS_TABSTOP
@@ -5727,7 +5724,6 @@ BEGIN
     "L",            ID_SELECTION_LOAD,      VIRTKEY, SHIFT, CONTROL, NOINVERT
     "S",            ID_SELECTION_SAVE,      VIRTKEY, SHIFT, CONTROL, NOINVERT
     "G",            ID_SNAP_TO_GRID,        VIRTKEY, NOINVERT
-    "P",            ID_SWITCH_PHYSICS,      VIRTKEY, CONTROL, NOINVERT
     VK_OEM_3,       ID_SWITCHCAMERA_NEXT,   VIRTKEY, CONTROL, NOINVERT
     VK_F1,          ID_TAG_LOC1,            VIRTKEY, CONTROL, NOINVERT
     VK_F10,         ID_TAG_LOC10,           VIRTKEY, CONTROL, NOINVERT
@@ -5745,7 +5741,9 @@ BEGIN
     94,             ID_VIEW_CONSOLEWINDOW,  ASCII,  NOINVERT
     "`",            ID_VIEW_CONSOLEWINDOW,  ASCII,  NOINVERT
     "~",            ID_VIEW_CONSOLEWINDOW,  ASCII,  NOINVERT
+#ifdef FEATURE_ORTHOGRAPHIC_VIEW
     VK_TAB,         ID_VIEW_CYCLE2DVIEWPORT, VIRTKEY, CONTROL, NOINVERT
+#endif
     "G",            ID_VIEW_SWITCHTOGAME,   VIRTKEY, CONTROL, NOINVERT
     VK_F3,          ID_WIREFRAME,           VIRTKEY, NOINVERT
     "Z",            ID_GOTO_SELECTED,       VIRTKEY, NOINVERT
@@ -6736,7 +6734,6 @@ BEGIN
     END
     POPUP "&Display"
     BEGIN
-        MENUITEM "Toggle Fullscreen MainWindow", ID_DISPLAY_TOGGLEFULLSCREENMAINWINDOW
         MENUITEM "&Wireframe", ID_WIREFRAME
         MENUITEM SEPARATOR
         MENUITEM "Ruler",                       ID_RULER
@@ -6789,7 +6786,9 @@ BEGIN
             MENUITEM "Location 12", ID_TAG_LOC12
         END
         MENUITEM "Configure Layout...", ID_VIEW_CONFIGURELAYOUT
+#ifdef FEATURE_ORTHOGRAPHIC_VIEW
         MENUITEM "Cycle Viewports", ID_VIEW_CYCLE2DVIEWPORT
+#endif
         MENUITEM SEPARATOR
         MENUITEM "Show/Hide Helpers",           ID_DISPLAY_SHOWHELPERS
     END
@@ -6836,7 +6835,6 @@ BEGIN
     POPUP "Game"
     BEGIN
         MENUITEM "Switch to &Game", ID_VIEW_SWITCHTOGAME
-        MENUITEM "Enable Physics/AI", ID_SWITCH_PHYSICS
         MENUITEM "Terrain Collision", ID_TERRAIN_COLLISION
         MENUITEM "Synchronize Player with Camera", ID_GAME_SYNCPLAYER
         MENUITEM "&Edit Equipment-Packs...", ID_TOOLS_EQUIPPACKSEDIT
@@ -8090,7 +8088,6 @@ BEGIN
     ID_LAYER_FROZEN         "Toggle Layer Frozen\nFreeze Leyer"
     ID_LAYER_SELECT         "Select Current Layer\nSelect Current Layer"
     ID_LAYER_CURRENT        "Current Active Layer\nActive Layer"
-    ID_SWITCH_PHYSICS       "Enable processing of Physics and AI."
     ID_REF_COORDS_SYS       "RefCoords\nReference coordinate system"
     ID_TV_ADDKEY            "Add Keys\nAdd Keys"
     ID_TV_DELKEY            "Delete Key\nDelete Key"
@@ -8955,7 +8952,7 @@ BEGIN
     IDS_MODULAR_BEHAVIORTREE_EDITOR_TITLE "Modular BehaviorTree Editor"
     IDS_CHARACTER_EDITOR_TOOL_TITLE "Character Editor"
     IDS_DATABASE_VIEWPANE_TITLE "Database View"
-    IDS_DIALOG_EDITOR_TITLE "Dialog Editor"
+    IDS_DIALOG_EDITOR_TITLE "Dialog Editor (LEGACY)"
 END
 
 STRINGTABLE

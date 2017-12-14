@@ -13,6 +13,7 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <IGameFramework.h>
+#include <IInput.h>
 namespace CryLegacy
 {
     class CryLegacyRequests
@@ -24,7 +25,6 @@ namespace CryLegacy
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         //////////////////////////////////////////////////////////////////////////
-
     };
     using CryLegacyRequestBus = AZ::EBus<CryLegacyRequests>;
 

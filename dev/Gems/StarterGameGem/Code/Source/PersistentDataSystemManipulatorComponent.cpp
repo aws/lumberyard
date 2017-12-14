@@ -9,20 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #include "StdAfx.h"
 #include "PersistentDataSystemManipulatorComponent.h"
+
 #include "StarterGameUtility.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -78,28 +67,53 @@ namespace StarterGameGem
 
 					->DataElement(0, &PersistentDataSystemManipulatorComponent::m_keyName, "Key Name", "The Name of the key that i am manipulating.")
 					->DataElement(AZ::Edit::UIHandlers::ComboBox, &PersistentDataSystemManipulatorComponent::m_dataToUse,
-						"Data Type", "Use this data type of information to manipulate.")->
-						EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::String, "String")->
-						EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Number, "Number")->
-						EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Bool, "Bool")->
-						EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Other, "Trigger message param")
+						"Data Type", "Use this data type of information to manipulate.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PersistentDataSystemManipulatorComponent::MajorPropertyChanged)
+						->EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::String, "String")
+						->EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Number, "Number")
+						->EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Bool, "Bool")
+						->EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Other, "Trigger message param")
+
 					->DataElement(AZ::Edit::UIHandlers::ComboBox, &PersistentDataSystemManipulatorComponent::m_useForData,
-						"Use", "What to do with the data.")->
-						EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::AddOnly,	"AddOnly")->
-						EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::SetOnly,	"SetOnly")->
-						EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::AddOrSet,	"AddOrSet")->
-						EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Toggle,	"Toggle")->
-						EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Increment,	"Increment")->
-						EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Append,	"Append")->
-						EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Prepend,	"Prepend")
-					->ClassElement(AZ::Edit::ClassElements::Group, "Data")
-						->DataElement(0, &PersistentDataSystemManipulatorComponent::m_BoolData, "Bool", "True // false.")
-						->DataElement(0, &PersistentDataSystemManipulatorComponent::m_stringData, "String", "characters.")
-						->DataElement(0, &PersistentDataSystemManipulatorComponent::m_numberData, "Number", "float values.")
+						"Use", "What to do with the data.")
+						->EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::AddOnly,     "AddOnly")
+						->EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::SetOnly,     "SetOnly")
+						->EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::AddOrSet,    "AddOrSet")
+						->EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Toggle,      "Toggle")
+						->EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Increment,   "Increment")
+						->EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Append,      "Append")
+						->EnumAttribute(PersistentDataSystemComponent::eDataManipulationTypes::Prepend,	    "Prepend")
+
+					->DataElement(0, &PersistentDataSystemManipulatorComponent::m_BoolData, "Data", "True // false.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &PersistentDataSystemManipulatorComponent::IsDataBool)
+					->DataElement(0, &PersistentDataSystemManipulatorComponent::m_stringData, "Data", "characters.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &PersistentDataSystemManipulatorComponent::IsDataString)
+					->DataElement(0, &PersistentDataSystemManipulatorComponent::m_numberData, "Data", "float values.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &PersistentDataSystemManipulatorComponent::IsDataNumber)
 					;
 			}
 		}
 	}
+
+    AZ::u32 PersistentDataSystemManipulatorComponent::MajorPropertyChanged()
+    {
+        return AZ::Edit::PropertyRefreshLevels::EntireTree;
+    }
+
+    bool PersistentDataSystemManipulatorComponent::IsDataBool() const
+    {
+        return m_dataToUse == PersistentDataSystemComponent::eBasicDataTypes::Bool;
+    }
+
+    bool PersistentDataSystemManipulatorComponent::IsDataString() const
+    {
+        return m_dataToUse == PersistentDataSystemComponent::eBasicDataTypes::String;
+    }
+
+    bool PersistentDataSystemManipulatorComponent::IsDataNumber() const
+    {
+        return m_dataToUse == PersistentDataSystemComponent::eBasicDataTypes::Number;
+    }
 
 	void PersistentDataSystemManipulatorComponent::Activate()
 	{

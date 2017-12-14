@@ -36,6 +36,8 @@ namespace LmbrCentral
 
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
+        void SetObstructionType(Audio::ObstructionType) {}
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             LmbrCentral::AudioTriggerComponent::GetProvidedServices(provided);
@@ -57,7 +59,9 @@ namespace LmbrCentral
         //! Serialized data
         AzToolsFramework::CReflectedVarAudioControl m_defaultPlayTrigger;
         AzToolsFramework::CReflectedVarAudioControl m_defaultStopTrigger;
+        Audio::ObstructionType m_obstructionType = Audio::ObstructionType::Ignore;
         bool m_playsImmediately = false;
+        bool m_notifyWhenTriggerFinishes = false;
     };
 
 } // namespace LmbrCentral

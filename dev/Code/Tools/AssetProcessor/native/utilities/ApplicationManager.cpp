@@ -41,6 +41,8 @@
 #include <QFileInfo>
 #include <QTranslator>
 #include <QByteArray>
+#include <QCommandlineparser>
+#include <QCommandlineoption>
 
 #include <QMessageBox>
 #include <QSettings>
@@ -52,7 +54,7 @@
 
 #include <string.h> // for base  strcpy
 #include <AzFramework/Asset/AssetCatalogComponent.h>
-#include <native/AssetManager/ToolsAssetSystemComponent.h>
+#include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <LyShine/UiAssetTypes.h>
 
@@ -84,13 +86,36 @@ namespace AssetProcessor
     public:
         void OutputMessage(AzFramework::LogFile::SeverityLevel severity, const char* window, const char* message) override
         {
+            // if we receive an exception it means we are likely to crash.  in that case, even if it occurred in a job thread
+            // it occurred in THIS PROCESS, which will now die.  So we log these even in the case of them happening in a job thread.
+            if ((m_inException)||(severity == AzFramework::LogFile::SEV_EXCEPTION))
+            {
+                if (!m_inException)
+                {
+                    m_inException = true; // from this point on, consume all messages regardless of what severity they are.
+                    AZ::Debug::Trace::HandleExceptions(false);
+                }
+                AzFramework::LogComponent::OutputMessage(AzFramework::LogFile::SEV_EXCEPTION, ConsoleChannel, message);
+                // note that OutputMessage will only output to the log, we want this kind of info to make its way into the
+                // regular stderr too
+                fprintf(stderr, "Exception log: %s - %s", window, message);
+                fflush(stderr);
+                return;
+            }
+
             if (AssetProcessor::GetThreadLocalJobId() != 0)
             {
-                return; // we are in a job thread
+                // we are in a job thread - return early to make it so that the global log file does not get this message
+                // there will also be a log listener in the actual job log thread which will get the message too, and that one
+                // will write it to the individual log.
+                return; 
             }
 
             AzFramework::LogComponent::OutputMessage(severity, window, message);
         }
+
+    protected:
+        bool m_inException = false;
     };
 }
 
@@ -122,7 +147,7 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
         }
     }
 
-    components.push_back(azrtti_typeid<AssetProcessor::ToolsAssetSystemComponent>());
+    components.push_back(azrtti_typeid<AssetProcessor::ToolsAssetCatalogComponent>());
 
     return components;
 }
@@ -131,7 +156,7 @@ void AssetProcessorAZApplication::RegisterCoreComponents()
 {
     AzToolsFramework::ToolsApplication::RegisterCoreComponents();
 
-    RegisterComponentDescriptor(AssetProcessor::ToolsAssetSystemComponent::CreateDescriptor());
+    RegisterComponentDescriptor(AssetProcessor::ToolsAssetCatalogComponent::CreateDescriptor());
     RegisterComponentDescriptor(AzToolsFramework::Components::GenericComponentUnwrapper::CreateDescriptor());
 }
 
@@ -140,14 +165,14 @@ void AssetProcessorAZApplication::ResolveModulePath(AZ::OSString& modulePath)
    AssetProcessor::AssetProcessorStatusEntry entry(AssetProcessor::AssetProcessorStatus::Initializing_Gems, 0, QString(modulePath.c_str()));
    Q_EMIT AssetProcessorStatus(entry);
    AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Loading (Gem) Module '%s'...\n", modulePath.c_str());
+
    AzFramework::Application::ResolveModulePath(modulePath);
 }
 
 
-ApplicationManager::ApplicationManager(int argc, char** argv, QObject* parent)
+ApplicationManager::ApplicationManager(int* argc, char*** argv, QObject* parent)
     : QObject(parent)
-    , m_argc(argc)
-    , m_argv(argv)
+    , m_frameworkApp(argc, argv)
 {
     qInstallMessageHandler(&AssetProcessor::MessageHandler);
 }
@@ -186,12 +211,77 @@ ApplicationManager::~ApplicationManager()
 
     //Stop AZFramework
     m_frameworkApp.Stop();
+    AZ::Debug::Trace::HandleExceptions(false);
 }
 
 bool ApplicationManager::InitiatedShutdown() const
 {
     return m_duringShutdown;
 }
+
+void ApplicationManager::GetExternalBuilderFileList(QStringList& externalBuilderModules)
+{
+    externalBuilderModules.clear();
+
+    static const char* builder_folder_name = "Builders";
+
+    QString builderFolderName(builder_folder_name);
+
+    QStringList builderPaths;
+
+    // First priority: locate the Builders based on the current asset processor exe folder
+    QString builderPath1 = QDir::toNativeSeparators(QString(this->m_frameworkApp.GetExecutableFolder()) + builderFolderName);
+    builderPaths.append(builderPath1);
+
+    // Second priority, locate the Builds based on the engine root path + bin folder
+    QString builderPath2 = QDir::toNativeSeparators(QString(this->m_frameworkApp.GetEngineRoot()) + QString(BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING) + builderFolderName);
+#if defined (AZ_PLATFORM_WINDOWS)
+    bool isDuplicate = (builderPath1.compare(builderPath2, Qt::CaseInsensitive)==0);
+#else
+    bool isDuplicate = (builderPath1.compare(builderPath2, Qt::CaseSensitive)==0);
+#endif
+    if (!isDuplicate)
+    {
+        // Only add the second priorty if its different
+        builderPaths.append(builderPath2);
+    }
+
+    // Keep track of the builder names so we dont load duplicates (the first instance of a builder takes priority)
+    QSet<QString> detectedBuilderNames;
+
+    QStringList filter;
+    filter.append("*" AZ_DYNAMIC_LIBRARY_EXTENSION);
+
+    QDir builderDir;
+    bool builderDirFound = false;
+    for (auto builderPath : builderPaths)
+    {
+        builderDir.setPath(builderPath);
+        if (builderDir.exists())
+        {
+            QStringList fileList = builderDir.entryList(filter, QDir::Files);
+            for (const QString& file : fileList)
+            {
+                if (!detectedBuilderNames.contains(file))
+                {
+                    detectedBuilderNames.insert(file);
+                    QString fileFullPath = builderDir.filePath(file);
+                    externalBuilderModules.append(fileFullPath);
+                }
+                else
+                {
+                    AZ_Warning(AssetProcessor::ConsoleChannel, false, "Skipping duplicate builder '%s'\n", file.toUtf8().data());
+                }
+            }
+        }
+    }
+    if (externalBuilderModules.size() == 0)
+    {
+        AZ_Warning(AssetProcessor::ConsoleChannel, false, "AssetProcessor was unable to locate any builders\n");
+    }
+}
+
+
 
 QDir ApplicationManager::GetSystemRoot() const
 {
@@ -205,16 +295,6 @@ QString ApplicationManager::GetGameName() const
 QCoreApplication* ApplicationManager::GetQtApplication()
 {
     return m_qApp;
-}
-
-char** ApplicationManager::GetCommandArguments() const
-{
-    return m_argv;
-}
-
-int ApplicationManager::CommandLineArgumentsCount() const
-{
-    return m_argc;
 }
 
 void ApplicationManager::RegisterObjectForQuit(QObject* source, bool insertInFront)
@@ -448,21 +528,14 @@ void ApplicationManager::PopulateApplicationDependencies()
 
     m_filesOfInterest.push_back(applicationPath);
 
-    QString builderDirPath = dir.filePath("Builders");
-    QDir builderDir(builderDirPath);
-    QStringList filter;
-#if defined(AZ_PLATFORM_WINDOWS)
-    filter.append("*.dll");
-#elif defined(AZ_PLATFORM_LINUX)
-    filter.append("*.so");
-#elif defined(AZ_PLATFORM_APPLE)
-    filter.append("*.dylib");
-#endif
-    QStringList fileList = builderDir.entryList(filter, QDir::Files);
-    for (QString& file : fileList)
+    // Get the external builder modules to add to the files of interest
+    QStringList builderModuleFileList;
+    GetExternalBuilderFileList(builderModuleFileList);
+    for (const QString& builderModuleFile : builderModuleFileList)
     {
-        m_filesOfInterest.push_back(builderDir.filePath(file));
+        m_filesOfInterest.push_back(builderModuleFile);
     }
+
 
     QDir assetRoot;
     AssetUtilities::ComputeAssetRoot(assetRoot);
@@ -510,7 +583,7 @@ void ApplicationManager::PopulateApplicationDependencies()
 }
 
 
-bool ApplicationManager::StartAZFramework()
+bool ApplicationManager::StartAZFramework(QString appRootOverride)
 {
     AzFramework::Application::Descriptor appDescriptor;
     AZ::ComponentApplication::StartupParameters params;
@@ -521,11 +594,21 @@ bool ApplicationManager::StartAZFramework()
     AssetUtilities::ComputeAppRootAndBinFolderFromApplication(dir, filename, binFolder);
 
     // The application will live in a bin folder one level up from the app root.
-    char staticStorageForRootPath[AZ_MAX_PATH_LEN] = {0};
-    azstrcpy(staticStorageForRootPath, AZ_MAX_PATH_LEN, dir.toUtf8().data());
-    
+    char staticStorageForRootPath[AZ_MAX_PATH_LEN] = { 0 };
+    if (appRootOverride.isEmpty())
+    {
+        azstrcpy(staticStorageForRootPath, AZ_MAX_PATH_LEN, dir.toUtf8().data());
+    }
+    else
+    {
+        azstrcpy(staticStorageForRootPath, AZ_MAX_PATH_LEN, appRootOverride.toUtf8().data());
+    }
+
     // Prevent script reflection warnings from bringing down the AssetProcessor
     appDescriptor.m_enableScriptReflection = false;
+
+    // start listening for exceptions occuring so if something goes wrong we have at least SOME output...
+    AZ::Debug::Trace::HandleExceptions(true);
 
     params.m_appRootOverride = staticStorageForRootPath;
     m_frameworkApp.Start(appDescriptor, params);
@@ -580,15 +663,15 @@ bool ApplicationManager::ActivateModules()
         QCoreApplication::processEvents(QEventLoop::AllEvents);
     });
 
-    QDir engineRoot;
-    if (!AssetUtilities::ComputeEngineRoot(engineRoot))
+    QDir assetRoot;
+    if (!AssetUtilities::ComputeAssetRoot(assetRoot))
     {
-        AZ_Error(AssetProcessor::ConsoleChannel, false, "Cannot compute the root of the engine.  Is AssetProcessor being run from the appropriate folder?");
+        AZ_Error(AssetProcessor::ConsoleChannel, false, "Cannot compute the asset root folder.  Is AssetProcessor being run from the appropriate folder?");
         return false;
     }
-    engineRoot.cd(AssetUtilities::ComputeGameName());
+    assetRoot.cd(AssetUtilities::ComputeGameName());
 
-    QString absoluteConfigFilePath = engineRoot.absoluteFilePath("Config/Editor.xml");
+    QString absoluteConfigFilePath = assetRoot.absoluteFilePath("Config/Editor.xml");
 
     return m_frameworkApp.ReflectModulesFromAppDescriptor(absoluteConfigFilePath.toUtf8().data());
 }
@@ -598,18 +681,95 @@ void ApplicationManager::addRunningThread(AssetProcessor::ThreadWorker* thread)
     m_runningThreads.push_back(thread);
 }
 
+QString ApplicationManager::ParseOptionAppRootArgument()
+{
+    AZ_Assert(m_qApp!=nullptr,"m_qApp not initialized.  QT application must be created before this call.")
+    // Parse any parameters.
+    static const char* app_root_parameter = "app-root";
+    static const char* app_root_parameter_desc = "Optional external path outside of the current engine to set as the application root.";
+    QCommandLineOption  appRootPathOption(QString(app_root_parameter), tr(app_root_parameter_desc), QString("path"));
+    QCommandLineParser  parser;
+    parser.setApplicationDescription("Asset Processor");
+    parser.addOption(appRootPathOption);
+    parser.parse(m_qApp->arguments());
+
+    QString appRootArgValue = parser.value(appRootPathOption);
+    appRootArgValue.remove(QChar('\"'));
+    return appRootArgValue.trimmed();
+}
+
+bool ApplicationManager::ValidateExternalAppRoot(QString appRootPath) const 
+{
+    static const char* bootstrap_cfg_name = "bootstrap.cfg";
+
+    QDir testAppRootPath(appRootPath);
+
+    // Make sure the path exists
+    if (!testAppRootPath.exists())
+    {
+        AZ_Warning(AssetProcessor::ConsoleChannel, testAppRootPath.exists(), "Invalid Application Root path override (--app-root): %s.  Directory does not exist.\n", appRootPath.toUtf8().data());
+        return false;
+    }
+
+    // Make sure the path contains bootstrap.cfg
+    if (!testAppRootPath.exists(bootstrap_cfg_name))
+    {
+        AZ_Warning(AssetProcessor::ConsoleChannel, testAppRootPath.exists(), "Invalid Application Root path override (--app-root): %s.  Directory does not contain %s.\n", appRootPath.toUtf8().data(), bootstrap_cfg_name);
+        return false;
+    }
+
+    // Make sure we can read the 'sys_game_folder' settings from bootstrap.cfg
+    QSettings settings(testAppRootPath.absoluteFilePath(bootstrap_cfg_name), QSettings::Format::IniFormat);
+    static const char* sysGameFolderKeyName = "sys_game_folder";
+    auto sysGameFolderSettings = settings.value(sysGameFolderKeyName);
+    if (!sysGameFolderSettings.isValid() || sysGameFolderSettings.isNull())
+    {
+        AZ_Warning(AssetProcessor::ConsoleChannel, testAppRootPath.exists(), "Invalid Application Root path override (--app-root): %s.  %s in the path is not valid.\n", appRootPath.toUtf8().data(), bootstrap_cfg_name);
+        return false;
+    }
+
+    // Make sure the 'sys_game_folder' value in the external bootstrap.cfg points to a valid subfolder in that path
+    QString sysGameFolder = sysGameFolderSettings.toString();
+    QDir    gameFolderPath(appRootPath);
+    if (!gameFolderPath.cd(sysGameFolder))
+    {
+        AZ_Warning(AssetProcessor::ConsoleChannel, testAppRootPath.exists(), "Invalid Application Root path override (--app-root): %s.  Configured Game folder %s in the path is not valid.\n", appRootPath.toUtf8().data(), sysGameFolder.toUtf8().data());
+        return false;
+    }
+
+    return true;
+}
 
 ApplicationManager::BeforeRunStatus ApplicationManager::BeforeRun()
 {
-    //Initialize and prepares Qt Directories
+    // Initialize and prepares Qt Directories
     if (!AssetUtilities::InitializeQtLibraries())
     {
         return ApplicationManager::BeforeRunStatus::Status_Failure;
     }
 
+    // Create the Qt Application
     CreateQtApplication();
 
-    if (!StartAZFramework())
+    // Calculate the override app root path if provided and validate it before passing it along
+    QString overrideAppRootPath = ParseOptionAppRootArgument();
+    bool invalidOverrideAppRoot = false;
+    if (!overrideAppRootPath.isEmpty())
+    {
+        if (ValidateExternalAppRoot(overrideAppRootPath))
+        {
+            QDir overrideAppRoot(overrideAppRootPath);
+            QDir resultAppRoot;
+            AssetUtilities::ComputeAssetRoot(resultAppRoot, &overrideAppRoot);
+        }
+        else
+        {
+            AZ_Error(AssetProcessor::ConsoleChannel, false, "Invalid override app root folder '%s'.", overrideAppRootPath.toUtf8().data());
+            return ApplicationManager::BeforeRunStatus::Status_Failure;
+        }
+    }
+
+    if (!StartAZFramework(overrideAppRootPath))
     {
         return ApplicationManager::BeforeRunStatus::Status_Failure;
     }
@@ -619,7 +779,12 @@ ApplicationManager::BeforeRunStatus ApplicationManager::BeforeRun()
         return ApplicationManager::BeforeRunStatus::Status_Failure;
     }
 
-    AssetUtilities::UpdateBranchToken();
+    if (!AssetUtilities::UpdateBranchToken())
+    {
+        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Asset Processor was unable to open  the bootstrap file and verify/update the branch token. \
+            Please ensure that the bootstrap.cfg file is present and not locked by any other program.\n");
+        return ApplicationManager::BeforeRunStatus::Status_Failure;
+    }
 
     return ApplicationManager::BeforeRunStatus::Status_Success;
 }
@@ -724,12 +889,6 @@ void ApplicationManager::RegisterComponentDescriptor(const AZ::ComponentDescript
 {
     AZ_Assert(descriptor, "descriptor cannot be null");
     this->m_frameworkApp.RegisterComponentDescriptor(descriptor);
-}
-
-void ApplicationManager::UnRegisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor)
-{
-    AZ_Assert(descriptor, "descriptor cannot be null");
-    this->m_frameworkApp.UnregisterComponentDescriptor(descriptor);
 }
 
 ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegistryProblems(QWidget* parentWidget, bool showPopupMessage)

@@ -20,10 +20,10 @@ namespace LmbrCentral
      * Configuration data for EditorStaticPhysicsComponent.
      */
     struct EditorStaticPhysicsConfig
-        : public StaticPhysicsConfig
+        : public AzFramework::StaticPhysicsConfig
     {
         AZ_CLASS_ALLOCATOR(EditorStaticPhysicsConfig, AZ::SystemAllocator, 0);
-        AZ_RTTI(EditorStaticPhysicsConfig, "{8309995F-A628-57DA-AAFE-2E04A257EC40}", StaticPhysicsConfig);
+        AZ_RTTI(EditorStaticPhysicsConfig, "{8309995F-A628-57DA-AAFE-2E04A257EC40}", AzFramework::StaticPhysicsConfig);
         static void Reflect(AZ::ReflectContext* context);
 
         // currently, there's no difference between EditorStaticPhysicsConfig and its base class.
@@ -36,7 +36,7 @@ namespace LmbrCentral
         : public EditorPhysicsComponent
     {
     public:
-        AZ_EDITOR_COMPONENT(EditorStaticPhysicsComponent, EditorStaticPhysicsComponentTypeId, EditorPhysicsComponent);
+        AZ_EDITOR_COMPONENT(EditorStaticPhysicsComponent, AzFramework::EditorStaticPhysicsComponentTypeId, EditorPhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         EditorStaticPhysicsComponent() = default;

@@ -159,7 +159,7 @@ void CFlowTrackEventNode::AddListener(SActivationInfo* pActInfo)
     if (NULL == m_pSequence)
     {
         string name = GetPortString(pActInfo, kSequenceName);
-        m_pSequence = gEnv->pMovieSystem->FindSequence(name.c_str());
+        m_pSequence = gEnv->pMovieSystem->FindLegacySequenceByName(name.c_str());
     }
     if (NULL != m_pSequence)
     {

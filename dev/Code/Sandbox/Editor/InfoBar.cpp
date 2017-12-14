@@ -95,11 +95,15 @@ CInfoBar::CInfoBar(QWidget* parent)
     connect(ui->m_posCtrlY, &QNumberCtrl::dragFinished, this, &CInfoBar::OnEndVectorUpdate);
     connect(ui->m_posCtrlZ, &QNumberCtrl::dragFinished, this, &CInfoBar::OnEndVectorUpdate);
 
+    connect(ui->m_posCtrlX, &QNumberCtrl::mouseReleased, this, &CInfoBar::OnEnableIdleUpdate);
+    connect(ui->m_posCtrlY, &QNumberCtrl::mouseReleased, this, &CInfoBar::OnEnableIdleUpdate);
+    connect(ui->m_posCtrlZ, &QNumberCtrl::mouseReleased, this, &CInfoBar::OnEnableIdleUpdate);
+    connect(ui->m_posCtrlX, &QNumberCtrl::mousePressed, this, &CInfoBar::OnDisableIdleUpdate);
+    connect(ui->m_posCtrlY, &QNumberCtrl::mousePressed, this, &CInfoBar::OnDisableIdleUpdate);
+    connect(ui->m_posCtrlZ, &QNumberCtrl::mousePressed, this, &CInfoBar::OnDisableIdleUpdate);
+
     connect(ui->m_setVector, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSetVector);
     connect(ui->m_terrainCollision, &QToolButton::clicked, this, &CInfoBar::OnBnClickedTerrainCollision);
-    connect(ui->m_physicsBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedPhysics);
-    connect(ui->m_physSingleStepBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSingleStepPhys);
-    connect(ui->m_physDoStepBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedDoStepPhys);
     connect(ui->m_syncPlayerBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSyncplayer);
     connect(ui->m_gotoPos, &QToolButton::clicked, this, &CInfoBar::OnBnClickedGotoPosition);
     connect(ui->m_speed_01, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSpeed01);
@@ -134,21 +138,9 @@ void CInfoBar::OnEditorNotifyEvent(EEditorNotifyEvent event)
     }
     else if (event == eNotify_OnBeginLoad || event == eNotify_OnCloseScene)
     {
-        // make sure AI/Physics is disabled on level load (CE-4229)
-        if (GetIEditor()->GetGameEngine()->GetSimulationMode())
-        {
-            OnBnClickedPhysics();
-        }
-
-        ui->m_physicsBtn->setEnabled(false);
-        ui->m_physSingleStepBtn->setEnabled(false);
-        ui->m_physDoStepBtn->setEnabled(false);
     }
     else if (event == eNotify_OnEndLoad || event == eNotify_OnEndNewScene)
     {
-        ui->m_physicsBtn->setEnabled(true);
-        ui->m_physSingleStepBtn->setEnabled(true);
-        ui->m_physDoStepBtn->setEnabled(true);
     }
     else if (event == eNotify_OnSelectionChange)
     {
@@ -298,7 +290,17 @@ void CInfoBar::OnVectorUpdate(bool followTerrain)
         }
         else
         {
-            GetIEditor()->GetSelection()->Rotate((Ang3)v, referenceCoordSys);
+            CBaseObject *refObj;
+            CSelectionGroup* pGroup = GetIEditor()->GetSelection();
+            if (pGroup && pGroup->GetCount() > 0)
+            {
+                refObj = pGroup->GetObject(0);
+                AffineParts ap;
+                ap.SpectralDecompose(refObj->GetWorldTM());
+                Vec3 oldEulerRotation = AZVec3ToLYVec3(AzFramework::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(ap.rot)));
+                Vec3 diff = v - oldEulerRotation;
+                GetIEditor()->GetSelection()->Rotate((Ang3)diff, referenceCoordSys);
+            }
         }
     }
     if (emode == eEditModeScale)
@@ -334,6 +336,11 @@ void CInfoBar::OnVectorUpdate(bool followTerrain)
 
 void CInfoBar::IdleUpdate()
 {
+    if (!m_idleUpdateEnabled)
+    {
+        return;
+    }
+
     bool updateUI = false;
     // Update Width/Height of selection rectangle.
     AABB box;
@@ -421,19 +428,6 @@ void CInfoBar::IdleUpdate()
             (ui->m_terrainCollision->isChecked() && noCollision))
         {
             ui->m_terrainCollision->setChecked(!noCollision);
-        }
-
-        bool bPhysics = GetIEditor()->GetGameEngine()->GetSimulationMode();
-        if ((ui->m_physicsBtn->isChecked() && !bPhysics) ||
-            (!ui->m_physicsBtn->isChecked() && bPhysics))
-        {
-            ui->m_physicsBtn->setChecked(bPhysics);
-        }
-
-        bool bSingleStep = (gEnv->pPhysicalWorld->GetPhysVars()->bSingleStepMode != 0);
-        if (ui->m_physSingleStepBtn->isChecked() != bSingleStep)
-        {
-            ui->m_physSingleStepBtn->setChecked(bSingleStep);
         }
 
         bool bSyncPlayer = GetIEditor()->GetGameEngine()->IsSyncPlayerPosition();
@@ -708,7 +702,6 @@ void CInfoBar::SetVectorRange(float min, float max)
     ui->m_posCtrlZ->SetRange(min, max);
 }
 
-
 void CInfoBar::OnVectorLock()
 {
     // TODO: Add your control notification handler code here
@@ -742,10 +735,6 @@ void CInfoBar::OnInitDialog()
     ui->m_posCtrlZ->setMaximumWidth(width);
     ui->m_setVector->setEnabled(false);
 
-    ui->m_physicsBtn->setEnabled(false);
-    ui->m_physSingleStepBtn->setEnabled(false);
-    ui->m_physDoStepBtn->setEnabled(false);
-
     ui->m_moveSpeed->setRange(0.01, 100);
     ui->m_moveSpeed->setSingleStep(0.1);
 
@@ -764,6 +753,15 @@ void CInfoBar::OnInitDialog()
     }
 
     AZ::VR::VREventBus::Handler::BusConnect();
+}
+
+void CInfoBar::OnEnableIdleUpdate()
+{
+    m_idleUpdateEnabled = true;
+}
+void CInfoBar::OnDisableIdleUpdate()
+{
+    m_idleUpdateEnabled = false;
 }
 
 void CInfoBar::OnHMDInitialized()
@@ -792,28 +790,6 @@ void CInfoBar::OnEndVectorUpdate()
 void CInfoBar::OnBnClickedTerrainCollision()
 {
     emit ActionTriggered(ID_TERRAIN_COLLISION);
-}
-
-void CInfoBar::OnBnClickedPhysics()
-{
-    bool bPhysics = GetIEditor()->GetGameEngine()->GetSimulationMode();
-    ui->m_physicsBtn->setChecked(bPhysics);
-    emit ActionTriggered(ID_SWITCH_PHYSICS);
-
-    if (bPhysics && ui->m_physSingleStepBtn->isChecked())
-    {
-        OnBnClickedSingleStepPhys();
-    }
-}
-
-void CInfoBar::OnBnClickedSingleStepPhys()
-{
-    ui->m_physSingleStepBtn->setChecked(gEnv->pPhysicalWorld->GetPhysVars()->bSingleStepMode ^= 1);
-}
-
-void CInfoBar::OnBnClickedDoStepPhys()
-{
-    gEnv->pPhysicalWorld->GetPhysVars()->bDoStep = 1;
 }
 
 //////////////////////////////////////////////////////////////////////////

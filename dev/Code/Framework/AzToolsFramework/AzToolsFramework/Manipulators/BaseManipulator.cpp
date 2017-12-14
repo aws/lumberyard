@@ -14,124 +14,194 @@
 #include "ManipulatorManager.h"
 
 #include <AzCore/Math/IntersectSegment.h>
+#include <AzCore/Math/Internal/VectorConversions.inl>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
 {
-    const AZ::Color BaseManipulator::s_defaultMouseOverColor = AZ::Color(0.0f, 1.0f, 1.0f, 1.0f);
+    const AZ::Color BaseManipulator::s_defaultMouseOverColor = AZ::Color(1.0f, 1.0f, 0.0f, 1.0f); // yellow
 
     BaseManipulator::BaseManipulator(AZ::EntityId entityId)
-        : m_manipulatorId(InvalidManipulatorId)
-        , m_manipulatorManagerId(InvalidManipulatorManagerId)
-        , m_entityId(entityId)
-        , m_isPerformingOperation(false)
-        , m_isBoundsDirty(true)
-        , m_isMouseOver(false)
-    {
-    }
+        : m_entityId(entityId) {}
 
     BaseManipulator::~BaseManipulator()
     {
-        if (IsRegistered())
-        {
-            Unregister();
-        }
+        AZ_Assert(!Registered(), "Manipulator must be unregistered before it is destroyed");
+        EndUndoBatch();
     }
 
-    void BaseManipulator::OnMouseOver(ManipulatorId manipulatorId)
+    bool BaseManipulator::OnLeftMouseDown(
+        const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance)
     {
-        if (m_manipulatorId == manipulatorId)
+        if (m_onLeftMouseDownImpl)
         {
-            m_isMouseOver = true;
-        }   
-        else
+            BeginAction();
+            ToolsApplicationRequests::Bus::BroadcastResult(
+                m_undoBatch, &ToolsApplicationRequests::Bus::Events::BeginUndoBatch, "ManipulatorLeftMouseDown");
+            ToolsApplicationRequests::Bus::Broadcast(
+                &ToolsApplicationRequests::Bus::Events::AddDirtyEntity, m_entityId);
+
+            (*this.*m_onLeftMouseDownImpl)(interaction, rayIntersectionDistance);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    bool BaseManipulator::OnRightMouseDown(
+        const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance)
+    {
+        if (m_onRightMouseDownImpl)
         {
-            m_isMouseOver = false;
-        }   
+            BeginAction();
+            ToolsApplicationRequests::Bus::BroadcastResult(
+                m_undoBatch, &ToolsApplicationRequests::Bus::Events::BeginUndoBatch, "ManipulatorRightMouseDown");
+            ToolsApplicationRequests::Bus::Broadcast(
+                &ToolsApplicationRequests::Bus::Events::AddDirtyEntity, m_entityId);
+
+            (*this.*m_onRightMouseDownImpl)(interaction, rayIntersectionDistance);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // note: OnLeft/RightMouseUp will not be called if OnLeft/RightMouseDownImpl have not been
+    // attached as no active manipulator will have been set in ManipulatorManager.
+    void BaseManipulator::OnLeftMouseUp(const ViewportInteraction::MouseInteraction& interaction)
+    {
+        EndAction();
+        OnLeftMouseUpImpl(interaction);
+        EndUndoBatch();
+    }
+
+    void BaseManipulator::OnRightMouseUp(const ViewportInteraction::MouseInteraction& interaction)
+    {
+        EndAction();
+        OnRightMouseUpImpl(interaction);
+        EndUndoBatch();
+    }
+
+    void BaseManipulator::OnMouseOver(ManipulatorId manipulatorId, const ViewportInteraction::MouseInteraction& interaction)
+    {
+        UpdateMouseOver(manipulatorId);
+        OnMouseOverImpl(manipulatorId, interaction);
+    }
+
+    void BaseManipulator::OnMouseWheel(const ViewportInteraction::MouseInteraction& interaction)
+    {
+        OnMouseWheelImpl(interaction);
+    }
+
+    void BaseManipulator::OnMouseMove(const ViewportInteraction::MouseInteraction& interaction)
+    {
+        if (!m_performingAction)
+        {
+            AZ_Warning("Manipulators", false, "MouseMove action received, but this manipulator is not performing actions!");
+            return;
+        }
+
+        OnMouseMoveImpl(interaction);
+    }
+
+    void BaseManipulator::SetBoundsDirty()
+    {
+        SetBoundsDirtyImpl();
     }
 
     void BaseManipulator::Register(ManipulatorManagerId managerId)
     {
-        if (IsRegistered())
+        if (Registered())
         {
             Unregister();
         }
 
-        AzToolsFramework::ManipulatorManagerRequestBus::Event(managerId,
-            &AzToolsFramework::ManipulatorManagerRequestBus::Events::RegisterManipulator, *this);
+        ManipulatorManagerRequestBus::Event(managerId,
+            &ManipulatorManagerRequestBus::Events::RegisterManipulator, *this);
     }
 
     void BaseManipulator::Unregister()
     {
-        // if the manipulator has already been unregistered, the m_manipulatorManagerId should be invalid, which makes the call below a no-op.
-        AzToolsFramework::ManipulatorManagerRequestBus::Event(m_manipulatorManagerId,
-            &AzToolsFramework::ManipulatorManagerRequestBus::Events::UnregisterManipulator, *this);
+        // if the manipulator has already been unregistered, the m_manipulatorManagerId
+        // should be invalid which makes the call below a no-op.
+        ManipulatorManagerRequestBus::Event(m_manipulatorManagerId,
+            &ManipulatorManagerRequestBus::Events::UnregisterManipulator, *this);
     }
 
     void BaseManipulator::Invalidate()
     {
+        SetBoundsDirty();
+        InvalidateImpl();
+        m_mouseOver = false;
+        m_performingAction = false;
         m_manipulatorId = InvalidManipulatorId;
         m_manipulatorManagerId = InvalidManipulatorManagerId;
-        SetBoundsDirty();
+    }
+
+    void BaseManipulator::BeginAction()
+    {
+        if (m_performingAction)
+        {
+            AZ_Warning(
+                "Manipulators", false, "MouseDown action received, but the manipulator (id: %d) is still performing an action",
+                GetManipulatorId());
+
+            return;
+        }
+
+        m_performingAction = true;
+    }
+
+    void BaseManipulator::EndAction()
+    {
+        if (!m_performingAction)
+        {
+            AZ_Warning(
+                "Manipulators", false, "MouseUp action received, but this manipulator (id: %d) didn't receive MouseDown action before",
+                GetManipulatorId());
+            return;
+        }
+
+        m_performingAction = false;
+    }
+
+    void BaseManipulator::EndUndoBatch()
+    {
+        if (m_undoBatch != nullptr)
+        {
+            ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::Bus::Events::EndUndoBatch);
+            m_undoBatch = nullptr;
+        }
     }
 
     namespace Internal
     {
-        float CalcScreenToWorldMultiplier(float distanceToCamera, const ViewportInteraction::CameraState& cameraState)
-        {
-            float result = 1.0f;
-
-            float viewportHeight = cameraState.m_viewportSize.GetY();
-            float nearPlaneHalfHeight = cameraState.m_nearClip * tanf(cameraState.m_verticalFovRadian * 0.5f);
-            float nearPlaneOverViewportHeight = nearPlaneHalfHeight / (viewportHeight * 0.5f);
-
-            if (cameraState.m_isOrthographic)
-            {
-                result = nearPlaneOverViewportHeight / cameraState.m_zoom;
-            }
-            else
-            {
-                float cameraDistOverNearClip = distanceToCamera / cameraState.m_nearClip;
-                result = nearPlaneOverViewportHeight * cameraDistOverNearClip;
-            }
-
-            return result;
-        }
-
-        void CalcRayPlaneIntersectingPoint(const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, float maxRayLength,
+        bool CalculateRayPlaneIntersectingPoint(const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
             const AZ::Vector3& pointOnPlane, const AZ::Vector3& planeNormal, AZ::Vector3& resultIntersectingPoint)
         {
             float t = 0.0f;
-            int hit = AZ::Intersect::IntersectRayPlane(rayOrigin, rayDirection, pointOnPlane, planeNormal, t);
-            if (hit > 0)
+            if (AZ::Intersect::IntersectRayPlane(rayOrigin, rayDirection, pointOnPlane, planeNormal, t) > 0)
             {
-                t = AZ::GetMin(t, maxRayLength);
                 resultIntersectingPoint = rayOrigin + t * rayDirection;
+                return true;
             }
+
+            return false;
         }
 
-        void TransformDirectionBasedOnReferenceSpace(ManipulatorReferenceSpace referenceSpace, const AZ::Transform& entityWorldTM, const AZ::Vector3& direction, AZ::Vector3& resultDirection)
+        AZ::Vector3 TransformAxisForSpace(
+            ManipulatorSpace space, const AZ::Transform& localFromWorld, const AZ::Vector3& axis)
         {
-            switch (referenceSpace)
+            switch (space)
             {
-                case AzToolsFramework::ManipulatorReferenceSpace::Local:
-                {
-                    resultDirection = entityWorldTM * direction - entityWorldTM.GetPosition();
-                    resultDirection.NormalizeExact();
-                } break;
-
-                case AzToolsFramework::ManipulatorReferenceSpace::World:
-                {
-                    resultDirection = direction;
-                    // resultDirection.NormalizeSafeApprox();
-                } break;
-
-                default:
-                {
-                    // default to local space
-                    resultDirection = entityWorldTM * direction - entityWorldTM.GetPosition();
-                    resultDirection.NormalizeExact();
-                } break;
+            case ManipulatorSpace::World:
+                return localFromWorld.Multiply3x3(axis);
+            case ManipulatorSpace::Local:
+                // fallthrough
+            default:
+                return axis;
             }
         }
     }

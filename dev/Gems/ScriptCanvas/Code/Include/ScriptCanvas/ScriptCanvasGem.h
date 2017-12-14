@@ -18,12 +18,25 @@
 
 namespace ScriptCanvas
 {
+    class ScriptCanvasModuleCommon : public AZ::Module
+    {
+    public:
+        AZ_RTTI(ScriptCanvasModuleCommon, "{FDEA6784-C26A-435A-8A07-D8BCE87B13B0}", AZ::Module);
+        AZ_CLASS_ALLOCATOR(ScriptCanvasModuleCommon, AZ::SystemAllocator, 0);
+
+        ScriptCanvasModuleCommon();
+        ~ScriptCanvasModuleCommon();
+
+    protected:
+        AZ::ComponentTypeList GetCommonSystemComponents() const;
+    };
+
     /*!
     * The ScriptCanvas::Module class coordinates with the application
     * to reflect classes and create system components.
     *
     */
-    class ScriptCanvasModule : public AZ::Module
+    class ScriptCanvasModule : public ScriptCanvasModuleCommon
     {
     public:
         

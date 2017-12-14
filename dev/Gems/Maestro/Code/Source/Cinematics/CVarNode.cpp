@@ -20,9 +20,13 @@
 #include <ISystem.h>
 #include <IConsole.h>
 
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
+
 //////////////////////////////////////////////////////////////////////////
 CAnimCVarNode::CAnimCVarNode(const int id)
-    : CAnimNode(id, eAnimNodeType_CVar)
+    : CAnimNode(id, AnimNodeType::CVar)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
     m_value = -1e-20f; //-1e-28;
@@ -35,7 +39,7 @@ CAnimCVarNode::CAnimCVarNode()
 
 void CAnimCVarNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_Float);
+    CreateTrack(AnimParamType::Float);
 }
 
 void CAnimCVarNode::OnReset()
@@ -59,10 +63,10 @@ CAnimParamType CAnimCVarNode::GetParamType(unsigned int nIndex) const
 {
     if (nIndex == 0)
     {
-        return eAnimParamType_Float;
+        return AnimParamType::Float;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -90,12 +94,12 @@ int CAnimCVarNode::GetDefaultKeyTangentFlags() const
 //////////////////////////////////////////////////////////////////////////
 bool CAnimCVarNode::GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const
 {
-    if (paramId.GetType() == eAnimParamType_Float)
+    if (paramId.GetType() == AnimParamType::Float)
     {
         info.flags = IAnimNode::ESupportedParamFlags(0);
         info.name = "Value";
-        info.paramType = eAnimParamType_Float;
-        info.valueType = eAnimValue_Float;
+        info.paramType = AnimParamType::Float;
+        info.valueType = AnimValueType::Float;
         return true;
     }
 
@@ -124,7 +128,7 @@ void CAnimCVarNode::Animate(SAnimContext& ec)
 
     float value = m_value;
 
-    IAnimTrack* pValueTrack = GetTrackForParameter(eAnimParamType_Float);
+    IAnimTrack* pValueTrack = GetTrackForParameter(AnimParamType::Float);
 
     if (!pValueTrack || (pValueTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled))
     {

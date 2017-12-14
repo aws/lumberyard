@@ -104,71 +104,6 @@ namespace CommandSystem
     }
 
 
-    void MetaData::GenerateLODMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString)
-    {
-        MCore::String tempString;
-        const AZ::u32 numLODLevels = actor->GetNumLODLevels();
-        if (numLODLevels > 1)
-        {
-            for (AZ::u32 lodLevel = 1; lodLevel < numLODLevels; ++lodLevel)
-            {
-                EMotionFX::Actor::LODCreationData* lodData = actor->GetLODCreationData(lodLevel);
-                if (!lodData)
-                {
-                    // collision meshes
-                    PrepareCollisionMeshesNodesString(actor, lodLevel, &tempString);
-                    outMetaDataString += AZStd::string::format("ActorSetCollisionMeshes -actorID $(ACTORID) -lod %i -nodeList \"", lodLevel);
-                    outMetaDataString += tempString;
-                    outMetaDataString += "\"\n";
-                    continue;
-                }
-
-                outMetaDataString += AZStd::string::format("AddLOD -actorID $(ACTORID) -addLastLODLevel true\n");
-
-                EMotionFX::Actor::LODCreationData::EPreviewMode mode = lodData->mMode;
-                switch (mode)
-                {
-                    case EMotionFX::Actor::LODCreationData::PREVIEWMODE_AUTOMATICLOD:
-                    {
-                        // construct the replace LOD command using the automatic LOD generation
-                        MCore::String replaceLODCommand;
-                        ConstructReplaceAutomaticLODCommand(actor, lodLevel, lodData->mInitSettings, lodData->mGenerateSettings, lodData->mEnabledNodes, &replaceLODCommand, true);
-                        outMetaDataString += replaceLODCommand.AsChar();
-                        break;
-                    }
-
-                    case EMotionFX::Actor::LODCreationData::PREVIEWMODE_MANUALLOD:
-                    {
-                        // construct the replace LOD command using the manual LOD method
-                        MCore::String replaceLODCommand;
-                        ConstructReplaceManualLODCommand(actor, lodLevel, lodData->mActorFileName.AsChar(), lodData->mEnabledNodes, &replaceLODCommand, true);
-
-                        // replace the absolute path with the media root folder path
-                        if (EMotionFX::GetEMotionFX().GetMediaRootFolderString().empty() == false)
-                        {
-                            replaceLODCommand.Replace(EMotionFX::GetEMotionFX().GetMediaRootFolder(), EMFX_MEDIAROOTFOLDER_STRING);
-                        }
-
-                        outMetaDataString += replaceLODCommand.AsChar();
-                        break;
-                    }
-
-                    case EMotionFX::Actor::LODCreationData::PREVIEWMODE_NONE:
-                    {
-                        break;
-                    }
-                } // switch (mode)
-
-                // collision meshes
-                PrepareCollisionMeshesNodesString(actor, lodLevel, &tempString);
-                outMetaDataString += AZStd::string::format("ActorSetCollisionMeshes -actorID $(ACTORID) -lod %i -nodeList \"", lodLevel);
-                outMetaDataString += tempString;
-                outMetaDataString += "\"\n";
-            }
-        }
-    }
-
-
     void MetaData::GeneratePhonemeMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString)
     {
         const AZ::u32 numLODLevels = actor->GetNumLODLevels();
@@ -291,9 +226,7 @@ namespace CommandSystem
         metaDataString += tempString.AsChar();
         metaDataString += "\" -nodeAction \"select\"\n";
 
-
         GenerateNodeGroupMetaData(actor, metaDataString);
-        GenerateLODMetaData(actor, metaDataString);
         GeneratePhonemeMetaData(actor, metaDataString);
         GenerateAttachmentMetaData(actor, metaDataString);
         GenerateMotionExtractionMetaData(actor, metaDataString);

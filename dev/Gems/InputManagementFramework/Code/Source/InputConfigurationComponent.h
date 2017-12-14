@@ -13,6 +13,7 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzFramework/Components/EditorEntityEvents.h>
 
 // InputManagementFramework Gem includes
 #include "Include/InputManagementFramework/InputEventBindings.h"
@@ -33,10 +34,11 @@ namespace Input
         , private AZ::Data::AssetBus::Handler
         , private AZ::PlayerProfileNotificationBus::Handler
         , private AZ::InputContextNotificationBus::MultiHandler
+        , public AzFramework::EditorEntityEvents
     {
     public:
 
-        AZ_COMPONENT(InputConfigurationComponent, "{3106EE2A-4816-433E-B855-D17A6484D5EC}");
+        AZ_COMPONENT(InputConfigurationComponent, "{3106EE2A-4816-433E-B855-D17A6484D5EC}", AzFramework::EditorEntityEvents);
         virtual ~InputConfigurationComponent() = default;
         InputConfigurationComponent() = default;
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
@@ -49,6 +51,10 @@ namespace Input
         void Deactivate() override;
         //////////////////////////////////////////////////////////////////////////
 
+        //////////////////////////////////////////////////////////////////////////
+        /// AzFramework::EditorEntityEvents
+        void EditorSetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
+        //////////////////////////////////////////////////////////////////////////
     private:
         InputConfigurationComponent(const InputConfigurationComponent&) = delete;
         //////////////////////////////////////////////////////////////////////////

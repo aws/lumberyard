@@ -56,7 +56,7 @@ public:
 
     bool RemoveDoubles();
 
-    static void RemoveDoubles(CD::SMainContext& mc, float fDistance);
+    static void RemoveDoubles(const CD::SMainContext& mc, float fDistance);
 
 private:
 

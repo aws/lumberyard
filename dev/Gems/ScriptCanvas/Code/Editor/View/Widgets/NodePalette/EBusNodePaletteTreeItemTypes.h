@@ -110,7 +110,7 @@ namespace ScriptCanvasEditor
         AZStd::string m_eventName;
     };
     
-    // These nodes will create a purely visual representation of the data. They do not have a corresponding ScriptCavnas node, but isntead
+    // These nodes will create a purely visual representation of the data. They do not have a corresponding ScriptCavnas node, but instead
     // share slots from the owning EBus Handler node. This creates a bit of weirdness with the general creation, since we no longer have a 1:1
     // and need to create a bus wrapper for these things whenever we try to make them.
     class EBusHandleEventPaletteTreeItem

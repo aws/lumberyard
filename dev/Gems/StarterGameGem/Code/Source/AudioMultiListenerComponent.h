@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -30,7 +28,7 @@ namespace AZ
 
 namespace StarterGameGem
 {
-    struct AudioEvent
+    struct AudioEvent final
     {
         AZ_RTTI(AudioEvent, "{1E982258-BB3D-400A-A5BA-CE1A62663160}");
 

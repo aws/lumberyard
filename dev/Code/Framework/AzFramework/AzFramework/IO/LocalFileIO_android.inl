@@ -10,23 +10,16 @@
 *
 */
 #include <dirent.h>
-#include <errno.h> // for EACCES
 #include <fstream>
-#include <fcntl.h>
-#include <functional>
-#include <sys/time.h>
-#include <string.h>
-#include <utime.h>
 
-#include <AzCore/Android/JNI/JNI.h>
-#include <AzCore/Android/JNI/Object.h>
+#include <AzCore/Android/APKFileHandler.h>
 #include <AzCore/Android/Utils.h>
 
 #include <android/api-level.h>
 
 #if __ANDROID_API__ == 19
     // The following were apparently introduced in API 21, however in earlier versions of the 
-    // platform specific headers they were defines.  In the move to unified headers, the follwoing
+    // platform specific headers they were defines.  In the move to unified headers, the following
     // defines were removed from stat.h
     #ifndef stat64
         #define stat64 stat
@@ -42,209 +35,14 @@
 #endif // __ANDROID_API__ == 19
 
 
-//Note: Switching on verbose logging will give you a lot of detailed information about what files are being read from the APK
-//      but there is a likelihood it could cause logcat to terminate with a 'buffer full' error. Restarting logcat will resume logging
-//      but you may lose information
-#define VERBOSE_IO_LOGGING 0
-
-#if VERBOSE_IO_LOGGING
-    #define FILE_IO_LOG(...) AZ_Printf("LMBR", __VA_ARGS__)
-#else
-    #define FILE_IO_LOG(...)
-#endif
-
-
-typedef std::function<bool(const char*)> FindDirsCallbackType;
-
-class APKHandler
-{
-public:
-    static FILE* fopen(const char* fname, const char* mode, AZ::u64& size)
-    {
-        FILE* fp = nullptr;
-
-        if (mode[0] != 'w')
-        {
-            FILE_IO_LOG("******* Attempting to open file in APK:[%s] ", fname);
-
-            AAsset* asset = nullptr;
-            {
-                using namespace AZ::Android::Utils;
-                asset = AAssetManager_open(GetAssetManager(), StripApkPrefix(fname), AASSET_MODE_UNKNOWN);
-            }
-
-            if (asset != nullptr)
-            {
-                // the pointer returned by funopen will allow us to use fread, fseek etc
-                fp = funopen(asset, APKHandler::read, APKHandler::write, APKHandler::seek, APKHandler::close);
-
-                // the file pointer we return from funopen can't be used to get the length of the file so we need to capture that info while we have the AAsset pointer available
-                size = AAsset_getLength(asset);
-                FILE_IO_LOG("File loaded successfully");
-            }
-            else
-            {
-                FILE_IO_LOG("####### Failed to open file in APK:[%s] ", fname);
-            }
-        }
-        return fp;
-    }
-
-    static int read(void* asset, char* buffer, int size)
-    {
-        return AAsset_read(static_cast<AAsset*>(asset), buffer, size);
-    }
-
-    static int write(void* asset, const char* buffer, int size)
-    {
-        return EACCES;
-    }
-
-    static fpos_t seek(void* asset, fpos_t offset, int target)
-    {
-        return AAsset_seek(static_cast<AAsset*>(asset), offset, target);
-    }
-
-    static int close(void* asset)
-    {
-        AAsset_close((AAsset*)asset);
-        return 0;
-    }
-
-    static int filelength(const char* filename)
-    {
-        AZ::u64 size = 0;
-        FILE* asset = APKHandler::fopen(filename, "r", size);
-        if (asset != nullptr)
-        {
-            fclose(asset);
-        }
-        return static_cast<int>(size);
-    }
-
-    static AZ::IO::Result ParseDirectory(const char* path, FindDirsCallbackType findCallback)
-    {
-        FILE_IO_LOG("********* About to search for file in [%s] ******* ", path);
-
-        if (!PrepareJniObject())
-        {
-            return AZ::IO::ResultCode::Error;
-        }
-
-        // The NDK version of the Asset Manager only returns files and not directories so we must use the Java version to get all the data we need
-        JNIEnv* jniEnv = AZ::Android::JNI::GetEnv();
-        if (!jniEnv)
-        {
-            return AZ::IO::ResultCode::Error;
-        }
-
-        jstring dirPath = jniEnv->NewStringUTF(path);
-        jobjectArray javaFileListObject = s_apkFileHandler->InvokeStaticObjectMethod<jobjectArray>("GetFilesAndDirectoriesInPath", dirPath);
-        jniEnv->DeleteLocalRef(dirPath);
-
-        int numObjects = jniEnv->GetArrayLength(javaFileListObject);
-        bool parseResults = true;
-
-        for (int i = 0; i < numObjects; i++)
-        {
-            if (!parseResults)
-            {
-                break;
-            }
-
-            jstring str = static_cast<jstring>(jniEnv->GetObjectArrayElement(javaFileListObject, i));
-            const char* entryName = jniEnv->GetStringUTFChars(str, 0);
-
-            parseResults = findCallback(entryName);
-
-            jniEnv->ReleaseStringUTFChars(str, entryName);
-            jniEnv->DeleteLocalRef(str);
-        }
-
-        jniEnv->DeleteGlobalRef(javaFileListObject);
-
-        return AZ::IO::ResultCode::Success;
-    }
-
-
-    static bool IsDirectory(const char* path)
-    {
-        if (!PrepareJniObject())
-        {
-            return false;
-        }
-
-        JNIEnv* jniEnv = AZ::Android::JNI::GetEnv();
-        if (!jniEnv)
-        {
-            return false;
-        }
-
-        jstring dirPath = jniEnv->NewStringUTF(path);
-        jboolean isDir = s_apkFileHandler->InvokeStaticBooleanMethod("IsDirectory", dirPath);
-        jniEnv->DeleteLocalRef(dirPath);
-
-        FILE_IO_LOG("########### [%s] %s a directory ######### ", path, retVal ? "IS" : "IS NOT");
-
-        return (isDir == JNI_TRUE);
-    }
-
-    static bool DirectoryOrFileExists(const char* path)
-    {
-        AZ::OSString file(AZ::Android::Utils::StripApkPrefix(path));
-
-        AZ::OSString temp(file);
-
-        auto pos = file.find_last_of('/');
-        auto filename = file.substr(pos + 1);
-        auto pathToFile = temp.substr(0, pos);
-        bool foundFile = false;
-
-        ParseDirectory(pathToFile.c_str(), [&](const char* name)
-            {
-                if (strcasecmp(name, filename.c_str()) == 0)
-                {
-                    foundFile = true;
-                }
-
-                return true;
-            });
-
-        FILE_IO_LOG("########### Directory or file [%s] %s exist ######### ", filename.c_str(), foundFile ? "DOES" : "DOES NOT");
-        return foundFile;
-    }
-
-
-private:
-    static bool PrepareJniObject()
-    {
-        if (!s_apkFileHandler)
-        {
-            s_apkFileHandler = aznew AZ::Android::JNI::Object("com/amazon/lumberyard/io/APKHandler", "APKHandler");
-
-            s_apkFileHandler->RegisterStaticMethod("IsDirectory", "(Ljava/lang/String;)Z");
-            s_apkFileHandler->RegisterStaticMethod("GetFilesAndDirectoriesInPath", "(Ljava/lang/String;)[Ljava/lang/String;");
-
-        #if VERBOSE_IO_LOGGING
-            s_apkFileHandler->RegisterStaticField("s_debug", "Z");
-            s_apkFileHandler->SetStaticBooleanField("s_debug", JNI_TRUE);
-        #endif
-        }
-        return (s_apkFileHandler != nullptr);
-    }
-
-    static AZ::Android::JNI::Object* s_apkFileHandler;
-};
-
-AZ::Android::JNI::Object* APKHandler::s_apkFileHandler = nullptr;
-
-
 namespace AZ
 {
     namespace IO
     {
         Result LocalFileIO::Open(const char* filePath, OpenMode mode, HandleType& fileHandle)
         {
+            ANDROID_IO_PROFILE_SECTION_ARGS("%s", filePath);
+
             char resolvedPath[AZ_MAX_PATH_LEN];
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
             FILE* filePointer;
@@ -259,7 +57,7 @@ namespace AZ
             {
                 //try opening the file in the APK
                 readingAPK = true;
-                filePointer = APKHandler::fopen(resolvedPath, GetStringModeFromOpenMode(mode), size);
+                filePointer = AZ::Android::APKFileHandler::Open(resolvedPath, GetStringModeFromOpenMode(mode), size);
             }
 
             if (filePointer != nullptr)
@@ -303,8 +101,10 @@ namespace AZ
             return ResultCode::Success;
         }
 
-        Result LocalFileIO::Read(HandleType fileHandle, void* buffer, uint64_t size, bool failOnFewerThanSizeBytesRead, uint64_t* bytesRead)
+        Result LocalFileIO::Read(HandleType fileHandle, void* buffer, AZ::u64 size, bool failOnFewerThanSizeBytesRead, AZ::u64* bytesRead)
         {
+            ANDROID_IO_PROFILE_SECTION;
+
         #if defined(AZ_DEBUG_BUILD)
             // detect portability issues in debug (only)
             // so that the static_cast below doesn't trap us.
@@ -320,6 +120,7 @@ namespace AZ
                 return ResultCode::Error_HandleInvalid;
             }
 
+            AZ::Android::APKFileHandler::SetNumBytesToRead(static_cast<size_t>(size));
             size_t readResult = fread(buffer, 1, static_cast<size_t>(size), filePointer);
             if (static_cast<uint64_t>(readResult) != size)
             {
@@ -339,8 +140,10 @@ namespace AZ
             return ResultCode::Success;
         }
 
-        Result LocalFileIO::Write(HandleType fileHandle, const void* buffer, uint64_t size, uint64_t* bytesWritten)
+        Result LocalFileIO::Write(HandleType fileHandle, const void* buffer, AZ::u64 size, AZ::u64* bytesWritten)
         {
+            ANDROID_IO_PROFILE_SECTION;
+
         #if defined(AZ_DEBUG_BUILD)
             // detect portability issues in debug (only)
             // so that the static_cast below doesn't trap us.
@@ -374,6 +177,8 @@ namespace AZ
 
         Result LocalFileIO::Tell(HandleType fileHandle, AZ::u64& offset)
         {
+            ANDROID_IO_PROFILE_SECTION;
+
             auto filePointer = GetFilePointerFromHandle(fileHandle);
             if (!filePointer)
             {
@@ -386,6 +191,8 @@ namespace AZ
 
         bool LocalFileIO::Eof(HandleType fileHandle)
         {
+            ANDROID_IO_PROFILE_SECTION;
+
             auto filePointer = GetFilePointerFromHandle(fileHandle);
             if (!filePointer)
             {
@@ -397,6 +204,8 @@ namespace AZ
 
         Result LocalFileIO::Seek(HandleType fileHandle, AZ::s64 offset, SeekType type)
         {
+            ANDROID_IO_PROFILE_SECTION;
+
             auto filePointer = GetFilePointerFromHandle(fileHandle);
             if (!filePointer)
             {
@@ -416,6 +225,8 @@ namespace AZ
 
         Result LocalFileIO::Size(HandleType fileHandle, AZ::u64& size)
         {
+            ANDROID_IO_PROFILE_SECTION;
+
             auto fileDescriptor = GetFileDescriptorFromHandle(fileHandle);
             if (fileDescriptor == nullptr)
             {
@@ -450,18 +261,20 @@ namespace AZ
 
         Result LocalFileIO::Size(const char* filePath, AZ::u64& size)
         {
+            ANDROID_IO_PROFILE_SECTION;
+
             char resolvedPath[AZ_MAX_PATH_LEN];
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
 
             if (AZ::Android::Utils::IsApkPath(resolvedPath))
             {
-                size = APKHandler::filelength(resolvedPath);
+                size = AZ::Android::APKFileHandler::FileLength(resolvedPath);
                 if (!size)
                 {
                     return Exists(resolvedPath) ? ResultCode::Success : ResultCode::Error;
                 }
             }
-            else 
+            else
             {
                 struct stat64 statResult;
                 if (stat64(resolvedPath, &statResult) != 0)
@@ -477,12 +290,14 @@ namespace AZ
 
         bool LocalFileIO::IsDirectory(const char* filePath)
         {
+            ANDROID_IO_PROFILE_SECTION_ARGS("IsDir:%s", filePath);
+
             char resolvedPath[AZ_MAX_PATH_LEN];
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
 
             if (AZ::Android::Utils::IsApkPath(resolvedPath))
             {
-                return APKHandler::IsDirectory(AZ::Android::Utils::StripApkPrefix(resolvedPath));
+                return AZ::Android::APKFileHandler::IsDirectory(AZ::Android::Utils::StripApkPrefix(resolvedPath));
             }
 
             struct stat result;
@@ -495,6 +310,7 @@ namespace AZ
 
         bool LocalFileIO::IsReadOnly(const char* filePath)
         {
+            ANDROID_IO_PROFILE_SECTION_ARGS("IsReadOnly:%s", filePath);
             char resolvedPath[AZ_MAX_PATH_LEN];
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
 
@@ -541,6 +357,8 @@ namespace AZ
 
         Result LocalFileIO::FindFiles(const char* filePath, const char* filter, LocalFileIO::FindFilesCallbackType callback)
         {
+            ANDROID_IO_PROFILE_SECTION_ARGS("FindFiles:%s", filePath);
+
             char resolvedPath[AZ_MAX_PATH_LEN];
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
 
@@ -553,7 +371,7 @@ namespace AZ
 
                 char tempBuffer[AZ_MAX_PATH_LEN] = {0};
 
-                APKHandler::ParseDirectory(strippedPath.c_str(), [&](const char* name)
+                AZ::Android::APKFileHandler::ParseDirectory(strippedPath.c_str(), [&](const char* name)
                     {
                         if (NameMatchesFilter(name, filter))
                         {
@@ -562,8 +380,6 @@ namespace AZ
                             // if aliased, de-alias!
                             azstrcpy(tempBuffer, AZ_MAX_PATH_LEN, foundFilePath.c_str());
                             ConvertToAlias(tempBuffer, AZ_MAX_PATH_LEN);
-
-                            FILE_IO_LOG("Found: %s and %s", tempBuffer, foundFilePath.c_str());
 
                             if (!callback(tempBuffer))
                             {
@@ -723,11 +539,13 @@ namespace AZ
 
         bool LocalFileIO::Exists(const char* filePath)
         {
+            ANDROID_IO_PROFILE_SECTION_ARGS("Exists:%s", filePath);
+
             char resolvedPath[AZ_MAX_PATH_LEN];
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
             if (AZ::Android::Utils::IsApkPath(resolvedPath))
             {
-                return APKHandler::DirectoryOrFileExists(resolvedPath);
+                return AZ::Android::APKFileHandler::DirectoryOrFileExists(resolvedPath);
             }
             return SystemFile::Exists(resolvedPath);
         }
@@ -759,7 +577,5 @@ namespace AZ
 
             return ResultCode::Success;
         }
-
-
     } // namespace IO
 }//namespace AZ

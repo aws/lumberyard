@@ -12,7 +12,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#ifdef AZ_PLATFORM_WINDOWS
 #include <InitGuid.h>
+#endif
 #include "Tools/DesignerTool.h"
 #include "ViewManager.h"
 #include "Grid.h"
@@ -322,7 +324,6 @@ bool DesignerTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& poi
     {
         pTool->OnLButtonUp(view, flags, point);
         view->ReleaseMouse();
-        ReleaseCapture();
     }
     else if (event == eMouseMove)
     {
@@ -834,7 +835,7 @@ BaseTool* DesignerTool::GetTool(CD::EDesignerTool tool) const
     return m_ToolMap[tool];
 }
 
-void DesignerTool::UpdateSelectionMeshFromSelectedElements(CD::SMainContext& mc)
+void DesignerTool::UpdateSelectionMeshFromSelectedElements(const CD::SMainContext& mc)
 {
     if (!mc.pModel || !mc.pCompiler)
     {

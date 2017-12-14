@@ -21,6 +21,9 @@
 #include "MultiLayerAlphaBlendPass.h"
 #include <Common/ReverseDepth.h>
 #include <Common/RenderCapabilities.h>
+#include "GraphicsPipeline/FurPasses.h"
+
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
@@ -1068,6 +1071,9 @@ void CD3D9Renderer::FX_SetState(int st, int AlphaRef, int RestoreState)
         case GS_DEPTHFUNC_GEQUAL:
             DS.Desc.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;
             break;
+        case GS_DEPTHFUNC_ALWAYS:
+            DS.Desc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+            break;
         }
     }
     if (Changed & (GS_WIREFRAME))
@@ -1296,6 +1302,7 @@ void CD3D9Renderer::FX_SetState(int st, int AlphaRef, int RestoreState)
         }
     }
 
+    m_RP.m_depthWriteStateUsed |= (st & GS_DEPTHWRITE) != 0;
     if (Changed & GS_DEPTHWRITE)
     {
         bDirtyDS = true;
@@ -1527,13 +1534,13 @@ void CD3D9Renderer::FX_CommitStates(const SShaderTechnique* pTech, const SShader
         State &= ~GS_BLALPHA_MASK;
 
         // Depth fixup for transparent geometry
-        if (m_RP.m_pShader->m_Flags2 & EF2_DEPTH_FIXUP)
+        if ((m_RP.m_pShader->m_Flags2 & EF2_DEPTH_FIXUP) && RenderCapabilities::SupportsDualSourceBlending())
         {
             if (rRP.m_pCurObject->m_RState & OS_ALPHA_BLEND || ((State & (GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA)) == (GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA)))
             {
                 State &= ~(GS_NOCOLMASK_A | GS_BLSRC_MASK | GS_BLDST_MASK);
                 State |= GS_BLSRC_SRC1ALPHA | GS_BLDST_ONEMINUSSRC1ALPHA;
-                rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_ALPHABLEND];
+                rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_ALPHABLEND] | g_HWSR_MaskBit[HWSR_DEPTHFIXUP];
 
                 // min blending on depth values (alpha channel)
                 State |= GS_BLALPHA_MIN;
@@ -2594,6 +2601,10 @@ void CD3D9Renderer::FX_DrawShader_InstancedHW(CShader* ef, SShaderPass* slw)
     }
     #endif
 
+    // VertexDeclaration of MeshInstance always starts with InstMatrix which has 3 vector4, that's why nUsedAttr is 3.
+    int32 nUsedAttr = 3, nInstAttrMask = 0;
+    pVPInst->GetInstancingAttribInfo(Attributes, nUsedAttr, nInstAttrMask);
+
     CRendElementBase* pRE = NULL;
     CRenderMesh* pRenderMesh = NULL;
 
@@ -2616,9 +2627,6 @@ void CD3D9Renderer::FX_DrawShader_InstancedHW(CShader* ef, SShaderPass* slw)
         rRP.m_pCurObject = rRIs[0]->pObj;
 
         CREMeshImpl* __restrict pMesh = (CREMeshImpl*) pRE;
-        int32 nUsedAttr = pMesh->m_pChunk->m_vertexFormat.GetAttributes().size();
-        int32 nInstAttrMask = 0;
-        pVPInst->GetInstancingAttribInfo(Attributes, nUsedAttr, nInstAttrMask);
 
         pRE->mfPrepare(false);
         {
@@ -3437,6 +3445,145 @@ void CD3D9Renderer::FX_DrawShader_General(CShader* ef, SShaderTechnique* pTech)
     }
 }
 
+void CD3D9Renderer::FX_DrawShader_Fur(CShader* ef, SShaderTechnique* pTech)
+{
+    static CCryNameTSCRC techFurZPost("FurZPost");
+    FurPasses& furPasses = FurPasses::GetInstance();
+    bool isFurZPost = (pTech->m_NameCRC == techFurZPost);
+    furPasses.SetFurShellPassPercent(isFurZPost ? 1.0f : 0.0f);
+
+    static CCryNameTSCRC techFurShell("General");
+    if (pTech->m_NameCRC == techFurShell)
+    {
+        PROFILE_FRAME(DrawShader_Fur);
+
+        SThreadInfo& RESTRICT_REFERENCE rTI = m_RP.m_TI[m_RP.m_nProcessThreadID];
+
+        EF_Scissor(false, 0, 0, 0, 0);
+
+        int recurseLevel = SRendItem::m_RecurseLevel[m_RP.m_nProcessThreadID]; // Skip fur shells for recursive passes
+        FurPasses::RenderMode furRenderMode = furPasses.GetFurRenderingMode();
+        if (pTech->m_Passes.Num() && furRenderMode != FurPasses::RenderMode::None && CV_r_FurShellPassCount > 0 && recurseLevel == 0)
+        {
+            uint64 nSavedFlags = m_RP.m_FlagsShader_RT;
+            uint32 nSavedStateAnd = m_RP.m_ForceStateAnd;
+
+            furPasses.ApplyFurDebugFlags();
+
+            if (furRenderMode == FurPasses::RenderMode::AlphaTested)
+            {
+                m_RP.m_ForceStateAnd |= GS_BLALPHA_MASK | GS_BLEND_MASK;
+                m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_ADDITIVE_BLENDING];
+
+                // Ensure that alpha testing is set up for alpha tested fur shells, even if not specified in the
+                // material, by forcing a minimum alpha test of 0.01. This allows fur materials that do not
+                // specify alpha testing to appear similar to alpha blended fur, but materials that control
+                // alpha testing still benefit from their settings.
+                FX_SetAlphaTestState(max(0.01f, m_RP.m_pShaderResources->GetAlphaRef()));
+            }
+            else if (furRenderMode == FurPasses::RenderMode::AlphaBlended)
+            {
+                // Even if the material specifies alpha testing, don't write depth for alpha blended fur shells
+                m_RP.m_ForceStateAnd |= GS_DEPTHWRITE;
+            }
+
+            assert(pTech->m_Passes.Num() == 1);
+
+            SShaderPass* slw = &pTech->m_Passes[0];
+            m_RP.m_pCurPass = slw;
+
+            // Set all textures and HW TexGen modes for the current pass (ShadeLayer)
+            assert (slw->m_VShader && slw->m_PShader);
+            if (slw->m_VShader && slw->m_PShader)
+            {
+                FX_CommitStates(pTech, slw, (slw->m_PassFlags & SHPF_NOMATSTATE) == 0);
+
+                bool bSkinned = (m_RP.m_pCurObject->m_ObjFlags & FOB_SKINNED) && !CV_r_character_nodeform;
+
+                bSkinned |= FX_SetStreamFlags(slw);
+
+                int startShell = 1;
+                int endShell = CV_r_FurShellPassCount;
+                int numShellPasses = CV_r_FurShellPassCount;
+
+                if ((m_RP.m_FlagsShader_RT & g_HWSR_MaskBit[HWSR_HDR_MODE]) == 0)
+                {
+                    // For aux views such as the material editor, draw the base surface, as it is not captured by Z pass there
+                    startShell = 0;
+                }
+
+                if (CV_r_FurDebugOneShell > 0 && CV_r_FurDebugOneShell <= CV_r_FurShellPassCount)
+                {
+                    startShell = CV_r_FurDebugOneShell;
+                    endShell = startShell;
+                }
+                else if (IRenderNode* pRenderNode = m_RP.m_pCurObject->m_pRenderNode)
+                {
+                    // Scale number of shell passes by object's distance to camera and LOD ratio
+                    float lodRatio = pRenderNode->GetLodRatioNormalized();
+                    if (lodRatio > 0.0f)
+                    {
+                        static ICVar* pTargetSize = gEnv->pConsole->GetCVar("e_LodFaceAreaTargetSize");
+                        if (pTargetSize)
+                        {
+                            lodRatio *= pTargetSize->GetFVal();
+                        }
+
+                        // Not using pRenderNode->GetMaxViewDist() because we want to be able to LOD out the fur while still being able to see the object at distance
+                        float maxDistance = CV_r_FurMaxViewDist * pRenderNode->GetViewDistanceMultiplier();
+                        float lodDistance = AZ::GetClamp(pRenderNode->GetFirstLodDistance() / lodRatio, 0.0f, maxDistance - 0.001f);
+
+                        // Distance before first LOD change (factoring in LOD ratio) uses full number of shells
+                        // Beyond that distance, number of shells linearly decreases to 0 as distance approaches max view distance.
+                        float distance = m_RP.m_pCurObject->m_fDistance;
+                        float distanceRatio = (maxDistance - distance) / (maxDistance - lodDistance);
+                        float clampedDistanceRatio = AZ::GetClamp(distanceRatio, 0.0f, 1.0f);
+                        endShell = aznumeric_cast<int>(endShell * clampedDistanceRatio);
+                        numShellPasses = endShell;
+                    }
+                }
+
+                numShellPasses = AZ::GetMax(numShellPasses, 1);
+                for (int i = startShell; i <= endShell; ++i)
+                {
+                    // Set shell distance from base surface in fur params
+                    furPasses.SetFurShellPassPercent(static_cast<float>(i) / numShellPasses);
+
+                    if (m_RP.m_FlagsPerFlush & RBSI_INSTANCED && !bSkinned)
+                    {
+                        // Using HW geometry instancing approach
+                        FX_DrawShader_InstancedHW(ef, slw);
+                    }
+                    else
+                    {
+                        FX_DrawBatches(ef, slw);
+                    }
+                }
+            }
+
+            m_RP.m_ForceStateAnd = nSavedStateAnd;
+            m_RP.m_FlagsShader_RT = nSavedFlags;
+        }
+    }
+    else
+    {
+        uint64 nSavedFlags = m_RP.m_FlagsShader_RT;
+        static CCryNameTSCRC techFurShadow("FurShadowGen");
+        if (pTech->m_NameCRC == techFurShadow)
+        {
+            m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_GPU_PARTICLE_TURBULENCE]; // Indicates fin pass
+            if (CV_r_FurFinShadowPass == 0 || furPasses.GetFurRenderingMode() == FurPasses::RenderMode::None)
+            {
+                m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_GPU_PARTICLE_SHADOW_PASS]; // Indicates fins should be skipped in shadow pass
+            }
+        }
+
+        // All other techniques use the normal path
+        FX_DrawShader_General(ef, pTech);
+        m_RP.m_FlagsShader_RT = nSavedFlags;
+    }
+}
+
 void CD3D9Renderer::FX_DrawDebugPasses()
 {
     if (!m_RP.m_pRootTechnique || m_RP.m_pRootTechnique->m_nTechnique[TTYPE_DEBUG] < 0)
@@ -3625,17 +3772,11 @@ void CD3D9Renderer::FX_DrawMultiLayers()
             int nSaveLastRE = m_RP.m_nLastRE;
             m_RP.m_nLastRE = 0;
 
-            SEfResTexture** pResourceTexs = ((CShaderResources*)pCurrShaderItem.m_pShaderResources)->m_Textures;
-            SEfResTexture* pPrevLayerResourceTexs[EFTT_MAX];
-
+            TexturesResourcesMap        pPrevLayerResourceTex;     // A map of texture used by the shader
             if (bDefaultLayer)
-            {
-                // Keep layer resources and replace with resources from base shader
-                for (int t = 0; t < EFTT_MAX; ++t)
-                {
-                    pPrevLayerResourceTexs[t] = ((CShaderResources*)pCurrShaderItem.m_pShaderResources)->m_Textures[t];
-                    ((CShaderResources*)pCurrShaderItem.m_pShaderResources)->m_Textures[t] = m_RP.m_pShaderResources->m_Textures[t];
-                }
+            {   // Keep layer resources and replace with resources from base shader
+                pPrevLayerResourceTex = ((CShaderResources*)pCurrShaderItem.m_pShaderResources)->m_TexturesResourcesMap; 
+                ((CShaderResources*)pCurrShaderItem.m_pShaderResources)->m_TexturesResourcesMap = m_RP.m_pShaderResources->m_TexturesResourcesMap;
             }
 
             m_RP.m_pRE->mfPrepare(false);
@@ -3709,15 +3850,9 @@ void CD3D9Renderer::FX_DrawMultiLayers()
             m_RP.m_MaterialAlphaRef = nMaterialAlphaRefPrev;
 
             if (bDefaultLayer)
-            {
-                for (int t = 0; t < EFTT_MAX; ++t)
-                {
-                    ((CShaderResources*)pCurrShaderItem.m_pShaderResources)->m_Textures[t] = pPrevLayerResourceTexs[t];
-                    pPrevLayerResourceTexs[t] = 0;
-                }
+            {   // restore from the base layer
+                ((CShaderResources*)pCurrShaderItem.m_pShaderResources)->m_TexturesResourcesMap = pPrevLayerResourceTex;
             }
-
-            //break; // only 1 layer allowed
         }
     }
 
@@ -3761,6 +3896,7 @@ void CD3D9Renderer::FX_DrawTechnique(CShader* ef, SShaderTechnique* pTech)
         FX_DrawShader_General(ef, pTech);
         break;
     case eSHDT_Fur:
+        FX_DrawShader_Fur(ef, pTech);
         break;
     case eSHDT_CustomDraw:
     case eSHDT_Sky:
@@ -3821,6 +3957,22 @@ static void sDetectInstancing(CShader* pShader, CRenderObject* pObj)
 }
 #endif
 
+void CD3D9Renderer::FX_SetAlphaTestState(float alphaRef)
+{
+    if (!(m_RP.m_PersFlags2 & RBPF2_NOALPHATEST))
+    {
+        const int nAlphaRef = int(alphaRef * 255.0f);
+
+        m_RP.m_MaterialAlphaRef = nAlphaRef;
+        m_RP.m_MaterialStateOr = GS_ALPHATEST_GEQUAL | GS_DEPTHWRITE;
+        m_RP.m_MaterialStateAnd = GS_ALPHATEST_MASK;
+    }
+    else
+    {
+        m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_ALPHATEST];
+    }
+}
+
 // Set/Restore shader resources overrided states
 bool CD3D9Renderer::FX_SetResourcesState()
 {
@@ -3862,18 +4014,7 @@ bool CD3D9Renderer::FX_SetResourcesState()
 
     if (pRes->IsAlphaTested())
     {
-        if (!(m_RP.m_PersFlags2 & RBPF2_NOALPHATEST))
-        {
-            const int nAlphaRef = int(pRes->GetAlphaRef() * 255.0f);
-
-            m_RP.m_MaterialAlphaRef = nAlphaRef;
-            m_RP.m_MaterialStateOr = GS_ALPHATEST_GEQUAL | GS_DEPTHWRITE;
-            m_RP.m_MaterialStateAnd = GS_ALPHATEST_MASK;
-        }
-        else
-        {
-            m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_ALPHATEST];
-        }
+        FX_SetAlphaTestState(pRes->GetAlphaRef());
     }
 
     if (pRes->IsTransparent())
@@ -4181,24 +4322,6 @@ void CD3D9Renderer::FX_FlushShader_General()
         return;
     }
 
-    // don't do motion vector generation or reflections on refractive objects.
-    // Need to check here since refractive and transparent lists are combined for sorting.
-    if (rRP.m_nPassGroupID == EFSLIST_TRANSP
-        && rRP.m_pCurObject->m_ObjFlags & FOB_REQUIRES_RESOLVE
-        && (rRP.m_PersFlags2 & RBPF2_MOTIONBLURPASS || (SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID])))
-    {
-        return;
-    }
-
-    // Don't render nearest transparent objects in motion blur pass, otherwise camera motion blur
-    // will not be applied within the scope
-    if ((rRP.m_PersFlags2 & RBPF2_MOTIONBLURPASS) &&
-        (rRP.m_nPassGroupID == EFSLIST_TRANSP) &&
-        (rRP.m_pCurObject->m_ObjFlags & FOB_NEAREST))
-    {
-        return;
-    }
-
     SThreadInfo& RESTRICT_REFERENCE rTI = rRP.m_TI[rRP.m_nProcessThreadID];
     assert(!(rTI.m_PersFlags & RBPF_SHADOWGEN));
     assert(!(rRP.m_nBatchFilter & FB_Z));
@@ -4378,6 +4501,9 @@ void CD3D9Renderer::FX_FlushShader_General()
         }
         if (SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID] == 0 && CV_r_ParticlesSoftIsec)
         {
+            //Enable soft particle shader flag for soft particles or particles have half resolution enabled
+            //Note: the half res render pass is relying on the soft particle flag to test z buffer. 
+            //I am not sure why they did this instead of just have enable z buffer test for that pass.
             if ((objFlags & FOB_SOFT_PARTICLE) || (rRP.m_PersFlags2 & RBPF2_HALFRES_PARTICLES))
             {
                 rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SOFT_PARTICLE];
@@ -4910,7 +5036,6 @@ void TexBlurAnisotropicVertical(CTexture* pTex, int nAmount, float fScale, float
     SAFE_DELETE(tpBlurTemp);
 }
 
-
 bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pRes, CRenderObject* pObj, SShaderTechnique* pTech, SHRenderTarget* pRT, int nPreprType, CRendElementBase* pRE)
 {
     if (!pRT)
@@ -4964,18 +5089,47 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
             nHeight = GetHeight();
         }
 
-        // Very hi specs render reflections at half res - lower specs (and consoles) at quarter res
-        float fSizeScale = (CV_r_waterreflections_quality == 5) ? 0.5f : 0.25f;
-        nWidth = sTexLimitRes(nWidth, uint32(GetWidth() * fSizeScale));
-        nHeight = sTexLimitRes(nHeight, uint32(GetHeight() * fSizeScale));
-
         ETEX_Format eTF = pRT->m_eTF;
         // $HDR
         if (eTF == eTF_R8G8B8A8 && IsHDRModeEnabled() && m_nHDRType <= 1)
         {
             eTF = eTF_R16G16B16A16F;
         }
-        if (!pEnvTex->m_pTex || pEnvTex->m_pTex->GetFormat() != eTF)
+
+        // Very hi specs render reflections at half res - lower specs (and consoles) at quarter res
+        bool bMakeEnvironmentTexture = false;
+        if (OceanToggle::IsActive())
+        {
+            float fSizeScale = 0.5f;
+            AZ::OceanEnvironmentBus::BroadcastResult(fSizeScale, &AZ::OceanEnvironmentBus::Events::GetReflectResolutionScale);
+            fSizeScale = clamp_tpl(fSizeScale, 0.0f, 1.0f);
+
+            nWidth = sTexLimitRes(nWidth, uint32(GetWidth() * fSizeScale));
+            nHeight = sTexLimitRes(nHeight, uint32(GetHeight() * fSizeScale));
+
+            bMakeEnvironmentTexture = (!pEnvTex->m_pTex || pEnvTex->m_pTex->GetFormat() != eTF || pEnvTex->m_pTex->GetWidth() != nWidth || pEnvTex->m_pTex->GetHeight() != nHeight);
+        }
+        else
+        {
+            float fSizeScale = (CV_r_waterreflections_quality == 5) ? 0.5f : 0.25f;
+
+            nWidth = sTexLimitRes(nWidth, uint32(GetWidth() * fSizeScale));
+            nHeight = sTexLimitRes(nHeight, uint32(GetHeight() * fSizeScale));
+
+            bMakeEnvironmentTexture = (!pEnvTex->m_pTex || pEnvTex->m_pTex->GetFormat() != eTF);
+        }
+
+        // clamping to a reasonable texture size
+        if (nWidth < 32)
+        {
+            nWidth = 32;
+        }
+        if (nHeight < 32)
+        {
+            nHeight = 32;
+        }
+
+        if (bMakeEnvironmentTexture)
         {
             char name[128];
             sprintf_s(name, "$RT_2D_%d", m_TexGenID++);
@@ -5047,13 +5201,8 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
         return true;
     }
 
-    bool bMGPUAllowNextUpdate = (!(gRenDev->RT_GetCurrGpuID())) && (CRenderer::CV_r_waterreflections_mgpu);
-
     // always allow for non-mgpu
-    if (gRenDev->GetActiveGPUCount() == 1 || !CRenderer::CV_r_waterreflections_mgpu)
-    {
-        bMGPUAllowNextUpdate = true;
-    }
+    bool bMGPUAllowNextUpdate = gRenDev->GetActiveGPUCount() == 1;
 
     ETEX_Format eTF = pRT->m_eTF;
     // $HDR
@@ -5099,14 +5248,6 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
         int nPixRatioThreshold = (int)(GetWidth() * GetHeight() * CRenderer::CV_r_waterreflections_min_visible_pixels_update);
 
         static int nVisWaterPixCountPrev = nVisibleWaterPixelsCount;
-        if (CRenderer::CV_r_waterreflections_mgpu)
-        {
-            nVisWaterPixCountPrev = bMGPUAllowNextUpdate ? nVisibleWaterPixelsCount : nVisWaterPixCountPrev;
-        }
-        else
-        {
-            nVisWaterPixCountPrev = nVisibleWaterPixelsCount;
-        }
 
         float fUpdateFactorMul = 1.0f;
         float fUpdateDistanceMul = 1.0f;
@@ -5123,9 +5264,8 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
             fUpdateDistanceMul = CV_r_waterreflections_minvis_updatedistancemul;
         }
 
-        float fMGPUScale = CRenderer::CV_r_waterreflections_mgpu ? (1.0f / (float) gRenDev->GetActiveGPUCount()) : 1.0f;
-        float fWaterUpdateFactor = CV_r_waterupdateFactor * fUpdateFactorMul * fMGPUScale;
-        float fWaterUpdateDistance = CV_r_waterupdateDistance * fUpdateDistanceMul * fMGPUScale;
+        float fWaterUpdateFactor = CV_r_waterupdateFactor * fUpdateFactorMul;
+        float fWaterUpdateDistance = CV_r_waterupdateDistance * fUpdateDistanceMul;
 
         float fTimeUpd = min(0.3f, eng->GetDistanceToSectorWithWater());
         fTimeUpd *= fWaterUpdateFactor;
@@ -5226,12 +5366,10 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
         float fMaxDist = eng->GetMaxViewDistance();
 
         Vec3 vPrevPos = tmp_cam.GetPosition();
-        Vec4 pOceanParams0, pOceanParams1;
-        eng->GetOceanAnimationParams(pOceanParams0, pOceanParams1);
 
         Plane Pl;
         Pl.n = Vec3(0, 0, 1);
-        Pl.d = eng->GetWaterLevel(); // + CRenderer::CV_r_waterreflections_offset;// - pOceanParams1.x;
+        Pl.d = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : eng->GetWaterLevel();
         if ((vPrevPos | Pl.n) - Pl.d < 0)
         {
             Pl.d = -Pl.d;
@@ -5258,19 +5396,9 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
 
         tmp_cam.SetMatrix(m);
 
-        float fDistOffset = fMinDist;
-        if (CV_r_waterreflections_use_min_offset)
-        {
-            fDistOffset = max(fMinDist, 2.0f * gEnv->p3DEngine->GetDistanceToSectorWithWater());
-            if (fDistOffset  >= fMaxDist)   // engine returning bad value
-            {
-                fDistOffset = fMinDist;
-            }
-        }
-
         assert(pEnvTex);
         PREFAST_ASSUME(pEnvTex);
-        tmp_cam.SetFrustum((int)(pEnvTex->m_pTex->GetWidth() * tmp_cam.GetProjRatio()), pEnvTex->m_pTex->GetHeight(), tmp_cam.GetFov(), fDistOffset, fMaxDist); //tmp_cam.GetFarPlane());
+        tmp_cam.SetFrustum((int)(pEnvTex->m_pTex->GetWidth() * tmp_cam.GetProjRatio()), pEnvTex->m_pTex->GetHeight(), tmp_cam.GetFov(), fMinDist, fMaxDist); //tmp_cam.GetFarPlane());
 
         // Allow camera update
         if (bMGPUAllowNextUpdate)
@@ -5286,64 +5414,51 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
     }
     else
     if (nPrFlags & FRT_CAMERA_REFLECTED_PLANE)
-    {
+    {   // Mirror case
         m_RP.m_TI[nThreadList].m_pIgnoreObject = pObj;
         float fMinDist = 0.25f;
         float fMaxDist = eng->GetMaxViewDistance();
 
         Vec3 vPrevPos = tmp_cam.GetPosition();
 
-        if (pRes && pRes->m_pCamera)
+        Plane Pl;
+        pRE->mfGetPlane(Pl);
+        //Pl.d = -Pl.d;
+        if (pObj)
         {
-            tmp_cam = *pRes->m_pCamera; // Portal case
-            //tmp_cam.SetPosition(Vec3(310, 150, 30));
-            //tmp_cam.SetAngles(Vec3(-90,0,0));
-            //tmp_cam.SetFrustum((int)(Tex->GetWidth()*tmp_cam.GetProjRatio()), Tex->GetHeight(), tmp_cam.GetFov(), fMinDist, tmp_cam.GetFarPlane());
-
-            SetCamera(tmp_cam);
-            bUseClipPlane = false;
-            bMirror = false;
+            Matrix44 mat = pObj->m_II.m_Matrix.GetTransposed();
+            Pl = TransformPlane(mat, Pl);
         }
-        else
-        { // Mirror case
-            Plane Pl;
-            pRE->mfGetPlane(Pl);
-            //Pl.d = -Pl.d;
-            if (pObj)
-            {
-                Matrix44 mat = pObj->m_II.m_Matrix.GetTransposed();
-                Pl = TransformPlane(mat, Pl);
-            }
-            if ((vPrevPos | Pl.n) - Pl.d < 0)
-            {
-                Pl.d = -Pl.d;
-                Pl.n = -Pl.n;
-            }
-
-            plane[0] = Pl.n[0];
-            plane[1] = Pl.n[1];
-            plane[2] = Pl.n[2];
-            plane[3] = -Pl.d;
-
-            //this is the new code to calculate the reflection matrix
-
-            Matrix44A camMat;
-            GetModelViewMatrix(camMat.GetData());
-            Vec3 vPrevDir = Vec3(-camMat(0, 2), -camMat(1, 2), -camMat(2, 2));
-            Vec3 vPrevUp = Vec3(camMat(0, 1), camMat(1, 1), camMat(2, 1));
-            Vec3 vNewDir = Pl.MirrorVector(vPrevDir);
-            Vec3 vNewUp = Pl.MirrorVector(vPrevUp);
-            float fDot = vPrevPos.Dot(Pl.n) - Pl.d;
-            Vec3 vNewPos = vPrevPos - Pl.n * 2.0f * fDot;
-            Matrix34A m = sMatrixLookAt(vNewDir, vNewUp, tmp_cam.GetAngles()[2]);
-            m.SetTranslation(vNewPos);
-            tmp_cam.SetMatrix(m);
-
-            assert(Tex);
-            tmp_cam.SetFrustum((int)(Tex->GetWidth() * tmp_cam.GetProjRatio()), Tex->GetHeight(), tmp_cam.GetFov(), fMinDist, fMaxDist); //tmp_cam.GetFarPlane());
-            bMirror = true;
-            bUseClipPlane = true;
+        if ((vPrevPos | Pl.n) - Pl.d < 0)
+        {
+            Pl.d = -Pl.d;
+            Pl.n = -Pl.n;
         }
+
+        plane[0] = Pl.n[0];
+        plane[1] = Pl.n[1];
+        plane[2] = Pl.n[2];
+        plane[3] = -Pl.d;
+
+        //this is the new code to calculate the reflection matrix
+
+        Matrix44A camMat;
+        GetModelViewMatrix(camMat.GetData());
+        Vec3 vPrevDir = Vec3(-camMat(0, 2), -camMat(1, 2), -camMat(2, 2));
+        Vec3 vPrevUp = Vec3(camMat(0, 1), camMat(1, 1), camMat(2, 1));
+        Vec3 vNewDir = Pl.MirrorVector(vPrevDir);
+        Vec3 vNewUp = Pl.MirrorVector(vPrevUp);
+        float fDot = vPrevPos.Dot(Pl.n) - Pl.d;
+        Vec3 vNewPos = vPrevPos - Pl.n * 2.0f * fDot;
+        Matrix34A m = sMatrixLookAt(vNewDir, vNewUp, tmp_cam.GetAngles()[2]);
+        m.SetTranslation(vNewPos);
+        tmp_cam.SetMatrix(m);
+
+        assert(Tex);
+        tmp_cam.SetFrustum((int)(Tex->GetWidth() * tmp_cam.GetProjRatio()), Tex->GetHeight(), tmp_cam.GetFov(), fMinDist, fMaxDist); //tmp_cam.GetFarPlane());
+        bMirror = true;
+        bUseClipPlane = true;
+
         SetCamera(tmp_cam);
         bChangedCamera = true;
     }
@@ -5438,35 +5553,36 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
         mInvCamProj = mCamProj.GetInverted();
         m_RP.m_TI[nThreadList].m_pObliqueClipPlane = TransformPlane2(mInvCamProj, p);
 
-        int nRenderPassFlags = (gRenDev->m_RP.m_eQuality) ? SRenderingPassInfo::TERRAIN : 0;
+        int nRenderPassFlags = (gRenDev->m_RP.m_eQuality) ? SRenderingPassInfo::TERRAIN : 0; 
 
-        int nReflQuality = (bOceanRefl) ? (int)CV_r_waterreflections_quality : (int)CV_r_reflections_quality;
-
-        // set reflection quality setting
-        switch (nReflQuality)
+        if (bOceanRefl && OceanToggle::IsActive())
         {
-        case 1:
-            nRenderPassFlags |= SRenderingPassInfo::ENTITIES;
-            break;
-        case 2:
-            nRenderPassFlags |= SRenderingPassInfo::TERRAIN_DETAIL_MATERIALS | SRenderingPassInfo::ENTITIES;
-            break;
-        case 3:
-            nRenderPassFlags |= SRenderingPassInfo::STATIC_OBJECTS | SRenderingPassInfo::ENTITIES | SRenderingPassInfo::TERRAIN_DETAIL_MATERIALS;
-            break;
-        case 4:
-        case 5:
-            nRenderPassFlags |= SRenderingPassInfo::STATIC_OBJECTS | SRenderingPassInfo::ENTITIES | SRenderingPassInfo::TERRAIN_DETAIL_MATERIALS | SRenderingPassInfo::PARTICLES;
-            break;
+            AZ::OceanEnvironmentBus::Broadcast(&AZ::OceanEnvironmentBus::Events::ApplyReflectRenderFlags, nRenderPassFlags);
+        }
+        else
+        {
+            int nReflQuality = (bOceanRefl) ? (int)CV_r_waterreflections_quality : (int)CV_r_reflections_quality;
+
+            // set reflection quality setting
+            switch (nReflQuality)
+            {
+            case 1:
+                nRenderPassFlags |= SRenderingPassInfo::ENTITIES;
+                break;
+            case 2:
+                nRenderPassFlags |= SRenderingPassInfo::TERRAIN_DETAIL_MATERIALS | SRenderingPassInfo::ENTITIES;
+                break;
+            case 3:
+                nRenderPassFlags |= SRenderingPassInfo::STATIC_OBJECTS | SRenderingPassInfo::ENTITIES | SRenderingPassInfo::TERRAIN_DETAIL_MATERIALS;
+                break;
+            case 4:
+            case 5:
+                nRenderPassFlags |= SRenderingPassInfo::STATIC_OBJECTS | SRenderingPassInfo::ENTITIES | SRenderingPassInfo::TERRAIN_DETAIL_MATERIALS | SRenderingPassInfo::PARTICLES;
+                break;
+            }
         }
 
         int nRFlags = SHDF_ALLOWHDR | SHDF_NO_DRAWNEAR;
-
-        // disable caustics if camera above water
-        if (p.d < 0)
-        {
-            nRFlags |= SHDF_NO_DRAWCAUSTICS;
-        }
 
         eng->RenderSceneReflection(nRFlags, SRenderingPassInfo::CreateRecursivePassRenderingInfo(bOceanRefl ? tmp_cam_mgpu : tmp_cam, nRenderPassFlags));
 
@@ -5475,9 +5591,28 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
     }
     m_pRT->RC_PopRT(0);
 
-    // Very Hi specs get anisotropic reflections
-    int nReflQuality = (bOceanRefl) ? (int)CV_r_waterreflections_quality : (int)CV_r_reflections_quality;
-    if (nReflQuality >= 4 && bEnableAnisotropicBlur && Tex && Tex->GetDevTexture())
+    bool bUseVeryHiSpecAnisotropicReflections = false;
+    if (OceanToggle::IsActive())
+    {
+        bool bAnisotropicReflections = false;
+        if (bOceanRefl)
+        {
+            AZ::OceanEnvironmentBus::BroadcastResult(bAnisotropicReflections, &AZ::OceanEnvironmentBus::Events::GetReflectionAnisotropic);
+        }
+        else
+        {
+            bAnisotropicReflections = (int)CV_r_reflections_quality >= 4;
+        }
+        bUseVeryHiSpecAnisotropicReflections = (bAnisotropicReflections && bEnableAnisotropicBlur && Tex && Tex->GetDevTexture());
+    }
+    else
+    {
+        int nReflQuality = (bOceanRefl) ? (int)CV_r_waterreflections_quality : (int)CV_r_reflections_quality;
+        bUseVeryHiSpecAnisotropicReflections = (nReflQuality >= 4 && bEnableAnisotropicBlur && Tex && Tex->GetDevTexture());
+    }
+
+    // Very Hi specs get anisotropic reflections?
+    if (bUseVeryHiSpecAnisotropicReflections)
     {
         m_pRT->RC_TexBlurAnisotropicVertical(Tex, fAnisoScale);
     }

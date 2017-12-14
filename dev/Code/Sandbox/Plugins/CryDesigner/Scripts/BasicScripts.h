@@ -28,9 +28,9 @@ namespace CD
 namespace BPython
 {
     CD::SMainContext GetContext();
-    void CompileModel(CD::SMainContext& mc, bool bForce = false);
+    void CompileModel(const CD::SMainContext& mc, bool bForce = false);
     BrushVec3 FromSVecToBrushVec3(const SPyWrappedProperty::SVec& sVec);
-    void UpdateSelection(CD::SMainContext& mc);
+    void UpdateSelection(const CD::SMainContext& mc);
 
     typedef qint64 ElementID;
     class CBrushDesignerPythonContext

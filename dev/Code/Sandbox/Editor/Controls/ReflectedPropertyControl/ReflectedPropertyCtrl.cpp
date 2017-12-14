@@ -17,6 +17,49 @@
 #include <QScrollArea>
 #include <QScrollBar>
 
+template<typename T>
+T nextNiceNumberBelow(T number);
+
+template<typename T>
+T nextNiceNumberAbove(T number)
+{
+    if (number == 0)
+    {
+        return 0;
+    }
+    if (number < 0)
+    {
+        return -nextNiceNumberBelow(-number);
+    }
+
+    // number = 8000
+    auto l = log10(number);   // 3.90
+    AZ::s64 i = l;            // 3
+    int f = pow(10, l - i);   // 10^0.9 = 8
+    f = f < 2 ? 2 : f < 5 ? 5 : 10; // f -> 10
+    return pow(10, i) * f;
+}
+
+template<typename T>
+T nextNiceNumberBelow(T number)
+{
+    if (number == 0)
+    {
+        return 0;
+    }
+    if (number < 0)
+    {
+        return -nextNiceNumberAbove(-number);
+    }
+
+    // number = 8000
+    auto l = log10(number);   // 3.90
+    AZ::s64 i = l;            // 3
+    int f = pow(10, l - i);   // 10^0.9 = 8
+    f = f > 5 ? 5 : f > 2 ? 2 : 1;  // f -> 5
+    return pow(10, i) * f;
+}
+
 ReflectedPropertyControl::ReflectedPropertyControl(QWidget *parent /*= nullptr*/, Qt::WindowFlags windowFlags /*= Qt::WindowFlags()*/)
     : QWidget(parent, windowFlags)
     , AzToolsFramework::IPropertyEditorNotify()
@@ -180,9 +223,20 @@ void ReflectedPropertyControl::CreateItems(XmlNodeRef node, CVarBlockPtr& outBlo
     SelectItem(0);
 
     outBlockPtr = new CVarBlock;
-    for (int i = 0, iGroupCount(node->getChildCount()); i < iGroupCount; ++i)
+    for (size_t i = 0, iGroupCount(node->getChildCount()); i < iGroupCount; ++i)
     {
         XmlNodeRef groupNode = node->getChild(i);
+
+        if (groupNode->haveAttr("hidden"))
+        {
+            bool isGroupHidden = false;
+            groupNode->getAttr("hidden", isGroupHidden);
+            if (isGroupHidden)
+            {
+                // do not create visual editors for this group
+                continue;
+            }
+        }
 
         CSmartVariableArray group;
         group->SetName(groupNode->getTag());
@@ -234,24 +288,24 @@ void ReflectedPropertyControl::CreateItems(XmlNodeRef node, CVarBlockPtr& outBlo
 
                 if (splitCamelCaseIntoWords)
                 {
-                    for (int i = 1; i < humanReadableName.length() - 1; i++)
+                    for (int index = 1; index < humanReadableName.length() - 1; index++)
                     {
                         // insert spaces between words
-                        if ((humanReadableName[i - 1].isLower() && humanReadableName[i].isUpper()) || (humanReadableName[i + 1].isLower() && humanReadableName[i - 1].isUpper() && humanReadableName[i].isUpper()))
+                        if ((humanReadableName[index - 1].isLower() && humanReadableName[index].isUpper()) || (humanReadableName[index + 1].isLower() && humanReadableName[index - 1].isUpper() && humanReadableName[index].isUpper()))
                         {
-                            humanReadableName.insert(i++, ' ');
+                            humanReadableName.insert(index++, ' ');
                         }
 
                         // convert single upper cases letters to lower case
-                        if (humanReadableName[i].isUpper() && humanReadableName[i + 1].isLower())
+                        if (humanReadableName[index].isUpper() && humanReadableName[index + 1].isLower())
                         {
-                            humanReadableName[i] = humanReadableName[i].toLower();
+                            humanReadableName[index] = humanReadableName[index].toLower();
                         }
                     }
                 }
             }
 
-            void* pUserData = (void*)((i << 16) | k);
+            void* pUserData = reinterpret_cast<void*>((i << 16) | k);
 
             if (!_stricmp(type, "int"))
             {
@@ -268,6 +322,21 @@ void ReflectedPropertyControl::CreateItems(XmlNodeRef node, CVarBlockPtr& outBlo
                 {
                     intVar->SetLimits(nMin, nMax);
                 }
+                else
+                {
+                    float nMin, nMax, nStep;
+                    bool bSoftMin, bSoftMax;
+                    intVar->GetLimits(nMin, nMax, nStep, bSoftMin, bSoftMax);
+                    if (nValue > nMax && !bSoftMax)
+                    {
+                        nMax = nextNiceNumberAbove(nValue);
+                        intVar->SetLimits(nMin, nMax, 0.0, false, false);
+                    }
+                    if (nValue < nMin && !bSoftMin)
+                    {
+                        intVar->SetLimits(nextNiceNumberAbove(nValue), nMax, 0.0, false, false);
+                    }
+                }
             }
             else if (!stricmp(type, "float"))
             {
@@ -283,6 +352,21 @@ void ReflectedPropertyControl::CreateItems(XmlNodeRef node, CVarBlockPtr& outBlo
                 if (child->getAttr("min", fMin) && child->getAttr("max", fMax))
                 {
                     floatVar->SetLimits(fMin, fMax);
+                }
+                else
+                {
+                    float fMin, fMax, nStep;
+                    bool bSoftMin, bSoftMax;
+                    floatVar->GetLimits(fMin, fMax, nStep, bSoftMin, bSoftMax);
+                    if (fValue > fMax && !bSoftMax)
+                    {
+                        fMax = nextNiceNumberAbove(fValue);
+                        floatVar->SetLimits(fMin, fMax, 0.0, false, false);
+                    }
+                    if (fValue < fMin && !bSoftMin)
+                    {
+                        floatVar->SetLimits(nextNiceNumberAbove(fValue), fMax, 0.0, false, false);
+                    }
                 }
             }
             else if (!stricmp(type, "vector"))
@@ -408,16 +492,6 @@ int ReflectedPropertyControl::GetContentHeight() const
 {
     return m_editor->GetContentHeight();
 }
-
-void ReflectedPropertyControl::SetRootName(const QString& rootName)
-{
-    if (m_root)
-    {
-        //KDAB_PROPERTYCTRL_PORT_TODO
-        //m_root->SetName(rootName);
-    }
-}
-
 
 void ReflectedPropertyControl::AddCustomPopupMenuPopup(const QString& text, const Functor1<int>& handler, const QStringList& items)
 {
@@ -555,7 +629,7 @@ void ReflectedPropertyControl::RequestPropertyContextMenu(AzToolsFramework::Inst
     for (auto itr = m_customPopupMenuItems.cbegin(); itr != m_customPopupMenuItems.cend(); ++itr, ++i)
     {
         QAction *action = menu.addAction(itr->m_text);
-        action->setData(i);
+        action->setData(ePPA_CustomItemBase + i);
     }
 
     for (UINT j = 0; j < m_customPopupMenuPopups.size(); ++j)
@@ -592,13 +666,15 @@ void ReflectedPropertyControl::RequestPropertyContextMenu(AzToolsFramework::Inst
 void ReflectedPropertyControl::PropertySelectionChanged(AzToolsFramework::InstanceDataNode *pNode, bool selected)
 {
     if (!pNode)
+    {
         return;
+    }
 
     CReflectedVar *pReflectedVar = GetReflectedVarFromCallbackInstance(pNode);
     ReflectedPropertyItem *pItem = m_root->findItem(pReflectedVar);
     AZ_Assert(pItem, "No item found in selectoin change callback");
 
-    if (m_selChangeFunc != NULL)
+    if (m_selChangeFunc)
     {
         //keep same logic as MFC where pass null if it's deselection
         m_selChangeFunc(selected ? pItem->GetVariable() : nullptr);
@@ -641,15 +717,6 @@ void ReflectedPropertyControl::OnItemChange(ReflectedPropertyItem *item)
     if (!item->IsModified() || !m_bSendCallbackOnNonModified)
         return;
 
-#ifdef KDAB_PORT
-    // Called when item, gets modified.
-    if (m_updateFunc != 0 && m_bEnableCallback)
-    {
-        m_bEnableCallback = false;
-        m_updateFunc(item->GetXmlNode());
-        m_bEnableCallback = true;
-    }
-#endif
     // variable updates/changes can trigger widgets being shown/hidden; better to delay triggering the update
     // callback until after the current event queue is processed, so that we aren't changing other widgets
     // as a ton of them are still being created.
@@ -751,16 +818,6 @@ QVector<ReflectedPropertyItem*> ReflectedPropertyControl::GetSelectedItems()
     return item == nullptr ? QVector<ReflectedPropertyItem*>() : QVector<ReflectedPropertyItem*>{item};
 }
 
-void ReflectedPropertyControl::SetDisplayOnlyModified(bool displayOnlyModified)
-{
-    //Nothing to do here
-    //SetDisplayOnlyModified was a way to handle editing properties for multiple things at once.
-    //In this case you didn't want to show a value since the values could be different, that is until the user
-    //modified the value, then all selected objects got the same value.
-    //The ReflectedPropertyCtrl handles this differently by showing the value of the last item selected, so we'll
-    //just use that. 
-}
-
 void ReflectedPropertyControl::OnCopy(bool bRecursively)
 {
     auto selection = GetSelectedItems();
@@ -790,6 +847,29 @@ void ReflectedPropertyControl::OnCopyAll()
     }
 }
 
+void ReflectedPropertyControl::SetValuesFromNode(XmlNodeRef rootNode)
+{
+    if (!rootNode || !rootNode->isTag("PropertyCtrl"))
+    {
+        return;
+    }
+
+    for (int i = 0; i < rootNode->getChildCount(); ++i)
+    {
+        XmlNodeRef node = rootNode->getChild(i);
+        QString value;
+        QString name;
+        node->getAttr("Name", name);
+        node->getAttr("Value", value);
+        auto pItem = m_root->FindItemByFullName(name);
+        if (pItem)
+        {
+            pItem->SetValue(value);
+            OnItemChange(pItem);
+        }
+    }
+}
+
 void ReflectedPropertyControl::OnPaste()
 {
     CClipboard clipboard(nullptr);
@@ -797,23 +877,7 @@ void ReflectedPropertyControl::OnPaste()
     CUndo undo("Paste Properties");
 
     XmlNodeRef rootNode = clipboard.Get();
-    if (rootNode != NULL && rootNode->isTag("PropertyCtrl"))
-    {
-        for (int i = 0; i < rootNode->getChildCount(); i++)
-        {
-            XmlNodeRef node = rootNode->getChild(i);
-            QString value;
-            QString name;
-            node->getAttr("Name", name);
-            node->getAttr("Value", value);
-            auto pItem = m_root->FindItemByFullName(name);
-            if (pItem)
-            {
-                pItem->SetValue(value);
-                OnItemChange(pItem);
-            }
-        }
-    }
+    SetValuesFromNode(rootNode);
 }
 
 void ReflectedPropertyControl::CopyItem(XmlNodeRef rootNode, ReflectedPropertyItem* pItem, bool bRecursively)
@@ -890,20 +954,9 @@ void ReflectedPropertyControl::SetMultiSelect(bool multiselect)
     //KDAB_PROPERTYCTRL_PORT_TODO
 }
 
-void ReflectedPropertyControl::SetSplitter(int width)
-{
-    //KDAB_PROPERTYCTRL_PORT_TODO
-}
-
 void ReflectedPropertyControl::EnableNotifyWithoutValueChange(bool bFlag)
 {
     m_bForceModified = bFlag;
-
-    //KDAB_PROPERTYCTRL_PORT_TODO
-    //The old CPropertyCtrl used this flag to force updates when a property was edited but the value didn't change
-    //It affected number controls (slider and spinbox) for when value was edited (maybe changing 1 to 1.0?)
-    //It affected all controls by forcing an update when losing focus.
-    //Not sure whether we still need to handle this or how to port it if so. Perhaps an event filter on all editing widgets to get focus out event?
 }
 
 void ReflectedPropertyControl::SetTitle(const QString &title)

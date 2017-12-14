@@ -19,6 +19,12 @@
 #include "VertexFormats.h"
 
 
+namespace AZ 
+{
+    class Vector2;
+    class Plane;
+}
+
 struct SWaterVolumeSerialize
 {
     // volume type and id
@@ -117,9 +123,11 @@ public:
     virtual void CreateOcean(uint64 volumeID, /* TBD */ bool keepSerializationParams = false);
     virtual void CreateArea(uint64 volumeID, const Vec3* pVertices, unsigned int numVertices, const Vec2& surfUVScale, const Plane& fogPlane, bool keepSerializationParams = false, int nSID = GetDefSID());
     virtual void CreateRiver(uint64 volumeID, const Vec3* pVertices, unsigned int numVertices, float uTexCoordBegin, float uTexCoordEnd, const Vec2& surfUVScale, const Plane& fogPlane, bool keepSerializationParams = false, int nSID = GetDefSID());
+    virtual void CreateRiver(uint64 volumeID, const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, float uTexCoordBegin, float uTexCoordEnd, const AZ::Vector2& surfUVScale, const AZ::Plane& fogPlane, bool keepSerializationParams, int nSID);
 
     virtual void SetAreaPhysicsArea(const Vec3* pVertices, unsigned int numVertices, bool keepSerializationParams = false);
     virtual void SetRiverPhysicsArea(const Vec3* pVertices, unsigned int numVertices, bool keepSerializationParams = false);
+    virtual void SetRiverPhysicsArea(const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, bool keepSerializationParams = false);
 
     virtual IPhysicalEntity* SetAndCreatePhysicsArea(const Vec3* pVertices, unsigned int numVertices);
     void SyncToPhysMesh(const QuatT& qtSurface, IGeometry* pSurface, float depth);

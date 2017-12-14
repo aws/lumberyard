@@ -19,7 +19,7 @@
 
 #include <md5/md5.h>
 
-#include <AZCore/Component/Entity.h>
+#include <AzCore/Component/Entity.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
@@ -39,7 +39,7 @@ namespace {
     const char* AUDIO_FILE_EXT_WAV = ".wav";
     const char* SPEECH_MARKS_FILE_EXT = ".txt";
     const char* MAPPING_FILE_NAME = "character_mapping.json";
-    const char* MAIN_CACHE_LOCATION = "@assets@/ttscache/";
+    const char* MAIN_CACHE_LOCATION = "ttscache/";
     const char* USER_CACHE_LOCATION = "@user@/ttscache/";
 }
 
@@ -117,7 +117,7 @@ namespace CloudGemTextToSpeech
     Aws::Utils::Json::JsonValue TextToSpeech::LoadCharacterFromMappingsFile(const AZStd::string& character)
     {
         AZStd::vector<AZStd::string> tags;
-        AZStd::string localCachePath = ResolvePath("ttscache", true);
+        AZStd::string localCachePath = ResolvePath(MAIN_CACHE_LOCATION, true);
         if (!localCachePath.length())
         {
             AZ_Printf("TextToSpeech", "Could not resolve local cache path for Text to Speech");
@@ -144,98 +144,105 @@ namespace CloudGemTextToSpeech
         AZStd::string hash = voice + "-" + text;
         hash = GenerateMD5FromPayload(hash.c_str());
 
-        AZStd::string voiceFileWAV = MAIN_CACHE_LOCATION + hash + AUDIO_FILE_EXT_WAV;
-        AZStd::string voiceFilePCM = MAIN_CACHE_LOCATION + hash + AUDIO_FILE_EXT_PCM;
-        AZStd::string marksFile = MAIN_CACHE_LOCATION + hash + "-" + speechMarks + SPEECH_MARKS_FILE_EXT;
+        AZStd::string mainCachePath = ResolvePath(MAIN_CACHE_LOCATION, true);
+        if (!mainCachePath.length())
+        {
+            AZ_Printf("TextToSpeech", "Could not resolve main cache path for Text to Speech");
+        }
+        AZStd::string voiceFileExt = FindCachedVoiceFileExtension(mainCachePath, hash);
+        AZStd::string voiceFile = ResolvePath((mainCachePath + hash + voiceFileExt).c_str(), false);
+        AZStd::string marksFile = ResolvePath((mainCachePath + hash + "-" + speechMarks + SPEECH_MARKS_FILE_EXT).c_str(), false);
 
-        AZStd::string userVoiceFile = USER_CACHE_LOCATION + hash + AUDIO_FILE_EXT_PCM;
-        AZStd::string userMarksFile = USER_CACHE_LOCATION + hash + "-" + speechMarks + SPEECH_MARKS_FILE_EXT;
-        
-        auto fileIO = AZ::IO::FileIOBase::GetInstance();
+
+        AZStd::string userCachePath = ResolvePath(USER_CACHE_LOCATION, true);
+        if (!userCachePath.length())
+        {
+            AZ_Printf("TextToSpeech", "Could not resolve user cache path for Text to Speech");
+        }
+        AZStd::string userVoiceFile = ResolvePath((userCachePath + hash  + AUDIO_FILE_EXT_PCM).c_str(), false);
+        AZStd::string userMarksFile = ResolvePath((userCachePath + hash + "-" + speechMarks + SPEECH_MARKS_FILE_EXT).c_str(), false);
 
         // Check both caches for the files you need.
-        if (fileIO->Exists(userVoiceFile.c_str()))
+        if (userCachePath.length() > 0 && (AZ::IO::SystemFile::Exists(userVoiceFile.c_str()) && (userMarksFile.empty() || AZ::IO::SystemFile::Exists(userMarksFile.c_str()))))
         {
-            // Check the local user's cache for a file that was downloaded from the cloud.
-            if (fileIO->Exists(userMarksFile.c_str()))
+            if (!speechMarks.empty())
             {
-                EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlayWithLipSync, userVoiceFile, userMarksFile);
+                EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlayWithLipSync, GetAliasedUserCachePath(hash), userMarksFile);
             }
             else
             {
-                EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlaySpeech, userVoiceFile);
+                EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlaySpeech,  GetAliasedUserCachePath(hash));
+            }
+        }
+        else if (mainCachePath.length() > 0 && (AZ::IO::FileIOBase::GetDirectInstance()->Exists(voiceFile.c_str()) && (speechMarks.empty() || AZ::IO::FileIOBase::GetDirectInstance()->Exists(marksFile.c_str()))))
+        {
+            AZStd::string realtiveVoicePath = MAIN_CACHE_LOCATION + hash + voiceFileExt;
+            if (!speechMarks.empty())
+            {
+                EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlayWithLipSync, realtiveVoicePath, marksFile);
+            }
+            else
+            {
+                EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlaySpeech, realtiveVoicePath);
             }
         }
         else
         {
-            // Check the main assets, which may contain PCM or WAV
-            const AZStd::string* foundFile = nullptr;
-
-            if (fileIO->Exists(voiceFileWAV.c_str()))
+            if (!speechMarks.empty())
             {
-                foundFile = &voiceFileWAV;
-            }
-            else if (fileIO->Exists(voiceFilePCM.c_str()))
-            {
-                foundFile = &voiceFilePCM;
-            }
-
-            if (foundFile)
-            {
-                if (fileIO->Exists(marksFile.c_str()))
-                {
-                    EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlayWithLipSync, *foundFile, marksFile);
-                }
-                else
-                {
-                    EBUS_EVENT_ID(m_entity->GetId(), TextToSpeechPlaybackBus, PlaySpeech, *foundFile);
-                }
+                m_conversionIdToNumPending[hash] = 2;
             }
             else
             {
-                // Do the conversion in the cloud
-                if (!speechMarks.empty())
-                {
-                    m_conversionIdToNumPending[hash] = 2;
-                }
-                else
-                {
-                    m_conversionIdToNumPending[hash] = 1;
-                }
-                aznew TTSConversionJob(*this, voice, text, hash, speechMarks);
+                m_conversionIdToNumPending[hash] = 1;
             }
+            aznew TTSConversionJob(*this, voice, text, hash, speechMarks);
         }
     }
 
-    
+    AZStd::string TextToSpeech::FindCachedVoiceFileExtension(const AZStd::string& dir, const AZStd::string& hash) const
+    {
+        AZStd::string fullFileName = ResolvePath((dir + hash + AUDIO_FILE_EXT_WAV).c_str(), false);
+        if (AZ::IO::SystemFile::Exists(fullFileName.c_str()))
+        {
+            return AUDIO_FILE_EXT_WAV;
+        }
+        return AUDIO_FILE_EXT_PCM;
+    }
+
+
     // ConversionNotificationBus::Handler
     void TextToSpeech::GotDownloadUrl(const AZStd::string& hash, const AZStd::string& url, const AZStd::string& speechMarks)
     {
-        AZStd::string localCachePath = USER_CACHE_LOCATION;
+        AZStd::string localCachePath = ResolvePath(USER_CACHE_LOCATION, true);
+        if (!localCachePath.length())
+        {
+            AZ_Printf("TextToSpeech", "Could not resolve local cache path for Text to Speech");
+        }
 
         m_urlToConversionId[url] = hash;
         if (!speechMarks.empty())
         {
-            auto marks = m_idToSpeechMarksType[hash];
-            m_idToUrls[hash].marksUrl = url;
-            m_idToUrls[hash].marksFile = localCachePath + hash + "-" + marks +  SPEECH_MARKS_FILE_EXT;
+            m_idToUrls[hash].marks = url;
             m_idToSpeechMarksType[hash] = speechMarks;
         }
         else
         {
-            m_idToUrls[hash].voiceUrl = url;
-            m_idToUrls[hash].voiceFile = localCachePath + hash + AUDIO_FILE_EXT_PCM;
+            m_idToUrls[hash].voice = url;
         }
 
         if (m_conversionIdToNumPending[hash] <= m_idToUrls[hash].size())
         {
-            if (!m_idToUrls[hash].voiceUrl.empty())
+            if (!m_idToUrls[hash].voice.empty())
             {
-                EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, m_idToUrls[hash].voiceUrl, m_idToUrls[hash].voiceFile, m_entity->GetId());
+                AZStd::string voiceFile = ResolvePath((localCachePath + hash + AUDIO_FILE_EXT_PCM).c_str(), false);
+                EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, m_idToUrls[hash].voice, voiceFile, m_entity->GetId());
             }
-            if (!m_idToUrls[hash].marksUrl.empty())
+            if (!m_idToUrls[hash].marks.empty())
             {
-                EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, m_idToUrls[hash].marksUrl, m_idToUrls[hash].marksFile, m_entity->GetId());
+                auto marks = m_idToSpeechMarksType[hash];
+                AZStd::string marksFile = ResolvePath((localCachePath + hash + "-" + marks +  SPEECH_MARKS_FILE_EXT).c_str(), false);
+                EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, m_idToUrls[hash].marks, marksFile, m_entity->GetId());
             }
 
             m_conversionIdToNumPending.erase(hash);
@@ -254,13 +261,11 @@ namespace CloudGemTextToSpeech
                 // what kind of file is this?
                 if (outputFile.find(AUDIO_FILE_EXT_PCM) != AZStd::string::npos)
                 {
-                    // File returned from PresignedURL is absolute on device; this currently breaks on iOS, so use the recorded @-path instead
-                    m_idToFiles[id].voice = m_idToUrls[id].voiceFile;
+                    m_idToFiles[id].voice = outputFile;
                 }
                 else if (outputFile.find(SPEECH_MARKS_FILE_EXT) != AZStd::string::npos)
                 {
-                    // File returned from PresignedURL is absolute on device; this currently breaks on iOS, so use the recorded @-path instead
-                    m_idToFiles[id].marks = m_idToUrls[id].marksFile;
+                    m_idToFiles[id].marks = outputFile;
                 }
                 else
                 {
@@ -276,12 +281,12 @@ namespace CloudGemTextToSpeech
                     {
                         m_idToSpeechMarksType.erase(id);
                         AZStd::string marksFile = m_idToFiles[id].marks;
-                        auto fileIO = AZ::IO::FileIOBase::GetInstance();
-                        if (fileIO->Exists(voiceFile.c_str()) && fileIO->Exists(marksFile.c_str()))
+                        if (AZ::IO::SystemFile::Exists(voiceFile.c_str()) && AZ::IO::SystemFile::Exists(marksFile.c_str()))
                         {
-                            AZStd::function<void()> playFunction = [ voiceFile, marksFile, entityId ] ()
+                            AZStd::string aliasedVoicePath = GetAliasedUserCachePath(id);
+                            AZStd::function<void()> playFunction = [ marksFile, entityId, aliasedVoicePath ] ()
                             {
-                                EBUS_EVENT_ID(entityId, TextToSpeechPlaybackBus, PlayWithLipSync, voiceFile, marksFile);
+                                EBUS_EVENT_ID(entityId, TextToSpeechPlaybackBus, PlayWithLipSync, aliasedVoicePath, marksFile);
                             };
                             EBUS_QUEUE_FUNCTION(AZ::TickBus, playFunction);
                         }
@@ -292,9 +297,10 @@ namespace CloudGemTextToSpeech
                     }
                     else if (AZ::IO::SystemFile::Exists(voiceFile.c_str()))  // Expecting just audio for this request
                     {
-                        AZStd::function<void()> playFunction = [ voiceFile, entityId ] ()
+                        AZStd::string aliasedVoicePath = GetAliasedUserCachePath(id);
+                        AZStd::function<void()> playFunction = [ aliasedVoicePath, entityId ] ()
                         {
-                            EBUS_EVENT_ID(entityId, TextToSpeechPlaybackBus, PlaySpeech, voiceFile);
+                            EBUS_EVENT_ID(entityId, TextToSpeechPlaybackBus, PlaySpeech, aliasedVoicePath);
                         };
                         EBUS_QUEUE_FUNCTION(AZ::TickBus, playFunction);
                     }
@@ -325,7 +331,7 @@ namespace CloudGemTextToSpeech
     }
 
 
-    AZStd::string TextToSpeech::ResolvePath(const char* path, bool isDir)
+    AZStd::string TextToSpeech::ResolvePath(const char* path, bool isDir) const
     {
         char resolvedGameFolder[AZ_MAX_PATH_LEN] = { 0 };
         if (!gEnv->pFileIO->ResolvePath(path, resolvedGameFolder, AZ_MAX_PATH_LEN))
@@ -341,7 +347,7 @@ namespace CloudGemTextToSpeech
     }
 
 
-    AZStd::string TextToSpeech::GenerateMD5FromPayload(const char* fileName)
+    AZStd::string TextToSpeech::GenerateMD5FromPayload(const char* fileName) const
     {
         static const int hashLength = 16;
         AZStd::vector<unsigned char> hashVec;
@@ -360,7 +366,14 @@ namespace CloudGemTextToSpeech
         return returnStr;
     }
 
-    bool TextToSpeech::GenerateMD5(const char* szName, unsigned char* md5)
+    // Some platforms don't play nicely with Crypak when passing absolute paths
+    // Since the audio system still loads files through Crypak we can avoid this by passing an aliased path
+    AZStd::string TextToSpeech::GetAliasedUserCachePath(const AZStd::string& hash) const
+    {
+        return AZStd::string{ USER_CACHE_LOCATION } + hash + ".pcm";
+    }
+
+    bool TextToSpeech::GenerateMD5(const char* szName, unsigned char* md5) const
     {
         if (!szName || !md5)
         {
@@ -443,15 +456,7 @@ namespace CloudGemTextToSpeech
         WaitForChildren();
     }
 
-    int TextToSpeech::ConvertingUrlSet::size()
-    {
-        int size = 0;
-        if (!voiceUrl.empty()) size++;
-        if (!marksUrl.empty()) size++;
-        return size;
-    }
-
-    int TextToSpeech::ConvertedFileSet::size()
+    int TextToSpeech::ConversionSet::size()
     {
         int size = 0;
         if (!voice.empty()) size++;

@@ -161,20 +161,20 @@ bool CreateResourceDialog::ValidateResourceName(const QString& resourceName)
     return true;
 }
 
-QRegExpValidator* CreateResourceDialog::GetValidator(const string& regEx)
+QRegExpValidator* CreateResourceDialog::GetValidator(const QString& regEx)
 {
-    QRegExp rx(regEx.c_str());
+    QRegExp rx(regEx);
     return new QRegExpValidator(rx, this);
 }
 
-int CreateResourceDialog::SetValidatorOnLineEdit(QLineEdit* target, const string& resourceName, const string& fieldName)
+int CreateResourceDialog::SetValidatorOnLineEdit(QLineEdit* target, const QString& resourceName, const QString& fieldName)
 {
-    string regex;
-    string help;
+    QString regex;
+    QString help;
     int minLen;
     m_view->GetResourceValidationData(resourceName, fieldName, regex, help, minLen);
     target->setValidator(GetValidator(regex));
-    target->setToolTip(QString(help.c_str()));
+    target->setToolTip(help);
     return minLen;
 }
 

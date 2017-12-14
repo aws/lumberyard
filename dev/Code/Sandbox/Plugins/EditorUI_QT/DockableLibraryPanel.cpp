@@ -938,6 +938,11 @@ void DockableLibraryPanel::DuplicateLibrary(const QString& currentLib)
         }
     }
     AZ_Assert(originLib, "lib shouldn't be null");
+
+    if (originLib == nullptr)
+    {
+        return;
+    }
     
     //get a valid name for the copied lib
     QString libraryName = currentLib + "_Copy";

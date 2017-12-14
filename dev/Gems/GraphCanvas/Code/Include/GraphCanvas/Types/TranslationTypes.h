@@ -40,19 +40,24 @@ namespace GraphCanvas
                 ;
         }
 
-        TranslationKeyedString() = default;
+        TranslationKeyedString()
+            : m_dirtyText(true)
+        {
+        }
+
         ~TranslationKeyedString() = default;
 
         TranslationKeyedString(const AZStd::string& fallback, const AZStd::string& context = AZStd::string(), const AZStd::string& key = AZStd::string())
             : m_fallback(fallback)
             , m_context(context)
             , m_key(key)
+            , m_dirtyText(true)
         {
         }
 
         const AZStd::string& GetDisplayString() const
         {
-            if (m_display.empty())
+            if (m_dirtyText)
             {
                 const_cast<TranslationKeyedString*>(this)->TranslateString();
             }
@@ -73,6 +78,8 @@ namespace GraphCanvas
                     m_display = translatedText;
                 }
             }
+
+            m_dirtyText = false;
         }
 
         bool empty() const
@@ -88,9 +95,19 @@ namespace GraphCanvas
                 ;
         }
 
-        AZStd::string m_fallback;
+        void SetFallback(const AZStd::string& fallback)
+        {
+            m_fallback = fallback;
+            m_dirtyText = true;
+        }
+        
         AZStd::string m_context;
         AZStd::string m_key;
         AZStd::string m_display;
+
+    private:
+        AZStd::string m_fallback;
+
+        bool m_dirtyText;
     };
 }

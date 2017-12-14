@@ -59,15 +59,18 @@ namespace AzToolsFramework
     protected slots:
         void openColorDialog();
         void onSelected(QColor color);
+        void OnEditingFinished();
+        void OnTextEdited(const QString& newText);
 
     private:
         void CreateColorDialog();
         void SetColor(QColor color, bool updateDialogColor = true);
+        QColor convertFromString(const QString& string);
 
         QToolButton* m_pDefaultButton;
         QColorDialog* m_pColorDialog;
 
-        QLabel* m_colorLabel;
+        QLineEdit* m_colorEdit;
         QColor m_color;
     };
 

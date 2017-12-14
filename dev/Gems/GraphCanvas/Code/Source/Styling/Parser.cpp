@@ -228,6 +228,10 @@ namespace
         {
             return Styling::Attribute::ConnectionDragMoveBuffer;
         }
+        else if (attribute == Styling::Attributes::ConnectionDefaultMarquee)
+        {
+            return Styling::Attribute::ConnectionDefaultMarquee;
+        }
         else if (attribute == Styling::Attributes::ZValue)
         {
             return Styling::Attribute::ZValue;
@@ -734,6 +738,7 @@ namespace GraphCanvas
                 case Attribute::ConnectionDragMaximumDistance:
                 case Attribute::ConnectionDragPercent:
                 case Attribute::ConnectionDragMoveBuffer:
+                case Attribute::ConnectionDefaultMarquee:
                 case Attribute::ZValue:
                 {
                     if (member->value.IsInt())

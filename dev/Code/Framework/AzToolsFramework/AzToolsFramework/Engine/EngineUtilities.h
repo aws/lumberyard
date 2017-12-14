@@ -20,23 +20,21 @@
 
 namespace AzToolsFramework
 {
-    //! Static utility class for engine related activities
+    //! Utility class for engine configuration related activities
     /*!
     The helper functions defined here are designed to provide engine related support for any tool application
     */
-    class EngineUtilities
+    struct EngineConfiguration
     {
-    public:
+        //! The name of the engine confiuguration file that must be present in any root folder.
+        static const char* s_fileName;
+
         //! Function to determine values from the current root folder's engine.json file.
         //!
-        //! \param[in] currentAssetRoot	The current root asset folder (parent of the game asset folder) to look for the engine.json configuration file.
+        //! \param[in] rootFolderPath The full path to the directory that contains the engine configuration file
         //! \param[in] key The key to lookup in the engine configuration file
         //! \return AZ::Outcome The result of the lookup for a particular key value
-        static AZ::Outcome<AZStd::string, AZStd::string> ReadEngineConfigurationValue(const AZStd::string& currentAssetRoot, const AZStd::string& key);
-
-    private:
-        static QMap<QString, QMap<QString, QString> >	m_engineConfigurationCache;
-        static QMutex									m_engineConfigurationCacheMutex;
+        static AZ::Outcome<AZStd::string, AZStd::string> ReadValue(const AZStd::string& rootFolderPath, const AZStd::string& key);
     };
 } // namespace AzToolsFramework
 

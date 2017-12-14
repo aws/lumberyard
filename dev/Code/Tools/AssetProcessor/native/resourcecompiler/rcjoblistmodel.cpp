@@ -152,7 +152,7 @@ namespace AssetProcessor
             case ColumnCompleted:
                 return getItem(index.row())->GetTimeCompleted().toString("hh:mm:ss.zzz");
             case ColumnPlatform:
-                return getItem(index.row())->GetPlatform();
+                return QString::fromUtf8(getItem(index.row())->GetPlatformInfo().m_identifier.c_str());
             default:
                 break;
             }
@@ -190,7 +190,7 @@ namespace AssetProcessor
 
         m_jobs.push_back(rcJob);
 #if defined(DEBUG_RCJOB_MODEL)
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace AddNewJob(%i  %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace AddNewJob(%i  %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
 
         bool isPending = false;
@@ -247,7 +247,7 @@ namespace AssetProcessor
     void RCJobListModel::markAsProcessing(RCJob* rcJob)
     {
 #if defined(DEBUG_RCJOB_MODEL)
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace markAsProcessing(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace markAsProcessing(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
         
         rcJob->SetState(RCJob::processing);
@@ -258,7 +258,7 @@ namespace AssetProcessor
         int jobIndex = m_jobs.lastIndexOf(rcJob);
         if(jobIndex == -1)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace jobIndex == -1!!! (%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace jobIndex == -1!!! (%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
             AZ_Assert(false, "Job not found!!!");
         }
 
@@ -268,7 +268,7 @@ namespace AssetProcessor
     void RCJobListModel::markAsStarted(RCJob* rcJob)
     {
 #if defined(DEBUG_RCJOB_MODEL)
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace markAsStarted(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace markAsStarted(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
 
         auto foundInQueue = m_jobsInQueueLookup.find(rcJob->GetElementID());
@@ -281,7 +281,7 @@ namespace AssetProcessor
     void RCJobListModel::markAsCompleted(RCJob* rcJob)
     {
 #if defined(DEBUG_RCJOB_MODEL)
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace markAsCompleted(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace markAsCompleted(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
 
         rcJob->SetTimeCompleted(QDateTime::currentDateTime());
@@ -295,7 +295,7 @@ namespace AssetProcessor
         int jobIndex = m_jobs.lastIndexOf(rcJob);
         if(jobIndex == -1)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace jobIndex == -1!!! (%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace jobIndex == -1!!! (%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
             AZ_Assert(false, "Job not found!!!");
         }
 
@@ -305,7 +305,7 @@ namespace AssetProcessor
         if (rcJob->GetState() == RCJob::completed || rcJob->GetState() == RCJob::cancelled)
         {
 #if defined(DEBUG_RCJOB_MODEL)
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace =>JobCompleted(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace =>JobCompleted(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
 
             beginRemoveRows(QModelIndex(), jobIndex, jobIndex);
@@ -322,7 +322,7 @@ namespace AssetProcessor
         else
         {
 #if defined(DEBUG_RCJOB_MODEL)
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace =>JobFailed(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace =>JobFailed(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
 
             m_jobsFailedLookup.insert(rcJob->GetElementID(), rcJob);
@@ -357,6 +357,37 @@ namespace AssetProcessor
         return -1; // invalid index
     }
 
+    void RCJobListModel::EraseJobs(QString relSourceFile)
+    {
+        for (int jobIdx = 0; jobIdx < rowCount(); ++jobIdx)
+        {
+            RCJob* job = getItem(jobIdx);
+            if (QString::compare(job->GetInputFileRelativePath(), relSourceFile, Qt::CaseInsensitive) == 0)
+            {
+                const QueueElementID& target = job->GetElementID();
+                if (isInQueue(target))
+                {
+                    beginRemoveRows(QModelIndex(), jobIdx, jobIdx);
+                    job->deleteLater();
+                    m_jobs.removeAt(jobIdx);
+                    endRemoveRows();
+                }
+                else if (isInFlight(target))
+                {
+                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Cancelling Job [%s, %s, %s] because the source file no longer exists.\n", target.GetInputAssetName().toUtf8().data(), target.GetPlatform().toUtf8().data(), target.GetJobDescriptor().toUtf8().data());
+                    job->SetState(RCJob::JobState::cancelled);
+                    AssetBuilderSDK::JobCommandBus::Event(job->GetJobEntry().m_jobRunKey, &AssetBuilderSDK::JobCommandBus::Events::Cancel);
+                    UpdateRow(jobIdx);
+                }
+                else if (job->GetState() == RCJob::failed)
+                {
+                    // remove failed job from the gui if the source is deleted
+                    EraseFailedJobs(target);
+                }
+            }
+        }
+    }
+
     bool RCJobListModel::isInQueue(const AssetProcessor::QueueElementID& check) const
     {
         return m_jobsInQueueLookup.contains(check);
@@ -375,14 +406,14 @@ namespace AssetProcessor
         }
         for (const RCJob* rcJob : m_jobs)
         {
-            if (rcJob->GetPlatform() != platform || rcJob->GetState() != RCJob::pending)
+            if ((platform != rcJob->GetPlatformInfo().m_identifier.c_str()) || (rcJob->GetState() != RCJob::pending))
             {
                 continue;
             }
             QString input = rcJob->GetInputFileRelativePath();
             if (input.endsWith(searchTerm, Qt::CaseInsensitive))
             {
-                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found exact match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found exact match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
                 found.insert(QueueElementID(input, platform, rcJob->GetJobKey()));
                 escalationList.append(qMakePair(rcJob->GetJobEntry().m_jobRunKey, escalationValue));
             }
@@ -390,14 +421,14 @@ namespace AssetProcessor
 
         for (const RCJob* rcJob : m_jobsInFlight)
         {
-            if (rcJob->GetPlatform() != platform)
+            if (platform != rcJob->GetPlatformInfo().m_identifier.c_str())
             {
                 continue;
             }
             QString input = rcJob->GetInputFileRelativePath();
             if (input.endsWith(searchTerm, Qt::CaseInsensitive))
             {
-                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found exact match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found exact match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
                 found.insert(QueueElementID(input, platform, rcJob->GetJobKey()));
             }
         }
@@ -416,7 +447,7 @@ namespace AssetProcessor
         {
             for (const auto& rcJob : m_jobs)
             {
-                if (rcJob->GetPlatform() != platform || rcJob->GetState() != RCJob::pending)
+                if ((platform != rcJob->GetPlatformInfo().m_identifier.c_str()) || (rcJob->GetState() != RCJob::pending))
                 {
                     continue;
                 }
@@ -427,7 +458,7 @@ namespace AssetProcessor
                     QStringRef testref = input.midRef(0, dotIndex);
                     if (testref.endsWith(searchTermWithNoExtension, Qt::CaseInsensitive))
                     {
-                        AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+                        AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
                         found.insert(QueueElementID(input, platform, rcJob->GetJobKey()));
                         escalationList.append(qMakePair(rcJob->GetJobEntry().m_jobRunKey, escalationValue));
                     }
@@ -436,7 +467,7 @@ namespace AssetProcessor
 
             for (const RCJob* rcJob : m_jobsInFlight)
             {
-                if (rcJob->GetPlatform() != platform)
+                if (platform != rcJob->GetPlatformInfo().m_identifier.c_str())
                 {
                     continue;
                 }
@@ -447,7 +478,7 @@ namespace AssetProcessor
                     QStringRef testref = input.midRef(0, dotIndex);
                     if (testref.endsWith(searchTermWithNoExtension, Qt::CaseInsensitive))
                     {
-                        AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+                        AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
                         found.insert(QueueElementID(input, platform, rcJob->GetJobKey()));
                     }
                 }
@@ -470,14 +501,14 @@ namespace AssetProcessor
         }
         for (const auto& rcJob : m_jobs)
         {
-            if (rcJob->GetPlatform() != platform || rcJob->GetState() != RCJob::pending)
+            if ((platform != rcJob->GetPlatformInfo().m_identifier.c_str()) || (rcJob->GetState() != RCJob::pending))
             {
                 continue;
             }
             QString input = rcJob->GetInputFileRelativePath();
             if (input.contains(searchTermWithNoExtension, Qt::CaseInsensitive)) //notice here that we use simply CONTAINS instead of endswith - this can potentially be very broad!
             {
-                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found ultra-broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found ultra-broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
                 found.insert(QueueElementID(input, platform, rcJob->GetJobKey()));
                 escalationList.append(qMakePair(rcJob->GetJobEntry().m_jobRunKey, escalationValue));
             }
@@ -485,7 +516,7 @@ namespace AssetProcessor
 
         for (const RCJob* rcJob : m_jobsInFlight)
         {
-            if (rcJob->GetPlatform() != platform)
+            if (platform != rcJob->GetPlatformInfo().m_identifier.c_str())
             {
                 continue;
             }
@@ -493,7 +524,7 @@ namespace AssetProcessor
             QString input = rcJob->GetInputFileRelativePath();
             if (input.contains(searchTermWithNoExtension, Qt::CaseInsensitive)) //notice here that we use simply CONTAINS instead of endswith - this can potentially be very broad!
             {
-                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found ultra-broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatform().toUtf8().constData(), rcJob->GetJobKey().toUtf8().constData());
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "Job Queue: Heuristic search found ultra-broad match (%s,%s,%s).\n", rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
                 found.insert(QueueElementID(input, platform, rcJob->GetJobKey()));
             }
         }

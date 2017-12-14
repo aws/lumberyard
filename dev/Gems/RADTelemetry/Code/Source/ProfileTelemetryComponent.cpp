@@ -29,6 +29,7 @@
 namespace
 {
     const char * ProfileChannel = "RADTelemetry";
+    const AZ::u32 MaxProfileThreadCount = 128;
 }
 
 namespace RADTelemetry
@@ -81,6 +82,8 @@ namespace RADTelemetry
         if (IsInitialized())
         {
             // We can send the thread name to Telemetry now
+            const AZ::u32 newProfiledThreadCount = ++m_profiledThreadCount;
+            AZ_Assert(newProfiledThreadCount <= MaxProfileThreadCount, "RAD Telemetry profiled threadcount exceeded MaxProfileThreadCount!");
             tmThreadName(0, id.m_id, desc->m_name);
             return;
         }
@@ -102,6 +105,9 @@ namespace RADTelemetry
         {
             m_threadNames.push_back({ id, desc->m_name });
         }
+#else
+        const AZ::u32 newProfiledThreadCount = ++m_profiledThreadCount;
+        AZ_Assert(newProfiledThreadCount <= MaxProfileThreadCount, "RAD Telemetry profiled threadcount exceeded MaxProfileThreadCount!");
 #endif
     }
 
@@ -109,17 +115,27 @@ namespace RADTelemetry
     {
         (void)id;
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
-        ScopedLock lock(m_threadNameLock);
+        {
+            ScopedLock lock(m_threadNameLock);
 
-        auto end = m_threadNames.end();
-        auto itr = AZStd::find_if(m_threadNames.begin(), end, [id](const ThreadNameEntry& entry)
-        {
-            return entry.id == id;
-        });
-        if (itr != end)
-        {
-            m_threadNames.erase(itr);
+            auto end = m_threadNames.end();
+            auto itr = AZStd::find_if(m_threadNames.begin(), end, [id](const ThreadNameEntry& entry)
+            {
+                return entry.id == id;
+            });
+            if (itr != end)
+            {
+                m_threadNames.erase(itr);
+            }
+            else
+            {
+                // assume it was already sent on to RAD Telemetry
+                tmEndThread(0, id.m_id);
+                --m_profiledThreadCount;
+            }
         }
+#else
+        --m_profiledThreadCount;
 #endif
     }
 
@@ -176,6 +192,8 @@ namespace RADTelemetry
                 ScopedLock lock(m_threadNameLock);
                 for (const auto& threadNameEntry : m_threadNames)
                 {
+                    const AZ::u32 newProfiledThreadCount = ++m_profiledThreadCount;
+                    AZ_Assert(newProfiledThreadCount <= MaxProfileThreadCount, "RAD Telemetry profiled threadcount exceeded MaxProfileThreadCount!");
                     tmThreadName(0, threadNameEntry.id.m_id, threadNameEntry.name.c_str());
                 }
                 m_threadNames.clear(); // Telemetry caches names so we can clear what we have sent on
@@ -239,11 +257,11 @@ namespace RADTelemetry
             // Telemetry must be compiled as a static lib, set our global instance pointer to the internal telemetry one
             TM_API_PTR = g_tm_api;
         }
-        AZ_Assert(TM_API_PTR, "Invalid API pointer state");
+        AZ_Assert(TM_API_PTR, "Invalid RAD Telemetry API pointer state");
 
-        tmSetMaxThreadCount(128);
+        tmSetMaxThreadCount(MaxProfileThreadCount);
 
-        const tm_int32 telemetryBufferSize = 8 * 1024 * 1024;
+        const tm_int32 telemetryBufferSize = 16 * 1024 * 1024;
         m_buffer = static_cast<char*>(malloc(telemetryBufferSize));
         tmInitialize(telemetryBufferSize, m_buffer);
 

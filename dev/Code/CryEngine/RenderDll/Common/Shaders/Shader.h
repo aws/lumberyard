@@ -85,101 +85,167 @@ struct SPair
     #define GEOMETRYSHADER_SUPPORT  true
 #endif
 
-struct SFXSampler
+//------------------------------------------------------------------------------
+// SFX structures are the structures gathered from the shader during shader parsing 
+// and associated later on to a binding slot / buffer.
+// They represent constants, textures and samplers.
+//------------------------------------------------------------------------------
+struct SFXBaseParam
 {
-    CCryNameR m_Name;      // Parameter name
-    std::vector <uint32> m_dwName;
-    uint32 m_nFlags;
-    short m_nArray;        // Number of samplers
-    CCryNameR m_Annotations; // Additional parameters (between <>)
-    CCryNameR m_Semantic;    // Parameter semantic type (after ':')
-    CCryNameR m_Values;    // Parameter values (after '=')
-    byte   m_eType;        // ESamplerType
-    short  m_nRegister[eHWSC_Num];
-    int m_nTexState;
-    SFXSampler()
+    CCryNameR               m_Name;                 // Parameter name
+    std::vector <uint32>    m_dwName;
+    uint32                  m_nFlags;
+    short                   m_nArray;               // Number of parameters
+    CCryNameR               m_Annotations;          // Additional parameters (between <>)
+    CCryNameR               m_Semantic;             // Parameter semantic type (after ':')
+    CCryNameR               m_Values;               // Parameter values (after '=')
+    byte                    m_eType;                // Type per usage
+
+    // [Shader System] register offset per shader stage (class) - VS, PS, GS...
+    // This needs to be unified for all stages (and renamed as m_RegisterOffset)
+    short                   m_Register[eHWSC_Num]; 
+
+    SFXBaseParam()
     {
-        m_nTexState = -1;
         m_nArray = 0;
         m_nFlags = 0;
         for (int i = 0; i < eHWSC_Num; i++)
         {
-            m_nRegister[i] = 10000;
+            m_Register[i] = 10000;
         }
     }
-    ~SFXSampler()
-    {
-    }
+
     uint32   GetFlags() { return m_nFlags; }
+
+    void GetMemoryUsage(ICrySizer* pSizer) const
+    {
+        pSizer->AddObject(m_dwName);
+    }
+};
+
+//------------------------------------------------------------------------------
+// An SFXParam is the constant data gathered from the shader parsing.
+// Example of usage - In Matrix 3x4: m_nParams = 3, m_nComps = 4
+// Needs some more refactor to fully use SFXBaseParam.
+//------------------------------------------------------------------------------
+struct SFXParam : SFXBaseParam
+{
+    short       m_RegisterCount;
+    short       m_ComponentCount;
+    int8        m_BindingSlot;              // the CB slot
+
+    // [Shaders System] - the following needs to be removed as part of the unified offset.
+    // The next two parameters are only valid after the gather stage for final parameters
+    AZ::u8      m_OffsetStageSetter;        // which stage set the offset
+    AZ::u8      m_StagesUsage;              // Adding visibility to who's using the param
+
+    SFXParam()
+    {
+        m_RegisterCount = 0;
+        m_ComponentCount = 0;
+        m_BindingSlot = -1;
+        m_OffsetStageSetter = eHWSC_Vertex;
+        m_StagesUsage = (1 << eHWSC_Vertex);
+    }
+
+    ~SFXParam() {}
+
+    void GetParamComp(uint32 nOffset, CryFixedStringT<128>& param);
+    void GetCompName(uint32 nId, CryFixedStringT<128>& name);
+    string GetValueForName(const char* szName, EParamType& eType);
+    void PostLoad(class CParserBin& Parser, SParserFrame& Name, SParserFrame& Annotations, SParserFrame& Values, SParserFrame& Assign);
+    void PostLoad();
+    bool Export(SShaderSerializeContext& SC);
+    bool Import(SShaderSerializeContext& SC, SSFXParam* pPR);
+
+    uint32 Size()
+    {
+        uint32 nSize = sizeof(SFXParam);
+        nSize += sizeofVector(m_dwName);
+        return nSize;
+    }
+
+    inline bool operator == (const SFXParam& m) const
+    {
+        if (m_Name == m.m_Name && m_Annotations == m.m_Annotations && m_Semantic == m.m_Semantic && m_Values == m.m_Values &&
+            m_RegisterCount == m.m_RegisterCount && m_ComponentCount == m.m_ComponentCount && m_nFlags == m.m_nFlags && m_Register[0] == m.m_Register[0] && m_Register[1] == m.m_Register[1] &&
+            m_eType == m.m_eType)
+        {
+            return true;
+        }
+        return false;
+    }
+};
+
+//------------------------------------------------------------------------------
+// An SFX structure is the structure gathered from the shader during
+// parsing and associated later on.   
+//------------------------------------------------------------------------------
+struct SFXSampler : SFXBaseParam
+{
+    int         m_nTexState;
+
+    SFXSampler()
+    {
+        m_nTexState = -1;
+    }
+    ~SFXSampler()    {}
+
     void PostLoad(class CParserBin& Parser, SParserFrame& Name, SParserFrame& Annotations, SParserFrame& Values, SParserFrame& Assign);
     void PostLoad();
     bool Export(SShaderSerializeContext& SC);
     bool Import(SShaderSerializeContext& SC, SSFXSampler* pPR);
+
     uint32 Size()
     {
         uint32 nSize = sizeof(SFXSampler);
-        //nSize += m_Name.capacity();
         nSize += sizeofVector(m_dwName);
-        //nSize += m_Values.capacity();
         return nSize;
     }
+
     inline bool operator == (const SFXSampler& m) const
     {
         if (m_Name == m.m_Name && m_Annotations == m.m_Annotations && m_Semantic == m.m_Semantic && m_Values == m.m_Values &&
-            m_nArray == m.m_nArray && m_nFlags == m.m_nFlags && m_nRegister[0] == m.m_nRegister[0] && m_nRegister[1] == m.m_nRegister[1] &&
+            m_nArray == m.m_nArray && m_nFlags == m.m_nFlags && m_Register[0] == m.m_Register[0] && m_Register[1] == m.m_Register[1] &&
             m_eType == m.m_eType && m_nTexState == m.m_nTexState)
         {
             return true;
         }
         return false;
     }
-
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        //pSizer->AddObject( m_Name );
-        //pSizer->AddObject( m_Values );
-        pSizer->AddObject(m_dwName);
-    }
 };
 
-struct SFXTexture
+//------------------------------------------------------------------------------
+// An SFX structure is the structure gathered from the shader during
+// parsing and associated later on.   
+// SFXTexture - This structure contains a meta data gathered during shader parsing.
+// It doesn't contain the actual texture data and doesn't apply to the binding directly 
+// but used as the data associated with the SCGTexture binding structure.
+//------------------------------------------------------------------------------
+struct SFXTexture : SFXBaseParam
 {
-    CCryNameR m_Name;      // Texture name
-    std::vector <uint32> m_dwName;
-    uint32 m_nFlags;
-    uint32 m_nTexFlags;
-    short m_nArray;        // Number of textures
-    CCryNameR m_Annotations; // Additional parameters (between <>)
-    CCryNameR m_Semantic;    // Parameter semantic type (after ':')
-    CCryNameR m_Values;    // Parameter values (after '=')
-    string m_szTexture;    // Texture source name
-    string m_szUIName;     // UI name
-    string m_szUIDesc;     // UI description
-    bool   m_bSRGBLookup;  // Lookup
-    byte   m_eType;        // ETextureType
-    byte   m_Type;         // Data type (float, float4, etc)
-    short  m_nRegister[eHWSC_Num];
+    uint32      m_nTexFlags;
+    string      m_szTexture;    // Texture source name
+    string      m_szUIName;     // UI name
+    string      m_szUIDesc;     // UI description
+    bool        m_bSRGBLookup;  // Lookup
+    byte        m_Type;         // Data type (float, float4, etc)
+
     SFXTexture()
     {
         m_bSRGBLookup = false;
         m_Type = 0;
         m_nTexFlags = 0;
-        m_nArray = 0;
-        m_nFlags = 0;
-        for (int i = 0; i < eHWSC_Num; i++)
-        {
-            m_nRegister[i] = 10000;
-        }
     }
-    ~SFXTexture()
-    {
-    }
-    uint32 GetFlags() { return m_nFlags; }
+
+    ~SFXTexture()    {}
+
     uint32 GetTexFlags() { return m_nTexFlags; }
     void PostLoad(class CParserBin& Parser, SParserFrame& Name, SParserFrame& Annotations, SParserFrame& Values, SParserFrame& Assign);
     void PostLoad();
     bool Export(SShaderSerializeContext& SC);
     bool Import(SShaderSerializeContext& SC, SSFXTexture* pPR);
+
     uint32 Size()
     {
         uint32 nSize = sizeof(SFXTexture);
@@ -188,100 +254,20 @@ struct SFXTexture
         //nSize += m_Values.capacity();
         return nSize;
     }
+
     inline bool operator == (const SFXTexture& m) const
     {
         if (m_Name == m.m_Name && m_Annotations == m.m_Annotations && m_Semantic == m.m_Semantic && m_Values == m.m_Values &&
-            m_nArray == m.m_nArray && m_nFlags == m.m_nFlags && m_nRegister[0] == m.m_nRegister[0] && m_nRegister[1] == m.m_nRegister[1] &&
+            m_nArray == m.m_nArray && m_nFlags == m.m_nFlags && m_Register[0] == m.m_Register[0] && m_Register[1] == m.m_Register[1] &&
             m_eType == m.m_eType && m_bSRGBLookup == m.m_bSRGBLookup && m_szTexture == m.m_szTexture)
         {
             return true;
         }
         return false;
     }
-
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        //pSizer->AddObject( m_Name );
-        //pSizer->AddObject( m_Values );
-        pSizer->AddObject(m_dwName);
-    }
 };
 
-// In Matrix 3x4: m_nParams = 3, m_nComps = 4
-struct SFXParam
-{
-    CCryNameR m_Name;      // Parameter name
-    std::vector <uint32> m_dwName;
-    uint32 m_nFlags;
-    short m_RegisterCount;
-    short m_ComponentCount;
-    CCryNameR m_Annotations; // Additional parameters (between <>)
-    CCryNameR m_Semantic;  // Parameter semantic type (after ':')
-    CCryNameR m_Values;    // Parameter values (after '=')
-    byte   m_eType;        // EParamType
-    int8   m_BindingSlot;   // the CB slot
-    short  m_RegisterOffset[eHWSC_Num];
-
-    // The following two parameters are only valid after the gather stage for final parameters
-    AZ::u8 m_OffsetStageSetter;     // which stage set the offset
-    AZ::u8 m_StagesUsage;           // Adding visibility to who's using the param
-
-    SFXParam()
-    {
-        m_RegisterCount = 0;
-        m_ComponentCount = 0;
-        m_BindingSlot = -1;
-        m_nFlags = 0;
-        m_OffsetStageSetter = eHWSC_Vertex;
-        m_StagesUsage = (1 << eHWSC_Vertex);
-
-        m_RegisterOffset[0] = 10000;
-        m_RegisterOffset[1] = 10000;
-        m_RegisterOffset[2] = 10000;
-        m_RegisterOffset[3] = 10000;
-        m_RegisterOffset[4] = 10000;
-        m_RegisterOffset[5] = 10000;
-    }
-    ~SFXParam()
-    {
-        int nnn = 0;
-    }
-
-    void GetParamComp(uint32 nOffset, CryFixedStringT<128>& param);
-    uint32   GetParamFlags() { return m_nFlags; }
-    void GetCompName(uint32 nId, CryFixedStringT<128>& name);
-    string GetValueForName(const char* szName, EParamType& eType);
-    void PostLoad(class CParserBin& Parser, SParserFrame& Name, SParserFrame& Annotations, SParserFrame& Values, SParserFrame& Assign);
-    void PostLoad();
-    bool Export(SShaderSerializeContext& SC);
-    bool Import(SShaderSerializeContext& SC, SSFXParam* pPR);
-    uint32 Size()
-    {
-        uint32 nSize = sizeof(SFXParam);
-        //nSize += m_Name.capacity();
-        nSize += sizeofVector(m_dwName);
-        //nSize += m_Values.capacity();
-        return nSize;
-    }
-    inline bool operator == (const SFXParam& m) const
-    {
-        if (m_Name == m.m_Name && m_Annotations == m.m_Annotations && m_Semantic == m.m_Semantic && m_Values == m.m_Values &&
-            m_RegisterCount == m.m_RegisterCount && m_ComponentCount == m.m_ComponentCount && m_nFlags == m.m_nFlags && m_RegisterOffset[0] == m.m_RegisterOffset[0] && m_RegisterOffset[1] == m.m_RegisterOffset[1] &&
-            m_eType == m.m_eType)
-        {
-            return true;
-        }
-        return false;
-    }
-
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        //pSizer->AddObject( m_Name );
-        //pSizer->AddObject( m_Values );
-        pSizer->AddObject(m_dwName);
-    }
-};
-
+//------------------------------------------------------------------------------
 struct STokenD
 {
     //std::vector<int> Offsets;
@@ -681,7 +667,8 @@ enum EHWSRMaskBit
     HWSR_SRGB0,
     HWSR_SRGB1,
     HWSR_SRGB2,
-    
+
+    HWSR_DEPTHFIXUP,
 
     HWSR_MAX
 };
@@ -1226,55 +1213,41 @@ struct SShaderTechnique
 
 //===============================================================================
 
-enum EShaderDrawType
-{
-    eSHDT_General,
-    eSHDT_Light,
-    eSHDT_Shadow,
-    eSHDT_Terrain,
-    eSHDT_Overlay,
-    eSHDT_OceanShore,
-    eSHDT_Fur,
-    eSHDT_NoDraw,
-    eSHDT_CustomDraw,
-    eSHDT_Sky,
-    eSHDT_Volume
-};
-
 // General Shader structure
 class CShader
     : public IShader
     , public CBaseResource
 {
-    static CCryNameTSCRC s_sClassName;
+    static CCryNameTSCRC    s_sClassName;
+
 public:
-    string m_NameFile;   // } FIXME: This fields order is very important
-    string m_NameShader;
-    EShaderDrawType m_eSHDType;   // } Check CShader::operator = in ShaderCore.cpp for more info
+    string                  m_NameFile;   // } FIXME: This fields order is very important
+    string                  m_NameShader;
+    EShaderDrawType         m_eSHDType;   // } Check CShader::operator = in ShaderCore.cpp for more info
 
-    uint32 m_Flags;            // Different flags EF_  (see IShader.h)
-    uint32 m_Flags2;           // Different flags EF2_ (see IShader.h)
-    uint32 m_nMDV;          // Vertex modificator flags
-    uint32 m_NameShaderICRC;
+    uint32                  m_Flags;            // Different flags EF_  (see IShader.h)
+    uint32                  m_Flags2;           // Different flags EF2_ (see IShader.h)
+    uint32                  m_nMDV;          // Vertex modificator flags
+    uint32                  m_NameShaderICRC;
 
-    AZ::Vertex::Format m_vertexFormat;   // Base vertex format for the shader (see VertexFormats.h)
-    ECull m_eCull;          // Global culling type
+    AZ::Vertex::Format      m_vertexFormat;   // Base vertex format for the shader (see VertexFormats.h)
+    ECull                   m_eCull;          // Global culling type
 
-    TArray <SShaderTechnique*> m_HWTechniques; // Hardware techniques
-    int m_nMaskCB;
+    TArray <SShaderTechnique*> m_HWTechniques;              // Hardware techniques
+    int                     m_nMaskCB;
 
-    EShaderType m_eShaderType;
+    EShaderType             m_eShaderType;                  // [Shader System TO DO] - possibly change to be data driven
 
-    uint64 m_nMaskGenFX;
-    SShaderGen* m_ShaderGenParams; // BitMask params used in automatic script generation
-    SShaderTexSlots* m_ShaderTexSlots[TTYPE_MAX]; // filled out with data of the used texture slots for a given technique
-                                                  // (might be NULL if this data isn't gathered)
-    std::vector<CShader*>* m_DerivedShaders;
-    CShader* m_pGenShader;
+    uint64                  m_nMaskGenFX;
+    SShaderGen*             m_ShaderGenParams;              // BitMask params used in automatic script generation
+    SShaderTexSlots*        m_ShaderTexSlots[TTYPE_MAX];    // filled out with data of the used texture slots for a given technique
+                                                            // (might be NULL if this data isn't gathered)
+    std::vector<CShader*>*  m_DerivedShaders;
+    CShader*                m_pGenShader;
 
-    int m_nRefreshFrame; // Current frame for shader reloading (to avoid multiple reloading)
-    uint32 m_SourceCRC32;
-    uint32 m_CRC32;
+    int                     m_nRefreshFrame; // Current frame for shader reloading (to avoid multiple reloading)
+    uint32                  m_SourceCRC32;
+    uint32                  m_CRC32;
 
     //============================================================================
 
@@ -1442,6 +1415,7 @@ public:
 
     virtual DynArrayRef<SShaderParam>& GetPublicParams();
     virtual EShaderType GetShaderType() { return m_eShaderType; }
+    virtual EShaderDrawType GetShaderDrawType() const { return m_eSHDType; }
     virtual uint32 GetVertexModificator() { return m_nMDV; }
 
     //=======================================================================================
@@ -1526,4 +1500,3 @@ inline SShaderTechnique* SShaderItem::GetTechnique() const
 
 
 #endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_SHADERS_SHADER_H
-

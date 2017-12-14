@@ -51,7 +51,7 @@ namespace LmbrCentral
 
     void SphereShape::SetRadius(float newRadius)
     {
-        GetSphereConfiguration().SetRadius(newRadius);
+        GetConfiguration().SetRadius(newRadius);
         m_intersectionDataCache.SetCacheStatus(SphereIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
         ShapeComponentNotificationsBus::Event(m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);        
     }
@@ -86,7 +86,7 @@ namespace LmbrCentral
             if (m_cacheStatus == CacheStatus::Obsolete_ShapeChange)
             {
                 m_radiusSquared = configuration.GetRadius() * configuration.GetRadius();
-                SetCacheStatus(CacheStatus::Current);
+                m_cacheStatus = CacheStatus::Current;
             }
         }
     }

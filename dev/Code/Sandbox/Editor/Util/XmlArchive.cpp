@@ -21,10 +21,13 @@ bool CXmlArchive::Load(const QString& file)
 {
     bLoading = true;
 
-    QFile cFile(file);
+    char filename[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetInstance()->ResolvePath(file.toUtf8().data(), filename, AZ_MAX_PATH_LEN);
+
+    QFile cFile(filename);
     if (!cFile.open(QFile::ReadOnly))
     {
-        CLogFile::FormatLine("Warning: Loading of %s failed", file.toLatin1().data());
+        CLogFile::FormatLine("Warning: Loading of %s failed", filename);
         return false;
     }
     CArchive ar(&cFile, CArchive::load);
@@ -38,14 +41,14 @@ bool CXmlArchive::Load(const QString& file)
     }
     catch (...)
     {
-        CLogFile::FormatLine("Error: Can't load xml file: '%s'! File corrupted. Binary file possibly was corrupted by Source Control if it was marked like text format.", file.toLatin1().data());
+        CLogFile::FormatLine("Error: Can't load xml file: '%s'! File corrupted. Binary file possibly was corrupted by Source Control if it was marked like text format.", filename);
         return false;
     }
 
-    root = XmlHelpers::LoadXmlFromBuffer(str.toLatin1().data(), str.toLatin1().length());
+    root = XmlHelpers::LoadXmlFromBuffer(str.toUtf8().data(), str.toUtf8().length());
     if (!root)
     {
-        CLogFile::FormatLine("Warning: Loading of %s failed", file.toLatin1().data());
+        CLogFile::FormatLine("Warning: Loading of %s failed", filename);
     }
 
     if (root)
@@ -58,11 +61,8 @@ bool CXmlArchive::Load(const QString& file)
 //////////////////////////////////////////////////////////////////////////
 void CXmlArchive::Save(const QString& file)
 {
-    QString filename(file);
-    if (GetIEditor()->GetConsoleVar("ed_lowercasepaths"))
-    {
-        filename = filename.toLower();
-    }
+    char filename[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetInstance()->ResolvePath(file.toUtf8().data(), filename, AZ_MAX_PATH_LEN);
 
     bLoading = false;
     if (!root)
@@ -74,7 +74,7 @@ void CXmlArchive::Save(const QString& file)
     // Open the file for writing, create it if needed
     if (!cFile.open(QFile::WriteOnly))
     {
-        CLogFile::FormatLine("Warning: Saving of %s failed", filename.toLatin1().data());
+        CLogFile::FormatLine("Warning: Saving of %s failed", filename);
         return;
     }
     // Create the archive object
@@ -96,7 +96,7 @@ bool CXmlArchive::SaveToPak(const QString& levelPath, CPakFile& pakFile)
 
     // Save xml file.
     QString xmlFilename = "Level.editor_xml";
-    pakFile.UpdateFile(xmlFilename.toLatin1().data(), (void*)pXmlStrData->GetString(), pXmlStrData->GetStringLength());
+    pakFile.UpdateFile(xmlFilename.toUtf8().data(), (void*)pXmlStrData->GetString(), pXmlStrData->GetStringLength());
 
     if (pakFile.GetArchive())
     {
@@ -110,8 +110,8 @@ bool CXmlArchive::SaveToPak(const QString& levelPath, CPakFile& pakFile)
 //////////////////////////////////////////////////////////////////////////
 bool CXmlArchive::LoadFromPak(const QString& levelPath, CPakFile& pakFile)
 {
-    QString xmlFilename = levelPath + "Level.editor_xml";
-    root = XmlHelpers::LoadXmlFromFile(xmlFilename.toLatin1().data());
+    QString xmlFilename = Path::GetRelativePath(levelPath) + "Level.editor_xml";
+    root = XmlHelpers::LoadXmlFromFile(xmlFilename.toUtf8().data());
     if (!root)
     {
         return false;

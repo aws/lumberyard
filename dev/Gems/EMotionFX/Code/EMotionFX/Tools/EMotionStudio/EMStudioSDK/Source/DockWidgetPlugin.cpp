@@ -14,35 +14,12 @@
 #include "EMStudioManager.h"
 #include "MainWindow.h"
 #include "DockWidgetPlugin.h"
+#include "RemovePluginOnCloseDockWidget.h"
 #include <MysticQt/Source/DockHeader.h>
 #include <MCore/Source/LogManager.h>
 
-
 namespace EMStudio
 {
-    class RemovePluginOnCloseDockWidget
-        : public MysticQt::DockWidget
-    {
-    public:
-        RemovePluginOnCloseDockWidget(const QString& name, EMStudio::EMStudioPlugin* plugin)
-            : MysticQt::DockWidget(name)
-        {
-            mPlugin = plugin;
-        }
-
-    protected:
-        void closeEvent(QCloseEvent* event) override
-        {
-            MCORE_UNUSED(event);
-            EMStudio::GetPluginManager()->RemoveActivePlugin(mPlugin);
-            GetMainWindow()->UpdateCreateWindowMenu();
-        }
-
-    private:
-        EMStudio::EMStudioPlugin* mPlugin;
-    };
-
-
     // constructor
     DockWidgetPlugin::DockWidgetPlugin()
         : EMStudioPlugin()
@@ -50,12 +27,17 @@ namespace EMStudio
         mDock = nullptr;
     }
 
-
     // destructor
     DockWidgetPlugin::~DockWidgetPlugin()
     {
         if (mDock)
         {
+            // Disconnecting all signals from mDock to this object since we are
+            // destroying it. Some plugins connect to visibility change that gets
+            // triggered from removeDockWidget. Calling those slots at this point
+            // is not safe since the plugin is being destroyed.
+            mDock->disconnect(this);
+
             EMStudio::GetMainWindow()->removeDockWidget(mDock);
             delete mDock;
         }
@@ -79,7 +61,7 @@ namespace EMStudio
     void DockWidgetPlugin::CreateBaseInterface(const char* objectName)
     {
         // get the main window
-        QMainWindow* mainWindow = (QMainWindow*)GetMainWindow();
+        QMainWindow* mainWindow = GetMainWindow();
 
         // create a window for the plugin
         mDock = new RemovePluginOnCloseDockWidget(GetName(), this);

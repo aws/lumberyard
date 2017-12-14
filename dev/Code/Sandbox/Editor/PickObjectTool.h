@@ -17,6 +17,9 @@
 #ifndef CRYINCLUDE_EDITOR_PICKOBJECTTOOL_H
 #define CRYINCLUDE_EDITOR_PICKOBJECTTOOL_H
 
+#include "EditTool.h"
+#include "IObjectManager.h"
+
 #pragma once
 
 //////////////////////////////////////////////////////////////////////////

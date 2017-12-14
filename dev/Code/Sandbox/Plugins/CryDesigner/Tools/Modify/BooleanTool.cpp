@@ -16,6 +16,7 @@
 #include "Tools/DesignerTool.h"
 #include "Serialization/Decorators/EditorActionButton.h"
 #include "Core/BrushHelper.h"
+#include "Objects/DesignerObject.h"
 
 using Serialization::ActionButton;
 

@@ -12,6 +12,8 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "ViewportNudge.h"
+#include "ViewportElement.h"
 #include <LyShine/UiComponentTypes.h>
 
 static const float g_elementEdgeForgiveness = 10.0f;
@@ -35,10 +37,10 @@ namespace
 
         settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
 
-        int default = static_cast<int>(UICANVASEDITOR_SETTINGS_VIEWPORTINTERACTION_INTERACTION_MODE_DEFAULT);
+        int defaultMode = static_cast<int>(UICANVASEDITOR_SETTINGS_VIEWPORTINTERACTION_INTERACTION_MODE_DEFAULT);
         int result = settings.value(
                 UICANVASEDITOR_SETTINGS_VIEWPORTINTERACTION_INTERACTION_MODE_KEY,
-                default).toInt();
+                defaultMode).toInt();
 
         settings.endGroup();
 
@@ -63,10 +65,10 @@ namespace
 
         settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
 
-        int default = static_cast<int>(UICANVASEDITOR_SETTINGS_VIEWPORTINTERACTION_COORDINATE_SYSTEM_DEFAULT);
+        int defaultSystem = static_cast<int>(UICANVASEDITOR_SETTINGS_VIEWPORTINTERACTION_COORDINATE_SYSTEM_DEFAULT);
         int result = settings.value(
                 UICANVASEDITOR_SETTINGS_VIEWPORTINTERACTION_COORDINATE_SYSTEM_KEY,
-                default).toInt();
+                defaultSystem).toInt();
 
         settings.endGroup();
 
@@ -152,7 +154,7 @@ bool ViewportInteraction::GetSpaceBarIsActive()
 }
 
 void ViewportInteraction::Draw(Draw2dHelper& draw2d,
-    QTreeWidgetItemRawPtrQList& selectedItems)
+    const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     // Draw the transform gizmo where appropriate
     if (m_interactionMode != InteractionMode::SELECTION)
@@ -199,7 +201,7 @@ bool ViewportInteraction::AreaSelectionIsActive()
     return ((!m_spaceBarIsActive) && m_leftButtonIsActive && m_interactionType == InteractionType::NONE);
 }
 
-void ViewportInteraction::BeginReversibleAction(QTreeWidgetItemRawPtrQList& selectedItems)
+void ViewportInteraction::BeginReversibleAction(const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     if ((m_reversibleActionStarted) ||
         (m_interactionType == InteractionType::NONE) ||
@@ -339,7 +341,7 @@ const AZ::Uuid& ViewportInteraction::InitAndGetTransformComponentType()
 }
 
 void ViewportInteraction::MouseMoveEvent(QMouseEvent* ev,
-    QTreeWidgetItemRawPtrQList& selectedItems)
+    const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     AZ::Vector2 mousePosition = EntityHelpers::QPointFToVec2(ev->localPos());
 
@@ -379,7 +381,7 @@ void ViewportInteraction::MouseMoveEvent(QMouseEvent* ev,
 }
 
 void ViewportInteraction::MouseReleaseEvent(QMouseEvent* ev,
-    QTreeWidgetItemRawPtrQList& selectedItems)
+    const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     // if the mouse press and release were in the same position and
     // no changes have been made then we can treat it as a mouse-click which can
@@ -492,6 +494,7 @@ void ViewportInteraction::SetMode(InteractionMode m)
     ClearInteraction();
     m_interactionMode = m;
     PersistentSetInteractionMode(m_interactionMode);
+    m_editorWindow->GetModeToolbar()->SetCheckedItem(static_cast<int>(m_interactionMode));
     UpdateCoordinateSystemToolbarSection();
     m_editorWindow->GetViewport()->Refresh();
 }
@@ -510,6 +513,7 @@ void ViewportInteraction::SetCoordinateSystem(CoordinateSystem s)
 {
     m_coordinateSystem = s;
     PersistentSetCoordinateSystem(s);
+    m_editorWindow->GetCoordinateSystemToolbarSection()->SetCurrentIndex(static_cast<int>(m_coordinateSystem));
     m_editorWindow->GetViewport()->Refresh();
 }
 
@@ -525,10 +529,23 @@ void ViewportInteraction::InitializeToolbars()
 
     UpdateCoordinateSystemToolbarSection();
 
-    AZ::Vector2 canvasSize;
-    EBUS_EVENT_ID_RESULT(canvasSize, m_editorWindow->GetCanvas(), UiCanvasBus, GetCanvasSize);
+    bool canvasLoaded = m_editorWindow->GetCanvas().IsValid();
+    m_editorWindow->GetMainToolbar()->setEnabled(canvasLoaded);
+    m_editorWindow->GetModeToolbar()->setEnabled(canvasLoaded);
+    if (!m_editorWindow->GetModeToolbar()->isEnabled())
+    {
+        m_editorWindow->GetCoordinateSystemToolbarSection()->SetIsEnabled(false);
+    }
+    m_editorWindow->GetEnterPreviewToolbar()->setEnabled(canvasLoaded);
 
+    AZ::Vector2 canvasSize(1280.0f, 720.0f);
+    EBUS_EVENT_ID_RESULT(canvasSize, m_editorWindow->GetCanvas(), UiCanvasBus, GetCanvasSize);
     m_editorWindow->GetCanvasSizeToolbarSection()->SetInitialResolution(canvasSize);
+
+    if (!m_editorWindow->GetCanvas().IsValid())
+    {
+        SetCanvasToViewportScale(1.0f);
+    }
 
     {
         bool isSnapping = false;
@@ -536,6 +553,18 @@ void ViewportInteraction::InitializeToolbars()
 
         m_editorWindow->GetCoordinateSystemToolbarSection()->SetSnapToGridIsChecked(isSnapping);
     }
+}
+
+const ViewportInteraction::TranslationAndScale& ViewportInteraction::GetCanvasViewportMatrixProps()
+{
+    return m_canvasViewportMatrixProps;
+}
+
+void ViewportInteraction::SetCanvasViewportMatrixProps(const TranslationAndScale& canvasViewportMatrixProps)
+{
+    m_canvasViewportMatrixProps = canvasViewportMatrixProps;
+    UpdateCanvasToViewportMatrix();
+    UpdateShouldScaleToFitOnResize();
 }
 
 void ViewportInteraction::CenterCanvasInViewport(const AZ::Vector2* newCanvasSize)
@@ -624,8 +653,10 @@ void ViewportInteraction::SetCanvasToViewportScale(float newScale, Vec2i* option
     const float currentScale = m_canvasViewportMatrixProps.scale;
     m_canvasViewportMatrixProps.scale = AZ::GetClamp(newScale, minZoom, maxZoom);
 
-    // Pivot the zoom based off the center of the viewport's location in canvas space
+    if (m_editorWindow->GetCanvas().IsValid())
     {
+        // Pivot the zoom based off the center of the viewport's location in canvas space
+
         // Calculate diff between the number of viewport pixels occupied by the current
         // scaled canvas view and the new one
         AZ::Vector2 canvasSize;
@@ -702,8 +733,9 @@ ViewportHelpers::SelectedAnchors ViewportInteraction::GetGrabbedAnchors() const
     return m_grabbedAnchors;
 }
 
+
 void ViewportInteraction::UpdateInteractionType(const AZ::Vector2& mousePosition,
-    QTreeWidgetItemRawPtrQList& selectedItems)
+    const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     switch (m_interactionMode)
     {
@@ -897,7 +929,7 @@ void ViewportInteraction::UpdateShouldScaleToFitOnResize()
 
 void ViewportInteraction::ProcessInteraction(const AZ::Vector2& mousePosition,
     Qt::KeyboardModifiers modifiers,
-    QTreeWidgetItemRawPtrQList& selectedItems)
+    const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     // Get the mouse move delta, which is in viewport space.
     AZ::Vector2 delta = mousePosition - m_lastMouseDragPos;

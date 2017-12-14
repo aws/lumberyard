@@ -23,7 +23,7 @@ namespace CloudCanvasCommon
         : public CryHooksModule
     {
     public:
-        AZ_RTTI(CloudCanvasCommonModule, "{72F7EB98-205C-42D4-8195-94BBC350C333}", CryHooksModule);
+        AZ_RTTI(CloudCanvasCommonModule, "{C921462C-CE57-436A-80D5-AA0CED1338F7}", CryHooksModule);
 
         CloudCanvasCommonModule();
         virtual ~CloudCanvasCommonModule() override = default;

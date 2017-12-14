@@ -12,6 +12,7 @@
 #pragma once
 
 #include <LyShine/Bus/UiUpdateBus.h>
+#include <LyShine/Bus/UiRenderControlBus.h>
 #include <LyShine/Bus/UiFaderBus.h>
 #include <LyShine/UiComponentTypes.h>
 
@@ -21,6 +22,7 @@
 class UiFaderComponent
     : public AZ::Component
     , public UiUpdateBus::Handler
+    , public UiRenderControlBus::Handler
     , public UiFaderBus::Handler
 {
 public: // member functions
@@ -31,8 +33,14 @@ public: // member functions
     ~UiFaderComponent() override;
 
     // UiUpdateInterface
-    void Update() override;
+    void Update(float deltaTime) override;
     // ~UiUpdateInterface
+
+    // UiRenderControlInterface
+    void SetupBeforeRenderingComponents(Pass pass) override;
+    void SetupAfterRenderingComponents(Pass pass) override;
+    void SetupAfterRenderingChildren(bool& isSecondComponentsPassRequired) override;
+    // ~UiRenderControlInterface
 
     // UiFaderInterface
     float GetFadeValue() override;
@@ -46,11 +54,13 @@ public:  // static member functions
     static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("UiFaderService", 0x3c5847e9));
+        provided.push_back(AZ_CRC("UiRenderControlService", 0x4e302454));
     }
 
     static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
         incompatible.push_back(AZ_CRC("UiFaderService", 0x3c5847e9));
+        incompatible.push_back(AZ_CRC("UiRenderControlService", 0x4e302454));
     }
 
     static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -62,7 +72,8 @@ public:  // static member functions
     static void Reflect(AZ::ReflectContext* context);
 
     //! Helper function for visual components to compute their fade value
-    static float ComputeElementFadeValue(AZ::Entity* element);
+    //! Deprecated because this is very inefficient. Every visual element pays a price for the fader even if no fader is in use. 
+    AZ_DEPRECATED(static float ComputeElementFadeValue(AZ::Entity* element), "Function deprecated, use IUiRenderer::GetAlphaFade instead.");
 
 protected: // member functions
 

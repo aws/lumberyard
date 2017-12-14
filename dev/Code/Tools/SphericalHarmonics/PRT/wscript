@@ -35,7 +35,7 @@ def build(bld):
                            bld.Path('Code/CryEngine/CryCommon') ],
         use             = ['AzCore'],
         uselib          = ['TIFF'],
-        win_defines     = ['_VC80_UPGRADE=0x0710', 'KDAB_MAC_PORT']
+        win_defines     = ['_VC80_UPGRADE=0x0710']
 
     )
 

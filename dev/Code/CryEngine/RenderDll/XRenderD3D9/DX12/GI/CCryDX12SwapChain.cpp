@@ -32,6 +32,9 @@
 #pragma comment(lib, "dwmapi.lib")
 #endif
 
+static const char* s_globalVsyncName = "V-Sync";
+static const char* s_globalEmptyCategory = "";
+
 static void RecordVSyncInstantEvent()
 {
 #ifdef WIN32
@@ -42,7 +45,7 @@ static void RecordVSyncInstantEvent()
         UINT64 frequency;
         QueryPerformanceFrequency((LARGE_INTEGER*)&frequency);
         UINT64 vsyncMicroSeconds = (timingInfo.qpcVBlank * 1000) / (frequency / 1000);
-        EBUS_QUEUE_EVENT(AZ::Debug::EventTraceDrillerBus, RecordInstantGlobal, "V-Sync", "", (AZ::u64)vsyncMicroSeconds);
+        EBUS_QUEUE_EVENT(AZ::Debug::EventTraceDrillerBus, RecordInstantGlobal, s_globalVsyncName, s_globalEmptyCategory, (AZ::u64)vsyncMicroSeconds);
     }
 #endif
 }

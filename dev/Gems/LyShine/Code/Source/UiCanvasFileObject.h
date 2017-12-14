@@ -54,5 +54,4 @@ private: // static methods
         AZStd::vector<AZ::SerializeContext::DataElementNode>& copiedEntities);
 
     static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-
 };

@@ -425,7 +425,13 @@ ID3D11CommandList* CTexture::StreamCreateDeferred(int nStartMip, int nEndMip, ST
 {
     PROFILE_FRAME(Texture_StreamCreateDeferred);
 
-    ID3D11CommandList* pCmdList = NULL;
+    if ((pNewPoolItem == nullptr) || (pSrcPoolItem == nullptr))
+    {
+        AZ_Warning("CTexture", false, "CTexture::StreamCreateDeferred called with pNewPoolItem = %p and pSrcPoolItem = %p, command list will not be created", pNewPoolItem, pSrcPoolItem);
+        return nullptr;
+    }
+
+    ID3D11CommandList* pCmdList = nullptr;
 
     if (CTexture::s_pStreamDeferredCtx)
     {

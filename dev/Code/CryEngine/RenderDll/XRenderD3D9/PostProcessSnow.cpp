@@ -15,6 +15,7 @@
 #include "DriverD3D.h"
 #include "I3DEngine.h"
 #include "D3DPostProcess.h"
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 #pragma warning(disable: 4244)
 
@@ -370,7 +371,8 @@ void CSceneSnow::DrawClusters()
         }
 
         // Don't render if indoors or under water.
-        if (gEnv->p3DEngine->GetVisAreaFromPos(pCurr->m_pPos) || pCurr->m_pPos.z < gEnv->p3DEngine->GetWaterLevel(&pCurr->m_pPos))
+        const float oceanLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pCurr->m_pPos) : gEnv->p3DEngine->GetWaterLevel(&pCurr->m_pPos);
+        if (gEnv->p3DEngine->GetVisAreaFromPos(pCurr->m_pPos) || pCurr->m_pPos.z < oceanLevel)
         {
             continue;
         }

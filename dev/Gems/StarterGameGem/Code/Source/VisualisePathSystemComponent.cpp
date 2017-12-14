@@ -9,18 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #include "StdAfx.h"
 #include "VisualisePathSystemComponent.h"
 
@@ -59,14 +47,16 @@ namespace StarterGameGem
 					->ClassElement(AZ::Edit::ClassElements::EditorData, "")
 						->Attribute(AZ::Edit::Attributes::Category, "Game")
 						->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
-					;
+				;
 			}
 		}
 
 		if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
 		{
 			behaviorContext->EBus<VisualisePathSystemRequestBus>("VisualisePathSystemRequestBus")
-				;
+                ->Event("AddPath", &VisualisePathSystemRequestBus::Events::AddPath)
+                ->Event("ClearPath", &VisualisePathSystemRequestBus::Events::ClearPath)
+			;
 		}
 	}
 
@@ -133,45 +123,41 @@ namespace StarterGameGem
 		}
 	}
 
-	void VisualisePathSystemComponent::SetPath(const AZ::EntityId& id, AZStd::shared_ptr<const INavPath> path)
-	{
+    void VisualisePathSystemComponent::AddPath(const AZ::EntityId& id, const StarterGameNavigationComponentNotifications::StarterGameNavPath& path)
+    {
 #if defined(_DEBUG) || defined(_PROFILE)
-		if (path == nullptr)
-			return;
+        Path* newPath = this->GetPath(id);
+        if (newPath == nullptr)
+        {
+            m_paths.push_front();
+            newPath = &m_paths.front();
+            newPath->entity = id;
+        }
 
-		Path* newPath = this->GetPath(id);
-		if (newPath == nullptr)
-		{
-			m_paths.push_front();
-			newPath = &m_paths.front();
-			newPath->entity = id;
-		}
+        newPath->path.clear();
 
-		newPath->path.clear();
-		
-		TPathPoints points = path->GetPath();
-		for (TPathPoints::iterator it = points.begin(); it != points.end(); ++it)
-		{
-			newPath->path.push_back(it->vPos);
-		}
+        for (AZStd::vector<AZ::Vector3>::const_iterator it = path.m_points.begin(); it != path.m_points.end(); ++it)
+        {
+            newPath->path.push_back(AZVec3ToLYVec3(*it));
+        }
 #endif
-	}
+    }
 
-	void VisualisePathSystemComponent::ClearPath(const AZ::EntityId& id)
-	{
+    void VisualisePathSystemComponent::ClearPath(const AZ::EntityId& id)
+    {
 #if defined(_DEBUG) || defined(_PROFILE)
-		AZStd::list<Path>::iterator it = m_paths.begin();
-		for (it; it != m_paths.end(); ++it)
-		{
-			if (it->entity == id)
-			{
-				// The EntityId is used as the key so there should only be one in the vector.
-				m_paths.erase(it);
-				break;
-			}
-		}
+        AZStd::list<Path>::iterator it = m_paths.begin();
+        for (it; it != m_paths.end(); ++it)
+        {
+            if (it->entity == id)
+            {
+                // The EntityId is used as the key so there should only be one in the vector.
+                m_paths.erase(it);
+                break;
+            }
+        }
 #endif
-	}
+    }
 
 	VisualisePathSystemComponent::Path* VisualisePathSystemComponent::GetPath(const AZ::EntityId& id)
 	{

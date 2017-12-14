@@ -17,11 +17,12 @@
 
 
 #include "ICryMannequin.h"
-#include <IInput.h>
+#include "ISequencerSystem.h"
+#include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <QString>
 
 class IAnimationDatabase;
-class CSequencerTrack;
 class CSequencerNode;
 class CSequencerSequence;
 struct IMannequinEditorManager;
@@ -488,7 +489,7 @@ struct SEditorAnimationContext
 typedef TAction<SEditorAnimationContext> CBasicAction;
 
 class CActionInputHandler
-    : public IInputEventListener
+    : public AzFramework::InputChannelEventListener
 {
 public:
     CActionInputHandler()
@@ -500,48 +501,45 @@ public:
         , m_stanceChangeSign(1.f)
         , m_stanceChange(false)
     {
-        gEnv->pInput->AddEventListener(this);
+        AzFramework::InputChannelEventListener::Connect();
     }
 
     ~CActionInputHandler()
     {
-        gEnv->pInput->RemoveEventListener(this);
+        AzFramework::InputChannelEventListener::Disconnect();
     }
 
-    virtual bool OnInputEvent(const SInputEvent& event)
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
     {
-        EKeyId inputKey = event.keyId;
-        if (event.deviceType == eIDT_Gamepad)
+        const AzFramework::InputDeviceId& deviceId = inputChannel.GetInputDevice().GetInputDeviceId();
+        if (AzFramework::InputDeviceGamepad::IsGamepadDevice(deviceId))
         {
-            switch (inputKey)
+            const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+            if (channelId == AzFramework::InputDeviceGamepad::ThumbStickAxis1D::LY)
             {
-            case eKI_XI_ThumbLY:
-                m_leftThumb.y = event.value;
+                m_leftThumb.y = inputChannel.GetValue();
                 m_moveSpeed = m_leftThumb.GetLength() * m_speedMax;
                 m_turnAngle = atan2_tpl(m_leftThumb.x, -m_leftThumb.y);
-                break;
-
-            case eKI_XI_ThumbLX:
-                m_leftThumb.x = event.value;
+            }
+            else if (channelId == AzFramework::InputDeviceGamepad::ThumbStickAxis1D::LX)
+            {
+                m_leftThumb.x = inputChannel.GetValue();
                 m_moveSpeed = m_leftThumb.GetLength() * m_speedMax;
                 m_turnAngle = atan2_tpl(m_leftThumb.x, -m_leftThumb.y);
-                break;
-
-            case eKI_XI_ThumbRX:
-                m_rightThumb.x = event.value;
-                break;
-
-            case eKI_XI_ThumbRY:
-                m_rightThumb.y = event.value;
-                break;
-
-            case eKI_XI_B:
-                if (event.state & eIS_Pressed)
-                {
-                    m_stanceChange = true;
-                    m_stanceChangeSign *= -1.f;
-                }
-                break;
+            }
+            else if (channelId == AzFramework::InputDeviceGamepad::ThumbStickAxis1D::RX)
+            {
+                m_rightThumb.x = inputChannel.GetValue();
+            }
+            else if (channelId == AzFramework::InputDeviceGamepad::ThumbStickAxis1D::RY)
+            {
+                m_rightThumb.y = inputChannel.GetValue();
+            }
+            else if (channelId == AzFramework::InputDeviceGamepad::Button::B &&
+                     inputChannel.IsStateBegan())
+            {
+                m_stanceChange = true;
+                m_stanceChangeSign *= -1.f;
             }
         }
 

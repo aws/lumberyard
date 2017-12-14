@@ -20,12 +20,14 @@
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <Maestro/Bus/SequenceComponentBus.h>
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/AnimNodeType.h>
 
 #include "Components/IComponentEntityNode.h"
 
 //////////////////////////////////////////////////////////////////////////
 CAnimAzEntityNode::CAnimAzEntityNode(const int id)
-    : CAnimNode(id, eAnimNodeType_AzEntity)
+    : CAnimNode(id, AnimNodeType::AzEntity)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
 }
@@ -96,6 +98,13 @@ void CAnimAzEntityNode::Reflect(AZ::SerializeContext* serializeContext)
 }
 
 //////////////////////////////////////////////////////////////////////////
+CAnimParamType CAnimAzEntityNode::GetParamType(unsigned int nIndex) const
+{
+    return AnimParamType::Invalid;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
 void CAnimAzEntityNode::AppendNonBehaviorAnimatableComponents(AZStd::vector<AZ::ComponentId>& animatableComponents) const
 {
     AZ::Entity* entity = nullptr;
@@ -121,7 +130,7 @@ CAnimComponentNode* CAnimAzEntityNode::GetComponentNodeForComponentWithTypeId(co
     for (int i = m_pSequence->GetNodeCount(); --i >= 0;)
     {
         IAnimNode* node = m_pSequence->GetNode(i);
-        if (node && node->GetParent() == this && node->GetType() == eAnimNodeType_Component)
+        if (node && node->GetParent() == this && node->GetType() == AnimNodeType::Component)
         {
             if (static_cast<CAnimComponentNode*>(node)->GetComponentTypeId() == componentTypeId)
             {
@@ -181,10 +190,19 @@ void CAnimAzEntityNode::SetRotate(float time, const Quat& rotation)
 Quat CAnimAzEntityNode::GetRotate()
 {
     CAnimComponentNode* transformComponent = GetTransformComponentNode();
-
     if (transformComponent)
     {
         return transformComponent->GetRotate();
+    }
+    return Quat::CreateIdentity();
+}
+
+Quat CAnimAzEntityNode::GetRotate(float time)
+{
+    CAnimComponentNode* transformComponent = GetTransformComponentNode();
+    if (transformComponent)
+    {
+        return transformComponent->GetRotate(time);
     }
     return Quat::CreateIdentity();
 }
@@ -202,10 +220,20 @@ void CAnimAzEntityNode::SetScale(float time, const Vec3& scale)
 Vec3 CAnimAzEntityNode::GetScale()
 {
     CAnimComponentNode* transformComponent = GetTransformComponentNode();
-
     if (transformComponent)
     {
         return transformComponent->GetScale();
+    }
+
+    return Vec3(.0f, .0f, .0f);
+}
+
+Vec3 CAnimAzEntityNode::GetOffsetPosition(const Vec3& position)
+{
+    CAnimComponentNode* transformComponent = GetTransformComponentNode();
+    if (transformComponent)
+    {
+        return position - transformComponent->GetPos();
     }
     return Vec3(.0f, .0f, .0f);
 }

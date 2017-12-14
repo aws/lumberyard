@@ -339,22 +339,11 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CAudioControlsWriter::CheckOutFile(const string& filepath)
     {
-        ISourceControl* pSourceControl = GetIEditor()->GetSourceControl();
-        if (pSourceControl)
+        IEditor* pEditor = GetIEditor();
+        IFileUtil* pFileUtil = pEditor ? pEditor->GetFileUtil() : nullptr;
+        if (pFileUtil)
         {
-            uint32 fileAttributes = pSourceControl->GetFileAttributes(filepath.c_str());
-            if (fileAttributes & SCC_FILE_ATTRIBUTE_MANAGED)
-            {
-                pSourceControl->CheckOut(filepath);
-            }
-            else if ((fileAttributes == SCC_FILE_ATTRIBUTE_INVALID) || (fileAttributes & SCC_FILE_ATTRIBUTE_NORMAL))
-            {
-                pSourceControl->Add(filepath, "(ACE Changelist)", ADD_WITHOUT_SUBMIT | ADD_CHANGELIST);
-            }
-        }
-        else
-        {
-            SetFileAttributesA(filepath.c_str(), FILE_ATTRIBUTE_NORMAL);
+            pFileUtil->CheckoutFile(filepath.c_str(), nullptr);
         }
     }
 

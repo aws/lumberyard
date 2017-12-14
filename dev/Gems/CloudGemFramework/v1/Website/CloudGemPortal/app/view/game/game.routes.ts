@@ -4,6 +4,8 @@ import { AuthGuardService } from 'app/shared/service/index';
 
 import { GameComponent } from './component/game.component';
 import { AdminComponent } from './module/admin/component/admin.component';
+import { ProjectLogComponent } from './module/admin/component/log.component';
+import { UserAdminComponent } from './module/admin/component/user-admin/user-admin.component';
 import { AnalyticIndex } from './module/analytic/component/analytic.component';
 import { SupportComponent } from './module/support/component/support.component';
 import { GemIndexComponent } from './module/cloudgems/component/gem-index.component';
@@ -27,6 +29,11 @@ import { GemIndexComponent } from './module/cloudgems/component/gem-index.compon
                         component: GemIndexComponent
                     },
                     {
+                        path: 'cloudgems/:id',
+                        canLoad: [AuthGuardService],
+                        component: GemIndexComponent
+                    },
+                    {
                         path: 'analytics',
                         canLoad: [AuthGuardService],
                         component: AnalyticIndex
@@ -34,7 +41,17 @@ import { GemIndexComponent } from './module/cloudgems/component/gem-index.compon
                     {
                         path: 'admin',
                         canLoad: [AuthGuardService],
-                        component: AdminComponent
+                        component: AdminComponent,
+                    },
+                    {
+                        path: 'admin/users',
+                        canLoad: [AuthGuardService],
+                        component: UserAdminComponent
+                    },
+                    {
+                        path: 'admin/logs',
+                        canLoad: [AuthGuardService],
+                        component: ProjectLogComponent
                     }
                 ]
             }

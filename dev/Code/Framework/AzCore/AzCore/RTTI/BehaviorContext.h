@@ -19,10 +19,6 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
-#include <AzCore/std/typetraits/decay.h>
-#include <AzCore/std/typetraits/function_traits.h>
-#include <AzCore/std/typetraits/is_function.h>
-#include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/utils.h>
 
 #if defined(AZ_COMPILER_MSVC)
@@ -75,6 +71,7 @@ namespace AZ
             TR_ARRAY_BEGIN = (1 << 5), // Parameter specifies the begin address of the array inclusive
             TR_ARRAY_END = (1 << 6),  // Parameter specifies the end address of the array exclusive (conflicts with TR_ARRAY_SIZE)
             TR_ARRAY_SIZE = (1 << 7), // Parameter specifies the number of elements in an array parameter (conflicts with TR_ARRAY_END)
+            TR_INDEX = (1 << 8), // Parameter specifies an index into a collection, and should be offset by 1 when transferring to Lua
             TR_NONE = 0U,
         };
 
@@ -2166,8 +2163,8 @@ namespace AZ
     {
         m_broadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
         SetEvent<EBus>(e, context, typename AZStd::is_same<typename EBus::BusIdType, NullBusId>::type());
-        SetQueueBroadcast<EBus>(e, context, typename AZStd::is_same<typename EBus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::type());
-        SetQueueEvent<EBus>(e, context, typename AZStd::conditional<AZStd::is_same<typename EBus::BusIdType, NullBusId>::value || AZStd::is_same<typename EBus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value, AZStd::true_type, AZStd::false_type>::type());
+        SetQueueBroadcast<EBus>(e, context, typename AZStd::is_same<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::type());
+        SetQueueEvent<EBus>(e, context, typename AZStd::conditional<AZStd::is_same<typename EBus::BusIdType, NullBusId>::value || AZStd::is_same<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value, AZStd::true_type, AZStd::false_type>::type());
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2182,7 +2179,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::SetEvent(Event e, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
     {
-        m_event = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_EVENT_ID, typename AZStd::remove_pointer<Event>::type>(e, context);
+        m_event = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2197,7 +2194,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::SetQueueBroadcast(Event e, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
     {
-        m_queueBroadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_BROADCAST, typename AZStd::remove_pointer<Event>::type>(e, context);
+        m_queueBroadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2212,7 +2209,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::SetQueueEvent(Event e, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/)
     {
-        m_queueEvent = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_EVENT_ID, typename AZStd::remove_pointer<Event>::type>(e, context);
+        m_queueEvent = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2421,7 +2418,10 @@ namespace AZ
         : Internal::GenericAttributes<ClassBuilder<C>>(context)
         , m_class(behaviorClass)
     {
-        Base::m_currentAttributes = &behaviorClass->m_attributes;
+        if (behaviorClass)
+        {
+            Base::m_currentAttributes = &behaviorClass->m_attributes;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2431,7 +2431,7 @@ namespace AZ
         // process all on demand queued reflections
         Base::m_context->ExecuteQueuedOnDemandReflections();
 
-        if (!Base::m_context->IsRemovingReflection())
+        if (m_class && (!Base::m_context->IsRemovingReflection()))
         {
             BehaviorContextBus::Event(Base::m_context, &BehaviorContextBus::Events::OnAddClass, m_class->m_name.c_str(), m_class);
         }
@@ -4112,17 +4112,14 @@ namespace AZ
                 return static_cast<Owner*>(this);
             }
 
-            typedef typename AZStd::conditional<AZStd::is_member_pointer<T>::value,
-                typename AZStd::conditional<AZStd::is_member_function_pointer<T>::value, AttributeMemberFunction<T>, AttributeMemberData<T> >::type,
-                typename AZStd::conditional<AZStd::is_function<typename AZStd::remove_pointer<T>::type>::value, AttributeFunction<typename AZStd::remove_pointer<T>::type>, AttributeData<T> >::type
-            >::type ContainerType;
+            using ContainerType = AttributeContainerType<T>;
 
             //AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId), "Attribute (0x%08x) doesn't belong to '%s' class! You can't reference other classes!", idCrc, m_classData->m_name);
             AZ_Assert(m_currentAttributes, "You can attach attributes to Methods, Properties, Classes, EBuses and EBus Events!");
             if (m_currentAttributes)
             {
                 AZ::Attribute* attribute = aznew ContainerType(value);
-                SetAttributeContextData<T>(value, attribute, typename AZStd::conditional<AZStd::is_member_function_pointer<T>::value | AZStd::is_function<typename AZStd::remove_pointer<T>::type>::value, AZStd::true_type, AZStd::false_type>::type());
+                SetAttributeContextData<T>(value, attribute, AZStd::integral_constant<bool, AZStd::is_member_function_pointer<T>::value | AZStd::is_function<typename AZStd::remove_pointer<T>::type>::value>());
                 m_currentAttributes->push_back(AttributePair(idCrc, attribute));
             }
             return static_cast<Owner*>(this);

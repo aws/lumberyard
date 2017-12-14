@@ -29,8 +29,10 @@
 #include "UiNavigationHelpers.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiDraggableNotificationBus Behavior context handler class 
-class UiDraggableNotificationBusBehaviorHandler : public UiDraggableNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiDraggableNotificationBus Behavior context handler class
+class UiDraggableNotificationBusBehaviorHandler
+    : public UiDraggableNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiDraggableNotificationBusBehaviorHandler, "{7EEA2A71-AB29-4F1D-AC76-4BE7237AB99B}", AZ::SystemAllocator,
@@ -190,7 +192,7 @@ bool UiDraggableComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
                 };
 
             newElement = UiNavigationHelpers::GetNextElement(m_hoverDropTarget, command,
-                navigableElements, closestDropTarget, isValidDropTarget);
+                    navigableElements, closestDropTarget, isValidDropTarget);
         }
         else
         {
@@ -308,7 +310,7 @@ void UiDraggableComponent::LostActiveStatus()
     EBUS_EVENT_ID_RESULT(viewportPoint, GetEntityId(), UiTransformBus, GetViewportSpacePivot);
 
     EndDragOperation(viewportPoint, true);
-   
+
     m_isActive = false;
 }
 
@@ -804,7 +806,7 @@ AZ::EntityId UiDraggableComponent::FindDropTargetOrInteractableOnAllCanvases(
 
         result = FindDropTargetOrInteractableOnCanvas(canvasEntityId, point, ignoreElement, ignoreInteractables);
     }
-    
+
     return result;
 }
 
@@ -827,7 +829,7 @@ AZ::EntityId UiDraggableComponent::FindDropTargetOrInteractableOnCanvas(AZ::Enti
             result = FindDropTargetOrInteractableUnderCursor(child, point, ignoreElement, ignoreInteractables);
         }
     }
-    
+
     return result;
 }
 

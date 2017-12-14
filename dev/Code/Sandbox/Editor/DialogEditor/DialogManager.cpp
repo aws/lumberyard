@@ -461,7 +461,7 @@ uint32 CDialogManager::GetFileAttrs(CEditorDialogScript* pScript, bool bUpdateFr
     QString filename = ScriptToFilename(id);
     if (bUpdateFromFile || pScript->m_scFileAttributes == SCC_FILE_ATTRIBUTE_INVALID)
     {
-        pScript->m_scFileAttributes = CFileUtil::GetAttributes(filename.toLatin1().data());
+        pScript->m_scFileAttributes = CFileUtil::GetAttributes(filename.toUtf8().data());
     }
     return pScript->m_scFileAttributes;
 }

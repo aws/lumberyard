@@ -17,24 +17,25 @@
 #include "../Common/RenderCapabilities.h"
 #include "D3DPostProcess.h"
 #include "../Common/ReverseDepth.h"
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
 #pragma warning(disable: 4244)
 
 bool CD3D9Renderer::FX_DeferredCaustics()
 {
-    if (!CRenderer::CV_r_watercaustics || !CRenderer::CV_r_watercausticsdeferred || !CTexture::s_ptexBackBuffer || !CTexture::s_ptexSceneTarget)
+    //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.
+    bool causticsIsActive = OceanToggle::IsActive() ? OceanRequest::GetCausticsEnabled() : CRenderer::CV_r_watercaustics == 1;
+    if (!causticsIsActive || !CTexture::s_ptexBackBuffer || !CTexture::s_ptexSceneTarget)
     {
         return false;
     }
 
-    const Vec4 causticParams = gEnv->p3DEngine->GetOceanAnimationCausticsParams();
-    float fCausticsHeight = causticParams.y;
-    float fCausticsDepth = causticParams.z;
-    float fCausticsIntensity = causticParams.w;
+    I3DEngine* pEng = gEnv->p3DEngine;
+    const N3DEngineCommon::SOceanInfo& OceanInfo = gRenDev->m_p3DEngineCommon.m_OceanInfo;
+    const I3DEngine::CausticsParams causticsParams = gEnv->p3DEngine->GetCausticsParams();
 
-    N3DEngineCommon::SOceanInfo& OceanInfo = gRenDev->m_p3DEngineCommon.m_OceanInfo;
     bool bOceanVolumeVisible = (OceanInfo.m_nOceanRenderFlags & OCR_OCEANVOLUME_VISIBLE) != 0;
-    if (!bOceanVolumeVisible || iszero(fCausticsIntensity))
+    if (!bOceanVolumeVisible || iszero(causticsParams.intensity))
     {
         return false;
     }
@@ -49,38 +50,41 @@ bool CD3D9Renderer::FX_DeferredCaustics()
     PROFILE_LABEL_SCOPE("OCEAN_CAUSTICS");
     PROFILE_FRAME(DrawShader_DeferredCausticsPass);
 
-    float fWatLevel = OceanInfo.m_fWaterLevel;
-    float fCausticsLevel = fWatLevel + fCausticsHeight;
-    Vec4 pCausticsParams = Vec4(CRenderer::CV_r_watercausticsdistance, OceanInfo.m_vCausticsParams.z * fCausticsIntensity,
-            OceanInfo.m_vCausticsParams.w, fCausticsLevel);
-    static float fDist = 0.0f;
-
-    fDist = sqrtf((pCausticsParams.x * 5.0f) * 13.333f);  // Hard cut off when caustic would be attenuated to 0.2 (1/5.0f)
-
-    I3DEngine* pEng = gEnv->p3DEngine;
+    const float causticsBottomLevel = OceanInfo.m_fWaterLevel - causticsParams.depth;
+    const float causticsTopLevel = OceanInfo.m_fWaterLevel + causticsParams.height;
+    const Vec4 pCausticsParams1 = Vec4(
+        causticsParams.distanceAttenuation,
+        causticsParams.intensity,
+        causticsBottomLevel,
+        causticsTopLevel
+    );
+    const Vec4 pCausticsParams2 = Vec4(
+        //pEng->GetCausticsParams().x, // Caustics Tiling
+        causticsParams.tiling, // Caustics Tiling
+        /* Following params are free for future use */ 
+        0.0, 0.0, 0.0
+    );
 
     // Caustics are done with projection from sun - hence they update too fast with regular
     // sun direction. Use a smooth sun direction update instead to workaround this
     PerFrameParameters& PF = gRenDev->m_cEF.m_PF;
 
+    Vec3 pRealtimeSunDirNormalized = pEng->GetRealtimeSunDirNormalized();
+
+    const float fSnapDot = 0.98f;
+    float fDot = fabs(PF.m_CausticsSunDirection.Dot(pRealtimeSunDirNormalized));
+    if (fDot < fSnapDot)
     {
-        Vec3 pRealtimeSunDirNormalized = pEng->GetRealtimeSunDirNormalized();
-
-        const float fSnapDot = 0.98f;
-        float fDot = fabs(PF.m_CausticsSunDirection.Dot(pRealtimeSunDirNormalized));
-        if (fDot < fSnapDot)
-        {
-            PF.m_CausticsSunDirection = pRealtimeSunDirNormalized;
-        }
-
-        PF.m_CausticsSunDirection += (pRealtimeSunDirNormalized - PF.m_CausticsSunDirection) * 0.005f * gEnv->pTimer->GetFrameTime();
-        PF.m_CausticsSunDirection.Normalize();
+        PF.m_CausticsSunDirection = pRealtimeSunDirNormalized;
     }
+
+    PF.m_CausticsSunDirection += (pRealtimeSunDirNormalized - PF.m_CausticsSunDirection) * 0.005f * gEnv->pTimer->GetFrameTime();
+    PF.m_CausticsSunDirection.Normalize();
 
     Matrix44 m_pLightView;
 
     Vec3 up = Vec3(0, 0, 1);
-    Vec3 dirZ = -PF.m_CausticsSunDirection.GetNormalized();
+    Vec3 dirZ = -PF.m_CausticsSunDirection;
     Vec3 dirX = up.Cross(dirZ).GetNormalized();
     Vec3 dirY = dirZ.Cross(dirX).GetNormalized();
 
@@ -94,55 +98,61 @@ bool CD3D9Renderer::FX_DeferredCaustics()
     Vec4 vAnimParams = Vec4(0.06f * fTime, 0.05f * fTime, 0.1f * fTime, -0.11f * fTime);
 
     // Stencil pre-pass
-    if (CRenderer::CV_r_watercausticsdeferred == 2)
+    CShader* pSH(CShaderMan::s_ShaderShadowMaskGen);
+
+    // make box for stencil passes
+    t_arrDeferredMeshIndBuff arrDeferredInds;
+    t_arrDeferredMeshVertBuff arrDeferredVerts;
+    CreateDeferredUnitBox(arrDeferredInds, arrDeferredVerts);
+
+    Vec3 vCamPos = gRenDev->GetViewParameters().vOrigin;
+    float fWaterPlaneSize = gRenDev->GetCamera().GetFarPlane();
+
+    Matrix44A origMatView = m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView;
+    Matrix34 mLocal;
+    mLocal.SetIdentity();
+
+    float heightAboveWater  = max(0.0f, vCamPos.z - causticsTopLevel);
+
+    float fDist = sqrtf((causticsParams.distanceAttenuation * 5.0f) * 13.333f);  // Hard cut off when caustic would be attenuated to 0.2 (1/5.0f)
+    fDist = sqrtf(max((fDist * fDist) - (heightAboveWater * heightAboveWater), 0.0f));
+
+    //TODO: Adjust Z on fog density
+
+    mLocal.SetScale(Vec3(fDist * 2, fDist * 2, causticsParams.height + causticsParams.depth));
+    mLocal.SetTranslation(Vec3(vCamPos.x - fDist, vCamPos.y - fDist, OceanInfo.m_fWaterLevel - causticsParams.depth));
+
+    Matrix44 mLocalTransposed = mLocal.GetTransposed();
+    m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView = mLocalTransposed * m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView;
+
+    uint32 nPasses = 0;
+    static CCryNameTSCRC TechName0 = "DeferredShadowPass";
+    pSH->FXSetTechnique(TechName0);
+    pSH->FXBegin(&nPasses, FEF_DONTSETSTATES);
+
+    //allocate vertices
+    TempDynVB<SVF_P3F_C4B_T2F>::CreateFillAndBind(&arrDeferredVerts[0], arrDeferredVerts.size(), 0);
+
+    //allocate indices
+    TempDynIB16::CreateFillAndBind(&arrDeferredInds[0], arrDeferredInds.size());
+
+    if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
     {
-        // stencil pre-pass
-        CShader* pSH(CShaderMan::s_ShaderShadowMaskGen);
-
-        // make box for stencil passes
-        t_arrDeferredMeshIndBuff arrDeferredInds;
-        t_arrDeferredMeshVertBuff arrDeferredVerts;
-        CreateDeferredUnitBox(arrDeferredInds, arrDeferredVerts);
-
-        Vec3 vCamPos = gRenDev->GetViewParameters().vOrigin;
-        float fWaterPlaneSize = gRenDev->GetCamera().GetFarPlane();
-
-        Matrix44A origMatView = m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView;
-        Matrix34 mLocal;
-        mLocal.SetIdentity();
-
-        float heightAboveWater  = max(0.0f, vCamPos.z - fCausticsLevel);
-        fDist = sqrtf(max((fDist * fDist) - (heightAboveWater * heightAboveWater), 0.0f));
-
-        //TODO: Adjust Z on fog density
-
-        mLocal.SetScale(Vec3(fDist * 2, fDist * 2, fCausticsHeight + fCausticsDepth));
-        mLocal.SetTranslation(Vec3(vCamPos.x - fDist, vCamPos.y - fDist, fWatLevel - fCausticsDepth));
-
-        Matrix44 mLocalTransposed = mLocal.GetTransposed();
-        m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView = mLocalTransposed * m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView;
-
-        uint32 nPasses = 0;
-        static CCryNameTSCRC TechName0 = "DeferredShadowPass";
-        pSH->FXSetTechnique(TechName0);
-        pSH->FXBegin(&nPasses, FEF_DONTSETSTATES);
-
-        //allocate vertices
-        TempDynVB<SVF_P3F_C4B_T2F>::CreateFillAndBind(&arrDeferredVerts[0], arrDeferredVerts.size(), 0);
-
-        //allocate indices
-        TempDynIB16::CreateFillAndBind(&arrDeferredInds[0], arrDeferredInds.size());
-
-        if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
+        if (RenderCapabilities::SupportsDepthClipping())
         {
             FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size(), pSH, DS_SHADOW_CULL_PASS);
         }
-        pSH->FXEnd();
-
-        m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView = origMatView;
-
-        FX_StencilTestCurRef(true, false);
+        else
+        {
+            FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size(), pSH, DS_SHADOW_CULL_PASS, DS_SHADOW_CULL_PASS_FRONTFACING);
+        }
     }
+
+    pSH->FXEnd();
+
+    m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView = origMatView;
+
+    FX_StencilTestCurRef(true, false);
 
     // Deferred caustic pass
     gcpRendD3D->EF_Scissor(false, 0, 0, 0, 0);
@@ -155,25 +165,24 @@ bool CD3D9Renderer::FX_DeferredCaustics()
     static CCryNameTSCRC pTechName = "General";
     SD3DPostEffectsUtils::ShBeginPass(pShader, pTechName, FEF_DONTSETSTATES);
 
-    int32 nRState = GS_NODEPTHTEST | ((CRenderer::CV_r_watercausticsdeferred == 2) ? GS_STENCIL : 0) | (GS_BLSRC_ONE | GS_BLDST_ONEMINUSSRCALPHA);
+    int32 nRState = GS_NODEPTHTEST | GS_STENCIL | (GS_BLSRC_ONE | GS_BLDST_ONEMINUSSRCALPHA);
 
     gcpRendD3D->FX_SetState(nRState);
 
     static CCryNameR m_pParamAnimParams("vAnimParams");
-    static CCryNameR m_pCausticParams("vCausticParams");
+    static CCryNameR m_pCausticsParams1Name("vCausticsParams1");
+    static CCryNameR m_pCausticsParams2Name("vCausticsParams2");
     static CCryNameR m_pParamLightView("mLightView");
     pShader->FXSetPSFloat(m_pParamAnimParams,  &vAnimParams, 1);
-    pShader->FXSetPSFloat(m_pCausticParams,  &pCausticsParams, 1);
+    pShader->FXSetPSFloat(m_pCausticsParams1Name,  &pCausticsParams1, 1);
+    pShader->FXSetPSFloat(m_pCausticsParams2Name, &pCausticsParams2, 1);
     pShader->FXSetPSFloat(m_pParamLightView, (Vec4*) m_pLightView.GetData(), 4);
 
     SD3DPostEffectsUtils::DrawFullScreenTriWPOS(CTexture::s_ptexSceneTarget->GetWidth(), CTexture::s_ptexSceneTarget->GetHeight()); // TODO: Use Volume
 
     SD3DPostEffectsUtils::ShEndPass();
 
-    if (CRenderer::CV_r_watercausticsdeferred == 2)
-    {
-        FX_StencilTestCurRef(false);
-    }
+    FX_StencilTestCurRef(false);
 
     if (m_logFileHandle != AZ::IO::InvalidHandle)
     {

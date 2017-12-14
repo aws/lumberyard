@@ -74,7 +74,7 @@ namespace AZ
     /**
      * Function signature for static module registrars.
      */
-    using CreateStaticModulesCallback = void(*)(AZStd::vector<AZ::Module*>&);
+    using CreateStaticModulesCallback = AZStd::function<void(AZStd::vector<AZ::Module*>&)>;
 
     //! Requests related to module reloading
     class ModuleManagerRequests

@@ -23,16 +23,17 @@ namespace AZ
     {
         namespace UI
         {
-            AZ_CLASS_ALLOCATOR_IMPL(ManifestVectorHandler, SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL_INTERNAL(IManifestVectorHandler<ManifestType>, SystemAllocator, 0, template<typename ManifestType>)
 
-            SerializeContext* ManifestVectorHandler::s_serializeContext = nullptr;
-            ManifestVectorHandler* ManifestVectorHandler::s_instance = nullptr;
+            template<typename ManifestType> SerializeContext* IManifestVectorHandler<ManifestType>::s_serializeContext = nullptr;
+            template<typename ManifestType> IManifestVectorHandler<ManifestType>* IManifestVectorHandler<ManifestType>::s_instance = nullptr;
 
-            QWidget* ManifestVectorHandler::CreateGUI(QWidget* parent)
+            template<typename ManifestType>
+            QWidget* IManifestVectorHandler<ManifestType>::CreateGUI(QWidget* parent)
             {
-                if(ManifestVectorHandler::s_serializeContext)
+                if(IManifestVectorHandler::s_serializeContext)
                 {
-                    ManifestVectorWidget* instance = aznew ManifestVectorWidget(ManifestVectorHandler::s_serializeContext, parent);
+                    ManifestVectorWidget* instance = aznew ManifestVectorWidget(IManifestVectorHandler::s_serializeContext, parent);
                     connect(instance, &ManifestVectorWidget::valueChanged, this,
                         [instance]()
                         {
@@ -46,17 +47,20 @@ namespace AZ
                 }
             }
 
-            u32 ManifestVectorHandler::GetHandlerName() const
+            template<typename ManifestType>
+            u32 IManifestVectorHandler<ManifestType>::GetHandlerName() const
             {
                 return AZ_CRC("ManifestVector", 0x895aa9aa);
             }
 
-            bool ManifestVectorHandler::AutoDelete() const
+            template<typename ManifestType>
+            bool IManifestVectorHandler<ManifestType>::AutoDelete() const
             {
                 return false;
             }
 
-            void ManifestVectorHandler::ConsumeAttribute(ManifestVectorWidget* widget, u32 attrib,
+            template<typename ManifestType>
+            void IManifestVectorHandler<ManifestType>::ConsumeAttribute(ManifestVectorWidget* widget, u32 attrib,
                 AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
             {
                 AZ_TraceContext("Attribute name", debugName);
@@ -89,13 +93,21 @@ namespace AZ
                 }
             }
 
-            void ManifestVectorHandler::WriteGUIValuesIntoProperty(size_t /*index*/, ManifestVectorWidget* GUI,
-                property_t& instance, AzToolsFramework::InstanceDataNode* /*node*/)
+            template<typename ManifestType>
+            void IManifestVectorHandler<ManifestType>::WriteGUIValuesIntoProperty(size_t /*index*/, ManifestVectorWidget* GUI,
+                typename IManifestVectorHandler::property_t& instance, AzToolsFramework::InstanceDataNode* /*node*/)
             {
-                instance = GUI->GetManifestVector();
+                instance.clear();
+                AZStd::vector<AZStd::shared_ptr<DataTypes::IManifestObject> > manifestVector = GUI->GetManifestVector();
+                for (auto& manifestObject : manifestVector)
+                {
+                    instance.push_back(AZStd::static_pointer_cast<ManifestType>(manifestObject));
+
+                }
             }
 
-            bool ManifestVectorHandler::ReadValuesIntoGUI(size_t /*index*/, ManifestVectorWidget* GUI, const property_t& instance,
+            template<typename ManifestType>
+            bool IManifestVectorHandler<ManifestType>::ReadValuesIntoGUI(size_t /*index*/, ManifestVectorWidget* GUI, const typename IManifestVectorHandler::property_t& instance,
                 AzToolsFramework::InstanceDataNode* node)
             {
                 AzToolsFramework::InstanceDataNode* parentNode = node->GetParent();
@@ -106,7 +118,7 @@ namespace AZ
                     if (parentNode->GetClassMetadata()->m_azRtti->IsTypeOf(DataTypes::IManifestObject::RTTI_Type()))
                     {
                         DataTypes::IManifestObject* owner = static_cast<DataTypes::IManifestObject*>(parentNode->FirstInstance());
-                        GUI->SetManifestVector(instance, owner);
+                        GUI->SetManifestVector(instance.begin(), instance.end(), owner);
                     }
                     else if (parentNode->GetClassMetadata()->m_azRtti->IsTypeOf(Containers::RuleContainer::RTTI_Type()))
                     {
@@ -114,7 +126,7 @@ namespace AZ
                         if (manifestObject && manifestObject->GetClassMetadata()->m_azRtti->IsTypeOf(DataTypes::IManifestObject::RTTI_Type()))
                         {
                             DataTypes::IManifestObject* owner = static_cast<DataTypes::IManifestObject*>(manifestObject->FirstInstance());
-                            GUI->SetManifestVector(instance, owner);
+                            GUI->SetManifestVector(instance.begin(), instance.end(), owner);
                         }
                         else
                         {
@@ -134,25 +146,39 @@ namespace AZ
                 return false;
             }
 
-            void ManifestVectorHandler::Register()
+            template<typename ManifestType>
+            void IManifestVectorHandler<ManifestType>::Register()
             {
-                if (!s_instance)
+                if (!IManifestVectorHandler::s_instance)
                 {
-                    s_instance = aznew ManifestVectorHandler();
-                    EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, s_instance);
+                    IManifestVectorHandler::s_instance = aznew IManifestVectorHandler();
+                    EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, IManifestVectorHandler::s_instance);
                     EBUS_EVENT_RESULT(s_serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
                     AZ_Assert(s_serializeContext, "Serialization context not available");
                 }
             }
 
+            template<typename ManifestType>
+            void IManifestVectorHandler<ManifestType>::Unregister()
+            {
+                if (IManifestVectorHandler::s_instance)
+                {
+                    EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, UnregisterPropertyType, IManifestVectorHandler::s_instance);
+                    delete IManifestVectorHandler::s_instance;
+                    IManifestVectorHandler::s_instance = nullptr;
+                }
+            }
+
+            void ManifestVectorHandler::Register()
+            {
+                IManifestVectorHandler<DataTypes::IManifestObject>::Register();
+                IManifestVectorHandler<DataTypes::IRule>::Register();
+            }
+
             void ManifestVectorHandler::Unregister()
             {
-                if (s_instance)
-                {
-                    EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, UnregisterPropertyType, s_instance);
-                    delete s_instance;
-                    s_instance = nullptr;
-                }
+                IManifestVectorHandler<DataTypes::IManifestObject>::Unregister();
+                IManifestVectorHandler<DataTypes::IRule>::Unregister();
             }
         } // UI
     } // SceneAPI

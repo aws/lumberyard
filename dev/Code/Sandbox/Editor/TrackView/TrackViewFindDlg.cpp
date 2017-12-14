@@ -23,6 +23,7 @@
 #include <QListWidgetItem>
 
 #include <TrackView/ui_TrackViewFindDlg.h>
+#include "Maestro/Types/AnimNodeType.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CTrackViewFindDlg dialog
@@ -148,7 +149,7 @@ void CTrackViewFindDlg::ProcessSel()
 
             CTrackViewAnimNode* pParentDirector = pSequence;
             CTrackViewAnimNodeBundle foundDirectorNodes = pSequence->GetAnimNodesByName(object.m_directorName.toLatin1().data());
-            if (foundDirectorNodes.GetCount() > 0 && foundDirectorNodes.GetNode(0)->GetType() == eAnimNodeType_Director)
+            if (foundDirectorNodes.GetCount() > 0 && foundDirectorNodes.GetNode(0)->GetType() == AnimNodeType::Director)
             {
                 pParentDirector = foundDirectorNodes.GetNode(0);
             }

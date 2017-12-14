@@ -50,9 +50,13 @@ public:
 
     virtual EDBError                GetLastError() const = 0;
 
+    virtual void                    SetLastError(EDBError Error) = 0;
+
     virtual const char*             GetRawErrorMessage() const = 0;
 
     virtual bool                    IsLocal() const = 0;
+
+    virtual bool                    Close() = 0;
 };
 
 #endif // CRYINCLUDE_TOOLS_DBAPI_IDBCONNECTION_H

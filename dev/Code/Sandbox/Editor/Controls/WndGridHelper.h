@@ -15,6 +15,10 @@
 #define CRYINCLUDE_EDITOR_CONTROLS_WNDGRIDHELPER_H
 #pragma once
 
+#include <QPoint>
+#include <QRect>
+#include "Cry_Vector2.h"
+
 //////////////////////////////////////////////////////////////////////////
 class CWndGridHelper
 {

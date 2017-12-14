@@ -19,7 +19,7 @@ public:
 
     //! The return value is the same as the parameter entryList.
     static SerializeHelpers::SerializedEntryList& Serialize(HierarchyWidget* widget,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         HierarchyItemRawPtrList* optionalItemsToSerialize,
         SerializeHelpers::SerializedEntryList& entryList,
         bool isUndo);
@@ -31,9 +31,9 @@ public:
     //-------------------------------------------------------------------------------
 
     static void CopySelectedItemsToClipboard(HierarchyWidget* widget,
-        QTreeWidgetItemRawPtrQList& selectedItems);
+        const QTreeWidgetItemRawPtrQList& selectedItems);
     static void CreateElementsFromClipboard(HierarchyWidget* widget,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         bool createAsChildOfSelection);
 
     //-------------------------------------------------------------------------------
@@ -41,10 +41,12 @@ public:
     //! Get the XML from the given elements (and their descendants)
     //! \param widget the HiearchyWidget in the Ui Editor editing the canvas
     //! \param elements the elements to serialize
+    //! \param isCopyOperation True if this is a copy or cut operation, false if it is part of undo/redo
     //! \param referencedSliceAssets an out parameter listing the prefab assets used by the serialized elements
     //! \return a string containing XML or empty
     static AZStd::string GetXml(HierarchyWidget* widget,
         const LyShine::EntityArray& elements,
+        bool isCopyOperation,
         AZStd::unordered_set<AZ::Data::AssetId>& referencedSliceAssets);
 
     //! Get the XML from the given canvas.

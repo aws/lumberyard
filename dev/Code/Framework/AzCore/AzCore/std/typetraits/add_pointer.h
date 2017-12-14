@@ -15,5 +15,6 @@
 namespace AZStd
 {
     using std::add_pointer;
-    using std::add_pointer_t;
+    template<class Type>
+    using add_pointer_t = std::add_pointer_t<Type>;
 }

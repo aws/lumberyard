@@ -56,13 +56,15 @@ namespace AzToolsFramework
         EntityStateCommand(UndoSystem::URCommandID ID, const char* friendlyName = nullptr);
         virtual ~EntityStateCommand();
 
-        virtual void Undo() override;
-        virtual void Redo() override;
+        void Undo() override;
+        void Redo() override;
 
         // capture the initial state - this fills the undo with the initial data if captureUndo is true
         // otherwise is captures the final state.
         void Capture(AZ::Entity* pSourceEntity, bool captureUndo);
         AZ::EntityId GetEntityID() const { return m_entityID; }
+
+        bool Changed() const override { return m_undoState != m_redoState; }
 
     protected:
 
@@ -90,11 +92,11 @@ namespace AzToolsFramework
         AZ_RTTI(EntityDeleteCommand, "{2877DC4C-3F09-4E1A-BE3D-921A021DAB80}", EntityStateCommand);
         AZ_CLASS_ALLOCATOR(EntityDeleteCommand, AZ::SystemAllocator, 0);
 
-        EntityDeleteCommand(UndoSystem::URCommandID ID);
+        explicit EntityDeleteCommand(UndoSystem::URCommandID ID);
         void Capture(AZ::Entity* pSourceEntity);
 
-        virtual void Undo() override;
-        virtual void Redo() override;
+        void Undo() override;
+        void Redo() override;
     };
 
     class EntityCreateCommand
@@ -104,11 +106,11 @@ namespace AzToolsFramework
         AZ_RTTI(EntityCreateCommand, "{C1AA9763-9EC8-4F7B-803E-C04EE3DB3DA9}", EntityStateCommand);
         AZ_CLASS_ALLOCATOR(EntityCreateCommand, AZ::SystemAllocator, 0);
 
-        EntityCreateCommand(UndoSystem::URCommandID ID);
+        explicit EntityCreateCommand(UndoSystem::URCommandID ID);
         void Capture(AZ::Entity* pSourceEntity);
 
-        virtual void Undo() override;
-        virtual void Redo() override;
+        void Undo() override;
+        void Redo() override;
     };
 } // namespace AzToolsFramework
 

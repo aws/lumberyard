@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 #include <Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
 
@@ -23,8 +24,14 @@ namespace ScriptCanvasEditor
     {
     public:
         AZ_COMPONENT(NodeDescriptorComponent, "{C775A98E-D64E-457F-8ABA-B34CBAD10905}");
-        static void Reflect(AZ::ReflectContext*)
+        static void Reflect(AZ::ReflectContext* reflect)
         {
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflect))
+            {
+                serializeContext->Class<NodeDescriptorComponent, AZ::Component>()
+                    ->Version(0)
+                    ;
+            }
         }
 
         NodeDescriptorComponent()

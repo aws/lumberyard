@@ -24,9 +24,10 @@ public: // member functions
 
     virtual ~UiRadioButtonCommunicationInterface() {}
 
-    //! Manually override the state of the radio button
+    //! Used by the group to set the state of the radio button
     //! \param     The new desired state of the radio button.
-    virtual void SetState(bool isOn) = 0;
+    //! \param     Whether the button should inform listeners that it was changed.
+    virtual void SetState(bool isOn, bool sendNotifications) = 0;
 
     //! Set the radio button group
     virtual void SetGroup(AZ::EntityId group) = 0;

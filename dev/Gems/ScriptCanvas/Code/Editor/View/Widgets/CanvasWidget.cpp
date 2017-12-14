@@ -25,17 +25,16 @@
 #include <GraphCanvas/GraphCanvasBus.h>
 
 #include <Debugger/Bus.h>
+#include <Core/Graph.h>
 #include <Editor/View/Dialogs/Settings.h>
 
 namespace ScriptCanvasEditor
 {
     namespace Widget
     {
-        CanvasWidget::CanvasWidget(const AZ::Data::AssetId& assetId, const AZ::EntityId& graphId, QWidget* parent)
+        CanvasWidget::CanvasWidget(QWidget* parent)
             : QWidget(parent)
             , ui(new Ui::CanvasWidget())
-            , m_assetId(assetId)
-            , m_graphId(graphId)
             , m_attached(false)
             , m_graphicsView(nullptr)
         {
@@ -81,21 +80,30 @@ namespace ScriptCanvasEditor
 
         void CanvasWidget::OnClicked()
         {
+            ScriptCanvas::Graph* graph{};
+            ScriptCanvas::GraphRequestBus::EventResult(graph, m_graphicsView->GetScene(), &ScriptCanvas::GraphRequests::GetGraph);
+            if (!graph)
+            {
+                return;
+            }
+
             if (!m_attached)
             {
                 ScriptCanvas::Debugger::NotificationBus::Handler::BusConnect();
 
-                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Attach, m_graphId);
+                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Attach, graph->GetUniqueId());
             }
             else
             {
-                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Detach, m_graphId);
+                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Detach, graph->GetUniqueId());
             }
         }
 
         void CanvasWidget::OnAttach(const AZ::EntityId& graphId)
         {
-            if (m_graphId != graphId)
+            ScriptCanvas::Graph* graph{};
+            ScriptCanvas::GraphRequestBus::EventResult(graph, m_graphicsView->GetScene(), &ScriptCanvas::GraphRequests::GetGraph);
+            if (!graph  || graph->GetUniqueId() != graphId)
             {
                 return;
             }
@@ -106,7 +114,9 @@ namespace ScriptCanvasEditor
 
         void CanvasWidget::OnDetach(const AZ::EntityId& graphId)
         {
-            if (m_graphId != graphId)
+            ScriptCanvas::Graph* graph{};
+            ScriptCanvas::GraphRequestBus::EventResult(graph, m_graphicsView->GetScene(), &ScriptCanvas::GraphRequests::GetGraph);
+            if (!graph || graph->GetUniqueId() != graphId)
             {
                 return;
             }

@@ -17,6 +17,8 @@
 #include "stdafx.h"
 #include "DrawWnd.h"
 #include "./Terrain/Heightmap.h"
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+
 
 #pragma warning (disable : 4800)
 
@@ -112,7 +114,7 @@ void CDrawWnd::OnPaint()
     DWORD* pImageData = NULL;
     float fScaleX, fScaleY;
     int i, j;
-    float fWaterLevel = pHeightmap->GetWaterLevel();
+    float fWaterLevel = OceanToggle::IsActive() : OceanRequest::GetWaterLevel() : pHeightmap->GetWaterLevel();
     long iYPreCalc;
     CPoint cTransfPt;
     CPoint ptTransfMarker = m_ptMarker;

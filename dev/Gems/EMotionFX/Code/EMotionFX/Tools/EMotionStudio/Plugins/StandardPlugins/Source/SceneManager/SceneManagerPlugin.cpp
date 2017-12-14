@@ -43,13 +43,12 @@ namespace EMStudio
                 return;
             }
 
-            OutlinerCategory* category = manager->FindCategoryByName("Actors");
-            if (category == nullptr)
+            if (actor->GetIsOwnedByRuntime())
             {
                 return;
             }
 
-            category->RemoveItem(actor->GetID());
+            manager->RemoveItemFromCategory("Actors", actor->GetID());
         }
     };
 
@@ -284,21 +283,21 @@ namespace EMStudio
             int messageBoxResult = msgBox.exec();
             switch (messageBoxResult)
             {
-                case QMessageBox::Save:
-                {
-                    GetMainWindow()->GetFileManager()->SaveActor(actor);
-                    break;
-                }
-                case QMessageBox::Discard:
-                {
-                    EMStudio::GetApp()->restoreOverrideCursor();
-                    return DirtyFileManager::FINISHED;
-                }
-                case QMessageBox::Cancel:
-                {
-                    EMStudio::GetApp()->restoreOverrideCursor();
-                    return DirtyFileManager::CANCELED;
-                }
+            case QMessageBox::Save:
+            {
+                GetMainWindow()->GetFileManager()->SaveActor(actor);
+                break;
+            }
+            case QMessageBox::Discard:
+            {
+                EMStudio::GetApp()->restoreOverrideCursor();
+                return DirtyFileManager::FINISHED;
+            }
+            case QMessageBox::Cancel:
+            {
+                EMStudio::GetApp()->restoreOverrideCursor();
+                return DirtyFileManager::CANCELED;
+            }
             }
         }
         else
@@ -426,10 +425,10 @@ namespace EMStudio
         for (uint32 i = 0; i < numActors; ++i)
         {
             EMotionFX::Actor* actor = EMotionFX::GetActorManager().GetActor(i);
-            OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-            outlinerCategoryItem->mID = actor->GetID();
-            outlinerCategoryItem->mUserData = actor;
-            outlinerCategory->AddItem(outlinerCategoryItem);
+            if (!actor->GetIsOwnedByRuntime())
+            {
+                outlinerCategory->AddItem(actor->GetID(), actor);
+            }
         }
 
         // add the event handler
@@ -521,10 +520,7 @@ namespace EMStudio
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(importActorCommand->mPreviouslyUsedID);
         if (actor)
         {
-            OutlinerCategoryItem* outlinerCategoryItem = new OutlinerCategoryItem();
-            outlinerCategoryItem->mID = actor->GetID();
-            outlinerCategoryItem->mUserData = actor;
-            GetOutlinerManager()->FindCategoryByName("Actors")->AddItem(outlinerCategoryItem);
+            GetOutlinerManager()->AddItemToCategory("Actors", actor->GetID(), actor);
         }
         return ReInitSceneManagerPlugin();
     }
@@ -534,7 +530,7 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandImportActor* importActorCommand = static_cast<CommandSystem::CommandImportActor*>(command);
-        GetOutlinerManager()->FindCategoryByName("Actors")->RemoveItem(importActorCommand->mPreviouslyUsedID);
+        GetOutlinerManager()->RemoveItemFromCategory("Actors", importActorCommand->mPreviouslyUsedID);
         return ReInitSceneManagerPlugin();
     }
 
@@ -559,7 +555,7 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandRemoveActor* removeActorCommand = static_cast<CommandSystem::CommandRemoveActor*>(command);
-        GetOutlinerManager()->FindCategoryByName("Actors")->RemoveItem(removeActorCommand->mPreviouslyUsedID);
+        GetOutlinerManager()->RemoveItemFromCategory("Actors", removeActorCommand->mPreviouslyUsedID);
         return ReInitSceneManagerPlugin();
     }
 

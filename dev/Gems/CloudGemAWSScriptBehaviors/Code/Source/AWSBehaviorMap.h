@@ -32,6 +32,8 @@ namespace CloudGemAWSScriptBehaviors
         bool HasKey(const AZStd::string& key);
         int GetSize();
         void Clear();
+        AZStd::string ToJSON();
+        void FromJSON(const AZStd::string& jsonIn);
         void LogToDebugger();
         
         using StringMapType = AZStd::unordered_map<AZStd::string, AZStd::string>;

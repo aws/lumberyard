@@ -62,7 +62,7 @@ namespace ScriptCanvas
         ////////////////////////////////////////////////////////////////
         // SystemRequestBus::Handler
         ////////////////////////////////////////////////////////////////
-        void CreateGraphOnEntity(AZ::Entity* entity) override;
+        Graph* CreateGraphOnEntity(AZ::Entity* entity) override;
         ScriptCanvas::Graph* MakeGraph() override;
         AZ::EntityId FindGraphId(AZ::Entity* graphEntity) override;
         ScriptCanvas::Node* GetNode(const AZ::EntityId&, const AZ::Uuid&) override;

@@ -16,7 +16,9 @@
 PropertiesWrapper::PropertiesWrapper(HierarchyWidget* hierarchy,
     EditorWindow* parent)
     : QWidget(parent)
+    , m_editorWindow(parent)
     , m_properties(new PropertiesWidget(parent, this))
+    , m_componentButton(new ComponentButton(hierarchy, this))
 {
     AZ_Assert(parent, "Parent EditorWindow is null");
 
@@ -29,13 +31,13 @@ PropertiesWrapper::PropertiesWrapper(HierarchyWidget* hierarchy,
 
         QLabel* elementName = new QLabel(this);
         elementName->setObjectName(QStringLiteral("m_elementName"));
-        elementName->setText("Canvas");
+        elementName->setText("No Canvas Loaded");
 
         innerLayout->addWidget(elementName);
 
         m_properties->SetSelectedEntityDisplayNameWidget(elementName);
 
-        innerLayout->addWidget(new ComponentButton(hierarchy, this));
+        innerLayout->addWidget(m_componentButton);
     }
     outerLayout->addLayout(innerLayout);
 
@@ -43,11 +45,24 @@ PropertiesWrapper::PropertiesWrapper(HierarchyWidget* hierarchy,
 
     outerLayout->setContentsMargins(0, 0, 0, 0);
     outerLayout->setSpacing(0);
+
+    m_properties->setEnabled(false);
+    m_componentButton->setEnabled(false);
 }
 
 PropertiesWidget* PropertiesWrapper::GetProperties()
 {
     return m_properties;
+}
+
+void PropertiesWrapper::ActiveCanvasChanged()
+{
+    // Entity shown in the properties pane has been deleted and a new entity is selected, so trigger an immediate refresh
+    m_properties->TriggerImmediateRefresh();
+
+    bool canvasLoaded = m_editorWindow->GetCanvas().IsValid();
+    m_properties->setEnabled(canvasLoaded);
+    m_componentButton->setEnabled(canvasLoaded);
 }
 
 #include <PropertiesWrapper.moc>

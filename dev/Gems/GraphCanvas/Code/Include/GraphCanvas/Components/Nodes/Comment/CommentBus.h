@@ -11,16 +11,25 @@
 */
 #pragma once
 
-#include <AzCore/EBus/EBus.h>
+#include <qrect.h>
+
 #include <AzCore/Component/Component.h>
+#include <AzCore/EBus/EBus.h>
+#include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
-#include <AzCore/std/containers/vector.h>
 
 class QGraphicsLayoutItem;
 
 namespace GraphCanvas
 {
     class Scene;
+
+    enum class CommentMode
+    {
+        Unknown,
+        Comment,
+        BlockComment
+    };
 
     //! CommentRequests
     //! Requests that get or set the properties of a comment.
@@ -35,6 +44,9 @@ namespace GraphCanvas
         virtual void SetComment(const AZStd::string&) = 0;
         //! Get the name of the comment.
         virtual const AZStd::string& GetComment() const = 0;
+
+        //! Sets the type of comment that is being used(controls how the comment resizes, how excess text is handled).
+        virtual void SetCommentMode(CommentMode commentMode) = 0;
     };
 
     using CommentRequestBus = AZ::EBus<CommentRequests>;
@@ -48,13 +60,35 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
+        //! Signals when the comment begins being edited.
+        virtual void OnEditBegin() {}
+
+        //! Signals when the comment ends being edited
+        virtual void OnEditEnd() {}
+
         //! When the comment is changed, this is emitted.
         virtual void OnCommentChanged(const AZStd::string&) {}
-        //! Emitted when the position of a comment changes
-        virtual void OnPositionChanged(const AZ::EntityId&, const AZ::Uuid&, const AZ::Vector2&) {};
+
+        //! Emitted when the size of a comment changes(in reaction to text updating)
+        virtual void OnCommentSizeChanged(const QSizeF& /*oldSize*/, const QSizeF& /*newSize*/) {};
+
+        virtual void OnCommentFontReloadBegin() {};
+        virtual void OnCommentFontReloadEnd() {};
     };
 
     using CommentNotificationBus = AZ::EBus<CommentNotifications>;
+
+    class CommentUIRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void SetEditable(bool editable) = 0;
+    };
+
+    using CommentUIRequestBus = AZ::EBus<CommentUIRequests>;
 
     class CommentLayoutRequests
         : public AZ::EBusTraits
@@ -67,4 +101,19 @@ namespace GraphCanvas
     };
 
     using CommentLayoutRequestBus = AZ::EBus<CommentLayoutRequests>;
+
+    class BlockCommentRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void SetBlock(QRectF blockRectangle) = 0;
+
+        virtual void BlockInteriorMovement() = 0;
+        virtual void UnblockInteriorMovement() = 0;
+    };
+
+    using BlockCommentRequestBus = AZ::EBus<BlockCommentRequests>;
 }

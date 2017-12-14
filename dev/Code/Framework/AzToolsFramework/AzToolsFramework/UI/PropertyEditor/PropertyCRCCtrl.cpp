@@ -133,22 +133,10 @@ namespace AzToolsFramework
 
     void U32CRCHandler::ConsumeAttribute(PropertyCRCCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        (void)debugName;
-        if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool boolValue;
-            if (attrValue->Read<bool>(boolValue))
-            {
-                QLineEdit* p = qobject_cast<QLineEdit*>(GUI->GetFirstInTabOrder());
-                p->setReadOnly(boolValue);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into CRC Edit control", debugName);
-            }
-            return;
-        }
+        Q_UNUSED(GUI)
+        Q_UNUSED(attrib)
+        Q_UNUSED(attrValue)
+        Q_UNUSED(debugName)
     }
 
     AZ::u32 U32CRCHandler::GetHandlerName(void) const

@@ -14,16 +14,28 @@
 
 #include <IGem.h>
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
+namespace Snow
+{
+    class SnowConverter;
+}
+
 class SnowGem
     : public CryHooksModule
 {
 public:
     AZ_RTTI(SnowGem, "{40B42DAF-4A52-467E-9268-7BFA9AD5DFE9}", CryHooksModule);
 
-    ~SnowGem() override = default;
+    SnowGem();
+    ~SnowGem() override;
 
     void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
     void PostGameInitialize();
+
+#ifdef SNOW_EDITOR
+    AZStd::unique_ptr<Snow::SnowConverter> m_snowConverter;
+#endif // SNOW_EDITOR
 };
 
 #endif//GEM_8827E544_50F0_40DB_AED17_76BA4B35B43_CODE_SOURCE_SNOWGEM_H

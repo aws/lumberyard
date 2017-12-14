@@ -32,7 +32,7 @@ nav.navbar.navbar {
         cursor: pointer;
     }
 
-    a, i { 
+    a, i {
         color: $gray;
     }
 
@@ -67,7 +67,7 @@ nav.navbar.navbar {
     .brand-left {
         margin: 0 20px;
         display: inline-block;
-        
+
         > .brand-text {
             border-right: 1px solid $border-gray;
             padding-left: 5px;
@@ -122,8 +122,14 @@ nav.navbar.navbar {
         color: $gray;
         i {
             padding: 0;
-            margin-top: 7px;
             vertical-align: middle;
         }
+    }
+}
+
+.deployment-dropdown {
+    padding-top: 12px;
+    a > i {
+        margin-left: 5px;
     }
 }

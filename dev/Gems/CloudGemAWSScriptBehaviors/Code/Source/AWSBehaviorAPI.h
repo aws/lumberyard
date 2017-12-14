@@ -15,7 +15,7 @@
 #include "AWSBehaviorBase.h"
 #include "AWSBehaviorJSON.h"
 
-#include <AzCore/Ebus/Ebus.h>
+#include <AzCore/EBus/EBus.h>
 #include <aws/core/utils/json/JsonSerializer.h>
 #include <aws/core/auth/AWSAuthSigner.h>
 #include <CloudGemFramework/ServiceRequestJobConfig.h>

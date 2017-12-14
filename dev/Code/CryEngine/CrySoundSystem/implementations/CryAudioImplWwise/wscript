@@ -49,11 +49,7 @@ def build(bld):
         darwin_x64_lib       = ['AkAACDecoder'],
         darwin_x64_framework = ['AVFoundation', 'AudioToolbox', 'CoreAudio'],
 
-        linux_uselib         = ['SDL2'],
-        linux_lib            = ['pthread'],
-
         android_lib          = ['OpenSLES'],
-        android_use          = ['SDL2_Android'],
 
         # Testing
         test_all_file_list   = ['audioimplwwise_test.waf_files'],

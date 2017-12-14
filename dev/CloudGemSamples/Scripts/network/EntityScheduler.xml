@@ -90,13 +90,10 @@
 	<Class name="AreaShape" policy="obj"/>
 	<Class name="AnimObject" policy="obj"/>
 	<Class name="TeamRandomSoundVolume" policy="obj"/>
-	<Class name="MusicMoodSelector" policy="obj"/>
 	<Class name="AreaBox" policy="obj"/>
 	<Class name="LightShape" policy="obj"/>
 	<Class name="AreaSphere" policy="obj"/>
 	<Class name="ProximityTrigger" policy="obj"/>
-	<Class name="MusicThemeSelector" policy="obj"/>
-	<Class name="MusicEndTheme" policy="obj"/>
 	<Class name="WindArea" policy="obj"/>
 	<Class name="TagPoint" policy="obj"/>
 	<Class name="Lightning" policy="obj"/>
@@ -104,13 +101,11 @@
 	<Class name="SpectatorPoint" policy="obj"/>
 	<Class name="FogVolume" policy="obj"/>
 	<Class name="AreaTrigger" policy="obj"/>
-	<Class name="MusicPlayPattern" policy="obj"/>
 	<Class name="ForbiddenArea" policy="capt"/>
 
 	<Class name="AIAnchor" policy="obj"/>
 	<Class name="CameraSource" policy="obj"/>
 	<Class name="Fog" policy="obj"/>
-	<Class name="MusicStinger" policy="obj"/>
 	<Class name="ParticleEffect" policy="obj"/>
 	<Class name="SmartObject" policy="obj"/>
 

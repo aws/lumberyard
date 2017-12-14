@@ -47,11 +47,11 @@ namespace Multiplayer
         }
 
         GridMate::GameLiftServerServiceDesc serviceDesc;
-
-        if (gEnv->pLog && gEnv->pLog->GetFileName() && gEnv->pLog->GetFileName()[0] != '\0') // have log file ?
+        if (gEnv && gEnv->pFileIO)
         {
+            const char pathToLogFolder[] = "@log@/";
             char resolvedPath[AZ_MAX_PATH_LEN];
-            if (gEnv->pFileIO->ResolvePath(gEnv->pLog->GetFileName(), resolvedPath, AZ_ARRAY_SIZE(resolvedPath)))
+            if (gEnv->pFileIO->ResolvePath(pathToLogFolder, resolvedPath, AZ_ARRAY_SIZE(resolvedPath)))
             {
                 serviceDesc.m_logPaths.push_back(resolvedPath);
             }
@@ -458,18 +458,19 @@ namespace Multiplayer
             REGISTER_STRING("gamelift_aws_region", "us-west-2", VF_DUMPTODISK, "AWS Region to use for GameLift.");
             REGISTER_STRING("gamelift_endpoint", "gamelift.us-west-2.amazonaws.com", VF_DUMPTODISK, "GameLift service endpoint.");
             REGISTER_STRING("gamelift_alias_id", "", VF_DUMPTODISK, "Id of GameLift alias to use with the client.");
+            REGISTER_INT("gamelift_uselocalserver", 0, VF_DEV_ONLY, "Set to non zero to use the local GameLift Server.");
 
             // player IDs must be unique and anonymous
             bool includeBrackets = false;
             bool includeDashes = true;
             AZStd::string defaultPlayerId = AZ::Uuid::CreateRandom().ToString<AZStd::string>(includeBrackets, includeDashes);
             REGISTER_STRING("gamelift_player_id", defaultPlayerId.c_str(), VF_DUMPTODISK, "Player Id.");
-            REGISTER_COMMAND("gamelift_stop_client", StopGameLiftClient, VF_NULL, "Stops gamelift session service and terminates the session if it had one.");
+            REGISTER_COMMAND("gamelift_stop_client", StopGameLiftClient, VF_NULL, "Stops GameLift session service and terminates the session if it had one.");
 #endif
 
 #if BUILD_GAMELIFT_SERVER
-            REGISTER_COMMAND("gamelift_start_server", StartGameLiftServer, VF_NULL, "Start up the gamelift server. This will initialize gameLift server API.\nThe session will start after GameLift intialization");
-            REGISTER_COMMAND("gamelift_stop_server", StopGameLiftServer, VF_NULL, "Stops gamelift session service and terminates the session if it had one.");
+            REGISTER_COMMAND("gamelift_start_server", StartGameLiftServer, VF_NULL, "Start up the GameLift server. This will initialize gameLift server API.\nThe session will start after GameLift initialization");
+            REGISTER_COMMAND("gamelift_stop_server", StopGameLiftServer, VF_NULL, "Stops GameLift session service and terminates the session if it had one.");
 #endif
         }
     }
@@ -485,6 +486,7 @@ namespace Multiplayer
             }
             UNREGISTER_CVAR("gamelift_player_id");
             UNREGISTER_CVAR("gamelift_alias_id");
+            UNREGISTER_CVAR("gamelift_uselocalserver");
             UNREGISTER_CVAR("gamelift_endpoint");
             UNREGISTER_CVAR("gamelift_aws_region");
             UNREGISTER_CVAR("gamelift_aws_secret_key");

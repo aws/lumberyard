@@ -71,7 +71,7 @@ public:
     CNULLRenderer();
     virtual ~CNULLRenderer();
 
-    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false);
+    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, bool isEditor, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false);
     virtual WIN_HWND GetHWND();
     virtual bool SetWindowIcon(const char* path);
 
@@ -237,6 +237,10 @@ public:
     //for editor
     virtual void  GetModelViewMatrix(float* mat);
     virtual void  GetProjectionMatrix(float* mat);
+
+    //for texture
+    virtual ITexture* EF_LoadTexture(const char* nameTex, const uint32 flags = 0);
+    virtual ITexture* EF_LoadDefaultTexture(const char* nameTex);
 
     virtual void DrawQuad(const Vec3& right, const Vec3& up, const Vec3& origin, int nFlipMode = 0);
     virtual void DrawQuad(float dy, float dx, float dz, float x, float y, float z);

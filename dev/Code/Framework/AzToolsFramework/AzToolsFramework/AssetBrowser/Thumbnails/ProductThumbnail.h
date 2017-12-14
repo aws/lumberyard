@@ -14,34 +14,18 @@
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzToolsFramework/Thumbnails/Thumbnail.h>
+#include <Thumbnails/ProductThumbnail.h>
 
 namespace AzToolsFramework
 {
-    using namespace Thumbnailer;
-
     namespace AssetBrowser
     {
-        //! ProductAssetBrowserEntry thumbnail key
-        class ProductThumbnailKey
-            : public ThumbnailKey
-        {
-            Q_OBJECT
-        public:
-            ProductThumbnailKey(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType);
-            const AZ::Data::AssetId& GetAssetId() const;
-            const AZ::Data::AssetType& GetAssetType() const;
-
-        protected:
-            AZ::Data::AssetId m_assetId;
-            AZ::Data::AssetType m_assetType;
-        };
-
         class ProductThumbnail
-            : public Thumbnail
+            : public Thumbnailer::Thumbnail
         {
             Q_OBJECT
         public:
-            ProductThumbnail(SharedThumbnailKey key, int thumbnailSize);
+            ProductThumbnail(Thumbnailer::SharedThumbnailKey key, int thumbnailSize);
 
         protected:
             void LoadThread() override;
@@ -52,9 +36,9 @@ namespace AzToolsFramework
             class ProductKeyHash
             {
             public:
-                size_t operator() (const SharedThumbnailKey& val) const
+                size_t operator() (const Thumbnailer::SharedThumbnailKey& val) const
                 {
-                    auto productThumbnailKey = qobject_cast<const ProductThumbnailKey*>(val.data());
+                    auto productThumbnailKey = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(val.data());
                     if (!productThumbnailKey)
                     {
                         return 0;
@@ -66,10 +50,10 @@ namespace AzToolsFramework
             class ProductKeyEqual
             {
             public:
-                bool operator()(const SharedThumbnailKey& val1, const SharedThumbnailKey& val2) const
+                bool operator()(const Thumbnailer::SharedThumbnailKey& val1, const Thumbnailer::SharedThumbnailKey& val2) const
                 {
-                    auto productThumbnailKey1 = qobject_cast<const ProductThumbnailKey*>(val1.data());
-                    auto productThumbnailKey2 = qobject_cast<const ProductThumbnailKey*>(val2.data());
+                    auto productThumbnailKey1 = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(val1.data());
+                    auto productThumbnailKey2 = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(val2.data());
                     if (!productThumbnailKey1 || !productThumbnailKey2)
                     {
                         return false;
@@ -82,14 +66,14 @@ namespace AzToolsFramework
 
         //! ProductAssetBrowserEntry thumbnails
         class ProductThumbnailCache
-            : public ThumbnailCache<ProductThumbnail, ProductKeyHash, ProductKeyEqual>
+            : public Thumbnailer::ThumbnailCache<ProductThumbnail, ProductKeyHash, ProductKeyEqual>
         {
         public:
             ProductThumbnailCache();
             ~ProductThumbnailCache() override;
 
         protected:
-            bool IsSupportedThumbnail(SharedThumbnailKey key) const override;
+            bool IsSupportedThumbnail(Thumbnailer::SharedThumbnailKey key) const override;
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

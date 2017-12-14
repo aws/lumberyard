@@ -13,17 +13,6 @@
 
 def build(bld):
 
-    msvc_cxx_flags = [
-        '/W4', # warning level
-    ]
-
-    clang_flags = [
-        '-Werror',  # warnings as errors
-        '-Wall'     # warning level
-    ]
-
-   
-
     bld.CryEngineStaticLibrary(
 
         # Settings
@@ -38,29 +27,34 @@ def build(bld):
         use                 = ['AzCore', 'GridMate', 'GridMateForTools'],
         uselib              = ['LUA'],
 
+        # Compiler Specific
+        msvc_cxxflags       = [
+                               '/W4', # warning level
+                              ],
+
+        clang_cxxflags      = [
+                               '-Werror',  # warnings as errors
+                               '-Wall',    # warning level
+                             ],
+
         # Platform Specific
         win_file_list       = ['azframework_win.waf_files'],
-        win_cxxflags        = msvc_cxx_flags,
         win_features        = ['crcfix'],
 
        
        
+
        
-       
+
         android_file_list   = ['azframework_android.waf_files'],
-        android_use         = ['SDL2Ext'],
-        android_cxxflags    = clang_flags,
+        android_use         = ['NativeActivityGlue'],
 
         ios_file_list       = ['azframework_ios.waf_files'],
-        ios_cxxflags        = clang_flags,
 
         appletv_file_list   = ['azframework_appletv.waf_files'],
-        appletv_cxxflags    = clang_flags,
 
         darwin_file_list    = ['azframework_darwin.waf_files'],
-        darwin_cxxflags     = clang_flags,
+        darwin_enable_rtti  = True,
 
         linux_file_list     = ['azframework_linux.waf_files'],
-        linux_cxxflags      = clang_flags
-
     )

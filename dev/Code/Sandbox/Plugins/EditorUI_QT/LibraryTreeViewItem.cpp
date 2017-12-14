@@ -86,7 +86,7 @@ void CLibraryTreeViewItem::SetName(QString name, bool validPrevName)
     CBaseLibraryItem* item = GetItem();
     if (item != nullptr)
     {
-        item->SetName(name.toUtf8().data());
+        item->SetName(name);
         SetLookup(item->GetLibrary()->GetName(), name);
     }
 }

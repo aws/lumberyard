@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/Component/EntityId.h>
+#include <AzCore/Component/Entity.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetSerializer.h>
@@ -47,9 +47,6 @@ namespace ScriptCanvasEditor
         //! Used to close a graph that is currently opened in the editor.
         virtual void CloseGraph() = 0;
 
-        //! Sets a new asset reference
-        virtual void SetAsset(const AZ::Data::Asset<ScriptCanvasAsset>& asset) = 0;
-
         //! Retrieves script canvas asset reference
         virtual AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const = 0;
 
@@ -79,33 +76,6 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::Data::AssetId;
 
-        /**
-        * Custom connection policy to force OnScriptCanvasAssetReady to fire if the asset is already loaded
-        * See AssetConnectionPolicy
-        */
-        template<class Bus>
-        struct EditorGraphAssetConnectionPolicy
-            : public AZ::EBusConnectionPolicy<Bus>
-        {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
-            {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
-
-                AZ::Data::Asset<AZ::Data::AssetData> asset(AZ::Data::AssetInternal::GetAssetData(id));
-                if (asset.IsReady())
-                {
-                    handler->OnScriptCanvasAssetReady(asset);
-                    auto scriptCanvasEntity = asset.GetAs<ScriptCanvasAsset>()->GetScriptCanvasEntity();
-                    if (scriptCanvasEntity->GetState() == AZ::Entity::ES_ACTIVE)
-                    {
-                        handler->OnScriptCanvasAssetActivated(asset);
-                    }
-                }
-            }
-        };
-        template<typename Bus>
-        using ConnectionPolicy = EditorGraphAssetConnectionPolicy<Bus>;
-
         //! Notification which fires after an EditorGraph has received it's on AssetReady callback
         //! \param scriptCanvasAsset Script Canvas asset which is now ready for use in the Editor
         virtual void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/) {};
@@ -122,8 +92,6 @@ namespace ScriptCanvasEditor
         //! \param scriptCanvasAsset Script Canvas asset which was attempted to be saved
         //! \param isSuccessful specified where the Script Canvas asset was successfully saved
         virtual void OnScriptCanvasAssetSaved(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/, bool /*isSuccessful*/) {};
-
-        virtual void OnScriptCanvasAssetActivated(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/) {};
     };
     using EditorScriptCanvasAssetNotificationBus = AZ::EBus<EditorScriptCanvasAssetNotifications>;
 }

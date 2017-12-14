@@ -14,10 +14,11 @@
 
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
-#include <SliceBuilder/Source/TypeFingerprinter.h>
 
 namespace SliceBuilder
 {
+    class TypeFingerprinter;
+
     class SliceBuilderWorker
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
     {
@@ -25,7 +26,7 @@ namespace SliceBuilder
         AZ_CLASS_ALLOCATOR(SliceBuilderWorker, AZ::SystemAllocator, 0);
 
         SliceBuilderWorker();
-        ~SliceBuilderWorker() = default;
+        ~SliceBuilderWorker() override;
 
         //! Asset Builder Callback Functions
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response) const;
@@ -40,10 +41,6 @@ namespace SliceBuilder
 
     private:
         bool m_isShuttingDown = false;
-        TypeFingerprinter m_typeFingerprinter;
-
-        //! Band-aid fix to deal with ObjectStream not being able to handle blocking loads for an asset in multiple threads
-        //! This will be removed in an upcoming release when the out-of-process builders feature is brought in
-        mutable AZStd::mutex m_processingMutex;
+        AZStd::unique_ptr<TypeFingerprinter> m_typeFingerprinter;
     };
 }

@@ -18,6 +18,7 @@
 #include <IViewSystem.h>
 #include "CryActionCVars.h"
 #include "FlowBaseNode.h"
+#include "Maestro/Types/AnimParamType.h"
 
 class CPlaySequence_Node
     : public CFlowBaseNode<eNCT_Instanced>
@@ -317,7 +318,7 @@ protected:
         IMovieSystem* movieSys = gEnv->pMovieSystem;
         if (movieSys)
         {
-            IAnimSequence* pSequence = movieSys->FindSequence(GetPortString(pActInfo, EIP_Sequence));
+            IAnimSequence* pSequence = movieSys->FindLegacySequenceByName(GetPortString(pActInfo, EIP_Sequence));
             if (pSequence == NULL)
             {
                 pSequence = movieSys->FindSequenceById((uint32)GetPortInt(pActInfo, EIP_SequenceId));
@@ -371,7 +372,7 @@ protected:
             return;
         }
 
-        IAnimSequence* pSequence = pMovieSystem->FindSequence(GetPortString(pActInfo, EIP_Sequence));
+        IAnimSequence* pSequence = pMovieSystem->FindLegacySequenceByName(GetPortString(pActInfo, EIP_Sequence));
         if (pSequence == NULL)
         {
             pSequence = pMovieSystem->FindSequenceById((uint32)GetPortInt(pActInfo, EIP_SequenceId));
@@ -411,7 +412,7 @@ protected:
                     for (int trackId = 0; trackId < pDirectorNode->GetTrackCount(); ++trackId)
                     {
                         IAnimTrack* pTrack = pDirectorNode->GetTrackByIndex(trackId);
-                        if (pTrack && pTrack->GetParameterType() == eAnimParamType_Camera && pTrack->GetNumKeys() > 0)
+                        if (pTrack && pTrack->GetParameterType() == AnimParamType::Camera && pTrack->GetNumKeys() > 0)
                         {
                             bDirectorNodeHasCameraTrack = true;
                             break;

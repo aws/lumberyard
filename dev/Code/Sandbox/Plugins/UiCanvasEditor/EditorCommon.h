@@ -58,7 +58,6 @@ class ComponentButton;
 class CoordinateSystemToolbarSection;
 class EditorMenu;
 class EditorWindow;
-class EditorWrapper;
 class EnterPreviewToolbar;
 class HierarchyClipboard;
 class HierarchyHeader;
@@ -142,7 +141,6 @@ enum class FusibleCommand
 #include "ComponentButton.h"
 #include "CoordinateSystemToolbarSection.h"
 #include "EditorWindow.h"
-#include "EditorWrapper.h"
 #include "EnterPreviewToolbar.h"
 #include "HierarchyClipboard.h"
 #include "HierarchyHeader.h"
@@ -164,12 +162,8 @@ enum class FusibleCommand
 #include "UndoStackExecutionScope.h"
 #include "ViewportAnchor.h"
 #include "ViewportCanvasBackground.h"
-#include "ViewportElement.h"
 #include "ViewportHighlight.h"
 #include "ViewportIcon.h"
-#include "ViewportNudge.h"
-#include "ViewportPivot.h"
-#include "ViewportSnap.h"
 #include "ViewportWidget.h"
 
 // IMPORTANT: This is NOT the permanent location for these values.

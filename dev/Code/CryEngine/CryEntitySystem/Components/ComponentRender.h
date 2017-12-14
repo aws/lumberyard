@@ -88,6 +88,7 @@ public:
 
     virtual void SetMinSpec(int nMinSpec);
     virtual bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const override;
+    float GetFirstLodDistance() const override { return m_fLodDistance; }
     void UpdateLodDistance(const SFrameLodInfo& frameLodInfo);
 
     virtual IPhysicalEntity* GetBranchPhys(int idx, int nSlot = 0) { IFoliage* pFoliage = GetFoliage(); return pFoliage ? pFoliage->GetBranchPhysics(idx) : 0; }
@@ -580,8 +581,6 @@ private:
 
 private:
     friend class CEntityObject;
-
-    static float gsWaterLevel;  //static cached water level, updated each ctor call
 
     static float s_fViewDistMin;
     static float s_fViewDistRatio;

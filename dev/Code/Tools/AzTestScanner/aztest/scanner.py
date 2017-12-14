@@ -246,7 +246,7 @@ def scan(args, extra):
     with open(json_path, 'w') as f:
         json.dump(scan_results_json, f)
 
-    if args.html_report:
+    if not args.no_html_report:
         # Convert the set of XML files into an HTML report
         HTMLReporter.create_html_report(scan_results, output_dir)
         HTMLReporter.create_html_failure_report(scan_results, output_dir)

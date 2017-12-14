@@ -1075,8 +1075,16 @@ void CParticleContainer::Render(SRendParams const& RenParams, SPartRenderParams 
             }
         }
 
+        //Note: it used the lower 8 bits of render object flags from particle parameters for RState. 
+        //(No idea why, but any flags from lower 8bits need to set after these)
         job.pRenderObject->m_RState = uint8(nObjFlags);
         job.pRenderObject->m_ObjFlags |= (nObjFlags & ~0xFF) | RenParams.dwFObjFlags;
+
+        //if the particles are not rendered in preview, add flag so it may be rendered after depth of field
+        if (!GetParams().DepthOfFieldBlur && !m_pMainEmitter->GetPreviewMode())
+        {
+            job.pRenderObject->m_ObjFlags |= FOB_RENDER_TRANS_AFTER_DOF;
+        }
 
         if (job.pRenderObject->m_ObjFlags & FOB_PARTICLE_SHADOWS)
         {

@@ -16,6 +16,7 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CCaptureKeyUIControls
@@ -55,9 +56,9 @@ public:
         AddVariable(mv_table, mv_captureBufferType, "Buffer(s) to capture");
         AddVariable(mv_table, mv_once, "Just one frame?");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return paramType == eAnimParamType_Capture;
+        return paramType == AnimParamType::Capture;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -89,7 +90,7 @@ bool CCaptureKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Capture)
+        if (paramType == AnimParamType::Capture)
         {
             ICaptureKey captureKey;
             keyHandle.GetKey(&captureKey);
@@ -123,7 +124,7 @@ void CCaptureKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
-        if (paramType == eAnimParamType_Capture)
+        if (paramType == AnimParamType::Capture)
         {
             ICaptureKey captureKey;
             keyHandle.GetKey(&captureKey);

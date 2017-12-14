@@ -22,7 +22,7 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/unordered_set.h>
 
-#if (defined(LINUX) || defined(APPLE)) && !defined(USING_STLPORT)
+#if (defined(LINUX) || defined(APPLE))
     #include "platform.h"
 #endif
 

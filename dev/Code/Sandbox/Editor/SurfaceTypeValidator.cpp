@@ -65,7 +65,7 @@ void CSurfaceTypeValidator::Validate()
                 {
                     string materialSpec;
                     materialSpec.Format("%s:%d", pMaterial->GetName(), surfaceIDIndex + 1);
-                    if (usedSubMaterials[surfaceIDIndex] && surfaceTypeIDs[surfaceIDIndex] <= 0 && reportedMaterialNames.insert(materialSpec).second)
+                    if (usedSubMaterials[surfaceIDIndex] && surfaceTypeIDs[surfaceIDIndex] < 0 && reportedMaterialNames.insert(materialSpec).second)
                     {
                         CErrorRecord err;
                         err.error = QObject::tr("Physicalized object has material (%1) with invalid surface type.").arg(materialSpec.c_str());
@@ -121,7 +121,7 @@ void CSurfaceTypeValidator::GetUsedSubMaterials(pe_params_part* pPart, char used
         {
             if (pGeometry)
             {
-                const char subMatId = pGeometry->surface_idx;
+                const int subMatId = pGeometry->surface_idx;
                 if (subMatId >= 0 && subMatId < MAX_SUB_MATERIALS)
                 {
                     usedSubMaterials[subMatId] = 1;

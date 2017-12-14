@@ -27,6 +27,7 @@
 #include "RenderMeshUtils.h"
 #include "VisAreas.h"
 #include "DecalRenderNode.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #ifndef RENDER_MESH_TEST_DISTANCE
     #define RENDER_MESH_TEST_DISTANCE (0.2f)
@@ -885,7 +886,6 @@ void CDecalManager::Render(const SRenderingPassInfo& passInfo)
 
     float fCurrTime = GetTimer()->GetCurrTime();
     float fZoom = passInfo.GetZoomFactor();
-    float fWaterLevel = m_p3DEngine->GetWaterLevel();
 
     static int nLastUpdateStreamingPrioriryRoundId = 0;
     bool bPrecacheMaterial = nLastUpdateStreamingPrioriryRoundId != GetObjManager()->GetUpdateStreamingPrioriryRoundId();
@@ -910,7 +910,7 @@ void CDecalManager::Render(const SRenderingPassInfo& passInfo)
             {
                 if (rCamera.IsSphereVisible_F(Sphere(pDecal->m_vWSPos, pDecal->m_fWSSize)))
                 {
-                    bool bAfterWater = GetObjManager()->IsAfterWater(pDecal->m_vWSPos, rCamera.GetPosition(), passInfo, fWaterLevel);
+                    bool bAfterWater = GetObjManager()->IsAfterWater(pDecal->m_vWSPos, passInfo);
                     if (pDecal->m_pMaterial)
                     {
                         if (passInfo.IsGeneralPass())
@@ -1789,7 +1789,8 @@ _smart_ptr<IMaterial> CDecalManager::GetMaterialForDecalTexture(const char* pTex
             SShaderItem& si = pMatSrc->GetShaderItem();
             SInputShaderResources isr = si.m_pShaderResources;
 
-            isr.m_Textures[EFTT_DIFFUSE].m_Name = pTextureName;
+            // This will create texture data insertion to the table for the diffuse slot
+            isr.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = pTextureName;
 
             SShaderItem siDst = GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask());
 

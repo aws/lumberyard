@@ -321,6 +321,9 @@ public: // member functions
     //! wants to specify the new hover interactable
     virtual void ForceHoverInteractable(AZ::EntityId interactableId) = 0;
 
+    //! Internal method used to tell the canvas that some elements need their transform recomputed
+    virtual void SetTransformsNeedRecomputeFlag() = 0;
+
 public: // static member data
 
     //! Only one component on a entity can implement the events

@@ -19,11 +19,14 @@
 #include <IProximityTriggerSystem.h>
 #include <physinterface.h>
 
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
-#include <LmbrCentral/Physics/ColliderComponentBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/ColliderComponentBus.h>
+
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 
 #include "PhysicsSystemComponent.h"
+#include <Physics/BusForwarding/BusForwarding.h>
 
 namespace AZ
 {
@@ -40,11 +43,11 @@ namespace LmbrCentral
      */
     class PhysicsComponent
         : public AZ::Component
-        , public PhysicsComponentRequestBus::Handler
+        , public AzFramework::PhysicsComponentRequestBus::Handler
         , public CryPhysicsComponentRequestBus::Handler
         , protected EntityPhysicsEventBus::Handler
-        , protected PhysicsSystemEventBus::Handler
-        , protected ColliderComponentEventBus::MultiHandler
+        , protected AzFramework::PhysicsSystemEventBus::Handler
+        , protected AzFramework::ColliderComponentEventBus::MultiHandler
         , protected AZ::TransformNotificationBus::MultiHandler
         , protected AZ::EntityBus::MultiHandler
     {
@@ -81,7 +84,6 @@ namespace LmbrCentral
         void AddImpulse(const AZ::Vector3& impulse) override;
         void AddImpulseAtPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePoint) override;
         void AddAngularImpulse(const AZ::Vector3& impulse) override;
-        void AddAngularImpulseAtPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePivot) override;
         AZ::Vector3 GetVelocity() override;
         void SetVelocity(const AZ::Vector3& velocity) override;
         AZ::Vector3 GetAcceleration() override;
@@ -92,10 +94,10 @@ namespace LmbrCentral
         void SetMass(float mass) override;
         float GetDensity() override;
         void SetDensity(float density) override;
-        float GetDamping() override;
-        void SetDamping(float damping) override;
-        float GetMinEnergy() override;
-        void  SetMinEnergy(float minEnergy) override;
+        float GetLinearDamping() override;
+        void SetLinearDamping(float damping) override;
+        float GetSleepThreshold() override;
+        void  SetSleepThreshold(float threshold) override;
         float GetWaterDamping() override;
         void SetWaterDamping(float waterDamping) override;
         float GetWaterDensity() override;
@@ -210,5 +212,7 @@ namespace LmbrCentral
         //! Wait until CryPhysics has processed geometry changes
         //! before calling ConfigureCollisionGeometry()
         SyncState m_changedGeometrySyncState = SyncState::Synced;
+
+        Internal::PhysicsComponentBusForwarder m_busForwarder;
     };
 } // namespace LmbrCentral

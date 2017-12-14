@@ -234,7 +234,12 @@ void CEquipPackLib::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bResetWhe
                 }
                 pCurPack->Load(node);
                 pCurPack->SetModified(false);
-                GetIEditor()->GetGameEngine()->GetIEquipmentSystemInterface()->LoadEquipmentPack(node);
+
+                auto pESI = GetIEditor()->GetGameEngine()->GetIEquipmentSystemInterface();
+                if (pESI != nullptr)
+                {
+                    pESI->LoadEquipmentPack(node);
+                }
             }
         }
     }

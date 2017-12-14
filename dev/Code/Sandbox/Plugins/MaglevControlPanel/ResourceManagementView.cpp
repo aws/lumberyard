@@ -106,7 +106,7 @@ ResourceManagementView::ResourceManagementView(QWidget* parent)
 void ResourceManagementView::LoadResourceValidationData()
 {
     CCryFile dataFile;
-    const char* filename = "@devroot@/Gems/CloudGemFramework/v1/ResourceManager/resource_manager/config/aws_name_validation_rules.json";
+    const char* filename = "@engroot@/Gems/CloudGemFramework/v1/ResourceManager/resource_manager/config/aws_name_validation_rules.json";
     if (!dataFile.Open(filename, "r"))
     {
         AZ_Error("ResourceManager", "Unable to open Cloud Canvas resource validation data file: %s", filename);
@@ -148,26 +148,24 @@ void ResourceManagementView::SendUpdatedSourceStatus(const QString& filePath)
         m_projectModel->FileSourceStatusUpdated(filePath);
     }
 }
-bool ResourceManagementView::GetResourceValidationData(const string& resourceType, const string& resourceField, string& outRegEx, string& outHelp, int& outMinLen)
+bool ResourceManagementView::GetResourceValidationData(const QString& resourceType, const QString& resourceField, QString& outRegEx, QString& outHelp, int& outMinLen)
 {
     // if can't find type or field, return false
-    auto qstrResourceType = QString(resourceType);
-    if (!m_resourceValidation.contains(qstrResourceType))
+    if (!m_resourceValidation.contains(resourceType))
     {
-        AZ_Error("ResourceManager", "Cloud Canvas validation data doesn't contain information for resource type %s", resourceType.c_str());
+        AZ_Error("ResourceManager", "Cloud Canvas validation data doesn't contain information for resource type %s", resourceType.toUtf8().constData());
         return false;
     }
 
-    QJsonObject typeInfo = m_resourceValidation[qstrResourceType].toObject();
+    QJsonObject typeInfo = m_resourceValidation[resourceType].toObject();
 
-    auto qstrResourceField = QString(resourceField);
-    if (!typeInfo.contains(qstrResourceField))
+    if (!typeInfo.contains(resourceField))
     {
-        AZ_Error("ResourceManager", "Cloud Canvas validation data doesn't contain inform for resource field %s in resource type %s", resourceField.c_str(), resourceType.c_str());
+        AZ_Error("ResourceManager", "Cloud Canvas validation data doesn't contain inform for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
         return false;
     }
 
-    QJsonObject fieldInfo = typeInfo[qstrResourceField].toObject();
+    QJsonObject fieldInfo = typeInfo[resourceField].toObject();
 
     static const QString REGEX_FIELD("regex");
     static const QString HELP_FIELD("help");
@@ -176,21 +174,21 @@ bool ResourceManagementView::GetResourceValidationData(const string& resourceTyp
     QJsonValue regEx = fieldInfo[REGEX_FIELD];
     if (regEx.isUndefined() || !regEx.isString())
     {
-        AZ_Warning("ResourceManager", "regex string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.c_str(), resourceType.c_str());
+        AZ_Warning("ResourceManager", "regex string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
     }
     else
     {
-        outRegEx = regEx.toString().toStdString().c_str();
+        outRegEx = regEx.toString();
     }
 
     QJsonValue help = fieldInfo[HELP_FIELD];
     if (help.isUndefined() || !help.isString())
     {
-        AZ_Warning("ResourceManager", "help string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.c_str(), resourceType.c_str());
+        AZ_Warning("ResourceManager", "help string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
     }
     else
     {
-        outHelp = help.toString().toStdString().c_str();
+        outHelp = help.toString();
     }
 
     QJsonValue minLen = fieldInfo[MINLENGTH_FIELD];
@@ -1735,7 +1733,7 @@ void ResourceManagementView::OnMenuImportUsingArn()
 void ResourceManagementView::OnImporterOutput(const QVariant& output, const char* outputType)
 {
     disconnect(m_importerModel.data(), &IAWSImporterModel::ImporterOutput, this, &ResourceManagementView::OnImporterOutput);
-    if (outputType == "error")
+    if (QString(outputType) == "error")
     {
         ShowBasicErrorBox("Import Error", output.toString());
         return;

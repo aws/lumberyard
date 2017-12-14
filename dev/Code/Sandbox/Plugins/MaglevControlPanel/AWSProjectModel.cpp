@@ -40,7 +40,8 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 ///////////////////////////////////////////////////////////////////////////////
 
-const QMap<AWSProjectColumn, QString> ColumnEnumToNameMap<AWSProjectColumn>::s_columnEnumToNameMap
+template<>
+const QMap<AWSProjectColumn, QString> ColumnEnumToNameMap<AWSProjectColumn>::s_columnEnumToNameMap =
 {
     {
         AWSProjectColumn::Node, "Node"
@@ -152,7 +153,7 @@ bool Node::ShouldAppearInProgress() const
 
 void Node::SetUpIcon()
 {
-    QIcon& iconToSet = ShouldAppearInProgress() ? QIcon {
+    auto iconToSet = ShouldAppearInProgress() ? QIcon {
         g_inProgressMovie.currentPixmap()
     } : m_defaultIcon;
     setIcon(iconToSet);
@@ -452,8 +453,11 @@ protected:
     {
     public:
 
+        using StandardItemChildManager<DirectoryNode, PathNode, QFileInfo>::Parent;
+        using StandardItemChildManager<DirectoryNode, PathNode, QFileInfo>::CompareStrings;
+
         ChildManager(DirectoryNode* parentItem)
-            : StandardItemChildManager(parentItem)
+            : StandardItemChildManager<DirectoryNode, PathNode, QFileInfo>(parentItem)
         {
         }
 
@@ -697,7 +701,7 @@ class CodeDirectoryNode
 public:
 
     CodeDirectoryNode (const QString& path, AWSProjectModel* projectModel, bool doNotDelete = false)
-        : DirectoryNode{path, projectModel, doNotDelete}
+        : DirectoryNode(path, projectModel, doNotDelete)
     {
         setToolTip(
             "Directory used in the implementation of an AWS Lambda function resource.");
@@ -1321,7 +1325,6 @@ public:
 
             appendRow(new DeploymentAccessTemplateNode(details["DeploymentAccessTemplateFilePath"].toString(), ProjectModel()));
             appendRow(new UserSettingsNode(details["UserSettingsFilePath"].toString(), ProjectModel()));
-            appendRow(new ProjectCodeNode(details["ProjectCodeDirectoryPath"].toString(), ProjectModel()));
         }
     }
 

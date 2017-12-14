@@ -29,8 +29,6 @@ namespace LegacyGameInterface
         // IGameStartup
         IGameRef Init(SSystemInitParams& startupParams) override;
         void Shutdown() override;
-        int Update(bool hasFocus, unsigned int updateFlags) override;
-        int Run(const char* autoStartLevelName) override;
         // ~IGameStartup
 
         // ISystemEventListener

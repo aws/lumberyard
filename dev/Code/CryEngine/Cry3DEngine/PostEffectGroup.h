@@ -99,13 +99,14 @@ public:
     ~PostEffectGroupManager() override;
 
     IPostEffectGroup* GetGroup(const char* name) override;
+    IPostEffectGroup* GetGroup(const unsigned int index) override;
+    const unsigned int GetGroupCount() override;
     void SyncMainWithRender() override;
     void Sort();
 
     // Returns a list of PostEFfectGroups that had their enabled state changed this frame
     const PostEffectGroupList& GetGroupsToggledThisFrame() override;
     void SetGroupToggledThisFrame( IPostEffectGroup* group );
-
 private:
     //  Sending in a PostEffectGroup* to LoadGroup will cause a load in place.
     //  Sending in a nullptr to LoadGroup will construct a new PostEffectGroup.

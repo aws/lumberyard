@@ -13,6 +13,8 @@
 
 #if defined(SUPPORT_DEVICE_INFO)
 
+#include <AzFramework/API/ApplicationAPI.h>
+
 enum
 {
 #if defined(WIN32) || defined(WIN64)
@@ -28,11 +30,8 @@ static void InitSwapChain(DXGI_SWAP_CHAIN_DESC& desc, UINT width, UINT height, H
     desc.BufferDesc.Height = height;
     desc.BufferDesc.RefreshRate.Numerator = 0;
     desc.BufferDesc.RefreshRate.Denominator = 0;
-#if defined(DXGL_USE_SDL)
-    desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8X8_UNORM;
 #ifdef ANDROID
     desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-#endif // ANDROID
 #else
     static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
     if (DolbyCvar->GetIVal() == 1)
@@ -155,7 +154,7 @@ static int GetDXGIAdapterOverride()
 static void ProcessWindowMessages(HWND hWnd)
 {
 #if defined(WIN32) || defined(WIN64)
-    iSystem->PumpWindowMessage(true, hWnd);
+    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
 #endif
 }
 
@@ -322,10 +321,10 @@ bool DeviceInfo::CreateDevice(bool windowed, int width, int height, int backbuff
         (FP_CreateDXGIFactory1) GetProcAddress(LoadLibraryA("dxgi.dll"), "CreateDXGIFactory1");
 #endif
 
-    IDXGIAdapter1* pAdapter;
-    IDXGIOutput* pOutput;
-    ID3D11Device* pDevice;
-    ID3D11DeviceContext* pContext;
+    IDXGIAdapter1* pAdapter = nullptr;
+    IDXGIOutput* pOutput = nullptr;
+    ID3D11Device* pDevice = nullptr;
+    ID3D11DeviceContext* pContext = nullptr;
 
     if (pCDXGIF && SUCCEEDED(pCDXGIF(__uuidof(IDXGIFactory1), (void**) &m_pFactory)) && m_pFactory)
     {

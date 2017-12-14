@@ -5,3 +5,5 @@ export * from './selective-preload-strategy.service';
 export * from './url.service';
 export * from './lymetric.service';
 export * from './gem.service';
+export * from './breadcrumb.service';
+export * from './pagination.service';

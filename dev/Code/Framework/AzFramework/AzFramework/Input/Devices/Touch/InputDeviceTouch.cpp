@@ -22,6 +22,12 @@ namespace AzFramework
     const InputDeviceId InputDeviceTouch::Id("touch");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceTouch::IsTouchDevice(const InputDeviceId& inputDeviceId)
+    {
+        return (inputDeviceId.GetNameCrc32() == Id.GetNameCrc32());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputChannelId InputDeviceTouch::Touch::Index0("touch_index_0");
     const InputChannelId InputDeviceTouch::Touch::Index1("touch_index_1");
     const InputChannelId InputDeviceTouch::Touch::Index2("touch_index_2");

@@ -179,7 +179,7 @@ namespace AzFramework
          * @return If the entity context does not own the entity,
          * this returns false and does not destroy the entity.
          */
-        virtual bool DestroyEntity(AZ::EntityId entityId) = 0;
+        virtual bool DestroyEntityById(AZ::EntityId entityId) = 0;
 
         /**
          * Creates a copy of the entity in the root slice of the entity context.

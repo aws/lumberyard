@@ -43,7 +43,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     virtual bool Init(IEditor* ie, CBaseObject* prev, const QString& file);
     virtual void Done();
-    virtual bool SetScale(const Vec3& vScale, int nWhyFlags = 0) const { return false; };
+    virtual bool SetScale(const Vec3& vScale, int nWhyFlags = 0) { return false; };
     virtual void SetSelected(bool bSelect);
     virtual bool CreateGameObject();
     virtual void InitVariables();

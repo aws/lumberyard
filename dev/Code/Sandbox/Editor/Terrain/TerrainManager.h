@@ -114,6 +114,8 @@ public:
     void SetModified(int x1 = 0, int y1 = 0, int x2 = 0, int y2 = 0);
 
     void GetTerrainMemoryUsage(ICrySizer* pSizer);
+
+    QString GenerateUniqueLayerName(const QString& name) const;
     //////////////////////////////////////////////////////////////////////////
 
 protected:

@@ -22,6 +22,8 @@
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/vector.h>
 
+#include <AzQtComponents/Buses/DragAndDrop.h>
+
 namespace ComponentDataUtilities
 {
     // Given a list of selected components, use the provided model to get the components to add to any selected entities.
@@ -32,7 +34,9 @@ class CViewport;
 
 //! ComponentDataModel
 //! Holds the data required to display components in a table, this includes component name, categories, icons.
-class ComponentDataModel : public QAbstractTableModel
+class ComponentDataModel 
+    : public QAbstractTableModel
+    , protected AzQtComponents::DragAndDropEventsBus::Handler // its okay if more than one of these is installed, the first one gets it.
 {
     Q_OBJECT
 
@@ -58,6 +62,7 @@ public:
     };
 
     ComponentDataModel(QObject* parent = nullptr);
+    ~ComponentDataModel() override;
 
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
     QModelIndex parent(const QModelIndex &child) const override;
@@ -75,13 +80,18 @@ public:
 
     static const char* GetCategory(const AZ::SerializeContext::ClassData* classData);
 
-    //! Drag and drop handler for integration with the editor.
-    static void DragDropHandler(CViewport* viewport, int ptx, int pty, void* custom);
-
     ComponentClassList& GetComponents() { return m_componentList; }
     ComponentCategorySet& GetCategories() { return m_categories; }
 
 protected:
+    //////////////////////////////////////////////////////////////////////////
+    // AzQtComponents::DragAndDropEventsBus::Handler
+    //////////////////////////////////////////////////////////////////////////
+    void DragEnter(QDragEnterEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
+    void DragMove(QDragMoveEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
+    void DragLeave(QDragLeaveEvent* event) override;
+    void Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
+    bool CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const;
 
     ComponentClassList m_componentList;
     ComponentClassMap m_componentMap;

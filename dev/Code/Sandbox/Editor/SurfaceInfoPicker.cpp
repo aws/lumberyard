@@ -22,6 +22,7 @@
 #include "Viewport.h"
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/GeomCacheComponentBus.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 
 #include <CryAnimation/AttachmentSkin.h>
@@ -475,10 +476,10 @@ void CSurfaceInfoPicker::FindNearestInfoFromEntities(
         if (entityObject->GetType() == OBJTYPE_AZENTITY)
         {
             AZ::EntityId id;
-            EBUS_EVENT_ID_RESULT(id, entityObject, AzToolsFramework::ComponentEntityObjectRequestBus, GetAssociatedEntityId);
+            AzToolsFramework::ComponentEntityObjectRequestBus::EventResult(id, entityObject, &AzToolsFramework::ComponentEntityObjectRequestBus::Events::GetAssociatedEntityId);
 
             AZ::EBusAggregateResults<IStatObj*> statObjs;
-            EBUS_EVENT_ID_RESULT(statObjs, id, LmbrCentral::LegacyMeshComponentRequestBus, GetStatObj);
+            LmbrCentral::LegacyMeshComponentRequestBus::EventResult(statObjs, id, &LmbrCentral::LegacyMeshComponentRequestBus::Events::GetStatObj);
             
             // If the entity has a MeshComponent, it will hit here
             for (IStatObj* statObj : statObjs.values)
@@ -494,8 +495,16 @@ void CSurfaceInfoPicker::FindNearestInfoFromEntities(
             if (!hit)
             {
                 ICharacterInstance* characterInstance = nullptr;
-                EBUS_EVENT_ID_RESULT(characterInstance, id, LmbrCentral::SkinnedMeshComponentRequestBus, GetCharacterInstance);
+                LmbrCentral::SkinnedMeshComponentRequestBus::EventResult(characterInstance, id, &LmbrCentral::SkinnedMeshComponentRequestBus::Events::GetCharacterInstance);
                 hit = RayIntersection(vWorldRaySrc, vWorldRayDir, nullptr, nullptr, nullptr, characterInstance, object->GetWorldTM(), outHitInfo, &pickedMaterial);
+            }
+
+            // If the entity has a GeometryCacheComponent it will hit here
+            if (!hit)
+            {
+                IGeomCacheRenderNode* geomCacheRenderNode = nullptr;
+                LmbrCentral::GeometryCacheComponentRequestBus::EventResult(geomCacheRenderNode, id, &LmbrCentral::GeometryCacheComponentRequestBus::Events::GetGeomCacheRenderNode);
+                hit = RayIntersection_IGeomCacheRenderNode(vWorldRaySrc, vWorldRayDir, geomCacheRenderNode, &pickedMaterial, object->GetWorldTM(), outHitInfo);
             }
         }
 

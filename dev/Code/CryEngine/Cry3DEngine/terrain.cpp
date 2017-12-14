@@ -26,6 +26,8 @@
 #include "Vegetation.h"
 #include "RoadRenderNode.h"
 #include <AzCore/std/functional.h>
+#include "Environment/OceanEnvironmentBus.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 int CTerrain::m_nUnitSize = 2;
 float CTerrain::m_fInvUnitSize = 1.0f / 2.0f;
@@ -167,6 +169,39 @@ void CTerrain::InitHeightfieldPhysics()
     pPhysTerrain->SetParams(&pfd);
 }
 
+void CTerrain::SendLegacyTerrainUpdateNotifications(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY)
+{
+    AZ::u32 numTiles = CTerrain::m_NodePyramid[0].GetSize();
+    AZ::u32 tileSize = CTerrain::m_nTerrainSize / (CTerrain::m_nUnitSize * numTiles);
+    LegacyTerrain::LegacyTerrainNotificationBus::Broadcast(&LegacyTerrain::LegacyTerrainNotifications::SetNumTiles,
+        numTiles, tileSize);
+
+    AZ::u32 clampedMaxX = static_cast<AZ::u32>(tileMaxX);
+    AZ::u32 clampedMinX = static_cast<AZ::u32>(AZ::GetMax(0, tileMinX - 1));
+    AZ::u32 clampedMaxY = static_cast<AZ::u32>(tileMaxY);
+    AZ::u32 clampedMinY = static_cast<AZ::u32>(AZ::GetMax(0, tileMinY - 1));
+
+    // Iterate in reverse order here so that tiles are updated after the neighbours they share vertices with.
+    for (AZ::u32 tileX = clampedMaxX; tileX-- > clampedMinX;)
+    {
+        for (AZ::u32 tileY = clampedMaxY; tileY-- > clampedMinY;)
+        {
+            CTerrainNode* node = CTerrain::m_NodePyramid[0][tileX][tileY];
+            const SurfaceTile& tile = node->GetSurfaceTile();
+            float heightMin = tile.GetOffset();
+            // Cry terrain uses factors of 100.0f and 0.01f to convert heights between metres and centimetres.
+            // The default height resolution is 1cm, unless the range of heights would be too large to fit
+            // into a 16 bit integer, in which case a step of an integer number of centimetres is used.
+            int heightRange = int(tile.GetRange() * 100.0f);
+            int step = heightRange ? (heightRange + UINT16_MAX - 1) / UINT16_MAX : 1;
+            float heightScale = step * 0.01f;
+
+            LegacyTerrain::LegacyTerrainNotificationBus::Broadcast(&LegacyTerrain::LegacyTerrainNotifications::UpdateTile,
+                tileX, tileY, tile.GetHeightmap(), heightMin, heightScale, tileSize, CTerrain::GetHeightMapUnitSize());
+        }
+    }
+}
+
 void CTerrain::BuildSectorsTree(bool bBuildErrorsTable)
 {
     if (m_RootNode)
@@ -214,11 +249,11 @@ void CTerrain::ChangeOceanMaterial(_smart_ptr<IMaterial> pMat)
     }
 }
 
-void CTerrain::InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterShader, int nWaterBottomTexId)
+void CTerrain::InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterShader)
 {
     // make ocean surface
     SAFE_DELETE(m_pOcean);
-    if (GetWaterLevel() > 0)
+    if (OceanToggle::IsActive() ? OceanRequest::OceanIsEnabled() : (GetWaterLevel() > 0))
     {
         m_pOcean = new COcean(pTerrainWaterShader);
     }

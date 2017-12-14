@@ -35,7 +35,6 @@ namespace
     const int waitTimeForAssetCatalogUpdateInMilliseconds = 500;
     const char* hardwarePlatformKeyString = "hardwarePlatform";
     const char* buildConfigKeyString = "buildConfiguration";
-    const char* androidCompilerKeyString = "androidCompiler";
     const char* fileTransferKeyString = "fileTransferSetting";
 
     const char* buildGameKeyString = "buildGame";
@@ -196,7 +195,7 @@ void DeploymentToolWindow::Deploy()
     }
 }
 
-bool DeploymentToolWindow::ValidateIPAddress(QString& ipAddressString)
+bool DeploymentToolWindow::ValidateIPAddress(const QString& ipAddressString)
 {
     QHostAddress ipAddress(ipAddressString);
     if (ipAddress.protocol() != QAbstractSocket::IPv4Protocol)
@@ -212,7 +211,6 @@ bool DeploymentToolWindow::ValidateIPAddress(QString& ipAddressString)
 bool DeploymentToolWindow::PopulateDeploymentConfigFromUi()
 {
     m_deploymentCfg.m_buildConfiguration = m_ui->buildConfigComboBox->currentText().toLower().toStdString().c_str();
-    m_deploymentCfg.m_compiler = m_ui->compilerComboBox->currentText().toLower().toStdString().c_str();
     m_deploymentCfg.m_useVFS = m_ui->fileTransferComboBox->currentText().contains("Virtual");
     m_deploymentCfg.m_buildGame = m_ui->buildGameCheckBox->isChecked();
     m_deploymentCfg.m_cleanDeviceBeforeInstall = m_ui->clearDeviceCheckBox->isChecked();
@@ -373,7 +371,6 @@ void DeploymentToolWindow::SaveUiState()
 { 
     m_deploySettings.setValue(hardwarePlatformKeyString, m_ui->platformComboBox->currentText());
     m_deploySettings.setValue(buildConfigKeyString, m_ui->buildConfigComboBox->currentText());
-    m_deploySettings.setValue(androidCompilerKeyString, m_ui->compilerComboBox->currentText());
     m_deploySettings.setValue(fileTransferKeyString, m_ui->fileTransferComboBox->currentText());
 
     m_deploySettings.setValue(buildGameKeyString, m_ui->buildGameCheckBox->isChecked());
@@ -385,7 +382,6 @@ void DeploymentToolWindow::RestoreUiState()
 {
     m_ui->platformComboBox->setCurrentText(m_deploySettings.value(hardwarePlatformKeyString).toString());
     m_ui->buildConfigComboBox->setCurrentText(m_deploySettings.value(buildConfigKeyString).toString());
-    m_ui->compilerComboBox->setCurrentText(m_deploySettings.value(androidCompilerKeyString).toString());
     m_ui->fileTransferComboBox->setCurrentText(m_deploySettings.value(fileTransferKeyString).toString());
 
     m_ui->buildGameCheckBox->setChecked(m_deploySettings.value(buildGameKeyString).toBool());

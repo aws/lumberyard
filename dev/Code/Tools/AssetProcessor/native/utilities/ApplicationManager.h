@@ -42,8 +42,9 @@ class AssetProcessorAZApplication
 {
     Q_OBJECT
 public:
-    explicit AssetProcessorAZApplication(QObject* parent = nullptr)
+    explicit AssetProcessorAZApplication(int* argc, char*** argv, QObject* parent = nullptr)
         : QObject(parent)
+        , AzToolsFramework::ToolsApplication(argc, argv)
     {
     }
 
@@ -86,7 +87,7 @@ public:
         Status_Restarting,
         Status_Failure,
     };
-    explicit ApplicationManager(int argc, char** argv, QObject* parent = 0);
+    explicit ApplicationManager(int* argc, char*** argv, QObject* parent = 0);
     virtual ~ApplicationManager();
     //! Prepares all the prerequisite needed for the main application functionality
     //! For eg Starts the AZ Framework,Activates logging ,Initialize Qt etc
@@ -101,8 +102,7 @@ public:
     QString GetGameName() const;
 
     void RegisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor);
-    void UnRegisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor);
-    
+
     enum class RegistryCheckInstructions
     {
         Continue,
@@ -137,9 +137,7 @@ protected:
     void RegisterObjectForQuit(QObject* source, bool insertInFront = false);
     bool NeedRestart() const;
     void addRunningThread(AssetProcessor::ThreadWorker* thread);
-    char** GetCommandArguments() const;
-    int CommandLineArgumentsCount() const;
-    QCoreApplication* m_qApp;
+    
     template<class BuilderClass>
     void RegisterInternalBuilder(const QString& builderName);
 
@@ -149,10 +147,18 @@ protected:
     bool InitiatedShutdown() const;
 
     bool m_duringStartup = true;
-
+    AssetProcessorAZApplication m_frameworkApp;
+    QCoreApplication* m_qApp = nullptr;
+    
+    //! Get the list of external builder files for this asset processor
+    void GetExternalBuilderFileList(QStringList& externalBuilderModules);
+    
 private:
     void InstallTranslators();
-    bool StartAZFramework();
+    bool StartAZFramework(QString appRootOverride);
+    bool ValidateExternalAppRoot(QString appRootPath) const;
+    QString ParseOptionAppRootArgument();
+
     // QuitPair - Object pointer and "is ready" boolean pair.
     typedef QPair<QObject*, bool> QuitPair;
     QList<QuitPair> m_objectsToNotify;
@@ -166,10 +172,7 @@ private:
     QDir m_systemRoot;
     QString m_gameName;
     AZ::Entity* m_entity = nullptr;
-    AssetProcessorAZApplication m_frameworkApp;
-protected:
-    int m_argc;
-    char** m_argv;
+
 };
 
 ///This class stores all the information of files that

@@ -24,7 +24,7 @@
 #include <GridMate/Replica/ReplicaStatus.h>
 
 #include <GridMate/Serialize/DataMarshal.h>
-#include "AzCore/std/smart_ptr/unique_ptr.h"
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 using namespace GridMate;
 
@@ -365,6 +365,7 @@ public:
 
         SimpleDataSetChunk()
         {
+            Data1.MarkAsDefaultValue();
         }
 
         bool IsReplicaMigratable() override
@@ -393,8 +394,134 @@ public:
         {
             auto pdr = chunk->Data1.PrepareData(EndianType::BigEndian, 0);
 
-            AZ_TEST_ASSERT(chunk->Data1.IsDefaultValue() == true);          
+            AZ_TEST_ASSERT(chunk->Data1.IsDefaultValue() == true);
         }
+    }
+};
+
+class DataSet_ACKTest
+    : public UnitTest::GridMateMPTestFixture
+{
+public:
+    GM_CLASS_ALLOCATOR(DataSet_ACKTest);
+
+    class TestDataSet : public DataSet<int>
+    {
+    public:
+        TestDataSet() : DataSet<int>("Test", 0) {}
+
+        // A wrapper to call a protected method
+        PrepareDataResult PrepareData(EndianType endianType, AZ::u32 marshalFlags) override
+        {
+            return DataSet<int>::PrepareData(endianType, marshalFlags);
+        }
+    };
+
+    class SimpleDataSetChunk
+        : public ReplicaChunk
+    {
+        friend class DataSet_ACKTest;
+    public:
+        GM_CLASS_ALLOCATOR(SimpleDataSetChunk);
+
+        SimpleDataSetChunk()
+        {
+        }
+
+        bool IsReplicaMigratable() override
+        {
+            return false;
+        }
+
+        static const char* GetChunkName()
+        {
+            static const char* name = "SimpleDataSetChunk2";
+            return name;
+        }
+
+        TestDataSet Data1;
+    };
+
+    void run()
+    {
+        if (!ReplicaTarget::IsAckEnabled())
+        {
+            return;
+        }
+//        const int chunkHeader = 3*8;
+//        int replicaHeader = 7*8;
+//        //Add ReplicaStatusChunk header
+//#ifdef GM_REPLICA_HAS_DEBUG_NAME
+//        replicaHeader += 16 + 176;
+//#else
+//        replicaHeader += 16;
+//#endif
+//        const int marshalDataSize = 48; //Data plus length
+        //Only for Driller
+        ReplicaManager rm;
+        ReplicaPeer peer(&rm);
+
+        AZ_TracePrintf("GridMate", "\n");
+        Replica* replica = Replica::CreateReplica("TestMasterReplica");
+
+        ReplicaChunkDescriptorTable::Get().RegisterChunkType<SimpleDataSetChunk>();
+        AZStd::unique_ptr<SimpleDataSetChunk> chunk(CreateReplicaChunk<SimpleDataSetChunk>());
+        replica->AttachReplicaChunk(chunk.get());
+
+        //1. Pre-change
+        auto pdr = replica->DebugPrepareData(EndianType::BigEndian, 0);
+
+        WriteBufferDynamic writeBuffer(EndianType::BigEndian, 0);
+        CallbackBuffer callbackBuffer;
+        MarshalContext mcNoPeer(ReplicaMarshalFlags::IncludeDatasets, &writeBuffer, &callbackBuffer, ReplicaContext(&rm, TimeContext(), &peer));
+        replica->DebugMarshal(mcNoPeer);
+        //AZ_Printf("GridMateTests", "buffer size %d\n", writeBuffer.GetExactSize().GetTotalSizeInBits());
+        AZ_TEST_ASSERT(writeBuffer.GetExactSize().GetTotalSizeInBits() == 272); //272
+
+        //2. change the data. confirm it marshals correctly
+        chunk->Data1.Set(1);
+        pdr = replica->DebugPrepareData(EndianType::BigEndian, 0);
+        AZ_TEST_ASSERT(chunk->Data1.IsDefaultValue() == false);
+        AZ_TEST_ASSERT(pdr.m_isDownstreamUnreliableDirty == true);
+
+        //Marshal
+        writeBuffer.Clear();
+        callbackBuffer.clear();
+        replica->DebugMarshal(mcNoPeer);
+        // AZ_Printf("GridMateTests", "buffer size %d\n", writeBuffer.GetExactSize().GetTotalSizeInBits());
+        AZ_TEST_ASSERT(writeBuffer.GetExactSize().GetTotalSizeInBits() == 128);   //Headers and data, 128
+
+        //3. confirm next PrepareData sends nothing new
+        pdr = replica->DebugPrepareData(EndianType::BigEndian, 0);
+        AZ_TEST_ASSERT(pdr.m_isDownstreamUnreliableDirty == false && pdr.m_isDownstreamReliableDirty == false
+                            && pdr.m_isUpstreamUnreliableDirty == false && pdr.m_isUpstreamReliableDirty == false);
+
+        //Add an old stamp to the marshal context then confirm marshal re-adds data
+        writeBuffer.Clear();
+        callbackBuffer.clear();
+        MarshalContext mcPreAck(ReplicaMarshalFlags::IncludeDatasets, &writeBuffer, &callbackBuffer, ReplicaContext(&rm, TimeContext(), &peer), 1); //Un-Ack'd
+        replica->DebugMarshal(mcPreAck);
+        //AZ_Printf("GridMateTests", "With old stamp buffer size %d\n", writeBuffer.GetExactSize().GetTotalSizeInBits());
+        AZ_TEST_ASSERT(writeBuffer.GetExactSize().GetTotalSizeInBits() == 304);   //Headers and data, 304
+
+        //4
+        for (int i = 0; i < 10; ++i)
+        {
+            pdr = replica->DebugPrepareData(EndianType::BigEndian, 0);
+            AZ_TEST_ASSERT(pdr.m_isDownstreamUnreliableDirty == false && pdr.m_isDownstreamReliableDirty == false
+                && pdr.m_isUpstreamUnreliableDirty == false && pdr.m_isUpstreamReliableDirty == false);
+            writeBuffer.Clear();
+            callbackBuffer.clear();
+            MarshalContext mcPostAck(ReplicaMarshalFlags::IncludeDatasets, &writeBuffer, &callbackBuffer, ReplicaContext(&rm, TimeContext(), &peer), 2); //ACK'd
+            replica->DebugMarshal(mcPostAck);
+            //AZ_Printf("GridMateTests", "with up-to-date stamp buffer size %d\n", writeBuffer.GetExactSize().GetTotalSizeInBits());
+            AZ_TEST_ASSERT(writeBuffer.GetExactSize().GetTotalSizeInBits() == 104);           //ACK'd nothing to send; just basic headers 104
+        }
+
+        //Remove ref-count
+        replica->DebugPreDestruct();
+        chunk.release();
+        //delete replica;
     }
 };
 
@@ -406,4 +533,5 @@ GM_TEST(ChunkCast);
 GM_TEST(ChunkEvents);
 GM_TEST(OfflineModeTest);
 GM_TEST(DataSet_PrepareTest);
+GM_TEST(DataSet_ACKTest);
 GM_TEST_SUITE_END()

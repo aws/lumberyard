@@ -13,44 +13,43 @@ package com.amazon.lumberyard;
 
 
 import android.app.Activity;
+import android.app.NativeActivity;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
+import android.graphics.Point;
+import android.media.AudioManager;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Display;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
-import java.lang.Exception;
 import java.lang.InterruptedException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.libsdl.app.SDLActivity;
-
 import com.amazon.lumberyard.input.KeyboardHandler;
-import com.amazon.lumberyard.input.MotionSensorManager;
 
 import com.amazon.lumberyard.io.APKHandler;
-import com.amazon.lumberyard.AndroidDeviceManager;
 import com.amazon.lumberyard.io.obb.ObbDownloaderActivity;
 
 
 ////////////////////////////////////////////////////////////////
-public class LumberyardActivity extends SDLActivity
+public class LumberyardActivity extends NativeActivity
 {
-    private static final int DOWNLOAD_OBB_REQUEST = 1337;
-
     ////////////////////////////////////////////////////////////////
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event)
@@ -71,6 +70,7 @@ public class LumberyardActivity extends SDLActivity
         if (m_keyboardHandler != null && keyCode == KeyEvent.KEYCODE_BACK)
         {
             KeyboardHandler.SendKeyCode(keyCode, event.getAction());
+            return true; // for consistency since we consume the down event
         }
         return super.onKeyUp(keyCode, event);
     }
@@ -111,30 +111,53 @@ public class LumberyardActivity extends SDLActivity
     }
 
     ////////////////////////////////////////////////////////////////
-    // accessor for the native to create and get the MotionSensorManager
-    public MotionSensorManager GetMotionSensorManager()
+    // called from the native code to show the Java splash screen
+    public void ShowSplashScreen()
     {
-        if (m_motionSensorManager == null)
-        {
-            m_motionSensorManager = new MotionSensorManager(this);
-        }
-        return m_motionSensorManager;
-    }
+        Log.d(TAG, "ShowSplashScreen called");
 
-    ////////////////////////////////////////////////////////////////
-    // called from the native code, either right after the renderer is initialized with a splash
-    // screen of it's own, or at the end of the system initialization when no native splash
-    // is specified
-    public void OnEngineRendererTakeover()
-    {
         this.runOnUiThread(new Runnable() {
             @Override
             public void run()
             {
-                mLayout.removeView(m_splashView);
-                m_splashView = null;
+                if (!m_splashShowing)
+                {
+                    ShowSplashScreenImpl(); 
+                }
+                else
+                {
+                    Log.d(TAG, "The splash screen is already showing");
+                }
             }
         });
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // called from the native code to dismiss the Java splash screen
+    public void DismissSplashScreen()
+    {
+        Log.d(TAG, "DismissSplashScreen called");
+        if (m_splashShowing)
+        {
+            this.runOnUiThread(new Runnable() {
+                @Override
+                public void run()
+                {
+                    if (m_slashWindow != null)
+                    {
+                        Log.d(TAG, "Dismissing the splash screen");
+                        m_slashWindow.dismiss();
+                        m_slashWindow = null;
+                    }
+                    else
+                    {
+                        Log.d(TAG, "There is no splash screen to dismiss");
+                    }
+                }
+            });
+
+            m_splashShowing = false;
+        }
     }
 
     ////////////////////////////////////////////////////////////////
@@ -180,14 +203,6 @@ public class LumberyardActivity extends SDLActivity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-
-        Resources resources = this.getResources();
-        int layoutId = resources.getIdentifier("splash_screen", "layout", this.getPackageName());
-
-        LayoutInflater factory = LayoutInflater.from(this);
-        m_splashView = factory.inflate(layoutId, null);
-        mLayout.addView(m_splashView);
-
         if (GetBooleanResource("enable_keep_screen_on"))
         {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -202,7 +217,7 @@ public class LumberyardActivity extends SDLActivity
 
         if (IsBootstrapInAPK() && (useMainObb || usePatchObb))
         {
-            Log.d("LumberyardActivity", "Using OBB expansion files for game assets");
+            Log.d(TAG, "Using OBB expansion files for game assets");
 
             File obbRootPath = getApplicationContext().getObbDir();
 
@@ -220,19 +235,24 @@ public class LumberyardActivity extends SDLActivity
 
             if (needToDownload)
             {
-                Log.d("LumberyardActivity", "Attempting to download the OBB expansion files");
+                Log.d(TAG, "Attempting to download the OBB expansion files");
                 boolean downloadResult = DownloadObb();
                 if (!downloadResult)
                 {
-                    Log.e("LumberyardActivity", "Failed to download the OBB expansion file.  Exiting...");
+                    Log.e(TAG, "****************************************************************");
+                    Log.e(TAG, "Failed to download the OBB expansion file.  Exiting...");
+                    Log.e(TAG, "****************************************************************");
                     finish();
                 }
             }
         }
         else
         {
-            Log.d("LumberyardActivity", "Assets already on the device, not using the OBB expansion files.");
+            Log.d(TAG, "Assets already on the device, not using the OBB expansion files.");
         }
+
+        // ensure we use the music media stream
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -260,6 +280,8 @@ public class LumberyardActivity extends SDLActivity
             listener.ProcessActivityResult(requestCode, resultCode, data);
         }
     }
+
+    // ----
 
     ////////////////////////////////////////////////////////////////
     private boolean launchActivity(Intent intent, final int activityRequestCode, boolean waitForResult, final ActivityResult result)
@@ -339,6 +361,42 @@ public class LumberyardActivity extends SDLActivity
     }
 
     ////////////////////////////////////////////////////////////////
+    private void ShowSplashScreenImpl()
+    {
+        Log.d(TAG, "Showing the Splash Screen");
+
+        // load the splash screen view
+        Resources resources = getResources();
+        int layoutId = resources.getIdentifier("splash_screen", "layout", getPackageName());
+
+        LayoutInflater factory = LayoutInflater.from(this);
+        View splashView = factory.inflate(layoutId, null);
+
+        // get the resolution of the display
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+
+        // create the popup with the splash screen layout. this is because the standard 
+        // view hierarchy for Android apps doesn't exist when using the NativeActivity
+        m_slashWindow = new PopupWindow(splashView, size.x, size.y);
+        m_slashWindow.setClippingEnabled(false);
+
+        // add a dummy layout to the main view for the splash popup window
+        LinearLayout mainLayout = new LinearLayout(this);
+        setContentView(mainLayout);
+
+        // show the splash window
+        m_slashWindow.showAtLocation(mainLayout, Gravity.CENTER, 0, 0);
+        m_slashWindow.update();
+
+        m_splashShowing = true;
+    }
+
+
+    // ----
+
+    ////////////////////////////////////////////////////////////////
     private class ActivityResult
     {
         public int m_result;
@@ -347,9 +405,14 @@ public class LumberyardActivity extends SDLActivity
 
     // ----
 
-    private View m_splashView = null;
+    private static final int DOWNLOAD_OBB_REQUEST = 1337;
+    private static final String TAG = "LMBR";
+
+    private PopupWindow m_slashWindow = null;
+    private boolean m_splashShowing = false;
+
     private KeyboardHandler m_keyboardHandler = null;
-    private MotionSensorManager m_motionSensorManager = null;
+
     private List<ActivityResultsListener> m_activityResultsListeners = new ArrayList<ActivityResultsListener>();
-    private List<ActivityResult> m_waitingResultList = new ArrayList<ActivityResult>();;
+    private List<ActivityResult> m_waitingResultList = new ArrayList<ActivityResult>();
 }

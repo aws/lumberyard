@@ -247,10 +247,7 @@ void LoadScreenComponent::UpdateAndRender()
         return;
     }
 
-    if (GetCurrentThreadId() != GetGlobalEnv()->mMainThreadId)
-    {
-        return;
-    }
+    AZ_Assert(GetCurrentThreadId() == GetGlobalEnv()->mMainThreadId, "UpdateAndRender should only be called from the main thread");
 
     // Throttling.
     float deltaTimeInSeconds;
@@ -290,6 +287,9 @@ void LoadScreenComponent::UpdateAndRender()
     GetGlobalEnv()->pRenderer->BeginFrame();
     GetGlobalEnv()->pLyShine->Render();
     GetGlobalEnv()->pRenderer->EndFrame();
+
+    // Some platforms (iOS, OSX, AppleTV) require system events to be pumped in order to update the screen
+    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
 
     m_processingLoadScreen.store(false);
 }

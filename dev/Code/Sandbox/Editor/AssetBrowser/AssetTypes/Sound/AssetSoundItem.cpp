@@ -21,7 +21,6 @@
 #include "Util/ImageUtil.h"
 #include "Util/PathUtil.h"
 #include "Include/IAssetItemDatabase.h"
-#include "IMusicSystem.h"
 #include "IRenderer.h"
 #include "Include/IAssetViewer.h"
 #include "ImageExtensionHelper.h"
@@ -168,7 +167,7 @@ void CAssetSoundItem::PreviewRender(
     const QRect& rstViewport,
     int aMouseX, int aMouseY,
     int aMouseDeltaX, int aMouseDeltaY,
-    UINT aKeyFlags)
+    int aMouseWheelDelta, UINT aKeyFlags)
 {
 }
 

@@ -196,7 +196,8 @@ namespace AzToolsFramework
         EditorEntityModelEntry& GetInfo(const AZ::EntityId& entityId);
         AZStd::unordered_map<AZ::EntityId, EditorEntityModelEntry> m_entityInfoTable;
         AZStd::unordered_map<AZ::EntityId, AZStd::unordered_set<AZ::EntityId>> m_entityOrphanTable;
-        AZStd::unordered_map<AZ::EntityId, AZ::u64> m_savedOrderInfo; ///< Sort order of recently deleted entities. Used to restore order if entity is later replaced by sliced entity.
+        // Sort order of recently deleted entities. Used to restore order in situations like entity is later replaced by sliced entity and undo/redo.
+        AZStd::unordered_map<AZ::EntityId, AZStd::pair<AZ::EntityId,AZ::u64>> m_savedOrderInfo; 
         bool m_enableChildReorderHandler = true;
         bool m_forceAddToBack = false;
 

@@ -122,13 +122,6 @@ namespace AzToolsFramework
         }
     }
 
-    void AudioControlSelectorWidget::SetEnableEdit(bool enabled)
-    {
-        m_controlEdit->setEnabled(enabled);
-        m_browseButton->setEnabled(enabled);
-        m_clearButton->setEnabled(enabled);
-    }
-
     QWidget* AudioControlSelectorWidget::GetFirstInTabOrder()
     {
         return m_controlEdit;
@@ -244,21 +237,10 @@ namespace AzToolsFramework
 
     void AudioControlSelectorWidgetHandler::ConsumeAttribute(widget_t* gui, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
     {
+        Q_UNUSED(gui);
+        Q_UNUSED(attrib);
+        Q_UNUSED(attrValue);
         Q_UNUSED(debugName);
-        if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool value = false;
-            if (attrValue->Read<bool>(value))
-            {
-                gui->SetEnableEdit(!value);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into audio control, expected type is 'bool'.", debugName);
-            }
-            return;
-        }
     }
 
     void AudioControlSelectorWidgetHandler::WriteGUIValuesIntoProperty(size_t index, widget_t* gui, property_t& instance, AzToolsFramework::InstanceDataNode* node)

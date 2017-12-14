@@ -24,6 +24,7 @@
 #define GEM_DEF_FILE_VERSION 4
 #define GEMS_PROJECT_FILE "gems.json"
 #define GEMS_PROJECT_FILE_VERSION 2
+#define PROJECT_CONFIG_FILE "project.json"
 
 // Gem project file JSON tags
 #define GPF_TAG_FORMAT_VERSION              "GemFormatVersion"
@@ -70,7 +71,7 @@ namespace Gems
         // IGemRegistry
         AZ::Outcome<void, AZStd::string> AddSearchPath(const SearchPath& searchPath, bool loadGemsNow) override;
         AZ::Outcome<void, AZStd::string> LoadAllGemsFromDisk() override;
-        AZ::Outcome<void, AZStd::string> LoadProject(const IProjectSettings& settings) override;
+        AZ::Outcome<void, AZStd::string> LoadProject(const IProjectSettings& settings, bool resetPreviousProjects) override;
 
         AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath, const char* absoluteFilePath) override;
         IGemDescriptionConstPtr GetGemDescription(const GemSpecifier& spec) const override;

@@ -19,6 +19,8 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <SaveUtilities/AsyncSaveRunner.h>
 
+class QMimeData;
+
 namespace Serialization
 {
     struct SStruct;

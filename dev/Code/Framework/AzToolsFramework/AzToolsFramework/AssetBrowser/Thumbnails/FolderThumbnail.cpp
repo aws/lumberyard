@@ -12,6 +12,7 @@
 
 #include <AzCore/Debug/Trace.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/FolderThumbnail.h>
+#include <AzFramework/API/ApplicationAPI.h>
 #include <QPixmap>
 
 namespace AzToolsFramework
@@ -51,7 +52,13 @@ namespace AzToolsFramework
         {
             auto folderKey = qobject_cast<const FolderThumbnailKey*>(m_key);
             AZ_Assert(folderKey, "Incorrect key type, excpected FolderThumbnailKey");
-            m_pixmap = folderKey->IsGem() ? QPixmap(GEM_ICON_PATH) : QPixmap(FOLDER_ICON_PATH);
+
+            const char* engineRoot = nullptr;
+            AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+            AZ_Assert(engineRoot, "Engine Root not initialized");
+            AZStd::string iconPath = AZStd::string::format("%s%s", engineRoot, folderKey->IsGem() ? GEM_ICON_PATH : FOLDER_ICON_PATH);
+
+            m_pixmap = QPixmap(iconPath.c_str());
         }
 
         //////////////////////////////////////////////////////////////////////////

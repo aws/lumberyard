@@ -23,8 +23,10 @@
 #include <LyShine/Bus/UiCanvasBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiDynamicScrollBoxDataBus Behavior context handler class 
-class BehaviorUiDynamicScrollBoxDataBusHandler : public UiDynamicScrollBoxDataBus::Handler, public AZ::BehaviorEBusHandler
+//! UiDynamicScrollBoxDataBus Behavior context handler class
+class BehaviorUiDynamicScrollBoxDataBusHandler
+    : public UiDynamicScrollBoxDataBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiDynamicScrollBoxDataBusHandler, "{74FA95AB-D4C2-40B8-8568-1B174BF577C0}", AZ::SystemAllocator,
@@ -39,8 +41,10 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiDynamicScrollBoxElementNotificationBus Behavior context handler class 
-class BehaviorUiDynamicScrollBoxElementNotificationBusHandler : public UiDynamicScrollBoxElementNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiDynamicScrollBoxElementNotificationBus Behavior context handler class
+class BehaviorUiDynamicScrollBoxElementNotificationBusHandler
+    : public UiDynamicScrollBoxElementNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiDynamicScrollBoxElementNotificationBusHandler, "{4D166273-4D12-45A4-BC42-A7FF59A2092E}", AZ::SystemAllocator,
@@ -412,24 +416,24 @@ void UiDynamicScrollBoxComponent::UpdateElementVisibility()
     // Remove the elements that are no longer visible
     m_visibleElementEntries.remove_if(
         [this, firstVisibleElementIndex, lastVisibleElementIndex](const ElementEntry& e)
-    {
-        if ((firstVisibleElementIndex < 0) || (e.m_index < firstVisibleElementIndex) || (e.m_index > lastVisibleElementIndex))
         {
-            // This element is no longer visible, move it to the recycled elements list
-            m_recycledElements.push_front(e.m_element);
+            if ((firstVisibleElementIndex < 0) || (e.m_index < firstVisibleElementIndex) || (e.m_index > lastVisibleElementIndex))
+            {
+                // This element is no longer visible, move it to the recycled elements list
+                m_recycledElements.push_front(e.m_element);
 
-            // Disable element
-            EBUS_EVENT_ID(e.m_element, UiElementBus, SetIsEnabled, false);
+                // Disable element
+                EBUS_EVENT_ID(e.m_element, UiElementBus, SetIsEnabled, false);
 
-            // Remove element from the visible element list
-            return true;
+                // Remove element from the visible element list
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
-        else
-        {
-            return false;
-        }
-    }
-    );
+        );
 
     // Add the newly visible elements
     if (firstVisibleElementIndex >= 0)
@@ -503,7 +507,7 @@ void UiDynamicScrollBoxComponent::CalculateVisibleElementIndexes(int& firstVisib
     AZ::Vector2 maxA(contentRect.right, contentRect.bottom);
     AZ::Vector2 minB(parentRect.left, parentRect.top);
     AZ::Vector2 maxB(parentRect.right, parentRect.bottom);
-    
+
     bool boxesIntersect = true;
 
     if (maxA.GetX() < minB.GetX() || // a is left of b
@@ -676,7 +680,7 @@ AZ::EntityId UiDynamicScrollBoxComponent::GetImmediateContentChildFromDescendant
     if (contentEntity)
     {
         immediateChild = childElement;
-        AZ::Entity *parent = nullptr;
+        AZ::Entity* parent = nullptr;
         EBUS_EVENT_ID_RESULT(parent, immediateChild, UiElementBus, GetParent);
         while (parent && parent != contentEntity)
         {

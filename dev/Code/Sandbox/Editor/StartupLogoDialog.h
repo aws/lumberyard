@@ -11,14 +11,11 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_EDITOR_STARTUPLOGODIALOG_H
-#define CRYINCLUDE_EDITOR_STARTUPLOGODIALOG_H
-
 #pragma once
-// StartupLogoDialog.h : header file
-//
 
 #include <QWidget>
+#include <QString>
+#include <QPixmap>
 
 /////////////////////////////////////////////////////////////////////////////
 // CStartupLogoDialog dialog
@@ -33,37 +30,27 @@ class CStartupLogoDialog
     , public IInitializeUIInfo
 {
     Q_OBJECT
-    // Construction
+
 public:
-    CStartupLogoDialog(QWidget* pParent = nullptr);   // standard constructor
+    CStartupLogoDialog(QString versionText, QWidget* pParent = nullptr);   // standard constructor
     ~CStartupLogoDialog();
 
-    void SetVersion(const SFileVersion& v);
-    void SetInfo(const char* text);
+    void SetInfoText(const char* text) override;
 
+    // Static way to call SetInfoText on the single instance of CStartupLogoDialog
     static void SetText(const char* text);
-
-    virtual void SetInfoText(const char* text);
 
     static CStartupLogoDialog* instance() { return s_pLogoWindow; }
 
-    // Implementation
-protected:
+private:
 
-    // Generated message map functions
-    //{{AFX_MSG(CStartupLogoDialog)
-    void OnInitDialog();
+    void SetInfo(const char* text);
     void paintEvent(QPaintEvent* event) override;
 
-    static CStartupLogoDialog* s_pLogoWindow;
+    static CStartupLogoDialog*              s_pLogoWindow;
 
-    QScopedPointer<Ui::StartupLogoDialog> m_ui;
+    QScopedPointer<Ui::StartupLogoDialog>   m_ui;
 
-private:
-    QPixmap                     m_hBitmap;          // Struct to hold the background bitmap
+    QPixmap                                 m_backgroundImage;
 };
 
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // CRYINCLUDE_EDITOR_STARTUPLOGODIALOG_H

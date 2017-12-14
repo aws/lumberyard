@@ -94,6 +94,8 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     private pageSize: number = 10;
     private Math: any;
     private speechLinePages: number;
+    private currentSpeechLibIndex: number = 1;
+    private currentCharactersIndex: number = 1;
     private characterPages: number;
     private generatedPackagesPages: number;
 
@@ -150,10 +152,6 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
 
         this.Modes = Mode;
         this.update();
-        this.currentSpeech = this.defaultSpeech();
-        this.speechBeforeChange = this.defaultSpeech();
-        this.currentCharacter = this.defaultCharacter();
-        this.characterBeforeChange = this.defaultCharacter();
     }
 
     public clickTabArea($event): void {
@@ -585,9 +583,11 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         let endIndex = pageIndex * this.pageSize;
         if (this.subNavActiveIndex == 0) {
             this.speechLibOnCurrentPage = this.speechLibrary.slice(startIndex, endIndex);
+            this.currentSpeechLibIndex = pageIndex;
         }
         else if (this.subNavActiveIndex == 1) {
             this.charactersOnCurrentPage = this.characters.slice(startIndex, endIndex);
+            this.currentCharactersIndex = pageIndex;
         }
         else if (this.subNavActiveIndex == 2) {
             this.generatedPackagesOnCurrentPage = this.generatedPackages.slice(startIndex, endIndex);
@@ -673,6 +673,8 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     }
 
     private updateCharacterTab(): void {
+        this.currentCharacter = this.defaultCharacter();
+        this.characterBeforeChange = this.defaultCharacter();
         this.sortDir = "asc";
         this.isLoadingCharacters = true;
 
@@ -842,7 +844,8 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             this.removeFromArray(this.characters, this.currentCharacter);
             this.removeFromArray(this.characterNames, this.currentCharacter.name);
             this.updatePaginationInfo();
-            this.paginationRef.reset();
+            this.currentCharactersIndex = this.characterPages < this.currentCharactersIndex ? this.characterPages : this.currentCharactersIndex;
+            this.updatePageContent(this.currentCharactersIndex);
         }, err => {
             this.toastr.error("The character '" + this.currentCharacter.name + "' could not be deleted. " + err.message);
         });
@@ -872,7 +875,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         for (let generatedPackage of this.generatedPackages) {
             generatedPackage.isSelected = false;
             let utcTime = generatedPackage.lastModified + ' +0000';
-            generatedPackage.lastModified = moment(utcTime).utcOffset(-timedifference).format('YYYY-MM-DD HH:mm:ss');
+            generatedPackage.lastModified = moment.utc(utcTime, 'YYYY-MM-DD HH:mm:ss [UTC]').local();
         }
     }
 
@@ -906,6 +909,8 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     }
 
     private updateSpeechLibraryTab(): void {
+        this.currentSpeech = this.defaultSpeech();
+        this.speechBeforeChange = this.defaultSpeech();
         this.sortDir = "asc";
         this.isLoadingSpeechLibrary = true;
         // Get the existing character names first to generate the dropdown box in the character column
@@ -1085,7 +1090,8 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             this.toastr.success("The speech '" + body.line + "' was deleted.");
             this.removeFromArray(this.speechLibrary, this.currentSpeech);
             this.updatePaginationInfo();
-            this.paginationRef.reset();
+            this.currentSpeechLibIndex = this.speechLinePages < this.currentSpeechLibIndex ? this.speechLinePages : this.currentSpeechLibIndex;
+            this.updatePageContent(this.currentSpeechLibIndex);
         }, err => {
             this.toastr.error("The speech '" + body.line + "' could not be deleted. " + err.message);
         });

@@ -21,12 +21,34 @@
 CAutoRegisterCommandHelper* CAutoRegisterCommandHelper::s_pFirst = 0;
 CAutoRegisterCommandHelper* CAutoRegisterCommandHelper::s_pLast = 0;
 
+CAutoRegisterCommandHelper* CAutoRegisterCommandHelper::GetFirst()
+{
+    return s_pFirst;
+}
+
+CAutoRegisterCommandHelper::CAutoRegisterCommandHelper(void(*registerFunc)(CEditorCommandManager &))
+{
+    m_registerFunc = registerFunc;
+    m_pNext = 0;
+
+    if (!s_pLast)
+    {
+        s_pFirst = this;
+    }
+    else
+    {
+        s_pLast->m_pNext = this;
+    }
+
+    s_pLast = this;
+}
+
 CEditorCommandManager::CEditorCommandManager()
     : m_bWarnDuplicate(true) {}
 
 void CEditorCommandManager::RegisterAutoCommands()
 {
-    CAutoRegisterCommandHelper* pHelper = CAutoRegisterCommandHelper::s_pFirst;
+    CAutoRegisterCommandHelper* pHelper = CAutoRegisterCommandHelper::GetFirst();
 
     while (pHelper)
     {

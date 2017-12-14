@@ -71,30 +71,52 @@ namespace AZ
                 template<typename StringType>
                 StringType GetTypeSignature(jobjectArray value);
                 //!@}
+
+
+                //! \brief Templated interface for comparing JNI type signatures.  This leverages
+                //!         \ref AZ::Android::JNI::Internal::GetTypeSignature under the hood
+                //!         to weed out unsupported types
+                //! \tparam StringType The type of string that should used for base comparison
+                //! \tparam Type The JNI type desired for the signature verification
+                //! \param baseSignature The string representation of the expected type \p param should be
+                //! \param param The raw JNI type to be validated
+                //! \return True if \p param is an acceptable type for the type specified in \p baseSignature,
+                //!         false otherwise
+                template<typename StringType, typename Type>
+                bool CompareTypeSignature(const StringType& baseSignature, Type param);
+
+                ///!@{
+                //! \brief Explicit definitions for jobject and jobjectArray need to be defined in order to support
+                //!         subclass validation for Java classes
+                template<typename StringType>
+                bool CompareTypeSignature(const StringType& baseSignature, jobject param);
+
+                template<typename StringType>
+                bool CompareTypeSignature(const StringType& baseSignature, jobjectArray param);
+                //!@}
             }
 
 
-            //! \brief Utility for generating JNI signatures
-            //! \tparam StringType The type of string that should be return during generation.  Defaults to AZStd::string
+            //! \brief Utility for generating and validating JNI signatures
+            //! \tparam StringType The type of string used internally for generation and validation.  Defaults to AZStd::string
             template<typename StringType = AZStd::string>
             class Signature
             {
             public:
-                typedef StringType string_type;  //!< Internal representation of the string type used
-
-                //! \brief Required for handling cases when an empty set of variadic arguments are forwarded to Signature::Generate calls
+                //! \brief Required for handling cases when an empty set of variadic arguments are forwarded from
+                //!         \ref AZ::Android::JNI::GetSignature calls
                 //! \return An empty string
-                static string_type Generate()
+                static StringType Generate()
                 {
                     Signature sig;
                     return sig.m_signature;
                 }
 
                 //! \brief Gets the signature from n-number of parameters
-                //! \param parameters Throwaway variables only used to forward their types on to \ref AZ::Android::JNI::Signature::GenerateImpl
+                //! \param parameters Variables only used to forward their types on to \ref AZ::Android::JNI::Signature::GenerateImpl
                 //! \return String containing a fully qualified Java signature
                 template<typename... Args>
-                static string_type Generate(Args&&... parameters)
+                static StringType Generate(Args&&... parameters)
                 {
                     Signature sig;
                     sig.GenerateImpl(AZStd::forward<Args>(parameters)...);
@@ -102,13 +124,50 @@ namespace AZ
                 }
 
 
+                //! \brief Required for handling cases when an empty set of variadic arguments are forwarded from
+                //!         \ref AZ::Android::JNI::ValidateSignature calls
+                //! \param baseSignature The string representation of the expected type signature.  Should be an empty string in
+                //!         this case.
+                //! \return True if the string is empty (e.g. nothing to validate), false otherwise
+                static bool Validate(const StringType& baseSignature)
+                {
+                    Signature sig(baseSignature);
+                    return sig.m_signature.empty();
+                }
+
+                //! \brief Validates n-number of parameters type signatures
+                //! \param baseSignature The string representation of the expected JNI type signatures in \p parameters
+                //! \param parameters The input arguments to be validated
+                //! \return True if all arguments in \p parameters match the expected type signature in \p baseSignature, False otherwise
+                template<typename... Args>
+                static bool Validate(const StringType& baseSignature, Args&&... parameters)
+                {
+                    Signature sig(baseSignature);
+                    return (sig.m_signature.empty() ?
+                            false :
+                            sig.ValidateImpl(AZStd::forward<Args>(parameters)...));
+                }
+
+
             private:
-                //! \brief Internal constructor of the signature generator.  Pre-allocates some memory for the internal cache to
-                //!        try and prevent the hammering of reallocations in most cases.
+                //! \brief Internal constructor of the signature util used for generation.  Pre-allocates some memory for the internal
+                //!        cache to try and prevent the hammering of reallocations in most cases.
                 Signature()
                     : m_signature()
+                    , m_signatureLength(0)
+                    , m_currentIndex(0)
                 {
                     m_signature.reserve(8);
+                }
+
+                //! \brief Internal constructor of the signature util used for validation.
+                //! \param baseSignature The signature to compare against
+                explicit Signature(const StringType& baseSignature)
+                    : m_signature(baseSignature)
+                    , m_signatureLength(0)
+                    , m_currentIndex(0)
+                {
+                    m_signatureLength = m_signature.length();
                 }
 
 
@@ -120,17 +179,18 @@ namespace AZ
                     m_signature.append(Internal::GetTypeSignature(value));
                 }
 
+                ///!@{
                 //! \brief Explicit definitions for jobject and jobjectArray need to be defined in order to route their
                 //!        calls to the correct version of \ref AZ::Android::JNI::Internal::GetTypeSignature which returns
                 //!        a string instead of a c-string.
                 void GenerateImpl(jobject value)
                 {
-                    m_signature.append(Internal::GetTypeSignature<string_type>(value));
+                    m_signature.append(Internal::GetTypeSignature<StringType>(value));
                 }
 
                 void GenerateImpl(jobjectArray value)
                 {
-                    m_signature.append(Internal::GetTypeSignature<string_type>(value));
+                    m_signature.append(Internal::GetTypeSignature<StringType>(value));
                 }
                 //!@}
 
@@ -145,14 +205,43 @@ namespace AZ
                 }
 
 
+                //! \brief Validates a single (or final) type against the remaining signature(s) in the internal signature cache
+                //! \param param The type to be validated
+                //! \return True if the type of \p param matches the remaining signature(s) in the internal signature cache,
+                //!         False otherwise
+                template<typename Type>
+                bool ValidateImpl(Type param)
+                {
+                    int paramLength = m_signatureLength - m_currentIndex;
+                    if (paramLength > 0)
+                    {
+                        StringType paramSignature = m_signature.substr(m_currentIndex, paramLength);
+                        return Internal::CompareTypeSignature<StringType>(paramSignature, param);
+                    }
+                    return false;
+                }
+
+                //! \brief Validates n-number of parameters type signatures
+                //! \param first The first type to be validated
+                //! \param parameters The remaining types to be validated recursively
+                //! \return True if all the types in \p parameters match the expected type signature stored internally,
+                //!         False otherwise
+                template<typename Type, typename... Args>
+                bool ValidateImpl(Type first, Args&&... parameters);
+
+
                 // ----
 
-                string_type m_signature; //!< Internal cache for signature generation
+                StringType m_signature; //!< Internal cache for signature generation/validation
+
+                int m_signatureLength; //!< Cache of the total length of the base signature for validation
+                int m_currentIndex; //!< Current index in walking the base signature for validation
             };
 
 
             //! \brief Default Signature template (AZStd::string), primarily used in \ref AZ::Android::JNI::GetSignature
-            typedef Signature<AZStd::string> SignatureGenerator;
+            //!         and \ref AZ::Android::JNI::ValidateSignature
+            typedef Signature<AZStd::string> SignatureUtil;
 
 
             //! \brief Generates a fully qualified Java signature from n-number of parameters. This is the preferred implementation
@@ -162,8 +251,19 @@ namespace AZ
             template<typename... Args>
             AZ_INLINE AZStd::string GetSignature(Args&&... parameters)
             {
-                return SignatureGenerator::Generate(AZStd::forward<Args>(parameters)...);
+                return SignatureUtil::Generate(AZStd::forward<Args>(parameters)...);
             }
+
+            //! \brief Validates a JNI signature with n-number of parameters.  Will walk the signature validating
+            //!         each parameter individually.  The validation will exit once an argument fails validation.
+            //! \param baseSignature Base JNI signature to be comparing against
+            //! \param parameters The input arguments to be validated
+            //! \return True if all arguments match the signature, False otherwise
+            template<typename... Args>
+            AZ_INLINE bool ValidateSignature(const AZStd::string& baseSignature, Args&&... parameters)
+            {
+                return SignatureUtil::Validate(baseSignature, AZStd::forward<Args>(parameters)...);
+            };
         } // namespace JNI
     } // namespace Android
 } // namespace AZ

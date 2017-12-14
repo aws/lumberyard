@@ -621,9 +621,7 @@ bool GridHubComponent::StartSession(bool isRestarting)
     GridMate::string machineIP = GridMate::Utils::GetMachineAddress();
     if( machineIP == "127.0.0.1" || machineIP.compare(0,4,"169.") == 0 )
     {
-        StopSession();
-        AZ_TracePrintf("GridHub","\nCurrent IP %s is invalid! We will try to start the session again in 10 seconds...\n",machineIP.c_str());
-        return false;
+        AZ_Warning("GridHub","\nCurrent IP %s might be invalid.\n",machineIP.c_str());
     }
     
     GridMate::CarrierDesc carrierDesc;

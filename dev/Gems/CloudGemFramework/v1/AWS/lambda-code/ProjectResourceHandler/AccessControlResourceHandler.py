@@ -52,7 +52,20 @@ PERMISSION_RESTRICTIONS_BY_RESOURCE_TYPE = {
         'lex:GetSlotType',
         'lex:DeleteBot',
         'lex:CreateIntentVersion',
-        'lex:CreateSlotTypeVersion'
+        'lex:CreateSlotTypeVersion',
+        'lex:GetBuiltinIntents',
+        'lex:GetBuiltinSlotTypes',
+        'lex:GetIntents',
+        'lex:GetSlotTypes',
+        'lex:DeleteIntent',
+        'lex:DeleteSlotType',
+        'lex:GetBotAliases',
+        'lex:DeleteBotAlias',
+        'lex:GetBotVersions',
+        'lex:GetBotAlias',
+        'lex:GetIntentVersions',
+        'lex:GetSlotTypeVersions',
+        'lex:GetBuiltinIntent'
     ]
 }
 

@@ -148,6 +148,7 @@ namespace LegacyFramework
         void SaveApplicationEntity();
 
         char m_applicationModule[_MAX_PATH];
+        char m_appRoot[AZ_MAX_PATH_LEN];
         int m_desiredExitCode;
         bool m_isMaster;
         volatile bool m_abortRequested; // if you CTRL+C in a console app, this becomes true.  its up to you to check...

@@ -40,6 +40,57 @@ namespace SerializeHelpers
         EntityRestoreVec m_childEntityRestoreInfos;
     };
 
+
+    namespace Internal
+    {
+        void DetachEntitiesIfFullSliceInstanceNotBeingCopied(SerializedElementContainer& entitiesToSerialize)
+        {
+            // We simplify this a bit in the same was as SandboxIntegrationManager::CloneSelection and instead say that,
+            // unless every entity in the slice instance is being copied we do not preserve the connection to the slice.
+
+            // make a set of all the entities in entitiesToSerialize
+            AZStd::unordered_set<AZ::EntityId> allEntitiesBeingCopied;
+            for (auto entity : entitiesToSerialize.m_entities)
+            {
+                allEntitiesBeingCopied.insert(entity->GetId());
+            }
+            for (auto entity : entitiesToSerialize.m_childEntities)
+            {
+                allEntitiesBeingCopied.insert(entity->GetId());
+            }
+
+            // Create a local function to avoid duplicating code because we have two sets of lists to process
+            auto CheckEntities = [allEntitiesBeingCopied](AZStd::vector<AZ::Entity*>& entities, EntityRestoreVec& entityRestoreInfos)
+            {
+                for (int i = 0; i < entities.size(); ++i)
+                {
+                    AZ::Entity* entity = entities[i];
+
+                    AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+                    EBUS_EVENT_ID_RESULT(sliceAddress, entity->GetId(), AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+                    if (sliceAddress.first)
+                    {
+                        const AZ::SliceComponent::EntityList& entitiesInSlice = sliceAddress.second->GetInstantiated()->m_entities;
+                        for (AZ::Entity* entityInSlice : entitiesInSlice)
+                        {
+                            if (allEntitiesBeingCopied.end() == allEntitiesBeingCopied.find(entityInSlice->GetId()))
+                            {
+                                // at least one of the entities in the slice instance is not in the set being copied so
+                                // remove this entities connection to the slice
+                                entityRestoreInfos[i].m_assetId.SetInvalid();
+                                break;
+                            }
+                        }
+                    }
+                }
+            };
+
+            CheckEntities(entitiesToSerialize.m_entities, entitiesToSerialize.m_entityRestoreInfos);
+            CheckEntities(entitiesToSerialize.m_childEntities, entitiesToSerialize.m_childEntityRestoreInfos);
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     void InitializeReflection()
     {
@@ -107,6 +158,9 @@ namespace SerializeHelpers
         }
 
         // Now we need to restore the slice info for all the created elements
+        // In the case of a copy operation we need to generate new sliceInstanceIds. We use a map so that
+        // all entities copied from the same slice instance will end up in the same new slice instance.
+        AZStd::unordered_map<AZ::SliceComponent::SliceInstanceId, AZ::SliceComponent::SliceInstanceId> sliceInstanceMap;
         for (int i=0; i < listOfAllCreatedEntities.size(); ++i)
         {
             AZ::Entity* entity = listOfAllCreatedEntities[i];
@@ -118,11 +172,18 @@ namespace SerializeHelpers
                 if (isCopyOperation)
                 {
                     // if a copy we can't use the instanceId of the instance that was copied from so generate
-                    // a new 
-                    sliceRestoreInfo.m_instanceId = AZ::SliceComponent::SliceInstanceId::CreateRandom();
+                    // a new one - but only want one new id per original slice instance - so we use a map to
+                    // keep track of which instance Ids we have created new Ids for.
+                    auto iter = sliceInstanceMap.find(sliceRestoreInfo.m_instanceId);
+                    if (iter == sliceInstanceMap.end())
+                    {
+                        sliceInstanceMap[sliceRestoreInfo.m_instanceId] = AZ::SliceComponent::SliceInstanceId::CreateRandom();
+                    }
+
+                    sliceRestoreInfo.m_instanceId = sliceInstanceMap[sliceRestoreInfo.m_instanceId];
                 }
 
-                EBUS_EVENT(UiEditorEntityContextRequestBus, RestoreSliceEntity, entity, sliceRestoreInfo);
+                EBUS_EVENT_ID(entityContext->GetContextId(), UiEditorEntityContextRequestBus, RestoreSliceEntity, entity, sliceRestoreInfo);
             }
             else
             {
@@ -139,12 +200,12 @@ namespace SerializeHelpers
         if (AZ::Data::AssetManager::IsReady())
         {
             bool areRequestsPending = false;
-            EBUS_EVENT_RESULT(areRequestsPending, UiEditorEntityContextRequestBus, HasPendingRequests);
+            EBUS_EVENT_ID_RESULT(areRequestsPending, entityContext->GetContextId(), UiEditorEntityContextRequestBus, HasPendingRequests);
             while (areRequestsPending)
             {
                 AZ::Data::AssetManager::Instance().DispatchEvents();
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(50));
-                EBUS_EVENT_RESULT(areRequestsPending, UiEditorEntityContextRequestBus, HasPendingRequests);
+                EBUS_EVENT_ID_RESULT(areRequestsPending, entityContext->GetContextId(), UiEditorEntityContextRequestBus, HasPendingRequests);
             }
         }
 
@@ -194,7 +255,7 @@ namespace SerializeHelpers
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    AZStd::string SaveElementsToXmlString(const LyShine::EntityArray& elements, AZ::SliceComponent* rootSlice, AZStd::unordered_set<AZ::Data::AssetId>& referencedSliceAssets)
+    AZStd::string SaveElementsToXmlString(const LyShine::EntityArray& elements, AZ::SliceComponent* rootSlice, bool isCopyOperation, AZStd::unordered_set<AZ::Data::AssetId>& referencedSliceAssets)
     {
         InitializeReflection();
 
@@ -212,8 +273,6 @@ namespace SerializeHelpers
             rootSlice->GetEntityRestoreInfo(element->GetId(), sliceRestoreInfo);
             entitiesToSerialize.m_entityRestoreInfos.push_back(sliceRestoreInfo);
 
-            referencedSliceAssets.insert(sliceRestoreInfo.m_assetId);
-
             LyShine::EntityArray childElements;
             EBUS_EVENT_ID(element->GetId(), UiElementBus, FindDescendantElements,
                 [](const AZ::Entity* entity) { return true; },
@@ -226,11 +285,35 @@ namespace SerializeHelpers
                 // add the slice restore info for this child element
                 rootSlice->GetEntityRestoreInfo(child->GetId(), sliceRestoreInfo);
                 entitiesToSerialize.m_childEntityRestoreInfos.push_back(sliceRestoreInfo);
+            }
+        }
 
+        // if this is a copy operation we could be copying some elements in a slice instance without copying the root element
+        // of the slice instance. This would cause issues. So we need to detect that situation and change the entity restore infos
+        // to remove the slice instance association.
+        if (isCopyOperation)
+        {
+            Internal::DetachEntitiesIfFullSliceInstanceNotBeingCopied(entitiesToSerialize);
+        }
+
+        // now record the referenced slice assets
+        for (auto& sliceRestoreInfo : entitiesToSerialize.m_entityRestoreInfos)
+        {
+            if (sliceRestoreInfo)
+            {
                 referencedSliceAssets.insert(sliceRestoreInfo.m_assetId);
             }
         }
 
+        for (auto& sliceRestoreInfo : entitiesToSerialize.m_childEntityRestoreInfos)
+        {
+            if (sliceRestoreInfo)
+            {
+                referencedSliceAssets.insert(sliceRestoreInfo.m_assetId);
+            }
+        }
+
+        // save the entitiesToSerialize structure to the buffer
         AZStd::string charBuffer;
         AZ::IO::ByteContainerStream<AZStd::string> charStream(&charBuffer);
         bool success = AZ::Utils::SaveObjectToStream(charStream, AZ::ObjectStream::ST_XML, &entitiesToSerialize);
@@ -264,7 +347,7 @@ namespace SerializeHelpers
             AZ_Assert(context, "No serialization context found");
 
             AZ::SliceComponent::EntityIdToEntityIdMap entityIdMap;
-            AZ::EntityUtils::GenerateNewIdsAndFixRefs(unserializedEntities, entityIdMap, context);
+            AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(unserializedEntities, entityIdMap, context);
         }
 
         // copy unserializedEntities into the return output list of top-level entities

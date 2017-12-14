@@ -21,7 +21,7 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/FileFunc/FileFunc.h>
 #include <AzCore/PlatformIncl.h>
 
 #include <AzCore/JSON/stringbuffer.h>
@@ -44,12 +44,22 @@ namespace Gems
     {
     }
 
-    AZ::Outcome<void, AZStd::string> ProjectSettings::Initialize(const AZStd::string& projectFolder)
+    AZ::Outcome<void, AZStd::string> ProjectSettings::Initialize(const AZStd::string& appRootFolder, const AZStd::string& projectSubFolder)
     {
         AZ_Assert(!m_initialized, "ProjectSettings has been initialized already.");
 
-        // Project file lives in (ProjectFolder)/gems.json - which might be @assets@/gems.json or an absolute path (in tools)
-        AzFramework::StringFunc::Path::Join(projectFolder.c_str(), GEMS_PROJECT_FILE, m_settingsFilePath);
+        // Initialize the app root folder
+        m_projectRootPath = appRootFolder;
+
+        // Project gems file lives in (ProjectFolder)/gems.json - which might be @assets@/gems.json or an absolute path (in tools)
+        m_gemsSettingsFilePath = appRootFolder;
+        AzFramework::StringFunc::Path::Join(m_gemsSettingsFilePath.c_str(), projectSubFolder.c_str(), m_gemsSettingsFilePath);
+        AzFramework::StringFunc::Path::Join(m_gemsSettingsFilePath.c_str(), GEMS_PROJECT_FILE, m_gemsSettingsFilePath);
+
+        // Project config file lives in (ProjectFolder)/project.json - which might be @assets@/project.json or an absolute path (in tools)
+        m_projectSettingsFilePath = appRootFolder;
+        AzFramework::StringFunc::Path::Join(m_projectSettingsFilePath.c_str(), projectSubFolder.c_str(), m_projectSettingsFilePath);
+        AzFramework::StringFunc::Path::Join(m_projectSettingsFilePath.c_str(), PROJECT_CONFIG_FILE, m_projectSettingsFilePath);
 
         auto loadOutcome = LoadSettings();
         m_initialized = loadOutcome.IsSuccess();
@@ -285,7 +295,7 @@ namespace Gems
         FileIOBase* fileIo = FileIOBase::GetInstance();
 
         HandleType projectSettingsHandle = InvalidHandle;
-        if (fileIo->Open(m_settingsFilePath.c_str(), OpenMode::ModeWrite | OpenMode::ModeText, projectSettingsHandle))
+        if (fileIo->Open(m_gemsSettingsFilePath.c_str(), OpenMode::ModeWrite | OpenMode::ModeText, projectSettingsHandle))
         {
             rapidjson::Document jsonRep = GetJsonRepresentation();
 
@@ -296,12 +306,12 @@ namespace Gems
             AZ::u64 bytesWritten = 0;
             if (!fileIo->Write(projectSettingsHandle, buffer.GetString(), buffer.GetSize(), &bytesWritten))
             {
-                return AZ::Failure(AZStd::string::format("Failed to write Gems settings to file: %s", m_settingsFilePath.c_str()));
+                return AZ::Failure(AZStd::string::format("Failed to write Gems settings to file: %s", m_gemsSettingsFilePath.c_str()));
             }
 
             if (bytesWritten != buffer.GetSize())
             {
-                return AZ::Failure(AZStd::string::format("Failed to write complete Gems settings to file: %s", m_settingsFilePath.c_str()));
+                return AZ::Failure(AZStd::string::format("Failed to write complete Gems settings to file: %s", m_gemsSettingsFilePath.c_str()));
             }
 
             fileIo->Close(projectSettingsHandle);
@@ -322,49 +332,58 @@ namespace Gems
 #else
             azstrerror_s(errorBuffer, MAX_ERROR_STRING_SIZE, errno);
 #endif // defined(AZ_PLATFORM_WINDOWS)
-            return AZ::Failure(AZStd::string::format("Failed to open %s for write: %s", m_settingsFilePath.c_str(), errorBuffer));
+            return AZ::Failure(AZStd::string::format("Failed to open %s for write: %s", m_gemsSettingsFilePath.c_str(), errorBuffer));
         }
     }
 
+    const AZStd::string& ProjectSettings::GetProjectName() const
+    {
+        return m_projectName;
+    }
+
+    const AZStd::string& ProjectSettings::GetProjectRootPath() const
+    {
+        return m_projectRootPath;
+    }    
+
     AZ::Outcome<void, AZStd::string> ProjectSettings::LoadSettings()
     {
+        // an engine compatible file reader has been attached, so use that.
         AZ::IO::FileIOBase* fileReader = AZ::IO::FileIOBase::GetInstance();
 
-        AZStd::string fileBuffer;
-
-        // an engine compatible file reader has been attached, so use that.
-        AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
-        AZ::u64 fileSize = 0;
-        if (!fileReader->Open(m_settingsFilePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, fileHandle))
+        // Read and parse the gems.json file
         {
-            return AZ::Failure(AZStd::string::format("Failed to read %s - unable to open file", m_settingsFilePath.c_str()));
+            auto readGemsJsonResult = AzFramework::FileFunc::ReadJsonFile(m_gemsSettingsFilePath, fileReader);
+            if (!readGemsJsonResult.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("Failed to read Json file %s: %s", 
+                    m_gemsSettingsFilePath.c_str(), readGemsJsonResult.GetError().c_str()));
+            }
+            auto parseGemsJsonResult = ParseGemsJson(readGemsJsonResult.GetValue());
+            if (!parseGemsJsonResult.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("Failed to parse Json file %s: %s",
+                    m_gemsSettingsFilePath.c_str(), parseGemsJsonResult.GetError().c_str()));
+            }
         }
 
-        if ((!fileReader->Size(fileHandle, fileSize)) || (fileSize == 0))
+        // Read and parse the project.json file
         {
-            fileReader->Close(fileHandle);
-            return AZ::Failure(AZStd::string::format("Failed to read %s - file truncated.", m_settingsFilePath.c_str()));
+            auto readProjectJsonResult = AzFramework::FileFunc::ReadJsonFile(m_projectSettingsFilePath, fileReader);
+            if (!readProjectJsonResult.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("Failed to read Json file %s: %s",
+                    m_gemsSettingsFilePath.c_str(), readProjectJsonResult.GetError().c_str()));
+            }
+            auto parseProjectJsonResult = ParseProjectJson(readProjectJsonResult.GetValue());
+            if (!parseProjectJsonResult.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("Failed to parse Json file %s: %s",
+                    m_gemsSettingsFilePath.c_str(), parseProjectJsonResult.GetError().c_str()));
+            }
         }
-        fileBuffer.resize(fileSize);
-        if (!fileReader->Read(fileHandle, fileBuffer.data(), fileSize, true))
-        {
-            fileBuffer.resize(0);
-            fileReader->Close(fileHandle);
-            return AZ::Failure(AZStd::string::format("Failed to read %s - file read failed.", m_settingsFilePath.c_str()));
-        }
-        fileReader->Close(fileHandle);
 
-        rapidjson::Document document;
-        document.Parse(fileBuffer.data());
-        if (document.HasParseError())
-        {
-            const char* errorStr = rapidjson::GetParseError_En(document.GetParseError());
-            return AZ::Failure(AZStd::string::format("Failed to parse %s: %s.", m_settingsFilePath.c_str(), errorStr));
-        }
-        else
-        {
-            return ParseJson(document);
-        }
+        return AZ::Success();
     }
 
     rapidjson::Document ProjectSettings::GetJsonRepresentation() const
@@ -426,7 +445,7 @@ namespace Gems
         return rootObj;
     }
 
-    AZ::Outcome<void, AZStd::string> ProjectSettings::ParseJson(const rapidjson::Document& jsonRep)
+    AZ::Outcome<void, AZStd::string> ProjectSettings::ParseGemsJson(const rapidjson::Document& jsonRep)
     {
         // check version
         if (!RAPIDJSON_IS_VALID_MEMBER(jsonRep, GPF_TAG_LIST_FORMAT_VERSION, IsInt))
@@ -496,4 +515,17 @@ namespace Gems
 
         return AZ::Success();
     }
+
+    AZ::Outcome<void, AZStd::string> ProjectSettings::ParseProjectJson(const rapidjson::Document& json)
+    {
+        // For now, we only 
+        static const char* project_name_key = "project_name";
+        if (!RAPIDJSON_IS_VALID_MEMBER(json, project_name_key, IsString))
+        {
+            return AZ::Failure(AZStd::string::format("Missing/Invalid key '%s' in project.json.", project_name_key));
+        }
+        m_projectName = json[project_name_key].GetString();
+        return AZ::Success();
+    }
+
 } // namespace Gems

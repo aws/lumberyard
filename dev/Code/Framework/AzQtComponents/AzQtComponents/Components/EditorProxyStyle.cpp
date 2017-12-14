@@ -63,6 +63,54 @@
 # pragma comment(lib, "User32.lib")
 #endif
 
+namespace EditorProxyStylePrivate
+{
+#ifdef Q_OS_WIN
+    class Win10MultiScreenMenuHelper
+        : public QObject
+    {
+    public:
+        Win10MultiScreenMenuHelper(QMenu* parent)
+            : QObject(parent)
+            , m_menu(parent)
+        {
+            QObject::connect(m_menu, &QMenu::aboutToShow, this, &Win10MultiScreenMenuHelper::OnAboutToShow, Qt::UniqueConnection);
+        }
+
+    private:
+        void OnAboutToShow()
+        {
+            /** HACK
+            * When using two monitors, 2x scaling on the first one, 1x on the second one,
+            * and using dpiawareness=0 or 1 there's a bug that can be reproduced with pure non-Qt
+            * Win32 code (only for popups though):
+            *
+            * - Have your main window in monitor 1
+            * - Drag a second window to monitor 2
+            * - Open a popup on monitor 1 -> it won't have the scaling applied
+            *
+            * Somehow Windows remembers where the last Window appeared and uses the scaling
+            * of that monitor. It's very weird and undocumented, specially since it only happens
+            * with popups, and doesn't happen if window 2 is frameless.
+            *
+            * The alternative is using dpiawareness=2, which would need additional patches
+            * for dragging windows between screens (a few corner cases).
+            *
+            * The workaround is to create an invisible window before showing the popup.
+            **/
+            QWidget* helper = new QWidget(nullptr, Qt::Tool);
+            helper->resize(1, 1);
+            helper->show();
+            helper->windowHandle()->setOpacity(0);
+            QObject::connect(m_menu, &QMenu::aboutToHide, helper, &QObject::deleteLater);
+            QObject::connect(m_menu, &QObject::destroyed, helper, &QObject::deleteLater);
+        }
+
+        QMenu* m_menu = nullptr;
+    };
+#endif // #ifdef Q_OS_WIN
+}
+
 Q_DECLARE_METATYPE(QMargins)
 
 // Constant for the docking drop zone hotspot color when hovered over
@@ -591,38 +639,15 @@ namespace AzQtComponents
 #ifdef Q_OS_WIN
             if (QSysInfo::windowsVersion() >= QSysInfo::WV_WINDOWS10)
             {
-                connect(menu, &QMenu::aboutToShow, this, [this, menu] {
-                        /** HACK
-                        * When using two monitors, 2x scalling on the first one, 1x on the second one,
-                        * and using dpiawareness=0 or 1 there's a bug that can be reproduced with pure non-Qt
-                        * Win32 code (only for popups though):
-                        *
-                        * - Have your main window in monitor 1
-                        * - Drag a second window to monitor 2
-                        * - Open a popup on monitor 1 -> it won't have the scaling applied
-                        *
-                        * Somehow Windows remembers where the last Window appeared and uses the scaling
-                        * of that monitor. It's very weird and undocumented, specially since it only happens
-                        * with popups, and doesn't happen if window 2 is frameless.
-                        *
-                        * The alternative is using dpiawareness=2, which would need additional patches
-                        * for dragging windows between screens (a few corner cases).
-                        *
-                        * The workaround is to create an invisible window before showing the popup.
-                        **/
-                        QWidget* helper = new QWidget(nullptr, Qt::Tool);
-                        helper->resize(1, 1);
-                        helper->show();
-                        helper->windowHandle()->setOpacity(0);
-                        QObject::connect(menu, &QMenu::aboutToHide, helper, &QObject::deleteLater);
-                        QObject::connect(menu, &QObject::destroyed, helper, &QObject::deleteLater);
-                    }, Qt::UniqueConnection);
+                new EditorProxyStylePrivate::Win10MultiScreenMenuHelper(menu);
+
+                // Deliberately not deleting or tracking the helper; it is parented to the menu and will be deleted when
+                // it is deleted.
             }
 #else
             Q_UNUSED(menu);
 #endif
         }
-
         return QProxyStyle::polish(widget);
     }
 
@@ -969,6 +994,24 @@ namespace AzQtComponents
             }
             return;
         }
+        else if (element == CE_HeaderSection)
+        {
+            // Test for any part of the widget under the mouse, not just the current section
+            const auto header = qobject_cast<const QHeaderView*>(widget);
+            const bool isStyled = header && qobject_cast<const StyledDetailsTableView*>(widget->parentWidget());
+            const bool isHovered = header && header->viewport()->underMouse();
+            const auto hOpt = qstyleoption_cast<const QStyleOptionHeader*>(opt);
+            if ((!isStyled || isHovered)
+                    && hOpt->position != QStyleOptionHeader::End
+                    && hOpt->position != QStyleOptionHeader::OnlyOneSection)
+            {
+                p->save();
+                p->setPen(QColor(153, 153, 153));
+                p->drawLine(QLine(opt->rect.topRight(), opt->rect.bottomRight()).translated(-1, 0));
+                p->restore();
+            }
+            return;
+        }
 
         QProxyStyle::drawControl(element, opt, p, widget);
     }
@@ -1007,6 +1050,13 @@ namespace AzQtComponents
     void EditorProxyStyle::drawPrimitive(QStyle::PrimitiveElement element, const QStyleOption* option,
         QPainter* painter, const QWidget* widget) const
     {
+        // HACK:
+        // QPainter is not guaranteed to have its QPaintEngine initialized in setRenderHint,
+        // so go ahead and call save/restore here which ensures that.
+        // See: QTBUG-51247
+        painter->save();
+        painter->restore();
+
         painter->setRenderHint(QPainter::Antialiasing);
         auto pathRect = borderLineEditRect(option->rect);
         if (auto fle = qobject_cast<const StyledLineEdit*>(widget))

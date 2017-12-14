@@ -110,10 +110,10 @@ bool CAssetBrowserManager::LoadCache()
         return false;
     }
 
-    QString fullPath = Path::GetUserSandboxFolder();
+    QString fullPath = Path::GetResolvedUserSandboxFolder();
     ReadTransactionsAndUpdateDB(fullPath, root);
     // Save the updated DB
-    root->saveToFile(fileName.toLatin1().data());
+    root->saveToFile(fileName.toUtf8().data());
     ClearTransactionsAndApplyMetaData(fullPath, root);
 
     return true;
@@ -121,10 +121,11 @@ bool CAssetBrowserManager::LoadCache()
 
 void CAssetBrowserManager::CreateThumbsFolderPath()
 {
-    QString strUserFolder = Path::GetUserSandboxFolder();
+    AZStd::string strUserFolder;
+    AzFramework::StringFunc::Path::ConstructFull(Path::GetUserSandboxFolder().toUtf8().data(), AssetBrowser::kThumbnailsRoot, strUserFolder);
 
     // create the thumbs folder
-    CFileUtil::CreatePath(strUserFolder + "\\" + AssetBrowser::kThumbnailsRoot);
+    AZ::IO::FileIOBase::GetInstance()->CreatePath(strUserFolder.c_str());
 }
 
 bool CAssetBrowserManager::CacheAssets(TAssetDatabases dbsToCache, bool bForceCache, TPfnOnUpdateCacheProgress pProgressCallback)
@@ -261,7 +262,7 @@ bool CAssetBrowserManager::OnNewTransaction(const IAssetItem* pAssetItem)
     IAssetItemDatabase* pDatabaseInterface = pAssetItem->GetOwnerDatabase();
     CryAutoLock<CryMutex> scopedLock(transactionUpdateMutex);
 
-    QString fullPath = Path::GetUserSandboxFolder();
+    QString fullPath = Path::GetResolvedUserSandboxFolder();
     fullPath += pDatabaseInterface->GetTransactionFilename();
 
     //1. Get  the transaction data.
@@ -284,7 +285,7 @@ bool CAssetBrowserManager::OnNewTransaction(const IAssetItem* pAssetItem)
     }
 
     //2. Append the new transaction to the file.
-    FILE* transactionFile = fopen(fullPath.toLatin1().data(), "r+t");
+    FILE* transactionFile = fopen(fullPath.toUtf8().data(), "r+t");
 
     if (transactionFile == NULL)
     {
@@ -564,7 +565,7 @@ void CAssetBrowserManager::InitializeTagging()
 
     if (pAssetTagging)
     {
-        pAssetTagging->Initialize(Path::GetUserSandboxFolder().toLatin1().data());
+        pAssetTagging->Initialize(Path::GetResolvedUserSandboxFolder().toUtf8().data());
     }
 }
 
@@ -1074,7 +1075,7 @@ bool CAssetBrowserManager::GetAssetDescription(const QString& relpath, QString& 
         description = assetDescription;
     }
 
-    delete assetDescription;
+    delete[] assetDescription;
     assetDescription = NULL;
 
     return bGot;
@@ -1101,7 +1102,7 @@ bool CAssetBrowserManager::GetAutocompleteDescription(const QString& partDesc, Q
         description = fullDescription;
     }
 
-    delete fullDescription;
+    delete[] fullDescription;
     fullDescription = NULL;
 
     return bGot;

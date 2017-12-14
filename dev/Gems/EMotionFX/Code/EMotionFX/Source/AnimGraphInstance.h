@@ -35,7 +35,6 @@ namespace EMotionFX
     class AnimGraphNode;
     class AnimGraphStateTransition;
     class AnimGraphInstanceEventHandler;
-    class AnimGraphReferenceNode;
     class AnimGraphObjectData;
     class AnimGraphNodeData;
 
@@ -61,20 +60,6 @@ namespace EMotionFX
             OBJECTFLAGS_IS_SYNCMASTER               = 1 << 8
         };
 
-        struct EMFX_API ReferenceInfo
-        {
-            AnimGraphNode*             mSourceNode;        // the node inside the animgraph of this animgraph instance to reference, so the node where this is an instance of
-            AnimGraphInstance*         mParameterSource;   // the animgraph instance to reference parameter values from
-            AnimGraphReferenceNode*    mReferenceNode;     // the reference node itself, can be nullptr if not used in combination with a reference node
-
-            ReferenceInfo()
-            {
-                mSourceNode         = nullptr;  // inactive, no node selected
-                mParameterSource    = nullptr;  // create unique parameters
-                mReferenceNode      = nullptr;  // not linked to any reference node
-            }
-        };
-
         struct EMFX_API InitSettings
         {
             bool    mPreInitMotionInstances;
@@ -85,7 +70,7 @@ namespace EMotionFX
             }
         };
 
-        static AnimGraphInstance* Create(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings = nullptr, ReferenceInfo* referenceInfo = nullptr);
+        static AnimGraphInstance* Create(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings = nullptr);
 
         void Init();
         void Output(Pose* outputPose, bool autoFreeAllPoses = true);
@@ -101,7 +86,7 @@ namespace EMotionFX
         bool GetFloatParameterValueAsBool(const char* paramName, bool* outValue);
         bool GetFloatParameterValueAsInt(const char* paramName, int32* outValue);
         bool GetVector2ParameterValue(const char* paramName, AZ::Vector2* outValue);
-        bool GetVector3ParameterValue(const char* paramName, MCore::Vector3* outValue);
+        bool GetVector3ParameterValue(const char* paramName, AZ::Vector3* outValue);
         bool GetVector4ParameterValue(const char* paramName, AZ::Vector4* outValue);
         bool GetRotationParameterValue(const char* paramName, MCore::Quaternion* outRotation);
 
@@ -109,7 +94,7 @@ namespace EMotionFX
         bool GetFloatParameterValueAsBool(uint32 paramIndex, bool* outValue);
         bool GetFloatParameterValueAsInt(uint32 paramIndex, int32* outValue);
         bool GetVector2ParameterValue(uint32 paramIndex, AZ::Vector2* outValue);
-        bool GetVector3ParameterValue(uint32 paramIndex, MCore::Vector3* outValue);
+        bool GetVector3ParameterValue(uint32 paramIndex, AZ::Vector3* outValue);
         bool GetVector4ParameterValue(uint32 paramIndex, AZ::Vector4* outValue);
         bool GetRotationParameterValue(uint32 paramIndex, MCore::Quaternion* outRotation);
 
@@ -209,9 +194,6 @@ namespace EMotionFX
         bool GetRetargetingEnabled() const;
         void SetRetargetingEnabled(bool enabled);
 
-        bool GetIsReference() const;
-        const ReferenceInfo& GetReferenceInfo() const;
-
         AnimGraphNode* GetRootNode() const;
 
         //-----------------------------------------------------------------------------------------------------------------
@@ -306,7 +288,6 @@ namespace EMotionFX
         MCore::Array<MCore::Attribute*>                     mInternalAttributes;
         MotionSet*                                          mMotionSet;             // the used motion set
         MCore::Mutex                                        mMutex;
-        ReferenceInfo                                       mReferenceInfo;
         InitSettings                                        mInitSettings;
         AnimGraphEventBuffer                               mEventBuffer;           /**< The event buffer of the last update. */
         float                                               mVisualizeScale;
@@ -318,7 +299,7 @@ namespace EMotionFX
         bool                                                mIsOwnedByRuntime;
 #endif // EMFX_DEVELOPMENT_BUILD
 
-        AnimGraphInstance(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings = nullptr, ReferenceInfo* referenceInfo = nullptr);
+        AnimGraphInstance(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings = nullptr);
         ~AnimGraphInstance();
         void RecursiveSwitchToEntryState(AnimGraphNode* node);
         void RecursiveResetCurrentState(AnimGraphNode* node);

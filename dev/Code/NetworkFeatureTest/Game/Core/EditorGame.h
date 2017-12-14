@@ -19,7 +19,6 @@ namespace LYGame
         //////////////////////////////////////////////////////////////////////////
         //! IEditorGame
         virtual bool Init(ISystem* system, IGameToEditorInterface* gameToEditorInterface) override;
-        virtual int Update(bool hasFocus, unsigned int updateFlags) override;
         virtual void Shutdown() override;
         virtual bool SetGameMode(bool isInGame) override;
         virtual IEntity* GetPlayer() override;

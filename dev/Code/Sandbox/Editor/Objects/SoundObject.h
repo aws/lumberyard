@@ -40,9 +40,9 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     virtual void SetName(const QString& name);
-    virtual void SetPos(const Vec3& pos);
-    bool IsScalable() { return false; }
-    bool IsRotatable() { return false; }
+
+    bool IsScalable() const { return false; }
+    bool IsRotatable() const { return false; }
 
     void BeginEditParams(IEditor* ie, int flags);
     void EndEditParams(IEditor* ie);

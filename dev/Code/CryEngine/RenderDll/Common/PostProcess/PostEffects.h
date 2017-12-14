@@ -373,7 +373,7 @@ public:
         AddParamFloat("VisualArtifacts_VsyncFreq", m_pVSyncFreq, 1.0f);
 
         AddParamFloat("VisualArtifacts_Interlacing", m_pInterlationAmount, 0.0f);
-        AddParamFloat("VisualArtifacts_InterlacingTile", m_pInterlationTilling, 1.0f);
+        AddParamFloat("VisualArtifacts_InterlacingTile", m_pInterlationTiling, 1.0f);
         AddParamFloat("VisualArtifacts_InterlacingRot", m_pInterlationRotation, 0.0f);
 
         AddParamFloat("VisualArtifacts_Pixelation", m_pPixelationScale, 0.0f);
@@ -407,7 +407,7 @@ private:
     CEffectParam* m_pColorTint;
 
     CEffectParam* m_pInterlationAmount;
-    CEffectParam* m_pInterlationTilling;
+    CEffectParam* m_pInterlationTiling;
     CEffectParam* m_pInterlationRotation;
 
     CEffectParam* m_pPixelationScale;
@@ -565,7 +565,7 @@ public:
         m_nID = ePFX_eVolumetricScattering;
 
         AddParamFloat("VolumetricScattering_Amount", m_pAmount, 0.0f);
-        AddParamFloat("VolumetricScattering_Tilling", m_pTilling, 1.0f);
+        AddParamFloat("VolumetricScattering_Tilling", m_pTiling, 1.0f);
         AddParamFloat("VolumetricScattering_Speed", m_pSpeed, 1.0f);
         AddParamVec4("clr_VolumetricScattering_Color", m_pColor, Vec4(0.5f, 0.75f, 1.0f, 1.0f));
 
@@ -585,7 +585,7 @@ public:
 private:
 
     // float, int, int
-    CEffectParam* m_pAmount, * m_pTilling, * m_pSpeed, * m_pColor, * m_pType, * m_pQuality;
+    CEffectParam* m_pAmount, * m_pTiling, * m_pSpeed, * m_pColor, * m_pType, * m_pQuality;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

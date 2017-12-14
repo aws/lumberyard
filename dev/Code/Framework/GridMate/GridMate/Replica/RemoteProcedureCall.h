@@ -118,7 +118,7 @@ namespace GridMate
         virtual void Marshal(WriteBuffer& wb, Internal::RpcRequest* request) = 0;
         virtual Internal::RpcRequest* Unmarshal(ReadBuffer& rb) = 0;
         virtual bool Invoke(Internal::RpcRequest* rpc) const = 0;
-        virtual bool IsPostAttached() const = 0;
+        virtual bool IsPostAttached() const = 0;                //Requires Data Sets updated before executing RPC
         virtual bool IsAllowNonAuthoritativeRequests() const = 0;
         virtual bool IsAllowNonAuthoritativeRequestsRelay() const = 0;
 
@@ -498,11 +498,18 @@ namespace GridMate
                     : RpcBindBase<Traits, TypeTuple, BindInterface0<Traits, TypeTuple, ThisResolver, C, FuncPtr> >(debugName) { }
 
                 // Invoke from storage
-                virtual bool InvokeImpl(Internal::RpcRequest* request) const override
+                bool InvokeImpl(Internal::RpcRequest* request) const override
                 {
                     C* c = ThisResolver::template GetInterface<C>(this);
-                    TypeTuple* storage = static_cast<TypeTuple*>(request);
-                    return (*c.*FuncPtr)(*storage);
+                    if (c)
+                    {
+                        TypeTuple* storage = static_cast<TypeTuple*>(request);
+                        return (*c.*FuncPtr)(*storage);
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
 
                 // Forward from a direct in-place call

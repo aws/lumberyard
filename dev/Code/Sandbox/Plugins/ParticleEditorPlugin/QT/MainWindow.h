@@ -59,6 +59,7 @@ class CMainWindow
     , public IEditorNotifyListener
     , public ISystemEventListener
     , public EditorUIPlugin::LibraryItemUIRequests::Bus::Handler
+    , public EditorUIPlugin::LibraryChangeEvents::Bus::Handler
 {
     Q_OBJECT
 public:
@@ -123,6 +124,10 @@ private:
     //LibraryItemUIRequests::Bus
     void UpdateItemUI(const AZStd::string& itemId, bool selected, int lodIdx) override;
     //end LibraryItemUIRequests::Bus
+
+    //LibraryChangeEvents::Bus
+    void LibraryChangedInManager(const char* libraryName) override;
+    //end LibraryChangeEvents::Bus
 
 private slots:
     void Preview_PopulateTitleBarMenu(QMenu* toAddTo);

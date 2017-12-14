@@ -219,7 +219,7 @@ namespace EMotionFX
         if (parentIndex != MCORE_INVALIDINDEX32)    // if there is a parent and it has scale
         {
             // calculate the inverse parent scale
-            MCore::Vector3 invParentScale(1.0f, 1.0f, 1.0f);
+            AZ::Vector3 invParentScale(1.0f, 1.0f, 1.0f);
             invParentScale /= localTransforms[parentIndex].mScale;  // TODO: unsafe, can get division by zero
 
             outMatrix->InitFromNoScaleInherit(localTransforms[nodeIndex].mPosition, localTransforms[nodeIndex].mRotation, localTransforms[nodeIndex].mScale, invParentScale);

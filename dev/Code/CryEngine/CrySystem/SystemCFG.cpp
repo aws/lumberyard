@@ -19,6 +19,7 @@
 #include <time.h>
 #include "XConsole.h"
 #include "CryFile.h"
+#include <AzCore/std/any.h>
 
 #include <IScriptSystem.h>
 #include "SystemCFG.h"
@@ -202,9 +203,7 @@ void CSystem::LogVersion()
 
 
 
-#ifdef STLPORT
-    CryLogAlways("Using STLport C++ Standard Library implementation\n");
-#elif defined(_MSC_VER)
+#if   defined(_MSC_VER)
     CryLogAlways("Using Microsoft (tm) C++ Standard Library implementation\n");
 #elif defined(__clang__)
     CryLogAlways("Using CLANG C++ Standard Library implementation\n");
@@ -212,7 +211,7 @@ void CSystem::LogVersion()
     CryLogAlways("Using GNU C++ Standard Library implementation\n");
 #else
 #error "Please specify C++ STL library"
-#endif //STLPORT
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -320,10 +319,11 @@ void CSystem::SaveConfiguration()
 //////////////////////////////////////////////////////////////////////////
 // system cfg
 //////////////////////////////////////////////////////////////////////////
-CSystemConfiguration::CSystemConfiguration(const string& strSysConfigFilePath, CSystem* pSystem, ILoadConfigurationEntrySink* pSink, bool warnIfMissing)
+CSystemConfiguration::CSystemConfiguration(const string& strSysConfigFilePath, CSystem* pSystem, ILoadConfigurationEntrySink* pSink, AZStd::unordered_map<AZStd::string, CVarInfo>* editorMap, bool warnIfMissing)
     : m_strSysConfigFilePath(strSysConfigFilePath)
     , m_bError(false)
     , m_pSink(pSink)
+    , m_editorMap(editorMap)
     , m_warnIfMissing(warnIfMissing)
 {
     assert(pSink);
@@ -335,6 +335,116 @@ CSystemConfiguration::CSystemConfiguration(const string& strSysConfigFilePath, C
 //////////////////////////////////////////////////////////////////////////
 CSystemConfiguration::~CSystemConfiguration()
 {
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CSystemConfiguration::AddCVarToMap(const string& filename, const string& strKey, const string& strValue, const string& strGroup)
+{
+    AZStd::string key = strKey.c_str();
+    ICVar* cvar = gEnv->pConsole->GetCVar(strKey);
+
+    if (cvar)
+    {
+        AZStd::transform(key.begin(), key.end(), key.begin(), tolower);
+        if (azstricmp(strKey, "sys_spec_full") == 0 || strKey.find("sys_spec_") == strKey.npos)
+        {
+            int type = cvar->GetType();
+            AZStd::any val;
+            if (type == CVAR_INT)
+            {
+                val = atoi(strValue);
+            }
+            else if (type == CVAR_FLOAT)
+            {
+                val = static_cast<float>(atof(strValue));
+            }
+            else
+            {
+                val = AZStd::string(strValue.c_str());
+            }
+
+            // Platform cfg file (ex. pc_veryhigh.cfg)
+            if (strGroup.empty())
+            {
+                // New cvar loaded into map
+                if (m_editorMap->find(key) == m_editorMap->end())
+                {
+                    (*m_editorMap)[key].type = type;
+                    (*m_editorMap)[key].cvarGroup = "miscellaneous";
+                    AZStd::any empty;
+                    if (type == CVAR_INT)
+                    {
+                        empty = 0;
+                    }
+                    else if (type == CVAR_FLOAT)
+                    {
+                        empty = 0.0f;
+                    }
+                    else
+                    {
+                        empty = AZStd::string("");
+                    }
+                    (*m_editorMap)[key].fileVals.resize(NUM_SPEC_LEVELS, CVarFileStatus(empty, empty, empty));
+                }
+
+                int specIndex = 0;
+
+                // Subtracting one since index is one less than enum value
+                if (filename.find("veryhigh.cfg") != filename.npos)
+                {
+                    specIndex = CONFIG_VERYHIGH_SPEC - 1;
+                }
+                else if (filename.find("high.cfg") != filename.npos)
+                {
+                    specIndex = CONFIG_HIGH_SPEC - 1;
+                }
+                else if (filename.find("medium.cfg") != filename.npos)
+                {
+                    specIndex = CONFIG_MEDIUM_SPEC - 1;
+                }
+                else // Low spec / no spec level
+                {
+                    specIndex = CONFIG_LOW_SPEC - 1;
+                }
+
+                (*m_editorMap)[key].fileVals[specIndex].editedValue = val;
+                (*m_editorMap)[key].fileVals[specIndex].overwrittenValue = val;
+            }
+            // default group in sys_spec cfg file
+            else if (azstricmp(strGroup, "default") == 0)
+            {
+                // New cvar loaded into map
+                if (m_editorMap->find(key) == m_editorMap->end())
+                {
+                    CVarInfo* currentCVar = &(*m_editorMap)[key];
+                    currentCVar->type = cvar->GetType();
+                    CVarFileStatus defaultVal(val, val, val);
+                    currentCVar->fileVals.resize(NUM_SPEC_LEVELS, defaultVal);
+                }
+                // Overwrite miscellaneous if mentioned in platform config file
+                (*m_editorMap)[key].cvarGroup = filename;
+            }
+            // specific index in sys_spec cfg file
+            else
+            {
+                int group = 0;
+
+                if (sscanf(strGroup, "%d", &group) == 1)
+                {
+                    CVarFileStatus indexAssignment(val, val, val);
+                    for (int specLevel = 0; specLevel < NUM_SPEC_LEVELS; ++specLevel)
+                    {
+                        // Only apply cvar change to configurations with sys_spec_Full matching the index
+                        int overwrittenValue;
+                        if (AZStd::any_numeric_cast<int>(&(*m_editorMap)["sys_spec_full"].fileVals[specLevel].overwrittenValue, overwrittenValue) && group == overwrittenValue)
+                        {
+                            (*m_editorMap)[key].fileVals[specLevel] = indexAssignment;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -492,7 +602,16 @@ bool CSystemConfiguration::ParseSystemConfig()
                     strValue.replace("\\\"", "\"");
 
                     //                      m_pSystem->GetILog()->Log("Setting %s to %s",strKey.c_str(),strValue.c_str());
-                    m_pSink->OnLoadConfigurationEntry(strKey, strValue, strGroup);
+                    
+                    // Check if running Graphics Settings Dialog
+                    if (m_editorMap != nullptr)
+                    {
+                        AddCVarToMap(filename, strKey, strValue, strGroup);
+                    }
+                    else // Loading / registering cvar
+                    {
+                        m_pSink->OnLoadConfigurationEntry(strKey, strValue, strGroup);
+                    }
                 }
             }
         }
@@ -536,7 +655,7 @@ void CSystem::LoadConfiguration(const char* sFilename, ILoadConfigurationEntrySi
             pSink = this;
         }
 
-        CSystemConfiguration tempConfig(sFilename, this, pSink, warnIfMissing);
+        CSystemConfiguration tempConfig(sFilename, this, pSink, gEnv->pSystem->GetGraphicsSettingsMap(), warnIfMissing);
     }
 }
 

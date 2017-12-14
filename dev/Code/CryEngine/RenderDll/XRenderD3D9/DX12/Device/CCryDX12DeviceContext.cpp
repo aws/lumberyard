@@ -1582,7 +1582,10 @@ void STDMETHODCALLTYPE CCryDX12DeviceContext::OMSetRenderTargetsAndUnorderedAcce
     _In_reads_opt_(NumUAVs)  const UINT* pUAVInitialCounts)
 {
     DX12_FUNC_LOG
-    DX12_NOT_IMPLEMENTED //@TODO: Only the Unordered Access View portion of this function is implemented.
+    if (NumRTVs > 0 && NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
+    {
+        DX12_NOT_IMPLEMENTED //@TODO: Only the Unordered Access View portion of this function is implemented.
+    }
 
     auto& graphicsStage = m_PipelineState[DX12::CommandModeGraphics].Stages[DX12::ESS_Pixel];
     for (UINT i = UAVStartSlot, S = UAVStartSlot + NumUAVs; i < S; ++i, ++ppUnorderedAccessViews)

@@ -16,7 +16,7 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include <AssetBuilderSDK/AssetBuilderBusses.h>
+#include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
 
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
@@ -67,7 +67,7 @@ namespace ScriptCanvasBuilder
         AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, assetType);
         AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddExtension, ScriptCanvasEditor::ScriptCanvasAsset::GetFileExtension());
         
-        AssetBuilderSDK::ToolsAssetSystemBus::Broadcast(&AssetBuilderSDK::ToolsAssetSystemRequests::RegisterSourceAssetType, assetType, ScriptCanvasEditor::ScriptCanvasAsset::GetFileFilter());
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, assetType, ScriptCanvasEditor::ScriptCanvasAsset::GetFileFilter());
     }
 
     void BuilderSystemComponent::Deactivate()
@@ -75,7 +75,7 @@ namespace ScriptCanvasBuilder
         // Finish all queued work
         AZ::Data::AssetBus::ExecuteQueuedEvents();
 
-        AssetBuilderSDK::ToolsAssetSystemBus::Broadcast(&AssetBuilderSDK::ToolsAssetSystemRequests::UnregisterSourceAssetType, azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>());
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>());
         AZ::Data::AssetManager::Instance().UnregisterHandler(m_scriptCanvasAssetHandler.get());
     }
 }

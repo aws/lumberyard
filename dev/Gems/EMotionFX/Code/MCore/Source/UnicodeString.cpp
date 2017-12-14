@@ -268,13 +268,13 @@ namespace MCore
 
 
     // convert the string into a Vector3
-    Vector3 UnicodeString::ToVector3() const
+    AZ::PackedVector3f UnicodeString::ToVector3() const
     {
         // split the string into different floats
         Array<UnicodeString> parts = Split(UnicodeCharacter::comma);
         if (parts.GetLength() != 3)
         {
-            return Vector3(0.0f, 0.0f, 0.0f);
+            return AZ::PackedVector3f(0.0f, 0.0f, 0.0f);
         }
 
         // remove spaces
@@ -283,7 +283,7 @@ namespace MCore
             parts[i].Trim();
         }
 
-        return Vector3(parts[0].ToFloat(), parts[1].ToFloat(), parts[2].ToFloat());
+        return AZ::PackedVector3f(parts[0].ToFloat(), parts[1].ToFloat(), parts[2].ToFloat());
     }
 
 
@@ -616,14 +616,14 @@ namespace MCore
     // init from a Vector2
     void UnicodeString::FromVector2(const AZ::Vector2& value)
     {
-        Format("%.8f,%.8f", value.GetX(), value.GetY());
+        Format("%.8f,%.8f", static_cast<float>(value.GetX()), static_cast<float>(value.GetY()));
     }
 
 
     // init from a Vector3
-    void UnicodeString::FromVector3(const Vector3& value)
+    void UnicodeString::FromVector3(const AZ::Vector3& value)
     {
-        Format("%.8f,%.8f,%.8f", value.x, value.y, value.z);
+        Format("%.8f,%.8f,%.8f", static_cast<float>(value.GetX()), static_cast<float>(value.GetY()), static_cast<float>(value.GetZ()));
     }
 
 

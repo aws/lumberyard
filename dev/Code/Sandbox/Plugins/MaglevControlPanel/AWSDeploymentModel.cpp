@@ -18,7 +18,8 @@
 
 #include <QMessageBox>
 
-const QMap<AWSDeploymentColumn, QString> ColumnEnumToNameMap<AWSDeploymentColumn>::s_columnEnumToNameMap
+template<>
+const QMap<AWSDeploymentColumn, QString> ColumnEnumToNameMap<AWSDeploymentColumn>::s_columnEnumToNameMap =
 {
     {
         AWSDeploymentColumn::Name, "Name"

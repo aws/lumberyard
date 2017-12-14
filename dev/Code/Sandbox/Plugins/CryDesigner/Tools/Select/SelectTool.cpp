@@ -53,8 +53,8 @@ void SelectTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point
     GetIEditor()->BeginUndo();
     CD::GetDesigner()->StoreSelectionUndo();
 
-    bool bOnlyUseSelectionCube = GetKeyState(VK_SPACE) & (1 << 15);
-    bool bRemoveSelectedElements = GetKeyState(VK_MENU) & (1 << 15);
+    bool bOnlyUseSelectionCube = CheckVirtualKey(Qt::Key_Space);
+    bool bRemoveSelectedElements = (Qt::AltModifier & QApplication::queryKeyboardModifiers());
 
     ElementManager pickedElements;
     if (!bRemoveSelectedElements && !pickedElements.Pick(GetBaseObject(), GetModel(), view, point, m_nPickFlag, bOnlyUseSelectionCube, &m_PickedPosAsLMBDown))
@@ -132,7 +132,7 @@ void SelectTool::OnLButtonUp(CViewport* view, UINT nFlags, const QPoint& point)
 
 void SelectTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point)
 {
-    bool bOnlyUseSelectionCube = GetKeyState(VK_SPACE) & (1 << 15);
+    bool bOnlyUseSelectionCube = CheckVirtualKey(Qt::Key_Space);
     ElementManager pickedElements;
     bool bPicked = pickedElements.Pick(GetBaseObject(), GetModel(), view, point, m_nPickFlag, bOnlyUseSelectionCube, NULL);
 

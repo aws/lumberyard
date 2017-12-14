@@ -15,6 +15,8 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/unordered_map.h>
 
 #include <QtCore\QObject>
 #include <QtWidgets\QWidget>
@@ -29,6 +31,8 @@ namespace StripChart
 {
     class DataStrip;
 }
+
+class QSortFilterProxyModel;
 
 #pragma once
 

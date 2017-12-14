@@ -31,15 +31,8 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
     content_file_platform = ''
     content_pak_file = content_pak_name + os.path.extsep + content_pak_platform + os.path.extsep + 'pak'
 
-    pak_tool_name = '7za.exe'
-
     def setUp(self):
         self.prepare_test_envionment("dynamic_content_tests")
-
-        tools_dir = os.path.join('Tools')
-        pak_tool_path = os.path.join(tools_dir, self.pak_tool_name)
-        # Copy our pak tool
-        self.copy_support_file(pak_tool_path)
 
     def test_end_to_end(self):
         self.run_all_tests()

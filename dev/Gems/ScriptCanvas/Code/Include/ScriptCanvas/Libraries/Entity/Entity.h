@@ -16,4 +16,5 @@
 // shared code
 
 #include "Rotate.h"
+#include "EntityIDNode.h"
 #include "EntityRef.h"

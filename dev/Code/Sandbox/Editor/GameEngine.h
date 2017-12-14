@@ -38,6 +38,22 @@ public:
     virtual void OnPostEditorUpdate() = 0;
 };
 
+
+class ThreadedOnErrorHandler : public QObject
+{
+    Q_OBJECT
+public:
+    explicit ThreadedOnErrorHandler(ISystemUserCallback* callback);
+    ~ThreadedOnErrorHandler();
+
+public slots:
+    bool OnError(const char* error);
+
+private:
+    ISystemUserCallback* m_userCallback;
+};
+
+
 //! This class serves as a high-level wrapper for CryEngine game.
 class SANDBOX_API CGameEngine
     : public IEditorNotifyListener
@@ -60,7 +76,6 @@ public:
     //! Load new terrain level into 3d engine.
     //! Also load AI triangulation for this level.
     bool LoadLevel(
-        const QString& levelPath,
         const QString& mission,
         bool bDeleteAIGraph,
         bool bReleaseResources);

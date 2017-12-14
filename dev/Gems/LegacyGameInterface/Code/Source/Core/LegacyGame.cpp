@@ -89,16 +89,6 @@ namespace LegacyGameInterface
         return true;
     }
 
-    int LegacyGame::Update(bool hasFocus, unsigned int updateFlags)
-    {
-        const float frameTime = gEnv->pTimer->GetFrameTime();
-
-        const bool continueRunning = m_gameFramework->PreUpdate(true, updateFlags);
-        m_gameFramework->PostUpdate(true, updateFlags);
-
-        return static_cast<int>(continueRunning);
-    }
-
     void LegacyGame::PlayerIdSet(EntityId playerId)
     {
         m_clientEntityId = playerId;

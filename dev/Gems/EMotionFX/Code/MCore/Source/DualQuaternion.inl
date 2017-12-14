@@ -11,30 +11,30 @@
 */
 
 // extended constructor
-MCORE_INLINE DualQuaternion::DualQuaternion(const Quaternion& rotation, const Vector3& translation)
+MCORE_INLINE DualQuaternion::DualQuaternion(const Quaternion& rotation, const AZ::Vector3& translation)
     : mReal(rotation)
 {
-    mDual = 0.5f * (Quaternion(translation.x, translation.y, translation.z, 0.0f) * rotation);
+    mDual = 0.5f * (Quaternion(translation.GetX(), translation.GetY(), translation.GetZ(), 0.0f) * rotation);
 }
 
 
 
 // transform a 3D point with the dual quaternion
-MCORE_INLINE Vector3 DualQuaternion::TransformPoint(const Vector3& point) const
+MCORE_INLINE AZ::Vector3 DualQuaternion::TransformPoint(const AZ::Vector3& point) const
 {
-    const Vector3 realVector(mReal.x, mReal.y, mReal.z);
-    const Vector3 dualVector(mDual.x, mDual.y, mDual.z);
-    const Vector3 position      = point + 2.0f * (realVector.Cross(realVector.Cross(point) + (mReal.w * point)));
-    const Vector3 displacement  = 2.0f * (mReal.w * dualVector - mDual.w * realVector + realVector.Cross(dualVector));
+    const AZ::Vector3 realVector(mReal.x, mReal.y, mReal.z);
+    const AZ::Vector3 dualVector(mDual.x, mDual.y, mDual.z);
+    const AZ::Vector3 position      = point + 2.0f * (realVector.Cross(realVector.Cross(point) + (mReal.w * point)));
+    const AZ::Vector3 displacement  = 2.0f * (mReal.w * dualVector - mDual.w * realVector + realVector.Cross(dualVector));
     return position + displacement;
 }
 
 
 // transform a vector with this dual quaternion
-MCORE_INLINE Vector3 DualQuaternion::TransformVector(const Vector3& v) const
+MCORE_INLINE AZ::Vector3 DualQuaternion::TransformVector(const AZ::Vector3& v) const
 {
-    const Vector3 realVector(mReal.x, mReal.y, mReal.z);
-    const Vector3 dualVector(mDual.x, mDual.y, mDual.z);
+    const AZ::Vector3 realVector(mReal.x, mReal.y, mReal.z);
+    const AZ::Vector3 dualVector(mDual.x, mDual.y, mDual.z);
     return v + 2.0f * (realVector.Cross(realVector.Cross(v) + mReal.w * v));
 }
 

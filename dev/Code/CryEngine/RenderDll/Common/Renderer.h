@@ -65,7 +65,6 @@ struct SShaderPass;
 class CREParticle;
 class IGPUParticleEngine;
 class CD3DStereoRenderer;
-class CTextureManager;
 class IOpticsManager;
 struct SDynTexture2;
 struct SDepthTexture;
@@ -306,9 +305,7 @@ namespace N3DEngineCommon
         SOceanInfo()
             : m_nOceanRenderFlags(0)
             , m_fWaterLevel(0.0f)
-            , m_vCausticsParams(0.0f, 0.0f, 0.0f, 0.0f)
             , m_vMeshParams(0.0f, 0.0f, 0.0f, 0.0f) { };
-        Vec4 m_vCausticsParams;
         Vec4 m_vMeshParams;
         float m_fWaterLevel;
         uint8 m_nOceanRenderFlags;
@@ -606,7 +603,6 @@ public:
     uint32 m_bUseSilhouettePOM : 1;
     uint32 m_bUseSpecularAntialiasing : 1;
     uint32 m_UseGlobalMipBias : 1;
-    uint32 m_bWaterCaustics : 1;
     uint32 m_bIsWindowActive : 1;
     uint32 m_bInShutdown : 1;
     uint32 m_bDeferredDecals : 1;
@@ -646,6 +642,7 @@ public:
     float m_fLastBrightness;
     float m_fLastContrast;
     float m_fDeltaGamma;
+    uint32 m_nLastNoHWGamma;
 
     float m_fogCullDistance;
 
@@ -793,7 +790,7 @@ public:
 
     virtual ERenderType GetRenderType() const;
 
-    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false) = 0;
+    virtual WIN_HWND Init(int x, int y, int width, int height, unsigned int cbpp, int zbpp, int sbits, bool fullscreen, bool isEditor, WIN_HINSTANCE hinst, WIN_HWND Glhwnd = 0, bool bReInit = false, const SCustomRenderInitArgs* pCustomArgs = 0, bool bShaderCacheGen = false) = 0;
 
     virtual WIN_HWND GetCurrentContextHWND() {  return GetHWND();   };
     virtual bool IsCurrentContextMainVP() { return true; }
@@ -908,6 +905,8 @@ public:
     virtual void  Release();
     virtual void  FreeResources(int nFlags);
     virtual void  InitSystemResources(int nFlags);
+    virtual void  InitTexturesSemantics();
+
     void ClearJobResources();
     bool HasLoadedDefaultResources() override { return m_bSystemResourcesInit == 1; }
 
@@ -980,7 +979,11 @@ public:
     virtual void TextToScreen(float x, float y, const char* format, ...);
     virtual void TextToScreenColor(int x, int y, float r, float g, float b, float a, const char* format, ...);
 
-    CTextureManager* GetTextureManager() { return m_pTextureManager; }
+    int GetRecursionLevel() override;
+
+    int GetIntegerConfigurationValue(const char* varName, int defaultValue) override;
+    float GetFloatConfigurationValue(const char* varName, float defaultValue) override;
+    bool GetBooleanConfigurationValue(const char* varName, bool defaultValue) override;
 
     void  WriteXY(int x, int y, float xscale, float yscale, float r, float g, float b, float a, const char* message, ...) PRINTF_PARAMS(10, 11);
     void    Draw2dText(float posX, float posY, const char* pStr, const SDrawTextInfo& ti);
@@ -1415,7 +1418,6 @@ public:
     void RefreshSystemShaders();
     uint32 EF_BatchFlags(SShaderItem& SH, CRenderObject* pObj, CRendElementBase* re, const SRenderingPassInfo& passInfo);
 
-    virtual float EF_GetWaterZElevation(float fX, float fY);
     virtual void FX_PipelineShutdown(bool bFastShutdown = false) = 0;
 
     virtual IOpticsElementBase* CreateOptics(EFlareType type) const;
@@ -1496,6 +1498,9 @@ public:
     virtual ITexture* EF_GetTextureByID(int Id);
     virtual ITexture* EF_GetTextureByName(const char* name, uint32 flags = 0);
     virtual ITexture* EF_LoadTexture(const char* nameTex, const uint32 flags = 0);
+    virtual ITexture* EF_LoadCubemapTexture(const char* nameTex, const uint32 flags = 0);
+    virtual ITexture* EF_LoadDefaultTexture(const char* nameTex);
+
     virtual const SShaderProfile& GetShaderProfile(EShaderType eST) const;
     virtual void EF_SetShaderQuality(EShaderType eST, EShaderQuality eSQ);
 
@@ -1513,17 +1518,12 @@ public:
     // Get Object for RE transformation
     virtual CRenderObject* EF_GetObject_Temp (int nThreadID);
     CRenderObject* EF_DuplicateRO(CRenderObject* pObj, const SRenderingPassInfo& passInfo);
-    CRenderObject* EF_GetObject () final;
-    void EF_FreeObject (CRenderObject* pObj) final;
 
     // Add shader to the list (virtual)
     virtual void EF_AddEf (CRendElementBase* pRE, SShaderItem& pSH,  CRenderObject* pObj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter);
 
     // Add shader to the list
-    void EF_AddEf_NotVirtual (CRendElementBase* pRE, SShaderItem& pSH, CRenderObject* pObj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter, CCompiledRenderObject* pCompiled = NULL);
-
-    // Add compiled render object to the list
-    virtual void EF_AddRenderObject(CRenderObject* pRO, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) override;
+    void EF_AddEf_NotVirtual (CRendElementBase* pRE, SShaderItem& pSH, CRenderObject* pObj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter);
 
     // Draw all shaded REs in the list
     virtual void EF_EndEf3D (const int nFlags, const int nPrecacheUpdateId, const int nNearPrecacheUpdateId, const SRenderingPassInfo& passInfo) = 0;
@@ -1677,9 +1677,9 @@ public:
 
     bool EF_GetParticleListAndBatchFlags(uint32& nBatchFlags, int& nList, SShaderItem& shaderItem, CRenderObject* pRO, const SRenderingPassInfo& passInfo);
     virtual void ClearShaderItem(SShaderItem* pShaderItem);
-    virtual void UpdateShaderItem(SShaderItem* pShaderItem);
-    virtual void ForceUpdateShaderItem(SShaderItem* pShaderItem);
-    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem);
+    virtual void UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
+    virtual void ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
+    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
 
     void RT_UpdateShaderItem (SShaderItem* pShaderItem);
 
@@ -1784,8 +1784,6 @@ public:
 
     class CPostEffectsMgr* m_pPostProcessMgr;
     class CWater* m_pWaterSimMgr;
-
-    CTextureManager* m_pTextureManager;
 
     // Used for pausing timer related stuff (eg: for texture animations, and shader 'time' parameter)
     bool m_bPauseTimer;
@@ -1897,7 +1895,9 @@ public:
     static int CV_r_DeferredShadingFilterGBuffer;
 
     DeclareStaticConstIntCVar(CV_r_MotionVectors, 1);
+    DeclareStaticConstIntCVar(CV_r_MotionVectorsTransparency, 1);
     DeclareStaticConstIntCVar(CV_r_MotionVectorsDebug, 0);
+    static float CV_r_MotionVectorsTransparencyAlphaThreshold;
     static int CV_r_MotionBlur;
     static int CV_r_MotionBlurScreenShot;
     static int CV_r_MotionBlurQuality;
@@ -1905,7 +1905,7 @@ public:
     static float CV_r_MotionBlurThreshold;
     static int CV_r_flush;
     static int CV_r_minimizeLatency;
-    ENGINE_API static int CV_r_texatlassize;
+    static int CV_r_texatlassize;
     static int CV_r_DeferredShadingSortLights;
     static int CV_r_DeferredShadingAmbientSClear;
     static int CV_r_batchtype;
@@ -1943,7 +1943,7 @@ public:
     static int CV_r_ShowDynTexturesMaxCount;
     static int CV_r_ShaderCompilerDontCache;
     static int CV_r_dyntexmaxsize;
-    ENGINE_API static int CV_r_dyntexatlascloudsmaxsize;
+    static int CV_r_dyntexatlascloudsmaxsize;
     static int CV_r_texminanisotropy;
     static int CV_r_texmaxanisotropy;
     static int CV_r_texturesstreampooldefragmentation;
@@ -1952,10 +1952,8 @@ public:
     static int CV_r_texturesskiplowermips;
     static int CV_r_rendertargetpoolsize;
     static int CV_r_texturesstreamingsync;
-    static int CV_r_watercausticsdeferred;
-    static int CV_r_WaterUpdateThread;
     static int CV_r_ConditionalRendering;
-    static int CV_r_watercaustics;
+    static int CV_r_watercaustics; //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.
     static int CV_r_watervolumecaustics;
     static int CV_r_watervolumecausticsdensity;
     static int CV_r_watervolumecausticsresolution;
@@ -1981,6 +1979,7 @@ public:
     static int CV_r_shaderslogcachemisses;
     static int CV_r_shadersImport;
     static int CV_r_shadersExport;
+    static int CV_r_shadersCacheUnavailableShaders;
     static int CV_r_meshpoolsize;
     static int CV_r_meshinstancepoolsize;
     static int CV_r_multigpu;
@@ -1988,12 +1987,12 @@ public:
     static int CV_r_msaa_samples;
     static int CV_r_msaa_quality;
     static int CV_r_msaa_debug;
-    ENGINE_API static int CV_r_impostersupdateperframe;
+    static int CV_r_impostersupdateperframe;
     static int CV_r_beams;
     static int CV_r_nodrawnear;
     static int CV_r_DrawNearShadows;
     static int CV_r_scissor;
-    ENGINE_API static int CV_r_usezpass;
+    static int CV_r_usezpass;
     static int CV_r_ShowVideoMemoryStats;
     static int CV_r_TexturesStreamingDebugMinSize;
     static int CV_r_TexturesStreamingDebugMinMip;
@@ -2098,8 +2097,8 @@ public:
     static int CV_r_colorgrading;
     DeclareStaticConstIntCVar(CV_r_colorgrading_levels, 1);
     DeclareStaticConstIntCVar(CV_r_colorgrading_filters, 1);
-    DeclareAndExportStaticConstIntCVar(CV_r_cloudsupdatealways, 0);
-    DeclareAndExportStaticConstIntCVar(CV_r_cloudsdebug, 0);
+    DeclareStaticConstIntCVar(CV_r_cloudsupdatealways, 0);
+    DeclareStaticConstIntCVar(CV_r_cloudsdebug, 0);
     DeclareStaticConstIntCVar(CV_r_showdyntextures, 0);
     DeclareStaticConstIntCVar(CV_r_shownormals, 0);
     DeclareStaticConstIntCVar(CV_r_showlines, 0);
@@ -2113,7 +2112,7 @@ public:
     DeclareStaticConstIntCVar(CV_r_ProfileShadersSmooth, 4);
     DeclareStaticConstIntCVar(CV_r_ProfileShadersGroupByName, 1);
     DeclareStaticConstIntCVar(CV_r_texpostponeloading, 1);
-    DeclareAndExportStaticConstIntCVar(CV_r_texpreallocateatlases, TEXPREALLOCATLAS_DEFAULT_VAL);
+    DeclareStaticConstIntCVar(CV_r_texpreallocateatlases, TEXPREALLOCATLAS_DEFAULT_VAL);
     DeclareStaticConstIntCVar(CV_r_texlog, 0);
     DeclareStaticConstIntCVar(CV_r_texnoload, 0);
     DeclareStaticConstIntCVar(CV_r_texturecompiling, 1);
@@ -2145,8 +2144,6 @@ public:
     DeclareStaticConstIntCVar(CV_r_lightssinglepass, 1);
     static int CV_r_envcmresolution;
     static int CV_r_envtexresolution;
-    DeclareStaticConstIntCVar(CV_r_waterreflections_mgpu, 0);
-    DeclareStaticConstIntCVar(CV_r_waterreflections_use_min_offset, 1);
     DeclareStaticConstIntCVar(CV_r_waterreflections, 1);
     DeclareStaticConstIntCVar(CV_r_waterreflections_quality, WATERREFLQUAL_DEFAULT_VAL);
     DeclareStaticConstIntCVar(CV_r_water_godrays, 1);
@@ -2169,7 +2166,7 @@ public:
     DeclareStaticConstIntCVar(CV_r_debugrendermode, 0);
     DeclareStaticConstIntCVar(CV_r_debugrefraction, 0);
     DeclareStaticConstIntCVar(CV_r_meshprecache, 1);
-    DeclareAndExportStaticConstIntCVar(CV_r_impostersdraw, 1);
+    DeclareStaticConstIntCVar(CV_r_impostersdraw, 1);
     static int CV_r_flares;
     DeclareStaticConstIntCVar(CV_r_flareHqShafts, FLARES_HQSHAFTS_DEFAULT_VAL);
     DeclareStaticConstIntCVar(CV_r_ZPassDepthSorting, ZPASS_DEPTH_SORT_DEFAULT_VAL);
@@ -2312,7 +2309,7 @@ public:
     static float CV_r_detaildistance;
     static float CV_r_DrawNearZRange;
     static float CV_r_DrawNearFarPlane;
-    ENGINE_API static float CV_r_imposterratio;
+    static float CV_r_imposterratio;
     static float CV_r_rainamount;
     static float CV_r_MotionBlurShutterSpeed;
     static float CV_r_MotionBlurCameraMotionScale;
@@ -2339,11 +2336,8 @@ public:
     DeclareStaticConstIntCVar(CV_r_AntialiasingTAAUseJitterMipBias, 1);
     DeclareStaticConstIntCVar(CV_r_AntialiasingTAAUseVarianceClamping, 0);
     static float CV_r_AntialiasingTAAClampingFactor;
-    static float CV_r_AntialiasingTAANewFrameFalloff;
+    static float CV_r_AntialiasingTAANewFrameWeight;
     static float CV_r_AntialiasingTAASharpening;
-    static float CV_r_AntialiasingTAAMotionDifferenceMax;
-    static float CV_r_AntialiasingTAAMotionDifferenceMaxWeight;
-    static float CV_r_AntialiasingTAALuminanceMax;
     static float CV_r_FogDepthTest;
 #if defined(VOLUMETRIC_FOG_SHADOWS)
     static int CV_r_FogShadows;
@@ -2435,6 +2429,17 @@ public:
 
     // Confetti Vera
     static float CV_r_CubeDepthMapFarPlane;
+
+    // Fur control parameters
+    static int CV_r_Fur;
+    static int CV_r_FurShellPassCount;
+    static int CV_r_FurShowBending;
+    static int CV_r_FurDebug;
+    static int CV_r_FurDebugOneShell;
+    static int CV_r_FurFinPass;
+    static int CV_r_FurFinShadowPass;
+    static float CV_r_FurMovementBendingBias;
+    static float CV_r_FurMaxViewDist;
     //--------------end cvars------------------------
 
 

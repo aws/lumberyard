@@ -197,6 +197,8 @@ namespace CloudGemFramework
         return LoadLogicalMappingsFromJson(jsonValue);
     }
 
+    static const char* kLauncherDeployment = "LauncherDeployment";
+    static const char* kLauncherDeploymentFile = "launcher.deployment.json";
     static const char* kLogicalMappingsName = "LogicalMappings";
     static const char* kResourceTypeFieldName = "ResourceType";
     static const char* kPhysicalNameFieldName = "PhysicalResourceId";
@@ -332,7 +334,7 @@ namespace CloudGemFramework
                 static const char* PROTECTED_MAPPING_MSG_TEXT = "Warning: The AWS resource mapping file is marked as protected and shouldn't be used for normal development work. Are you sure you want to continue?";
                 if (IsProtectedMapping())
                 {
-                    
+
                     static const AZ::u64 cMB_YESNO = 0x00000004L;
                     static const AZ::u64 cMB_ICONEXCLAMATION = 0x00000030L;
                     static const AZ::u64 cIDYES = 6;
@@ -349,15 +351,67 @@ namespace CloudGemFramework
         }
     }
 
+    AZStd::string CloudCanvasMappingsComponent::GetCurrentDeploymentFromConfig() const
+    {
+        AZStd::string path = AZStd::string(baseMappingsFolder) + kLauncherDeploymentFile;
+        AZ::IO::FileIOBase *fileIO = AZ::IO::FileIOBase::GetInstance();
+        if (!fileIO)
+        {
+            AZ_Error("CloudCanvas", false, "Can't load launcher deployment mappings - no FileIOBase Instance");
+            return "";
+        }
+
+        AZ::IO::HandleType launcherDeploymentFile;
+        if (!fileIO->Open(path.c_str(), AZ::IO::OpenMode::ModeRead, launcherDeploymentFile))
+        {
+            AZ_TracePrintf("Failed to open launcher deployment file '%s'", path.c_str());
+            return "";
+        }
+
+        AZ::u64 fileSize{0};
+        fileIO->Size(launcherDeploymentFile, fileSize);
+        if (!fileSize)
+        {
+            AZ_Warning("CloudCanvas", false, "Launcher deployment file is empty");
+            fileIO->Close(launcherDeploymentFile);
+            return "";
+        }
+        AZStd::vector<char> fileData;
+        fileData.resize(fileSize);
+
+        fileIO->Read(launcherDeploymentFile, &fileData[0], fileSize);
+        fileData.push_back('\0');
+
+        Aws::String fileDataStr(&fileData[0]);
+        Aws::Utils::Json::JsonValue jsonValue(fileDataStr);
+
+        fileIO->Close(launcherDeploymentFile);
+
+        AZStd::string dep = jsonValue.GetString(kLauncherDeployment).c_str();
+
+        return dep;
+    }
+
+    AZStd::string CloudCanvasMappingsComponent::GetMappingsFileName(const AZStd::string& dep, const AZStd::string& role) const
+    {
+        auto cryPak = gEnv->pCryPak;
+        _finddata_t findData;
+        AZStd::string path = AZStd::string(baseMappingsFolder) + dep + role + baseMappingsPattern;
+        intptr_t findHandle = cryPak->FindFirst(path.c_str(), &findData);
+        if (findHandle != -1)
+        {
+            return findData.name;
+        }
+        return{};
+    }
+
     AZStd::string CloudCanvasMappingsComponent::GetLogicalMappingsPath() const
     {
-        
         // enumerate files
         auto cryPak = gEnv->pCryPak;
         _finddata_t findData;
-
-        const char* role = gEnv->IsDedicated() ? "*.server" : "*.player";
-        AZStd::string path = AZStd::string(baseMappingsFolder) + role + baseMappingsPattern;
+        const char* role = gEnv->IsDedicated() ? ".server" : ".player";
+        AZStd::string path = AZStd::string(baseMappingsFolder) + "*" + role + baseMappingsPattern;
         intptr_t findHandle = cryPak->FindFirst(path.c_str(), &findData);
 
         AZ_TracePrintf("Loading Game Mappings (IsDedicated=>%s) from path '%s'", gEnv->IsDedicated() ? "True" : "False", path.c_str());
@@ -379,6 +433,23 @@ namespace CloudGemFramework
         }
         else if (mappingFiles.size() > 1)
         {
+            AZStd::string dep = GetCurrentDeploymentFromConfig();
+            if (dep.empty())
+            {
+                AZ_Warning("Cloud Canvas", false, "Multiple Cloud Canvas mapping files found, and no launcher deployment set. Please use the %s commands line parameter to select a mapping file.", resourceMapOverride);
+                return {};
+            }
+
+            // Find the one for our deployment
+            AZStd::string expected = GetMappingsFileName(dep, role);
+            for (auto mappingFile : mappingFiles)
+            {
+                AZ_TracePrintf("found file %s", mappingFile.c_str());
+                if (mappingFile == expected)
+                {
+                    return mappingFile;
+                }
+            }
             AZ_Warning("Cloud Canvas", false, "Multiple Cloud Canvas mapping files found. Please use the %s commands line parameter to select a mapping file.", resourceMapOverride);
             return{};
         }

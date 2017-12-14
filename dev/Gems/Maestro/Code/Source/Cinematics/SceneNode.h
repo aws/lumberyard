@@ -95,6 +95,9 @@ public:
 
     static void Reflect(AZ::SerializeContext* serializeContext);
 
+    // Utility function to find the sequence associated with an ISequenceKey
+    static IAnimSequence* GetSequenceFromSequenceKey(const ISequenceKey& sequenceKey);
+
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
 
@@ -120,6 +123,8 @@ private:
 
     virtual void InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAnimParamType& paramType) override;
 
+    bool UpConvertSequenceTrack();
+
     // Cached parameters of node at given time.
     float m_time;
 
@@ -138,6 +143,7 @@ private:
     int m_nLastGotoKey;
     int m_lastCaptureKey;
     bool m_bLastCapturingEnded;
+    bool m_sequenceTrackUpConverted = false;
 
     // used for legacy cameras only for clearing trigger area flags in OnReset;
     EntityId m_legacyCurrentCameraEntityId;

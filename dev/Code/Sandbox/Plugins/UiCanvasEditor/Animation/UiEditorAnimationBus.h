@@ -40,16 +40,9 @@ public: // member functions
     virtual CUiAnimViewSequence* GetCurrentSequence() = 0;
 
     //! Called when the active canvas in the UI Editor window changes so that the UI Editor
-    //! animation window can update to show the correct sequences.
+    //! animation window can update to show the correct sequences. Active canvas could change
+    //! from a valid entity Id to an invalid entity Id and vice versa
     virtual void ActiveCanvasChanged() = 0;
-
-    //! Called when a canvas is loaded in the UI Editor window changes so that the UI Editor
-    //! animation window can update to show the correct sequences
-    virtual void CanvasLoaded() = 0;
-
-    //! Called when a canvas is about to unloaded/destroyed in the UI Editor window so that
-    //! the UI Editor animation window can update to show the correct sequences
-    virtual void CanvasUnloading() = 0;
 
 public: // static member functions
 
@@ -57,6 +50,40 @@ public: // static member functions
 };
 
 typedef AZ::EBus<UiEditorAnimationInterface> UiEditorAnimationBus;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//! Interface class that the UI Editor Animation Window needs to implement
+//! (e.g. UiAnimViewDialog)
+
+class UiEditorAnimationStateInterface
+    : public AZ::EBusTraits
+{
+public: // types
+
+    struct UiEditorAnimationEditState
+    {
+        AZStd::string m_sequenceName;
+        float m_time;
+        float m_timelineScale;
+        int m_timelineScrollOffset;
+    };
+
+public: // member functions
+
+    virtual ~UiEditorAnimationStateInterface(){}
+
+    //! Get the current animation edit state
+    virtual UiEditorAnimationEditState GetCurrentEditState() = 0;
+
+    //! Restore the current animation edit state
+    virtual void RestoreCurrentEditState(const UiEditorAnimationEditState& animEditState) = 0;
+
+public: // static member functions
+
+    static const char* GetUniqueName() { return "UiEditorAnimationStateInterface"; }
+};
+
+typedef AZ::EBus<UiEditorAnimationStateInterface> UiEditorAnimationStateBus;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Listener class that any UI Editor Animation class can implement to get notifications
@@ -69,15 +96,9 @@ public: // member functions
     virtual ~UiEditorAnimListenerInterface(){}
 
     //! Called when the active canvas in the UI Editor window changes.
-    //! When this is called the UiEditorAnimationBus may be used to get the new active canvas
+    //! When this is called the UiEditorAnimationBus may be used to get the new active canvas.
+    //! Active canvas could change from a valid entity Id to an invalid entity Id and vice versa
     virtual void OnActiveCanvasChanged() = 0;
-
-    //! Called when a canvas is loaded in the UI Editor. OnActiveCanvasChanged will typically be
-    //! called after this
-    virtual void OnCanvasLoaded() = 0;
-
-    //! Called when a canvas is about to unloaded/destroyed in the UI Editor window
-    virtual void OnCanvasUnloading() = 0;
 
     //! Called when UI elements have been deleted from or re-added to the canvas
     //! This requires the sequences to be updated

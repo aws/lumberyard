@@ -9,23 +9,41 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-//    Fixed is_pointer, is_reference, is_const, is_volatile, is_same,
-//    is_member_pointer based on the Simulated Partial Specialization work
-//    of Mat Marcus and Jesse Jones. See  http://opensource.adobe.com or
-//    http://groups.yahoo.com/group/boost/message/5441
-//    Some workarounds in here use ideas suggested from "Generic<Programming>:
-//    Mappings between Types and Values"
-//    by Andrei Alexandrescu (see http://www.cuj.com/experts/1810/alexandr.html).
+
 #ifndef AZSTD_TYPE_TRAITS_IS_MEMBER_POINTER_INCLUDED
 #define AZSTD_TYPE_TRAITS_IS_MEMBER_POINTER_INCLUDED
 
-#include <AzCore/std/typetraits/is_member_function_pointer.h>
-#include <AzCore/std/typetraits/bool_trait_def.h>
+#include <AzCore/std/typetraits/remove_cv.h>
 
 namespace AZStd
 {
-    AZSTD_TYPE_TRAIT_BOOL_DEF1(is_member_pointer, T, ::AZStd::is_member_function_pointer<T>::value)
-    AZSTD_TYPE_TRAIT_BOOL_PARTIAL_SPEC1_2(typename T, typename U, is_member_pointer, U T::*, true)
+    namespace Internal
+    {
+        template<class T>
+        struct is_member_pointer_helper : AZStd::false_type {};
+
+        template<class R, class ClassType>
+        struct is_member_pointer_helper<R ClassType::*> : AZStd::true_type {};
+
+        // VS 2013 does not deduce a member function pointer type to the <R ClassType::*> as above
+        // So explicit specializations are added for it.
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+        template<class R, class ClassType, typename... Args>
+        struct is_member_pointer_helper<R (ClassType::*)(Args...)> : AZStd::true_type {};
+        
+        template<class R, class ClassType, typename... Args>
+        struct is_member_pointer_helper<R(ClassType::*)(Args...) const> : AZStd::true_type {};
+
+        template<class R, class ClassType, typename... Args>
+        struct is_member_pointer_helper<R(ClassType::*)(Args...) volatile> : AZStd::true_type {};
+
+        template<class R, class ClassType, typename... Args>
+        struct is_member_pointer_helper<R(ClassType::*)(Args...) const volatile> : AZStd::true_type {};
+#endif
+    }
+
+    template<class T>
+    struct is_member_pointer : Internal::is_member_pointer_helper<AZStd::remove_cv_t<T>> {};
 }
 
 #endif // AZSTD_TYPE_TRAITS_IS_MEMBER_POINTER_INCLUDED

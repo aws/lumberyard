@@ -178,7 +178,7 @@
             <item>
              <widget class="QLabel" name="outsideRadiusLabel">
               <property name="text">
-               <string>Outside Radius</string>
+               <string>Outside Radius:</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -195,6 +195,9 @@
                 <width>65</width>
                 <height>0</height>
                </size>
+              </property>
+              <property name="keyboardTracking">
+               <bool>false</bool>
               </property>
               <property name="minimum">
                <double>0.010000000000000</double>
@@ -224,6 +227,9 @@
           </item>
           <item>
            <widget class="QCheckBox" name="syncRadiusCheck">
+            <property name="toolTip">
+             <string>Select to set the same outer radius value across the flatten, smooth, and rise/lower brushes</string>
+            </property>
             <property name="text">
              <string>Sync Radius for all Types</string>
             </property>
@@ -251,6 +257,9 @@
                 <width>65</width>
                 <height>0</height>
                </size>
+              </property>
+              <property name="keyboardTracking">
+               <bool>false</bool>
               </property>
               <property name="maximum">
                <double>200.000000000000000</double>
@@ -437,7 +446,7 @@
             <item>
              <widget class="QLabel" name="noiseFrequencyLabel">
               <property name="text">
-               <string>Frequency</string>
+               <string>Frequency:</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -494,6 +503,19 @@
           <bool>true</bool>
          </property>
         </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>

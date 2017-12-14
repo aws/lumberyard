@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include "InputCVars.h"
 #include <IConsole.h>
+#include <ISystem.h>
 
 CInputCVars* g_pInputCVars = 0;
 

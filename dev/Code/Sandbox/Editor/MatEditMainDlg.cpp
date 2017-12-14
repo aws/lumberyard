@@ -26,9 +26,6 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QAbstractEventDispatcher>
-#include <QVBoxLayout>
-
-
 CMatEditMainDlg::CMatEditMainDlg(const QString& title, QWidget* pParent /*=NULL*/)
     : QWidget(pParent)
 {
@@ -46,9 +43,9 @@ CMatEditMainDlg::CMatEditMainDlg(const QString& title, QWidget* pParent /*=NULL*
 
 #ifdef Q_OS_WIN
     if (auto aed = QAbstractEventDispatcher::instance())
-{
+    {
         aed->installNativeEventFilter(this);
-}
+    }
 #endif
 }
 
@@ -68,26 +65,27 @@ CMatEditMainDlg::~CMatEditMainDlg()
 void CMatEditMainDlg::showEvent(QShowEvent*)
 {
     if (QWindow *win = window()->windowHandle())
-{
+    {
         // Make sure our top-level window decorator wrapper set this exact title
         // 3ds Max Exporter will use ::FindWindow with this name
         win->setTitle("Material Editor");
     }
 }
 
-#ifdef Q_OS_WIN
 bool CMatEditMainDlg::nativeEventFilter(const QByteArray&, void* message, long*)
 {
+#ifdef Q_OS_WIN
+    // WM_MATEDITSEND is Windows only. Used by 3ds Max exporter.
     MSG* msg = static_cast<MSG*>(message);
     if (msg->message == WM_MATEDITSEND)
     {
         OnMatEditSend(msg->wParam);
         return true;
     }
+#endif
 
     return false;
 }
-#endif
 
 void CMatEditMainDlg::closeEvent(QCloseEvent* event)
 {

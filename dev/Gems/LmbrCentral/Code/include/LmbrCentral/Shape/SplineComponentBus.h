@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
@@ -18,7 +19,7 @@
 namespace LmbrCentral
 {
     /**
-     * Services provided by the Spline Component
+     * Services provided by the Spline Component.
      */
     class SplineComponentRequests
         : public AZ::ComponentBus
@@ -27,14 +28,25 @@ namespace LmbrCentral
     public:
         virtual ~SplineComponentRequests() {}
 
+        /**
+         * Returns a reference to the underlying spline.
+         */
         virtual AZ::ConstSplinePtr GetSpline() = 0;
+        /**
+         * Change the type of interpolation used by the spline.
+         * @param splineType Refers to the RTTI Hash of the underlying Spline type
+         * (example: AZ::LinearSpline::RTTI_Type().GetHash()).
+         */
         virtual void ChangeSplineType(AZ::u64 splineType) = 0;
-        virtual void SetClosed(bool bClosed) = 0;
+        /**
+         * Set whether the spline should form a closed loop or not.
+         */
+        virtual void SetClosed(bool closed) = 0;
     };
 
     /**
      * Bus to service the Spline component event group
-     */ 
+     */
     using SplineComponentRequestBus = AZ::EBus<SplineComponentRequests>;
 
     /**
@@ -53,8 +65,8 @@ namespace LmbrCentral
     };
 
     /**
-     * Bus to service the spline component notification group
-     */ 
+     * Bus to service the spline component notification group.
+     */
     using SplineComponentNotificationBus = AZ::EBus<SplineComponentNotification>;
 
 } // namespace LmbrCentral

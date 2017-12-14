@@ -46,6 +46,12 @@ def __get_UUID(source_file, UUID_name):
                 return UUID[1:-2] # strip of the quotes and semicolon
     return "{" + str(uuid.uuid4()) + "}"
 
+
+def has_stdafx_files(gem_code_folder):
+    expected_path = os.path.join(gem_code_folder, "Source", "StdAfx.h")
+    return os.path.exists(expected_path)
+
+
 def get_UUIDs(source_file, jinja_json):
     # make list of the UUIDs we need
     UUID_names = ["Component",
@@ -84,7 +90,7 @@ class ComponentJsonBuilder:
         base_navigator = SwaggerNavigator(self._swagger)
         self.__read_functions(base_navigator.get("paths"))
 
-        return self._component_json;
+        return self._component_json
 
 
     def __generate_function_name(self, method, path):

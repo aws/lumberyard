@@ -42,10 +42,10 @@ namespace AZ
             class LoadingResultCombiner
             {
             public:
-                inline LoadingResultCombiner();
-                inline void operator= (LoadingResult rhs);
-                inline ProcessingResult GetManifestResult() const;
-                inline ProcessingResult GetAssetResult() const;
+                LoadingResultCombiner();
+                void operator= (LoadingResult rhs);
+                ProcessingResult GetManifestResult() const;
+                ProcessingResult GetAssetResult() const;
 
             private:
                 ProcessingResult m_manifestResult;

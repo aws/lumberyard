@@ -141,7 +141,7 @@ namespace AudioControls
                 : m_index(index)
                 , m_level(level) {}
 
-            bool operator< (const STreeIndex& index)
+            bool operator< (const STreeIndex& index) const
             {
                 if (m_level == index.m_level)
                 {
@@ -338,7 +338,8 @@ namespace AudioControls
             const QString format = "application/x-qabstractitemmodeldatalist";
             if (mimeData->hasFormat(format))
             {
-                QDataStream stream(&mimeData->data(format), QIODevice::ReadOnly);
+                QByteArray data = mimeData->data(format);
+                QDataStream stream(&data, QIODevice::ReadOnly);
                 int row, col;
                 QMap<int, QVariant> roleDataMap;
                 stream >> row >> col >> roleDataMap;

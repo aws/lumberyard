@@ -53,7 +53,7 @@ public: // member functions
     // ~UiInteractableInterface
 
     // UiUpdateInterface
-    void Update() override;
+    void Update(float deltaTime) override;
     // ~UiUpdateInterface
 
     // UiInitializationInterface

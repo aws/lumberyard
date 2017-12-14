@@ -25,7 +25,7 @@
 #include <AssetBrowser/ui_GeneralAssetDbFilterDlg.h>
 namespace AssetBrowser
 {
-    const char* kFilterPresetsFilename = "@devroot@/Editor/AssetBrowserFilterPresets.xml";
+    const char* kFilterPresetsFilename = "@engroot@/Editor/AssetBrowserFilterPresets.xml";
 };
 
 const char* presetNoneReference = "<None>";

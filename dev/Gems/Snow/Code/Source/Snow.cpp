@@ -77,12 +77,17 @@ void CSnow::Update(SEntityUpdateContext& ctx, int updateSlot)
     const IActor* pClient = GetISystem()->GetIGame()->GetIGameFramework()->GetClientActor();
     if (pClient && Reset())
     {
-        const Vec3 vCamPos = gEnv->pRenderer->GetCamera().GetPosition();
-        Vec3 vR = (GetEntity()->GetWorldPos() - vCamPos) / max(m_fRadius, 1e-3f);
-
-        // todo: only update when things have changed.
-        gEnv->p3DEngine->SetSnowSurfaceParams(GetEntity()->GetWorldPos(), m_fRadius, m_fSnowAmount, m_fFrostAmount, m_fSurfaceFreezing);
-        gEnv->p3DEngine->SetSnowFallParams(m_nSnowFlakeCount, m_fSnowFlakeSize, m_fSnowFallBrightness, m_fSnowFallGravityScale, m_fSnowFallWindScale, m_fSnowFallTurbulence, m_fSnowFallTurbulenceFreq);
+        if (!m_bEnabled || gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
+        {
+            gEnv->p3DEngine->SetSnowSurfaceParams(Vec3(), 0.0f, 0.0f, 0.0f, 0.0f);
+            gEnv->p3DEngine->SetSnowFallParams(0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        }
+        else
+        {
+            // todo: only update when things have changed.
+            gEnv->p3DEngine->SetSnowSurfaceParams(GetEntity()->GetWorldPos(), m_fRadius, m_fSnowAmount, m_fFrostAmount, m_fSurfaceFreezing);
+            gEnv->p3DEngine->SetSnowFallParams(m_nSnowFlakeCount, m_fSnowFlakeSize, m_fSnowFallBrightness, m_fSnowFallGravityScale, m_fSnowFallWindScale, m_fSnowFallTurbulence, m_fSnowFallTurbulenceFreq);
+        }
     }
 }
 
@@ -114,6 +119,24 @@ void CSnow::ProcessEvent(SEntityEvent& event)
 //------------------------------------------------------------------------
 void CSnow::SetAuthority(bool auth)
 {
+}
+
+void CSnow::GetSnowSurfaceParams(float& fRadius, float& fSnowAmount, float& fFrostAmount, float& fSurfaceFreezing)
+{
+    fRadius = m_fRadius;
+    fSnowAmount = m_fSnowAmount;
+    fFrostAmount = m_fFrostAmount;
+    fSurfaceFreezing = m_fSurfaceFreezing;
+}
+void CSnow::GetSnowFallParams(int& nSnowFlakeCount, float& fSnowFlakeSize, float& fSnowFallBrightness, float& fSnowFallGravityScale, float& fSnowFallWindScale, float& fSnowFallTurbulence, float& fSnowFallTurbulenceFreq)
+{
+    nSnowFlakeCount = m_nSnowFlakeCount;
+    fSnowFlakeSize = m_fSnowFlakeSize;
+    fSnowFallBrightness = m_fSnowFallBrightness;
+    fSnowFallGravityScale = m_fSnowFallGravityScale;
+    fSnowFallWindScale = m_fSnowFallWindScale;
+    fSnowFallTurbulence = m_fSnowFallTurbulence;
+    fSnowFallTurbulenceFreq = m_fSnowFallTurbulenceFreq;
 }
 
 //------------------------------------------------------------------------
@@ -174,21 +197,6 @@ bool CSnow::Reset()
     snowFall->GetValue("fWindScale", m_fSnowFallWindScale);
     snowFall->GetValue("fTurbulenceStrength", m_fSnowFallTurbulence);
     snowFall->GetValue("fTurbulenceFreq", m_fSnowFallTurbulenceFreq);
-
-    if (!m_bEnabled || gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
-    {
-        m_fRadius = 0.f;
-        m_fSnowAmount = 0.f;
-        m_fFrostAmount = 0.f;
-        m_fSurfaceFreezing = 0.f;
-        m_nSnowFlakeCount = 0;
-        m_fSnowFlakeSize = 0.f;
-        m_fSnowFallBrightness = 0.f;
-        m_fSnowFallGravityScale = 0.f;
-        m_fSnowFallWindScale = 0.f;
-        m_fSnowFallTurbulence = 0.f;
-        m_fSnowFallTurbulenceFreq = 0.f;
-    }
 
     return true;
 }

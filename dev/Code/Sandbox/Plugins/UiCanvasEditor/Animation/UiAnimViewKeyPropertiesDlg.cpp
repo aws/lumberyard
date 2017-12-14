@@ -268,15 +268,6 @@ void CUiAnimViewKeyPropertiesDlg::OnKeySelectionChanged(CUiAnimViewSequence* pSe
         PopulateVariables();
     }
 
-    if (selectedKeys.GetKeyCount() > 1 || !bAssigned)
-    {
-        m_wndProps->SetDisplayOnlyModified(true);
-    }
-    else
-    {
-        m_wndProps->SetDisplayOnlyModified(false);
-    }
-
 #ifdef KDAB_PORT_REMOVED
     if (selectedKeys.GetKeyCount() == 1 && selectedKeys.AreAllKeysOfSameType())
     {

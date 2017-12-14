@@ -14,6 +14,7 @@
 #include "OutlinerPlugin.h"
 #include <AzCore/std/containers/vector.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include "../../../../EMStudioSDK/Source/OutlinerManager.h"
 #include <QStyledItemDelegate>
 #include <QTableWidget>
 #include <QHeaderView>
@@ -1080,11 +1081,11 @@ namespace EMStudio
     }
 
 
-    void OutlinerPlugin::OnRegisterCategory(const QString& name)
+    void OutlinerPlugin::OnRegisterCategory(OutlinerCategory* category)
     {
-        QTreeWidgetItem* categoryItem = new QTreeWidgetItem(QStringList(name));
-        categoryItem->setData(0, Qt::UserRole, qVariantFromValue((void*)GetOutlinerManager()->FindCategoryByName(name)));
-        categoryItem->setToolTip(0, name);
+        QTreeWidgetItem* categoryItem = new QTreeWidgetItem(QStringList(category->GetName()));
+        categoryItem->setData(0, Qt::UserRole, qVariantFromValue(static_cast<void*>(category)));
+        categoryItem->setToolTip(0, category->GetName());
         mCategoryRootItem->addChild(categoryItem);
     }
 

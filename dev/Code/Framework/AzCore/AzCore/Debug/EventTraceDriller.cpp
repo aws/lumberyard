@@ -53,10 +53,15 @@ namespace AZ
 
             EventTraceDrillerBus::Handler::BusConnect();
             TickBus::Handler::BusConnect();
+
+            EventTraceDrillerBus::AllowFunctionQueuing(true);
         }
 
         void EventTraceDriller::Stop()
         {
+            EventTraceDrillerBus::AllowFunctionQueuing(false);
+            EventTraceDrillerBus::ClearQueuedEvents();
+
             EventTraceDrillerBus::Handler::BusDisconnect();
             TickBus::Handler::BusDisconnect();
         }
@@ -96,7 +101,7 @@ namespace AZ
             if (m_output && m_Threads.size())
             {
                 // Main bus mutex guards m_output.
-                auto& context = EventTraceDrillerBus::GetContext();
+                auto& context = EventTraceDrillerBus::GetOrCreateContext();
                 context.m_mutex.lock();
 
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_ThreadMutex);

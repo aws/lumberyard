@@ -20,6 +20,7 @@
 #include "TrackViewDialog.h"
 
 #include <TrackView/ui_TVCustomizeTrackColorsDialog.h>
+#include "Maestro/Types/AnimParamType.h"
 
 #include <QLabel>
 #include <QMessageBox>
@@ -45,63 +46,63 @@ namespace
 {
     const STrackEntry g_trackEntries[] = {
         // Color for tracks
-        { eAnimParamType_FOV, "FOV", QColor(220, 220, 220) },
-        { eAnimParamType_Position, "Pos", QColor(90, 150, 90) },
-        { eAnimParamType_Rotation, "Rot", QColor(90, 150, 90) },
-        { eAnimParamType_Scale, "Scale", QColor(90, 150, 90) },
-        { eAnimParamType_Event, "Event", QColor(220, 220, 220) },
-        { eAnimParamType_Visibility, "Visibility", QColor(220, 220, 220) },
-        { eAnimParamType_Camera, "Camera", QColor(220, 220, 220) },
-        { eAnimParamType_Sound, "Sound", QColor(220, 220, 220) },
-        { eAnimParamType_Animation, "Animation", QColor(220, 220, 220) },
-        { eAnimParamType_Sequence, "Sequence", QColor(220, 220, 220) },
-        { eAnimParamType_Console, "Console", QColor(220, 220, 220) },
-        { eAnimParamType_LookAt, "LookAt", QColor(220, 220, 220) },
-        { eAnimParamType_TrackEvent, "TrackEvent", QColor(220, 220, 220) },
-        { eAnimParamType_ShakeMultiplier, "ShakeMult", QColor(90, 150, 90) },
-        { eAnimParamType_TransformNoise, "Noise", QColor(90, 150, 90) },
-        { eAnimParamType_TimeWarp, "Timewarp", QColor(220, 220, 220) },
-        { eAnimParamType_FixedTimeStep, "FixedTimeStep", QColor(220, 220, 220) },
-        { eAnimParamType_DepthOfField, "DepthOfField", QColor(90, 150, 90) },
-        { eAnimParamType_CommentText, "CommentText", QColor(220, 220, 220) },
-        { eAnimParamType_ScreenFader, "ScreenFader", QColor(220, 220, 220) },
-        { eAnimParamType_LightDiffuse, "LightDiffuseColor", QColor(90, 150, 90) },
-        { eAnimParamType_LightRadius, "LightRadius", QColor(220, 220, 220) },
-        { eAnimParamType_LightDiffuseMult, "LightDiffuseMult", QColor(220, 220, 220) },
-        { eAnimParamType_LightHDRDynamic, "LightHDRDynamic", QColor(220, 220, 220) },
-        { eAnimParamType_LightSpecularMult, "LightSpecularMult", QColor(220, 220, 220) },
-        { eAnimParamType_LightSpecPercentage, "LightSpecularPercent", QColor(220, 220, 220) },
-        { eAnimParamType_FocusDistance, "FocusDistance", QColor(220, 220, 220) },
-        { eAnimParamType_FocusRange, "FocusRange", QColor(220, 220, 220) },
-        { eAnimParamType_BlurAmount, "BlurAmount", QColor(220, 220, 220) },
-        { eAnimParamType_PositionX, "PosX", QColor(220, 220, 220) },
-        { eAnimParamType_PositionY, "PosY", QColor(220, 220, 220) },
-        { eAnimParamType_PositionZ, "PosZ", QColor(220, 220, 220) },
-        { eAnimParamType_RotationX, "RotX", QColor(220, 220, 220) },
-        { eAnimParamType_RotationY, "RotY", QColor(220, 220, 220) },
-        { eAnimParamType_RotationZ, "RotZ", QColor(220, 220, 220) },
-        { eAnimParamType_ScaleX, "ScaleX", QColor(220, 220, 220) },
-        { eAnimParamType_ScaleY, "ScaleY", QColor(220, 220, 220) },
-        { eAnimParamType_ScaleZ, "ScaleZ", QColor(220, 220, 220) },
-        { eAnimParamType_ShakeAmpAMult, "ShakeMultAmpA", QColor(220, 220, 220) },
-        { eAnimParamType_ShakeAmpBMult, "ShakeMultAmpB", QColor(220, 220, 220) },
-        { eAnimParamType_ShakeFreqAMult, "ShakeMultFreqA", QColor(220, 220, 220) },
-        { eAnimParamType_ShakeFreqBMult, "ShakeMultFreqB", QColor(220, 220, 220) },
-        { eAnimParamType_ColorR, "ColorR", QColor(220, 220, 220) },
-        { eAnimParamType_ColorG, "ColorG", QColor(220, 220, 220) },
-        { eAnimParamType_ColorB, "ColorB", QColor(220, 220, 220) },
-        { eAnimParamType_MaterialOpacity, "MaterialOpacity", QColor(220, 220, 220) },
-        { eAnimParamType_MaterialSmoothness, "MaterialGlossiness", QColor(220, 220, 220) },
-        { eAnimParamType_MaterialEmissive, "MaterialEmission", QColor(220, 220, 220) },
-        { eAnimParamType_MaterialEmissiveIntensity, "MaterialEmissionIntensity", QColor(220, 220, 220) },
-        { eAnimParamType_NearZ, "NearZ", QColor(220, 220, 220) },
+        { AnimParamType::FOV, "FOV", QColor(220, 220, 220) },
+        { AnimParamType::Position, "Pos", QColor(90, 150, 90) },
+        { AnimParamType::Rotation, "Rot", QColor(90, 150, 90) },
+        { AnimParamType::Scale, "Scale", QColor(90, 150, 90) },
+        { AnimParamType::Event, "Event", QColor(220, 220, 220) },
+        { AnimParamType::Visibility, "Visibility", QColor(220, 220, 220) },
+        { AnimParamType::Camera, "Camera", QColor(220, 220, 220) },
+        { AnimParamType::Sound, "Sound", QColor(220, 220, 220) },
+        { AnimParamType::Animation, "Animation", QColor(220, 220, 220) },
+        { AnimParamType::Sequence, "Sequence", QColor(220, 220, 220) },
+        { AnimParamType::Console, "Console", QColor(220, 220, 220) },
+        { AnimParamType::LookAt, "LookAt", QColor(220, 220, 220) },
+        { AnimParamType::TrackEvent, "TrackEvent", QColor(220, 220, 220) },
+        { AnimParamType::ShakeMultiplier, "ShakeMult", QColor(90, 150, 90) },
+        { AnimParamType::TransformNoise, "Noise", QColor(90, 150, 90) },
+        { AnimParamType::TimeWarp, "Timewarp", QColor(220, 220, 220) },
+        { AnimParamType::FixedTimeStep, "FixedTimeStep", QColor(220, 220, 220) },
+        { AnimParamType::DepthOfField, "DepthOfField", QColor(90, 150, 90) },
+        { AnimParamType::CommentText, "CommentText", QColor(220, 220, 220) },
+        { AnimParamType::ScreenFader, "ScreenFader", QColor(220, 220, 220) },
+        { AnimParamType::LightDiffuse, "LightDiffuseColor", QColor(90, 150, 90) },
+        { AnimParamType::LightRadius, "LightRadius", QColor(220, 220, 220) },
+        { AnimParamType::LightDiffuseMult, "LightDiffuseMult", QColor(220, 220, 220) },
+        { AnimParamType::LightHDRDynamic, "LightHDRDynamic", QColor(220, 220, 220) },
+        { AnimParamType::LightSpecularMult, "LightSpecularMult", QColor(220, 220, 220) },
+        { AnimParamType::LightSpecPercentage, "LightSpecularPercent", QColor(220, 220, 220) },
+        { AnimParamType::FocusDistance, "FocusDistance", QColor(220, 220, 220) },
+        { AnimParamType::FocusRange, "FocusRange", QColor(220, 220, 220) },
+        { AnimParamType::BlurAmount, "BlurAmount", QColor(220, 220, 220) },
+        { AnimParamType::PositionX, "PosX", QColor(220, 220, 220) },
+        { AnimParamType::PositionY, "PosY", QColor(220, 220, 220) },
+        { AnimParamType::PositionZ, "PosZ", QColor(220, 220, 220) },
+        { AnimParamType::RotationX, "RotX", QColor(220, 220, 220) },
+        { AnimParamType::RotationY, "RotY", QColor(220, 220, 220) },
+        { AnimParamType::RotationZ, "RotZ", QColor(220, 220, 220) },
+        { AnimParamType::ScaleX, "ScaleX", QColor(220, 220, 220) },
+        { AnimParamType::ScaleY, "ScaleY", QColor(220, 220, 220) },
+        { AnimParamType::ScaleZ, "ScaleZ", QColor(220, 220, 220) },
+        { AnimParamType::ShakeAmpAMult, "ShakeMultAmpA", QColor(220, 220, 220) },
+        { AnimParamType::ShakeAmpBMult, "ShakeMultAmpB", QColor(220, 220, 220) },
+        { AnimParamType::ShakeFreqAMult, "ShakeMultFreqA", QColor(220, 220, 220) },
+        { AnimParamType::ShakeFreqBMult, "ShakeMultFreqB", QColor(220, 220, 220) },
+        { AnimParamType::ColorR, "ColorR", QColor(220, 220, 220) },
+        { AnimParamType::ColorG, "ColorG", QColor(220, 220, 220) },
+        { AnimParamType::ColorB, "ColorB", QColor(220, 220, 220) },
+        { AnimParamType::MaterialOpacity, "MaterialOpacity", QColor(220, 220, 220) },
+        { AnimParamType::MaterialSmoothness, "MaterialGlossiness", QColor(220, 220, 220) },
+        { AnimParamType::MaterialEmissive, "MaterialEmission", QColor(220, 220, 220) },
+        { AnimParamType::MaterialEmissiveIntensity, "MaterialEmissionIntensity", QColor(220, 220, 220) },
+        { AnimParamType::NearZ, "NearZ", QColor(220, 220, 220) },
 
-        { eAnimParamType_User, "", QColor(0, 0, 0) }, // An empty string means a separator row.
+        { AnimParamType::User, "", QColor(0, 0, 0) }, // An empty string means a separator row.
 
         // Misc colors for special states of a track
-        { eAnimParamType_User, "Others", QColor(220, 220, 220) },
-        { eAnimParamType_User, "Disabled/Inactive", QColor(255, 224, 224) },
-        { eAnimParamType_User, "Muted", QColor(255, 224, 224) },
+        { AnimParamType::User, "Others", QColor(220, 220, 220) },
+        { AnimParamType::User, "Disabled/Inactive", QColor(255, 224, 224) },
+        { AnimParamType::User, "Muted", QColor(255, 224, 224) },
     };
 
     const int kButtonsIdBase = 0x7fff;
@@ -161,7 +162,7 @@ void CTVCustomizeTrackColorsDlg::OnInitDialog()
                 m_colorButtons[i] = new ColorButton(m_ui->frame);
 			m_colorButtons[i]->setGeometry(buttonRect);
 
-			if(entry.paramType.GetType() == eAnimParamType_User)
+			if(entry.paramType.GetType() == AnimParamType::User)
 			{
 				assert(kOthersEntryIndex <= i);
 				if (i == kOthersEntryIndex)
@@ -214,7 +215,7 @@ void CTVCustomizeTrackColorsDlg::OnApply()
     int i = 0;
     std::for_each(g_trackEntries, g_trackEntries + arraysize(g_trackEntries), [&](const STrackEntry& entry)
 	{
-		if(entry.paramType.GetType() != eAnimParamType_User)
+		if(entry.paramType.GetType() != AnimParamType::User)
 		{
                 s_trackColors[entry.paramType] = m_colorButtons[i]->Color();
 		}
@@ -270,7 +271,7 @@ void CTVCustomizeTrackColorsDlg::LoadColors(const char* sectionName)
     }
     std::for_each(g_trackEntries, g_trackEntries + arraysize(g_trackEntries), [&](const STrackEntry& entry)
     {
-        if (entry.paramType.GetType() != eAnimParamType_User)
+        if (entry.paramType.GetType() != AnimParamType::User)
         {
             s_trackColors[entry.paramType] = QColor::fromRgb(settings.value(QStringLiteral("%2%3").arg(TRACKCOLOR_ENTRY_PREFIX).arg(static_cast<int>(entry.paramType.GetType())), entry.defaultColor.rgb()).toInt());
         }
@@ -317,7 +318,7 @@ void CTVCustomizeTrackColorsDlg::Export(const QString& fullPath) const
     int i = 0;
     std::for_each(g_trackEntries, g_trackEntries + arraysize(g_trackEntries), [&](const STrackEntry& entry)
 	{
-		if(entry.paramType.GetType() != eAnimParamType_User)
+		if(entry.paramType.GetType() != AnimParamType::User)
 		{
 			XmlNodeRef entryNode = customTrackColorsNode->newChild("entry");
 

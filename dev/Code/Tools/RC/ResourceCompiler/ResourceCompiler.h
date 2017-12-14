@@ -70,6 +70,8 @@ public:
     virtual const char* GetExePath() const;
     virtual const char* GetTmpPath() const;
     virtual const char* GetInitialCurrentDir() const;
+    const char* GetAppRoot() const override;
+
 
     virtual void RegisterConvertor(const char* name, IConvertor* conv);
 
@@ -159,6 +161,10 @@ public:
     //! call this if user asks for help
     void ShowHelp(bool bDetailed);
     //////////////////////////////////////////////////////////////////////////
+
+    void SetAppRootPath(const string& appRootPath);
+
+    static string GetAppRootPathFromGameRoot(const string& gameRootPath);
 
     void QueryVersionInfo();
 
@@ -277,6 +283,7 @@ private:
     string                  m_exePath;
     string                  m_tempPath;
     string                  m_initialCurrentDir;
+    string                  m_appRoot;
 
     std::map<string, string> m_KeyHelp;              // [lower key] = help, created from RegisterKey
 

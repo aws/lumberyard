@@ -1020,7 +1020,7 @@ namespace UnitTest
         EXPECT_EQ(0, i);
 
         AZStd::thread waitThreads[8];
-        for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(waitThreads); ++threadIdx)
+        for (size_t threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(waitThreads); ++threadIdx)
         {
             waitThreads[threadIdx] = AZStd::thread(wait);
         }

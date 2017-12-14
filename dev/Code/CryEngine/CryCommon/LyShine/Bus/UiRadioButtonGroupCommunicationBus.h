@@ -33,6 +33,11 @@ public: // member functions
     //! \param      The radio button to remove
     virtual void UnregisterRadioButton(AZ::EntityId radioButton) = 0;
 
+    //! Called when a radio button wants to change state due to user action (i.e. by clicking it)
+    //! \param      The radio button to change the state of
+    //! \param      The new radio button state
+    virtual void RequestRadioButtonStateChange(AZ::EntityId radioButton, bool newState) = 0;
+
 public: // static member data
 
     //! Only one component on an entity can implement the events

@@ -490,7 +490,13 @@ HRESULT CRenderAuxGeomD3D::RestoreDeviceObjects()
     D3D11_BUFFER_DESC BufDescV;
     ZeroStruct(BufDescV);
     BufDescV.ByteWidth = e_auxGeomVBSize * sizeof(SAuxVertex);
+#if defined(CRY_USE_METAL)
+    //Direct access memory is faster on metal as it only needs one CPU->GPU copy whereas the
+    //dynamic memory (for vertex buffers) will do a CPU->GPU and then a GPU->GPU copy.
+    BufDescV.Usage = D3D11_USAGE_DIRECT_ACCESS;
+#else
     BufDescV.Usage = D3D11_USAGE_DYNAMIC;
+#endif
     BufDescV.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     BufDescV.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     BufDescV.MiscFlags = 0;
@@ -508,7 +514,13 @@ HRESULT CRenderAuxGeomD3D::RestoreDeviceObjects()
     D3D11_BUFFER_DESC BufDescI;
     ZeroStruct(BufDescI);
     BufDescI.ByteWidth =  e_auxGeomIBSize * sizeof(uint16);
+#if defined(CRY_USE_METAL)
+    //Direct access memory is faster on metal as it only needs one CPU->GPU copy whereas the
+    //dynamic memory (for index buffers) will do a CPU->GPU and then a GPU->GPU copy.
+    BufDescI.Usage = D3D11_USAGE_DIRECT_ACCESS;
+#else
     BufDescI.Usage = D3D11_USAGE_DYNAMIC;
+#endif
     BufDescI.BindFlags = D3D11_BIND_INDEX_BUFFER;
     BufDescI.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     BufDescI.MiscFlags = 0;

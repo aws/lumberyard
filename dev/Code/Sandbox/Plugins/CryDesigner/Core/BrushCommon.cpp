@@ -1181,9 +1181,10 @@ namespace CD
 
     stack_string GetSaveStateFilePath(const char* name)
     {
+        const QByteArray userFolder = Path::GetResolvedUserSandboxFolder().toUtf8();
         stack_string filePath = stack_string().Format("%s/%s.json", CRYDESIGNER_USER_DIRECTORY, name).c_str();
-        stack_string saveFilePath = stack_string().Format("%s%s", GetIEditor()->GetUserFolder(), filePath.c_str()).c_str();
-        QDir().mkdir(stack_string().Format("%s%s", GetIEditor()->GetUserFolder(), CRYDESIGNER_USER_DIRECTORY).c_str());
+        stack_string saveFilePath = stack_string().Format("%s%s", userFolder.data(), filePath.c_str()).c_str();
+        QDir().mkdir(stack_string().Format("%s%s", userFolder.data(), CRYDESIGNER_USER_DIRECTORY).c_str());
         return saveFilePath;
     }
 

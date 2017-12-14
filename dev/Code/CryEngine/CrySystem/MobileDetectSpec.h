@@ -14,12 +14,11 @@
 #pragma once
 
 #include "AzCore/std/containers/unordered_map.h"
-#include "AzCore/std/typetraits/size_t_trait_def.h"
 
 namespace MobileSysInspect
 {
     // Uses hash as key to reduce memory with larger map
-    extern AZStd::unordered_map<AZStd::size_t, AZStd::string> device_spec_map;
+    extern AZStd::unordered_map<AZStd::string, AZStd::string> device_spec_map;
     extern const float LOW_SPEC_RAM;
     extern const float MEDIUM_SPEC_RAM;
     extern const float HIGH_SPEC_RAM;

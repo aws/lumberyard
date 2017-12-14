@@ -14,6 +14,7 @@
 #include <LyShine/Bus/UiInteractableBus.h>
 #include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/Bus/UiInteractableStatesBus.h>
+#include <LyShine/Bus/UiImageBus.h>
 #include <LyShine/IDraw2d.h>
 
 #include <AzCore/Component/Component.h>
@@ -26,6 +27,8 @@
 #include <LyShine/UiAssetTypes.h>
 
 #include <IFont.h>
+
+#include "UiImageComponent.h"
 
 // Forward declarations
 class ISprite;
@@ -159,10 +162,20 @@ public: // member functions
 public: // static member functions
     static void Reflect(AZ::ReflectContext* context);
 
+protected: // member functions
+
+    bool IsSpriteSheet();
+    void OnTargetElementChange();
+    void LoadSpriteFromTargetElement();
+
+    //! Returns a string representation of the indices used to index sprite-sheet types.
+    UiImageComponent::AZu32ComboBoxVec PopulateIndexStringList() const;
+
 protected: // data
     AZ::EntityId m_targetEntity;
     AzFramework::SimpleAssetReference<LmbrCentral::TextureAsset> m_spritePathname;
-    ISprite* m_sprite;
+    ISprite* m_sprite = nullptr;
+    AZ::u32 m_spriteSheetCellIndex = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

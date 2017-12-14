@@ -10,9 +10,43 @@
 #
 ########################################################################################
 
-import os
+import os, shutil
+
 
 def build(bld):
+
+    # we have to skip both of these module definitions if android isn't support, otherwise this will cause unnecessary failures
+    if any(platform for platform in bld.get_supported_platforms() if 'android' in platform):
+
+        # the default file permissions after copies are made.  511 => 'chmod 777 <file>'
+        FILE_PERMISSIONS = 511
+
+        # copy over the native activity glue files
+        dest_directory = bld.path.make_node('NativeActivityGlue')
+        dest_directory.mkdir()
+
+        ndk_root = bld.get_env_file_var('LY_ANDROID_NDK')
+        native_activity_glue = os.path.join(ndk_root, 'sources', 'android', 'native_app_glue')
+
+        for src in ('android_native_app_glue.c', 'android_native_app_glue.h'):
+            source_file = os.path.join(native_activity_glue, src)
+            dest_file = dest_directory.make_node(src)
+
+            if os.path.exists(dest_file.abspath()):
+                dest_file.chmod(FILE_PERMISSIONS) 
+
+            shutil.copy2(source_file, dest_file.abspath())
+            dest_file.chmod(FILE_PERMISSIONS) 
+
+        bld.CryEngineStaticLibrary(
+            target              = 'NativeActivityGlue',
+            vs_filter           = 'Android',
+            platforms           = [ 'android' ],
+            configurations      = [ 'debug', 'profile', 'performance', 'release' ],
+            file_list           = [ 'native_activity_glue.waf_files' ],
+            export_includes     = [ 'NativeActivityGlue' ],
+            android_cflags      = [ '-fvisibility=default' ],
+        )
 
     bld.CryLauncher(
         # Settings
@@ -22,13 +56,17 @@ def build(bld):
         file_list           = 'android_launcher.waf_files',
 
         # Platform Specific
-        android_use             = ['AzGameFramework', 'SDL2_Android', 'SDL2Ext' ],
+        android_use             = ['AzGameFramework', 'NativeActivityGlue'],
         android_includes        = [bld.Path('Code/CryEngine/CryAction'),
-                                   bld.Path('Code/CryEngine/CrySystem')],
+                                   bld.Path('Code/CryEngine/CrySystem'),
+                                   bld.Path('Code/Launcher')],
+
+        # Force the native app glue entry point to be defined.  This is an alternative method to 
+        # calling app_dummy in android_main that works with newer NDKs which have deprecated 
+        # app_dummy (but still seem to strip this function)
+        android_linkflags       = [ '-u', 'ANativeActivity_onCreate' ],
 
         android_java_src_path   = [bld.Path('Code/Launcher/AndroidLauncher/java') ],
         android_java_libs       = bld.Path('Code/Launcher/AndroidLauncher/ProjectBuilder/android_libraries.json'),
-
-        android_features        = [ 'find_android_api_libs' ]
     )
 

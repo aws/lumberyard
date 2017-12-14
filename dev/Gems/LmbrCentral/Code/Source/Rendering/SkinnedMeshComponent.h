@@ -104,6 +104,7 @@ namespace LmbrCentral
         // IRenderNode interface implementation
         void Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo) override;
         bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const override;
+        float GetFirstLodDistance() const override { return m_lodDistance; }
         EERType GetRenderNodeType() override;
         const char* GetName() const override;
         const char* GetEntityClassName() const override;

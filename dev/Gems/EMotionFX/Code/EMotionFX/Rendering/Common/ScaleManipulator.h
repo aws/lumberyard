@@ -96,8 +96,8 @@ namespace MCommon
 
     protected:
         // scale vectors
-        MCore::Vector3          mScaleDirection;
-        MCore::Vector3          mScale;
+        AZ::Vector3             mScaleDirection;
+        AZ::Vector3             mScale;
 
         // bounding volumes for the axes
         MCore::AABB             mXAxisAABB;
@@ -110,12 +110,12 @@ namespace MCommon
 
         // size properties of the scale manipulator
         float                   mSize;
-        MCore::Vector3          mScaledSize;
+        AZ::Vector3             mScaledSize;
         float                   mDiagScale;
         float                   mArrowLength;
         float                   mBaseRadius;
-        MCore::Vector3          mFirstPlaneSelectorPos;
-        MCore::Vector3          mSecPlaneSelectorPos;
+        AZ::Vector3             mFirstPlaneSelectorPos;
+        AZ::Vector3             mSecPlaneSelectorPos;
         float                   mSignX;
         float                   mSignY;
         float                   mSignZ;

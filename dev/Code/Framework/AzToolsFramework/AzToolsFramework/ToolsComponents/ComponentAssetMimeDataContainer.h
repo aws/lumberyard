@@ -15,7 +15,7 @@
 #include <AzCore/Base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Asset/AssetCommon.h>
-#include <AzCore/RTTI/Rtti.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace AZ

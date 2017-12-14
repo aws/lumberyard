@@ -25,6 +25,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_ExperimentalLighting();
+    virtual ~CEditorPreferencesPage_ExperimentalLighting() = default;
 
     virtual const char* GetCategory() override { return "Experimental Features"; }
     virtual const char* GetTitle() override { return "Lighting"; }

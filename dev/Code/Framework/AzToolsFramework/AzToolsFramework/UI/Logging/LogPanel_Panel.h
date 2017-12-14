@@ -163,6 +163,7 @@ Q_SIGNALS:
             void onTabClosed(int whichTab);
             void onAddClicked(bool checked);
             void onResetClicked(bool checked);
+            void onCopyAllClicked();
         };
 
         //! this is a ringbuffer-based log panel model meant for the AZ::TraceBus, but could be used by any

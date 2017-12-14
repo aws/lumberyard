@@ -155,10 +155,7 @@ void CAssetBrowserPreviewTextureDlg::ComputeHistogram()
 
     if (pData)
     {
-        CImageHistogramCtrl::EImageFormat fmt;
-
-        fmt = CImageHistogramCtrl::eImageFormat_32BPP_BGRA;
-        m_ui->m_histogram->ComputeHistogram((BYTE*)pData, img.GetWidth(), img.GetHeight(), fmt);
+        m_ui->m_histogram->ComputeHistogram(img, CImageHistogram::eImageFormat_32BPP_BGRA);
     }
 
     img.Release();

@@ -14,6 +14,7 @@
 #include <QApplication>
 #include <QKeyEvent>
 #include <QGraphicsView>
+#include <QGraphicsItem>
 #include <QPoint>
 #include <qscrollbar.h>
 #include <QScopedValueRollback>
@@ -27,6 +28,7 @@
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
 
 namespace GraphCanvas
 {
@@ -47,9 +49,11 @@ namespace GraphCanvas
 
         CanvasGraphicsView()
             : QGraphicsView()
+            , m_isDragSelecting(false)
             , m_checkForDrag(false)
             , m_ignoreValueChange(false)
             , m_reapplyViewParams(false)
+            , m_isEditing(false)
         {
             m_viewId = AZ::Entity::MakeId();
 
@@ -70,6 +74,8 @@ namespace GraphCanvas
 
             connect(&m_timer, &QTimer::timeout, this, &CanvasGraphicsView::SaveViewParams);
             connect(&m_styleTimer, &QTimer::timeout, this, &CanvasGraphicsView::DisconnectBoundsSignals);
+
+            connect(this, &QGraphicsView::rubberBandChanged, this, &CanvasGraphicsView::OnRubberBandChanged);
 
             ViewRequestBus::Handler::BusConnect(GetId());
         }
@@ -187,12 +193,80 @@ namespace GraphCanvas
             scale(scaleValue, scaleValue);
             OnBoundsChanged();
         }
+
+        void FrameSelectionIntoView() override
+        {
+            QList<QGraphicsItem *> itemsList = items();
+            QList<QGraphicsItem *> selectedList;
+            QRectF selectedArea;
+            QRectF completeArea;
+            QRectF area;
+
+            // Get the grid.
+            AZ::EntityId gridId;
+            SceneRequestBus::EventResult(gridId, m_sceneId, &SceneRequests::GetGrid);
+
+            QGraphicsItem* gridItem;
+            VisualRequestBus::EventResult(gridItem, gridId, &VisualRequests::AsGraphicsItem);
+
+            // Get the area.
+            for(auto item : itemsList)
+            {
+                if (item == gridItem)
+                {
+                    // Ignore the grid.
+                    continue;
+                }
+
+                completeArea |= item->sceneBoundingRect();
+
+                if(item->isSelected())
+                {
+                    selectedList.push_back(item);
+                    selectedArea |= item->sceneBoundingRect();
+                }
+            }
+
+            if (selectedList.empty())
+            {
+                if(itemsList.size() > 1) // >1 because the grid is always contained.
+                {
+                    // Show everything.
+                    area = completeArea;
+                }
+            }
+            else
+            {
+                // Show selection.
+                area = selectedArea;
+            }
+
+            // Fit into view.
+            fitInView(area, Qt::KeepAspectRatio);
+            AZ_Assert(transform().m11() == transform().m22(), "The scale DIDN'T preserve the aspect ratio.");
+
+            // Clamp the scaling factor.
+            m_viewParams.m_scale = AZ::GetClamp(transform().m11(), ZOOM_MIN, ZOOM_MAX);
+            QTransform m = transform();
+            m.setMatrix(m_viewParams.m_scale, m.m12(), m.m13(), m.m21(), m_viewParams.m_scale, m.m23(), m.m31(), m.m32(), m.m33());
+            setTransform(m);
+        }
+
+        QGraphicsView* AsQGraphicsView() override
+        {
+            return this;
+        }
         ////
 
         // SceneNotificationBus::Handler
         void OnStyleSheetChanged() override
         {
             update();
+        }
+
+        void OnNodeIsBeingEdited(bool isEditing)
+        {
+            m_isEditing = isEditing;
         }
         ////
 
@@ -202,6 +276,15 @@ namespace GraphCanvas
         {
             switch (event->key())
             {
+            case Qt::Key_Z:
+                if (rubberBandRect().isNull() && !QApplication::mouseButtons() && !QApplication::keyboardModifiers())
+                {
+                    if (!m_isEditing)
+                    {
+                        FrameSelectionIntoView();
+                    }
+                }
+                break;
             case Qt::Key_Control:
                 if (rubberBandRect().isNull() && !QApplication::mouseButtons())
                 {
@@ -249,11 +332,6 @@ namespace GraphCanvas
                 return;
             }
 
-            if(dragMode() == RubberBandDrag)
-            {
-                SceneRequestBus::Event(m_sceneId, &SceneRequests::SignalDragSelectStart);
-            }
-
             QGraphicsView::mousePressEvent(event);
         }
 
@@ -288,15 +366,11 @@ namespace GraphCanvas
 
         void focusOutEvent(QFocusEvent* event)
         {
-            SceneRequestBus::Event(m_sceneId, &SceneRequests::SignalDragSelectEnd);
-
             QGraphicsView::focusOutEvent(event);
         }
 
         void mouseReleaseEvent(QMouseEvent* event) override
         {
-            SceneRequestBus::Event(m_sceneId, &SceneRequests::SignalDragSelectEnd);
-
             if (event->button() == Qt::RightButton || event->button() == Qt::MiddleButton)
             {
                 m_checkForDrag = false;
@@ -420,11 +494,30 @@ namespace GraphCanvas
             ViewNotificationBus::Event(GetId(), &ViewNotifications::OnViewParamsChanged, m_viewParams);
         }
 
+        void OnRubberBandChanged(QRect rubberBandRect, QPointF fromScenePoint, QPointF toScenePoint)
+        {
+            if (fromScenePoint.isNull() && toScenePoint.isNull())
+            {
+                if (m_isDragSelecting)
+                {
+                    m_isDragSelecting = false;
+                    SceneRequestBus::Event(m_sceneId, &SceneRequests::SignalDragSelectEnd);
+                }
+            }
+            else if (!m_isDragSelecting)
+            {
+                m_isDragSelecting = true;
+                SceneRequestBus::Event(m_sceneId, &SceneRequests::SignalDragSelectStart);
+            }
+        }
+
         CanvasGraphicsView(const CanvasGraphicsView&) = delete;
 
         ViewId       m_viewId;
         AZ::EntityId m_sceneId;
-        
+
+        bool m_isDragSelecting;
+
         bool   m_checkForDrag;
         QPoint m_initialClick;
 
@@ -435,5 +528,7 @@ namespace GraphCanvas
 
         QTimer m_timer;
         QTimer m_styleTimer;
+
+        bool m_isEditing;
     };
 }

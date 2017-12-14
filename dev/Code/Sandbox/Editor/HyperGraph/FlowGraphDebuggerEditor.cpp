@@ -19,11 +19,11 @@
 #include "HyperGraph.h" //IsFlowgraph check
 #include "FlowGraphNode.h"
 #include "IGameFramework.h" //Pause game
-#include <IInput.h>
 #include "HyperGraphDialog.h"
 #include "FlowGraph.h"
 #include "GameEngine.h" //enable flowsystemupdate in game engine
 #include <IFlowGraphModuleManager.h>
+#include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 #define VALIDATE_DEBUGGER(a) if (!a) {return false; }
@@ -312,10 +312,7 @@ void CFlowGraphDebuggerEditor::ResumeGame()
             GetIEditor()->GetFlowGraphManager()->SendNotifyEvent(EHG_GRAPH_INVALIDATE, pGraph);
         }
 
-        if (gEnv->pInput)
-        {
-            gEnv->pInput->ClearKeyState();
-        }
+        AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
     }
 }
 

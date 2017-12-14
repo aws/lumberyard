@@ -32,7 +32,7 @@ public:
     {
         if (GetIEditor()->GetAnimation()->GetSequence())
         {
-            m_sequenceName = GetIEditor()->GetAnimation()->GetSequence()->GetName();
+            m_sequenceEntityId = GetIEditor()->GetAnimation()->GetSequence()->GetSequenceComponentEntityId();
         }
 
         m_pCtrl = pCtrl;
@@ -74,7 +74,7 @@ protected:
         }
 
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(m_sequenceName);
+        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
 
         assert(pSequence);
         if (!pSequence)
@@ -112,7 +112,7 @@ protected:
     virtual void Redo()
     {
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(m_sequenceName);
+        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
         assert(pSequence);
         if (!pSequence)
         {
@@ -212,7 +212,7 @@ private:
         }
     }
 
-    QString m_sequenceName;
+    AZ::EntityId m_sequenceEntityId;
     CTrackViewSplineCtrl* m_pCtrl;
     std::vector<CSplineEntry> m_splineEntries;
     std::vector<float> m_keyTimes;

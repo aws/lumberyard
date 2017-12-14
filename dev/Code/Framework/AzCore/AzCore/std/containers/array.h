@@ -250,6 +250,34 @@ namespace AZStd
         return !(a == b);
     }
     //#pragma endregion
+
+    template<size_t I, class T, size_t N>
+    T& get(AZStd::array<T, N>& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return arr[I];
+    };
+
+    template<size_t I, class T, size_t N>
+    const T& get(const AZStd::array<T, N>& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return arr[I];
+    };
+
+    template<size_t I, class T, size_t N>
+    T&& get(AZStd::array<T, N>&& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return AZStd::move(arr[I]);
+    };
+
+    template<size_t I, class T, size_t N>
+    const T&& get(const AZStd::array<T, N>&& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return AZStd::move(arr[I]);
+    };
 }
 
 #endif // AZSTD_ARRAY_H

@@ -116,9 +116,9 @@ public:
     //! previously 16x16, allowing 256 glyphs to be stored. For reference, there are 95 printable ASCII characters, so by
     //! reducing the number of slots, the height of the font texture can be halved (for some nice memory savings). We may
     //! want to make this configurable in the font XML (especially for languages with a large number of printable chars).
-    int CreateFromMemory(unsigned char* pFileData, int iDataSize, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount, int iHeightCharCount);
+    int CreateFromMemory(unsigned char* pFileData, int iDataSize, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount, int iHeightCharCount, float sizeRatio);
 
-    int Create(int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount = 16, int iHeightCharCount = 16);
+    int Create(int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount = 16, int iHeightCharCount = 16, float sizeRatio = IFFontConstants::defaultSizeRatio);
     int Release();
 
     int SetEncoding(FT_Encoding pEncoding) { return m_pGlyphCache.SetEncoding(pEncoding); }

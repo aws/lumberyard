@@ -34,5 +34,5 @@ public:
 
     void Enter() override;
 
-    static void InvertSelection(CD::SMainContext& mc);
+    static void InvertSelection(const CD::SMainContext& mc);
 };

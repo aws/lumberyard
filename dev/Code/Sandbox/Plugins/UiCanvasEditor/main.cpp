@@ -13,8 +13,11 @@
 
 #include "EditorCommon.h"
 
+#include <AzCore/std/string/wildcard.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include "../Editor/LyViewPaneNames.h"
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+
+#include "UiEditorDLLBus.h"
 
 // UI_ANIMATION_REVISIT, added includes so that we can register the UI Animation system on startup
 #include "EditorDefs.h"
@@ -40,6 +43,7 @@ static bool IsCanvasEditorEnabled()
 
 class CUiCanvasEditorPlugin
     : public IPlugin
+    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
 {
 public:
     CUiCanvasEditorPlugin(IEditor* editor)
@@ -72,8 +76,9 @@ public:
             opt.isDeletable = true; // we're in a plugin; make sure we can be deleted
             // opt.canHaveMultipleInstances = true; // uncomment this when CUiAnimViewSequenceManager::CanvasUnloading supports multiple canvases
             opt.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-            AzToolsFramework::RegisterViewPane<EditorWrapper>(UICANVASEDITOR_NAME_LONG, LyViewPane::CategoryTools, opt);
+            AzToolsFramework::RegisterViewPane<EditorWindow>(UICANVASEDITOR_NAME_LONG, LyViewPane::CategoryTools, opt);
             CUiAnimViewSequenceManager::Create();
+            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusConnect();
         }
     }
 
@@ -81,6 +86,7 @@ public:
     {
         if (IsCanvasEditorEnabled())
         {
+            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusDisconnect();
             AzToolsFramework::UnregisterViewPane(UICANVASEDITOR_NAME_LONG);
             CUiAnimViewSequenceManager::Destroy();
         }
@@ -94,6 +100,34 @@ public:
     const char* GetPluginName() override { return UICANVASEDITOR_NAME_SHORT; }
     bool CanExitNow() override { return true; }
     void OnEditorNotify(EEditorNotifyEvent aEventId) override {}
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& /*sourceUUID*/, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override
+    {
+        using namespace AzToolsFramework;
+        using namespace AzToolsFramework::AssetBrowser;
+        if (AZStd::wildcard_match("*.uicanvas", fullSourceFileName))
+        {
+            openers.push_back({ "Lumberyard_UICanvas_Editor", 
+                "Open in UI Canvas Editor...", 
+                QIcon(), 
+                [this](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+            {
+                OpenViewPane(UICANVASEDITOR_NAME_LONG);
+                QString absoluteName = QString::fromUtf8(fullSourceFileNameInCallback);
+                UiEditorDLLBus::Broadcast(&UiEditorDLLInterface::OpenSourceCanvasFile, absoluteName);
+            } });
+        }
+        else if (AZStd::wildcard_match("*.sprite", fullSourceFileName))
+        {
+            // don't do anything.  This at least prevents this from going to the system file dialog since we
+            // know that there's no operating system handler for this kind of file.
+            openers.push_back({ "Lumberyard_Sprite_Editor", "Open in Sprite Editor...", QIcon(), nullptr });
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
 };
 
 
@@ -109,6 +143,7 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
     return new CUiCanvasEditorPlugin(GetIEditor());
 }
 
+#if defined(AZ_PLATFORM_WINDOWS)
 HINSTANCE g_hInstance = 0;
 BOOL __stdcall DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 {
@@ -119,3 +154,4 @@ BOOL __stdcall DllMain(HINSTANCE hinstDLL, ULONG fdwReason, LPVOID lpvReserved)
 
     return TRUE;
 }
+#endif

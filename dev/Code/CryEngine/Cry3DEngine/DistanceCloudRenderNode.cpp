@@ -17,7 +17,7 @@
 #include "ObjMan.h"
 #include "MatMan.h"
 #include "terrain.h"
-
+#include "Environment/OceanEnvironmentBus.h"
 
 CDistanceCloudRenderNode::CDistanceCloudRenderNode()
     :   m_pos(0, 0, 0)
@@ -160,7 +160,7 @@ void CDistanceCloudRenderNode::Render(const SRendParams& rParam, const SRenderin
     pIndices[4] = 2;
     pIndices[5] = 3;
 
-    int afterWater(GetObjManager()->IsAfterWater(m_pos, passInfo.GetCamera().GetPosition(), passInfo, Get3DEngine()->GetWaterLevel()) ? 1 : 0);
+    int afterWater(GetObjManager()->IsAfterWater(m_pos, passInfo));
     GetRenderer()->EF_AddPolygonToScene(pMaterial->GetShaderItem(), 4, pVerts, pTangents, pOb, passInfo, pIndices, 6, afterWater, SRendItemSorter(rParam.rendItemSorter));
 
     //  return true;

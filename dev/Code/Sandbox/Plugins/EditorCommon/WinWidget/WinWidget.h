@@ -16,7 +16,6 @@
 #include "EditorCommonAPI.h"
 #include "IEditor.h"
 
-#include <afxwin.h>
 
 #include <WinWidget/WinWidgetManager.h>
 #include <Core/QtEditorApplication.h>

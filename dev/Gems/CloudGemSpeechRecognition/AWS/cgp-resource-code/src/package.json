@@ -1,0 +1,8 @@
+{
+  "name": "@cloud-gems/cloudgemspeechrecognition",
+  "version": "1.0.0",
+  "description": "Cloud Gem - Speech Recognition",
+  "private": true,
+    "dependencies": {
+    }
+}

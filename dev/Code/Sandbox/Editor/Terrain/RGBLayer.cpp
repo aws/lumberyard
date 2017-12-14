@@ -689,7 +689,7 @@ void CRGBLayer::Resize(uint32 dwTileCountX, uint32 dwTileCountY, uint32 dwTileRe
         }
     }
     m_NeedExportTexture = true;
-    delete pImages;
+    delete[] pImages;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -935,6 +935,166 @@ namespace UnitTest
         }
     };
 
+    /**
+    * Stress tests multiple simultaneous Carriers
+    */
+    class Integ_CarrierMultiStressTest
+        : public GridMateMPTestFixture
+        , protected SocketDriverProvider
+    {
+#define ThousandByteString "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"\
+                                            "01234567890123456789012345678901234567890123456789"
+    public:
+        void run()
+        {
+            AZ_TracePrintf("GridMate", "Integ_CarrierMultiStressTest\n\n");
+
+            // initialize transport
+            const int k_numChannels = 1;
+            const int basePort = 8080;  //Server port
+            const int nCarriers = 301;  //0 is the server
+            const int k_connectionTime = 10;    //Do not send for connection time at the start
+            const int k_cleanupTime = 10;       //Do not send for cleanup time at the end
+            const int maxNumUpdates = 100 + k_connectionTime + k_cleanupTime;
+            const int k_numMessagesPerUpdate = 2;
+            const int k_maxMsgSize = 1024;       //Shortens the raw application data
+            const auto reliability = Carrier::SEND_UNRELIABLE;
+            char buf[1500];
+
+            int                     nMsgSent[nCarriers];
+            int                     nMsgReceived[nCarriers];
+            CarrierCallbacksHandler carrierHandlers[nCarriers];
+            Carrier*                carriers[nCarriers];
+
+            for (int i = 0; i < nCarriers; ++i)
+            {
+                // Create carriers
+                TestCarrierDesc desc;
+                {
+                    desc.m_threadInstantResponse = true;
+                    desc.m_threadUpdateTimeMS = 30;
+                    desc.m_enableDisconnectDetection = false;
+                }
+                desc.m_port = basePort + i;
+                desc.m_driver = (i == 0) ? CreateDriverForHost() : CreateDriverForJoin();
+                AZ_TracePrintf("GridMate", "Opening %d\n", basePort + i);
+
+                carriers[i] = DefaultCarrier::Create(desc, m_gridMate);
+                carrierHandlers[i].Activate(carriers[i]);
+
+                nMsgSent[i] = nMsgReceived[i] = 0;
+
+                if ((i > 0))
+                {
+                    AZ_TracePrintf("GridMate", "Connecting from %d to %d\n", basePort + i, basePort);
+                    carriers[i]->Connect("127.0.0.1", basePort);
+                }
+            }
+
+            int numUpdates = 0;
+            auto testStartTime = AZStd::chrono::system_clock::now();
+            //TimeStamp time = AZStd::chrono::system_clock::now();
+            while (numUpdates <= maxNumUpdates)
+            {
+                auto updateStartTime = AZStd::chrono::system_clock::now();
+                //////////////////////////////////////////////////////////////////////////
+                Update();
+
+                for (int iCarrier = 0; iCarrier < nCarriers; ++iCarrier)
+                {
+                    if (carrierHandlers[iCarrier].m_connectionID != InvalidConnectionID && (numUpdates >= k_connectionTime))
+                    {
+                        //AZ_TracePrintf("GridMate", "Updating carrier %d...\n", iCarrier);
+                        for (unsigned int iConn = 0; iConn < carriers[iCarrier]->GetNumConnections(); ++iConn)
+                        {
+                            ConnectionID connId = carriers[iCarrier]->GetConnectionId(iConn);
+                            for (unsigned char iChannel = 0; iChannel < k_numChannels; ++iChannel)
+                            {
+                                // receive
+                                Carrier::ReceiveResult receiveResult = carriers[iCarrier]->Receive(buf, AZ_ARRAY_SIZE(buf), connId, iChannel);
+                                while (receiveResult.m_state == Carrier::ReceiveResult::RECEIVED && receiveResult.m_numBytes > 0)
+                                {
+                                    nMsgReceived[iCarrier] += receiveResult.m_numBytes;
+                                    receiveResult = carriers[iCarrier]->Receive(buf, AZ_ARRAY_SIZE(buf), connId, iChannel);
+                                    //AZ_TracePrintf("GridMate", "\t\tCarrier %d Received '%s' from channel %d.\n", iCarrier, buf, (int)iChannel);
+                                }
+
+                                // send something
+                                //if (numUpdates > k_connectionTime && numUpdates < maxNumUpdates - 10)
+                                if (numUpdates < maxNumUpdates - k_cleanupTime)
+                                {
+                                    for (int i = 0; i < k_numMessagesPerUpdate; i++)
+                                    {
+                                        azsnprintf(buf, k_maxMsgSize,
+                                            ThousandByteString
+                                            "Msg %d", nMsgSent[iCarrier]);
+                                        //AZ_TracePrintf("GridMate", "\tCarrier %d sending '%s' on channel %d.\n", iCarrier, buf, (int)iChannel);
+                                        carriers[iCarrier]->Send(buf, (unsigned int)strlen(buf) + 1, connId, reliability, Carrier::PRIORITY_NORMAL, iChannel);
+                                        nMsgSent[iCarrier] += int(strlen(buf) + 1);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    carriers[iCarrier]->Update();
+                }
+
+                //////////////////////////////////////////////////////////////////////////
+                AZStd::chrono::milliseconds updateDuration = AZStd::chrono::system_clock::now() - updateStartTime;
+                if (updateDuration.count() < 30)
+                {
+                    auto dur = updateDuration.count();
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(30 - dur));
+                }
+                else
+                {
+                    AZStd::this_thread::yield();
+                }
+                numUpdates++;
+                //if (numUpdates % 10 == 0)
+                //  AZ_TracePrintf("Gridmate", "%d\n", numUpdates);
+            }
+
+            auto testDurationUS = (AZStd::chrono::system_clock::now() - testStartTime).count();
+            long long int nSentBytes = 0;
+            long long int nReceivedBytes = 0;
+            for (int i = 0; i < nCarriers; ++i)
+            {
+                nSentBytes += nMsgSent[i];
+                nReceivedBytes += nMsgReceived[i];
+                DefaultCarrier::Destroy(carriers[i]);
+                AZ_TEST_ASSERT(nMsgSent[i] > 0);
+            }
+            AZ_Printf("GridMate", "App MBytes sent/rcvd %.2f / %.2f dur %.2fS Mbps %.2f / %.2f\n",
+                float(nSentBytes) / 1000000, float(nReceivedBytes) / 1000000, float(testDurationUS) / 1000000, float(nSentBytes * 8) / testDurationUS, float(nReceivedBytes * 8) / testDurationUS);
+#if !defined(AZ_DEBUG_BUILD)
+            AZ_TEST_ASSERT(testDurationUS < 5000000);       //Expected duration 4000000uS + margin
+#else
+            AZ_TEST_ASSERT(testDurationUS < 8000000);       //Expected duration 6000000uS + margin
+#endif
+            AZ_TEST_ASSERT(nSentBytes == nReceivedBytes);   //Nothing lost
+                                                            //AZ_TEST_ASSERT(nSentBytes % (k_numChannels * (nCarriers - 1)) == 0);   //All carriers sent/recvd. Currently seeing last 6 only send 2 packets (taking longer to connect?).
+        }
+    };
+
     /*** Congestion control back pressure test */
     class Integ_CarrierBackpressureTest
         : public GridMateMPTestFixture
@@ -1205,6 +1365,167 @@ namespace UnitTest
             }
 
     };
+
+    class Integ_CarrierACKTest
+        : public GridMateMPTestFixture
+        , protected SocketDriverProvider
+    {
+    public:
+        void run()
+        {
+            if (!ReplicaTarget::IsAckEnabled())
+            {
+                return;
+            }
+
+#ifdef AZ_SOCKET_IPV6_SUPPORT
+            bool useIpv6 = true;
+#else
+            bool useIpv6 = false;
+#endif // AZ_SOCKET_IPV6_SUPPORT
+
+            CarrierCallbacksHandler clientCB, serverCB;
+            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+
+            string str("Hello this is a carrier test!");
+
+            const char* targetAddress = "127.0.0.1";
+
+            if (useIpv6)
+            {
+                clientCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
+                serverCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
+                targetAddress = "::1";
+}
+
+            clientCarrierDesc.m_enableDisconnectDetection = false;
+            serverCarrierDesc.m_enableDisconnectDetection = false;
+
+            clientCarrierDesc.m_driver = CreateDriverForJoin();
+            serverCarrierDesc.m_driver = CreateDriverForHost();
+
+            clientCarrierDesc.m_port = 4427;
+            serverCarrierDesc.m_port = 4428;
+
+            Carrier* clientCarrier = DefaultCarrier::Create(clientCarrierDesc, m_gridMate);
+            clientCB.Activate(clientCarrier);
+
+            Carrier* serverCarrier = DefaultCarrier::Create(serverCarrierDesc, m_gridMate);
+            serverCB.Activate(serverCarrier);
+
+            //////////////////////////////////////////////////////////////////////////
+            // Test carriers [0 is server, 1 is client]
+            bool isClientDone = false;
+            bool isServerDone = false;
+            bool isDisconnect = false;
+            char clientBuffer[1500];
+            char serverBuffer[1500];
+
+            Carrier::ReceiveResult receiveResult;
+            ConnectionID connId = InvalidConnectionID;
+            int maxNumUpdates = 2000;
+            int numUpdates = 0;
+            while (numUpdates <= maxNumUpdates)
+            {
+                // Client
+                if (!isClientDone)
+                {
+                    if (connId == InvalidConnectionID)
+                    {
+                        connId = clientCarrier->Connect(targetAddress, serverCarrierDesc.m_port);
+                        AZ_TEST_ASSERT(connId != InvalidConnectionID);
+                    }
+                    else
+                    {
+                        if (connId != AllConnections && clientCB.m_connectionID == connId)
+                        {
+                            auto m_callback = AZStd::make_unique<ACKCallback>((++m_targetStamp), &m_currentStamp);
+                            clientCarrier->SendWithCallback(str.c_str(), static_cast<unsigned>(str.length() + 1), AZStd::move(m_callback), clientCB.m_connectionID, Carrier::SEND_UNRELIABLE);
+                            connId = AllConnections;
+}
+
+                        if (clientCB.m_connectionID != InvalidConnectionID)
+                        {
+                            receiveResult = clientCarrier->Receive(clientBuffer, AZ_ARRAY_SIZE(clientBuffer), clientCB.m_connectionID);
+                            if (receiveResult.m_state == Carrier::ReceiveResult::RECEIVED)
+                            {
+                                AZ_TEST_ASSERT(memcmp(str.c_str(), clientBuffer, str.length()) == 0)
+                                    isClientDone = true;
+                            }
+                        }
+                    }
+                }
+
+                // Server
+                if (!isServerDone)
+                {
+                    if (serverCB.m_connectionID != InvalidConnectionID)
+                    {
+                        AZ_TEST_ASSERT(serverCB.m_incommingConnectionID == serverCB.m_connectionID);
+                        receiveResult = serverCarrier->Receive(serverBuffer, AZ_ARRAY_SIZE(serverBuffer), serverCB.m_connectionID);
+                        if (receiveResult.m_state == Carrier::ReceiveResult::RECEIVED)
+                        {
+                            serverCarrier->Send(str.c_str(), static_cast<unsigned>(str.length() + 1), connId);
+                            AZ_TEST_ASSERT(memcmp(str.c_str(), serverBuffer, str.length()) == 0);
+                            isServerDone = true;
+                        }
+                    }
+                }
+
+                serverCarrier->Update();
+                clientCarrier->Update();
+
+                if ((clientCB.m_disconnectID != InvalidConnectionID && serverCB.m_disconnectID != InvalidConnectionID) ||
+                    clientCB.m_errorCode != -1 || serverCB.m_errorCode != -1)
+                {
+                    break;
+                }
+
+                if (!isDisconnect && isClientDone && isServerDone && numUpdates > 50 /* we need 1 sec to update statistics */)
+                {
+                    AZ_TEST_ASSERT(m_targetStamp == m_currentStamp);
+
+                    // Disconnect the server and test that the disconnect message will reach the client too.
+                    serverCarrier->Disconnect(serverCB.m_connectionID);
+
+                    isDisconnect = true;
+                }
+
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(30));
+                numUpdates++;
+            }
+            DefaultCarrier::Destroy(clientCarrier);
+            DefaultCarrier::Destroy(serverCarrier);
+            //////////////////////////////////////////////////////////////////////////
+            AZ_TEST_ASSERT(isServerDone && isClientDone);
+        }
+    protected:
+
+        /** Modelled after TargetCallback
+         */
+        class ACKCallback final : public CarrierACKCallback
+        {
+        public:
+            ACKCallback(unsigned int stamp, unsigned int *currentStamp)
+                : m_stamp(stamp)
+                , m_currentStamp(currentStamp) {}
+
+            AZ_FORCE_INLINE void Run() override
+            {
+                AZ_Assert(m_stamp >= *m_currentStamp, "Cannot perform retrograde increase on replica state. Possible network re-ordering: %u<%u.", m_stamp, m_currentStamp);
+
+                //AZ_Printf("Callback", "Recvd TargetCallback!");
+                *m_currentStamp = m_stamp;
+            }
+        private:
+            AZ::u32 m_stamp;
+            AZ::u32 *m_currentStamp;
+        };
+
+        unsigned int m_currentStamp = 1;
+        unsigned int m_targetStamp = 2;
+        //AZStd::shared_ptr<ACKCallback> m_callback;
+    };
 }
 
 GM_TEST_SUITE(CarrierSuite)
@@ -1216,7 +1537,9 @@ GM_TEST(Integ_CarrierAsyncHandshakeTest)
 //GM_TEST(CarrierStressTest)
 #endif
 GM_TEST(Integ_CarrierMultiChannelTest)
+GM_TEST(Integ_CarrierMultiStressTest)
 GM_TEST(Integ_CarrierBackpressureTest)
+GM_TEST(Integ_CarrierACKTest)
 
 
 #if defined(AZ_TESTS_ENABLED)

@@ -41,6 +41,9 @@ Q_SIGNALS:
     void valueUpdated();
     void valueChanged();
 
+    void mouseReleased();
+    void mousePressed();
+
 protected:
     void changeEvent(QEvent* event) override;
     void focusInEvent(QFocusEvent* event) override;

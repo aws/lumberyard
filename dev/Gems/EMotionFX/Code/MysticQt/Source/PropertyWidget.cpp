@@ -144,16 +144,16 @@ namespace MysticQt
 
 
     // return as three component vector
-    MCore::Vector3 PropertyWidget::Property::AsVector3() const
+    AZ::Vector3 PropertyWidget::Property::AsVector3() const
     {
         if (mAttributeValue->GetType() == MCore::AttributeVector3::TYPE_ID)
         {
-            return static_cast<MCore::AttributeVector3*>(mAttributeValue)->GetValue();
+            return AZ::Vector3(static_cast<MCore::AttributeVector3*>(mAttributeValue)->GetValue());
         }
 
         MCORE_ASSERT(false);
         MCore::LogWarning("Property::AsVector3(): Cannot convert attribute. Attribute type incorrect");
-        return MCore::Vector3(0.0f, 0.0f, 0.0f);
+        return AZ::Vector3::CreateZero();
     }
 
 
@@ -624,12 +624,12 @@ namespace MysticQt
 
 
     // create a vector3 property
-    PropertyWidget::Property* PropertyWidget::AddVector3Property(const char* groupName, const char* valueName, const MCore::Vector3& value, const MCore::Vector3& defaultValue, const MCore::Vector3& min, const MCore::Vector3& max, bool readOnly, bool useGizmo)
+    PropertyWidget::Property* PropertyWidget::AddVector3Property(const char* groupName, const char* valueName, const AZ::Vector3& value, const AZ::Vector3& defaultValue, const AZ::Vector3& min, const AZ::Vector3& max, bool readOnly, bool useGizmo)
     {
         MCore::AttributeVector3*    attributeValue      = MCore::AttributeVector3::Create();
         MCore::AttributeSettings*   attributeSettings   = MCore::AttributeSettings::Create();
 
-        attributeValue->SetValue(value);
+        attributeValue->SetValue(AZ::PackedVector3f(value));
         attributeSettings->SetName(valueName);
         attributeSettings->SetInternalName(valueName);
 
@@ -642,12 +642,12 @@ namespace MysticQt
             attributeSettings->SetInterfaceType(MCore::ATTRIBUTE_INTERFACETYPE_VECTOR3);
         }
 
-        attributeSettings->SetMinValue(MCore::AttributeVector3::Create(min));
-        attributeSettings->SetMaxValue(MCore::AttributeVector3::Create(max));
+        attributeSettings->SetMinValue(MCore::AttributeVector3::Create(AZ::PackedVector3f(min)));
+        attributeSettings->SetMaxValue(MCore::AttributeVector3::Create(AZ::PackedVector3f(max)));
 
         // in case no default value got specified, just use the value as default
         //if (attributeSettings->GetDefaultValue() == nullptr)
-        attributeSettings->SetDefaultValue(MCore::AttributeVector3::Create(defaultValue));
+        attributeSettings->SetDefaultValue(MCore::AttributeVector3::Create(AZ::PackedVector3f(defaultValue)));
         //else
         //attributeSettings->SetDefaultValue( MCore::AttributeVector3::Create(defaultValue) );
 

@@ -257,6 +257,11 @@ namespace GraphCanvas
             return true;
         }
 
+        const GraphCanvas::GraphCanvasTreeItem* GetTreeRoot() const
+        {
+            return m_treeRoot.get();
+        }
+
     public:
 
         QString                                m_mimeType;

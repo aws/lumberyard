@@ -580,25 +580,25 @@ FbxNode* CFBXExporter::CreateFBXAnimNode(FbxScene* pScene, FbxAnimLayer* pAnimBa
 
             switch (pAnimData->dataType)
             {
-            case Export::eAnimParamType_PositionX:
+            case Export::AnimParamType::PositionX:
                 pCurve = pAnimNode->LclTranslation.GetCurve(pAnimBaseLayer, "X", true);
                 break;
-            case Export::eAnimParamType_PositionY:
+            case Export::AnimParamType::PositionY:
                 pCurve = pAnimNode->LclTranslation.GetCurve(pAnimBaseLayer, "Y", true);
                 break;
-            case Export::eAnimParamType_PositionZ:
+            case Export::AnimParamType::PositionZ:
                 pCurve = pAnimNode->LclTranslation.GetCurve(pAnimBaseLayer, "Z", true);
                 break;
-            case Export::eAnimParamType_RotationX:
+            case Export::AnimParamType::RotationX:
                 pCurve = pAnimNode->LclRotation.GetCurve(pAnimBaseLayer, "X", true);
                 break;
-            case Export::eAnimParamType_RotationY:
+            case Export::AnimParamType::RotationY:
                 pCurve = pAnimNode->LclRotation.GetCurve(pAnimBaseLayer, "Y", true);
                 break;
-            case Export::eAnimParamType_RotationZ:
+            case Export::AnimParamType::RotationZ:
                 pCurve = pAnimNode->LclRotation.GetCurve(pAnimBaseLayer, "Z", true);
                 break;
-            case Export::eAnimParamType_FOV:
+            case Export::AnimParamType::FOV:
             {
                 pCurve = pCamera->FieldOfView.GetCurve(pAnimBaseLayer, "FieldOfView", true);
             }
@@ -733,7 +733,7 @@ void CFBXExporter::Release()
 
 inline f32 Maya2SandboxFOVDeg(const f32 fov, const f32 ratio) { return RAD2DEG(2.0f * atanf(tan(DEG2RAD(fov) / 2.0f) / ratio)); };
 
-void CFBXExporter::FillAnimationData(Export::Object* pObject, FbxNode* pNode, FbxAnimLayer* pAnimLayer, FbxAnimCurve* pCurve, Export::EAnimParamType paramType)
+void CFBXExporter::FillAnimationData(Export::Object* pObject, FbxNode* pNode, FbxAnimLayer* pAnimLayer, FbxAnimCurve* pCurve, Export::AnimParamType paramType)
 {
     if (pCurve)
     {
@@ -751,11 +751,11 @@ void CFBXExporter::FillAnimationData(Export::Object* pObject, FbxNode* pNode, Fb
             entityData.leftTangentWeight = pCurve->KeyGetLeftTangentWeight(keyID);
             entityData.rightTangentWeight = pCurve->KeyGetRightTangentWeight(keyID);
 
-            if (paramType == Export::eAnimParamType_FocalLength && pNode && pNode->GetCamera())
+            if (paramType == Export::AnimParamType::FocalLength && pNode && pNode->GetCamera())
             {
                 // special handling for Focal Length - we convert it to FoV for use in-engine (including switching the paramType)
                 // We handle this because Maya 2015 doesn't save Angle of View or Field of View animation in FBX - it only uses FocalLength.
-                entityData.dataType = Export::eAnimParamType_FOV;
+                entityData.dataType = Export::AnimParamType::FOV;
                 // Lumberyard field of view is the vertical angle
                 pNode->GetCamera()->SetApertureMode(FbxCamera::eVertical);
                 entityData.keyValue = pNode->GetCamera()->ComputeFieldOfView(entityData.keyValue);
@@ -770,13 +770,13 @@ void CFBXExporter::FillAnimationData(Export::Object* pObject, FbxNode* pNode, Fb
 
             if (!exporterName.toLower().contains("3ds"))
             {
-                if (paramType == Export::eAnimParamType_PositionX || paramType == Export::eAnimParamType_PositionY || paramType == Export::eAnimParamType_PositionZ)
+                if (paramType == Export::AnimParamType::PositionX || paramType == Export::AnimParamType::PositionY || paramType == Export::AnimParamType::PositionZ)
                 {
                     entityData.rightTangent /= 100.0f;
                     entityData.leftTangent /= 100.0f;
                     entityData.keyValue /= 100.0f;
                 }
-                else if (paramType == Export::eAnimParamType_FOV)                       // Maya 2015 uses FocalLength instead of FoV - assuming this is for legacy Sandbox or Maya?
+                else if (paramType == Export::AnimParamType::FOV)                       // Maya 2015 uses FocalLength instead of FoV - assuming this is for legacy Sandbox or Maya?
                 {
                     const float kAspectRatio = 1.777778f;
                     entityData.keyValue = Maya2SandboxFOVDeg(entityData.keyValue, kAspectRatio);
@@ -826,8 +826,8 @@ bool CFBXExporter::ImportFromFile(const char* filename, Export::IData* pData)
     FbxAxisSystem::Max.ConvertScene(pFBXScene);
 
     QString exporterName = pFBXScene->GetDocumentInfo()->Original_ApplicationName.Get().Buffer();
-    const bool fromMaya = (exporterName.toLower().contains("maya"));
-    const bool fromMax = (exporterName.toLower().contains("max"));
+    // const bool fromMaya = (exporterName.contains("maya", Qt::CaseInsensitive));
+    // const bool fromMax = (exporterName.contains("max", Qt::CaseInsensitive));
 
     FbxNode* pRootNode = pFBXScene->GetRootNode();
 
@@ -893,23 +893,23 @@ bool CFBXExporter::ImportFromFile(const char* filename, Export::IData* pData)
                             {
                                 // extract specialized channels for cameras
                                 pCurve = pCamera->FocalLength.GetCurve(pAnimLayer, "FocalLength");
-                                FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_FocalLength);
+                                FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::FocalLength);
                                 pCurve = pCamera->FieldOfView.GetCurve(pAnimLayer, "FieldOfView", true);
-                                FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_FOV);
+                                FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::FOV);
                             }
 
                             pCurve = pNode->LclTranslation.GetCurve(pAnimLayer, "X");
-                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_PositionX);
+                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::PositionX);
                             pCurve = pNode->LclTranslation.GetCurve(pAnimLayer, "Y");
-                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_PositionY);
+                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::PositionY);
                             pCurve = pNode->LclTranslation.GetCurve(pAnimLayer, "Z");
-                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_PositionZ);
+                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::PositionZ);
                             pCurve = pNode->LclRotation.GetCurve(pAnimLayer, "X");
-                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_RotationX);
+                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::RotationX);
                             pCurve = pNode->LclRotation.GetCurve(pAnimLayer, "Y");
-                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_RotationY);
+                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::RotationY);
                             pCurve = pNode->LclRotation.GetCurve(pAnimLayer, "Z");
-                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::eAnimParamType_RotationZ);
+                            FillAnimationData(pObject, pNode, pAnimLayer, pCurve, Export::AnimParamType::RotationZ);
                         }
                     }
                 }

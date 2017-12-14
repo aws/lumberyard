@@ -5,32 +5,31 @@
         [
         ],
         "API": [
-            "API/ApplicationAPI_ios.h",
-            "API/ApplicationAPI_ios.cpp"
+            "API/ApplicationAPI_ios.h"
+        ],
+        "Application": [
+            "Application/Application_ios.mm"
         ],
         "Input/Buses/Notifications": [
             "Input/Buses/Notifications/RawInputNotificationBus_ios.h"
         ],
         "Input/Devices/Gamepad": [
-            "Input/Devices/Gamepad/InputDeviceGamepad_pimpl_apple.mm"
+            "Input/Devices/Gamepad/InputDeviceGamepad_apple.mm"
         ],
         "Input/Devices/Keyboard": [
-            "Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_none.cpp"
+            "Input/Devices/Keyboard/InputDeviceKeyboard_none.cpp"
         ],
         "Input/Devices/Motion": [
-            "Input/Devices/Motion/InputDeviceMotion_pimpl_ios.mm"
+            "Input/Devices/Motion/InputDeviceMotion_ios.mm"
         ],
         "Input/Devices/Mouse": [
-            "Input/Devices/Mouse/InputDeviceMouse_pimpl_none.cpp"
+            "Input/Devices/Mouse/InputDeviceMouse_none.cpp"
         ],
         "Input/Devices/Touch": [
-            "Input/Devices/Touch/InputDeviceTouch_pimpl_ios.mm"
+            "Input/Devices/Touch/InputDeviceTouch_ios.mm"
         ],
         "Input/Devices/VirtualKeyboard": [
-            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_pimpl_ios.mm"
-        ],
-        "Input/System": [
-            "Input/System/InputSystemComponent_pimpl_ios.mm"
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_ios.mm"
         ]
     }
 }

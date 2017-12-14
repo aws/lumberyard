@@ -11,6 +11,15 @@
 */
 #pragma once
 
+#include <QMetaObject>
+
+namespace AZ { class Vector2; }
+
+class QComboBox;
+class QLineEdit;
+class QLabel;
+class EditorWindow;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! CanvasSizeToolbar provides controls to configure the canvas size
 class CanvasSizeToolbarSection
@@ -27,7 +36,11 @@ public: // methods
     //! This method is called when loading a canvas
     void SetInitialResolution(const AZ::Vector2& canvasSize);
 
+    //! Change the combo box index. Called by undo/redo commands
     void SetIndex(int index);
+
+    //! Change the combo box index to that of the specified canvas size. Called by undo/redo commands
+    void SetCustomCanvasSize(AZ::Vector2 canvasSize, bool findPreset);
 
     const QString& IndexToString(int index);
 
@@ -52,13 +65,15 @@ protected: // methods
     //
     //! When "other..." is selected, the fields become visible and take focus. Otherwise, this
     //! method hides the fields (as they are not needed when using preset canvas sizes).
-    void ToggleLineEditBoxes(int currentIndex);
+    void ToggleLineEditBoxes();
 
     //! Sets the canvas size based on the current canvas ComboBox selection
-    virtual void SetCanvasSizeByComboBoxIndex(int comboIndex) = 0;
+    virtual void SetCanvasSizeByComboBoxIndex() = 0;
 
-    virtual void OnComboBoxIndexChanged(EditorWindow* editorWindow, int index) = 0;
+    //! Called when the user has changed the index
+    virtual void OnComboBoxIndexChanged(int index) = 0;
 
+    //! Add any special entries in the combo box
     virtual void AddSpecialPresets() {}
 
     //! Attempts to parse the canvas size presets JSON
@@ -71,15 +86,27 @@ protected: // methods
     //! Falls back on hard-coded defaults if JSON file parsing fails.
     void InitCanvasSizePresets();
 
+    //! Return a preset index based on specified canvas size
+    int GetPresetIndexFromSize(AZ::Vector2 size);
+
     //! Called when the user is finished entering text for custom canvas width size.
     void LineEditWidthEditingFinished();
 
     //! Called when the user is finished entering text for custom canvas height size.
     void LineEditHeightEditingFinished();
 
+    //! Handle updates after index has changed
+    void HandleIndexChanged();
+
+    int GetCustomSizeIndex();
+
 protected: // members
 
+    EditorWindow* m_editorWindow;
+
     int m_comboIndex;
+
+    bool m_isChangeUndoable;
 
     // Canvas size presets
     typedef AZStd::vector<CanvasSizePresets> ComboBoxOptions;
@@ -114,9 +141,9 @@ public: // methods
 private: // methods
 
     //! Sets the canvas size based on the current canvas ComboBox selection
-    void SetCanvasSizeByComboBoxIndex(int comboIndex) override;
+    void SetCanvasSizeByComboBoxIndex() override;
 
-    void OnComboBoxIndexChanged(EditorWindow* editorWindow, int index) override;
+    void OnComboBoxIndexChanged(int index) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,9 +158,9 @@ public: // methods
 private: // methods
 
     //! Sets the canvas size based on the current canvas ComboBox selection
-    void SetCanvasSizeByComboBoxIndex(int comboIndex) override;
+    void SetCanvasSizeByComboBoxIndex() override;
 
-    void OnComboBoxIndexChanged(EditorWindow* editorWindow, int index) override;
+    void OnComboBoxIndexChanged(int index) override;
 
     void AddSpecialPresets() override;
 };

@@ -12,13 +12,19 @@
 
 #pragma once
 
-#include <ISourceControl.h>
-#include <QDateTime>
+#include <AzCore/std/parallel/containers/concurrent_unordered_map.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/Jobs/Job.h>
+
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/Search/SearchWidget.h>
-#include <AzCore/std/parallel/containers/concurrent_unordered_map.h>
-#include <AzCore/Jobs/Job.h>
+#include <AzToolsFramework/MaterialBrowser/MaterialBrowserBus.h>
+#include <AzFramework/Asset/AssetCatalogBus.h>
+
+
+#include <ISourceControl.h>
+#include <QDateTime>
 
 namespace AZ
 {
@@ -120,6 +126,9 @@ public:
 
     //! Indicates that a material has finished being loaded in the background
     virtual void MaterialFinishedProcessing(_smart_ptr<CMaterial> material, const QPersistentModelIndex &filterModelIndex) = 0;
+
+    //! Indicates that material record update has finished
+    virtual void MaterialRecordUpdateFinished() = 0;
 };
 
 using MaterialBrowserWidgetBus = AZ::EBus<MaterialBrowserWidgetEvents>;
@@ -137,6 +146,8 @@ class MaterialBrowserFilterModel
     : public AzToolsFramework::AssetBrowser::AssetBrowserFilterModel
     , public MaterialBrowserSourceControlBus::Handler
     , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler
+    , public AzToolsFramework::MaterialBrowser::MaterialBrowserRequestsBus::Handler
+    , private AzFramework::AssetCatalogEventBus::Handler
 {
 public:
     AZ_CLASS_ALLOCATOR(MaterialBrowserFilterModel, AZ::SystemAllocator, 0);
@@ -160,7 +171,12 @@ public:
 
     // AssetBrowserModelNotificationsBus event handlers
     void EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
-    void EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
+    
+    void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
+    // MaterialBrowserRequestsBus
+    bool HasRecord(const AZ::Data::AssetId& assetId) override;
+    bool IsMultiMaterial(const AZ::Data::AssetId& assetId) override;
+
     public Q_SLOTS:
     void SearchFilterUpdated();
 
@@ -191,10 +207,11 @@ class MaterialBrowserUpdateJobCreator
 public:
     AZ_CLASS_ALLOCATOR(MaterialBrowserUpdateJobCreator, AZ::ThreadPoolAllocator, 0);
 
-    MaterialBrowserUpdateJobCreator(MaterialBrowserFilterModel* model, AZ::JobContext* context = nullptr);
+    MaterialBrowserUpdateJobCreator(MaterialBrowserFilterModel* model, AZStd::vector<MaterialBrowserRecordAssetBrowserData>& files, AZ::JobContext* context = nullptr);
     void Process() override;
 private:
-    MaterialBrowserFilterModel* m_filterModel;
+    MaterialBrowserFilterModel* m_filterModel; 
+    AZStd::vector<MaterialBrowserRecordAssetBrowserData> m_files;
 };
 
 /**

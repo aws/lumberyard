@@ -1043,13 +1043,19 @@ namespace ChatPlay
         return chatplay;
     }
 
-    void ChatPlayImpl::RegisterCredentials(const AZStd::string& username, const AZStd::string& oauthToken)
+    void ChatPlayImpl::RegisterCredentials(const AZStd::string& _username, const AZStd::string& oauthToken)
     {
+        AZStd::string username = _username;
+        AZStd::to_lower(username.begin(), username.end());
+
         m_credentialMap[username] = oauthToken;
     }
 
-    void ChatPlayImpl::UnregisterCredentials(const AZStd::string& username)
+    void ChatPlayImpl::UnregisterCredentials(const AZStd::string& _username)
     {
+        AZStd::string username = _username;
+        AZStd::to_lower(username.begin(), username.end());
+
         m_credentialMap.erase(username);
     }
 
@@ -1058,8 +1064,11 @@ namespace ChatPlay
         m_credentialMap.clear();
     }
 
-    const char* ChatPlayImpl::GetOAuthToken(const AZStd::string& username)
+    const char* ChatPlayImpl::GetOAuthToken(const AZStd::string& _username)
     {
+        AZStd::string username = _username;
+        AZStd::to_lower(username.begin(), username.end());
+
         auto token = m_credentialMap.find(username);
 
         if (token != m_credentialMap.end())
@@ -1071,9 +1080,15 @@ namespace ChatPlay
         return nullptr;
     }
 
-    void ChatPlayImpl::SendWhisper(const AZStd::string& sender, const AZStd::string& recipient, const AZStd::string& message,
+    void ChatPlayImpl::SendWhisper(const AZStd::string& _sender, const AZStd::string& _recipient, const AZStd::string& message,
         const WhisperCallback& callback)
     {
+        AZStd::string sender = _sender;
+        AZStd::to_lower(sender.begin(), sender.end());
+
+        AZStd::string recipient = _recipient;
+        AZStd::to_lower(recipient.begin(), recipient.end());
+
         AZStd::make_shared<Whisperer>(shared_from_this(), sender, recipient, message, callback)->CreateStream();
     }
 
@@ -1203,8 +1218,11 @@ namespace ChatPlay
         }
     }
 
-    bool ChatPlayVoteImpl::SetChannel(const AZStd::string& name)
+    bool ChatPlayVoteImpl::SetChannel(const AZStd::string& _name)
     {
+        AZStd::string name = _name;
+        AZStd::to_lower(name.begin(), name.end());
+
         auto channel = m_channel.lock();
         if (channel && channel->GetChannelId() != name.c_str())
         {
@@ -1261,7 +1279,7 @@ namespace ChatPlay
         m_channel.reset();
     }
 
-    void ChatPlayVoteImpl::OnKeywordSignal(const AZStd::string& option, const AZStd::string& /*match*/, const AZStd::string& username)
+    void ChatPlayVoteImpl::OnKeywordSignal(const AZStd::string& option, const AZStd::string& /*match*/, const AZStd::string& _username)
     {
         const auto& registered = m_options.find(option);
         if (registered != m_options.end())
@@ -1271,6 +1289,9 @@ namespace ChatPlay
             {
                 if (m_voterLimiting)
                 {
+                    AZStd::string username = _username;
+                    AZStd::to_lower(username.begin(), username.end());
+
                     auto voter = m_votedList.find(username);
                     if (voter != m_votedList.end())
                     {

@@ -27,7 +27,6 @@
 
 namespace {
     const char* kHeightmapFile = "Heightmap.dat";
-    const char* kHeightmapFileOld = "Heightmap.xml";  //TODO: Remove support after January 2012 (support old extension at least for convertion levels time)
     const char* kTerrainTextureFile = "TerrainTexture.xml";
 
     // world data block types
@@ -56,12 +55,10 @@ CTerrainManager::CTerrainManager()
 {
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 CTerrainManager::~CTerrainManager()
 {
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::RemoveSurfaceType(CSurfaceType* pSurfaceType)
@@ -597,22 +594,16 @@ bool CTerrainManager::GetUseTerrain()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::ResetHeightMap()
 {
-    ////////////////////////////////////////////////////////////////////////
-    // Reset Heightmap
-    ////////////////////////////////////////////////////////////////////////
-    m_heightmap.ClearModSectors();
-    m_heightmap.SetWaterLevel(16); // Default water level.
-    SetTerrainSize(1024, 2);
-    m_heightmap.SetMaxHeight(1024);
+    const int resolution = 1024;
+    const int unitSize = 2;
+    m_heightmap.Reset(resolution, unitSize);
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 CRGBLayer* CTerrainManager::GetRGBLayer()
 {
     return m_heightmap.GetRGBLayer();
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::Save()
@@ -635,11 +626,7 @@ bool CTerrainManager::Load()
     xmlAr.bLoading = true;
     if (!xmlAr.Load(filename))
     {
-        QString filename = GetIEditor()->GetLevelDataFolder() + kHeightmapFileOld;
-        if (!xmlAr.Load(filename))
-        {
-            return false;
-        }
+        return false;
     }
 
     // Check terrain files and convert if necessary
@@ -727,5 +714,36 @@ void CTerrainManager::SetModified(int x1, int y1, int x2, int y2)
         // Y and X switched by historical reasons.
         bounds.Add(Vec3((y1 - 1) * nTerrainSectorSize, (x1 - 1) * nTerrainSectorSize, -32000.0f));
         bounds.Add(Vec3((y2 + 1) * nTerrainSectorSize, (x2 + 1) * nTerrainSectorSize, +32000.0f));
+    }
+}
+
+QString CTerrainManager::GenerateUniqueLayerName(const QString& name) const
+{
+    const auto LayerNameExists = [this](const QString& name)
+    {
+        auto it = std::find_if(std::begin(m_layers), std::end(m_layers),
+                               [&name](const CLayer* layer) { return layer->GetLayerName() == name; });
+        return it != std::end(m_layers);
+    };
+
+    if (!LayerNameExists(name))
+    {
+        return name;
+    }
+
+    // remove digits at the end
+    auto lastDigit = std::find_if(name.rbegin(), name.rend(),
+                                  [](const QChar ch) { return !ch.isDigit(); });
+    const QString baseName = name.left(std::distance(name.begin(), lastDigit.base()));
+
+    // eventually we'll stop
+    int lastNumber = 1;
+    while (true) {
+        QString newName = QStringLiteral("%1%2").arg(baseName).arg(lastNumber);
+        if (!LayerNameExists(newName))
+        {
+            return newName;
+        }
+        ++lastNumber;
     }
 }

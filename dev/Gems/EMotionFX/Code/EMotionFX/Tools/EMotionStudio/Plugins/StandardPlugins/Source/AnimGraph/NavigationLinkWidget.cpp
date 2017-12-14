@@ -97,14 +97,14 @@ namespace EMStudio
     void NavigationLinkWidget::OnHierarchyNavigationLinkClicked()
     {
         MysticQt::LinkWidget* link = qobject_cast<MysticQt::LinkWidget*>(sender());
-        mPlugin->GetNavigateWidget()->ShowGraph(FromQtString(link->text()).AsChar(), true);
+        mPlugin->GetNavigateWidget()->ShowGraphByNodeName(link->text().toUtf8().data(), true);
     }
 
 
     void NavigationLinkWidget::OnShowNode()
     {
         QAction* action = qobject_cast<QAction*>(sender());
-        mPlugin->GetNavigateWidget()->ShowGraph(FromQtString(action->whatsThis()).AsChar(), true);
+        mPlugin->GetNavigateWidget()->ShowGraphByNodeName(action->whatsThis().toUtf8().data(), true);
     }
 
 
@@ -404,7 +404,7 @@ namespace EMStudio
     // when pressing a history item, show the node
     void NavigationLinkDropdownHistory::OnShowNode(QListWidgetItem* item)
     {
-        mPlugin->GetNavigateWidget()->ShowGraph(FromQtString(item->whatsThis()).AsChar(), true);
+        mPlugin->GetNavigateWidget()->ShowGraphByNodeName(item->whatsThis().toUtf8().data(), true);
         accept();
     }
 } // namespace EMStudio

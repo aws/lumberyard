@@ -57,7 +57,6 @@ def build(bld):
                                     'Shell32',
                                     'Ole32'],
         win_cxxflags            = '/GR',
-        win_export_definitions  = 'ResourceCompilerPlugin.def',
         win_features            = ['ExternalLyMetrics' ],
         win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer']),
         

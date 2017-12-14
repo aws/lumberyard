@@ -27,10 +27,13 @@ namespace LmbrCentral
     public:
         virtual ~PolygonPrismShapeComponentRequests() {}
 
+        /**
+         * Returns a reference to the underlying polygon prism.
+         */
         virtual AZ::ConstPolygonPrismPtr GetPolygonPrism() = 0;
 
         /**
-         * @brief Sets height of polygon shape.
+         * Sets height of polygon shape.
          * @param height The height of the polygon shape.
          */
         virtual void SetHeight(float height) = 0;
@@ -39,7 +42,7 @@ namespace LmbrCentral
     /**
      * Bus to service the Polygon Prism Shape component event group.
      */
-    using PolygonPrismShapeComponentRequestsBus = AZ::EBus<PolygonPrismShapeComponentRequests>;
+    using PolygonPrismShapeComponentRequestBus = AZ::EBus<PolygonPrismShapeComponentRequests>;
 
     /**
      * Listener for polygon prism changes.
@@ -58,6 +61,6 @@ namespace LmbrCentral
 
     /**
      * Bus to service the polygon prism shape component notification group.
-     */ 
+     */
     using PolygonPrismShapeComponentNotificationBus = AZ::EBus<PolygonPrismShapeComponentNotification>;
 } // namespace LmbrCentral

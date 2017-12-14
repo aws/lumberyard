@@ -12,7 +12,9 @@
 
 #include "StdAfx.h"
 #include "EditorWindVolumeComponent.h"
+
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Script/ScriptContextAttributes.h>
 
 namespace LmbrCentral
 {
@@ -21,6 +23,7 @@ namespace LmbrCentral
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorWindVolumeComponent, EditorComponentBase>()
+                ->Field("Visible", &EditorWindVolumeComponent::m_visibleInEditor)
                 ->Field("Configuration", &EditorWindVolumeComponent::m_configuration)
                 ->Version(1)
             ;
@@ -34,10 +37,14 @@ namespace LmbrCentral
                     ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/WindVolume.png")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/WindVolume.png")
-                    //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.11
+                    //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.12
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview) // Hidden for v1.12
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/wind-volume-component")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(0, &EditorWindVolumeComponent::m_configuration, "Configuration", "Configuration for wind volume.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorWindVolumeComponent::m_visibleInEditor, "Visible", "Always display this component in the editor viewport")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorWindVolumeComponent::m_configuration, "Configuration", "Configuration for wind volume.")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorWindVolumeComponent::OnConfigurationChanged)
                 ;
 
                 // WindVolumeConfiguration
@@ -47,17 +54,19 @@ namespace LmbrCentral
                     ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
 
-                    ->DataElement(0, &WindVolumeConfiguration::m_ellipsoidal, "Ellipsoidal", "Forces an ellipsoidal falloff")
-                    ->DataElement(0, &WindVolumeConfiguration::m_falloffInner, "Falloff Inner", "Distance after which the distance-based falloff begins")
-                        ->Attribute("Suffix", " m")
-                    ->DataElement(0, &WindVolumeConfiguration::m_speed, "Speed", "Strength of the wind")
-                        ->Attribute("Suffix", " m/s")
-                    ->DataElement(0, &WindVolumeConfiguration::m_airResistance, "Air Resistance", "Causes very light physicalised objects to experience a buoyancy force, if >0")
-                    ->DataElement(0, &WindVolumeConfiguration::m_airDensity, "Air Density", "Causes physicalised objects moving through the air to slow down, if >0")
-                        ->Attribute("Suffix", " kg/m^3")
-                    ->DataElement(0, &WindVolumeConfiguration::m_direction, "Direction", "Direction the wind is blowing. If 0 then direction is omnidirectional")
-                    ->DataElement(0, &WindVolumeConfiguration::m_size, "Size", "Size of the wind volume")
-                        ->Attribute("Suffix", " m")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &WindVolumeConfiguration::m_falloff, "Falloff", "Distance from the volume center where the falloff begins. A value of 1 has no effect.")
+                    ->Attribute("Suffix", " m")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->Attribute(AZ::Edit::Attributes::Max, 1.f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default , &WindVolumeConfiguration::m_speed, "Speed", "Speed of the wind. The air resistance must be non zero to affect physical objects.")
+                    ->Attribute("Suffix", " m/s")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WindVolumeConfiguration::m_airResistance, "Air Resistance", "Causes objects to slow down. If zero, it has no effect.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WindVolumeConfiguration::m_airDensity, "Air Density", "Objects with lower density will experience a buoyancy force. Objects with higher density will sink If zero, it has no effect.")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->Attribute("Suffix", " kg/m^3")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WindVolumeConfiguration::m_direction, "Direction", "Direction the wind is blowing. If 0 then direction is omnidirectional")
+                    ->Attribute("Suffix", " m")
                 ;
             }
         }
@@ -67,17 +76,20 @@ namespace LmbrCentral
     {
         EditorComponentBase::Activate();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        WindVolume::Activate(GetEntityId());
     }
 
     void EditorWindVolumeComponent::Deactivate()
     {
-        EditorComponentBase::Deactivate();
+        WindVolume::Deactivate();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
+        EditorComponentBase::Deactivate();
     }
 
-    EditorWindVolumeComponent::EditorWindVolumeComponent(const WindVolumeConfiguration& configuration)
-        : m_configuration(configuration)
+    void EditorWindVolumeComponent::OnConfigurationChanged()
     {
+        WindVolume::DestroyWindVolume();
+        WindVolume::CreateWindVolume();
     }
 
     void EditorWindVolumeComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -89,12 +101,12 @@ namespace LmbrCentral
     {
         return m_configuration.m_direction.IsZero()
             ? point
-            : m_configuration.m_direction;        
+            : m_configuration.m_direction;
     }
 
     void EditorWindVolumeComponent::DisplayEntity(bool& handled)
     {
-        if (!IsSelected())
+        if (!IsSelected() && !m_visibleInEditor)
         {
             return;
         }
@@ -107,31 +119,46 @@ namespace LmbrCentral
         displayContext->PushMatrix(GetWorldTM());
         displayContext->SetColor(AZ::Vector4(1.f, 0.f, 0.f, 0.7f));
 
-        AZ::Vector3 size = m_configuration.m_size;
-        if (m_configuration.m_ellipsoidal)
-        {            
-            float radius = WindVolumeComponent::GetSphereVolumeRadius(m_configuration);
-            size = AZ::Vector3(radius, radius, radius);
+        if (m_isSphere)
+        {
+            DrawSphere(displayContext);
         }
-        const int minSamples = 2; // Always have a minimum of 2 points in each dimension - 2x2x2 (each corner of a cube)
-        const int maxSamples = 8; // Max out at 8x8x8 samples otherwise the editor will start slowing down.
-        const float sampleDensity = 2.5f; // Arbitary scaling factor which will increase samples from min->max relative to size
-        AZ::Vector3 min = -size;
-        AZ::Vector3 max = size;
+        else
+        {
+            DrawBox(displayContext);
+        }
+
+        displayContext->PopMatrix();
+    }
+
+    void EditorWindVolumeComponent::DrawArrow(AzFramework::EntityDebugDisplayRequests* displayContext, const AZ::Vector3& point)
+    {
+        AZ::Vector3 windDir = GetLocalWindDirection(point);
+        windDir.SetLength(0.8f);
+        displayContext->DrawArrow(point - windDir, point + windDir, 1.2f);
+    }
+
+    void EditorWindVolumeComponent::DrawBox(AzFramework::EntityDebugDisplayRequests* displayContext)
+    {
+        const auto minSamples = 2; // Always have a minimum of 2 points in each dimension - 2x2x2 (each corner of a cube)
+        const auto maxSamples = 8; // Max out at 8x8x8 samples otherwise the editor will start slowing down.
+        const auto sampleDensity = 2.f; // Arbitary scaling factor which will increase samples from min->max relative to size
+
+        auto min = -m_size * 0.5f;
 
         // Sample count increases with size, but limited to 8*8*8 samples
         int numSamples[] =
         {
-            static_cast<int>((size.GetX() / sampleDensity).GetClamp(minSamples, maxSamples)),
-            static_cast<int>((size.GetY() / sampleDensity).GetClamp(minSamples, maxSamples)),
-            static_cast<int>((size.GetZ() / sampleDensity).GetClamp(minSamples, maxSamples))
+            static_cast<int>((m_size.GetX() / sampleDensity).GetClamp(minSamples, maxSamples)),
+            static_cast<int>((m_size.GetY() / sampleDensity).GetClamp(minSamples, maxSamples)),
+            static_cast<int>((m_size.GetZ() / sampleDensity).GetClamp(minSamples, maxSamples))
         };
         
         float sampleDelta[] =
         {
-            (size.GetX() * 2.f) / static_cast<float>(numSamples[0] - 1),
-            (size.GetY() * 2.f) / static_cast<float>(numSamples[1] - 1),
-            (size.GetZ() * 2.f) / static_cast<float>(numSamples[2] - 1)
+            m_size.GetX() / static_cast<float>(numSamples[0] - 1),
+            m_size.GetY() / static_cast<float>(numSamples[1] - 1),
+            m_size.GetZ() / static_cast<float>(numSamples[2] - 1)
         };
 
         for (auto i = 0; i < numSamples[0]; ++i)
@@ -141,22 +168,34 @@ namespace LmbrCentral
                 for (auto k = 0; k < numSamples[2]; ++k)
                 {
                     AZ::Vector3 point(
-                        min.GetX() + i* sampleDelta[0],
-                        min.GetY() + j* sampleDelta[1],
-                        min.GetZ() + k* sampleDelta[2]
-                        );
+                        min.GetX() + i * sampleDelta[0],
+                        min.GetY() + j * sampleDelta[1],
+                        min.GetZ() + k * sampleDelta[2]
+                    );
 
-                    AZ::Vector3 windDir = GetLocalWindDirection(point);
-                    windDir.SetLength(0.5f);
-
-                    displayContext->DrawArrow(point - windDir, point + windDir, 1.f);
+                    DrawArrow(displayContext, point);
                 }
             }
         }
+    }
 
-        displayContext->SetColor(AZ::Vector4(0.f, 1.f, 0.f, 0.7f));
-        displayContext->DrawWireBox(min, max);
+    void EditorWindVolumeComponent::DrawSphere(AzFramework::EntityDebugDisplayRequests* displayContext)
+    {
+        float radius = m_size.GetX();
+        int nSamples = radius * 5;
+        nSamples = AZ::GetClamp(nSamples, 5, 512);
 
-        displayContext->PopMatrix();
+        // Draw arrows using Fibonacci sphere
+        float offset = 2.f / nSamples;
+        float increment = AZ::Constants::Pi * (3.f - sqrt(5.f));
+        for(int i = 0; i < nSamples; ++i)
+        {
+            float phi = ((i + 1) % nSamples) * increment;
+            float y = ((i * offset) - 1) + (offset / 2.f);
+            float r = sqrt(1 - pow(y, 2));
+            float x = cos(phi) * r;
+            float z = sin(phi) * r;
+            DrawArrow(displayContext, AZ::Vector3(x * radius, y * radius, z * radius));
+        }
     }
 } // namespace LmbrCentral

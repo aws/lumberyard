@@ -389,8 +389,15 @@ namespace AZ
         bool MaterialGroup::ReadMtlFile(const char* fileName)
         {
             IO::SystemFile mtlFile;
-            if (!mtlFile.Open(fileName, IO::SystemFile::SF_OPEN_READ_ONLY))
+            bool fileOpened = mtlFile.Open(fileName, IO::SystemFile::SF_OPEN_READ_ONLY);
+            if (!fileOpened || mtlFile.Length() == 0)
             {
+                //If the file successfully opened, but the length was 0, report an error
+                if (fileOpened)
+                {
+                    AZ_Error("MaterialIO", false, "Invalid material file %s. File length was 0. Try removing the file or replacing it with a valid material file.", fileName);
+                }
+
                 m_readFromMtl = false;
                 return false;
             }
@@ -406,13 +413,16 @@ namespace AZ
             m_mtlDoc.parse<rapidxml::parse_no_data_nodes>(m_mtlBuffer.data());
 
             //Parse MTL file for materials and/or submaterials. 
-            rapidxml::xml_node<char> *materialNode = m_mtlDoc.first_node("Material");
-            rapidxml::xml_node<char>* submaterialNode = nullptr;
-
-            if (materialNode)
+            rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node("Material");
+            if (!materialNode)
             {
-                submaterialNode = materialNode->first_node("SubMaterials");
+                AZ_Error("MaterialIO", false, "Invalid material file %s. File does not contain a 'Material' node. Try removing the file or replacing it with a valid material file.", fileName);
+
+                m_readFromMtl = false;
+                return false;
             }
+
+            rapidxml::xml_node<char>* submaterialNode = materialNode->first_node("SubMaterials");
 
             if (submaterialNode)
             {
@@ -709,13 +719,13 @@ namespace AZ
         rapidxml::xml_node<char>* MaterialGroup::FindMaterialNode(const IMaterial& mat) const
         {
             rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node("Material");
+            if (materialNode == nullptr)
+            {
+                return nullptr;
+            }
            
             rapidxml::xml_node<char>* submaterialNode = nullptr;
-
-            if (materialNode)
-            {
-                submaterialNode = materialNode->first_node("SubMaterials");
-            }
+            submaterialNode = materialNode->first_node("SubMaterials");
 
             if (submaterialNode)
             {

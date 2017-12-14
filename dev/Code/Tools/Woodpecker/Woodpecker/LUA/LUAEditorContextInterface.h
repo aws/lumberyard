@@ -19,6 +19,10 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
+#if defined(AZ_PLATFORM_WINDOWS)
+#include <windows.h>
+#endif
+
 namespace LUAEditor
 {
     struct DocumentInfo

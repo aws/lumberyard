@@ -46,7 +46,7 @@ public:
     virtual void EndEditParams(IEditor* ie);
     virtual XmlNodeRef Export(const QString& levelPath, XmlNodeRef& xmlNode);
 
-    virtual void Validate(CErrorReport* report);
+    virtual void Validate(IErrorReport* report);
     virtual bool IsSimilarObject(CBaseObject* pObject);
     virtual void OnEvent(ObjectEvent event);
     //////////////////////////////////////////////////////////////////////////

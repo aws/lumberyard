@@ -71,4 +71,30 @@ namespace RenderCapabilities
         // distinguish between a normal output or one for dual source blending.
         return false;
     }    
+
+    
+    bool SupportsRenderTargets(int numRTs)
+    {
+#if defined(AZ_PLATFORM_APPLE_OSX)
+        return true;
+#else
+        if (numRTs <= 4)
+        {
+            //128bpp means it will support 4 render targets
+            return GetAvailableMRTbpp() >= 128;
+        }
+        else if (numRTs <= 8)        
+        {
+            //256bpp means it will support 8 render targets
+            return GetAvailableMRTbpp() >= 256;
+        }
+
+        return false;        
+#endif
+    }
+	
+	bool SupportsStructuredBuffer(EShaderStage stage)
+    {
+        return true;
+    }
 }

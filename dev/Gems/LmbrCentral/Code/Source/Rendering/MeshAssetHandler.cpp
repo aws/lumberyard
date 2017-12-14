@@ -26,10 +26,20 @@
 namespace LmbrCentral
 {   
     //////////////////////////////////////////////////////////////////////////
+    const AZStd::string MeshAssetHandlerBase::s_assetAliasToken = "@assets@/";
 
     MeshAssetHandlerBase::MeshAssetHandlerBase()
         : m_asyncLoadCvar(nullptr)
     {
+    }
+
+    void MeshAssetHandlerBase::StripAssetAlias(const char*& assetPath)
+    {
+        const size_t assetAliasTokenLen = s_assetAliasToken.size() - 1;
+        if (0 == strncmp(assetPath, s_assetAliasToken.c_str(), assetAliasTokenLen))
+        {
+            assetPath += assetAliasTokenLen;
+        }
     }
 
     ICVar* MeshAssetHandlerBase::GetAsyncLoadCVar()
@@ -56,7 +66,7 @@ namespace LmbrCentral
         {
 #if defined(AZ_ENABLE_TRACING)
             AZStd::string assetDescription = asset.GetId().ToString<AZStd::string>();
-            EBUS_EVENT_RESULT(assetDescription, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, asset.GetId());
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetDescription, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, asset.GetId());
             AZ_Error("MeshAssetHandler", false, "Failed to load mesh asset \"%s\".", assetDescription.c_str());
 #endif // AZ_ENABLE_TRACING
         }
@@ -74,9 +84,6 @@ namespace LmbrCentral
         (void)type;
 
         AZ_Assert(type == AZ::AzTypeInfo<MeshAsset>::Uuid(), "Invalid asset type! We handle only 'MeshAsset'");
-
-        AZStd::string assetPath;
-        EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, id);
 
         return aznew MeshAsset();
     }
@@ -97,12 +104,7 @@ namespace LmbrCentral
 
             // Strip the alias. StatObj instances are stored in a dictionary by their path,
             // so to share instances with legacy cry entities, we need to use the same un-aliased format.
-            static const char assetAliasToken[] = "@assets@/";
-            static const size_t assetAliasTokenLen = AZ_ARRAY_SIZE(assetAliasToken) - 1;
-            if (0 == strncmp(assetPath, assetAliasToken, assetAliasTokenLen))
-            {
-                assetPath += assetAliasTokenLen;
-            }
+            StripAssetAlias(assetPath);
 
             // Temporary cvar guard while async loading of legacy mesh formats is stabilized.
             ICVar* cvar = GetAsyncLoadCVar();
@@ -134,7 +136,7 @@ namespace LmbrCentral
                 {
 #if defined(AZ_ENABLE_TRACING)
                     AZStd::string assetDescription = asset.GetId().ToString<AZStd::string>();
-                    EBUS_EVENT_RESULT(assetDescription, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, asset.GetId());
+                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetDescription, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, asset.GetId());
                     AZ_Error("MeshAssetHandler", false, "Failed to load mesh asset \"%s\".", assetDescription.c_str());
 #endif // AZ_ENABLE_TRACING
                 }
@@ -217,7 +219,7 @@ namespace LmbrCentral
         {
 #if defined(AZ_ENABLE_TRACING)
             AZStd::string assetDescription = asset.GetId().ToString<AZStd::string>();
-            EBUS_EVENT_RESULT(assetDescription, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, asset.GetId());
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetDescription, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, asset.GetId());
             AZ_Error("MeshAssetHandler", false, "Failed to load character instance asset \"%s\".", asset.GetId().ToString<AZStd::string>().c_str());
 #endif // AZ_ENABLE_TRACING
         }
@@ -235,9 +237,6 @@ namespace LmbrCentral
         (void)type;
 
         AZ_Assert(type == AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid(), "Invalid asset type! We handle only 'CharacterDefinitionAsset'");
-
-        AZStd::string assetPath;
-        EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, id);
         
         return aznew CharacterDefinitionAsset();
     }
@@ -258,12 +257,7 @@ namespace LmbrCentral
 
             // Strip the alias. Character instances are stored in a dictionary by their path,
             // so to share instances with legacy cry entities, we need to use the same un-aliased format.
-            static const char assetAliasToken[] = "@assets@/";
-            static const size_t assetAliasTokenLen = AZ_ARRAY_SIZE(assetAliasToken) - 1;
-            if (0 == strncmp(assetPath, assetAliasToken, assetAliasTokenLen))
-            {
-                assetPath += assetAliasTokenLen;
-            }
+            StripAssetAlias(assetPath);
             
             // Temporary cvar guard while async loading of legacy mesh formats is stabilized.
             ICVar* cvar = GetAsyncLoadCVar();
@@ -365,4 +359,114 @@ namespace LmbrCentral
         extensions.push_back(CRY_CHARACTER_DEFINITION_FILE_EXT);
     }
     //////////////////////////////////////////////////////////////////////////
+
+    GeomCacheAssetHandler::~GeomCacheAssetHandler()
+    {
+        Unregister();
+    }
+
+    AZ::Data::AssetPtr GeomCacheAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
+    {
+        (void)type;
+
+        AZ_Assert(type == AZ::AzTypeInfo<GeomCacheAsset>::Uuid(), "Invalid asset type! We handle only 'GeomCacheAsset'");
+
+        return aznew GeomCacheAsset();
+    }
+
+    bool GeomCacheAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& /*asset*/, AZ::IO::GenericStream* /*stream*/, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
+    {
+        // Load from preloaded stream.
+        AZ_Assert(false, "Favor loading through custom stream override of LoadAssetData, in order to load through CryPak.");
+        return false;
+    }
+
+    bool GeomCacheAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
+    {
+        AZ_Assert(asset.GetType() == AZ::AzTypeInfo<GeomCacheAsset>::Uuid(), "Invalid asset type! We only load 'GeomCacheAsset'");
+        if (GeomCacheAsset* geomCacheAsset = asset.GetAs<GeomCacheAsset>())
+        {
+            AZ_Assert(!geomCacheAsset->m_geomCache.get(), "Attempting to create geom cache without cleaning up the old one.");
+
+            // Strip the alias. GeomCache instances are stored in a dictionary by their path,
+            // so to share instances with legacy cry entities, we need to use the same un-aliased format.
+            StripAssetAlias(assetPath);
+
+            //Load GeomCaches synchronously, there is no Async support currently in the 3DEngine.
+            //Assets can stream asynchronously but this load step must be synchronous. 
+
+            _smart_ptr<IGeomCache> geomCache = gEnv->p3DEngine->LoadGeomCache(assetPath);
+
+            if (geomCache)
+            {
+                geomCache->SetProcessedByRenderNode(false);
+                geomCacheAsset->m_geomCache = geomCache;
+            }
+            else
+            {
+#if defined(AZ_ENABLE_TRACING)
+                AZStd::string assetDescription = asset.GetId().ToString<AZStd::string>();
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetDescription, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, asset.GetId());
+                AZ_Error("GeomCacheAssetHandler", false, "Failed to load geom cache asset \"%s\".", assetDescription.c_str());
+#endif // AZ_ENABLE_TRACING
+            }
+
+            return true;
+        }
+        return false;
+    }
+
+    void GeomCacheAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
+    {
+        delete ptr;
+    }
+
+    void GeomCacheAssetHandler::GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes)
+    {
+        assetTypes.push_back(AZ::AzTypeInfo<GeomCacheAsset>::Uuid());
+    }
+
+    void GeomCacheAssetHandler::Register()
+    {
+        AZ_Assert(AZ::Data::AssetManager::IsReady(), "Asset manager isn't ready!");
+        AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<GeomCacheAsset>::Uuid());
+
+        AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<GeomCacheAsset>::Uuid());
+    }
+
+    void GeomCacheAssetHandler::Unregister()
+    {
+        AZ::AssetTypeInfoBus::Handler::BusDisconnect(AZ::AzTypeInfo<GeomCacheAsset>::Uuid());
+
+        if (AZ::Data::AssetManager::IsReady())
+        {
+            AZ::Data::AssetManager::Instance().UnregisterHandler(this);
+        }
+    }
+
+    AZ::Data::AssetType GeomCacheAssetHandler::GetAssetType() const
+    {
+        return AZ::AzTypeInfo<GeomCacheAsset>::Uuid();
+    }
+
+    const char* GeomCacheAssetHandler::GetAssetTypeDisplayName() const
+    {
+        return "Geom Cache";
+    }
+
+    const char* GeomCacheAssetHandler::GetGroup() const
+    {
+        return "Geometry";
+    }
+
+    AZ::Uuid GeomCacheAssetHandler::GetComponentTypeId() const
+    {
+        return AZ::Uuid("{045C0C58-C13E-49B0-A471-D4AC5D3FC6BD}");
+    }
+
+    void GeomCacheAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
+    {
+        extensions.push_back(CRY_GEOM_CACHE_FILE_EXT);
+    }
+
 } // namespace LmbrCentral

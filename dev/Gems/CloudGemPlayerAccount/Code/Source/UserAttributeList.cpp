@@ -12,7 +12,7 @@
 #include "StdAfx.h"
 #include "UserAttributeList.h"
 
-#include <AzCore/Base.h>
+#include <AzCore/base.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/BehaviorContext.h>

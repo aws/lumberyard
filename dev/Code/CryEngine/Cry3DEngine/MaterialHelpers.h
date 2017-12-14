@@ -37,12 +37,12 @@ struct MaterialHelpers
     virtual bool SetGetMaterialParamVec3(IRenderShaderResources& pShaderResources, const char* sParamName, Vec3& v, bool bGet) const final;
 
     //////////////////////////////////////////////////////////////////////////
-    virtual void SetTexModFromXml(SEfTexModificator& pShaderResources, const XmlNodeRef& node) const final;
+    virtual void SetTexModFromXml(SEfTexModificator& pShaderResources, const XmlNodeRef& modNode) const final;
     virtual void SetXmlFromTexMod(const SEfTexModificator& pShaderResources, XmlNodeRef& node) const final;
 
     //////////////////////////////////////////////////////////////////////////
     virtual void SetTexturesFromXml(SInputShaderResources& pShaderResources, const XmlNodeRef& node) const final;
-    virtual void SetXmlFromTextures(const SInputShaderResources& pShaderResources, XmlNodeRef& node) const final;
+    virtual void SetXmlFromTextures( SInputShaderResources& pShaderResources, XmlNodeRef& node) const final;
 
     //////////////////////////////////////////////////////////////////////////
     virtual void SetVertexDeformFromXml(SInputShaderResources& pShaderResources, const XmlNodeRef& node) const final;

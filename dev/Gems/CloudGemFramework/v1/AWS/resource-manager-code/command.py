@@ -92,7 +92,7 @@ def __generate_service_api_code(context, args):
     else:
         namespace_name = resource_group.name
 
-    waf_files_updates = __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger)
+    waf_files_updates = __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem)
 
     waf_files_updated = False
     if args.update_waf_files and gem:
@@ -195,7 +195,7 @@ def __write_file(template, jinja_json, out_file):
         file.write(result)
 
 
-def __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger):
+def __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem):
 
     if not os.path.exists(destination_code_path):
         print 'Making directory {}'.format(destination_code_path)
@@ -209,6 +209,8 @@ def __generate_component_client(context, base_code_path, destination_code_path, 
 
     jinja_json = component_gen_utils.generate_component_json(namespace_name, swagger)
     jinja_json["UUIDs"] = component_gen_utils.get_UUIDs(out_path_cpp, jinja_json)
+
+    jinja_json["HasStdAfx"] = component_gen_utils.has_stdafx_files(gem.cpp_base_directory_path)
 
     __write_file(template_h, jinja_json, out_path_h)
     __write_file(template_cpp, jinja_json, out_path_cpp)

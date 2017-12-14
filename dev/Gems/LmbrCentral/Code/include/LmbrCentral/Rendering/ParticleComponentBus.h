@@ -78,9 +78,6 @@ namespace LmbrCentral
         float                       m_viewDistMultiplier;       
         bool                        m_useVisAreas;              //!< Indicates whether it allows VisAreas to control this component's visibility
                 
-        //! Constructs a SpawnParams struct from the component's properties.
-        SpawnParams GetPropertiesAsSpawnParams() const;
-
         static void Reflect(AZ::ReflectContext* context);
 
         const static float MaxCountScale;
@@ -228,7 +225,7 @@ namespace LmbrCentral
         // Enable/disable current emitter.
         virtual void Enable(bool enable) = 0;
 
-        // Get whehther current emitter is enabled.
+        // Get whether current emitter is enabled.
         virtual bool GetEnable() = 0;
 
         // Set color tint

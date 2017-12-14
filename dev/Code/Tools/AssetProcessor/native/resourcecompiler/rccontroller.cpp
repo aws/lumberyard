@@ -90,7 +90,7 @@ namespace AssetProcessor
         m_RCJobListModel.markAsProcessing(rcJob);
         Q_EMIT JobStatusChanged(rcJob->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::InProgress);
         rcJob->Start();
-        Q_EMIT JobStarted(rcJob->GetInputFileRelativePath(), rcJob->GetPlatform());
+        Q_EMIT JobStarted(rcJob->GetInputFileRelativePath(), QString::fromUtf8(rcJob->GetPlatformInfo().m_identifier.c_str()));
     }
 
     void RCController::QuitRequested()
@@ -114,7 +114,7 @@ namespace AssetProcessor
     void RCController::FinishJob(RCJob* rcJob)
     {
         m_RCQueueSortModel.RemoveJobIdEntry(rcJob);
-        QString platform = rcJob->GetPlatform();
+        QString platform = rcJob->GetPlatformInfo().m_identifier.c_str();
         auto found = m_jobsCountPerPlatform.find(platform);
         if (found != m_jobsCountPerPlatform.end())
         {
@@ -142,17 +142,22 @@ namespace AssetProcessor
         else if (rcJob->GetState() != RCJob::completed)
         {
             Q_EMIT FileFailed(rcJob->GetJobEntry());
+            Q_EMIT JobStatusChanged(rcJob->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Failed);
         }
         else
         {
             Q_EMIT FileCompiled(rcJob->GetJobEntry(), AZStd::move(rcJob->GetProcessJobResponse()));
+            Q_EMIT JobStatusChanged(rcJob->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
         }
 
         // Move to Completed list which will mark as "completed"
         // unless a different state has been set.
         m_RCJobListModel.markAsCompleted(rcJob);
 
-        Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount() - m_RCJobListModel.FailedJobsCount()));
+        if (!m_dispatchingPaused)
+        {
+            Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount() - m_RCJobListModel.FailedJobsCount()));
+        }
 
         if (!m_shuttingDown)
         {
@@ -174,7 +179,7 @@ namespace AssetProcessor
 
     void RCController::JobSubmitted(JobDetails details)
     {
-        AssetProcessor::QueueElementID checkFile(details.m_jobEntry.m_relativePathToFile, details.m_jobEntry.m_platform, details.m_jobEntry.m_jobKey);
+        AssetProcessor::QueueElementID checkFile(details.m_jobEntry.m_relativePathToFile, details.m_jobEntry.m_platformInfo.m_identifier.c_str(), details.m_jobEntry.m_jobKey);
 
         if (m_RCJobListModel.isInQueue(checkFile))
         {
@@ -200,7 +205,7 @@ namespace AssetProcessor
 
         m_RCQueueSortModel.AddJobIdEntry(rcJob);
         m_RCJobListModel.addNewJob(rcJob);
-        QString platformName = rcJob->GetPlatform();// we need to get the actual platform from the rcJob
+        QString platformName = rcJob->GetPlatformInfo().m_identifier.c_str();// we need to get the actual platform from the rcJob
         if (rcJob->IsCritical())
         {
             int criticalJobsCount = m_pendingCriticalJobsPerPlatform[platformName.toLower()] + 1;
@@ -249,17 +254,22 @@ namespace AssetProcessor
 
     void RCController::DispatchJobs()
     {
-        if (m_dispatchingPaused)
-        {
-            return;
-        }
         if (!m_dispatchingJobs)
         {
             m_dispatchingJobs = true;
             RCJob* rcJob = m_RCQueueSortModel.GetNextPendingJob();
-
+            
             while (m_RCJobListModel.jobsInFlight() < m_maxJobs && rcJob && !m_shuttingDown)
             {
+                if (m_dispatchingPaused)
+                {
+                    // note, even if dispatching is "paused" we start all "auto fail jobs" so that user gets instant feedback on failure.
+                    if (!rcJob->IsAutoFail())
+                    {
+                        break;
+                    }
+                }
+
                 StartJob(rcJob);
                 rcJob = m_RCQueueSortModel.GetNextPendingJob();
             }
@@ -319,6 +329,12 @@ namespace AssetProcessor
             }
         }
     }
+
+    void RCController::RemoveJobsBySource(QString relSourceFile)
+    {
+        m_RCJobListModel.EraseJobs(relSourceFile);
+    }
+
 } // Namespace AssetProcessor
 
 #include <native/resourcecompiler/rccontroller.moc>

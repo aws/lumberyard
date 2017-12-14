@@ -109,6 +109,7 @@ public:
     void UpdateBending();
     static void InitVegDecomprTable();
     virtual bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const override;
+    float GetFirstLodDistance() const override;
 
     // Avoid C4266 virtual function is hidden because that SetScale(float fScale) is also defined in IVegetation: https://msdn.microsoft.com/en-us/library/4b76ty10.aspx
     void SetScale(const Vec3& scale) override

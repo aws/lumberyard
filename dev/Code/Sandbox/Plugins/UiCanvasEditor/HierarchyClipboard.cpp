@@ -14,7 +14,7 @@
 #include "EditorCommon.h"
 
 SerializeHelpers::SerializedEntryList& HierarchyClipboard::Serialize(HierarchyWidget* widget,
-    QTreeWidgetItemRawPtrQList& selectedItems,
+    const QTreeWidgetItemRawPtrQList& selectedItems,
     HierarchyItemRawPtrList* optionalItemsToSerialize,
     SerializeHelpers::SerializedEntryList& entryList,
     bool isUndo)
@@ -46,7 +46,7 @@ SerializeHelpers::SerializedEntryList& HierarchyClipboard::Serialize(HierarchyWi
         // serialize this entity (and its descendants) to XML and get the set of prefab references
         // used by the serialized entities
         AZStd::unordered_set<AZ::Data::AssetId> referencedSliceAssets;
-        AZStd::string xml = GetXml(widget, LyShine::EntityArray(1, e), referencedSliceAssets);
+        AZStd::string xml = GetXml(widget, LyShine::EntityArray(1, e), false, referencedSliceAssets);
         AZ_Assert(!xml.empty(), "Failed to serialize");
 
         if (isUndo)
@@ -128,7 +128,7 @@ bool HierarchyClipboard::Unserialize(HierarchyWidget* widget,
 }
 
 void HierarchyClipboard::CopySelectedItemsToClipboard(HierarchyWidget* widget,
-    QTreeWidgetItemRawPtrQList& selectedItems)
+    const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     // selectedItems -> EntityArray.
     LyShine::EntityArray elements;
@@ -147,7 +147,7 @@ void HierarchyClipboard::CopySelectedItemsToClipboard(HierarchyWidget* widget,
 
     // EntityArray -> XML.
     AZStd::unordered_set<AZ::Data::AssetId> referencedSliceAssets;    // returned from GetXML but not used in this case
-    AZStd::string xml = GetXml(widget, elements, referencedSliceAssets);
+    AZStd::string xml = GetXml(widget, elements, true, referencedSliceAssets);
 
     // XML -> Clipboard.
     if (!xml.empty())
@@ -167,7 +167,7 @@ void HierarchyClipboard::CopySelectedItemsToClipboard(HierarchyWidget* widget,
 }
 
 void HierarchyClipboard::CreateElementsFromClipboard(HierarchyWidget* widget,
-    QTreeWidgetItemRawPtrQList& selectedItems,
+    const QTreeWidgetItemRawPtrQList& selectedItems,
     bool createAsChildOfSelection)
 {
     if (!ClipboardContainsOurDataType())
@@ -204,6 +204,7 @@ void HierarchyClipboard::CreateElementsFromClipboard(HierarchyWidget* widget,
 
 AZStd::string HierarchyClipboard::GetXml(HierarchyWidget* widget,
     const LyShine::EntityArray& elements,
+    bool isCopyOperation,
     AZStd::unordered_set<AZ::Data::AssetId>& referencedSliceAssets)
 {
     if (elements.empty())
@@ -212,9 +213,8 @@ AZStd::string HierarchyClipboard::GetXml(HierarchyWidget* widget,
         return "";
     }
 
-    AZ::EntityId canvasEntityId = widget->GetEditorWindow()->GetCanvas();
     AZ::SliceComponent* rootSlice = widget->GetEditorWindow()->GetSliceManager()->GetRootSlice();
-    AZStd::string result = SerializeHelpers::SaveElementsToXmlString(elements, rootSlice, referencedSliceAssets);
+    AZStd::string result = SerializeHelpers::SaveElementsToXmlString(elements, rootSlice, isCopyOperation, referencedSliceAssets);
 
     return result;
 }

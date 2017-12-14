@@ -11,6 +11,7 @@
 */
 #ifndef AZ_UNITY_BUILD
 
+#include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Matrix4x4.h>
 #include <AzCore/Math/Quaternion.h>
 
@@ -276,6 +277,27 @@ void Matrix4x4::MultiplyByScale(const Vector3& scale)
     SetBasisX(scale.GetX() * GetBasisX());
     SetBasisY(scale.GetY() * GetBasisY());
     SetBasisZ(scale.GetZ() * GetBasisZ());
+}
+
+const Matrix4x4 Matrix4x4::CreateInterpolated(const Matrix4x4& m1, const Matrix4x4& m2, float t)
+{
+    Matrix3x3 m1Copy = Matrix3x3::CreateFromMatrix4x4(m1);
+    Vector3 s1 = m1Copy.ExtractScale();
+    Vector3 t1 = m1.GetTranslation();
+    Quaternion q1 = Quaternion::CreateFromMatrix3x3(m1Copy);
+
+    Matrix3x3 m2Copy = Matrix3x3::CreateFromMatrix4x4(m2);
+    Vector3 s2 = m2Copy.ExtractScale();
+    Vector3 t2 = m2.GetTranslation();
+    Quaternion q2 = Quaternion::CreateFromMatrix3x3(m2Copy);
+
+    s1 = s1.Lerp(s2, t);
+    t1 = t1.Lerp(t2, t);
+    q1 = q1.Slerp(q2, t);
+    q1.Normalize();
+    Matrix4x4 result = Matrix4x4::CreateFromQuaternionAndTranslation(q1, t1);
+    result.MultiplyByScale(s1);
+    return result;
 }
 
 #endif // #ifndef AZ_UNITY_BUILD

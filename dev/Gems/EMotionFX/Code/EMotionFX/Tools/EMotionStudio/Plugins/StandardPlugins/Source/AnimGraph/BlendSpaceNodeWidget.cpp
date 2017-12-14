@@ -28,6 +28,7 @@ const float     BlendSpaceNodeWidget::s_motionPointAlphaMin      = 1.0f;
 const float     BlendSpaceNodeWidget::s_motionPointAlphaMax      = 1.0f;
 const QColor    BlendSpaceNodeWidget::s_motionPointColor         = QColor(245, 166, 35);
 
+const char*     BlendSpaceNodeWidget::s_warningOffsetForIcon     = "     ";
 
 BlendSpaceNodeWidget::BlendSpaceNodeWidget()
 {

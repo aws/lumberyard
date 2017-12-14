@@ -27,6 +27,8 @@
 
 #include <ICodeCheckpointMgr.h>
 
+#include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
 std::vector<CPhysicsEventListener::PhysVisAreaUpdate> CPhysicsEventListener::m_physVisAreaUpdateVector;
 
 //////////////////////////////////////////////////////////////////////////
@@ -108,7 +110,7 @@ int CPhysicsEventListener::OnPostStep(const EventPhys* pEvent)
             pPostStep->pEntity->SetParams(&pf);
             (pRndNode->m_nInternalFlags &= ~IRenderNode::WAS_INVISIBLE) |= -bInvisible & IRenderNode::WAS_INVISIBLE;
         }
-        if (gEnv->p3DEngine->GetWaterLevel() != WATER_LEVEL_UNKNOWN)
+        if (OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : gEnv->p3DEngine->GetWaterLevel() != WATER_LEVEL_UNKNOWN)
         {
             // Deferred updating ignore ocean flag as the Jobs are busy updating the octree at this point
             m_physVisAreaUpdateVector.push_back(PhysVisAreaUpdate(pRndNode, pPostStep->pEntity));
@@ -136,7 +138,7 @@ int CPhysicsEventListener::OnPostStep(const EventPhys* pEvent)
 
 int CPhysicsEventListener::OnPostPump(const EventPhys* pEvent)
 {
-    if (gEnv->p3DEngine->GetWaterLevel() != WATER_LEVEL_UNKNOWN)
+    if (OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : gEnv->p3DEngine->GetWaterLevel() != WATER_LEVEL_UNKNOWN)
     {
         for (std::vector<PhysVisAreaUpdate>::iterator it = m_physVisAreaUpdateVector.begin(), end = m_physVisAreaUpdateVector.end(); it != end; ++it)
         {

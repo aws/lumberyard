@@ -168,7 +168,7 @@ namespace EMotionFX
 
     // some standard layer types
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector2,      AZ::Vector2)
-    DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector3,      MCore::Vector3)
+    DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector3,      AZ::PackedVector3f)
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector4,      AZ::Vector4)
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerUInt32,       uint32)
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerFloat,        float)

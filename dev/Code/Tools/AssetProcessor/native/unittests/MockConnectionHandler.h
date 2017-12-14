@@ -74,6 +74,26 @@ namespace AssetProcessor
 
             return 0;
         }
+
+        unsigned int SendRequest(const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const AssetProcessor::ConnectionBusTraits::ResponseCallback& callback) override
+        {
+            Send(0, message);
+
+            callback(message.GetMessageType(), QByteArray());
+
+            return 0;
+        }
+
+        size_t SendResponse(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message) override
+        {
+            return Send(serial, message);
+        }
+
+        void RemoveResponseHandler(unsigned int /*serial*/) override
+        {
+            // Nothing to do
+        }
+
         typedef AZStd::function< void (unsigned int, unsigned int, const QByteArray&) > SendMessageCallBack;
         bool m_sent = false;
         unsigned int m_type = 0;

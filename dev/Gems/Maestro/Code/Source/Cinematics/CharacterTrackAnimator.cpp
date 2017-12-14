@@ -199,30 +199,6 @@ void CCharacterTrackAnimator::OnReset(IAnimNode* animNode)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCharacterTrackAnimator::OnEndAnimation(const char* animName, IEntity* entity)
-{
-    if (entity)
-    {
-        TStringSetIt iter = m_setAnimationSinks.find(animName);
-        if (iter == m_setAnimationSinks.end())
-        {
-            return; // this anim was not started by us...
-        }
-
-        m_setAnimationSinks.erase(iter);
-
-        ICharacterInstance* pCharacter = entity->GetCharacter(0);
-        if (!pCharacter)
-        {
-            return;
-        }
-
-        IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
-        assert(pAnimations);
-    } 
-}
-
-//////////////////////////////////////////////////////////////////////////
 f32 CCharacterTrackAnimator::ComputeAnimKeyNormalizedTime(const ICharacterKey& key, float ectime) const
 {
     float endTime = key.GetValidEndTime();
@@ -323,11 +299,6 @@ void CCharacterTrackAnimator::ReleaseAllAnimations(IAnimNode* animNode)
 
     IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
     assert(pAnimations);
-    for (TStringSetIt It = m_setAnimationSinks.begin(); It != m_setAnimationSinks.end(); ++It)
-    {
-        const char* pszName = (*It).c_str();
-    }
-    m_setAnimationSinks.clear();
 
     if (IsAnimationPlaying(m_baseAnimState))
     {
@@ -411,11 +382,6 @@ void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimC
                 // retrieve the animation collection for the model
                 IAnimationSet* pAnimations = character->GetIAnimationSet();
                 assert(pAnimations);
-
-                if (key.m_bUnload)
-                {
-                    m_setAnimationSinks.insert(TStringSetIt::value_type(key.m_animation.c_str()));
-                }
 
                 if (character->GetISkeletonAnim()->GetAnimationDrivenMotion() && (!IsAnimationPlaying(m_baseAnimState)))
                 {

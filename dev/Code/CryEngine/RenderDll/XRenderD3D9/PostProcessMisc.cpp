@@ -41,7 +41,7 @@ void CVolumetricScattering::Render()
     gcpRendD3D->RT_SetViewport(0, 0, CTexture::s_ptexBackBufferScaled[1]->GetWidth(), CTexture::s_ptexBackBufferScaled[1]->GetHeight());
 
     float fAmount = m_pAmount->GetParam();
-    float fTilling = m_pTilling->GetParam();
+    float fTiling = m_pTiling->GetParam();
     float fSpeed = m_pSpeed->GetParam();
     Vec4 pColor = m_pColor->GetParamVec4();
 
@@ -59,7 +59,7 @@ void CVolumetricScattering::Render()
         int nSlicesCount = 10;
 
         Vec4 pParams;
-        pParams = Vec4(fTilling, fSpeed, fTilling, fSpeed);
+        pParams = Vec4(fTiling, fSpeed, fTiling, fSpeed);
 
         static CCryNameR pParam0Name("VolumetricScattering");
         static CCryNameR pParam1Name("VolumetricScatteringColor");

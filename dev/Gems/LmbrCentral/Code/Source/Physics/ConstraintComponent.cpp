@@ -19,8 +19,8 @@
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
 
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
-
+#include <AzFramework/Physics/PhysicsComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <IPhysics.h>
 #include <MathConversion.h>
 
@@ -28,6 +28,10 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::ConstraintComponentNotificationBus;
+    using AzFramework::ConstraintComponentRequestBus;
+    using AzFramework::PhysicsComponentNotificationBus;
+
     //=========================================================================
     // ConstraintConfiguration::Reflect
     //=========================================================================
@@ -229,8 +233,8 @@ namespace LmbrCentral
 
         ConstraintComponentRequestBus::Handler::BusConnect(GetEntityId());
 
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_owningEntity);
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_targetEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_owningEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_targetEntity);
     }
 
     //=========================================================================
@@ -240,8 +244,8 @@ namespace LmbrCentral
     {
         ConstraintComponentRequestBus::Handler::BusDisconnect();
 
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_targetEntity);
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_owningEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_targetEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_owningEntity);
 
         DisableConstraint();
     }
@@ -267,7 +271,7 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::OnPhysicsEnabledChanged(bool enabled)
     {
-        AZ::EntityId entityId = *LmbrCentral::PhysicsComponentNotificationBus::GetCurrentBusId();
+        AZ::EntityId entityId = *PhysicsComponentNotificationBus::GetCurrentBusId();
         if (entityId == m_config.m_owningEntity)
         {
             m_ownerPhysicsEnabled = enabled;
@@ -312,8 +316,8 @@ namespace LmbrCentral
 
         DisableInternal();
 
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_targetEntity);
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_owningEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_targetEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusDisconnect(m_config.m_owningEntity);
 
         AZ::EntityId oldOwner = m_config.m_owningEntity;
         AZ::EntityId oldTarget = m_config.m_targetEntity;
@@ -325,8 +329,8 @@ namespace LmbrCentral
         m_config.m_targetPartId = targetPartId;
 
         // Note: OnPhysicsEnabled will call EnableInternal
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_owningEntity);
-        LmbrCentral::PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_targetEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_owningEntity);
+        PhysicsComponentNotificationBus::MultiHandler::BusConnect(m_config.m_targetEntity);
 
         EBUS_EVENT_ID(GetEntityId(), ConstraintComponentNotificationBus, OnConstraintEntitiesChanged, oldOwner, oldTarget, owningEntity, targetEntity);
     }

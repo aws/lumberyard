@@ -19,6 +19,9 @@
 struct IDataBaseManager;
 struct IDataBaseItem;
 
+class QString;
+class XmlNodeRef;
+
 //////////////////////////////////////////////////////////////////////////
 // Description:
 //      Interface to access specific library of editor data base.

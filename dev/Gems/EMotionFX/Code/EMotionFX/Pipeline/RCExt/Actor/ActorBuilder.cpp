@@ -71,16 +71,15 @@ namespace EMotionFX
         AZ_FORCE_INLINE EMotionFX::Transform AzTransformToEmfxTransformConverted(const AZ::Transform& azTransform, const CoordinateSystemConverter& coordSysConverter)
         {
             return EMotionFX::Transform(
-                MCore::AzVec3ToEmfxVec3( coordSysConverter.ConvertVector3(azTransform.GetTranslation()) ),
-                MCore::AzQuatToEmfxQuat( coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(azTransform)) ),
-                MCore::AzVec3ToEmfxVec3( coordSysConverter.ConvertScale(azTransform.RetrieveScale())) );
+                coordSysConverter.ConvertVector3(azTransform.GetTranslation()),
+                MCore::AzQuatToEmfxQuat(coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(azTransform))),
+                coordSysConverter.ConvertScale(azTransform.RetrieveScale()));
         }
 
 
         ActorBuilder::ActorBuilder()
         {
             BindToCall(&ActorBuilder::BuildActor);
-            ActivateBindings();
         }
 
         void ActorBuilder::Reflect(AZ::ReflectContext* context)
@@ -200,7 +199,7 @@ namespace EMotionFX
                 // Set the decomposed bind pose local transformation
                 EMotionFX::Transform outTransform;
                 auto view = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(graph, nodeIndex,
-                    graph.GetContentStorage().begin(), true);
+                        graph.GetContentStorage().begin(), true);
                 auto result = AZStd::find_if(view.begin(), view.end(), SceneContainers::DerivedTypeFilter<SceneDataTypes::ITransform>());
                 if (result != view.end())
                 {
@@ -214,7 +213,7 @@ namespace EMotionFX
                     AZStd::shared_ptr<const SceneDataTypes::ITransform> transformData = azrtti_cast<const SceneDataTypes::ITransform*>(graph.GetNodeContent(nodeIndex));
                     if (transformData)
                     {
-                        const AZ::Transform transform = coordSysConverter.ConvertTransform( transformData->GetMatrix() );
+                        const AZ::Transform transform = coordSysConverter.ConvertTransform(transformData->GetMatrix());
                         outTransform = AzTransformToEmfxTransformConverted(transform, coordSysConverter);
                     }
                 }
@@ -275,7 +274,7 @@ namespace EMotionFX
             auto contentStorage = graph.GetContentStorage();
             auto nameContentView = SceneViews::MakePairView(nameStorage, contentStorage);
 
-            // The search begin from the rootBoneNodeIndex. 
+            // The search begin from the rootBoneNodeIndex.
             auto graphDownwardsRootBoneView = SceneViews::MakeSceneGraphDownwardsView<SceneViews::BreadthFirst>(graph, rootBoneNodeIndex, nameContentView.begin(), true);
             auto it = graphDownwardsRootBoneView.begin();
             if (!it->second)
@@ -293,9 +292,9 @@ namespace EMotionFX
             for (; it != graphDownwardsRootBoneView.end(); ++it)
             {
                 const SceneContainers::SceneGraph::NodeIndex& nodeIndex = graph.ConvertToNodeIndex(it.GetHierarchyIterator());
-                
+
                 // The end point in ly scene graph should not be added to the emfx actor.
-                // Note: For example, the end point could be a transform node. We will process that later on its parent node. 
+                // Note: For example, the end point could be a transform node. We will process that later on its parent node.
                 if (graph.IsNodeEndPoint(nodeIndex))
                 {
                     continue;
@@ -338,10 +337,10 @@ namespace EMotionFX
         }
 
         // This method uses EMFX MeshBuilder class. This MeshBuilder class expects to be fed "Control points" in fbx parlance. However, as of the current (April 2017)
-        // implementation of MeshData class and FbxMeshImporterUtilities.cpp, IMeshData does not provide a  way to get all of the original control points obtained 
+        // implementation of MeshData class and FbxMeshImporterUtilities.cpp, IMeshData does not provide a  way to get all of the original control points obtained
         // from the fbx resource. Specifically, IMeshData has information about only those control points which it uses, i.e., those of the original control points which
-        // are part of polygons. So, any unconnected stray vertices or vertices which have just lines between them have all been discarded and we don't have a way 
-        // to get their positions/normals etc. 
+        // are part of polygons. So, any unconnected stray vertices or vertices which have just lines between them have all been discarded and we don't have a way
+        // to get their positions/normals etc.
         // Given that IMeshData doesn't provide access to all of the control points, we have two choices.
         // Choice 1: Update the fbx pipeline code to provide access to the original control points via IMeshData or some other class.
         // Choice 2: View the subset of the control points that MeshData has as the control points for EMFX MeshBuilder.
@@ -383,7 +382,7 @@ namespace EMotionFX
 
             // The UV Layer
             // A Mesh can have multiple children that contain UV data.
-            AZStd::vector<AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData>> meshUVDatas;
+            AZStd::vector<AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData> > meshUVDatas;
             AZStd::vector<EMotionFX::MeshBuilderVertexAttributeLayerVector2*> uvLayers;
 
             auto nameStorage = graph.GetNameStorage();
@@ -391,7 +390,7 @@ namespace EMotionFX
             auto nameContentView = SceneViews::MakePairView(nameStorage, contentStorage);
 
             auto meshChildView = SceneViews::MakeSceneGraphChildView<SceneContainers::Views::AcceptEndPointsOnly>(graph, meshNodeIndex,
-                nameContentView.begin(), true);
+                    nameContentView.begin(), true);
             for (auto it = meshChildView.begin(); it != meshChildView.end(); ++it)
             {
                 AZStd::shared_ptr<const SceneDataTypes::IMeshVertexUVData> uvData = azrtti_cast<const SceneDataTypes::IMeshVertexUVData*>(it->second);
@@ -469,13 +468,11 @@ namespace EMotionFX
                     }
 
                     pos = coordSysConverter.ConvertVector3(pos);
-                    MCore::Vector3 emfxPos = MCore::AzVec3ToEmfxVec3(pos);
-                    posLayer->SetCurrentVertexValue(&emfxPos);
+                    posLayer->SetCurrentVertexValue(&pos);
 
                     normal = coordSysConverter.ConvertVector3(normal);
-                    MCore::Vector3 emfxNormal = MCore::AzVec3ToEmfxVec3(normal);
                     normal.Normalize();
-                    normalsLayer->SetCurrentVertexValue(&emfxNormal);
+                    normalsLayer->SetCurrentVertexValue(&normal);
 
                     for (AZ::u32 e = 0; e < uvLayers.size(); ++e)
                     {
@@ -490,7 +487,7 @@ namespace EMotionFX
                 meshBuilder->EndPolygon();
             }   // End of all triangle
 
-                // Cache optimize the index buffer list
+            // Cache optimize the index buffer list
             if (settings.m_optimizeTriangleList)
             {
                 meshBuilder->OptimizeTriangleList();
@@ -524,7 +521,7 @@ namespace EMotionFX
             EMotionFX::MeshBuilderSkinningInfo* skinningInfo = nullptr;
 
             auto meshChildView = SceneViews::MakeSceneGraphChildView<SceneContainers::Views::AcceptEndPointsOnly>(graph, meshNodeIndex,
-                graph.GetContentStorage().begin(), true);
+                    graph.GetContentStorage().begin(), true);
             for (auto meshIt = meshChildView.begin(); meshIt != meshChildView.end(); ++meshIt)
             {
                 const SceneDataTypes::ISkinWeightData* skinData = azrtti_cast<const SceneDataTypes::ISkinWeightData*>(meshIt->get());
@@ -626,7 +623,7 @@ namespace EMotionFX
             while (nodeIndexCopy.IsValid())
             {
                 auto view = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(graph, nodeIndexCopy,
-                    graph.GetContentStorage().begin(), true);
+                        graph.GetContentStorage().begin(), true);
                 auto result = AZStd::find_if(view.begin(), view.end(), SceneContainers::DerivedTypeFilter<SceneDataTypes::ITransform>());
                 if (result != view.end())
                 {
@@ -701,7 +698,7 @@ namespace EMotionFX
             const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
 
             auto view = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(
-                graph, meshNodeIndex, graph.GetContentStorage().begin(), true);
+                    graph, meshNodeIndex, graph.GetContentStorage().begin(), true);
             for (auto it = view.begin(), itEnd = view.end(); it != itEnd; ++it)
             {
                 if ((*it) && (*it)->RTTI_IsTypeOf(SceneDataTypes::IMaterialData::TYPEINFO_Uuid()))
@@ -742,5 +739,5 @@ namespace EMotionFX
                 }
             }
         }
-    }
-}
+    } // namespace Pipeline
+} // namespace EMotionFX

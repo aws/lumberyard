@@ -922,15 +922,6 @@ void CVegetationDataBasePage::OnSelectionChange()
         // Add variable blocks of all objects.
         m_ui->m_propertyCtrl->AddVarBlock(m_varBlock, "Group Properties");
         m_ui->m_propertyCtrl->ExpandAll();
-
-        if (objects.size() > 1)
-        {
-            m_ui->m_propertyCtrl->SetDisplayOnlyModified(true);
-        }
-        else
-        {
-            m_ui->m_propertyCtrl->SetDisplayOnlyModified(false);
-        }
     }
     if (objects.size() == 1)
     {

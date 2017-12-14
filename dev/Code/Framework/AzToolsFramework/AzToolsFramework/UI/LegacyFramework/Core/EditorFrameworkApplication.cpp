@@ -100,6 +100,7 @@ namespace LegacyFramework
         m_applicationEntity = NULL;
         m_ptrSystemEntity = NULL;
         m_applicationModule[0] = 0;
+        m_appRoot[0] = 0;
     }
 
     HMODULE Application::GetMainModule()
@@ -162,7 +163,7 @@ namespace LegacyFramework
 
     const char* Application::GetAppRoot()
     {
-        return m_exeDirectory;
+        return m_appRoot;
     }
 
 
@@ -208,8 +209,19 @@ namespace LegacyFramework
         // if we're in console mode, listen for CTRL+C
         ::SetConsoleCtrlHandler(CTRL_BREAK_HandlerRoutine, true);
 
+        // Initialize the app root to the exe folder
+        azstrncpy(m_appRoot, m_exeDirectory, AZ_MAX_PATH_LEN);
+
         m_ptrCommandLineParser = aznew AzFramework::CommandLine();
         m_ptrCommandLineParser->Parse();
+        if (m_ptrCommandLineParser->HasSwitch("app-root"))
+        {
+            auto appRootOverride = m_ptrCommandLineParser->GetSwitchValue("app-root", 0);
+            if (!appRootOverride.empty())
+            {
+                azstrncpy(m_appRoot, appRootOverride.c_str(), AZ_MAX_PATH_LEN);
+            }
+        }
 
         // If we don't have one create a serialize context
         if (GetSerializeContext() == nullptr)

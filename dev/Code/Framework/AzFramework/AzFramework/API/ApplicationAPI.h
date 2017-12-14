@@ -49,6 +49,8 @@ namespace AzFramework
 
         using Bus = AZ::EBus<ApplicationRequests>;
 
+        typedef AZStd::recursive_mutex MutexType;
+
         /// Fixup slashes and lowercase path.
         virtual void NormalizePath(AZStd::string& /*path*/) = 0;
 
@@ -65,13 +67,43 @@ namespace AzFramework
         virtual void MakePathRelative(AZStd::string& /*fullPath*/, const char* /*rootPath*/) {}
 
         /// Retrieves the asset root path for the application.
-        virtual const char* GetAssetRoot() { return nullptr; }
+        virtual const char* GetAssetRoot() const { return nullptr; }
+
+        /// Gets the engine root path where the modules for the current engine are located.
+        virtual const char* GetEngineRoot() const { return nullptr; }
+
+        /// Retrieves the app root path for the application.
+        virtual const char* GetAppRoot() const { return nullptr; }
 
         /// Sets the asset root path for the application.
         virtual void SetAssetRoot(const char* /*assetRoot*/) {}
 
         /// Get the Command Line arguments passed in.
         virtual const CommandLine* GetCommandLine() { return nullptr; }
+
+        /// Pump the system event loop once, regardless of whether there are any events to process.
+        virtual void PumpSystemEventLoopOnce() {}
+
+        /// Pump the system event loop until there are no events left to process.
+        virtual void PumpSystemEventLoopUntilEmpty() {}
+
+        /// Run the main loop until ExitMainLoop is called.
+        virtual void RunMainLoop() {}
+
+        /// Request to exit the main loop.
+        virtual void ExitMainLoop() {}
+
+        /// Returns true is ExitMainLoop has been called, false otherwise.
+        virtual bool WasExitMainLoopRequested() { return false; }
+
+        /// Check to see if the application is running against an engine that is external to the application path
+        virtual bool IsEngineExternal() const { return false; }
+
+        /// Resolve a path thats relative to the engine folder to an absolute path
+        virtual void ResolveEnginePath(AZStd::string& /*engineRelativePath*/) const {}
+
+        /// Calculate the branch token from the current application's asset root
+        virtual void CalculateBranchTokenForAppRoot(AZStd::string& token) const = 0;
 
         /*!
         * Returns a Type Uuid of the component for the given componentId and entityId.
@@ -122,18 +154,13 @@ namespace AzFramework
 
         virtual void OnMobileApplicationWillTerminate() {}
         virtual void OnMobileApplicationLowMemoryWarning() {}
-    };
 
-    class ApplicationLifecycleEventsHandler
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(ApplicationLifecycleEventsHandler, AZ::SystemAllocator, 0);
-        ApplicationLifecycleEventsHandler();
-        ~ApplicationLifecycleEventsHandler();
-    private:
-        // Private implementation to be implemented for each platform
-        class Pimpl;
-        Pimpl* m_pimpl;
+        // Events triggered when the application window has been
+        // created/destoryed.  This is currently only supported 
+        // on Android so the renderer can correctly manage the 
+        // rendering context.
+        virtual void OnApplicationWindowCreated() {}
+        virtual void OnApplicationWindowDestroy() {}
     };
 } // namespace AzFramework
 

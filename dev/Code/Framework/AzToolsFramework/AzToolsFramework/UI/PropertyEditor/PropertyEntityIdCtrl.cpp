@@ -20,6 +20,7 @@
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
 #include <AzToolsFramework/UI/PropertyEditor/EntityIdQLabel.hxx>
 #include <AzToolsFramework/Entity/EditorEntityContextPickingBus.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
 #include <QtWidgets/QCheckBox>
@@ -73,6 +74,8 @@ namespace AzToolsFramework
         pLayout->addWidget(m_pickButton);
         pLayout->addWidget(m_clearButton);
 
+        setStyleSheet("QToolTip { padding: 5px; }");
+
         setFocusProxy(m_entityIdLabel);
         setFocusPolicy(m_entityIdLabel->focusPolicy());
 
@@ -112,7 +115,7 @@ namespace AzToolsFramework
         {
             EditorPickModeRequests::Bus::Handler::BusDisconnect();
         }
-        }
+    }
 
     void PropertyEntityIdCtrl::OnPickModeSelect(AZ::EntityId id)
     {
@@ -248,6 +251,7 @@ namespace AzToolsFramework
     void PropertyEntityIdCtrl::SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride)
     {
         m_entityIdLabel->SetEntityId(newEntityId, nameOverride);
+        m_componentsSatisfyingServices.clear();
 
         if (!m_requiredServices.empty() || !m_incompatibleServices.empty())
         {
@@ -260,8 +264,8 @@ namespace AzToolsFramework
             {
                 AZStd::vector<AZ::ComponentServiceType> unmatchedServices(m_requiredServices);
                 bool foundIncompatibleService = false;
-                const auto components = entity->GetComponents();
-                for (const auto* component : components)
+                const auto& components = entity->GetComponents();
+                for (const AZ::Component* component : components)
                 {
                     AZ::ComponentDescriptor* componentDescriptor = nullptr;
                     EBUS_EVENT_ID_RESULT(componentDescriptor, component->RTTI_GetType(), AZ::ComponentDescriptorBus, GetDescriptor);
@@ -272,6 +276,7 @@ namespace AzToolsFramework
                         AZ::ComponentServiceType service = unmatchedServices[serviceIdx];
                         if (AZStd::find(providedServices.begin(), providedServices.end(), service) != providedServices.end())
                         {
+                            m_componentsSatisfyingServices.emplace_back(AzToolsFramework::GetFriendlyComponentName(component));
                             unmatchedServices.erase(unmatchedServices.begin() + serviceIdx);
                         }
                     }
@@ -297,10 +302,49 @@ namespace AzToolsFramework
             SetMismatchedServices(servicesMismatch);
         }
 
+        QString tip = BuildTooltip();
+        if (!tip.isEmpty())
+        {
+            m_entityIdLabel->setToolTip(tip);
+        }
+
         if (emitChange)
         {
             emit OnEntityIdChanged(newEntityId);
         }
+    }
+
+    QString PropertyEntityIdCtrl::BuildTooltip()
+    {
+        AZ::Entity* entity = nullptr;
+        EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, m_entityIdLabel->GetEntityId());
+
+        if (!entity)
+        {
+            return QString();
+        }
+
+        QString tooltip;
+
+        QVariant mismatchedServices = property("MismatchedServices");
+        if (mismatchedServices == true)
+        {
+            tooltip = "Service requirements are not met by the referenced entity.";
+        }
+        else if (!m_componentsSatisfyingServices.empty())
+        {
+            tooltip = tr("Required services are satisfied by the following components on ");
+            tooltip += entity->GetName().c_str();
+            tooltip += ":\n";
+
+            for (const AZStd::string& componentName : m_componentsSatisfyingServices)
+            {
+                tooltip += "\n\t";
+                tooltip += componentName.c_str();
+            }
+        }
+
+        return tooltip;
     }
 
     void PropertyEntityIdCtrl::SetRequiredServices(const AZStd::vector<AZ::ComponentServiceType>& requiredServices)

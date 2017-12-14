@@ -40,11 +40,13 @@ namespace ScriptCanvasEditor
         AZ_RTTI(GraphItemCommand, "{94B50FAC-ACAF-4B9B-BA3C-9F3EE36854BA}", AzToolsFramework::UndoSystem::URSequencePoint);
         AZ_CLASS_ALLOCATOR(GraphItemCommand, AZ::SystemAllocator, 0);
 
-        GraphItemCommand(AZStd::string_view friendlyName);
+        explicit GraphItemCommand(AZStd::string_view friendlyName);
         ~GraphItemCommand() override = default;
 
         void Undo() override;
         void Redo() override;
+
+        bool Changed() const override { return m_undoState != m_redoState;  }
 
         virtual void Capture(AZ::Entity* scriptCanvasEntity, bool captureUndo);
 
@@ -93,7 +95,7 @@ namespace ScriptCanvasEditor
         AZ_RTTI(GraphItemAddCommand, "{01E6BC39-0A2C-4C05-9384-804A63321D62}", GraphItemChangeCommand);
         AZ_CLASS_ALLOCATOR(GraphItemAddCommand, AZ::SystemAllocator, 0);
 
-        GraphItemAddCommand(AZStd::string_view friendlyName);
+        explicit GraphItemAddCommand(AZStd::string_view friendlyName);
         ~GraphItemAddCommand() override = default;
 
         void Undo() override;
@@ -114,7 +116,7 @@ namespace ScriptCanvasEditor
         AZ_RTTI(GraphItemRemovalCommand, "{6257B3EC-E9E8-4419-AA25-2A768C21B635}", GraphItemChangeCommand);
         AZ_CLASS_ALLOCATOR(GraphItemRemovalCommand, AZ::SystemAllocator, 0);
 
-        GraphItemRemovalCommand(AZStd::string_view friendlyName);
+        explicit GraphItemRemovalCommand(AZStd::string_view friendlyName);
         ~GraphItemRemovalCommand() override = default;
 
         void Undo() override;
@@ -123,7 +125,7 @@ namespace ScriptCanvasEditor
         void Capture(AZ::Entity* scriptCanvasEntity, bool captureUndo) override;
 
     protected:
-        GraphItemRemovalCommand(const GraphItemAddCommand&) = delete;
+        GraphItemRemovalCommand(const GraphItemRemovalCommand&) = delete;
         const GraphItemRemovalCommand& operator=(const GraphItemRemovalCommand&) = delete;
     };
 }

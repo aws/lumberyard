@@ -19,6 +19,7 @@
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Plane.h>
 #include <Cry_Math.h>
 #include <Cry_Geo.h>
 #include <Cry_Color.h>
@@ -28,9 +29,19 @@ inline AZ::Vector3 LYVec3ToAZVec3(const Vec3& source)
     return AZ::Vector3(source.x, source.y, source.z);
 }
 
+inline AZ::Vector4 LYVec4ToAZVec4(const Vec4& source)
+{
+    return AZ::Vector4(source.x, source.y, source.z, source.w);
+}
+
 inline Vec3 AZVec3ToLYVec3(const AZ::Vector3& source)
 {
     return Vec3(source.GetX(), source.GetY(), source.GetZ());
+}
+
+inline Vec4 AZVec4ToLYVec4(const AZ::Vector4& source)
+{
+    return Vec4(source.GetX(), source.GetY(), source.GetZ(), source.GetW());
 }
 
 inline AZ::Color LYVec3ToAZColor(const Vec3& source)
@@ -41,6 +52,11 @@ inline AZ::Color LYVec3ToAZColor(const Vec3& source)
 inline Vec3 AZColorToLYVec3(const AZ::Color& source)
 {
     return Vec3(source.GetR(), source.GetG(), source.GetB());
+}
+
+inline Vec4 AZColorToLYVec4(const AZ::Color& source)
+{
+    return Vec4(source.GetR(), source.GetG(), source.GetB(), source.GetA());
 }
 
 inline ColorF AZColorToLYColorF(const AZ::Color& source)
@@ -121,6 +137,19 @@ inline AABB AZAabbToLyAABB(const AZ::Aabb& source)
 inline AZ::Aabb LyAABBToAZAabb(const AABB& source)
 {
     return AZ::Aabb::CreateFromMinMax(LYVec3ToAZVec3(source.min), LYVec3ToAZVec3(source.max));
+}
+
+inline AZ::Plane LyPlaneToAZPlane(const Plane& source)
+{
+    return AZ::Plane::CreateFromNormalAndDistance(LYVec3ToAZVec3(source.n), source.d);
+}
+
+inline Plane AZPlaneToLyPlane(const AZ::Plane& source)
+{
+    Plane resultPlane;
+    resultPlane.Set(AZVec3ToLYVec3(source.GetNormal()), source.GetDistance());
+
+    return resultPlane;
 }
 
 // returns true if an entityId is a legacyId - 0 is considered not to be a valid legacy Id as it's the

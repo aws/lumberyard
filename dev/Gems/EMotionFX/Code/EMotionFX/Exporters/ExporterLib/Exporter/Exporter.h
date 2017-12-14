@@ -65,7 +65,7 @@ namespace ExporterLib
     // helpers
     //void FixSkeleton(Actor* actor, MCore::Array<MCore::Matrix>* outDeltaMatrices = nullptr);
     void CopyVector2(EMotionFX::FileFormat::FileVector2& to, const AZ::Vector2& from);
-    void CopyVector(EMotionFX::FileFormat::FileVector3& to, const MCore::Vector3& from);
+    void CopyVector(EMotionFX::FileFormat::FileVector3& to, const AZ::PackedVector3f& from);
     void CopyQuaternion(EMotionFX::FileFormat::FileQuaternion& to, MCore::Quaternion from);
     void Copy16BitQuaternion(EMotionFX::FileFormat::File16BitQuaternion& to, MCore::Quaternion from);
     void Copy16BitQuaternion(EMotionFX::FileFormat::File16BitQuaternion& to, MCore::Compressed16BitQuaternion from);
@@ -86,7 +86,7 @@ namespace ExporterLib
     void ConvertFileMotionEvent(EMotionFX::FileFormat::FileMotionEvent* value, MCore::Endian::EEndianType targetEndianType);
     void ConvertFileMotionEventTable(EMotionFX::FileFormat::FileMotionEventTrack* value, MCore::Endian::EEndianType targetEndianType);
     void ConvertRGBAColor(MCore::RGBAColor* value, MCore::Endian::EEndianType targetEndianType);
-    void ConvertVector3(MCore::Vector3* value, MCore::Endian::EEndianType targetEndianType);
+    void ConvertVector3(AZ::PackedVector3f* value, MCore::Endian::EEndianType targetEndianType);
 
     uint32 GetFileHighVersion();
     uint32 GetFileLowVersion();
@@ -118,8 +118,6 @@ namespace ExporterLib
     void SaveNodeGroup(MCore::Stream* file, EMotionFX::NodeGroup* nodeGroup, MCore::Endian::EEndianType targetEndianType);
     void SaveNodeGroups(MCore::Stream* file, const MCore::Array<EMotionFX::NodeGroup*>& nodeGroups, MCore::Endian::EEndianType targetEndianType);
     void SaveNodeGroups(MCore::Stream* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
-    void SaveLimit(MCore::Stream* file, EMotionFX::Actor* actor, EMotionFX::NodeLimitAttribute* limit, uint32 nodeIndex, MCore::Endian::EEndianType targetEndianType);
-    void SaveLimits(MCore::Stream* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
     void SaveNodeMotionSources(MCore::Stream* file, EMotionFX::Actor* actor, MCore::Array<EMotionFX::Actor::NodeMirrorInfo>* mirrorInfo, MCore::Endian::EEndianType targetEndianType);
     void SaveAttachmentNodes(MCore::Stream* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
     void SaveAttachmentNodes(MCore::Stream* file, EMotionFX::Actor* actor, const AZStd::vector<uint16>& attachmentNodes, MCore::Endian::EEndianType targetEndianType);
@@ -176,10 +174,10 @@ namespace ExporterLib
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void OptimizeSkeletalSubMotion(EMotionFX::SkeletalSubMotion* subMotion, bool optimizePos, bool optimizeRot, bool optimizeScale, float maxPosError, float maxRotError, float maxScaleError);
-    void AddSortedKey(EMotionFX::SkeletalSubMotion* subMotion, float time, const MCore::Vector3& position, const MCore::Quaternion& rotation, const MCore::Vector3& scale);
+    void AddSortedKey(EMotionFX::SkeletalSubMotion* subMotion, float time, const AZ::Vector3& position, const MCore::Quaternion& rotation, const AZ::Vector3& scale);
     // call this before optimization !!!
     void ConformSkeletalMotion(EMotionFX::SkeletalMotion* motion, EMotionFX::Actor* actor, const MCore::Array<MCore::Matrix>& deltaMatrices);
-    void FixTransformation(const MCore::Array<MCore::Matrix>& deltaMatrices, uint32 nodeIndex, uint32 parentNodeIndex, const MCore::Vector3& inPosition, const MCore::Quaternion& inRotation, const MCore::Vector3& inScale, MCore::Vector3* outPosition, MCore::Quaternion* outRotation, MCore::Vector3* outScale);
+    void FixTransformation(const MCore::Array<MCore::Matrix>& deltaMatrices, uint32 nodeIndex, uint32 parentNodeIndex, const AZ::Vector3& inPosition, const MCore::Quaternion& inRotation, const AZ::Vector3& inScale, AZ::Vector3* outPosition, MCore::Quaternion* outRotation, AZ::Vector3* outScale);
 
     void SaveSkeletalMotionHeader(MCore::Stream* file, EMotionFX::Motion* motion, MCore::Endian::EEndianType targetEndianType);
     void SaveSkeletalMotionFileInfo(MCore::Stream* file, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType);
@@ -201,5 +199,4 @@ namespace ExporterLib
     const char* GetMorphSubMotionName(EMotionFX::MorphSubMotion* subMotion);
     void OptimizeMorphSubMotions(EMotionFX::SkeletalMotion* motion, float maxError = 0.001f);
     void AddSortedKey(EMotionFX::MorphSubMotion* subMotion, float time, float value);
-
 } // namespace ExporterLib

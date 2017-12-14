@@ -23,6 +23,8 @@
 
 #include <IRenderAuxGeom.h>
 
+#include <QTimer>
+
 #define MARKER_SIZE 6.0f
 #define MARKER_DIR_SIZE 10.0f
 #define SELECTION_RADIUS 30.0f
@@ -81,6 +83,7 @@ inline Vec3 SnapToSize(Vec3 v, double size)
 //////////////////////////////////////////////////////////////////////
 Q2DViewport::Q2DViewport(QWidget* parent)
     : QtViewport(parent)
+    , m_renderer(nullptr)
 {
     // Scroll offset equals origin
     m_rcSelect.setRect(0, 0, 0, 0);
@@ -113,7 +116,16 @@ Q2DViewport::Q2DViewport(QWidget* parent)
 
     m_displayContext.pIconManager = GetIEditor()->GetIconManager();
 
-    OnCreate();
+    /*
+       In MFC OnCreate was delayed behind the scenes, being called at some time
+       after the constructor but just before the window is shown for the first
+       time. Using QTimer is simple way to accomplish the same thing. 
+       
+       QTimer relies on the event loop, so by calling QTimer::singleShot with 0
+       timeout, the constructor will finish immediately, followed by a call to
+       OnCreate shortly after, once Qt's event loop is up and running. 
+    */
+    QTimer::singleShot(0, [&]() { OnCreate(); });
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -563,7 +575,7 @@ QPoint Q2DViewport::WorldToViewParticleEditor(const Vec3& wp, int width, int hei
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3    Q2DViewport::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh) const
+Vec3    Q2DViewport::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh, bool* collideWithObject) const
 {
     Vec3 wp = m_screenTM_Inverted.TransformPoint(Vec3(vp.x(), vp.y(), 0));
     switch (m_axis)

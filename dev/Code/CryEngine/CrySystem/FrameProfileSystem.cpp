@@ -16,7 +16,6 @@
 
 #include <ILog.h>
 #include <IRenderer.h>
-#include <IInput.h>
 #include <StlUtils.h>
 #include <IConsole.h>
 #include <LyShine/Bus/UiCursorBus.h>
@@ -24,6 +23,8 @@
 #include <IGame.h>
 #include <IGameFramework.h>
 #include <IStatoscope.h>
+
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
 #include "Sampler.h"
 #include "CryThread.h"
@@ -1017,9 +1018,8 @@ void CFrameProfileSystem::EndFrame()
 
 #if defined(WIN32)
 
-    bool bPaused = false;
-
-    bPaused = (GetKeyState(VK_SCROLL) & 1);
+    const AzFramework::InputChannel* inputChannelScrollLock = AzFramework::InputChannelRequests::FindInputChannel(AzFramework::InputDeviceKeyboard::Key::WindowsSystemScrollLock);
+    bool bPaused = (inputChannelScrollLock ? inputChannelScrollLock->IsActive() : false);
 
     // Will pause or resume collection.
     if (bPaused != m_bCollectionPaused)
@@ -1591,20 +1591,20 @@ void CFrameProfileSystem::EnableMemoryProfile(bool bEnable)
     m_bDisplayMemoryInfo = bEnable;
 }
 
-
-bool CFrameProfileSystem::OnInputEvent(const SInputEvent& event)
+//////////////////////////////////////////////////////////////////////////
+bool CFrameProfileSystem::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
     bool ret = false;
 
     //only react to keyboard input
-    if (eIDT_Keyboard == event.deviceType)
+    if (AzFramework::InputDeviceKeyboard::IsKeyboardDevice(inputChannel.GetInputDevice().GetInputDeviceId()))
     {
         //and only if the key was just pressed
-        if (eIS_Pressed == event.state)
+        if (inputChannel.IsStateBegan())
         {
-            switch (event.keyId)
+            const AzFramework::InputChannelId& channelId = inputChannel.GetInputChannelId();
+            if (channelId == AzFramework::InputDeviceKeyboard::Key::WindowsSystemScrollLock)
             {
-            case eKI_ScrollLock:
                 // toggle collection pause
                 m_bCollectionPaused = !m_bCollectionPaused;
                 m_bDisplayedProfilersValid = false;
@@ -1620,15 +1620,12 @@ bool CFrameProfileSystem::OnInputEvent(const SInputEvent& event)
 
                 UpdateInputSystemStatus();
                 ret = true;
-                break;
-            case eKI_Escape:
-                break;
-
-            case eKI_Down:
-            case eKI_Up:
+            }
+            else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowDown ||
+                     channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowUp)
             {
                 // are we going up or down?
-                int32 off = (event.keyId == eKI_Up) ? -1 : 1;
+                int32 off = (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowUp) ? -1 : 1;
 
                 //if the collection has been paused ...
                 if (m_bCollectionPaused)
@@ -1649,22 +1646,20 @@ bool CFrameProfileSystem::OnInputEvent(const SInputEvent& event)
                 m_offset = (float)fsel(m_offset, m_offset, 0.0f);
                 ret = true;
             }
-            break;
-
-            case eKI_Left:
-            case eKI_Right:
+            else if (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowLeft ||
+                     channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowRight)
+            {
                 if (m_bCollectionPaused)
                 {
                     // expand the selected profiler
                     m_bDisplayedProfilersValid = false;
                     if (m_pGraphProfiler)
                     {
-                        m_pGraphProfiler->m_bExpended = (event.keyId == eKI_Right);
+                        m_pGraphProfiler->m_bExpended = (channelId == AzFramework::InputDeviceKeyboard::Key::NavigationArrowRight);
                     }
 
                     ret = true;
                 }
-                break;
             }
         }
     }
@@ -1676,30 +1671,18 @@ bool CFrameProfileSystem::OnInputEvent(const SInputEvent& event)
 //////////////////////////////////////////////////////////////////////////
 void CFrameProfileSystem::UpdateInputSystemStatus()
 {
-    if (gEnv->pInput)
+    ScopedSwitchToGlobalHeap globalHeap;
+
+    // Disconnect from receiving input events
+    AzFramework::InputChannelEventListener::Disconnect();
+
+    // Add ourself if needed
+    if (m_bEnabled)
     {
-        ScopedSwitchToGlobalHeap globalHeap;
-
-        // Remove ourself from the system
-        if (gEnv->pInput->GetExclusiveListener() == this)
-        {
-            gEnv->pInput->SetExclusiveListener(0);
-        }
-
-        gEnv->pInput->RemoveEventListener(this);
-
-        // Add ourself if needed
-        if (m_bEnabled)
-        {
-            if (m_bCollectionPaused)
-            {
-                gEnv->pInput->SetExclusiveListener(this);
-            }
-            else
-            {
-                gEnv->pInput->AddEventListener(this);
-            }
-        }
+        m_currentInputPriority = m_bCollectionPaused ?
+                                 AzFramework::InputChannelEventListener::GetPriorityDebug() :
+                                 AzFramework::InputChannelEventListener::GetPriorityUI();
+        AzFramework::InputChannelEventListener::Connect();
     }
 }
 

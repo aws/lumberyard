@@ -9,35 +9,41 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#if defined(MODEL_TEST)
-#include "modeltest.h"
-#endif
 
-#include "RCJobSortFilterProxyModel.h"
-#include "native/resourcecompiler/rcjoblistmodel.h" // for Column enum
+#include <native/resourcecompiler/RCJobSortFilterProxyModel.h>
+#include <native/resourcecompiler/JobsModel.h> //for jobsModel column enum
 
-RCJobSortFilterProxyModel::RCJobSortFilterProxyModel(QObject* parent)
-    : QSortFilterProxyModel(parent)
+namespace AssetProcessor
 {
-#if defined(MODEL_TEST)
-    // Test model behaviour from creation in debug
-    new ModelTest(this, this);
-#endif
-
-    setSortCaseSensitivity(Qt::CaseInsensitive);
-    setFilterCaseSensitivity(Qt::CaseInsensitive);
-}
-
-bool RCJobSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
-{
-    QModelIndex jobStateIndex = sourceModel()->index(sourceRow, AssetProcessor::RCJobListModel::Column::ColumnState, sourceParent);
-    QString jobState = sourceModel()->data(jobStateIndex).toString();
-    if (jobState.compare(tr("Pending"), Qt::CaseSensitive) != 0)
+    JobSortFilterProxyModel::JobSortFilterProxyModel(QObject* parent)
+        : QSortFilterProxyModel(parent)
     {
+        setSortCaseSensitivity(Qt::CaseInsensitive);
+        setFilterCaseSensitivity(Qt::CaseInsensitive);
+    }
+
+    bool JobSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
+    {
+        QModelIndex jobStateIndex = sourceModel()->index(sourceRow, AssetProcessor::JobsModel::Column::ColumnStatus, sourceParent);
+        QString jobState = sourceModel()->data(jobStateIndex).toString();
+        if (m_filterRegexExpEmpty)
+        {
+            if (jobState.compare(tr("Pending"), Qt::CaseSensitive) != 0 && jobState.compare(tr("Completed"), Qt::CaseSensitive) != 0)
+            {
+                return QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent);
+            }
+
+            return false;
+        }
+
         return QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent);
     }
 
-    return false;
-}
+    void JobSortFilterProxyModel::OnFilterRegexExpChanged(QRegExp regExp, bool isFilterRegexExpEmpty)
+    {
+        m_filterRegexExpEmpty = isFilterRegexExpEmpty;
+        setFilterRegExp(regExp);
+    }
+} //namespace AssetProcessor
 
 #include <native/resourcecompiler/RCJobSortFilterProxyModel.moc>

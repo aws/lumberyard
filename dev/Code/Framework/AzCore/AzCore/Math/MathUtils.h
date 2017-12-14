@@ -46,6 +46,10 @@ namespace AZ
     AZ_MATH_FORCE_INLINE float DegToRad(float deg)      { return deg * Constants::Pi / 180.0f; }
     /*@}*/
 
+
+    AZ_MATH_FORCE_INLINE bool IsClose(float a, float b, float tolerance) { return (fabsf(a - b) <= tolerance); }
+    AZ_MATH_FORCE_INLINE bool IsClose(double a, double b, double tolerance) { return (fabs(a - b) <= tolerance); }
+
     AZ_MATH_FORCE_INLINE float GetSign(float x)
     {
         //return x >= 0.0f ? 1.0f : -1.0f;
@@ -65,7 +69,7 @@ namespace AZ
      */
     template<typename T>
     AZ_MATH_FORCE_INLINE T GetClamp(T value, T min, T max)
-    {
+     {
         if (value < min)
         {
             return min;
@@ -79,6 +83,7 @@ namespace AZ
             return value;
         }
     }
+
     /**
      * Return the smaller of the 2 values.
      * \note we don't use names like clamp, min and max because many implementations define it as a macro.
@@ -87,11 +92,23 @@ namespace AZ
     AZ_MATH_FORCE_INLINE T GetMin(T a, T b)     { return a < b ? a : b; }
 
     /**
-    * Return the bigger of the 2 values.
-    * \note we don't use names like clamp, min and max because many implementations define it as a macro.
-    */
+     * Return the bigger of the 2 values.
+     * \note we don't use names like clamp, min and max because many implementations define it as a macro.
+     */
     template<typename T>
     AZ_MATH_FORCE_INLINE T GetMax(T a, T b)     { return a > b ? a : b; }
+    
+    /**
+     * Return a linear interpolation between 2 values.
+     */
+    AZ_MATH_FORCE_INLINE float  Lerp( float a,  float b,  float t) { return a + (b - a) * t; }
+    AZ_MATH_FORCE_INLINE double Lerp(double a, double b, double t) { return a + (b - a) * t; }
+
+    /**
+     * Return a value t where Lerp(a,b,t)==value (or 0 if a==b)
+     */
+    AZ_MATH_FORCE_INLINE  float LerpInverse( float a,  float b,  float value) { return IsClose(a, b, std::numeric_limits< float>::epsilon()) ? 0 : (value - a) / (b - a); }
+    AZ_MATH_FORCE_INLINE double LerpInverse(double a, double b, double value) { return IsClose(a, b, std::numeric_limits<double>::epsilon()) ? 0 : (value - a) / (b - a); }
 
     /**
     * Return true if the number provided is even
@@ -113,9 +130,6 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE float GetMod(float a, float b) { return fmod(a, b); }
     AZ_MATH_FORCE_INLINE double GetMod(double a, double b) { return fmod(a, b); }
-
-    AZ_MATH_FORCE_INLINE bool IsClose(float a, float b, float tolerance) { return (fabsf(a - b) <= tolerance); }
-    AZ_MATH_FORCE_INLINE bool IsClose(double a, double b, double tolerance)     { return (fabs(a - b) <= tolerance); }
 
     // Wraps [0,maxValue]
     AZ_MATH_FORCE_INLINE int  Wrap(int value, int maxValue)                     { return (value % maxValue) + ((value < 0) ? maxValue : 0); }

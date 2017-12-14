@@ -15,6 +15,7 @@
 #include "LayerNodeAnimator.h"
 #include "TrackViewTrack.h"
 #include "Objects/ObjectLayerManager.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //-----------------------------------------------------------------------------
 void CLayerNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContext& ac)
@@ -24,7 +25,7 @@ void CLayerNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContext& 
         return;
     }
 
-    CTrackViewTrack* pTrack = pNode->GetTrackForParameter(eAnimParamType_Visibility);
+    CTrackViewTrack* pTrack = pNode->GetTrackForParameter(AnimParamType::Visibility);
     if (pTrack)
     {
         bool visible = true;

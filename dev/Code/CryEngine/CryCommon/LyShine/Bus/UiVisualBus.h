@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <LyShine/Bus/UiImageBus.h>
 #include <AzCore/Math/Color.h>
 #include <IFont.h>
 
@@ -37,7 +38,8 @@ public: // member functions
 
     //! Set the override sprite, if this visual component uses a sprite this will override it
     //! \param sprite   If null the sprite on the visual component will not be overridden
-    virtual void SetOverrideSprite(ISprite* sprite) {};
+    //! \param cellIndex This value will be ignored if the given sprite isn't a sprite-sheet spritetype.
+    virtual void SetOverrideSprite(ISprite* sprite, AZ::u32 cellIndex) {};
 
     //! Set the override font, if this visual component uses a font this will override it
     //! \param font   If null the font on the visual component will not be overridden

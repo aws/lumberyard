@@ -1249,7 +1249,7 @@ void CFacialEditorDialog::LoadGroupFile(const char* filename)
 		{
 			// Load the sounds.
 			{
-				IAnimTrack* pSoundTrack = (pNode ? pNode->GetTrackForParameter(eAnimParamType_Sound) : 0);
+				IAnimTrack* pSoundTrack = (pNode ? pNode->GetTrackForParameter(AnimParamType::Sound) : 0);
 				for (int keyIndex = 0, keyCount = (pSoundTrack ? pSoundTrack->GetNumKeys() : 0); keyIndex < keyCount; ++keyIndex)
 				{
 					const char* filename = 0;
@@ -1266,7 +1266,7 @@ void CFacialEditorDialog::LoadGroupFile(const char* filename)
 
 			// Load the animation.
 			{
-				IAnimTrack* pAnimTrack = (pNode ? pNode->GetTrackForParameter(eAnimParamType_Animation) : 0);
+				IAnimTrack* pAnimTrack = (pNode ? pNode->GetTrackForParameter(AnimParamType::Animation) : 0);
 				for (int keyIndex = 0, keyCount = (pAnimTrack ? pAnimTrack->GetNumKeys() : 0); keyIndex < keyCount; ++keyIndex)
 				{
 					const char* anim = 0;
@@ -1284,7 +1284,7 @@ void CFacialEditorDialog::LoadGroupFile(const char* filename)
 		{
 			if (pCameraNode)
 			{
-				IAnimTrack* pFOVTrack = (pCameraNode ? pCameraNode->GetTrackForParameter(eAnimParamType_FOV) : 0);
+				IAnimTrack* pFOVTrack = (pCameraNode ? pCameraNode->GetTrackForParameter(AnimParamType::FOV) : 0);
 				int numFOVKeys = (pFOVTrack ? pFOVTrack->GetNumKeys() : 0);
 
 				// Loop through all the frames for the sequence.
@@ -1310,10 +1310,10 @@ void CFacialEditorDialog::LoadGroupFile(const char* filename)
 		{
 			if (pCameraNode)
 			{
-				IAnimTrack* pCameraPosTrack = (pCameraNode ? pCameraNode->GetTrackForParameter(eAnimParamType_Position) : 0);
-				IAnimTrack* pEntityPosTrack = (pNode ? pNode->GetTrackForParameter(eAnimParamType_Position) : 0);
-				IAnimTrack* pCameraRotTrack = (pCameraNode ? pCameraNode->GetTrackForParameter(eAnimParamType_Rotation) : 0);
-				IAnimTrack* pEntityRotTrack = (pNode ? pNode->GetTrackForParameter(eAnimParamType_Rotation) : 0);
+				IAnimTrack* pCameraPosTrack = (pCameraNode ? pCameraNode->GetTrackForParameter(AnimParamType::Position) : 0);
+				IAnimTrack* pEntityPosTrack = (pNode ? pNode->GetTrackForParameter(AnimParamType::Position) : 0);
+				IAnimTrack* pCameraRotTrack = (pCameraNode ? pCameraNode->GetTrackForParameter(AnimParamType::Rotation) : 0);
+				IAnimTrack* pEntityRotTrack = (pNode ? pNode->GetTrackForParameter(AnimParamType::Rotation) : 0);
 
 				int numCameraPosKeys = (pCameraPosTrack ? pCameraPosTrack->GetNumKeys() : 0);
 				int numCameraRotKeys = (pCameraRotTrack ? pCameraRotTrack->GetNumKeys() : 0);

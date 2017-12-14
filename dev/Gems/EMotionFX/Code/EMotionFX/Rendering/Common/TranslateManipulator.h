@@ -109,9 +109,9 @@ namespace MCommon
         float                   mArrowLength;
         float                   mBaseRadius;
         float                   mPlaneSelectorPos;
-        MCore::Vector3          mMovementPlaneNormal;
-        MCore::Vector3          mMovementDirection;
-        MCore::Vector3          mMousePosRelative;
+        AZ::Vector3             mMovementPlaneNormal;
+        AZ::Vector3             mMovementDirection;
+        AZ::Vector3             mMousePosRelative;
         bool                    mXAxisVisible;
         bool                    mYAxisVisible;
         bool                    mZAxisVisible;

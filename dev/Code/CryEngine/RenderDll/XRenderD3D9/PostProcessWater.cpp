@@ -17,6 +17,8 @@
 #include "D3DPostProcess.h"
 #include "../Common/ReverseDepth.h"
 
+#include "../../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+
 #pragma warning(disable: 4244)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +101,8 @@ void CUnderwaterGodRays::Render()
 
         PostProcessUtils().ShBeginPass(CShaderMan::s_shPostEffects, pTechName0, FEF_DONTSETSTATES);
         gcpRendD3D->FX_SetState(GS_NODEPTHTEST);
-        Vec4 pParams = Vec4(CRenderer::CV_r_water_godrays_distortion, 0, 0, 0);
+        float underwaterDistortion = OceanToggle::IsActive() ? OceanRequest::GetUnderwaterDistortion() : CRenderer::CV_r_water_godrays_distortion;
+        Vec4 pParams = Vec4(underwaterDistortion, 0, 0, 0);
         CShaderMan::s_shPostEffects->FXSetPSFloat(pParam1Name, &pParams, 1);
         PostProcessUtils().DrawFullScreenTri(CTexture::s_ptexBackBuffer->GetWidth(), CTexture::s_ptexBackBuffer->GetHeight());
         PostProcessUtils().ShEndPass();
@@ -440,7 +443,23 @@ void CWaterRipples::Render()
 
     // spawn particles into effects accumulation buffer
     gcpRendD3D->FX_PushRenderTarget(0, CTexture::s_ptexBackBufferScaled[0], 0);
-    gcpRendD3D->RT_SetViewport(0, 0, CTexture::s_ptexWaterRipplesDDN->GetWidth(), CTexture::s_ptexWaterRipplesDDN->GetHeight());
+
+    const int backBufferWidth = CTexture::s_ptexBackBufferScaled[0]->GetWidth();
+    const int backBufferHeight = CTexture::s_ptexBackBufferScaled[0]->GetHeight();
+
+    int viewportWidth = CTexture::s_ptexWaterRipplesDDN->GetWidth();
+    int viewportHeight = CTexture::s_ptexWaterRipplesDDN->GetHeight();
+
+    // Metal does not allow us to create a viewport/scissor rectangle that goes outside of the render target. So scale the viewport if necessary
+    if (viewportWidth > backBufferWidth || viewportHeight > backBufferHeight)
+    {
+        const float maxDifferenceRatio = max(float(viewportWidth - backBufferWidth)/viewportWidth, float(viewportHeight - backBufferHeight)/viewportHeight);
+        const float scaleFactor = 1.0f - maxDifferenceRatio;
+        viewportWidth *= scaleFactor;
+        viewportHeight *= scaleFactor;
+    }
+
+    gcpRendD3D->RT_SetViewport(0, 0, viewportWidth, viewportHeight);
 
     if (s_bInitializeSim)
     {
@@ -553,18 +572,10 @@ void CWaterVolume::Render()
         int nCurFrameID = gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nProcessThreadID].m_nFrameID;
         if (nFrameID != nCurFrameID)
         {
-            static Vec4 pParams0(0, 0, 0, 0), pParams1(0, 0, 0, 0);
-            Vec4 pCurrParams0, pCurrParams1;
-            gEnv->p3DEngine->GetOceanAnimationParams(pCurrParams0, pCurrParams1);
-
             // Update sim settings
-            if (WaterSimMgr()->NeedInit() || pCurrParams0.x != pParams0.x || pCurrParams0.y != pParams0.y ||
-                pCurrParams0.z != pParams0.z || pCurrParams0.w != pParams0.w || pCurrParams1.x != pParams1.x ||
-                pCurrParams1.y != pParams1.y || pCurrParams1.z != pParams1.z || pCurrParams1.w != pParams1.w)
+            if (WaterSimMgr()->NeedInit())
             {
-                pParams0 = pCurrParams0;
-                pParams1 = pCurrParams1;
-                WaterSimMgr()->Create(1.0, pParams0.x, pParams0.z, 1.0f, 1.0f);
+               WaterSimMgr()->Create(1.0, 1.0f, 1.0f);
             }
 
             // Create texture if required
@@ -600,11 +611,38 @@ void CWaterVolume::Render()
 
                 CDeviceTexture * pDevTex = pTexture->GetDevTexture();
                 assert(pDevTex);
-                pDevTex->UploadFromStagingResource(0, [=](void* pData, uint32 rowPitch, uint32 slicePitch)
+                auto tranferFunc = [=](void* pData, uint32 rowPitch, uint32 slicePitch)
                 {
                     cryMemcpy(pData, pDispGrid, 4 * width * height * sizeof(f32));
                     return true;
-                });
+                };
+
+#if defined(OPENGL)
+                // OpenGL needs to create framebuffers in order to copy a texture (staging)
+                // to another one. Because some devices don't have floating point render target support, 
+                // we instead map the destination texture and copy the content directly.
+                if (!gRenDev->UseHalfFloatRenderTargets())
+                {
+                    D3DTexture* textureResouce = pDevTex->Get2DTexture();
+                    D3D11_MAPPED_SUBRESOURCE mappedResource;
+                    HRESULT hr = gcpRendD3D->GetDeviceContext().Map(textureResouce, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
+                    if (S_OK == hr)
+                    {
+                        const bool update = tranferFunc(mappedResource.pData, mappedResource.RowPitch, mappedResource.DepthPitch);
+                        gcpRendD3D->GetDeviceContext().Unmap(textureResouce, 0);
+                    }
+                    else
+                    {
+                        AZ_Assert(false, "Failed to map Water Voume");
+                        return;
+                    }
+                }
+                else
+#endif // defined(OPENGL)
+                {
+                    pDevTex->UploadFromStagingResource(0, tranferFunc);
+                }
             }
             nFrameID = nCurFrameID;
         }

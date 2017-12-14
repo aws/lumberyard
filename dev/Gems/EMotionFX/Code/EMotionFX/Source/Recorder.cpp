@@ -473,7 +473,7 @@ namespace EMotionFX
         #ifndef EMFX_SCALE_DISABLED
             AddTransformKey(actorInstanceData.mActorLocalTransform, actorInstance->GetLocalPosition(), actorInstance->GetLocalRotation(), actorInstance->GetLocalScale());
         #else
-            AddTransformKey(actorInstanceData.mActorLocalTransform, actorInstance->GetLocalPosition(), actorInstance->GetLocalRotation(), MCore::Vector3(1.0f, 1.0f, 1.0f));
+            AddTransformKey(actorInstanceData.mActorLocalTransform, actorInstance->GetLocalPosition(), actorInstance->GetLocalRotation(), AZ::Vector3(1.0f, 1.0f, 1.0f));
         #endif
         }
     }
@@ -534,7 +534,7 @@ namespace EMotionFX
                 #ifndef EMFX_SCALE_DISABLED
                     AddTransformKey(actorInstanceData.mTransformTracks[n], localTransform.mPosition, localTransform.mRotation, localTransform.mScale);
                 #else
-                    AddTransformKey(actorInstanceData.mTransformTracks[n], localTransform.mPosition, localTransform.mRotation, MCore::Vector3(1.0f, 1.0f, 1.0f));
+                    AddTransformKey(actorInstanceData.mTransformTracks[n], localTransform.mPosition, localTransform.mRotation, AZ::Vector3(1.0f, 1.0f, 1.0f));
                 #endif
                 }
             }
@@ -765,7 +765,7 @@ namespace EMotionFX
 
 
     // add a transform key
-    void Recorder::AddTransformKey(TransformTracks& track, const MCore::Vector3& pos, const MCore::Quaternion rot, const MCore::Vector3& scale)
+    void Recorder::AddTransformKey(TransformTracks& track, const AZ::Vector3& pos, const MCore::Quaternion rot, const AZ::Vector3& scale)
     {
     #ifdef EMFX_SCALE_DISABLED
         MCORE_UNUSED(scale);
@@ -774,15 +774,15 @@ namespace EMotionFX
         // check if we need to add a position key at all
         if (track.mPositions.GetNumKeys() > 0)
         {
-            const MCore::Vector3 lastPos = track.mPositions.GetLastKey()->GetValue();
-            if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(pos, lastPos, 0.0001f) == false)
+            const AZ::Vector3 lastPos = AZ::Vector3(track.mPositions.GetLastKey()->GetValue());
+            if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(pos, lastPos, 0.0001f) == false)
             {
-                track.mPositions.AddKey(mRecordTime, pos);
+                track.mPositions.AddKey(mRecordTime, AZ::PackedVector3f(pos));
             }
         }
         else
         {
-            track.mPositions.AddKey(mRecordTime, pos);
+            track.mPositions.AddKey(mRecordTime, AZ::PackedVector3f(pos));
         }
 
 
@@ -808,15 +808,15 @@ namespace EMotionFX
                 // check if we need to add a scale key
                 if (track.mScales.GetNumKeys() > 0)
                 {
-                    const MCore::Vector3 lastScale = track.mScales.GetLastKey()->GetValue();
-                    if (MCore::Compare<MCore::Vector3>::CheckIfIsClose(scale, lastScale, 0.0001f) == false)
+                    const AZ::Vector3 lastScale = AZ::Vector3(track.mScales.GetLastKey()->GetValue());
+                    if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(scale, lastScale, 0.0001f) == false)
                     {
-                        track.mScales.AddKey(mRecordTime, scale);
+                        track.mScales.AddKey(mRecordTime, AZ::PackedVector3f(scale));
                     }
                 }
                 else
                 {
-                    track.mScales.AddKey(mRecordTime, scale);
+                    track.mScales.AddKey(mRecordTime, AZ::PackedVector3f(scale));
                 }
 
                 /*
@@ -906,13 +906,13 @@ namespace EMotionFX
 
         // sample and apply
         const TransformTracks& track = actorInstanceData.mActorLocalTransform;
-        actorInstance->SetLocalPosition(track.mPositions.GetValueAtTime(timeInSeconds));
+        actorInstance->SetLocalPosition(AZ::Vector3(track.mPositions.GetValueAtTime(timeInSeconds)));
         actorInstance->SetLocalRotation(track.mRotations.GetValueAtTime(timeInSeconds));
         EMFX_SCALECODE
         (
             if (mRecordSettings.mRecordScale)
             {
-                actorInstance->SetLocalScale(track.mScales.GetValueAtTime(timeInSeconds));
+                actorInstance->SetLocalScale(AZ::Vector3(track.mScales.GetValueAtTime(timeInSeconds)));
             }
         )
     }
@@ -938,14 +938,14 @@ namespace EMotionFX
             const TransformTracks& track = actorInstanceData.mTransformTracks[n];
 
             // build the output transform by sampling the keytracks
-            outTransform.mPosition      = track.mPositions.GetValueAtTime(timeInSeconds);
+            outTransform.mPosition      = AZ::Vector3(track.mPositions.GetValueAtTime(timeInSeconds));
             outTransform.mRotation      = track.mRotations.GetValueAtTime(timeInSeconds);
 
             EMFX_SCALECODE
             (
                 if (mRecordSettings.mRecordScale)
                 {
-                    outTransform.mScale = track.mScales.GetValueAtTime(timeInSeconds);
+                    outTransform.mScale = AZ::Vector3(track.mScales.GetValueAtTime(timeInSeconds));
 
                     //if (mRecordSettings.mRecordNonUniformScale)
                     //outTransform.mScaleRotation   = track.mScaleRotations.GetValueAtTime( timeInSeconds );

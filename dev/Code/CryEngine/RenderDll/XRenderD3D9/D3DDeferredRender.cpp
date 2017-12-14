@@ -16,6 +16,8 @@
 #include "I3DEngine.h"
 #include "D3DPostProcess.h"
 #include "Common/RenderCapabilities.h"
+#include "../Common/Textures/TextureManager.h"
+#include "GraphicsPipeline/FurPasses.h"
 
 #pragma warning(disable: 4244)
 
@@ -1367,7 +1369,7 @@ void CD3D9Renderer::FX_DeferredShadowMaskGen(const TArray<uint32>& shadowPoolLig
                         CTexture* pShadowMap = firstFrustum.bUseShadowsPool ? CTexture::s_ptexRT_ShadowPool : firstFrustum.pDepthTex;
                         pShadowMap->Apply(1, CTexture::GetTexState(TS));
 
-                        SD3DPostEffectsUtils::SetTexture(CTexture::s_ptexShadowJitterMap, 7, FILTER_POINT, 0);
+                        SD3DPostEffectsUtils::SetTexture(CTextureManager::Instance()->GetDefaultTexture("ShadowJitterMap"), 7, FILTER_POINT, 0);
 
                         static ICVar* pVar = iConsole->GetCVar("e_ShadowsPoolSize");
                         int nShadowAtlasRes = pVar->GetIVal();
@@ -1402,7 +1404,14 @@ void CD3D9Renderer::FX_DeferredShadowMaskGen(const TArray<uint32>& shadowPoolLig
                         static CCryNameR vLightPosName("g_vLightPos");
                         pShader->FXSetPSFloat(vLightPosName, &vLightPos, 1);
 
-                        CTexture::s_ptexZTarget->Apply(0, CTexture::GetTexState(STexState(FILTER_POINT, true)));
+                        if (FurPasses::GetInstance().IsRenderingFur())
+                        {
+                            CTexture::s_ptexFurZTarget->Apply(0, CTexture::GetTexState(STexState(FILTER_POINT, true)));
+                        }
+                        else
+                        {
+                            CTexture::s_ptexZTarget->Apply(0, CTexture::GetTexState(STexState(FILTER_POINT, true)));
+                        }
 
                         // color mask
                         uint32 newState = m_RP.m_CurState & ~(GS_COLMASK_NONE | GS_BLEND_MASK);

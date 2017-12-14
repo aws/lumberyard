@@ -131,8 +131,7 @@ void RestoryCombo(QComboBox* cmb, QStringList& lstHistory, QString lpszDefault =
     cmb->clear();
     if (!lstHistory.empty())
     {
-        Q_FOREACH(QString value, lstHistory)
-        cmb->addItem(value);
+        cmb->addItems(lstHistory);
     }
     else if (!lpszDefault.isEmpty())
     {

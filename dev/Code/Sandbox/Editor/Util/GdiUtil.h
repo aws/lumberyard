@@ -18,82 +18,17 @@
 #define CRYINCLUDE_EDITOR_UTIL_GDIUTIL_H
 #pragma once
 
-#ifdef KDAB_MAC_PORT
-#include <gdiplus.h>
-#else
-typedef struct _BLENDFUNCTION {
-    BYTE BlendOp;
-    BYTE BlendFlags;
-    BYTE SourceConstantAlpha;
-    BYTE AlphaFormat;
-} BLENDFUNCTION, *PBLENDFUNCTION, *LPBLENDFUNCTION;
+//! function used to compute thumbs per row and spacing, used in asset browser and other tools where thumb layout is needed and maybe GDI canvas used
+//! \param aContainerWidth the thumbs' container width
+//! \param aThumbWidth the thumb image width
+//! \param aMargin the thumb default minimum horizontal margin
+//! \param aThumbCount the thumb count
+//! \param rThumbsPerRow returned thumb count per single row
+//! \param rNewMargin returned new computed margin between thumbs
+//! \note The margin between thumbs will grow/shrink dynamically to keep up with the thumb count per row
+bool ComputeThumbsLayoutInfo(float aContainerWidth, float aThumbWidth, float aMargin, UINT aThumbCount, UINT& rThumbsPerRow, float& rNewMargin);
 
-const DWORD SRCCOPY = 0;
-const BYTE AC_SRC_OVER = 0;
-const BYTE AC_SRC_ALPHA = 0;
-typedef GUID CLSID;
-namespace Gdiplus
-{
-    class Rect;
-    class Graphics;
-}
-#endif // KDAB_MAC_PORT
-
-const COLORREF kDrawBoxSameColorAsFill = 0xFFFFFFFF;
-
-//! This is a class that manages a doublebuffer in GDI, so you can have flicker-free drawing
-class CRYEDIT_API CGdiCanvas
-{
-public:
-
-    CGdiCanvas();
-    ~CGdiCanvas();
-
-    bool Create(QWidget* widget);
-    bool Resize(QWidget* widget);
-
-    //! create the canvas from a compatible DC
-    bool    Create(int aWidth, int aHeight);
-
-#ifdef KDAB_MAC_PORT
-    //! resize the canvas, without destroying DCs
-    bool    Resize(HDC hCompatibleDC, UINT aWidth, UINT aHeight);
-#endif
-    //! clear the canvas with a color
-    void    Clear(const QColor& aClearColor = QColor( 255, 255, 255 ));
-    //! \return canvas width
-    UINT    GetWidth();
-    //! \return canvas height
-    UINT    GetHeight();
-
-    bool BlitTo(QWidget* widget);
-#ifdef KDAB_MAC_PORT
-    //! blit/copy the image from the canvas to other destination DC
-    bool    BlitTo(HDC hDestDC, int aDestX = 0, int aDestY = 0, int aDestWidth = -1, int aDestHeight = -1, int aSrcX = 0, int aSrcY = 0, int aRop = SRCCOPY);
-    //! blit/copy the image from the canvas to other destination window
-    bool    BlitTo(HWND hDestWnd, int aDestX = 0, int aDestY = 0, int aDestWidth = -1, int aDestHeight = -1, int aSrcX = 0, int aSrcY = 0, int aRop = SRCCOPY);
-#endif
-    //! free the canvas data
-    void    Free();
-    //! function used to compute thumbs per row and spacing, used in asset browser and other tools where thumb layout is needed and maybe GDI canvas used
-    //! \param aContainerWidth the thumbs' container width
-    //! \param aThumbWidth the thumb image width
-    //! \param aMargin the thumb default minimum horizontal margin
-    //! \param aThumbCount the thumb count
-    //! \param rThumbsPerRow returned thumb count per single row
-    //! \param rNewMargin returned new computed margin between thumbs
-    //! \note The margin between thumbs will grow/shrink dynamically to keep up with the thumb count per row
-    static bool ComputeThumbsLayoutInfo(float aContainerWidth, float aThumbWidth, float aMargin, UINT aThumbCount, UINT& rThumbsPerRow, float& rNewMargin);
-    //! this function will setup a blendfunc struct with a specified alpha value
-#ifdef KDAB_MAC_PORT
-    static void MakeBlendFunc(BYTE aAlpha, /*out*/ BLENDFUNCTION& rBlendFunc);
-#endif
-    static QColor ScaleColor(const QColor& coor, float aScale);
-
-protected:
-
-    UINT        m_width, m_height;
-};
+QColor ScaleColor(const QColor& coor, float aScale);
 
 //! This class loads alpha-channel bitmaps and holds a DC for use with AlphaBlend function
 class CRYEDIT_API CAlphaBitmap

@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -29,7 +27,7 @@ namespace StarterGameGem
 	/*
 	* The information required to know which decal should be used for each surface.
 	*/
-	class DecalPool
+	class DecalPool final
 	{
 	public:
 		AZ_RTTI(DecalPool, "{4714324F-4ED2-4226-989C-0746CA15EE74}");

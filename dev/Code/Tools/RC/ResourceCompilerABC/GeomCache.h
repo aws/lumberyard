@@ -85,8 +85,8 @@ namespace GeomCache
         // Static mesh data
         MeshData m_staticMeshData;
 
-        // Compile buffer (multiple frames can overlap in computation)
-        std::vector<RawMeshFrame> m_meshDataBuffer;
+        // Compile buffer 
+        RawMeshFrame m_meshDataBuffer;
 
         // Raw animated data frames for encoder
         mutable AZStd::mutex m_rawFramesCS;
@@ -141,11 +141,10 @@ namespace GeomCache
         // Static node data
         NodeData m_staticNodeData;
 
-        // Compile buffer (multiple frames can overlap in computation)
-        std::vector<NodeData> m_nodeDataBuffer;
+        // Compile buffer
+        NodeData m_nodeDataBuffer;
 
         // Animated data frames for encoder
-        mutable AZStd::mutex m_animatedNodeDataCS;
         std::deque<NodeData> m_animatedNodeData;
 
         // Encoded animated data frames for writer

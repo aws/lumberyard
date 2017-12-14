@@ -1665,6 +1665,31 @@ bool CCryAction::PreUpdate(bool haveFocus, unsigned int updateFlags)
 
     m_pSystem->RenderBegin();
 
+
+    // when we are updated by the editor, we should not update the system
+    if (!(updateFlags & ESYSUPDATE_EDITOR))
+    {
+        int updateLoopPaused = (!gameRunning || m_paused) ? 1 : 0;
+        if (gEnv->pRenderer->IsPost3DRendererEnabled())
+        {
+            updateLoopPaused = 0;
+            updateFlags |= ESYSUPDATE_IGNORE_AI;
+        }
+
+        bRetRun = m_pSystem->UpdatePreTickBus(updateFlags, updateLoopPaused);
+    }
+
+    return bRetRun;
+}
+
+//------------------------------------------------------------------------
+bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
+{
+    FUNCTION_PROFILER(GetISystem(), PROFILE_SYSTEM);
+
+    bool bRetRun = true;
+    bool gameRunning = IsGameStarted();
+    bool bGameIsPaused = !gameRunning || IsGamePaused(); // slightly different from m_paused (check's gEnv->pTimer as well)
     float frameTime(gEnv->pTimer->GetFrameTime());
 
     LARGE_INTEGER updateStart, updateEnd;
@@ -1683,7 +1708,8 @@ bool CCryAction::PreUpdate(bool haveFocus, unsigned int updateFlags)
 
         const bool bGameWasPaused = bGameIsPaused;
 
-        bRetRun = m_pSystem->Update(updateFlags, updateLoopPaused);
+        bRetRun = m_pSystem->UpdatePostTickBus(updateFlags, updateLoopPaused);
+
 #ifdef ENABLE_LW_PROFILERS
         CryProfile::PushProfilingMarker("ActionPreUpdate");
         QueryPerformanceCounter(&updateStart);
@@ -1790,21 +1816,6 @@ bool CCryAction::PreUpdate(bool haveFocus, unsigned int updateFlags)
 #endif
     }
 
-    return bRetRun;
-}
-
-uint32 CCryAction::GetPreUpdateTicks()
-{
-    uint32 ticks = m_PreUpdateTicks;
-    m_PreUpdateTicks = 0;
-    return ticks;
-}
-
-//------------------------------------------------------------------------
-void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
-{
-    FUNCTION_PROFILER(GetISystem(), PROFILE_SYSTEM);
-
     if (updateFlags & ESYSUPDATE_UPDATE_VIEW_ONLY)
     {
         m_pSystem->RenderBegin();
@@ -1812,14 +1823,14 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
         m_pSystem->Render();
         gEnv->p3DEngine->EndOcclusion();
         m_pSystem->RenderEnd();
-        return;
+        return bRetRun;
     }
 
     FeatureTests::UpdateCamera();
 
     if (updateFlags & ESYSUPDATE_EDITOR_ONLY)
     {
-        return;
+        return bRetRun;
     }
 
     if (updateFlags & ESYSUPDATE_EDITOR_AI_PHYSICS)
@@ -1853,7 +1864,7 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
             m_pGameObjectSystem->PostUpdate(delta);
         }
 
-        return;
+        return bRetRun;
     }
 
     if (gEnv->pLyShine)
@@ -1875,8 +1886,7 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
 
     float delta = gEnv->pTimer->GetFrameTime();
 
-    const bool bGameIsPaused = IsGamePaused(); // slightly different from m_paused (check's gEnv->pTimer as well)
-    if (!bGameIsPaused)
+    if (!IsGamePaused())
     {
         if (m_pEffectSystem)
         {
@@ -1989,6 +1999,15 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
         m_pSystem->DoWorkDuringOcclusionChecks();
     }
     FeatureTests::Update();
+
+    return bRetRun;
+}
+
+uint32 CCryAction::GetPreUpdateTicks()
+{
+    uint32 ticks = m_PreUpdateTicks;
+    m_PreUpdateTicks = 0;
+    return ticks;
 }
 
 void CCryAction::Reset(bool clients)
@@ -2896,19 +2915,6 @@ void CCryAction::OnEditorSetGameMode(int iMode)
     {
         m_pGame->FixBrokenObjects(true);
         m_pGame->ClearBreakHistory();
-    }
-
-    if (iMode == 0)
-    {
-        if (gEnv->pMusicSystem)
-        {
-            gEnv->pMusicSystem->EndTheme(Audio::EThemeFade_FadeOut);
-
-            if (gEnv->pMusicSystem->GetMusicLogic())
-            {
-                gEnv->pMusicSystem->GetMusicLogic()->Stop();
-            }
-        }
     }
 
     // reset any pending camera blending

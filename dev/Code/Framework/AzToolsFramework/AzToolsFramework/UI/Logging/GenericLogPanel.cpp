@@ -39,6 +39,7 @@ namespace AzToolsFramework
         {
             GenericLogTab* newTab = new GenericLogTab(this, settings);
             newTab->SetDataSource(&m_dataModel);
+            newTab->SetCurrentItemExpandsToFit(m_currentItemsExpandToFit);
             return newTab;
         }
 
@@ -112,6 +113,13 @@ namespace AzToolsFramework
                 m_alreadyQueuedCommit = true;
                 QMetaObject::invokeMethod(this, "CommitAddedLines", Qt::QueuedConnection);
             }
+        }
+
+        void GenericLogPanel::SetCurrentItemsExpandToFit(bool expandToFit)
+        {
+            m_currentItemsExpandToFit = expandToFit;
+            for (auto logTab: findChildren<GenericLogTab*>())
+                logTab->SetCurrentItemExpandsToFit(expandToFit);
         }
 
         void GenericLogPanel::CommitAddedLines()

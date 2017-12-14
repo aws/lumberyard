@@ -57,8 +57,9 @@ namespace EMotionFX
          * @param actor The actor instance to use for the update. So the actor instance where the stack belongs to during this update.
          * @param node The node to use for the update, so the node where the mesh belongs to during this update.
          * @param timeDelta The time (in seconds) passed since the last call.
+         * @param forceUpdateDisabledDeformers When set to true this will force updating disabled deformers.
          */
-        void Update(ActorInstance* actor, Node* node, float timeDelta);
+        void Update(ActorInstance* actor, Node* node, float timeDelta, bool forceUpdateDisabledDeformers=false);
 
         /**
          * Iterates through all mesh deformers in the stack and reinitializes them.

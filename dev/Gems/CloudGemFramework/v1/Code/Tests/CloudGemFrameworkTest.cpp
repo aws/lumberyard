@@ -542,6 +542,22 @@ TEST(JsonWriter, Array)
     TestJsonWriterSuccess<ARRAY_TYPE>(ARRAY_VALUE, ARRAY_VALUE_JSON);
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// HttpRequestJob Unit Tests
+
+TEST(HttpRequestJob, StringToHttpMethod)
+{
+    EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_GET, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("GET"));
+    EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_POST, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("POST"));
+    EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_DELETE, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("DELETE"));
+    EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_PUT, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("PUT"));
+    EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_HEAD, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("HEAD"));
+    EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_PATCH, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("PATCH"));
+    EXPECT_FALSE(CloudGemFramework::HttpRequestJob::StringToHttpMethod("Foo"));
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // RequestBuilder Unit Tests
 

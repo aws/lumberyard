@@ -110,9 +110,6 @@
 #define TEXT(_STRING) _STRING
 #endif
 
-#if !defined(MAC) // Mac already has this defined for us...
-typedef int32 BOOL;
-#endif
 typedef char CHAR;
 typedef int32 INT;
 typedef unsigned char UCHAR;

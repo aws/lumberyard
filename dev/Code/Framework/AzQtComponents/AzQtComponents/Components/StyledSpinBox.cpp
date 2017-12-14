@@ -21,10 +21,14 @@
 
 namespace AzQtComponents
 {
-
+    // Slider parameters
     const int sliderMarginToSpinBox = 4;
     const int sliderDefaultHeight = 35;
     const int sliderDefaultWidth = 192;
+
+    // Decimal precision parameters
+    const int decimalPrecisonDefault = 7;
+    const int decimalDisplayPrecisionDefault = 3;
 
     class FocusInEventFilterPrivate
         : public QObject
@@ -32,7 +36,7 @@ namespace AzQtComponents
     public:
         FocusInEventFilterPrivate(StyledDoubleSpinBox* spinBox)
             : QObject(spinBox)
-            , m_spinBox(spinBox){}
+            , m_spinBox(spinBox) {}
 
     protected:
         bool eventFilter(QObject* obj, QEvent* event)
@@ -68,8 +72,8 @@ namespace AzQtComponents
     public:
         ClickEventFilterPrivate(StyledDoubleSpinBox* spinBox)
             : QObject(spinBox)
-            , m_spinBox(spinBox){}
-        ~ClickEventFilterPrivate(){}
+            , m_spinBox(spinBox) {}
+        ~ClickEventFilterPrivate() {}
     signals:
         void clickOnApplication(const QPoint& pos);
     protected:
@@ -95,14 +99,89 @@ namespace AzQtComponents
         , m_slider(nullptr)
         , m_ignoreNextUpdateFromSlider(false)
         , m_ignoreNextUpdateFromSpinBox(false)
+        , m_displayDecimals(decimalDisplayPrecisionDefault)
     {
         setProperty("class", "SliderSpinBox");
         setButtonSymbols(QAbstractSpinBox::NoButtons);
+
+        // Set the default decimal precision we will store to a large number
+        // since we will be truncating the value displayed
+        setDecimals(decimalPrecisonDefault);
+
+        // Our tooltip will be the full decimal value, so keep it updated
+        // whenever our value changes
+        QObject::connect(this, static_cast<void(StyledDoubleSpinBox::*)(double)>(&StyledDoubleSpinBox::valueChanged), this, &StyledDoubleSpinBox::UpdateToolTip);
+        UpdateToolTip(value());
     }
 
     StyledDoubleSpinBox::~StyledDoubleSpinBox()
     {
         delete m_slider;
+    }
+
+    void StyledDoubleSpinBox::SetDisplayDecimals(int precision)
+    {
+        m_displayDecimals = precision;
+    }
+
+    QString StyledDoubleSpinBox::StringValue(double value, bool truncated) const
+    {
+        // Determine which decimal precision to use for displaying the value
+        int numDecimals = decimals();
+        if (truncated && m_displayDecimals < numDecimals)
+        {
+            numDecimals = m_displayDecimals;
+        }
+
+        QString stringValue = locale().toString(value, 'f', numDecimals);
+
+        // Handle special cases when we have decimals in our value
+        if (numDecimals > 0)
+        {
+            // Remove trailing zeros, since the locale conversion won't do
+            // it for us
+            QChar zeroDigit = locale().zeroDigit();
+            QString trailingZeros = QString("%1+$").arg(zeroDigit);
+            stringValue.remove(QRegExp(trailingZeros));
+
+            // It's possible we could be left with a decimal point on the end
+            // if we stripped the trailing zeros, so if that's the case, then
+            // add a zero digit on the end so that it is obvious that this is
+            // a float value
+            QChar decimalPoint = locale().decimalPoint();
+            if (stringValue.endsWith(decimalPoint))
+            {
+                stringValue.append(zeroDigit);
+            }
+        }
+
+        // Copied from the QDoubleSpinBox sub-class to handle removing the
+        // group separator if necessary
+        if (!isGroupSeparatorShown() && qAbs(value) >= 1000.0)
+        {
+            stringValue.remove(locale().groupSeparator());
+        }
+
+        return stringValue;
+    }
+
+    QString StyledDoubleSpinBox::textFromValue(double value) const
+    {
+        // If our widget is focused, then show the full decimal value, otherwise
+        // show the truncated value
+        return StringValue(value, !hasFocus());
+    }
+
+    void StyledDoubleSpinBox::UpdateToolTip(double value)
+    {
+        // Set our tooltip to the full decimal value
+        setToolTip(StringValue(value));
+    }
+
+    bool StyledDoubleSpinBox::SliderEnabled() const
+    {
+        // If the step size is set to 0, then don't show our slider
+        return singleStep() != 0.0;
     }
 
     void StyledDoubleSpinBox::showEvent(QShowEvent* ev)
@@ -127,8 +206,25 @@ namespace AzQtComponents
         QDoubleSpinBox::resizeEvent(ev);
     }
 
+    void StyledDoubleSpinBox::focusInEvent(QFocusEvent* event)
+    {
+        QDoubleSpinBox::focusInEvent(event);
+
+        // We need to set the special value text to an empty string, which
+        // effectively makes no change, but actually triggers the line edit
+        // display value to be updated so that when we receive focus to
+        // begin editing, we display the full decimal precision instead of
+        // the truncated display value
+        setSpecialValueText(QString());
+    }
+
     void StyledDoubleSpinBox::displaySlider()
     {
+        if (!SliderEnabled())
+        {
+            return;
+        }
+
         if (!m_slider)
         {
             initSlider();
@@ -144,6 +240,11 @@ namespace AzQtComponents
 
     void StyledDoubleSpinBox::hideSlider()
     {
+        if (!SliderEnabled())
+        {
+            return;
+        }
+
         // prevent slider to hide when the
         // spinbox is passing focus along
         if (m_justPassFocusSlider)
@@ -162,7 +263,7 @@ namespace AzQtComponents
     {
         if (isClickOnSlider(pos) || isClickOnSpinBox(pos))
         {
-            if (m_slider->isVisible())
+            if (m_slider && m_slider->isVisible())
             {
                 displaySlider();
             }
@@ -228,6 +329,11 @@ namespace AzQtComponents
 
     void StyledDoubleSpinBox::prepareSlider()
     {
+        if (!SliderEnabled())
+        {
+            return;
+        }
+
         // If we are treating this as integer only (like QSpinBox), then we can
         // set our min/max and value directly to the slider since it uses integers
         if (m_restrictToInt)
@@ -282,6 +388,11 @@ namespace AzQtComponents
 
     void StyledDoubleSpinBox::initSlider()
     {
+        if (!SliderEnabled())
+        {
+            return;
+        }
+
         m_slider = new StyledSliderPrivate;
         m_slider->setWindowFlags(Qt::WindowFlags(Qt::Window) | Qt::WindowFlags(Qt::FramelessWindowHint) | Qt::WindowFlags(Qt::ToolTip));
 

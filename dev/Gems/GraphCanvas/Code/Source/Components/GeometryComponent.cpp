@@ -22,10 +22,41 @@
 
 namespace GraphCanvas
 {
+    //////////////////////////////
+    // GeometryComponentMetaData
+    //////////////////////////////
+
+    GeometryComponent::GeometryComponentSaveData::GeometryComponentSaveData()
+        : m_position(0,0)
+    {
+    }
+
     //////////////////////
     // GeometryComponent
     //////////////////////
     const float GeometryComponent::IS_CLOSE_TOLERANCE = 0.001;
+
+    bool GeometryComponentVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() <= 3)
+        {
+            AZ::Crc32 positionId = AZ_CRC("Position", 0x462ce4f5);
+
+            GeometryComponent::GeometryComponentSaveData saveData;
+
+            AZ::SerializeContext::DataElementNode* dataNode = classElement.FindSubElement(positionId);
+
+            if (dataNode)
+            {
+                dataNode->GetData(saveData.m_position);
+            }
+            
+            classElement.RemoveElementByName(positionId);
+            classElement.AddElementWithData(context, "SaveData", saveData);
+        }
+
+        return true;
+    }
 
     void GeometryComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -35,32 +66,35 @@ namespace GraphCanvas
             return;
         }
 
+        serializeContext->Class<GeometryComponentSaveData>()
+            ->Version(1)
+            ->Field("Position", &GeometryComponentSaveData::m_position)
+        ;
+
         serializeContext->Class<GeometryComponent>()
-            ->Version(3)
-            ->Field("Position", &GeometryComponent::m_position)
+            ->Version(4, &GeometryComponentVersionConverter)
+            ->Field("SaveData", &GeometryComponent::m_saveData)
         ;
     }
 
     GeometryComponent::GeometryComponent()
-        : m_position(AZ::Vector2::CreateZero())
     {
     }
 
     GeometryComponent::~GeometryComponent()
     {
         GeometryRequestBus::Handler::BusDisconnect();
-        GeometryCommandBus::Handler::BusDisconnect();
     }
 
     void GeometryComponent::Init()
     {
         GeometryRequestBus::Handler::BusConnect(GetEntityId());
-        GeometryCommandBus::Handler::BusConnect(GetEntityId());
     }
 
     void GeometryComponent::Activate()
     {
         SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
+        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void GeometryComponent::Deactivate()
@@ -74,18 +108,18 @@ namespace GraphCanvas
         VisualNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
-    void GeometryComponent::SetPosition(const AZ::Vector2& position)
-    {
-        if (!position.IsClose(m_position))
-        {
-            m_position = position;
-            GeometryNotificationBus::Event(GetEntityId(), &GeometryNotifications::OnPositionChanged, GetEntityId(), m_position);
-        }
-    }
-
     AZ::Vector2 GeometryComponent::GetPosition() const
     {
-        return m_position;
+        return m_saveData.m_position;
+    }
+
+    void GeometryComponent::SetPosition(const AZ::Vector2& position)
+    {
+        if (!position.IsClose(m_saveData.m_position))
+        {
+            m_saveData.m_position = position;
+            GeometryNotificationBus::Event(GetEntityId(), &GeometryNotifications::OnPositionChanged, GetEntityId(), position);
+        }
     }
 
     void GeometryComponent::OnItemChange(const AZ::EntityId& entityId, QGraphicsItem::GraphicsItemChange change, const QVariant& value)
@@ -105,34 +139,23 @@ namespace GraphCanvas
         }
     }
 
-    bool GeometryComponent::OnMousePress(const AZ::EntityId&, const QGraphicsSceneMouseEvent* event)
+    void GeometryComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
     {
-        if (event->button() == Qt::LeftButton)
+        GeometryComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<GeometryComponent, GeometryComponentSaveData>();
+
+        if (saveData)
         {
-            m_oldPosition = m_position;
+            (*saveData) = m_saveData;
         }
-        return false;
     }
 
-    /*!
-    The mouse release event determines if the item has moved a minimum distance to record as an Undo Point
-    for a node move event.
-    */
-    bool GeometryComponent::OnMouseRelease(const AZ::EntityId&, const QGraphicsSceneMouseEvent* event)
+    void GeometryComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
     {
-        if (event->button() == Qt::LeftButton)
-        {
-            if (!m_oldPosition.IsClose(m_position))
-            {
-                AZ::EntityId sceneId;
-                SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
-                if (sceneId.IsValid())
-                {
-                    SceneNotificationBus::Event(sceneId, &SceneNotifications::OnItemMouseMoveComplete, GetEntityId(), event);
-                }
-            }
-        }
+        GeometryComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<GeometryComponent, GeometryComponentSaveData>();
 
-        return false;
+        if (saveData)
+        {
+            m_saveData = (*saveData);
+        }
     }
 }

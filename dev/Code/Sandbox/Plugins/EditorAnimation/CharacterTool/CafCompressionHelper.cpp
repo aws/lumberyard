@@ -20,7 +20,6 @@
 #include <ISystem.h>
 #include <ICryPak.h>
 #include "ResourceCompilerHelper.h"
-#include <windows.h> // OutputDebugString
 #include <QtCore/QDir>
 #include <Util/PathUtil.h>
 
@@ -41,9 +40,9 @@ struct RCLogger
         }
         else
         {
-            OutputDebugString("RC: ");
-            OutputDebugString(text);
-            OutputDebugString("\n");
+            qDebug("RC: ");
+            qDebug(text);
+            qDebug("\n");
         }
     }
 };
@@ -82,10 +81,10 @@ bool CafCompressionHelper::CompressAnimation(const string& animationPath, string
     const bool silent = false;
     const bool noUserDialog = false;
 
-    OutputDebugString("RC Call: ");
-    OutputDebugString(inputFilePath.c_str());
-    OutputDebugString(additionalSettings.c_str());
-    OutputDebugString("\n");
+    qDebug("RC Call: ");
+    qDebug(inputFilePath.c_str());
+    qDebug(additionalSettings.c_str());
+    qDebug("\n");
 
     CResourceCompilerHelper rcHelper;
     const CResourceCompilerHelper::ERcCallResult rcCallResult = rcHelper.CallResourceCompiler(
@@ -178,10 +177,10 @@ bool CafCompressionHelper::CompressAnimationForPreview(string* outputCafPath, st
     const bool silent = false;
     const bool noUserDialog = false;
 
-    OutputDebugString("RC Call: ");
-    OutputDebugString(inputFilePath.c_str());
-    OutputDebugString(additionalSettings.c_str());
-    OutputDebugString("\n");
+    qDebug("RC Call: ");
+    qDebug(inputFilePath.c_str());
+    qDebug(additionalSettings.c_str());
+    qDebug("\n");
 
     CResourceCompilerHelper rcHelper;
     const CResourceCompilerHelper::ERcCallResult rcCallResult = rcHelper.CallResourceCompiler(

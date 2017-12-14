@@ -22,6 +22,8 @@ namespace EMotionFX
      * The default alignment of returned memory addresses, in bytes.
      */
 #define EMFX_DEFAULT_ALIGNMENT  4
+#define EMFX_SIMD_ALIGNMENT 16
+
 
 
     /**
@@ -32,9 +34,6 @@ namespace EMotionFX
      */
     enum
     {
-        EMFX_MEMCATEGORY_LOCALCONTROLLERS                   = 100,
-        EMFX_MEMCATEGORY_GLOBALCONTROLLERS                  = 101,
-
         EMFX_MEMCATEGORY_GEOMETRY_MATERIALS                 = 200,
         EMFX_MEMCATEGORY_GEOMETRY_MESHES                    = 201,
         EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS                 = 202,
@@ -44,7 +43,6 @@ namespace EMotionFX
         EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES            = 300,
         EMFX_MEMCATEGORY_MOTIONS_MOTIONSYSTEMS              = 301,
         EMFX_MEMCATEGORY_MOTIONS_SKELETALMOTIONS            = 302,
-        EMFX_MEMCATEGORY_MOTIONS_CONTROLLEDMOTIONS          = 303,
         EMFX_MEMCATEGORY_MOTIONS_INTERPOLATORS              = 304,
         EMFX_MEMCATEGORY_MOTIONS_KEYTRACKS                  = 305,
         EMFX_MEMCATEGORY_MOTIONS_MOTIONLINKS                = 306,
@@ -67,8 +65,6 @@ namespace EMotionFX
         EMFX_MEMCATEGORY_RIGSYSTEM                          = 406,
 
         EMFX_MEMCATEGORY_TRANSFORMDATA                      = 500,
-        EMFX_MEMCATEGORY_LOCALPOSES                         = 501,
-        EMFX_MEMCATEGORY_GLOBALPOSES                        = 502,
         EMFX_MEMCATEGORY_POSE                               = 503,
         EMFX_MEMCATEGORY_TRANSFORM                          = 504,
         EMFX_MEMCATEGORY_SKELETON                           = 505,
@@ -106,7 +102,6 @@ namespace EMotionFX
 
         EMFX_MEMCATEGORY_IMPORTER                           = 600,
         EMFX_MEMCATEGORY_IDGENERATOR                        = 601,
-        EMFX_MEMCATEGORY_LODGENERATOR                       = 602,
         EMFX_MEMCATEGORY_ACTORMANAGER                       = 603,
         EMFX_MEMCATEGORY_UPDATESCHEDULERS                   = 604,
         EMFX_MEMCATEGORY_ATTACHMENTS                        = 605,
@@ -114,8 +109,6 @@ namespace EMotionFX
         EMFX_MEMCATEGORY_FILEPROCESSORS                     = 607,
         EMFX_MEMCATEGORY_EMSTUDIODATA                       = 608,
         EMFX_MEMCATEGORY_RECORDER                           = 609,
-        EMFX_MEMCATEGORY_RETARGET                           = 610,
-        EMFX_MEMCATEGORY_INTEGRATIONS                       = 611,
         EMFX_MEMCATEGORY_IK                                 = 612,
 
         EMFX_MEMCATEGORY_MESHBUILDER                        = 700,
@@ -123,8 +116,6 @@ namespace EMotionFX
         EMFX_MEMCATEGORY_MESHBUILDER_SUBMESH                = 702,
         EMFX_MEMCATEGORY_MESHBUILDER_VERTEXLOOKUP           = 703,
         EMFX_MEMCATEGORY_MESHBUILDER_VERTEXATTRIBUTELAYER   = 704,
-
-        EMFX_MEMCATEGORY_VISUALIZATION_LIMITS               = 800
     };
 
 

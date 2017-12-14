@@ -35,7 +35,7 @@ namespace GraphicsReflectContext
                 ->Attribute(AZ::Script::Attributes::Category, "Rendering")
                 ->Method("RecomputeStaticShadows", &RecomputeStaticShadows,
                     { { 
-                        { "Bounds", "An AABB that specifies the area where shadow maps should be recomputed", aznew AZ::BehaviorDefaultValue(AZ::Aabb::CreateNull()) },
+                        { "Bounds", "Specifies the area where shadow maps should be recomputed", aznew AZ::BehaviorDefaultValue(AZ::Aabb::CreateNull()) },
                         { "NextCascadeScale", "Bounding boxes for subsequent cached cascades are scaled versions of the preceding cascades, based on this multiplier", aznew AZ::BehaviorDefaultValue(2.0f) }
                     } } )
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Triggers recalculation of cached shadow maps")

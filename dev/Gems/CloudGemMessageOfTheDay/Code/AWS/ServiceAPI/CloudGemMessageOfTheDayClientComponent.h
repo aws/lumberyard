@@ -20,7 +20,7 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/Rtti/BehaviorContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>

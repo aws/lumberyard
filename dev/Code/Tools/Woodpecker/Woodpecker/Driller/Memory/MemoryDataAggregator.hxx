@@ -16,6 +16,8 @@
 #include "Woodpecker/Driller/DrillerAggregator.hxx"
 #include "Woodpecker/Driller/DrillerAggregatorOptions.hxx"
 
+#include <AzCore/RTTI/RTTI.h>
+
 #include "MemoryDataParser.h"
 
 namespace Driller

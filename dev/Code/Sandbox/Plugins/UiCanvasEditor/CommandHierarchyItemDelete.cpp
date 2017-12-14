@@ -49,7 +49,7 @@ void CommandHierarchyItemDelete::redo()
 
 void CommandHierarchyItemDelete::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    QTreeWidgetItemRawPtrQList& selectedItems)
+    const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     if (stack->GetIsExecuting())
     {

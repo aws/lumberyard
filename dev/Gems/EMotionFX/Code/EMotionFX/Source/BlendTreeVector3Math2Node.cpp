@@ -140,13 +140,13 @@ namespace EMotionFX
         SetMathFunction((EMathFunction)((uint32)GetAttributeFloat(ATTRIB_MATHFUNCTION)->GetValue()));
 
         // if both x and y inputs have connections
-        MCore::Vector3 x, y;
+        AZ::Vector3 x, y;
         if (mConnections.GetLength() == 2)
         {
             //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_X) );
             //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_Y) );
-            x = GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue();
-            y = GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue();
+            x = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue());
+            y = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue());
         }
         else // only x or y is connected
         {
@@ -154,25 +154,25 @@ namespace EMotionFX
             if (mConnections[0]->GetTargetPort() == INPUTPORT_X)
             {
                 //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_X) );
-                x = GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue();
-                y = GetAttributeVector3(ATTRIB_STATICVECTOR)->GetValue();
+                x = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue());
+                y = AZ::Vector3(GetAttributeVector3(ATTRIB_STATICVECTOR)->GetValue());
             }
             else // only y has an input
             {
                 MCORE_ASSERT(mConnections[0]->GetTargetPort() == INPUTPORT_Y);
-                x = GetAttributeVector3(ATTRIB_STATICVECTOR)->GetValue();
+                x = AZ::Vector3(GetAttributeVector3(ATTRIB_STATICVECTOR)->GetValue());
                 //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_Y) );
-                y = GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue();
+                y = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue());
             }
         }
 
         // apply the operation
-        MCore::Vector3 vectorResult(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 vectorResult(0.0f, 0.0f, 0.0f);
         float floatResult = 0.0f;
         mCalculateFunc(x, y, &vectorResult, &floatResult);
 
         // update the output value
-        GetOutputVector3(animGraphInstance, OUTPUTPORT_RESULT_VECTOR3)->SetValue(vectorResult);
+        GetOutputVector3(animGraphInstance, OUTPUTPORT_RESULT_VECTOR3)->SetValue(AZ::PackedVector3f(vectorResult));
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT_FLOAT)->SetValue(floatResult);
     }
 
@@ -244,7 +244,7 @@ namespace EMotionFX
     // the math functions
     //-----------------------------------------------
     // dot product
-    void BlendTreeVector3Math2Node::CalculateDot(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput)
+    void BlendTreeVector3Math2Node::CalculateDot(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput)
     {
         MCORE_UNUSED(vectorOutput);
         *floatOutput = inputX.Dot(inputY);
@@ -252,7 +252,7 @@ namespace EMotionFX
 
 
     // cross product
-    void BlendTreeVector3Math2Node::CalculateCross(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput)
+    void BlendTreeVector3Math2Node::CalculateCross(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput)
     {
         MCORE_UNUSED(floatOutput);
         *vectorOutput = inputX.Cross(inputY);
@@ -260,7 +260,7 @@ namespace EMotionFX
 
 
     // add
-    void BlendTreeVector3Math2Node::CalculateAdd(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput)
+    void BlendTreeVector3Math2Node::CalculateAdd(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput)
     {
         MCORE_UNUSED(floatOutput);
         *vectorOutput = inputX + inputY;
@@ -268,7 +268,7 @@ namespace EMotionFX
 
 
     // subtract
-    void BlendTreeVector3Math2Node::CalculateSubtract(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput)
+    void BlendTreeVector3Math2Node::CalculateSubtract(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput)
     {
         MCORE_UNUSED(floatOutput);
         *vectorOutput = inputX - inputY;
@@ -276,7 +276,7 @@ namespace EMotionFX
 
 
     // multiply
-    void BlendTreeVector3Math2Node::CalculateMultiply(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput)
+    void BlendTreeVector3Math2Node::CalculateMultiply(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput)
     {
         MCORE_UNUSED(floatOutput);
         *vectorOutput = inputX * inputY;
@@ -284,21 +284,21 @@ namespace EMotionFX
 
 
     // divide
-    void BlendTreeVector3Math2Node::CalculateDivide(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput)
+    void BlendTreeVector3Math2Node::CalculateDivide(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput)
     {
         MCORE_UNUSED(floatOutput);
-        vectorOutput->x = MCore::Compare<float>::CheckIfIsClose(inputY.x, 0.0f, MCore::Math::epsilon) == false ? (inputX.x / inputY.x) : 0.0f;
-        vectorOutput->y = MCore::Compare<float>::CheckIfIsClose(inputY.y, 0.0f, MCore::Math::epsilon) == false ? (inputX.y / inputY.y) : 0.0f;
-        vectorOutput->z = MCore::Compare<float>::CheckIfIsClose(inputY.z, 0.0f, MCore::Math::epsilon) == false ? (inputX.z / inputY.z) : 0.0f;
+        vectorOutput->Set(
+            AZ::IsClose(inputY.GetX(), 0.0f, MCore::Math::epsilon) == false ? (static_cast<float>(inputX.GetX()) / static_cast<float>(inputY.GetX())) : 0.0f,
+            AZ::IsClose(inputY.GetY(), 0.0f, MCore::Math::epsilon) == false ? (static_cast<float>(inputX.GetY()) / static_cast<float>(inputY.GetY())) : 0.0f,
+            AZ::IsClose(inputY.GetZ(), 0.0f, MCore::Math::epsilon) == false ? (static_cast<float>(inputX.GetZ()) / static_cast<float>(inputY.GetZ())) : 0.0f);
     }
 
 
     // calculate the angle
-    void BlendTreeVector3Math2Node::CalculateAngleDegrees(const MCore::Vector3& inputX, const MCore::Vector3& inputY, MCore::Vector3* vectorOutput, float* floatOutput)
+    void BlendTreeVector3Math2Node::CalculateAngleDegrees(const AZ::Vector3& inputX, const AZ::Vector3& inputY, AZ::Vector3* vectorOutput, float* floatOutput)
     {
         MCORE_UNUSED(vectorOutput);
-        const float radians = MCore::Math::ACos(inputX.SafeNormalized().Dot(inputY.SafeNormalized()));
+        const float radians = MCore::Math::ACos(MCore::SafeNormalize(inputX).Dot(MCore::SafeNormalize(inputY)));
         *floatOutput = MCore::Math::RadiansToDegrees(radians);
     }
-}   // namespace EMotionFX
-
+} // namespace EMotionFX

@@ -103,6 +103,7 @@ namespace LmbrCentral
         float m_boxHeight;
         float m_boxLength;
         float m_attenFalloffMax;
+        float m_probeFade;
 
         //! Settings common to all LY engine lights
         EngineSpec m_minSpec;
@@ -123,6 +124,7 @@ namespace LmbrCentral
         float m_animPhase;
         bool m_volumetricFog;
         bool m_volumetricFogOnly;
+        bool m_castTerrainShadows;
 
         //! Shadow settings
         float m_shadowBias;
@@ -252,6 +254,9 @@ namespace LmbrCentral
 
         void SetProbeAttenuationFalloff(float newAttenuationFalloff) override;
         float GetProbeAttenuationFalloff() override;
+
+        void SetProbeFade(float fade) override;
+        float GetProbeFade() override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

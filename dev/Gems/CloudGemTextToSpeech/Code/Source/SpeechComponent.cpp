@@ -17,14 +17,15 @@
 #include <IAudioInterfacesCommonData.h>
 #include <IAudioSystem.h>
 
-#include <AzCore/IO/FileIO.h>
+#include <AzCore/IO/SystemFile.h>
 #include <MathConversion.h>
-#include <AZCore/JSON/rapidjson.h>
-#include <AZCore/JSON/writer.h>
-#include <AZCore/JSON/stringbuffer.h>
-#include <AZCore/JSON/document.h>
+#include <AzCore/JSON/rapidjson.h>
+#include <AzCore/JSON/writer.h>
+#include <AzCore/JSON/stringbuffer.h>
+#include <AzCore/JSON/document.h>
 
 #include <LmbrCentral/Animation/SimpleAnimationComponentBus.h>
+#include <Integration/AnimGraphComponentBus.h>
 #include <LmbrCentral/Audio/AudioProxyComponentBus.h>
 
 #include "CloudGemTextToSpeech/SpeechComponent.h"
@@ -128,8 +129,7 @@ namespace CloudGemTextToSpeech
                 intermediateIndex++;
             }
             VisemeAnimation* anim = m_speechMarks[index].m_anim;
-            LmbrCentral::AnimatedLayer animLayer(anim->GetAnimationName(), 1, true, 1.0f, m_blendTime);
-            EBUS_EVENT_ID(m_entity->GetId(), LmbrCentral::SimpleAnimationComponentRequestBus, StartAnimation, animLayer);
+            PlayAnimation(anim);
             m_currentPoseHoldTimer = 0;
             m_returnedToSil = false;
         }
@@ -140,14 +140,33 @@ namespace CloudGemTextToSpeech
                 auto silAnim = m_visemeSet.GetVisemeByString("sil");
                 if (silAnim && m_speechMarks[m_currentIndex].m_anim != silAnim && !m_returnedToSil)
                 {
-                    LmbrCentral::AnimatedLayer animLayer(silAnim->GetAnimationName(), 1, true, 1.0f, m_returnToSilBlendTime);
-                    EBUS_EVENT_ID(m_entity->GetId(), LmbrCentral::SimpleAnimationComponentRequestBus, StartAnimation, animLayer);
+                    PlayAnimation(silAnim);
                     m_returnedToSil = true;
                 }
             }
             m_currentPoseHoldTimer += deltaTime;
         }
         m_currentIndex = index;
+    }
+
+    void SpeechComponent::PlayAnimation(VisemeAnimation* anim)
+    {
+        static const AZ::u32 s_uNobodyHome = static_cast<AZ::u32>(0xFFFFFFFE);
+        static const AZ::u32 s_uInvalidParam = static_cast<AZ::u32>(0xFFFFFFFF);
+        AZ::u32 parameterIndex = s_uNobodyHome;
+        EBUS_EVENT_ID_RESULT(parameterIndex, m_entity->GetId(), EMotionFX::Integration::AnimGraphComponentRequestBus, FindParameterIndex, "visemeIndex");
+        if (parameterIndex == s_uNobodyHome)
+        {
+            AZ_Warning("SpeechComponent", false, "Missing Animation Graph Component");
+        }
+        else if (parameterIndex == s_uInvalidParam)
+        {
+            AZ_Warning("SpeechComponent", false, "Parameter index not found for parameter name == visemeIndex");
+        }
+        else
+        {
+            EBUS_EVENT_ID(m_entity->GetId(), EMotionFX::Integration::AnimGraphComponentRequestBus, SetParameterFloat, parameterIndex, (float)anim->GetVisemeIndex());
+        }
     }
 
     void SpeechComponent::UpdateClosedCaptioning()
@@ -263,7 +282,7 @@ namespace CloudGemTextToSpeech
 
                 if (!m_cacheGeneratedLines)
                 {
-                    AZ::IO::FileIOBase::GetDirectInstance()->Remove(voicePath.c_str());
+                    AZ::IO::SystemFile::Delete(voicePath.c_str());
                 }
             }
             else
@@ -286,14 +305,13 @@ namespace CloudGemTextToSpeech
 
     void SpeechComponent::ParsePollySpeechMarks(const AZStd::string& filePath)
     {
-        AZ::IO::FileIOStream pFile(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary);
-        
-        if (!pFile.IsOpen())
+        AZ::IO::SystemFile pFile;
+        if (!pFile.Open(filePath.data(), AZ::IO::SystemFile::SF_OPEN_READ_ONLY))
         {
             AZ_Warning("CloudGemTextToSpeech", false, "Failed to load speech marks");
             return;
         }
-        size_t fileSize = pFile.GetLength();
+        size_t fileSize = pFile.Length();
         if (fileSize > 0)
         {
             ClearSpeechMarks();
@@ -322,7 +340,7 @@ namespace CloudGemTextToSpeech
         }
         if (!m_cacheGeneratedLines)
         {
-            AZ::IO::FileIOBase::GetDirectInstance()->Remove(filePath.c_str());
+            AZ::IO::SystemFile::Delete(filePath.c_str());
         }
     }
 
@@ -420,8 +438,8 @@ namespace CloudGemTextToSpeech
     }
 
 
-    VisemeAnimation::VisemeAnimation(const AZStd::string& animationName, bool alwaysPlay)
-        : m_animationName(animationName)
+    VisemeAnimation::VisemeAnimation(const AZ::u32& visemeIndex, bool alwaysPlay)
+        : m_visemeIndex(visemeIndex)
         , m_alwaysPlay(alwaysPlay)
     {
     }
@@ -433,8 +451,8 @@ namespace CloudGemTextToSpeech
         {
             serializeContext->Class<VisemeAnimation>()->
                 Version(1)
-                ->Field("Animation Name", &VisemeAnimation::m_animationName)
-                ->Field("Always Play", &VisemeAnimation::m_alwaysPlay);
+                ->Field("Always Play", &VisemeAnimation::m_alwaysPlay)
+                ->Field("Viseme Index", &VisemeAnimation::m_visemeIndex);
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
@@ -445,8 +463,8 @@ namespace CloudGemTextToSpeech
                     ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Animation")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)->
-                    DataElement(AZ::Edit::UIHandlers::Default, &VisemeAnimation::m_animationName, "Animation name",
-                        "Name of the animation. ")
+                    DataElement(AZ::Edit::UIHandlers::Default, &VisemeAnimation::m_visemeIndex, "Viseme index",
+                        "index that matches the parameter condition in the animation graph. ")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &VisemeAnimation::m_alwaysPlay, "Always Play",
                         "Guarantees that this viseme will be played regardless of how long or short the viseme file specifies");
 

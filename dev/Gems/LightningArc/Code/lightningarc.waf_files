@@ -11,23 +11,36 @@
     {
         "Include":
         [
-            "include/LightningArc/LightningArcBus.h"
+            "include/LightningArc/LightningArcBus.h",
+            "include/LightningArc/LightningArcComponentBus.h",
+            "include/Lightning/LightningComponentBus.h",
+            "include/Lightning/SkyHighlightComponentBus.h"
         ],
         "Source":
         [
-            "source/LightningArcGem.h",
-            "source/LightningArcGem.cpp"
+            "source/LightningGem.cpp",
+            "source/LightningGem.h",
+            "source/LightningArcComponent.cpp",
+            "source/LightningArcComponent.h",
+            "source/LightningComponent.cpp",
+            "source/LightningComponent.h",
+            "source/SkyHighlightComponent.cpp",
+            "source/SkyHighlightComponent.h"
         ],
         "Source/GameSDK":
         [
-            "source/LightningArc.h",
             "source/LightningArc.cpp",
-            "source/LightningNode.h",
+            "source/LightningArc.h",
             "source/LightningNode.cpp",
-            "source/LightningGameEffect.h",
-            "source/LightningGameEffect.cpp",
-            "source/ScriptBind_LightningArc.h",
-            "source/ScriptBind_LightningArc.cpp"
+            "source/LightningNode.h",
+            "source/LightningGameEffectAz.cpp",
+            "source/LightningGameEffectAz.h",
+            "source/LightningGameEffectCommon.cpp",
+            "source/LightningGameEffectCommon.h",
+            "source/LightningGameEffectCry.cpp",
+            "source/LightningGameEffectCry.h",
+            "source/ScriptBind_LightningArc.cpp",
+            "source/ScriptBind_LightningArc.h"
         ]
     }
 }

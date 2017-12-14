@@ -21,6 +21,8 @@
 #include <CryLibrary.h>
 #include <IPlatformOS.h>
 
+#include "Input/AzToLyInput.h"
+
 #define DLL_INITFUNC_CREATEGAME "CreateGameFramework"
 
 #if defined(AZ_MONOLITHIC_BUILD)
@@ -87,6 +89,7 @@ namespace CryLegacy
             }
         }
 #endif // !defined(AZ_MONOLITHIC_BUILD)
+        CryLegacyInputRequestBus::Handler::BusConnect();
         CryLegacy::CryLegacyRequestBus::Handler::BusConnect();
         CryGameFrameworkBus::Handler::BusConnect();
     }
@@ -95,6 +98,7 @@ namespace CryLegacy
     {
         CryGameFrameworkBus::Handler::BusDisconnect();
         CryLegacy::CryLegacyRequestBus::Handler::BusDisconnect();
+        CryLegacyInputRequestBus::Handler::BusDisconnect();
     }
 
     IGameFramework* CryLegacySystemComponent::InitFramework(SSystemInitParams& startupParams)
@@ -127,6 +131,7 @@ namespace CryLegacy
             SetWindowLongPtr(reinterpret_cast<HWND>(gEnv->pRenderer->GetHWND()), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
         }
 #endif
+
         return m_Framework;
     }
 
@@ -137,9 +142,25 @@ namespace CryLegacy
             m_Framework->Shutdown();
             m_Framework = nullptr;
         }
-
     }
 
+    IInput* CryLegacySystemComponent::InitInput()
+    {
+        IInput* pInput = new AzToLyInput();
+        if (!pInput->Init())
+        {
+            delete pInput;
+            pInput = nullptr;
+        }
+        return pInput;
+    }
 
-
+    void CryLegacySystemComponent::ShutdownInput(IInput* input)
+    {
+        if (input)
+        {
+            input->ShutDown();
+            delete input;
+        }
+    }
 }

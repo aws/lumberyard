@@ -32,11 +32,26 @@ public: // member functions
     const string& GetTexturePathname() const override;
     Borders GetBorders() const override;
     void SetBorders(Borders borders) override;
+    void SetCellBorders(int cellIndex, Borders borders) override;
     ITexture* GetTexture() const override;
     void Serialize(TSerialize ser) override;
     bool SaveToXml(const string& pathname) override;
     bool AreBordersZeroWidth() const override;
+    bool AreCellBordersZeroWidth(int index) const override;
     AZ::Vector2 GetSize() const override;
+    AZ::Vector2 GetCellSize(int cellIndex) const override;
+    const SpriteSheetCellContainer& GetSpriteSheetCells() const override;
+    virtual void SetSpriteSheetCells(const SpriteSheetCellContainer& cells);
+    void ClearSpriteSheetCells() override;
+    void AddSpriteSheetCell(const SpriteSheetCell& spriteSheetCell) override;
+    AZ::Vector2 GetCellUvSize(int cellIndex) const override;
+    const UiTransformInterface::RectPoints& GetCellUvCoords(int cellIndex) const override;
+    Borders GetCellUvBorders(int cellIndex) const override;
+    Borders GetTextureSpaceCellUvBorders(int cellIndex) const override;
+    const AZStd::string& GetCellAlias(int cellIndex) const override;
+    void SetCellAlias(int cellIndex, const AZStd::string& cellAlias) override;
+    int GetCellIndexFromAlias(const AZStd::string& cellAlias) const override;
+    bool IsSpriteSheet() const override;
 
     // ~ISprite
 
@@ -50,6 +65,10 @@ public: // static member functions
     //! Replaces baseSprite with newSprite with proper ref-count handling and null-checks.
     static void ReplaceSprite(ISprite** baseSprite, ISprite* newSprite);
 
+protected: // member functions
+
+    bool CellIndexWithinRange(int cellIndex) const;
+
 private: // types
     typedef AZStd::unordered_map<string, CSprite*, stl::hash_string_caseless<string>, stl::equality_string_caseless<string> > CSpriteHashMap;
 
@@ -59,11 +78,19 @@ private: // member functions
     AZ_DISABLE_COPY_MOVE(CSprite);
 
 private: // data
+
+    SpriteSheetCellContainer m_spriteSheetCells;  //!< Stores information for each cell defined within the sprite-sheet.
+
     string m_pathname;
     string m_texturePathname;
     Borders m_borders;
     ITexture* m_texture;
+    int m_numSpriteSheetCellTags;                       //!< Number of Cell child-tags in sprite XML; unfortunately needed to help with serialization.
+
+private: // static data
 
     //! Used to keep track of all loaded sprites. Sprites are refcounted.
     static CSpriteHashMap* s_loadedSprites;
+
+    static AZStd::string s_emptyString;
 };

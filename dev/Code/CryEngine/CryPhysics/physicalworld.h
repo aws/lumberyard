@@ -1144,8 +1144,8 @@ public:
     CPhysicalEntity* m_pContainerEnt;
     int m_idpartContainer;
     QuatTS m_qtsContainer;
-    int* m_pContainerParts;
-    int m_nContainerParts;
+    int* m_pContainerParts = nullptr;
+    int m_nContainerParts = 0;
     int m_bConvexBorder;
     IPhysicalEntity* m_pTrigger;
     float m_moveAccum;

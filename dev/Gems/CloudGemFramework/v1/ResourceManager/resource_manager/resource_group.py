@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 from errors import HandledError
 import os
@@ -683,16 +683,6 @@ def update_stack(context, args):
         args=[deployment_name, resource_group_name], 
         deprecated=True
     )
-
-    # Update mappings...
-
-    if deployment_name == context.config.default_deployment:
-        mappings.update(context, util.Args())
-
-    if deployment_name == context.config.release_deployment:
-        temp_args = util.Args()
-        temp_args.release = True
-        mappings.update(context, temp_args)
 
 
 def update_lambda_code(context, args):

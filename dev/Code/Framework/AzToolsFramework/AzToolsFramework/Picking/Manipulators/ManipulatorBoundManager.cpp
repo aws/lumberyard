@@ -10,105 +10,61 @@
 *
 */
 
-#include <AzCore/Math/Transform.h>
-#include <AzCore/RTTI/RTTI.h>
-#include <AzCore/std/smart_ptr/make_shared.h>
-
-#include <AzToolsFramework/Picking/Manipulators/ManipulatorBoundManager.h>
-#include <AzToolsFramework/Picking/Manipulators/ManipulatorBounds.h>
+#include "ManipulatorBoundManager.h"
 
 namespace AzToolsFramework
 {
     namespace Picking
     {
-        ManipulatorBoundManager::ManipulatorBoundManager(AZ::u32 manipulatorManagerId)
-            : DefaultContextBoundManager(manipulatorManagerId)
-        { }
+        ManipulatorBoundManager::ManipulatorBoundManager(ManipulatorManagerId manipulatorManagerId)
+            : DefaultContextBoundManager(manipulatorManagerId) {}
 
-        AZStd::shared_ptr<BoundShapeInterface> ManipulatorBoundManager::CreateShape(const BoundRequestShapeBase& shapeData, RegisteredBoundId id, AZ::u64 /*userContext*/)
+        AZStd::shared_ptr<BoundShapeInterface> ManipulatorBoundManager::CreateShape(
+            const BoundRequestShapeBase& shapeData, RegisteredBoundId id, AZ::u64 /*userContext*/)
         {
             AZ_Assert(id != InvalidBoundId, "Invalid Bound Id!");
 
-            if (azrtti_istypeof<BoundShapeBox>(&shapeData))
-            {
-                AZStd::shared_ptr<BoundShapeInterface> box = AZStd::make_shared<ManipulatorBoundBox>(id);
-                box->SetShapeData(shapeData);
-                m_bounds.push_back(box);
-                return box;
-            }
-            else if (azrtti_istypeof<BoundShapeCylinder>(&shapeData))
-            {
-                AZStd::shared_ptr<BoundShapeInterface> cylinder = AZStd::make_shared<ManipulatorBoundCylinder>(id);
-                cylinder->SetShapeData(shapeData);
-                m_bounds.push_back(cylinder);
-                return cylinder;
-            }
-            else if (azrtti_istypeof<BoundShapeCone>(&shapeData))
-            {
-                AZStd::shared_ptr<BoundShapeInterface> cone = AZStd::make_shared<ManipulatorBoundCone>(id);
-                cone->SetShapeData(shapeData);
-                m_bounds.push_back(cone);
-                return cone;
-            }
-            else if (azrtti_istypeof<BoundShapeQuad>(&shapeData))
-            {
-                AZStd::shared_ptr<BoundShapeInterface> quad = AZStd::make_shared<ManipulatorBoundQuad>(id);
-                quad->SetShapeData(shapeData);
-                m_bounds.push_back(quad);
-                return quad;
-            }
-            else if (azrtti_istypeof<BoundShapeTorus>(&shapeData))
-            {
-                AZStd::shared_ptr<BoundShapeInterface> torus = AZStd::make_shared<ManipulatorBoundTorus>(id);
-                torus->SetShapeData(shapeData);
-                m_bounds.push_back(torus);
-                return torus;
-            }
-            else
-            {
-                return nullptr;
-            }
+            AZStd::shared_ptr<BoundShapeInterface> shape = shapeData.MakeShapeInterface(id);
+            m_bounds.push_back(shape);
+            return shape;
         }
 
         void ManipulatorBoundManager::DeleteShape(AZStd::shared_ptr<BoundShapeInterface> bound)
         {
-            auto found = AZStd::find(m_bounds.begin(), m_bounds.end(), bound);
+            const auto found = AZStd::find(m_bounds.begin(), m_bounds.end(), bound);
             if (found != m_bounds.end())
             {
                 m_bounds.erase(found);
             }
         }
 
-        void ManipulatorBoundManager::RaySelect(RaySelectInfo &rayInfo)
+        void ManipulatorBoundManager::RaySelect(RaySelectInfo& rayInfo)
         {
-            AZStd::vector<AZStd::pair<RegisteredBoundId, float>> rayHits;
+            using BoundIdHitDistance = AZStd::pair<RegisteredBoundId, float>;
+
+            // create a sorted list of manipulators - sorted based on proximity to ray
+            AZStd::vector<BoundIdHitDistance> rayHits;
             rayHits.reserve(m_bounds.size());
             for (AZStd::shared_ptr<BoundShapeInterface> bound : m_bounds)
             {
                 if (bound->IsValid())
                 {
                     float t = 0.0f;
-                    bool isHit = bound->IntersectRay(rayInfo.m_origin, rayInfo.m_direction, t);
-                    if (isHit)
+                    if (bound->IntersectRay(rayInfo.m_origin, rayInfo.m_direction, t))
                     {
-                        auto hitItr = rayHits.begin();
-                        for (; hitItr != rayHits.end(); ++hitItr)
+                        auto hitItr = AZStd::lower_bound(rayHits.begin(), rayHits.end(), BoundIdHitDistance(0, t),
+                            [](const BoundIdHitDistance& lhs, const BoundIdHitDistance& rhs)
                         {
-                            if (t < hitItr->second)
-                            {
-                                break;
-                            }
-                        }
+                            return lhs.second < rhs.second;
+                        });
+
                         rayHits.insert(hitItr, AZStd::make_pair(bound->GetBoundID(), t));
                     }
                 }
             }
 
             rayInfo.m_boundIDsHit.reserve(rayHits.size());
-            for (auto& hit : rayHits)
-            {
-                rayInfo.m_boundIDsHit.push_back(hit);
-            }
+            AZStd::copy(rayHits.begin(), rayHits.end(), AZStd::back_inserter(rayInfo.m_boundIDsHit));
         }
     } // namespace Picking
 } // namespace AzToolsFramework

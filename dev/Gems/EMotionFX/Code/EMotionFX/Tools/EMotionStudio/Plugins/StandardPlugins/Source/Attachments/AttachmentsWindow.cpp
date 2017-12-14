@@ -123,16 +123,12 @@ namespace EMStudio
         mTableWidget->setColumnWidth(5, 32);
 
         // create buttons for the attachments dialog
-        mAddAttachmentButton            = new QPushButton();
-        mAddDeformableAttachmentButton  = new QPushButton();
         mOpenAttachmentButton           = new QPushButton();
         mOpenDeformableAttachmentButton = new QPushButton();
         mRemoveButton                   = new QPushButton();
         mClearButton                    = new QPushButton();
         mCancelSelectionButton          = new QPushButton();
 
-        EMStudioManager::MakeTransparentButton(mAddAttachmentButton,               "/Images/Icons/Plus.png",   "Add a regular attachment");
-        EMStudioManager::MakeTransparentButton(mAddDeformableAttachmentButton,     "/Images/Icons/Plus.png",   "Add a skin attachment");
         EMStudioManager::MakeTransparentButton(mOpenAttachmentButton,              "/Images/Icons/Open.png",   "Open actor from file and add it as regular attachment");
         EMStudioManager::MakeTransparentButton(mOpenDeformableAttachmentButton,    "/Images/Icons/Open.png",   "Open actor from file and add it as skin attachment");
         EMStudioManager::MakeTransparentButton(mRemoveButton,                      "/Images/Icons/Minus.png",  "Remove selected attachments");
@@ -143,8 +139,6 @@ namespace EMStudio
         QHBoxLayout* buttonLayout = new QHBoxLayout();
         buttonLayout->setSpacing(0);
         buttonLayout->setAlignment(Qt::AlignLeft);
-        buttonLayout->addWidget(mAddAttachmentButton);
-        buttonLayout->addWidget(mAddDeformableAttachmentButton);
         buttonLayout->addWidget(mOpenAttachmentButton);
         buttonLayout->addWidget(mOpenDeformableAttachmentButton);
         buttonLayout->addWidget(mRemoveButton);
@@ -209,8 +203,6 @@ namespace EMStudio
 
         // connect the controls to the slots
         connect(mTableWidget,                          SIGNAL(itemSelectionChanged()), this, SLOT(OnSelectionChanged()));
-        connect(mAddAttachmentButton,                  SIGNAL(clicked()),              this, SLOT(OnAddAttachmentButtonClicked()));
-        connect(mAddDeformableAttachmentButton,        SIGNAL(clicked()),              this, SLOT(OnAddDeformableAttachmentButtonClicked()));
         connect(mOpenAttachmentButton,                 SIGNAL(clicked()),              this, SLOT(OnOpenAttachmentButtonClicked()));
         connect(mOpenDeformableAttachmentButton,       SIGNAL(clicked()),              this, SLOT(OnOpenDeformableAttachmentButtonClicked()));
         connect(mRemoveButton,                         SIGNAL(clicked()),              this, SLOT(OnRemoveButtonClicked()));
@@ -694,39 +686,6 @@ namespace EMStudio
             //mActorInstance->AddAttachment(node->GetNodeIndex(), attachment);
         }
     }
-
-
-    // add a new normal attachment
-    void AttachmentsWindow::OnAddAttachmentButtonClicked()
-    {
-        // set to normal attachment
-        mWaitingForAttachment = true;
-        mIsDeformableAttachment = false;
-
-        // clear the selection
-        MCore::String outResult;
-        EMStudio::GetCommandManager()->ExecuteCommand("ClearSelection", outResult);
-
-        // update the interface
-        UpdateInterface();
-    }
-
-
-    // add a new mult-node attachment
-    void AttachmentsWindow::OnAddDeformableAttachmentButtonClicked()
-    {
-        // set to mult-node attachment
-        mWaitingForAttachment = true;
-        mIsDeformableAttachment = true;
-
-        // clear the selection
-        MCore::String outResult;
-        EMStudio::GetCommandManager()->ExecuteCommand("ClearSelection", outResult);
-
-        // update the interface
-        UpdateInterface();
-    }
-
 
     // open a new attachment
     void AttachmentsWindow::OnOpenAttachmentButtonClicked()

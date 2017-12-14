@@ -96,12 +96,8 @@ namespace Maestro
         // Required Reflect function.
         static void Reflect(AZ::ReflectContext* context);
     private:
-        // returns the associated IAnimSequence* bound to this Sequence Component, whose pointer is cached after first lookup, unless
-        // forceRefresh is true
-        IAnimSequence*  GetSequence(bool forceRefresh=false) const;
-
-        // Cached MovieSystem sequence pointer
-        mutable IAnimSequence*  m_sequence;
+        // pointer and id of the CryMovie anim sequence responsible for playback/recording
+        AZStd::intrusive_ptr<IAnimSequence> m_sequence;
 
         // Reflects the entire CryMovie library
         static void ReflectCinematicsLib(AZ::SerializeContext* context);

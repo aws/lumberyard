@@ -13,7 +13,7 @@
 #pragma once
 
 #include <SceneAPI/FbxSceneBuilder/ImportContexts/FbxImportContexts.h>
-#include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
+#include <SceneAPI/SceneCore/Events/ProcessingResult.h>
 #include <SceneAPI/SceneCore/Components/LoadingComponent.h>
 
 namespace AZ

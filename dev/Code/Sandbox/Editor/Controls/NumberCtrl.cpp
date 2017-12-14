@@ -53,6 +53,8 @@ void QNumberCtrl::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton)
     {
+        emit mousePressed();
+
         m_bMouseDown = true;
         m_bDragged = false;
         m_mousePos = event->pos();
@@ -91,6 +93,8 @@ void QNumberCtrl::mouseReleaseEvent(QMouseEvent* event)
         releaseMouse();
 
         m_prevValue = value();
+
+        emit mouseReleased();
     }
 }
 

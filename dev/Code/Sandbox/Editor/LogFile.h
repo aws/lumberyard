@@ -52,8 +52,8 @@ class SANDBOX_API CLogFile
 {
 public:
     static const char* GetLogFileName();
-    static void AttachListBox(QListWidget* hWndListBox) { m_hWndListBox = hWndListBox; };
-    static void AttachEditBox(QTextEdit* hWndEditBox) { m_hWndEditBox = hWndEditBox; };
+    static void AttachListBox(QListWidget* hWndListBox);
+    static void AttachEditBox(QTextEdit* hWndEditBox);
 
     //! Write to log snapshot of current process memory usage.
     static QString GetMemUsage();

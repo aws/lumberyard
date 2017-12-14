@@ -57,7 +57,7 @@ void RCcontrollerUnitTests::PrepareRCController()
 
     AssetProcessor::JobDetails jobDetails;
     jobDetails.m_jobEntry.m_relativePathToFile = "someFile0.txt";
-    jobDetails.m_jobEntry.m_platform = "pc";
+    jobDetails.m_jobEntry.m_platformInfo = { "pc", { "desktop", "renderer" } };
     jobDetails.m_jobEntry.m_jobKey = "Text files";
 
     RCJob* job0 = new RCJob(rcJobListModel);
@@ -66,35 +66,35 @@ void RCcontrollerUnitTests::PrepareRCController()
 
     RCJob* job1 = new RCJob(rcJobListModel);
     jobDetails.m_jobEntry.m_relativePathToFile = "someFile1.txt";
-    jobDetails.m_jobEntry.m_platform = "pc";
+    jobDetails.m_jobEntry.m_platformInfo = { "pc", { "desktop", "renderer" } };
     jobDetails.m_jobEntry.m_jobKey = "Text files";
     job1->Init(jobDetails);
     rcJobListModel->addNewJob(job1);
 
     RCJob* job2 = new RCJob(rcJobListModel);
     jobDetails.m_jobEntry.m_relativePathToFile = "someFile2.txt";
-    jobDetails.m_jobEntry.m_platform = "pc";
+    jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
     jobDetails.m_jobEntry.m_jobKey = "Text files";
     job2->Init(jobDetails);
     rcJobListModel->addNewJob(job2);
 
     RCJob* job3 = new RCJob(rcJobListModel);
     jobDetails.m_jobEntry.m_relativePathToFile = "someFile3.txt";
-    jobDetails.m_jobEntry.m_platform = "pc";
+    jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
     jobDetails.m_jobEntry.m_jobKey = "Text files";
     job3->Init(jobDetails);
     rcJobListModel->addNewJob(job3);
 
     RCJob* job4 = new RCJob(rcJobListModel);
     jobDetails.m_jobEntry.m_relativePathToFile = "someFile4.txt";
-    jobDetails.m_jobEntry.m_platform = "pc";
+    jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
     jobDetails.m_jobEntry.m_jobKey = "Text files";
     job4->Init(jobDetails);
     rcJobListModel->addNewJob(job4);
 
     RCJob* job5 = new RCJob(rcJobListModel);
     jobDetails.m_jobEntry.m_relativePathToFile = "someFile5.txt";
-    jobDetails.m_jobEntry.m_platform = "pc";
+    jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
     jobDetails.m_jobEntry.m_jobKey = "Text files";
     job5->Init(jobDetails);
     rcJobListModel->addNewJob(job5);
@@ -201,7 +201,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
         RCJob* job = new RCJob(rcJobListModel);
         AssetProcessor::JobDetails jobDetails;
         jobDetails.m_jobEntry.m_relativePathToFile = name;
-        jobDetails.m_jobEntry.m_platform = "pc";
+        jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
         jobDetails.m_jobEntry.m_jobKey = "Compile Stuff";
         jobDetails.m_jobEntry.m_sourceFileUUID = uuidOfSource;
         job->Init(jobDetails);
@@ -215,7 +215,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
         RCJob* job0 = new RCJob(rcJobListModel);
         AssetProcessor::JobDetails jobDetails;
         jobDetails.m_jobEntry.m_relativePathToFile = name;
-        jobDetails.m_jobEntry.m_platform = "es3";
+        jobDetails.m_jobEntry.m_platformInfo = { "es3" ,{ "mobile", "renderer" } }; 
         jobDetails.m_jobEntry.m_jobKey = "Compile Other Stuff";
         jobDetails.m_jobEntry.m_sourceFileUUID = uuidOfSource;
         job0->Init(jobDetails);
@@ -398,7 +398,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
 
     AZ::Uuid sourceId = AZ::Uuid("{2206A6E0-FDBC-45DE-B6FE-C2FC63020BD5}");
     JobDetails details;
-    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "pc", "Test Job", 1234, 1, sourceId);
+    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), { "pc" , {"desktop", "renderer"} }, "Test Job", 1234, 1, sourceId);
     gotJobsInQueueCall = false;
     int priorJobs = jobsInQueueCount;
     m_rcController.JobSubmitted(details);
@@ -410,13 +410,13 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     gotJobsInQueueCall = false;
 
     // submit same job, different run key
-    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "pc", "Test Job", 1234, 2, sourceId);
+    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), { "pc" ,{ "desktop", "renderer" } }, "Test Job", 1234, 2, sourceId);
     m_rcController.JobSubmitted(details);
     QCoreApplication::processEvents(QEventLoop::AllEvents);
     UNIT_TEST_EXPECT_FALSE(gotJobsInQueueCall);
 
     // submit same job but different platform:
-    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "es3", "Test Job", 1234, 3, sourceId);
+    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), { "es3" ,{ "mobile", "renderer" } }, "Test Job", 1234, 3, sourceId);
     m_rcController.JobSubmitted(details);
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
@@ -445,7 +445,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     
     AssetProcessor::JobDetails jobDetailsToInitWith;
     jobDetailsToInitWith.m_jobEntry.m_relativePathToFile = "someFile0.txt";
-    jobDetailsToInitWith.m_jobEntry.m_platform = "pc";
+    jobDetailsToInitWith.m_jobEntry.m_platformInfo = { "pc", { "tools", "editor"} };
     jobDetailsToInitWith.m_jobEntry.m_jobKey = "Text files";
     jobDetailsToInitWith.m_jobEntry.m_sourceFileUUID = uuidOfSource;
     rcJob.Init(jobDetailsToInitWith);

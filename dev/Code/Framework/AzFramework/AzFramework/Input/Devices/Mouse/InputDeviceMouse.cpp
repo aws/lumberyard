@@ -22,6 +22,12 @@ namespace AzFramework
     const InputDeviceId InputDeviceMouse::Id("mouse");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceMouse::IsMouseDevice(const InputDeviceId& inputDeviceId)
+    {
+        return (inputDeviceId.GetNameCrc32() == Id.GetNameCrc32());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputChannelId InputDeviceMouse::Button::Left("mouse_button_left");
     const InputChannelId InputDeviceMouse::Button::Right("mouse_button_right");
     const InputChannelId InputDeviceMouse::Button::Middle("mouse_button_middle");

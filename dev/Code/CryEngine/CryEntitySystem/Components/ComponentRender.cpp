@@ -39,9 +39,8 @@ DECLARE_DEFAULT_COMPONENT_FACTORY(CComponentRender, IComponentRender)
 DECLARE_JOB("CComponentRender_Render", TComponentRenderJob, CComponentRender::Render_JobEntry);
 #endif // SUPPORT_COMPONENTRENDER_RENDER_JOB
 
-float CComponentRender::gsWaterLevel;
-float CComponentRender::s_fViewDistMin                  = 0.0f;
-float CComponentRender::s_fViewDistRatio                = 60.0f;
+float CComponentRender::s_fViewDistMin          = 0.0f;
+float CComponentRender::s_fViewDistRatio        = 60.0f;
 float CComponentRender::s_fViewDistRatioCustom  = 60.0f;
 float CComponentRender::s_fViewDistRatioDetail  = 30.0f;
 std::vector<CComponentRender*> CComponentRender::s_arrCharactersToRegisterForRendering;
@@ -80,9 +79,6 @@ CComponentRender::CComponentRender()
     m_nCustomData = 0;
     memset(m_fCustomData, 0, sizeof(m_fCustomData));
     m_fLodDistance = 0.0f;
-
-    //set water level to avoid accessing it all the time
-    gsWaterLevel = GetI3DEngine()->GetWaterLevel();
     m_fLastSeenTime = gEnv->pTimer->GetCurrTime();
 }
 
@@ -182,8 +178,6 @@ void CComponentRender::Reload(IEntity* pEntity, SEntitySpawnParams& params)
         RegisterForRendering(true);
     }
 
-    //set water level to avoid accessing it all the time
-    gsWaterLevel = GetI3DEngine()->GetWaterLevel();
     m_fLastSeenTime = gEnv->pTimer->GetCurrTime();
 }
 

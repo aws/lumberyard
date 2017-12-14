@@ -1,0 +1,7 @@
+{
+    "none": {
+        "Resources": [
+            "gui_info.plist"
+        ]
+    }
+}

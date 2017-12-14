@@ -126,6 +126,8 @@ private:
     bool m_bTransformChanged;
 
     QPoint m_prevMousePos = QPoint(0, 0);
+
+    Vec3 m_lastValidMoveVector = Vec3(0, 0, 0);
 };
 
 

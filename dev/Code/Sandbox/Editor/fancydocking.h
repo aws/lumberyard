@@ -29,6 +29,7 @@
 #include <QtCore/QVariant>
 #include <QScreen>
 #include <QSize>
+#include <QApplication>
 
 class QDesktopWidget;
 class QTimer;
@@ -79,6 +80,9 @@ public:
     void setAbsoluteCornersForDockArea(QMainWindow* mainWindow, Qt::DockWidgetArea area);
     void makeDockWidgetFloating(QDockWidget* dock, const QRect& geometry);
     void splitDockWidget(QMainWindow* mainWindow, QDockWidget* target, QDockWidget* dropped, Qt::Orientation orientation);
+
+    void disableAutoSaveLayout(QDockWidget* dock);
+    void enableAutoSaveLayout(QDockWidget* dock);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;

@@ -22,6 +22,9 @@
 #include "GLCommon.hpp"
 #include "GLContext.hpp"
 
+#include <AzFramework/API/ApplicationAPI.h>
+#include <AzCore/std/containers/map.h>
+
 namespace NCryOpenGL
 {
     // Optional device context features
@@ -88,6 +91,17 @@ namespace NCryOpenGL
         uint32 m_uMajorVersion;
         uint32 m_uMinorVersion;
 
+        SVersion()
+            : m_uMajorVersion(0)
+            , m_uMinorVersion(0)
+        {}
+
+        SVersion(uint32 version)
+        {
+            m_uMajorVersion = version / 100;
+            m_uMinorVersion = (version / 10) % 10;
+        }
+
         uint32 ToUint() const
         {
             return m_uMajorVersion * 100 + m_uMinorVersion * 10;
@@ -121,10 +135,10 @@ namespace NCryOpenGL
         uint32 m_uWidth;
         uint32 m_uHeight;
         uint32 m_uFrequency;
-#if defined(DXGL_USE_SDL)
-        EGIFormat m_ePixelFormat;
-#elif defined(WIN32)
+#if defined(WIN32)
         uint32 m_uBitsPerPixel;
+#elif defined(ANDROID)
+        int32_t m_nativeFormat;
 #endif
     };
 
@@ -136,89 +150,46 @@ namespace NCryOpenGL
 
     typedef SResourceUnitPartitionBound TPipelineResourceUnitPartitionBound[eST_NUM];
 
-#if defined(DXGL_USE_SDL)
-    // Interface for the different type of window contexts.
-    // The window context is the platform target where openGL will draw.
-    struct IWindowContext
-    {
-    public:
-        virtual ~IWindowContext() = default;
 
-        // Make the provided context and the window's surface current for the calling thread. 
-        virtual bool MakeCurrent(const TRenderingContext context) const = 0;
-        
-        // Swap the window's surface buffers.
-        virtual bool SwapBuffers() const = 0;
+#if defined(DXGL_USE_EGL)
+    typedef std::pair<EGLNativeDisplayType, EGLNativeWindowType> EGLNativePlatform;
+    typedef AZStd::shared_ptr<EGLNativePlatform> TNativeDisplay;
+#else
+    typedef TWindowContext TNativeDisplay;
+#endif
 
-        // Creates a new OpenGL context that is shared with the provided context using the current window. 
-        virtual TRenderingContext CreateGLContext(const TRenderingContext sharedContext) const = 0;
-    };
-
-    // Implementation of the window context using SDL.
-    // It basically forward all calls to the SDL library.
-    struct SDLWindowContext : public IWindowContext
-    {
-    public:
-        SDLWindowContext(SDL_Window* window);
-        ~SDLWindowContext() override;
-        
-        // Returns the SDL_Window
-        SDL_Window* GetWindow() const { return m_window; }
-
-        bool MakeCurrent(const TRenderingContext context) const override;
-        bool SwapBuffers() const override;
-        TRenderingContext CreateGLContext(const TRenderingContext sharedContext) const override;
-
-    protected:
-        SDL_Window* m_window;
-    };
-
-#ifdef AZ_PLATFORM_ANDROID
-    // Implementation of the window context as a PBuffer surface using EGL.
-    struct EGLPBufferWindowContext : public IWindowContext
-    {
-    public:
-        // Initialize the surface and display using the provided dimensions and pixel format specification.
-        EGLPBufferWindowContext(EGLint width, EGLint height, const SPixelFormatSpec& pixelFormat);
-        ~EGLPBufferWindowContext() override;
-
-        bool MakeCurrent(const TRenderingContext context) const override;
-        bool SwapBuffers() const override;
-        TRenderingContext CreateGLContext(const TRenderingContext sharedContext) const override;
-
-    protected:
-        EGLSurface m_surface;
-        EGLDisplay m_display;
-        EGLConfig m_config;
-    };
-#endif //AZ_PLATFORM_ANDROID
-
-#if defined(DXGL_SINGLEWINDOW)
-
-    struct SMainWindow
-    {
-        TWindowContext m_pSDLWindow;
-        uint32 m_uWidth;
-        uint32 m_uHeight;
-        string m_strTitle;
-        bool m_bFullScreen;
-
-        static SMainWindow ms_kInstance;
-    };
-
-#endif // DXGL_SINGLEWINDOW
-#endif // DXGL_USE_SDL
-
-#if DXGL_USE_ES_EMULATOR
+#if defined(DXGL_USE_EGL)
 
     DXGL_DECLARE_REF_COUNTED(struct, SDisplayConnection)
     {
-        EGLDisplay m_kDisplay;
-        EGLSurface m_kSurface;
-        EGLConfig m_kConfig;
+    public:
+        static SDisplayConnection* Create(const SPixelFormatSpec& kPixelFormatSpec, const TNativeDisplay& kDefaultNativeDisplay);
+
+        SDisplayConnection();
+        ~SDisplayConnection();
+        bool Init(const SPixelFormatSpec& pixelFormatSpec, const TNativeDisplay& defaultNativeDisplay);
+        bool MakeCurrent(const TRenderingContext context) const;
+        bool SwapBuffers(const TRenderingContext context);
+        void SetWindow(EGLNativeWindowType window);
+
+        EGLDisplay GetDisplay() const { return m_display; }
+        EGLConfig GetConfig() const { return m_config; }
+        EGLDisplay GetSurface() const { return m_surface; }
+        EGLNativeWindowType GetWindow() const { return  m_window; }
+
+    protected:
+        bool CreateSurface();
+        bool DestroySurface();
+
+        EGLDisplay m_display;
+        EGLSurface m_surface;
+        EGLConfig m_config;
+        EGLNativeWindowType m_window;
+        bool m_dirtyFlag;
+        mutable AZStd::mutex m_mutex; // Synchronize window destroy/create events.
     };
 
-#endif //DXGL_USE_ES_EMULATOR
+#endif //defined(DXGL_USE_EGL)
 
     DXGL_DECLARE_REF_COUNTED(struct, SOutput)
     {
@@ -254,19 +225,8 @@ namespace NCryOpenGL
         }
     };
 
-#if DXGL_FULL_EMULATION
-    struct SDummyWindow;
-#endif //DXGL_FULL_EMULATION
-
-#if DXGL_USE_ES_EMULATOR
-    typedef EGLNativeDisplayType TNativeDisplay;
-#elif defined(DXGL_USE_SDL)
-    typedef TWindowContext* TNativeDisplay;
-#else
-    typedef TWindowContext TNativeDisplay;
-#endif
-
     DXGL_DECLARE_REF_COUNTED(class, CDevice)
+        , public AzFramework::ApplicationLifecycleEvents::Bus::Handler
     {
     public:
 
@@ -276,10 +236,12 @@ namespace NCryOpenGL
 #if !DXGL_FULL_EMULATION
         static void Configure(uint32 uNumSharedContexts);
 #endif //!DXGL_FULL_EMULATION
-#if defined(DXGL_USE_SDL)
-        static bool CreateSDLWindow(const char* szTitle, uint32 uWidth, uint32 uHeight, bool bFullScreen, HWND * pHandle);
-        static void DestroySDLWindow(HWND kHandle);
-#endif //defined(DXGL_USE_SDL)
+
+#if !defined(WIN32)
+        static bool CreateWindow(const char* title, uint32 width, uint32 height, bool fullscreen, HWND * handle);
+        static void DestroyWindow(HWND handle);
+        static void InitWindow(HWND handle, uint32 width, uint32 height);
+#endif
 
         bool Initialize(const TNativeDisplay&kDefaultNativeDisplay);
         void Shutdown();
@@ -336,6 +298,8 @@ namespace NCryOpenGL
 
         static bool MakeCurrent(const TWindowContext&kWindowContext, TRenderingContext kRenderingContext);
 
+        void OnApplicationWindowCreated() override;
+
         static uint32 ms_uNumContextsPerDevice;
         static CDevice* ms_pCurrentDevice;
 
@@ -345,9 +309,6 @@ namespace NCryOpenGL
         SPixelFormatSpec m_kPixelFormatSpec;
         TWindowContext m_kDefaultWindowContext;
         TNativeDisplay m_kDefaultNativeDisplay;
-#if DXGL_FULL_EMULATION
-        SDummyWindow* m_pDummyWindow;
-#endif //DXGL_FULL_EMULATION
         TContexts m_kContexts;
         SList m_kFreeContexts[CContext::NumContextTypes];
         void* m_pCurrentContextTLS;
@@ -359,6 +320,9 @@ namespace NCryOpenGL
         SResourceNamePool m_kFrameBufferNamePool;
 
         TPartitions m_kResourceUnitPartitions[eRUT_NUM];
+
+        typedef AZStd::map<HWND, std::pair<uint32, uint32>> WindowSizeList;
+        static WindowSizeList m_windowSizes;
     };
 
     bool FeatureLevelToFeatureSpec(SFeatureSpec& kContextSpec, D3D_FEATURE_LEVEL eFeatureLevel, NCryOpenGL::SAdapter* pGLAdapter);
@@ -367,10 +331,6 @@ namespace NCryOpenGL
     bool GetNativeDisplay(TNativeDisplay& kNativeDisplay, HWND kWindowHandle);
     bool CreateWindowContext(TWindowContext& kWindowContext, const SFeatureSpec& kFeatureSpec, const SPixelFormatSpec& kPixelFormatSpec, const TNativeDisplay& kNativeDisplay);
     void ReleaseWindowContext(TWindowContext& kWindowContext);
-#if defined(DXGL_USE_SDL)
-    const SGIFormatInfo* SDLFormatToGIFormatInfo(int format);
-#endif //defined(DXGL_USE_SDL)
-
     uint32 DetectGIFormatSupport(EGIFormat eGIFormat);
     bool DetectFeaturesAndCapabilities(TFeatures& kFeatures, SCapabilities& kCapabilities, const SVersion& version);
     bool DetectAdapters(std::vector<SAdapterPtr>& kAdapters);

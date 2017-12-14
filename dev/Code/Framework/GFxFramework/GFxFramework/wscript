@@ -12,16 +12,6 @@
 
 def build(bld):
 
-    msvc_cxx_flags = [
-        '/WX', # warnings as errors
-        '/W4', # warning level
-    ]
-
-    clang_flags = [
-        '-Werror',  # warnings as errors
-        '-Wall'     # warning level
-    ]
-
     defines = []
 
     debug_defines = []
@@ -55,31 +45,13 @@ def build(bld):
             '_HAS_EXCEPTIONS=0', # prevents warning: "C++ exception handler used, but unwind semantics are not enabled"
             ],
 
-        win_file_list       = [],
+        msvc_cxxflags   = [
+                           '/WX', # warnings as errors
+                           '/W4', # warning level
+                          ],
 
-        linux_file_list     = [],
-
-        android_file_list   = [],
-
-        ios_file_list       = [],
-
-        appletv_file_list   = [],
-
-        darwin_file_list    = [],
-
-       
-
-       
-
-        win_cxxflags=msvc_cxx_flags,
-
-       
-       
-        android_cxxflags=clang_flags,
-
-        ios_cxxflags=clang_flags,
-
-        appletv_cxxflags=clang_flags,
-
-        darwin_cxxflags=clang_flags,
+        clang_cxxflags  = [
+                           '-Werror',  # warnings as errors
+                           '-Wall'     # warning level
+                          ],
     )

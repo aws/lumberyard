@@ -110,7 +110,7 @@
   <customwidget>
    <class>MannDeselectableTreeView</class>
    <extends>QTreeView</extends>
-   <header>MannDeselectableTreeView.h</header>
+   <header>Mannequin/MannDeselectableTreeView.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -88,22 +88,20 @@ namespace TranslationBuilder
     // this function should consistently always create the same jobs, and should do no checking whether the job is up to date or not - just be consistent.
     void TranslationBuilderWorker::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
     {
-        AZStd::string ext;
-        AzFramework::StringFunc::Path::GetExtension(request.m_sourceFile.c_str(), ext, false);
 
-        for (int platform : { AssetBuilderSDK::Platform_PC, AssetBuilderSDK::Platform_OSX })
+        for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
         {
-            if (request.m_platformFlags & platform)
+            if (info.HasTag("tools")) // if we're on a platform which tools run on
             {
                 AssetBuilderSDK::JobDescriptor descriptor;
                 descriptor.m_jobKey = "Translation Compile";
-                descriptor.m_platform = platform;
                 descriptor.m_critical = true;
+                descriptor.SetPlatformIdentifier(info.m_identifier.c_str());
                 descriptor.m_priority = 8;
                 response.m_createJobOutputs.push_back(descriptor);
             }
         }
-
+        
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
     }
 
@@ -117,17 +115,9 @@ namespace TranslationBuilder
         AssetBuilderSDK::JobCancelListener jobCancelListener(request.m_jobId);
         AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting Job.");
         AZStd::string fileName;
-        AzFramework::StringFunc::Path::GetFullFileName(request.m_fullPath.c_str(), fileName);
-        AZStd::string ext;
-        AzFramework::StringFunc::Path::GetExtension(request.m_sourceFile.c_str(), ext, false);
 
-        if (AzFramework::StringFunc::Equal(ext.c_str(), "ts"))
-        {
-            if (AzFramework::StringFunc::Equal(request.m_jobDescription.m_jobKey.c_str(), "Translation Compile"))
-            {
-                AzFramework::StringFunc::Path::ReplaceExtension(fileName, "qm");
-            }
-        }
+        AzFramework::StringFunc::Path::GetFullFileName(request.m_fullPath.c_str(), fileName);
+        AzFramework::StringFunc::Path::ReplaceExtension(fileName, "qm");
 
         AZStd::string destPath;
 
@@ -143,7 +133,7 @@ namespace TranslationBuilder
 
             if( lRelease.empty() )
             {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Can't find the Qt \"lrelease\" tool!");
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Can't find the Qt \"lrelease\" tool!");
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                 return;
             }
@@ -163,12 +153,12 @@ namespace TranslationBuilder
 
                 if (!watcher)
                 {
-                    AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Error while processing job %s.", request.m_fullPath.c_str());
+                    AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Error while processing job %s.", request.m_fullPath.c_str());
                     response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                     return;
                 }
 
-                bool result = watcher->WaitForProcessToExit(30);
+                bool result = watcher->WaitForProcessToExit(300);
 
                 if (result)
                 {
@@ -215,7 +205,7 @@ namespace TranslationBuilder
                 }
                 else
                 {
-                    AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Process timed out while processing job %s.", request.m_fullPath.c_str());
+                    AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Process timed out while processing job %s.", request.m_fullPath.c_str());
                     response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                 }
             }
@@ -234,7 +224,7 @@ namespace TranslationBuilder
             }
             else
             {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Error during processing job %s.", request.m_fullPath.c_str());
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Error while processing job %s.", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             }
         }
@@ -250,8 +240,8 @@ namespace TranslationBuilder
         AZStd::string fileToSearchFor = "lrelease";
         AZStd::list<AZStd::string> otherPaths;
 
-        AZStd::string_view assetRoot;
-        AzFramework::ApplicationRequests::Bus::BroadcastResult(assetRoot, &AzFramework::ApplicationRequests::Bus::Events::GetAssetRoot);
+        AZStd::string_view engineRoot;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::Bus::Events::GetEngineRoot);
 
 #if defined(AZ_PLATFORM_WINDOWS)
         //
@@ -259,15 +249,15 @@ namespace TranslationBuilder
         // to find the lrelease tool, if it does not exist then return with a empty path.
         //
 
-        otherPaths.push_back( AZStd::string::format(R"(%s\Code\Sandbox\SDKs\Qt\msvc2013_64\bin\)", assetRoot.empty() ? "" : assetRoot.data()) );
-        otherPaths.push_back( AZStd::string::format(R"(%s\Code\Sandbox\SDKs\Qt\msvc2015_64\bin\)", assetRoot.empty() ? "" : assetRoot.data()) );
-        otherPaths.push_back( AZStd::string::format(R"(%s\Gems\ScriptCanvas\Tools\qt\msvc2015_64\bin\)", assetRoot.empty() ? "" : assetRoot.data()) );
+        otherPaths.push_back( AZStd::string::format(R"(%s\Code\Sandbox\SDKs\Qt\msvc2013_64\bin\)", engineRoot.empty() ? "" : engineRoot.data()) );
+        otherPaths.push_back( AZStd::string::format(R"(%s\Code\Sandbox\SDKs\Qt\msvc2015_64\bin\)", engineRoot.empty() ? "" : engineRoot.data()) );
+        otherPaths.push_back( AZStd::string::format(R"(%s\Gems\ScriptCanvas\Tools\qt\msvc2015_64\bin\)", engineRoot.empty() ? "" : engineRoot.data()) );
         
         fileToSearchFor += ".exe";
 
 #elif defined(AZ_PLATFORM_APPLE_OSX)
-        otherPaths.push_back(AZStd::string::format(R"(%s/Code/Sandbox/SDKs/Qt/clang_64/bin/)", assetRoot.empty() ? "" : assetRoot.data()) );
-        otherPaths.push_back(AZStd::string::format(R"(%s/Gems/ScriptCanvas/Tools/qt/clang_64/bin/)", assetRoot.empty() ? "" : assetRoot.data()) );
+        otherPaths.push_back(AZStd::string::format(R"(%s/Code/Sandbox/SDKs/Qt/clang_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
+        otherPaths.push_back(AZStd::string::format(R"(%s/Gems/ScriptCanvas/Tools/qt/clang_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
 #endif
         AZStd::string toolPath;
 

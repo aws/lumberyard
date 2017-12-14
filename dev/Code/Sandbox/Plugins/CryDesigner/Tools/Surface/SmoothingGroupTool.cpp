@@ -63,7 +63,7 @@ string SmoothingGroupTool::SetSmoothingGroup(const char* id_name)
     }
 
     SmoothingGroupManager* pSmoothingGroupMgr = GetModel()->GetSmoothingGroupMgr();
-    string newName = id_name ? id_name : pSmoothingGroupMgr->GetEmptyGroupID();
+    string newName = id_name ? string(id_name) : pSmoothingGroupMgr->GetEmptyGroupID();
     pSmoothingGroupMgr->RemoveSmoothingGroup(newName);
     pSmoothingGroupMgr->AddSmoothingGroup(newName, new SmoothingGroup(polygons));
 

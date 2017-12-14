@@ -52,7 +52,7 @@ namespace AzToolsFramework
         void AddNotifications();
         void ClearNotifications();
 
-        void InvalidateAll();
+        void InvalidateAll(const char* filter = nullptr);
         void QueuePropertyEditorInvalidation(PropertyModificationRefreshLevel refreshLevel);
         void contextMenuEvent(QContextMenuEvent *event) override;
 
@@ -90,6 +90,9 @@ namespace AzToolsFramework
         /// Clear header of anything specific to component type.
         void InvalidateComponentType();
 
+        /// Update tooltip for the component's header, describing dependencies and other metadata.
+        QString BuildHeaderTooltip();
+
         void OnExpanderChanged(bool expanded);
         void OnContextMenuClicked(const QPoint& position);
 
@@ -110,7 +113,7 @@ namespace AzToolsFramework
 
         /// Type of component being shown
         AZ::Uuid m_componentType = AZ::Uuid::CreateNull();
- 
+
         AZStd::vector<AZ::Component*> m_components;
         AZStd::vector<QWidget*> m_notifications;
         AZ::Crc32 m_savedKeySeed;
@@ -118,4 +121,5 @@ namespace AzToolsFramework
         bool m_dragged;
         bool m_dropTarget;
     };
-}
+
+} // namespace AzToolsFramework

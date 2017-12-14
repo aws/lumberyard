@@ -264,7 +264,7 @@ void CPanelDisplayLayer::OnSaveVisPreset()
     {
         const CObjectLayer* pLayer = layers[i];
         XmlNodeRef layer = root->newChild("Layer");
-        layer->setAttr("Name", pLayer->GetName().toLatin1().data());
+        layer->setAttr("Name", pLayer->GetName().toUtf8().data());
         layer->setAttr("GUID", pLayer->GetGUID());
         layer->setAttr("Visible", pLayer->IsVisible());
         layer->setAttr("Frozen", pLayer->IsFrozen());
@@ -319,7 +319,7 @@ void CPanelDisplayLayer::OnBnClickedExport()
     }
 
     QString directory = QString("%1/Layers/").arg(GetIEditor()->GetLevelFolder());
-    QString filename = QString("%1.lyr").arg(Path::CaselessPaths(pLayer->GetName()));
+    QString filename = QString("%1%2").arg(Path::CaselessPaths(pLayer->GetName()), LAYER_FILE_EXTENSION);
     if (pLayer->IsExternal())
     {
         filename = pLayer->GetExternalLayerPath();
@@ -522,15 +522,15 @@ void CPanelDisplayLayer::ShowContextMenu(const QStringList& extraActions)
     if (pLayer)
     {
         QString file = pLayer->GetExternalLayerPath();
-        uint32 attr = CFileUtil::GetAttributes(file.toLatin1().data());
+        uint32 attr = CFileUtil::GetAttributes(file.toUtf8().data());
         const QString selectedItem = CFileUtil::PopupQMenu(Path::GetFile(file), Path::GetPath(file), this, 0, menuItems);
 
         //find index of menu item that was selected.
         //If not found, it was something from menu in CFileUtil::PopupQMenu and was handled there.
         cmd = firstMenuID + menuItems.indexOf(selectedItem);
 
-        uint32 newAttr = CFileUtil::GetAttributes(file.toLatin1().data());
-        if (attr != SCC_FILE_ATTRIBUTE_INVALID && (attr & SCC_FILE_ATTRIBUTE_READONLY) && newAttr != SCC_FILE_ATTRIBUTE_INVALID && !(newAttr & SCC_FILE_ATTRIBUTE_READONLY))
+        uint32 newAttr = CFileUtil::GetAttributes(file.toUtf8().data());
+        if ((attr & SCC_FILE_ATTRIBUTE_READONLY) && newAttr != SCC_FILE_ATTRIBUTE_INVALID && !(newAttr & SCC_FILE_ATTRIBUTE_READONLY))
         {
             pLayer->SetFrozen(false);
         }

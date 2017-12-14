@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include "PipelineProfiler.h"
 #include "DriverD3D.h"
+#include "../Common/Textures/TextureManager.h"
 
 
 CRenderPipelineProfiler::CRenderPipelineProfiler()
@@ -117,9 +118,9 @@ void CRenderPipelineProfiler::EndFrame()
 
     m_recordData = false;
 
-    //Don't display stats on anything but the main editor viewport
-    //Also don't display stats if the renderer hasn't finished loading some default resources
-    //We can't display stats properly without loading s_ptexWhite
+    // Don't display stats on anything but the main editor viewport
+    // Also don't display stats if the renderer hasn't finished loading some default resources
+    // We can't display stats properly without loading the default White texture
     if ((!gEnv->IsEditor() || (gEnv->IsEditor() && gcpRendD3D->m_CurrContext->m_bMainViewport))  && gEnv->pRenderer->HasLoadedDefaultResources())
     {
         if (CRenderer::CV_r_profiler == 1)
@@ -643,14 +644,14 @@ namespace DebugUI
     {
         //s_ptexWhite is not supposed to be nullptr here
         //This can happen if the profiler is asked to draw before the level loads
-        AZ_Assert(CTexture::s_ptexWhite != nullptr, "Pipeline Profiler tried to draw a box but s_ptexWhite was nullptr! Have the default render resources been loaded yet?");
+        AZ_Assert(CTextureManager::Instance()->GetWhiteTexture() != nullptr, "Pipeline Profiler tried to draw a box but White textue was nullptr! Have the default texture resources been loaded yet?");
 
         CD3D9Renderer* rd = gcpRendD3D;
         float aspect = (float)rd->GetOverlayWidth() / (float)rd->GetOverlayHeight();
         float sx = VIRTUAL_SCREEN_WIDTH / aspect;
         float sy = VIRTUAL_SCREEN_HEIGHT;
         const Vec2 overscanOffset = Vec2(rd->s_overscanBorders.x * VIRTUAL_SCREEN_WIDTH, rd->s_overscanBorders.y * VIRTUAL_SCREEN_HEIGHT);
-        rd->Draw2dImage(x * sx + overscanOffset.x, y * sy + overscanOffset.y, width * sx, height * sy, CTexture::s_ptexWhite->GetID(), 0, 0, 1, 1, 0, color);
+        rd->Draw2dImage(x * sx + overscanOffset.x, y * sy + overscanOffset.y, width * sx, height * sy, CTextureManager::Instance()->GetWhiteTexture()->GetID(), 0, 0, 1, 1, 0, color);
     }
 
 

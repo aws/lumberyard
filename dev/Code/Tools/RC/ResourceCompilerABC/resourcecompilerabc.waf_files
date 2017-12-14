@@ -38,7 +38,6 @@
         [
             "ResourceCompilerABC.cpp",
             "../ResourceCompiler/IConfig.cpp",
-            "ResourceCompilerPlugin.def",
             "stdafx.h"
         ],
         "Utils":

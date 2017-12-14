@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <LmbrCentral/Physics/PhysicsSystemComponentBus.h>
+#include <AzFramework/Physics/PhysicsSystemComponentBus.h>
 #include <AzCore/Component/Component.h>
 #include <CrySystemBus.h>
 
@@ -57,7 +57,7 @@ namespace LmbrCentral
      */
     class PhysicsSystemComponent
         : public AZ::Component
-        , public PhysicsSystemRequestBus::Handler
+        , public AzFramework::PhysicsSystemRequestBus::Handler
         , public CrySystemEventBus::Handler
     {
     public:
@@ -67,12 +67,12 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("PhysicsSystemService"));
+            provided.push_back(AZ_CRC("PhysicsSystemService", 0x825cea11));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("PhysicsSystemService"));
+            incompatible.push_back(AZ_CRC("PhysicsSystemService", 0x825cea11));
         }
 
         ~PhysicsSystemComponent() override {}

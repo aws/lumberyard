@@ -16,6 +16,8 @@
 #include <QMap>
 #include <QShortcutEvent>
 
+#include <functional>
+
 class EDITOR_QT_UI_API FloatableDockPanel
     : public QDockWidget
 {

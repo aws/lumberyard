@@ -91,9 +91,9 @@ namespace AzFramework
         }
 
         m_logFile = aznew LogFile(logDirectory, m_logFileBaseName.c_str(), m_rolloverLength);
-        m_logFile->SetMachineReadable(m_machineReadable);
         if (m_logFile)
         {
+            m_logFile->SetMachineReadable(m_machineReadable);
             m_logFile->AppendLog(LogFile::SEV_NORMAL, loggingHeaderString);
             m_logFile->AppendLog(LogFile::SEV_NORMAL, loggingHelloWorld);
             m_logFile->AppendLog(LogFile::SEV_NORMAL, loggingFooterString);

@@ -48,13 +48,13 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("MannequinScopeService"));
+            provided.push_back(AZ_CRC("MannequinScopeService", 0x7adf3115));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("AnimationService"));
-            required.push_back(AZ_CRC("MannequinService"));
+            required.push_back(AZ_CRC("AnimationService", 0x553f5760));
+            required.push_back(AZ_CRC("MannequinService", 0x424b0eea));
         }
 
         static void Reflect(AZ::ReflectContext* context);

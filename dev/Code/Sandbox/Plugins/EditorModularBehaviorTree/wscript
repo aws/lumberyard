@@ -28,7 +28,7 @@ def build(bld):
         features                = ['qt5'],
         includes                = ['.',
                                    '..'],
-        use                     = ['Editor',
+        use                     = ['EditorLib',
                                    'EditorCommon'],
         uselib                  = ['QT5CORE',
                                    'QT5GUI',

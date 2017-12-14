@@ -24,9 +24,9 @@ def build(bld):
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'audioimplnosound.waf_files',
         platforms       = ['win',
-	                    'linux',
-	                    'android'
-			  ],
+                        'linux',
+                        'android'
+                        ],
         configurations  = ['all'],
 
         pch             = 'StdAfx.cpp',
@@ -36,9 +36,6 @@ def build(bld):
         includes        = ['.',
                            bld.Path('Code/CryEngine/CrySoundSystem/Common') ],
         libpath         = [bld.Path('Code/Tools/CryCommonTools') ],
-
-        # Platform Specific
-        android_use     = ['SDL2_Android'],
 
         # Testing
         test_all_file_list = ['audioimplnosound_test.waf_files'],

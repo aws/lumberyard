@@ -24,13 +24,11 @@
         [
             "ScriptBindings/ScriptBinding.cpp",
             "ScriptBindings/ScriptBind_Movie.cpp",
-            "ScriptBindings/ScriptBind_MusicLogic.cpp",
             "ScriptBindings/ScriptBind_Particle.cpp",
             "ScriptBindings/ScriptBind_Physics.cpp",
             "ScriptBindings/ScriptBind_Script.cpp",
             "ScriptBindings/ScriptBind_Sound.cpp",
             "ScriptBindings/SurfaceTypes.cpp",
-            "ScriptBindings/ScriptBind_MusicLogic.h",
             "ScriptBindings/ScriptBind_Movie.h",
             "ScriptBindings/ScriptBind_Particle.h",
             "ScriptBindings/ScriptBind_Physics.h",

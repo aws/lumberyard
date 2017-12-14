@@ -150,8 +150,6 @@ void CNULLRenderAuxGeom::BeginFrame()
 #ifdef ENABLE_WGL_DEBUG_RENDERER
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
 
-    iSystem->PumpWindowMessage(false);
-
     {
         m_dir.normalize();
         m_up.normalize();

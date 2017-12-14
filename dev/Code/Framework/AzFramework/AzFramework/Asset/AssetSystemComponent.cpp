@@ -89,7 +89,7 @@ namespace AzFramework
             EnableSocketConnection();
 
             m_cbHandle = m_socketConn->AddMessageHandler(AZ_CRC("AssetProcessorManager::AssetNotification", 0xd6191df5),
-                    [](unsigned int typeId, const void* data, unsigned int dataLength)
+                    [](unsigned int typeId, unsigned int /*serial*/, const void* data, unsigned int dataLength)
                     {
                         if (dataLength)
                         {
@@ -131,6 +131,8 @@ namespace AzFramework
             AssetSystemRequestBus::Handler::BusDisconnect();
             m_socketConn->RemoveMessageHandler(AZ_CRC("AssetProcessorManager::AssetNotification", 0xd6191df5), m_cbHandle);
             m_socketConn->Disconnect();
+            
+            AzFramework::AssetSystemBus::ClearQueuedEvents();
 
             DisableSocketConnection();
         }
@@ -150,6 +152,9 @@ namespace AzFramework
             // Requests
             GetRelativeProductPathFromFullSourceOrProductPathRequest::Reflect(context);
             GetFullSourcePathFromRelativeProductPathRequest::Reflect(context);
+            SourceAssetInfoRequest::Reflect(context);
+            RegisterSourceAssetRequest::Reflect(context);
+            UnregisterSourceAssetRequest::Reflect(context);
             ShowAssetProcessorRequest::Reflect(context);
             FileOpenRequest::Reflect(context);
             FileCloseRequest::Reflect(context);
@@ -173,6 +178,7 @@ namespace AzFramework
             // Responses
             GetRelativeProductPathFromFullSourceOrProductPathResponse::Reflect(context);
             GetFullSourcePathFromRelativeProductPathResponse::Reflect(context);
+            SourceAssetInfoResponse::Reflect(context);
             FileOpenResponse::Reflect(context);
             FileReadResponse::Reflect(context);
             FileWriteResponse::Reflect(context);
@@ -264,12 +270,12 @@ namespace AzFramework
             apConnection->Configure(m_branchToken.c_str(), m_platform.c_str(), identifier);
 
             //connect is async
-            AZ_TracePrintf("Asset System Connection", "Asset Processor Connection port: %hu, branch token %s\n", m_assetProcessorPort, m_branchToken.c_str());
+            AZ_TracePrintf("Asset System Connection", "Asset Processor Connection IP: %s, port: %hu, branch token %s\n", m_assetProcessorIP.c_str(), m_assetProcessorPort, m_branchToken.c_str());
             apConnection->Connect(m_assetProcessorIP.c_str(), m_assetProcessorPort);
 
-            //this should be pretty much immediate, but allow up to 10 seconds in case the CPU is heavily overloaded and thread starting takes a while.
+            //this should be pretty much immediate, but allow up to 40 seconds in case the CPU is heavily overloaded and thread starting takes a while.
             AZStd::chrono::system_clock::time_point start = AZStd::chrono::system_clock::now();
-            while (!apConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::seconds(10))
+            while (!apConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::seconds(40))
             {
                 //yield
                 AZStd::this_thread::yield();
@@ -282,6 +288,11 @@ namespace AzFramework
             }
 
             return true;
+        }
+
+        void AssetSystemComponent::SetBranchToken(const AZStd::string branchtoken)
+        {
+            m_branchToken = branchtoken;
         }
 
         bool AssetSystemComponent::SaveCatalog()
@@ -363,6 +374,18 @@ namespace AzFramework
             else
             {
                 AZ_Warning("AssetSystem", false, "Cannot change port while already connected");
+            }
+        }
+
+        void AssetSystemComponent::SetAssetProcessorIP(const AZStd::string& ip)
+        {
+            if (!m_socketConn || !m_socketConn->IsConnected()) // Don't allow changing the IP while connected
+            {
+                m_assetProcessorIP = ip;
+            }
+            else
+            {
+                AZ_Warning("AssetSystem", false, "Cannot change IP while already connected");
             }
         }
 

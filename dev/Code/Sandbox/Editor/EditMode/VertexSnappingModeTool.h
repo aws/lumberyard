@@ -40,6 +40,7 @@ protected:
 
 private:
 
+    using CEditTool::HitTest;
     bool HitTest(CViewport* view, const QPoint& point, CBaseObject* pExcludedObj, Vec3& outHitPos, CBaseObjectPtr& pOutHitObject, std::vector<CBaseObjectPtr>& outObjects);
     CKDTree* GetKDTree(CBaseObject* pObject);
 

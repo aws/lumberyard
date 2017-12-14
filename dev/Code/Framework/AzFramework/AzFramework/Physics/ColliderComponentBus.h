@@ -16,7 +16,7 @@
 struct IPhysicalEntity;
 struct pe_geomparams;
 
-namespace LmbrCentral
+namespace AzFramework
 {
     /**
      * Messages serviced by a ColliderComponent.
@@ -74,4 +74,4 @@ namespace LmbrCentral
 
     using PrimitiveColliderConfiguration = PrimitiveColliderConfig; ///< @deprecated Deprecated, use PrimitiveColliderConfig
 
-} // namespace LmbrCentral
+} // namespace AzFramework

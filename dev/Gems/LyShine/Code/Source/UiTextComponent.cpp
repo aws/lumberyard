@@ -31,7 +31,6 @@
 
 #include "UiSerialize.h"
 #include "Draw2d.h"
-#include "UiFaderComponent.h"
 #include "TextMarkup.h"
 #include "UiTextComponentOffsetsSelector.h"
 #include "StringUtfUtils.h"
@@ -86,7 +85,6 @@ namespace
 
             // Start search again after this replaced occurence
             startIndex = foundCharIt + replace[foundElementIndex].length();
-
         } while (foundCharIt != AZStd::string::npos);
 
         return returnText;
@@ -213,9 +211,9 @@ namespace
     //! Builds a list of DrawBatch objects from a XML tag tree.
     //!
     //! A DrawBatch is essentially render "state" for text. This method tries
-    //! to determine what the current state is that should be applied based 
-    //! on the tag tree traversal. Once all of a tag's children are 
-    //! traversed, and a new DrawBatch was created, the batch is popped off 
+    //! to determine what the current state is that should be applied based
+    //! on the tag tree traversal. Once all of a tag's children are
+    //! traversed, and a new DrawBatch was created, the batch is popped off
     //! the batch stack and moved into the DrawBatch output list.
     //!
     //! Example usage:
@@ -285,99 +283,99 @@ namespace
         bool newFontFamilyPushed = false;
         switch (type)
         {
-            case TextMarkup::TagType::Text:
+        case TextMarkup::TagType::Text:
+        {
+            batchStack.top().text = (static_cast<const TextMarkup::TextTag*>(currentTag))->text;
+
+            // Replace escaped newlines with actual newlines
+            batchStack.top().text = AZStd::regex_replace(batchStack.top().text, AZStd::regex("\\\\n"), "\n");
+
+            break;
+        }
+        case TextMarkup::TagType::Bold:
+        {
+            if (prevBatch.font == fontFamilyStack.top()->bold)
             {
-                batchStack.top().text = (static_cast<const TextMarkup::TextTag*>(currentTag))->text;
-
-                // Replace escaped newlines with actual newlines
-                batchStack.top().text = AZStd::regex_replace(batchStack.top().text, AZStd::regex("\\\\n"), "\n");
-
+                // adjacent bold tags, no need to push a new batch
                 break;
             }
-            case TextMarkup::TagType::Bold:
+            else if (prevBatch.font == fontFamilyStack.top()->italic)
             {
-                if (prevBatch.font == fontFamilyStack.top()->bold)
-                {
-                    // adjacent bold tags, no need to push a new batch
-                    break;
-                }
-                else if (prevBatch.font == fontFamilyStack.top()->italic)
-                {
-                    // We're on a bold tag, but current font applied is
-                    // italic, so we apply the bold-italic font.
-                    batchStack.top().font = fontFamilyStack.top()->boldItalic;
-                }
-                else
-                {
-                    batchStack.top().font = fontFamilyStack.top()->bold;
-                }
+                // We're on a bold tag, but current font applied is
+                // italic, so we apply the bold-italic font.
+                batchStack.top().font = fontFamilyStack.top()->boldItalic;
+            }
+            else
+            {
+                batchStack.top().font = fontFamilyStack.top()->bold;
+            }
+            break;
+        }
+        case TextMarkup::TagType::Italic:
+        {
+            if (prevBatch.font == fontFamilyStack.top()->italic)
+            {
+                // adjacent italic tags, no need to push a new batch
                 break;
             }
-            case TextMarkup::TagType::Italic:
+            else if (prevBatch.font == fontFamilyStack.top()->bold)
             {
-                if (prevBatch.font == fontFamilyStack.top()->italic)
-                {
-                    // adjacent italic tags, no need to push a new batch
-                    break;
-                }
-                else if (prevBatch.font == fontFamilyStack.top()->bold)
-                {
-                    // We're on an italic tag, but current font applied is
-                    // bold, so we apply the bold-italic font.
-                    batchStack.top().font = fontFamilyStack.top()->boldItalic;
-                }
-                else
-                {
-                    batchStack.top().font = fontFamilyStack.top()->italic;
-                }
-                break;
+                // We're on an italic tag, but current font applied is
+                // bold, so we apply the bold-italic font.
+                batchStack.top().font = fontFamilyStack.top()->boldItalic;
             }
-            case TextMarkup::TagType::Font:
+            else
             {
-                const TextMarkup::FontTag* pFontTag = static_cast<const TextMarkup::FontTag*>(currentTag);
-                if (!(pFontTag->face.empty()))
-                {
-                    FontFamilyPtr pFontFamily = gEnv->pCryFont->GetFontFamily(pFontTag->face.c_str());
+                batchStack.top().font = fontFamilyStack.top()->italic;
+            }
+            break;
+        }
+        case TextMarkup::TagType::Font:
+        {
+            const TextMarkup::FontTag* pFontTag = static_cast<const TextMarkup::FontTag*>(currentTag);
+            if (!(pFontTag->face.empty()))
+            {
+                FontFamilyPtr pFontFamily = gEnv->pCryFont->GetFontFamily(pFontTag->face.c_str());
 
-                    if (!pFontFamily)
+                if (!pFontFamily)
+                {
+                    pFontFamily = gEnv->pCryFont->LoadFontFamily(pFontTag->face.c_str());
+                }
+
+                // Still need to check for pFontFamily validity since
+                // Font Family load could have failed.
+                if (pFontFamily)
+                {
+                    // Important to strongly reference the Font Family
+                    // here otherwise it will de-ref once we go out of
+                    // scope (and possibly unload).
+                    fontFamilyRefs.insert(pFontFamily);
+
+                    if (fontFamilyStack.top() != pFontFamily.get())
                     {
-                        pFontFamily = gEnv->pCryFont->LoadFontFamily(pFontTag->face.c_str());
-                    }
+                        fontFamilyStack.push(pFontFamily.get());
+                        newFontFamilyPushed = true;
 
-                    // Still need to check for pFontFamily validity since
-                    // Font Family load could have failed.
-                    if (pFontFamily)
-                    {
-                        // Important to strongly reference the Font Family 
-                        // here otherwise it will de-ref once we go out of
-                        // scope (and possibly unload).
-                        fontFamilyRefs.insert(pFontFamily);
-
-                        if (fontFamilyStack.top() != pFontFamily.get())
-                        {
-                            fontFamilyStack.push(pFontFamily.get());
-                            newFontFamilyPushed = true;
-
-                            // Reset font to default face for new font family
-                            batchStack.top().font = pFontFamily->normal;
-                        }
+                        // Reset font to default face for new font family
+                        batchStack.top().font = pFontFamily->normal;
                     }
                 }
-                const bool newColorNeeded = pFontTag->color != prevBatch.color;
-                const bool tagHasValidColor = pFontTag->color != TextMarkup::ColorInvalid;
-                if (newColorNeeded && tagHasValidColor)
-                {
-                    batchStack.top().color = pFontTag->color;
-                }
-                break;
             }
-            default:
+            const bool newColorNeeded = pFontTag->color != prevBatch.color;
+            const bool tagHasValidColor = pFontTag->color != TextMarkup::ColorInvalid;
+            if (newColorNeeded && tagHasValidColor)
             {
-                break;
+                batchStack.top().color = pFontTag->color;
             }
+            break;
+        }
+        default:
+        {
+            break;
+        }
         }
 
-        // We only want to push a DrawBatch when it has text to display. We 
+        // We only want to push a DrawBatch when it has text to display. We
         // store character data in separate tags. So when a bold tag is
         // traversed, we haven't yet visited its child character data:
         // <b> <!-- Bold tag DrawBatch created, no text yet -->
@@ -420,7 +418,7 @@ namespace
             return;
         }
 
-        // Keep track of the last space char we encountered as ideal 
+        // Keep track of the last space char we encountered as ideal
         // locations for inserting newlines for word-wrapping. We also need
         // to track which DrawBatch contained the last-encountered space.
         const char* pLastSpace = NULL;
@@ -450,7 +448,7 @@ namespace
         // or a newline is encountered.
         for (UiTextComponent::DrawBatch& drawBatch : drawBatches)
         {
-            // If this entry ultimately ends up not having any space char 
+            // If this entry ultimately ends up not having any space char
             // indices associated with it, we will simply skip iterating over
             // it later.
             batchSpaceIndices.insert(&drawBatch);
@@ -575,12 +573,12 @@ namespace
         // mismatching between the rendered string content and the original
         // string.
         //
-        // This seems unintuitive since (above) we simply (in some cases) 
+        // This seems unintuitive since (above) we simply (in some cases)
         // replace the space character with newline, so inserting an additional
-        // space now would mismatch the original string contents even further. 
-        // However, since draw batch "lines" are delimited by newline, the 
-        // newline character will eventually be removed (because it will be 
-        // implied). So at this part in the pipeline, the strings will not 
+        // space now would mismatch the original string contents even further.
+        // However, since draw batch "lines" are delimited by newline, the
+        // newline character will eventually be removed (because it will be
+        // implied). So at this part in the pipeline, the strings will not
         // match in content or length, but eventually will.
         for (auto& batchSpaceList : batchSpaceIndices)
         {
@@ -600,8 +598,8 @@ namespace
 
     //! Given a "flat" list of DrawBatches, separate them by newline and place in output.
     void CreateBatchLines(
-        UiTextComponent::DrawBatchLines& output, 
-        UiTextComponent::DrawBatchContainer& drawBatches, 
+        UiTextComponent::DrawBatchLines& output,
+        UiTextComponent::DrawBatchContainer& drawBatches,
         FontFamily* defaultFontFamily)
     {
         UiTextComponent::DrawBatchLineContainer& lineList = output.batchLines;
@@ -653,7 +651,7 @@ namespace
             }
         }
 
-        // Push an empty DrawBatch if the string happened to end with a 
+        // Push an empty DrawBatch if the string happened to end with a
         // newline but no following text (e.g. "Hello\n").
         // :TODO: is this still needed? Can the final DrawBatchLine be removed
         // altogether if it has no content?
@@ -684,7 +682,7 @@ namespace
                 // and formatting issues. In the future, we may need to
                 // calculate batch size by use case (rendering, "true" size,
                 // etc.). rather than assume one-size-fits-all.
-                
+
                 // Trim right
                 if (excludeTrailingSpace)
                 {
@@ -712,10 +710,10 @@ namespace
     //! by line, taking the element width into account, and also taking any newline characters
     //! that may already exist within the character data of the DrawBatch objects
     void BatchAwareWrapText(
-        UiTextComponent::DrawBatchLines& output, 
+        UiTextComponent::DrawBatchLines& output,
         UiTextComponent::DrawBatchContainer& drawBatches,
         FontFamily* fontFamily,
-        const STextDrawContext& ctx, 
+        const STextDrawContext& ctx,
         UiTextInterface::DisplayedTextFunction displayedTextFunction,
         float elementWidth)
     {
@@ -723,7 +721,6 @@ namespace
         CreateBatchLines(output, drawBatches, fontFamily);
         AssignLineSizes(output, fontFamily, ctx, displayedTextFunction);
     }
-
 }   // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -896,8 +893,8 @@ void UiTextComponent::Render()
         }
     }
 
-    // compute fade (short-term solution has dependency on CUiFadeComponent)
-    float fade = UiFaderComponent::ComputeElementFadeValue(GetEntity());
+    // get fade value (tracked by UiRenderer)
+    float fade = IUiRenderer::Get()->GetAlphaFade();
 
     // Get the rect that positions the text prior to scale and rotate. The scale and rotate transform
     // will be applied inside the font draw.
@@ -981,7 +978,7 @@ void UiTextComponent::Render()
 
     AZ::Matrix4x4 transform;
     EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetTransformToViewport, transform);
-    
+
     float transFloats[16];
     transform.StoreToRowMajorFloat16(transFloats);
     Matrix34 transform34(transFloats[0], transFloats[1], transFloats[2], transFloats[3],
@@ -1030,7 +1027,10 @@ void UiTextComponent::SetText(const AZStd::string& text)
 
     // Since display routines use m_locText, we place the text here as well,
     // even though it didn't get translated via localization.
-    PrepareDisplayedTextInternal(PrepareTextOption::IgnoreLocalization);
+    if (m_postActivate)
+    {
+        PrepareDisplayedTextInternal(PrepareTextOption::IgnoreLocalization);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1045,19 +1045,22 @@ void UiTextComponent::SetTextWithFlags(const AZStd::string& text, SetTextFlags f
     m_text = text;
 
     PrepareTextOption prepareOption = PrepareTextOption::IgnoreLocalization;
-    if ((flags & UiTextInterface::SetLocalized) == UiTextInterface::SetLocalized)
+    if ((flags& UiTextInterface::SetLocalized) == UiTextInterface::SetLocalized)
     {
         prepareOption = PrepareTextOption::Localize;
     }
 
-    if ((flags & UiTextInterface::SetEscapeMarkup) == UiTextInterface::SetEscapeMarkup)
+    if ((flags& UiTextInterface::SetEscapeMarkup) == UiTextInterface::SetEscapeMarkup)
     {
         prepareOption = static_cast<PrepareTextOption>(prepareOption | PrepareTextOption::EscapeMarkup);
     }
 
     // Since display routines use m_locText, we place the text here as well,
     // even though it didn't get translated via localization.
-    PrepareDisplayedTextInternal(prepareOption);
+    if (m_postActivate)
+    {
+        PrepareDisplayedTextInternal(prepareOption);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1248,7 +1251,7 @@ int UiTextComponent::GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mu
     // to see how far along we've iterated over the rendered string size and
     // whether or not the index has been found.
     AZ::Vector2 pickOffset = AZ::Vector2(point.GetX() - rect.TopLeft().GetX(),
-        point.GetY() - rect.TopLeft().GetY());
+            point.GetY() - rect.TopLeft().GetY());
 
     STextDrawContext fontContext(GetTextDrawContextPrototype());
 
@@ -1298,7 +1301,7 @@ int UiTextComponent::GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mu
                 ++pChar;
                 curLineIndexIter += LyShine::GetMultiByteCharSize(ch);
 
-                // Iterate across each character of text until the width 
+                // Iterate across each character of text until the width
                 // exceeds the X pick offset.
                 AZStd::string subString(displayedText.substr(0, curLineIndexIter));
                 Vec2 sizeSoFar = m_font->GetTextSize(subString.c_str(), true, fontContext);
@@ -1357,7 +1360,7 @@ AZ::Vector2 UiTextComponent::GetPointFromCharIndex(int index)
     }
     else if (m_textHAlignment == IDraw2d::HAlign::Right)
     {
-        alignedOffset = rect.GetAxisAlignedSize().GetX() - top.batchLineLength;;
+        alignedOffset = rect.GetAxisAlignedSize().GetX() - top.batchLineLength;
     }
 
     // Calculate left and right rect positions for start and end selection
@@ -1438,7 +1441,7 @@ void UiTextComponent::GetTextBoundingBox(int startIndex, int endIndex, UiTransfo
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::GetTextBoundingBoxPrivate(int startIndex, int endIndex, UiTransformInterface::RectPointsArray& rectPoints)
 {
-    // Multi-line selection can be broken up into three pairs of offsets 
+    // Multi-line selection can be broken up into three pairs of offsets
     // representing the first (top) and last (bottom) lines, and everything
     // in-between (middle).
     LineOffsets top, middle, bottom;
@@ -1657,7 +1660,7 @@ void UiTextComponent::OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTr
 
         // Show xml warnings on the initial call to OnCanvasSpaceRectChanged while suppressing xml warnings on all subsequent calls
         bool suppressXmlWarnings = m_postActivate;
-        
+
         PrepareDisplayedTextInternal(PrepareTextOption::Localize, suppressXmlWarnings, false);
     }
 
@@ -1801,7 +1804,7 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
                 ->EnumAttribute(IDraw2d::VAlign::Top, "Top")
                 ->EnumAttribute(IDraw2d::VAlign::Center, "Center")
                 ->EnumAttribute(IDraw2d::VAlign::Bottom, "Bottom");
-            editInfo->DataElement(0, &UiTextComponent::m_charSpacing, "Character Spacing", 
+            editInfo->DataElement(0, &UiTextComponent::m_charSpacing, "Character Spacing",
                 "The spacing in 1/1000th of ems to add between each two consecutive characters.\n"
                 "One em is equal to the currently specified font size.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnCharSpacingChange)
@@ -1846,7 +1849,13 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetOverflowMode", &UiTextBus::Events::GetOverflowMode)
             ->Event("SetOverflowMode", &UiTextBus::Events::SetOverflowMode)
             ->Event("GetWrapText", &UiTextBus::Events::GetWrapText)
-            ->Event("SetWrapText", &UiTextBus::Events::SetWrapText);
+            ->Event("SetWrapText", &UiTextBus::Events::SetWrapText)
+            ->VirtualProperty("FontSize", "GetFontSize", "SetFontSize")
+            ->VirtualProperty("Color", "GetColor", "SetColor")
+            ->VirtualProperty("CharacterSpacing", "GetCharacterSpacing", "SetCharacterSpacing")
+            ->VirtualProperty("LineSpacing", "GetLineSpacing", "SetLineSpacing");
+
+        behaviorContext->Class<UiTextComponent>()->RequestBus("UiTextBus");
 
         behaviorContext->Enum<(int)UiTextInterface::OverflowMode::OverflowText>("eUiTextOverflowMode_OverflowText")
             ->Enum<(int)UiTextInterface::OverflowMode::ClipText>("eUiTextOverflowMode_ClipText")
@@ -1946,7 +1955,7 @@ void UiTextComponent::ChangeFont(const AZStd::string& fontFileName)
         if (!m_isFontFamilyOverridden)
         {
             m_overrideFontFamily = m_fontFamily;
-            
+
             if (m_overrideFontEffectIndex >= numEffects)
             {
                 m_overrideFontEffectIndex = m_fontEffectIndex;
@@ -2140,10 +2149,10 @@ float UiTextComponent::CalculateHorizontalClipOffset()
 
         if (textOverflowing)
         {
-            // Get size of text from beginning of the string to the end of 
+            // Get size of text from beginning of the string to the end of
             // the text selection. This forms the basis of the assumptions
             // for the left and center-justified text cases, specifically for
-            // calculating the following boolean variables for each case: 
+            // calculating the following boolean variables for each case:
             // - cursorAtFirstChar
             // - cursorClippedRight
             // - cursorClippedLeft
@@ -2238,7 +2247,7 @@ float UiTextComponent::CalculateHorizontalClipOffset()
             else
             {
                 // Get the size of the text following the text selection. This
-                // is in contrast to left and center-aligned text, simply 
+                // is in contrast to left and center-aligned text, simply
                 // because it's more intuitive when dealing with right-
                 // aligned text, for the following conditions:
                 // - cursorAtFirstChar
@@ -2332,7 +2341,7 @@ void UiTextComponent::CalculateDrawBatchLines(
         elementWidth = points.GetAxisAlignedSize().GetX();
     }
 
-    if ((prepOption & PrepareTextOption::Localize) == PrepareTextOption::Localize)
+    if ((prepOption& PrepareTextOption::Localize) == PrepareTextOption::Localize)
     {
         string locText;
         gEnv->pSystem->GetLocalizationManager()->LocalizeString(m_text.c_str(), locText);
@@ -2344,7 +2353,7 @@ void UiTextComponent::CalculateDrawBatchLines(
         locTextOut = m_text;
     }
 
-    // We add localized text to the font texture at Init() also, but if the 
+    // We add localized text to the font texture at Init() also, but if the
     // font changed recently, then the font texture is empty, and won't be
     // populated until the frame renders. If the glyphs aren't mapped to the
     // font texture, then their sizes will be reported as zero/missing, which
@@ -2357,7 +2366,7 @@ void UiTextComponent::CalculateDrawBatchLines(
 
     AZStd::string markupText(locTextOut);
 
-    if ((prepOption & PrepareTextOption::EscapeMarkup) == PrepareTextOption::EscapeMarkup)
+    if ((prepOption& PrepareTextOption::EscapeMarkup) == PrepareTextOption::EscapeMarkup)
     {
         markupText = ::EscapeMarkup(locTextOut.c_str()).c_str();
     }
@@ -2394,9 +2403,9 @@ void UiTextComponent::CalculateDrawBatchLines(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::RenderDrawBatchLines(
-    const AZ::Vector2& pos, 
+    const AZ::Vector2& pos,
     const UiTransformInterface::RectPoints& points,
-    STextDrawContext& fontContext, 
+    STextDrawContext& fontContext,
     float newlinePosYIncrement)
 {
     const ColorB origColor(fontContext.m_colorOverride);
@@ -2460,12 +2469,12 @@ void UiTextComponent::RenderDrawBatchLines(
             }
             else
             {
-                // Since we're re-using the same font context for all draw 
+                // Since we're re-using the same font context for all draw
                 // batches, we need to restore the original color state for
                 // batches that don't have a color assigned.
                 fontContext.m_colorOverride = origColor;
             }
-            
+
             drawBatch.font->DrawString(alignedPosition.GetX(), alignedPosition.GetY(), displayString.c_str(), true, fontContext);
 
             gEnv->pRenderer->PopProfileMarker(profileMarker);
@@ -2602,7 +2611,7 @@ int UiTextComponent::GetLineNumberFromCharIndex(const int soughtIndex) const
     int lineCounter = 0;
     int indexIter = 0;
 
-    // Iterate across the lines of text until soughtIndex is found, 
+    // Iterate across the lines of text until soughtIndex is found,
     // incrementing lineCounter along the way and ultimately returning its
     // value when the index is found.
     for (const DrawBatchLine& batchLine : m_drawBatchLines.batchLines)

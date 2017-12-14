@@ -375,7 +375,7 @@ void CSelectGameTokenDialog::showEvent(QShowEvent* event)
 //////////////////////////////////////////////////////////////////////////
 void CSelectGameTokenDialog::OnTvnDoubleClick(const QModelIndex& index)
 {
-    if (index.isValid() && index.data(Qt::UserRole).type() == QMetaType::QString)
+    if (index.isValid() && index.data(Qt::UserRole).type() == QVariant::String)
     {
         accept();
     }

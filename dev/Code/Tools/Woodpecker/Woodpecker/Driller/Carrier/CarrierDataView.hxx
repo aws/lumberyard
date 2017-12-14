@@ -20,6 +20,7 @@
 
 #include "Woodpecker/Driller/StripChart.hxx"
 #include "Woodpecker/Driller/DrillerOperationTelemetryEvent.h"
+#include "Woodpecker/Driller/DrillerDataTypes.h"
 
 namespace Ui
 {

@@ -9,28 +9,20 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #pragma once
 
 //#include <LmbrCentral/Physics/PersistentDataSystemComponentBus.h>
 #include <AzCore/Component/Component.h>
+#ifdef STARTER_GAME_EDITOR
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#endif
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/any.h>
 #include <GameplayEventBus.h>
+#include <AzCore/Component/TickBus.h>
 
 namespace StarterGameGem
 {
@@ -57,8 +49,8 @@ namespace StarterGameGem
 		virtual AZStd::any GetData(const AZStd::string& name) = 0;
 		virtual void RemoveData(const AZStd::string& name) = 0;
 		// when this callback gets called, the data with it will be the new value
-		virtual void RegisterDataChangeCallback(const AZStd::string& name, const AZ::GameplayNotificationId& messageID) = 0;
-		virtual void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::GameplayNotificationId& messageID) = 0;
+		virtual void RegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) = 0;
+		virtual void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) = 0;
 
 		virtual void ClearAllData() = 0;
 	};
@@ -71,8 +63,12 @@ namespace StarterGameGem
 	 * and broadcasts these events on the EntityPhysicsEventBus.
 	 */
 	class PersistentDataSystemComponent
-		: public AZ::Component
+        : public AZ::Component
+#ifdef STARTER_GAME_EDITOR
+        , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
+#endif
 		, public PersistentDataSystemRequestBus::Handler
+		, private AZ::TickBus::Handler
 	{
 	public:
 		AZ_COMPONENT(PersistentDataSystemComponent, "{A2087EFC-9F55-4603-B40B-6A368C102E66}");
@@ -141,6 +137,19 @@ namespace StarterGameGem
 		// returns tru if operation could be performed
 		bool Manipulate(const AZStd::string& name, const AZStd::any& value, const eDataManipulationTypes manipulationType);
 
+#ifdef STARTER_GAME_EDITOR
+        //////////////////////////////////////////////////////////////////////////
+        // AzToolsFramework::EditorEntityContextNotificationBus implementation
+        void OnStartPlayInEditor() override {}
+        void OnStopPlayInEditor() override;
+        //////////////////////////////////////////////////////////////////////////
+#endif
+
+		//////////////////////////////////////////////////////////////////////////
+		// AZ::TickBus interface implementation
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        //////////////////////////////////////////////////////////////////////////
+
 		////////////////////////////////////////////////////////////////////////
 		// PersistentDataSystemRequests
 		bool HasData(const AZStd::string& name) override;
@@ -148,10 +157,13 @@ namespace StarterGameGem
 		AZStd::any GetData(const AZStd::string& name) override;
 		void RemoveData(const AZStd::string& name) override;
 		// when this callback gets called, the data with it will be the new value
-		void RegisterDataChangeCallback(const AZStd::string& name, const AZ::GameplayNotificationId& messageID) override;
-		void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::GameplayNotificationId& messageID) override;
+		void RegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) override;
+		void UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName) override;
 		void ClearAllData() override;
 		////////////////////////////////////////////////////////////////////////
+
+
+		void PrintOut(const bool toScreen, const bool toConsole, const bool printCallbacks, const char* filter) const ;
 
 	private:
 		////////////////////////////////////////////////////////////////////////
@@ -178,6 +190,8 @@ namespace StarterGameGem
 
 			void RegisterCallback(const AZ::GameplayNotificationId& messageID);
 			void UnRegisterCallback(const AZ::GameplayNotificationId& messageID);
+
+			AZStd::string Print(const bool printCallbacks) const;
 
 		private:
 			const AZStd::string m_name;

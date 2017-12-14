@@ -273,6 +273,7 @@ void CustomizeKeyboardDialog::CategoryChanged(const QString& category)
     // Must reset the shortcut sequence text box back to disabled state
     // if the category is changed
     m_ui->keySequenceEdit->setEnabled(false);
+    m_ui->commandsView->scrollToTop();
 }
 
 void CustomizeKeyboardDialog::CommandSelectionChanged(const QModelIndex& current, const QModelIndex& previous)

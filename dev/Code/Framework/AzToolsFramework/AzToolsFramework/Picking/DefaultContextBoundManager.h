@@ -9,10 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
-#include <AzCore/Math/Crc.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzToolsFramework/Manipulators/ManipulatorBus.h>
 #include <AzToolsFramework/Picking/ContextBoundAPI.h>
 
 namespace AzToolsFramework
@@ -29,22 +30,19 @@ namespace AzToolsFramework
         public:
             AZ_CLASS_ALLOCATOR(DefaultContextBoundManager, AZ::SystemAllocator, 0);
 
-            DefaultContextBoundManager(AZ::u32 manipulatorManagerId);
+            explicit DefaultContextBoundManager(ManipulatorManagerId manipulatorManagerId);
             virtual ~DefaultContextBoundManager();
 
-            //////////////////////////////////////////////////////////////////////////
-            /// ContextBoundManagerRequestBus::Handler
-            RegisteredBoundId UpdateOrRegisterBound(const BoundRequestShapeBase& ptrShape, RegisteredBoundId id, AZ::u64 userContext = 0) override;
+            // ContextBoundManagerRequestBus::Handler
+            RegisteredBoundId UpdateOrRegisterBound(const BoundRequestShapeBase& shapeData, RegisteredBoundId id, AZ::u64 userContext = 0) override;
             void UnregisterBound(RegisteredBoundId boundId) override;
-            void RaySelect(RaySelectInfo &rayInfo);
-            //////////////////////////////////////////////////////////////////////////
+            void RaySelect(RaySelectInfo& rayInfo) override;
 
-            void SetBoundValidity(RegisteredBoundId boundId, bool isValid);
+            void SetBoundValidity(RegisteredBoundId boundId, bool valid);
 
         protected:
-
-            virtual AZStd::shared_ptr<BoundShapeInterface> CreateShape(const BoundRequestShapeBase& ptrShape, RegisteredBoundId id, AZ::u64 userContext);
-            virtual void DeleteShape(AZStd::shared_ptr<BoundShapeInterface> pShape);
+            virtual AZStd::shared_ptr<BoundShapeInterface> CreateShape(const BoundRequestShapeBase& shapeData, RegisteredBoundId id, AZ::u64 userContext);
+            virtual void DeleteShape(AZStd::shared_ptr<BoundShapeInterface> shape);
 
             AZStd::unordered_map<RegisteredBoundId, AZStd::shared_ptr<BoundShapeInterface>> m_boundIdToShapeMap;
 
@@ -52,4 +50,3 @@ namespace AzToolsFramework
         };
     } // namespace Picking
 } // namespace AzToolsFramework
-

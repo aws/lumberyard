@@ -24,9 +24,11 @@
 
 #include "TrackViewSequenceManager.h"
 #include "TrackViewUndo.h"
+#include "Maestro/Types/SequenceType.h"
 #include "Material/MaterialManager.h"
 #include "AnimationContext.h"
 #include "GameEngine.h"
+#include "Maestro/Types/SequenceType.h"
 
 
 ////////////////////////////////////////////////////////////////////////////
@@ -94,7 +96,7 @@ CTrackViewSequence* CTrackViewSequenceManager::GetLegacySequenceByName(QString n
     {
         CTrackViewSequence* pSequence = (*iter).get();
 
-        if (pSequence->GetSequenceType() == eSequenceType_Legacy && pSequence->GetName() == name)
+        if (pSequence->GetSequenceType() == SequenceType::Legacy && pSequence->GetName() == name)
         {
             return pSequence;
         }
@@ -147,7 +149,7 @@ CTrackViewSequence* CTrackViewSequenceManager::GetSequenceByIndex(unsigned int i
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void CTrackViewSequenceManager::CreateSequence(QString name, ESequenceType sequenceType)
+void CTrackViewSequenceManager::CreateSequence(QString name, SequenceType sequenceType)
 {
     CGameEngine* pGameEngine = GetIEditor()->GetGameEngine();
     if (!pGameEngine || !pGameEngine->IsLevelLoaded())
@@ -162,11 +164,11 @@ void CTrackViewSequenceManager::CreateSequence(QString name, ESequenceType seque
     }
 
     CUndo undo("Create TrackView Sequence");
-    if (sequenceType == eSequenceType_Legacy)
+    if (sequenceType == SequenceType::Legacy)
     {
         GetIEditor()->GetObjectManager()->NewObject("SequenceObject", 0, name);
     }
-    else if (sequenceType == eSequenceType_SequenceComponent)
+    else if (sequenceType == SequenceType::SequenceComponent)
     {
         AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Sequence");
 
@@ -202,10 +204,10 @@ void CTrackViewSequenceManager::CreateSequence(QString name, ESequenceType seque
 }
 
 ////////////////////////////////////////////////////////////////////////////
-IAnimSequence* CTrackViewSequenceManager::OnCreateSequenceObject(QString name, bool isLegacySequence)
+IAnimSequence* CTrackViewSequenceManager::OnCreateSequenceObject(QString name, bool isLegacySequence, AZ::EntityId entityId)
 {
-    ESequenceType sequenceType = (isLegacySequence ? eSequenceType_Legacy : eSequenceType_SequenceComponent);
-    IAnimSequence* pNewCryMovieSequence = GetIEditor()->GetMovieSystem()->CreateSequence(name.toLatin1().data(), /*bload =*/ false, /*id =*/ 0U, sequenceType);
+    SequenceType sequenceType = (isLegacySequence ? SequenceType::Legacy : SequenceType::SequenceComponent);
+    IAnimSequence* pNewCryMovieSequence = GetIEditor()->GetMovieSystem()->CreateSequence(name.toLatin1().data(), /*bload =*/ false, /*id =*/ 0U, sequenceType, entityId);
     CTrackViewSequence* newTrackViewSequence = new CTrackViewSequence(pNewCryMovieSequence);
 
     AddTrackViewSequence(newTrackViewSequence);
@@ -214,35 +216,32 @@ IAnimSequence* CTrackViewSequenceManager::OnCreateSequenceObject(QString name, b
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void CTrackViewSequenceManager::OnSequenceLoaded(const AZ::EntityId& entityId)
+void CTrackViewSequenceManager::OnSequenceActivated(const AZ::EntityId& entityId)
 {
     CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
     if (pAnimationContext != nullptr)
     {
-        pAnimationContext->OnSequenceLoaded(entityId);
+        pAnimationContext->OnSequenceActivated(entityId);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+void CTrackViewSequenceManager::OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo)
+{
+    for (auto iter = m_listeners.begin(); iter != m_listeners.end(); ++iter)
+    {
+        (*iter)->OnLegacySequencePostLoad(sequence, undo);
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////
 void CTrackViewSequenceManager::OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence)
 {
-    IMovieSystem* movieSystem = GetIEditor()->GetMovieSystem();
-
-    // Notify the MovieSystem of the new sequence Id (updates the next available Id if needed)
-    movieSystem->OnSetSequenceId(sequence->GetId());
-
-    // check of sequence ID collision and resolve if needed
-    if (movieSystem->FindSequenceById(sequence->GetId()))  
-    {
-        // A collision found - resolve by resetting Id. TODO: resolve all references to previous Id
-        sequence->ResetId();
-    }
-
     // Fix up the internal pointers in the sequence to match the deserialized structure
     sequence->InitPostLoad();
 
     // Add the sequence to the movie system
-    movieSystem->AddSequence(sequence.get());
+    GetIEditor()->GetMovieSystem()->AddSequence(sequence.get());
 
     // Create the TrackView Sequence
     CTrackViewSequence* newTrackViewSequence = new CTrackViewSequence(sequence);
@@ -266,11 +265,11 @@ void CTrackViewSequenceManager::DeleteSequence(CTrackViewSequence* pSequence)
     {
         if (m_sequences[sequenceIndex].get() == pSequence)
         {
-            if (pSequence->GetSequenceType() == eSequenceType_Legacy)
+            if (pSequence->GetSequenceType() == SequenceType::Legacy)
             {
                 CUndo undo("Delete TrackView Sequence");
                 // delete legacy sequence object
-                CSequenceObject* pSequenceObject = static_cast<CSequenceObject*>(pSequence->m_pAnimSequence->GetOwner());
+                CSequenceObject* pSequenceObject = static_cast<CSequenceObject*>(pSequence->m_pAnimSequence->GetLegacySequenceObject());
                 GetIEditor()->GetObjectManager()->DeleteObject(pSequenceObject);
             }
             else
@@ -279,7 +278,7 @@ void CTrackViewSequenceManager::DeleteSequence(CTrackViewSequence* pSequence)
 
                 // delete Sequence Component (and entity if there's no other components left on the entity except for the Transform Component)
                 AZ::Entity* entity = nullptr;
-                AZ::EntityId entityId = pSequence->m_pAnimSequence->GetOwnerId();
+                AZ::EntityId entityId = pSequence->m_pAnimSequence->GetSequenceEntityId();
                 AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
                 if (entity)
                 {
@@ -332,11 +331,11 @@ void CTrackViewSequenceManager::RenameNode(CTrackViewAnimNode* pAnimNode, const 
             CTrackViewSequence* sequenceNode = static_cast<CTrackViewSequence*>(pAnimNode);
 
             // Find the baseObject that represents and contains the Sequence data
-            if (sequenceNode->GetSequenceType() == eSequenceType_Legacy)
+            if (sequenceNode->GetSequenceType() == SequenceType::Legacy)
             {
                 baseObj = sequenceNode->GetSequenceObject();
             }
-            else if (sequenceNode->GetSequenceType() == eSequenceType_SequenceComponent)
+            else if (sequenceNode->GetSequenceType() == SequenceType::SequenceComponent)
             {
                 AzToolsFramework::ComponentEntityEditorRequestBus::EventResult(baseObj, sequenceNode->GetSequenceComponentEntityId(), &AzToolsFramework::ComponentEntityEditorRequestBus::Events::GetSandboxObject);
             }
@@ -388,7 +387,7 @@ void CTrackViewSequenceManager::RemoveSequenceInternal(CTrackViewSequence* seque
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void CTrackViewSequenceManager::OnDeleteSequenceObject(const AZ::EntityId& entityId)
+void CTrackViewSequenceManager::OnDeleteSequenceEntity(const AZ::EntityId& entityId)
 {
     CTrackViewSequence* pSequence = GetSequenceByEntityId(entityId);
     assert(pSequence);
@@ -406,7 +405,7 @@ void CTrackViewSequenceManager::OnDeleteSequenceObject(const AZ::EntityId& entit
         }
 
         // Component based sequence use AZ Undo, not Track View custom undo code
-        auto useTrackViewUndo = pSequence->GetSequenceType() == eSequenceType_Legacy;
+        auto useTrackViewUndo = pSequence->GetSequenceType() == SequenceType::Legacy;
 
         if (m_bUnloadingLevel || isDuringUndo)
         {
@@ -634,7 +633,7 @@ void CTrackViewSequenceManager::HandleObjectRename(CBaseObject* pObject)
         for (uint sequenceIndex = 0; sequenceIndex < sequenceCount; ++sequenceIndex)
         {
             CTrackViewSequence* sequence = GetSequenceByIndex(sequenceIndex);
-            if (sequence->GetSequenceType() == eSequenceType_SequenceComponent)
+            if (sequence->GetSequenceType() == SequenceType::SequenceComponent)
             {
                 CBaseObject* sequenceObject = nullptr;
                 AzToolsFramework::ComponentEntityEditorRequestBus::EventResult(sequenceObject, sequence->GetSequenceComponentEntityId(), &AzToolsFramework::ComponentEntityEditorRequestBus::Events::GetSandboxObject);
@@ -652,7 +651,7 @@ void CTrackViewSequenceManager::HandleObjectRename(CBaseObject* pObject)
         for (uint sequenceIndex = 0; sequenceIndex < sequenceCount; ++sequenceIndex)
         {
             CTrackViewSequence* sequence = GetSequenceByIndex(sequenceIndex);
-            if (sequence->GetSequenceType() == eSequenceType_Legacy)
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
             {
                 if (pObject == sequence->GetSequenceObject())
                 {

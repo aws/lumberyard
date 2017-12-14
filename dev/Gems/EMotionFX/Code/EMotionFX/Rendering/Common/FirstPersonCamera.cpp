@@ -45,10 +45,10 @@ namespace MCommon
         }
 
         // calculate the camera direction vector based on the yaw and pitch
-        MCore::Vector3 direction = (MCore::Vector3(0.0f, 0.0f, 1.0f) * (MCore::Matrix::RotationMatrixX(MCore::Math::DegreesToRadians(mPitch)) * MCore::Matrix::RotationMatrixY(MCore::Math::DegreesToRadians(mYaw)))).Normalized();
+        AZ::Vector3 direction = (AZ::Vector3(0.0f, 0.0f, 1.0f) * (MCore::Matrix::RotationMatrixX(MCore::Math::DegreesToRadians(mPitch)) * MCore::Matrix::RotationMatrixY(MCore::Math::DegreesToRadians(mYaw)))).GetNormalized();
 
         // look from the camera position into the newly calculated direction
-        mViewMatrix.LookAt(mPosition, mPosition + direction * 10.0f, MCore::Vector3(0.0f, 1.0f, 0.0f));
+        mViewMatrix.LookAt(mPosition, mPosition + direction * 10.0f, AZ::Vector3(0.0f, 1.0f, 0.0f));
 
         // update our base camera
         Camera::Update();
@@ -69,7 +69,7 @@ namespace MCommon
         transposedViewMatrix.Transpose();
 
         // get the movement direction vector based on the keyboard input
-        MCore::Vector3 deltaMovement(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 deltaMovement(0.0f, 0.0f, 0.0f);
         if (buttonState & FORWARD)
         {
             deltaMovement += transposedViewMatrix.GetForward();
@@ -96,9 +96,9 @@ namespace MCommon
         }
 
         // only move the camera when the delta movement is not the zero vector
-        if (deltaMovement.SafeLength() > MCore::Math::epsilon)
+        if (MCore::SafeLength(deltaMovement) > MCore::Math::epsilon)
         {
-            mPosition += deltaMovement.Normalized() * mTranslationSpeed;
+            mPosition += deltaMovement.GetNormalized() * mTranslationSpeed;
         }
 
         // rotate the camera

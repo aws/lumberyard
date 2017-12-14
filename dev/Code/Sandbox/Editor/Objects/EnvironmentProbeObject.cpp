@@ -340,23 +340,24 @@ _smart_ptr<IMaterial> CEnvironementProbeObject::CreateMaterial()
     pVar->Get(deferredCubemapPath);
 
     matName = Path::GetFileName(deferredCubemapPath);
-    IMaterialManager* pMatMan = GetIEditor()->Get3DEngine()->GetMaterialManager();
-    _smart_ptr<IMaterial> pMatSrc = pMatMan->LoadMaterial("Editor/Objects/envcube", false, true);
+    IMaterialManager*       pMatMan = GetIEditor()->Get3DEngine()->GetMaterialManager();
+    _smart_ptr<IMaterial>   pMatSrc = pMatMan->LoadMaterial("Editor/Objects/envcube", false, true);
     if (pMatSrc)
     {
-        _smart_ptr<IMaterial> pMatDst = pMatMan->CreateMaterial(matName.toUtf8().data(), pMatSrc->GetFlags() | MTL_FLAG_NON_REMOVABLE);
+        _smart_ptr<IMaterial>   pMatDst = pMatMan->CreateMaterial(matName.toUtf8().data(), pMatSrc->GetFlags() | MTL_FLAG_NON_REMOVABLE);
         if (pMatDst)
         {
-            SShaderItem& si = pMatSrc->GetShaderItem();
-            SInputShaderResources isr = si.m_pShaderResources;
-            isr.m_Textures[ EFTT_ENV ].m_Name = deferredCubemapPath.toUtf8().data();
+            SShaderItem&            si = pMatSrc->GetShaderItem();
+            SInputShaderResources   isr = si.m_pShaderResources;
+            // The following will create the environment map slot if did not exist
+            isr.m_TexturesResourcesMap[ EFTT_ENV ].m_Name = deferredCubemapPath.toUtf8().data();
 
-            SShaderItem siDst = GetIEditor()->GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask());
+            SShaderItem             siDst = GetIEditor()->GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask());
             pMatDst->AssignShaderItem(siDst);
             return pMatDst;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////

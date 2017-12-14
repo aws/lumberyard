@@ -22,8 +22,10 @@
 #include <LyShine/Bus/UiDraggableBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! UiDropTargetNotificationBus Behavior context handler class 
-class UiDropTargetNotificationBusBehaviorHandler : public UiDropTargetNotificationBus::Handler, public AZ::BehaviorEBusHandler
+//! UiDropTargetNotificationBus Behavior context handler class
+class UiDropTargetNotificationBusBehaviorHandler
+    : public UiDropTargetNotificationBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiDropTargetNotificationBusBehaviorHandler, "{B01A3FB5-52E1-4FF4-A627-088DA37A1304}", AZ::SystemAllocator,

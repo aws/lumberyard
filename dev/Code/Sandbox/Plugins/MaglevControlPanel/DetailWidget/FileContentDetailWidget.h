@@ -21,6 +21,7 @@
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
 #include <IAWSResourceManager.h>
+#include <AWSResourceManager.h>
 #include <FilePathLabel.h>
 #include <FileSourceControlModel.h>
 
@@ -269,9 +270,10 @@ protected:
 
     bool FileNeedsCheckout() const
     {
-        AzToolsFramework::SourceControlStatus curStatus = m_sourceControlModel->GetStatus();
-        
-        return (curStatus == AzToolsFramework::SCS_Tracked || m_sourceControlModel->GetFlags() == AzToolsFramework::SCF_OtherOpen);
+        AzToolsFramework::SourceControlStatus sccStatus = m_sourceControlModel->GetStatus();
+        unsigned int sccFlags = m_sourceControlModel->GetFlags();
+
+        return (sccStatus == AzToolsFramework::SCS_OpSuccess && (sccFlags & AzToolsFramework::SCF_OpenByUser) == 0);
     }
 
     void SetSavePending(bool newValue)
@@ -385,28 +387,9 @@ private:
 
     void OnSourceControlClicked()
     {
-        AzToolsFramework::SourceControlStatus curStatus = m_sourceControlModel->GetStatus();
-        switch (curStatus)
-        {
-        // A RequestEdit call should mark the file for add on NotTracked files
-        case AzToolsFramework::SCS_Tracked:
-        case AzToolsFramework::SCS_NotTracked: 
+        if (FileNeedsCheckout())
         {
             DoRequestEdit();
-        }
-        break;
-        // File status with no operation available
-        case AzToolsFramework::SCS_OpenByUser:
-        break;
-        // Provider errors which should result in no operation
-        case AzToolsFramework::SCS_ProviderError:
-        case AzToolsFramework::SCS_ProviderIsDown:
-        case AzToolsFramework::SCS_CertificateInvalid:
-        break;
-        default:
-        {
-            AZ_Warning("Source Control", false, "FileContentDetail - Unhandled file status '%d'\n", curStatus);
-        }
         }
     }
 
@@ -420,32 +403,34 @@ private:
         AzToolsFramework::SourceControlStatus sourceStatus = m_sourceControlModel->GetStatus();
         unsigned int sourceFlags = m_sourceControlModel->GetFlags();
 
-        switch (sourceStatus)
+        if (sourceStatus != AzToolsFramework::SCS_OpSuccess)
         {
-        case (AzToolsFramework::SCS_NotTracked):
-        {
-            m_view->SetSourceControlState(ResourceManagementView::SourceControlState::ENABLED_ADD);
+            m_view->SetSourceControlState(ResourceManagementView::SourceControlState::DISABLED_CHECK_OUT);
         }
-        break;
-        case (AzToolsFramework::SCS_OpenByUser):
+        else
         {
-            ResourceManagementView::SourceControlState targetState;
+            ResourceManagementView::SourceControlState targetState = ResourceManagementView::SourceControlState::ENABLED_CHECK_OUT;
             QString tooltipOverride;
-            bool doSave = false;
+            bool doSave = true;
 
-            if (sourceFlags & AzToolsFramework::SCF_PendingAdd)
+            if ((sourceFlags & AzToolsFramework::SCF_Tracked) == 0)
             {
-                targetState = ResourceManagementView::SourceControlState::DISABLED_ADD;
+                targetState = ResourceManagementView::SourceControlState::ENABLED_ADD;
             }
-            else if (sourceFlags & AzToolsFramework::SCF_PendingDelete)
+            else if (sourceFlags & AzToolsFramework::SCF_OpenByUser)
             {
                 targetState = ResourceManagementView::SourceControlState::DISABLED_CHECK_IN;
-                tooltipOverride = tr("File is currently marked for delete, check in in source control to complete delete.");
-            }
-            else
-            {
-                targetState = ResourceManagementView::SourceControlState::DISABLED_CHECK_IN;
-                doSave = true;
+
+                if (sourceFlags & AzToolsFramework::SCF_PendingAdd)
+                {
+                    targetState = ResourceManagementView::SourceControlState::DISABLED_ADD;
+                    doSave = false;
+                }
+                else if (sourceFlags & AzToolsFramework::SCF_PendingDelete)
+                {
+                    tooltipOverride = tr("File is currently marked for delete, check in in source control to complete delete.");
+                    doSave = false;
+                }
             }
 
             m_view->SetSourceControlState(targetState, tooltipOverride);
@@ -454,25 +439,7 @@ private:
                 DoSaveAction();
             }
         }
-        break;
-        case (AzToolsFramework::SCS_Tracked):
-        {
-            m_view->SetSourceControlState(ResourceManagementView::SourceControlState::ENABLED_CHECK_OUT);
-        }
-        break;
-        // Fallthrough intended
-        case (AzToolsFramework::SCS_ProviderIsDown):
-        case (AzToolsFramework::SCS_ProviderError):
-        case (AzToolsFramework::SCS_CertificateInvalid):
-        {
-            m_view->SetSourceControlState(ResourceManagementView::SourceControlState::DISABLED_CHECK_OUT);
-        }
-        break;
-        default:
-        {
-            AZ_Warning("Source Control", false, "FileContentDetail - Unhandled file status '%d'\n", sourceStatus);
-        }
-        }
+
         SetSavePending(false);
         UpdateFileSaveControls();
     }

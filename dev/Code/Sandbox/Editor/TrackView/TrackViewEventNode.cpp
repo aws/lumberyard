@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include "TrackViewEventNode.h"
 #include "TrackViewSequence.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
 CTrackViewEventNode::CTrackViewEventNode(IAnimSequence* pSequence, IAnimNode* pAnimNode, CTrackViewNode* pParentNode)
@@ -54,7 +55,7 @@ void CTrackViewEventNode::OnTrackEvent(IAnimSequence* pSequence, int reason, con
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewEventNode::RenameTrackEvent(const char* fromName, const char* toName)
 {
-    CTrackViewTrackBundle eventTracks = GetTracksByParam(eAnimParamType_TrackEvent);
+    CTrackViewTrackBundle eventTracks = GetTracksByParam(AnimParamType::TrackEvent);
     const uint numEventTracks = eventTracks.GetCount();
 
     for (uint i = 0; i < numEventTracks; ++i)

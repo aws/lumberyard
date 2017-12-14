@@ -787,7 +787,9 @@ typedef
     D3D11_USAGE_DEFAULT = 0,
     D3D11_USAGE_IMMUTABLE   = 1,
     D3D11_USAGE_DYNAMIC = 2,
-    D3D11_USAGE_STAGING = 3
+    D3D11_USAGE_STAGING = 3,
+    D3D11_USAGE_TRANSIENT = 4,  //Not implemented for opengl. Only metal
+    D3D11_USAGE_DIRECT_ACCESS = 5  //Not implemented for opengl. Only metal
 }   D3D11_USAGE;
 
 typedef

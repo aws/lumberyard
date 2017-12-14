@@ -81,18 +81,13 @@ public:
 
 private:
     AZStd::unique_ptr<AZ::DynamicModuleHandle> LoadSceneLibrary(const char* name, bool explicitInit);
-    void ActivateSceneLibrary(AZStd::unique_ptr<AZ::DynamicModuleHandle>& module);
-    void DeactivateSceneLibrary(AZStd::unique_ptr<AZ::DynamicModuleHandle>& module);
-
+    
     // Singleton instance
     static AssetImporterPlugin* s_instance;
 
     // Dependency DLL Handles
-    AZStd::unique_ptr<AZ::DynamicModuleHandle> m_sceneCoreModule;
-    AZStd::unique_ptr<AZ::DynamicModuleHandle> m_sceneDataModule;
     AZStd::unique_ptr<AZ::DynamicModuleHandle> m_sceneUIModule;
-    AZStd::unique_ptr<AZ::DynamicModuleHandle> m_fbxSceneBuilderModule;
-
+    
     // The editor used to construct the plugin
     IEditor* const m_editor;
 

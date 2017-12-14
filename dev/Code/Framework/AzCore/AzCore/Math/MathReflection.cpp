@@ -39,6 +39,7 @@
 #include <AzCore/Casting/lossy_cast.h>
 #include <AzCore/Math/VectorFloat.h>
 #include <AzCore/Math/Random.h>
+#include <AzCore/Math/InterpolationSample.h>
 
 namespace AZ
 {
@@ -2275,6 +2276,10 @@ namespace AZ
             ->Method("Sign", &GetSign)
             ->Method("Min", &GetMin<float>)
             ->Method("Max", &GetMax<float>)
+            ->Method<float(float, float, float)>("Lerp", &AZ::Lerp,               { { { "a", "" },{ "b", "" },{ "t", "" } } })
+                ->Attribute(AZ::Script::Attributes::ToolTip, "Returns a linear interpolation between two values 'a' and 'b'")
+            ->Method<float(float, float, float)>("LerpInverse", &AZ::LerpInverse, { { { "a", "" },{ "b", "" },{ "value", "" } } })
+                ->Attribute(AZ::Script::Attributes::ToolTip, "Returns a value t where Lerp(a,b,t)==value (or 0 if a==b)")
             ->Method("Clamp", &GetClamp<float>)
             ->Method("IsEven", &IsEven<int>)
             ->Method<bool(int)>("IsOdd", &IsOdd<int>, {{{"Value",""}}})
@@ -2287,6 +2292,7 @@ namespace AZ
 
         // Vector2
         context.Class<Vector2>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<float>()->
             Constructor<float, float>()->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
@@ -2401,6 +2407,7 @@ namespace AZ
 
         // Vector3
         context.Class<Vector3>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<const VectorFloat&>()->
             Constructor<const VectorFloat&, const VectorFloat&, const VectorFloat&>()->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
@@ -2535,6 +2542,7 @@ namespace AZ
             
         // Vector4
         context.Class<Vector4>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<const VectorFloat&>()->
             Constructor<const VectorFloat&, const VectorFloat&, const VectorFloat&, const VectorFloat&>()->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
@@ -2635,6 +2643,7 @@ namespace AZ
         
         // Color
         context.Class<Color>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Constructor<const VectorFloat&>()->
             Constructor<const VectorFloat&, const VectorFloat&, const VectorFloat&, const VectorFloat&>()->
@@ -2721,6 +2730,7 @@ namespace AZ
 
         // Quaternion
         context.Class<Quaternion>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<const VectorFloat&>()->
             Constructor<const VectorFloat&, const VectorFloat&, const VectorFloat&, const VectorFloat&>()->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
@@ -2804,6 +2814,7 @@ namespace AZ
 
         // Matrix3x3
         context.Class<Matrix3x3>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::Matrix3x3DefaultConstructor)->
             Property<const Vector3(Matrix3x3::*)() const, void (Matrix3x3::*)(const Vector3&)>("basisX", &Matrix3x3::GetBasisX, &Matrix3x3::SetBasisX)->
@@ -2911,6 +2922,7 @@ namespace AZ
 
         // Matrix4x4
         context.Class<Matrix4x4>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::Matrix4x4DefaultConstructor)->
             Property<const Vector4(Matrix4x4::*)() const, void (Matrix4x4::*)(const Vector4&)>("basisX", &Matrix4x4::GetBasisX, &Matrix4x4::SetBasisX)->
@@ -3018,6 +3030,7 @@ namespace AZ
 
         // Transform
             context.Class<Transform>()->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
                 Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
                 Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::TransformDefaultConstructor)->
                 Property<const Vector3(Transform::*)() const, void (Transform::*)(const Vector3&)>("basisX", &Transform::GetBasisX, &Transform::SetBasisX)->
@@ -3166,6 +3179,7 @@ namespace AZ
 
         // Crc
         context.Class<Crc32>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::ConstructorOverride, &Internal::ScriptCrc32Constructor)->
             Property("value", &Crc32::operator u32, nullptr)->
@@ -3185,7 +3199,7 @@ namespace AZ
 
         // Aabb
         context.Class<Aabb>()->
-            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::AabbDefaultConstructor)->
             Property("min", &Aabb::GetMin, &Aabb::SetMin)->
@@ -3246,6 +3260,7 @@ namespace AZ
 
         // Obb
         context.Class<Obb>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::ObbDefaultConstructor)->
@@ -3271,6 +3286,7 @@ namespace AZ
 
         // Plane
         context.Class<Plane>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::PlaneDefaultConstructor)->
@@ -3303,6 +3319,11 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::PlaneIntersectSegmentMultipleReturn)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("IsFinite", &Plane::IsFinite);
+
+        // Interpolation
+        context.Class<InterpolationMode>()->
+            Enum<(int)AZ::InterpolationMode::NoInterpolation>("NoInterpolation")->
+            Enum<(int)AZ::InterpolationMode::LinearInterpolation>("LinearInterpolation");
 
         // Other math function
     }

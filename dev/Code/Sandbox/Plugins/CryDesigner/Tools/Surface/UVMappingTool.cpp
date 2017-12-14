@@ -137,7 +137,7 @@ void UVMappingTool::OpenUVMappingWnd()
 
 void UVMappingTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point)
 {
-    bool bOnlyIncludeCube = GetKeyState(VK_SPACE) & (1 << 15);
+    bool bOnlyIncludeCube = CheckVirtualKey(Qt::Key_Space);
     ElementManager pickedElements;
 
     CD::PolygonList polygonsOnSecondShelf;

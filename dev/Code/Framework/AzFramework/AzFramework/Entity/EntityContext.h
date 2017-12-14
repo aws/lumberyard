@@ -76,6 +76,9 @@ namespace AzFramework
         /// events for details about the resulting entities.
         virtual SliceInstantiationTicket InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper = nullptr);
 
+        /// Cancels the asynchronous instantiation of a slice.
+        virtual void CancelSliceInstantiation(const SliceInstantiationTicket& ticket);
+
         /** 
          * Clones an existing slice instance in the context. New instance is immediately returned. 
          * This function doesn't automatically add new instance to any entity context, callers are responsible for that.
@@ -113,7 +116,7 @@ namespace AzFramework
         void ActivateEntity(AZ::EntityId entityId) override;
         void DeactivateEntity(AZ::EntityId entityId) override;
         bool DestroyEntity(AZ::Entity* entity) override;
-        bool DestroyEntity(AZ::EntityId entityId) override;
+        bool DestroyEntityById(AZ::EntityId entityId) override;
         AZ::Entity* CloneEntity(const AZ::Entity& sourceEntity) override;
         void ResetContext() override;
         const AZ::SliceComponent::EntityIdToEntityIdMap& GetLoadedEntityIdMap() override;

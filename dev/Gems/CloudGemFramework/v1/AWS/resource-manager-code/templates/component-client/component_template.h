@@ -34,7 +34,12 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
+{% if json_object.HasStdAfx %}
 #include "StdAfx.h"
+{% else %}
+#include "{{ json_object.namespace }}_precompiled.h"
+{% endif %}
+
 
 namespace {{ json_object.namespace }} {
 namespace ServiceAPI {

@@ -13,7 +13,7 @@
 # pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AZCore/Component/Entity.h>
+#include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -34,24 +34,24 @@ namespace CloudGemTextToSpeech {
         AZ_TYPE_INFO(VisemeAnimation, "{08AAF296-1290-4022-A72E-EBA102202AE2}")
         AZ_CLASS_ALLOCATOR(VisemeAnimation, AZ::SystemAllocator, 0);
 
-        VisemeAnimation(const AZStd::string& animationName, bool alwaysPlay = true);
+        VisemeAnimation(const AZ::u32& visemeIndex, bool alwaysPlay = true);
         VisemeAnimation() {}
 
         static void Reflect(AZ::ReflectContext* context);
-
-        const AZStd::string& GetAnimationName() const
-        {
-            return m_animationName;
-        }
 
         bool ShouldAlwaysPlay() const
         {
             return m_alwaysPlay;
         }
 
+        const AZ::u32 GetVisemeIndex() const
+        {
+            return m_visemeIndex;
+        }
+
     private:
-        AZStd::string m_animationName;
         bool m_alwaysPlay = false;
+        AZ::u32 m_visemeIndex = 0;
     };
 
     class VisemeAnimationSet
@@ -197,6 +197,7 @@ namespace CloudGemTextToSpeech {
         void ParsePollySpeechMarksLine(const AZStd::string& line);
         void ClearSpeechMarks();
         void UpdateLipSyncAnimation(const float deltaTime);
+        void PlayAnimation(VisemeAnimation* anim);
         int FindSpeechmarkIndex();
         void UpdateClosedCaptioning();
 

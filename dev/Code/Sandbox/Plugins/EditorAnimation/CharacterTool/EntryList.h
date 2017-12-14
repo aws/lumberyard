@@ -77,6 +77,8 @@ namespace CharacterTool
             : m_nextId(1)
             , m_idProvider(0) {}
 
+        virtual ~EntryListBase() = default;
+
         size_t Count() const{ return m_entries.size(); }
         void Clear();
         void SaveAll();

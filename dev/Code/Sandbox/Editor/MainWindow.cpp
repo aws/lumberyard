@@ -45,6 +45,7 @@
 #include "Commands/CommandManager.h"
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzToolsFramework/API/EditorAnimationSystemRequestBus.h>
 
 #include <QWidgetAction>
 #include <QInputDialog>
@@ -111,8 +112,11 @@
 #include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
+#include <AzQtComponents/DragAndDrop/MainWindowDragAndDrop.h>
+#include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Network/SocketConnection.h>
+#include <AzFramework/Network/AssetProcessorConnection.h>
 #include <AzToolsFramework/Application/Ticker.h>
 #include <algorithm>
 #include <LyMetricsProducer/LyMetricsAPI.h>
@@ -123,8 +127,10 @@
 #include <AzQtComponents/Components/Titlebar.h>
 #include <NetPromoterScore/DayCountManager.h>
 #include <NetPromoterScore/NetPromoterScoreDialog.h>
+#include "MaterialSender.h"
 
 #include <Editor/AzAssetBrowser/AzAssetBrowserWindow.h>
+#include <Editor/AssetEditor/AssetEditorWindow.h>
 
 // uncomment this to show thumbnail demo widget
 // #define ThumbnailDemo
@@ -486,7 +492,6 @@ MainWindow::MainWindow(QWidget* parent)
     , m_assetImporterManager(new AssetImporterManager(this))
     , m_levelEditorMenuHandler(new LevelEditorMenuHandler(this, m_viewPaneManager, m_settings))
     , m_sourceControlNotifHandler(new AzToolsFramework::QtSourceControlNotificationHandler(this))
-    , m_useNewDocking(!gSettings.enableQtDocking)
     , m_enableLegacyCryEntities(false)
     , m_viewPaneHost(nullptr)
     , m_autoSaveTimer(nullptr)
@@ -497,17 +502,8 @@ MainWindow::MainWindow(QWidget* parent)
     setObjectName("MainWindow"); // For IEditor::GetEditorMainWindow to work in plugins, where we can't link against MainWindow::instance()
     m_instance = this;
 
-    AzQtComponents::TitleBar::enableNewContextMenus(m_useNewDocking);
-
     //for new docking, create a DockMainWindow to host dock widgets so we can call QMainWindow::restoreState to restore docks without affecting our main toolbars.
-    if (m_useNewDocking)
-    {
-        m_viewPaneHost = new AzQtComponents::DockMainWindow();
-    }
-    else
-    {
-        m_viewPaneHost = this;
-    }
+    m_viewPaneHost = new AzQtComponents::DockMainWindow();
 
     m_viewPaneHost->setDockOptions(QMainWindow::GroupedDragging | QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks);
 
@@ -648,15 +644,8 @@ void MainWindow::InitCentralWidget()
         }
     }
 
-    if (m_useNewDocking)
-    {
-        setCentralWidget(m_viewPaneHost);
-        m_viewPaneHost->setCentralWidget(m_pLayoutWnd);
-    }
-    else
-    {
-        setCentralWidget(m_pLayoutWnd);
-    }
+    setCentralWidget(m_viewPaneHost);
+    m_viewPaneHost->setCentralWidget(m_pLayoutWnd);
 
     // make sure the layout wnd knows to reset it's layout and settings
     connect(m_viewPaneManager, &QtViewPaneManager::layoutReset, m_pLayoutWnd, &CLayoutWnd::ResetLayout);
@@ -665,18 +654,19 @@ void MainWindow::InitCentralWidget()
 void MainWindow::Initialize()
 {
     m_enableLegacyCryEntities = GetIEditor()->IsLegacyUIEnabled();
-    m_viewPaneManager->SetMainWindow(m_viewPaneHost, &m_settings, /*unused*/ QByteArray(), m_useNewDocking, m_enableLegacyCryEntities);
+    m_viewPaneManager->SetMainWindow(m_viewPaneHost, &m_settings, /*unused*/ QByteArray(), m_enableLegacyCryEntities);
 
     RegisterStdViewClasses();
     InitCentralWidget();
 
     InitActions();
-    InitToolActionHandlers();
-
-    m_levelEditorMenuHandler->Initialize();
 
     // load toolbars ("shelves") and macros
     GetIEditor()->GetToolBoxManager()->Load(m_actionManager);
+    
+    InitToolActionHandlers();
+
+    m_levelEditorMenuHandler->Initialize();
 
     InitToolBars();
     InitStatusBar();
@@ -701,7 +691,9 @@ void MainWindow::Initialize()
         });
     }
 
-    PyScript::InitializePython();
+    PyScript::InitializePython(CCryEditApp::instance()->GetRootEnginePath());
+
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(m_projectExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
 }
 
 void MainWindow::InitStatusBar()
@@ -792,6 +784,7 @@ void MainWindow::ExportKeyboardShortcuts()
 void MainWindow::ImportKeyboardShortcuts()
 {
     KeyboardCustomizationSettings::ImportFromFile(this);
+    KeyboardCustomizationSettings::SaveGlobally();
 }
 
 void MainWindow::InitActions()
@@ -917,24 +910,6 @@ void MainWindow::InitActions()
     am->AddAction(ID_GAME_IOS_ENABLELOWSPEC, tr("Low")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecIosLow")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_XBONE_ENABLEHIGHSPEC, tr("High (Scorpio)")).SetCheckable(true) // ACCEPTED_USE
-        .SetMetricsIdentifier("MainEditor", "SetSpecXboneHigh") // ACCEPTED_USE
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_XBONE_ENABLEMEDIUMSPEC, tr("Medium (Edmonton)")).SetCheckable(true) // ACCEPTED_USE
-        .SetMetricsIdentifier("MainEditor", "SetSpecXboneMedium") // ACCEPTED_USE
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_XBONE_ENABLELOWSPEC, tr("Low (Durango)")).SetCheckable(true) // ACCEPTED_USE
-        .SetMetricsIdentifier("MainEditor", "SetSpecXboneLow") // ACCEPTED_USE
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_PS4_ENABLEHIGHSPEC, tr("High (Neo Mode)")).SetCheckable(true) // ACCEPTED_USE
-        .SetMetricsIdentifier("MainEditor", "SetSpecPS4High") // ACCEPTED_USE
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_PS4_ENABLEMEDIUMSPEC, tr("Medium (Boost Mode)")).SetCheckable(true) // ACCEPTED_USE
-        .SetMetricsIdentifier("MainEditor", "SetSpecPS4Medium") // ACCEPTED_USE
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
-    am->AddAction(ID_GAME_PS4_ENABLELOWSPEC, tr("Low (Base Mode)")).SetCheckable(true) // ACCEPTED_USE
-        .SetMetricsIdentifier("MainEditor", "SetSpecPS4Low") // ACCEPTED_USE
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
     am->AddAction(ID_GAME_APPLETV_ENABLESPEC, tr("Apple TV")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecAppleTV")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
@@ -949,6 +924,8 @@ void MainWindow::InitActions()
         .Connect(&QAction::triggered, this, &MainWindow::ImportKeyboardShortcuts);
     am->AddAction(ID_TOOLS_PREFERENCES, tr("Global Preferences..."))
         .SetMetricsIdentifier("MainEditor", "ModifyGlobalSettings");
+    am->AddAction(ID_GRAPHICS_SETTINGS, tr("&Graphics Settings..."))
+        .SetMetricsIdentifier("MainEditor", "ModifyGraphicsSettings");
 
     for (int i = ID_FILE_MRU_FIRST; i <= ID_FILE_MRU_LAST; ++i)
     {
@@ -1227,8 +1204,6 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "EditFastRotateAngle");
 
     // Display actions
-    am->AddAction(ID_DISPLAY_TOGGLEFULLSCREENMAINWINDOW, tr("Enter Full Screen Mode"))
-        .SetMetricsIdentifier("MainEditor", "ToggleFullscreen");
     am->AddAction(ID_WIREFRAME, tr("&Wireframe")).SetShortcut(tr("F3")).SetCheckable(true)
         .SetStatusTip(tr("Render in Wireframe Mode."))
         .SetMetricsIdentifier("MainEditor", "ToggleWireframeRendering")
@@ -1319,10 +1294,12 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "TagSelectedLocation12");
     am->AddAction(ID_VIEW_CONFIGURELAYOUT, tr("Configure Layout..."))
         .SetMetricsIdentifier("MainEditor", "ConfigureLayoutDialog");
+#ifdef FEATURE_ORTHOGRAPHIC_VIEW
     am->AddAction(ID_VIEW_CYCLE2DVIEWPORT, tr("Cycle Viewports")).SetShortcut(tr("Ctrl+Tab"))
         .SetMetricsIdentifier("MainEditor", "CycleViewports")
         .SetStatusTip(tr("Cycle 2D Viewport"))
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateNonGameMode);
+#endif
     am->AddAction(ID_DISPLAY_SHOWHELPERS, tr("Show/Hide Helpers")).SetShortcut(tr("Shift+Space"))
         .SetMetricsIdentifier("MainEditor", "ToggleHelpers");
 
@@ -1403,10 +1380,6 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Activate the game input mode"))
         .SetIcon(EditorProxyStyle::icon("Play"))
         .SetMetricsIdentifier("MainEditor", "ToggleGameMode");
-    am->AddAction(ID_SWITCH_PHYSICS, tr("Enable Physics/AI")).SetShortcut(tr("Ctrl+P")).SetCheckable(true)
-        .SetStatusTip(tr("Enable processing of Physics and AI."))
-        .SetMetricsIdentifier("MainEditor", "TogglePhysicsAndAI")
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnSwitchPhysicsUpdate);
     am->AddAction(ID_TERRAIN_COLLISION, tr("Terrain Collision")).SetShortcut(tr("Q")).SetCheckable(true)
         .SetStatusTip(tr("Enable collision of camera with terrain."))
         .SetMetricsIdentifier("MainEditor", "ToggleTerrainCameraCollision")
@@ -1679,11 +1652,19 @@ void MainWindow::InitActions()
         .SetToolTip(tr("Open Mannequin (LEGACY)"))
         .SetIcon(EditorProxyStyle::icon("Mannequin"));
 #endif // ENABLE_LEGACY_ANIMATION
-#if defined(EMOTIONFX_GEM_ENABLED)
-    am->AddAction(ID_OPEN_EMOTIONFX_EDITOR, tr("Animation Editor"))
-        .SetToolTip(tr("Open Animation Editor (PREVIEW)"))
-        .SetIcon(QIcon("Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32.png"));
-#endif // EMOTIONFX_GEM_ENABLED
+    AZ::EBusReduceResult<bool, AZStd::logical_or<bool>> emfxEnabled(false);
+    using AnimationRequestBus = AzToolsFramework::EditorAnimationSystemRequestsBus;
+    using AnimationSystemType = AzToolsFramework::EditorAnimationSystemRequests::AnimationSystem;
+    AnimationRequestBus::BroadcastResult(emfxEnabled, &AnimationRequestBus::Events::IsSystemActive, AnimationSystemType::EMotionFX);
+    if (emfxEnabled.value)
+    {
+        QAction* action = am->AddAction(ID_OPEN_EMOTIONFX_EDITOR, tr("Animation Editor"))
+            .SetToolTip(tr("Open Animation Editor (PREVIEW)"))
+            .SetIcon(QIcon("Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32.png"));
+        QObject::connect(action, &QAction::triggered, this, [this]() {
+            QtViewPaneManager::instance()->OpenPane(LyViewPane::AnimationEditor);
+        });
+    }
     if (m_enableLegacyCryEntities)
     {
     am->AddAction(ID_OPEN_FLOWGRAPH, tr(LyViewPane::LegacyFlowGraph))
@@ -1765,15 +1746,6 @@ void MainWindow::InitActions()
     am->AddAction(ID_OBJECTMODIFY_VERTEXSNAPPING, tr("Vertex Snapping"))
         .SetMetricsIdentifier("MainEditor", "ToggleVertexSnapping")
         .SetIcon(EditorProxyStyle::icon("Vertex_snapping"));
-    am->AddAction(ID_EDIT_PHYS_RESET, tr("Reset Physics State for Selected Object(s)"))
-        .SetMetricsIdentifier("MainEditor", "ResetPhysicsStateForSelectedObjects")
-        .SetIcon(EditorProxyStyle::icon("Reset_physics_state"));
-    am->AddAction(ID_EDIT_PHYS_GET, tr("Get Physics State for Selected Object(s)"))
-        .SetMetricsIdentifier("MainEditor", "GetPhysicsStateForSelectedObjects")
-        .SetIcon(EditorProxyStyle::icon("Get_physics_state"));
-    am->AddAction(ID_EDIT_PHYS_SIMULATE, tr("Simulate Physics on Selected Object(s)"))
-        .SetMetricsIdentifier("MainEditor", "SimulatePhysicsStateForSelectedObjects")
-        .SetIcon(EditorProxyStyle::icon("Simulate_Physics_on_selected_objects"));
 
     // Misc Toolbar Actions
     am->AddAction(ID_GAMEP1_AUTOGEN, tr(""))
@@ -1788,7 +1760,7 @@ void MainWindow::InitToolActionHandlers()
 {
     ActionManager* am = GetActionManager();
     CToolBoxManager* tbm = GetIEditor()->GetToolBoxManager();
-    am->RegisterActionHandler(ID_APP_EXIT, [=]() { close(); });
+    am->RegisterActionHandler(ID_APP_EXIT, [=]() { window()->close(); });
 
     for (int id = ID_TOOL_FIRST; id <= ID_TOOL_LAST; ++id)
     {
@@ -1818,8 +1790,16 @@ void MainWindow::CGPMenuClicked()
 }
 
 void MainWindow::OnEscapeAction()
-{
-    AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::OnEscape);
+{     
+    if (GetIEditor()->IsInGameMode())
+    {
+        GetIEditor()->SetInGameMode(false);
+    }
+    else
+    {
+        AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::OnEscape);
+        CCryEditApp::instance()->OnEditEscape();
+    }
 }
 
 void MainWindow::InitToolBars()
@@ -2030,7 +2010,7 @@ QToolButton* MainWindow::CreateSnapToAngleButton()
 bool MainWindow::IsPreview() const
 {
     return GetIEditor()->IsInPreviewMode();
-    }
+}
 
 int MainWindow::SelectRollUpBar(int rollupBarId)
     {
@@ -2039,7 +2019,7 @@ int MainWindow::SelectRollUpBar(int rollupBarId)
     if (m_enableLegacyCryEntities)
     {
         pane = m_viewPaneManager->OpenPane(LyViewPane::LegacyRollupBar);
-}
+    }
     // Otherwise, we only have the terrain tool
     else if (rollupBarId == ROLLUP_TERRAIN)
     {
@@ -2047,6 +2027,7 @@ int MainWindow::SelectRollUpBar(int rollupBarId)
     }
 
     if (!pane)
+    
     {
         // TODO: This needs to be replaced with an equivalent workflow when the
         // rollupbar functionality has been replaced
@@ -2317,6 +2298,7 @@ void MainWindow::RegisterStdViewClasses()
     ConsoleVariableEditor::RegisterViewClass();
     CSettingsManagerDialog::RegisterViewClass();
     AzAssetBrowserWindow::RegisterViewClass();
+    AssetEditorWindow::RegisterViewClass();
     CVegetationDataBasePage::RegisterViewClass();
 
 #ifdef ThumbnailDemo
@@ -2415,6 +2397,11 @@ void MainWindow::ResetBackgroundUpdateTimer()
     }
 }
 
+void MainWindow::UpdateToolsMenu()
+{
+     m_levelEditorMenuHandler->UpdateMacrosMenu();
+}
+
 int MainWindow::ViewPaneVersion() const
 {
     return m_levelEditorMenuHandler->GetViewPaneVersion();
@@ -2440,13 +2427,7 @@ void MainWindow::OnRefreshAudioSystem()
         sLevelName = QString();
     }
 
-    QByteArray name = sLevelName.toLatin1();
-
-    Audio::SAudioRequest oAudioRequestData;
-    Audio::SAudioManagerRequestData<Audio::eAMRT_REFRESH_AUDIO_SYSTEM> oAMData(sLevelName.isNull() ? nullptr : name.data());
-    oAudioRequestData.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING);
-    oAudioRequestData.pData = &oAMData;
-    Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+    Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toLatin1().data());
 }
 
 void MainWindow::SaveLayout()
@@ -2808,6 +2789,7 @@ void MainWindow::ConnectivityStateChanged(const AzToolsFramework::SourceControlS
 
     CEngineSettingsManager settingsManager;
     settingsManager.SetModuleSpecificBoolEntry("RC_EnableSourceControl", connected);
+    settingsManager.StoreData();
 
     gSettings.enableSourceControl = connected;
     gSettings.SaveEnableSourceControlFlag(false);
@@ -2905,39 +2887,40 @@ QWidget* MainWindow::CreateToolbarWidget(int actionId)
 // and are reading it as an event rather.
 void MainWindow::keyPressEvent(QKeyEvent* e)
 {
+    // We shouldn't need to do this, as there's already an escape key shortcut set on an action attached to the MainWindow. We need to explicitly trap the escape key here so because when in Game Mode, all of the actions attached to the MainWindow are disabled.
     if (e->key() == Qt::Key_Escape)
-    {
-        if (GetIEditor()->IsInGameMode())
-        {
-            GetIEditor()->SetInGameMode(false);
-        }
-        else
-        {
-            CCryEditApp::instance()->OnEditEscape();
-        }
-        return;
+    {   
+       MainWindow::OnEscapeAction();
+       return;
     }
     return QMainWindow::keyPressEvent(e);
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
-    AzQtComponents::DragAndDropEventsBus::Event(DragAndDropContexts::MainWindow, &AzQtComponents::DragAndDropEvents::DragEnter, event);
+    using namespace AzQtComponents;
+    DragAndDropContextBase context;
+    DragAndDropEventsBus::Event(DragAndDropContexts::EditorMainWindow, &DragAndDropEvents::DragEnter, event, context);
 }
 
 void MainWindow::dragMoveEvent(QDragMoveEvent* event)
 {
-    AzQtComponents::DragAndDropEventsBus::Event(DragAndDropContexts::MainWindow, &AzQtComponents::DragAndDropEvents::DragMove, event);
+    using namespace AzQtComponents;
+    DragAndDropContextBase context;
+    DragAndDropEventsBus::Event(DragAndDropContexts::EditorMainWindow, &DragAndDropEvents::DragMove, event, context);
 }
 
 void MainWindow::dragLeaveEvent(QDragLeaveEvent* event)
 {
-    AzQtComponents::DragAndDropEventsBus::Event(DragAndDropContexts::MainWindow, &AzQtComponents::DragAndDropEvents::DragLeave, event);
+    using namespace AzQtComponents;
+    DragAndDropEventsBus::Event(DragAndDropContexts::EditorMainWindow, &DragAndDropEvents::DragLeave, event);
 }
 
 void MainWindow::dropEvent(QDropEvent *event)
 {
-    AzQtComponents::DragAndDropEventsBus::Event(DragAndDropContexts::MainWindow, &AzQtComponents::DragAndDropEvents::Drop, event);
+    using namespace AzQtComponents;
+    DragAndDropContextBase context;
+    DragAndDropEventsBus::Event(DragAndDropContexts::EditorMainWindow, &DragAndDropEvents::Drop, event, context);
 }
 
 bool MainWindow::focusNextPrevChild(bool next)

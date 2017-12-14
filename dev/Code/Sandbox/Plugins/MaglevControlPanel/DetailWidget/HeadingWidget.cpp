@@ -18,7 +18,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 
-#include <DetailWidget\HeadingWidget.moc>
+#include <DetailWidget/HeadingWidget.moc>
 
 HeadingWidget::HeadingWidget()
 {

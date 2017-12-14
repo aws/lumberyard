@@ -48,10 +48,8 @@
 #include "FogVolumeRenderNode.h"
 #include "ObjectsTree.h"
 #include "WaterVolumeRenderNode.h"
-#include "WaterWaveRenderNode.h"
 #include "DistanceCloudRenderNode.h"
 #include "VolumeObjectRenderNode.h"
-#include "WaterWaveRenderNode.h"
 #include "RopeRenderNode.h"
 #include "RenderMeshMerger.h"
 #include "PhysCallbacks.h"
@@ -60,6 +58,8 @@
 #include "BreakableGlassRenderNode.h"
 #include "OpticsManager.h"
 #include "ClipVolumeManager.h"
+#include "Environment/OceanEnvironmentBus.h"
+
 
 #if !defined(EXCLUDE_DOCUMENTATION_PURPOSE)
 #include "PrismRenderNode.h"
@@ -105,6 +105,10 @@ float C3DEngine::GetLightAmount(CDLight* pLight, const AABB& objBox)
 ///////////////////////////////////////////////////////////////////////////////
 float C3DEngine::GetWaterLevel()
 {
+    if (OceanToggle::IsActive())
+    {
+        return OceanRequest::GetOceanLevel();
+    }
     return m_pTerrain ? m_pTerrain->CTerrain::GetWaterLevel() : WATER_LEVEL_UNKNOWN;
 }
 
@@ -386,7 +390,7 @@ void C3DEngine::AsyncOctreeUpdate(IRenderNode* pEnt, int nSID, int nSIDConsidere
     {
         UnRegisterEntityImpl(pEnt);
     }
-    else if (GetCVars()->e_StreamCgf && (eERType == eERType_RenderComponent || eERType == eERType_DynamicMeshRenderComponent))
+    else if (GetCVars()->e_StreamCgf && (eERType == eERType_RenderComponent || eERType == eERType_DynamicMeshRenderComponent || eERType == eERType_GeomCache))
     { //  Temporary solution: Force streaming priority update for objects that was not registered before
       //  and was not visible before since usual prediction system was not able to detect them
 
@@ -434,7 +438,10 @@ void C3DEngine::AsyncOctreeUpdate(IRenderNode* pEnt, int nSID, int nSIDConsidere
     else
     {
         CLightEntity* pLight = (CLightEntity*)pEnt;
-        if ((pLight->m_light.m_Flags & (DLF_IGNORES_VISAREAS | DLF_DEFERRED_LIGHT | DLF_THIS_AREA_ONLY)) == (DLF_IGNORES_VISAREAS | DLF_DEFERRED_LIGHT))
+        uint32 lightFlag = pLight->m_light.m_Flags;
+        if ((lightFlag & DLF_ATTACH_TO_SUN) || //If the light is attached to the sun, we need to make sure it renders even the entity is not in view port
+            (lightFlag & (DLF_IGNORES_VISAREAS | DLF_DEFERRED_LIGHT | DLF_THIS_AREA_ONLY)) == (DLF_IGNORES_VISAREAS | DLF_DEFERRED_LIGHT)
+            )
         {
             if (m_lstAlwaysVisible.Find(pEnt) < 0)
             {

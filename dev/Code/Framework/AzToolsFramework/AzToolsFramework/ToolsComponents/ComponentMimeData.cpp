@@ -59,7 +59,7 @@ namespace AzToolsFramework
         return mimeData;
     }
 
-    void ComponentTypeMimeData::Get(const QMimeData* mimeData, ClassDataContainer& container)
+    bool ComponentTypeMimeData::Get(const QMimeData* mimeData, ClassDataContainer& container)
     {
         if (mimeData && mimeData->hasFormat(GetMimeType()))
         {
@@ -79,7 +79,11 @@ namespace AzToolsFramework
                 auto classData = reinterpret_cast<ClassDataType>(ptrAddr);
                 container.push_back(classData);
             }
+
+            return !container.empty();
         }
+        
+        return false;
     }
 
     void ComponentMimeData::Reflect(AZ::ReflectContext* context)

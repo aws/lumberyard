@@ -30,7 +30,9 @@ public:
         ILoadConfigurationEntrySink * ());
     MOCK_METHOD0(GetGlobalEnvironment,
         SSystemGlobalEnvironment * ());
-    MOCK_METHOD2(Update,
+    MOCK_METHOD2(UpdatePreTickBus,
+        bool(int, int));
+    MOCK_METHOD2(UpdatePostTickBus,
         bool(int, int));
     MOCK_METHOD0(UpdateLoadtime,
         bool());
@@ -151,8 +153,6 @@ public:
         IPhysicalWorld * ());
     MOCK_METHOD0(GetIAudioSystem,
         Audio::IAudioSystem * ());
-    MOCK_METHOD0(GetIMusicSystem,
-        Audio::IMusicSystem * ());
     MOCK_METHOD0(GetI3DEngine,
         I3DEngine * ());
     MOCK_METHOD0(GetIScriptSystem,
@@ -281,10 +281,16 @@ public:
 
     MOCK_METHOD4(DecompressDataBlock,
         bool(const void* input, size_t inputSize, void* output, size_t & outputSize));
+    MOCK_METHOD1(AddCVarGroupDirectory,
+        void(const string&));
     MOCK_METHOD0(SaveConfiguration,
         void());
     MOCK_METHOD3(LoadConfiguration,
         void(const char*, ILoadConfigurationEntrySink*, bool));
+    MOCK_CONST_METHOD0(GetGraphicsSettingsMap,
+        AZStd::unordered_map<AZStd::string, CVarInfo>*());
+    MOCK_METHOD1(SetGraphicsSettingsMap,
+        void(AZStd::unordered_map<AZStd::string, CVarInfo>*));
 
     MOCK_METHOD1(GetConfigSpec,
         ESystemConfigSpec(bool));
@@ -382,8 +388,8 @@ public:
         bool());
     MOCK_CONST_METHOD0(GetImageHandler,
         const IImageHandler * ());
-    MOCK_METHOD4(InitializeEngineModule,
-        bool(const char* dllName, const char* moduleClassName, const SSystemInitParams&initParams, bool bQuitIfNotFound));
+    MOCK_METHOD3(InitializeEngineModule,
+        bool(const char* dllName, const char* moduleClassName, const SSystemInitParams&initParams));
     MOCK_METHOD2(UnloadEngineModule,
         bool(const char* dllName, const char* moduleClassName));
     MOCK_METHOD0(GetRootWindowMessageHandler,
@@ -392,8 +398,6 @@ public:
         void(IWindowMessageHandler * pHandler));
     MOCK_METHOD1(UnregisterWindowMessageHandler,
         void(IWindowMessageHandler * pHandler));
-    MOCK_METHOD2(PumpWindowMessage,
-        int(bool, WIN_HWND));
     MOCK_METHOD0(CreateLocalFileIO,
         std::shared_ptr<AZ::IO::FileIOBase>());
 

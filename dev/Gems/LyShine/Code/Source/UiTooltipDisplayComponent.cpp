@@ -175,7 +175,7 @@ void UiTooltipDisplayComponent::Hide()
     {
         // Since sequences can't have keys that represent current values,
         // only play the hide animation if the show animation has completed.
-        
+
         m_timeSinceLastShown = gEnv->pTimer->GetCurrTime(ITimer::ETIMER_UI);
 
         EndTransitionState();
@@ -358,7 +358,11 @@ void UiTooltipDisplayComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetDelayTime", &UiTooltipDisplayBus::Events::GetDelayTime)
             ->Event("SetDelayTime", &UiTooltipDisplayBus::Events::SetDelayTime)
             ->Event("GetDisplayTime", &UiTooltipDisplayBus::Events::GetDisplayTime)
-            ->Event("SetDisplayTime", &UiTooltipDisplayBus::Events::SetDisplayTime);
+            ->Event("SetDisplayTime", &UiTooltipDisplayBus::Events::SetDisplayTime)
+            ->VirtualProperty("DelayTime", "GetDelayTime", "SetDelayTime")
+            ->VirtualProperty("DisplayTime", "GetDisplayTime", "SetDisplayTime");
+
+        behaviorContext->Class<UiTooltipDisplayComponent>()->RequestBus("UiTooltipDisplayBus");
     }
 }
 

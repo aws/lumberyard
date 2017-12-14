@@ -66,10 +66,10 @@ CoordinateSystemToolbarSection::CoordinateSystemToolbarSection(QToolBar* parent,
         // SetSnapToGridIsChecked() after the canvas is loaded.
 
         QObject::connect(m_snapCheckbox,
-            &QCheckBox::stateChanged,
-            [this](int state)
+            &QCheckBox::clicked,
+            [this](bool checked)
             {
-                EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, SetIsSnapEnabled, (state == Qt::Checked));
+                UpdateCanvasSnapEnabled();
             });
 
         parent->addWidget(m_snapCheckbox);
@@ -114,12 +114,30 @@ void CoordinateSystemToolbarSection::HandleSnapToGridToggle()
 {
     m_snapCheckbox->toggle();
 
-    EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, SetIsSnapEnabled, (m_snapCheckbox->checkState() == Qt::Checked));
+    UpdateCanvasSnapEnabled();
 }
 
 void CoordinateSystemToolbarSection::SetSnapToGridIsChecked(bool checked)
 {
     m_snapCheckbox->setChecked(checked);
+}
+
+void CoordinateSystemToolbarSection::UpdateCanvasSnapEnabled()
+{
+    bool checked = (m_snapCheckbox->checkState() == Qt::Checked);
+
+    // Add an undo command
+    AZStd::string canvasUndoXml;
+    EBUS_EVENT_ID_RESULT(canvasUndoXml, m_editorWindow->GetCanvas(), UiCanvasBus, SaveToXmlString);
+    AZ_Assert(!canvasUndoXml.empty(), "Failed to serialize");
+
+    EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, SetIsSnapEnabled, checked);
+
+    AZStd::string canvasRedoXml;
+    EBUS_EVENT_ID_RESULT(canvasRedoXml, m_editorWindow->GetCanvas(), UiCanvasBus, SaveToXmlString);
+    AZ_Assert(!canvasRedoXml.empty(), "Failed to serialize");
+
+    CommandCanvasPropertiesChange::Push(m_editorWindow->GetActiveStack(), canvasUndoXml, canvasRedoXml, m_editorWindow);
 }
 
 #include <CoordinateSystemToolbarSection.moc>

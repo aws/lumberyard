@@ -26,6 +26,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_FlowGraphColors();
+    virtual ~CEditorPreferencesPage_FlowGraphColors() = default;
 
     virtual const char* GetCategory() override { return "Flow Graph"; }
     virtual const char* GetTitle() override { return "Colors"; }

@@ -29,7 +29,7 @@
 
 #include <GridMate/Serialize/DataMarshal.h>
 #include <GridMate/Serialize/CompressionMarshal.h>
-#include "AzCore/std/smart_ptr/unique_ptr.h"
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 using namespace GridMate;
 
@@ -322,18 +322,18 @@ public:
     DataSet<AZ::u64> Data2 = { "Data2", 0 };
 };
 
-class LargeChunkWithDefaults
+class LargeChunkWithDefaultsMedium
     : public ReplicaChunk
 {
 public:
-    GM_CLASS_ALLOCATOR(LargeChunkWithDefaults);
+    GM_CLASS_ALLOCATOR(LargeChunkWithDefaultsMedium);
 
-    LargeChunkWithDefaults()
+    LargeChunkWithDefaultsMedium()
     {
     }
 
-    typedef AZStd::intrusive_ptr<LargeChunkWithDefaults> Ptr;
-    static const char* GetChunkName() { return "LargeChunkWithDefaults"; }
+    typedef AZStd::intrusive_ptr<LargeChunkWithDefaultsMedium> Ptr;
+    static const char* GetChunkName() { return "LargeChunkWithDefaultsMedium"; }
     bool IsReplicaMigratable() override { return false; }
 
     MAKE_DATASET(1)
@@ -762,9 +762,9 @@ public:
         {
             ReplicaChunkDescriptorTable::Get().RegisterChunkType<MixedTestChunk>();
         }
-        if (!ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(ReplicaChunkClassId(LargeChunkWithDefaults::GetChunkName())))
+        if (!ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(ReplicaChunkClassId(LargeChunkWithDefaultsMedium::GetChunkName())))
         {
-            ReplicaChunkDescriptorTable::Get().RegisterChunkType<LargeChunkWithDefaults>();
+            ReplicaChunkDescriptorTable::Get().RegisterChunkType<LargeChunkWithDefaultsMedium>();
         }
         if (!ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(ReplicaChunkClassId(ChunkWithBools::GetChunkName())))
         {
@@ -1880,6 +1880,7 @@ public:
             m_numChunkBytesSent += len;
             m_curReplicaChunkSend = nullptr;
             m_curReplicaChunkIndexSend = GM_MAX_CHUNKS_PER_REPLICA;
+
         }
 
         void OnReceiveReplicaChunkBegin(ReplicaChunkBase* chunk, AZ::u32 chunkIndex, PeerId from, PeerId to, const void* data, size_t len) override
@@ -2785,273 +2786,6 @@ TEST_F(Integ_BasicHostChunkDescriptorTest, BasicHostChunkDescriptorTest)
 }
 
 /*
- * The most basic functionality test for sending datasets that have a default value and have not yet been modified
- * from their constructor values.
- *
- * This is a simple sanity check to ensure the logic sends the update when it's necessary.
- */
-class Integ_Replica_DontSendDataSets_WithNoDiffFromCtorData
-    : public Integ_SimpleTest
-{
-public:
-    Integ_Replica_DontSendDataSets_WithNoDiffFromCtorData()
-        : m_replicaIdDefault(InvalidReplicaId), m_replicaIdModified(InvalidReplicaId)
-    {
-    }
-
-    enum
-    {
-        sHost,
-        s2,
-        nSessions
-    };
-
-    int GetNumSessions() override { return nSessions; }
-
-    void PreConnect() override
-    {
-        {
-            ReplicaPtr replica = Replica::CreateReplica(nullptr);
-
-            auto chunk = CreateAndAttachReplicaChunk<MixedTestChunk>(replica);
-            AZ_TEST_ASSERT(chunk);
-
-            AZ_TEST_ASSERT(chunk->Data1.IsDefaultValue());
-
-            m_replicaIdDefault = m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
-        }
-        {
-            ReplicaPtr replica = Replica::CreateReplica(nullptr);
-
-            auto chunk = CreateAndAttachReplicaChunk<MixedTestChunk>(replica);
-            AZ_TEST_ASSERT(chunk);
-
-            AZ_TEST_ASSERT(chunk->Data1.IsDefaultValue());
-
-            // start with a modified value before connecting, so proxies should start with this value
-            chunk->Data1.Set(4242);
-
-            // The update to the value doesn't happen until PrepareData() gets called
-            //AZ_TEST_ASSERT(!chunk->Data1.IsStillDefaultValue());
-
-            m_replicaIdModified = m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
-        }
-    }
-
-    ReplicaId m_replicaIdDefault;
-    ReplicaId m_replicaIdModified;
-};
-
-TEST_F(Integ_Replica_DontSendDataSets_WithNoDiffFromCtorData, Replica_DontSendDataSets_WithNoDiffFromCtorData)
-{
-    RunTickLoop([this](int tick)-> TestStatus
-    {
-        switch (tick)
-        {
-        case 20:
-        {
-            {
-                ReplicaPtr rep = m_sessions[s2].GetReplicaMgr().FindReplica(m_replicaIdDefault);
-                AZ_TEST_ASSERT(rep);
-
-                auto chunk = rep->FindReplicaChunk<MixedTestChunk>();
-                AZ_TEST_ASSERT(chunk);
-
-                // check that default values are set for the dataset
-                {
-                    AZ_TEST_ASSERT(chunk->Data1.IsDefaultValue());
-
-                    auto value = chunk->Data1.Get();
-                    AZ_TEST_ASSERT(value == 42);
-                }
-                {
-                    AZ_TEST_ASSERT(chunk->Data2.IsDefaultValue());
-
-                    auto value = chunk->Data2.Get();
-                    AZ_TEST_ASSERT(value == 0);
-                }
-            }
-            {
-                ReplicaPtr rep = m_sessions[s2].GetReplicaMgr().FindReplica(m_replicaIdModified);
-                AZ_TEST_ASSERT(rep);
-
-                auto chunk = rep->FindReplicaChunk<MixedTestChunk>();
-                AZ_TEST_ASSERT(chunk);
-
-                // check that non-default values are set for the dataset
-                {
-                    AZ_TEST_ASSERT(!chunk->Data1.IsDefaultValue());
-
-                    auto value = chunk->Data1.Get();
-                    AZ_TEST_ASSERT(value == 4242);
-                }
-                {
-                    AZ_TEST_ASSERT(chunk->Data2.IsDefaultValue());
-
-                    auto value = chunk->Data2.Get();
-                    AZ_TEST_ASSERT(value == 0);
-                }
-            }
-
-            break;
-        }
-        case 25:
-        {
-            {
-                m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaIdDefault)->Destroy();
-                m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaIdModified)->Destroy();
-            }
-            break;
-        }
-        case 30:
-            return TestStatus::Completed;
-        default:
-            break;
-        }
-        return TestStatus::Running;
-    });
-}
-
-
-/*
- * This test checks the actual size of the replica as marshalled in the binary payload.
- * The assessment of the payload size is done using driller EBus.
- */
-class Integ_ReplicaDefaultDataSetDriller
-    : public Integ_SimpleTest
-{
-public:
-    Integ_ReplicaDefaultDataSetDriller()
-        : m_replicaId(InvalidReplicaId)
-    {
-    }
-
-    enum
-    {
-        sHost,
-        s2,
-        nSessions
-    };
-
-    /*
-     * A hook to intercept the payload size of a replica and it's contents.
-     */
-    class ReplicaDrillerHook
-        : public Debug::ReplicaDrillerBus::Handler
-    {
-    public:
-        ReplicaDrillerHook()
-        {
-        }
-
-        void OnSendReplicaChunkEnd(ReplicaChunkBase* chunk, AZ::u32 /*chunkIndex*/, const void* /*data*/, size_t len) override
-        {
-            if (string(chunk->GetDescriptor()->GetChunkName()) == LargeChunkWithDefaults::GetChunkName())
-            {
-                m_replicaChunkLengths.push_back(len);
-            }
-        }
-
-        void OnSendDataSet(ReplicaChunkBase* chunk, AZ::u32 /*chunkIndex*/, DataSetBase* dataSet, PeerId /*from*/, PeerId /*to*/, const void* /*data*/, size_t /*len*/) override
-        {
-            if (string(chunk->GetDescriptor()->GetChunkName()) == LargeChunkWithDefaults::GetChunkName())
-            {
-                AZ_TEST_ASSERT(dataSet->IsDefaultValue() == false);
-                m_countDataSetsSent++;
-            }
-        }
-
-        void OnReceiveDataSet(ReplicaChunkBase* chunk, AZ::u32 /*chunkIndex*/, DataSetBase* dataSet, PeerId /*from*/, PeerId /*to*/, const void* /*data*/, size_t /*len*/) override
-        {
-            if (string(chunk->GetDescriptor()->GetChunkName()) == LargeChunkWithDefaults::GetChunkName())
-            {
-                AZ_TEST_ASSERT(dataSet->IsDefaultValue() == false);
-                m_countDataSetsReceived++;
-            }
-        }
-
-        AZStd::vector<AZ::u64> m_replicaChunkLengths;
-        int m_countDataSetsSent = 0;
-        int m_countDataSetsReceived = 0;
-    };
-
-    int GetNumSessions() override { return nSessions; }
-
-    static const int NonDefaultValue = 4242;
-
-    void PreConnect() override
-    {
-        m_driller.BusConnect();
-
-        ReplicaPtr replica = Replica::CreateReplica(nullptr);
-        LargeChunkWithDefaults* chunk = CreateAndAttachReplicaChunk<LargeChunkWithDefaults>(replica);
-        AZ_TEST_ASSERT(chunk);
-
-        m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
-    }
-
-    ~Integ_ReplicaDefaultDataSetDriller()
-    {
-        m_driller.BusDisconnect();
-    }
-
-
-    ReplicaDrillerHook m_driller;
-    ReplicaId m_replicaId;
-};
-
-TEST_F(Integ_ReplicaDefaultDataSetDriller, ReplicaDefaultDataSetDriller)
-{
-    RunTickLoop([this](int tick)-> TestStatus
-    {
-        switch (tick)
-        {
-        case 10:
-        {
-            auto rep = m_sessions[s2].GetReplicaMgr().FindReplica(m_replicaId);
-            AZ_TEST_ASSERT(rep);
-            break;
-        }
-        case 15:
-        {
-            ReplicaPtr replica = m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaId);
-            auto chunk = replica->FindReplicaChunk<LargeChunkWithDefaults>();
-
-            auto touch = [](DataSet<int>& dataSet) { dataSet.Set(NonDefaultValue); };
-            touch(chunk->Data1);
-            touch(chunk->Data2);
-            touch(chunk->Data3);
-            touch(chunk->Data4);
-            touch(chunk->Data5);
-            touch(chunk->Data6);
-            touch(chunk->Data7);
-            touch(chunk->Data8);
-            touch(chunk->Data9);
-            touch(chunk->Data10);
-
-            break;
-        }
-        case 20:
-        {
-            m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaId)->Destroy();
-            break;
-        }
-        case 25:
-        {
-            auto firstDatasetSize = m_driller.m_replicaChunkLengths[0];
-            auto secondDatasetSize = m_driller.m_replicaChunkLengths[1];
-            AZ_TEST_ASSERT(firstDatasetSize < secondDatasetSize);
-            return TestStatus::Completed;
-        }
-        default:
-            break;
-        }
-        return TestStatus::Running;
-    });
-}
-
-
-/*
  * Create and immedietly destroy master replica
  * Test that it does not result in any network sync
 */
@@ -3120,153 +2854,150 @@ TEST_F(Integ_CreateDestroyMaster, CreateDestroyMaster)
     });
 }
 
-
 /*
-* This test checks the actual size of the replica as marshalled in the binary payload.
-* The assessment of the payload size is done using driller EBus.
+* This test checks that when the carrier ACKs a message it feeds back to the ReplicaTarget.
+* The ReplicaTarget will prevent sending more updates.
 */
-class Integ_Replica_ComparePackingBoolsVsU8
+class ReplicaACKfeedbackTestFixture
     : public Integ_SimpleTest
 {
 public:
-    Integ_Replica_ComparePackingBoolsVsU8()
-        : m_replicaBoolsId(InvalidReplicaId)
-        , m_replicaU8Id(InvalidReplicaId)
+    ReplicaACKfeedbackTestFixture()
+        : m_replicaId(InvalidReplicaId)
     {
     }
 
     enum
     {
         sHost,
-        s2,
+        sClient,
         nSessions
     };
 
-    /*
-    * A hook to intercept the payload size of a replica and it's contents.
-    */
-    class ReplicaDrillerHook
-        : public Debug::ReplicaDrillerBus::Handler
-    {
-    public:
-        ReplicaDrillerHook()
-        {
-        }
-
-        void OnReceiveReplicaChunkBegin(ReplicaChunkBase* chunk, AZ::u32 /*chunkIndex*/, PeerId /*from*/, PeerId /*to*/, const void* /*data*/, size_t len) override
-        {
-            if (string(chunk->GetDescriptor()->GetChunkName()) == ChunkWithBools::GetChunkName())
-            {
-                m_boolChunkLengths.push_back(len);
-            }
-            if (string(chunk->GetDescriptor()->GetChunkName()) == ChunkWithShortInts::GetChunkName())
-            {
-                m_u8ChunkLengths.push_back(len);
-            }
-        }
-
-        AZStd::vector<AZ::u64> m_boolChunkLengths;
-        AZStd::vector<AZ::u64> m_u8ChunkLengths;
-    };
-
     int GetNumSessions() override { return nSessions; }
+
+    static const int NonDefaultValue = 4242;
+    static const int k_headerBytes = 12;
+    static const int k_updateBytes = k_headerBytes + 10 * sizeof(int);
 
     void PreConnect() override
     {
         m_driller.BusConnect();
 
-        ReplicaPtr replica1 = Replica::CreateReplica(nullptr);
-        ChunkWithBools* chunk1 = CreateAndAttachReplicaChunk<ChunkWithBools>(replica1);
-        AZ_TEST_ASSERT(chunk1);
+        ReplicaPtr replica = Replica::CreateReplica("ReplicaACKfeedbackTest");
+        LargeChunkWithDefaultsMedium* chunk = CreateAndAttachReplicaChunk<LargeChunkWithDefaultsMedium>(replica);
+        AZ_TEST_ASSERT(chunk);
 
-        m_replicaBoolsId = m_sessions[sHost].GetReplicaMgr().AddMaster(replica1);
-
-        ReplicaPtr replica2 = Replica::CreateReplica(nullptr);
-        ChunkWithShortInts* chunk2 = CreateAndAttachReplicaChunk<ChunkWithShortInts>(replica2);
-        AZ_TEST_ASSERT(chunk2);
-
-        m_replicaU8Id = m_sessions[sHost].GetReplicaMgr().AddMaster(replica2);
+        m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
     }
 
-    ~Integ_Replica_ComparePackingBoolsVsU8()
+    ~ReplicaACKfeedbackTestFixture()
     {
         m_driller.BusDisconnect();
     }
 
-    ReplicaDrillerHook m_driller;
-    ReplicaId m_replicaBoolsId;
-    ReplicaId m_replicaU8Id;
+    size_t                              m_replicaBytesSentPrev = 0;
+    ReplicaId                           m_replicaId;
+    Integ_ReplicaDriller::ReplicaDrillerHook  m_driller;
 };
 
-TEST_F(Integ_Replica_ComparePackingBoolsVsU8, Replica_ComparePackingBoolsVsU8)
+TEST_F(ReplicaACKfeedbackTestFixture, ReplicaACKfeedbackTest)
 {
     RunTickLoop([this](int tick)-> TestStatus
     {
+        if(! ReplicaTarget::IsAckEnabled())
+        {
+            return TestStatus::Completed;
+        }
+
+        //AZ_Printf("GridMateTests", "%d %d\n", tick, m_driller.m_numReplicaBytesSent);
+        // Tests the Revision stamp with Carrier ACK feedback
+        // result is true on the immediate tick after changing, but false on the next and stays false until next change
+        auto CheckHostReplicaChanged = [this](bool result)
+        {
+            ReplicaPtr replica = m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaId);
+            if (replica)
+            {
+                for (auto& dst : replica->DebugGetTargets() )
+                {
+                    const bool targetHasUnAckdData = ReplicaTarget::IsAckEnabled() && dst.HasOldRevision(replica->GetRevision());
+                    //AZ_Printf("GridMateTests", "target's stamp %d replica last_change %d : assert(%d)\n",
+                    //    dst.GetRevision(), replica->GetRevision(), targetHasUnAckdData == result);
+                    AZ_TEST_ASSERT(targetHasUnAckdData == result);
+                }
+            }
+        };
+        auto updateDataSets = [](AZStd::intrusive_ptr<LargeChunkWithDefaultsMedium>& chunk, int val)
+        {
+            AZ_TEST_ASSERT(chunk);
+            auto touch = [val](DataSet<int>& dataSet) { dataSet.Set(val); };
+            touch(chunk->Data1);
+            touch(chunk->Data2);
+            touch(chunk->Data3);
+            touch(chunk->Data4);
+            touch(chunk->Data5);
+            touch(chunk->Data6);
+            touch(chunk->Data7);
+            touch(chunk->Data8);
+            touch(chunk->Data9);
+            touch(chunk->Data10);
+        };
+
         switch (tick)
         {
+        case 6:
+        {
+            CheckHostReplicaChanged(false);     //Default value sent reliably. Called back immediately. Nothing to ACK.
+        }break;
         case 10:
         {
-            auto rep1 = m_sessions[s2].GetReplicaMgr().FindReplica(m_replicaBoolsId);
-            AZ_TEST_ASSERT(rep1);
-            auto rep2 = m_sessions[s2].GetReplicaMgr().FindReplica(m_replicaU8Id);
-            AZ_TEST_ASSERT(rep2);
-            break;
-        }
+            auto rep = m_sessions[sClient].GetReplicaMgr().FindReplica(m_replicaId);
+            AZ_TEST_ASSERT(rep);                //Client has recvd
+        }break;
         case 15:
         {
-            // we have to poke the values so that they become non-default
-            {
-                ReplicaPtr replica = m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaBoolsId);
-                auto chunk = replica->FindReplicaChunk<ChunkWithBools>();
+            ReplicaPtr replica = m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaId);
+            auto chunk = replica->FindReplicaChunk<LargeChunkWithDefaultsMedium>();
 
-                auto touch = [](DataSet<bool>& dataSet) { dataSet.Set(true); };
-                touch(chunk->Data1);
-                touch(chunk->Data2);
-                touch(chunk->Data3);
-                touch(chunk->Data4);
-                touch(chunk->Data5);
-                touch(chunk->Data6);
-                touch(chunk->Data7);
-                touch(chunk->Data8);
-                touch(chunk->Data9);
-                touch(chunk->Data10);
-            }
-            {
-                ReplicaPtr replica = m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaU8Id);
-                auto chunk = replica->FindReplicaChunk<ChunkWithShortInts>();
+            updateDataSets(chunk, NonDefaultValue);
 
-                auto touch = [](DataSet<AZ::u8>& dataSet) { dataSet.Set(42); };
-                touch(chunk->Data1);
-                touch(chunk->Data2);
-                touch(chunk->Data3);
-                touch(chunk->Data4);
-                touch(chunk->Data5);
-                touch(chunk->Data6);
-                touch(chunk->Data7);
-                touch(chunk->Data8);
-                touch(chunk->Data9);
-                touch(chunk->Data10);
-            }
-
-            break;
-        }
+            m_replicaBytesSentPrev = m_driller.m_numReplicaBytesSent;
+            CheckHostReplicaChanged(false);  //Changed now, but wont know until next prepareData()
+        }break;
+        case 16:
+        {
+            AZ_TEST_ASSERT(m_driller.m_numReplicaBytesSent - m_replicaBytesSentPrev == k_updateBytes);
+            CheckHostReplicaChanged(true);  //Detected change. ACK feedback on next tick returns to false.
+        }break;
         case 20:
         {
-            m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaBoolsId)->Destroy();
-            m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaU8Id)->Destroy();
-            break;
-        }
+            ReplicaPtr replica = m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaId);
+            auto chunk = replica->FindReplicaChunk<LargeChunkWithDefaultsMedium>();
+
+            updateDataSets(chunk, NonDefaultValue + 1);
+
+            m_replicaBytesSentPrev = m_driller.m_numReplicaBytesSent;
+            CheckHostReplicaChanged(false);  //Changed now, but wont know until next prepareData()
+        }break;
+        case 21:
+        {
+            AZ_TEST_ASSERT(m_driller.m_numReplicaBytesSent - m_replicaBytesSentPrev == k_updateBytes);
+            CheckHostReplicaChanged(true);  //Detected change. ACK feedback on next tick returns to false.
+        }break;
         case 25:
         {
-            auto boolDatasetSize = m_driller.m_boolChunkLengths[1];
-            auto u8DatasetSize = m_driller.m_u8ChunkLengths[1];
-            AZ_TEST_ASSERT(boolDatasetSize < u8DatasetSize); // Observed example: 5bytes < 13bytes
-
+            CheckHostReplicaChanged(false);
+            m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaId)->Destroy();
+        } break;
+        case 30:
+        {
             return TestStatus::Completed;
         }
         default:
+            CheckHostReplicaChanged(false);      //All other ticks leave Replica unchanged!
             break;
         }
+
         return TestStatus::Running;
     });
 }

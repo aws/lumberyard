@@ -24,6 +24,8 @@
 
 namespace LmbrCentral
 {
+    using AzFramework::PhysicsComponentRequestBus;
+    using AzFramework::PhysicsComponentNotificationBus;
 
     void CharacterPhysicsComponent::CryPlayerPhysicsConfiguration::PlayerDimensions::Reflect(AZ::ReflectContext* context)
     {

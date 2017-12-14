@@ -84,8 +84,6 @@ static bool isWin10()
     return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
 }
 
-#ifdef KDAB_MAC_PORT
-
 /**
  * Stream operator for writing out the TabContainerType to a data stream
  */
@@ -105,9 +103,11 @@ static QDataStream& operator>>(QDataStream& in, FancyDocking::TabContainerType& 
     in >> myObj.currentIndex;
     return in;
 }
-#endif
 
-
+namespace
+{
+    static const char* g_AutoSavePropertyName = "AutoSaveLayout";
+}
 
 /**
  * Create our fancy docking widget
@@ -125,9 +125,7 @@ FancyDocking::FancyDocking(QMainWindow* mainWindow)
 
     // Register our TabContainerType stream operators so that they will be used
     // when reading/writing from/to data streams
-#ifdef KDAB_MAC_PORT
     qRegisterMetaTypeStreamOperators<FancyDocking::TabContainerType>("FancyDocking::TabContainerType");
-#endif
     mainWindow->installEventFilter(this);
     mainWindow->setProperty("fancydocking_owner", QVariant::fromValue(this));
     setAutoFillBackground(false);
@@ -1911,6 +1909,28 @@ void FancyDocking::splitDockWidget(QMainWindow* mainWindow, QDockWidget* target,
 }
 
 /**
+* Use this to prevent the fancy docking system from auto-saving this widget
+* with the rest of the layout state.
+*/
+void FancyDocking::disableAutoSaveLayout(QDockWidget* dock)
+{
+    dock->setProperty(g_AutoSavePropertyName, false);
+}
+
+/**
+* Use this to enable the fancy docking system to auto-save this widget
+* with the rest of the layout state.
+*
+* Note that this method does not need to be called in most cases.
+* Unless disableAutoSaveLayout has previously been called, all fancy dock
+* widgets will have their layout state saved.
+*/
+void FancyDocking::enableAutoSaveLayout(QDockWidget* dock)
+{
+    dock->setProperty(g_AutoSavePropertyName, false);
+}
+
+/**
  * Dock a QDockWidget onto a QDockWidget or a QMainWindow
  * NOTE: This method is responsible for calling clearDraggingState() when it has
  * completed its actions
@@ -2565,12 +2585,23 @@ void FancyDocking::StopDropZone()
     }
 }
 
+template <typename T>
+T GetProperty(QObject* object, const char* propertyName, const T& returnIfPropertyNotFound)
+{
+    QVariant propertyValue = object->property(propertyName);
+    if (!propertyValue.isNull() && propertyValue.canConvert<T>())
+    {
+        return propertyValue.value<T>();
+    }
+
+    return returnIfPropertyNotFound;
+}
+
 /**
  * Analog to QMainWindow::saveState(). The state can be restored with FancyDocking::restoreState()
  */
 QByteArray FancyDocking::saveState()
 {
-#ifdef KDAB_MAC_PORT
     SerializedMapType map;
     for (QDockWidget* dockWidget : m_mainWindow->findChildren<QDockWidget*>(
             QRegularExpression(QString("%1.*").arg(g_floatingWindowPrefix)), Qt::FindChildrenRecursively))
@@ -2582,8 +2613,18 @@ QByteArray FancyDocking::saveState()
         }
         const auto subs = mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly);
 
-        // Don't persist any floating windows that have no dock widgets
-        if (subs.size() == 0)
+        // Don't persist any floating windows that have no dock widgets or only have dock widgets that aren't going to be saved (multiple instance panes)
+        bool hasValidTab = false;
+        for (auto& sub : subs)
+        {
+            QDockWidget* subDockWidget = qobject_cast<QDockWidget*>(sub);
+            if (subDockWidget)
+            {
+                bool autoSave = GetProperty(subDockWidget, g_AutoSavePropertyName, true); // we auto-save by default
+                hasValidTab |= autoSave;
+            }
+        }
+        if (!hasValidTab)
         {
             continue;
         }
@@ -2648,9 +2689,6 @@ QByteArray FancyDocking::saveState()
     stream << quint32(VersionMarker) << m_mainWindow->saveState() << map
     << m_placeholders << m_restoreFloatings << tabContainers;
     return data;
-#else
-    return {};
-#endif
 }
 
 /**
@@ -2662,7 +2700,6 @@ bool FancyDocking::restoreState(const QByteArray& state)
     {
         return false;
     }
-#ifdef KDAB_MAC_PORT
     QByteArray stateData = state;
     QDataStream stream(&stateData, QIODevice::ReadOnly);
 
@@ -2831,9 +2868,6 @@ bool FancyDocking::restoreState(const QByteArray& state)
     }
 
     return ok;
-#else
-    return true;
-#endif
 }
 
 /**
@@ -2868,7 +2902,7 @@ bool FancyDocking::restoreDockWidget(QDockWidget* dock)
     auto it = m_placeholders.find(dockObjectName);
     if (it != m_placeholders.end())
     {
-        // The DockWidget we try to restore was last seen in a floating QMainWindow.
+        // The QDockWidget we try to restore was last seen in a floating QMainWindow.
         QString floatingDockWidgetName = *it;
         QDockWidget* dockWidget = m_mainWindow->findChild<QDockWidget*>(floatingDockWidgetName);
         if (dockWidget)

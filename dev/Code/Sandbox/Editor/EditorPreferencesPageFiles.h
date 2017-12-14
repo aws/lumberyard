@@ -27,6 +27,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_Files();
+    virtual ~CEditorPreferencesPage_Files() = default;
 
     virtual const char* GetCategory() override { return "General Settings"; }
     virtual const char* GetTitle() override { return "Files"; }

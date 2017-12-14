@@ -94,7 +94,11 @@ namespace AzToolsFramework
             QMargins q(0, 0, 0, 0);
             layoutWidget->layout()->setContentsMargins(q);
 
-            // 2) add buttons for "Reset" and "Add" actions
+            // 2) add buttons for "Copy all", "Reset" and "Add" actions
+
+            QPushButton* pCopyAllButton = new QPushButton(tr("Copy all"), this);
+            layoutWidget->layout()->addWidget(pCopyAllButton);
+
             QPushButton* pResetButton = new QPushButton(tr("Reset"), this);
             layoutWidget->layout()->addWidget(pResetButton);
 
@@ -107,6 +111,7 @@ namespace AzToolsFramework
             connect(pTabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
             connect(pContextButton, SIGNAL(clicked(bool)), this, SLOT(onAddClicked(bool)));
             connect(pResetButton, SIGNAL(clicked(bool)), this, SLOT(onResetClicked(bool)));
+            connect(pCopyAllButton, SIGNAL(clicked(bool)), this, SLOT(onCopyAllClicked()));
 
             pParent->layout()->addWidget(this);
         }
@@ -169,6 +174,18 @@ namespace AzToolsFramework
             }
 
             Q_EMIT TabsReset();
+        }
+
+        void BaseLogPanel::onCopyAllClicked()
+        {
+            if (pTabWidget)
+            {
+                QWidget* currentTab = pTabWidget->currentWidget();
+                if (currentTab)
+                {
+                    QMetaObject::invokeMethod(currentTab, "CopyAll", Qt::QueuedConnection);
+                }
+            }
         }
 
         void BaseLogPanel::AddLogTab(const TabSettings& settings)

@@ -128,6 +128,8 @@ namespace GridMate
 
         virtual bool IsBroadcast() { return false; }
 
+        AZ::u64 GetLastChangeStamp() const { return m_revision; };
+
     protected:
         
         virtual AZ::u32 CalculateDirtyDataSetMask(MarshalContext& mc);
@@ -147,7 +149,7 @@ namespace GridMate
         void AttachedToReplica(Replica* replica);
         void DetachedFromReplica();
 
-        bool IsDirty(AZ::u32 marshalFlags);
+        bool IsDirty(AZ::u32 marshalFlags) const;
         PrepareDataResult PrepareData(EndianType endianType, AZ::u32 marshalFlags);
 
         void MarshalDataSets(MarshalContext& mc, AZ::u32 chunkIndex);
@@ -175,12 +177,12 @@ namespace GridMate
             RepChunk_Updated = 1 << 0
         };
 
-        Replica* m_replica;
-        ReplicaChunkDescriptor* m_descriptor;
-        AZ::u32 m_flags;
+        Replica*                    m_replica;
+        ReplicaChunkDescriptor*     m_descriptor;
+        AZ::u32                     m_flags;
 
-        RPCQueue m_rpcQueue;
-        ReplicaChunkInterface* m_handler;
+        RPCQueue                    m_rpcQueue;
+        ReplicaChunkInterface*      m_handler;
 
         AZStd::bitset<GM_MAX_DATASETS_IN_CHUNK> m_reliableDirtyBits;
         AZStd::bitset<GM_MAX_DATASETS_IN_CHUNK> m_unreliableDirtyBits;
@@ -197,9 +199,10 @@ namespace GridMate
         AZ::u32 m_nDownstreamUnreliableRPCs;
         AZ::u32 m_nUpstreamReliableRPCs;
         AZ::u32 m_nUpstreamUnreliableRPCs;
-        
-        AZ::u32 m_dirtiedDataSets; // Downstream changed DataSet bits for triggering the event handler
-        ReplicaPriority m_priority;
+
+        AZ::u32             m_dirtiedDataSets; // Downstream changed DataSet bits for triggering the event handler
+        ReplicaPriority     m_priority;
+        AZ::u64             m_revision; //change stamp. increases every time a data set changes
     };
 
     // Replica Chunk

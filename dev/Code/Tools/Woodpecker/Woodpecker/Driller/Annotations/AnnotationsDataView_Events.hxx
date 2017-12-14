@@ -15,6 +15,8 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/unordered_set.h>
 
 #include <QtWidgets/QWidget>
 

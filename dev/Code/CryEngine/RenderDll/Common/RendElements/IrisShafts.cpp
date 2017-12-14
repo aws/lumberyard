@@ -17,6 +17,7 @@
 #include "FlareSoftOcclusionQuery.h"
 #include "../CryNameR.h"
 #include "../../RenderDll/XRenderD3D9/DriverD3D.h"
+#include "../Common/Textures/TextureManager.h"
 
 #if defined(FLARES_SUPPORT_EDITING)
 #define MFPtr(FUNC_NAME) (Optics_MFPtr)(&IrisShafts::FUNC_NAME)
@@ -296,10 +297,10 @@ void IrisShafts::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
     bilinearTS.SetBorderColor(0);
     bilinearTS.SetClampMode(TADDR_BORDER, TADDR_BORDER, TADDR_BORDER);
 
-    CTexture* pBaseTex = ((CTexture*)m_pBaseTex) ? ((CTexture*)m_pBaseTex) : CTexture::s_ptexBlack;
+    CTexture* pBaseTex = ((CTexture*)m_pBaseTex) ? ((CTexture*)m_pBaseTex) : CTextureManager::Instance()->GetBlackTexture();
     pBaseTex->Apply(1, CTexture::GetTexState(bilinearTS));
 
-    CTexture* pSpectrumTex = (m_bUseSpectrumTex && ((CTexture*)m_pSpectrumTex)) ? ((CTexture*)m_pSpectrumTex) : CTexture::s_ptexBlack;
+    CTexture* pSpectrumTex = (m_bUseSpectrumTex && ((CTexture*)m_pSpectrumTex)) ? ((CTexture*)m_pSpectrumTex) : CTextureManager::Instance()->GetBlackTexture();
     pSpectrumTex->Apply(0, CTexture::GetTexState(bilinearTS));
 
     if (m_MaxNumberOfPolygon != CRenderer::CV_r_FlaresIrisShaftMaxPolyNum)

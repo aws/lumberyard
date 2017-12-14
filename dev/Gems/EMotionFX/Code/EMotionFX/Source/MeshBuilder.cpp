@@ -587,7 +587,7 @@ namespace EMotionFX
     }*/
 
 
-    void AddZeroVectors(MCore::Array<MCore::Vector3>& tangents, MCore::Array<MCore::Vector3>& binormals, MCore::Array<AZ::Vector2>& tangentsSpherical, MCore::Array<AZ::Vector2>& binormalsSpherical, uint32 numDuplicates)
+    void AddZeroVectors(MCore::Array<AZ::Vector3>& tangents, MCore::Array<AZ::Vector3>& binormals, MCore::Array<AZ::Vector2>& tangentsSpherical, MCore::Array<AZ::Vector2>& binormalsSpherical, uint32 numDuplicates)
     {
         // check if we have already added the zero vectors
         if (tangents.GetIsEmpty())
@@ -599,8 +599,8 @@ namespace EMotionFX
 
             for (uint32 dupeNr = 0; dupeNr < numDuplicates; ++dupeNr)
             {
-                tangents[dupeNr].Zero();
-                binormals[dupeNr].Zero();
+                tangents[dupeNr] = AZ::Vector3::CreateZero();
+                binormals[dupeNr] = AZ::Vector3::CreateZero();
                 tangentsSpherical[dupeNr]  = AZ::Vector2::CreateZero();
                 binormalsSpherical[dupeNr] = AZ::Vector2::CreateZero();
             }

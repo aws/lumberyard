@@ -39,12 +39,15 @@
 #include "ShadowsSetupNode.h"
 #include "AnimEnvironmentNode.h"
 #include "SequenceTrack.h"
-
+#include "AnimNodeGroup.h"
 #include "IScriptSystem.h"
 #include "Components/IComponentRender.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/SequenceType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 //////////////////////////////////////////////////////////////////////////
-CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, ESequenceType sequenceType)
+CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, SequenceType sequenceType)
     : m_refCount(0)
 {
     m_lastGenId = 1;
@@ -54,7 +57,7 @@ CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, ESequenceTyp
     m_timeRange.Set(0, 10);
     m_bPaused = false;
     m_bActive = false;
-    m_pOwner = NULL;
+    m_legacySequenceObject = nullptr;
     m_pActiveDirector = NULL;
     m_precached = false;
     m_bResetting = false;
@@ -67,7 +70,7 @@ CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, ESequenceTyp
 
 //////////////////////////////////////////////////////////////////////////
 CAnimSequence::CAnimSequence()
-    : CAnimSequence((gEnv) ? gEnv->pMovieSystem : nullptr, 0, eSequenceType_SequenceComponent)
+    : CAnimSequence((gEnv) ? gEnv->pMovieSystem : nullptr, 0, SequenceType::SequenceComponent)
 {
 }
 
@@ -233,7 +236,7 @@ bool CAnimSequence::AddNode(IAnimNode* pAnimNode)
         AddNodeNeedToRender(pAnimNode);
     }
 
-    bool bNewDirectorNode = m_pActiveDirector == NULL && pAnimNode->GetType() == eAnimNodeType_Director;
+    bool bNewDirectorNode = m_pActiveDirector == NULL && pAnimNode->GetType() == AnimNodeType::Director;
     if (bNewDirectorNode)
     {
         m_pActiveDirector = pAnimNode;
@@ -243,7 +246,7 @@ bool CAnimSequence::AddNode(IAnimNode* pAnimNode)
 }
 
 //////////////////////////////////////////////////////////////////////////
-IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNodeId)
+IAnimNode* CAnimSequence::CreateNodeInternal(AnimNodeType nodeType, uint32 nNodeId)
 {
     if (!m_pMovieSystem)
     {
@@ -259,20 +262,20 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
 
     switch (nodeType)
     {
-        case eAnimNodeType_Entity:
+        case AnimNodeType::Entity:
             // legacy entities are only allowed to be added to legacy sequences
-            if (m_sequenceType == eSequenceType_Legacy)
+            if (m_sequenceType == SequenceType::Legacy)
             {
-                pAnimNode = aznew CAnimEntityNode(nNodeId, eAnimNodeType_Entity);
+                pAnimNode = aznew CAnimEntityNode(nNodeId, AnimNodeType::Entity);
             }
             else
             {
                 m_pMovieSystem->LogUserNotificationMsg("Object Entities (Legacy) are not supported in Component Entity Sequences. Skipping...");
             }
             break;
-        case eAnimNodeType_AzEntity:
+        case AnimNodeType::AzEntity:
             // AZ entities are only allowed to be added to SequenceComponent sequences
-            if (m_sequenceType == eSequenceType_SequenceComponent)
+            if (m_sequenceType == SequenceType::SequenceComponent)
             {
                 pAnimNode = aznew CAnimAzEntityNode(nNodeId);
             }
@@ -281,9 +284,9 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
                 m_pMovieSystem->LogUserNotificationMsg("Component Entities are not supported in Object Entity Sequences (Legacy). Skipping...");
             }
             break;
-        case eAnimNodeType_Component:
+        case AnimNodeType::Component:
             // Components are only allowed to be added to SequenceComponent sequences
-            if (m_sequenceType == eSequenceType_SequenceComponent)
+            if (m_sequenceType == SequenceType::SequenceComponent)
             {
                 pAnimNode = aznew CAnimComponentNode(nNodeId);
             }
@@ -292,9 +295,9 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
                 m_pMovieSystem->LogUserNotificationMsg("Component Nodes are not supported in Object Entity Sequences (Legacy). Skipping...");
             }
             break;
-        case eAnimNodeType_Camera:
+        case AnimNodeType::Camera:
             // legacy cameras are only allowed to be added to legacy sequences
-            if (m_sequenceType == eSequenceType_Legacy)
+            if (m_sequenceType == SequenceType::Legacy)
             {
                 pAnimNode = aznew CAnimCameraNode(nNodeId);
             }
@@ -303,50 +306,50 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
                 m_pMovieSystem->LogUserNotificationMsg("Object Entities (Legacy) are not supported in Component Entity Sequences. Skipping...");
             }
             break;
-        case eAnimNodeType_CVar:
+        case AnimNodeType::CVar:
             pAnimNode = aznew CAnimCVarNode(nNodeId);
             break;
-        case eAnimNodeType_ScriptVar:
+        case AnimNodeType::ScriptVar:
             pAnimNode = aznew CAnimScriptVarNode(nNodeId);
             break;
-        case eAnimNodeType_Director:
+        case AnimNodeType::Director:
             pAnimNode = aznew CAnimSceneNode(nNodeId);
             break;
-        case eAnimNodeType_Material:
+        case AnimNodeType::Material:
             pAnimNode = aznew CAnimMaterialNode(nNodeId);
             break;
-        case eAnimNodeType_Event:
+        case AnimNodeType::Event:
             pAnimNode = aznew CAnimEventNode(nNodeId);
             break;
-        case eAnimNodeType_Group:
+        case AnimNodeType::Group:
             pAnimNode = aznew CAnimNodeGroup(nNodeId);
             break;
-        case  eAnimNodeType_Layer:
+        case  AnimNodeType::Layer:
             pAnimNode = aznew CLayerNode(nNodeId);
             break;
-        case eAnimNodeType_Comment:
+        case AnimNodeType::Comment:
             pAnimNode = aznew CCommentNode(nNodeId);
             break;
-        case eAnimNodeType_RadialBlur:
-        case eAnimNodeType_ColorCorrection:
-        case eAnimNodeType_DepthOfField:
+        case AnimNodeType::RadialBlur:
+        case AnimNodeType::ColorCorrection:
+        case AnimNodeType::DepthOfField:
             pAnimNode = CAnimPostFXNode::CreateNode(nNodeId, nodeType);
             break;
-        case eAnimNodeType_ShadowSetup:
+        case AnimNodeType::ShadowSetup:
             pAnimNode = aznew CShadowsSetupNode(nNodeId);
             break;
-        case eAnimNodeType_ScreenFader:
+        case AnimNodeType::ScreenFader:
             pAnimNode = aznew CAnimScreenFaderNode(nNodeId);
             break;
-        case eAnimNodeType_Light:
+        case AnimNodeType::Light:
             pAnimNode = aznew CAnimLightNode(nNodeId);
             break;
 #if defined(USE_GEOM_CACHES)
-        case eAnimNodeType_GeomCache:
+        case AnimNodeType::GeomCache:
             pAnimNode = aznew CAnimGeomCacheNode(nNodeId);
             break;
 #endif
-        case eAnimNodeType_Environment:
+        case AnimNodeType::Environment:
             pAnimNode = aznew CAnimEnvironmentNode(nNodeId);
             break;
         default:     
@@ -363,7 +366,7 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
 }
 
 //////////////////////////////////////////////////////////////////////////
-IAnimNode* CAnimSequence::CreateNode(EAnimNodeType nodeType)
+IAnimNode* CAnimSequence::CreateNode(AnimNodeType nodeType)
 {
     return CreateNodeInternal(nodeType);
 }
@@ -376,7 +379,7 @@ IAnimNode* CAnimSequence::CreateNode(XmlNodeRef node)
         return 0;   // should never happen, null pointer guard
     }
 
-    EAnimNodeType type;
+    AnimNodeType type;
     GetMovieSystem()->SerializeNodeType(type, node, true, IAnimSequence::kSequenceVersion, 0);
 
     XmlString name;
@@ -427,12 +430,12 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
     }
 
     // Request the node removal from the SequenceComponent if it's an AZ::Entity
-    if (m_sequenceType == eSequenceType_SequenceComponent)
+    if (m_sequenceType == SequenceType::SequenceComponent)
     {
         AZ::EntityId removedNodeId = node->GetAzEntityId();
-        if (removedNodeId.IsValid() && m_ownerId.IsValid())
+        if (removedNodeId.IsValid() && m_sequenceEntityId.IsValid())
         {
-            Maestro::EditorSequenceComponentRequestBus::Event(m_ownerId, &Maestro::EditorSequenceComponentRequestBus::Events::RemoveEntityToAnimate, removedNodeId);
+            Maestro::EditorSequenceComponentRequestBus::Event(m_sequenceEntityId, &Maestro::EditorSequenceComponentRequestBus::Events::RemoveEntityToAnimate, removedNodeId);
         }
     }
 
@@ -445,7 +448,7 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
         for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
         {
             IAnimNode* pNode = it->get();
-            if (pNode->GetType() == eAnimNodeType_Director)
+            if (pNode->GetType() == AnimNodeType::Director)
             {
                 SetActiveDirector(pNode);
                 break;
@@ -572,10 +575,10 @@ void CAnimSequence::Pause()
         static_cast<CAnimNode*>(pAnimNode)->OnPause();
     }
 
-    if (GetSequenceType() == eSequenceType_SequenceComponent)
+    if (GetSequenceType() == SequenceType::SequenceComponent)
     {
         // Notify EBus listeners
-        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnPause);
+        Maestro::SequenceComponentNotificationBus::Event(GetSequenceEntityId(), &Maestro::SequenceComponentNotificationBus::Events::OnPause);
     }
 }
 
@@ -597,10 +600,10 @@ void CAnimSequence::Resume()
             static_cast<CAnimNode*>(pAnimNode)->OnResume();
         }
 
-        if (GetSequenceType() == eSequenceType_SequenceComponent)
+        if (GetSequenceType() == SequenceType::SequenceComponent)
         {
             // Notify EBus listeners
-            Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnResume);
+            Maestro::SequenceComponentNotificationBus::Event(GetSequenceEntityId(), &Maestro::SequenceComponentNotificationBus::Events::OnResume);
         }
     }
 }
@@ -630,10 +633,10 @@ void CAnimSequence::OnStart()
         static_cast<CAnimNode*>(pAnimNode)->OnStart();
     }
 
-    if (GetSequenceType() == eSequenceType_SequenceComponent)
+    if (GetSequenceType() == SequenceType::SequenceComponent)
     {
         // notify listeners
-        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnStart, m_time);
+        Maestro::SequenceComponentNotificationBus::Event(GetSequenceEntityId(), &Maestro::SequenceComponentNotificationBus::Events::OnStart, m_time);
     }
 }
 
@@ -646,10 +649,10 @@ void CAnimSequence::OnStop()
         static_cast<CAnimNode*>(pAnimNode)->OnStop();
     }
 
-    if (GetSequenceType() == eSequenceType_SequenceComponent)
+    if (GetSequenceType() == SequenceType::SequenceComponent)
     {
         // notify listeners
-        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnStop, m_time);
+        Maestro::SequenceComponentNotificationBus::Event(GetSequenceEntityId(), &Maestro::SequenceComponentNotificationBus::Events::OnStop, m_time);
     }
 }
 
@@ -711,7 +714,7 @@ void CAnimSequence::Animate(const SAnimContext& ec)
         IAnimNode* pAnimNode = it->get();
 
         // All other (inactive) director nodes are skipped.
-        if (pAnimNode->GetType() == eAnimNodeType_Director)
+        if (pAnimNode->GetType() == AnimNodeType::Director)
         {
             continue;
         }
@@ -869,10 +872,10 @@ void CAnimSequence::SetId(uint32 newId)
     }
     m_id = newId;
 
-    if (m_sequenceType == eSequenceType_Legacy)
+    if (m_sequenceType == SequenceType::Legacy)
     {
-        // For legacy sequences we store the sequence ID in m_ownerId,
-        // for component entity sequences m_ownerId stores the EntityId of the component entity.
+        // For legacy sequences we store the sequence ID in m_sequenceEntityId,
+        // for component entity sequences m_sequenceEntityId stores the EntityId of the component entity.
         // The rationale for storing the sequence ID for legacy sequences is that, eventually legacy
         // support will be dropped. For component entity sequences it makes sense that the component
         // entity ID is the unique way to identify sequences since that works with slices. So we want
@@ -882,7 +885,7 @@ void CAnimSequence::SetId(uint32 newId)
         // could be used to determine if this is a valid component entity ID or a legacy sequence ID. In
         // practice though this has not so far proved necessary because the sequence type can be used to
         // determine that.
-        m_ownerId = AZ::EntityId(m_id);
+        m_sequenceEntityId = AZ::EntityId(m_id);
     }
 }
 
@@ -903,7 +906,7 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         int sequenceVersion = 0;
         xmlNode->getAttr("SequenceVersion", sequenceVersion);
 
-        int   sequenceTypeAttr = eSequenceType_Legacy;
+        int sequenceTypeAttr = static_cast<int>(SequenceType::Legacy);
         Range timeRange;
         SetName(xmlNode->getAttr("Name"));
         xmlNode->getAttr("Flags", m_flags);
@@ -912,14 +915,22 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         uint32 u32Id;
         if (xmlNode->getAttr("ID", u32Id))
         {
-            SetId(u32Id);
+            // legacy sequence and deprecated serialization path! Somewhere along the line some old
+            // crusty sequences were saved with "ID" set all to zero. This should never happen because
+            // id's are assigned starting at one. If the "ID" is zero here just keep the dynamic id
+            // that was assigned when the object was created. LY-68910
+            // This code can be deleted when legacy sequences are no longer supported.
+            if (u32Id != 0)
+            {
+                SetId(u32Id);
+            }
         }
         if (xmlNode->getAttr("SequenceType", sequenceTypeAttr))
         {
-            m_sequenceType = static_cast<ESequenceType>(sequenceTypeAttr);
+            m_sequenceType = static_cast<SequenceType>(sequenceTypeAttr);
         }
 
-        if (m_sequenceType == eSequenceType_SequenceComponent)
+        if (m_sequenceType == SequenceType::SequenceComponent)
         {
             // 64-bit unsigned int is serialized in two 32-bit ints
             AZ::EntityId sequenceComponentEntityId;
@@ -947,7 +958,7 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
             if (foundId)
             {
                 sequenceComponentEntityId = AZ::EntityId(id64);
-                SetOwner(sequenceComponentEntityId);
+                SetSequenceEntityId(sequenceComponentEntityId);
             }
         }     
 
@@ -964,7 +975,7 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         if (nodes)
         {
             uint32 id;
-            EAnimNodeType nodeType;
+            AnimNodeType nodeType;
             for (int i = 0; i < nodes->getChildCount(); ++i)
             {
                 XmlNodeRef childNode = nodes->getChild(i);
@@ -972,12 +983,12 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
 
                 GetMovieSystem()->SerializeNodeType(nodeType, childNode, bLoading, sequenceVersion, m_flags);
 
-                if (nodeType == eAnimNodeType_Invalid)
+                if (nodeType == AnimNodeType::Invalid)
                 {
                     continue;
                 }
 
-                IAnimNode* pAnimNode = CreateNodeInternal((EAnimNodeType)nodeType, id);
+                IAnimNode* pAnimNode = CreateNodeInternal((AnimNodeType)nodeType, id);
                 if (!pAnimNode)
                 {
                     continue;
@@ -1022,9 +1033,9 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         Deactivate();
         //ComputeTimeRange();
 
-        if (GetOwner())
+        if (GetLegacySequenceObject())
         {
-            GetOwner()->OnNameChanged();
+            GetLegacySequenceObject()->OnNameChanged();
         }
     }
     else
@@ -1038,11 +1049,11 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         xmlNode->setAttr("StartTime", m_timeRange.start);
         xmlNode->setAttr("EndTime", m_timeRange.end);
         xmlNode->setAttr("ID", m_id);
-        xmlNode->setAttr("SequenceType", m_sequenceType);
+        xmlNode->setAttr("SequenceType", static_cast<int>(m_sequenceType));
 
-        if (m_sequenceType == eSequenceType_SequenceComponent && m_ownerId.IsValid())
+        if (m_sequenceType == SequenceType::SequenceComponent && m_sequenceEntityId.IsValid())
         {
-            AZ::u64 id64 = static_cast<AZ::u64>(m_ownerId);
+            AZ::u64 id64 = static_cast<AZ::u64>(m_sequenceEntityId);
             xmlNode->setAttr("SequenceComponentEntityId", id64);
         }
 
@@ -1071,9 +1082,9 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
 void CAnimSequence::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<CAnimSequence>()
-        ->Version(1)
+        ->Version(2)
         ->Field("Name", &CAnimSequence::m_name)
-        ->Field("SequenceEntityId", &CAnimSequence::m_ownerId)
+        ->Field("SequenceEntityId", &CAnimSequence::m_sequenceEntityId)
         ->Field("Flags", &CAnimSequence::m_flags)
         ->Field("TimeRange", &CAnimSequence::m_timeRange)
         ->Field("ID", &CAnimSequence::m_id)
@@ -1085,6 +1096,19 @@ void CAnimSequence::Reflect(AZ::SerializeContext* serializeContext)
 //////////////////////////////////////////////////////////////////////////
 void CAnimSequence::InitPostLoad()
 {
+    if (m_pMovieSystem)
+    {
+        // Notify the MovieSystem of the new sequence Id (updates the next available Id if needed)
+        m_pMovieSystem->OnSetSequenceId(GetId());
+
+        // check of sequence ID collision and resolve if needed
+        if (m_pMovieSystem->FindSequenceById(GetId()))
+        {
+            // A collision found - resolve by resetting Id. TODO: resolve all references to previous Id
+            ResetId();
+        }
+    }
+
     int num = GetNodeCount();
     for (int i = 0; i < num; i++)
     {
@@ -1296,9 +1320,9 @@ void CAnimSequence::NotifyTrackEvent(ITrackEventListener::ETrackEventReason reas
     }
 
     // Notification via Event Bus
-    if (GetSequenceType() == eSequenceType_SequenceComponent)
+    if (GetSequenceType() == SequenceType::SequenceComponent)
     {
-        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnTrackEventTriggered, event, param);
+        Maestro::SequenceComponentNotificationBus::Event(GetSequenceEntityId(), &Maestro::SequenceComponentNotificationBus::Events::OnTrackEventTriggered, event, param);
     }
 }
 
@@ -1404,8 +1428,8 @@ void CAnimSequence::CopyNodeChildren(XmlNodeRef& xmlNode, IAnimNode* pAnimNode)
         {
             XmlNodeRef childNode = xmlNode->newChild("Node");
             GetNode(k)->Serialize(childNode, false, true);
-            if (GetNode(k)->GetType() == eAnimNodeType_Group
-                || pAnimNode->GetType() == eAnimNodeType_Director)
+            if (GetNode(k)->GetType() == AnimNodeType::Group
+                || pAnimNode->GetType() == AnimNodeType::Director)
             {
                 CopyNodeChildren(xmlNode, GetNode(k));
             }
@@ -1424,7 +1448,7 @@ void CAnimSequence::CopyNodes(XmlNodeRef& xmlNode, IAnimNode** pSelectedNodes, u
             XmlNodeRef xn = xmlNode->newChild("Node");
             pAnimNode->Serialize(xn, false, true);
             // If it is a group node, copy its children also.
-            if (pAnimNode->GetType() == eAnimNodeType_Group || pAnimNode->GetType() == eAnimNodeType_Director)
+            if (pAnimNode->GetType() == AnimNodeType::Group || pAnimNode->GetType() == AnimNodeType::Director)
             {
                 CopyNodeChildren(xmlNode, pAnimNode);
             }
@@ -1448,7 +1472,7 @@ void CAnimSequence::PasteNodes(const XmlNodeRef& xmlNode, IAnimNode* pParent)
 
         xn->getAttr("Id", id);
 
-        IAnimNode* node = CreateNode((EAnimNodeType)type);
+        IAnimNode* node = CreateNode((AnimNodeType)type);
         if (!node)
         {
             continue;
@@ -1490,9 +1514,9 @@ void CAnimSequence::RemoveNodeNeedToRender(IAnimNode* pNode)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAnimSequence::SetOwner(const AZ::EntityId& entityOwnerId)
+void CAnimSequence::SetSequenceEntityId(const AZ::EntityId& sequenceEntityId)
 { 
-    m_ownerId = entityOwnerId; 
+    m_sequenceEntityId = sequenceEntityId;
 }
 //////////////////////////////////////////////////////////////////////////
 void CAnimSequence::SetActiveDirector(IAnimNode* pDirectorNode)
@@ -1502,8 +1526,8 @@ void CAnimSequence::SetActiveDirector(IAnimNode* pDirectorNode)
         return;
     }
 
-    assert(pDirectorNode->GetType() == eAnimNodeType_Director);
-    if (pDirectorNode->GetType() != eAnimNodeType_Director)
+    assert(pDirectorNode->GetType() == AnimNodeType::Director);
+    if (pDirectorNode->GetType() != AnimNodeType::Director)
     {
         return;     // It's not a director node.
     }
@@ -1539,9 +1563,9 @@ bool CAnimSequence::IsAncestorOf(const IAnimSequence* pSequence) const
     for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
         IAnimNode* pNode = it->get();
-        if (pNode->GetType() == eAnimNodeType_Director)
+        if (pNode->GetType() == AnimNodeType::Director)
         {
-            IAnimTrack* pSequenceTrack = pNode->GetTrackForParameter(eAnimParamType_Sequence);
+            IAnimTrack* pSequenceTrack = pNode->GetTrackForParameter(AnimParamType::Sequence);
             if (pSequenceTrack)
             {
                 PREFAST_ASSUME(pSequence);
@@ -1554,7 +1578,7 @@ bool CAnimSequence::IsAncestorOf(const IAnimSequence* pSequence) const
                         return true;
                     }
 
-                    IAnimSequence* pChild = GetMovieSystem()->FindSequence(key.szSelection.c_str());
+                    IAnimSequence* pChild = CAnimSceneNode::GetSequenceFromSequenceKey(key);
                     if (pChild && pChild->IsAncestorOf(pSequence))
                     {
                         return true;

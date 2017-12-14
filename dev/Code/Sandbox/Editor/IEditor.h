@@ -80,7 +80,9 @@ struct ITransformManipulator;
 struct IDataBaseManager;
 class IFacialEditor;
 class CDialog;
+#if defined(AZ_PLATFORM_WINDOWS)
 class C3DConnexionDriver;
+#endif
 class CRuler;
 class CSettingsManager;
 class CCustomActionsEditorManager;
@@ -462,8 +464,11 @@ class CTrackViewSequence;
 //! Interface to expose TrackViewSequenceManager functionality to SequenceComponent
 struct ITrackViewSequenceManager
 {
-    virtual IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true) = 0;
-    virtual void OnDeleteSequenceObject(const AZ::EntityId& entityId) = 0;
+    virtual IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true, AZ::EntityId entityId = AZ::EntityId()) = 0;
+    
+    //! Notifies of the delete of a sequence entity OR legacy sequence object
+    //! @param entityId The Sequence Component Entity Id OR the legacy sequence object Id packed in the lower 32-bits, as returned from IAnimSequence::GetSequenceEntityId()
+    virtual void OnDeleteSequenceEntity(const AZ::EntityId& entityId) = 0;
 
     //! Get the first sequence with the given name. They may be more than one sequence with this name.
     //! Only intended for use with scripting or other cases where a user provides a name.
@@ -478,7 +483,9 @@ struct ITrackViewSequenceManager
 
     virtual void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) = 0;
 
-    virtual void OnSequenceLoaded(const AZ::EntityId& entityId) = 0;
+    virtual void OnSequenceActivated(const AZ::EntityId& entityId) = 0;
+
+    virtual void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) = 0;
 };
 
 //! Interface to expose TrackViewSequence functionality to SequenceComponent
@@ -541,7 +548,7 @@ struct IEditor
     //! Get path to folder of current level.
     virtual QString GetSearchPath(EEditorPathName path) = 0;
     //! This folder is supposed to store Sandbox user settings and state
-    virtual QString GetUserFolder() = 0;
+    virtual QString GetResolvedUserFolder() = 0;
     //! Execute application and get console output.
     virtual bool ExecuteConsoleApp(
         const QString& CommandLine,

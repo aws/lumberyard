@@ -13,7 +13,7 @@
 
 #include <AzCore/Component/ComponentBus.h>
 
-namespace LmbrCentral
+namespace AzFramework
 {
     /*!
     * ConstraintComponentRequests

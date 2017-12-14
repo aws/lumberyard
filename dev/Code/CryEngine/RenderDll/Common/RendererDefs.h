@@ -128,11 +128,6 @@ enum EVerifyType
 };
 #endif
 
-#include <CryModuleDefs.h>
-
-#undef eCryModule
-#define eCryModule eCryM_Render
-
 #if __HAS_SSE__
 // <fvec.h> includes <assert.h>, include it before platform.h
 #include <fvec.h>
@@ -360,7 +355,9 @@ typedef ID3D11DeviceX           D3DDevice;
 #   else
 
 typedef IDXGIFactory1           DXGIFactory;
+#if !defined(ANDROID) && !defined(APPLE)
 typedef IDXGIDevice1            DXGIDevice;
+#endif
 typedef IDXGIAdapter1           DXGIAdapter;
 typedef IDXGIOutput             DXGIOutput;
 typedef IDXGISwapChain          DXGISwapChain;

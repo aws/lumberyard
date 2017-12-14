@@ -15,6 +15,7 @@
 #pragma once
 
 #include "Include/EditorCoreAPI.h"
+#include "Variable.h"
 
 enum PropertyType
 {

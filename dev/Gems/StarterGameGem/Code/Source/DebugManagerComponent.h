@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -39,7 +37,7 @@ namespace StarterGameGem
 		AZStd::string m_eventName;
 	};
 
-	struct DebugVarBool
+	struct DebugVarBool final
 		: public DebugVarBase
 	{
 		AZ_RTTI(DebugVarBool, "{33B62F09-93E5-432E-9808-F1963E8BC6DE}", DebugVarBase);
@@ -48,7 +46,7 @@ namespace StarterGameGem
 		bool m_value;
 	};
 
-	struct DebugVarFloat
+	struct DebugVarFloat final
 		: public DebugVarBase
 	{
 		AZ_RTTI(DebugVarFloat, "{15C258BE-67B7-4076-A127-55EE69E21549}", DebugVarBase);

@@ -25,7 +25,7 @@ namespace AzFramework
     //! OnInputChannelEvent) to ensure events are only processed once. However, if a system needs to
     //! process input events that may have already been consumed by a higher priority listener, they
     //! are free to derive from InputChannelNotificationBus::Handler and ignore 'o_hasBeenConsumed'.
-    class InputChannelEventNotifications : public AZ::EBusTraits
+    class InputChannelNotifications : public AZ::EBusTraits
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +38,7 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor
-        virtual ~InputChannelEventNotifications() = default;
+        virtual ~InputChannelNotifications() = default;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Override to be notified when an input channel is active or its state or value is updated
@@ -56,10 +56,13 @@ namespace AzFramework
         //! Compare function required by BusHandlerOrderCompare = BusHandlerCompareDefault
         //! \param[in] other Another instance of the class to compare
         //! \return True if the priority of this handler is greater than the other, false otherwise
-        inline bool Compare(const InputChannelEventNotifications* other) const
+        inline bool Compare(const InputChannelNotifications* other) const
         {
             return GetPriority() > other->GetPriority();
         }
     };
-    using InputChannelEventNotificationBus = AZ::EBus<InputChannelEventNotifications>;
+    using InputChannelNotificationBus = AZ::EBus<InputChannelNotifications>;
+
+    AZ_DEPRECATED(typedef InputChannelNotificationBus InputChannelEventNotificationBus, "Renamed to InputChannelNotificationBus");
+    AZ_DEPRECATED(typedef InputChannelNotifications InputChannelEventNotifications, "Renamed to InputChannelNotifications");
 } // namespace AzFramework

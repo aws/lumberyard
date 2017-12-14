@@ -202,6 +202,12 @@
         [
             "../../../CryEngine/CryCommon/EngineSettingsManager.cpp",
             "../../../CryEngine/CryCommon/EngineSettingsManager.h",
+            "../../../CryEngine/CryCommon/EngineSettingsBackend.cpp",
+            "../../../CryEngine/CryCommon/EngineSettingsBackend.h",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendWin32.cpp",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendWin32.h",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendApple.cpp",
+            "../../../CryEngine/CryCommon/EngineSettingsBackendApple.h",
             "../../../CryEngine/CryCommon/ResourceCompilerHelper.cpp",
             "../../../CryEngine/CryCommon/ResourceCompilerHelper.h",
             "../../../CryEngine/CryCommon/SettingsManagerHelpers.cpp",

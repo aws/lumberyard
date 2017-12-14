@@ -56,7 +56,10 @@ namespace AZ
         static const Quaternion CreateRotationZ(float angle);
         /*@}*/
 
-        ///Creates a quaternion using the rotation part of a Transform matrix
+        /**
+         * Creates a quaternion using the rotation part of a Transform matrix
+         * \note If the transform has a scale other than (1,1,1) be sure to extract the scale first with AZ::Transform::ExtractScale or ::ExtractScaleExact.
+         */
         static const Quaternion CreateFromTransform(const class Transform& t);
 
         ///Creates a quaternion from a Matrix3x3

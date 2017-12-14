@@ -75,11 +75,26 @@ namespace Gems
         }
     }
 
-    AZ::Outcome<void, AZStd::string> GemRegistry::LoadProject(const IProjectSettings& settings)
+    AZ::Outcome<void, AZStd::string> GemRegistry::LoadProject(const IProjectSettings& settings, bool resetPreviousProjects)
     {
+        if (resetPreviousProjects)
+        {
+            m_gemDescs.clear();
+        }
         for (const auto& pair : settings.GetGems())
         {
-            auto loadOutcome = LoadGemDescription(pair.second.m_path, nullptr);
+            const char* absolutePath = nullptr;
+
+            // First priority goes to the project root's folder
+            AZStd::string testGemPath = settings.GetProjectRootPath();
+            AzFramework::StringFunc::Path::ConstructFull(settings.GetProjectRootPath().c_str(), pair.second.m_path.c_str(), testGemPath, true);
+            AzFramework::StringFunc::Path::Join(testGemPath.c_str(), GEM_DEF_FILE, testGemPath);
+            if (AZ::IO::SystemFile::Exists(testGemPath.c_str()))
+            {
+                absolutePath = testGemPath.c_str();
+            }
+
+            auto loadOutcome = LoadGemDescription(pair.second.m_path, absolutePath);
             if (!loadOutcome.IsSuccess())
             {
                 return AZ::Failure(loadOutcome.GetError());
@@ -213,9 +228,11 @@ namespace Gems
                 if (0 == azstricmp(fileName.c_str(), GEM_DEF_FILE))
                 {
                     // need relative path to gem folder, so strip searchPath from front and Gem.json from back
-                    AZStd::string gemFolderRelPath = fullPath + searchPath.m_path.length() + 1;
+                    AZStd::string gemFolderRelPath = fullPath + searchPath.m_path.length();
                     AzFramework::StringFunc::Path::StripFullName(gemFolderRelPath);
                     AzFramework::StringFunc::RChop(gemFolderRelPath, 1); // Remove trailing '/'
+                    auto skipPathFirstSepIndex = gemFolderRelPath.find_first_not_of("/\\");
+                    gemFolderRelPath = gemFolderRelPath.substr(skipPathFirstSepIndex);
 
                     auto loadOutcome = LoadGemDescription(gemFolderRelPath, fullPath);
                     if (loadOutcome.IsSuccess() == false)
@@ -310,7 +327,7 @@ namespace Gems
                 AzFramework::StringFunc::Path::Join(searchPath.m_path.c_str(), gemFolderPath.c_str(), filePath);
                 // Append file name to file path
                 AzFramework::StringFunc::Path::Join(filePath.c_str(), GEM_DEF_FILE, filePath);
-                AZStd::to_lower(filePath.begin(), filePath.end());
+                // note that paths are case sensitive on some systems.
 
                 if (fileReader)
                 {

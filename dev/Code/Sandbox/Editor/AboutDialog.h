@@ -11,11 +11,11 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_EDITOR_ABOUTDIALOG_H
-#define CRYINCLUDE_EDITOR_ABOUTDIALOG_H
 #pragma once
 
 #include <QDialog>
+#include <QString>
+#include <QPixmap>
 
 namespace Ui {
     class CAboutDialog;
@@ -27,24 +27,18 @@ class CAboutDialog
     Q_OBJECT
 
 public:
-    CAboutDialog(QWidget* pParent = nullptr);
+    CAboutDialog(QString versionText, QWidget* pParent = nullptr);
     ~CAboutDialog();
 
-    void SetVersion(const SFileVersion& v);
-
-    static CAboutDialog* s_pAboutWindow;
-
 private:
-    void OnInitDialog();
+
     void OnCustomerAgreement();
     void OnPrivacyNotice();
 
     void mouseReleaseEvent(QMouseEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
 
-    SFileVersion m_version;
-    QScopedPointer<Ui::CAboutDialog> ui;
-    QPixmap m_hBitmap;          // Struct to hold the background bitmap
+    QScopedPointer<Ui::CAboutDialog>    m_ui;
+    QPixmap                             m_backgroundImage;
 };
 
-#endif // CRYINCLUDE_EDITOR_ABOUTDIALOG_H

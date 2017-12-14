@@ -17,6 +17,7 @@
 #include <AzFramework/Entity/EntityContextBus.h>
 
 #include <LyShine/Bus/UiSpawnerBus.h>
+#include <LyShine/Bus/UiGameEntityContextBus.h>
 
 /**
 * SpawnerComponent
@@ -26,7 +27,7 @@
 class UiSpawnerComponent
     : public AZ::Component
     , private UiSpawnerBus::Handler
-    , private AzFramework::SliceInstantiationResultBus::MultiHandler
+    , private UiGameEntityContextSliceInstantiationResultsBus::MultiHandler
 {
 public:
     AZ_COMPONENT(UiSpawnerComponent, "{5AF19874-04A4-4540-82FC-5F29EC854E31}");
@@ -51,10 +52,10 @@ public:
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
-    // SliceInstantiationResultBus::MultiHandler
-    void OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
-    void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
-    void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId) override;
+    // UiGameEntityContextSliceInstantiationResultsBus::MultiHandler
+    void OnEntityContextSlicePreInstantiate(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
+    void OnEntityContextSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
+    void OnEntityContextSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId) override;
     //////////////////////////////////////////////////////////////////////////
 
 private:
@@ -69,6 +70,7 @@ private:
     //////////////////////////////////////////////////////////////////////////
     // Private helpers
     AzFramework::SliceInstantiationTicket SpawnSliceInternal(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Vector2& position, bool isViewportPosition);
+    AZStd::vector<AZ::EntityId> GetTopLevelEntities(const AZ::SliceComponent::EntityList& entities);
     //////////////////////////////////////////////////////////////////////////
 
     // Serialized members

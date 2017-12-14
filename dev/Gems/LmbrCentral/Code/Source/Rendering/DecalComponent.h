@@ -145,14 +145,14 @@ namespace LmbrCentral
         _smart_ptr<IMaterial> GetMaterial() override;
         void SetMaterialHandle(MaterialHandle) override;
         MaterialHandle GetMaterialHandle() override;
-        void SetMaterialParamVector4( const AZStd::string& /*name*/, const AZ::Vector4& /*value*/) override;
-        void SetMaterialParamVector3( const AZStd::string& /*name*/, const AZ::Vector3& /*value*/) override;
-        void SetMaterialParamColor(   const AZStd::string& /*name*/, const AZ::Color& /*value*/) override;
-        void SetMaterialParamFloat(   const AZStd::string& /*name*/, float /*value*/) override;
-        AZ::Vector4 GetMaterialParamVector4( const AZStd::string& /*name*/) override;
-        AZ::Vector3 GetMaterialParamVector3( const AZStd::string& /*name*/) override;
-        AZ::Color   GetMaterialParamColor(   const AZStd::string& /*name*/) override;
-        float       GetMaterialParamFloat(   const AZStd::string& /*name*/) override;
+        void SetMaterialParamVector4( const AZStd::string& /*name*/, const AZ::Vector4& /*value*/, int /*materialId = 1*/) override;
+        void SetMaterialParamVector3( const AZStd::string& /*name*/, const AZ::Vector3& /*value*/, int /*materialId = 1*/) override;
+        void SetMaterialParamColor(   const AZStd::string& /*name*/, const AZ::Color& /*value*/, int /*materialId = 1*/) override;
+        void SetMaterialParamFloat(   const AZStd::string& /*name*/, float /*value*/, int /*materialId = 1*/) override;
+        AZ::Vector4 GetMaterialParamVector4( const AZStd::string& /*name*/, int /*materialId = 1*/) override;
+        AZ::Vector3 GetMaterialParamVector3( const AZStd::string& /*name*/, int /*materialId = 1*/) override;
+        AZ::Color   GetMaterialParamColor(   const AZStd::string& /*name*/, int /*materialId = 1*/) override;
+        float       GetMaterialParamFloat(   const AZStd::string& /*name*/, int /*materialId = 1*/) override;
         ///////////////////////////////////
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

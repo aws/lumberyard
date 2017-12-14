@@ -41,6 +41,12 @@ namespace LmbrCentral
         * \param wireColor the color to be used for drawing shapes in wireframe
         */
         virtual void SetShapeWireframeColor(const AZ::Vector4& wireColor)  = 0;
+
+        /**
+         * \brief Sets if the shape should be visible in the editor when the object is deselected
+         * \param visible true if the shape should be visible when deselected
+         */
+        virtual void SetVisibleInEditor(bool visible) = 0;
     };
 
     // Bus to service the Shape component requests event group

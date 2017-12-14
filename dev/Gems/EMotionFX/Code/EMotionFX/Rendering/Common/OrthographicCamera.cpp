@@ -80,112 +80,101 @@ namespace MCommon
         mPositionDelta.SetX(mPositionDelta.GetX() * mCurrentDistance * orthoScale);
         mPositionDelta.SetY(mPositionDelta.GetY() * mCurrentDistance * orthoScale);
 
-        MCore::Vector3 xAxis, yAxis, zAxis;
+        AZ::Vector3 xAxis, yAxis, zAxis;
         switch (mMode)
         {
-            case VIEWMODE_FRONT:
-            {
-                xAxis = MCore::Vector3(-1.0f, 0.0f, 0.0f);  // screen x axis
-                yAxis = MCore::Vector3(0.0f, 0.0f, 1.0f);   // screen y axis
-                zAxis = MCore::Vector3(0.0f, 1.0f, 0.0f);   // depth axis
+        case VIEWMODE_FRONT:
+        {
+            xAxis = AZ::Vector3(-1.0f, 0.0f, 0.0f);      // screen x axis
+            yAxis = AZ::Vector3(0.0f, 0.0f, 1.0f);       // screen y axis
+            zAxis = AZ::Vector3(0.0f, 1.0f, 0.0f);       // depth axis
 
-                // translate the camera
-                mPosition += xAxis * -mPositionDelta.GetX();
-                mPosition += yAxis * mPositionDelta.GetY();
+            // translate the camera
+            mPosition += xAxis * -mPositionDelta.GetX();
+            mPosition += yAxis * mPositionDelta.GetY();
 
-                // setup the view matrix
-                mPosition.y = 0.0f;
-                mPosition += zAxis * mCurrentDistance;
-                mViewMatrix.LookAtRH(mPosition, MCore::Vector3(mPosition.x, 0.0f, mPosition.z), yAxis);
-                break;
-            }
+            // setup the view matrix
+            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            break;
+        }
 
-            case VIEWMODE_BACK:
-            {
-                xAxis = MCore::Vector3(1.0f, 0.0f, 0.0f);   // screen x axis
-                yAxis = MCore::Vector3(0.0f, 0.0f, 1.0f);   // screen y axis
-                zAxis = MCore::Vector3(0.0f, -1.0f, 0.0f);  // depth axis
+        case VIEWMODE_BACK:
+        {
+            xAxis = AZ::Vector3(1.0f, 0.0f, 0.0f);       // screen x axis
+            yAxis = AZ::Vector3(0.0f, 0.0f, 1.0f);       // screen y axis
+            zAxis = AZ::Vector3(0.0f, -1.0f, 0.0f);      // depth axis
 
-                // translate the camera
-                mPosition += xAxis * -mPositionDelta.GetX();
-                mPosition += yAxis * mPositionDelta.GetY();
+            // translate the camera
+            mPosition += xAxis * -mPositionDelta.GetX();
+            mPosition += yAxis * mPositionDelta.GetY();
 
-                // setup the view matrix
-                mPosition.y = 0.0f;
-                mPosition += zAxis * mCurrentDistance;
-                mViewMatrix.LookAtRH(mPosition, MCore::Vector3(mPosition.x, 0.0f, mPosition.z), yAxis);
-                break;
-            }
+            // setup the view matrix
+            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            break;
+        }
 
 
-            case VIEWMODE_LEFT:
-            {
-                xAxis = MCore::Vector3(0.0f, 1.0f, 0.0f);   // screen x axis
-                yAxis = MCore::Vector3(0.0f, 0.0f, 1.0f);   // screen y axis
-                zAxis = MCore::Vector3(-1.0f, 0.0f, 0.0f);  // depth axis
+        case VIEWMODE_LEFT:
+        {
+            xAxis = AZ::Vector3(0.0f, 1.0f, 0.0f);       // screen x axis
+            yAxis = AZ::Vector3(0.0f, 0.0f, 1.0f);       // screen y axis
+            zAxis = AZ::Vector3(-1.0f, 0.0f, 0.0f);      // depth axis
 
-                // translate the camera
-                mPosition += xAxis * mPositionDelta.GetX();
-                mPosition += yAxis * mPositionDelta.GetY();
+            // translate the camera
+            mPosition += xAxis * mPositionDelta.GetX();
+            mPosition += yAxis * mPositionDelta.GetY();
 
-                // setup the view matrix
-                mPosition.x = 0.0f;
-                mPosition += zAxis * mCurrentDistance;
-                mViewMatrix.LookAtRH(mPosition, MCore::Vector3(0.0f, mPosition.y, mPosition.z), yAxis);
-                break;
-            }
+            // setup the view matrix
+            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            break;
+        }
 
-            case VIEWMODE_RIGHT:
-            {
-                xAxis = MCore::Vector3(0.0f, -1.0f, 0.0f);  // screen x axis
-                yAxis = MCore::Vector3(0.0f, 0.0f, 1.0f);   // screen y axis
-                zAxis = MCore::Vector3(1.0f, 0.0f, 0.0f);   // depth axis
+        case VIEWMODE_RIGHT:
+        {
+            xAxis = AZ::Vector3(0.0f, -1.0f, 0.0f);      // screen x axis
+            yAxis = AZ::Vector3(0.0f, 0.0f, 1.0f);       // screen y axis
+            zAxis = AZ::Vector3(1.0f, 0.0f, 0.0f);       // depth axis
 
-                // translate the camera
-                mPosition += xAxis * mPositionDelta.GetX();
-                mPosition += yAxis * mPositionDelta.GetY();
+            // translate the camera
+            mPosition += xAxis * mPositionDelta.GetX();
+            mPosition += yAxis * mPositionDelta.GetY();
 
-                // setup the view matrix
-                mPosition.x = 0.0f;
-                mPosition += zAxis * mCurrentDistance;
-                mViewMatrix.LookAtRH(mPosition, MCore::Vector3(0.0f, mPosition.y, mPosition.z), yAxis);
-                break;
-            }
+            // setup the view matrix
+            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            break;
+        }
 
-            case VIEWMODE_TOP:
-            {
-                xAxis = MCore::Vector3(1.0f, 0.0f, 0.0f);   // screen x axis
-                yAxis = MCore::Vector3(0.0f, 1.0f, 0.0f);   // screen y axis
-                zAxis = MCore::Vector3(0.0f, 0.0f, 1.0f);   // depth axis
+        case VIEWMODE_TOP:
+        {
+            xAxis = AZ::Vector3(1.0f, 0.0f, 0.0f);       // screen x axis
+            yAxis = AZ::Vector3(0.0f, 1.0f, 0.0f);       // screen y axis
+            zAxis = AZ::Vector3(0.0f, 0.0f, 1.0f);       // depth axis
 
-                                                            // translate the camera
-                mPosition += xAxis * mPositionDelta.GetX();
-                mPosition += yAxis * mPositionDelta.GetY();
+            // translate the camera
+            mPosition += -xAxis* mPositionDelta.GetX();
+            mPosition += yAxis * mPositionDelta.GetY();
 
-                // setup the view matrix
-                mPosition.z = 0.0f;
-                mPosition += zAxis * mCurrentDistance;
-                mViewMatrix.LookAtRH(mPosition, MCore::Vector3(mPosition.x, mPosition.y, 0.0f), yAxis);
-                break;
-            }
+            // setup the view matrix
+            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            break;
+        }
 
-            case VIEWMODE_BOTTOM:
-            {
-                xAxis = MCore::Vector3(-1.0f, 0.0f, 0.0f);   // screen x axis
-                yAxis = MCore::Vector3(0.0f, 1.0f, 0.0f);    // screen y axis
-                zAxis = MCore::Vector3(0.0f, 0.0f, -1.0f);   // depth axis
+        case VIEWMODE_BOTTOM:
+        {
+            xAxis = AZ::Vector3(-1.0f, 0.0f, 0.0f);       // screen x axis
+            yAxis = AZ::Vector3(0.0f, 1.0f, 0.0f);        // screen y axis
+            zAxis = AZ::Vector3(0.0f, 0.0f, -1.0f);       // depth axis
 
-                // translate the camera
-                mPosition += xAxis * mPositionDelta.GetX();
-                mPosition += yAxis * mPositionDelta.GetY();
+            // translate the camera
+            mPosition += -xAxis* mPositionDelta.GetX();
+            mPosition += yAxis * mPositionDelta.GetY();
 
-                // setup the view matrix
-                mPosition.z = 0.0f;
-                mPosition += zAxis * mCurrentDistance;
-                mViewMatrix.LookAtRH(mPosition, MCore::Vector3(mPosition.x, mPosition.y, 0.0f), yAxis);
-                break;
-            }
-        };
+            // setup the view matrix
+            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            break;
+        }
+        }
+        ;
 
         // reset the position delta
         mPositionDelta = AZ::Vector2(0.0f, 0.0f);
@@ -226,37 +215,37 @@ namespace MCommon
         mMinDistance        = MCore::Math::epsilon;
         mMaxDistance        = mFarClipDistance;
 
-        MCore::Vector3 resetPosition(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 resetPosition(0.0f, 0.0f, 0.0f);
         switch (mMode)
         {
         case VIEWMODE_FRONT:
         {
-            resetPosition.y =  mCurrentDistance;
+            resetPosition.SetY(mCurrentDistance);
             break;
         }
         case VIEWMODE_BACK:
         {
-            resetPosition.y = -mCurrentDistance;
+            resetPosition.SetY(-mCurrentDistance);
             break;
         }
         case VIEWMODE_LEFT:
         {
-            resetPosition.x = -mCurrentDistance;
+            resetPosition.SetX(-mCurrentDistance);
             break;
         }
         case VIEWMODE_RIGHT:
         {
-            resetPosition.x =  mCurrentDistance;
+            resetPosition.SetX(mCurrentDistance);
             break;
         }
         case VIEWMODE_TOP:
         {
-            resetPosition.z =  mCurrentDistance;
+            resetPosition.SetZ(mCurrentDistance);
             break;
         }
         case VIEWMODE_BOTTOM:
         {
-            resetPosition.z = -mCurrentDistance;
+            resetPosition.SetZ(-mCurrentDistance);
             break;
         }
         }
@@ -284,7 +273,7 @@ namespace MCommon
     }
 
 
-    void OrthographicCamera::StartFlight(float distance, const MCore::Vector3& position, float flightTime)
+    void OrthographicCamera::StartFlight(float distance, const AZ::Vector3& position, float flightTime)
     {
         mFlightMaxTime          = flightTime;
         mFlightCurrentTime      = 0.0f;
@@ -434,8 +423,8 @@ namespace MCommon
     // unproject screen coordinates to a ray
     MCore::Ray OrthographicCamera::Unproject(int32 screenX, int32 screenY)
     {
-        MCore::Vector3  start   = MCore::UnprojectOrtho(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), -1.0f, mProjectionMatrix, mViewMatrix);
-        MCore::Vector3  end     = MCore::UnprojectOrtho(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight),  1.0f, mProjectionMatrix, mViewMatrix);
+        AZ::Vector3  start = MCore::UnprojectOrtho(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), -1.0f, mProjectionMatrix, mViewMatrix);
+        AZ::Vector3  end = MCore::UnprojectOrtho(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), 1.0f, mProjectionMatrix, mViewMatrix);
 
         return MCore::Ray(start, end);
     }

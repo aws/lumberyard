@@ -20,6 +20,7 @@ action-stub-items {
     .actions {    
         right: 5px;
         top: 0;
+        position: relative;
         > * {
             display: inline-block;
         }

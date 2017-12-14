@@ -239,8 +239,11 @@ namespace ChatPlay
         m_callbackToken = 0;
     }
 
-    bool CFlowNode_ChatPlayChannel::SetChatChannel(const AZStd::string& channelId)
+    bool CFlowNode_ChatPlayChannel::SetChatChannel(const AZStd::string& _channelId)
     {
+        AZStd::string channelId = _channelId;
+        AZStd::to_lower(channelId.begin(), channelId.end());
+
         if (m_channelId == channelId)
         {
             // Do nothing if the channel has not changed
@@ -526,8 +529,11 @@ namespace ChatPlay
         }
     }
 
-    bool CFlowNode_ChatPlayKeyword::SetChatChannel(const AZStd::string& channelId)
+    bool CFlowNode_ChatPlayKeyword::SetChatChannel(const AZStd::string& _channelId)
     {
+        AZStd::string channelId = _channelId;
+        AZStd::to_lower(channelId.begin(), channelId.end());
+
         if (m_channelId == channelId)
         {
             // Do nothing if the channel has not changed

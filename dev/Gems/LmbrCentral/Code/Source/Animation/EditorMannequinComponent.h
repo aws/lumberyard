@@ -46,19 +46,19 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("AnimationService"));
-            provided.push_back(AZ_CRC("MannequinService"));
+            provided.push_back(AZ_CRC("AnimationService", 0x553f5760));
+            provided.push_back(AZ_CRC("MannequinService", 0x424b0eea));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("SkinnedMeshService"));
-            required.push_back(AZ_CRC("TransformService"));
+            required.push_back(AZ_CRC("SkinnedMeshService", 0xac7cea96));
+            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("AnimationService"));
+            incompatible.push_back(AZ_CRC("AnimationService", 0x553f5760));
         }
 
         static void Reflect(AZ::ReflectContext* context);

@@ -25,6 +25,7 @@ class QGridLayout;
 class QDoubleSpinBox;
 class QPushButton;
 class QGridLayout;
+class QLabel;
 class CAttributeView;
 class CParticleUIDefinition;
 class FluidTabBar;
@@ -34,11 +35,13 @@ class DefaultViewWidget;
 class CLibraryTreeViewItem;
 struct IVariableContainer;
 class QHBoxLayout;
+class QVBoxLayout;
 class QScrollArea;
 class DockableLibraryPanel;
 class QCheckBox;
 struct SLodInfo;
 class LODLevelWidget;
+struct IParticleEffect;
 
 class LodWidget
     : public QWidget

@@ -100,7 +100,7 @@ public:
     int GetTextureFilenames(QStringList& outFilenames) const;
     int GetAnyTextureFilenames(QStringList& outFilenames) const;
 
-    void UpdateFileAttributes();
+    void UpdateFileAttributes(bool useSourceControl = true);
     uint32 GetFileAttributes();
     //////////////////////////////////////////////////////////////////////////
 
@@ -132,6 +132,7 @@ public:
 
     //! Update names/descriptions in this variable array, return a variable block for replacing
     CVarBlock* UpdateTextureNames(CSmartVariableArray textureVars[EFTT_MAX]);
+// [Shader System] - Do To: add back with map usage:   CVarBlock* UpdateTextureNames(AZStd::unordered_map<ResourceSlotIndex, CSmartVariableArray>& textureVarsMap);
 
     //////////////////////////////////////////////////////////////////////////
     CVarBlock* GetShaderGenParamsVars();
@@ -155,6 +156,7 @@ public:
     virtual void Update();
 
     // Reload material settings from file.
+    // NOTICE: The function will remove all the sub-materials and recreate them!
     void Reload();
 
     //! Serialize material settings to xml.
@@ -295,7 +297,7 @@ private:
 
     bool m_allowLayerActivation;
 
-    // texture resolving
+    // Texture resolving - given same texture name / id, gather all slots that use it.
     struct SResolveInfo
     {
         SResolveInfo()

@@ -18,13 +18,16 @@
 #if defined(USE_GEOM_CACHES)
 #include "AnimGeomCacheNode.h"
 #include "TimeRangesTrack.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 namespace AnimGeomCacheNode
 {
     bool s_geomCacheNodeParamsInitialized = false;
     std::vector<CAnimNode::SParamInfo> s_geomCacheNodeParams;
 
-    void AddSupportedParams(const char* sName, int paramType, EAnimValue valueType)
+    void AddSupportedParams(const char* sName, AnimParamType paramType, AnimValueType valueType)
     {
         CAnimNode::SParamInfo param;
         param.name = sName;
@@ -36,7 +39,7 @@ namespace AnimGeomCacheNode
 };
 
 CAnimGeomCacheNode::CAnimGeomCacheNode(const int id)
-    : CAnimEntityNode(id, eAnimNodeType_GeomCache)
+    : CAnimEntityNode(id, AnimNodeType::GeomCache)
     , m_bActive(false)
 {
     CAnimGeomCacheNode::Initialize();
@@ -52,7 +55,7 @@ void CAnimGeomCacheNode::Initialize()
     {
         AnimGeomCacheNode::s_geomCacheNodeParamsInitialized = true;
         AnimGeomCacheNode::s_geomCacheNodeParams.reserve(1);
-        AnimGeomCacheNode::AddSupportedParams("Animation", eAnimParamType_TimeRanges, eAnimValue_Unknown);
+        AnimGeomCacheNode::AddSupportedParams("Animation", AnimParamType::TimeRanges, AnimValueType::Unknown);
     }
 }
 
@@ -67,7 +70,7 @@ void CAnimGeomCacheNode::Animate(SAnimContext& animContext)
             CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
             IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
-            if (pTrack && paramType == eAnimParamType_TimeRanges)
+            if (pTrack && paramType == AnimParamType::TimeRanges)
             {
                 CTimeRangesTrack* pTimeRangesTrack = static_cast<CTimeRangesTrack*>(pTrack);
 
@@ -106,7 +109,7 @@ void CAnimGeomCacheNode::Animate(SAnimContext& animContext)
 
 void CAnimGeomCacheNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_TimeRanges);
+    CreateTrack(AnimParamType::TimeRanges);
 }
 
 void CAnimGeomCacheNode::OnReset()
@@ -153,7 +156,7 @@ CAnimParamType CAnimGeomCacheNode::GetParamType(unsigned int nIndex) const
         return CAnimEntityNode::GetParamType(nIndex - numOwnParams);
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 bool CAnimGeomCacheNode::GetParamInfoFromType(const CAnimParamType& paramType, SParamInfo& info) const
@@ -195,7 +198,7 @@ void CAnimGeomCacheNode::PrecacheDynamic(float startTime)
             CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
             IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
-            if (pTrack && paramType == eAnimParamType_TimeRanges)
+            if (pTrack && paramType == AnimParamType::TimeRanges)
             {
                 CTimeRangesTrack* pTimeRangesTrack = static_cast<CTimeRangesTrack*>(pTrack);
 

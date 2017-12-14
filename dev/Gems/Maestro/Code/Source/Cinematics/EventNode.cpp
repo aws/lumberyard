@@ -16,6 +16,9 @@
 #include "EventNode.h"
 #include "AnimTrack.h"
 #include "TrackEventTrack.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
 
 #include <ISystem.h>
 
@@ -27,7 +30,7 @@ CAnimEventNode::CAnimEventNode()
 
 //////////////////////////////////////////////////////////////////////////
 CAnimEventNode::CAnimEventNode(const int id)
-    : CAnimNode(id, eAnimNodeType_Event)
+    : CAnimNode(id, AnimNodeType::Event)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
     m_lastEventKey = -1;
@@ -36,7 +39,7 @@ CAnimEventNode::CAnimEventNode(const int id)
 //////////////////////////////////////////////////////////////////////////
 void CAnimEventNode::CreateDefaultTracks()
 {
-    CreateTrack(eAnimParamType_TrackEvent);
+    CreateTrack(AnimParamType::TrackEvent);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -50,21 +53,21 @@ CAnimParamType CAnimEventNode::GetParamType(unsigned int nIndex) const
 {
     if (nIndex == 0)
     {
-        return eAnimParamType_TrackEvent;
+        return AnimParamType::TrackEvent;
     }
 
-    return eAnimParamType_Invalid;
+    return AnimParamType::Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CAnimEventNode::GetParamInfoFromType(const CAnimParamType& animParamType, SParamInfo& info) const
 {
-    if (animParamType.GetType() == eAnimParamType_TrackEvent)
+    if (animParamType.GetType() == AnimParamType::TrackEvent)
     {
         info.flags = IAnimNode::ESupportedParamFlags(0);
         info.name = "Track Event";
-        info.paramType = eAnimParamType_TrackEvent;
-        info.valueType = eAnimValue_Unknown;
+        info.paramType = AnimParamType::TrackEvent;
+        info.valueType = AnimValueType::Unknown;
         return true;
     }
     return false;

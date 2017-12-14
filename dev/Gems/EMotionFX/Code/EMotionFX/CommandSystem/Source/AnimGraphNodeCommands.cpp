@@ -210,25 +210,31 @@ namespace CommandSystem
         }
         else
         {
-            // in case the parent node is not nullptr and the parent node is a state machine
-            if (parentNode->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
+            if (azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
             {
-                if (node->GetCanActAsState() == false)
+                if (!node->GetCanActAsState())
                 {
-                    outResult.Format("Node with name '%s' cannot get added to state machine as the node with type '%s' can not act as a state.", name.AsChar(), typeString.AsChar());
+                    outResult.Format("Node with name '%s' cannot be added to state machine as the node with type '%s' can not act as a state.", name.AsChar(), typeString.AsChar());
+                    node->Destroy();
+                    return false;
+                }
+
+                // Handle node types that are only allowed once as a child.
+                const AZ::Uuid& nodeType = azrtti_typeid(node);
+                if (node->GetCanHaveOnlyOneInsideParent() && parentNode->HasChildNodeOfType(nodeType))
+                {
+                    outResult.Format("Node with name '%s' and type '%s' ('%s') cannot be added to state machine as a node with the given type already exists. Multiple nodes with of this type per state machine are not allowed.", name.AsChar(), typeString.AsChar(), nodeType.ToString<AZStd::string>().c_str());
                     node->Destroy();
                     return false;
                 }
             }
-            else // in this case the parent is NOT a state machine but valid
+
+            // Avoid creating states that are only used by sub state machine the lower in hierarchy levels.
+            if (node->GetCanBeInsideSubStateMachineOnly() && EMotionFX::AnimGraphStateMachine::GetHierarchyLevel(parentNode) < 2)
             {
-                // disallow states that are only used by sub state machine the lower in hierarchy levels
-                if (node->GetCanBeInsideSubStateMachineOnly() && EMotionFX::AnimGraphStateMachine::GetHierarchyLevel(parentNode) < 2)
-                {
-                    outResult.Format("Node with name '%s' cannot get added to '%s' as the node with type '%s' is only used for sub state machines.", name.AsChar(), parentNode->GetTypeString(), typeString.AsChar());
-                    node->Destroy();
-                    return false;
-                }
+                outResult.Format("Node with name '%s' cannot get added to '%s' as the node with type '%s' is only used for sub state machines.", name.AsChar(), parentNode->GetTypeString(), typeString.AsChar());
+                node->Destroy();
+                return false;
             }
         }
 
@@ -286,8 +292,8 @@ namespace CommandSystem
             // add the node in the parent
             parentNode->AddChildNode(node);
 
-            // in case the parent node is not nullptr and the parent node is a state machine
-            if (parentNode->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
+            // in case the parent node is a state machine
+            if (azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
             {
                 // type cast the parent node to a state machine
                 EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
@@ -723,6 +729,7 @@ namespace CommandSystem
     {
         mNodeID     = MCORE_INVALIDINDEX32;
         mParentID   = MCORE_INVALIDINDEX32;
+        mIsEntryNode= false;
     }
 
 
@@ -755,9 +762,6 @@ namespace CommandSystem
             return false;
         }
 
-        // call the pre remove node event
-        EMotionFX::GetEventManager().OnRemoveNode(animGraph, emfxNode);
-
         mType               = emfxNode->GetTypeString();
         mName               = emfxNode->GetName();
         mPosX               = emfxNode->GetVisualPosX();
@@ -780,8 +784,47 @@ namespace CommandSystem
         EMotionFX::AnimGraphNode* parentNode = emfxNode->GetParentNode();
         if (parentNode)
         {
+            if (azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+            {
+                EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
+                if (stateMachine->GetEntryState() == emfxNode)
+                {
+                    mIsEntryNode = true;
+
+                    // Find a new entry node if we can
+                    //--------------------------
+                    // Find alternative entry state.
+                    EMotionFX::AnimGraphNode* newEntryState = nullptr;
+                    uint32 numStates = stateMachine->GetNumChildNodes();
+                    for (uint32 s = 0; s < numStates; ++s)
+                    {
+                        EMotionFX::AnimGraphNode* childNode = stateMachine->GetChildNode(s);
+                        if (childNode != emfxNode)
+                        {
+                            newEntryState = childNode;
+                            break;
+                        }
+                    }
+
+                    // Check if we've found a new possible entry state.
+                    if (newEntryState)
+                    {
+                        AZStd::string commandString = AZStd::string::format("AnimGraphSetEntryState -animGraphID %i -entryNodeName \"%s\"", animGraph->GetID(), newEntryState->GetName());
+                        if (!GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult))
+                        {
+                            AZ_Error("EMotionFX", false, outResult.AsChar());
+                        }
+                    }
+                    //--------------------------
+
+                }
+            }
+
             mParentName = parentNode->GetName();
             mParentID = parentNode->GetID();
+
+            // call the pre remove node event
+            EMotionFX::GetEventManager().OnRemoveNode(animGraph, emfxNode);
 
             // remove all unique datas for the node
             animGraph->RemoveAllObjectData(emfxNode, true);
@@ -833,18 +876,27 @@ namespace CommandSystem
         }
 
         // create the node again
+        MCore::CommandGroup group("Recreating node");
         MCore::String commandString;
         commandString.Reserve(16192);
         if (mParentName.GetLength() > 0)
         {
             commandString.Format("AnimGraphCreateNode -animGraphID %i -type \"%s\" -parentName \"%s\" -name \"%s\" -xPos %d -yPos %d -collapsed %d -center false -attributesString \"%s\"", animGraph->GetID(), mType.AsChar(), mParentName.AsChar(), mName.AsChar(), mPosX, mPosY, mCollapsed, mOldAttributesString.AsChar());
+            group.AddCommandString( commandString );
+
+            if (mIsEntryNode)
+            {
+                commandString.Format("AnimGraphSetEntryState -animGraphID %i -entryNodeName \"%s\"", animGraph->GetID(), mName.AsChar());
+                group.AddCommandString( commandString );
+            }
         }
         else
         {
             commandString.Format("AnimGraphCreateNode -animGraphID %i -type \"%s\" -name \"%s\" -xPos %d -yPos %d -collapsed %d -center false -attributesString \"%s\"", animGraph->GetID(), mType.AsChar(), mName.AsChar(), mPosX, mPosY, mCollapsed, mOldAttributesString.AsChar());
+            group.AddCommandString(commandString);
         }
 
-        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult) == false)
+        if (!GetCommandManager()->ExecuteCommandGroupInsideCommand(group, outResult))
         {
             if (outResult.GetLength() > 0)
             {
@@ -1212,14 +1264,14 @@ namespace CommandSystem
 
 
         /////////////////////////
-        // 2. Delete all connections and transitions that are connected to the node.
+        // 1. Delete all connections and transitions that are connected to the node.
 
         // Delete all incoming and outgoing connections from current node.
         DeleteNodeConnections(commandGroup, node, node->GetParentNode(), connectionList, true);
         DeleteStateTransitions(commandGroup, node, node->GetParentNode(), transitionList, true);
 
         /////////////////////////
-        // 1. Delete all child nodes recursively before deleting the node.
+        // 2. Delete all child nodes recursively before deleting the node.
 
         // Get the number of child nodes, iterate through them and recursively call the function.
         const uint32 numChildNodes = node->GetNumChildNodes();
@@ -1227,51 +1279,13 @@ namespace CommandSystem
         {
             EMotionFX::AnimGraphNode* childNode = node->GetChildNode(i);
             DeleteNode(commandGroup, animGraph, childNode, nodeList, connectionList, transitionList, true, false, false);
-        }
-
-
-        /////////////////////////
-        // 3. In case we're deleting the entry state, find a new entry state and set that one afterwards so that the state machine still has a valid entry state.
-        AZStd::string commandString;
-        if (autoChangeEntryStates)
-        {
-            EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
-            if (parentNode && parentNode->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
-            {
-                EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
-
-                EMotionFX::AnimGraphNode* oldEntryState = stateMachine->GetEntryState();
-                if (oldEntryState == node)
-                {
-                    // Find alternative entry state.
-                    EMotionFX::AnimGraphNode* newEntryState = nullptr;
-                    uint32 numStates = stateMachine->GetNumChildNodes();
-                    for (uint32 s = 0; s < numStates; ++s)
-                    {
-                        EMotionFX::AnimGraphNode* childNode = stateMachine->GetChildNode(s);
-                        if (AZStd::find(nodeList.begin(), nodeList.end(), childNode) == nodeList.end() &&
-                            childNode != node)
-                        {
-                            newEntryState = childNode;
-                            break;
-                        }
-                    }
-
-                    // Check if we've found a new possible entry state.
-                    if (newEntryState)
-                    {
-                        commandString = AZStd::string::format("AnimGraphSetEntryState -animGraphID %i -entryNodeName \"%s\"", animGraph->GetID(), newEntryState->GetName());
-                        commandGroup->AddCommandString(commandString);
-                    }
-                }
-            }
-        }
+        }     
 
         /////////////////////////
-        // 4. Delete the node.
+        // 3. Delete the node.
 
         // Add the remove node to the command group.
-        commandString = AZStd::string::format("AnimGraphRemoveNode -animGraphID %i -name \"%s\"", node->GetAnimGraph()->GetID(), node->GetName());
+        AZStd::string commandString = AZStd::string::format("AnimGraphRemoveNode -animGraphID %i -name \"%s\"", node->GetAnimGraph()->GetID(), node->GetName());
 
         nodeList.push_back(node);
         commandGroup->AddCommandString(commandString);

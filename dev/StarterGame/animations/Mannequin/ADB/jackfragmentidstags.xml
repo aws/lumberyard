@@ -21,5 +21,13 @@
   <Tag name="InteractStart"/>
   <Tag name="InteractIdle"/>
   <Tag name="InteractEnd"/>
+  <Tag name="IdleAmbient01"/>
+  <Tag name="IdleAmbient02"/>
+  <Tag name="IdleAmbientCheckGun"/>
+  <Tag name="IdleAmbientLookLeft"/>
+  <Tag name="IdleAmbientLookRight"/>
+  <Tag name="IdleAmbientLookRightLeft"/>
+  <Tag name="IdleAmbientLookSuspicious"/>
+  <Tag name="Strafe"/>
  </Tags>
 </TagDefinition>

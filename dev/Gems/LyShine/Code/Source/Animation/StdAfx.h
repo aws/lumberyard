@@ -27,8 +27,6 @@
 #include <map>
 #include <algorithm>
 
-#include <CryModuleDefs.h>
-
 #include <platform.h>
 
 #include <Cry_Math.h>

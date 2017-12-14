@@ -66,7 +66,7 @@ public:
     AZ_RTTI(CAnimEntityNode, "{B84FED66-38AD-497E-AB39-BCA51F1A99E4}", CAnimNode);
 
     CAnimEntityNode();
-    CAnimEntityNode(const int id, EAnimNodeType nodeType);
+    CAnimEntityNode(const int id, AnimNodeType nodeType);
     ~CAnimEntityNode();
     static void Initialize();
 
@@ -105,6 +105,7 @@ public:
     Vec3 GetPos() override { return m_pos; };
     Quat GetRotate() override { return m_rotate; };
     Vec3 GetScale() override { return m_scale; };
+    Quat GetRotate(float time) override;
 
     virtual void Activate(bool bActivate);
 
@@ -148,9 +149,6 @@ protected:
     
     void AnimateLookAt(class CLookAtTrack* pTrack, SAnimContext& ec);
     bool AnimateScriptTableProperty(IAnimTrack* pTrack, SAnimContext& ec, const char* name);
-
-    virtual void OnStartAnimation(const char* sAnimation) {}
-    virtual void OnEndAnimation(const char* sAnimation);
 
     void PrepareAnimations();
 

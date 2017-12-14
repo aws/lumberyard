@@ -138,7 +138,7 @@ namespace LmbrCentral
             dc.ReadArg(1, actionName);
             outData->m_actionNameCrc = AZ_CRC(actionName);
             outData->m_payloadTypeId = AZ::Uuid::CreateNull();
-            AZ_WarningOnce(AZStd::string::format("GameplayNotificationId %s", outData->ToString().c_str()).c_str(), false, "This constructor has been deprecated.  Please add the name of the type you wish to send/receive, example 'float'");
+            AZ_Warning("GameplayNotificationId", false, "This constructor has been deprecated.  Please add the name of the type you wish to send/receive, example 'float'");
         }
         else if (dc.GetNumArguments() == 3 && dc.IsClass<AZ::EntityId>(0) 
             && (dc.IsString(1) || dc.IsClass<AZ::Crc32>(1))
@@ -261,12 +261,15 @@ namespace LmbrCentral
             behaviorContext->Class<MathUtils>("MathUtils")
                 ->Method("ConvertTransformToEulerDegrees", &AzFramework::ConvertTransformToEulerDegrees)
                 ->Method("ConvertTransformToEulerRadians", &AzFramework::ConvertTransformToEulerRadians)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerDegreesToTransform", &AzFramework::ConvertEulerDegreesToTransform)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerDegreesToTransformPrecise", &AzFramework::ConvertEulerDegreesToTransformPrecise)
                 ->Method("ConvertQuaternionToEulerDegrees", &AzFramework::ConvertQuaternionToEulerDegrees)
                 ->Method("ConvertQuaternionToEulerRadians", &AzFramework::ConvertQuaternionToEulerRadians)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerRadiansToQuaternion", &AzFramework::ConvertEulerRadiansToQuaternion)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerDegreesToQuaternion", &AzFramework::ConvertEulerDegreesToQuaternion)
                 ->Method("CreateLookAt", &AzFramework::CreateLookAt);
 

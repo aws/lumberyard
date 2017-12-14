@@ -11,124 +11,150 @@
 */
 #include "assetBuilderSDKTest.h"
 #include "native/tests/BaseAssetProcessorTest.h"
+#include "native/unittests/UnitTestRunner.h"
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 
 
 namespace AssetProcessor
 {
+#if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
     TEST_F(AssetBuilderSDKTest, GetEnabledPlatformsCountUnitTest)
     {
         AssetBuilderSDK::CreateJobsRequest createJobsRequest;
-        createJobsRequest.m_platformFlags = 0;
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 0);
 
-        createJobsRequest.m_platformFlags = 1;
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 1);
 
-        createJobsRequest.m_platformFlags = 2;
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 1);
-
-        createJobsRequest.m_platformFlags = 3;
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }, { "es3", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 2);
-
-        createJobsRequest.m_platformFlags = 4;
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 1);
-
-        createJobsRequest.m_platformFlags = 15;
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 4);
-
-        createJobsRequest.m_platformFlags = 16;
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 1);
-
-        //64 is 0x040 which currently is the next valid platform value which is invalid as of now, if we ever add a new platform entry to the Platform enum 
-        // we will have to update these unit tests
-        createJobsRequest.m_platformFlags = 64;
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 0);
-
-        createJobsRequest.m_platformFlags = 67; // 2 valid platforms as of now
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformsCount(), 2);      
     }
 
     TEST_F(AssetBuilderSDKTest, GetEnabledPlatformAtUnitTest)
     {
+        UnitTestUtils::AssertAbsorber absorb;
         AssetBuilderSDK::CreateJobsRequest createJobsRequest;
-        createJobsRequest.m_platformFlags = 0;
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_NONE);
 
-        createJobsRequest.m_platformFlags = 1;
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", { }
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_PC);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_NONE);
 
-        createJobsRequest.m_platformFlags = 2;
+        createJobsRequest.m_enabledPlatforms = {
+            { "es3", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_ES3);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_NONE);
 
-        createJobsRequest.m_platformFlags = 3;
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }, { "es3", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_PC);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_ES3);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(2), AssetBuilderSDK::Platform_NONE);
 
-        createJobsRequest.m_platformFlags = 4;
+        createJobsRequest.m_enabledPlatforms = {
+            { "ios", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_IOS);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_NONE);
 
-        createJobsRequest.m_platformFlags = 15;
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }, { "es3", {}
+            }, { "ios", {}
+            }, { "osx_gl", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_PC);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_ES3);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(2), AssetBuilderSDK::Platform_IOS);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(3), AssetBuilderSDK::Platform_OSX);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(4), AssetBuilderSDK::Platform_NONE);
 
-        createJobsRequest.m_platformFlags = 16;
+        createJobsRequest.m_enabledPlatforms = {
+            { "xboxone", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_XBOXONE); // ACCEPTED_USE
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_NONE);
 
-        //64 is 0x040 which currently is the next valid platform value which is invalid as of now, if we ever add a new platform entry to the Platform enum 
-        // we will have to update these unit tests
-        createJobsRequest.m_platformFlags = 64;
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_NONE);
-
-        createJobsRequest.m_platformFlags = 67; // 2 valid platforms
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }, { "es3", {}
+            }
+        };
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_PC);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_ES3);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(2), AssetBuilderSDK::Platform_NONE);
+
+        // using a deprecated API should have generated warnings.
+        ASSERT_GT(absorb.m_numWarningsAbsorbed, 0);
     }
 
     TEST_F(AssetBuilderSDKTest, IsPlatformEnabledUnitTest)
     {
+        UnitTestUtils::AssertAbsorber absorb;
         AssetBuilderSDK::CreateJobsRequest createJobsRequest;
-        createJobsRequest.m_platformFlags = 0;
         ASSERT_FALSE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_PC));
 
-        createJobsRequest.m_platformFlags = 1;
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }
+        };
         ASSERT_TRUE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_PC));
         ASSERT_FALSE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_ES3));
 
-        createJobsRequest.m_platformFlags = 3;
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }, { "es3", {}
+            }
+        };
         ASSERT_TRUE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_PC));
         ASSERT_TRUE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_ES3));
-        
-        //64 is 0x040 which currently is the next valid platform value which is invalid as of now, if we ever add a new platform entry to the Platform enum 
-        //we will have to update these unit tests
-        createJobsRequest.m_platformFlags = 64; 
-        ASSERT_FALSE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_PC));
 
-        createJobsRequest.m_platformFlags = 67; // 2 valid platforms
+        createJobsRequest.m_enabledPlatforms = {
+            { "pc", {}
+            }, { "es3", {}
+            }
+        };
         ASSERT_TRUE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_PC));
         ASSERT_TRUE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_ES3));
+
+        // using a deprecated API should have generated warnings.
+        ASSERT_GT(absorb.m_numWarningsAbsorbed, 0);
     }
 
     TEST_F(AssetBuilderSDKTest, IsPlatformValidUnitTest)
     {
         AssetBuilderSDK::CreateJobsRequest createJobsRequest;
+        UnitTestUtils::AssertAbsorber absorb;
+
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_PC));
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_ES3));
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_IOS));
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_OSX));
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_XBOXONE)); // ACCEPTED_USE
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_PS4)); // ACCEPTED_USE
-        //64 is 0x040 which currently is the next valid platform value which is invalid as of now, if we ever add a new platform entry to the Platform enum 
+        //64 is 0x040 which currently is the next valid platform value which is invalid as of now, if we ever add a new platform entry to the Platform enum
         //we will have to update this failure unit test
-        ASSERT_FALSE(createJobsRequest.IsPlatformValid(static_cast<AssetBuilderSDK::Platform>(64))); 
+        ASSERT_FALSE(createJobsRequest.IsPlatformValid(static_cast<AssetBuilderSDK::Platform>(64)));
+        // using a deprecated API should have generated warnings.
+        ASSERT_GT(absorb.m_numWarningsAbsorbed, 0);
     }
+#endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
 };

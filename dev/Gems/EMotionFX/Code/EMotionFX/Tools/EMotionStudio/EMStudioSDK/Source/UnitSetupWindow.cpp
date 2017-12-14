@@ -10,8 +10,8 @@
 *
 */
 
-// include required headers
 #include "UnitSetupWindow.h"
+#include <AzCore/std/string/string.h>
 #include "MainWindow.h"
 #include "EMStudioManager.h"
 #include "RenderPlugin/RenderPlugin.h"
@@ -314,12 +314,12 @@ namespace EMStudio
     // scale all data
     void UnitSetupWindow::ScaleData()
     {
-        // rescale actors
+        AZStd::string tempString;
+
         const uint32 numActors = EMotionFX::GetActorManager().GetNumActors();
         if (numActors > 0)
         {
             MCore::CommandGroup commandGroup("Change actor scales");
-            MCore::String tempString;
 
             for (uint32 i = 0; i < numActors; ++i)
             {
@@ -330,15 +330,14 @@ namespace EMStudio
                     continue;
                 }
 
-                tempString.Format("ScaleActorData -id %d -unitType \"%s\"", actor->GetID(), MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
-                commandGroup.AddCommandString(tempString.AsChar());
+                tempString = AZStd::string::format("ScaleActorData -id %d -unitType \"%s\"", actor->GetID(), MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
+                commandGroup.AddCommandString(tempString);
             }
 
-            // execute the command group
-            MCore::String outResult;
-            if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult, false) == false)
+            AZStd::string result;
+            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
             {
-                MCore::LogError(outResult.AsChar());
+                AZ_Error("EMotionFX", false, result.c_str());
             }
         }
 
@@ -347,7 +346,6 @@ namespace EMStudio
         if (numMotions > 0)
         {
             MCore::CommandGroup commandGroup("Change motion scales");
-            MCore::String tempString;
 
             for (uint32 i = 0; i < numMotions; ++i)
             {
@@ -358,15 +356,14 @@ namespace EMStudio
                     continue;
                 }
 
-                tempString.Format("ScaleMotionData -id %d -unitType \"%s\"", motion->GetID(), MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
-                commandGroup.AddCommandString(tempString.AsChar());
+                tempString = AZStd::string::format("ScaleMotionData -id %d -unitType \"%s\"", motion->GetID(), MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
+                commandGroup.AddCommandString(tempString);
             }
 
-            // execute the command group
-            MCore::String outResult;
-            if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult, false) == false)
+            AZStd::string result;
+            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
             {
-                MCore::LogError(outResult.AsChar());
+                AZ_Error("EMotionFX", false, result.c_str());
             }
         }
 
@@ -375,7 +372,6 @@ namespace EMStudio
         if (numAnimGraphs > 0)
         {
             MCore::CommandGroup commandGroup("Change animgraph scales");
-            MCore::String tempString;
 
             for (uint32 i = 0; i < numAnimGraphs; ++i)
             {
@@ -386,15 +382,14 @@ namespace EMStudio
                     continue;
                 }
 
-                tempString.Format("ScaleAnimGraphData -id %d -unitType \"%s\"", animGraph->GetID(), MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
-                commandGroup.AddCommandString(tempString.AsChar());
+                tempString = AZStd::string::format("ScaleAnimGraphData -id %d -unitType \"%s\"", animGraph->GetID(), MCore::Distance::UnitTypeToString(EMotionFX::GetEMotionFX().GetUnitType()));
+                commandGroup.AddCommandString(tempString);
             }
 
-            // execute the command group
-            MCore::String outResult;
-            if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult, false) == false)
+            AZStd::string result;
+            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
             {
-                MCore::LogError(outResult.AsChar());
+                AZ_Error("EMotionFX", false, result.c_str());
             }
         }
 
@@ -412,6 +407,6 @@ namespace EMStudio
             renderPlugin->ResetCameras();
         }
     }
-}   // namespace EMStudio
+} // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/UnitSetupWindow.moc>

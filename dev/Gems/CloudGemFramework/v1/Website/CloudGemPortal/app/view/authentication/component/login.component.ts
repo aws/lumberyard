@@ -38,7 +38,9 @@ export class LoginContainerComponent implements OnInit {
     ngOnInit() { }
 
     submit() {
-        this.formSubmitted.emit();
+        if (!this.isButtonDisabled) {
+            this.formSubmitted.emit();
+        }
     }
 
     secondaryLink() {

@@ -77,9 +77,9 @@ protected: // data
     bool                        m_bEnabled;
     float                       m_fScale;
 
-    CTexture* m_pTexParticle;
-    uint32                         m_nNumPlanes;
-    uint32                         m_nNumColorGradients;
+    CTexture*                   m_pTexParticle;
+    uint32                      m_nNumPlanes;
+    uint32                      m_nNumColorGradients;
 
     ColorF                      m_CurSpecColor;
     ColorF                      m_CurDiffColor;

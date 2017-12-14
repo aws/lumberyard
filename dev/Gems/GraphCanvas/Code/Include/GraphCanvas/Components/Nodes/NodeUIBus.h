@@ -27,12 +27,10 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual void SetSelected(bool selected) = 0;
-        virtual bool IsSelected() const = 0;
-
-        virtual void StartItemMove(const QPointF& initialClick, const QPointF& currentPosition) = 0;
+        virtual void AdjustSize() = 0;
 
         virtual void SetSnapToGrid(bool enabled) = 0;
+        virtual void SetResizeToGrid(bool enabled) = 0;
         virtual void SetGrid(AZ::EntityId gridId) = 0;
 
         virtual qreal GetCornerRadius() const = 0;

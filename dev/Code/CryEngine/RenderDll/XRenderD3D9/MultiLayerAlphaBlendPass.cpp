@@ -49,7 +49,10 @@ MultiLayerAlphaBlendPass::MultiLayerAlphaBlendPass()
 
 MultiLayerAlphaBlendPass::~MultiLayerAlphaBlendPass()
 {
-    //@TODO: Destroy buffers if created
+    if (m_alphaLayersBuffer.m_pBuffer != nullptr)
+    {
+        m_alphaLayersBuffer.Release();
+    }
 }
 
 bool MultiLayerAlphaBlendPass::IsSupported()
@@ -57,8 +60,10 @@ bool MultiLayerAlphaBlendPass::IsSupported()
     if (m_supported == SupportLevel::UNKNOWN)
     {
         #if SUPPORTS_WINDOWS_10_SDK
+
         D3D11_FEATURE_DATA_D3D11_OPTIONS2 featureData;
         HRESULT result = gcpRendD3D->GetDevice().CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &featureData, sizeof(featureData));
+
         if (result == S_OK && featureData.ROVsSupported)
         {
             m_supported = SupportLevel::SUPPORTED;

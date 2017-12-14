@@ -39,6 +39,8 @@ namespace Ui
     class ReplicaDetailView;
 }
 
+namespace AZ { class ReflectContext; }
+
 namespace Driller
 {
     class ReplicaDetailView;

@@ -89,7 +89,7 @@ public:
     void SetMaterialLayersMask(uint32 nLayersMask);
     void SetMinSpec(uint32 nSpec, bool bSetChildren = true);
 
-    bool IsSimilarObject(CBaseObject* pObject) const;
+    bool IsSimilarObject(CBaseObject* pObject) override;
     void OnEvent(ObjectEvent event);
 
     XmlNodeRef Export(const QString& levelPath, XmlNodeRef& xmlNode) { return 0; }

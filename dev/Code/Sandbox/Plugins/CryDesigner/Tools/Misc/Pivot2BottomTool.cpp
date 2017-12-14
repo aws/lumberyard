@@ -16,6 +16,7 @@
 #include "Core/Model.h"
 #include "Tools/DesignerTool.h"
 #include "Core/BrushHelper.h"
+#include "Objects/DesignerObject.h"
 
 void Pivot2BottomTool::Enter()
 {

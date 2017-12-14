@@ -25,11 +25,12 @@ SUBFOLDERS = [
     'Lyzard',
     'GFXPrefabLab',
     'Launcher'  # recursing into this subfolder generates launchers for each enabled game project.
-    ]
+]
 
 def build(bld):
     # do not add game projects here.  They will be added automatically based on what
     # game projects you have enabled in your user settings, from the list defined in projects.json
-
     bld.recurse(SUBFOLDERS, mandatory=False)
+
+
 

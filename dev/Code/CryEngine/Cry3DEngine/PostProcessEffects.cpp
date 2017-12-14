@@ -74,7 +74,24 @@ int32 C3DEngine::GetPostEffectID(const char* pPostEffectName)
 void C3DEngine::ResetPostEffects(bool bOnSpecChange)
 {
     GetPostEffectBaseGroup()->ClearParams();
+    
     GetRenderer()->EF_ResetPostEffects(bOnSpecChange);
 
     GetTimeOfDay()->Update(false, true);
+}
+
+void C3DEngine::DisablePostEffects()
+{
+    IPostEffectGroupManager* groupManager = gEnv->p3DEngine->GetPostEffectGroups();
+    if (groupManager)
+    {
+        for (unsigned int i = 0; i < groupManager->GetGroupCount(); i++)
+        {
+            IPostEffectGroup* group = groupManager->GetGroup(i);
+            if (strcmp(group->GetName(), m_defaultPostEffectGroup) != 0 && strcmp(group->GetName(), "Base") != 0)
+            {
+                group->SetEnable(false);
+            }
+        }
+    }
 }

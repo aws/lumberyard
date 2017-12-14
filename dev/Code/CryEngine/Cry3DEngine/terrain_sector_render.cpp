@@ -1207,7 +1207,7 @@ void CTerrainNode::UpdateSurfaceRenderMeshes(
     {
         if (pMat->GetShaderItem().m_pShaderResources)
         {
-            if (SEfResTexture* pTex = pMat->GetShaderItem().m_pShaderResources->GetTexture(EFTT_DIFFUSE))
+            if (SEfResTexture* pTex = pMat->GetShaderItem().m_pShaderResources->GetTextureResource(EFTT_DIFFUSE))
             {
                 float fScaleX = pTex->m_bUTile ? pTex->GetTiling(0) * pSurface->fScale : 1.f;
                 float fScaleY = pTex->m_bVTile ? pTex->GetTiling(1) * pSurface->fScale : 1.f;
@@ -1216,7 +1216,7 @@ void CTerrainNode::UpdateSurfaceRenderMeshes(
                 pParams[13] = int(vCamPos.y * fScaleY) / fScaleY;
             }
 
-            if (SEfResTexture* pTex = pMat->GetShaderItem().m_pShaderResources->GetTexture(EFTT_NORMALS))
+            if (SEfResTexture* pTex = pMat->GetShaderItem().m_pShaderResources->GetTextureResource(EFTT_NORMALS))
             {
                 float fScaleX = pTex->m_bUTile ? pTex->GetTiling(0) * pSurface->fScale : 1.f;
                 float fScaleY = pTex->m_bVTile ? pTex->GetTiling(1) * pSurface->fScale : 1.f;

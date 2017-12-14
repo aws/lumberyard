@@ -8,6 +8,10 @@
         "Buses": [
             "Buses/DragAndDrop.h"
         ],
+        "DragAndDrop": [
+            "DragAndDrop/MainWindowDragAndDrop.h",
+            "DragAndDrop/ViewportDragAndDrop.h"
+        ],
         "Components": [
             "Components/ButtonDivider.cpp",
             "Components/ButtonDivider.h",
@@ -29,6 +33,9 @@
             "Components/FancyDockingGhostWidget.h",
             "Components/FancyDockingDropZoneWidget.cpp",
             "Components/FancyDockingDropZoneWidget.h",
+            "Components/FilteredSearchWidget.cpp",
+            "Components/FilteredSearchWidget.h",
+            "Components/FilteredSearchWidget.ui",
             "Components/LumberyardStylesheet.cpp",
             "Components/LumberyardStylesheet.h",
             "Components/Titlebar.cpp",
@@ -72,6 +79,8 @@
             "Components/resources.qrc"
         ],
         "Utilities": [
+            "Utilities/Conversions.h",
+            "Utilities/Conversions.cpp",
             "Utilities/AutoSettingsGroup.h",
             "Utilities/QtPluginPaths.cpp",
             "Utilities/QtPluginPaths.h",

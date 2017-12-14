@@ -25,7 +25,7 @@ namespace AzFramework
     const InputDeviceId InputDeviceGamepad::IdForIndexN(AZ::u32 n) { return InputDeviceId(Name, n); }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceGamepad::IsGamepad(const InputDeviceId& inputDeviceId)
+    bool InputDeviceGamepad::IsGamepadDevice(const InputDeviceId& inputDeviceId)
     {
         return (inputDeviceId.GetNameCrc32() == IdForIndex0.GetNameCrc32());
     }

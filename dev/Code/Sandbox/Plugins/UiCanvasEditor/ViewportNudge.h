@@ -19,7 +19,7 @@ public:
         ViewportInteraction::InteractionMode interactionMode,
         ViewportWidget* viewport,
         QKeyEvent* ev,
-        QTreeWidgetItemRawPtrQList& selectedItems,
+        const QTreeWidgetItemRawPtrQList& selectedItems,
         ViewportInteraction::CoordinateSystem coordinateSystem,
         const AZ::Uuid& transformComponentType);
 };

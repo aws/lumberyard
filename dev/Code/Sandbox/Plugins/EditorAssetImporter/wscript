@@ -26,7 +26,7 @@ def build(bld):
                                        bld.Path('Code/Framework/AzToolsFramework')],
         pch                         = 'StdAfx.cpp',
         use                         = ['EditorCommon',
-                                       'Editor',
+                                       'EditorLib',
                                        'AzToolsFramework',
                                        'AzQtComponents',
                                        'SceneCore',
@@ -36,7 +36,8 @@ def build(bld):
                                        'GFxFramework'],
         uselib                      = ['QT5CORE',
                                        'QT5GUI',
-                                       'QT5WIDGETS'],
+                                       'QT5WIDGETS',
+                                       'AWS_CPP_SDK_IDENTITY_METRICS'],
         features                    = ['qt5'],
 
 

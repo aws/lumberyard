@@ -11,6 +11,12 @@
 */
 #pragma once
 
+#include <QWidget>
+
+class EditorWindow;
+class PropertiesWidget;
+class HierarchyWidget;
+
 class PropertiesWrapper
     : public QWidget
 {
@@ -23,7 +29,11 @@ public:
 
     PropertiesWidget* GetProperties();
 
+    void ActiveCanvasChanged();
+
 private:
 
     PropertiesWidget* m_properties;
+    ComponentButton* m_componentButton;
+    EditorWindow* m_editorWindow;
 };

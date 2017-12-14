@@ -205,7 +205,7 @@ void CTransitionQueue::UnloadAnimationAssets(int index)
     SParametricSamplerInternal* pParametric = (SParametricSamplerInternal*)animation.GetParametricSampler();
     if (!pParametric)
     {
-        if (pAnim->m_nAssetType == CAF_File)
+        if (pAnim && pAnim->m_nAssetType == CAF_File)
         {
             GlobalAnimationHeaderCAF& rGAH = g_AnimationManager.m_arrGlobalCAF[ nGlobalID ];
 

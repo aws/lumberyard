@@ -28,7 +28,7 @@ namespace Gems
         ~ProjectSettings() override = default;
 
         // IProjectSettings
-        AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& projectFolder) override;
+        AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& appRootFolder, const AZStd::string& projectSubFolder) override;
 
         bool EnableGem(const ProjectGemSpecifier& spec) override;
         bool DisableGem(const GemSpecifier& spec) override;
@@ -42,6 +42,9 @@ namespace Gems
         AZ::Outcome<void, AZStd::string> ValidateDependencies(const EngineVersion& engineVersion) const override;
 
         AZ::Outcome<void, AZStd::string> Save() const override;
+        const AZStd::string& GetProjectName() const override;
+        const AZStd::string& GetProjectRootPath() const override;
+
         // ~IProjectSettings
 
         // Internal methods
@@ -49,13 +52,18 @@ namespace Gems
         AZ::Outcome<void, AZStd::string> LoadSettings();
         /// Converts the ProjectGemSpecifierMap (m_gems) into it's Json representation for saving
         rapidjson::Document GetJsonRepresentation() const;
-        /// Converts Json into the ProjectGemSpecifierMap (m_gems)
-        AZ::Outcome<void, AZStd::string> ParseJson(const rapidjson::Document& json);
+        /// Converts GEMS Json into the ProjectGemSpecifierMap (m_gems)
+        AZ::Outcome<void, AZStd::string> ParseGemsJson(const rapidjson::Document& json);
+        /// Reads from project.json to initialize project-specific values
+        AZ::Outcome<void, AZStd::string> ParseProjectJson(const rapidjson::Document& json);
 
     private:
         ProjectGemSpecifierMap m_gems;
         GemRegistry* m_registry;
-        AZStd::string m_settingsFilePath;
+        AZStd::string m_gemsSettingsFilePath;
+        AZStd::string m_projectSettingsFilePath;
+        AZStd::string m_projectName;
+        AZStd::string m_projectRootPath;
         bool m_initialized;
     };
 } // namespace Gems

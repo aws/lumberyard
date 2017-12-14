@@ -20,10 +20,9 @@
 #include <AzCore/Component/Entity.h>
 
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
-#include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/GeometryBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
 
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
 #include <ScriptCanvas/Components/EditorGraph.h>
@@ -47,11 +46,15 @@ namespace
             AZ::EntityId sceneId;
             GraphCanvas::SceneMemberRequestBus::EventResult(sceneId, nodeId, &GraphCanvas::SceneMemberRequests::GetScene);
 
+            AZ::Entity* sceneEntity{};
+            AZ::ComponentApplicationBus::BroadcastResult(sceneEntity, &AZ::ComponentApplicationRequests::FindEntity, sceneId);
             AZ::EntityId graphId;
-            ScriptCanvas::SystemRequestBus::BroadcastResult(graphId, &ScriptCanvas::SystemRequests::FindGraphId, AzFramework::EntityReference(sceneId).GetEntity());
+            ScriptCanvas::SystemRequestBus::BroadcastResult(graphId, &ScriptCanvas::SystemRequests::FindGraphId, sceneEntity);
 
             auto nodeIdPair = ScriptCanvasEditor::Nodes::CreateNode(azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAssetNode>(), graphId, "");
-            auto scriptCanvasAssetNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvasEditor::ScriptCanvasAssetNode>(AzFramework::EntityReference(nodeIdPair.m_scriptCanvasId).GetEntity());
+            AZ::Entity* entity{};
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, nodeIdPair.m_scriptCanvasId);
+            auto scriptCanvasAssetNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvasEditor::ScriptCanvasAssetNode>(entity);
             if (scriptCanvasAssetNode)
             {
 
@@ -65,7 +68,7 @@ namespace
                 }
 
                 AZ::Data::Asset<ScriptCanvasEditor::ScriptCanvasAsset> scriptCanvasAsset;
-                ScriptCanvasEditor::DocumentContextRequestBus::BroadcastResult(scriptCanvasAsset, &ScriptCanvasEditor::DocumentContextRequests::CreateScriptCanvasAsset, AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
+                ScriptCanvasEditor::DocumentContextRequestBus::BroadcastResult(scriptCanvasAsset, &ScriptCanvasEditor::DocumentContextRequests::CreateScriptCanvasAsset, "");
                 scriptCanvasAssetNode->SetAsset(scriptCanvasAsset);
                 scriptCanvasAssetNode->SetAssetDataStoredInternally(true); //Group data is stored ScriptCanvas Node serialized data and not referenced
 
@@ -85,7 +88,7 @@ namespace
                 }
 
                 GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, nodeIdPair.m_graphCanvasId, AZ::Vector2(scenePos.x(), scenePos.y()));
-                GraphCanvas::NodeUIRequestBus::Event(nodeIdPair.m_graphCanvasId, &GraphCanvas::NodeUIRequests::SetSelected, true);
+                GraphCanvas::SceneMemberUIRequestBus::Event(nodeIdPair.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
                 ScriptCanvasEditor::GeneralRequestBus::Broadcast(&ScriptCanvasEditor::GeneralRequests::PostUndoPoint, sceneId);
             }
 
@@ -106,7 +109,8 @@ namespace
         GraphCanvas::NodeRequestBus::EventResult(nodeUserData, nodeId, &GraphCanvas::NodeRequests::GetUserData);
         auto scNodeId = nodeUserData && nodeUserData->is<AZ::EntityId>() ? *AZStd::any_cast<AZ::EntityId>(nodeUserData) : AZ::EntityId();
 
-        AZ::Entity* entity = AzFramework::EntityReference(scNodeId).GetEntity();
+        AZ::Entity* entity{};
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, scNodeId);
         auto scriptCanvasAssetNode = entity ? AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvasEditor::ScriptCanvasAssetNode>(entity) : nullptr;
         action->setEnabled(scriptCanvasAssetNode && scriptCanvasAssetNode->GetAssetDataStoredInternally());
 

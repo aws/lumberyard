@@ -22,14 +22,14 @@ public:
     static void Push(bool onCreationOfElement,
         UndoStack* stack,
         HierarchyWidget* hierarchy,
-        HierarchyItemRawPtrList& items,
-        QTreeWidgetItemRawPtrList& itemParents);
+        const HierarchyItemRawPtrList& items,
+        const QTreeWidgetItemRawPtrList& itemParents);
 
 private:
 
     CommandHierarchyItemReparent(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        HierarchyItemRawPtrList& items);
+        const HierarchyItemRawPtrList& items);
 
     struct ChildItem
     {

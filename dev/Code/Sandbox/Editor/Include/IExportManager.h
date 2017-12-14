@@ -20,6 +20,8 @@
 
 #define EXP_NAMESIZE 32
 struct IStatObj;
+enum class AnimParamType;
+
 namespace Export
 {
     struct Vector3D
@@ -78,21 +80,21 @@ namespace Export
         virtual const Face* GetFaceBuffer() const = 0;
     };
 
-    // The numbers in this enum list must reflect the one from IMovieSystem.h
-    enum EAnimParamType
+    // The numbers in this enum list must reflect the one from AnimParamType.h
+    enum AnimParamType
     {
-        eAnimParamType_FOV                          = 0,
-        eAnimParamType_PositionX                        = 51,
-        eAnimParamType_PositionY                        = 52,
-        eAnimParamType_PositionZ                        = 53,
-        eAnimParamType_RotationX                        = 54,
-        eAnimParamType_RotationY                        = 55,
-        eAnimParamType_RotationZ                        = 56,
+        FOV         = 0,
+        PositionX   = 51,
+        PositionY   = 52,
+        PositionZ   = 53,
+        RotationX   = 54,
+        RotationY   = 55,
+        RotationZ   = 56,
 
         // FocalLength is an exceptional case for FBX importing from Maya. In engine we use FoV, not Focal Length, therefore
-        // there is no equivalent eAnimParamType_FocalLength in IMovieSystem.h. However we enumerate it here so we can detect
+        // there is no equivalent AnimParamType::FocalLength in IMovieSystem.h. However we enumerate it here so we can detect
         // and convert it to FoV during import
-        eAnimParamType_FocalLength,
+        FocalLength,
     };
 
     enum EEntityObjectType
@@ -104,7 +106,7 @@ namespace Export
 
     struct EntityAnimData
     {
-        EAnimParamType dataType;
+        AnimParamType dataType;
         float keyTime;
         float keyValue;
         float leftTangent;

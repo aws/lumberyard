@@ -99,4 +99,20 @@ namespace GraphCanvas
     };
 
     using DataSlotActionRequestBus = AZ::EBus<DataSlotActionRequests>;
+
+    //! Actions that are keyed off of the Node, but should be handled by the individual slots
+    class NodeDataSlotRequests : public AZ::EBusTraits
+    {
+    public:
+        // The id here is the Node that the slot belongs to.
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        using BusIdType = AZ::EntityId;
+
+        //! Signals that the slots should try and recreate all of the slot property displays.
+        virtual void RecreatePropertyDisplay() = 0;
+    };
+
+    using NodeDataSlotRequestBus = AZ::EBus<NodeDataSlotRequests>;
+
 }

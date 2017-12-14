@@ -1659,6 +1659,7 @@ void CSmartObjectsEditorDialog::OnInitDialog()
     SmartObjectsEditorTreeModel* treeModel = new SmartObjectsEditorTreeModel(this);
     m_pathModel = new SmartObjectsPathFilterModel(this);
     m_pathModel->setSourceModel(m_model);
+    m_pathModel->setSortCaseSensitivity(Qt::CaseInsensitive);
 
     m_View->setRootIsDecorated(false);
     m_View->setModel(m_pathModel);

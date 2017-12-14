@@ -16,7 +16,7 @@
 
 #include <QFileSystemWatcher>
 
-#include <AzCore\std\functional.h>
+#include <AzCore/std/functional.h>
 
 class FileContentModel
     : public IFileContentModel

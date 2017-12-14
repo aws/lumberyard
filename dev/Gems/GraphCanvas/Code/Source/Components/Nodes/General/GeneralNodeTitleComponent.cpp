@@ -80,7 +80,7 @@ namespace GraphCanvas
 
     void GeneralNodeTitleComponent::SetTitle(const AZStd::string& title)
     {
-        m_title.m_fallback = title;
+        m_title.SetFallback(title);
 
         if (m_generalNodeTitleWidget)
         {
@@ -105,7 +105,7 @@ namespace GraphCanvas
 
     void GeneralNodeTitleComponent::SetSubTitle(const AZStd::string& subtitle)
     {
-        m_subTitle.m_fallback = subtitle;
+        m_subTitle.SetFallback(subtitle);
 
         if (m_generalNodeTitleWidget)
         {

@@ -27,9 +27,16 @@ namespace GridMate
     //-----------------------------------------------------------------------------
     struct MarshalTaskContext
     {
-        MarshalTaskContext(const PrepareDataResult& pdr) : m_pdr(pdr) {}
+        MarshalTaskContext(const PrepareDataResult& pdr, ReplicaTarget &target)
+            : m_pdr(pdr)
+            , m_target(target)
+        {}
 
         PrepareDataResult m_pdr;
+        ReplicaTarget &m_target;
+
+    private:
+        MarshalTaskContext& operator=(const MarshalTaskContext&) AZ_DELETE_METHOD;
     };
     //-----------------------------------------------------------------------------
     // ReplicaMarshalTaskBase
@@ -93,10 +100,11 @@ namespace GridMate
         : public ReplicaMarshalTaskBase
     {
     public:
-        ReplicaMarshalNewTask(ReservedIds CmdId, ReplicaPtr replica, ReplicaPeer* peer)
+        ReplicaMarshalNewTask(ReservedIds CmdId, ReplicaPtr replica, ReplicaPeer* peer, const MarshalTaskContext& taskContext)
             : ReplicaMarshalTaskBase(replica)
             , m_peer(peer)
             , m_cmdId(CmdId)
+            , m_taskContext(taskContext)
         {
             AZ_Assert(m_peer, "No peer given");
         }
@@ -110,6 +118,7 @@ namespace GridMate
 
             OnSendReplicaBegin();
             WriteBuffer& buffer = m_peer->GetReliableOutBuffer();
+            CallbackBuffer& callback = m_peer->GetReliableCallbackBuffer();
             size_t bufferOffsetStart = buffer.Size();
             MarshalNewReplica(m_replica.get(), m_cmdId, buffer);
 
@@ -130,8 +139,9 @@ namespace GridMate
             }
 
             MarshalContext mc(flags,
-                &buffer,
-                ReplicaContext(context.m_replicaManager, context.m_replicaManager->GetTime(), m_peer));
+                &buffer, &callback,
+                ReplicaContext(context.m_replicaManager, context.m_replicaManager->GetTime(), m_peer), m_taskContext.m_target.GetRevision(), &m_taskContext.m_target);
+            m_replica->PrepareData(context.m_replicaManager->GetGridMate()->GetDefaultEndianType(), flags);
             m_replica->Marshal(mc);
             size_t bufferOffsetEnd = buffer.Size();
 
@@ -141,8 +151,10 @@ namespace GridMate
         }
 
     private:
+        ReplicaMarshalNewTask& operator=(const ReplicaMarshalNewTask&) = delete;
         ReplicaPeer* m_peer;
         ReservedIds  m_cmdId;
+        const MarshalTaskContext& m_taskContext;
     };
 
     //-----------------------------------------------------------------------------
@@ -154,8 +166,8 @@ namespace GridMate
     public:
         GM_CLASS_ALLOCATOR(ReplicaMarshalNewProxyTask);
 
-        ReplicaMarshalNewProxyTask(ReplicaPtr replica, ReplicaPeer* peer)
-            : ReplicaMarshalNewTask(Cmd_NewProxy, replica, peer)
+        ReplicaMarshalNewProxyTask(ReplicaPtr replica, ReplicaPeer* peer, const MarshalTaskContext& taskContext)
+            : ReplicaMarshalNewTask(Cmd_NewProxy, replica, peer, taskContext)
         {};
     };
 
@@ -168,8 +180,8 @@ namespace GridMate
     public:
         GM_CLASS_ALLOCATOR(ReplicaMarshalNewOwnerTask);
 
-        ReplicaMarshalNewOwnerTask(ReplicaPtr replica, ReplicaPeer* peer)
-            : ReplicaMarshalNewTask(Cmd_NewOwner, replica, peer)
+        ReplicaMarshalNewOwnerTask(ReplicaPtr replica, ReplicaPeer* peer, const MarshalTaskContext& taskContext)
+            : ReplicaMarshalNewTask(Cmd_NewOwner, replica, peer, taskContext)
         {};
     };
 
@@ -218,7 +230,7 @@ namespace GridMate
             OnSendReplicaBegin();
             size_t bufferOffsetStart = buffer.Size();
             MarshalContext mc(baseFlags,
-                &buffer,
+                &buffer, nullptr,
                 ReplicaContext(context.m_replicaManager, context.m_replicaManager->GetTime(), GetUpstreamHop()));
 
             m_replica->Marshal(mc);
@@ -254,15 +266,19 @@ namespace GridMate
             OnSendReplicaBegin();
             WriteBuffer& buffer = m_peer->GetReliableOutBuffer();
             size_t bufferOffsetStart = buffer.Size();
+            CallbackBuffer& callback = m_peer->GetReliableCallbackBuffer();
 
-            MarshalContext mc(ReplicaMarshalFlags::Reliable | ReplicaMarshalFlags::Authoritative | ReplicaMarshalFlags::IncludeDatasets,
-                &buffer,
+            MarshalContext mc(ReplicaMarshalFlags::Reliable | ReplicaMarshalFlags::Authoritative | ReplicaMarshalFlags::IncludeDatasets
+                | ReplicaMarshalFlags::ForceDirty /* zombie task must send the whole replica by design */,
+                &buffer, &callback,
                 ReplicaContext(context.m_replicaManager, context.m_replicaManager->GetTime(), m_peer));
             m_replica->Marshal(mc);
             size_t bufferOffsetEnd = buffer.Size();
+
             OnSendReplicaEnd(m_peer, buffer.Get() + bufferOffsetStart, bufferOffsetEnd - bufferOffsetStart);
-            m_peer->GetReliableOutBuffer().Write(Cmd_DestroyProxy);
-            m_peer->GetReliableOutBuffer().Write(m_replica->GetRepId());
+            buffer.Write(Cmd_DestroyProxy);
+            buffer.Write(m_replica->GetRepId());
+
             return TaskStatus::Done;
         }
     private:
@@ -281,7 +297,7 @@ namespace GridMate
     {
         if (m_replica->IsMaster() || context.m_replicaManager->IsSyncHost())
         {
-            m_replica->PrepareData(context.m_replicaManager->GetGridMate()->GetDefaultEndianType(), 
+            m_replica->PrepareData(context.m_replicaManager->GetGridMate()->GetDefaultEndianType(),
                 // A zombie task occurs right before replica gets removed, by design it needs to set all properties one last time.
                 ReplicaMarshalFlags::ForceDirty);
             for (auto& dst : m_replica->m_targets)
@@ -317,6 +333,18 @@ namespace GridMate
         {
         }
         //-----------------------------------------------------------------------------
+        AZ_FORCE_INLINE void SendReplica(const RunContext& context, WriteBuffer& buffer, CallbackBuffer& callback, AZ::u32 flags, AZ::u64 peerLatestVersionAckd = 0)
+        {
+            OnSendReplicaBegin();
+
+            //Marshall the Replica
+            MarshalContext marshalContext(flags, &buffer, &callback, ReplicaContext(context.m_replicaManager, context.m_replicaManager->GetTime(), m_peer), peerLatestVersionAckd, &m_taskContext.m_target);
+            const size_t bufferOffsetStart = buffer.Size();
+            m_replica->Marshal(marshalContext);
+            const size_t bytesWritten = buffer.Size() - bufferOffsetStart;
+
+            OnSendReplicaEnd(m_peer, buffer.Get() + bufferOffsetStart, bytesWritten);
+        }
         TaskStatus Run(const RunContext& context) override
         {
             if (m_peer->IsOrphan())
@@ -326,37 +354,12 @@ namespace GridMate
 
             if (m_taskContext.m_pdr.m_isDownstreamReliableDirty)
             {
-                OnSendReplicaBegin();
-                WriteBuffer& buffer = m_peer->GetReliableOutBuffer();
-                size_t bufferOffsetStart = buffer.Size();
-
-                AZ::u32 flags =
-                    ReplicaMarshalFlags::Authoritative |
-                    ReplicaMarshalFlags::Reliable |
-                    ReplicaMarshalFlags::IncludeDatasets;
-                MarshalContext mc(flags,
-                    &buffer,
-                    ReplicaContext(context.m_replicaManager, context.m_replicaManager->GetTime(), m_peer));
-                m_replica->Marshal(mc);
-                size_t bufferOffsetEnd = buffer.Size();
-                OnSendReplicaEnd(m_peer, buffer.Get() + bufferOffsetStart, bufferOffsetEnd - bufferOffsetStart);
+                SendReplica(context, m_peer->GetReliableOutBuffer(), m_peer->GetReliableCallbackBuffer(), ReplicaMarshalFlags::Authoritative | ReplicaMarshalFlags::Reliable | ReplicaMarshalFlags::IncludeDatasets);
             }
 
             if (m_taskContext.m_pdr.m_isDownstreamUnreliableDirty)
             {
-                OnSendReplicaBegin();
-                WriteBuffer& buffer = m_peer->GetUnreliableOutBuffer();
-                size_t bufferOffsetStart = buffer.Size();
-
-                AZ::u32 flags =
-                    ReplicaMarshalFlags::Authoritative |
-                    ReplicaMarshalFlags::IncludeDatasets;
-                MarshalContext mc(flags,
-                    &buffer,
-                    ReplicaContext(context.m_replicaManager, context.m_replicaManager->GetTime(), m_peer));
-                m_replica->Marshal(mc);
-                size_t bufferOffsetEnd = buffer.Size();
-                OnSendReplicaEnd(m_peer, buffer.Get() + bufferOffsetStart, bufferOffsetEnd - bufferOffsetStart);
+                SendReplica(context, m_peer->GetUnreliableOutBuffer(), m_peer->GetUnreliableCallbackBuffer(), ReplicaMarshalFlags::Authoritative | ReplicaMarshalFlags::IncludeDatasets, m_taskContext.m_target.GetRevision());
             }
 
             return TaskStatus::Done;
@@ -381,21 +384,23 @@ namespace GridMate
         bool isDownstreamDirty = pdr.m_isDownstreamReliableDirty | pdr.m_isDownstreamUnreliableDirty;
         for (auto& dst : m_replica->m_targets)
         {
+            const bool targetNeedsCallback = ReplicaTarget::IsAckEnabled() && dst.HasOldRevision(m_replica->m_revision);
+
             if (m_replica->IsNewOwner())
             {
-                WaitReplicaTask<ReplicaMarshalNewOwnerTask>(context, m_replica, dst.GetPeer());
+                WaitReplicaTask<ReplicaMarshalNewOwnerTask>(context, m_replica, dst.GetPeer(), MarshalTaskContext(pdr, dst));
             }
             else if (dst.IsNew())
             {
-                WaitReplicaTask<ReplicaMarshalNewProxyTask>(context, m_replica, dst.GetPeer());
+                WaitReplicaTask<ReplicaMarshalNewProxyTask>(context, m_replica, dst.GetPeer(), MarshalTaskContext(pdr, dst));
             }
             else if (dst.IsRemoved())
             {
                 WaitReplicaTask<ReplicaMarshalZombieToPeerTask>(context, m_replica, dst.GetPeer());
             }
-            else if (isDownstreamDirty)
+            else if (isDownstreamDirty || targetNeedsCallback)
             {
-                WaitReplicaTask<ReplicaMarshalUpdateTask>(context, m_replica, dst.GetPeer(), MarshalTaskContext(pdr));
+                WaitReplicaTask<ReplicaMarshalUpdateTask>(context, m_replica, dst.GetPeer(), MarshalTaskContext(pdr, dst));
             }
 
             dst.SetNew(false);

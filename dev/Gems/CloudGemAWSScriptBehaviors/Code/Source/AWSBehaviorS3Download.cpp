@@ -95,6 +95,9 @@ namespace CloudGemAWSScriptBehaviors
         }
         using S3DownloadRequestJob = AWS_API_REQUEST_JOB(S3, GetObject);
         S3DownloadRequestJob::Config config(S3DownloadRequestJob::GetDefaultConfig());
+        AZStd::string region;
+        EBUS_EVENT_RESULT(region, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "region");
+        config.region = region.c_str();
 
         auto job = S3DownloadRequestJob::Create(
             [](S3DownloadRequestJob* job) // OnSuccess handler

@@ -77,7 +77,6 @@ TEST_F(RCBuilderTest, Initialize_StandardInitializationWithDuplicateAndInvalidRe
 {
     MockRCCompiler*                     mockRC = new MockRCCompiler();
     TestInternalRecognizerBasedBuilder  test(mockRC);
-    UnitTestUtils::AssertAbsorber       assertAbsorber;
     MockRecognizerConfiguration         configuration;
 
     azstrcpy(AssetUtilities::s_cachedEngineRoot, AZ_MAX_PATH_LEN, "TestCachedEngineRoot");
@@ -111,21 +110,27 @@ TEST_F(RCBuilderTest, Initialize_StandardInitializationWithDuplicateAndInvalidRe
 
     ASSERT_EQ(mockRC->m_initialize, 1);
 
+    AZStd::vector<AssetBuilderSDK::PlatformInfo> platformInfos;
+    AZStd::unordered_set<AZStd::string> tags;
+    tags.insert("tools");
+    tags.insert("desktop");
+    platformInfos.emplace_back(AssetBuilderSDK::PlatformInfo("pc", tags));
+
     InternalRecognizerPointerContainer  good_recognizers;
-    bool good_recognizers_found = test.GetMatchingRecognizers(AssetBuilderSDK::Platform::Platform_PC, "test.foo", good_recognizers);
+    bool good_recognizers_found = test.GetMatchingRecognizers(platformInfos, "test.foo", good_recognizers);
     ASSERT_TRUE(good_recognizers_found); // Should find at least 1
     ASSERT_EQ(good_recognizers.size(), 1);  // 1, not 2 since the duplicates should be removed
     ASSERT_EQ(good_recognizers.at(0)->m_name, good.m_name); // Match the same recognizer
 
 
     InternalRecognizerPointerContainer  bad_recognizers;
-    bool no_recognizers_found = !test.GetMatchingRecognizers(AssetBuilderSDK::Platform::Platform_PC, "test.ccc", good_recognizers);
+    bool no_recognizers_found = !test.GetMatchingRecognizers(platformInfos, "test.ccc", good_recognizers);
     ASSERT_TRUE(no_recognizers_found);
     ASSERT_EQ(bad_recognizers.size(), 0);  // 1, not 2 since the duplicates should be removed
 
-    ASSERT_EQ(assertAbsorber.m_numWarningsAbsorbed, 1); // this should be the "duplicate builder" warning.
-    ASSERT_EQ(assertAbsorber.m_numErrorsAbsorbed, 0);
-    ASSERT_EQ(assertAbsorber.m_numAssertsAbsorbed, 0);
+    ASSERT_EQ(m_errorAbsorber->m_numWarningsAbsorbed, 1); // this should be the "duplicate builder" warning.
+    ASSERT_EQ(m_errorAbsorber->m_numErrorsAbsorbed, 0);
+    ASSERT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0);
 }
 
 
@@ -153,7 +158,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandard_Valid)
 
     request.m_watchFolder = "c:\temp";
     request.m_sourceFile = "test.foo";
-    request.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+    request.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc", { "desktop", "renderer" }) };
     AssetProcessor::BUILDER_ID_RC.GetUuid(request.m_builderid);
 
     test.CreateJobs(request, response);
@@ -162,7 +167,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandard_Valid)
     ASSERT_EQ(response.m_createJobOutputs.size(), 1);
 
     AssetBuilderSDK::JobDescriptor descriptor = response.m_createJobOutputs.at(0);
-    ASSERT_EQ(descriptor.m_platform, AssetBuilderSDK::Platform::Platform_PC);
+    ASSERT_EQ(descriptor.GetPlatformIdentifier(), "pc");
     ASSERT_FALSE(descriptor.m_critical);
 }
 
@@ -206,7 +211,8 @@ TEST_F(RCBuilderTest, CreateJobs_CreateMultiplesJobStandard_Valid)
 
         request_copy.m_watchFolder = "c:\temp";
         request_copy.m_sourceFile = "test.foo";
-        request_copy.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+
+        request_copy.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc",{ "desktop", "renderer" }) };
         AssetProcessor::BUILDER_ID_COPY.GetUuid(request_copy.m_builderid);
         test.CreateJobs(request_copy, response_copy);
 
@@ -214,7 +220,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateMultiplesJobStandard_Valid)
         ASSERT_EQ(response_copy.m_createJobOutputs.size(), 1);
 
         AssetBuilderSDK::JobDescriptor descriptor = response_copy.m_createJobOutputs.at(0);
-        ASSERT_EQ(descriptor.m_platform, AssetBuilderSDK::Platform::Platform_PC);
+        ASSERT_EQ(descriptor.GetPlatformIdentifier(), "pc");
         ASSERT_EQ(descriptor.m_jobKey.compare(job_key_copy), 0);
         ASSERT_TRUE(descriptor.m_critical);
     }
@@ -226,7 +232,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateMultiplesJobStandard_Valid)
 
         request_rc.m_watchFolder = "c:\temp";
         request_rc.m_sourceFile = "test.foo";
-        request_rc.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+        request_rc.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc",{ "desktop", "renderer" }) };
         AssetProcessor::BUILDER_ID_RC.GetUuid(request_rc.m_builderid);
         test.CreateJobs(request_rc, response_rc);
 
@@ -234,7 +240,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateMultiplesJobStandard_Valid)
         ASSERT_EQ(response_rc.m_createJobOutputs.size(), 1);
 
         AssetBuilderSDK::JobDescriptor descriptor = response_rc.m_createJobOutputs.at(0);
-        ASSERT_EQ(descriptor.m_platform, AssetBuilderSDK::Platform::Platform_PC);
+        ASSERT_EQ(descriptor.GetPlatformIdentifier(), "pc");
         ASSERT_EQ(descriptor.m_jobKey.compare(job_key_rc), 0);
         ASSERT_FALSE(descriptor.m_critical);
     }
@@ -266,7 +272,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobCopy_Valid)
 
     request.m_watchFolder = "c:\temp";
     request.m_sourceFile = "test.copy";
-    request.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+    request.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc",{ "desktop", "renderer" }) };
     AssetProcessor::BUILDER_ID_COPY.GetUuid(request.m_builderid);
 
     test.CreateJobs(request, response);
@@ -275,7 +281,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobCopy_Valid)
     ASSERT_EQ(response.m_createJobOutputs.size(), 1);
 
     AssetBuilderSDK::JobDescriptor descriptor = response.m_createJobOutputs.at(0);
-    ASSERT_EQ(descriptor.m_platform, AssetBuilderSDK::Platform::Platform_PC);
+    ASSERT_EQ(descriptor.GetPlatformIdentifier(), "pc");
     ASSERT_TRUE(descriptor.m_critical);
 }
 
@@ -305,7 +311,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandardSkip_Valid)
 
     request.m_watchFolder = "c:\temp";
     request.m_sourceFile = "test.skip";
-    request.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+    request.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc",{ "desktop", "renderer" }) };
     request.m_builderid = this->GetBuilderUUID();
 
     test.CreateJobs(request, response);
@@ -339,7 +345,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandard_Failed)
 
     request.m_watchFolder = "c:\temp";
     request.m_sourceFile = "test.ccc";
-    request.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+    request.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc",{ "desktop", "renderer" }) };
     request.m_builderid = this->GetBuilderUUID();
 
     test.CreateJobs(request, response);
@@ -374,7 +380,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandard_ShuttingDown)
 
     request.m_watchFolder = "c:\temp";
     request.m_sourceFile = "test.ccc";
-    request.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+    request.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc",{ "desktop", "renderer" }) };
     request.m_builderid = this->GetBuilderUUID();
 
     test.CreateJobs(request, response);
@@ -406,7 +412,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobBadJobRequest1_Failed)
     AssetBuilderSDK::CreateJobsResponse response;
 
     request.m_sourceFile = "test.ccc";
-    request.m_platformFlags = AssetBuilderSDK::Platform::Platform_PC;
+    request.m_enabledPlatforms = { AssetBuilderSDK::PlatformInfo("pc",{ "desktop", "renderer" }) };
     request.m_builderid = this->GetBuilderUUID();
 
     test.CreateJobs(request, response);
@@ -424,7 +430,7 @@ TEST_F(RCBuilderTest, ProcessLegacyRCJob_ProcessStandardSingleJob_Failed)
     MockRecognizerConfiguration         configuration;
 
     // Create the test job
-    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("file.c", false, AssetBuilderSDK::Platform::Platform_PC, 1);
+    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("file.c", false, "pc", 1);
 
     bool initialization_result = test.Initialize(configuration);
     ASSERT_TRUE(initialization_result);
@@ -455,7 +461,7 @@ TEST_F(RCBuilderTest, ProcessLegacyRCJob_ProcessStandardSingleJob_Valid)
     MockRecognizerConfiguration         configuration;
 
     // Create the test job
-    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("file.c", false, AssetBuilderSDK::Platform::Platform_PC);
+    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("file.c", false, "pc");
 
 
     test.AddTestFileInfo("c:\\temp\\file.a").AddTestFileInfo("c:\\temp\\file.b");
@@ -486,8 +492,7 @@ TEST_F(RCBuilderTest, ProcessLegacyRCJob_ProcessCopySingleJob_Valid)
     MockRecognizerConfiguration         configuration;
 
     // Create the test job
-    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("file.c", false, AssetBuilderSDK::Platform::Platform_PC);
-
+    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("file.c", false, "pc");
 
     bool initialization_result = test.Initialize(configuration);
     ASSERT_TRUE(initialization_result);
@@ -545,10 +550,10 @@ TEST_F(RCBuilderTest, ProcessJob_ProcessStandardRCSingleJob_Valid)
 
 
     // Create a dummy test recognizer
-    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(),QString("/i"), AssetBuilderSDK::Platform::Platform_PC);
+    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(),QString("/i"), "pc");
 
     // Create the test job
-    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", false, AssetBuilderSDK::Platform::Platform_PC);
+    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", false, "pc");
     request.m_jobDescription.m_jobParameters[recID] = "/i";
 
 
@@ -575,10 +580,10 @@ TEST_F(RCBuilderTest, ProcessJob_ProcessStandardRCSingleJob_Failed)
 
 
     // Create a dummy test recognizer
-    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(), QString("/i"), AssetBuilderSDK::Platform::Platform_PC);
+    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(), QString("/i"), "pc");
 
     // Create the test job
-    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", false, AssetBuilderSDK::Platform::Platform_PC);
+    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", false, "pc");
     request.m_jobDescription.m_jobParameters[recID] = "/i";
 
     test.AddTestFileInfo("c:\\temp\\file.a").AddTestFileInfo("c:\\temp\\file.b");
@@ -603,10 +608,10 @@ TEST_F(RCBuilderTest, ProcessJob_ProcessStandardCopySingleJob_Valid)
 
 
     // Create a dummy test recognizer
-    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(), QString("copy"), AssetBuilderSDK::Platform::Platform_PC);
+    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(), QString("copy"), "pc");
 
     // Create the test job
-    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", true, AssetBuilderSDK::Platform::Platform_PC);
+    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", true, "pc");
     request.m_jobDescription.m_jobParameters[recID] = "copy";
 
     bool initialization_result = test.Initialize(configuration);
@@ -629,10 +634,10 @@ TEST_F(RCBuilderTest, ProcessJob_ProcessStandardSkippedSingleJob_Invalid)
 
 
     // Create a dummy test recognizer
-    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(), QString("skip"), AssetBuilderSDK::Platform::Platform_PC);
+    AZ::u32 recID = test.AddTestRecognizer(this->GetBuilderID(), QString("skip"), "pc");
 
     // Create the test job
-    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", true, AssetBuilderSDK::Platform::Platform_PC);
+    AssetBuilderSDK::ProcessJobRequest request = CreateTestJobRequest("test.tif", true, "pc");
     request.m_jobDescription.m_jobParameters[recID] = "copy";
 
     bool initialization_result = test.Initialize(configuration);
@@ -778,6 +783,7 @@ TEST_F(RCBuilderTest, TestProcessRCResultFolder_WithResponseFromRC)
     response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("file.caf", actualGUID, 3456));
     response.m_outputProducts.back().m_legacySubIDs.push_back(2222);
     response.m_outputProducts.back().m_legacySubIDs.push_back((AZ_CRC("file.caf", 0x91277b80) & 0x0000FFFF)); // push back the existing one to make sure no dupes.
+    response.m_resultCode = AssetBuilderSDK::ProcessJobResultCode::ProcessJobResult_Success;
 
     // in this test we pretend the response was actually populated by the builder and make sure it populates the legacy IDs correctly
     // 1. there should actually BE legacy IDs

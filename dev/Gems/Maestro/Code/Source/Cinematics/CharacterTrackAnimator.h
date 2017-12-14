@@ -41,17 +41,13 @@ public:
         bool m_bTimeJumped[3];
         float m_jumpTime[3];
     };
-    using TStringSet = std::set<string>;
-    using TStringSetIt = TStringSet::iterator;
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
         pSizer->AddObject(this, sizeof(*this));
-        pSizer->AddObject(m_setAnimationSinks);
     }
 
     void OnReset(IAnimNode* animNode);
-    void OnEndAnimation(const char* animName, IEntity* entity);
 
     ILINE bool IsAnimationPlaying(const SAnimState& animState) const;
 
@@ -79,7 +75,6 @@ private:
     static const float s_minClipDuration;
 
     SAnimState m_baseAnimState;
-    TStringSet m_setAnimationSinks;
     bool       m_characterWasTransRot;
     bool       m_forceAnimKeyChange;
 };

@@ -12,9 +12,11 @@
 #include "ICryAnimation.h"
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <MathConversion.h>
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
 
 namespace Footsteps
 {
@@ -47,7 +49,7 @@ namespace Footsteps
         if (event.m_eventName[0] && _stricmp(event.m_eventName, "footstep") == 0)
         {
 			bool physEnabled = false;
-			LmbrCentral::PhysicsComponentRequestBus::EventResult(physEnabled, GetEntityId(), &LmbrCentral::PhysicsComponentRequestBus::Events::IsPhysicsEnabled);
+			AzFramework::PhysicsComponentRequestBus::EventResult(physEnabled, GetEntityId(), &AzFramework::PhysicsComponentRequestBus::Events::IsPhysicsEnabled);
 			if (!physEnabled)
 			{
 				return;
@@ -95,7 +97,7 @@ namespace Footsteps
             AZStd::string fxLibName = "footstep";
             AZStd::string effectName = "default";
 
-            const float feetWaterLevel = gEnv->p3DEngine->GetWaterLevel(&params.pos);
+            float feetWaterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(params.pos) : gEnv->p3DEngine->GetWaterLevel(&params.pos);
             const float deepWaterLevel = 1.0;
             bool usingWaterEffectId = false;
 

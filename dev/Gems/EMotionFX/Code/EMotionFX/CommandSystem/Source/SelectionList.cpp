@@ -395,7 +395,17 @@ namespace CommandSystem
             return nullptr;
         }
 
-        return mSelectedMotions[0];
-    }
+        EMotionFX::Motion* motion = mSelectedMotions[0];
+        if (!motion)
+        {
+            return nullptr;
+        }
 
+        if (motion->GetIsOwnedByRuntime())
+        {
+            return nullptr;
+        }
+
+        return motion;
+    }
 } // namespace CommandSystem

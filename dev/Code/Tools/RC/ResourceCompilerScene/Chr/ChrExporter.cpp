@@ -16,10 +16,11 @@
 #include <CGFContent.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 
-#include <SceneAPI/SceneCore/DataTypes/Groups/ISkeletonGroup.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
+#include <SceneAPI/SceneCore/DataTypes/Groups/ISkeletonGroup.h>
+#include <SceneAPI/SceneCore/Events/ExportEventContext.h>
 
 #include <RC/ResourceCompilerScene/Chr/ChrExportContexts.h>
 
@@ -29,37 +30,29 @@ namespace AZ
     {
         namespace SceneContainers = AZ::SceneAPI::Containers;
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
-        namespace SceneEvents = AZ::SceneAPI::Events;
 
         ChrExporter::ChrExporter(IConvertContext* convertContext)
-            : CallProcessorConnector()
-            , m_convertContext(convertContext)
+            : m_convertContext(convertContext)
         {
+            BindToCall(&ChrExporter::ProcessContext);
+            ActivateBindings();
         }
 
-        SceneEvents::ProcessingResult ChrExporter::Process(SceneEvents::ICallContext* context)
+        SceneEvents::ProcessingResult ChrExporter::ProcessContext(SceneEvents::ExportEventContext& context)
         {
-            SceneEvents::ExportEventContext* exportContext = azrtti_cast<SceneEvents::ExportEventContext*>(context);
-            if (exportContext)
-            {
-                const SceneContainers::SceneManifest& manifest = exportContext->GetScene().GetManifest();
-                auto valueStorage = manifest.GetValueStorage();
-                auto view = SceneContainers::MakeDerivedFilterView<SceneDataTypes::ISkeletonGroup>(valueStorage);
+            const SceneContainers::SceneManifest& manifest = context.GetScene().GetManifest();
+            auto valueStorage = manifest.GetValueStorage();
+            auto view = SceneContainers::MakeDerivedFilterView<SceneDataTypes::ISkeletonGroup>(valueStorage);
 
-                SceneEvents::ProcessingResultCombiner result;
-                for (const SceneDataTypes::ISkeletonGroup& skeletonGroup : view)
-                {
-                    AZ_TraceContext("Skeleton Group", skeletonGroup.GetName());
-                    result += SceneEvents::Process<ChrGroupExportContext>(*exportContext, skeletonGroup, Phase::Construction);
-                    result += SceneEvents::Process<ChrGroupExportContext>(*exportContext, skeletonGroup, Phase::Filling);
-                    result += SceneEvents::Process<ChrGroupExportContext>(*exportContext, skeletonGroup, Phase::Finalizing);
-                }
-                return result.GetResult();
-            }
-            else
+            SceneEvents::ProcessingResultCombiner result;
+            for (const SceneDataTypes::ISkeletonGroup& skeletonGroup : view)
             {
-                return SceneEvents::ProcessingResult::Ignored;
+                AZ_TraceContext("Skeleton Group", skeletonGroup.GetName());
+                result += SceneEvents::Process<ChrGroupExportContext>(context, skeletonGroup, Phase::Construction);
+                result += SceneEvents::Process<ChrGroupExportContext>(context, skeletonGroup, Phase::Filling);
+                result += SceneEvents::Process<ChrGroupExportContext>(context, skeletonGroup, Phase::Finalizing);
             }
+            return result.GetResult();
         }
-    }
-}
+    } // namespace RC
+} // namespace AZ

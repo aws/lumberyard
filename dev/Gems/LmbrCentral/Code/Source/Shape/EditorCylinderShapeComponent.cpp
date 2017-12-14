@@ -15,14 +15,10 @@
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include "CylinderShapeComponent.h"
+#include "ShapeComponentConverters.h"
 
 namespace LmbrCentral
 {
-    namespace ClassConverters
-    {
-        static bool DeprecateEditorCylinderColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-    }
-
     void EditorCylinderShapeComponent::Reflect(AZ::ReflectContext* context)
     {
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -35,8 +31,8 @@ namespace LmbrCentral
                 &ClassConverters::DeprecateEditorCylinderColliderComponent
                 );
 
-            serializeContext->Class<EditorCylinderShapeComponent, EditorComponentBase>()
-                ->Version(1)
+            serializeContext->Class<EditorCylinderShapeComponent, EditorBaseShapeComponent>()
+                ->Version(2, &ClassConverters::UpgradeEditorCylinderShapeComponent)
                 ->Field("Configuration", &EditorCylinderShapeComponent::m_configuration)
                 ;
 
@@ -92,57 +88,6 @@ namespace LmbrCentral
     void EditorCylinderShapeComponent::ConfigurationChanged() 
     {
         CylinderShape::InvalidateCache(CylinderIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
+        ShapeComponentNotificationsBus::Event(GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
-
-    namespace ClassConverters
-    {
-        static bool DeprecateEditorCylinderColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
-        {
-            /*
-            Old:
-            <Class name="EditorCylinderColliderComponent" field="element" version="1" type="{1C10CEE7-0A5C-4D4A-BBD9-5C3B6C6FE844}">
-             <Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
-              <Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
-               <Class name="AZ::u64" field="Id" value="3854466472272486634" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-              </Class>
-             </Class>
-             <Class name="CylinderColliderConfiguration" field="Configuration" version="1" type="{E1DCB833-EFC4-43AC-97B0-4E07AA0DFAD9}">
-              <Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-              <Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-             </Class>
-            </Class>
-
-            New:
-            <Class name="EditorCylinderShapeComponent" field="element" version="1" type="{D5FC4745-3C75-47D9-8C10-9F89502487DE}">
-             <Class name="CylinderShapeConfig" field="Configuration" version="1" type="{53254779-82F1-441E-9116-81E1FACFECF4}">
-              <Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-              <Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-             </Class>
-            </Class>
-            */
-
-            // Cache the Configuration
-            CylinderShapeConfig configuration;
-            int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
-            if (configIndex != -1)
-            {
-                classElement.GetSubElement(configIndex).GetData<CylinderShapeConfig>(configuration);
-            }
-
-            // Convert to EditorCylinderShapeComponent
-            bool result = classElement.Convert<EditorCylinderShapeComponent>(context);
-            if (result)
-            {
-                configIndex = classElement.AddElement<CylinderShapeConfig>(context, "Configuration");
-                if (configIndex != -1)
-                {
-                    classElement.GetSubElement(configIndex).SetData<CylinderShapeConfig>(context, configuration);
-                }
-                return true;
-            }
-            return false;
-        }
-
-    } // namespace ClassConverters
-
 } // namespace LmbrCentral

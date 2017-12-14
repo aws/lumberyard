@@ -12,6 +12,7 @@
 #pragma once
 
 #include "PhysicsComponent.h"
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 
 namespace LmbrCentral
 {
@@ -22,7 +23,7 @@ namespace LmbrCentral
         : public PhysicsComponent
     {
     public:
-        AZ_COMPONENT(RigidPhysicsComponent, RigidPhysicsComponentTypeId, PhysicsComponent);
+        AZ_COMPONENT(RigidPhysicsComponent, AzFramework::RigidPhysicsComponentTypeId, PhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         RigidPhysicsComponent() = default;
@@ -45,6 +46,6 @@ namespace LmbrCentral
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
         ////////////////////////////////////////////////////////////////////////
 
-        RigidPhysicsConfig m_configuration;
+        AzFramework::RigidPhysicsConfig m_configuration;
     };
 } // namespace LmbrCentral

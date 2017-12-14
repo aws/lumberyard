@@ -24,6 +24,8 @@
 
 namespace AZ
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     AssetBrowserContextProvider::AssetBrowserContextProvider()
     {
         BusConnect();
@@ -34,8 +36,28 @@ namespace AZ
         BusDisconnect();
     }
 
-    void AssetBrowserContextProvider::StartDrag(QMimeData* /*data*/)
+    bool AssetBrowserContextProvider::HandlesSource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* entry) const
     {
+        AZStd::unordered_set<AZStd::string> extensions;
+        EBUS_EVENT(AZ::SceneAPI::Events::AssetImportRequestBus, GetSupportedFileExtensions, extensions);
+        if (extensions.empty())
+        {
+            return false;
+        }
+
+        AZStd::string targetExtension = entry->GetExtension();
+
+        for (AZStd::string potentialExtension : extensions)
+        {
+            const char* extension = potentialExtension.c_str();
+
+            if (AzFramework::StringFunc::Equal(extension, targetExtension.c_str()))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void AssetBrowserContextProvider::AddContextMenuActions(QWidget* /*caller*/, QMenu* menu, const AZStd::vector<AssetBrowserEntry*>& entries)
@@ -47,31 +69,38 @@ namespace AZ
             return;
         }
         SourceAssetBrowserEntry* source = azrtti_cast<SourceAssetBrowserEntry*>(*entryIt);
-        
-        AZStd::unordered_set<AZStd::string> extensions;
-        EBUS_EVENT(AZ::SceneAPI::Events::AssetImportRequestBus, GetSupportedFileExtensions, extensions);
-        if (extensions.empty())
+
+        if (!HandlesSource(source))
         {
             return;
         }
-
-        AZStd::string sourcePath = source->GetFullPath();
-        AZStd::string targetExtension = source->GetExtension();
         
-        for (AZStd::string potentialExtension : extensions)
+        AZStd::string sourcePath = source->GetFullPath();
+        QAction* editImportSettingsAction = menu->addAction("Edit Settings...", [sourcePath]()
         {
-            const char* extension = potentialExtension.c_str();
+            AssetImporterPlugin::GetInstance()->EditImportSettings(sourcePath);
+        });
 
-            if (AzFramework::StringFunc::Equal(extension, targetExtension.c_str()))
+        using namespace AzToolsFramework;
+        EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::RegisterAction, editImportSettingsAction, QString("AssetBrowserContextMenu EditImportSettings"));
+    }
+
+    void AssetBrowserContextProvider::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
+    {
+        using namespace AzToolsFramework;
+
+        if (const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUUID))
+        {
+            if (!HandlesSource(source))
             {
-                QAction* editImportSettingsAction = menu->addAction("Edit Settings...", [sourcePath]()
-                {
-                    AssetImporterPlugin::GetInstance()->EditImportSettings(sourcePath);
-                });
-
-                using namespace AzToolsFramework;
-                EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::RegisterAction, editImportSettingsAction, QString("AssetBrowserContextMenu EditImportSettings"));
+                return;
             }
         }
+
+        openers.push_back({ "Lumberyard_FBX_Settings_Edit", "Edit Settings...", QIcon(), [this](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+        {
+            AZStd::string sourceName(fullSourceFileNameInCallback); // because the below call absolutely requires a AZStd::string.
+            AssetImporterPlugin::GetInstance()->EditImportSettings(sourceName);
+        } });
     }
 }

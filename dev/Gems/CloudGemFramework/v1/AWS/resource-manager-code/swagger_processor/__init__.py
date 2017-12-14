@@ -112,7 +112,16 @@ def validate_swagger(swagger):
         # The validator inserts x-scope objects into the swagger when validating
         # references. We validate against a copy of the swagger to keep thse from
         # showing up in our output.
-        swagger_spec_validator.validator20.validate_spec(copy.deepcopy(swagger))
+
+        # Hitting errors in the definitions dictionary gives better error messages,
+        # so run the validator with no paths first
+        swagger_definitions_only = copy.deepcopy(swagger)
+        swagger_definitions_only['paths'] = {}
+        swagger_spec_validator.validator20.validate_spec(swagger_definitions_only)
+
+        swagger_copy = copy.deepcopy(swagger)
+        swagger_spec_validator.validator20.validate_spec(swagger_copy)
+
     except swagger_spec_validator.SwaggerValidationError as e:
         try:
             content = json.dumps(swagger, indent=4, sort_keys=True)

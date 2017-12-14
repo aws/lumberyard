@@ -249,13 +249,14 @@ namespace EMStudio
         mPropertyWidget->AddReadOnlyStringProperty("", "Node Name", node->GetName());
 
         // transform info
-        MCore::Vector3 position = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mPosition;
+        AZ::Vector3 position = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mPosition;
         mPropertyWidget->AddReadOnlyVector3Property("", "Position", position);
 
-        MCore::Vector3 eulerRotation = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mRotation.ToEuler();
-        eulerRotation.x = MCore::Math::RadiansToDegrees(eulerRotation.x);
-        eulerRotation.y = MCore::Math::RadiansToDegrees(eulerRotation.y);
-        eulerRotation.z = MCore::Math::RadiansToDegrees(eulerRotation.z);
+        AZ::Vector3 eulerRotation = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mRotation.ToEuler();
+        eulerRotation = AZ::Vector3(
+                MCore::Math::RadiansToDegrees(eulerRotation.GetX()),
+                MCore::Math::RadiansToDegrees(eulerRotation.GetY()),
+                MCore::Math::RadiansToDegrees(eulerRotation.GetZ()));
         mPropertyWidget->AddReadOnlyVector3Property("", "Rotation Euler (deg)", eulerRotation);
 
         MCore::Quaternion   rotationQuat = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mRotation;
@@ -274,7 +275,7 @@ namespace EMStudio
             //Vector4       scaleRotVec4 = Vector4( scaleRotQuat.x, scaleRotQuat.y, scaleRotQuat.z, scaleRotQuat.w );
             //mPropertyWidget->AddReadOnlyVector4Property( "", "ScaleRot Quat", scaleRotVec4 );
 
-            MCore::Vector3 scale = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mScale;
+            AZ::Vector3 scale = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mScale;
             mPropertyWidget->AddReadOnlyVector3Property("", "Scale", scale);
         )
 

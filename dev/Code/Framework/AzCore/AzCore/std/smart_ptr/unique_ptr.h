@@ -13,6 +13,7 @@
 #define AZSTD_SMART_PTR_UNIQUE_PTR_H
 
 #include <AzCore/std/smart_ptr/sp_convertible.h>
+#include <AzCore/std/typetraits/is_array.h>
 #include <AzCore/std/typetraits/is_pointer.h>
 #include <AzCore/std/typetraits/is_reference.h>
 #include <AzCore/std/typetraits/extent.h>

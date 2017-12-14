@@ -23,7 +23,7 @@ public: // member functions
 
     //! Update the component. This is called when the game is running.
     //! It is different from the TickBus in that the update order follows the element hierarchy.
-    virtual void Update() = 0;
+    virtual void Update(float deltaTime) = 0;
 
     //! Update the component while in the editor.
     //! This is called every frame when in the editor and the game is NOT running.

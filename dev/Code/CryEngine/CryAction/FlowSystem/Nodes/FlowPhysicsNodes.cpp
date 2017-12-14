@@ -27,7 +27,7 @@
 #include <MathConversion.h>
 
 #include "Components/IComponentPhysics.h"
-#include <LmbrCentral/Physics/PhysicsComponentBus.h>
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 
 //////////////////////////////////////////////////////////////////////////
 class CFlowNode_Dynamics

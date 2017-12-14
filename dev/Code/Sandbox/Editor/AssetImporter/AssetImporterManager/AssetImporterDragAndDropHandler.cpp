@@ -15,6 +15,7 @@
 #include <AssetImporter/AssetImporterManager/AssetImporterManager.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzQtComponents/DragAndDrop/MainWindowDragAndDrop.h>
 #include <QMimeData>
 #include "MainWindow.h"
 
@@ -24,7 +25,7 @@ AssetImporterDragAndDropHandler::AssetImporterDragAndDropHandler(QObject* parent
     : QObject(parent)
     , m_assetImporterManager(assetImporterManager)
 {
-    AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(DragAndDropContexts::MainWindow);
+    AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(AzQtComponents::DragAndDropContexts::EditorMainWindow);
 
     // They are used to prevent opening the Asset Importer by dragging and dropping files and folders to the Main Window when it is already running
     connect(m_assetImporterManager, &AssetImporterManager::StartAssetImporter, this, &AssetImporterDragAndDropHandler::OnStartAssetImporter);
@@ -33,10 +34,10 @@ AssetImporterDragAndDropHandler::AssetImporterDragAndDropHandler(QObject* parent
 
 AssetImporterDragAndDropHandler::~AssetImporterDragAndDropHandler()
 {
-    AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect(DragAndDropContexts::MainWindow);
+    AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect(AzQtComponents::DragAndDropContexts::EditorMainWindow);
 }
 
-void AssetImporterDragAndDropHandler::DragEnter(QDragEnterEvent* event)
+void AssetImporterDragAndDropHandler::DragEnter(QDragEnterEvent* event, AzQtComponents::DragAndDropContextBase& /*context*/)
 {
     if (!m_isAssetImporterRunning)
     {
@@ -44,7 +45,7 @@ void AssetImporterDragAndDropHandler::DragEnter(QDragEnterEvent* event)
     }
 }
 
-void AssetImporterDragAndDropHandler::Drop(QDropEvent* event)
+void AssetImporterDragAndDropHandler::Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& /*context*/)
 {
     if (!m_dragAccepted)
     {
@@ -64,77 +65,79 @@ void AssetImporterDragAndDropHandler::Drop(QDropEvent* event)
 
 void AssetImporterDragAndDropHandler::ProcessDragEnter(QDragEnterEvent* event)
 {
+    m_dragAccepted = false;
+
     const QMimeData* mimeData = event->mimeData();
 
     // if the event hasn't been accepted already and the mimeData hasUrls()
-    if (!event->isAccepted() && mimeData->hasUrls())
+    if (event->isAccepted() || !mimeData->hasUrls())
     {
-        // prevent users from dragging and dropping files from the Asset Browser
-        if (mimeData->hasFormat(AzToolsFramework::AssetBrowser::AssetBrowserEntry::GetMimeType()))
+        return;
+    }
+
+    // prevent users from dragging and dropping files from the Asset Browser
+    if (mimeData->hasFormat(AzToolsFramework::AssetBrowser::AssetBrowserEntry::GetMimeType()))
+    {
+        return;
+    }
+
+    QList<QUrl> urlList = mimeData->urls();
+    int urlListSize = urlList.size();
+
+    // runs through the file list first and checks for any "crate" files - if it finds ANY, return (and don't accept the event)
+    for (int i = 0; i < urlListSize; ++i)
+    {
+        QUrl currentUrl = urlList.at(i);
+
+        if (currentUrl.isLocalFile())
         {
-            m_dragAccepted = false;
-            return;
-        }
-       
-        QList<QUrl> urlList = mimeData->urls();
-        int urlListSize = urlList.size();
-
-        // runs through the file list first and checks for any "crate" files - if it finds ANY, return (and don't accept the event)
-        for (int i = 0; i < urlListSize; ++i)
-        {
-            QUrl currentUrl = urlList.at(i);
-
-            if (currentUrl.isLocalFile())
-            {
-                QString path = urlList.at(i).toLocalFile();
-
-                if (ContainCrateFiles(path))
-                {
-                    return;
-                }
-            }
-        }
-
-        for (int i = 0; i < urlListSize; ++i)
-        {
-            // Get the local file path
             QString path = urlList.at(i).toLocalFile();
 
-            QDir dir(path);
-            QString relativePath = dir.relativeFilePath(path);
-            QString absPath = dir.absolutePath();
-
-            // check if the files/folders are under the game root directory
-            QDir gameRoot = Path::GetEditingGameDataFolder().c_str();
-            QString gameRootAbsPath = gameRoot.absolutePath();
-
-            if (absPath.startsWith(gameRootAbsPath, Qt::CaseInsensitive))
+            if (ContainCrateFiles(path))
             {
-                m_dragAccepted = false;
                 return;
             }
-
-            QDirIterator it(absPath, QDir::NoDotAndDotDot | QDir::Files, QDirIterator::Subdirectories);
-
-            QFileInfo info(absPath);
-            QString extension = info.completeSuffix();
-
-            // if it's not an empty folder directory or if it's a file,
-            // then allow the drag and drop process.
-            // Otherwise, prevent users from dragging and dropping empty folders
-            if (it.hasNext() || !extension.isEmpty())
-            {
-                // this is used in Drop()
-                m_dragAccepted = true;
-            }
         }
+    }
 
-        // at this point, all files should be legal to be imported
-        // since they are not in the database
-        if (m_dragAccepted)
+    for (int i = 0; i < urlListSize; ++i)
+    {
+        // Get the local file path
+        QString path = urlList.at(i).toLocalFile();
+
+        QDir dir(path);
+        QString relativePath = dir.relativeFilePath(path);
+        QString absPath = dir.absolutePath();
+
+        // check if the files/folders are under the game root directory
+        QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
+        QString gameRootAbsPath = gameRoot.absolutePath();
+
+        if (absPath.startsWith(gameRootAbsPath, Qt::CaseInsensitive))
         {
-            event->acceptProposedAction();
+            return;
         }
+
+        QDirIterator it(absPath, QDir::NoDotAndDotDot | QDir::Files, QDirIterator::Subdirectories);
+
+        QFileInfo info(absPath);
+        QString extension = info.completeSuffix();
+
+        // if it's not an empty folder directory or if it's a file,
+        // then allow the drag and drop process.
+        // Otherwise, prevent users from dragging and dropping empty folders
+        if (it.hasNext() || !extension.isEmpty())
+        {
+            // this is used in Drop()
+            m_dragAccepted = true;
+        }
+    }
+
+    // at this point, all files should be legal to be imported
+    // since they are not in the database
+    if (m_dragAccepted)
+    {
+        event->acceptProposedAction();
     }
 }
 

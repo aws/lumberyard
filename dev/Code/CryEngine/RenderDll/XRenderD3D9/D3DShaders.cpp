@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include "DriverD3D.h"
 #include "../Common/DevBuffer.h"
+#include "../Common/RenderCapabilities.h"
 #include <I3DEngine.h>
 #include <IStatoscope.h>
 #include <IResourceManager.h>
@@ -535,6 +536,7 @@ void CRenderer::RefreshSystemShaders()
     gRenDev->m_cEF.mfRefreshSystemShader("ShadowBlur", CShaderMan::s_ShaderShadowBlur);
     gRenDev->m_cEF.mfRefreshSystemShader("Stereo", CShaderMan::s_ShaderStereo);
     gRenDev->m_cEF.mfRefreshSystemShader("Sunshafts", CShaderMan::s_shPostSunShafts);
+    gRenDev->m_cEF.mfRefreshSystemShader("Fur", CShaderMan::s_ShaderFur);
 }
 
 bool CD3D9Renderer::FX_SetFPMode()
@@ -920,7 +922,17 @@ bool CShaderMan::mfPreactivateShaders2(
     else
     if (CParserBin::m_nPlatform == SF_GLES3)
     {
-        szPathPerLevel += "gles3/";
+    #if defined(OPENGL_ES)
+        uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
+        if (glVersion == DXGLES_VERSION_30)
+        {
+            szPathPerLevel += "gles3_0/";
+        }
+        else
+        {
+            szPathPerLevel += "gles3_1/";
+        }
+    #endif
     }
     else
     // Confetti Nicholas Baldwin: adding metal shader language support

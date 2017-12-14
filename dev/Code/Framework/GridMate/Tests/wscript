@@ -12,27 +12,27 @@
 
 def build(bld):
 
-    msvc_cxx_flags = [
-        '/W4', # warning level
-    ]
-    clang_flags = [
-        '-Werror',  # warnings as errors
-        '-Wall'     # warning level
-    ]
-
     bld.CryEngineModule(
         target              = 'GridMateTests',
         vs_filter           = 'Network',
         file_list           = 'gridmate_test.waf_files',
         platforms           = ['win'],
-		configurations      = ['test_all'],
+        configurations      = ['test_all'],
         disable_pch         = True,
         use                 = ['AzTest', 'AzCore', 'GridMate'],
         uselib              = ['GMOCK', 'OPENSSL'],   
 
+        # Compiler Specific
+        msvc_cxxflags       = [
+                               '/W4', # warning level
+                              ],
+        clang_cxxflags      = [
+                               '-Werror',  # warnings as errors
+                               '-Wall'     # warning level
+                              ],
+
         # Platform Specific
-        win_cxxflags        = msvc_cxx_flags,
         win_features        = ['crcfix'],
-		win_lib             = ['Ws2_32', 'Mswsock', 'gdi32'],
+        win_lib             = ['Ws2_32', 'Mswsock', 'gdi32'],
     )
 

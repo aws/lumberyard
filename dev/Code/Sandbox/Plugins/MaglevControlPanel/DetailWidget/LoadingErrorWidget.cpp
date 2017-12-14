@@ -10,6 +10,8 @@
 *
 */
 
+#include <stdafx.h>
+
 #include "LoadingErrorWidget.h"
 
 #include <QVariant>
@@ -22,6 +24,8 @@
 #include "ResourceManagementView.h"
 
 #include <DetailWidget/LoadingErrorWidget.moc>
+
+#include "IEditor.h"
 
 LoadingErrorWidget::LoadingErrorWidget(ResourceManagementView* view)
     : DetailWidget{view}

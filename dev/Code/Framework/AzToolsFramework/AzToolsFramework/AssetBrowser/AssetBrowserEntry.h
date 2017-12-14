@@ -49,6 +49,7 @@ namespace AzToolsFramework
             : public QObject
         {
             friend class AssetBrowserModel;
+            friend class AssetBrowserFilterModel;
             friend class AssetBrowserEntry;
             friend class RootAssetBrowserEntry;
             friend class FolderAssetBrowserEntry;
@@ -66,24 +67,7 @@ namespace AzToolsFramework
             };
 
             static QString AssetEntryTypeToString(AssetEntryType assetEntryType);
-
-            enum class Roles
-            {
-                Name = Qt::UserRole + 1,
-                SourceID,
-                FingerprintValue,
-                Guid,
-                ScanFolderID,
-                ProductID,
-                JobID,
-                JobKey,
-                SubID,
-                AssetType,
-                Platform,
-                ClassID,
-                DisplayName,
-            };
-
+            
             //NOTE: this list should be in sync with m_columnNames[] in the cpp file
             enum class Column
             {
@@ -141,6 +125,10 @@ namespace AzToolsFramework
             template<typename EntryType>
             void GetChildrenRecursively(AZStd::vector<const EntryType*>& entries) const;
 
+            ///! Utility function:  Given a Qt QMimeData pointer, your callbackFunction will be called for each entry of that type it finds in there.
+            template <typename EntryType>
+            static void ForEachEntryInMimeData(const QMimeData* mimeData, AZStd::function<void(const EntryType*)> callbackFunction);
+
             //! Get child by index
             const AssetBrowserEntry* GetChild(int index) const;
             //! Get number of children
@@ -161,16 +149,14 @@ namespace AzToolsFramework
             AssetBrowserEntry* m_parentAssetEntry = nullptr;
 
             //! When child is added, its paths are updated relative to this entry
-            virtual void UpdateChildPaths(AssetBrowserEntry* /*child*/) const {}
+            virtual void UpdateChildPaths(AssetBrowserEntry* child) const;
+            virtual void PathsUpdated();
 
         protected Q_SLOTS:
             virtual void ThumbnailUpdated();
 
         private:
             SharedThumbnailKey m_thumbnailKey;
-            bool m_thumbnailDirty;
-
-            void GetDirty(AZStd::vector<AssetBrowserEntry*>& entries);
 
             AZ_DISABLE_COPY_MOVE(AssetBrowserEntry);
         };
@@ -265,20 +251,31 @@ namespace AzToolsFramework
             const AZStd::string& GetExtension() const;
             AZ::s64 GetSourceID() const;
             AZ::s64 GetScanFolderID() const;
+
+            //! returns the asset type of the first child (product) that isn't an invalid type.
             AZ::Data::AssetType GetPrimaryAssetType() const;
+
+            //! Returns true if any children (products) are the given asset type
+            bool HasProductType(const AZ::Data::AssetType& assetType) const;
             SharedThumbnailKey GetThumbnailKey() const override;
             SharedThumbnailKey CreateThumbnailKey() override;
+            SharedThumbnailKey GetSourceControlThumbnailKey() const;
+            const AZ::Uuid& GetSourceUuid() const;
 
-            static SourceAssetBrowserEntry* GetSourceByAssetId(const AZ::Uuid& sourceUuid);
+            static const SourceAssetBrowserEntry* GetSourceByAssetId(const AZ::Uuid& sourceUuid);
 
         protected:
             void UpdateChildPaths(AssetBrowserEntry* child) const override;
+            void PathsUpdated() override;
 
         private:
             AZStd::string m_extension;
             AZ::s64 m_sourceID;
             AZ::s64 m_scanFolderID;
             AZ::Uuid m_sourceUuid;
+            SharedThumbnailKey m_sourceControlThumbnailKey;
+
+            void UpdateSourceControlThumbnail();
 
             AZ_DISABLE_COPY_MOVE(SourceAssetBrowserEntry);
         };
@@ -334,7 +331,10 @@ namespace AzToolsFramework
             
             AZ_DISABLE_COPY_MOVE(ProductAssetBrowserEntry);
         };
+
     } // namespace AssetBrowser
 } // namespace AzToolsFramework
+
+Q_DECLARE_METATYPE(const AzToolsFramework::AssetBrowser::AssetBrowserEntry*)
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.inl>

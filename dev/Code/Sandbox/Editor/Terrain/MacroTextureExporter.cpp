@@ -233,7 +233,11 @@ namespace
             : m_File(file)
             , m_MappedMemory(nullptr)
         {
-            m_File.open(QIODevice::WriteOnly | QIODevice::ReadOnly);
+            if (!m_File.isOpen())
+            {
+                m_File.open(QIODevice::WriteOnly | QIODevice::ReadOnly);
+            }
+
             m_MappedMemory = m_File.map(0, totalSize);
         }
 
@@ -389,7 +393,7 @@ bool MacroTextureExporter::Context::ExportTiles(const char* ctcFilename, const C
     ICryPak& cryPak = *gEnv->pCryPak;
 
     char adjustedCoverPath[ICryPak::g_nMaxPath];
-    cryPak.AdjustFileName(ctcFilename, adjustedCoverPath, ICryPak::FLAGS_NEVER_IN_PAK);
+    cryPak.AdjustFileName(ctcFilename, adjustedCoverPath, ICryPak::FLAGS_NEVER_IN_PAK | ICryPak::FLAGS_NO_LOWCASE);
 
     if (!cryPak.MakeDir(adjustedCoverPath))
     {
@@ -419,12 +423,23 @@ bool MacroTextureExporter::Context::ExportTiles(const char* ctcFilename, const C
         ExportTiles(rootTile, RootIndex, RootLeft, RootBottom, RootSize, 0);
     }
 
+    char resolvedCoverPath[AZ_MAX_PATH_LEN];
+    AZ::IO::FileIOBase::GetInstance()->ResolvePath(adjustedCoverPath, resolvedCoverPath, AZ_MAX_PATH_LEN);
     QFile outputFile = {
-        QString{ adjustedCoverPath }
+        QString{ resolvedCoverPath }
     };
+
+    // macOS and Linux need to open the file, otherwise resize fails for non-existing files.
+    if (!outputFile.open(QIODevice::WriteOnly | QIODevice::ReadOnly))
+    {
+        Error("Error generating macro texture: Failed to create destination file %s", resolvedCoverPath);
+        return false;
+    }
+
+
     if (!outputFile.resize(totalFileSize))
     {
-        Error("Error generating macro texture: Failed to create destination file");
+        Error("Error generating macro texture: Failed to resize destination file %s", resolvedCoverPath);
         return false;
     }
 
@@ -432,7 +447,7 @@ bool MacroTextureExporter::Context::ExportTiles(const char* ctcFilename, const C
         ScopedFileMap scopedFile(outputFile, totalFileSize);
         if (!scopedFile.bIsOpen())
         {
-            Error("Error generating macro texture: Failed to open destination file");
+            Error("Error generating macro texture: Failed to open destination file %s", resolvedCoverPath);
             return false;
         }
 

@@ -1,5 +1,5 @@
-/* Main SCSS file.  Used for vending our packaged SCSS that both us and our customers can utilize.  
-   Files expected for reuse are indicated as so by using sass partials 
+/* Main SCSS file.  Used for vending our packaged SCSS that both us and our customers can utilize.
+   Files expected for reuse are indicated as so by using sass partials
 */
 
 @import "fonts";
@@ -15,6 +15,7 @@
 @import "pagination";
 @import "feedback";
 @import "tooltips";
+@import "tables/tables";
 @import "toastr";
 @import "util";
 

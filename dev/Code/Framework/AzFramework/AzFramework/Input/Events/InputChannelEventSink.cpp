@@ -19,20 +19,20 @@ namespace AzFramework
     InputChannelEventSink::InputChannelEventSink()
         : m_filter()
     {
-        InputChannelEventNotificationBus::Handler::BusConnect();
+        InputChannelNotificationBus::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputChannelEventSink::~InputChannelEventSink()
     {
-        InputChannelEventNotificationBus::Handler::BusDisconnect();
+        InputChannelNotificationBus::Handler::BusDisconnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputChannelEventSink::InputChannelEventSink(AZStd::shared_ptr<InputChannelEventFilter> filter)
         : m_filter(filter)
     {
-        InputChannelEventNotificationBus::Handler::BusConnect();
+        InputChannelNotificationBus::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

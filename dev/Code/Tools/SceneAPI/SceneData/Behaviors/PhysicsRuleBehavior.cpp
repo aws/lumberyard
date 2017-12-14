@@ -134,6 +134,14 @@ namespace AZ
                 }
             }
 
+            void PhysicsRuleBehavior::GetVirtualTypeName(AZStd::string& name, Crc32 type)
+            {
+                if (type == AZ_CRC("PhysicsMesh", 0xc75d4ff1))
+                {
+                    name = "PhysicsMesh";
+                }
+            }
+
             void PhysicsRuleBehavior::GetAllVirtualTypes(AZStd::set<Crc32>& types)
             {
                 if (types.find(AZ_CRC("PhysicsMesh", 0xc75d4ff1)) == types.end())

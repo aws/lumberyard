@@ -41,7 +41,7 @@ namespace EMStudio
         : public QDialog
     {
         Q_OBJECT
-                       MCORE_MEMORYOBJECTCATEGORY(NodeSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
+        MCORE_MEMORYOBJECTCATEGORY(NodeSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
         NodeSelectionWindow(QWidget* parent, bool useSingleSelection);

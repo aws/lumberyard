@@ -310,9 +310,14 @@ void PropertiesContainer::Update()
     size_t selectedEntitiesAmount = m_selectedEntities.size();
     QString displayName;
 
-    // Either only one element selected, or none (still is 1 because it selects the canvas instead)
-    if (selectedEntitiesAmount == 1)
+    if (selectedEntitiesAmount == 0)
     {
+        displayName = "No Canvas Loaded";
+    }
+    else if (selectedEntitiesAmount == 1)
+    {
+        // Either only one element selected, or none (still is 1 because it selects the canvas instead)
+
         // If the canvas was selected
         if (m_isCanvasSelected)
         {
@@ -348,6 +353,8 @@ void PropertiesContainer::Update()
             editor->hide();
             editor->ClearInstances();
         }
+
+        m_compareToEntity.reset();
     }
 
     if (m_selectedEntities.empty())

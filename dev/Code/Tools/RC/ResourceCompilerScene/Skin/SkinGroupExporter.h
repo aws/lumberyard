@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,6 +10,8 @@
 *
 */
 
+#pragma once
+
 #include <AzCore/std/string/string.h>
 #include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
 
@@ -23,14 +23,16 @@ namespace AZ
     {
         struct SkinGroupExportContext;
 
+        namespace SceneEvents = AZ::SceneAPI::Events;
+
         class SkinGroupExporter
-            : public AZ::SceneAPI::Events::CallProcessorBinder
+            : public SceneEvents::CallProcessorBinder
         {
         public:
             SkinGroupExporter(IAssetWriter* writer, IConvertContext* convertContext);
             ~SkinGroupExporter() override = default;
 
-            SceneAPI::Events::ProcessingResult ProcessContext(SkinGroupExportContext& context) const;
+            SceneEvents::ProcessingResult ProcessContext(SkinGroupExportContext& context) const;
 
             static const AZStd::string s_fileExtension;
 
@@ -38,5 +40,5 @@ namespace AZ
             IAssetWriter* m_assetWriter;
             IConvertContext* m_convertContext;
         };
-    }
-}
+    } // namespace RC
+} // namespace AZ

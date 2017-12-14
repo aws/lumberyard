@@ -9,20 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #include "StdAfx.h"
 #include "PersistentDataSystemComponent.h"
+
+#include "StarterGameUtility.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -70,8 +60,8 @@ namespace StarterGameGem
 				->Event("SetData", &PersistentDataSystemRequestBus::Events::SetData)
 				->Event("GetData", &PersistentDataSystemRequestBus::Events::GetData)
 				->Event("RemoveData", &PersistentDataSystemRequestBus::Events::RemoveData)
-				//->Event("RegisterDataChangeCallback", &PersistentDataSystemRequestBus::Events::RegisterDataChangeCallback)
-				//->Event("UnRegisterDataChangeCallback", &PersistentDataSystemRequestBus::Events::UnRegisterDataChangeCallback)
+				->Event("RegisterDataChangeCallback", &PersistentDataSystemRequestBus::Events::RegisterDataChangeCallback)
+				->Event("UnRegisterDataChangeCallback", &PersistentDataSystemRequestBus::Events::UnRegisterDataChangeCallback)
 				->Event("ClearAllData", &PersistentDataSystemRequestBus::Events::ClearAllData)
 				;
 		}
@@ -79,7 +69,11 @@ namespace StarterGameGem
 
 	void PersistentDataSystemComponent::Activate()
 	{
+#ifdef STARTER_GAME_EDITOR
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+#endif
 		PersistentDataSystemRequestBus::Handler::BusConnect();
+		AZ::TickBus::Handler::BusConnect();
 
 		g_instance = this;
 	}
@@ -87,6 +81,9 @@ namespace StarterGameGem
 	void PersistentDataSystemComponent::Deactivate()
 	{
 		PersistentDataSystemRequestBus::Handler::BusDisconnect();
+#ifdef STARTER_GAME_EDITOR
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
+#endif
 
 		g_instance = NULL;
 	}
@@ -312,6 +309,51 @@ namespace StarterGameGem
 		return false;
 	}
 
+#ifdef STARTER_GAME_EDITOR
+    void PersistentDataSystemComponent::OnStopPlayInEditor()
+    {
+        ClearAllData();
+    }
+#endif
+
+	// AZ::TickBus interface implementation
+	void PersistentDataSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+	{
+		//gEnv->pConsole->GetCVar("pd_showdata");
+		//gEnv->pConsole->GetCVar("pd_showdatacallbacks");
+		//gEnv->pConsole->GetCVar("pd_dumpdata");
+
+		bool printToScreen = false;
+		ICVar* const show = gEnv->pConsole->GetCVar("pd_showdata");
+		if (show && (show->GetIVal() != 0))
+			printToScreen = true;
+
+		bool dumpInfo = false;
+		ICVar* const dump = gEnv->pConsole->GetCVar("pd_dumpdata");
+		if (dump && (dump->GetIVal() != 0))
+		{
+			dumpInfo = true;
+		}
+		if (!printToScreen && !dumpInfo)
+			return;
+
+		bool printCallbacks = false;
+		ICVar* const callbacks = gEnv->pConsole->GetCVar("pd_showdatacallbacks");
+		if (callbacks && (callbacks->GetIVal() != 0))
+			printCallbacks = true;
+
+		const char* filterString = "";
+		ICVar* const filter = gEnv->pConsole->GetCVar("pd_showFilter");
+		if (filter)
+			filterString = filter->GetString();
+
+		PrintOut(printToScreen, dumpInfo, printCallbacks, filterString);
+
+		if (dumpInfo)
+		{	// turn off the printing so i dont spam
+			dump->Set("0");
+		}
+	}
 
 	////////////////////////////////////////////////////////////////////////
 	// PersistentDataSystemRequests
@@ -366,7 +408,7 @@ namespace StarterGameGem
 	}
 
 	// when this callback gets called, the data with it will be the new value
-	void PersistentDataSystemComponent::RegisterDataChangeCallback(const AZStd::string& name, const AZ::GameplayNotificationId& messageID)
+	void PersistentDataSystemComponent::RegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName)
 	{
 		AZStd::list<cDataSet>::iterator currentData;
 
@@ -378,23 +420,74 @@ namespace StarterGameGem
 
 		if (FindData(name, currentData))
 		{
-			currentData->RegisterCallback(messageID);
+			currentData->RegisterCallback(AZ::GameplayNotificationId(msgRecipient, msgName, StarterGameUtility::GetUuid("float")));
 		}
 	}
 
-	void PersistentDataSystemComponent::UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::GameplayNotificationId& messageID)
+	void PersistentDataSystemComponent::UnRegisterDataChangeCallback(const AZStd::string& name, const AZ::EntityId& msgRecipient, const AZ::Crc32& msgName)
 	{
 		AZStd::list<cDataSet>::iterator currentData;
 
 		if (FindData(name, currentData))
 		{
-			currentData->UnRegisterCallback(messageID);
+			currentData->UnRegisterCallback(AZ::GameplayNotificationId(msgRecipient, msgName, StarterGameUtility::GetUuid("float")));
 		}
 	}
 
 	void PersistentDataSystemComponent::ClearAllData()
 	{
 		m_Datas.clear();
+	}
+
+	void PersistentDataSystemComponent::PrintOut(const bool toScreen, const bool toConsole, const bool printCallbacks, const char* filter) const
+	{
+		//g_pIRenderer->Draw2dLabel(1, g_YLine, 1.2f, fColor, false, "ADIK");
+		AZStd::string text;
+		AZStd::string textTotal;
+		vector2f screenPos(0, 0);
+		const float screenSize = 1.2f;
+		const float screenLineHeight = screenSize * 10;
+		bool useFilter = (filter != NULL) && (*filter != '\0') && (strcmp(filter, "NONE") != 0);
+		text = AZStd::string::format("Persistent Data Output Begin: %d items", m_Datas.size());
+		if (useFilter)
+			text += AZStd::string::format(", Filter \"%s\".\n", filter);
+		else
+			text += ".\n";
+		textTotal = text;
+
+		if(toConsole)
+			gEnv->pLog->LogToConsole(text.c_str());
+		if (toScreen)
+		{
+			gEnv->pRenderer->Draw2dLabel(screenPos.x, screenPos.y, screenSize, ColorF(1, 1, 1), false, text.c_str());
+			screenPos.y += screenLineHeight;
+		}
+
+		for (AZStd::list<cDataSet>::const_iterator iter(m_Datas.begin()); iter != m_Datas.end(); iter++)
+		{
+			if (useFilter && (iter->GetName().find(filter) == string::npos))
+				continue;
+
+			// cannot use tabs
+			text =  "    " + iter->Print(printCallbacks);
+			textTotal += text;
+			if (toConsole)
+				gEnv->pLog->LogToConsole(text.c_str());
+			if (toScreen)
+			{
+				gEnv->pRenderer->Draw2dLabel(screenPos.x, screenPos.y, screenSize, ColorF(1, 1, 1), false, text.c_str());
+				screenPos.y += screenLineHeight;
+			}
+		}
+		text = "Persistent Data Output end\n";
+		textTotal += text;
+		if (toConsole)
+			gEnv->pLog->LogToConsole(text.c_str());
+		if (toScreen)
+		{
+			gEnv->pRenderer->Draw2dLabel(screenPos.x, screenPos.y, screenSize, ColorF(1, 1, 1), false, text.c_str());
+			screenPos.y += screenLineHeight;
+		}
 	}
 
 	bool PersistentDataSystemComponent::FindData(const AZStd::string& name, AZStd::list<cDataSet>::iterator& currentData)
@@ -478,6 +571,59 @@ namespace StarterGameGem
 		}
 	}
 
+	AZStd::string PersistentDataSystemComponent::cDataSet::Print(const bool printCallbacks) const
+	{
+
+		//const AZStd::string m_name;
+		//AZStd::any m_value;
+		//AZStd::list<AZ::GameplayNotificationId> m_callbacks;
+
+		eBasicDataTypes myType = GetBasicType(m_value);
+		AZStd::string myString = "\"" + m_name + "\" : ";
+		switch (myType)
+		{
+		case eBasicDataTypes::Number:
+			{
+				float myValue;
+				AZStd::any_numeric_cast<float>(&m_value, myValue);
+				myString += AZStd::string::format("Number : %.2f", myValue);
+			}
+			break;
+		case eBasicDataTypes::String:
+			{
+				AZStd::string myValue = (m_value.is<AZStd::string>() ? AZStd::any_cast<AZStd::string>(m_value) : AZStd::string(AZStd::any_cast<char*>(m_value)));
+				myString += AZStd::string::format("Number : \"%s\"", myValue);
+			}
+			break;
+		case eBasicDataTypes::Bool:
+			{
+				bool myValue = AZStd::any_cast<bool>(m_value);
+				myString += AZStd::string::format("Bool : \"%s\"", (myValue ? "true" : "false"));
+			}
+			break;
+		case eBasicDataTypes::Other:
+			myString += "Other";
+			break;
+
+		case eBasicDataTypes::Empty:
+			myString += "Empty";
+			break;
+		}
+
+		if (printCallbacks)
+		{
+			myString += AZStd::string::format("\n\tCallbacks : %d\n", m_callbacks.size());
+
+			for (AZStd::list<AZ::GameplayNotificationId>::const_iterator iter(m_callbacks.begin()); iter != m_callbacks.end(); iter++)
+			{
+				myString += "\t\t" + iter->ToString() + "\n";
+			}
+		}
+		else
+			myString += "\n";
+
+		return myString;
+	}
 
 } // namespace LmbrCentral
 

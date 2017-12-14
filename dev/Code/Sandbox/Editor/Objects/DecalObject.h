@@ -38,7 +38,10 @@ public:
 
     virtual int MouseCreateCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
     virtual void GetLocalBounds(AABB& box);
+
+    using CBaseObject::SetHidden;
     virtual void SetHidden(bool bHidden);
+
     virtual void UpdateVisibility(bool visible);
     virtual void SetMaterial(CMaterial* mtl);
     virtual void Serialize(CObjectArchive& ar);

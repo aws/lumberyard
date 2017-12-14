@@ -30,12 +30,20 @@ namespace AZ
     {
         namespace UI
         {
-            using ManifestObjectSharedPointer = AZStd::shared_ptr<DataTypes::IManifestObject>;
             class ManifestVectorHandler
-                : public QObject
-                , public AzToolsFramework::PropertyHandler<AZStd::vector<ManifestObjectSharedPointer>, ManifestVectorWidget>
             {
-                Q_OBJECT
+            public:
+                static void Register();
+                static void Unregister();
+            };
+
+            // This class only has two specializations, that are defined in the cpp file
+            template<typename ManifestType>
+            class IManifestVectorHandler
+                : public QObject
+                , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::shared_ptr<ManifestType>>, ManifestVectorWidget>
+            {
+                AZ_STATIC_ASSERT((AZStd::is_base_of<DataTypes::IManifestObject, ManifestType>::value), "Manifest type class must inherit from DataTypes::IManifestObject");
             public:
                 AZ_CLASS_ALLOCATOR_DECL
 
@@ -45,9 +53,9 @@ namespace AZ
 
                 void ConsumeAttribute(ManifestVectorWidget* widget, u32 attrib,
                     AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
-                void WriteGUIValuesIntoProperty(size_t index, ManifestVectorWidget* GUI, property_t& instance,
+                void WriteGUIValuesIntoProperty(size_t index, ManifestVectorWidget* GUI, typename IManifestVectorHandler::property_t& instance,
                     AzToolsFramework::InstanceDataNode* node) override;
-                bool ReadValuesIntoGUI(size_t index, ManifestVectorWidget* GUI, const property_t& instance,
+                bool ReadValuesIntoGUI(size_t index, ManifestVectorWidget* GUI, const typename IManifestVectorHandler::property_t& instance,
                     AzToolsFramework::InstanceDataNode* node) override;
 
                 static void Register();
@@ -55,7 +63,7 @@ namespace AZ
 
             private:
                 static SerializeContext* s_serializeContext;
-                static ManifestVectorHandler* s_instance;
+                static IManifestVectorHandler* s_instance;
             };
         } // UI
     } // SceneAPI

@@ -16,6 +16,7 @@
 #include <ISystem.h>
 #include <I3DEngine.h>
 #include <IRenderer.h>
+#include <IShader.h>
 #include <IConsole.h>
 #include <ICryAnimation.h>
 #include <IPerfHud.h>
@@ -992,20 +993,15 @@ void CEngineStats::AddResource_Material(IMaterial& rData, const bool bSubMateria
         // this material
         if (rItem.m_pShaderResources)
         {
-            for (uint32 dwI = 0; dwI < EFTT_MAX; ++dwI)
+            for (auto iter = rItem.m_pShaderResources->GetTexturesResourceMap()->begin(); 
+                iter != rItem.m_pShaderResources->GetTexturesResourceMap()->end(); ++iter)
             {
-                SEfResTexture* pTex = rItem.m_pShaderResources->GetTexture(dwI);
+                const SEfResTexture*    pTextureRes = &iter->second;
+                uint32                  dwSize = 0xffffffff;
 
-                if (!pTex)
+                if (pTextureRes->m_Sampler.m_pITex)
                 {
-                    continue;
-                }
-
-                uint32 dwSize = 0xffffffff;
-
-                if (pTex->m_Sampler.m_pITex)
-                {
-                    m_ResourceCollector.AddResource(pTex->m_Sampler.m_pITex->GetName(), dwSize);
+                    m_ResourceCollector.AddResource(pTextureRes->m_Sampler.m_pITex->GetName(), dwSize);
                 }
             }
         }
@@ -3483,14 +3479,12 @@ void CStatsToExcelExporter::ExportMaterials(SCryEngineStats& stats)
                 }
 
                 IRenderShaderResources* pShaderResources = pSubMat->GetShaderItem().m_pShaderResources;
-
                 if (!pShaderResources)
                 {
                     continue;
                 }
 
-                SShaderTexSlots* pShaderSlots = pShader->GetUsedTextureSlots(nTech);
-
+                SShaderTexSlots*        pShaderSlots = pShader->GetUsedTextureSlots(nTech);
                 if (!pShaderSlots)
                 {
                     continue;
@@ -3498,9 +3492,8 @@ void CStatsToExcelExporter::ExportMaterials(SCryEngineStats& stats)
 
                 for (int t = 0; t < EFTT_MAX; ++t)
                 {
-                    SShaderTextureSlot* pSlot = pShaderSlots->m_UsedSlots[t];
-
-                    const string& sTexName = pShaderResources->GetTexture(t) ? pShaderResources->GetTexture(t)->m_Name : "";
+                    SShaderTextureSlot* pSlot = pShaderSlots->m_UsedTextureSlots[t];
+                    const string&       sTexName = pShaderResources->GetTextureResource(t) ? pShaderResources->GetTextureResource(t)->m_Name : "";
 
                     if (!pSlot && !sTexName.empty())
                     {
@@ -3523,6 +3516,38 @@ void CStatsToExcelExporter::ExportMaterials(SCryEngineStats& stats)
                         AddCell(sTexName);
                     }
                 }
+
+                /*
+                // [Shader System] - TO DO: test and replace the above.
+                // Run over all texture slots resources and compare if the shader resource is missing data slots
+                TextureResourceMap*   usedTextures = pShaderResources->GetTexturesMap();
+                for ( auto iter = usedTextures->begin() ; iter != usedTextures->end() ; ++iter )
+                {
+                    SEfResTexture*      pTextureRes = &(iter->second);
+                    uint16              nSlot = iter->first;
+                    auto                slotIter = pShaderSlots->m_UsedTextureSlots.find(nSlot);
+                    SShaderTextureSlot* pSlot = (slotIter == pShaderSlots->m_UsedTextureSlots.end()) ? nullptr : slotIter->second;
+                    const               string& sTexName = pTextureRes ? pTextureRes->m_Name : "";
+
+                    // Shader slot does not exist but the resource for this slot exists - add it to the shader.
+                    if (!pSlot && !sTexName.empty())
+                    {   // found unused texture.
+                        if (!isMaterialRowAdded)
+                        {   // first texture in this material, add material name row
+                            AddRow();
+                            m_CurrRow->setAttr("ss:StyleID", "s25");
+
+                            AddCell(string(pMat->GetName()) + "/" + pSubMat->GetName());
+
+                            isMaterialRowAdded = true;
+                        }
+
+                        AddRow();
+                        AddCell(pMat->GetMaterialHelpers().LookupTexName((EEfResTextures)nSlot));
+                        AddCell(sTexName);
+                    }
+                }
+                */
             }
         }
     }

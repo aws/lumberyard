@@ -24,7 +24,6 @@
 #include "AttributeString.h"
 #include "AttributeInt32.h"
 #include "AttributeQuaternion.h"
-#include "AttributeMatrix.h"
 #include "AttributeColor.h"
 #include "AttributeVector2.h"
 #include "AttributeVector3.h"
@@ -42,9 +41,9 @@ namespace MCore
     const uint32 index = FindAttributeIndexByInternalName(internalName);                                                             \
     if (index == MCORE_INVALIDINDEX32)                                                                                               \
     {                                                                                                                                \
-        if (createIfNotExists)                                                                                               \
+        if (createIfNotExists)                                                                                                       \
         {                                                                                                                            \
-            Attribute* attribute = GetMCore().GetAttributePool().RequestNew(AttributeType::TYPE_ID);                                    \
+            Attribute* attribute = GetMCore().GetAttributePool().RequestNew(AttributeType::TYPE_ID);                                 \
             static_cast<AttributeType*>(attribute)->SetValue(value);                                                                 \
             AttributeSettings* settings = AttributeSettings::Create(internalName);                                                   \
             settings->SetParent(this);                                                                                               \
@@ -860,9 +859,8 @@ namespace MCore
     bool AttributeSet::SetBoolAttribute(const char* internalName, bool value, bool createIfNotExists)                           { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeBool) }
     bool AttributeSet::SetQuaternionAttribute(const char* internalName, const Quaternion& value, bool createIfNotExists)        { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeQuaternion) }
     bool AttributeSet::SetVector2Attribute(const char* internalName, const AZ::Vector2& value, bool createIfNotExists)          { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeVector2) }
-    bool AttributeSet::SetVector3Attribute(const char* internalName, const Vector3& value, bool createIfNotExists)              { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeVector3) }
+    bool AttributeSet::SetVector3Attribute(const char* internalName, const AZ::PackedVector3f& value, bool createIfNotExists)   { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeVector3) }
     bool AttributeSet::SetVector4Attribute(const char* internalName, const AZ::Vector4& value, bool createIfNotExists)          { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeVector4) }
-    bool AttributeSet::SetMatrixAttribute(const char* internalName, const Matrix& value, bool createIfNotExists)                { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeMatrix) }
     bool AttributeSet::SetColorAttribute(const char* internalName, const RGBAColor& value, bool createIfNotExists)              { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeColor) }
     bool AttributeSet::SetStringAttribute(const char* internalName, const char* value, bool createIfNotExists)                  { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeString) }
 
@@ -872,9 +870,8 @@ namespace MCore
     int32 AttributeSet::GetInt32Attribute(const char* internalName, int32 defaultValue)                                         { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeInt32) }
     bool AttributeSet::GetBoolAttribute(const char* internalName, bool defaultValue)                                            { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeBool) }
     AZ::Vector2 AttributeSet::GetVector2Attribute(const char* internalName, const AZ::Vector2& defaultValue)                    { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeVector2) }
-    Vector3 AttributeSet::GetVector3Attribute(const char* internalName, const Vector3& defaultValue)                            { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeVector3) }
+    AZ::PackedVector3f AttributeSet::GetVector3Attribute(const char* internalName, const AZ::PackedVector3f& defaultValue)      { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeVector3) }
     AZ::Vector4 AttributeSet::GetVector4Attribute(const char* internalName, const AZ::Vector4& defaultValue)                    { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeVector4) }
-    Matrix AttributeSet::GetMatrixAttribute(const char* internalName, const Matrix& defaultValue)                               { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeMatrix) }
     Quaternion AttributeSet::GetQuaternionAttribute(const char* internalName, const Quaternion& defaultValue)                   { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeQuaternion) }
     RGBAColor AttributeSet::GetColorAttribute(const char* internalName, const RGBAColor& defaultValue)                          { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeColor) }
 }   // namespace MCore

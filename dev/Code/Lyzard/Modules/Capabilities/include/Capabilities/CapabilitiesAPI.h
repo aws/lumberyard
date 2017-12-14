@@ -14,6 +14,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/string/string.h>
 #include <LyzardSDK/Base.h>
+#include <AzCore/std/containers/set.h>
 
 namespace Capabilities
 {
@@ -79,7 +80,7 @@ namespace Capabilities
         virtual ~CapabilitiesRequests() = default;
 
         /**
-         * Loads capabilites from configuration files starting at engine root down to the specified working directory. Persists settings of the loaded capabilities.
+         * Loads capabilities from configuration files starting at engine root down to the specified working directory. Persists settings of the loaded capabilities.
          *
          * \param[in] workingDir            The application's working directory.
          * \param[in] configFilePath        The name of the configuration file.
@@ -97,6 +98,13 @@ namespace Capabilities
          * \returns     AZStd::vector of Capability objects.
          */
         virtual AZStd::vector<Capability> GetAllCapabilities() const = 0;
+
+        /**
+        * Get a set of the enabled tags in the currently loaded capabilities.
+        *
+        * \returns     AZStd::vector of Capability objects.
+        */
+        virtual AZStd::set<AZStd::string> GetEnabledTags() const = 0;
 
         /**
          * Sets the enable state of the capability with the provided identifier to ENABLED and persists the settings.
@@ -134,18 +142,39 @@ namespace Capabilities
          * \returns             True if the tag appears in at least one of the enabled capabilities, else False.
          */
         virtual bool IsTagSet(const AZStd::string& tag) const = 0;
+    };
+    using CapabilitiesRequestsBus = AZ::EBus<CapabilitiesRequests>;
+
+    /**
+    * Bus for notification of Capabilities operations.
+    */
+    class CapabilitiesNotification
+        : public AZ::EBusTraits
+    {
+    public:
+
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        //////////////////////////////////////////////////////////////////////////
 
         /**
-        * Return a list of paths to all the config files from the working directory. It starts the search from the working
-        * directory all the way up to the engine root.
+        * Fires when a notification is enabled in the Capabilities Module
         *
-        * \param[in] workingDir      The working directory to start the search from.
-        * \param[in] configFileName  The name of the config file to look for.
+        * \param[in] enabled   The capability that is enabled
         *
-        * \returns             AZStd::vector of all the path to the config files found.
         */
-        virtual AZStd::vector<AZStd::string> GetPathsOfConfigFiles(const AZStd::string& workingDir, const AZStd::string& configFileName) const = 0;
-    };
+        virtual void OnCapabilityEnabled(const Capability& enabled) { }
 
-    using CapabilitiesRequestsBus = AZ::EBus<CapabilitiesRequests>;
+        /**
+        * Fires when a notification is disabled in the Capabilities Module
+        *
+        * \param[in] disabled  The capability that is disabled
+        *
+        */
+        virtual void OnCapabilityDisabled(const Capability& disabled) { }
+
+    };
+    using CapabilitiesNotificationBus = AZ::EBus<CapabilitiesNotification>;
 }

@@ -31,7 +31,7 @@ namespace AssetProcessor
         };
 
         virtual bool Initialize(const QString& systemRoot, const QString& rcExecutableFullPath) = 0;
-        virtual bool Execute(const QString& inputFile, const QString& watchFolder, int platformId, const QString& params, 
+        virtual bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, 
             const QString& dest, const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const = 0;
         virtual void RequestQuit() = 0;
     };
@@ -44,10 +44,9 @@ namespace AssetProcessor
         NativeLegacyRCCompiler();
 
         bool Initialize(const QString& systemRoot, const QString& rcExecutableFullPath) override;
-        bool Execute(const QString& inputFile, const QString& watchFolder, int platformId, const QString& params, const QString& dest, 
+        bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest, 
             const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const override;
-        static QString BuildCommand(const QString& inputFile, const QString& watchFolder, const QString& platform, int platformId, 
-            const QString& params, const QString& dest);
+        static QString BuildCommand(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest);
         void RequestQuit()  override;
     private:
         static const int            s_maxSleepTime;
@@ -101,8 +100,8 @@ namespace AssetProcessor
 
         AZ::u32 CalculateCRC() const;
 
-        //! Map of platform specs based on the enumeration value of a target platform
-        QHash<int, AssetPlatformSpec>           m_platformSpecsByPlatform;
+        //! Map of platform specs based on the identifier of the platform
+        QHash<QString, AssetPlatformSpec>           m_platformSpecsByPlatform;
 
         //! unique id that is generated for each unique internal asset recognizer
         //! which can be used as the key for the job parameter map (see AssetBuilderSDK::JobParameterMap)
@@ -134,7 +133,7 @@ namespace AssetProcessor
         virtual void UnInitialize();
 
         //! Returns false if there were no matches, otherwise returns true
-        virtual bool GetMatchingRecognizers(int platformFlags, const QString fileName, InternalRecognizerPointerContainer& output) const;
+        virtual bool GetMatchingRecognizers(const AZStd::vector<AssetBuilderSDK::PlatformInfo>& platformInfos, const QString& fileName, InternalRecognizerPointerContainer& output) const;
 
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response);
         void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
@@ -157,6 +156,9 @@ namespace AssetProcessor
         //! registration.  This constructor is helpful for deriving other classes from this builder for purposes like
         //! unit testing.
         InternalRecognizerBasedBuilder(QHash<QString, BuilderIdAndName> inputBuilderByIdMap, AZ::Uuid internalBuilderUuid);
+
+        // overridden in unit tests.  Searches for RC.EXE
+        virtual bool FindRC(QString& systemRootOut, QString& rcPathOut);
 
         void CreateLegacyRCJob(
             const AssetBuilderSDK::CreateJobsRequest& request,

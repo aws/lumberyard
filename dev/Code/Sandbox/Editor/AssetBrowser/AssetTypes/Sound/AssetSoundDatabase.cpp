@@ -18,7 +18,6 @@
 #include "AssetSoundDatabase.h"
 #include "AssetSoundItem.h"
 #include "IRenderer.h"
-#include "IMusicSystem.h"
 #include "ImageExtensionHelper.h"
 #include "Include/IAssetViewer.h"
 #include "StringUtils.h"

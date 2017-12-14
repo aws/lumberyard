@@ -90,7 +90,7 @@ namespace EMotionFX
 
             //////////////////////////////////////////////////////////////////////////
             // ActorComponentRequestBus::Handler
-            EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance.get(); }
+            EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance ? m_actorInstance.get() : nullptr; }
             void AttachToEntity(AZ::EntityId targetEntityId, AttachmentType attachmentType) override;
             void DetachFromEntity() override;
             void DebugDrawRoot(bool enable) override;
@@ -118,6 +118,7 @@ namespace EMotionFX
 
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
             {
+                incompatible.push_back(AZ_CRC("EMotionFXActorService", 0xd6e8f48d));
                 incompatible.push_back(AZ_CRC("MeshService", 0x71d8a455));
             }
 

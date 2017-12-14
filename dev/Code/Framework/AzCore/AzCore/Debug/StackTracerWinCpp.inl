@@ -28,7 +28,7 @@
 #include <NTSecAPI.h> // for LdrDllNotification dll load hook (UNICODE_STRING)
 
 namespace AZ {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
 
     namespace Debug
     {
@@ -81,6 +81,28 @@ namespace AZ {
             }
             return *s_dynamicallyLoadedModules;
         }
+       
+        // This is a callback function as from MSDN documents.
+        // it can be used to debug why symbols are not loading.  But you do have to enable the DEBUG flag during SymInit for it to work.
+        BOOL CALLBACK SymRegisterCallbackProc64(__in HANDLE hProcess, __in ULONG ActionCode, __in_opt ULONG64 CallbackData, __in_opt ULONG64 UserContext)
+        {
+            UNREFERENCED_PARAMETER(hProcess);
+            UNREFERENCED_PARAMETER(UserContext);
+            PIMAGEHLP_CBA_EVENT evt;
+
+            switch (ActionCode)
+            {
+            case CBA_EVENT:
+                evt = (PIMAGEHLP_CBA_EVENT)CallbackData;
+                _tprintf(_T("%s"), (PTSTR)evt->desc);
+                break;
+
+            default:
+                return FALSE;
+            }
+
+            return TRUE;
+        }
     } // namespace Debug
 
 
@@ -126,6 +148,10 @@ namespace AZ {
         CHAR     LoadedImageName[256];// symbol file name
     };
 
+    // this first typedef is for the USER CALLBACK function. 
+    typedef BOOL    (CALLBACK *PSYMBOL_REGISTERED_CALLBACK64)(_In_ HANDLE hProcess, _In_ ULONG ActionCode, _In_opt_ ULONG64 CallbackData, _In_opt_ ULONG64 UserContext);
+
+    // these are the dll exports.
     typedef BOOL    (__stdcall * SymCleanup_t)(IN HANDLE hProcess);
     typedef PVOID   (__stdcall * SymFunctionTableAccess64_t)(HANDLE hProcess, DWORD64 AddrBase);
     typedef BOOL    (__stdcall * SymGetLineFromAddr64_t)(IN HANDLE hProcess, IN DWORD64 dwAddr, OUT PDWORD pdwDisplacement, OUT PIMAGEHLP_LINE64 Line);
@@ -143,6 +169,7 @@ namespace AZ {
     typedef BOOL (__stdcall WINAPI * SymGetSearchPath_t)(HANDLE hProcess, PSTR SearchPath, DWORD SearchPathLength);
     // This fails in release
     static USHORT (WINAPI * s_pfnCaptureStackBackTrace)(ULONG, ULONG, PVOID*, PULONG) = 0;
+    typedef BOOL(__stdcall WINAPI * SymRegisterCallback64_t)(HANDLE hProcess, PSYMBOL_REGISTERED_CALLBACK64 CallbackFunction, ULONG64 UserContext);
 
     SymInitialize_t             g_SymInitialize;
     SymCleanup_t                g_SymCleanup;
@@ -157,6 +184,7 @@ namespace AZ {
     StackWalk64_t               g_StackWalk64;
     UnDecorateSymbolName_t      g_UnDecorateSymbolName;
     SymGetSearchPath_t          g_SymGetSearchPath;
+    SymRegisterCallback64_t     g_SymRegisterCallback64;
     HMODULE                     g_dbgHelpDll;
 
 #define LOAD_FUNCTION(A)    { g_##A = (A##_t)GetProcAddress(g_dbgHelpDll, #A); AZ_Assert(g_##A != 0, ("Can not load %s function!",#A)); }
@@ -164,10 +192,15 @@ namespace AZ {
     using namespace AZ::Debug;
 
     bool                        g_dbgHelpLoaded = false;
+    AZStd::mutex                g_dbgLoadingMutex;
     HANDLE                      g_currentProcess = 0;   /// We deal with only one process for now.
     CRITICAL_SECTION            g_csDbgHelpDll;         /// All dbg help functions are single threaded, so we need to control the access.
-    AZStd::fixed_vector<SymbolStorage::ModuleInfo, 200> g_moduleInfo;
-
+    AZStd::fixed_vector<SymbolStorage::ModuleInfo, 256> g_moduleInfo;
+    
+    // reserve 4k of scratch space so that we can get some callstack information without any allocations and as little stack frame usage as possible.
+    const size_t                g_scratchSpaceSize = 2048;
+    char                        g_reservedScratchSpace1[g_scratchSpaceSize];
+    char                        g_reservedScratchSpace2[g_scratchSpaceSize];
     /**
      * WindowsSymbols - loads and manages windows symbols.
      */
@@ -354,34 +387,58 @@ namespace AZ {
             {
                 return TRUE;
             }
+            
+            // the sym path is by default just '.' which isn't even technically the folder that the exe is in.
+            // if no override has been set by someone calling SetSymbolPath (which completely overrides this)
+            // then at the very least, add paths that contain known modules.
+            if (!m_szSymPath)
+            {
+                AZ::Debug::SymbolStorageDynamicallyLoadedModules& loadedModules = AZ::Debug::GetRegisteredLoadedModules();
+                g_reservedScratchSpace1[0] = 0;
+                azstrcpy(g_reservedScratchSpace1, g_scratchSpaceSize, ".;");
+
+                for (int j = 0; j < loadedModules.m_size; ++j)
+                {
+                    AZ::Debug::DynamicallyLoadedModuleInfo& module = loadedModules.m_modules[j];
+                    azstrcpy(g_reservedScratchSpace2, g_scratchSpaceSize, module.m_fileName);
+                    char* lastSlash = strrchr(g_reservedScratchSpace2, '\\');
+                    if (lastSlash)
+                    {
+                        *lastSlash = 0; // cut off everything after and including the last backslash.
+                        azstrcat(g_reservedScratchSpace2, g_scratchSpaceSize, ";");
+                        // is it already there?
+
+                        if (strstr(g_reservedScratchSpace1, g_reservedScratchSpace2) == nullptr)
+                        {
+                            if (strlen(g_reservedScratchSpace1) + strlen(g_reservedScratchSpace2) < g_scratchSpaceSize)
+                            {
+                                azstrcat(g_reservedScratchSpace1, g_scratchSpaceSize, g_reservedScratchSpace2);
+                            }
+                        }
+                    }
+                    
+                }
+            }
 
             // SymInitialize
-            if (g_SymInitialize(g_currentProcess, m_szSymPath, FALSE) == FALSE)
+            if (g_SymInitialize(g_currentProcess, m_szSymPath ? m_szSymPath : g_reservedScratchSpace1, FALSE) == FALSE)
             {
-                AZ_TracePrintf("System", false, "failed to call SymInitialize! Error %d", GetLastError());
+                AZ_TracePrintf("System", "failed to call SymInitialize! Error %d", GetLastError());
+            }
+
+            if (g_SymRegisterCallback64)
+            {
+                g_SymRegisterCallback64(g_currentProcess, Debug::SymRegisterCallbackProc64, 0);
             }
 
             DWORD symOptions = g_SymGetOptions();
             symOptions |= SYMOPT_LOAD_LINES;
             symOptions |= SYMOPT_FAIL_CRITICAL_ERRORS;
+            
+            //symOptions |= SYMOPT_DEBUG; // uncomment if you want the debug callback to print out why it cannot load syms.
             //symOptions |= SYMOPT_NO_PROMPTS;
-            // SymSetOptions
+
             symOptions = g_SymSetOptions(symOptions);
-
-            //const int stackWalketMaxLen = 1024;
-            //char buf[stackWalketMaxLen] = {0};
-            //if( g_SymGetSearchPath )
-            //{
-            //  if (g_SymGetSearchPath(g_currentProcess, buf, stackWalketMaxLen) == FALSE)
-            //  {
-            //      //  this->m_parent->OnDbgHelpErr("SymGetSearchPath", GetLastError(), 0);
-            //  }
-            //}
-
-            //char szUserName[1024] = {0};
-            //DWORD dwSize = 1024;
-            //GetUserNameA(szUserName, &dwSize);
-            //this->m_parent->OnSymInit(buf, symOptions, szUserName);
 
             m_isSymLoaded = LoadModules(g_currentProcess, GetProcessId(g_currentProcess));
             return m_isSymLoaded;
@@ -424,18 +481,18 @@ namespace AZ {
                 DWORD displacement;
                 if (g_SymGetLineFromAddr64(g_currentProcess, pc, &displacement, &line) && line.FileName[0] != 0)
                 {
-                    sprintf_s(textLine, textLineSize, "%s (%d) : ", line.FileName, line.LineNumber);
+                    azsnprintf(textLine, textLineSize, "%s (%d) : ", line.FileName, line.LineNumber);
                 }
                 else
                 {
                     IMAGEHLP_MODULE64_V2 module;
                     if (GetModuleInfo(g_currentProcess, pc, &module) && module.ModuleName[0] != 0)
                     {
-                        sprintf_s(textLine, textLineSize, "%p (%s) : ", (LPVOID)pc, module.ModuleName);
+                        azsnprintf(textLine, textLineSize, "%p (%s) : ", (LPVOID)pc, module.ModuleName);
                     }
                     else
                     {
-                        sprintf_s(textLine, textLineSize, "%p (module-name not available) : ", (LPVOID)pc);
+                        azsnprintf(textLine, textLineSize, "%p (module-name not available) : ", (LPVOID)pc);
                     }
                 }
 
@@ -450,12 +507,12 @@ namespace AZ {
                     }
                     if (textLine[0] == 0)
                     {
-                        strcpy_s(textLine, textLineSize, sym.Name);
+                        azstrcpy(textLine, textLineSize, sym.Name);
                     }
                 }
                 else
                 {
-                    strcat_s(textLine, textLineSize, "(function-name not available)");
+                    azstrcat(textLine, textLineSize, "(function-name not available)");
                 }
             }
 
@@ -509,8 +566,8 @@ namespace AZ {
 
             CHAR szImg[1024];
             CHAR szMod[1024];
-            strcpy_s(szImg, AZ_ARRAY_SIZE(szImg), img);
-            strcpy_s(szMod, AZ_ARRAY_SIZE(szMod), mod);
+            azstrcpy(szImg, AZ_ARRAY_SIZE(szImg), img);
+            azstrcpy(szMod, AZ_ARRAY_SIZE(szMod), mod);
 
             if (g_SymLoadModule64(hProcess, 0, szImg, szMod, baseAddr, size) == 0)
             {
@@ -588,7 +645,7 @@ namespace AZ {
                     g_moduleInfo.push_back();
                     SymbolStorage::ModuleInfo& modInfo = g_moduleInfo.back();
                     modInfo.m_baseAddress = (u64)baseAddr;
-                    strcpy_s(modInfo.m_fileName, AZ_ARRAY_SIZE(modInfo.m_fileName), img);
+                    azstrcpy(modInfo.m_fileName, AZ_ARRAY_SIZE(modInfo.m_fileName), img);
                     modInfo.m_fileVersion = (u64)fileVersion;
                 }
                 else
@@ -691,9 +748,9 @@ namespace AZ {
                     m_numDynamicModulesLoaded = loadedModules.m_size;
                 }
                 
-                for (int i = 0; i < loadedModules.m_size; ++i)
+                for (int j = 0; j < loadedModules.m_size; ++j)
                 {
-                    AZ::Debug::DynamicallyLoadedModuleInfo& module = loadedModules.m_modules[i];
+                    AZ::Debug::DynamicallyLoadedModuleInfo& module = loadedModules.m_modules[j];
                     LoadModule(hProcess, module.m_fileName, module.m_name, (DWORD64) module.m_baseAddress, (DWORD) module.m_size);
                     cnt++;
                 }
@@ -759,7 +816,7 @@ namespace AZ {
                 return FALSE;
             }
 
-            hMods = (HMODULE*) malloc(sizeof(HMODULE) * (TTBUFLEN / sizeof HMODULE));
+            hMods = (HMODULE*) malloc(sizeof(HMODULE) * (TTBUFLEN / sizeof(HMODULE)));
             tt = (char*) malloc(sizeof(char) * TTBUFLEN);
             tt2 = (char*) malloc(sizeof(char) * TTBUFLEN);
             if ((hMods == NULL) || (tt == NULL) || (tt2 == NULL))
@@ -811,9 +868,9 @@ namespace AZ {
                     loadedModules = AZ::Debug::GetRegisteredLoadedModules();
                     m_numDynamicModulesLoaded = loadedModules.m_size;
                 }
-                for (int i = 0; i < loadedModules.m_size; ++i)
+                for (int j = 0; j < loadedModules.m_size; ++j)
                 {
-                    AZ::Debug::DynamicallyLoadedModuleInfo& module = loadedModules.m_modules[i];
+                    AZ::Debug::DynamicallyLoadedModuleInfo& module = loadedModules.m_modules[j];
                     LoadModule(hProcess, module.m_fileName, module.m_name, (DWORD64) module.m_baseAddress, (DWORD) module.m_size);
                     cnt++;
                 }
@@ -866,6 +923,8 @@ cleanup:
     //=========================================================================
     void    LoadDbgHelp()
     {
+        AZStd::lock_guard<AZStd::mutex> lock(g_dbgLoadingMutex);
+
         if (!g_dbgHelpLoaded)
         {
             if (g_dbgHelpDll == NULL) // if not already loaded, try to load a default-one
@@ -890,7 +949,7 @@ cleanup:
             LOAD_FUNCTION(StackWalk64);
             LOAD_FUNCTION(UnDecorateSymbolName);
             LOAD_FUNCTION(SymGetSearchPath);
-
+            LOAD_FUNCTION(SymRegisterCallback64);
             g_currentProcess = GetCurrentProcess();
 
             InitializeCriticalSection(&g_csDbgHelpDll);
@@ -957,7 +1016,7 @@ cleanup:
     unsigned int
     StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned int suppressCount /* = 0 */, void* nativeContext /*= NULL*/)
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         unsigned int numFrames = 0;
 
         if (nativeContext == NULL)
@@ -966,7 +1025,7 @@ cleanup:
             if (s_pfnCaptureStackBackTrace == 0)
             {
                 const HMODULE hNtDll = ::GetModuleHandle("ntdll.dll");
-                reinterpret_cast<void*&>(s_pfnCaptureStackBackTrace) =  ::GetProcAddress(hNtDll, "RtlCaptureStackBackTrace");
+                s_pfnCaptureStackBackTrace = reinterpret_cast<decltype(s_pfnCaptureStackBackTrace)>(::GetProcAddress(hNtDll, "RtlCaptureStackBackTrace"));
             }
 
             AZ_ALIGN(PVOID myFrames[50], 8);
@@ -1041,7 +1100,7 @@ cleanup:
         (void)suppressCount;
         (void)nativeContext;
         return 0;
-#endif
+#endif // AZ_ENABLE_DEBUG_TOOLS
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1094,7 +1153,7 @@ cleanup:
     unsigned int
     SymbolStorage::GetNumLoadedModules()
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         if (!g_dbgHelpLoaded)
         {
             LoadDbgHelp();
@@ -1113,7 +1172,7 @@ cleanup:
     const SymbolStorage::ModuleInfo*
     SymbolStorage::GetModuleInfo(unsigned int moduleIndex)
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         if (!g_dbgHelpLoaded)
         {
             LoadDbgHelp();
@@ -1134,7 +1193,7 @@ cleanup:
     SymbolStorage::SetMapFilename(const char* fileName)
     {
         (void)fileName;
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         GetSymbols().SetSymbolPath(fileName);
 
         if (g_dbgHelpLoaded)
@@ -1152,7 +1211,7 @@ cleanup:
     const char*
     SymbolStorage::GetMapFilename()
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         return GetSymbols().GetSymbolPath();
 #else
         return NULL;
@@ -1165,7 +1224,7 @@ cleanup:
     void
     SymbolStorage::RegisterModuleListeners()
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         GetSymbols().RegisterModuleListeners();
 #endif
     }
@@ -1176,7 +1235,7 @@ cleanup:
     void
     SymbolStorage::UnregisterModuleListeners()
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         GetSymbols().UnregisterModuleListeners();
 #endif
     }
@@ -1188,7 +1247,7 @@ cleanup:
     void
     SymbolStorage::DecodeFrames(const StackFrame* frames, unsigned int numFrames, StackLine* textLines)
     {
-#if defined(AZ_DEBUG_BUILD)
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
         if (!g_dbgHelpLoaded)
         {
             LoadDbgHelp();

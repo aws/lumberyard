@@ -46,7 +46,7 @@ namespace EMotionFX
                     ->Field("AttachmentTarget", &Configuration::m_attachmentTarget)
                     ->Field("AttachmentJointIndex", &Configuration::m_attachmentJointIndex)
                     ->Field("SkinningMethod", &Configuration::m_skinningMethod)
-                    ;
+                ;
             }
         }
 
@@ -61,7 +61,7 @@ namespace EMotionFX
                 serializeContext->Class<ActorComponent, AZ::Component>()
                     ->Version(1)
                     ->Field("Configuration", &ActorComponent::m_configuration)
-                    ;
+                ;
             }
 
             auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
@@ -72,13 +72,13 @@ namespace EMotionFX
                     ->Event("AttachToEntity", &ActorComponentRequestBus::Events::AttachToEntity)
                     ->Event("DetachFromEntity", &ActorComponentRequestBus::Events::DetachFromEntity)
                     ->Event("DebugDrawRoot", &ActorComponentRequestBus::Events::DebugDrawRoot)
-                    ;
+                ;
 
                 behaviorContext->EBus<ActorComponentNotificationBus>("ActorComponentNotificationBus")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                     ->Event("OnActorInstanceCreated", &ActorComponentNotificationBus::Events::OnActorInstanceCreated)
                     ->Event("OnActorInstanceDestroyed", &ActorComponentNotificationBus::Events::OnActorInstanceDestroyed)
-                    ;
+                ;
             }
         }
 
@@ -157,10 +157,20 @@ namespace EMotionFX
             if (targetEntityId.IsValid() && targetEntityId != GetEntityId())
             {
                 ActorComponentNotificationBus::Handler::BusDisconnect();
-
                 ActorComponentNotificationBus::Handler::BusConnect(targetEntityId);
+
                 AZ::TransformNotificationBus::MultiHandler::BusConnect(targetEntityId);
                 m_attachmentTargetEntityId = targetEntityId;
+
+                // There's no guarantee that we will receive a on transform change call for the target entity because of the entity activate order.
+                // Enforce a transform query on target to get the correct initial transform.
+                AZ::TransformInterface* transformInterface = AZ::TransformBus::FindFirstHandler(GetEntity()->GetId());
+                if (transformInterface)
+                {
+                    AZ::Transform transform;
+                    AZ::TransformBus::EventResult(transform, targetEntityId, &AZ::TransformBus::Events::GetWorldTM);
+                    transformInterface->SetWorldTM(transform);
+                }
             }
             else
             {
@@ -215,14 +225,12 @@ namespace EMotionFX
 
                 DestroyActor();
 
-                m_actorInstance = actorAsset->CreateInstance();
+                m_actorInstance = actorAsset->CreateInstance(GetEntityId());
                 if (!m_actorInstance)
                 {
                     AZ_Error("EMotionFX", actorAsset, "Failed to create actor instance.");
                     return;
                 }
-
-                m_actorInstance->SetCustomData(reinterpret_cast<void*>(static_cast<AZ::u64>(GetEntityId())));
 
                 ActorComponentNotificationBus::Event(
                     GetEntityId(),
@@ -241,6 +249,9 @@ namespace EMotionFX
                 m_renderNode->SetSkinningMethod(m_configuration.m_skinningMethod);
 
                 CheckAttachToEntity();
+
+                // Send general mesh creation notification to interested parties.
+                LmbrCentral::MeshComponentNotificationBus::Event(GetEntityId(), &LmbrCentral::MeshComponentNotifications::OnMeshCreated, actorAsset);
             }
         }
 
@@ -253,25 +264,32 @@ namespace EMotionFX
             {
                 DetachFromEntity();
 
-                EMotionFX::Attachment* attachment = nullptr;
+                // Make sure we don't generate some circular loop by attaching to each other.
+                if (!m_attachmentTargetActor.get()->CheckIfCanHandleAttachment(m_actorInstance.get()))
+                {
+                    AZ_Error("EMotionFX", false, "You cannot attach to yourself or create circular dependencies!\n");
+                    return;
+                }
 
+                EMotionFX::Attachment* attachment = nullptr;
                 switch (m_configuration.m_attachmentType)
                 {
-                case AttachmentType::ActorAttachment:
-                {
-                    attachment = EMotionFX::AttachmentNode::Create(
-                        m_attachmentTargetActor.get(),
-                        m_configuration.m_attachmentJointIndex,
-                        m_actorInstance.get());
-                }
-                break;
-                case AttachmentType::SkinAttachment:
-                {
-                    attachment = EMotionFX::AttachmentSkin::Create(
-                        m_attachmentTargetActor.get(),
-                        m_actorInstance.get());
-                }
-                break;
+                    case AttachmentType::ActorAttachment:
+                    {
+                        attachment = EMotionFX::AttachmentNode::Create(
+                                m_attachmentTargetActor.get(),
+                                m_configuration.m_attachmentJointIndex,
+                                m_actorInstance.get());
+                    }
+                    break;
+
+                    case AttachmentType::SkinAttachment:
+                    {
+                        attachment = EMotionFX::AttachmentSkin::Create(
+                                m_attachmentTargetActor.get(),
+                                m_actorInstance.get());
+                    }
+                    break;
                 }
 
                 if (attachment)
@@ -304,17 +322,21 @@ namespace EMotionFX
             (void)local;
 
             const AZ::EntityId* busIdPtr = AZ::TransformNotificationBus::GetCurrentBusId();
-
             if (!busIdPtr || *busIdPtr == GetEntityId()) // Our own entity has moved.
             {
                 // If we're not attached to another actor, keep the EMFX root in sync with any external changes to the entity's transform.
                 if (m_actorInstance && !m_attachmentTargetActor)
                 {
-                    const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateFromTransform(world);
-                    const AZ::Vector3 entityPosition = world.GetTranslation();
+                    AZ::Transform           entityTransform = world;
+                    const AZ::Vector3       entityScale     = entityTransform.ExtractScaleExact();
+                    const AZ::Quaternion    entityRotation  = AZ::Quaternion::CreateFromTransform(entityTransform);
+                    const AZ::Vector3       entityPosition  = entityTransform.GetTranslation();
+                    m_actorInstance->SetLocalPosition( entityPosition );
+                    m_actorInstance->SetLocalRotation( MCore::AzQuatToEmfxQuat(entityRotation) );
 
-                    AZ::Transform transformNoScale = AZ::Transform::CreateFromQuaternionAndTranslation(entityOrientation, entityPosition);
-                    m_actorInstance->SetLocalTransform(MCore::AzTransformToEmfxTransform(transformNoScale));
+                    // Disable updating the scale to prevent feedback from adding up.
+                    // We need to find a better way to handle this or to prevent this feedback loop.
+                    // m_actorInstance->SetLocalScale( entityScale );
                 }
             }
             else if (busIdPtr && *busIdPtr == m_attachmentTargetEntityId) // The entity owning the actor we're attached to has moved.
@@ -336,7 +358,7 @@ namespace EMotionFX
 
                     //get the current entity location and calculated motion extracted location
                     AZ::Transform currentTransform = GetEntity()->GetTransform()->GetWorldTM();
-                    const AZ::Vector3 actorInstancePosition = MCore::EmfxVec3ToAzVec3(m_actorInstance->GetGlobalPosition());
+                    const AZ::Vector3 actorInstancePosition = m_actorInstance->GetGlobalPosition();
 
                     //calculate the delta of the positions and apply that as velocity
                     const AZ::Vector3 currentPos = currentTransform.GetPosition();
@@ -407,8 +429,8 @@ namespace EMotionFX
             if (m_actorInstance)
             {
                 AZ::Aabb aabb = AZ::Aabb::CreateFromMinMax(
-                    EmfxVec3ToAzVec3(m_actorInstance->GetStaticBasedAABB().GetMin()),
-                    EmfxVec3ToAzVec3(m_actorInstance->GetStaticBasedAABB().GetMax()));
+                        m_actorInstance->GetStaticBasedAABB().GetMin(),
+                        m_actorInstance->GetStaticBasedAABB().GetMax());
 
                 if (GetEntity() && GetEntity()->GetTransform())
                 {
@@ -427,8 +449,8 @@ namespace EMotionFX
             if (m_actorInstance)
             {
                 const AZ::Aabb aabb = AZ::Aabb::CreateFromMinMax(
-                    EmfxVec3ToAzVec3(m_actorInstance->GetStaticBasedAABB().GetMin()),
-                    EmfxVec3ToAzVec3(m_actorInstance->GetStaticBasedAABB().GetMax()));
+                        m_actorInstance->GetStaticBasedAABB().GetMin(),
+                        m_actorInstance->GetStaticBasedAABB().GetMax());
 
                 return aabb;
             }
@@ -470,8 +492,8 @@ namespace EMotionFX
                         continue;
                     }
 
-                    const AZ::Vector3 bonePos = EmfxVec3ToAzVec3(transformData->GetGlobalPosition(index));
-                    const AZ::Vector3 parentPos = EmfxVec3ToAzVec3(transformData->GetGlobalPosition(parentIndex));
+                    const AZ::Vector3 bonePos = transformData->GetGlobalPosition(index);
+                    const AZ::Vector3 parentPos = transformData->GetGlobalPosition(parentIndex);
 
                     gEnv->pRenderer->GetIRenderAuxGeom()->DrawBone(AZVec3ToLYVec3(parentPos), AZVec3ToLYVec3(bonePos), Col_YellowGreen);
                 }

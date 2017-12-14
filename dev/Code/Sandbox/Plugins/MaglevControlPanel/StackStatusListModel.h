@@ -25,19 +25,19 @@ public:
     StackStatusListModel(AWSResourceManager* resourceManager, int columnCount)
         : m_resourceManager{resourceManager}
     {
-        setColumnCount(columnCount);
+        BaseType::setColumnCount(columnCount);
 
-        setHorizontalHeaderItem(NameColumn, new QStandardItem {"Name"});
-        setHorizontalHeaderItem(ResourceStatusColumn, new QStandardItem {"Status"});
-        setHorizontalHeaderItem(TimestampColumn, new QStandardItem {"Timestamp"});
-        setHorizontalHeaderItem(PhysicalResourceIdColumn, new QStandardItem {"ID"});
-        setHorizontalHeaderItem(PendingActionColumn, new QStandardItem{ "Pending" });
+        BaseType::setHorizontalHeaderItem(BaseType::NameColumn, new QStandardItem {"Name"});
+        BaseType::setHorizontalHeaderItem(BaseType::ResourceStatusColumn, new QStandardItem {"Status"});
+        BaseType::setHorizontalHeaderItem(BaseType::TimestampColumn, new QStandardItem {"Timestamp"});
+        BaseType::setHorizontalHeaderItem(BaseType::PhysicalResourceIdColumn, new QStandardItem {"ID"});
+        BaseType::setHorizontalHeaderItem(BaseType::PendingActionColumn, new QStandardItem{ "Pending" });
     }
 
     void Refresh(bool force) override
     {
         m_isRefreshing = true;
-        RefreshStatusChanged(m_isRefreshing);
+        BaseType::RefreshStatusChanged(m_isRefreshing);
     }
 
     bool IsRefreshing() const override
@@ -83,13 +83,13 @@ protected:
         auto list = VariantToMapList(variantList);
         Sort(list, "Name");
 
-        beginResetModel();
+        BaseType::beginResetModel();
 
-        removeRows(0, rowCount());
+        BaseType::removeRows(0, BaseType::rowCount());
 
         for (auto it = list.constBegin(); it != list.constEnd(); ++it)
         {
-            appendRow(MakeRow(*it));
+            BaseType::appendRow(MakeRow(*it));
         }
 
         m_lastRefreshTime.start();
@@ -97,15 +97,15 @@ protected:
         m_isRefreshing = false;
         m_isReady = true;
 
-        endResetModel();
+        BaseType::endResetModel();
 
-        RefreshStatusChanged(m_isRefreshing);
+        BaseType::RefreshStatusChanged(m_isRefreshing);
     }
 
     QList<QStandardItem*> MakeRow(const QVariantMap& map)
     {
         QList<QStandardItem*> row;
-        for (int column = 0; column < ColumnCount; ++column)
+        for (int column = 0; column < BaseType::ColumnCount; ++column)
         {
             row.append(new QStandardItem {});
         }
@@ -121,13 +121,13 @@ protected:
         auto pendingAction = map["PendingAction"].toString();
         if (pendingAction.isEmpty())
         {
-            row[PendingActionColumn]->setText("--");
+            row[BaseType::PendingActionColumn]->setText("--");
         }
         else
         {
-            row[PendingActionColumn]->setText(AWSUtil::MakePrettyPendingActionText(pendingAction));
-            row[PendingActionColumn]->setData(AWSUtil::MakePrettyPendingReasonTooltip(map["PendingReason"].toString()), Qt::ToolTipRole);
-            row[PendingActionColumn]->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::TextColorRole);
+            row[BaseType::PendingActionColumn]->setText(AWSUtil::MakePrettyPendingActionText(pendingAction));
+            row[BaseType::PendingActionColumn]->setData(AWSUtil::MakePrettyPendingReasonTooltip(map["PendingReason"].toString()), Qt::ToolTipRole);
+            row[BaseType::PendingActionColumn]->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::TextColorRole);
         }
         
     }

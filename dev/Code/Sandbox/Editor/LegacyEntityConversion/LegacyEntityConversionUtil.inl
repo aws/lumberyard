@@ -19,7 +19,7 @@ namespace AZ
         namespace Util
         {
             // is the object that kind of class?
-            static bool IsClassOf(CBaseObject* check, const char* className)
+            inline bool IsClassOf(CBaseObject* check, const char* className)
             {
                 CObjectClassDesc* classDesc = check->GetClassDesc();
                 if (!classDesc)
@@ -31,7 +31,7 @@ namespace AZ
             }
 
             // map from CryEngine ESystemConfigSpec to LY EngineSpec enum
-            static EngineSpec SpecConversion(ESystemConfigSpec spec)
+            inline EngineSpec SpecConversion(ESystemConfigSpec spec)
             {
                 switch (spec)
                 {
@@ -43,8 +43,8 @@ namespace AZ
                     return EngineSpec::High;
                 case CONFIG_VERYHIGH_SPEC:
                     return EngineSpec::VeryHigh;
-                case CONFIG_AUTO_SPEC:
-                    return EngineSpec::Never;
+                case CONFIG_AUTO_SPEC: //Auto is displayed in the editor as All
+                    return EngineSpec::Low;
                 default:
                     AZ_Error("Legacy Conversion", false, "Unhandled ESystemConfigSpec: %d", spec);
                     return EngineSpec::Never;
@@ -52,7 +52,7 @@ namespace AZ
             }
 
             // recursive debug function to print all properties of a particular VariableContainer (example: CVarBlock)
-            static void DebugPrintVariableContainer(const char* typeName, const IVariableContainer* varContainer)
+            inline void DebugPrintVariableContainer(const char* typeName, const IVariableContainer* varContainer)
             {
                 for (size_t i = 0; i < varContainer->GetNumVariables(); ++i)
                 {
@@ -72,7 +72,7 @@ namespace AZ
             }
 
             // recursive debug print function to visualize InstanceDataHierarchy for a all fields on a component
-            static void DebugPrintInstanceDataHierarchy(AzToolsFramework::InstanceDataHierarchy::InstanceDataNode* node)
+            inline void DebugPrintInstanceDataHierarchy(AzToolsFramework::InstanceDataHierarchy::InstanceDataNode* node)
             {
                 // only want to print info when we know we are at a leaf node in the hierarchy (a field)
                 if (auto editElement = node->GetElementEditMetadata())
@@ -96,34 +96,34 @@ namespace AZ
 
             // convenience/util function for printing all fields on a component
             // note: can use entity->FindComponent(uuid) for param
-            static void DebugPrintInstanceDataHierarchyForComponent(AZ::Component* component)
+            inline void DebugPrintInstanceDataHierarchyForComponent(Component* component)
             {
-                AZ::SerializeContext* serializeContext = NULL;
+                SerializeContext* serializeContext = nullptr;
                 AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
 
                 AzToolsFramework::InstanceDataHierarchy instanceDataHierarchy;
                 instanceDataHierarchy.AddRootInstance(component);
-                instanceDataHierarchy.Build(serializeContext, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+                instanceDataHierarchy.Build(serializeContext, SerializeContext::ENUM_ACCESS_FOR_READ);
 
                 DebugPrintInstanceDataHierarchy(instanceDataHierarchy.GetRoot());
             }
 
-            // used to simply map from Cry to LY type (e.g. int -> AZ::u32)
+            // used to simply map from Cry to LY type (e.g. int -> u32)
             template<typename OldVarType, typename NewVarType>
-            static NewVarType DefaultAdapter(const OldVarType& varType)
+            NewVarType DefaultAdapter(const OldVarType& varType)
             {
                 return static_cast<NewVarType>(varType);
             }
 
             // here we map a QString to a AZStd::string used by a new component
-            static AZStd::string QStringAdapter(const QString& string)
+            inline AZStd::string QStringAdapter(const QString& string)
             {
                 return AZStd::string(string.toUtf8().constData());
             }
 
             // helper to read value from CryEntity using IVariableContainer api (FindVariable) - return success if value is found
             template<typename OldVarType, typename NewVarType>
-            static bool ConvertOldVar(const char* variableName, const IVariableContainer* variableContainer, NewVarType* newVarOut, NewVarType(*variableAdapter)(const OldVarType&) = DefaultAdapter)
+            bool ConvertOldVar(const char* variableName, const IVariableContainer* variableContainer, NewVarType* newVarOut, NewVarType(*variableAdapter)(const OldVarType&) = DefaultAdapter)
             {
                 if (const IVariable* var = variableContainer->FindVariable(variableName, true, false))
                 {
@@ -138,11 +138,10 @@ namespace AZ
                 return false;
             }
 
-            // Specialization for Vec3. In lua it's represented as an array rather than a standard vector type.
-            template<>
-            static bool ConvertOldVar(const char* variableName, const IVariableContainer* variableContainer, AZ::Vector3* newVarOut, AZ::Vector3(*variableAdapter)(const Vec3&))
+            // Reads a vec3 from a variable block. Handles both array (lua) and regular represenations
+            inline bool GetVec3(const char* variableName, const IVariableContainer* variableContainer, Vec3& out)
             {
-                if (auto var = variableContainer->FindVariable(variableName, true, true))
+                if (auto var = variableContainer->FindVariable(variableName, true, false))
                 {
                     // Vec3 in lua is represented as an array
                     if (var->GetType() == IVariable::ARRAY)
@@ -152,47 +151,62 @@ namespace AZ
 
                         if (numVars == 3)
                         {
-                            Vec3 vec3;
-                            var->GetVariable(0)->Get(vec3.x);
-                            var->GetVariable(1)->Get(vec3.y);
-                            var->GetVariable(2)->Get(vec3.z);
-                            *newVarOut = variableAdapter(vec3);
+                            var->GetVariable(0)->Get(out.x);
+                            var->GetVariable(1)->Get(out.y);
+                            var->GetVariable(2)->Get(out.z);
                             return true;
                         }
                     }
                     // Otherwise just fallback to default conversion
                     else
                     {
-                        Vec3 vec3;
-                        var->Get(vec3);
-                        *newVarOut = variableAdapter(vec3);
+                        var->Get(out);
                         return true;
                     }
                 }
                 return false;
             }
 
+            // Specialization for Vec3. In lua it's represented as an array rather than a standard vector type.
+            template<>
+            inline bool ConvertOldVar(const char* variableName, const IVariableContainer* variableContainer, Vector3* newVarOut, Vector3(*variableAdapter)(const Vec3&))
+            {
+                Vec3 out;
+                if (GetVec3(variableName, variableContainer, out))
+                {
+                    *newVarOut = variableAdapter(out);
+                    return true;
+                }
+                
+                return false;
+            }
+
             // specialization of ConvertOldVar to simplify calling when we know the type doesn't change during conversion (e.g. with float/bool)
             template<typename VarType>
-            static bool ConvertOldVar(const char* variableName, const IVariableContainer* variableContainer, VarType* newVarOut, VarType(*variableAdapter)(const VarType&) = DefaultAdapter)
+            bool ConvertOldVar(
+                const char* variableName, const IVariableContainer* variableContainer, 
+                VarType* newVarOut, VarType(*variableAdapter)(const VarType&) = DefaultAdapter)
             {
                 return ConvertOldVar<VarType, VarType>(variableName, variableContainer, newVarOut, variableAdapter);
             }
 
             // helper to write a value to a given field on a component directly (using InstanceDataHierarchy api)
             template<typename VarType>
-            static bool SetVarHierarchy(AZ::Entity* entity, AZ::Uuid componentId, const AzToolsFramework::InstanceDataHierarchy::InstanceDataNode::Address& instanceAddress, const VarType& value)
+            bool SetVarHierarchy(
+                Entity* entity, Uuid componentId, 
+                const AzToolsFramework::InstanceDataHierarchy::InstanceDataNode::Address& instanceAddress, 
+                const VarType& value)
             {
-                AZ::SerializeContext* serializeContext = nullptr;
-                EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+                SerializeContext* serializeContext = nullptr;
+                EBUS_EVENT_RESULT(serializeContext, ComponentApplicationBus, GetSerializeContext);
 
-                AZ::Component* component = entity->FindComponent(componentId);
+                Component* component = entity->FindComponent(componentId);
                 AZ_Assert(component, "Component: %s not found on entity", componentId.ToString<AZStd::string>().c_str());
 
                 // object to serialize at root of hierarchy (component)
                 AzToolsFramework::InstanceDataHierarchy instanceDataHierarchy;
                 instanceDataHierarchy.AddRootInstance(component);
-                instanceDataHierarchy.Build(serializeContext, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+                instanceDataHierarchy.Build(serializeContext, SerializeContext::ENUM_ACCESS_FOR_READ);
 
                 // search for field instance in hierarchy - return success if value was found and written
                 if (AzToolsFramework::InstanceDataHierarchy::InstanceDataNode* instanceNode = instanceDataHierarchy.FindNodeByPartialAddress(instanceAddress))
@@ -211,7 +225,9 @@ namespace AZ
             // @entityId is id of newly created LY entity
             // @variableAdapter is a function pointer to map between Cry and LY types
             template<typename Bus, typename OldVarType, typename NewVarType, typename Func>
-            static bool ConvertVarBus(const char* variableName, const IVariableContainer* variableContainer, Func func, AZ::EntityId entityId, NewVarType(*variableAdapter)(const OldVarType&) = DefaultAdapter)
+            bool ConvertVarBus(
+                const char* variableName, const IVariableContainer* variableContainer, Func func, 
+                EntityId entityId, NewVarType(*variableAdapter)(const OldVarType&) = DefaultAdapter)
             {
                 NewVarType variable;
                 if (ConvertOldVar<OldVarType, NewVarType>(variableName, variableContainer, &variable, variableAdapter))
@@ -226,7 +242,9 @@ namespace AZ
 
             // specialization of ConvertVarBus to simplify calling when we know the type doesn't change during conversion (e.g. with float/bool)
             template<typename EventBus, typename VarType, typename Func>
-            static bool ConvertVarBus(const char* variable, const IVariableContainer* variableContainer, Func func, AZ::EntityId entityId, VarType(*variableAdapter)(const VarType&) = DefaultAdapter)
+            bool ConvertVarBus(
+                const char* variable, const IVariableContainer* variableContainer, Func func, 
+                EntityId entityId, VarType(*variableAdapter)(const VarType&) = DefaultAdapter)
             {
                 return ConvertVarBus<EventBus, VarType, VarType, Func>(variable, variableContainer, func, entityId, variableAdapter);
             }
@@ -241,7 +259,8 @@ namespace AZ
             // @variableContainer is Cry structre holding variable to convert
             // @variableAdapter is a function pointer to map between Cry and LY types
             template<typename OldVarType, typename NewVarType>
-            static bool ConvertVarHierarchy(AZ::Entity* entity, AZ::Uuid componentId, const AzToolsFramework::InstanceDataHierarchy::InstanceDataNode::Address& instanceAddress,
+            bool ConvertVarHierarchy(
+                Entity* entity, Uuid componentId, const AzToolsFramework::InstanceDataHierarchy::InstanceDataNode::Address& instanceAddress,
                 const char* oldVariableName, const IVariableContainer* variableContainer, NewVarType(*variableAdapter)(const OldVarType&) = DefaultAdapter)
             {
                 NewVarType variable;
@@ -255,16 +274,18 @@ namespace AZ
 
             // specialization of ConvertVarHierarchy to simplify calling when we know the type doesn't change during conversion (e.g. with float/bool)
             template<typename VarType>
-            static bool ConvertVarHierarchy(AZ::Entity* entity, AZ::Uuid componentId, const AzToolsFramework::InstanceDataHierarchy::InstanceDataNode::Address& instanceAddress,
+            bool ConvertVarHierarchy(
+                Entity* entity, Uuid componentId, const AzToolsFramework::InstanceDataHierarchy::InstanceDataNode::Address& instanceAddress,
                 const char* oldVariableName, const IVariableContainer* variableContainer, VarType(*variableAdapter)(const VarType&) = DefaultAdapter)
             {
                 return ConvertVarHierarchy<VarType, VarType>(entity, componentId, instanceAddress, oldVariableName, variableContainer, variableAdapter);
             }
 
-            // util to create converted entity - return AZ::Outcome, if success, EntityId will be set, otherwise return LegacyConversionResult as error
-            static AZ::Outcome<AZ::EntityId, LegacyConversionResult> CreateEntityForConversion(CBaseObject* entityToConvert, const AZ::ComponentTypeList& componentsToAdd)
+            // util to create converted entity - return Outcome, if success, EntityId will be set, otherwise return LegacyConversionResult as error
+            inline Outcome<EntityId, LegacyConversionResult> CreateEntityForConversion(
+                CBaseObject* entityToConvert, const ComponentTypeList& componentsToAdd)
             {
-                AZ::Outcome<AZ::Entity*, CreateEntityResult> entityResult(nullptr);
+                Outcome<Entity*, CreateEntityResult> entityResult(nullptr);
                 LegacyConversionRequestBus::BroadcastResult(entityResult, &LegacyConversionRequests::CreateConvertedEntity, entityToConvert, true, componentsToAdd);
 
                 // if we have a parent, and the parent is not yet converted, we ignore this entity!
@@ -275,22 +296,22 @@ namespace AZ
                 {
                     // if we failed due to no parent, we keep processing
                     return entityResult.GetError() == CreateEntityResult::FailedNoParent
-                        ? AZ::Failure(LegacyConversionResult::Ignored)
-                        : AZ::Failure(LegacyConversionResult::Failed);
+                        ? Failure(LegacyConversionResult::Ignored)
+                        : Failure(LegacyConversionResult::Failed);
                 }
 
-                if (AZ::Entity* newEntity = entityResult.GetValue())
+                if (Entity* newEntity = entityResult.GetValue())
                 {
-                    return AZ::Success(newEntity->GetId());
+                    return Success(newEntity->GetId());
                 }
-                else
-                {
-                    AZ_Error("Legacy Conversion", false, "Failed to create a new entity during legacy conversion.");
-                    return AZ::Failure(LegacyConversionResult::Failed);
-                }
+                
+                AZ_Error("Legacy Conversion", false, "Failed to create a new entity during legacy conversion.");
+                return Failure(LegacyConversionResult::Failed);
             }
 
-            static bool FindVector3(const CVarBlock* varBlock, const char* nameX, const char* nameY, const char* nameZ, bool bRecursive, bool bHumanName, AZ::Vector3& outVec3)
+            inline bool FindVector3(
+                const CVarBlock* varBlock, const char* nameX, const char* nameY, const char* nameZ, 
+                bool bRecursive, bool bHumanName, Vector3& outVec3)
             {
                 const IVariable* varX = varBlock->FindVariable(nameX, bRecursive, bHumanName);
                 const IVariable* varY = varBlock->FindVariable(nameY, bRecursive, bHumanName);
@@ -306,8 +327,24 @@ namespace AZ
                 varY->Get(y);
                 varZ->Get(z);
 
-                outVec3 = AZ::Vector3(x, y, z);
+                outVec3 = Vector3(x, y, z);
+                
                 return true;
+            }
+
+            inline AZ::Color LegacyColorConverter(const Vec3& vec)
+            {
+                QColor col = ColorLinearToGamma(ColorF(
+                    vec[0],
+                    vec[1],
+                    vec[2]));
+
+                AZ::Color color;
+                color.SetR8(col.red());
+                color.SetG8(col.green());
+                color.SetB8(col.blue());
+                color.SetA8(col.alpha());
+                return color;
             }
         } //namespace Util
     } //namespace LegacyEntityConversion

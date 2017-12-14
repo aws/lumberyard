@@ -158,6 +158,14 @@ namespace AzToolsFramework
             }
         }
 
+        void GenericComponentWrapper::SetPrimaryAsset(const AZ::Data::AssetId& assetId)
+        {
+            if (m_templateEvents)
+            {
+                m_templateEvents->EditorSetPrimaryAsset(assetId);
+            }
+        }
+
         AZ::Component* GenericComponentWrapper::ReleaseTemplate()
         {
             AZ::Component* component = m_template;

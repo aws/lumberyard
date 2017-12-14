@@ -1701,7 +1701,7 @@ namespace EMStudio
 
         // target parameter group
         const AZStd::string parameterGroupName = action->text().toUtf8().data();
-        EMotionFX::AnimGraphParameterGroup* parameterGroup = animGraph->FindParameterGroupByName(parameterGroupName.c_str());
+        EMotionFX::AnimGraphParameterGroup* targetParameterGroup = animGraph->FindParameterGroupByName(parameterGroupName.c_str());
 
         // iterate through the selected parameters and
         for (uint32 i = 0; i < numSelectedParameters; ++i)
@@ -1716,16 +1716,24 @@ namespace EMStudio
             // get the parameter group name from the action and search the parameter group
             MCore::AttributeSettings* attributeSettings = animGraph->GetParameter(parameterIndex);
 
-            if (parameterGroup)
+            if (targetParameterGroup)
             {
-                commandString = AZStd::string::format("AnimGraphAdjustParameterGroup -animGraphID %d -name \"%s\" -parameterNames \"%s\" -action \"add\"", animGraph->GetID(), parameterGroup->GetName(), attributeSettings->GetName());
+                commandString = AZStd::string::format("AnimGraphAdjustParameterGroup -animGraphID %d -name \"%s\" -parameterNames \"%s\" -action \"add\"", animGraph->GetID(), targetParameterGroup->GetName(), attributeSettings->GetName());
             }
             else
             {
-                commandString = AZStd::string::format("AnimGraphAdjustParameterGroup -animGraphID %d -parameterNames \"%s\" -action \"clear\"", animGraph->GetID(), attributeSettings->GetName());
+                // Only remove the parameter from a group if it isn't in the default group already. (Default group: Not assigned to any group)
+                EMotionFX::AnimGraphParameterGroup* currentParameterGroup = animGraph->FindParameterGroupForParameter(parameterIndex);
+                if (currentParameterGroup)
+                {
+                    commandString = AZStd::string::format("AnimGraphAdjustParameterGroup -animGraphID %d -parameterNames \"%s\" -action \"clear\"", animGraph->GetID(), attributeSettings->GetName());
+                }
             }
 
-            commandGroup.AddCommandString(commandString);
+            if (!commandString.empty())
+            {
+                commandGroup.AddCommandString(commandString);
+            }
         }
 
         // Execute the command group.

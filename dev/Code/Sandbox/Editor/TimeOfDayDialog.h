@@ -60,7 +60,6 @@ protected:
     void OnSplineChange(const QWidget* source);
     void OnPlayAnimFrom0();
     void OnChangeTimeAnimSpeed(double speed);
-    void OnToggleBasicAdvancedProperties();
 
     void OnImport();
     void OnExport();
@@ -98,7 +97,6 @@ protected:
     void HdrPropertySelected(IVariable* v);
     void StartTimeChanged(const QTime& time);
     void EndTimeChanged(const QTime& time);
-    void ToggleAdvancedProperties();
 
     //////////////////////////////////////////////////////////////////////////
     // IEditorNotifyListener
@@ -124,10 +122,7 @@ private:
 
     TimelineWidget* m_timelineCtrl;
 
-    bool m_bShowOnlyBasicProperties;
-
-    // used to show only the basic properties in the property grid
-    std::set<QString> m_basicPropertyDisplayNames;
+    float m_maxTime;
 };
 
 class CHDRPane

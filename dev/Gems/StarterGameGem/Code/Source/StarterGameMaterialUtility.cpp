@@ -10,26 +10,36 @@
 *
 */
 
-
 #include "StdAfx.h"
 #include "StarterGameMaterialUtility.h"
-#include "CryAction.h"
 
+#include "StarterGameEntityUtility.h"
 #include "StarterGameUtility.h"
+
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
 
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
+
 
 namespace StarterGameGem
 {
     _smart_ptr<IMaterial> StarterGameMaterialUtility::GetMaterial(AZ::EntityId entityId)
     {
         _smart_ptr<IMaterial> mat = nullptr;
-        LmbrCentral::MaterialOwnerRequestBus::EventResult(mat, entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::GetMaterial);
+		bool isReady = false;
+		LmbrCentral::MaterialOwnerRequestBus::EventResult(isReady, entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::IsMaterialOwnerReady);
+		if (isReady)
+		{
+			LmbrCentral::MaterialOwnerRequestBus::EventResult(mat, entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::GetMaterial);
+		}
         return mat;
     }
+
+	_smart_ptr<IMaterial> StarterGameMaterialUtility::GetSubMaterial(_smart_ptr<IMaterial> parentMaterial, int subMtlIndex)
+	{
+		return subMtlIndex > 0 ? parentMaterial->GetSubMtl(subMtlIndex) : parentMaterial;
+	}
 
     //===========================================================================================
     //
@@ -63,7 +73,7 @@ namespace StarterGameGem
             DynArray<SShaderParam> params = shaderItem.m_pShaderResources->GetParameters();
             if (params.size() == 0)
             {
-                AZ_Warning("StarterGame", false, "%s found no shader parameters on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+                AZ_Warning("StarterGame", false, "%s found no shader parameters on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             }
 
             set = SShaderParam::SetParam(paramName.c_str(), &params, var);
@@ -77,7 +87,7 @@ namespace StarterGameGem
         }
         else
         {
-            AZ_Warning("StarterGame", false, "%s found an invalid shader item on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s found an invalid shader item on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
         }
 
         return set;
@@ -264,7 +274,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return set;
         }
 
@@ -280,16 +290,16 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return set;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
             return set;
         }
 
-        mat = mat->GetSubMtl(subMtlIndex);
+        mat = GetSubMaterial(mat, subMtlIndex);
 
         set = SetShaderMatFloat(entityId, mat, paramName, var);
 
@@ -304,7 +314,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return var;
         }
 
@@ -321,16 +331,16 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return var;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
             return var;
         }
 
-        mat = mat->GetSubMtl(subMtlIndex);
+		mat = GetSubMaterial(mat, subMtlIndex);
 
         got = GetShaderMatFloat(entityId, mat, paramName, var);
 
@@ -345,7 +355,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return set;
         }
 
@@ -361,16 +371,16 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return set;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
             return set;
         }
 
-        mat = mat->GetSubMtl(subMtlIndex);
+		mat = GetSubMaterial(mat, subMtlIndex);
 
         set = SetShaderMatVec3(entityId, mat, paramName, var);
 
@@ -385,7 +395,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return var;
         }
         
@@ -402,16 +412,16 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
             return var;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
             return var;
         }
 
-        mat = mat->GetSubMtl(subMtlIndex);
+		mat = GetSubMaterial(mat, subMtlIndex);
 
         got = GetShaderMatVec3(entityId, mat, paramName, var);
 
@@ -428,18 +438,16 @@ namespace StarterGameGem
     {
         bool isReady = false;
         LmbrCentral::MaterialOwnerRequestBus::EventResult(isReady, entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::IsMaterialOwnerReady);
-        if (!isReady)
+        if (isReady)
         {
-            return false;
-        }
-        
-        _smart_ptr<IMaterial> mat = nullptr;
-        LmbrCentral::MaterialOwnerRequestBus::EventResult(mat, entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::GetMaterial);
-        if (mat)
-        {
-            _smart_ptr<IMaterial> clonedMaterial = gEnv->p3DEngine->GetMaterialManager()->CloneMaterial(mat);
-            LmbrCentral::MaterialOwnerRequestBus::Event(entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, clonedMaterial);
-            return true;
+            _smart_ptr<IMaterial> mat = nullptr;
+            LmbrCentral::MaterialOwnerRequestBus::EventResult(mat, entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::GetMaterial);
+            if (mat)
+            {
+                _smart_ptr<IMaterial> clonedMaterial = gEnv->p3DEngine->GetMaterialManager()->CloneMaterial(mat);
+                LmbrCentral::MaterialOwnerRequestBus::Event(entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, clonedMaterial);
+                return true;
+            }
         }
         return false;
     }
@@ -447,7 +455,28 @@ namespace StarterGameGem
     void StarterGameMaterialUtility::RestoreOriginalMaterial(AZ::EntityId entityId)
     {
         // setting material to null restores original material on the mesh
-        LmbrCentral::MaterialOwnerRequestBus::Event(entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, nullptr);
+		bool isReady = false;
+		LmbrCentral::MaterialOwnerRequestBus::EventResult(isReady, entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::IsMaterialOwnerReady);
+		if (isReady)
+		{
+			LmbrCentral::MaterialOwnerRequestBus::Event(entityId, &LmbrCentral::MaterialOwnerRequestBus::Events::SetMaterial, nullptr);
+		}
+    }
+
+    int StarterGameMaterialUtility::GetSurfaceIndexFromName(const AZStd::string surfaceName)
+    {
+        return gEnv->p3DEngine->GetMaterialManager()->GetSurfaceTypeIdByName(surfaceName.c_str());
+    }
+
+    AZStd::string StarterGameMaterialUtility::GetSurfaceNameFromIndex(int surfaceId)
+    {
+        ISurfaceType* surfaceType = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceType(surfaceId);
+        if (surfaceType == nullptr)
+        {
+            return "unknown";
+        }
+
+        return surfaceType->GetName();
     }
 
     void StarterGameMaterialUtility::Reflect(AZ::ReflectContext* reflection)
@@ -466,7 +495,10 @@ namespace StarterGameGem
                 ->Method("GetSubMtlShaderVec3", &GetSubMtlShaderVec3)
                 ->Method("ReplaceMaterialWithClone", &ReplaceMaterialWithClone)
                 ->Method("RestoreOriginalMaterial", &RestoreOriginalMaterial)
-                ;
+
+                ->Method("GetSurfaceIndexFromName", &GetSurfaceIndexFromName)
+                ->Method("GetSurfaceNameFromIndex", &GetSurfaceNameFromIndex)
+            ;
         }
     }
 

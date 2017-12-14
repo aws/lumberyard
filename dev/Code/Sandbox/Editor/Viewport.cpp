@@ -38,70 +38,131 @@
 #include "QtUtilWin.h"
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzQtComponents/DragAndDrop/ViewportDragAndDrop.h>
 
 #ifdef LoadCursor
 #undef LoadCursor
 #endif
 
 //////////////////////////////////////////////////////////////////////
-// Viewport drag and drop support (CONFETTI START: Leroy Sikkes)
+// Viewport drag and drop support
 //////////////////////////////////////////////////////////////////////
 
-class ViewportDropTarget
-    : public DropTarget
+void QtViewport::BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QDropEvent* dropEvent)
 {
-public:
-    ViewportDropTarget(CViewport* base)
-        : DropTarget(qobject_cast<QWidget*>(base->qobject()))
+    context.m_hitLocation = AZ::Vector3::CreateZero();
+
+    if (!dropEvent)
     {
-        m_base = base;
+        return;
     }
 
-    virtual Qt::DropAction OnDragEnter(QWidget* pWnd, const QMimeData* pDataObject, Qt::KeyboardModifiers dwKeyState, const QPoint& point) override
+    PreWidgetRendering(); // required so that the current render cam is set.
+
+    Vec3 pos = Vec3(ZERO);
+    HitContext hit;
+    if (HitTest(dropEvent->pos(), hit))
     {
-        if (GetIEditor()->GetGameEngine()->IsLevelLoaded() && m_base->m_dropCallback)
+        pos = hit.raySrc + hit.rayDir * hit.dist;
+        pos = SnapToGrid(pos);
+    }
+    else
+    {
+        bool hitTerrain;
+        pos = ViewToWorld(dropEvent->pos(), &hitTerrain);
+        if (hitTerrain)
         {
-            return Qt::CopyAction;
+            pos.z = GetIEditor()->GetTerrainElevation(pos.x, pos.y);
         }
-        else
-        {
-            return Qt::IgnoreAction;
-        }
+        pos = SnapToGrid(pos);
+    }
+    context.m_hitLocation = AZ::Vector3(pos.x, pos.y, pos.z);
+
+    PostWidgetRendering();
+}
+
+
+void QtViewport::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (!GetIEditor()->GetGameEngine()->IsLevelLoaded())
+    {
+        return;
     }
 
-    virtual Qt::DropAction OnDragOver(QWidget* pWnd, const QMimeData* pDataObject, Qt::KeyboardModifiers dwKeyState, const QPoint& point) override
+    // first use the legacy pathway, which assumes its always okay as long as any callback is installed
+    if (m_dropCallback)
     {
-        if (GetIEditor()->GetGameEngine()->IsLevelLoaded() && m_base->m_dropCallback)
-        {
-            return Qt::CopyAction;
-        }
-        else
-        {
-            return Qt::IgnoreAction;
-        }
+        event->setDropAction(Qt::CopyAction);
+        event->setAccepted(true);
+    }
+    else
+    {
+        // new bus-based way of doing it (install a listener!)
+        using namespace AzQtComponents;
+        ViewportDragContext context;
+        BuildDragDropContext(context, event);
+        DragAndDropEventsBus::Event(DragAndDropContexts::EditorViewport, &DragAndDropEvents::DragEnter, event, context);
+    }
+}
+
+void QtViewport::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (!GetIEditor()->GetGameEngine()->IsLevelLoaded())
+    {
+        return;
     }
 
-    virtual bool OnDrop(QWidget* pWnd, const QMimeData* pDataObject, Qt::DropAction dropEffect, const QPoint& point) override
+    // first use the legacy pathway, which assumes its always okay as long as any callback is installed
+    if (m_dropCallback)
     {
-        if (GetIEditor()->GetGameEngine()->IsLevelLoaded() && m_base->m_dropCallback)
-        {
-            //This should probably be moved into the appropriate drop callback instead of being here!
+        event->setDropAction(Qt::CopyAction);
+        event->setAccepted(true);
+    }
+    else
+    {
+        // new bus-based way of doing it (install a listener!)
+        using namespace AzQtComponents;
+        ViewportDragContext context;
+        BuildDragDropContext(context, event);
+        DragAndDropEventsBus::Event(DragAndDropContexts::EditorViewport, &DragAndDropEvents::DragMove, event, context);
+    }
+}
 
-            // Navigation triggered - Drag+Drop from Component Palette/Asset Browser to View port to create a new entity with the component
-            AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::DragAndDrop);
-
-            m_base->m_dropCallback(m_base, point.x(), point.y(), m_base->m_dropCallbackCustom);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+void QtViewport::dropEvent(QDropEvent* event)
+{
+    using namespace AzQtComponents;
+    if (!GetIEditor()->GetGameEngine()->IsLevelLoaded())
+    {
+        return;
     }
 
-protected:
-    CViewport* m_base;
-};
+    // first use the legacy pathway, which assumes its always okay as long as any callback is installed
+    if (m_dropCallback)
+    {
+        m_dropCallback(this, event->pos().x(), event->pos().y(), m_dropCallbackCustom);
+        event->setAccepted(true);
+    }
+    else
+    {
+        // new bus-based way of doing it (install a listener!)
+        ViewportDragContext context;
+        BuildDragDropContext(context, event);
+        DragAndDropEventsBus::Event(DragAndDropContexts::EditorViewport, &DragAndDropEvents::Drop, event, context);
+    }
+
+    if (event->isAccepted())
+    {
+        // Navigation triggered - Drag+Drop from Component Palette/Asset Browser to View port to create a new entity with the component
+        AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::DragAndDrop);
+    }
+}
+
+void QtViewport::dragLeaveEvent(QDragLeaveEvent* event)
+{
+    using namespace AzQtComponents;
+    DragAndDropEventsBus::Event(DragAndDropContexts::EditorViewport, &DragAndDropEvents::DragLeave, event);
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 float CViewport::GetFOV() const
@@ -171,7 +232,6 @@ QtViewport::QtViewport(QWidget* parent)
     setFocusPolicy(Qt::StrongFocus);
 
     // Create drop target to handle Qt drop events.
-    m_pViewportDropTarget = new ViewportDropTarget(this);
     setAcceptDrops(true);
 
     m_renderOverlay.setVisible(false);
@@ -189,11 +249,6 @@ QtViewport::~QtViewport()
     delete m_pVisibleObjectsCache;
 
     GetIEditor()->GetViewManager()->UnregisterViewport(this);
-
-    // (CONFETTI START : Leroy Sikkes)
-    // Cleanup drop target.
-    delete m_pViewportDropTarget;
-    // (CONFETTI END)
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -457,7 +512,7 @@ Vec3 QtViewport::WorldToView3D(const Vec3& wp, int nFlags) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3    QtViewport::ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh) const
+Vec3    QtViewport::ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh, bool* collideWithObject) const
 {
     Vec3 wp;
     wp.x = vp.x();
@@ -543,7 +598,11 @@ void QtViewport::mouseMoveEvent(QMouseEvent* event)
 
 void QtViewport::wheelEvent(QWheelEvent* event)
 {
-    OnMouseWheel(event->modifiers(), event->delta(), event->pos());
+    // ignore uncommon mice with horizontal scrollwheels for now
+    if (event->orientation() == Qt::Vertical)
+    {
+        OnMouseWheel(event->modifiers(), event->delta(), event->pos());
+    }
 }
 
 void QtViewport::keyPressEvent(QKeyEvent* event)
@@ -631,13 +690,13 @@ void QtViewport::ResetSelectionRegion()
     m_selectedRect = QRect();
 }
 
-void QtViewport::SetSelectionRectangle(const QRect &rect)
+void QtViewport::SetSelectionRectangle(const QRect& rect)
 {
     m_selectedRect = rect.normalized();
 }
 
 //////////////////////////////////////////////////////////////////////////
-void QtViewport::OnDragSelectRectangle(const QRect &rect, bool bNormalizeRect)
+void QtViewport::OnDragSelectRectangle(const QRect& rect, bool bNormalizeRect)
 {
     Vec3 org;
     AABB box;
@@ -1345,7 +1404,7 @@ void QtViewport::ProcessRenderLisneters(DisplayContext& rstDisplayContext)
     }
 }
 //////////////////////////////////////////////////////////////////////////
-#ifdef KDAB_MAC_PORT
+#if defined(AZ_PLATFORM_WINDOWS)
 void QtViewport::OnRawInput(UINT wParam, HRAWINPUT lParam)
 {
     static C3DConnexionDriver* p3DConnexionDriver = 0;
@@ -1403,7 +1462,7 @@ void QtViewport::OnRawInput(UINT wParam, HRAWINPUT lParam)
         }
     }
 }
-#endif // KDAB_MAC_PORT
+#endif
 //////////////////////////////////////////////////////////////////////////
 float QtViewport::GetFOV() const
 {

@@ -125,18 +125,18 @@ void CommunicationHandler::Reset()
         IComponentAudioPtr pIComponentAudio = pEntity->GetOrCreateComponent<IComponentAudio>();
         if (pIComponentAudio)
         {
-            const ICommunicationManager::WWiseConfiguration& wiseConfigutation = gEnv->pAISystem->GetCommunicationManager()->GetWiseConfiguration();
+            const ICommunicationManager::AudioConfiguration& audioConfigutation = gEnv->pAISystem->GetCommunicationManager()->GetAudioConfiguration();
 
-            if (!wiseConfigutation.switchNameForCharacterVoice.empty())
+            if (!audioConfigutation.switchNameForCharacterVoice.empty())
             {
                 const char* voiceLibraryName = m_proxy.GetVoiceLibraryName(useTestVoicePack);
                 if (voiceLibraryName && voiceLibraryName[0])
                 {
-                    ATLUtils::SetSwitchState(wiseConfigutation.switchNameForCharacterVoice.c_str(), voiceLibraryName, pIComponentAudio);
+                    ATLUtils::SetSwitchState(audioConfigutation.switchNameForCharacterVoice.c_str(), voiceLibraryName, pIComponentAudio);
                 }
             }
 
-            if (!wiseConfigutation.switchNameForCharacterType.empty())
+            if (!audioConfigutation.switchNameForCharacterType.empty())
             {
                 if (IAIObject* pAIObject = pEntity->GetAI())
                 {
@@ -146,7 +146,7 @@ void CommunicationHandler::Reset()
                         characterType.Format("%f", pAIProxy->GetFmodCharacterTypeParam());
                         if (!characterType.empty())
                         {
-                            ATLUtils::SetSwitchState(wiseConfigutation.switchNameForCharacterType.c_str(), characterType.c_str(), pIComponentAudio);
+                            ATLUtils::SetSwitchState(audioConfigutation.switchNameForCharacterType.c_str(), characterType.c_str(), pIComponentAudio);
                         }
                     }
                 }
@@ -329,14 +329,14 @@ SCommunicationSound CommunicationHandler::PlaySound(CommPlayID playID, const cha
         IComponentAudioPtr pIComponentAudio = pEntity->GetOrCreateComponent<IComponentAudio>();
         if (pIComponentAudio)
         {
-            const ICommunicationManager::WWiseConfiguration& wiseConfigutation = gEnv->pAISystem->GetCommunicationManager()->GetWiseConfiguration();
+            const ICommunicationManager::AudioConfiguration& audioConfigutation = gEnv->pAISystem->GetCommunicationManager()->GetAudioConfiguration();
 
             Audio::TAudioControlID playCommunicationControlId(INVALID_AUDIO_CONTROL_ID);
             Audio::TAudioControlID stopCommunicationControlId(INVALID_AUDIO_CONTROL_ID);
             stack_string playTriggerName;
-            playTriggerName.Format("%s%s", wiseConfigutation.prefixForPlayTrigger.c_str(), name);
+            playTriggerName.Format("%s%s", audioConfigutation.prefixForPlayTrigger.c_str(), name);
             stack_string stopTriggerName;
-            stopTriggerName.Format("%s%s", wiseConfigutation.prefixForStopTrigger.c_str(), name);
+            stopTriggerName.Format("%s%s", audioConfigutation.prefixForStopTrigger.c_str(), name);
 
             Audio::AudioSystemRequestBus::BroadcastResult(playCommunicationControlId, &Audio::AudioSystemRequestBus::Events::GetAudioTriggerID, playTriggerName);
             Audio::AudioSystemRequestBus::BroadcastResult(stopCommunicationControlId, &Audio::AudioSystemRequestBus::Events::GetAudioTriggerID, stopTriggerName);

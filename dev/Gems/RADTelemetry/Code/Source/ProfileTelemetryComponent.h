@@ -81,8 +81,9 @@ namespace RADTelemetry
         using LockType = AZStd::mutex;
         using ScopedLock = AZStd::lock_guard<LockType>;
         LockType m_threadNameLock;
+        AZStd::atomic_uint m_profiledThreadCount = 0;
 
-        const char* m_address = "localhost";
+        const char* m_address = "127.0.0.1";
         char* m_buffer = nullptr;
         AZ::u32 m_captureMask = 0;
         AZ::u16 m_port = 4719;

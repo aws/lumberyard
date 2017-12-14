@@ -1,0 +1,272 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#include "StdAfx.h"
+
+#include <QtWidgets/QDialog>
+#include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QTreeWidget>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QHeaderView>
+#include <QtWidgets/QSplitter>
+
+#include "SliceRelationshipWidget.hxx"
+
+#include <AzFramework/Entity/EntityContextBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+
+namespace AzToolsFramework
+{
+    void SliceRelationshipWidget::closeEvent(QCloseEvent* event)
+    {
+        QWidget::closeEvent(event);
+    }
+
+    //=========================================================================
+    // SlicePushWidget
+    //=========================================================================
+    SliceRelationshipWidget::SliceRelationshipWidget(QWidget* parent)
+        : QWidget(parent)
+    {
+        QVBoxLayout* layout = new QVBoxLayout();
+
+        // Window layout:
+        // ===============================================
+        // ||-------------------------------------------||
+        // ||                     |                     ||
+        // ||                     |                     ||
+        // ||                     |                     ||
+        // ||                (splitter)                 ||
+        // ||                     |                     ||
+        // ||  (Dependents tree)  | (Dependencies tree) ||
+        // ||                     |                     ||
+        // ||                     |                     ||
+        // ||                     |                     ||
+        // ||-------------------------------------------||
+        // ||                              (button box) ||
+        // ===============================================
+
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        m_sliceDependencyTree = new QTreeWidget();
+        m_sliceDependencyTree->setColumnCount(1);
+        m_sliceDependencyTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        m_sliceDependencyTree->setDragDropMode(QAbstractItemView::DragDropMode::NoDragDrop);
+        m_sliceDependencyTree->setDragEnabled(false);
+        m_sliceDependencyTree->header()->setStretchLastSection(false);
+        m_sliceDependencyTree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        m_sliceDependencyTree->setSelectionMode(QAbstractItemView::SelectionMode::NoSelection);
+        m_sliceDependencyTree->setFocusPolicy(Qt::FocusPolicy::NoFocus);
+        m_sliceDependencyTree->setColumnCount(1);
+        m_sliceDependencyTree->setHeaderLabel(tr("Dependencies"));
+
+        m_sliceDependentsTree = new QTreeWidget();
+        m_sliceDependentsTree->setColumnCount(1);
+        m_sliceDependentsTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        m_sliceDependentsTree->setDragDropMode(QAbstractItemView::DragDropMode::NoDragDrop);
+        m_sliceDependentsTree->setDragEnabled(false);
+        m_sliceDependentsTree->header()->setStretchLastSection(false);
+        m_sliceDependentsTree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        m_sliceDependentsTree->setSelectionMode(QAbstractItemView::SelectionMode::NoSelection);
+        m_sliceDependentsTree->setFocusPolicy(Qt::FocusPolicy::NoFocus);
+        m_sliceDependentsTree->setColumnCount(1);
+        m_sliceDependentsTree->setHeaderLabel(tr("Dependents"));
+
+        // Main splitter contains left & right widgets (the two trees).
+        QSplitter* splitter = new QSplitter();
+
+        QWidget* leftWidget = new QWidget();
+        QVBoxLayout* leftLayout = new QVBoxLayout();
+        leftLayout->addWidget(m_sliceDependencyTree);
+        leftWidget->setLayout(leftLayout);
+
+        QWidget* rightWidget = new QWidget();
+        QVBoxLayout* rightLayout = new QVBoxLayout();
+        rightLayout->addWidget(m_sliceDependentsTree);
+        rightWidget->setLayout(rightLayout);
+
+        splitter->addWidget(leftWidget);
+        splitter->addWidget(rightWidget);
+        
+        QList<int> sizes;
+        const int totalWidth = size().width();
+        const int firstColumnSize = totalWidth / 2;
+        sizes << firstColumnSize << (totalWidth - firstColumnSize);
+        splitter->setSizes(sizes);
+        splitter->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+
+        QHBoxLayout* bottomLegendAndButtonsLayout = new QHBoxLayout();
+
+        // Create/populate button box.
+        {
+            QDialogButtonBox* buttonBox = new QDialogButtonBox(this);
+            QPushButton* browseButton = new QPushButton(tr("Browse..."));
+            browseButton->setToolTip(tr("Browse for a slice whose relationships you want to see"));
+            browseButton->setDefault(false);
+            browseButton->setAutoDefault(false);
+            buttonBox->addButton(browseButton, QDialogButtonBox::ActionRole);
+            connect(browseButton, &QPushButton::clicked, this, &SliceRelationshipWidget::OnBrowseClicked);
+
+            QPushButton* currentlySelectedEntity = new QPushButton(tr("Current Entity"));
+            currentlySelectedEntity->setToolTip(tr("Inspect slice relationships for the currently selected entity"));
+            currentlySelectedEntity->setDefault(false);
+            currentlySelectedEntity->setAutoDefault(false);
+            buttonBox->addButton(currentlySelectedEntity, QDialogButtonBox::ActionRole);
+            connect(currentlySelectedEntity, &QPushButton::clicked, this, &SliceRelationshipWidget::OnInspectSelectedEntity);
+
+            bottomLegendAndButtonsLayout->addWidget(buttonBox, 1);
+        }
+
+        m_bottomLayout = new QVBoxLayout();
+        m_bottomLayout->setAlignment(Qt::AlignBottom);
+        m_bottomLayout->addLayout(bottomLegendAndButtonsLayout);
+
+        // Add everything to main layout.
+        layout->addWidget(splitter, 1);
+        layout->addLayout(m_bottomLayout, 0);
+
+        setLayout(layout);
+
+        connect(m_sliceDependentsTree, &QTreeWidget::itemDoubleClicked, this, &SliceRelationshipWidget::OnSliceAssetDrilledDown);
+        connect(m_sliceDependencyTree, &QTreeWidget::itemDoubleClicked, this, &SliceRelationshipWidget::OnSliceAssetDrilledDown);
+
+        SliceDependencyBrowserNotificationsBus::Handler::BusConnect();
+    }
+
+    SliceRelationshipWidget::~SliceRelationshipWidget()
+    {
+        SliceDependencyBrowserNotificationsBus::Handler::BusDisconnect();
+    }
+
+    void SliceRelationshipWidget::OnSliceRelationshipModelUpdated(const AZStd::shared_ptr<SliceRelationshipNode>& focusNode)
+    {
+        GenerateTreesForNode(focusNode);
+    }
+
+    QTreeWidgetItem* AddRootItem(QTreeWidget* widget, const QString& name)
+    {
+        QTreeWidgetItem* item = new QTreeWidgetItem(widget);
+        item->setText(0, name);
+        item->setExpanded(true);
+
+        widget->addTopLevelItem(item);
+        return item;
+    }
+
+
+    QTreeWidgetItem* AddChildItem(QTreeWidgetItem* parent, const QString& name)
+    {
+        QTreeWidgetItem* item = new QTreeWidgetItem(parent);
+        item->setText(0, name);
+
+        parent->addChild(item);
+        return item;
+    }
+
+    void SliceRelationshipWidget::GenerateDependentsTree(const AZStd::shared_ptr<SliceRelationshipNode>& node, QTreeWidgetItem* parentItem)
+    {
+        const SliceRelationshipNode::SliceRelationshipNodeSet& dependentNodes = node->GetDependents();
+        for (const auto& dependentNode : dependentNodes)
+        {
+            QTreeWidgetItem* childItem = AddChildItem(parentItem, QString((dependentNode->GetSliceRelativePath()).c_str()));
+            GenerateDependentsTree(dependentNode, childItem);
+        }
+    }
+
+    void SliceRelationshipWidget::GenerateDependenciesTree(const AZStd::shared_ptr<SliceRelationshipNode>& node, QTreeWidgetItem* parentItem)
+    {
+        const SliceRelationshipNode::SliceRelationshipNodeSet& dependencyNodes = node->GetDependencies();
+        for (const auto& dependencyNode : dependencyNodes)
+        {
+            QTreeWidgetItem* childItem = AddChildItem(parentItem, QString((dependencyNode->GetSliceRelativePath()).c_str()));
+            GenerateDependenciesTree(dependencyNode, childItem);
+        }
+    }
+
+    void SliceRelationshipWidget::OnBrowseClicked()
+    {
+        AzToolsFramework::AssetBrowser::AssetSelectionModel selection = AzToolsFramework::AssetBrowser::AssetSelectionModel::AssetTypeSelection("Slice");
+        AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
+
+        if (selection.IsValid())
+        {
+            auto product = azrtti_cast<const ProductAssetBrowserEntry*>(selection.GetResult());
+            AZ_Assert(product, "Incorrect asset type selected. Expected product.");
+            ResetTrees(product->GetAssetId());
+        }
+    }
+
+    void SliceRelationshipWidget::OnInspectSelectedEntity()
+    {
+        AzToolsFramework::EntityIdList selectedEntities;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(selectedEntities, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+        if(!selectedEntities.empty())
+        {
+            ResetTrees(selectedEntities.front());
+        }
+    }
+
+    void SliceRelationshipWidget::OnSliceAssetDrilledDown(QTreeWidgetItem* item, int column)
+    {
+        ResetTrees(AZStd::string(item->text(column).toUtf8().constData()));
+    }
+
+    void SliceRelationshipWidget::ResetTrees(const AZ::EntityId& entityId)
+    {
+        if (entityId.IsValid())
+        {
+            AZ::SliceComponent::SliceInstanceAddress entitySliceAddress(nullptr, nullptr);
+            EBUS_EVENT_ID_RESULT(entitySliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+            if (entitySliceAddress.first != nullptr)
+            {
+                ResetTrees((entitySliceAddress.first)->GetSliceAsset().GetId());
+            }
+        }
+    }
+
+    void SliceRelationshipWidget::ResetTrees(const AZStd::string& assetRelativePath)
+    {
+        AZStd::shared_ptr<SliceRelationshipNode> node = nullptr;
+        AzToolsFramework::SliceDependencyBrowserRequestsBus::BroadcastResult(node, &AzToolsFramework::SliceDependencyBrowserRequests::ReportSliceAssetDependenciesByPath, assetRelativePath);
+        GenerateTreesForNode(node);
+    }
+
+    void SliceRelationshipWidget::ResetTrees(const AZ::Data::AssetId& assetId)
+    {
+        AZStd::shared_ptr<SliceRelationshipNode> node = nullptr;
+        AzToolsFramework::SliceDependencyBrowserRequestsBus::BroadcastResult(node ,&AzToolsFramework::SliceDependencyBrowserRequests::ReportSliceAssetDependenciesById, assetId);
+        GenerateTreesForNode(node);
+    }
+
+    void SliceRelationshipWidget::GenerateTreesForNode(const AZStd::shared_ptr<SliceRelationshipNode>& node)
+    {
+        m_sliceDependentsTree->clear();
+        m_sliceDependencyTree->clear();
+
+        if (node != nullptr)
+        {
+            // Dependents tree
+            GenerateDependentsTree(node, AddRootItem(m_sliceDependentsTree, QString((node->GetSliceRelativePath()).c_str())));
+
+            // Dependencies tree
+            GenerateDependenciesTree(node, AddRootItem(m_sliceDependencyTree, QString((node->GetSliceRelativePath()).c_str())));
+        }
+    }
+
+} // namespace AzToolsFramework
+
+#include <UI/Slice/SliceRelationshipWidget.moc>
+

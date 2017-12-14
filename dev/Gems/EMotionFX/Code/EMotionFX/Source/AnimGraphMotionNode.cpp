@@ -477,6 +477,8 @@ namespace EMotionFX
 
         // reset playback properties
         const float curPlayTime = uniqueData->GetCurrentPlayTime();
+        const float curLocalWeight = uniqueData->GetLocalWeight();
+        const float curGlobalWeight = uniqueData->GetGlobalWeight();
         uniqueData->Clear();
 
         // remove the motion instance if it already exists
@@ -560,6 +562,8 @@ namespace EMotionFX
         uniqueData->SetDuration(motionInstance->GetDuration());
         uniqueData->SetCurrentPlayTime(curPlayTime);
         motionInstance->SetCurrentTime(curPlayTime);
+        uniqueData->SetGlobalWeight(curGlobalWeight);
+        uniqueData->SetLocalWeight(curLocalWeight);
 
         // trigger an event
         GetEventManager().OnStartMotionInstance(motionInstance, &playInfo);
@@ -686,7 +690,7 @@ namespace EMotionFX
         // basically this will keep the motion in-place rather than moving it away from the origin
         if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
         {
-            outputTransformPose.CompensateForMotionExtractionDirect();
+            outputTransformPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
         }
 
         // visualize it

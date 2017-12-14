@@ -17,7 +17,7 @@
 
 CommandHierarchyItemCreate::CommandHierarchyItemCreate(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    EntityHelpers::EntityIdList& parents,
+    const EntityHelpers::EntityIdList& parents,
     PostCreationCallback postCreationCB)
     : QUndoCommand()
     , m_stack(stack)
@@ -88,7 +88,7 @@ void CommandHierarchyItemCreate::redo()
 
 void CommandHierarchyItemCreate::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    QTreeWidgetItemRawPtrQList& selectedItems,
+    const QTreeWidgetItemRawPtrQList& selectedItems,
     PostCreationCallback postCreationCB)
 {
     if (stack->GetIsExecuting())

@@ -14,7 +14,6 @@
 #include "stdafx.h"
 #include "AlembicCompiler.h"
 #include "GeomCacheEncoder.h"
-#include "StealingThreadPool.h"
 #include "StringHelpers.h"
 #include "IResCompiler.h"
 #include "IXml.h"
@@ -312,16 +311,6 @@ namespace
         Alembic::Abc::C4cArraySamplePtr pColorSamplesC4c;
         Alembic::Abc::UInt32ArraySamplePtr pColorIndices;
     };
-
-    struct CompileMeshJobData
-    {
-        CompileMeshJobData(AlembicCompiler::FrameJobGroupData* pJobGroupData, GeomCache::Mesh& mesh)
-            : m_pJobGroupData(pJobGroupData)
-            , m_mesh(mesh) {}
-
-        AlembicCompiler::FrameJobGroupData* m_pJobGroupData;
-        GeomCache::Mesh& m_mesh;
-    };
 }
 
 AlembicMeshDigest::AlembicMeshDigest(Alembic::AbcGeom::IPolyMeshSchema& meshSchema)
@@ -443,10 +432,6 @@ AlembicCompiler::AlembicCompiler(ICryXML* pXMLParser)
     , m_refCount(1)
     , m_errorCount(0)
     , m_numAnimatedMeshes(0)
-    , m_nextJobGroupIndex(0)
-    , m_numJobGroupsRunning(0)
-    , m_nextFrameToWrite(0)
-    , m_numJobsFinished(0)
     , m_b32BitIndices(false)
 {
     m_rootNode.m_type = GeomCacheFile::eNodeType_Transform;
@@ -475,22 +460,6 @@ bool AlembicCompiler::Process()
         m_CC.pRC->AddInputOutputFilePair(sourcePath, GetOutputPath());
         return true;
     }
-
-#if defined(AZ_PLATFORM_WINDOWS)
-    // Set thread name
-    ThreadUtils::SetThreadName(GetCurrentThreadId(), "AlembicCompiler::Process");
-
-    // Create thread pool
-    ThreadUtils::StealingThreadPool threadPool(m_CC.threads, true);
-
-#else
-    // The Alembic/HDF5 library on macOS does not handle multiple threads
-    // accessing the data at the same time so for macOS force this to be single
-    // threaded.
-    ThreadUtils::StealingThreadPool threadPool(1, true);
-#endif
-
-    threadPool.Start();
 
     // Open archive
     RCLog(string("Beginning to open archive: ") + sourcePath.c_str());
@@ -549,8 +518,8 @@ bool AlembicCompiler::Process()
     // Overwrite export file name if specified by command line
     string exportFileName = GetOutputPath();
     const size_t numFrames = m_frameTimes.size();
-    GeomCacheWriter geomCacheWriter(exportFileName, m_blockCompressionFormat, threadPool, numFrames, m_bPlaybackFromMemory, m_b32BitIndices);
-    GeomCacheEncoder geomCacheEncoder(geomCacheWriter, m_rootNode, m_meshes, threadPool, m_bUseBFrames, m_indexFrameDistance);
+    GeomCacheWriter geomCacheWriter(exportFileName, m_blockCompressionFormat, numFrames, m_bPlaybackFromMemory, m_b32BitIndices);
+    GeomCacheEncoder geomCacheEncoder(geomCacheWriter, m_rootNode, m_meshes, m_bUseBFrames, m_indexFrameDistance);
 
     // Export static data (create mesh topologies etc.)
     if (!CompileStaticData(archive))
@@ -578,15 +547,13 @@ bool AlembicCompiler::Process()
 
     // Export animated data (frames)
     geomCacheEncoder.Init();
-    if (!CompileAnimationData(archive, geomCacheEncoder, threadPool))
+    if (!CompileAnimationData(archive, geomCacheEncoder))
     {
         Cleanup();
         return false;
     }
 
-    geomCacheEncoder.Flush();
     GeomCacheWriterStats stats = geomCacheWriter.FinishWriting();
-    threadPool.WaitAllJobs();
 
     const Alembic::Abc::chrono_t sequenceLength = m_frameTimes.back() - m_frameTimes.front();
     const double headerDataMegaBytes = static_cast<double>(stats.m_headerDataSize) / (1024.0 * 1024.0);
@@ -1477,194 +1444,91 @@ void AlembicCompiler::PrintNodeTreeRec(GeomCache::Node& node, string padding)
     }
 }
 
-bool AlembicCompiler::CompileAnimationData(Alembic::Abc::IArchive& archive, GeomCacheEncoder& geomCacheEncoder, ThreadUtils::StealingThreadPool& threadPool)
+bool AlembicCompiler::CompileAnimationData(Alembic::Abc::IArchive& archive, GeomCacheEncoder& geomCacheEncoder)
 {
     RCLog("Compiling animation data...");
 
-    // Set up parallel frame processing
-    const uint numJobGroups = threadPool.GetNumThreads() * 2;
-    m_jobGroupData.resize(numJobGroups);
+    m_jobGroupData.m_pAlembicCompiler = this;
 
-    for (uint i = 0; i < numJobGroups; ++i)
-    {
-        m_jobGroupData[i].m_pAlembicCompiler = this;
-        m_jobGroupData[i].m_jobIndex = i;
-    }
-
-    for (size_t meshIndex = 0; meshIndex < m_meshes.size(); ++meshIndex)
-    {
-        m_meshes[meshIndex]->m_meshDataBuffer.resize(numJobGroups);
-    }
-
-    std::function<void(GeomCache::Node& node)> resizeTransformBuffers = [&](GeomCache::Node& node)
-        {
-            node.m_nodeDataBuffer.resize(numJobGroups);
-            const uint numChildren = node.m_children.size();
-            for (uint i = 0; i < numChildren; ++i)
-            {
-                resizeTransformBuffers(*node.m_children[i]);
-            }
-        };
-    resizeTransformBuffers(m_rootNode);
-
-    // Compile frames with jobs
     const size_t numFrames = m_frameTimes.size();
     for (size_t currentFrame = 0; currentFrame < numFrames; ++currentFrame)
     {
-        {
-            AZStd::unique_lock<AZStd::mutex> uniqueJobLock(m_jobFinishedCS);
-            while (m_numJobGroupsRunning == numJobGroups)
-            {
-                m_jobFinishedCV.wait(uniqueJobLock);
-                PushCompletedFrames(geomCacheEncoder, numJobGroups);
-            }
-        }
-
-        FrameJobGroupData& jobGroupData = m_jobGroupData[m_nextJobGroupIndex];
-
         // Fill job data
-        jobGroupData.m_bFinished = false;
-        jobGroupData.m_frameIndex = currentFrame;
-        jobGroupData.m_frameTime = m_frameTimes[currentFrame];
-        jobGroupData.m_bWritten = false;
-        jobGroupData.m_frameAABB.Reset();
-
-        for (size_t meshIndex = 0; meshIndex < m_meshes.size(); ++meshIndex)
-        {
-            m_meshes[meshIndex]->m_meshDataBuffer[m_nextJobGroupIndex].m_frameUseCount = 0;
-        }
-
-        const uint numJobs = m_jobGroupData.size();
-        m_nextJobGroupIndex = (m_nextJobGroupIndex + 1) % numJobs;
-
-        ThreadUtils::JobGroup* pJobGroup = threadPool.CreateJobGroup<>(&FrameGroupFinished, &jobGroupData);
-
-        // Async mesh updates
+        m_jobGroupData.m_frameIndex = currentFrame;
+        m_jobGroupData.m_frameTime = m_frameTimes[currentFrame];
+        m_jobGroupData.m_frameAABB.Reset();
+        
         for (size_t meshIndex = 0; meshIndex < m_meshes.size(); ++meshIndex)
         {
             GeomCache::Mesh* pMesh = m_meshes[meshIndex];
 
+            pMesh->m_meshDataBuffer.m_frameUseCount = 0;
+
             if (pMesh->m_animatedStreams != 0)
             {
-                CompileMeshJobData* pJobData = new CompileMeshJobData(&jobGroupData, *pMesh);
-                pJobGroup->Add(&AlembicCompiler::UpdateVertexDataJob, pJobData);
+                AlembicCompiler::UpdateVertexDataWithErrorHandling(pMesh);
             }
         }
 
-        // Async transform update
-        ++m_numJobGroupsRunning;
-        pJobGroup->Add(&AlembicCompiler::UpdateTransformsJob, &jobGroupData);
-        pJobGroup->Submit();
+        AlembicCompiler::UpdateTransformsWithErrorHandling();
+
+        PushCompletedFrames(geomCacheEncoder);
     }
 
-    // Flush
-    AZStd::unique_lock<AZStd::mutex> uniqueJobLock(m_jobFinishedCS);
-    while (m_numJobGroupsRunning > 0)
+    if (m_jobGroupData.m_errorCount > 0)
     {
-        PushCompletedFrames(geomCacheEncoder, numJobGroups);
-
-        if (m_numJobGroupsRunning > 0)
-        {
-            m_jobFinishedCV.wait(uniqueJobLock);
-        }
+        m_errorCount.fetch_add(m_jobGroupData.m_errorCount);
+        RCLogError("  Failed to compile %d meshes", m_jobGroupData.m_errorCount.load());
+        return false;
     }
 
     return true;
 }
 
-void AlembicCompiler::PushCompletedFrames(GeomCacheEncoder& geomCacheEncoder, const uint numJobGroups)
+void AlembicCompiler::PushCompletedFrames(GeomCacheEncoder& geomCacheEncoder)
 {
-    // Need to loop if any job finished while the lock was down
-    uint currentJobsFinished = 0;
-    while (currentJobsFinished != m_numJobsFinished)
+    const uint numMeshes = m_meshes.size();
+    for (uint i = 0; i < numMeshes; ++i)
     {
-        currentJobsFinished = m_numJobsFinished;
-        std::vector<FrameJobGroupData*> unwrittenFinishedGroups;
-
-        for (uint i = 0; i < numJobGroups; ++i)
-        {
-            FrameJobGroupData& jobGroupData = m_jobGroupData[i];
-            if (jobGroupData.m_bFinished && !jobGroupData.m_bWritten)
-            {
-                unwrittenFinishedGroups.push_back(&jobGroupData);
-            }
-        }
-        m_jobFinishedCS.unlock();
-
-        std::sort(unwrittenFinishedGroups.begin(), unwrittenFinishedGroups.end(),
-            [=](const FrameJobGroupData* pA, const FrameJobGroupData* pB)
-            {
-                return pA->m_frameIndex < pB->m_frameIndex;
-            }
-            );
-
-        for (uint i = 0; i < unwrittenFinishedGroups.size(); ++i)
-        {
-            FrameJobGroupData& jobGroupData = *unwrittenFinishedGroups[i];
-
-            if (jobGroupData.m_frameIndex == m_nextFrameToWrite)
-            {
-                const uint numMeshes = m_meshes.size();
-                for (uint i = 0; i < numMeshes; ++i)
-                {
-                    GeomCache::Mesh& mesh = *m_meshes[i];
-
-                    AZStd::lock_guard<AZStd::mutex> autoLock(mesh.m_rawFramesCS);
-                    mesh.m_rawFrames.push_back(std::move(mesh.m_meshDataBuffer[jobGroupData.m_jobIndex]));
-                }
-
-                AppendTransformFrameDataRec(m_rootNode, jobGroupData.m_jobIndex);
-                const bool bIsLastFrame = (jobGroupData.m_frameIndex == (m_frameTimes.size() - 1));
-
-                geomCacheEncoder.AddFrame(jobGroupData.m_frameTime, jobGroupData.m_frameAABB, bIsLastFrame);
-
-                jobGroupData.m_bWritten = true;
-                --m_numJobGroupsRunning;
-                ++m_nextFrameToWrite;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        m_jobFinishedCS.lock();
+        GeomCache::Mesh& mesh = *m_meshes[i];
+        mesh.m_rawFrames.push_back(std::move(mesh.m_meshDataBuffer));
     }
+
+    AppendTransformFrameDataRec(m_rootNode, m_jobGroupData.m_jobIndex);
+    const bool bIsLastFrame = (m_jobGroupData.m_frameIndex == (m_frameTimes.size() - 1));
+    geomCacheEncoder.AddFrame(m_jobGroupData.m_frameTime, m_jobGroupData.m_frameAABB, bIsLastFrame);
 }
 
-void AlembicCompiler::UpdateTransformsJob(FrameJobGroupData* pData)
+void AlembicCompiler::UpdateTransformsWithErrorHandling()
 {
-    AlembicCompiler* pSelf = pData->m_pAlembicCompiler;
     std::string currentObjectPath;
 
     try
     {
-        AZStd::lock_guard<AZStd::mutex> autoLock(pSelf->m_abcLock);
         TMatrixMap matrixMap;
         TVisibilityMap visibilityMap;
-        pSelf->UpdateTransformsRec(pSelf->m_rootNode, pData->m_jobIndex, pData->m_frameTime,
-            pData->m_frameAABB, QuatTNS(IDENTITY), matrixMap, visibilityMap, currentObjectPath);
+        UpdateTransformsRec(m_rootNode, m_jobGroupData.m_frameTime, m_jobGroupData.m_frameAABB, QuatTNS(IDENTITY), matrixMap, visibilityMap, currentObjectPath);
     }
     catch (const Alembic::Util::Exception& alembicException)
     {
         RCLogError("Alembic exception while processing %s in frame %u, time %g: %s",
-            currentObjectPath.c_str(), pData->m_frameIndex, pData->m_frameTime, alembicException.c_str());
-        ++pData->m_errorCount;
+            currentObjectPath.c_str(), m_jobGroupData.m_frameIndex, m_jobGroupData.m_frameTime, alembicException.c_str());
+        ++m_jobGroupData.m_errorCount;
     }
     catch (...)
     {
         RCLogError("Unknown exception while processing %s in frame %u, time %g",
-            currentObjectPath.c_str(), pData->m_frameIndex, pData->m_frameTime);
-        ++pData->m_errorCount;
+            currentObjectPath.c_str(), m_jobGroupData.m_frameIndex, m_jobGroupData.m_frameTime);
+        ++m_jobGroupData.m_errorCount;
     }
 }
 
-void AlembicCompiler::UpdateTransformsRec(GeomCache::Node& node, const uint bufferIndex, const Alembic::Abc::chrono_t frameTime,
+void AlembicCompiler::UpdateTransformsRec(GeomCache::Node& node, const Alembic::Abc::chrono_t frameTime,
     AABB& frameAABB, QuatTNS currentTransform, TMatrixMap& matrixMap, TVisibilityMap& visibilityMap, std::string& currentObjectPath)
 {
     if (node.m_transformType != GeomCacheFile::eTransformType_Constant)
     {
-        node.m_nodeDataBuffer[bufferIndex].m_transform.SetIdentity();
+        node.m_nodeDataBuffer.m_transform.SetIdentity();
 
         for (auto iter = node.m_abcXForms.begin(); iter != node.m_abcXForms.end(); ++iter)
         {
@@ -1676,7 +1540,7 @@ void AlembicCompiler::UpdateTransformsRec(GeomCache::Node& node, const uint buff
             if (findIter != matrixMap.end())
             {
                 const Alembic::AbcGeom::M44d& matrix = findIter->second;
-                node.m_nodeDataBuffer[bufferIndex].m_transform = node.m_nodeDataBuffer[bufferIndex].m_transform * FromAlembicMatrix(matrix);
+                node.m_nodeDataBuffer.m_transform = node.m_nodeDataBuffer.m_transform * FromAlembicMatrix(matrix);
             }
             else
             {
@@ -1686,7 +1550,7 @@ void AlembicCompiler::UpdateTransformsRec(GeomCache::Node& node, const uint buff
                 auto index = timeSampling.getNearIndex(frameTime, schema.getNumSamples());
 
                 const Alembic::AbcGeom::M44d& matrix = schema.getValue(index.first).getMatrix();
-                node.m_nodeDataBuffer[bufferIndex].m_transform = node.m_nodeDataBuffer[bufferIndex].m_transform * FromAlembicMatrix(matrix);
+                node.m_nodeDataBuffer.m_transform = node.m_nodeDataBuffer.m_transform * FromAlembicMatrix(matrix);
 
                 matrixMap[currentObjectPath] = matrix;
             }
@@ -1694,12 +1558,12 @@ void AlembicCompiler::UpdateTransformsRec(GeomCache::Node& node, const uint buff
     }
     else
     {
-        node.m_nodeDataBuffer[bufferIndex].m_transform = node.m_staticNodeData.m_transform;
+        node.m_nodeDataBuffer.m_transform = node.m_staticNodeData.m_transform;
     }
 
-    currentTransform = currentTransform * node.m_nodeDataBuffer[bufferIndex].m_transform;
+    currentTransform = currentTransform * node.m_nodeDataBuffer.m_transform;
 
-    node.m_nodeDataBuffer[bufferIndex].m_bVisible = true;
+    node.m_nodeDataBuffer.m_bVisible = true;
 
     if (node.m_type == GeomCacheFile::eNodeType_Mesh || node.m_type == GeomCacheFile::eNodeType_PhysicsGeometry)
     {
@@ -1742,7 +1606,7 @@ void AlembicCompiler::UpdateTransformsRec(GeomCache::Node& node, const uint buff
             }
         }
 
-        node.m_nodeDataBuffer[bufferIndex].m_bVisible = bVisible;
+        node.m_nodeDataBuffer.m_bVisible = bVisible;
 
         if (bVisible && (node.m_type == GeomCacheFile::eNodeType_Mesh))
         {
@@ -1750,65 +1614,42 @@ void AlembicCompiler::UpdateTransformsRec(GeomCache::Node& node, const uint buff
             transformedMeshAABB.SetTransformedAABB(Matrix34(currentTransform), node.m_pMesh->m_aabb);
             frameAABB.Add(transformedMeshAABB);
 
-            ++node.m_pMesh->m_meshDataBuffer[bufferIndex].m_frameUseCount;
+            ++node.m_pMesh->m_meshDataBuffer.m_frameUseCount;
         }
     }
 
     const size_t numChildren = node.m_children.size();
     for (size_t i = 0; i < numChildren; ++i)
     {
-        UpdateTransformsRec(*node.m_children[i], bufferIndex, frameTime, frameAABB,
-            currentTransform, matrixMap, visibilityMap, currentObjectPath);
+        UpdateTransformsRec(*node.m_children[i], frameTime, frameAABB, currentTransform, matrixMap, visibilityMap, currentObjectPath);
     }
 }
 
-void AlembicCompiler::UpdateVertexDataJob(struct CompileMeshJobData* pData)
+void AlembicCompiler::UpdateVertexDataWithErrorHandling(GeomCache::Mesh* mesh)
 {
-    FrameJobGroupData* pJobGroupData = pData->m_pJobGroupData;
-    AlembicCompiler* pSelf = pJobGroupData->m_pAlembicCompiler;
-    const char* pMeshName = pData->m_mesh.m_abcMesh.getFullName().c_str();
+    const char* pMeshName = mesh->m_abcMesh.getFullName().c_str();
 
     try
     {
-        if (!pSelf->UpdateVertexData(pData->m_mesh, pJobGroupData->m_jobIndex, pJobGroupData->m_frameIndex))
+        if (!UpdateVertexData(*mesh, m_jobGroupData.m_frameIndex))
         {
-            ++pJobGroupData->m_errorCount;
+            // No need to print out an RCLogError for this case as
+            // UpdatVertexData and the functions it calls will log messages
+            ++m_jobGroupData.m_errorCount;
         }
     }
     catch (const Alembic::Util::Exception& alembicException)
     {
         RCLogError("Alembic exception while processing %s in frame %u, time %g: %s",
-            pMeshName, pJobGroupData->m_frameIndex, pJobGroupData->m_frameTime, alembicException.c_str());
-        ++pJobGroupData->m_errorCount;
+            pMeshName, m_jobGroupData.m_frameIndex, m_jobGroupData.m_frameTime, alembicException.c_str());
+        ++m_jobGroupData.m_errorCount;
     }
     catch (...)
     {
         RCLogError("Unknown exception while processing %s in frame %u, time %g",
-            pMeshName, pJobGroupData->m_frameIndex, pJobGroupData->m_frameTime);
-        ++pJobGroupData->m_errorCount;
+            pMeshName, m_jobGroupData.m_frameIndex, m_jobGroupData.m_frameTime);
+        ++m_jobGroupData.m_errorCount;
     }
-
-    delete pData;
-}
-
-void AlembicCompiler::FrameGroupFinished(FrameJobGroupData* pData)
-{
-    AlembicCompiler* pSelf = pData->m_pAlembicCompiler;
-
-    if (pData->m_errorCount > 0)
-    {
-        pSelf->m_errorCount.fetch_add(pData->m_errorCount);
-        RCLogError("  Failed to compile %d meshes", pData->m_errorCount.load());
-        return;
-    }
-
-    // Set finished flag and wakeup compiler main thread
-    pSelf->m_jobFinishedCS.lock();
-    pData->m_bFinished = true;
-    ++pSelf->m_numJobsFinished;
-    pSelf->m_jobFinishedCS.unlock();
-
-    pSelf->m_jobFinishedCV.notify_one();
 }
 
 std::unordered_map<uint32, uint16> AlembicCompiler::GetMeshMaterialMap(const Alembic::AbcGeom::IPolyMesh& mesh, const Alembic::Abc::chrono_t frameTime)
@@ -2208,10 +2049,7 @@ bool AlembicCompiler::CompileFullMesh(GeomCache::Mesh& mesh, const size_t curren
 
     if (!mesh.m_bHasNormals)
     {
-        if (!CalculateSmoothNormals(vertices, mesh, abcFaceCounts, abcIndices, abcPositions))
-        {
-            return false;
-        }
+        CalculateSmoothNormals(vertices, mesh, abcFaceCounts, abcIndices, abcPositions);
     }
 
     // Compute mesh hash
@@ -2309,7 +2147,7 @@ bool AlembicCompiler::CompileFullMesh(GeomCache::Mesh& mesh, const size_t curren
     return true;
 }
 
-bool AlembicCompiler::UpdateVertexData(GeomCache::Mesh& mesh, const uint bufferIndex, const size_t currentFrame)
+bool AlembicCompiler::UpdateVertexData(GeomCache::Mesh& mesh, const size_t currentFrame)
 {
     const bool bHasNormals = mesh.m_bHasNormals;
     const bool bHasTexcoords = mesh.m_bHasTexcoords;
@@ -2408,13 +2246,10 @@ bool AlembicCompiler::UpdateVertexData(GeomCache::Mesh& mesh, const uint bufferI
 
     if (!mesh.m_bHasNormals)
     {
-        if (!CalculateSmoothNormals(vertices, mesh, abcFaceCounts, abcIndices, abcPositions))
-        {
-            return false;
-        }
+        CalculateSmoothNormals(vertices, mesh, abcFaceCounts, abcIndices, abcPositions);
     }
 
-    if (!CompileVertices(vertices, mesh, mesh.m_meshDataBuffer[bufferIndex].m_meshData, true))
+    if (!CompileVertices(vertices, mesh, mesh.m_meshDataBuffer.m_meshData, true))
     {
         return false;
     }
@@ -2422,7 +2257,7 @@ bool AlembicCompiler::UpdateVertexData(GeomCache::Mesh& mesh, const uint bufferI
     return true;
 }
 
-bool AlembicCompiler::CalculateSmoothNormals(std::vector<AlembicCompilerVertex>& vertices, GeomCache::Mesh& mesh,
+void AlembicCompiler::CalculateSmoothNormals(std::vector<AlembicCompilerVertex>& vertices, GeomCache::Mesh& mesh,
     const Alembic::Abc::Int32ArraySample& faceCounts, const Alembic::Abc::Int32ArraySample& faceIndices,
     const Alembic::Abc::P3fArraySample& facePositions)
 {
@@ -2500,8 +2335,6 @@ bool AlembicCompiler::CalculateSmoothNormals(std::vector<AlembicCompilerVertex>&
             vertices[index].m_normal = normals[faceIndices[currentIndexArraysIndex++]];
         }
     }
-
-    return true;
 }
 
 namespace
@@ -2693,9 +2526,7 @@ bool AlembicCompiler::CompileVertices(std::vector<AlembicCompilerVertex>& vertic
 
 void AlembicCompiler::AppendTransformFrameDataRec(GeomCache::Node& node, const uint bufferIndex) const
 {
-    node.m_animatedNodeDataCS.lock();
-    node.m_animatedNodeData.push_back(std::move(node.m_nodeDataBuffer[bufferIndex]));
-    node.m_animatedNodeDataCS.unlock();
+    node.m_animatedNodeData.push_back(node.m_nodeDataBuffer);
 
     const size_t numChildren = node.m_children.size();
     for (size_t i = 0; i < numChildren; ++i)
@@ -2724,7 +2555,4 @@ void AlembicCompiler::Cleanup()
     m_digestToMeshMap.clear();
     m_errorCount = 0;
     m_numAnimatedMeshes = 0;
-    m_numJobGroupsRunning = 0;
-    m_nextFrameToWrite = 0;
-    m_numJobsFinished = 0;
 }

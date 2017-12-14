@@ -37,6 +37,11 @@ namespace AzToolsFramework
         {
             Q_OBJECT
         public:
+            enum Roles
+            {
+                EntryRole = Qt::UserRole + 100,
+            };
+
             AZ_CLASS_ALLOCATOR(AssetBrowserModel, AZ::SystemAllocator, 0);
 
             explicit AssetBrowserModel(QObject* parent = nullptr);
@@ -59,7 +64,7 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             bool IsLoaded() const override;
             void BeginAddEntry(AssetBrowserEntry* parent) override;
-            void EndAddEntry() override;
+            void EndAddEntry(AssetBrowserEntry* parent) override;
             void BeginRemoveEntry(AssetBrowserEntry* entry) override;
             void EndRemoveEntry() override;
             

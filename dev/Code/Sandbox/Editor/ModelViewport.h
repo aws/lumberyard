@@ -31,7 +31,6 @@
 #include "RenderViewport.h"
 #include "Material/Material.h"
 #include <ICryAnimation.h>
-#include <IInput.h>
 #include <IEntitySystem.h>
 #include "Util/Variable.h"
 
@@ -91,7 +90,6 @@ private:
 // CModelViewport window
 class SANDBOX_API CModelViewport
     : public CRenderViewport
-    , public IInputEventListener
     , public IEntityEventListener
 {
     Q_OBJECT
@@ -214,16 +212,7 @@ protected:
         }
     }
 
-
-    //virtual bool OnInputEvent( const SInputEvent &event ) = 0;
-    bool OnInputEvent(const SInputEvent& rInputEvent);
     void CreateAudioListener();
-
-    f32 m_RT;
-    Vec2 m_LTHUMB;
-    Vec2 m_RTHUMB;
-
-    Vec2 m_arrLTHUMB[0x100];
 
     IStatObj* m_object;
     IStatObj* m_weaponModel;

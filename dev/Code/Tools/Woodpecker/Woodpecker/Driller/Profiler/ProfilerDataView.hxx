@@ -20,7 +20,8 @@
 #include "Woodpecker/Driller/DrillerMainWindowMessages.h"
 #include "Woodpecker/Driller/DrillerOperationTelemetryEvent.h"
 
-#include <QtWidgets/QMainWindow>
+#include <QMainWindow>
+#include <QDialog>
 
 #include "Woodpecker/Driller/DrillerDataTypes.h"
 
@@ -28,6 +29,8 @@ namespace Ui
 {
 	class ProfilerDataView;
 }
+
+namespace AZ { class ReflectContext; }
 
 namespace Driller
 {

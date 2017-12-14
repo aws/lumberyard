@@ -2964,6 +2964,7 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
         // Assign contiguous renderchunks per group subchunk, split into multiple rendermeshes
         // if the combined size of the rendermeshes exceed the allowed vertex count for 16bit
         // indices.
+        static const size_t maxVertices = 0xffff;
         std::vector<CRenderChunk> rmchunks;
         rmchunks.reserve(mesh->updates.size());
         CRenderChunk chunk;
@@ -2976,7 +2977,16 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
             {
                 accum += update->chunks[j].vcnt;
             }
-            if (iv + accum > 0xffff)
+
+            // If a single update exceeds the max vertices, bail out and log a warning so the user
+            // knows re-exporting will fix it
+            if (accum > maxVertices)
+            {
+                CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, "CMergedMeshRenderNode::CreateRenderMesh submesh exceeds max vertices. Perform Export To Game to resolve issue.");
+                goto outer;
+            }
+
+            if (iv + accum > maxVertices)
             {
                 goto done;
             }
@@ -3009,7 +3019,7 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
             rmchunks.push_back(chunk);
         }
 
-        mmrm_assert(iv <= 0xffff);
+        mmrm_assert(iv <= maxVertices);
         // Create a new rendermesh and dispatch the asynchronous updates
         _smart_ptr<IRenderMesh> rm = GetRenderer()->CreateRenderMeshInitialized(
                 NULL, iv, eVF_P3S_C4B_T2S, NULL, ii,
@@ -3116,6 +3126,7 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
         vertices += iv;
         indices += ii;
     } while (vertices < mesh->vertices && indices < mesh->indices);
+outer:;
 }
 
 m_LastUpdateFrame = passInfo.GetMainFrameID();
@@ -5339,7 +5350,7 @@ struct SDeformableData
     }
 };
 
-CDeformableNode::CDeformableNode(uint16 slot)
+CDeformableNode::CDeformableNode()
 : m_pData()
 , m_nData()
 , m_wind()
@@ -5468,13 +5479,18 @@ void CDeformableNode::SetStatObj(IStatObj* pStatObj)
 {
     ClearInstanceData();
 
-    if (pStatObj == NULL || Cry3DEngineBase::GetCVars()->e_MergedMeshes == 0)
+    if (pStatObj == NULL )
     {
         return;
     }
 
     // Create deformable subobject is present
-    if (pStatObj->IsDeformable())
+    //Can't use the IsDeformable() interface as it checks children as well.
+    //A new interface should probably be added to the statobj at some point
+    //but since the statobj needs to be pretty heavily refactored we can
+    //just use the cheap 'hack' of casting to the concrete class
+    //and checking the booleans directly.
+    if (static_cast<CStatObj*>(pStatObj)->m_isDeformable)
     {
         resize_list(m_pData, m_nData = 1, 16);
         CreateInstanceData(m_pData[0] = new SDeformableData, pStatObj);
@@ -5490,7 +5506,7 @@ void CDeformableNode::SetStatObj(IStatObj* pStatObj)
             }
             if (IStatObj* pChild = static_cast<CStatObj*>(pStatObj->GetSubObject(i)->pStatObj))
             {
-                if (!pChild->IsDeformable())
+                if (!static_cast<CStatObj*>(pChild)->m_isDeformable)
                 {
                     continue;
                 }
@@ -5614,6 +5630,23 @@ void CDeformableNode::UpdateInternalDeform(
             update->MergeInstanceMeshesDeform(& s_mmrm_globals.camera, 0u);
 #   endif
         }
+    }
+}
+
+void CDeformableNode::Render(const struct SRendParams& rParams, const SRenderingPassInfo& passInfo, const AABB& aabb)
+{
+    //exiting the deformable rendering because the static rendering will render the object instead.
+    if (rParams.bForceDrawStatic)
+    {
+        return;
+    }
+
+    CRenderObject* pObj = gEnv->pRenderer->EF_GetObject_Temp(passInfo.ThreadID());
+    CStatObj* statObj = static_cast<CStatObj*>(m_pStatObj);
+    if (statObj)
+    {
+        statObj->FillRenderObject(rParams, rParams.pRenderNode, statObj->m_pMaterial, NULL, pObj, passInfo);
+        RenderInternalDeform(gEnv->pRenderer->EF_DuplicateRO(pObj, passInfo), rParams.lodValue.LodA(), aabb, passInfo, SRendItemSorter(rParams.rendItemSorter));
     }
 }
 

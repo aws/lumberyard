@@ -68,6 +68,18 @@ void CObjectMode::DrawSelectionPreview(struct DisplayContext& dc, CBaseObject* d
     AABB bbox;
     drawObject->GetBoundBox(bbox);
 
+    AZStd::string cleanName = drawObject->GetName().toUtf8().data();
+
+    // Since we'll be passing this in as a format for a sprintf, need to cleanup any %'s so they display correctly
+    size_t index = cleanName.find("%", 0);
+    while (index != std::string::npos) 
+    {
+        cleanName.insert(index, "%", 1);
+
+        // Increment index past the replacement so it doesn't get picked up again on the next loop
+        index = cleanName.find("%", index + 2);
+    }
+
     // If CGroup/CPrefabObject
     if (drawObject->GetChildCount() > 0)
     {
@@ -76,14 +88,14 @@ void CObjectMode::DrawSelectionPreview(struct DisplayContext& dc, CBaseObject* d
 
         dc.SetColor(gSettings.objectColorSettings.groupHighlight);
         vTopEdgeCenterPos(vTopEdgeCenterPos.x, vTopEdgeCenterPos.y, bbox.max.z);
-        dc.DrawTextLabel(vTopEdgeCenterPos, 1.3f, drawObject->GetName().toLatin1().data());
+        dc.DrawTextLabel(vTopEdgeCenterPos, 1.3f, cleanName.c_str());
         // Draw bounding box wireframe
         dc.DrawWireBox(bbox.min, bbox.max);
     }
     else
     {
         dc.SetColor(Vec3(1, 1, 1));
-        dc.DrawTextLabel(bbox.GetCenter(), 1.5, drawObject->GetName().toLatin1().data());
+        dc.DrawTextLabel(bbox.GetCenter(), 1.5, cleanName.c_str());
     }
 
     // Object Geometry Highlight
@@ -783,6 +795,8 @@ bool CObjectMode::OnLButtonUp(CViewport* view, int nFlags, const QPoint& point)
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnLButtonDblClk(CViewport* view, int nFlags, const QPoint& point)
 {
+    IEditor* editor = GetIEditor();
+
     // If shift clicked, Move the camera to this place.
     if (nFlags & MK_SHIFT)
     {
@@ -792,14 +806,14 @@ bool CObjectMode::OnLButtonDblClk(CViewport* view, int nFlags, const QPoint& poi
         {
             Matrix34 tm = view->GetViewTM();
             Vec3 p = tm.GetTranslation();
-            float height = p.z - GetIEditor()->GetTerrainElevation(p.x, p.y);
+            float height = p.z - editor->GetTerrainElevation(p.x, p.y);
             if (height < 1)
             {
                 height = 1;
             }
             p.x = v.x;
             p.y = v.y;
-            p.z = GetIEditor()->GetTerrainElevation(p.x, p.y) + height;
+            p.z = editor->GetTerrainElevation(p.x, p.y) + height;
             tm.SetTranslation(p);
             view->SetViewTM(tm);
         }
@@ -815,6 +829,13 @@ bool CObjectMode::OnLButtonDblClk(CViewport* view, int nFlags, const QPoint& poi
         {
             // Fire double click event on hit object.
             hitObj->OnEvent(EVENT_DBLCLICK);
+        }
+        else
+        {
+            if (!editor->IsSelectionLocked())
+            {
+                editor->GetObjectManager()->ClearSelection();
+            }
         }
     }
     return true;
@@ -1030,6 +1051,7 @@ bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
             if (!rcDrag.contains(point))
             {
                 m_bDragThresholdExceeded = true;
+                m_lastValidMoveVector = Vec3(0, 0, 0);
             }
             else
             {
@@ -1049,16 +1071,22 @@ bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
             Vec3 p2 = view->SnapToGrid(view->ViewToWorld(point));
             v = p2 - p1;
             v.z = 0;
+            m_lastValidMoveVector = v;
         }
         else
         {
             Vec3 p1 = view->MapViewToCP(m_cMouseDownPos);
             Vec3 p2 = view->MapViewToCP(point);
+
             if (p1.IsZero() || p2.IsZero())
             {
-                return true;
+                v = m_lastValidMoveVector;
             }
-            v = view->GetCPVector(p1, p2);
+            else
+            {
+                v = view->GetCPVector(p1, p2);
+                m_lastValidMoveVector = v;
+            }
 
             //Matrix invParent = m_parentConstructionMatrix;
             //invParent.Invert();
@@ -1514,3 +1542,4 @@ void CObjectMode::HideMoveByFaceNormGizmo()
 }
 
 #include <EditMode/ObjectMode.moc>
+

@@ -33,7 +33,6 @@ struct IShader;
 struct IShaderPublicParams;
 struct IMaterial;
 struct IMaterialManager;
-class CCamera;
 struct CMaterialCGF;
 struct CRenderChunk;
 struct IRenderMesh;
@@ -168,7 +167,7 @@ struct IMaterialHelpers
 
     //////////////////////////////////////////////////////////////////////////
     virtual void SetTexturesFromXml(SInputShaderResources& pShaderResources, const XmlNodeRef& node) const = 0;
-    virtual void SetXmlFromTextures(const SInputShaderResources& pShaderResources, XmlNodeRef& node) const = 0;
+    virtual void SetXmlFromTextures( SInputShaderResources& pShaderResources, XmlNodeRef& node) const = 0;
 
     //////////////////////////////////////////////////////////////////////////
     virtual void SetVertexDeformFromXml(SInputShaderResources& pShaderResources, const XmlNodeRef& node) const = 0;
@@ -277,6 +276,7 @@ struct IMaterial
     virtual ISurfaceType* GetSurfaceType() = 0;
 
     // shader item
+    virtual void ReleaseCurrentShaderItem() = 0;
     virtual void SetShaderItem(const SShaderItem& _ShaderItem) = 0;
     // [Alexey] EF_LoadShaderItem return value with RefCount = 1, so if you'll use SetShaderItem after EF_LoadShaderItem use Assign function
     virtual void AssignShaderItem(const SShaderItem& _ShaderItem) = 0;
@@ -346,29 +346,34 @@ struct IMaterial
     //! \param v                 - Input or output value depending on bGet
     //! \param bGet              - If true, v is an output; if false, v is an input
     //! \param allowShaderParam  - If true, and sParamName is not a built-in parameter of the Material, then custom shader parameters will be searched as well. Defaults to false to preserve legacy behavior.
+    //! \param materialIndex     - Index of the sub-material if this is a material group
     //! return                   - True if sParamName was found
-    virtual bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam = false) = 0;
+    virtual bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam = false, int materialIndex = 0) = 0;
     //! Set or get a material parameter value.
     //! \param sParamName        - Name of the parameter
     //! \param v                 - Input or output value depending on bGet
     //! \param bGet              - If true, v is an output; if false, v is an input
     //! \param allowShaderParam  - If true, and sParamName is not a built-in parameter of the Material, then custom shader parameters will be searched as well. Defaults to false to preserve legacy behavior.
+    //! \param materialIndex     - Index of the sub-material if this is a material group
     //! return                   - True if sParamName was found
-    virtual bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam = false) = 0;
+    virtual bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam = false, int materialIndex = 0) = 0;
     //! Set or get a material parameter value.
     //! \param sParamName        - Name of the parameter
     //! \param v                 - Input or output value depending on bGet
     //! \param bGet              - If true, v is an output; if false, v is an input
     //! \param allowShaderParam  - If true, and sParamName is not a built-in parameter of the Material, then custom shader parameters will be searched as well. Defaults to false to preserve legacy behavior.
+    //! \param materialIndex     - Index of the sub-material if this is a material group
     //! return                   - True if sParamName was found
-    virtual bool SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam = false) = 0;
+    virtual bool SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam = false, int materialIndex = 0) = 0;
 
     virtual void SetDirty(bool dirty = true) = 0;
     virtual bool IsDirty() const = 0;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Set Optional Camera for material (Used for monitors that look thru camera).
-    virtual void SetCamera(CCamera& cam) = 0;
+    //! Returns true if the material is the parent of a group of materials 
+    virtual bool IsMaterialGroup() const = 0;
+
+    //! Returns true if the material is a single material belongs to a material group
+    virtual bool IsSubMaterial() const = 0;
 
     virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
 

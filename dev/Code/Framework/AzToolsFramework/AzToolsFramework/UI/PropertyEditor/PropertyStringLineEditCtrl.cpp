@@ -109,22 +109,10 @@ namespace AzToolsFramework
 
     void StringPropertyLineEditHandler::ConsumeAttribute(PropertyStringLineEditCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        (void)debugName;
-
-        if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool value;
-            if (attrValue->Read<bool>(value))
-            {
-                GUI->m_pLineEdit->setReadOnly(value);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into string box", debugName);
-            }
-            return;
-        }
+        Q_UNUSED(GUI);
+        Q_UNUSED(attrib);
+        Q_UNUSED(attrValue);
+        Q_UNUSED(debugName);
     }
 
     void StringPropertyLineEditHandler::WriteGUIValuesIntoProperty(size_t index, PropertyStringLineEditCtrl* GUI, property_t& instance, InstanceDataNode* node)

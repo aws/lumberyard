@@ -1,7 +1,7 @@
 <ObjectLayer>
  <Layer Name="Roads" GUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Exportable="1" ExportLayerPak="1" DefaultLoaded="0" HavePhysics="1" IsDefaultColor="1">
   <LayerObjects>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{af399507-89ac-4f0c-9e90-39f2085d6256}" Name="Road9" HideOrder="0" Pos="941.61243,896.22772,45.862553" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="4" BorderWidth="2" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{af399507-89ac-4f0c-9e90-39f2085d6256}" Name="Road9" HideOrder="0" Pos="941.61243,896.22772,45.862553" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="4" BorderWidth="2" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="1.525381,-1.1958238,0.19487986" Angle="0" Width="0" IsDefaultWidth="1"/>
      <Point Pos="4.9484253,-3.0425415,0.63942337" Back="3.1119266,-2.4395976,0.39757401" Forw="8.4259672,-4.1842594,1.0973825" Angle="0" Width="6" IsDefaultWidth="0"/>
@@ -22,7 +22,7 @@
      <Point Pos="-53.266663,-44.697571,1.2125168" Back="-50.713787,-46.265354,1.0910923" Forw="-53.266663,-44.697571,1.2125168" Angle="0" Width="8" IsDefaultWidth="0"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{c9021508-e116-4344-a4a0-ee2353bf1671}" Name="Road7" HideOrder="0" Pos="978.14996,1146.65,51.246975" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="2" BorderWidth="1" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="1" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{c9021508-e116-4344-a4a0-ee2353bf1671}" Name="Road7" HideOrder="0" Pos="978.14996,1146.65,51.246975" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="2" BorderWidth="1" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="1" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="-1.1130972,1.5017693,-0.067308918" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="-2.9000244,4.7999268,-0.20000076" Back="-2.2566853,3.0446763,-0.13646162" Forw="-3.6289494,6.7886848,-0.27199274" Angle="0" Width="3" IsDefaultWidth="0"/>
@@ -58,7 +58,7 @@
      <Point Pos="52.321106,22.862915,-0.26554108" Back="50.696171,24.506866,-0.12466989" Forw="52.321106,22.862915,-0.26554108" Angle="0" Width="2" IsDefaultWidth="0"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{3dc0cf46-3dbb-4ba2-89c9-f15e7049fa31}" Name="Road30" HideOrder="0" Pos="825.70166,1125.5408,72.719749" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="2" BorderWidth="3" EraseVegWidth="0" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{3dc0cf46-3dbb-4ba2-89c9-f15e7049fa31}" Name="Road30" HideOrder="0" Pos="825.70166,1125.5408,72.719749" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="2" BorderWidth="3" EraseVegWidth="0" EraseVegWidthVar="0" StepSize="1" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="1.3054941,-1.8937532,-0.018048273" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="3.9369507,-5.6618652,-0.2493515" Back="2.6141956,-3.7921591,-0.036140889" Forw="4.4299688,-6.3587437,-0.32881954" Angle="0" Width="3" IsDefaultWidth="0"/>
@@ -66,21 +66,25 @@
      <Point Pos="6.2753296,-9.4157715,-1.6241608" Back="6.0046148,-8.8172512,-1.3962771" Forw="6.6485214,-10.240857,-1.9383085" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="7.3536987,-11.933716,-2.4991608" Back="7.017159,-11.087728,-2.1995399" Forw="7.8129735,-13.088232,-2.9080522" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="8.6621704,-15.415771,-3.7491608" Back="8.320816,-14.218242,-3.3486156" Forw="8.8212872,-15.973978,-3.9358683" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="8.8450928,-17.165771,-4.2491608" Back="8.7227764,-16.584059,-4.1134281" Forw="9.2494631,-19.088869,-4.6978836" Angle="0" Width="3.25" IsDefaultWidth="0"/>
-     <Point Pos="10.239197,-22.915771,-5.4991608" Back="9.5366011,-21.089771,-5.0141296" Forw="10.58119,-23.804588,-5.7352529" Angle="0" Width="6" IsDefaultWidth="0"/>
-     <Point Pos="11.923278,-25.165771,-6.3741608" Back="11.26856,-24.498928,-6.0752306" Forw="12.466691,-25.71925,-6.6222715" Angle="0" Width="3" IsDefaultWidth="0"/>
-     <Point Pos="13.798278,-26.540771,-7.1241608" Back="13.076703,-26.260159,-6.8716116" Forw="14.618477,-26.859737,-7.4112282" Angle="0" Width="3.5" IsDefaultWidth="0"/>
-     <Point Pos="16.423279,-26.915771,-7.9491501" Back="15.571961,-26.802319,-7.6038089" Forw="17.401239,-27.046101,-8.3458643" Angle="0" Width="6" IsDefaultWidth="0"/>
-     <Point Pos="19.270386,-27.27002,-9.3439484" Back="18.3151,-27.015026,-8.9525642" Forw="19.808167,-27.413568,-9.5642786" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="20.816711,-28.088501,-9.749157" Back="20.24564,-28.021969,-9.5823936" Forw="21.490009,-28.166943,-9.9457722" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="22.798279,-27.68103,-10.374157" Back="22.226591,-28.08181,-10.270766" Forw="23.472456,-27.208401,-10.496083" Angle="0" Width="3.5" IsDefaultWidth="0"/>
-     <Point Pos="24.272583,-25.665771,-10.374157" Back="23.995674,-26.450518,-10.358208" Forw="24.737829,-24.347279,-10.400953" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="24.968567,-21.530518,-10.499157" Back="24.812944,-22.918163,-10.422913" Forw="25.238621,-19.12252,-10.631465" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="25.548279,-14.290772,-10.999157" Back="25.464226,-16.715029,-10.929838" Forw="25.61614,-12.333528,-11.055122" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="25.423279,-8.4157715,-10.874157" Back="24.727432,-10.246475,-10.927684" Forw="25.933369,-7.0737782,-10.834919" Angle="0" Width="5" IsDefaultWidth="0"/>
-     <Point Pos="28.798279,-5.7403564,-10.749157" Back="27.371172,-5.901742,-10.749157" Forw="29.953135,-5.6097584,-10.749157" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="31.673279,-7.7089844,-10.874157" Back="31.288843,-6.6312513,-10.670564" Forw="32.574547,-10.235617,-11.35146" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="32.338745,-15.665771,-12.624157" Back="32.3144,-12.98971,-12.112214" Forw="32.350292,-16.935266,-12.867018" Angle="0" Width="3.25" IsDefaultWidth="0"/>
+     <Point Pos="8.8450928,-17.165771,-4.2491608" Back="8.6808596,-16.592232,-4.1232476" Forw="9.3828793,-19.043842,-4.6614676" Angle="0" Width="3.25" IsDefaultWidth="0"/>
+     <Point Pos="10.757507,-22.733154,-5.3555984" Back="10.017663,-20.932911,-4.9104924" Forw="11.075871,-23.50782,-5.5471325" Angle="0" Width="3.5" IsDefaultWidth="0"/>
+     <Point Pos="12.001709,-24.84668,-6.1482468" Back="11.465733,-24.228018,-5.8872247" Forw="12.518886,-25.443642,-6.4001131" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="13.867981,-26.323486,-6.8704071" Back="13.157225,-25.990885,-6.6030617" Forw="14.664375,-26.696163,-7.1699648" Angle="0" Width="3.5" IsDefaultWidth="0"/>
+     <Point Pos="16.423279,-26.915771,-7.8113861" Back="15.57408,-26.75091,-7.4729366" Forw="17.16708,-27.060173,-8.1078291" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="18.641663,-27.250244,-8.7729645" Back="17.914053,-27.076771,-8.4528685" Forw="19.267239,-27.399391,-9.048173" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="20.468628,-27.880249,-9.5910492" Back="19.811262,-27.745893,-9.3931866" Forw="20.912596,-27.970989,-9.7246809" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="21.877014,-27.911499,-9.7467842" Back="21.412813,-27.971193,-9.6823473" Forw="22.183098,-27.872139,-9.7892723" Angle="0" Width="3.5" IsDefaultWidth="0"/>
+     <Point Pos="22.739258,-27.588257,-9.9062424" Back="22.478859,-27.75198,-9.8569527" Forw="23.056215,-27.388973,-9.9662371" Angle="0" Width="3.5" IsDefaultWidth="0"/>
+     <Point Pos="23.580688,-26.840332,-10.069263" Back="23.346266,-27.134251,-10.019947" Forw="23.863535,-26.485699,-10.128767" Angle="0" Width="3.5" IsDefaultWidth="0"/>
+     <Point Pos="24.272583,-25.665771,-10.228813" Back="24.157242,-26.10705,-10.193087" Forw="24.625717,-24.314732,-10.338196" Angle="0" Width="3.5" IsDefaultWidth="0"/>
+     <Point Pos="24.968567,-21.530518,-10.499157" Back="24.812811,-22.919355,-10.405102" Forw="25.238413,-19.124376,-10.662107" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="25.548279,-14.290772,-10.999157" Back="25.473139,-16.715893,-10.954119" Forw="25.593504,-12.831148,-11.026264" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="25.328186,-9.9238281,-10.71471" Back="25.174688,-11.373852,-10.799291" Forw="25.416956,-9.0852528,-10.665795" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="26.259766,-7.5697021,-10.607113" Back="25.790207,-8.270997,-10.641479" Forw="26.645555,-6.9935179,-10.578877" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="27.823425,-6.1971436,-10.532089" Back="27.172964,-6.4388361,-10.542258" Forw="28.412331,-5.9783239,-10.522882" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="29.705994,-6.2891846,-10.553238" Back="29.150709,-5.9968596,-10.521928" Forw="30.424385,-6.6673751,-10.593745" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="31.36908,-8.0637207,-10.732014" Back="31.154146,-7.2982306,-10.562947" Forw="32.064819,-10.541614,-11.279283" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="32.338745,-15.665771,-12.624157" Back="32.245968,-13.092135,-12.084426" Forw="32.384319,-16.930035,-12.889293" Angle="0" Width="3.25" IsDefaultWidth="0"/>
      <Point Pos="31.780273,-19.470337,-13.124157" Back="31.599936,-18.197599,-12.98868" Forw="31.953342,-20.691774,-13.254174" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="33.354187,-22.832275,-13.387001" Back="32.593151,-21.859058,-13.275465" Forw="33.784863,-23.383026,-13.45012" Angle="0" Width="2.5" IsDefaultWidth="0"/>
      <Point Pos="35.191895,-23.83313,-13.624157" Back="34.49226,-23.854887,-13.570967" Forw="36.005527,-23.807829,-13.686013" Angle="0" Width="3" IsDefaultWidth="0"/>
@@ -106,7 +110,7 @@
      <Point Pos="62.249512,-37.833374,-20.749157" Back="62.52927,-35.999413,-20.760002" Forw="62.249512,-37.833374,-20.749157" Angle="0" Width="4" IsDefaultWidth="0"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{b43dfb7f-124a-46fc-953c-e48476326dbf}" Name="Road22" HideOrder="0" Pos="1028.9277,1171.8516,51.34169" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="3" BorderWidth="2" EraseVegWidth="0.5" EraseVegWidthVar="0.125" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{b43dfb7f-124a-46fc-953c-e48476326dbf}" Name="Road22" HideOrder="0" Pos="1028.9277,1171.8516,51.34169" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="3" BorderWidth="2" EraseVegWidth="0.5" EraseVegWidthVar="0.125" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="1.8923327,-2.5569658,-0.27576163" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="4.5499268,-8.4016113,-0.68298721" Back="3.9049997,-5.2765303,-0.56905907" Forw="5.2781382,-11.930257,-0.81162769" Angle="0" Width="7" IsDefaultWidth="0"/>
@@ -116,10 +120,10 @@
      <Point Pos="41.800049,-50.151611,-0.95000076" Back="38.225536,-44.450619,-0.96063197" Forw="44.874702,-55.055374,-0.94085622" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="42.400024,-67.501587,-1.3000031" Back="41.607277,-61.768463,-1.2425568" Forw="42.770622,-70.181747,-1.3268584" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="45.25,-75.101563,-1.2000008" Back="44.737484,-72.445793,-1.2745489" Forw="45.670345,-77.279709,-1.1388595" Angle="0" Width="3" IsDefaultWidth="0"/>
-     <Point Pos="45.150024,-81.751587,-0.90000153" Back="45.918312,-79.678276,-1.0894408" Forw="44.594147,-83.251678,-0.76293737" Angle="0" Width="6" IsDefaultWidth="0"/>
-     <Point Pos="41.599976,-84.951538,-0.30000305" Back="43.059803,-84.39138,-0.66496021" Forw="39.998772,-85.565941,0.10029843" Angle="0" Width="6" IsDefaultWidth="0"/>
-     <Point Pos="36.550049,-85.051514,1.2499962" Back="38.161682,-85.535591,0.73049128" Forw="33.503922,-84.136559,2.2319057" Angle="0" Width="3" IsDefaultWidth="0"/>
-     <Point Pos="27.950073,-80.851563,4.0999985" Back="30.620699,-82.556046,3.0788772" Forw="24.923143,-78.91967,5.2573538" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="45.150024,-81.751587,-0.90000153" Back="45.917,-79.681816,-1.1292661" Forw="44.591927,-83.257668,-0.73317528" Angle="0" Width="6" IsDefaultWidth="0"/>
+     <Point Pos="41.599976,-84.951538,-0.10893631" Back="43.062679,-84.390282,-0.50018895" Forw="40.008289,-85.562286,0.31681767" Angle="0" Width="6" IsDefaultWidth="0"/>
+     <Point Pos="36.550049,-85.051514,1.4003716" Back="38.164063,-85.536308,0.90269196" Forw="33.505417,-84.137009,2.3391809" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="27.950073,-80.851563,4.0999985" Back="30.615242,-82.552567,3.1045387" Forw="24.916609,-78.915504,5.2330198" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="19.550049,-74.201538,7.7499962" Back="22.575562,-76.235413,6.7785993" Forw="17.553516,-72.85939,8.3910198" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="13,-70.801514,8.8999977" Back="15.386509,-71.490112,8.7302065" Forw="11.04765,-70.238182,9.0389004" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="6.9000244,-70.551514,8.6499977" Back="8.9351902,-70.631516,8.6499977" Forw="5.9630947,-70.514687,8.6499977" Angle="0" Width="3" IsDefaultWidth="0"/>
@@ -135,9 +139,9 @@
      <Point Pos="-41.499939,-98.551514,21.549995" Back="-40.377365,-99.204819,20.869097" Forw="-42.578342,-97.923912,22.204103" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="-43.749939,-95.351563,23.149994" Back="-42.883957,-96.323372,22.61116" Forw="-44.395454,-94.627167,23.551645" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="-45.999939,-93.501587,24.349991" Back="-45.224079,-94.096031,23.966009" Forw="-46.444118,-93.161263,24.56982" Angle="0" Width="3" IsDefaultWidth="0"/>
-     <Point Pos="-47.405945,-92.550415,24.959396" Back="-46.875687,-92.745979,24.75441" Forw="-47.959694,-92.346184,25.173464" Angle="0" Width="3" IsDefaultWidth="0"/>
-     <Point Pos="-49.172058,-92.331665,25.576271" Back="-48.586411,-92.194016,25.396711" Forw="-49.783169,-92.475304,25.763638" Angle="0" Width="3" IsDefaultWidth="0"/>
-     <Point Pos="-50.799927,-93.348145,25.999992" Back="-50.44384,-92.808678,25.893353" Forw="-51.464363,-94.354752,26.198978" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="-47.405945,-92.550415,24.959396" Back="-46.873177,-92.735039,24.750797" Forw="-47.948811,-92.362297,25.171949" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="-49.131897,-92.41626,25.576271" Back="-48.560463,-92.281952,25.40107" Forw="-49.740433,-92.559288,25.762848" Angle="0" Width="3" IsDefaultWidth="0"/>
+     <Point Pos="-50.799927,-93.348145,25.999992" Back="-50.437267,-92.816559,25.892859" Forw="-51.479488,-94.344254,26.200745" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="-52.089539,-96.751587,26.449997" Back="-51.94231,-95.542244,26.349262" Forw="-52.266891,-98.208366,26.571342" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="-51.749939,-101.15161,26.649994" Back="-51.818672,-99.681999,26.587458" Forw="-51.672066,-102.81662,26.720844" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="-51.649902,-106.15161,26.849991" Back="-50.952187,-104.63662,26.813671" Forw="-52.97382,-109.02633,26.918907" Angle="0" Width="4" IsDefaultWidth="0"/>
@@ -161,7 +165,7 @@
      <Point Pos="0.099975586,-119.60156,38.849991" Back="-1.0725116,-119.97443,38.842411" Forw="0.099975586,-119.60156,38.849991" Angle="0" Width="0" IsDefaultWidth="1"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{97b83295-be9b-4450-8ac1-8c95ea6c571a}" Name="Road10" HideOrder="0" Pos="977.13483,1075.1162,78.038185" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust_rocks" Width="2" BorderWidth="0.5" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="4" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{97b83295-be9b-4450-8ac1-8c95ea6c571a}" Name="Road10" HideOrder="0" Pos="977.13483,1075.1162,78.038185" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="2" BorderWidth="0.5" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="4" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="-2.2344038,1.7332908,-0.37466928" Angle="0" Width="0" IsDefaultWidth="1"/>
      <Point Pos="-7.3817749,4.2141113,-0.99285889" Back="-4.6101332,3.5762119,-0.77303636" Forw="-9.1470633,4.6203961,-1.1328663" Angle="0" Width="6" IsDefaultWidth="0"/>
@@ -203,7 +207,7 @@
      <Point Pos="-67.466858,-92.958374,-31.067059" Back="-67.497459,-91.685417,-30.9174" Forw="-67.466858,-92.958374,-31.067059" Angle="0" Width="4" IsDefaultWidth="0"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{fa8225ae-da5c-4a4b-b5fb-9cb301a9c3ae}" Name="Road11" HideOrder="0" Pos="892.13251,1087.8922,51.733116" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="3" BorderWidth="2" EraseVegWidth="0.5" EraseVegWidthVar="0.125" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{fa8225ae-da5c-4a4b-b5fb-9cb301a9c3ae}" Name="Road11" HideOrder="0" Pos="892.13251,1087.8922,51.733116" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="3" BorderWidth="2" EraseVegWidth="0.5" EraseVegWidthVar="0.125" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="-1.8293897,0.086740069,0.047241226" Angle="0" Width="3" IsDefaultWidth="1"/>
      <Point Pos="-5.4833984,-0.32397461,0.18757629" Back="-3.7234144,0.17654479,0.096151553" Forw="-7.0143294,-0.75935388,0.26710257" Angle="0" Width="4" IsDefaultWidth="0"/>
@@ -252,7 +256,7 @@
      <Point Pos="37.109619,-182.94293,-4.8505135" Back="36.083771,-181.59804,-5.2812142" Forw="37.109619,-182.94293,-4.8505135" Angle="0" Width="4" IsDefaultWidth="0"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{07370bb6-a3aa-4aff-bbaf-ccedbda14456}" Name="Road14" HideOrder="0" Pos="889.24683,1087.5737,51.490128" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="3" BorderWidth="2" EraseVegWidth="0.5" EraseVegWidthVar="0.125" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{07370bb6-a3aa-4aff-bbaf-ccedbda14456}" Name="Road14" HideOrder="0" Pos="889.24683,1087.5737,51.490128" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="3" BorderWidth="2" EraseVegWidth="0.5" EraseVegWidthVar="0.125" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="2.5838819,0.16190514,0.03004601" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="7.6531372,1.3262939,-0.050003052" Back="5.2659807,0.32996452,0.061234109" Forw="9.3485374,2.0339046,-0.12900561" Angle="0" Width="3.75" IsDefaultWidth="0"/>
@@ -275,7 +279,7 @@
      <Point Pos="88.317017,60.918335,-0.2324028" Back="89.344315,59.056984,-0.20844708" Forw="88.317017,60.918335,-0.2324028" Angle="0" Width="3" IsDefaultWidth="1"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{ece9bfcc-63b0-48b5-8beb-579c24ebf7dd}" Name="Road19" HideOrder="0" Pos="1087.8749,1221.625,54.974995" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="4" BorderWidth="2" EraseVegWidth="0.0125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="0">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{ece9bfcc-63b0-48b5-8beb-579c24ebf7dd}" Name="Road19" HideOrder="0" Pos="1087.8749,1221.625,54.974995" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="4" BorderWidth="2" EraseVegWidth="0.0125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="0">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="-1.707852,0.058279686,-0.16453736" Angle="0" Width="0" IsDefaultWidth="1"/>
      <Point Pos="-5.125,0.097045898,-0.5" Back="-3.4168816,0.11659955,-0.32918817" Forw="-7.168324,0.073654979,-0.70433241" Angle="0" Width="6" IsDefaultWidth="0"/>
@@ -285,15 +289,15 @@
      <Point Pos="-39.25,-9.3464355,-0.5" Back="-36.794838,-7.8538365,-0.5182972" Forw="-39.25,-9.3464355,-0.5" Angle="0" Width="8" IsDefaultWidth="0"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{1fe4a6d4-a4bd-465d-893a-66a06f2ad5b3}" Name="Road8" HideOrder="0" Pos="762.99994,1103.3,89.599991" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="1.5" BorderWidth="0.5" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{1fe4a6d4-a4bd-465d-893a-66a06f2ad5b3}" Name="Road8" HideOrder="0" Pos="762.99994,1103.3,89.599991" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="1.5" BorderWidth="0.5" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="0.64852858,-0.026942916,0.0029691309" Angle="0" Width="6" IsDefaultWidth="0"/>
      <Point Pos="1.946228,0.040161133,-0.049987793" Back="1.3064837,-0.054277457,0.0059814192" Forw="2.6518986,0.14433172,-0.11172469" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="4.0006714,0.59057617,-0.3500061" Back="3.359242,0.30832294,-0.20325705" Forw="4.8589344,0.96824449,-0.54636335" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="6.4000244,2,-1.0689468" Back="5.5765009,1.5902073,-0.80120838" Forw="7.6647644,2.6293459,-1.4801306" Angle="0" Width="4" IsDefaultWidth="0"/>
-     <Point Pos="10.254456,3.7025146,-2.383194" Back="9.0129642,3.0568047,-1.9287989" Forw="11.367807,4.2815785,-2.7906892" Angle="0" Width="8" IsDefaultWidth="0"/>
-     <Point Pos="13.449524,5.6665039,-3.6491165" Back="12.247325,5.2179427,-3.3418229" Forw="14.66365,6.1195154,-3.9594586" Angle="0" Width="6" IsDefaultWidth="0"/>
-     <Point Pos="17.349976,6.3499756,-4.1968765" Back="16.082649,6.0427556,-3.9227691" Forw="18.147392,6.5432816,-4.369348" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="4.0006714,0.59057617,-0.3500061" Back="3.3576245,0.30761126,-0.21196377" Forw="4.8565845,0.96721041,-0.53374434" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="6.4000244,2,-1.0060806" Back="5.5870233,1.5728445,-0.75158536" Forw="7.5190992,2.5879683,-1.3563867" Angle="0" Width="4" IsDefaultWidth="0"/>
+     <Point Pos="9.7893066,3.631958,-2.1620331" Back="8.6813803,3.055716,-1.7605441" Forw="11.032296,4.2784472,-2.6124659" Angle="0" Width="8" IsDefaultWidth="0"/>
+     <Point Pos="13.449524,5.6665039,-3.5606689" Back="12.106998,5.1838732,-3.1993477" Forw="14.669082,6.104928,-3.888895" Angle="0" Width="6" IsDefaultWidth="0"/>
+     <Point Pos="17.349976,6.3499756,-4.1968765" Back="16.082184,6.0426431,-3.9044368" Forw="18.145082,6.5427222,-4.3802829" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="19.599976,7.1574707,-4.9793854" Back="18.82519,6.9567103,-4.7296081" Forw="20.759792,7.4579997,-5.3532901" Angle="0" Width="4" IsDefaultWidth="0"/>
      <Point Pos="23.138855,7.8499756,-6.0631104" Back="22.062912,7.3161569,-5.6988506" Forw="24.710289,8.6296291,-6.5951185" Angle="0" Width="3" IsDefaultWidth="0"/>
      <Point Pos="27.365723,11.010376,-7.6084747" Back="26.120245,9.7578411,-7.1183271" Forw="28.434202,12.084909,-8.028966" Angle="0" Width="4" IsDefaultWidth="0"/>
@@ -307,7 +311,7 @@
      <Point Pos="64.25,20.299927,-16.699997" Back="62.817661,21.691492,-16.470791" Forw="64.25,20.299927,-16.699997" Angle="0" Width="6" IsDefaultWidth="0"/>
     </Points>
    </Object>
-   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{d7ae62ed-0394-4c5a-b7e2-4ea539fa9ca3}" Name="Road21" HideOrder="0" Pos="984.89642,878.37177,50.664974" FloorNumber="-1" Rotate="1,0,0,0" Material="materials/natural/road/am_road_dust" Width="6" BorderWidth="2" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
+   <Object Type="Road" Layer="Roads" LayerGUID="{c93ee439-47a3-4944-8ae7-246760e820c7}" Id="{d7ae62ed-0394-4c5a-b7e2-4ea539fa9ca3}" Name="Road21" HideOrder="0" Pos="984.89642,878.37177,50.664974" FloorNumber="-1" Rotate="1,0,0,0" Material="objects/natural/road/am_road_dust" Width="6" BorderWidth="2" EraseVegWidth="0.125" EraseVegWidthVar="0" StepSize="2" ViewDistanceMultiplier="1" TileLength="10" SortPriority="0" IgnoreTerrainHoles="0" Physicalize="1">
     <Points>
      <Point Pos="0,0,0" Back="0,0,0" Forw="2.5360525,1.1913195,0.25683424" Angle="0" Width="6" IsDefaultWidth="1"/>
      <Point Pos="8.0858765,2.1638184,1.0896835" Back="5.348187,2.5123293,0.54162818" Forw="10.574125,1.8470615,1.5878036" Angle="0" Width="6" IsDefaultWidth="1"/>

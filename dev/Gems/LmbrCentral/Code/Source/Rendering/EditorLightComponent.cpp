@@ -14,7 +14,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Rtti/BehaviorContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -317,6 +317,9 @@ namespace LmbrCentral
                 ->Event("GetProbeAttenuationFalloff", &LightComponentEditorRequestBus::Events::GetProbeAttenuationFalloff)
                 ->Event("SetProbeAttenuationFalloff", &LightComponentEditorRequestBus::Events::SetProbeAttenuationFalloff)
                 ->VirtualProperty("ProbeAttenuationFalloff", "GetProbeAttenuationFalloff", "SetProbeAttenuationFalloff")
+                ->Event("GetProbeFade", &LightComponentEditorRequestBus::Events::GetProbeFade)
+                ->Event("SetProbeFade", &LightComponentEditorRequestBus::Events::SetProbeFade)
+                ->VirtualProperty("ProbeFade", "GetProbeFade", "SetProbeFade")
                 ;
         }
     }
@@ -340,13 +343,13 @@ namespace LmbrCentral
                       Attribute(AZ::Edit::Attributes::AutoExpand, true)->
                       Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)->
 
-                    DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_visible, "Visible", "The current visibility status of this flare")->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
-                    
-                    DataElement(0, &LightConfiguration::m_onInitially, "On initially", "The light is initially turned on.")->
-
                     ClassElement(AZ::Edit::ClassElements::Group, "General Settings")->
                         Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+
+                    DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_visible, "Visible", "The current visibility status of this flare")->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
+
+                    DataElement(0, &LightConfiguration::m_onInitially, "On initially", "The light is initially turned on.")->
 
                     DataElement(AZ::Edit::UIHandlers::Color, &LightConfiguration::m_color, "Color", "Light color")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
@@ -580,6 +583,10 @@ namespace LmbrCentral
 
                     ClassElement(AZ::Edit::ClassElements::Group, "Shadow Settings")->
                         Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+
+                    DataElement(0, &LightConfiguration::m_castTerrainShadows, "Terrain Shadows", "Include the terrain in the shadow casters for this light")->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
+
 
                     DataElement(0, &LightConfiguration::m_shadowBias, "Shadow bias", "Shadow bias")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSettingsVisibility)->
@@ -1296,6 +1303,23 @@ namespace LmbrCentral
         return m_configuration.m_attenFalloffMax;
     }
 
+    void EditorLightComponent::SetProbeFade(float fade)
+    {
+        AZ_Warning("Lighting", 0.0f <= fade && fade <= 1.0f, "SetProbeFade value %f out of range. Clamping to [0,1]", fade);
+        fade = AZ::GetClamp(fade, 0.0f, 1.0f);
+
+        if (fade != m_configuration.m_probeFade)
+        {
+            m_configuration.m_probeFade = fade;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+
+    float EditorLightComponent::GetProbeFade()
+    {
+        return m_configuration.m_probeFade;
+    }
+
     void EditorLightComponent::SetIndoorOnly(bool newIndoorOnly)
     {
         if (m_configuration.m_indoorOnly != newIndoorOnly)
@@ -1880,8 +1904,9 @@ namespace LmbrCentral
             material = m_materialManager->CreateMaterial(matName.toUtf8().data(), material->GetFlags() | MTL_FLAG_NON_REMOVABLE);
             if (material)
             {
-                SInputShaderResources isr = si.m_pShaderResources;
-                isr.m_Textures[EFTT_ENV].m_Name = textureName;
+                SInputShaderResources   isr = si.m_pShaderResources;
+                // The following operation will create a texture slot entry and copy the name to it.
+                isr.m_TexturesResourcesMap[EFTT_ENV].m_Name = textureName;
 
                 SShaderItem siDst = m_editor->GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask());
                 material->AssignShaderItem(siDst);
@@ -1909,7 +1934,8 @@ namespace LmbrCentral
                 SShaderItem& si = material->GetShaderItem();
 
                 SInputShaderResources isr = si.m_pShaderResources;
-                isr.m_Textures[EFTT_ENV].m_Name = textureName;
+                // The following operation will create a texture slot entry and copy the name to it.
+                isr.m_TexturesResourcesMap[EFTT_ENV].m_Name = textureName;	
 
                 SShaderItem siDst = m_editor->GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask());
                 material->AssignShaderItem(siDst);

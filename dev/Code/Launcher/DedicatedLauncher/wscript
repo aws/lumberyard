@@ -23,6 +23,7 @@ def build(bld):
                                'release_dedicated'],
         use                 = ['CryRenderNULL',
                                'AzGameFramework'],
+        includes            = [bld.Path('Code/Launcher')],
 
         win_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
         win_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],

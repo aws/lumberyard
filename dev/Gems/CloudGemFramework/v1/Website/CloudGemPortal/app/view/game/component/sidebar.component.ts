@@ -26,8 +26,8 @@ import { Gemifiable } from 'app/view/game/module/cloudgems/class/gem-interfaces'
 
 export class SidebarComponent implements OnInit {
     sidebarStateVal = "Expanded";
-    cloudGems: Observable<Array<Gemifiable>>;
     isViewingGem: boolean;
+    isLoadingGems: boolean;
 
     @Input()
     get sidebarState() {
@@ -48,12 +48,14 @@ export class SidebarComponent implements OnInit {
         private router: Router
     ) { }
 
-    ngOnInit() { }
+    ngOnInit( ) { }
 
-    loadGemIndex(gem: Gemifiable) {
-        if(gem) {
-            this.gemService.currentGem = null;
-        }
+    // TODO: Implement a routing solution for metrics that covers the whole website.
+    raiseRouteEvent(route: string): void {
+        this.lymetrics.recordEvent('FeatureOpened', {
+            "Name": route
+        })
+        this.router.navigate([route]);
     }
 }
 

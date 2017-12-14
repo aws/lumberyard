@@ -59,7 +59,7 @@ public:
 
     virtual void                    SetLastError(EDBError Error);
 
-    virtual void                    SetSQLiteLastError(unsigned int SQLiteError, const char* ErrorMessage = NULL);
+    void                            SetSQLiteLastError(unsigned int SQLiteError, const char* ErrorMessage = NULL);
 
     virtual bool                    IsLocal() const { return true; }
 
@@ -68,7 +68,7 @@ public:
 
     bool IsClosed() const { return m_Connection == NULL; }
 
-    bool Close();
+    virtual bool Close();
 
     sqlite3* GetRawHandle() const { return m_Connection; }
 

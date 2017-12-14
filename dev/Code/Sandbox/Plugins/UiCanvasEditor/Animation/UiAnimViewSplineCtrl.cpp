@@ -247,7 +247,7 @@ bool CUiAnimViewSplineCtrl::GetTangentHandlePts(QPoint& inTangentPt, QPoint& pt,
     pSpline->GetKeyValue(nKey, value);
     pSpline->GetKeyTangents(nKey, tin, tout);
 
-    CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(nKey);
+    CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(nKey);
 
     if (pTrack->GetCurveType() == eUiAnimCurveType_TCBFloat)
     {
@@ -315,7 +315,7 @@ void CUiAnimViewSplineCtrl::ComputeIncomingTangentAndEaseTo(float& ds, float& ea
     pSpline->GetKeyValue(nKey, value);
     pSpline->GetKeyTangents(nKey, tin, tout);
 
-    CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(nKey);
+    CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(nKey);
 
     ITcbKey tcbKey;
     keyHandle.GetKey(&tcbKey);
@@ -368,7 +368,7 @@ void CUiAnimViewSplineCtrl::ComputeOutgoingTangentAndEaseFrom(float& dd, float& 
     pSpline->GetKeyValue(nKey, value);
     pSpline->GetKeyTangents(nKey, tin, tout);
 
-    CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(nKey);
+    CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(nKey);
 
     ITcbKey tcbKey;
     keyHandle.GetKey(&tcbKey);
@@ -478,7 +478,7 @@ void CUiAnimViewSplineCtrl::MoveSelectedTangentHandleTo(const QPoint& point)
     assert(splineIndex < m_splines.size());
 
     CUiAnimViewTrack* pTrack = m_tracks[splineIndex];
-    CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(m_nHitKeyIndex);
+    CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(m_nHitKeyIndex);
 
     if (pTrack->GetCurveType() == eUiAnimCurveType_TCBFloat)
     {
@@ -679,7 +679,7 @@ void CUiAnimViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
             CUiAnimViewTrack* pTrack = m_tracks[splineIndex];
             for (int i = 0; i < pSpline->GetKeyCount(); i++)
             {
-                CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+                CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
                 for (int nCurrentDimension = 0; nCurrentDimension < pSpline->GetNumDimensions(); nCurrentDimension++)
                 {
@@ -775,7 +775,7 @@ void CUiAnimViewSplineCtrl::AdjustTCB(float d_tension, float d_continuity, float
 
         for (int i = 0; i < (int)pSpline->GetKeyCount(); i++)
         {
-            CUiAnimViewKeyHandle& keyHandle = pTrack->GetKey(i);
+            CUiAnimViewKeyHandle keyHandle = pTrack->GetKey(i);
 
             // If the key is selected in any dimension...
             for (

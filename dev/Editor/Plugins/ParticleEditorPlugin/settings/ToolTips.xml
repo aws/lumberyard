@@ -349,11 +349,13 @@
 		<tooltip path="Advanced" title="Advanced"/>
 		<tooltip path="Advanced.Force_Generation" title="Force Generation" content="Generate physical forces if set"/>
 		<tooltip path="Advanced.Fill_Rate_Cost" title="Fill Rate Cost" content="Adjustment to max screen fill allowed per emitter"/>
+		<tooltip path="Advanced.Spherical_Approximation" title="Spherical Volume" content="Simulates adding spherical volume to the particle and multiplies particle size to define the volume"/>
 		<tooltip path="Advanced.Heat_Scale" title="Heat Scale" content="Multiplier to thermal vision"/>
 		<tooltip path="Advanced.Sort_Quality" title="Sort Quality" content="Sort new particles as accurately as possible into list, by main camera distance"/>
 		<tooltip path="Advanced.Half_Res" title="Half Res" content="Use half resolution rendering"/>
 		<tooltip path="Advanced.Streamable" title="Streamable" content="Texture/geometry allowed to be streamed"/>
 		<tooltip path="Advanced.Particle_Size_Discard" title="Particle Size Discard" content="-"/>
+		<tooltip path="Advanced.Depth_Of_Field_Blur" title="Depth of Field Blur" content="Particles will be blurred against depth of field fullscreen effect. (excluding geometry and decal types)"/>
 		<tooltip path="Configuration" title="Configuration"/>
 		<tooltip path="Configuration.Config_Min" title="Config Min" content="Minimum config spec this effect runs in"/>
 		<tooltip path="Configuration.Config_Max" title="Config Max" content="Maximum config spec this effect runs in"/>

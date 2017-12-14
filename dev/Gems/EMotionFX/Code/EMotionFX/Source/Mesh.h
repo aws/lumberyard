@@ -63,14 +63,14 @@ namespace EMotionFX
          */
         enum
         {
-            ATTRIB_POSITIONS        = 0,    /**< Vertex positions. Typecast to MCore::Vector3. Positions are always exist. */
-            ATTRIB_NORMALS          = 1,    /**< Vertex normals. Typecast to MCore::Vector3. Normals are always exist. */
+            ATTRIB_POSITIONS        = 0,    /**< Vertex positions. Typecast to AZ::PackedVector3f. Positions are always exist. */
+            ATTRIB_NORMALS          = 1,    /**< Vertex normals. Typecast to AZ::PackedVector3f. Normals are always exist. */
             ATTRIB_TANGENTS         = 2,    /**< Vertex tangents. Typecast to <b> AZ::Vector4 </b>. */
             ATTRIB_UVCOORDS         = 3,    /**< Vertex uv coordinates. Typecast to AZ::Vector2. */
             ATTRIB_COLORS32         = 4,    /**< Vertex colors in 32-bits. Typecast to uint32. */
             ATTRIB_ORGVTXNUMBERS    = 5,    /**< Original vertex numbers. Typecast to uint32. Original vertex numbers always exist. */
             ATTRIB_COLORS128        = 6,    /**< Vertex colors in 128-bits. Typecast to MCore::RGBAColor. */
-            ATTRIB_BITANGENTS       = 7     /**< Vertex bitangents (aka binormal). Typecast to MCore::Vector3. When tangents exists bitangents may still not exist! */
+            ATTRIB_BITANGENTS       = 7     /**< Vertex bitangents (aka binormal). Typecast to AZ::PackedVector3f. When tangents exists bitangents may still not exist! */
         };
 
         /**
@@ -131,9 +131,9 @@ namespace EMotionFX
          * @param outTangent A pointer to the vector to store the calculated tangent vector.
          * @param outBiNormal A pointer to the vector to store the calculated binormal vector (calculated using the gradients).
          */
-        static void CalcTangentAndBiNormalForFace(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC,
+        static void CalcTangentAndBiNormalForFace(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC,
             const AZ::Vector2& uvA,  const AZ::Vector2& uvB,  const AZ::Vector2& uvC,
-            MCore::Vector3* outTangent, MCore::Vector3* outBiNormal);
+            AZ::Vector3* outTangent, AZ::Vector3* outBiNormal);
 
         /**
          * Allocate mesh data. If there is already data allocated, this data will be deleted first.
@@ -428,7 +428,7 @@ namespace EMotionFX
          *                   A value of nullptr is allowed, which will skip storing the resulting triangle indices.
          * @result Returns true when an intersection has occurred, otherwise false.
          */
-        bool Intersects(const MCore::Matrix& transformMatrix, const MCore::Ray& ray, MCore::Vector3* outIntersect, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outIndices = nullptr);
+        bool Intersects(const MCore::Matrix& transformMatrix, const MCore::Ray& ray, AZ::Vector3* outIntersect, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outIndices = nullptr);
 
         //---------------------------------------------------
 
@@ -471,7 +471,7 @@ namespace EMotionFX
          * For a cube, which normally might have 32 vertices, it will result in 8 positions.
          * @param outPoints The output array to store the points in. The array will be automatically resized.
          */
-        void ExtractOriginalVertexPositions(MCore::Array<MCore::Vector3>& outPoints) const;
+        void ExtractOriginalVertexPositions(MCore::Array<AZ::Vector3>& outPoints) const;
 
         /**
          * Clone the mesh.
@@ -567,14 +567,13 @@ namespace EMotionFX
         void CalcAABB(MCore::AABB* outBoundingBox, const MCore::Matrix& globalMatrix, uint32 vertexFrequency = 1);
 
         /**
-         * The mesh type used to indicate if a mesh is either static, like a cube or building, dynamic if it has mesh deformers which
-         * have to be processed on the CPU like a morphing deformer or gpu skinned if they only have a skinning deformer applied.
+         * The mesh type used to indicate if a mesh is either static, like a cube or building, cpu deformed, if it needs to be processed on the CPU, or GPU deformed if it can be processed fully on the GPU.
          */
         enum EMeshType
         {
-            MESHTYPE_STATIC     = 0,    /**< Static mesh, like a cube or building (can still be position/scale/rotation animated though). */
-            MESHTYPE_DYNAMIC    = 1,    /**< Has mesh deformers that have to be processed on the CPU. */
-            MESHTYPE_GPUSKINNED = 2     /**< Just a skinning mesh deformer that gets processed on the GPU with skinned shader. */
+            MESHTYPE_STATIC         = 0,    /**< Static rigid mesh, like a cube or building (can still be position/scale/rotation animated though). */
+            MESHTYPE_CPU_DEFORMED   = 1,    /**< Deformed on the CPU. */
+            MESHTYPE_GPU_DEFORMED   = 2     /**< Deformed on the GPU. */
         };
 
         /**

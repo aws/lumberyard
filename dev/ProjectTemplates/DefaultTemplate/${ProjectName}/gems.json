@@ -2,6 +2,12 @@
     "GemListFormatVersion": 2,
     "Gems": [
         {
+            "Path": "Gems/EMotionFX",
+            "Uuid": "044a63ea67d04479aa5daf62ded9d9ca",
+            "Version": "0.1.0",
+            "_comment": "EMotionFX"
+        },
+        {
             "Path": "Gems/PBSreferenceMaterials",
             "Uuid": "07375b61b1a2424bb03088bbdf28b2c8",
             "Version": "0.1.0",
@@ -44,10 +50,10 @@
             "_comment": "StartingPointInput"
         },
         {
-            "Path": "Gems/AssetImporterConfig",
-            "Uuid": "0b9e04f1482b4e088f1ca07816930c04",
+            "Path": "Gems/SceneProcessing",
+            "Uuid": "7c2578f634df4345aca98d671e39b8ab",
             "Version": "0.1.0",
-            "_comment": "AssetImporterConfig"
+            "_comment": "SceneProcessing"
         },
         {
             "Path": "Gems/LyShine",
@@ -168,6 +174,12 @@
             "Uuid": "c7935ecf5e8047fe8ca947b34b11cadb",
             "Version": "0.1.0",
             "_comment": "LyShineExamples"
+        },
+        {
+            "Path": "Gems/CryEntityRemoval",
+            "Uuid": "f3ae24a1635e4f849535f37ef9f4b4da",
+            "Version": "0.1.0",
+            "_comment": "CryEntityRemoval"
         },
         {
             "Path": "Gems/Camera",

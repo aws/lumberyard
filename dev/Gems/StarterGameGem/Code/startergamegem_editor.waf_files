@@ -1,0 +1,10 @@
+{
+	"auto": {
+		"Source": [
+			"Source/PlayFromHereEditorSystemComponent.cpp",
+			"Source/PlayFromHereEditorSystemComponent.h",
+			"Source/EditorWaypointsComponent.cpp",
+			"Source/EditorWaypointsComponent.h"
+		]
+	}
+}

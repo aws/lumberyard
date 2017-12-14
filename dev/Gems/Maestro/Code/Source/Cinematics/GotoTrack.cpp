@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include "GotoTrack.h"
+#include "Maestro/Types/AnimValueType.h"
 
 #define MIN_TIME_PRECISION 0.01f
 
@@ -23,6 +24,12 @@ CGotoTrack::CGotoTrack()
     m_flags = 0;
     m_DefaultValue = -1.0f;
 }
+
+AnimValueType CGotoTrack::GetValueType()
+{
+    return AnimValueType::DiscreteFloat;
+}
+
 ////////////////////////////////////////////////////////////////////////
 void CGotoTrack::GetValue(float time, float& value, bool applyMultiplier)
 {

@@ -1307,7 +1307,7 @@ void CVehiclePartsPanel::FillSeats()
             pSeatObj->SetVehicle(m_pVehicle);
             pSeatObj->SetVariable(pSeatVar);
 
-            QTreeWidgetItem* hParentItem;
+            QTreeWidgetItem* hParentItem = nullptr;
 
             // attach to vehicle or parent part, if present
             bool bPart = false;
@@ -1335,6 +1335,7 @@ void CVehiclePartsPanel::FillSeats()
                 hParentItem = m_hVehicle;
             }
 
+            assert(hParentItem);
             QTreeWidgetItem* hItem = InsertTreeItem(pSeatObj, hParentItem);
             pSeatObj->AddEventListener(functor(*this, &CVehiclePartsPanel::OnObjectEvent));
 
@@ -1563,7 +1564,7 @@ void CVehiclePartsPanel::AddParts(IVariable* pParts, CBaseObject* pParent)
         pPartObj->SetVehicle(m_pVehicle);
         pPartObj->SetVariable(pPartVar);
 
-        QTreeWidgetItem* hParentItem;
+        QTreeWidgetItem* hParentItem = nullptr;
 
         // attach to vehicle or parent part, if present
         if (pParent == m_pVehicle)

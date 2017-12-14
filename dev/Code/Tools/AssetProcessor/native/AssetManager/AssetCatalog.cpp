@@ -20,8 +20,13 @@
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/std/string/tokenize.h>
+#include <AzCore/std/string/wildcard.h>
+#include <AzCore/std/string/conversions.h>
 #include <AzFramework/Asset/AssetRegistry.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/API/AssetDatabaseBus.h>
 
 #include <QElapsedTimer>
 #include <QMutexLocker>
@@ -29,12 +34,18 @@
 
 namespace AssetProcessor
 {
-    AssetCatalog::AssetCatalog(QObject* parent, QStringList platforms, AZStd::shared_ptr<AssetDatabaseConnection> db)
+    AssetCatalog::AssetCatalog(QObject* parent, AssetProcessor::PlatformConfiguration* platformConfiguration)
         : QObject(parent)
-        , m_platforms(platforms)
-        , m_db(db)
+        , m_platformConfig(platformConfiguration)
         , m_registryBuiltOnce(false)
+        , m_registriesMutex(QMutex::Recursive)
     {
+        
+        for (const AssetBuilderSDK::PlatformInfo& info : m_platformConfig->GetEnabledPlatforms())
+        {
+            m_platforms.push_back(QString::fromUtf8(info.m_identifier.c_str()));
+        }
+
         bool computedCacheRoot = AssetUtilities::ComputeProjectCacheRoot(m_cacheRoot);
         AZ_Assert(computedCacheRoot, "Could not compute cache root for AssetCatalog");
 
@@ -42,13 +53,35 @@ namespace AssetProcessor
         // if you don't do this, things get fragmented very fast.
         m_saveBuffer.reserve(1024 * 1024 * 30); 
         
+        m_absoluteDevFolderPath[0] = 0;
+        m_absoluteDevGameFolderPath[0] = 0;
+
+        QDir engineRoot;
+        if (AssetUtilities::ComputeEngineRoot(engineRoot))
+        {
+            azstrcpy(m_absoluteDevFolderPath, AZ_MAX_PATH_LEN, engineRoot.absolutePath().toUtf8().constData());
+            QString absoluteDevGameFolderPath = engineRoot.absoluteFilePath(AssetUtilities::ComputeGameName());
+            azstrcpy(m_absoluteDevGameFolderPath, AZ_MAX_PATH_LEN, absoluteDevGameFolderPath.toUtf8().constData());
+        }
+
+        AssetUtilities::ComputeProjectCacheRoot(m_cacheRootDir);
+
+        if (!ConnectToDatabase())
+        {
+            AZ_Error("AssetCatalog", false, "Failed to connect to sqlite database");
+        }
+
         BuildRegistry();
         m_registryBuiltOnce = true;
         AssetRegistryRequestBus::Handler::BusConnect();
+        AzToolsFramework::AssetSystemRequestBus::Handler::BusConnect();
+        AzToolsFramework::ToolsAssetSystemBus::Handler::BusConnect();
     }
 
     AssetCatalog::~AssetCatalog()
     {
+        AzToolsFramework::ToolsAssetSystemBus::Handler::BusDisconnect();
+        AzToolsFramework::AssetSystemRequestBus::Handler::BusDisconnect();
         AssetRegistryRequestBus::Handler::BusDisconnect();
         SaveRegistry_Impl();
     }
@@ -69,15 +102,20 @@ namespace AssetProcessor
             AZ_Assert(!assetInfo.m_relativePath.empty(), "Product path is empty");
 
             m_catalogIsDirty = true;
-            m_registries[platform].RegisterAsset(assetInfo.m_assetId, assetInfo);
-            for (const AZ::Data::AssetId& mapping : message.m_legacyAssetIds)
             {
-                if (mapping != assetInfo.m_assetId)
+                QMutexLocker locker(&m_registriesMutex);
+                m_registries[platform].RegisterAsset(assetInfo.m_assetId, assetInfo);
+                for (const AZ::Data::AssetId& mapping : message.m_legacyAssetIds)
                 {
-                    m_registries[platform].RegisterLegacyAssetMapping(mapping, assetInfo.m_assetId);
+                    if (mapping != assetInfo.m_assetId)
+                    {
+                        m_registries[platform].RegisterLegacyAssetMapping(mapping, assetInfo.m_assetId);
+                    }
                 }
+
+                m_registries[platform].SetAssetDependencies(message.m_assetId, message.m_dependencies);
             }
-            
+
             if (m_registryBuiltOnce)
             {
                 Q_EMIT SendAssetMessage(platform, message);
@@ -85,6 +123,7 @@ namespace AssetProcessor
         }
         else if (message.m_type == AssetNotificationMessage::AssetRemoved)
         {
+            QMutexLocker locker(&m_registriesMutex);
             auto found = m_registries[platform].m_assetIdToInfo.find(message.m_assetId);
 
             if (found != m_registries[platform].m_assetIdToInfo.end())
@@ -140,7 +179,10 @@ namespace AssetProcessor
 
                 // these 3 lines are what writes the entire registry to the memory stream
                 AZ::ObjectStream* objStream = AZ::ObjectStream::Create(&catalogFileStream, *serializeContext, AZ::ObjectStream::ST_BINARY);
-                objStream->WriteClass(&m_registries[platform]);
+                {
+                    QMutexLocker locker(&m_registriesMutex);
+                    objStream->WriteClass(&m_registries[platform]);
+                }
                 objStream->Finalize();
 
                 // now write the memory stream out to the temp folder
@@ -152,7 +194,8 @@ namespace AssetProcessor
                 else
                 {
                     QString tempRegistryFile = QString("%1/%2").arg(workSpace).arg("assetcatalog.xml.tmp");
-                    QString actualRegistryFile = QString("%1/%2/%3").arg(m_cacheRoot.absoluteFilePath(platform)).arg(AssetUtilities::ComputeGameName().toLower()).arg("assetcatalog.xml");
+                    QString platformGameDir = QString("%1/%2/").arg(m_cacheRoot.absoluteFilePath(platform)).arg(AssetUtilities::ComputeGameName().toLower());
+                    QString actualRegistryFile = QString("%1%2").arg(platformGameDir).arg("assetcatalog.xml");
 
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Creating asset catalog: %s --> %s\n", tempRegistryFile.toUtf8().constData(), actualRegistryFile.toUtf8().constData());
                     AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
@@ -161,6 +204,15 @@ namespace AssetProcessor
                         AZ::IO::FileIOBase::GetInstance()->Write(fileHandle, m_saveBuffer.data(), m_saveBuffer.size());
                         AZ::IO::FileIOBase::GetInstance()->Close(fileHandle);
 
+                        // Make sure that the destination folder of the registry file exists
+                        QDir registryDir(platformGameDir);
+                        if (!registryDir.exists())
+                        {
+                            QString absPath = registryDir.absolutePath();
+                            bool makeDirResult = AZ::IO::SystemFile::CreateDir(absPath.toUtf8().constData());
+                            AZ_Warning(AssetProcessor::ConsoleChannel, makeDirResult, "Failed create folder %s", platformGameDir.toUtf8().constData());
+                        }
+                        
                         // if we succeeded in doing this, then use "rename" to move the file over the previous copy.
                         bool moved = AssetUtilities::MoveFileWithTimeout(tempRegistryFile, actualRegistryFile, 3);
                         allCatalogsSaved = allCatalogsSaved && moved;
@@ -211,7 +263,7 @@ namespace AssetProcessor
                 AssetProcessor::NetworkRequestID& requestId = iter.value();
                 AzFramework::AssetSystem::SaveAssetCatalogResponse saveCatalogResponse;
                 saveCatalogResponse.m_saved = allCatalogsSaved;
-                AssetProcessor::ConnectionBus::Event(requestId.first, &AssetProcessor::ConnectionBus::Events::Send, requestId.second, saveCatalogResponse);
+                AssetProcessor::ConnectionBus::Event(requestId.first, &AssetProcessor::ConnectionBus::Events::SendResponse, requestId.second, saveCatalogResponse);
                 iter = m_queuedSaveCatalogRequest.erase(iter);
             }
             else
@@ -280,7 +332,7 @@ namespace AssetProcessor
                     }
 
                     // now include the additional legacies based on the SubIDs by which this asset was previously referred to.
-                    for (auto entry : combined.m_legacySubIDs)
+                    for (const auto& entry : combined.m_legacySubIDs)
                     {
                         AZ::Data::AssetId legacySubID(combined.m_sourceGuid, entry.m_subID);
                         if ((legacySubID != assetId) && (legacySubID != legacyAssetId) && (legacySubID != legacySourceAssetId))
@@ -293,16 +345,662 @@ namespace AssetProcessor
                     return true;//see them all
                 };
 
+            AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+
             m_db->QueryCombined(
                 databaseQueryCallback, AZ::Uuid::CreateNull(),
                 nullptr,
                 platform.toUtf8().constData(),
                 AzToolsFramework::AssetSystem::JobStatus::Any,
-                true); /*we do need legacy IDs - hardly anyone else does*/
+                true); /*we still need legacy IDs - hardly anyone else does*/
+
+            m_db->QueryProductDependenciesTable([this, &platform](AZ::Data::AssetId& assetId, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry)
+            {
+                m_registries[platform].RegisterAssetDependency(assetId, AZ::Data::ProductDependency{ AZ::Data::AssetId(entry.m_dependencySourceGuid, entry.m_dependencySubID), entry.m_dependencyFlags });
+
+                return true;
+            });
 
             AZ_TracePrintf("Catalog", "Read %u assets from database for %s in %fs\n", currentRegistry.m_assetIdToInfo.size(), platform.toUtf8().constData(), timer.elapsed() / 1000.0f);
         }
     }
+
+    void AssetCatalog::OnSourceQueued(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid, QString rootPath, QString relativeFilePath)
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_sourceUUIDToSourceNameMapMutex);
+
+        SourceInfo sourceInfo = { rootPath, relativeFilePath };
+        m_sourceUUIDToSourceNameMap.insert({ sourceUuid, sourceInfo });
+
+        //adding legacy source uuid as well
+        m_sourceUUIDToSourceNameMap.insert({ legacyUuid, sourceInfo });
+
+        AZStd::string nameForMap(relativeFilePath.toUtf8().constData());
+        AZStd::to_lower(nameForMap.begin(), nameForMap.end());
+       
+        m_sourceNameToSourceUUIDMap.insert({ nameForMap, sourceUuid });
+    }
+
+    void AssetCatalog::OnSourceFinished(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid)
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_sourceUUIDToSourceNameMapMutex);
+
+        auto found = m_sourceUUIDToSourceNameMap.find(sourceUuid);
+        if (found != m_sourceUUIDToSourceNameMap.end())
+        {
+            AZStd::string nameForMap = found->second.m_sourceName.toUtf8().constData();
+            AZStd::to_lower(nameForMap.begin(), nameForMap.end());
+            m_sourceNameToSourceUUIDMap.erase(nameForMap);
+        }
+
+        m_sourceUUIDToSourceNameMap.erase(sourceUuid);
+        m_sourceUUIDToSourceNameMap.erase(legacyUuid);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    const char* AssetCatalog::GetAbsoluteDevGameFolderPath()
+    {
+        return m_absoluteDevGameFolderPath;
+    }
+
+    const char* AssetCatalog::GetAbsoluteDevRootFolderPath()
+    {
+        return m_absoluteDevFolderPath;
+    }
+
+    bool AssetCatalog::GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullSourceOrProductPath, AZStd::string& relativeProductPath)
+    {
+        ProcessGetRelativeProductPathFromFullSourceOrProductPathRequest(fullSourceOrProductPath, relativeProductPath);
+
+        if (!relativeProductPath.length())
+        {
+            // if we are here it means we have failed to determine the assetId we will send back the original path
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "GetRelativeProductPath no result, returning original %s...\n", fullSourceOrProductPath.c_str());
+            relativeProductPath = fullSourceOrProductPath;
+            return false;
+        }
+
+        return true;
+    }
+
+    bool AssetCatalog::GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullSourcePath)
+    {
+        ProcessGetFullSourcePathFromRelativeProductPathRequest(relPath, fullSourcePath);
+
+        if (!fullSourcePath.length())
+        {
+            // if we are here it means that we failed to determine the full source path from the relative path and we will send back the original path
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "GetFullSourcePath no result, returning original %s...\n", relPath.c_str());
+            fullSourcePath = relPath;
+            return false;
+        }
+
+        return true;
+    }
+
+    void AssetCatalog::UpdateQueuedEvents()
+    {
+    }
+
+    bool AssetCatalog::GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath)
+    {
+        assetInfo.m_assetId.SetInvalid();
+        assetInfo.m_relativePath.clear();
+        assetInfo.m_assetType = AZ::Data::s_invalidAssetType;
+        assetInfo.m_sizeBytes = 0;
+
+        // If the assetType wasn't provided, try to guess it
+        if (assetType.IsNull())
+        {
+            return GetAssetInfoByIdOnly(assetId, assetInfo, rootFilePath);
+        }
+
+        bool isSourceType;
+
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_sourceAssetTypesMutex);
+            isSourceType = m_sourceAssetTypes.find(assetType) != m_sourceAssetTypes.end();
+        }
+
+        // If the assetType is registered as a source type, look up the source info
+        if (isSourceType)
+        {
+            AZStd::string relativePath;
+
+            if (GetSourceFileInfoFromAssetId(assetId, rootFilePath, relativePath))
+            {
+                AZStd::string sourceFileFullPath;
+                AzFramework::StringFunc::Path::Join(rootFilePath.c_str(), relativePath.c_str(), sourceFileFullPath);
+
+                assetInfo.m_assetId = assetId;
+                assetInfo.m_assetType = assetType;
+                assetInfo.m_relativePath = relativePath;
+                assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(sourceFileFullPath.c_str());
+
+                return true;
+            }
+
+            return false;
+        }
+
+        // Return the product file info
+        rootFilePath.clear(); // products don't have root file paths.
+        assetInfo = GetProductAssetInfo(nullptr, assetId);
+
+        return !assetInfo.m_relativePath.empty();
+    }
+
+    bool AssetCatalog::GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
+    {
+        if (!sourcePath)
+        {
+            assetInfo.m_assetId.SetInvalid();
+            return false;
+        }
+
+        // regardless of which way we come into this function we must always use ConvertToRelativePath
+        // to convert from whatever the input format is to a database path (which may include output prefix)
+        QString relativeName; 
+        QString scanFolder;
+        if (!AzFramework::StringFunc::Path::IsRelative(sourcePath))
+        {
+            // absolute paths just get converted directly.
+            m_platformConfig->ConvertToRelativePath(QString::fromUtf8(sourcePath), relativeName, scanFolder);
+        }
+        else
+        {
+            // relative paths get the first matching asset, and then they get the usual call.
+            QString absolutePath = m_platformConfig->FindFirstMatchingFile(QString::fromUtf8(sourcePath));
+            if (!absolutePath.isEmpty())
+            {
+                m_platformConfig->ConvertToRelativePath(absolutePath, relativeName, scanFolder);
+            }
+        }
+
+        if ((relativeName.isEmpty()) || (scanFolder.isEmpty()))
+        {
+            assetInfo.m_assetId.SetInvalid();
+            return false;
+        }
+
+        // Check the database first
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+            AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer returnedSources;
+
+            if (m_db->GetSourcesBySourceName(relativeName, returnedSources))
+            {
+                if (!returnedSources.empty())
+                {
+                    AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry = returnedSources.front();
+
+                    AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry scanEntry;
+                    if (m_db->GetScanFolderByScanFolderID(entry.m_scanFolderPK, scanEntry))
+                    {
+                        watchFolder = scanEntry.m_scanFolder;
+                        // since we are returning the UUID of a source file, as opposed to the full assetId of a product file produced by that source file,
+                        // the subId part of the assetId will always be set to zero.
+                        assetInfo.m_assetId = AZ::Data::AssetId(entry.m_sourceGuid, 0);
+                        assetInfo.m_relativePath = entry.m_sourceName;
+                        AZStd::string absolutePath;
+                        AzFramework::StringFunc::Path::Join(scanEntry.m_scanFolder.c_str(), assetInfo.m_relativePath.c_str(), absolutePath);
+                        assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(absolutePath.c_str());
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Source file isn't in the database yet, see if its in the job queue
+        return GetQueuedAssetInfoByRelativeSourceName(relativeName.toUtf8().data(), assetInfo, watchFolder);
+    }
+
+    bool ConvertDatabaseProductPathToProductFileName(QString dbPath, QString& productFileName)
+    {
+        QString gameName = AssetUtilities::ComputeGameName();
+        bool result = false;
+        int gameNameIndex = dbPath.indexOf(gameName, 0, Qt::CaseInsensitive);
+        if (gameNameIndex != -1)
+        {
+            //we will now remove the gameName and the native separator to get the assetId
+            dbPath.remove(0, gameNameIndex + gameName.length() + 1);   // adding one for the native separator also
+            result = true;
+        }
+        else
+        {
+            //we will just remove the platform and the native separator to get the assetId
+            int separatorIndex = dbPath.indexOf("/");
+            if (separatorIndex != -1)
+            {
+                dbPath.remove(0, separatorIndex + 1);   // adding one for the native separator
+                result = true;
+            }
+        }
+
+        productFileName = dbPath;
+
+        return result;
+    }
+
+    void AssetCatalog::ProcessGetRelativeProductPathFromFullSourceOrProductPathRequest(const AZStd::string& fullPath, AZStd::string& relativeProductPath)
+    {
+        QString sourceOrProductPath = fullPath.c_str();
+        QString normalizedSourceOrProductPath = AssetUtilities::NormalizeFilePath(sourceOrProductPath);
+
+        QString productFileName;
+        int resultCode = 0;
+        QDir inputPath(normalizedSourceOrProductPath);
+
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "ProcessGetRelativeProductPath: %s...\n", sourceOrProductPath.toUtf8().constData());
+
+        if (inputPath.isRelative())
+        {
+            //if the path coming in is already a relative path,we just send it back
+            productFileName = sourceOrProductPath;
+            resultCode = 1;
+        }
+        else
+        {
+            QDir cacheRoot;
+            AssetUtilities::ComputeProjectCacheRoot(cacheRoot);
+            QString normalizedCacheRoot = AssetUtilities::NormalizeFilePath(cacheRoot.path());
+
+            bool inCacheFolder = normalizedSourceOrProductPath.startsWith(normalizedCacheRoot, Qt::CaseInsensitive);
+            if (inCacheFolder)
+            {
+                // The path send by the game/editor contains the cache root so we try to find the asset id
+                // from the asset database
+                normalizedSourceOrProductPath.remove(0, normalizedCacheRoot.length() + 1); // adding 1 for the native separator
+
+                // If we are here it means that the asset database does not have any knowledge about this file,
+                // most probably because AP has not processed the file yet
+                // In this case we will try to compute the asset id from the product path
+                // Now after removing the cache root,normalizedInputAssetPath can either be $Platform/$Game/xxx/yyy or something like $Platform/zzz
+                // and the corresponding assetId have to be either xxx/yyy or zzz
+
+                resultCode = ConvertDatabaseProductPathToProductFileName(normalizedSourceOrProductPath, productFileName);
+            }
+            else
+            {
+                // If we are here it means its a source file, first see whether there is any overriding file and than try to find products
+                QString scanFolder;
+                QString relativeName;
+                if (m_platformConfig->ConvertToRelativePath(normalizedSourceOrProductPath, relativeName, scanFolder))
+                {
+                    QString overridingFile = m_platformConfig->GetOverridingFile(relativeName, scanFolder);
+
+                    if (overridingFile.isEmpty())
+                    {
+                        // no overriding file found
+                        overridingFile = normalizedSourceOrProductPath;
+                    }
+                    else
+                    {
+                        overridingFile = AssetUtilities::NormalizeFilePath(overridingFile);
+                    }
+
+                    if (m_platformConfig->ConvertToRelativePath(overridingFile, relativeName, scanFolder))
+                    {
+                        AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+                        AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer products;
+
+                        if (m_db->GetProductsBySourceName(relativeName, products))
+                        {
+                            resultCode = ConvertDatabaseProductPathToProductFileName(products[0].m_productName.c_str(), productFileName);
+                        }
+                        else
+                        {
+                            productFileName = relativeName;
+                            resultCode = 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!resultCode)
+        {
+            productFileName = "";
+        }
+
+        relativeProductPath = productFileName.toUtf8().data();
+
+    }
+
+    void AssetCatalog::ProcessGetFullSourcePathFromRelativeProductPathRequest(const AZStd::string& relPath, AZStd::string& fullSourcePath)
+    {
+        QString assetPath = relPath.c_str();
+        QString normalisedAssetPath = AssetUtilities::NormalizeFilePath(assetPath);
+        int resultCode = 0;
+        QString fullAssetPath;
+
+        if (normalisedAssetPath.isEmpty())
+        {
+            fullSourcePath = "";
+            return;
+        }
+
+        QDir inputPath(normalisedAssetPath);
+
+        if (inputPath.isAbsolute())
+        {
+            bool inCacheFolder = false;
+            QDir cacheRoot;
+            AssetUtilities::ComputeProjectCacheRoot(cacheRoot);
+            QString normalizedCacheRoot = AssetUtilities::NormalizeFilePath(cacheRoot.path());
+            //Check to see whether the path contains the cache root
+            inCacheFolder = normalisedAssetPath.startsWith(normalizedCacheRoot, Qt::CaseInsensitive);
+
+            if (!inCacheFolder)
+            {
+                // Attempt to convert to relative path
+                QString dummy, convertedRelPath;
+                if (m_platformConfig->ConvertToRelativePath(assetPath, convertedRelPath, dummy))
+                {
+                    // then find the first matching file to get correct casing
+                    fullAssetPath = m_platformConfig->FindFirstMatchingFile(convertedRelPath);
+                }
+
+                if (fullAssetPath.isEmpty())
+                {
+                    // if we couldn't find it, just return the passed in path
+                    fullAssetPath = assetPath;
+                }
+
+                resultCode = 1;
+            }
+            else
+            {
+                // The path send by the game/editor contains the cache root ,try to find the productName from it
+                normalisedAssetPath.remove(0, normalizedCacheRoot.length() + 1); // adding 1 for the native separator
+            }
+        }
+
+        if (!resultCode)
+        {
+            //remove aliases if present
+            normalisedAssetPath = AssetUtilities::NormalizeAndRemoveAlias(normalisedAssetPath);
+
+            if (!normalisedAssetPath.isEmpty()) // this happens if it comes in as just for example "@assets@/"
+            {
+                AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+
+                //We should have the asset now, we can now find the full asset path
+                QString productName = AssetUtilities::GuessProductNameInDatabase(normalisedAssetPath, m_db.get());
+                if (!productName.isEmpty())
+                {
+                    //Now find the input name for the path,if we are here this should always return true since we were able to find the productName before
+                    AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer sources;
+                    if (m_db->GetSourcesByProductName(productName, sources))
+                    {
+                        //Once we have found the inputname we will try finding the full path
+                        fullAssetPath = m_platformConfig->FindFirstMatchingFile(sources[0].m_sourceName.c_str());
+                        if (!fullAssetPath.isEmpty())
+                        {
+                            resultCode = 1;
+                        }
+                    }
+                }
+                else
+                {
+                    // if we are not able to guess the product name than maybe the asset path is an input name
+                    fullAssetPath = m_platformConfig->FindFirstMatchingFile(normalisedAssetPath);
+                    if (!fullAssetPath.isEmpty())
+                    {
+                        resultCode = 1;
+                    }
+                }
+            }
+        }
+
+        if (!resultCode)
+        {
+            fullSourcePath = "";
+        }
+        else
+        {
+            fullSourcePath = fullAssetPath.toUtf8().data();
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    void AssetCatalog::RegisterSourceAssetType(const AZ::Data::AssetType& assetType, const char* assetFileFilter)
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_sourceAssetTypesMutex);
+        m_sourceAssetTypes.insert({ assetType, assetFileFilter });
+    }
+
+    void AssetCatalog::UnregisterSourceAssetType(const AZ::Data::AssetType& assetType)
+    {
+        // For now, this does nothing, because it would just needlessly complicate things for no gain.
+        // Unregister is only called when a builder is shut down, which really is only supposed to happen when AssetCatalog is being shutdown
+        // Without a way of tracking how many builders have registered the same assetType and being able to perfectly keep track of every builder shutdown, even in the event of a crash,
+        // the map would either be cleared prematurely or never get cleared at all
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    bool AssetCatalog::GetSourceFileInfoFromAssetId(const AZ::Data::AssetId &assetId, AZStd::string& watchFolder, AZStd::string& relativePath)
+    {
+        // Check the database first
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+            AzToolsFramework::AssetDatabase::SourceDatabaseEntry entry;
+
+            if (m_db->GetSourceBySourceGuid(assetId.m_guid, entry))
+            {
+                AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry scanEntry;
+                if (m_db->GetScanFolderByScanFolderID(entry.m_scanFolderPK, scanEntry))
+                {
+                    watchFolder = scanEntry.m_scanFolder;
+                    relativePath = entry.m_sourceName;
+
+                    return true;
+                }
+            }
+        }
+
+        // Source file isn't in the database yet, see if its in the job queue
+        return GetQueuedAssetInfoById(assetId.m_guid, watchFolder, relativePath);
+    }
+
+    AZ::Data::AssetInfo AssetCatalog::GetProductAssetInfo(const char* platformName, const AZ::Data::AssetId& assetId)
+    {
+        // this more or less follows the same algorithm that the game uses to look up products.
+        using namespace AZ::Data;
+        using namespace AzFramework;
+
+        if ((!assetId.IsValid()) || (m_platforms.isEmpty()))
+        {
+            return AssetInfo();
+        }
+
+        // in case no platform name has been given, we are prepared to compute one.
+        QString tempPlatformName;
+
+        // if no platform specified, we'll use the current platform.
+        if ((!platformName) || (platformName[0] == 0))
+        {
+            // get the first available platform, preferring the host platform.
+            if (m_platforms.contains(CURRENT_PLATFORM))
+            {
+                tempPlatformName = QString::fromUtf8(CURRENT_PLATFORM);
+            }
+            else
+            {
+                // the CURRENT_PLATFORM "pc" or "osx" is not actually enabled for this compilation (maybe "server" or similar is in a build job).
+                // in that case, we'll use the first we find!
+                tempPlatformName = m_platforms[0];
+            }
+        }
+        else
+        {
+            tempPlatformName = QString::fromUtf8(platformName);
+        }
+
+        // note that m_platforms is not mutated at all during runtime, so we ignore it in the lock
+        if (!m_platforms.contains(tempPlatformName))
+        {
+            return AssetInfo();
+        }
+
+        QMutexLocker locker(&m_registriesMutex);
+
+        const AssetRegistry& registryToUse = m_registries[tempPlatformName];
+
+        auto foundIter = registryToUse.m_assetIdToInfo.find(assetId);
+        if (foundIter != registryToUse.m_assetIdToInfo.end())
+        {
+            return foundIter->second;
+        }
+         
+        // we did not find it - try the backup mapping!
+        AssetId legacyMapping = registryToUse.GetAssetIdByLegacyAssetId(assetId);
+        if (legacyMapping.IsValid())
+        {
+            return GetProductAssetInfo(platformName, legacyMapping);
+        }
+
+        return AssetInfo(); // not found!
+    }
+
+    bool AssetCatalog::GetAssetInfoByIdOnly(const AZ::Data::AssetId& id, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath)
+    {
+        AZStd::string relativePath;
+
+        if (GetSourceFileInfoFromAssetId(id, rootFilePath, relativePath))
+        {
+            {
+                AZStd::lock_guard<AZStd::mutex> lock(m_sourceAssetTypesMutex);
+
+                // Go through the list of source assets and see if this asset's file path matches any of the filters
+                for (const auto& pair : m_sourceAssetTypes)
+                {
+                    AZStd::vector<AZStd::string> tokens;
+                    AZStd::tokenize(pair.second, AZStd::string(";"), tokens);
+
+                    for (const auto& pattern : tokens)
+                    {
+                        if (AZStd::wildcard_match(pattern, relativePath))
+                        {
+                            AZStd::string sourceFileFullPath;
+                            AzFramework::StringFunc::Path::Join(rootFilePath.c_str(), relativePath.c_str(), sourceFileFullPath);
+
+                            assetInfo.m_assetId = id;
+                            assetInfo.m_assetType = pair.first;
+                            assetInfo.m_relativePath = relativePath;
+                            assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(sourceFileFullPath.c_str());
+
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            // If we get to here, we're going to assume it's a product type
+            rootFilePath.clear();
+            assetInfo = GetProductAssetInfo(nullptr, id);
+
+            return !assetInfo.m_relativePath.empty();
+        }
+        
+        // Asset isn't in the DB or in the APM queue, we don't know what this asset ID is
+        return false;
+    }
+
+    bool AssetCatalog::GetQueuedAssetInfoById(const AZ::Uuid& guid, AZStd::string& watchFolder, AZStd::string& relativePath)
+    {
+        if (!guid.IsNull())
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_sourceUUIDToSourceNameMapMutex);
+
+            auto foundSource = m_sourceUUIDToSourceNameMap.find(guid);
+            if (foundSource != m_sourceUUIDToSourceNameMap.end())
+            {
+                const SourceInfo& sourceInfo = foundSource->second;
+
+                watchFolder = sourceInfo.m_watchFolder.toStdString().c_str();
+                relativePath = sourceInfo.m_sourceName.toStdString().c_str();
+
+                return true;
+            }
+
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "GetQueuedAssetInfoById: AssetCatalog unable to find the requested source asset having uuid (%s).\n", guid.ToString<AZStd::string>().c_str());
+        }
+
+        return false;
+    }
+
+
+    bool AssetCatalog::GetQueuedAssetInfoByRelativeSourceName(const char* sourceName, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
+    {
+        if (sourceName)
+        {
+            AZStd::string sourceNameForMap = sourceName;
+            AZStd::to_lower(sourceNameForMap.begin(), sourceNameForMap.end());
+            AZStd::lock_guard<AZStd::mutex> lock(m_sourceUUIDToSourceNameMapMutex);
+
+            auto foundSourceUUID = m_sourceNameToSourceUUIDMap.find(sourceNameForMap);
+            if (foundSourceUUID != m_sourceNameToSourceUUIDMap.end())
+            {
+                auto foundSource = m_sourceUUIDToSourceNameMap.find(foundSourceUUID->second);
+                if (foundSource != m_sourceUUIDToSourceNameMap.end())
+                {
+                    const SourceInfo& sourceInfo = foundSource->second;
+
+                    watchFolder = sourceInfo.m_watchFolder.toStdString().c_str();
+                    assetInfo.m_relativePath = sourceInfo.m_sourceName.toStdString().c_str();
+                    assetInfo.m_assetId = foundSource->first;
+
+                    AZStd::string sourceFileFullPath;
+                    AzFramework::StringFunc::Path::Join(watchFolder.c_str(), assetInfo.m_relativePath.c_str(), sourceFileFullPath);
+                    assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(sourceFileFullPath.c_str());
+                    return true;
+                }
+            }
+        }
+        assetInfo.m_assetId.SetInvalid();
+
+        return false;
+    }
+
+    bool AssetCatalog::ConnectToDatabase()
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+
+        if (!m_db)
+        {
+            AZStd::string databaseLocation;
+            AzToolsFramework::AssetDatabase::AssetDatabaseRequestsBus::Broadcast(&AzToolsFramework::AssetDatabase::AssetDatabaseRequests::GetAssetDatabaseLocation, databaseLocation);
+
+            if (!databaseLocation.empty())
+            {
+                m_db = AZStd::make_unique<AssetProcessor::AssetDatabaseConnection>();
+                m_db->OpenDatabase();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    void AssetCatalog::AsyncAssetCatalogStatusRequest()
+    {
+        if (m_catalogIsDirty)
+        {
+            Q_EMIT AsyncAssetCatalogStatusResponse(AssetCatalogStatus::RequiresSaving);
+        }
+        else
+        {
+            Q_EMIT AsyncAssetCatalogStatusResponse(AssetCatalogStatus::UpToDate);
+        }
+    }
+
 }//namespace AssetProcessor
 
 #include <native/AssetManager/AssetCatalog.moc>

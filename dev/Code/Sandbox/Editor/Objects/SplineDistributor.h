@@ -17,7 +17,7 @@
 
 
 #include "SplineObject.h"
-
+#include "Geometry/EdMesh.h"
 
 
 class CSplineDistributor
@@ -32,6 +32,7 @@ public:
     // from CSplineObject
     void OnUpdate() override;
     void SetLayerId(uint16 nLayerId) override;
+    void SetMinSpec(uint32 nSpec, bool bSetChildren = true) override;
 
 protected:
 
@@ -48,6 +49,7 @@ protected:
     //! Called when variable changes.
     void OnParamChange(IVariable* pVariable);
     void OnGeometryChange(IVariable* pVariable);
+    void OnMaterialChanged(MaterialChangeFlags change) override;
 
     void FreeGameData();
     void LoadGeometry(const QString& filename);

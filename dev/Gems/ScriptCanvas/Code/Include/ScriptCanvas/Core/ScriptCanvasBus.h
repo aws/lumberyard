@@ -43,7 +43,7 @@ namespace ScriptCanvas
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
         //! Create a graph and attach it to the supplied Entity
-        virtual void CreateGraphOnEntity(AZ::Entity*) = 0;
+        virtual Graph* CreateGraphOnEntity(AZ::Entity*) = 0;
 
         //! Create a graph, a pointer to the graph/
         //! The Init() function is not called on the graph to remapping of Entity Id's to still work

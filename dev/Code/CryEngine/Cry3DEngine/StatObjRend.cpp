@@ -53,7 +53,7 @@ void CStatObj::Render(const SRendParams& rParams, const SRenderingPassInfo& pass
     CRenderObject* pObj = GetRenderer()->EF_GetObject_Temp(passInfo.ThreadID());
     FillRenderObject(rParams, rParams.pRenderNode, m_pMaterial, NULL, pObj, passInfo);
 
-    RenderInternal(pObj, rParams.nSubObjHideMask, rParams.lodValue, passInfo, SRendItemSorter(rParams.rendItemSorter));
+    RenderInternal(pObj, rParams.nSubObjHideMask, rParams.lodValue, passInfo, SRendItemSorter(rParams.rendItemSorter), rParams.bForceDrawStatic);
 }
 
 void CStatObj::RenderStreamingDebugInfo(CRenderObject* pRenderObject)

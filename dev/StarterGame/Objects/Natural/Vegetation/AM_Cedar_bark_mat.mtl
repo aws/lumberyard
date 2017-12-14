@@ -1,11 +1,11 @@
 <Material MtlFlags="524544" vertModifType="0">
  <SubMaterials>
-  <Material Name="AM_Cedar_leaf" MtlFlags="524416" Shader="Vegetation" GenMask="2400801000" StringGenMask="%DETAIL_BENDING%LEAVES%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_vegetation" Diffuse="0.45641103,0.45641103,0.45641103,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="20" AlphaTest="0.80000001" vertModifType="0" LayerAct="1">
+  <Material Name="AM_Cedar_leaf" MtlFlags="524416" Shader="Vegetation" GenMask="2400801000" StringGenMask="%DETAIL_BENDING%LEAVES%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_vegetation" Diffuse="0.72305524,0.72305524,0.72305524,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="20" AlphaTest="0.5" vertModifType="0" LayerAct="1">
    <Textures>
     <Texture Map="Diffuse" File="objects/natural/vegetation/am_cedar_diff.dds"/>
     <Texture Map="Opacity" File="objects/natural/vegetation/am_cedar_sss.dds"/>
    </Textures>
-   <PublicParams bendDetailLeafAmplitude="0.62800002" bendDetailFrequency="0.63" bendDetailBranchAmplitude="0.37" BlendTerrainCol="0" NormalViewDependency="0.5" TransmittanceColor="1,1,0.60000002" CapOpacityFalloff="1" BackDiffuseMultiplier="3.546" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
+   <PublicParams bendDetailLeafAmplitude="0.2" bendDetailFrequency="1" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" NormalViewDependency="0.5" TransmittanceColor="1,1,0.60000002" CapOpacityFalloff="1" BackDiffuseMultiplier="1" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
   </Material>
   <Material Name="AM_Cedar_bark" MtlFlags="524416" Shader="Illum" GenMask="4000000000001" StringGenMask="%ALLOW_SILHOUETTE_POM%SUBSURFACE_SCATTERING" SurfaceType="mat_vegetation" Diffuse="1,1,1,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
    <Textures>

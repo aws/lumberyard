@@ -26,10 +26,13 @@ namespace LmbrCentral
     class MaterialHandle
     {
     public:
+        AZ_CLASS_ALLOCATOR(MaterialHandle, AZ::SystemAllocator, 0);
         AZ_TYPE_INFO(MaterialHandle, "{BF659DC6-ACDD-4062-A52E-4EC053286F4F}")
+
         _smart_ptr<IMaterial> m_material;
 
         static void Reflect(AZ::BehaviorContext* behaviorContext);
+        static void Reflect(AZ::SerializeContext* serializeContext);
     };
 
 }

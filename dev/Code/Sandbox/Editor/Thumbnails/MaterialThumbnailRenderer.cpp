@@ -96,15 +96,19 @@ bool MaterialThumbnailRenderer::Render(QPixmap& thumbnail, AZ::Data::AssetId ass
 
     m_previewControl->Update(true);
     m_previewControl->repaint();
-    m_previewControl->hide();
-
     CImageEx img;
     m_previewControl->GetImageOffscreen(img, QSize(thumbnailSize, thumbnailSize));
+    m_previewControl->hide();
 
-    thumbnail = QPixmap::fromImage(QImage(reinterpret_cast<uchar*>(img.GetData()),
-                img.GetWidth(), img.GetHeight(), QImage::Format_ARGB32)).copy();
+    if (img.IsValid())
+    {
+        // this can fail if the request to draw the thumbnail was queued up but then the window
+        // was hidden or deleted in the interim.
+        thumbnail = QPixmap::fromImage(QImage(reinterpret_cast<uchar*>(img.GetData()),
+            img.GetWidth(), img.GetHeight(), QImage::Format_ARGB32)).copy();
+        img.Release();
+        return true;
+    }
 
-    img.Release();
-
-    return true;
+    return false;
 }

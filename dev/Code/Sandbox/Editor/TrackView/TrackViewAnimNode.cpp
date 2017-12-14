@@ -44,6 +44,10 @@
 #include "ViewManager.h"
 #include "RenderViewport.h"
 #include "Clipboard.h"
+#include "Maestro/Types/AnimNodeType.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/AnimParamType.h"
+#include "Maestro/Types/SequenceType.h"
 
 // static class data
 const AZ::Uuid CTrackViewAnimNode::s_nullUuid = AZ::Uuid::CreateNull();
@@ -51,7 +55,7 @@ const AZ::Uuid CTrackViewAnimNode::s_nullUuid = AZ::Uuid::CreateNull();
 //////////////////////////////////////////////////////////////////////////
 static void CreateDefaultTracksForEntityNode(CTrackViewAnimNode* pNode, const DynArray<unsigned int>& trackCount)
 {
-    if (pNode->GetType() == eAnimNodeType_Entity)
+    if (pNode->GetType() == AnimNodeType::Entity)
     {
         for (size_t i = 0; i < trackCount.size(); ++i)
         {
@@ -64,7 +68,7 @@ static void CreateDefaultTracksForEntityNode(CTrackViewAnimNode* pNode, const Dy
             }
         }
     }
-    else if (pNode->GetType() == eAnimNodeType_AzEntity)
+    else if (pNode->GetType() == AnimNodeType::AzEntity)
     {
         bool haveTrackToAdd = false;
 
@@ -74,7 +78,7 @@ static void CreateDefaultTracksForEntityNode(CTrackViewAnimNode* pNode, const Dy
         for (int i = 0; i < pMovieSystem->GetEntityNodeParamCount(); ++i)
         {
             CAnimParamType paramType = pMovieSystem->GetEntityNodeParamType(i);
-            if ((paramType == eAnimParamType_Position || paramType == eAnimParamType_Rotation || paramType == eAnimParamType_Scale) && trackCount[i])
+            if ((paramType == AnimParamType::Position || paramType == AnimParamType::Rotation || paramType == AnimParamType::Scale) && trackCount[i])
             {
                 haveTrackToAdd = true;
                 break;
@@ -129,17 +133,17 @@ static void CreateDefaultTracksForEntityNode(CTrackViewAnimNode* pNode, const Dy
                                 CAnimParamType paramType = GetIEditor()->GetMovieSystem()->GetEntityNodeParamType(i);
                                 CAnimParamType transformPropertyParamType;
                                 bool createTransformTrack = false;
-                                if (paramType.GetType() == eAnimParamType_Position)
+                                if (paramType.GetType() == AnimParamType::Position)
                                 {
                                     transformPropertyParamType = "Position";
                                     createTransformTrack = true;
                                 }
-                                else if (paramType.GetType() == eAnimParamType_Rotation)
+                                else if (paramType.GetType() == AnimParamType::Rotation)
                                 {
                                     transformPropertyParamType = "Rotation";
                                     createTransformTrack = true;
                                 }
-                                else if (paramType.GetType() == eAnimParamType_Scale)
+                                else if (paramType.GetType() == AnimParamType::Scale)
                                 {
                                     transformPropertyParamType = "Scale";
                                     createTransformTrack = true;
@@ -147,7 +151,7 @@ static void CreateDefaultTracksForEntityNode(CTrackViewAnimNode* pNode, const Dy
 
                                 if (createTransformTrack)
                                 {
-                                    transformPropertyParamType = paramType.GetType();              // this sets the type to one of eAnimParamType_Position, eAnimParamType_Rotation or eAnimParamType_Scale  but maintains the name
+                                    transformPropertyParamType = paramType.GetType();              // this sets the type to one of AnimParamType::Position, AnimParamType::Rotation or AnimParamType::Scale  but maintains the name
                                     transformComponentNode->CreateTrack(transformPropertyParamType);
                                 }
                             }
@@ -268,27 +272,35 @@ CTrackViewAnimNode::CTrackViewAnimNode(IAnimSequence* pSequence, IAnimNode* pAni
 
     switch (GetType())
     {
-    case eAnimNodeType_Comment:
+    case AnimNodeType::Comment:
         m_pNodeAnimator.reset(new CCommentNodeAnimator(this));
         break;
-    case eAnimNodeType_Layer:
+    case AnimNodeType::Layer:
         m_pNodeAnimator.reset(new CLayerNodeAnimator());
         break;
-    case eAnimNodeType_Director:
+    case AnimNodeType::Director:
         m_pNodeAnimator.reset(new CDirectorNodeAnimator(this));
         break;
     }
 
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+
+    if (IsBoundToAzEntity())
+    {
+        AZ::TransformNotificationBus::Handler::BusConnect(GetAzEntityId());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 CTrackViewAnimNode::~CTrackViewAnimNode()
 {
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
-    if (m_pAnimNode && m_pAnimNode->GetAzEntityId().IsValid())
+
+    if (IsBoundToAzEntity())
     {
-        AZ::EntityBus::Handler::BusDisconnect(m_pAnimNode->GetAzEntityId());
+        AZ::EntityId entityId = GetAzEntityId();
+        AZ::TransformNotificationBus::Handler::BusDisconnect(entityId);
+        AZ::EntityBus::Handler::BusDisconnect(entityId);
     }
 }
 
@@ -392,7 +404,7 @@ bool CTrackViewAnimNode::IsBoundToEditorObjects() const
 {
     if (m_pAnimNode)
     {
-        if (m_pAnimNode->GetType() == eAnimNodeType_AzEntity)
+        if (m_pAnimNode->GetType() == AnimNodeType::AzEntity)
         {
             // check if bound to comoponent entity
             return m_pAnimNode->GetAzEntityId().IsValid();
@@ -412,7 +424,7 @@ void CTrackViewAnimNode::SyncToConsole(SAnimContext& animContext)
 {
     switch (GetType())
     {
-    case eAnimNodeType_Camera:
+    case AnimNodeType::Camera:
     {
         IEntity* pEntity = GetEntity();
         if (pEntity)
@@ -443,7 +455,7 @@ void CTrackViewAnimNode::SyncToConsole(SAnimContext& animContext)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const EAnimNodeType animNodeType, CEntityObject* pOwner , AZ::Uuid componentTypeId, AZ::ComponentId componentId)
+CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const AnimNodeType animNodeType, CEntityObject* pOwner , AZ::Uuid componentTypeId, AZ::ComponentId componentId)
 {
     assert(CUndo::IsRecording());
 
@@ -459,9 +471,9 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
 
     // Check if the node's director or sequence already contains a node with this name, unless it's a component, for which we allow duplicate names since
     // Components are children of unique AZEntities in Track View
-    if (animNodeType != eAnimNodeType_Component)
+    if (animNodeType != AnimNodeType::Component)
     {
-        pDirector = (GetType() == eAnimNodeType_Director) ? this : GetDirector();
+        pDirector = (GetType() == AnimNodeType::Director) ? this : GetDirector();
         pDirector = pDirector ? pDirector : GetSequence();
         if (pDirector->GetAnimNodesByName(nameStr.constData()).GetCount() > 0)
         {
@@ -478,6 +490,19 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
         return nullptr;
     }
 
+    // If this is an AzEntity, make sure there is an associated entity id
+    if (pOwner != nullptr && animNodeType == AnimNodeType::AzEntity)
+    {
+        AZ::EntityId id(AZ::EntityId::InvalidEntityId);
+        AzToolsFramework::ComponentEntityObjectRequestBus::EventResult(id, pOwner, &AzToolsFramework::ComponentEntityObjectRequestBus::Events::GetAssociatedEntityId);
+
+        if (!id.IsValid())
+        {
+            GetIEditor()->GetMovieSystem()->LogUserNotificationMsg(AZStd::string::format("Failed to add '%s' to sequence '%s', could not find associated entity. Please try adding the entity associated with '%s'.", nameStr.constData(), pDirector->GetName(), nameStr.constData()));
+            return nullptr;
+        }
+    }
+
     pNewAnimNode->SetName(nameStr.constData());
     pNewAnimNode->CreateDefaultTracks();
     pNewAnimNode->SetParent(m_pAnimNode.get());
@@ -488,7 +513,7 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
     pNewNode->m_bExpanded = true;
 
     // Make sure that camera and entity nodes get created with an owner
-    assert((animNodeType != eAnimNodeType_Camera && animNodeType != eAnimNodeType_Entity) || pOwner);
+    assert((animNodeType != AnimNodeType::Camera && animNodeType != AnimNodeType::Entity) || pOwner);
 
     pNewNode->SetNodeEntity(pOwner);
     pNewAnimNode->SetNodeOwner(pNewNode);
@@ -499,7 +524,7 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
 
     // Legacy sequence use Track View Undo, New Component based Sequence
     // use the AZ Undo system and allow sequence entity to be the source of truth.
-    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+    if (m_pAnimSequence->GetSequenceType() == SequenceType::Legacy)
     {
         CUndo::Record(new CUndoAnimNodeAdd(pNewNode));
     }
@@ -545,37 +570,19 @@ void CTrackViewAnimNode::RemoveSubNode(CTrackViewAnimNode* pSubNode)
         return;
     }
 
-    // also remove all child component nodes of AzEntity nodes when we remove and AzEntity node
-    if (pSubNode->GetType() == eAnimNodeType_AzEntity)
+    // remove anim node children
+    for (int i = pSubNode->GetChildCount(); --i >= 0;)
     {
-        for (int i = pSubNode->GetChildCount(); --i >= 0;)
+        CTrackViewAnimNode* childAnimNode = static_cast<CTrackViewAnimNode*>(pSubNode->GetChild(i));
+        if (childAnimNode->GetNodeType() == eTVNT_AnimNode)
         {
-            if (pSubNode->GetChild(i)->GetNodeType() == eTVNT_AnimNode)
-            {
-                CTrackViewAnimNode* childAnimNode = static_cast<CTrackViewAnimNode*>(pSubNode->GetChild(i));
-                if (childAnimNode->GetType() == eAnimNodeType_Component)
-                {
-                    // Legacy sequence use Track View Undo, New Component based Sequence
-                    // use the AZ Undo system and allow sequence entity to be the source of truth.
-                    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
-                    {
-                        CUndo::Record(new CUndoAnimNodeRemove(childAnimNode));
-                    }
-                    else
-                    {
-                        // Remove node from sequence entity, let AZ Undo take care of undo/redo
-                        m_pAnimSequence->RemoveNode(childAnimNode->m_pAnimNode.get(), /*removeChildRelationships=*/ false);
-                        childAnimNode->GetSequence()->OnNodeChanged(childAnimNode, ITrackViewSequenceListener::eNodeChangeType_Removed);
-                        RemoveChildNode(childAnimNode);
-                    }
-                }
-            }
+            RemoveSubNode(childAnimNode);
         }
     }
 
     // Legacy sequence use Track View Undo, New Component based Sequence
     // use the AZ Undo system and allow sequence entity to be the source of truth.
-    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+    if (m_pAnimSequence->GetSequenceType() == SequenceType::Legacy)
     {
         CUndo::Record(new CUndoAnimNodeRemove(pSubNode));
     }
@@ -612,7 +619,7 @@ CTrackViewTrack* CTrackViewAnimNode::CreateTrack(const CAnimParamType& paramType
     AddNode(pNewTrack);
     // Legacy sequence use Track View Undo, New Component based Sequence
     // use the AZ Undo system and allow sequence entity to be the source of truth.
-    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+    if (m_pAnimSequence->GetSequenceType() == SequenceType::Legacy)
     {
         CUndo::Record(new CUndoTrackAdd(pNewTrack));
     }
@@ -625,14 +632,55 @@ CTrackViewTrack* CTrackViewAnimNode::CreateTrack(const CAnimParamType& paramType
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewAnimNode::RemoveTrack(CTrackViewTrack* pTrack)
+void CTrackViewAnimNode::RemoveTrack(CTrackViewTrack* track)
 {
     assert(CUndo::IsRecording());
-    assert(!pTrack->IsSubTrack());
+    assert(!track->IsSubTrack());
 
-    if (!pTrack->IsSubTrack())
+    if (!track->IsSubTrack())
     {
-        CUndo::Record(new CUndoTrackRemove(pTrack));
+        CTrackViewSequence* sequence = track->GetSequence();
+        if (nullptr != sequence)
+        {
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackRemove(track));
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Remove Track");
+                CTrackViewAnimNode* parentNode = track->GetAnimNode();
+                std::unique_ptr<CTrackViewNode> foundTrack;
+
+                if (nullptr != parentNode)
+                {
+                    for (auto iter = parentNode->m_childNodes.begin(); iter != parentNode->m_childNodes.end(); ++iter)
+                    {
+                        std::unique_ptr<CTrackViewNode>& currentNode = *iter;
+                        if (currentNode.get() == track)
+                        {
+                            // Hang onto a reference until after OnNodeChanged is called.
+                            currentNode.swap(foundTrack);
+
+                            // Remove from parent node and sequence
+                            parentNode->m_childNodes.erase(iter);
+                            parentNode->m_pAnimNode->RemoveTrack(track->GetAnimTrack());
+                            break;
+                        }
+                    }
+
+                    m_pParentNode->GetSequence()->OnNodeChanged(track, ITrackViewSequenceListener::eNodeChangeType_Removed);
+
+                    // Release the track now that OnNodeChanged is complete.
+                    if (nullptr != foundTrack.get())
+                    {
+                        foundTrack.release();
+                    }
+
+                }
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
+        }
     }
 }
 
@@ -760,7 +808,7 @@ CTrackViewTrackBundle CTrackViewAnimNode::GetTracks(const bool bOnlySelected, co
         {
             CTrackViewTrack* pTrack = static_cast<CTrackViewTrack*>(pNode);
 
-            if (paramType != eAnimParamType_Invalid && pTrack->GetParameterType() != paramType)
+            if (paramType != AnimParamType::Invalid && pTrack->GetParameterType() != paramType)
             {
                 continue;
             }
@@ -791,9 +839,9 @@ CTrackViewTrackBundle CTrackViewAnimNode::GetTracks(const bool bOnlySelected, co
 }
 
 //////////////////////////////////////////////////////////////////////////
-EAnimNodeType CTrackViewAnimNode::GetType() const
+AnimNodeType CTrackViewAnimNode::GetType() const
 {
-    return m_pAnimNode ? m_pAnimNode->GetType() : eAnimNodeType_Invalid;
+    return m_pAnimNode ? m_pAnimNode->GetType() : AnimNodeType::Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -810,7 +858,7 @@ bool CTrackViewAnimNode::AreFlagsSetOnNodeOrAnyParent(EAnimNodeFlags flagsToChec
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::SetAsActiveDirector()
 {
-    if (GetType() == eAnimNodeType_Director)
+    if (GetType() == AnimNodeType::Director)
     {
         m_pAnimSequence->SetActiveDirector(m_pAnimNode.get());
 
@@ -838,7 +886,7 @@ CTrackViewTrack* CTrackViewAnimNode::GetTrackForParameter(const CAnimParamType& 
 {
     uint32 currentIndex = 0;
 
-    if (GetType() == eAnimNodeType_AzEntity)
+    if (GetType() == AnimNodeType::AzEntity)
     {
         // For AzEntity, search for track on all child components - returns first track match found (note components searched in reverse)
         for (int i = GetChildCount(); --i >= 0;)
@@ -846,7 +894,7 @@ CTrackViewTrack* CTrackViewAnimNode::GetTrackForParameter(const CAnimParamType& 
             if (GetChild(i)->GetNodeType() == eTVNT_AnimNode)
             {
                 CTrackViewAnimNode* componentNode = static_cast<CTrackViewAnimNode*>(GetChild(i));
-                if (componentNode->GetType() == eAnimNodeType_Component)
+                if (componentNode->GetType() == AnimNodeType::Component)
                 {
                     if (CTrackViewTrack* track = componentNode->GetTrackForParameter(paramType, index))
                     {
@@ -990,10 +1038,10 @@ void CTrackViewAnimNode::SetNodeEntity(CEntityObject* pEntity)
         const EntityGUID guid = ToEntityGuid(pEntity->GetId());
         SetEntityGuid(guid);
 
-        if (m_pAnimNode->GetType() == eAnimNodeType_AzEntity)
+        if (m_pAnimNode->GetType() == AnimNodeType::AzEntity)
         {
             // We're connecting to a new AZ::Entity
-            AZ::EntityId    sequenceComponentEntityId(m_pAnimSequence->GetOwnerId());
+            AZ::EntityId    sequenceComponentEntityId(m_pAnimSequence->GetSequenceEntityId());
 
             AZ::EntityId id(AZ::EntityId::InvalidEntityId);
             AzToolsFramework::ComponentEntityObjectRequestBus::EventResult(id, pEntity, &AzToolsFramework::ComponentEntityObjectRequestBus::Events::GetAssociatedEntityId);
@@ -1013,6 +1061,7 @@ void CTrackViewAnimNode::SetNodeEntity(CEntityObject* pEntity)
                 {
                     // disconnect from bus with previous entity ID before we reset it
                     AZ::EntityBus::Handler::BusDisconnect(m_pAnimNode->GetAzEntityId());
+                    AZ::TransformNotificationBus::Handler::BusDisconnect(m_pAnimNode->GetAzEntityId());
                 }
 
                 m_pAnimNode->SetAzEntityId(id);
@@ -1022,6 +1071,11 @@ void CTrackViewAnimNode::SetNodeEntity(CEntityObject* pEntity)
             if (!AZ::EntityBus::Handler::BusIsConnectedId(m_pAnimNode->GetAzEntityId()))
             {
                 AZ::EntityBus::Handler::BusConnect(m_pAnimNode->GetAzEntityId());
+            }
+
+            if (!AZ::TransformNotificationBus::Handler::BusIsConnectedId(m_pAnimNode->GetAzEntityId()))
+            {
+                AZ::TransformNotificationBus::Handler::BusConnect(m_pAnimNode->GetAzEntityId());
             }
         }
 
@@ -1144,7 +1198,7 @@ CTrackViewAnimNodeBundle CTrackViewAnimNode::GetAllOwnedNodes(const CEntityObjec
 }
 
 //////////////////////////////////////////////////////////////////////////
-CTrackViewAnimNodeBundle CTrackViewAnimNode::GetAnimNodesByType(EAnimNodeType animNodeType)
+CTrackViewAnimNodeBundle CTrackViewAnimNode::GetAnimNodesByType(AnimNodeType animNodeType)
 {
     CTrackViewAnimNodeBundle bundle;
 
@@ -1200,10 +1254,10 @@ const char* CTrackViewAnimNode::GetParamName(const CAnimParamType& paramType) co
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewAnimNode::IsGroupNode() const
 {
-    EAnimNodeType nodeType = GetType();
+    AnimNodeType nodeType = GetType();
 
     // AZEntities are really just containers for components, so considered a 'Group' node
-    return nodeType == eAnimNodeType_Director || nodeType == eAnimNodeType_Group || nodeType == eAnimNodeType_AzEntity;
+    return nodeType == AnimNodeType::Director || nodeType == AnimNodeType::Group || nodeType == AnimNodeType::AzEntity;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1221,18 +1275,18 @@ QString CTrackViewAnimNode::GetAvailableNodeNameStartingWith(const QString& name
     return newName;
 }
 
-EAnimNodeType CTrackViewAnimNode::GetAnimNodeTypeFromObject(const CBaseObject* object) const
+AnimNodeType CTrackViewAnimNode::GetAnimNodeTypeFromObject(const CBaseObject* object) const
 {
-    EAnimNodeType retType = eAnimNodeType_Invalid;
+    AnimNodeType retType = AnimNodeType::Invalid;
 
     if (qobject_cast<const CCameraObject*>(object))
     {
-        retType = eAnimNodeType_Camera;
+        retType = AnimNodeType::Camera;
     }
 #if defined(USE_GEOM_CACHES)
     else if (qobject_cast<const CGeomCacheEntity*>(object))
     {
-        retType = eAnimNodeType_GeomCache;
+        retType = AnimNodeType::GeomCache;
     }
 #endif
     else if (qobject_cast<const CEntityObject*>(object))
@@ -1240,11 +1294,11 @@ EAnimNodeType CTrackViewAnimNode::GetAnimNodeTypeFromObject(const CBaseObject* o
         const AZ::EntityId entityId(qobject_cast<const CEntityObject*>(object)->GetEntityId());
         if (IsLegacyEntityId(entityId))
         {
-            retType = eAnimNodeType_Entity;
+            retType = AnimNodeType::Entity;
         }
         else
         {
-            retType = eAnimNodeType_AzEntity;
+            retType = AnimNodeType::AzEntity;
         }
     }
     
@@ -1282,7 +1336,7 @@ CTrackViewAnimNodeBundle CTrackViewAnimNode::AddSelectedEntities(const DynArray<
             }
         }
 
-        EAnimNodeType nodeType = GetAnimNodeTypeFromObject(pObject);
+        AnimNodeType nodeType = GetAnimNodeTypeFromObject(pObject);
         CTrackViewAnimNode* pAnimNode = CreateSubNode(pObject->GetName(), nodeType, static_cast<CEntityObject*>(pObject));
 
         if (pAnimNode)
@@ -1307,7 +1361,7 @@ void CTrackViewAnimNode::AddCurrentLayer()
     CObjectLayer* pLayer = pLayerManager->GetCurrentLayer();
     const QString name = pLayer->GetName();
 
-    CreateSubNode(name, eAnimNodeType_Entity);
+    CreateSubNode(name, AnimNodeType::Entity);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1352,9 +1406,9 @@ void CTrackViewAnimNode::SetEntityGuidSource(const EntityGUID& guid)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::SetAsViewCamera()
 {
-    assert (GetType() == eAnimNodeType_Camera);
+    assert (GetType() == AnimNodeType::Camera);
 
-    if (GetType() == eAnimNodeType_Camera)
+    if (GetType() == AnimNodeType::Camera)
     {
         CEntityObject* pCameraEntity = GetNodeEntity();
         CRenderViewport* pRenderViewport = static_cast<CRenderViewport*>(GetIEditor()->GetViewManager()->GetGameViewport());
@@ -1374,7 +1428,7 @@ CAnimParamType CTrackViewAnimNode::GetParamType(unsigned int index) const
     unsigned int paramCount = GetParamCount();
     if (!m_pAnimNode || index >= paramCount)
     {
-        return eAnimParamType_Invalid;
+        return AnimParamType::Invalid;
     }
 
     return m_pAnimNode->GetParamType(index);
@@ -1392,14 +1446,14 @@ IAnimNode::ESupportedParamFlags CTrackViewAnimNode::GetParamFlags(const CAnimPar
 }
 
 //////////////////////////////////////////////////////////////////////////
-EAnimValue CTrackViewAnimNode::GetParamValueType(const CAnimParamType& paramType) const
+AnimValueType CTrackViewAnimNode::GetParamValueType(const CAnimParamType& paramType) const
 {
     if (m_pAnimNode)
     {
         return m_pAnimNode->GetParamValueType(paramType);
     }
 
-    return eAnimValue_Unknown;
+    return AnimValueType::Unknown;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1426,7 +1480,7 @@ void CTrackViewAnimNode::CopyKeysToClipboard(XmlNodeRef& xmlNode, const bool bOn
 {
     XmlNodeRef childNode = xmlNode->createNode("Node");
     childNode->setAttr("name", GetName());
-    childNode->setAttr("type", GetType());
+    childNode->setAttr("type", static_cast<int>(GetType()));
 
     for (auto iter = m_childNodes.begin(); iter != m_childNodes.end(); ++iter)
     {
@@ -1501,7 +1555,7 @@ void CTrackViewAnimNode::PasteTracksFrom(XmlNodeRef& xmlNodeWithTracks)
         AddNode(newTrackNode);
         // Legacy sequence use Track View Undo, New Component based Sequence
         // use the AZ Undo system and allow sequence entity to be the source of truth.
-        if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+        if (m_pAnimSequence->GetSequenceType() == SequenceType::Legacy)
         {
             CUndo::Record(new CUndoTrackAdd(newTrackNode));
         }
@@ -1536,7 +1590,7 @@ bool CTrackViewAnimNode::PasteNodesFromClipboard(QWidget* context)
 
         // skip non-light nodes in light animation sets
         int type;
-        if (!xmlNode->getAttr("Type", type) || (bLightAnimationSetActive && (EAnimNodeType)type != eAnimNodeType_Light))
+        if (!xmlNode->getAttr("Type", type) || (bLightAnimationSetActive && (AnimNodeType)type != AnimNodeType::Light))
         {
             continue;
         }
@@ -1565,10 +1619,10 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
         return;
     }
 
-    EAnimNodeType nodeType;
+    AnimNodeType nodeType;
     GetIEditor()->GetMovieSystem()->SerializeNodeType(nodeType, xmlNode, /*bLoading=*/ true, IAnimSequence::kSequenceVersion, m_pAnimSequence->GetFlags());
     
-    if (nodeType == eAnimNodeType_Component)
+    if (nodeType == AnimNodeType::Component)
     {
         // When pasting Component Nodes, the parent Component Entity Node would have already added all its Components as part of its OnEntityActivated() sync.
         // Here we need to go copy any Components Tracks as well. For pasting, Components matched by ComponentId, which assumes the pasted Track View Component Node
@@ -1653,7 +1707,7 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
 
         // Legacy sequence use Track View Undo, New Component based Sequence
         // use the AZ Undo system and allow sequence entity to be the source of truth.
-        if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+        if (m_pAnimSequence->GetSequenceType() == SequenceType::Legacy)
         {
             CUndo::Record(new CUndoAnimNodeAdd(pNewNode));
         }
@@ -1700,7 +1754,7 @@ CTrackViewAnimNode* CTrackViewAnimNode::FindNodeByAnimNode(const IAnimNode* anim
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewAnimNode::IsValidReparentingTo(CTrackViewAnimNode* pNewParent)
 {
-    if (pNewParent == GetParentNode() || !pNewParent->IsGroupNode() || pNewParent->GetType() == eAnimNodeType_AzEntity)
+    if (pNewParent == GetParentNode() || !pNewParent->IsGroupNode() || pNewParent->GetType() == AnimNodeType::AzEntity)
     {
         return false;
     }
@@ -1769,7 +1823,7 @@ bool CTrackViewAnimNode::IsDisabled() const
 void CTrackViewAnimNode::SetPos(const Vec3& position)
 {
     const float time = GetSequence()->GetTime();
-    CTrackViewTrack* pTrack = GetTrackForParameter(eAnimParamType_Position);
+    CTrackViewTrack* pTrack = GetTrackForParameter(AnimParamType::Position);
     CRenderViewport* pRenderViewport = static_cast<CRenderViewport*>(GetIEditor()->GetViewManager()->GetGameViewport());
 
     if (pTrack)
@@ -1777,9 +1831,8 @@ void CTrackViewAnimNode::SetPos(const Vec3& position)
         if (!GetIEditor()->GetAnimation()->IsRecording())
         {
             // Offset all keys by move amount.
-            Vec3 posPrev;
-            pTrack->GetValue(time, posPrev);
-            Vec3 offset = position - posPrev;
+            Vec3 offset = m_pAnimNode->GetOffsetPosition(position);
+            
             pTrack->OffsetKeyPosition(offset);
 
             GetSequence()->OnKeysChanged();
@@ -1800,7 +1853,7 @@ void CTrackViewAnimNode::SetPos(const Vec3& position)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::SetScale(const Vec3& scale)
 {
-    CTrackViewTrack* pTrack = GetTrackForParameter(eAnimParamType_Scale);
+    CTrackViewTrack* pTrack = GetTrackForParameter(AnimParamType::Scale);
 
     if (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && pTrack)
     {
@@ -1813,7 +1866,7 @@ void CTrackViewAnimNode::SetScale(const Vec3& scale)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::SetRotation(const Quat& rotation)
 {
-    CTrackViewTrack* pTrack = GetTrackForParameter(eAnimParamType_Rotation);
+    CTrackViewTrack* pTrack = GetTrackForParameter(AnimParamType::Rotation);
     CRenderViewport* pRenderViewport = static_cast<CRenderViewport*>(GetIEditor()->GetViewManager()->GetGameViewport());
 
     if (GetIEditor()->GetAnimation()->IsRecording() && (m_pNodeEntity->IsSelected() || pRenderViewport->GetCameraObject() == m_pNodeEntity) && pTrack)
@@ -1845,8 +1898,8 @@ void CTrackViewAnimNode::OnSelectionChanged(const bool bSelected)
 {
     if (m_pAnimNode)
     {
-        const EAnimNodeType animNodeType = GetType();
-        assert(animNodeType == eAnimNodeType_Camera || animNodeType == eAnimNodeType_Entity || animNodeType == eAnimNodeType_GeomCache || animNodeType == eAnimNodeType_AzEntity);
+        const AnimNodeType animNodeType = GetType();
+        assert(animNodeType == AnimNodeType::Camera || animNodeType == AnimNodeType::Entity || animNodeType == AnimNodeType::GeomCache || animNodeType == AnimNodeType::AzEntity);
 
         const EAnimNodeFlags flags = (EAnimNodeFlags)m_pAnimNode->GetFlags();
         m_pAnimNode->SetFlags(bSelected ? (flags | eAnimNodeFlags_EntitySelected) : (flags & ~eAnimNodeFlags_EntitySelected));
@@ -1861,7 +1914,7 @@ void CTrackViewAnimNode::SetPosRotScaleTracksDefaultValues()
 
     if (m_pAnimNode)
     {
-        if (m_pAnimNode->GetType() == eAnimNodeType_Component)
+        if (m_pAnimNode->GetType() == AnimNodeType::Component)
         {
             // get entity from the parent Component Entity
            CTrackViewNode* parentNode = GetParentNode();
@@ -1964,7 +2017,7 @@ void CTrackViewAnimNode::OnNodeReset(IAnimNode* pNode)
     if (gEnv->IsEditing() && m_pNodeEntity)
     {
         // If the node has an event track, one should also reload the script when the node is reset.
-        CTrackViewTrack* pAnimTrack = GetTrackForParameter(eAnimParamType_Event);
+        CTrackViewTrack* pAnimTrack = GetTrackForParameter(AnimParamType::Event);
         if (pAnimTrack && pAnimTrack->GetKeyCount())
         {
             CEntityScript* script = m_pNodeEntity->GetScript();
@@ -1999,7 +2052,7 @@ bool CTrackViewAnimNode::ContainsComponentWithId(AZ::ComponentId componentId) co
 {
     bool retFound = false;
 
-    if (GetType() == eAnimNodeType_AzEntity)
+    if (GetType() == AnimNodeType::AzEntity)
     {
         // search for a matching componentId on all children
         for (int i = 0; i < GetChildCount(); i++)
@@ -2022,17 +2075,17 @@ bool CTrackViewAnimNode::ContainsComponentWithId(AZ::ComponentId componentId) co
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::OnStartPlayInEditor()
 {
-    if (m_pAnimSequence && m_pAnimSequence->GetSequenceType() == eSequenceType_SequenceComponent &&
-        m_pAnimSequence->GetOwnerId().IsValid())
+    if (m_pAnimSequence && m_pAnimSequence->GetSequenceType() == SequenceType::SequenceComponent &&
+        m_pAnimSequence->GetSequenceEntityId().IsValid())
     {
         AZ::EntityId remappedId;
-        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::MapEditorIdToRuntimeId, m_pAnimSequence->GetOwnerId(), remappedId);
+        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::MapEditorIdToRuntimeId, m_pAnimSequence->GetSequenceEntityId(), remappedId);
             
         if (remappedId.IsValid())
         {
             // stash and remap the AZ::EntityId of the SequenceComponent entity to restore it when we switch back to Edit mode
-            m_stashedAnimSequenceEditorAzEntityId = m_pAnimSequence->GetOwnerId();
-            m_pAnimSequence->SetOwner(remappedId);
+            m_stashedAnimSequenceEditorAzEntityId = m_pAnimSequence->GetSequenceEntityId();
+            m_pAnimSequence->SetSequenceEntityId(remappedId);
         }
     }
 
@@ -2061,7 +2114,7 @@ void CTrackViewAnimNode::OnStopPlayInEditor()
     // restore sequenceComponent entity Ids back to their original Editor Ids
     if (m_pAnimSequence && m_stashedAnimSequenceEditorAzEntityId.IsValid())
     {
-        m_pAnimSequence->SetOwner(m_stashedAnimSequenceEditorAzEntityId);
+        m_pAnimSequence->SetSequenceEntityId(m_stashedAnimSequenceEditorAzEntityId);
 
         // invalidate the stashed Id now that we've restored it
         m_stashedAnimSequenceEditorAzEntityId.SetInvalid();
@@ -2168,9 +2221,11 @@ void CTrackViewAnimNode::OnEntityRemoved()
 
     m_pNodeEntity = nullptr;    // invalidate cached node entity pointer
 
-    if (GetAzEntityId().IsValid())
+    if (IsBoundToAzEntity())
     {
-        AZ::EntityBus::Handler::BusDisconnect(m_pAnimNode->GetAzEntityId());
+        AZ::EntityId entityId = GetAzEntityId();
+        AZ::TransformNotificationBus::Handler::BusDisconnect(entityId);
+        AZ::EntityBus::Handler::BusDisconnect(entityId);
     }
 
     // notify the change. This leads to Track View updating it's UI to account for the entity removal
@@ -2192,7 +2247,7 @@ CTrackViewAnimNode* CTrackViewAnimNode::AddComponent(const AZ::Component* compon
     if (!componentName.empty() && !componentTypeId.IsNull())
     {
         CUndo undo("Add TrackView Component");
-        retNewComponentNode = CreateSubNode(componentName.c_str(), eAnimNodeType_Component, nullptr, componentTypeId, component->GetId());
+        retNewComponentNode = CreateSubNode(componentName.c_str(), AnimNodeType::Component, nullptr, componentTypeId, component->GetId());
     }
     else
     {
@@ -2213,25 +2268,31 @@ Vec3 CTrackViewAnimNode::GetTransformDelegatePos(const Vec3& basePos) const
 {
     const Vec3 position = GetPos();
 
-    return Vec3(CheckTrackAnimated(eAnimParamType_PositionX) ? position.x : basePos.x,
-        CheckTrackAnimated(eAnimParamType_PositionY) ? position.y : basePos.y,
-        CheckTrackAnimated(eAnimParamType_PositionZ) ? position.z : basePos.z);
+    return Vec3(CheckTrackAnimated(AnimParamType::PositionX) ? position.x : basePos.x,
+        CheckTrackAnimated(AnimParamType::PositionY) ? position.y : basePos.y,
+        CheckTrackAnimated(AnimParamType::PositionZ) ? position.z : basePos.z);
 }
 
 //////////////////////////////////////////////////////////////////////////
 Quat CTrackViewAnimNode::GetTransformDelegateRotation(const Quat& baseRotation) const
 {
-    if (!CheckTrackAnimated(eAnimParamType_Rotation))
+    if (!CheckTrackAnimated(AnimParamType::Rotation))
     {
         return baseRotation;
     }
 
-    const Ang3 angBaseRotation(baseRotation);
-    const Ang3 angNodeRotation(GetRotation());
+    // Pass the sequence time to get the rotation from the
+    // track data if it is present. We don't want to go all the way out
+    // to the current rotation in component transform because that would mean
+    // we are going from Quat to Euler and then back to Quat and that could lead
+    // to the data drifting away from the original value.
+    Quat nodeRotation = GetRotation(GetSequenceConst()->GetTime());
 
-    return Quat(Ang3(CheckTrackAnimated(eAnimParamType_RotationX) ? angNodeRotation.x : angBaseRotation.x,
-            CheckTrackAnimated(eAnimParamType_RotationY) ? angNodeRotation.y : angBaseRotation.y,
-            CheckTrackAnimated(eAnimParamType_RotationZ) ? angNodeRotation.z : angBaseRotation.z));
+    const Ang3 angBaseRotation(baseRotation);
+    const Ang3 angNodeRotation(nodeRotation);
+    return Quat(Ang3(CheckTrackAnimated(AnimParamType::RotationX) ? angNodeRotation.x : angBaseRotation.x,
+            CheckTrackAnimated(AnimParamType::RotationY) ? angNodeRotation.y : angBaseRotation.y,
+            CheckTrackAnimated(AnimParamType::RotationZ) ? angNodeRotation.z : angBaseRotation.z));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2239,9 +2300,9 @@ Vec3 CTrackViewAnimNode::GetTransformDelegateScale(const Vec3& baseScale) const
 {
     const Vec3 scale = GetScale();
 
-    return Vec3(CheckTrackAnimated(eAnimParamType_ScaleX) ? scale.x : baseScale.x,
-        CheckTrackAnimated(eAnimParamType_ScaleY) ? scale.y : baseScale.y,
-        CheckTrackAnimated(eAnimParamType_ScaleZ) ? scale.z : baseScale.z);
+    return Vec3(CheckTrackAnimated(AnimParamType::ScaleX) ? scale.x : baseScale.x,
+        CheckTrackAnimated(AnimParamType::ScaleY) ? scale.y : baseScale.y,
+        CheckTrackAnimated(AnimParamType::ScaleZ) ? scale.z : baseScale.z);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2265,21 +2326,21 @@ void CTrackViewAnimNode::SetTransformDelegateScale(const Vec3& scale)
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewAnimNode::IsPositionDelegated() const
 {
-    const bool bDelegated = (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && GetTrackForParameter(eAnimParamType_Position)) || CheckTrackAnimated(eAnimParamType_Position);
+    const bool bDelegated = (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && GetTrackForParameter(AnimParamType::Position)) || CheckTrackAnimated(AnimParamType::Position);
     return bDelegated;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewAnimNode::IsRotationDelegated() const
 {
-    const bool bDelegated = (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && GetTrackForParameter(eAnimParamType_Rotation)) || CheckTrackAnimated(eAnimParamType_Rotation);
+    const bool bDelegated = (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && GetTrackForParameter(AnimParamType::Rotation)) || CheckTrackAnimated(AnimParamType::Rotation);
     return bDelegated;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewAnimNode::IsScaleDelegated() const
 {
-    const bool bDelegated = (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && GetTrackForParameter(eAnimParamType_Scale)) || CheckTrackAnimated(eAnimParamType_Scale);
+    const bool bDelegated = (GetIEditor()->GetAnimation()->IsRecording() && m_pNodeEntity->IsSelected() && GetTrackForParameter(AnimParamType::Scale)) || CheckTrackAnimated(AnimParamType::Scale);
     return bDelegated;
 }
 
@@ -2288,4 +2349,68 @@ void CTrackViewAnimNode::OnDone()
 {
     SetNodeEntity(nullptr);
     UpdateTrackGizmo();
+}
+
+//////////////////////////////////////////////////////////////////////////
+AZ::Transform CTrackViewAnimNode::GetEntityWorldTM(const AZ::EntityId entityId)
+{
+    AZ::Entity* entity = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+
+    AZ::Transform worldTM = AZ::Transform::Identity();
+    if (entity != nullptr)
+    {
+        AZ::TransformInterface* transformInterface = entity->GetTransform();
+        if (transformInterface != nullptr)
+        {
+            worldTM = transformInterface->GetWorldTM();
+        }
+    }
+
+    return worldTM;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewAnimNode::UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM)
+{
+    // Update the Position, Rotation and Scale tracks.
+    AZStd::vector<AnimParamType> animParamTypes{ AnimParamType::Position, AnimParamType::Rotation, AnimParamType::Scale };
+    for (AnimParamType animParamType : animParamTypes)
+    {
+        CTrackViewTrack* track = GetTrackForParameter(animParamType);
+        if (track != nullptr)
+        {
+            track->UpdateKeyDataAfterParentChanged(oldParentWorldTM, newParentWorldTM);
+        }
+    }
+
+    // Refresh after key data changed or parent changed.
+    CTrackViewSequence* sequence = GetSequence();
+    if (sequence != nullptr)
+    {
+        sequence->OnKeysChanged();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewAnimNode::OnParentChanged(AZ::EntityId oldParent, AZ::EntityId newParent)
+{
+    // If the change is from no parent to parent, or the other way around,
+    // update the key data, because that action is like going from world space to
+    // relative to a new parent.
+    if (!oldParent.IsValid() || !newParent.IsValid())
+    {
+        // Get the world transforms, Identity if there was no parent
+        AZ::Transform oldParentWorldTM = GetEntityWorldTM(oldParent);
+        AZ::Transform newParentWorldTM = GetEntityWorldTM(newParent);
+
+        UpdateKeyDataAfterParentChanged(oldParentWorldTM, newParentWorldTM);
+    }
+
+    // Refresh after key data changed or parent changed.
+    CTrackViewSequence* sequence = GetSequence();
+    if (sequence != nullptr)
+    {
+        sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_NodeOwnerChanged);
+    }
 }

@@ -117,6 +117,12 @@ namespace AZ
         };
         AZStd::array<State, MaxNumberOfStates>   m_states;
     };
+
+    /**
+    * Default empty handler.
+    */
+    template<bool handleEvent>
+    bool DummyStateHandler(HSM& /*sm*/, const HSM::Event& /*e*/) { return handleEvent; }
 }
 #endif // AZCORE_HIERARCHIAL_STATE_MACHINE_H
 #pragma once

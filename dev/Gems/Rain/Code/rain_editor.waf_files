@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Source":
+        [
+            "Source/EditorRainComponent.h",
+            "Source/EditorRainComponent.cpp"
+        ]
+    }
+}

@@ -15,12 +15,9 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <QtWidgets/QSpinBox>
-
+#include <QComboBox>
 
 #pragma once
-
-class QComboBox;
 
 namespace AzToolsFramework
 {

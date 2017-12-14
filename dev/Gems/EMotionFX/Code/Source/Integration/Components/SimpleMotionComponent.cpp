@@ -16,7 +16,7 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Rtti/BehaviorContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 #include <Integration/Components/SimpleMotionComponent.h>
 #include <MCore/Source/AttributeString.h>

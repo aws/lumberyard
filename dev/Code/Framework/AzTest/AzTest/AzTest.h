@@ -11,11 +11,11 @@
 */
 #pragma once
 
-#if defined(DARWIN) || defined(ORBIS) || defined(ANDROID)
+#if defined(DARWIN) || defined(ORBIS) || defined(ANDROID) || defined(LINUX)
 // Notes in the Cry* code indicate that strdup may cause memory errors, and shouldn't be
 // used. It's required, however, by googletest, so for test builds, un-hack the strdup removal.
 #   undef strdup
-#endif // defined(DARWN) || defined(ORBIS) || defined(ANDROID)
+#endif // defined(DARWN) || defined(ORBIS) || defined(ANDROID) || defined(LINUX)
 
 
 #pragma warning( push )
@@ -26,14 +26,14 @@
 
 #include <AzCore/Memory/OSAllocator.h>
 
-#if defined(DARWIN) || defined (ANDROID)
+#if defined(DARWIN) || defined(ANDROID) || defined(LINUX)
 #   define AZTEST_DLL_PUBLIC __attribute__ ((visibility ("default")))
 #else
 #   define AZTEST_DLL_PUBLIC
 #endif
 
 
-#if defined(DARWIN) || defined(ANDROID)
+#if defined(DARWIN) || defined(ANDROID) || defined(LINUX)
 #   define AZTEST_EXPORT extern "C" AZTEST_DLL_PUBLIC
 #else
 #   define AZTEST_EXPORT extern "C" __declspec(dllexport)

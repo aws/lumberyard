@@ -22,6 +22,8 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
+#include "Maestro/Types/AnimValueType.h"
+#include "Maestro/Types/SequenceType.h"
 
 #include "objects/CameraObject.h"
 
@@ -45,9 +47,9 @@ public:
         AddVariable(mv_table, mv_camera, "Camera");
         AddVariable(mv_table, mv_BlendTime, "Blend time");
     }
-    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, EAnimValue valueType) const
+    bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
-        return valueType == eAnimValue_Select;
+        return valueType == AnimValueType::Select;
     }
     virtual bool OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys);
     virtual void OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys);
@@ -80,26 +82,26 @@ bool CSelectKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKey
     {
         const CTrackViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
 
-        EAnimValue valueType = keyHandle.GetTrack()->GetValueType();
-        if (valueType == eAnimValue_Select)
+        AnimValueType valueType = keyHandle.GetTrack()->GetValueType();
+        if (valueType == AnimValueType::Select)
         {
             // Get All cameras.
             CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
-            ESequenceType sequenceType = sequence ? sequence->GetSequenceType() : eSequenceType_Legacy;
+            SequenceType sequenceType = sequence ? sequence->GetSequenceType() : SequenceType::Legacy;
 
             mv_camera.SetEnumList(NULL);
 
             // Insert '<None>' empty enum
-            if (sequenceType == eSequenceType_Legacy)
+            if (sequenceType == SequenceType::Legacy)
             {
                 mv_camera->AddEnumItem(QObject::tr("<None>"), "");
             }
-            else if (sequenceType == eSequenceType_SequenceComponent)
+            else if (sequenceType == SequenceType::SequenceComponent)
             {
                 mv_camera->AddEnumItem(QObject::tr("<None>"), QString::number(static_cast<AZ::u64>(AZ::EntityId::InvalidEntityId)));
             }
 
-            if (sequenceType == eSequenceType_Legacy)
+            if (sequenceType == SequenceType::Legacy)
             {
                 // legacy sequences use legacy camera entities
                 m_isLegacyCamera = true;
@@ -115,7 +117,7 @@ bool CSelectKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKey
                     }
                 }
             }
-            else if (sequenceType == eSequenceType_SequenceComponent)
+            else if (sequenceType == SequenceType::SequenceComponent)
             {
                 // new sequences use camera components
                 m_isLegacyCamera = false;
@@ -141,11 +143,11 @@ bool CSelectKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKey
             ISelectKey selectKey;
             keyHandle.GetKey(&selectKey);
 
-            if (sequenceType == eSequenceType_Legacy)
+            if (sequenceType == SequenceType::Legacy)
             {
                 mv_camera = selectKey.szSelection.c_str();
             }
-            else if (sequenceType == eSequenceType_SequenceComponent)
+            else if (sequenceType == SequenceType::SequenceComponent)
             {
                 mv_camera = QString::number(static_cast<AZ::u64>(selectKey.cameraAzEntityId));
             }
@@ -172,8 +174,8 @@ void CSelectKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
     {
         CTrackViewKeyHandle keyHandle = selectedKeys.GetKey(keyIndex);
 
-        EAnimValue valueType = keyHandle.GetTrack()->GetValueType();
-        if (valueType == eAnimValue_Select)
+        AnimValueType valueType = keyHandle.GetTrack()->GetValueType();
+        if (valueType == AnimValueType::Select)
         {
             ISelectKey selectKey;
             keyHandle.GetKey(&selectKey);
@@ -204,7 +206,7 @@ void CSelectKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
 
             if (!selectKey.szSelection.empty())
             {
-                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(selectKey.szSelection.c_str());
+                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindLegacySequenceByName(selectKey.szSelection.c_str());
                 if (pSequence)
                 {
                     selectKey.fDuration = pSequence->GetTimeRange().Length();

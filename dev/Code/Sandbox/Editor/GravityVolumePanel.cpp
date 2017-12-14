@@ -19,39 +19,6 @@
 #include "Objects/GravityVolumeObject.h"
 
 //////////////////////////////////////////////////////////////////////////
-class CEditGravityVolumeObjectTool
-    : public CEditTool
-{
-    Q_OBJECT
-public:
-    CEditGravityVolumeObjectTool();
-
-    // Ovverides from CEditTool
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-
-    virtual void SetUserData(const char* key, void* userData);
-
-    virtual void BeginEditParams(IEditor* ie, int flags) {};
-    virtual void EndEditParams() {};
-
-    virtual void Display(DisplayContext& dc) {};
-    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) { return false; };
-
-protected:
-    virtual ~CEditGravityVolumeObjectTool();
-    // Delete itself.
-    void DeleteThis() { delete this; };
-
-private:
-    CGravityVolumeObject* m_GravityVolume;
-    int m_currPoint;
-    bool m_modifying;
-    QPoint m_mouseDownPos;
-    Vec3 m_pointPos;
-};
-
-//////////////////////////////////////////////////////////////////////////
 CEditGravityVolumeObjectTool::CEditGravityVolumeObjectTool()
 {
     m_GravityVolume = 0;

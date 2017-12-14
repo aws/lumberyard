@@ -268,7 +268,7 @@ QString CSelectEntityClsDialog::GetEntityClass() const
 //////////////////////////////////////////////////////////////////////////
 void CSelectEntityClsDialog::OnTvnDoubleClick(const QModelIndex& index)
 {
-    if (index.isValid() && index.data(Qt::UserRole).type() == QMetaType::QString)
+    if (index.isValid() && index.data(Qt::UserRole).type() == QVariant::String)
     {
         accept();
     }

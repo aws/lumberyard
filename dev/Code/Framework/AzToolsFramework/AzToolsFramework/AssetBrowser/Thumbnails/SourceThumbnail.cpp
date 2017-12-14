@@ -57,9 +57,15 @@ namespace AzToolsFramework
             QString finalPath = QString::fromUtf8(sourceKey->GetFileName().c_str());
             QFileInfo fileInfo(finalPath);
             QFileIconProvider iconProvider;
-            QIcon fileIcon = iconProvider.icon(fileInfo);
-
-            AZ_Assert(!fileIcon.isNull(), "Icon not found");
+            QIcon fileIcon;
+            if (!fileInfo.exists())
+            {
+                fileIcon = iconProvider.icon(fileInfo);
+            }
+            else
+            {
+                fileIcon = iconProvider.icon(QFileIconProvider::IconType::File);
+            }
             // fileIcon is not thread safe. Accessing it simultaneously from multiple threads produces incorrect results.
             m_mutex.lock();
             m_pixmap = fileIcon.pixmap(16).copy(0, 0, m_thumbnailSize, m_thumbnailSize);

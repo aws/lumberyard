@@ -102,7 +102,12 @@ extern "C" DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* modul
 
 #if !defined(AZ_MONOLITHIC_BUILD)
         ICryFactoryRegistryImpl* pCryFactoryImpl = static_cast<ICryFactoryRegistryImpl*>(pSystem->GetCryFactoryRegistry());
-        pCryFactoryImpl->RegisterFactories(g_pHeadToRegFactories);
+        if (pCryFactoryImpl)
+        {
+            pCryFactoryImpl->RegisterFactories(g_pHeadToRegFactories);
+        }
+
+        AZ_Error("System", pCryFactoryImpl, "Failed to successfully load factory for %s.  You may have a missing or stale DLL that needs to be recompiled.", moduleName);
 #endif
     } // if pSystem
 }

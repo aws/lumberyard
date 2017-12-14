@@ -51,12 +51,12 @@ namespace EMStudio
 
         struct Line
         {
-            MCore::Vector3  mPosA;
-            MCore::Vector3  mPosB;
+            AZ::Vector3  mPosA;
+            AZ::Vector3  mPosB;
             uint32          mColor;
 
             Line() {}
-            MCORE_INLINE Line(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)
+            MCORE_INLINE Line(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)
                 : mPosA(posA)
                 , mPosB(posB)
                 , mColor(color) {}
@@ -64,18 +64,18 @@ namespace EMStudio
 
         struct Triangle
         {
-            MCore::Vector3  mPosA;
-            MCore::Vector3  mPosB;
-            MCore::Vector3  mPosC;
+            AZ::Vector3  mPosA;
+            AZ::Vector3  mPosB;
+            AZ::Vector3  mPosC;
 
-            MCore::Vector3  mNormalA;
-            MCore::Vector3  mNormalB;
-            MCore::Vector3  mNormalC;
+            AZ::Vector3  mNormalA;
+            AZ::Vector3  mNormalB;
+            AZ::Vector3  mNormalC;
 
             uint32          mColor;
 
             Triangle() {}
-            Triangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)
+            Triangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)
                 : mPosA(posA)
                 , mPosB(posB)
                 , mPosC(posC)
@@ -95,8 +95,8 @@ namespace EMStudio
             ~EventHandler() {}
 
             // overloaded
-            MCORE_INLINE void OnDrawLine(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)                                                                                                                                      { mWidget->AddLine(posA, posB, color); }
-            MCORE_INLINE void OnDrawTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)         { mWidget->AddTriangle(posA, posB, posC, normalA, normalB, normalC, color); }
+            MCORE_INLINE void OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)                                                                                                                                      { mWidget->AddLine(posA, posB, color); }
+            MCORE_INLINE void OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)         { mWidget->AddTriangle(posA, posB, posC, normalA, normalB, normalC, color); }
             MCORE_INLINE void OnDrawTriangles()                                                                                                                                                                                                     { mWidget->RenderTriangles(); }
 
         private:
@@ -111,8 +111,8 @@ namespace EMStudio
         virtual void Update() = 0;
 
         // line rendering helper functions
-        MCORE_INLINE void AddLine(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)     { mLines.Add(Line(posA, posB, color)); }
-        MCORE_INLINE void AddTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)        { mTriangles.Add(Triangle(posA, posB, posC, normalA, normalB, normalC, color)); }
+        MCORE_INLINE void AddLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)     { mLines.Add(Line(posA, posB, color)); }
+        MCORE_INLINE void AddTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)        { mTriangles.Add(Triangle(posA, posB, posC, normalA, normalB, normalC, color)); }
         MCORE_INLINE void ClearLines()                                                                      { mLines.Clear(false); }
         MCORE_INLINE void ClearTriangles()                                                                  { mTriangles.Clear(false); }
         void RenderTriangles();
@@ -183,7 +183,7 @@ namespace EMStudio
         float                                   mViewCloseupFlightTime;
 
         // manipulator helper data
-        MCore::Vector3                          mOldActorInstancePos;
+        AZ::Vector3                          mOldActorInstancePos;
         int32                                   mPrevMouseX;
         int32                                   mPrevMouseY;
         int32                                   mPrevLocalMouseX;

@@ -96,7 +96,8 @@ namespace GraphCanvas
 
     void PropertySlotLayout::OnTooltipChanged(const TranslationKeyedString& tooltip)
     {
-        m_slotText->setToolTip( Tools::qStringFromUtf8(tooltip.GetDisplayString()) );
+        m_slotText->setToolTip(Tools::qStringFromUtf8(tooltip.GetDisplayString()));
+        m_nodePropertyDisplay->setToolTip(Tools::qStringFromUtf8(tooltip.GetDisplayString()));
     }
     
     void PropertySlotLayout::OnStyleChanged()

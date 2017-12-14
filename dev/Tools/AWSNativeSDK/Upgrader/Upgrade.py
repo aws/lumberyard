@@ -45,6 +45,10 @@ def _create_parser():
     parser.add_argument('-service', help='A name to match against services and install only services which match.  If not supplied will install the default Lumberyard services.')
     parser.add_argument('-platform', help='A name to match against possible platforms and install only platforms which match.  If not supplied will install all Lumberyard supported platforms.')
     parser.add_argument('-extension', help='An extension type to specify for unpacking (e.g. .pdb)')
+    parser.add_argument('-noclean', action='store_true',help='Do not delete downloaded zips after operation is complete')
+    parser.add_argument('-nofetch', action='store_true',help='Do not download a zip (Must already be present in the download directory)')
+    parser.add_argument('-dependencies', action='store_true',help='Skip fetching and unpacking, only install dependencies')
+    parser.add_argument('-noheaders', action='store_true',help='Skip installing headers')
 
     return parser
 
@@ -152,6 +156,7 @@ def get_android():
     android_arm['libraries'] = get_default_library_list()
     android_arm['libextensions'] = ['.so', '.a']
     android_arm['filter-lib-include'] = 'armeabi-v7a'
+    android_arm['custom_path'] = os.path.join('ndk_r12','android-19','armeabi-v7a','clang-3.8')
     android_arm['build_lib_folder'] = True
     android_arm['name'] = 'android'
 
@@ -209,7 +214,13 @@ def get_platform_list(args):
 def get_lib_prefix():
     return 'aws-cpp-sdk-'
 
-def fetch_item(platform_info, version_url):
+def fetch_item(platform_info, version_url, args):
+    if args.nofetch:
+        print 'Skipping fetch'
+        return True
+    if args.dependencies:
+        print 'Skipping fetch - dependencies only'
+        return False
     file_name = platform_info.get('zipfile')
     file_url = version_url + platform_info.get('zipfile')
     print 'fetching {}'.format(file_url)
@@ -245,8 +256,9 @@ def get_output_paths(platform_info, file_name):
         return [ file_name ]
     return_dir, name_and_ext = os.path.split(file_name)
     path_base, debug_release = os.path.split(return_dir)
+    custom_path = platform_info.get('custom_path','')
     if debug_release == 'Debug' or debug_release == 'Release':
-        return [ os.path.join('lib', platform_info.get('platform'), debug_release, name_and_ext) ]
+        return [ os.path.join('lib', platform_info.get('platform'), custom_path, debug_release, name_and_ext) ]
 
     print 'WARNING - Could not determine path for {} - Returning as Debug and Release'.format(file_name)
 
@@ -268,7 +280,9 @@ def get_file_destinations(platform_info, file_name,args):
     library_list = [args.service] if args.service else platform_info.get('libraries')
     extension_list = [args.extension] if args.extension else platform_info['libextensions']
     for this_lib in library_list:
-        if file_name.startswith('include/aws/{}/'.format(this_lib)):
+        if (not args.extension or args.extension == '.h') and file_name.startswith('include/aws/{}/'.format(this_lib)):
+            if args.noheaders:
+                return False, None
             return True, [ file_name ]
         filter_in = platform_info.get('filter-lib-include')
         if filter_in is not None:
@@ -306,10 +320,16 @@ def extract_item(platform_info, target_dir, args):
                     os.makedirs(os.path.dirname(file_path))
                 if not is_zip_folder(file_path):
                     print 'Extracting {}\n    -->{}'.format(zip_file, file_path)
-                    output_file = file(file_path, 'wb')
-                    shutil.copyfileobj(archived_file, output_file)
+                    close_output = False
+                    try:
+                        output_file = file(file_path, 'wb')
+                        close_output = True
+                        shutil.copyfileobj(archived_file, output_file)
+                    except IOError as e:
+                        print 'Could not copy {} to {} ({})'.format(zip_file, file_path, e)
                     archived_file.close()
-                    output_file.close()
+                    if close_output:
+                        output_file.close()
 
     read_zip.close()
 
@@ -347,9 +367,10 @@ def get_all_items(version_url, target_dir, args):
     file_list = get_platform_list(args) 
 
     for thisEntry in file_list:
-        if fetch_item(thisEntry, version_url):
+        if fetch_item(thisEntry, version_url, args):
             extract_item(thisEntry, target_dir, args)
-            cleanup_item(thisEntry)
+            if not args.noclean:
+                cleanup_item(thisEntry)
         copy_extras(thisEntry, target_dir)
 
 main()

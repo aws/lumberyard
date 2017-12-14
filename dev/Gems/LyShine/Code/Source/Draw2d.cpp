@@ -121,7 +121,6 @@ void CDraw2d::BeginDraw2d(AZ::Vector2 viewportSize, bool deferCalls)
         // we unwind the stack
         m_nestLevelAtWhichStarted2dMode = m_deferCallsFlagStack.size();
     }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

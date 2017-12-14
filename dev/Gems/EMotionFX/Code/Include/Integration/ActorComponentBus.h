@@ -10,14 +10,11 @@
 *
 */
 
-
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityId.h>
-
-#include <Integration/System/SystemCommon.h>
 
 namespace EMotionFX
 {
@@ -58,8 +55,6 @@ namespace EMotionFX
 
             /// Enables debug-drawing of the actor's root.
             virtual void DebugDrawRoot(bool /*enable*/) {}
-
-            virtual void RequestLaunchAnimationEditor() {}
         };
 
         using ActorComponentRequestBus = AZ::EBus<ActorComponentRequests>;
@@ -107,6 +102,19 @@ namespace EMotionFX
         };
 
         using ActorComponentNotificationBus = AZ::EBus<ActorComponentNotifications>;
+
+        /**
+        * EMotion FX Editor Actor Component Request Bus
+        * Used for making requests to EMotion FX Actor Components.
+        */
+        class EditorActorComponentRequests
+            : public AZ::ComponentBus
+        {
+        public:
+            virtual const AZ::Data::AssetId& GetActorAssetId() = 0;
+        };
+
+        using EditorActorComponentRequestBus = AZ::EBus<EditorActorComponentRequests>;
 
     } //namespace Integration
 

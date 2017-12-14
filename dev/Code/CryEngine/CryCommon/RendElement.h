@@ -134,7 +134,7 @@ struct IRenderElement
     virtual void Draw(CRenderObject* pObj, const struct SGraphicsPiplinePassContext& ctx) = 0;
 };
 
-class CRendElement
+class ENGINE_EXPORT_PUBLIC CRendElement
 {
 public:
     static CRendElement m_RootGlobal;
@@ -186,7 +186,7 @@ public:
     static void Cleanup();
 };
 
-class CRendElementBase
+class ENGINE_EXPORT_PUBLIC CRendElementBase
     : public CRendElement
     , public IRenderElement
 {

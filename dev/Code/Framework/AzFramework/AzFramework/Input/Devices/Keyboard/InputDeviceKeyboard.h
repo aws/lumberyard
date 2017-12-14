@@ -36,8 +36,14 @@ namespace AzFramework
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! The id used to identify any physical keyboard input device
+        //! The id used to identify the primary physical keyboard input device
         static const InputDeviceId Id;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Check whether an input device id identifies a physical keyboard (regardless of index)
+        //! \param[in] inputDeviceId The input device id to check
+        //! \return True if the input device id identifies a physical keyboard, false otherwise
+        static bool IsKeyboardDevice(const InputDeviceId& inputDeviceId);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! All the input channel ids that identify standard physical keyboard keys intended for use

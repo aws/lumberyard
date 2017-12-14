@@ -86,6 +86,9 @@ namespace LmbrCentral
         
     protected:
 
+        //! Constructs a SpawnParams struct from the component's properties
+        SpawnParams GetPropertiesAsSpawnParams(const ParticleEmitterSettings& settings) const;
+
         //! A handler that tracks updates to the Emitter's TargetEntity, if any.
         class TargetEntityHandler 
             : public AZ::TransformNotificationBus::Handler

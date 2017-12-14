@@ -14,7 +14,7 @@
 
 #include <AzFramework/Input/Devices/InputDevice.h>
 
-#include <AzFramework/Input/Buses/Notifications/InputChannelEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputChannelNotificationBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
@@ -199,9 +199,9 @@ namespace AzFramework
         if (m_state != State::Idle)
         {
             bool hasBeenConsumed = false;
-            InputChannelEventNotificationBus::Broadcast(&InputChannelEventNotifications::OnInputChannelEvent,
-                                                        *this,
-                                                        hasBeenConsumed);
+            InputChannelNotificationBus::Broadcast(&InputChannelNotifications::OnInputChannelEvent,
+                                                   *this,
+                                                   hasBeenConsumed);
         }
 
         return m_state != previousState;

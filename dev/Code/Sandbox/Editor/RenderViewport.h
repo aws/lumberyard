@@ -28,14 +28,12 @@
 #include "Util/PredefinedAspectRatios.h"
 
 #include <AzCore/Component/EntityId.h>
-
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_win.h>
-
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorCameraBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 
+#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 
 // forward declarations.
 class CBaseObject;
@@ -58,13 +56,18 @@ class SANDBOX_API CRenderViewport
     , public IUndoManagerListener
     , public Camera::EditorCameraRequestBus::Handler
     , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
-    , public AzFramework::RawInputRequestBusWin::Handler
+    , public AzFramework::InputSystemCursorConstraintRequestBus::Handler
     , public AzToolsFramework::ViewportInteractionRequestBus::Handler
 {
     Q_OBJECT
 public:
     using MouseInteraction = AzToolsFramework::ViewportInteraction::MouseInteraction;
-    using Modifiers = AzToolsFramework::ViewportInteraction::Modifiers;
+    using MousePick = AzToolsFramework::ViewportInteraction::MousePick;
+    using KeyboardInteraction = AzToolsFramework::ViewportInteraction::KeyboardInteraction;
+    using KeyboardModifiers = AzToolsFramework::ViewportInteraction::KeyboardModifiers;
+    using MouseButton = AzToolsFramework::ViewportInteraction::MouseButton;
+    using MouseButtons = AzToolsFramework::ViewportInteraction::MouseButtons;
+    using InteractionId = AzToolsFramework::ViewportInteraction::InteractionId;
 
     struct SResolution
     {
@@ -126,7 +129,7 @@ public:
     virtual Vec3 WorldToView3D(const Vec3& wp, int nFlags = 0) const;
 
     //! Map viewport position to world space position.
-    virtual Vec3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = 0, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false) const override;
+    virtual Vec3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override;
     virtual void ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const override;
     virtual Vec3 ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh = false) override;
     virtual float GetScreenScaleFactor(const Vec3& worldPoint) const;
@@ -158,22 +161,20 @@ public:
     // This switches the active camera to the next one in the list of (default, all custom cams).
     void CycleCamera();
 
-    //////////////////////////////////////////////////////////////////////////
     /// Camera::CameraEditorRequests::Handler
     void SetViewFromEntityPerspective(const AZ::EntityId& entityId) override { SetEntityAsCamera(entityId); }
     AZ::EntityId GetCurrentViewEntityId() { return m_viewEntityId; }
-    //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
     /// AzToolsFramework::EditorEntityContextNotificationBus::Handler
     void OnStartPlayInEditor() override;
     void OnStopPlayInEditor() override;
-    //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
     /// AzToolsFramework::ViewportInteractionRequestBus::Handler
     AzToolsFramework::ViewportInteraction::CameraState GetCameraState() override;
-    //////////////////////////////////////////////////////////////////////////
+    bool GridSnappingEnabled() override;
+    float GridSize() override;
+    AZ::Vector3 PickSurface(const AZ::Vector2& point) override;
+    float TerrainHeight(const AZ::Vector2& position) override;
 
     void ConnectViewportInteractionRequestBus();
     void DisconnectViewportInteractionRequestBus();
@@ -277,12 +278,7 @@ public:
         m_GroundOBBPos = Vec3(0, 0, -0.01f);
     };
 
-    static CRenderViewport* GetPrimaryViewport()
-    {
-        return m_pPrimaryViewport;
-    }
-
-    void ToggleFullscreen();
+    static CRenderViewport* GetPrimaryViewport();
 
     CCamera m_Camera;
 
@@ -494,8 +490,6 @@ protected:
     // Render options.
     bool m_bRenderStats = true;
 
-    QSize m_viewSize;
-
     // Index of camera objects.
     mutable GUID m_cameraObjectId = GUID_NULL;
     mutable AZ::EntityId m_viewEntityId;
@@ -529,7 +523,6 @@ protected:
     IVariable* m_pCameraFOVVariable = nullptr;
     bool m_bCursorHidden = false;
 
-protected:
     void OnMenuResolutionCustom();
     void OnMenuCreateCameraFromCurrentView();
     void OnMenuCreateCameraEntityFromCurrentView();
@@ -548,20 +541,36 @@ protected:
     void OnRButtonUp(Qt::KeyboardModifiers modifiers, const QPoint& point) override;
     void OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons, const QPoint& point) override;
     void OnMouseWheel(Qt::KeyboardModifiers modifiers, short zDelta, const QPoint& pt) override;
-    MouseInteraction BuildMouseInteraction(Modifiers button, Qt::KeyboardModifiers modifiers, const QPoint& point);
+    MouseInteraction BuildMouseInteraction(MouseButtons buttons, KeyboardModifiers modifiers, const MousePick& mousePick) const;
+    KeyboardInteraction BuildKeyboardInteraction(AZ::u32 key, Qt::KeyboardModifiers modifiers) const;
+    MousePick BuildMousePick(const QPoint& point);
     bool event(QEvent* event) override;
     void OnDestroy();
 
     bool CheckRespondToInput() const;
 
-    // AzFramework::RawInputRequestBusWin::Handler
-    void* GetSystemCursorFocusWindow() override { return m_renderer->GetCurrentContextHWND(); }
+    // AzFramework::InputSystemCursorConstraintRequestBus::Handler
+    void* GetSystemCursorConstraintWindow() const override { return renderOverlayHWND(); }
 
 private:
     void ProcessKeyRelease(QKeyEvent* event);
     void PushDisableRendering();
     void PopDisableRendering();
     bool IsRenderingDisabled() const;
+    MousePick BuildMousePickInternal(const QPoint& point) const;
+
+    double WidgetToViewportFactor() const
+    {
+#if defined(AZ_PLATFORM_WINDOWS)
+        // Needed for high DPI mode on windows
+        return devicePixelRatioF();
+#else
+        return 1.0f;
+#endif
+    }
+    QPoint WidgetToViewport(const QPoint &point) const;
+    QPoint ViewportToWidget(const QPoint &point) const;
+    QSize WidgetToViewport(const QSize &size) const;
 
     virtual void BeginUndoTransaction() override;
     virtual void EndUndoTransaction() override;

@@ -57,7 +57,7 @@ namespace LmbrCentral
                 ->Field("Playback Speed", &AnimatedLayer::m_playbackSpeed)
                 ->Field("Layer Weight", &AnimatedLayer::m_layerWeight)
                 ->Field("AnimDrivenMotion", &AnimatedLayer::m_animDrivenRootMotion);
-#ifdef ENABLE_LEGACY_ANIMATION
+
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
@@ -81,7 +81,6 @@ namespace LmbrCentral
                     ->DataElement(0, &AnimatedLayer::m_animDrivenRootMotion, "Animate root",
                     "Enables animation-driven root motion during playback of this animation.");
             }
-#endif
         }
 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);

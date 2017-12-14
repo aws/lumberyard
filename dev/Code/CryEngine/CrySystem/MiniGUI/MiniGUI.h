@@ -21,7 +21,8 @@
 
 #include "ICryMiniGUI.h"
 #include <Cry_Color.h>
-#include "IInput.h"
+
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 
 #include <CryExtension/Impl/ClassWeaver.h>
 
@@ -139,7 +140,7 @@ protected:
 //////////////////////////////////////////////////////////////////////////
 class CMiniGUI
     : public IMiniGUI
-    , public IInputEventListener
+    , public AzFramework::InputChannelEventListener
 {
 public:
     CRYINTERFACE_BEGIN()
@@ -178,8 +179,9 @@ public:
     void SetHighlight(IMiniCtrl* pCtrl, bool bEnable, float x, float y);
     void SetFocus(IMiniCtrl* pCtrl, bool bEnable);
 
-    // IInputEventListener
-    virtual bool OnInputEvent(const SInputEvent& rInputEvent);
+    // AzFramework::InputChannelEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+    AZ::s32 GetPriority() const override { return AzFramework::InputChannelEventListener::GetPriorityUI(); }
 
     virtual void SetMovingCtrl(IMiniCtrl* pCtrl)
     {
@@ -187,15 +189,14 @@ public:
     }
 
 protected:
-    void OnMouseInputEvent(const SInputEvent& rInputEvent);
+    void OnMouseInputEvent(const AzFramework::InputChannel& inputChannel);
 
     //DPad menu navigation
-    void UpdateDPadMenu(const SInputEvent& rInputEvent);
+    void UpdateDPadMenu(const AzFramework::InputChannel& inputChannel);
     void SetDPadMenu(IMiniCtrl* pMenu);
     void CloseDPadMenu();
 
 protected:
-    bool m_bListenersRegistered;
     bool m_enabled;
     bool m_inFocus;
 

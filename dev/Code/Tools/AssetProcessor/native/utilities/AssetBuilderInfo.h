@@ -29,12 +29,15 @@ class QCoreApplication;
 
 namespace AssetProcessor
 {
+    // A string like "AssetBuilder.exe" which names the executable of the asset builder.
+    extern const char* const s_assetBuilderRelativePath;
+
     //! Class to manage external module builders for the asset processor
     class ExternalModuleAssetBuilderInfo
     {
     public:
         ExternalModuleAssetBuilderInfo(const QString& modulePath);
-        virtual ~ExternalModuleAssetBuilderInfo();
+        virtual ~ExternalModuleAssetBuilderInfo() = default;
 
         const QString& GetName() const;
 
@@ -90,7 +93,6 @@ namespace AssetProcessor
 
         virtual ~AssetBuilderRegistrationBusTraits() {}
 
-        virtual void UnRegisterComponentDescriptor(const AZ::ComponentDescriptor* componentDescriptor) {}
         virtual void UnRegisterBuilderDescriptor(const AZ::Uuid& builderId) {}
     };
 

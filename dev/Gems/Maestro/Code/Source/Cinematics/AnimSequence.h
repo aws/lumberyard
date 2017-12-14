@@ -29,7 +29,7 @@ public:
     AZ_CLASS_ALLOCATOR(CAnimSequence, AZ::SystemAllocator, 0)
     AZ_RTTI(CAnimSequence, "{5127191A-0E7C-4C6F-9AF2-E5544F07BF22}", IAnimSequence);
 
-    CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, ESequenceType = eSequenceType_Legacy);
+    CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, SequenceType = kSequenceTypeDefault);
     CAnimSequence();
     ~CAnimSequence();
 
@@ -49,10 +49,10 @@ public:
 
     float GetTime() const { return m_time; }
 
-    void SetOwner(IAnimSequenceOwner* pOwner) override { m_pOwner = pOwner; }
-    virtual IAnimSequenceOwner* GetOwner() const override { return m_pOwner; }
-    void SetOwner(const AZ::EntityId& entityOwnerId) override;
-    const AZ::EntityId& GetOwnerId() const override { return m_ownerId; }
+    void SetLegacySequenceObject(IAnimLegacySequenceObject* legacySequenceObject) override { m_legacySequenceObject = legacySequenceObject; }
+    virtual IAnimLegacySequenceObject* GetLegacySequenceObject() const override { return m_legacySequenceObject; }
+    void SetSequenceEntityId(const AZ::EntityId& sequenceEntityId) override;
+    const AZ::EntityId& GetSequenceEntityId() const override { return m_sequenceEntityId; }
 
     virtual void SetActiveDirector(IAnimNode* pDirectorNode);
     virtual IAnimNode* GetActiveDirector() const;
@@ -93,7 +93,7 @@ public:
 
     //! Add animation node to sequence.
     bool AddNode(IAnimNode* node);
-    IAnimNode* CreateNode(EAnimNodeType nodeType);
+    IAnimNode* CreateNode(AnimNodeType nodeType);
     IAnimNode* CreateNode(XmlNodeRef node);
     void RemoveNode(IAnimNode* node, bool removeChildRelationships=true) override;
     //! Add scene node to sequence.
@@ -138,7 +138,7 @@ public:
     virtual void AddTrackEventListener(ITrackEventListener* pListener);
     virtual void RemoveTrackEventListener(ITrackEventListener* pListener);
 
-    ESequenceType GetSequenceType() const override { return m_sequenceType; }
+    SequenceType GetSequenceType() const override { return m_sequenceType; }
 
     static void Reflect(AZ::SerializeContext* serializeContext);
 
@@ -149,7 +149,7 @@ private:
         const char* event, const char* param = NULL);
 
     // Create a new animation node.
-    IAnimNode* CreateNodeInternal(EAnimNodeType nodeType, uint32 nNodeId = -1);
+    IAnimNode* CreateNodeInternal(AnimNodeType nodeType, uint32 nNodeId = -1);
 
     bool AddNodeNeedToRender(IAnimNode* pNode);
     void RemoveNodeNeedToRender(IAnimNode* pNode);
@@ -188,17 +188,17 @@ private:
 
     uint32 m_lastGenId;
 
-    IAnimSequenceOwner* m_pOwner;   // legacy owners (sequence entities) are connected by pointer
+    IAnimLegacySequenceObject* m_legacySequenceObject;   // legacy sequence objects are connected by pointer
 
     // NOTE: for Legacy components this contains the Sequence Id so that we have a single way to find an existing sequence
-    AZ::EntityId        m_ownerId;  // SequenceComponent owners are connected by Id
+    AZ::EntityId        m_sequenceEntityId;  // SequenceComponent entities are connected by Id
 
     IAnimNode* m_pActiveDirector;
 
     float m_time;
 
     VectorSet<IEntity*> m_precachedEntitiesSet;
-    ESequenceType m_sequenceType;       // indicates if this sequence is connected to a legacy sequence entity or Sequence Component
+    SequenceType m_sequenceType;       // indicates if this sequence is connected to a legacy sequence entity or Sequence Component
 
 };
 

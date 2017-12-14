@@ -33,12 +33,8 @@ namespace EMotionFX
                 // stored in an fbx file or if the user wants to override the root bone automatically
                 // selected by the code.
                 virtual const AZStd::string& GetSelectedRootBone() const = 0;
-                virtual AZ::u32 GetStartFrame() const = 0;
-                virtual AZ::u32 GetEndFrame() const = 0;
 
                 virtual void SetSelectedRootBone(const AZStd::string& selectedRootBone) = 0;
-                virtual void SetStartFrame(AZ::u32 frame) = 0;
-                virtual void SetEndFrame(AZ::u32 frame) = 0;
             };
         }
     }

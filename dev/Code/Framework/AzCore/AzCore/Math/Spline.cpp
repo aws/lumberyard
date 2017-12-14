@@ -9,30 +9,142 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Script/ScriptContext.h>
+#include <AzCore/Script/ScriptContextAttributes.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <tuple>
 
 namespace AZ
 {
-    /*static*/
-    const float Spline::c_splineEpsilon = 0.00001f;
-    /*static*/ const float SplineAddress::c_segmentFractionEpsilon = 0.001f;
-    static const float c_projectRayLength = 1000.0f;
-    static const u16 c_minGranularity = 2;
-    static const u16 c_maxGranularity = 64;
+    const float Spline::s_splineEpsilon = 0.00001f;
+    const float SplineAddress::s_segmentFractionEpsilon = 0.001f;
+    static const float s_projectRayLength = 1000.0f;
+    static const u16 s_minGranularity = 2;
+    static const u16 s_maxGranularity = 64;
+    static const VectorFloat s_vectorFloatMax(std::numeric_limits<float>::max());
 
-    void SplineReflect(SerializeContext& context)
+    namespace Internal
     {
-        Spline::Reflect(context);
-        LinearSpline::Reflect(context);
-        BezierSpline::Reflect(context);
-        CatmullRomSpline::Reflect(context);
+        /**
+         * Script Wrapper for SplineAddress default constructor.
+         */
+        void SplineAddressDefaultConstructor(SplineAddress* thisPtr)
+        {
+            new (thisPtr) SplineAddress();
+        }
+
+        /**
+         * Script Wrapper for SplineAddress constructor overloads.
+         */
+        void SplineAddressScriptConstructor(SplineAddress* thisPtr, ScriptDataContext& dc)
+        {
+            const int numArgs = dc.GetNumArguments();
+            switch (numArgs)
+            {
+            case 1:
+                if (dc.IsNumber(0))
+                {
+                    u64 index = 0;
+                    dc.ReadArg(0, index);
+                    *thisPtr = SplineAddress(index);
+                }
+                else
+                {
+                    dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 1 argument to SplineAddress(), it must be a number (index)");
+                }
+                break;
+            case 2:
+                if (dc.IsNumber(0) && dc.IsNumber(1))
+                {
+                    u64 index = 0;
+                    float fraction = 0.0f;
+                    dc.ReadArg(0, index);
+                    dc.ReadArg(1, fraction);
+                    *thisPtr = SplineAddress(index, fraction);
+                }
+                else
+                {
+                    dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 2 arguments to SplineAddress(), both must be a number (index, fraction)");
+                }
+                break;
+            default:
+                dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "SplineAddress() accepts only 1 or 2 arguments, not %d!", numArgs);
+                break;
+            }
+        }
+    }
+
+    void SplineReflect(ReflectContext* context)
+    {
+        if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+        {
+            Spline::Reflect(*serializeContext);
+            LinearSpline::Reflect(*serializeContext);
+            BezierSpline::Reflect(*serializeContext);
+            CatmullRomSpline::Reflect(*serializeContext);
+
+            serializeContext->Class<SplineAddress>()->
+                Field("SegmentIndex", &SplineAddress::m_segmentIndex)->
+                Field("SegmentFraction", &SplineAddress::m_segmentFraction);
+
+            serializeContext->Class<PositionSplineQueryResult>()->
+                Field("SplineAddress", &PositionSplineQueryResult::m_splineAddress)->
+                Field("DistanceSq", &PositionSplineQueryResult::m_distanceSq);
+
+            serializeContext->Class<RaySplineQueryResult, PositionSplineQueryResult>()->
+                Field("RayDistance", &RaySplineQueryResult::m_rayDistance);
+        }
+
+        if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+        {
+            behaviorContext->Class<Spline>()->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+                Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::RuntimeOwn)->
+                Method("GetNearestAddressRay", &Spline::GetNearestAddressRay)->
+                Method("GetNearestAddressPosition", &Spline::GetNearestAddressPosition)->
+                Method("GetAddressByDistance", &Spline::GetAddressByDistance)->
+                Method("GetAddressByFraction", &Spline::GetAddressByFraction)->
+                Method("GetPosition", &Spline::GetPosition)->
+                Method("GetNormal", &Spline::GetNormal)->
+                Method("GetTangent", &Spline::GetTangent)->
+                Method("GetLength", &Spline::GetLength)->
+                Method("GetSplineLength", &Spline::GetSplineLength)->
+                Method("GetSegmentLength", &Spline::GetSegmentLength)->
+                Method("GetSegmentCount", &Spline::GetSegmentCount)->
+                Method("GetSegmentGranularity", &Spline::GetSegmentGranularity)->
+                Method("GetAabb", [](Spline* thisPtr, const Transform& transform) { Aabb aabb; thisPtr->GetAabb(aabb, transform); return aabb; })->
+                Method("IsClosed", &Spline::IsClosed)->
+                Property("vertexContainer", BehaviorValueGetter(&Spline::m_vertexContainer), nullptr);
+
+            behaviorContext->Class<SplineAddress>()->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+                Constructor<u64, float>()->
+                Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::Value)->
+                Attribute(Script::Attributes::ConstructorOverride, &Internal::SplineAddressScriptConstructor)->
+                Attribute(Script::Attributes::GenericConstructorOverride, &Internal::SplineAddressDefaultConstructor)->
+                Property("segmentIndex", BehaviorValueProperty(&SplineAddress::m_segmentIndex))->
+                Property("segmentFraction", BehaviorValueProperty(&SplineAddress::m_segmentFraction));
+
+            behaviorContext->Class<PositionSplineQueryResult>()->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+                Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::Value)->
+                Property("splineAddress", [](PositionSplineQueryResult* thisPtr) { return thisPtr->m_splineAddress; }, nullptr)->
+                Property("distanceSq", [](PositionSplineQueryResult* thisPtr) { return thisPtr->m_distanceSq; }, nullptr);
+
+            behaviorContext->Class<RaySplineQueryResult>()->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+                Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::Value)->
+                Property("splineAddress", [](RaySplineQueryResult* thisPtr) { return thisPtr->m_splineAddress; }, nullptr)->
+                Property("distanceSq", [](RaySplineQueryResult* thisPtr) { return thisPtr->m_distanceSq; }, nullptr)->
+                Property("rayDistance", [](RaySplineQueryResult* thisPtr) { return thisPtr->m_rayDistance; }, nullptr);
+        }
     }
 
     /**
@@ -73,6 +185,62 @@ namespace AZ
     }
 
     /**
+     * Build a SplineAddress given how far along a segment in a spline we are.
+     * A segment is composed of 1-* steps (number of steps is defined by the granularity).
+     * Each step is a line segment, taken in aggregate they approximate the curve.
+     * @param step What step through the segment are we.
+     * @param granularity How many steps are there in this segment
+     * @param proportion How far along the the individual step are we
+     */
+    AZ_FORCE_INLINE SplineAddress CalculateSplineAdddress(size_t currentVertex, size_t step, float granularity, float proportion)
+    {
+        return SplineAddress(currentVertex, // the segment/section along the spline
+            (step - 1) / granularity + // starting step as percentage/proportion
+            proportion / granularity); // proportion along individual step (line segment)
+    }
+
+    /**
+     * Intermediate/temporary result computed by CalculateDistanceFunc in GetNearestAddressInternal.
+     * IntermediateQueryResult is used by RayIntermediateQueryResult and PosIntermediateQueryResult
+     * depending on what we're testing against the spline.
+     */
+    struct IntermediateQueryResult
+    {
+        IntermediateQueryResult(VectorFloat distanceSq, VectorFloat stepProportion)
+            : m_distanceSq(distanceSq)
+            , m_stepProportion(stepProportion) {}
+
+        VectorFloat m_distanceSq; ///< Distance Squared from the closest point of the test to the spline (point or ray).
+        VectorFloat m_stepProportion; ///< Proportion along individual step (line segment).
+    };
+
+    /**
+     * Intermediate result of ray spline query - used to store initial result of query
+     * before being combined with current state of spline query to build a spline address.
+     * (use if we know distanceSq is less than current best known minDistanceSq)
+     */
+    struct RayIntermediateQueryResult : IntermediateQueryResult
+    {
+        RayIntermediateQueryResult(VectorFloat distanceSq, VectorFloat stepProportion, VectorFloat rayClosestDistance)
+            : IntermediateQueryResult(distanceSq, stepProportion)
+            , m_rayDistance(rayClosestDistance) {}
+
+        VectorFloat m_rayDistance; ///< The distance along the ray the point closest to the spline is.
+
+        /**
+         * Create final spline query result by combining intermediate query results with additional information
+         * about the state of spline to create a spline address.
+         */
+        RaySplineQueryResult Build(size_t currentVertex, size_t step, float granularity) const
+        {
+            return RaySplineQueryResult(
+                CalculateSplineAdddress(currentVertex, step, granularity, m_stepProportion),
+                m_distanceSq,
+                m_rayDistance);
+        }
+    };
+
+    /**
      * Functor to wrap ray query against a line segment - used in conjunction with GetNearestAddressInternal.
      */
     struct RayQuery
@@ -81,17 +249,50 @@ namespace AZ
             : m_localRaySrc(localRaySrc)
             , m_localRayDir(localRayDir) {}
 
-        std::tuple<float, float> operator()(const Vector3& partBegin, const Vector3& partEnd) const
+        /**
+         * Using the ray src/origin and direction, calculate the closest point on a step (line segment)
+         * between stepBegin and stepEnd. Return an intermediate result object with the shortest distance
+         * between the ray and the step, the proportion along the step and the distance along the
+         * ray the closest point to the spline is.
+         */
+        RayIntermediateQueryResult operator()(const Vector3& stepBegin, const Vector3& stepEnd) const
         {
-            const Vector3 localRayEnd = m_localRaySrc + (m_localRayDir * c_projectRayLength);
-            Vector3 closestPosRay, closestPosSegmentPart;
-            VectorFloat rayProportion, segmentPartProportion;
-            Intersect::ClosestSegmentSegment(m_localRaySrc, localRayEnd, partBegin, partEnd, rayProportion, segmentPartProportion, closestPosRay, closestPosSegmentPart);
-            return std::make_tuple(((closestPosRay - closestPosSegmentPart).GetLengthSq()), segmentPartProportion);
+            const Vector3 localRayEnd = m_localRaySrc + m_localRayDir * s_projectRayLength;
+            Vector3 closestPosRay, closestPosSegmentStep;
+            VectorFloat rayProportion, segmentStepProportion;
+            Intersect::ClosestSegmentSegment(
+                m_localRaySrc, localRayEnd, stepBegin, stepEnd,
+                rayProportion, segmentStepProportion, closestPosRay, closestPosSegmentStep);
+            return RayIntermediateQueryResult(
+                (closestPosRay - closestPosSegmentStep).GetLengthSq(),
+                segmentStepProportion,
+                rayProportion * s_projectRayLength);
         }
 
         Vector3 m_localRaySrc;
         Vector3 m_localRayDir;
+    };
+
+    /**
+     * Intermediate result of position spline query - used to store initial result of query
+     * before being combined with current state of spline query to build a spline address.
+     * (use if we know distanceSq is less than current best known minDistanceSq)
+     */
+    struct PosIntermediateQueryResult : IntermediateQueryResult
+    {
+        PosIntermediateQueryResult(VectorFloat distanceSq, VectorFloat stepProportion)
+            : IntermediateQueryResult(distanceSq, stepProportion) {}
+
+        /**
+         * Create final spline query result by combining intermediate query results with additional information
+         * about the state of spline to create a spline address.
+         */
+        PositionSplineQueryResult Build(size_t currentVertex, size_t step, float granularity) const
+        {
+            return PositionSplineQueryResult(
+                CalculateSplineAdddress(currentVertex, step, granularity, m_stepProportion),
+                m_distanceSq);
+        }
     };
 
     /**
@@ -102,19 +303,27 @@ namespace AZ
         explicit PosQuery(const Vector3& localPos)
             : m_localPos(localPos) {}
 
-        std::tuple<float, float> operator()(const Vector3& partBegin, const Vector3& partEnd) const
+        /**
+         * Using the position, calculate the closest point on a step (line segment)
+         * between stepBegin and stepEnd. Return an intermediate result object with the shortest distance
+         * between the point and the step and the proportion along the step.
+         */
+        PosIntermediateQueryResult operator()(const Vector3& stepBegin, const Vector3& stepEnd) const
         {
-            Vector3 closestPosSegmentPart;
-            VectorFloat segmentPartProportion;
-            Intersect::ClosestPointSegment(m_localPos, partBegin, partEnd, segmentPartProportion, closestPosSegmentPart);
-            return std::make_tuple((m_localPos - closestPosSegmentPart).GetLengthSq(), segmentPartProportion);
+            Vector3 closestPosSegmentStep;
+            VectorFloat segmentStepProportion;
+            Intersect::ClosestPointSegment(m_localPos, stepBegin, stepEnd, segmentStepProportion, closestPosSegmentStep);
+            return PosIntermediateQueryResult((m_localPos - closestPosSegmentStep).GetLengthSq(), segmentStepProportion);
         }
 
         Vector3 m_localPos;
     };
 
     /**
-     * Template function to do a generic distance query against line segments composing a spline.
+     * Template function to perform a generic distance query against line segments composing a spline.
+     * Iterate through each segment in the spline (section between vertices) and within each segment
+     * iterate through each step (line). Return the address corresponding to the closest point on the spline.
+     *
      * @param begin Vertex to start iteration on.
      * @param end Vertex to end iteration on.
      * @param granularity Number of line segments making up each segment (tessellation).
@@ -122,32 +331,33 @@ namespace AZ
      * @param calcDistfunc The functor responsible for doing the distance query - returning min distance and proportion along segment.
      * @return SplineAddress closest to given query on spline.
      */
-    template<typename CalculateDistanceFunc>
-    static SplineAddress GetNearestAddressInternal(const Spline& spline, size_t begin, size_t end, size_t granularity, CalculateDistanceFunc calcDistfunc)
+    template<typename CalculateDistanceFunc, typename IntermediateResult, typename QueryResult>
+    static QueryResult GetNearestAddressInternal(
+        const Spline& spline, size_t begin, size_t end, size_t granularity, CalculateDistanceFunc calcDistfunc)
     {
-        float minDistanceSq = FLT_MAX;
-        SplineAddress nearestSplineAddress;
+        VectorFloat minDistanceSq = VectorFloat(std::numeric_limits<float>::max());
+        QueryResult queryResult;
         for (size_t currentVertex = begin; currentVertex < end; ++currentVertex)
         {
-            Vector3 segmentPartBegin = spline.GetPosition(SplineAddress(currentVertex, 0.0f));
+            Vector3 segmentStepBegin = spline.GetPosition(SplineAddress(currentVertex, 0.0f));
             for (size_t granularStep = 1; granularStep <= granularity; ++granularStep)
             {
-                const Vector3 segmentPartEnd = spline.GetPosition(SplineAddress(currentVertex, granularStep / static_cast<float>(granularity)));
+                const Vector3 segmentStepEnd = spline.GetPosition(
+                    SplineAddress(currentVertex, granularStep / static_cast<float>(granularity)));
 
-                float distanceSq, proportion;
-                std::tie(distanceSq, proportion) = calcDistfunc(segmentPartBegin, segmentPartEnd);
+                IntermediateResult intermediateResult = calcDistfunc(segmentStepBegin, segmentStepEnd);
 
-                if (distanceSq < minDistanceSq)
+                if (intermediateResult.m_distanceSq.IsLessThan(minDistanceSq))
                 {
-                    minDistanceSq = distanceSq;
-                    nearestSplineAddress = SplineAddress(currentVertex, (granularStep - 1) / static_cast<float>(granularity) + proportion / static_cast<float>(granularity));
+                    queryResult = intermediateResult.Build(currentVertex, granularStep, static_cast<float>(granularity));
+                    minDistanceSq = intermediateResult.m_distanceSq;
                 }
 
-                segmentPartBegin = segmentPartEnd;
+                segmentStepBegin = segmentStepEnd;
             }
         }
 
-        return nearestSplineAddress;
+        return queryResult;
     }
 
     /**
@@ -184,13 +394,13 @@ namespace AZ
         {
             return SplineAddress(index - 1, 1.0f);
         }
-        
+
         return SplineAddress(index, segmentLength > 0.0f ? ((distance - currentSplineLength) / segmentLength) : 0.0f);
     }
 
     /**
-     * util function to calculate SplineAddress from a given percentage along the spline.
-     * implemented in terms of GetAddressByDistanceInternal.
+     * Util function to calculate SplineAddress from a given percentage along the spline.
+     * Implemented in terms of GetAddressByDistanceInternal.
      * @param begin Vertex to start iteration on.
      * @param end Vertex to end iteration on.
      * @param spline Current spline the query is being conducted on.
@@ -205,17 +415,17 @@ namespace AZ
         {
             return SplineAddress(begin);
         }
-        
+
         if (fraction >= 1.0f)
         {
             return SplineAddress(end - 1, 1.0f);
         }
-        
+
         return GetAddressByDistanceInternal(spline, begin, end, spline.GetSplineLength() * fraction);
     }
 
     /**
-     * util function to calculate total spline length.
+     * Util function to calculate total spline length.
      * @param begin Vertex to start iteration on.
      * @param end Vertex to end iteration on.
      * @param spline Current spline the query is being conducted on.
@@ -233,7 +443,21 @@ namespace AZ
     }
 
     /**
-     * util function to ensure range wraps correctly when stepping backwards.
+     * Util function to calculate the spline length from the beginning to the specified point.
+     * @param begin Vertex to start iteration on.
+     * @param splineAddress Address of the point to get the distance to.
+     * @param spline Current spline the query is being conducted on.
+     * @return Distance to the point specified along the spline
+     */
+    static float GetSplineLengthAtAddressInternal(const Spline& spline, size_t begin, const SplineAddress& splineAddress)
+    {
+        float splineLength = GetSplineLengthInternal(spline, begin, splineAddress.m_segmentIndex);
+        splineLength += spline.GetSegmentLength(splineAddress.m_segmentIndex) * splineAddress.m_segmentFraction;
+        return splineLength;
+    }
+
+    /**
+     * Util function to ensure range wraps correctly when stepping backwards.
      */
     static size_t GetPrevIndexWrapped(size_t index, size_t backwardStep, size_t size)
     {
@@ -242,7 +466,7 @@ namespace AZ
     }
 
     /**
-     * util function to get segment count of spline based on vertex count and open/closed state.
+     * Util function to get segment count of spline based on vertex count and open/closed state.
      */
     static size_t GetSegmentCountInternal(const Spline& spline)
     {
@@ -252,7 +476,7 @@ namespace AZ
     }
 
     /**
-     * util function to access the index of the last vertex in the spline.
+     * Util function to access the index of the last vertex in the spline.
      */
     static size_t GetLastVertexDefault(bool closed, size_t vertexCount)
     {
@@ -272,7 +496,7 @@ namespace AZ
         }
     }
 
-    /*static*/ void Spline::Reflect(SerializeContext& context)
+    void Spline::Reflect(SerializeContext& context)
     {
         context.Class<Spline>()
             ->Field("Vertices", &Spline::m_vertexContainer)
@@ -280,7 +504,7 @@ namespace AZ
 
         if (EditContext* editContext = context.GetEditContext())
         {
-            editContext->Class<Spline>("Spline", "Spline data")
+            editContext->Class<Spline>("Spline", "Spline Data")
                 ->ClassElement(Edit::ClassElements::EditorData, "")
                 ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
                 ->Attribute(Edit::Attributes::AutoExpand, true)
@@ -324,6 +548,19 @@ namespace AZ
             [this, OnChangeContainer]() { OnVerticesCleared(); if (OnChangeContainer) { OnChangeContainer(); } });
     }
 
+    void Spline::SetCallbacks(
+        const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
+        const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
+        const AZStd::function<void()>& OnClearVertices)
+    {
+        m_vertexContainer.SetCallbacks(
+            [this, OnAddVertex](size_t index) { OnVertexAdded(index); if (OnAddVertex) { OnAddVertex(index); } },
+            [this, OnRemoveVertex](size_t index) { OnVertexRemoved(index); if (OnRemoveVertex) { OnRemoveVertex(index); } },
+            [this, OnUpdateVertex]() { OnSplineChanged(); if (OnUpdateVertex) { OnUpdateVertex(); } },
+            [this, OnSetVertices]() { OnVerticesSet(); if (OnSetVertices) { OnSetVertices(); } },
+            [this, OnClearVertices]() { OnVerticesCleared(); if (OnClearVertices) { OnClearVertices(); } });
+    }
+
     void Spline::SetClosed(bool closed)
     {
         if (closed != m_closed)
@@ -353,36 +590,36 @@ namespace AZ
     {
     }
 
-    SplineAddress LinearSpline::GetNearestAddress(const Vector3& localRaySrc, const Vector3& localRayDir) const
+    RaySplineQueryResult LinearSpline::GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const
     {
         const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetNearestAddressInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
-               : SplineAddress();
+            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
+            : RaySplineQueryResult(SplineAddress(), s_vectorFloatMax, s_vectorFloatMax);
     }
 
-    SplineAddress LinearSpline::GetNearestAddress(const Vector3& localPos) const
+    PositionSplineQueryResult LinearSpline::GetNearestAddressPosition(const Vector3& localPos) const
     {
         const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetNearestAddressInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
-               : SplineAddress();
+            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
+            : PositionSplineQueryResult(SplineAddress(), s_vectorFloatMax);
     }
 
     SplineAddress LinearSpline::GetAddressByDistance(float distance) const
     {
         const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetAddressByDistanceInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), distance)
-               : SplineAddress();
+            ? GetAddressByDistanceInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), distance)
+            : SplineAddress();
     }
 
     SplineAddress LinearSpline::GetAddressByFraction(float fraction) const
     {
         const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetAddressByFractionInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), fraction)
-               : SplineAddress();
+            ? GetAddressByFractionInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), fraction)
+            : SplineAddress();
     }
 
     Vector3 LinearSpline::GetPosition(const SplineAddress& splineAddress) const
@@ -417,8 +654,8 @@ namespace AZ
             return Vector3::CreateAxisX();
         }
 
-        const size_t index = GetMin(splineAddress.m_segmentIndex, segmentCount - 1);
-        return GetTangent(SplineAddress(index)).ZAxisCross().GetNormalizedSafe(c_splineEpsilon);
+        const size_t index = GetMin(static_cast<size_t>(splineAddress.m_segmentIndex), segmentCount - 1);
+        return GetTangent(SplineAddress(index)).ZAxisCross().GetNormalizedSafe(s_splineEpsilon);
     }
 
     Vector3 LinearSpline::GetTangent(const SplineAddress& splineAddress) const
@@ -429,9 +666,9 @@ namespace AZ
             return Vector3::CreateAxisX();
         }
 
-        const size_t index = GetMin(splineAddress.m_segmentIndex, segmentCount - 1);
+        const size_t index = GetMin(static_cast<size_t>(splineAddress.m_segmentIndex), segmentCount - 1);
         const size_t nextIndex = (index + 1) % GetVertexCount();
-        return (GetVertex(nextIndex) - GetVertex(index)).GetNormalizedSafe(c_splineEpsilon);
+        return (GetVertex(nextIndex) - GetVertex(index)).GetNormalizedSafe(s_splineEpsilon);
     }
 
     float LinearSpline::GetSplineLength() const
@@ -451,6 +688,13 @@ namespace AZ
 
         size_t nextIndex = (index + 1) % GetVertexCount();
         return (GetVertex(nextIndex) - GetVertex(index)).GetLength();
+    }
+
+    float LinearSpline::GetLength(const SplineAddress& splineAddress) const
+    {
+        return GetVertexCount() > 1
+            ? GetSplineLengthAtAddressInternal(*this, 0, splineAddress)
+            : 0.0f;
     }
 
     size_t LinearSpline::GetSegmentCount() const
@@ -474,7 +718,7 @@ namespace AZ
         return *this;
     }
 
-    /*static*/ void LinearSpline::Reflect(SerializeContext& context)
+    void LinearSpline::Reflect(SerializeContext& context)
     {
         context.Class<LinearSpline, Spline>();
 
@@ -503,41 +747,41 @@ namespace AZ
         }
 
         TryAssignGranularity(m_granularity, spline.GetSegmentGranularity());
-        
+
         const size_t iterations = 2;
         CalculateBezierAngles(0, 0, iterations);
     }
 
-    SplineAddress BezierSpline::GetNearestAddress(const Vector3& localRaySrc, const Vector3& localRayDir) const
+    RaySplineQueryResult BezierSpline::GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetNearestAddressInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
-               : SplineAddress();
+            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
+            : RaySplineQueryResult(SplineAddress(), s_vectorFloatMax, s_vectorFloatMax);
     }
 
-    SplineAddress BezierSpline::GetNearestAddress(const Vector3& localPos) const
+    PositionSplineQueryResult BezierSpline::GetNearestAddressPosition(const Vector3& localPos) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetNearestAddressInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
-               : SplineAddress();
+            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
+            : PositionSplineQueryResult(SplineAddress(), s_vectorFloatMax);
     }
 
     SplineAddress BezierSpline::GetAddressByDistance(float distance) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetAddressByDistanceInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), distance)
-               : SplineAddress();
+            ? GetAddressByDistanceInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), distance)
+            : SplineAddress();
     }
 
     SplineAddress BezierSpline::GetAddressByFraction(float fraction) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-               ? GetAddressByFractionInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), fraction)
-               : SplineAddress();
+            ? GetAddressByFractionInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), fraction)
+            : SplineAddress();
     }
 
     Vector3 BezierSpline::GetPosition(const SplineAddress& splineAddress) const
@@ -597,7 +841,7 @@ namespace AZ
         }
 
         Vector3 tangent = GetTangent(SplineAddress(index, t));
-        if (tangent.IsZero(c_splineEpsilon))
+        if (tangent.IsZero(s_splineEpsilon))
         {
             return Vector3::CreateAxisX();
         }
@@ -608,7 +852,7 @@ namespace AZ
         const VectorFloat an2 = m_bezierData[nextIndex].m_angle;
 
         Vector3 normal;
-        if (!an1.IsZero(c_splineEpsilon) || !an2.IsZero(c_splineEpsilon))
+        if (!an1.IsZero(s_splineEpsilon) || !an2.IsZero(s_splineEpsilon))
         {
             float af = t * 2.0f - 1.0f;
             float ed = 1.0f;
@@ -634,7 +878,7 @@ namespace AZ
             normal = tangent.ZAxisCross();
         }
 
-        return normal.GetNormalizedSafe(c_splineEpsilon);
+        return normal.GetNormalizedSafe(s_splineEpsilon);
     }
 
     Vector3 BezierSpline::GetTangent(const SplineAddress& splineAddress) const
@@ -668,7 +912,7 @@ namespace AZ
 
         return (((p1 - p0) * 3.0f * invtSq) +
                 ((p2 - p1) * 6.0f * invt * t) +
-                ((p3 - p2) * 3.0f * tSq)).GetNormalizedSafe(c_splineEpsilon);
+                ((p3 - p2) * 3.0f * tSq)).GetNormalizedSafe(s_splineEpsilon);
     }
 
     float BezierSpline::GetSplineLength() const
@@ -682,6 +926,13 @@ namespace AZ
     float BezierSpline::GetSegmentLength(size_t index) const
     {
         return CalculateSegmentLengthPiecewise(*this, index);
+    }
+
+    float BezierSpline::GetLength(const SplineAddress& splineAddress) const
+    {
+        return GetVertexCount() > 1
+            ? GetSplineLengthAtAddressInternal(*this, 0, splineAddress)
+            : 0.0f;
     }
 
     size_t BezierSpline::GetSegmentCount() const
@@ -784,7 +1035,7 @@ namespace AZ
         const size_t startIndex = 1;
         const size_t range = 1;
         const size_t iterations = 2;
-        
+
         CalculateBezierAngles(startIndex, range, iterations);
     }
 
@@ -930,7 +1181,7 @@ namespace AZ
         m_bezierData.insert(m_bezierData.data() + index, bezierData);
     }
 
-    /*static*/ void BezierSpline::BezierData::Reflect(SerializeContext& context)
+    void BezierSpline::BezierData::Reflect(SerializeContext& context)
     {
         context.Class<BezierSpline::BezierData>()
             ->Field("Forward", &BezierSpline::BezierData::m_forward)
@@ -938,7 +1189,7 @@ namespace AZ
             ->Field("Angle", &BezierSpline::BezierData::m_angle);
     }
 
-    /*static*/ void BezierSpline::Reflect(SerializeContext& context)
+    void BezierSpline::Reflect(SerializeContext& context)
     {
         BezierData::Reflect(context);
 
@@ -956,8 +1207,8 @@ namespace AZ
                 ->DataElement(Edit::UIHandlers::Default, &BezierSpline::m_bezierData, "Bezier Data", "Data defining the bezier curve")
                 ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::Hide)
                 ->DataElement(Edit::UIHandlers::Slider, &BezierSpline::m_granularity, "Granularity", "Parameter specifying the granularity of each segment in the spline")
-                ->Attribute(Edit::Attributes::Min, c_minGranularity)
-                ->Attribute(Edit::Attributes::Max, c_maxGranularity);
+                ->Attribute(Edit::Attributes::Min, s_minGranularity)
+                ->Attribute(Edit::Attributes::Max, s_maxGranularity);
         }
     }
 
@@ -972,36 +1223,36 @@ namespace AZ
         return vertexCount - (closed ? 0 : 2);
     }
 
-    SplineAddress CatmullRomSpline::GetNearestAddress(const Vector3& localRaySrc, const Vector3& localRayDir) const
+    RaySplineQueryResult CatmullRomSpline::GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 3
-               ? GetNearestAddressInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
-               : SplineAddress();
+            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult>(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
+            : RaySplineQueryResult(SplineAddress(), s_vectorFloatMax, s_vectorFloatMax);
     }
 
-    SplineAddress CatmullRomSpline::GetNearestAddress(const Vector3& localPos) const
+    PositionSplineQueryResult CatmullRomSpline::GetNearestAddressPosition(const Vector3& localPos) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 3
-               ? GetNearestAddressInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
-               : SplineAddress();
+            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult>(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
+            : PositionSplineQueryResult(SplineAddress(), s_vectorFloatMax);
     }
 
     SplineAddress CatmullRomSpline::GetAddressByDistance(float distance) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 3
-               ? GetAddressByDistanceInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), distance)
-               : SplineAddress();
+            ? GetAddressByDistanceInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), distance)
+            : SplineAddress();
     }
 
     SplineAddress CatmullRomSpline::GetAddressByFraction(float fraction) const
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 3
-               ? GetAddressByFractionInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), fraction)
-               : SplineAddress();
+            ? GetAddressByFractionInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), fraction)
+            : SplineAddress();
     }
 
     Vector3 CatmullRomSpline::GetPosition(const SplineAddress& splineAddress) const
@@ -1067,7 +1318,7 @@ namespace AZ
             return Vector3::CreateAxisX();
         }
 
-        return GetTangent(splineAddress).ZAxisCross().GetNormalizedSafe(c_splineEpsilon);
+        return GetTangent(splineAddress).ZAxisCross().GetNormalizedSafe(s_splineEpsilon);
     }
 
     Vector3 CatmullRomSpline::GetTangent(const SplineAddress& splineAddress) const
@@ -1133,7 +1384,7 @@ namespace AZ
 
         const Vector3 cp = ((b2 - b1) / (t2 - t1)) + (((t2 - t) / (t2 - t1)) * b1p) + (((t - t1) / (t2 - t1)) * b2p);
 
-        return cp.GetNormalizedSafe(c_splineEpsilon);
+        return cp.GetNormalizedSafe(s_splineEpsilon);
     }
 
     float CatmullRomSpline::GetSplineLength() const
@@ -1149,6 +1400,13 @@ namespace AZ
         return m_closed || index > 0
                ? CalculateSegmentLengthPiecewise(*this, index)
                : 0.0f;
+    }
+
+    float CatmullRomSpline::GetLength(const SplineAddress& splineAddress) const
+    {
+        return GetVertexCount() > 3
+            ? GetSplineLengthAtAddressInternal(*this, m_closed ? 0 : 1, splineAddress)
+            : 0.0f;
     }
 
     size_t CatmullRomSpline::GetSegmentCount() const
@@ -1179,7 +1437,7 @@ namespace AZ
         return *this;
     }
 
-    /*static*/ void CatmullRomSpline::Reflect(SerializeContext& context)
+    void CatmullRomSpline::Reflect(SerializeContext& context)
     {
         context.Class<CatmullRomSpline, Spline>()
             ->Field("KnotParameterization", &CatmullRomSpline::m_knotParameterization)
@@ -1192,12 +1450,12 @@ namespace AZ
                 ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
                 ->Attribute(Edit::Attributes::AutoExpand, true)
                 ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
-                ->DataElement(Edit::UIHandlers::Slider, &CatmullRomSpline::m_knotParameterization, "KnotParameterization", "Parameter specifying interpolation of the spline")
+                ->DataElement(Edit::UIHandlers::Slider, &CatmullRomSpline::m_knotParameterization, "Knot Parameterization", "Parameter specifying interpolation of the spline")
                 ->Attribute(Edit::Attributes::Min, 0.0f)
                 ->Attribute(Edit::Attributes::Max, 1.0f)
                 ->DataElement(Edit::UIHandlers::Slider, &CatmullRomSpline::m_granularity, "Granularity", "Parameter specifying the granularity of each segment in the spline")
-                ->Attribute(Edit::Attributes::Min, c_minGranularity)
-                ->Attribute(Edit::Attributes::Max, c_maxGranularity);
+                ->Attribute(Edit::Attributes::Min, s_minGranularity)
+                ->Attribute(Edit::Attributes::Max, s_maxGranularity);
         }
     }
 

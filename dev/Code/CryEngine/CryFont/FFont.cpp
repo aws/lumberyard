@@ -119,7 +119,7 @@ int32 CFFont::Release()
 }
 
 // Load a font from a TTF file
-bool CFFont::Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags)
+bool CFFont::Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags, float sizeRatio)
 {
     if (!pFontFilePath)
     {
@@ -171,18 +171,17 @@ bool CFFont::Load(const char* pFontFilePath, unsigned int width, unsigned int he
         m_pFontTexture = new CFontTexture();
     }
 
-    if (!m_pFontTexture || !m_pFontTexture->CreateFromMemory(pBuffer, (int)fileSize, width, height, iSmoothMethod, iSmoothAmount, widthNumSlots, heightNumSlots))
+    if (!m_pFontTexture || !m_pFontTexture->CreateFromMemory(pBuffer, (int)fileSize, width, height, iSmoothMethod, iSmoothAmount, widthNumSlots, heightNumSlots, sizeRatio))
     {
         delete [] pBuffer;
         return false;
     }
 
     m_monospacedFont = m_pFontTexture->GetMonospaced();
-
     m_pFontBuffer = pBuffer;
     m_fontBufferSize = fileSize;
-
     m_fontTexDirty = false;
+    m_sizeRatio = sizeRatio;
 
     InitCache();
 
@@ -287,7 +286,7 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
     TransformationMatrices backupSceneMatrices;
     pRenderer->FontSetRenderingState(ctx.m_overrideViewProjMatrices, backupSceneMatrices);
 
-    Vec2 size = ctx.m_size; // in pixel
+    Vec2 size = GetRestoredFontSize(ctx); // in pixel
     if (ctx.m_sizeIn800x600)
     {
         pRenderer->ScaleCoord(size.x, size.y);
@@ -569,6 +568,18 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
                 advance = size.x * ctx.m_widthScale;
             }
 
+            Vec2 kerningOffset(Vec2_Zero);
+            if (ctx.m_kerningEnabled && nextCh)
+            {
+                kerningOffset = m_pFontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
+            }
+
+            float trackingOffset = 0.0f;
+            if (nextCh)
+            {
+                trackingOffset = ctx.m_tracking * scaleInfo.scale.x;
+            }
+
             float px = charX + charOffsetX * scaleInfo.scale.x; // in pixels
             float py = charY + charOffsetY * scaleInfo.scale.y; // in pixels
             float pr = px + charSizeX * scaleInfo.scale.x;
@@ -590,7 +601,7 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
                 // clip non visible
                 if ((px >= clipR) || (py >= clipB) || (pr < clipX) || (pb < clipY))
                 {
-                    charX += advance;
+                    charX += advance + kerningOffset.x + trackingOffset;
                     continue;
                 }
                 // clip partially visible
@@ -599,7 +610,7 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
                     float width = horizontalAdvance * scaleInfo.rcpCellWidth;
                     if ((width <= 0.0f) || (size.y <= 0.0f))
                     {
-                        charX += advance;
+                        charX += advance + kerningOffset.x + trackingOffset;
                         continue;
                     }
 
@@ -694,19 +705,7 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
                 vbOffset = 0;
             }
 
-            // Adjust "advance" here for kerning purposes
-            Vec2 kerningOffset(Vec2_Zero);
-            if (ctx.m_kerningEnabled && nextCh)
-            {
-                kerningOffset = m_pFontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
-            }
-
-            if (nextCh)
-            {
-                charX += ctx.m_tracking * scaleInfo.scale.x;
-            }
-
-            charX += advance + kerningOffset.x;
+            charX += advance + kerningOffset.x + trackingOffset;
         }
 
         IF (vbOffset, 1)
@@ -745,7 +744,7 @@ Vec2 CFFont::GetTextSizeUInternal(const char* pStr, const bool asciiMultiLine, c
     IRenderer* pRenderer = gEnv->pRenderer;
     assert(pRenderer);
 
-    Vec2 size = ctx.m_size; // in pixels
+    Vec2 size = GetRestoredFontSize(ctx); // in pixels
     if (ctx.m_sizeIn800x600)
     {
         pRenderer->ScaleCoord(size.x, size.y);
@@ -893,7 +892,7 @@ Vec2 CFFont::GetTextSizeUInternal(const char* pStr, const bool asciiMultiLine, c
 
 CFFont::TextScaleInfoInternal CFFont::CalculateScaleInternal(const STextDrawContext& ctx) const
 {
-    Vec2 size(ctx.m_size); // in pixel
+    Vec2 size = GetRestoredFontSize(ctx); // in pixel
 
     IRenderer* pRenderer = gEnv->pRenderer;
     assert(pRenderer);
@@ -992,7 +991,7 @@ void CFFont::WrapText(string& result, float maxWidth, const char* pStr, const ST
 
     // Assume a given string has multiple lines of text if it's height is
     // greater than the height of its font.
-    const bool multiLine = strSize.y > ctx.m_size.y;
+    const bool multiLine = strSize.y > GetRestoredFontSize(ctx).y;
 
     int lastSpace = -1;
     const char* pLastSpace = NULL;
@@ -1230,6 +1229,15 @@ void CFFont::Prepare(const char* pStr, bool updateTexture)
     {
         m_fontTexDirty = texUpdateNeeded;
     }
+}
+
+Vec2 CFFont::GetRestoredFontSize(const STextDrawContext& ctx) const
+{
+    // Calculate the scale that we need to apply to the text size to ensure
+    // it's on-screen size is the same regardless of the slot scaling needed
+    // to fit the glyphs of the font within the font texture slots.
+    float restoringScale = IFFontConstants::defaultSizeRatio / m_sizeRatio;
+    return Vec2(ctx.m_size.x * restoringScale, ctx.m_size.y * restoringScale);
 }
 
 #endif

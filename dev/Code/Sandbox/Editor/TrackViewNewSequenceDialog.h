@@ -32,15 +32,19 @@ public:
     virtual ~CTVNewSequenceDialog();
 
     const QString& GetSequenceName() const { return m_sequenceName; };
-    ESequenceType  GetSequenceType() const { return m_sequenceType; };
+    SequenceType   GetSequenceType() const { return m_sequenceType; };
+
+    void showEvent(QShowEvent* event) override;
+
 protected:
     virtual void OnOK();
     void OnInitDialog();
 
 private:
-    QString         m_sequenceName;
-    ESequenceType   m_sequenceType;
+    QString        m_sequenceName;
+    SequenceType   m_sequenceType;
     QScopedPointer<Ui::CTVNewSequenceDialog> ui;
+    bool           m_inputFocusSet;
 };
 
 #endif // CRYINCLUDE_EDITOR_TRACKVIEWNEWSEQUENCEDIALOG_H

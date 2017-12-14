@@ -18,21 +18,29 @@
 #include <IEditor.h>
 #include "ATLControlsModel.h"
 #include "AudioControlsEditorPlugin.h"
+#include <AzFramework/Application/Application.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include <QLibrary>
 
 using namespace AudioControls;
 
+#if defined(AZ_PLATFORM_WINDOWS)
 #define WWISE_IMPL_DLL      "EditorAudioControlsEditorWwise.dll"
 #define NOSOUND_IMPL_DLL    "EditorNoSound.dll"
+#else
+#define WWISE_IMPL_DLL      "libEditorAudioControlsEditorWwise.dylib"
+#define NOSOUND_IMPL_DLL    "libEditorNoSound.dylib"
+#endif
 
-const string g_sImplementationCVarName = "s_AudioSystemImplementationName";
+static const char* g_sImplementationCVarName = "s_AudioSystemImplementationName";
 
-const string g_sMiddlewareDllPath = BINFOLDER_NAME "\\EditorPlugins\\";
+static const char* g_sMiddlewareDllPath = BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "EditorPlugins" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING;
 
 typedef IAudioSystemEditor* (* TPfnGetAudioInterface)(IEditor*);
 
 //-----------------------------------------------------------------------------------------------//
 CImplementationManager::CImplementationManager()
-    : ms_hMiddlewarePlugin(nullptr)
 {
 }
 
@@ -48,7 +56,12 @@ bool CImplementationManager::LoadImplementation()
         // release the loaded implementation (if any)
         Release();
 
-        string sDLLName = g_sMiddlewareDllPath;
+        const char* engineRoot = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+        AZ_Assert(engineRoot != nullptr, "Unable to communicate with AzFramework::ApplicationRequests::Bus");
+        string sDLLName(engineRoot);
+
+        sDLLName += g_sMiddlewareDllPath;
         string middlewareName(pCVar->GetString());
 
         if (middlewareName == "CryAudioImplWwise")
@@ -61,18 +74,19 @@ bool CImplementationManager::LoadImplementation()
             sDLLName += NOSOUND_IMPL_DLL;
         }
 
-        ms_hMiddlewarePlugin = LoadLibraryA(sDLLName);
-        if (!ms_hMiddlewarePlugin)
+        m_middlewarePlugin = AZ::DynamicModuleHandle::Create(sDLLName.c_str());
+        if (!m_middlewarePlugin->Load(false))
         {
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) Couldn't load the middleware specific editor dll.");
+            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) Couldn't load the middleware specific editor dll (%s).", sDLLName.c_str());
             return false;
         }
 
-        TPfnGetAudioInterface pfnAudioInterface = (TPfnGetAudioInterface)GetProcAddress(ms_hMiddlewarePlugin, "GetAudioInterface");
+        TPfnGetAudioInterface pfnAudioInterface = m_middlewarePlugin->GetFunction<TPfnGetAudioInterface>("GetAudioInterface");
         if (!pfnAudioInterface)
         {
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) Couldn't get middleware interface from loaded dll.");
-            FreeLibrary(ms_hMiddlewarePlugin);
+            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) Couldn't get middleware interface from loaded dll (%s).", sDLLName.c_str());
+            m_middlewarePlugin->Unload();
+            m_middlewarePlugin.reset();
             return false;
         }
 
@@ -100,16 +114,16 @@ bool CImplementationManager::LoadImplementation()
 //-----------------------------------------------------------------------------------------------//
 void CImplementationManager::Release()
 {
-    if (ms_hMiddlewarePlugin)
+    if ((m_middlewarePlugin) && (m_middlewarePlugin->IsLoaded()))
     {
         typedef void(* TPfnOnPluginRelease)();
-        auto fnOnPluginRelease = (TPfnOnPluginRelease)GetProcAddress(ms_hMiddlewarePlugin, "OnPluginRelease");
+        auto fnOnPluginRelease = m_middlewarePlugin->GetFunction<TPfnOnPluginRelease>("OnPluginRelease");
         if (fnOnPluginRelease)
         {
             fnOnPluginRelease();
         }
-        FreeLibrary(ms_hMiddlewarePlugin);
-        ms_hMiddlewarePlugin = nullptr;
+        m_middlewarePlugin->Unload();
+        m_middlewarePlugin.reset();
         ms_pAudioSystemImpl = nullptr;
     }
 }

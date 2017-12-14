@@ -73,9 +73,9 @@ struct ICommunicationPopulateCallBack
 
 struct ICommunicationManager
 {
-    struct WWiseConfiguration
+    struct AudioConfiguration
     {
-        WWiseConfiguration()
+        AudioConfiguration()
             : prefixForPlayTrigger("")
             , prefixForStopTrigger("")
             , switchNameForCharacterVoice("")
@@ -149,7 +149,7 @@ struct ICommunicationManager
     //Removes restriction on actor, if no more restrictions are present actor will be available for communication sounds/animations.
     virtual void RemoveActorRestriction(EntityId actorId, bool unrestrictVoice, bool unrestrictAnimation) = 0;
 
-    virtual const WWiseConfiguration& GetWiseConfiguration() const = 0;
+    virtual const AudioConfiguration& GetAudioConfiguration() const = 0;
 
     // Sets the value of the
     virtual void SetVariableValue(const char* variableName, const bool newVariableValue) = 0;

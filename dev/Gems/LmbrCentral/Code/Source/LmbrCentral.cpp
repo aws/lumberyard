@@ -28,6 +28,7 @@
 #include "Audio/AudioAreaEnvironmentComponent.h"
 #include "Audio/AudioEnvironmentComponent.h"
 #include "Audio/AudioListenerComponent.h"
+#include "Audio/AudioPreloadComponent.h"
 #include "Audio/AudioProxyComponent.h"
 #include "Audio/AudioRtpcComponent.h"
 #include "Audio/AudioSwitchComponent.h"
@@ -41,6 +42,7 @@
 #include "Rendering/MeshComponent.h"
 #include "Rendering/SkinnedMeshComponent.h"
 #include "Rendering/FogVolumeComponent.h"
+#include "Rendering/GeomCacheComponent.h"
 #include "Ai/BehaviorTreeComponent.h"
 #include "Ai/NavigationComponent.h"
 #include "Rendering/ParticleComponent.h"
@@ -58,6 +60,7 @@
 #include "Scripting/SimpleStateComponent.h"
 #include "Scripting/SpawnerComponent.h"
 #include "Scripting/LookAtComponent.h"
+#include "Scripting/RandomTimedSpawnerComponent.h"
 #include "Animation/MannequinScopeComponent.h"
 #include "Animation/MannequinComponent.h"
 #include "Animation/MotionParameterSmoothingComponent.h"
@@ -77,7 +80,6 @@
 #include "Unhandled/Other/AudioAssetTypeInfo.h"
 #include "Unhandled/Other/CharacterPhysicsAssetTypeInfo.h"
 #include "Unhandled/Other/CharacterRigAssetTypeInfo.h"
-#include "Unhandled/Other/GeomCacheAssetTypeInfo.h"
 #include "Unhandled/Other/GroupAssetTypeInfo.h"
 #include "Unhandled/Other/PrefabsLibraryAssetTypeInfo.h"
 #include "Unhandled/Other/SkeletonAssetTypeInfo.h"
@@ -153,6 +155,7 @@ namespace LmbrCentral
             AudioAreaEnvironmentComponent::CreateDescriptor(),
             AudioEnvironmentComponent::CreateDescriptor(),
             AudioListenerComponent::CreateDescriptor(),
+            AudioPreloadComponent::CreateDescriptor(),
             AudioProxyComponent::CreateDescriptor(),
             AudioRtpcComponent::CreateDescriptor(),
             AudioSwitchComponent::CreateDescriptor(),
@@ -198,6 +201,8 @@ namespace LmbrCentral
             StereoRendererComponent::CreateDescriptor(),
             NavigationSystemComponent::CreateDescriptor(),
             FogVolumeComponent::CreateDescriptor(),
+            RandomTimedSpawnerComponent::CreateDescriptor(),
+            GeometryCacheComponent::CreateDescriptor(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
                 LoadScreenComponent::CreateDescriptor(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
@@ -256,6 +261,8 @@ namespace LmbrCentral
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                 ;
             }
+
+            MaterialHandle::Reflect(serializeContext);
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
@@ -298,6 +305,10 @@ namespace LmbrCentral
         meshAssetHandler->Register(); // registers self with AssetManager
         m_assetHandlers.emplace_back(meshAssetHandler);
 
+        auto geomCacheAssetHandler = aznew GeomCacheAssetHandler();
+        geomCacheAssetHandler->Register(); // registers self with AssetManager
+        m_assetHandlers.emplace_back(geomCacheAssetHandler);
+
         auto characterDefinitionAssetHandler = aznew CharacterDefinitionAssetHandler();
         characterDefinitionAssetHandler->Register(); // registers self with AssetManager
         m_assetHandlers.emplace_back(characterDefinitionAssetHandler);
@@ -319,6 +330,7 @@ namespace LmbrCentral
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MaterialAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MeshAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid());
+            assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<GeomCacheAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<ParticleAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<BehaviorTreeAsset>::Uuid());
 
@@ -331,6 +343,7 @@ namespace LmbrCentral
             assetCatalog->AddExtension("mtl");
             assetCatalog->AddExtension("lua");
             assetCatalog->AddExtension("sprite");
+            assetCatalog->AddExtension("cax");
         }
 
         CrySystemEventBus::Handler::BusConnect();
@@ -378,10 +391,6 @@ namespace LmbrCentral
         auto characterRigAssetTypeInfo = aznew CharacterRigAssetTypeInfo();
         characterRigAssetTypeInfo->Register();
         m_unhandledAssetInfo.emplace_back(characterRigAssetTypeInfo);
-
-        auto geomCacheAssetTypeInfo = aznew GeomCacheAssetTypeInfo();
-        geomCacheAssetTypeInfo->Register();
-        m_unhandledAssetInfo.emplace_back(geomCacheAssetTypeInfo);
 
         auto groupAssetTypeInfo = aznew GroupAssetTypeInfo();
         groupAssetTypeInfo->Register();

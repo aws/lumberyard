@@ -27,6 +27,7 @@
 #include "DependencyManager.h"
 #include <AzCore/Casting/numeric_cast.h>
 
+#include <QDir>
 #include <QMimeData>
 #include <QMessageBox>
 #include <QProcess>
@@ -52,32 +53,28 @@ namespace CharacterTool {
             return "";
         }
 
-        char rootpath[_MAX_PATH];
-        GetCurrentDirectory(sizeof(rootpath), rootpath);
+        QString rootpath = QDir::currentPath();
         if (bRelativeToGameFolder == true)
         {
             string gameFolder = Path::GetEditingGameDataFolder().c_str();
             if (gameFolder.find(':') == string::npos)
             {
-                cry_strcat(rootpath, "\\");
-                cry_strcat(rootpath, gameFolder);
+                rootpath += QString(QDir::separator()) + gameFolder.c_str();
             }
             else
             {
-                cry_strcpy(rootpath, gameFolder);
+                rootpath = gameFolder.c_str();
             }
         }
 
         // Create relative path
-        char path[_MAX_PATH];
-        char srcpath[_MAX_PATH];
-        strcpy(srcpath, fullPath.c_str());
-        if (FALSE == PathRelativePathTo(path, rootpath, FILE_ATTRIBUTE_DIRECTORY, srcpath, NULL))
+        QString path = QDir(rootpath).relativeFilePath(fullPath.c_str());
+        if (path.isEmpty())
         {
             return fullPath;
         }
 
-        string relPath = path;
+        string relPath = path.toUtf8().data();
         size_t i = 0;
         while (relPath.c_str()[i] == '\\' ||
                relPath.c_str()[i] == '/' ||
@@ -217,6 +214,10 @@ namespace CharacterTool {
         m_root.reset(new ExplorerEntry(NUM_SUBTREES, ENTRY_GROUP, 0));
 
         AddColumn("Name", ExplorerColumn::TEXT, true);
+    }
+
+    Explorer::~Explorer()
+    {
     }
 
     void Explorer::AddProvider(int subtree, IExplorerEntryProvider* provider)
@@ -794,7 +795,7 @@ namespace CharacterTool {
         SaveEntry(entry, AZStd::make_shared<AZ::ActionOutput>(), static_cast<AZ::SaveCompleteCallback>(0));
     }
 
-    void Explorer::SaveEntry(ExplorerEntry* entry, AZStd::shared_ptr<AZ::ActionOutput>& errorInfo)
+    void Explorer::SaveEntry(ExplorerEntry* entry, const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo)
     {
         SaveEntry(entry, errorInfo, static_cast<AZ::SaveCompleteCallback>(0));
     }
@@ -802,7 +803,7 @@ namespace CharacterTool {
     {
         SaveEntry(entry, AZStd::make_shared<AZ::ActionOutput>(), onSaveComplete);
     }
-    void Explorer::SaveEntry(ExplorerEntry* entry, AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete)
+    void Explorer::SaveEntry(ExplorerEntry* entry, const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete)
     {
         if (!entry)
         {
@@ -862,7 +863,7 @@ namespace CharacterTool {
     {
         SaveAll(AZStd::make_shared<AZ::ActionOutput>(), static_cast<AZ::SaveCompleteCallback>(0));
     }
-    void Explorer::SaveAll(AZStd::shared_ptr<AZ::ActionOutput>& errorInfo)
+    void Explorer::SaveAll(const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo)
     {
         SaveAll(errorInfo, static_cast<AZ::SaveCompleteCallback>(0));
     }
@@ -871,7 +872,7 @@ namespace CharacterTool {
         SaveAll(AZStd::make_shared<AZ::ActionOutput>(), onSaveComplete);
     }
 
-    void Explorer::SaveAll(AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete)
+    void Explorer::SaveAll(const AZStd::shared_ptr<AZ::ActionOutput>& errorInfo, AZ::SaveCompleteCallback onSaveComplete)
     {
         struct CaptureTrackerData
         {

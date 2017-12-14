@@ -25,6 +25,7 @@ public:
     static void Reflect(AZ::SerializeContext& serialize);
 
     CEditorPreferencesPage_ViewportDebug();
+    virtual ~CEditorPreferencesPage_ViewportDebug() = default;
 
     virtual const char* GetCategory() override { return "Viewports"; }
     virtual const char* GetTitle() override { return "Debug"; }

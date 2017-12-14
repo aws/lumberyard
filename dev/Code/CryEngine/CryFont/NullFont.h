@@ -33,7 +33,7 @@ public:
     virtual int32 AddRef() { return 0; };
     virtual int32 Release() { return 0; };
 
-    virtual bool Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags) { return true; }
+    virtual bool Load(const char* pFontFilePath, unsigned int width, unsigned int height, unsigned int widthNumSlots, unsigned int heightNumSlots, unsigned int flags, float sizeRatio) { return true; }
     virtual bool Load(const char* pXMLFile) { return true; }
     virtual void Free() {}
 
@@ -62,6 +62,7 @@ public:
 
     virtual void AddCharsToFontTexture(const char* pChars) override {}
     virtual Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const override { return Vec2(); }
+    virtual float GetSizeRatio() const override { return IFFontConstants::defaultSizeRatio; }
 };
 
 class CCryNullFont

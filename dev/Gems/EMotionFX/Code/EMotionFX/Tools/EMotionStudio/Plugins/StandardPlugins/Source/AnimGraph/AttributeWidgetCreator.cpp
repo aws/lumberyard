@@ -31,13 +31,13 @@ namespace EMStudio
         CreateAttributes(attributes, attributeSettings, forceInitMinMaxAttributes);
         if (forceInitMinMaxAttributes)
         {
-            static_cast<MCore::AttributeVector3*>(attributeSettings->GetMinValue())->SetValue(MCore::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
-            static_cast<MCore::AttributeVector3*>(attributeSettings->GetMaxValue())->SetValue(MCore::Vector3(FLT_MAX,  FLT_MAX,  FLT_MAX));
+            static_cast<MCore::AttributeVector3*>(attributeSettings->GetMinValue())->SetValue(AZ::PackedVector3f(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+            static_cast<MCore::AttributeVector3*>(attributeSettings->GetMaxValue())->SetValue(AZ::PackedVector3f(FLT_MAX,  FLT_MAX,  FLT_MAX));
 
             if (resetMinMaxAttributes)
             {
-                static_cast<MCore::AttributeVector3*>(mInitialMinValue)->SetValue(MCore::Vector3(-100000.0f, -100000.0f, -100000.0f));
-                static_cast<MCore::AttributeVector3*>(mInitialMaxValue)->SetValue(MCore::Vector3(100000.0f,  100000.0f,  100000.0f));
+                static_cast<MCore::AttributeVector3*>(mInitialMinValue)->SetValue(AZ::PackedVector3f(-100000.0f, -100000.0f, -100000.0f));
+                static_cast<MCore::AttributeVector3*>(mInitialMaxValue)->SetValue(AZ::PackedVector3f(100000.0f,  100000.0f,  100000.0f));
             }
         }
     }

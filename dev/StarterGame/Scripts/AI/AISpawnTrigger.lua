@@ -15,6 +15,7 @@ function aispawntrigger:OnActivate()
 	self.triggerHandler = TriggerAreaNotificationBus.Connect(self, self.entityId);
 	self.enteredAreaId = GameplayNotificationId(EntityId(), "EnteredAITrigger", "float");
 	self.exitedAreaId = GameplayNotificationId(EntityId(),"ExitedAITrigger", "float");
+	self.somethingDeepInside = false;
 	
 	-- Initialise the values with defaults first and then set them up for listening, if necessary.
 	self.switchedOn = true;
@@ -32,7 +33,7 @@ function aispawntrigger:OnActivate()
 		self.switchedOffHandler = GameplayNotificationBus.Connect(self, self.switchedOffEventId);
 	elseif (validOn or validOff) then
 		-- Output a warning that something was set but it'll be ignored.
-		Debug.Log("[LuaWarning] AISpawnTrigger '" .. tostring(StarterGameUtility.GetEntityName(self.entityId)) .. "': one of the switches has an event name but the other doesn't. The switch will not be active.");
+		Debug.Log("[LuaWarning] AISpawnTrigger '" .. tostring(StarterGameEntityUtility.GetEntityName(self.entityId)) .. "': one of the switches has an event name but the other doesn't. The switch will not be active.");
 	end
 end
 
@@ -56,12 +57,20 @@ function aispawntrigger:IsValidString(str)
 end
 
 function aispawntrigger:OnTriggerAreaEntered(entityId)
+	--Debug.Log("A.I. Trigger Volume entered");
+	if (entityId ~= nil) then
+		self.somethingDeepInside = true;
+	end
 	if (not utilities.GetDebugManagerBool("PreventAIDisabling", false) and self.switchedOn) then
 		GameplayNotificationBus.Event.OnEventBegin(self.enteredAreaId, self.Properties.AISpawnGroup);
 	end
 end
 
 function aispawntrigger:OnTriggerAreaExited(entityId)
+	--Debug.Log("A.I. Trigger Volume exited");
+	if (entityId ~= nil) then
+		self.somethingDeepInside = false;
+	end
 	if (not utilities.GetDebugManagerBool("PreventAIDisabling", false)) then
 		GameplayNotificationBus.Event.OnEventBegin(self.exitedAreaId, self.Properties.AISpawnGroup);
 	end
@@ -70,11 +79,19 @@ end
 function aispawntrigger:OnEventBegin(value)
 	if (self.switchedOnEventId ~= nil and self.switchedOffEventId ~= nil) then
 		if (GameplayNotificationBus.GetCurrentBusId() == self.switchedOnEventId) then
-			self.switchedOn = true;
+			if (not self.switchedOn) then
+				self.switchedOn = true;
+				if (self.somethingDeepInside) then
+					self:OnTriggerAreaEntered(nil);
+				end
+			end
 		elseif (GameplayNotificationBus.GetCurrentBusId() == self.switchedOffEventId) then
-			self.switchedOn = false;
-			-- Just in case the A.I. are currently active and the switch has been disabled.
-			self:OnTriggerAreaExited(nil);
+			if (self.switchedOn) then
+				self.switchedOn = false;
+				if (self.somethingDeepInside) then
+					self:OnTriggerAreaExited(nil);
+				end
+			end
 		end
 	end
 end

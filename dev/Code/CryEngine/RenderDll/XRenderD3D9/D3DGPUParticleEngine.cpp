@@ -915,7 +915,7 @@ static bool UnBindCurveData(CD3D9Renderer* renderer, EHWShaderClass shaderType)
 
 static float ComputeMaxParticleCount(const ResourceParticleParams* particleParams, const SpawnParams& spawnParams)
 {
-    return MIN(particleParams->fCount(VMAX) * spawnParams.fCountScale, PARTICLE_PARAMS_MAX_COUNT);
+    return MIN(particleParams->fCount(VMAX) * spawnParams.fCountScale, PARTICLE_PARAMS_MAX_COUNT_GPU);
 }
 
 static float ComputePulsePeriod(const ResourceParticleParams* particleParams, const SpawnParams& spawnParams, bool allowRandom)
@@ -1891,7 +1891,7 @@ void CImpl_GPUParticles::UpdateEmitterCounts(SGPUParticleEmitterData* pEmitter)
     const int maxParticles = aznumeric_caster(
             MIN(
                 MAX(ceil(particleCount) + 1, 1), 
-                PARTICLE_PARAMS_MAX_COUNT
+                PARTICLE_PARAMS_MAX_COUNT_GPU
             )
         );
     int maxParticlesRounded = maxParticles;
@@ -1933,7 +1933,7 @@ void CImpl_GPUParticles::UpdateParameterCount(GPUSubemitterData& emitData, const
     emitData.paramCurrentCount =
         MIN(
             MAX(0.01f, particleParams->fCount(VRANDOM, emitData.strength) * spawnParams.fCountScale),
-            PARTICLE_PARAMS_MAX_COUNT
+            PARTICLE_PARAMS_MAX_COUNT_GPU
         );
 }
 

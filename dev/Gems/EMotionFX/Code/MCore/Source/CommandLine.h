@@ -124,7 +124,7 @@ namespace MCore
          * @param defaultValue The default value to return in case there is no such parameter with the given name, or if its value has not been specified.
          * @result The value for the parameter with the specified name.
          */
-        Vector3 GetValueAsVector3(const char* paramName, const Vector3& defaultValue) const;
+        AZ::Vector3 GetValueAsVector3(const char* paramName, const AZ::Vector3& defaultValue) const;
 
         /**
          * Get the value for a parameter with a specified name, as a four component vector.
@@ -200,7 +200,7 @@ namespace MCore
          * @param command The command to retrieve the default value from (using the command syntax). Returns a zero vector if the command syntax can't help.
          * @result The value for the parameter with the specified name.
          */
-        Vector3 GetValueAsVector3(const char* paramName, Command* command) const;
+        AZ::Vector3 GetValueAsVector3(const char* paramName, Command* command) const;
 
         /**
          * Get the value for a parameter with a specified name, as a four component vector.

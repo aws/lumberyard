@@ -23,7 +23,9 @@ namespace AZ
 }
 
 // BehaviorContext UiCanvasNotificationLuaBus forwarder
-class BehaviorUiCanvasNotificationLuaBusHandler : public UiCanvasNotificationLuaBus::Handler, public AZ::BehaviorEBusHandler
+class BehaviorUiCanvasNotificationLuaBusHandler
+    : public UiCanvasNotificationLuaBus::Handler
+    , public AZ::BehaviorEBusHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiCanvasNotificationLuaBusHandler, "{452E5C9A-CFEA-4F91-A6E8-CF427F8D56EF}", AZ::SystemAllocator, OnAction);

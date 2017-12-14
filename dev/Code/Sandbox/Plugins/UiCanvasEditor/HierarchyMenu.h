@@ -11,6 +11,12 @@
 */
 #pragma once
 
+#include <QMenu>
+
+#include "EditorCommon.h"
+
+class HierarchyWidget;
+
 class HierarchyMenu
     : public QMenu
 {

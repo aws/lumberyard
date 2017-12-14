@@ -24,6 +24,8 @@
 
 class QByteArray;
 
+namespace AZ { class ReflectContext; }
+
 namespace AzToolsFramework
 {
     // the Main Window Saved State is a nice base class for you to derive your own Main Window state from

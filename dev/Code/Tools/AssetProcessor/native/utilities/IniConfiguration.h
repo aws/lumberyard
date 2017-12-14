@@ -16,8 +16,7 @@
 #include <QString>
 #include <QCoreApplication>
 
-/** Reads the user ini configuration file for listening port
- * and proxy Information
+/** Reads the bootstrap file for listening port
  */
 class IniConfiguration
     : public QObject
@@ -33,15 +32,10 @@ public:
     void parseCommandLine(QStringList cmdLine = QCoreApplication::arguments());
     void readINIConfigFile(QDir dir = qApp->applicationDirPath());
     quint16 listeningPort() const;
-    QString proxyInformation() const;
     void SetListeningPort(quint16 port);
-    void SetProxyInformation(QString info);
-Q_SIGNALS:
-    void ProxyInfoChanged(QString proxyInfo);
 
 private:
     quint16 m_listeningPort;
-    QString m_proxyInformation;
     QString m_userConfigFilePath;
 };
 

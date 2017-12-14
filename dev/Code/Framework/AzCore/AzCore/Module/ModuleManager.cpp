@@ -14,6 +14,7 @@
 #include <AzCore/Module/ModuleManager.h>
 
 #include <AzCore/Module/Module.h>
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -32,6 +33,47 @@ namespace
 
 namespace AZ
 {
+    bool ShouldUseSystemComponent(const ComponentDescriptor& descriptor, const AZStd::vector<Crc32>& requiredTags, const SerializeContext& serialize)
+    {
+        const SerializeContext::ClassData* classData = serialize.FindClassData(descriptor.GetUuid());
+        AZ_Warning(s_moduleLoggingScope, classData, "Component type %s not reflected to SerializeContext!", descriptor.GetName());
+        if (classData)
+        {
+            if (Attribute* attribute = FindAttribute(Edit::Attributes::SystemComponentTags, classData->m_attributes))
+            {
+                // If the required tags are empty, it is assumed all components with the attribute are required
+                if (requiredTags.empty())
+                {
+                    return true;
+                }
+
+                // Read the tags
+                AZStd::vector<AZ::Crc32> tags;
+                AZ::AttributeReader reader(nullptr, attribute);
+                AZ::Crc32 tag;
+                if (reader.Read<AZ::Crc32>(tag))
+                {
+                    tags.emplace_back(tag);
+                }
+                else
+                {
+                    AZ_Verify(reader.Read<AZStd::vector<AZ::Crc32>>(tags), "Attribute \"AZ::Edit::Attributes::SystemComponentTags\" must be of type AZ::Crc32 or AZStd::vector<AZ::Crc32>");
+                }
+
+                // Match tags to required tags
+                for (const AZ::Crc32& requiredTag : requiredTags)
+                {
+                    if (AZStd::find(tags.begin(), tags.end(), requiredTag) != tags.end())
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     //=========================================================================
     // Reflect
     //=========================================================================
@@ -211,6 +253,30 @@ namespace AZ
     //=========================================================================
     void ModuleManager::UnloadModules()
     {
+        // For all modules that we created an entity for, set them to "Deactivating"
+        for (auto& moduleData : m_ownedModules)
+        {
+            if (moduleData->m_moduleEntity)
+            {
+                moduleData->m_moduleEntity->SetState(Entity::ES_DEACTIVATING);
+            }
+        }
+
+        // For all system components, deactivate
+        for (auto componentIt = m_systemComponents.rbegin(); componentIt != m_systemComponents.rend(); ++componentIt)
+        {
+            ModuleEntity::DeactivateComponent(**componentIt);
+        }
+
+        // For all modules that we created an entity for, set them to "Init" (meaning not Activated)
+        for (auto& moduleData : m_ownedModules)
+        {
+            if (moduleData->m_moduleEntity)
+            {
+                moduleData->m_moduleEntity->SetState(Entity::ES_INIT);
+            }
+        }
+
         // Because everything is unique_ptr, we don't need to explicitly delete anything
         // Shutdown in reverse order of initialization, just in case the order matters.
         while (!m_ownedModules.empty())
@@ -453,7 +519,7 @@ namespace AZ
                     {
                         // Initialize the entity (explicitly do not sort, because the dependencies are probably already met.
                         AZStd::vector<AZStd::shared_ptr<ModuleDataImpl>> modulesToInit = { moduleDataPtr };
-                        ActivateEntities(modulesToInit, false);
+                        ActivateEntities(modulesToInit);
                     }
 
                     return AZ::Success();
@@ -556,7 +622,7 @@ namespace AZ
                     {
                         // Initialize the entity (explicitly do not sort, because the dependencies are probably already met.
                         AZStd::vector<AZStd::shared_ptr<ModuleDataImpl>> modulesToInit = { moduleData };
-                        ActivateEntities(modulesToInit, false);
+                        ActivateEntities(modulesToInit);
                     }
 
                     moduleData->m_lastCompletedStep = ModuleInitializationSteps::ActivateEntity;
@@ -600,17 +666,21 @@ namespace AZ
         AZ_Assert(entityId == SystemEntityId, "OnEntityActivated called for wrong entity id (expected SystemEntityId)!");
         EntityBus::Handler::BusDisconnect(entityId);
 
-        ActivateEntities(m_ownedModules, true);
+        ActivateEntities(m_ownedModules);
     }
 
     //=========================================================================
     // ActivateEntities
     //=========================================================================
-    void ModuleManager::ActivateEntities(const AZStd::vector<AZStd::shared_ptr<ModuleDataImpl>>& modulesToInit, bool doDependencySort)
+    void ModuleManager::ActivateEntities(const AZStd::vector<AZStd::shared_ptr<ModuleDataImpl>>& modulesToInit)
     {
         // Grab the system entity
         Entity* systemEntity = nullptr;
         ComponentApplicationBus::BroadcastResult(systemEntity, &ComponentApplicationBus::Events::FindEntity, SystemEntityId);
+
+        SerializeContext* serialize = nullptr;
+        ComponentApplicationBus::BroadcastResult(serialize, &ComponentApplicationBus::Events::GetSerializeContext);
+        AZ_Assert(serialize, "Internal error: serialize context not found");
 
         // Will store components that need activation
         Entity::ComponentArrayType componentsToActivate;
@@ -626,8 +696,20 @@ namespace AZ
                 moduleData->m_moduleEntity = AZStd::make_unique<ModuleEntity>(azrtti_typeid(moduleData->m_module), moduleName);
             }
 
+            // Default to the Required System Components List
+            ComponentTypeList requiredComponents = moduleData->m_module->GetRequiredSystemComponents();
+
+            // Sort through components registered, pull ones required in this context
+            for (const auto& descriptor : moduleData->m_module->GetComponentDescriptors())
+            {
+                if (ShouldUseSystemComponent(*descriptor, m_systemComponentTags, *serialize))
+                {
+                    requiredComponents.emplace_back(descriptor->GetUuid());
+                }
+            }
+
             // Populate with required system components
-            for (const Uuid& componentTypeId : moduleData->m_module->GetRequiredSystemComponents())
+            for (const Uuid& componentTypeId : requiredComponents)
             {
                 // Add the component to the entity (if it's not already there OR on the System Entity)
                 Component* component = moduleData->m_moduleEntity->FindComponent(componentTypeId);
@@ -653,38 +735,51 @@ namespace AZ
             moduleData->m_moduleEntity->SetState(Entity::ES_ACTIVATING);
         }
 
-        if (doDependencySort)
-        {
-            // Get all the components from the System Entity, to include for sorting purposes
-            if (systemEntity)
-            {
-                const Entity::ComponentArrayType& systemEntityComponents = systemEntity->GetComponents();
-                componentsToActivate.insert(componentsToActivate.begin(), systemEntityComponents.begin(), systemEntityComponents.end());
-            }
+        // Add all components that are currently activated so that dependencies may be fulfilled
+        componentsToActivate.insert(componentsToActivate.begin(), m_systemComponents.begin(), m_systemComponents.end());
 
-            // Topo sort components, activate them
-            Entity::DependencySortResult result = ModuleEntity::DependencySort(componentsToActivate);
-            switch (result)
+        // Get all the components from the System Entity, to include for sorting purposes
+        // This is so that components in modules may have dependencies on components on the system entity
+        if (systemEntity)
+        {
+            const Entity::ComponentArrayType& systemEntityComponents = systemEntity->GetComponents();
+            componentsToActivate.insert(componentsToActivate.begin(), systemEntityComponents.begin(), systemEntityComponents.end());
+        }
+
+        // Topo sort components, activate them
+        Entity::DependencySortResult result = ModuleEntity::DependencySort(componentsToActivate);
+        switch (result)
+        {
+        case Entity::DSR_MISSING_REQUIRED:
+            AZ_Error(s_moduleLoggingScope, false, "Module Entities have missing required services and cannot be activated.");
+            return;
+        case Entity::DSR_CYCLIC_DEPENDENCY:
+            AZ_Error(s_moduleLoggingScope, false, "Module Entities' components order have cyclic dependency and cannot be activated.");
+            return;
+        case Entity::DSR_OK:
+            break;
+        }
+
+        for (auto componentIt = componentsToActivate.begin(); componentIt != componentsToActivate.end(); )
+        {
+            Component* component = *componentIt;
+
+            // Remove the system entity and already activated components, we don't need to activate or store those
+            if (component->GetEntityId() == SystemEntityId ||
+                AZStd::find(m_systemComponents.begin(), m_systemComponents.end(), component) != m_systemComponents.end())
             {
-            case Entity::DSR_MISSING_REQUIRED:
-                AZ_Error(s_moduleLoggingScope, false, "Module Entities have missing required services and cannot be activated.");
-                return;
-            case Entity::DSR_CYCLIC_DEPENDENCY:
-                AZ_Error(s_moduleLoggingScope, false, "Module Entities' components order have cyclic dependency and cannot be activated.");
-                return;
-            case Entity::DSR_OK:
-                break;
+                componentIt = componentsToActivate.erase(componentIt);
+            }
+            else
+            {
+                ++componentIt;
             }
         }
 
         // Activate the entities in the appropriate order
         for (Component* component : componentsToActivate)
         {
-            // Avoid activating components on the System Entity
-            if (component->GetEntityId() != SystemEntityId)
-            {
-                ModuleEntity::ActivateComponent(*component);
-            }
+            ModuleEntity::ActivateComponent(*component);
         }
 
         // Done activating; set state to active
@@ -696,6 +791,9 @@ namespace AZ
             }
             moduleData->m_lastCompletedStep = ModuleInitializationSteps::ActivateEntity;
         }
+
+        // Save the activated components for deactivation later
+        m_systemComponents.insert(m_systemComponents.end(), componentsToActivate.begin(), componentsToActivate.end());
     }
 } // namespace AZ
 #endif // #ifndef AZ_UNITY_BUILD

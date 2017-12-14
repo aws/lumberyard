@@ -17,9 +17,11 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Driller/Stream.h>
 
-#include "qtgui/qcolor.h"
 #include "DrillerMainWindowMessages.h"
 #include "DrillerDataTypes.h"
+
+#include <QColor>
+#include <QObject>
 
 namespace AZ
 {
@@ -27,6 +29,7 @@ namespace AZ
     {
         class SystemFile;
     }
+    class ReflectContext;
 }
 
 namespace Driller

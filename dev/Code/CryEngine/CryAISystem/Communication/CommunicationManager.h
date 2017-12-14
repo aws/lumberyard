@@ -111,7 +111,7 @@ public:
     //Removes restriction on actor, if no more restrictions are present actor will be available for communication sounds/animations.
     virtual void RemoveActorRestriction(EntityId actorId, bool unrestrictVoice, bool unrestrictAnimation);
 
-    virtual const WWiseConfiguration& GetWiseConfiguration() const { return m_wiseConfiguration; }
+    virtual const AudioConfiguration& GetAudioConfiguration() const { return m_audioConfiguration; }
 
     // Set the specified new value to the specified variable
     virtual void SetVariableValue(const char* variableName, const bool newVariableValue);
@@ -391,7 +391,7 @@ private:
     static const char* m_kTargetIsAbove_VariableName;
     static const char* m_kTargetIsBelow_VariableName;
 
-    WWiseConfiguration m_wiseConfiguration;
+    AudioConfiguration m_audioConfiguration;
 };
 
 

@@ -23,9 +23,9 @@ namespace MCommon
         mMode               = SCALE_NONE;
         mSelectionLocked    = false;
         mCallback           = nullptr;
-        mPosition           = MCore::Vector3(0.0f, 0.0f, 0.0f);
-        mScaleDirection     = MCore::Vector3(0.0f, 0.0f, 0.0f);
-        mScale              = MCore::Vector3(0.0f, 0.0f, 0.0f);
+        mPosition           = AZ::Vector3::CreateZero();
+        mScaleDirection     = AZ::Vector3::CreateZero();
+        mScale              = AZ::Vector3::CreateZero();
     }
 
 
@@ -45,7 +45,7 @@ namespace MCommon
         }
 
         mSize           = mScalingFactor;
-        mScaledSize     = MCore::Vector3(mSize, mSize, mSize) + MCore::Vector3(MCore::Max(mScale.x, -mSize), MCore::Max(mScale.y, -mSize), MCore::Max(mScale.z, -mSize));
+        mScaledSize     = AZ::Vector3(mSize, mSize, mSize) + AZ::Vector3(MCore::Max(float(mScale.GetX()), -mSize), MCore::Max(float(mScale.GetY()), -mSize), MCore::Max(float(mScale.GetZ()), -mSize));
         mDiagScale      = 0.5f;
         mArrowLength    = mSize / 10.0f;
         mBaseRadius     = mSize / 15.0f;
@@ -55,24 +55,24 @@ namespace MCommon
         mSecPlaneSelectorPos    = mScaledSize * 0.6;
 
         // set the bounding volumes of the axes selection
-        mXAxisAABB.SetMax(mPosition + mSignX * MCore::Vector3(mScaledSize.x + mArrowLength, mBaseRadius, mBaseRadius));
-        mXAxisAABB.SetMin(mPosition - mSignX * MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
-        mYAxisAABB.SetMax(mPosition + mSignY * MCore::Vector3(mBaseRadius, mScaledSize.y + mArrowLength, mBaseRadius));
-        mYAxisAABB.SetMin(mPosition - mSignY * MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
-        mZAxisAABB.SetMax(mPosition + mSignZ * MCore::Vector3(mBaseRadius, mBaseRadius, mScaledSize.z + mArrowLength));
-        mZAxisAABB.SetMin(mPosition - mSignZ * MCore::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mXAxisAABB.SetMax(mPosition + mSignX * AZ::Vector3(mScaledSize.GetX() + mArrowLength, mBaseRadius, mBaseRadius));
+        mXAxisAABB.SetMin(mPosition - mSignX * AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mYAxisAABB.SetMax(mPosition + mSignY * AZ::Vector3(mBaseRadius, mScaledSize.GetY() + mArrowLength, mBaseRadius));
+        mYAxisAABB.SetMin(mPosition - mSignY * AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mZAxisAABB.SetMax(mPosition + mSignZ * AZ::Vector3(mBaseRadius, mBaseRadius, mScaledSize.GetZ() + mArrowLength));
+        mZAxisAABB.SetMin(mPosition - mSignZ * AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
 
         // set bounding volumes for the plane selectors
-        mXYPlaneAABB.SetMax(mPosition + MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, mSecPlaneSelectorPos.y * mSignY, mBaseRadius * mSignZ));
-        mXYPlaneAABB.SetMin(mPosition + 0.3 * MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, mSecPlaneSelectorPos.y * mSignY, 0) - MCore::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
-        mXZPlaneAABB.SetMax(mPosition + MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, mBaseRadius * mSignY, mSecPlaneSelectorPos.z * mSignZ));
-        mXZPlaneAABB.SetMin(mPosition + 0.3 * MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, 0, mSecPlaneSelectorPos.z * mSignZ) - MCore::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
-        mYZPlaneAABB.SetMax(mPosition + MCore::Vector3(mBaseRadius * mSignX, mSecPlaneSelectorPos.y * mSignY, mSecPlaneSelectorPos.z * mSignZ));
-        mYZPlaneAABB.SetMin(mPosition + 0.3 * MCore::Vector3(0, mSecPlaneSelectorPos.y * mSignY, mSecPlaneSelectorPos.z * mSignZ) - MCore::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
+        mXYPlaneAABB.SetMax(mPosition + AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, mSecPlaneSelectorPos.GetY() * mSignY, mBaseRadius * mSignZ));
+        mXYPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, mSecPlaneSelectorPos.GetY() * mSignY, 0) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
+        mXZPlaneAABB.SetMax(mPosition + AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, mBaseRadius * mSignY, mSecPlaneSelectorPos.GetZ() * mSignZ));
+        mXZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, 0, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
+        mYZPlaneAABB.SetMax(mPosition + AZ::Vector3(mBaseRadius * mSignX, mSecPlaneSelectorPos.GetY() * mSignY, mSecPlaneSelectorPos.GetZ() * mSignZ));
+        mYZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(0, mSecPlaneSelectorPos.GetY() * mSignY, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
 
         // set bounding volume for the box selector
-        mXYZBoxAABB.SetMin(mPosition - MCore::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
-        mXYZBoxAABB.SetMax(mPosition + mDiagScale * MCore::Vector3(mFirstPlaneSelectorPos.x * mSignX, mFirstPlaneSelectorPos.y * mSignY, mFirstPlaneSelectorPos.z * mSignZ));
+        mXYZBoxAABB.SetMin(mPosition - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
+        mXYZBoxAABB.SetMax(mPosition + mDiagScale * AZ::Vector3(mFirstPlaneSelectorPos.GetX() * mSignX, mFirstPlaneSelectorPos.GetY() * mSignY, mFirstPlaneSelectorPos.GetZ() * mSignZ));
     }
 
 
@@ -91,16 +91,16 @@ namespace MCommon
 
         // shoot ray to the camera center
         MCore::Ray camRay = camera->Unproject(screenWidth / 2, screenHeight / 2);
-        MCore::Vector3 camDir = camRay.GetDirection();
+        AZ::Vector3 camDir = camRay.GetDirection();
 
-        mSignX = (MCore::Math::ACos(camDir.Dot(MCore::Vector3(1.0f, 0.0f, 0.0f))) >= MCore::Math::halfPi - MCore::Math::epsilon) ? 1.0f : -1.0f;
-        mSignY = (MCore::Math::ACos(camDir.Dot(MCore::Vector3(0.0f, 1.0f, 0.0f))) >= MCore::Math::halfPi - MCore::Math::epsilon) ? 1.0f : -1.0f;
-        mSignZ = (MCore::Math::ACos(camDir.Dot(MCore::Vector3(0.0f, 0.0f, 1.0f))) >= MCore::Math::halfPi - MCore::Math::epsilon) ? 1.0f : -1.0f;
+        mSignX = (MCore::Math::ACos(camDir.Dot(AZ::Vector3(1.0f, 0.0f, 0.0f))) >= MCore::Math::halfPi - MCore::Math::epsilon) ? 1.0f : -1.0f;
+        mSignY = (MCore::Math::ACos(camDir.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))) >= MCore::Math::halfPi - MCore::Math::epsilon) ? 1.0f : -1.0f;
+        mSignZ = (MCore::Math::ACos(camDir.Dot(AZ::Vector3(0.0f, 0.0f, 1.0f))) >= MCore::Math::halfPi - MCore::Math::epsilon) ? 1.0f : -1.0f;
 
         // determine the axis visibility, to disable movement for invisible axes
-        mXAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(MCore::Vector3(1.0f, 0.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
-        mYAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(MCore::Vector3(0.0f, 1.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
-        mZAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(MCore::Vector3(0.0f, 0.0f, 1.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
+        mXAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(AZ::Vector3(1.0f, 0.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
+        mYAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
+        mZAxisVisible = (MCore::InRange(MCore::Math::Abs(camDir.Dot(AZ::Vector3(0.0f, 0.0f, 1.0f))) - 1.0f, -MCore::Math::epsilon, MCore::Math::epsilon) == false);
     }
 
 
@@ -164,63 +164,63 @@ namespace MCommon
         MCore::RGBAColor yzPlaneColorZ  = (mMode == SCALE_XYZ || mMode == SCALE_YZ) ? ManipulatorColors::mSelectionColor : ManipulatorColors::mBlue;
 
         // the x axis with cube at the line end
-        MCore::Vector3 firstPlanePosX   = mPosition + mSignX * MCore::Vector3(mFirstPlaneSelectorPos.x, 0.0f, 0.0f);
-        MCore::Vector3 secPlanePosX = mPosition + mSignX * MCore::Vector3(mSecPlaneSelectorPos.x, 0.0f, 0.0f);
+        AZ::Vector3 firstPlanePosX   = mPosition + mSignX * AZ::Vector3(mFirstPlaneSelectorPos.GetX(), 0.0f, 0.0f);
+        AZ::Vector3 secPlanePosX = mPosition + mSignX * AZ::Vector3(mSecPlaneSelectorPos.GetX(), 0.0f, 0.0f);
         if (mXAxisVisible)
         {
-            renderUtil->RenderLine(mPosition, mPosition + mSignX * MCore::Vector3(mScaledSize.x + 0.5f * mBaseRadius, 0.0f, 0.0f), xAxisColor);
+            renderUtil->RenderLine(mPosition, mPosition + mSignX * AZ::Vector3(mScaledSize.GetX() + 0.5f * mBaseRadius, 0.0f, 0.0f), xAxisColor);
             //renderUtil->RenderCube( Vector3(mBaseRadius, mBaseRadius, mBaseRadius), mPosition + mSignX * Vector3(mScaledSize.x+mBaseRadius, 0, 0), ManipulatorColors::mRed );
-            MCore::Vector3 quadPos = MCore::Project(mPosition + mSignX * MCore::Vector3(mScaledSize.x + mBaseRadius, 0, 0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-            renderUtil->RenderBorderedRect(static_cast<int32>(quadPos.x - 2), static_cast<int32>(quadPos.x + 3), static_cast<int32>(quadPos.y - 2), static_cast<int32>(quadPos.y + 3), ManipulatorColors::mRed, ManipulatorColors::mRed);
+            AZ::Vector3 quadPos = MCore::Project(mPosition + mSignX * AZ::Vector3(mScaledSize.GetX() + mBaseRadius, 0, 0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+            renderUtil->RenderBorderedRect(static_cast<int32>(quadPos.GetX() - 2.0f), static_cast<int32>(quadPos.GetX() + 3.0f), static_cast<int32>(quadPos.GetY() - 2.0f), static_cast<int32>(quadPos.GetY() + 3.0f), ManipulatorColors::mRed, ManipulatorColors::mRed);
 
             // render the plane selector lines
-            renderUtil->RenderLine(firstPlanePosX, firstPlanePosX + mDiagScale * (MCore::Vector3(0, mFirstPlaneSelectorPos.y * mSignY, 0) - MCore::Vector3(mFirstPlaneSelectorPos.x * mSignX, 0, 0)), xyPlaneColorX);
-            renderUtil->RenderLine(firstPlanePosX, firstPlanePosX + mDiagScale * (MCore::Vector3(0, 0, mFirstPlaneSelectorPos.z * mSignZ) - MCore::Vector3(mFirstPlaneSelectorPos.x * mSignX, 0, 0)), xzPlaneColorX);
-            renderUtil->RenderLine(secPlanePosX, secPlanePosX + mDiagScale * (MCore::Vector3(0, mSecPlaneSelectorPos.y * mSignY, 0) - MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, 0, 0)), xyPlaneColorX);
-            renderUtil->RenderLine(secPlanePosX, secPlanePosX + mDiagScale * (MCore::Vector3(0, 0, mSecPlaneSelectorPos.z * mSignZ) - MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, 0, 0)), xzPlaneColorX);
+            renderUtil->RenderLine(firstPlanePosX, firstPlanePosX + mDiagScale * (AZ::Vector3(0, mFirstPlaneSelectorPos.GetY() * mSignY, 0) - AZ::Vector3(mFirstPlaneSelectorPos.GetX() * mSignX, 0, 0)), xyPlaneColorX);
+            renderUtil->RenderLine(firstPlanePosX, firstPlanePosX + mDiagScale * (AZ::Vector3(0, 0, mFirstPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mFirstPlaneSelectorPos.GetX() * mSignX, 0, 0)), xzPlaneColorX);
+            renderUtil->RenderLine(secPlanePosX, secPlanePosX + mDiagScale * (AZ::Vector3(0, mSecPlaneSelectorPos.GetY() * mSignY, 0) - AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, 0, 0)), xyPlaneColorX);
+            renderUtil->RenderLine(secPlanePosX, secPlanePosX + mDiagScale * (AZ::Vector3(0, 0, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, 0, 0)), xzPlaneColorX);
         }
 
         // the y axis with cube at the line end
-        MCore::Vector3 firstPlanePosY   = mPosition + mSignY * MCore::Vector3(0.0f, mFirstPlaneSelectorPos.y, 0.0f);
-        MCore::Vector3 secPlanePosY = mPosition + mSignY * MCore::Vector3(0.0f, mSecPlaneSelectorPos.y, 0.0f);
+        AZ::Vector3 firstPlanePosY   = mPosition + mSignY * AZ::Vector3(0.0f, mFirstPlaneSelectorPos.GetY(), 0.0f);
+        AZ::Vector3 secPlanePosY = mPosition + mSignY * AZ::Vector3(0.0f, mSecPlaneSelectorPos.GetY(), 0.0f);
         if (mYAxisVisible)
         {
-            renderUtil->RenderLine(mPosition, mPosition + mSignY * MCore::Vector3(0.0f, mScaledSize.y, 0.0f), yAxisColor);
+            renderUtil->RenderLine(mPosition, mPosition + mSignY * AZ::Vector3(0.0f, mScaledSize.GetY(), 0.0f), yAxisColor);
             //renderUtil->RenderCube( Vector3(mBaseRadius, mBaseRadius, mBaseRadius), mPosition + mSignY * Vector3(0, mScaledSize.y+0.5*mBaseRadius, 0), ManipulatorColors::mGreen );
-            MCore::Vector3 quadPos = MCore::Project(mPosition + mSignY * MCore::Vector3(0, mScaledSize.y + 0.5f * mBaseRadius, 0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-            renderUtil->RenderBorderedRect(static_cast<int32>(quadPos.x - 2), static_cast<int32>(quadPos.x + 3), static_cast<int32>(quadPos.y - 2), static_cast<int32>(quadPos.y + 3), ManipulatorColors::mGreen, ManipulatorColors::mGreen);
+            AZ::Vector3 quadPos = MCore::Project(mPosition + mSignY * AZ::Vector3(0, mScaledSize.GetY() + 0.5f * mBaseRadius, 0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+            renderUtil->RenderBorderedRect(static_cast<int32>(quadPos.GetX() - 2.0f), static_cast<int32>(quadPos.GetX() + 3.0f), static_cast<int32>(quadPos.GetY() - 2.0f), static_cast<int32>(quadPos.GetY() + 3.0f), ManipulatorColors::mGreen, ManipulatorColors::mGreen);
 
             // render the plane selector lines
-            renderUtil->RenderLine(firstPlanePosY, firstPlanePosY + mDiagScale * (MCore::Vector3(mFirstPlaneSelectorPos.x * mSignX, 0, 0) - MCore::Vector3(0, mFirstPlaneSelectorPos.y * mSignY, 0)), xyPlaneColorY);
-            renderUtil->RenderLine(firstPlanePosY, firstPlanePosY + mDiagScale * (MCore::Vector3(0, 0, mFirstPlaneSelectorPos.z * mSignZ) - MCore::Vector3(0, mFirstPlaneSelectorPos.y * mSignY, 0)), yzPlaneColorY);
-            renderUtil->RenderLine(secPlanePosY, secPlanePosY + mDiagScale * (MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, 0, 0) - MCore::Vector3(0, mSecPlaneSelectorPos.y * mSignY, 0)), xyPlaneColorY);
-            renderUtil->RenderLine(secPlanePosY, secPlanePosY + mDiagScale * (MCore::Vector3(0, 0, mSecPlaneSelectorPos.z * mSignZ) - MCore::Vector3(0, mSecPlaneSelectorPos.y * mSignY, 0)), yzPlaneColorY);
+            renderUtil->RenderLine(firstPlanePosY, firstPlanePosY + mDiagScale * (AZ::Vector3(mFirstPlaneSelectorPos.GetX() * mSignX, 0, 0) - AZ::Vector3(0, mFirstPlaneSelectorPos.GetY() * mSignY, 0)), xyPlaneColorY);
+            renderUtil->RenderLine(firstPlanePosY, firstPlanePosY + mDiagScale * (AZ::Vector3(0, 0, mFirstPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(0, mFirstPlaneSelectorPos.GetY() * mSignY, 0)), yzPlaneColorY);
+            renderUtil->RenderLine(secPlanePosY, secPlanePosY + mDiagScale * (AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, 0, 0) - AZ::Vector3(0, mSecPlaneSelectorPos.GetY() * mSignY, 0)), xyPlaneColorY);
+            renderUtil->RenderLine(secPlanePosY, secPlanePosY + mDiagScale * (AZ::Vector3(0, 0, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(0, mSecPlaneSelectorPos.GetY() * mSignY, 0)), yzPlaneColorY);
         }
 
         // the z axis with cube at the line end
-        MCore::Vector3 firstPlanePosZ   = mPosition + mSignZ * MCore::Vector3(0.0f, 0.0f, mFirstPlaneSelectorPos.z);
-        MCore::Vector3 secPlanePosZ = mPosition + mSignZ * MCore::Vector3(0.0f, 0.0f, mSecPlaneSelectorPos.z);
+        AZ::Vector3 firstPlanePosZ   = mPosition + mSignZ * AZ::Vector3(0.0f, 0.0f, mFirstPlaneSelectorPos.GetZ());
+        AZ::Vector3 secPlanePosZ = mPosition + mSignZ * AZ::Vector3(0.0f, 0.0f, mSecPlaneSelectorPos.GetZ());
         if (mZAxisVisible)
         {
-            renderUtil->RenderLine(mPosition, mPosition + mSignZ * MCore::Vector3(0.0f, 0.0f, mScaledSize.z), zAxisColor);
+            renderUtil->RenderLine(mPosition, mPosition + mSignZ * AZ::Vector3(0.0f, 0.0f, mScaledSize.GetZ()), zAxisColor);
             //renderUtil->RenderCube( Vector3(mBaseRadius, mBaseRadius, mBaseRadius), mPosition + mSignZ * Vector3(0, 0, mScaledSize.z+0.5*mBaseRadius), ManipulatorColors::mBlue );
-            MCore::Vector3 quadPos = MCore::Project(mPosition + mSignZ * MCore::Vector3(0, 0, mScaledSize.z + 0.5f * mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-            renderUtil->RenderBorderedRect(static_cast<int32>(quadPos.x - 2), static_cast<int32>(quadPos.x + 3), static_cast<int32>(quadPos.y - 2), static_cast<int32>(quadPos.y + 3), ManipulatorColors::mBlue, ManipulatorColors::mBlue);
+            AZ::Vector3 quadPos = MCore::Project(mPosition + mSignZ * AZ::Vector3(0, 0, mScaledSize.GetZ() + 0.5f * mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+            renderUtil->RenderBorderedRect(static_cast<int32>(quadPos.GetX() - 2.0f), static_cast<int32>(quadPos.GetX() + 3.0f), static_cast<int32>(quadPos.GetY() - 2.0f), static_cast<int32>(quadPos.GetY() + 3.0f), ManipulatorColors::mBlue, ManipulatorColors::mBlue);
 
             // render the plane selector lines
-            renderUtil->RenderLine(firstPlanePosZ, firstPlanePosZ + mDiagScale * (MCore::Vector3(mFirstPlaneSelectorPos.x * mSignX, 0, 0) - MCore::Vector3(0, 0, mFirstPlaneSelectorPos.z * mSignZ)), xzPlaneColorZ);
-            renderUtil->RenderLine(firstPlanePosZ, firstPlanePosZ + mDiagScale * (MCore::Vector3(0, mFirstPlaneSelectorPos.y * mSignY, 0) - MCore::Vector3(0, 0, mFirstPlaneSelectorPos.z * mSignZ)), yzPlaneColorZ);
-            renderUtil->RenderLine(secPlanePosZ, secPlanePosZ + mDiagScale * (MCore::Vector3(mSecPlaneSelectorPos.x * mSignX, 0, 0) - MCore::Vector3(0, 0, mSecPlaneSelectorPos.z * mSignZ)), xzPlaneColorZ);
-            renderUtil->RenderLine(secPlanePosZ, secPlanePosZ + mDiagScale * (MCore::Vector3(0, mSecPlaneSelectorPos.y * mSignY, 0) - MCore::Vector3(0, 0, mSecPlaneSelectorPos.z * mSignZ)), yzPlaneColorZ);
+            renderUtil->RenderLine(firstPlanePosZ, firstPlanePosZ + mDiagScale * (AZ::Vector3(mFirstPlaneSelectorPos.GetX() * mSignX, 0, 0) - AZ::Vector3(0, 0, mFirstPlaneSelectorPos.GetZ() * mSignZ)), xzPlaneColorZ);
+            renderUtil->RenderLine(firstPlanePosZ, firstPlanePosZ + mDiagScale * (AZ::Vector3(0, mFirstPlaneSelectorPos.GetY() * mSignY, 0) - AZ::Vector3(0, 0, mFirstPlaneSelectorPos.GetZ() * mSignZ)), yzPlaneColorZ);
+            renderUtil->RenderLine(secPlanePosZ, secPlanePosZ + mDiagScale * (AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, 0, 0) - AZ::Vector3(0, 0, mSecPlaneSelectorPos.GetZ() * mSignZ)), xzPlaneColorZ);
+            renderUtil->RenderLine(secPlanePosZ, secPlanePosZ + mDiagScale * (AZ::Vector3(0, mSecPlaneSelectorPos.GetY() * mSignY, 0) - AZ::Vector3(0, 0, mSecPlaneSelectorPos.GetZ() * mSignZ)), yzPlaneColorZ);
         }
 
         // calculate projected positions for the axis labels and render the text
-        MCore::Vector3 textPosY = MCore::Project(mPosition + mSignY * MCore::Vector3(0.0, mScaledSize.y + mArrowLength + mBaseRadius, -mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-        MCore::Vector3 textPosX = MCore::Project(mPosition + mSignX * MCore::Vector3(mScaledSize.x + mArrowLength + mBaseRadius, -mBaseRadius, 0.0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-        MCore::Vector3 textPosZ = MCore::Project(mPosition + mSignZ * MCore::Vector3(0.0, mBaseRadius, mScaledSize.z + mArrowLength + mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-        renderUtil->RenderText(textPosX.x, textPosX.y, "X", xAxisColor);
-        renderUtil->RenderText(textPosY.x, textPosY.y, "Y", yAxisColor);
-        renderUtil->RenderText(textPosZ.x, textPosZ.y, "Z", zAxisColor);
+        AZ::Vector3 textPosY = MCore::Project(mPosition + mSignY * AZ::Vector3(0.0, mScaledSize.GetY() + mArrowLength + mBaseRadius, -mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+        AZ::Vector3 textPosX = MCore::Project(mPosition + mSignX * AZ::Vector3(mScaledSize.GetX() + mArrowLength + mBaseRadius, -mBaseRadius, 0.0), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+        AZ::Vector3 textPosZ = MCore::Project(mPosition + mSignZ * AZ::Vector3(0.0, mBaseRadius, mScaledSize.GetZ() + mArrowLength + mBaseRadius), camera->GetViewProjMatrix(), screenWidth, screenHeight);
+        renderUtil->RenderText(textPosX.GetX(), textPosX.GetY(), "X", xAxisColor);
+        renderUtil->RenderText(textPosY.GetX(), textPosY.GetY(), "Y", yAxisColor);
+        renderUtil->RenderText(textPosZ.GetX(), textPosZ.GetY(), "Z", zAxisColor);
 
         // Render the triangles for plane selection
         if (mMode == SCALE_XY && mXAxisVisible && mYAxisVisible)
@@ -255,8 +255,8 @@ namespace MCommon
         // render the current scale factor in percent if gizmo is hit
         if (mMode != SCALE_NONE)
         {
-            const MCore::Vector3& currScale = mCallback->GetCurrValueVec();
-            mTempString.Format("Abs. Scale X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(currScale.x, 0.0f), MCore::Max(currScale.y, 0.0f), MCore::Max(currScale.z, 0.0f));
+            const AZ::Vector3& currScale = mCallback->GetCurrValueVec();
+            mTempString.Format("Abs. Scale X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(float(currScale.GetX()), 0.0f), MCore::Max(float(currScale.GetY()), 0.0f), MCore::Max(float(currScale.GetZ()), 0.0f));
             renderUtil->RenderText(10, 10, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f);
         }
 
@@ -264,23 +264,23 @@ namespace MCommon
         float yOffset = (camera->GetProjectionMode() == MCommon::Camera::PROJMODE_PERSPECTIVE) ? 80.0f : 50.0f;
 
         // text position relative scaling or name displayed below the gizmo
-        MCore::Vector3 textPos  = MCore::Project(mPosition + (mSize * MCore::Vector3(mSignX, mSignY, mSignZ) / 3.0f), camera->GetViewProjMatrix(), camera->GetScreenWidth(), camera->GetScreenHeight());
+        AZ::Vector3 textPos  = MCore::Project(mPosition + (mSize * AZ::Vector3(mSignX, mSignY, mSignZ) / 3.0f), camera->GetViewProjMatrix(), camera->GetScreenWidth(), camera->GetScreenHeight());
 
         // render the relative scale when moving
         if (mSelectionLocked && mMode != SCALE_NONE)
         {
             // calculate the scale factor
-            MCore::Vector3 scaleFactor = ((MCore::Vector3(mSize, mSize, mSize) + mScale) / (float)mSize);
+            AZ::Vector3 scaleFactor = ((AZ::Vector3(mSize, mSize, mSize) + mScale) / (float)mSize);
 
             // render the scaling value below the gizmo
-            mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(scaleFactor.x, 0.0f), MCore::Max(scaleFactor.y, 0.0f), MCore::Max(scaleFactor.z, 0.0f));
-            renderUtil->RenderText(textPos.x, textPos.y + yOffset, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+            mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(float(scaleFactor.GetX()), 0.0f), MCore::Max(float(scaleFactor.GetY()), 0.0f), MCore::Max(float(scaleFactor.GetZ()), 0.0f));
+            renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
         }
         else
         {
             if (mName.GetLength() > 0)
             {
-                renderUtil->RenderText(textPos.x, textPos.y + yOffset, mName.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mName.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
             }
         }
     }
@@ -322,37 +322,37 @@ namespace MCommon
             if (mousePosRay.Intersects(mXYZBoxAABB))
             {
                 mMode   = SCALE_XYZ;
-                mScaleDirection = MCore::Vector3(mSignX, mSignY, mSignZ);
+                mScaleDirection = AZ::Vector3(mSignX, mSignY, mSignZ);
             }
             else if (mousePosRay.Intersects(mXYPlaneAABB) && mXAxisVisible && mYAxisVisible)
             {
                 mMode = SCALE_XY;
-                mScaleDirection = MCore::Vector3(mSignX, mSignY, 0.0f);
+                mScaleDirection = AZ::Vector3(mSignX, mSignY, 0.0f);
             }
             else if (mousePosRay.Intersects(mXZPlaneAABB) && mXAxisVisible && mZAxisVisible)
             {
                 mMode = SCALE_XZ;
-                mScaleDirection = MCore::Vector3(mSignX, 0.0f, mSignZ);
+                mScaleDirection = AZ::Vector3(mSignX, 0.0f, mSignZ);
             }
             else if (mousePosRay.Intersects(mYZPlaneAABB) && mYAxisVisible && mZAxisVisible)
             {
                 mMode = SCALE_YZ;
-                mScaleDirection = MCore::Vector3(0.0f, mSignY, mSignZ);
+                mScaleDirection = AZ::Vector3(0.0f, mSignY, mSignZ);
             }
             else if (mousePosRay.Intersects(mXAxisAABB) && mXAxisVisible)
             {
                 mMode = SCALE_X;
-                mScaleDirection = MCore::Vector3(mSignX, 0.0f, 0.0f);
+                mScaleDirection = AZ::Vector3(mSignX, 0.0f, 0.0f);
             }
             else if (mousePosRay.Intersects(mYAxisAABB) && mYAxisVisible)
             {
                 mMode = SCALE_Y;
-                mScaleDirection = MCore::Vector3(0.0f, mSignY, 0.0f);
+                mScaleDirection = AZ::Vector3(0.0f, mSignY, 0.0f);
             }
             else if (mousePosRay.Intersects(mZAxisAABB) && mZAxisVisible)
             {
                 mMode = SCALE_Z;
-                mScaleDirection = MCore::Vector3(0.0f, 0.0f, mSignZ);
+                mScaleDirection = AZ::Vector3(0.0f, 0.0f, mSignZ);
             }
             else
             {
@@ -366,12 +366,12 @@ namespace MCommon
         // move the gizmo
         if (mSelectionLocked == false || mMode == SCALE_NONE)
         {
-            mScale = MCore::Vector3(0.0f, 0.0f, 0.0f);
+            mScale = AZ::Vector3::CreateZero();
             return;
         }
 
         // init the scale change to zero
-        MCore::Vector3 scaleChange = MCore::Vector3(0.0f, 0.0f, 0.0f);
+        AZ::Vector3 scaleChange = AZ::Vector3::CreateZero();
 
         // calculate the movement of the mouse on a plane located at the gizmo position
         // and perpendicular to the camera direction
@@ -379,7 +379,7 @@ namespace MCommon
         MCore::PlaneEq movementPlane(camRay.GetDirection(), mPosition);
 
         // calculate the intersection points of the mouse positions with the previously calculated plane
-        MCore::Vector3 mousePosIntersect, mousePrevPosIntersect;
+        AZ::Vector3 mousePosIntersect, mousePrevPosIntersect;
         mousePosRay.Intersects(movementPlane, &mousePosIntersect);
         mousePrevPosRay.Intersects(movementPlane, &mousePrevPosIntersect);
 
@@ -387,13 +387,13 @@ namespace MCommon
         scaleChange = (mScaleDirection * mScaleDirection.Dot(mousePosIntersect) - mScaleDirection * mScaleDirection.Dot(mousePrevPosIntersect));
 
         // update the scale of the gizmo
-        scaleChange = MCore::Vector3(scaleChange.x * mSignX, scaleChange.y * mSignY, scaleChange.z * mSignZ);
+        scaleChange = AZ::Vector3(scaleChange.GetX() * mSignX, scaleChange.GetY() * mSignY, scaleChange.GetZ() * mSignZ);
         mScale += scaleChange;
 
         // update the callback actor instance
         if (mCallback)
         {
-            MCore::Vector3 updateScale = (MCore::Vector3(mSize, mSize, mSize) + mScale) / (float)mSize;
+            AZ::Vector3 updateScale = (AZ::Vector3(mSize, mSize, mSize) + mScale) / (float)mSize;
             mCallback->Update(updateScale);
         }
     }

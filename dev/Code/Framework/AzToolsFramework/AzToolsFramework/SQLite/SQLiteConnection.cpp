@@ -510,6 +510,61 @@ namespace AzToolsFramework
             return returnVal;
         }
 
+        bool Statement::BindNamedUuid(const char* name, AZ::Uuid& value)
+        {
+            int index = GetNamedParamIdx(name);
+            if (!index)
+            {
+                return false;
+            }
+            return BindValueUuid(index, value);
+        }
+        bool Statement::BindNamedBlob(const char* name, void* data, int dataSize)
+        {
+            int index = GetNamedParamIdx(name);
+            if (!index)
+            {
+                return false;
+            }
+            return BindValueBlob(index, data, dataSize);
+        }
+        bool Statement::BindNamedDouble(const char* name, double value)
+        {
+            int index = GetNamedParamIdx(name);
+            if (!index)
+            {
+                return false;
+            }
+            return BindValueDouble(index, value);
+        }
+        bool Statement::BindNamedInt(const char* name, int value)
+        {
+            int index = GetNamedParamIdx(name);
+            if (!index)
+            {
+                return false;
+            }
+            return BindValueInt(index, value);
+        }
+        bool Statement::BindNamedText(const char* name, const char* value)
+        {
+            int index = GetNamedParamIdx(name);
+            if (!index)
+            {
+                return false;
+            }
+            return BindValueText(index, value);
+        }
+        bool Statement::BindNamedInt64(const char* name, AZ::s64 value)
+        {
+            int index = GetNamedParamIdx(name);
+            if (!index)
+            {
+                return false;
+            }
+            return BindValueInt64(index, value);
+        }
+
         const StatementPrototype* Statement::GetParentPrototype() const
         {
             return m_parentPrototype;

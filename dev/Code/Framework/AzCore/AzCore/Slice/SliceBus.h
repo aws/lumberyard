@@ -63,6 +63,59 @@ namespace AZ
     };
     using SliceAssetSerializationNotificationBus = AZ::EBus<SliceAssetSerializationNotifications>;
 
+
+    /**
+     * Interface for AZ::SliceEntityHierarchyRequestBus, which is an EBus 
+     * that provides hierarchical entity information for use in slice tools.
+     *
+     * This is necessary because different types of entities can have different
+     * ways of implementing who their parent or children are - for example, 
+     * normal world entities use the TransformComponent for tracking parent/child
+     * relationships, while UI entities use UiElementComponent (which is separate
+     * from the 2D transform component for UI entities). For different entity types,
+     * the component keeping parent/child hierarchy information should implement
+     * the AZ::SliceEntityHierarchyRequestBus so things like Slice Save widget and
+     * SliceTransactions work.
+     *
+     * Hierarchy information is used for internal logic like "if I'm adding an entity to a
+     * slice, its parent also needs to be added/already in the slice".
+     */
+    class SliceEntityHierarchyInterface
+        : public ComponentBus
+    {
+    public:
+        AZ_RTTI(SliceEntityHierarchyInterface, "{E5D09F26-217F-4182-8B1D-BB08E4859F12}");
+
+        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single;
+
+        /**
+         * Destroys the instance of the class.
+         */
+        virtual ~SliceEntityHierarchyInterface() {}
+
+
+        /**
+         * Returns the entity ID of the entity's parent.
+         * @return The entity ID of the parent. The entity ID is invalid if the
+         * entity does not have a parent with a valid entity ID.
+         */
+        virtual EntityId GetSliceEntityParentId() { return EntityId(); }
+
+        /**
+         * Returns the entity IDs of the entity's immediate children.
+         * @return A vector that contains the entity IDs of the entity's immediate children.
+         */
+        virtual AZStd::vector<AZ::EntityId> GetSliceEntityChildren() { return AZStd::vector<AZ::EntityId>(); };
+
+    };
+
+    /**
+     * The EBus for requests for the parent and children of an entity for the
+     * purposes of slice dependency hierarchies.
+     * The events are defined in the AZ:: class.
+     */
+    using SliceEntityHierarchyRequestBus = AZ::EBus<SliceEntityHierarchyInterface>;
+
     /// @deprecated Use SliceComponent.
     using PrefabComponent = SliceComponent;
 

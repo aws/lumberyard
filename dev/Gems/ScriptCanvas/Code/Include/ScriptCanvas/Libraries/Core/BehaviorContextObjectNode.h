@@ -63,21 +63,15 @@ namespace ScriptCanvas
 
             protected:
                 void InitializeObject(const AZ::BehaviorClass& behaviorClass);
-                void InitializeProperties(const AZ::BehaviorClass& behaviorClass);
                 void OnInit() override;
-                
-                void SetInput(const Datum& input, const SlotId& id) override;
 
-                void SetProperty(const Datum& input, const SlotId& id);
-
+                void ConfigureSetters(const AZ::BehaviorClass& behaviorClass);
+                void ConfigureGetters(const AZ::BehaviorClass& behaviorClass);
                 void ConfigureProperties(const AZ::BehaviorClass& behaviorClass);
-                bool IsConfigured() { return m_configured; }
                 
             private:                
                 AZStd::recursive_mutex m_mutex; // post-serialization
                 AZStd::string m_className;
-                PropertyAccount<AZ::BehaviorMethod*, AZ::BehaviorMethod*> m_propertyAccount;
-                bool m_configured = false;
 
                 BehaviorContextObjectNode(const BehaviorContextObjectNode&) = delete;
             };

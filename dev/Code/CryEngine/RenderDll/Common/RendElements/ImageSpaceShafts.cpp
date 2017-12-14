@@ -15,6 +15,7 @@
 #include "ImageSpaceShafts.h"
 #include "FlareSoftOcclusionQuery.h"
 #include "../CryNameR.h"
+#include "Common/Textures/TextureManager.h"
 #include "../../RenderDll/XRenderD3D9/DriverD3D.h"
 
 CTexture* ImageSpaceShafts::m_pOccBuffer = NULL;
@@ -153,7 +154,7 @@ void ImageSpaceShafts::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjP
         ApplyGeneralFlags(shader);
         shader->FXBeginPass(0);
 
-        CTexture* pGoboTex = ((CTexture*)m_pGoboTex) ? ((CTexture*)m_pGoboTex) : CTexture::s_ptexBlack;
+        CTexture* pGoboTex = ((CTexture*)m_pGoboTex) ? ((CTexture*)m_pGoboTex) : CTextureManager::Instance()->GetBlackTexture();
         pGoboTex->Apply(0, CTexture::GetTexState(s_isBilinearTS));
         CTexture::s_ptexZTargetScaled->Apply(1, CTexture::GetTexState(s_isBilinearTS));
 

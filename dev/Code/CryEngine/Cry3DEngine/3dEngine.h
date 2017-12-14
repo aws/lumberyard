@@ -28,6 +28,7 @@
 struct ITerrain;
 struct STerrainInfo;
 class CCullBuffer;
+class IDeformableNode;
 
 struct SEntInFoliage
 {
@@ -559,7 +560,6 @@ private:
         TObjectDrawBoxInfo(const I3DEngine::SObjectInfoToAddToDebugDrawList& objInfo);
     };
 
-
     void FindNewLeastValueAsset();
     void ClearFrameData();
     void ClearConsoleCommandRequestVars();
@@ -644,7 +644,8 @@ public:
     virtual void SetupDistanceFog();
     virtual IStatObj* LoadStatObjUnsafeManualRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
     virtual _smart_ptr<IStatObj> LoadStatObjAutoRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
-
+    virtual IDeformableNode* CreateDeformableNode();
+    virtual void DestroyDeformableNode(IDeformableNode* node);
     virtual const IObjManager* GetObjectManager() const;
     virtual IObjManager* GetObjectManager();
 
@@ -690,9 +691,9 @@ public:
     // Only use for Accurate query - this will return exact ocean height
     virtual float GetAccurateOceanHeight(const Vec3& pCurrPos) const;
 
-    virtual Vec4 GetCausticsParams() const;
-    virtual Vec4 GetOceanAnimationCausticsParams() const;
+    virtual CausticsParams GetCausticsParams() const;
     virtual void GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const;
+    virtual OceanAnimationData GetOceanAnimationParams() const override;
     virtual void GetHDRSetupParams(Vec4 pParams[5]) const;
     virtual void CreateDecal(const CryEngineDecalInfo& Decal);
     virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const override;
@@ -870,6 +871,7 @@ public:
     virtual int32 GetPostEffectID(const char* pPostEffectName);
 
     virtual void ResetPostEffects(bool bOnSpecChange = false);
+    virtual void DisablePostEffects();
 
     virtual void SetShadowsGSMCache(bool bCache);
     virtual void SetCachedShadowBounds(const AABB& shadowBounds, float fAdditionalCascadesScale);
@@ -988,7 +990,7 @@ public:
     void LoadDefaultAssets();
 
     // access to components
-    ENGINE_API static CVars* GetCVars() { return m_pCVars; }
+    static CVars* GetCVars() { return m_pCVars; }
     ILINE CVisAreaManager* GetVisAreaManager() { return m_pVisAreaManager; }
     ILINE CClipVolumeManager* GetClipVolumeManager() { return m_pClipVolumeManager; }
     ILINE PodArray<ILightSource*>* GetLightEntities() { return &m_lstStaticLights; }
@@ -1082,23 +1084,14 @@ public:
     Vec3 m_volFogHeightDensity2;
     Vec3 m_volFogGradientCtrl;
 
-    float m_oceanCausticsDistanceAtten;
-    float m_oceanCausticsMultiplier;
-    float m_oceanCausticsDarkeningMultiplier;
-    float m_oceanCausticsTilling;
-    float m_oceanCausticHeight;
-    float m_oceanCausticDepth;
-    float m_oceanCausticIntensity;
-
-    string m_skyMatName;
-    string m_skyLowSpecMatName;
-
+private:
     float m_oceanWindDirection;
     float m_oceanWindSpeed;
     float m_oceanWavesSpeed;
     float m_oceanWavesAmount;
     float m_oceanWavesSize;
 
+public:
     float m_dawnStart;
     float m_dawnEnd;
     float m_duskStart;
@@ -1115,6 +1108,9 @@ public:
     // hdr color grading
     Vec3 m_vColorBalance;
     float m_fHDRSaturation;
+
+    // default post effect group path
+    const char* m_defaultPostEffectGroup = "Libs/PostEffectGroups/Default.xml";
 
 #ifndef _RELEASE
     CDebugDrawListMgr m_DebugDrawListMgr;
@@ -1255,7 +1251,7 @@ public:
     virtual ITimeOfDay* GetTimeOfDay();
     virtual void SetSkyMaterialPath(const string& skyMaterialPath);
     virtual void SetSkyLowSpecMaterialPath(const string& skyMaterialPath);
-    //! [GDC09]: Return SkyBox material
+    virtual void LoadSkyMaterial();
     virtual _smart_ptr<IMaterial> GetSkyMaterial();
     void SetSkyMaterial(_smart_ptr<IMaterial> pSkyMat) override;
     bool IsHDRSkyMaterial(_smart_ptr<IMaterial> pMat) const;
@@ -1457,6 +1453,12 @@ private:
     char m_szLevelFolder[_MAX_PATH];
 
     bool m_bOcean; // todo: remove
+    
+    // Ocean Caustics - Should be removed once the Ocean Gem is done and the feature toggle for it is removed.
+    float m_oceanCausticsDistanceAtten;
+    float m_oceanCausticsTiling;
+    float m_oceanCausticDepth;
+    float m_oceanCausticIntensity;
 
     Vec3 m_vSkyHightlightPos;
     Vec3 m_vSkyHightlightCol;
@@ -1515,6 +1517,12 @@ private:
     std::vector<IDecalRenderNode*> m_decalRenderNodes; // list of registered decal render nodes, used to clean up longer not drawn decals
 
     PhysicsAreaUpdates m_PhysicsAreaUpdates;
+
+    string m_skyMatName;
+    string m_skyLowSpecMatName;
+
+    // Variable to keep track if the cvar e_SkyType has changed, which may cause the engine to load a different sky material
+    int m_previousSkyType = -1;
 
     //Bending Pools contain the per frame Vegetation, Decals, etc. structures. Each Engine-frame the next buffer is
     // cleared and set as the current in a ring and page-allocated to fit the needs of the current frame.

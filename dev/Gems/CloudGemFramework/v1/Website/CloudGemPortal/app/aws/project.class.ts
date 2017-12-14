@@ -1,4 +1,5 @@
-﻿import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+﻿import { Subject } from 'rxjs/Subject';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { Observable } from 'rxjs/Observable'
 import { AwsDeployment } from './deployment.class'
 import { AwsService, ProjectSettings, DeploymentSettings, Deployment } from './aws.service'
@@ -14,10 +15,11 @@ export class AwsProject {
     public static get BUCKET_CONFIG_NAME(): string { return "config_bucket" }
     public static get PROJECT_SETTING_FILE(): string { return "project-settings.json" }
 
-    private _settings: BehaviorSubject<ProjectSettings>;
+    private _settings: Subject<ProjectSettings>;
     private _isInitialized: boolean;
     private _deployments: Deployment[]
-    private _activeDeployment: BehaviorSubject<Deployment>;
+    private _activeDeployment: Deployment;
+    private _activeDeploymentSubscription: Subject<Deployment>;
 
     get isInitialized() {
         return this._isInitialized;
@@ -31,12 +33,17 @@ export class AwsProject {
         return this._deployments;
     }
 
-    get activeDeployment(): Observable<Deployment> {
-        return this._activeDeployment.asObservable();
+    get activeDeployment(): Deployment {
+        return this._activeDeployment;
     }
 
-    public setDeployment(value: Deployment) {
-        this._activeDeployment.next(value);
+    set activeDeployment(activeDeployment: Deployment) {
+        this._activeDeployment = activeDeployment;
+        this._activeDeploymentSubscription.next(activeDeployment);
+    }
+
+    get activeDeploymentSubscription(): Observable<Deployment> {
+        return this._activeDeploymentSubscription.asObservable();
     }
 
     get settings(): Observable<ProjectSettings> {
@@ -44,19 +51,23 @@ export class AwsProject {
     }
 
     constructor(private context: AwsContext, private http: Http) {        
-        this._settings = new BehaviorSubject<ProjectSettings>(null);
-        this._activeDeployment = new BehaviorSubject<Deployment>(null);
+        this._settings = new Subject<ProjectSettings>();
+        this._activeDeploymentSubscription = new Subject<Deployment>();
+        this._activeDeployment = null;
         this._deployments = [];
 
-        this.activeDeployment.subscribe(deployment => {
+
+        this._activeDeploymentSubscription.subscribe(deployment => { 
             if (deployment)
-                deployment.update();
+            deployment.update();
         })
 
         //initialize the deployments array
         this.settings.subscribe(d => {
-            if (d == null)
+            if (!d) {
+                this._activeDeploymentSubscription.next(undefined);
                 return;
+            }
 
             if (d.DefaultDeployment)
                 this.isInitialized = true;
@@ -65,6 +76,7 @@ export class AwsProject {
             this._deployments.length = 0;
 
             let default_deployment: string = d.DefaultDeployment;
+            let default_found = false;
             for (let entry in d.deployment) {
                 let obj = d.deployment[entry];
                 var deploymentSetting = <DeploymentSettings>({
@@ -76,27 +88,30 @@ export class AwsProject {
                 })
                 var awsdeployment = new AwsDeployment(this.context, deploymentSetting);
                 this._deployments.push(awsdeployment);
+                //set the default deployment
+                if (entry == d.DefaultDeployment) {
+                    this._activeDeploymentSubscription.next(awsdeployment);
+                    default_found = true
+                }
             }
-            this._activeDeployment.next(awsdeployment);
+            if (!default_found)
+                this._activeDeploymentSubscription.next(awsdeployment);
+                            
         });
 
         let proj = this;
         var signedRequest = this.context.s3.getSignedUrl('getObject', { Bucket: this.context.configBucket, Key: AwsProject.PROJECT_SETTING_FILE, Expires: 60 })
-        this.http.request(signedRequest).map(response => {
-            return response;
-        }).catch((error: any) => {
-                return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
-            }).subscribe(response => {                        
-                var body = response._body.toString('utf-8');
-
-                let settings = JSON.parse(body);
+        this.http.request(signedRequest)
+            .subscribe(response => {
+                let settings = response.json();
 
                 var deployments = settings.deployment;
                 //Filter out our 'wildcard' settings and emit our deployment list
                 delete deployments["*"];
 
                 proj._settings.next(settings);
-            }, (err) => {
+            },
+            err => {
                 console.error(err)
             })
     }

@@ -50,178 +50,38 @@ typedef IMovieSystem* (* PFNCREATEMOVIESYSTEM)(struct ISystem*);
 typedef std::vector<IAnimSequence*> AnimSequences;
 typedef AZStd::vector<AZStd::string> TrackEvents;
 
-enum ESequenceType
-{
-    eSequenceType_Legacy                = 0,        // legacy CryEntity Sequence Object
-    eSequenceType_SequenceComponent     = 1         // Sequence Component on an AZ::Entity
-};
+// Forward declare, including will cause much pain with the precompiled headers
+enum class SequenceType;
+enum class AnimNodeType;
+enum class AnimValueType;
+enum class AnimParamType;
 
-//////////////////////////////////////////////////////////////////////////
-//! Node-Types
-//
-// You need to register new types in Movie.cpp/RegisterNodeTypes for serialization.
-// Note: Enums are serialized by string now, there is no need for specific IDs
-// anymore for new parameters. Values are for backward compatibility.
-enum EAnimNodeType
-{
-    eAnimNodeType_Invalid                   = 0x00,
-    eAnimNodeType_Entity                    = 0x01,
-    eAnimNodeType_Director                  = 0x02,
-    eAnimNodeType_Camera                    = 0x03,
-    eAnimNodeType_CVar                      = 0x04,
-    eAnimNodeType_ScriptVar                 = 0x05,
-    eAnimNodeType_Material                  = 0x06,
-    eAnimNodeType_Event                     = 0x07,
-    eAnimNodeType_Group                     = 0x08,
-    eAnimNodeType_Layer                     = 0x09,
-    eAnimNodeType_Comment                   = 0x10,
-    eAnimNodeType_RadialBlur                = 0x11,
-    eAnimNodeType_ColorCorrection           = 0x12,
-    eAnimNodeType_DepthOfField              = 0x13,
-    eAnimNodeType_ScreenFader               = 0x14,
-    eAnimNodeType_Light                     = 0x15,
-    // eAnimNodeType_HDRSetup               = 0x16,     // deprecated Jan 2016
-    eAnimNodeType_ShadowSetup               = 0x17,
-    eAnimNodeType_Alembic                   = 0x18,     // Used in cinebox, added so nobody uses that number
-    eAnimNodeType_GeomCache                 = 0x19,
-    eAnimNodeType_Environment,
-    eAnimNodeType_ScreenDropsSetup,                     // deprecated Jan 2016
-    eAnimNodeType_AzEntity,
-    eAnimNodeType_Component,
-    eAnimNodeType_Num
-};
+// TODO: Refactor headers that are using these values so they are not need in header files
+
+// AnimValueType::Float is the default value
+#define kAnimValueDefault static_cast<AnimValueType>(0)
+// AnimValueType::Unknown
+#define kAnimValueUnknown static_cast<AnimValueType>(0xFFFFFFFF)
+// SequenceType::Legacy is the default value
+#define kSequenceTypeDefault static_cast<SequenceType>(0)
+// AnimParamType::Invalid
+#define kAnimParamTypeInvalid static_cast<AnimParamType>(0xFFFFFFFF)
+// AnimParamType::ByString
+#define kAnimParamTypeByString static_cast<AnimParamType>(8)
 
 //! Flags that can be set on animation node.
 enum EAnimNodeFlags
 {
-    eAnimNodeFlags_Expanded             = BIT(0), //!< Deprecated, handled by sandbox now
+    eAnimNodeFlags_Expanded         = BIT(0), //!< Deprecated, handled by sandbox now
     eAnimNodeFlags_EntitySelected   = BIT(1), //!< Set if the referenced entity is selected in the editor
     eAnimNodeFlags_CanChangeName    = BIT(2), //!< Set if this node allow changing of its name.
-    eAnimNodeFlags_Disabled             = BIT(3), //!< Disable this node.
+    eAnimNodeFlags_Disabled         = BIT(3), //!< Disable this node.
 };
 
 enum ENodeExportType
 {
     eNodeExportType_Global = 0,
     eNodeExportType_Local = 1,
-};
-
-// Static common parameters IDs of animation node.
-//
-// You need to register new params in Movie.cpp/RegisterParamTypes for serialization.
-// Note: Enums are serialized by string now, there is no need for specific IDs
-// anymore for new parameters. Values are for backward compatibility.
-//
-// If you want to expand CryMovie to control new stuff this is probably  the enum you want to change.
-// For named params see eAnimParamType_ByString & CAnimParamType
-enum EAnimParamType
-{
-    // Parameter is specified by string. See CAnimParamType
-    eAnimParamType_ByString                         = 8,
-
-    eAnimParamType_FOV                              = 0,
-    eAnimParamType_Position                         = 1,
-    eAnimParamType_Rotation                         = 2,
-    eAnimParamType_Scale                            = 3,
-    eAnimParamType_Event                            = 4,
-    eAnimParamType_Visibility                       = 5,
-    eAnimParamType_Camera                           = 6,
-    eAnimParamType_Animation                        = 7,
-    eAnimParamType_Sound                            = 10,
-    eAnimParamType_Sequence                         = 13,
-    // eAnimParamType_Expression                    = 14,       ///@deprecated Jan 2016
-    eAnimParamType_Console                          = 17,
-    eAnimParamType_Music                            = 18,       ///@deprecated in 1.11, July 2017 - left in for legacy serialization
-    eAnimParamType_Float                            = 19,
-    // eAnimParamType_FaceSequence                  = 20,       ///@deprecated Jan 2016
-    eAnimParamType_LookAt                           = 21,
-    eAnimParamType_TrackEvent                       = 22,
-
-    eAnimParamType_ShakeAmplitudeA                  = 23,
-    eAnimParamType_ShakeAmplitudeB                  = 24,
-    eAnimParamType_ShakeFrequencyA                  = 25,
-    eAnimParamType_ShakeFrequencyB                  = 26,
-    eAnimParamType_ShakeMultiplier                  = 27,
-    eAnimParamType_ShakeNoise                       = 28,
-    eAnimParamType_ShakeWorking                     = 29,
-    eAnimParamType_ShakeAmpAMult                    = 61,
-    eAnimParamType_ShakeAmpBMult                    = 62,
-    eAnimParamType_ShakeFreqAMult                   = 63,
-    eAnimParamType_ShakeFreqBMult                   = 64,
-
-    eAnimParamType_DepthOfField                     = 30,
-    eAnimParamType_FocusDistance                    = 31,
-    eAnimParamType_FocusRange                       = 32,
-    eAnimParamType_BlurAmount                       = 33,
-
-    eAnimParamType_Capture                          = 34,
-    eAnimParamType_TransformNoise                   = 35,
-    eAnimParamType_TimeWarp                         = 36,
-    eAnimParamType_FixedTimeStep                    = 37,
-    eAnimParamType_NearZ                            = 38,
-    eAnimParamType_Goto                             = 39,
-
-    eAnimParamType_PositionX                        = 51,
-    eAnimParamType_PositionY                        = 52,
-    eAnimParamType_PositionZ                        = 53,
-
-    eAnimParamType_RotationX                        = 54,
-    eAnimParamType_RotationY                        = 55,
-    eAnimParamType_RotationZ                        = 56,
-
-    eAnimParamType_ScaleX                           = 57,
-    eAnimParamType_ScaleY                           = 58,
-    eAnimParamType_ScaleZ                           = 59,
-
-    eAnimParamType_ColorR                           = 82,
-    eAnimParamType_ColorG                           = 83,
-    eAnimParamType_ColorB                           = 84,
-
-    eAnimParamType_CommentText                      = 70,
-    eAnimParamType_ScreenFader                      = 71,
-
-    eAnimParamType_LightDiffuse                     = 81,
-    eAnimParamType_LightRadius                      = 85,
-    eAnimParamType_LightDiffuseMult                 = 86,
-    eAnimParamType_LightHDRDynamic                  = 87,
-    eAnimParamType_LightSpecularMult                = 88,
-    eAnimParamType_LightSpecPercentage              = 89,
-
-    eAnimParamType_MaterialDiffuse          = 90,
-    eAnimParamType_MaterialSpecular         = 91,
-    eAnimParamType_MaterialEmissive         = 92,
-    // eAnimParamType_MaterialEmissiveIntensity = 99,   // declared below to keep enumerations in order
-    eAnimParamType_MaterialOpacity          = 93,
-    eAnimParamType_MaterialSmoothness       = 94,
-
-    eAnimParamType_TimeRanges               = 95, //!< Generic track with keys that have time ranges
-
-    eAnimParamType_Physics                  = 96,   //! Not used anymore, see Physicalize & PhysicsDriven
-
-    eAnimParamType_ProceduralEyes           = 97,
-
-    eAnimParamType_Mannequin                 = 98, //!< Mannequin parameter.
-
-    eAnimParamType_MaterialEmissiveIntensity = 99,
-
-    // Add new param types without explicit ID here:
-    // NOTE: don't forget to register in Movie.cpp
-
-    eAnimParamType_GSMCache,
-
-    eAnimParamType_ShutterSpeed,
-
-    eAnimParamType_Physicalize,
-    eAnimParamType_PhysicsDriven,
-
-    eAnimParamType_SunLongitude,
-    eAnimParamType_SunLatitude,
-    eAnimParamType_MoonLongitude,
-    eAnimParamType_MoonLatitude,
-
-    eAnimParamType_User                                 = 100000, //!< User node params.
-
-    eAnimParamType_Invalid                          = 0xFFFFFFFF
 };
 
 // Common parameters of animation node.
@@ -236,40 +96,40 @@ public:
     static const uint kParamTypeVersion = 9;
 
     CAnimParamType()
-        : m_type(eAnimParamType_Invalid) {}
+        : m_type(kAnimParamTypeInvalid) {}
 
     CAnimParamType(const string& name)
     {
         *this = name;
     }
 
-    CAnimParamType(const EAnimParamType type)
+    CAnimParamType(AnimParamType type)
     {
         *this = type;
     }
 
     // Convert from old enum or int
-    void operator =(const int type)
+    void operator =(AnimParamType type)
     {
-        m_type = (EAnimParamType)type;
+        m_type = type;
     }
 
     void operator =(const string& name)
     {
-        m_type = eAnimParamType_ByString;
+        m_type = kAnimParamTypeByString;
         m_name = name;
     }
 
     // Convert to enum. This needs to be explicit,
     // otherwise operator== will be ambiguous
-    EAnimParamType GetType() const { return m_type; }
+    AnimParamType GetType() const { return m_type; }
 
     // Get name
     const char* GetName() const { return m_name.c_str(); }
 
     bool operator ==(const CAnimParamType& animParamType) const
     {
-        if (m_type == eAnimParamType_ByString && animParamType.m_type == eAnimParamType_ByString)
+        if (m_type == kAnimParamTypeByString && animParamType.m_type == kAnimParamTypeByString)
         {
             return m_name == animParamType.m_name;
         }
@@ -284,15 +144,15 @@ public:
 
     bool operator <(const CAnimParamType& animParamType) const
     {
-        if (m_type == eAnimParamType_ByString && animParamType.m_type == eAnimParamType_ByString)
+        if (m_type == kAnimParamTypeByString && animParamType.m_type == kAnimParamTypeByString)
         {
             return m_name < animParamType.m_name;
         }
-        else if (m_type == eAnimParamType_ByString)
+        else if (m_type == kAnimParamTypeByString)
         {
             return false; // Always sort named params last
         }
-        else if (animParamType.m_type == eAnimParamType_ByString)
+        else if (animParamType.m_type == kAnimParamTypeByString)
         {
             return true; // Always sort named params last
         }
@@ -312,7 +172,7 @@ public:
     inline void Serialize(XmlNodeRef& xmlNode, bool bLoading, const uint version = kParamTypeVersion);
 
 private:
-    EAnimParamType m_type;
+    AnimParamType m_type;
     AZStd::string m_name;
 };
 
@@ -324,7 +184,7 @@ namespace AZStd
     {
         inline size_t operator()(const CAnimParamType& paramType) const
         {
-            AZStd::hash<EAnimParamType> paramTypeHasher;
+            AZStd::hash<AnimParamType> paramTypeHasher;
             size_t retVal = paramTypeHasher(paramType.GetType());
             AZStd::hash_combine(retVal, AZ::Crc32(paramType.GetName()));
             return retVal;
@@ -348,30 +208,6 @@ enum EAnimCurveType
     eAnimCurveType_BezierFloat  = 4,
 
     eAnimCurveType_Unknown          = 0xFFFFFFFF
-};
-
-//! Values that animation track can hold.
-// Do not change values! they are serialized
-//
-// Attention: This should only be expanded if you add a completely new value type that tracks can control!
-// If you just want to control a new parameter of an entity etc. extend EParamType
-//
-// Note: If the param type of a track is known and valid these can be derived from the node.
-//       These are serialized in case the parameter got invalid (for example for material nodes)
-//
-enum EAnimValue
-{
-    eAnimValue_Float = 0,
-    eAnimValue_Vector = 1,
-    eAnimValue_Quat = 2,
-    eAnimValue_Bool = 3,
-    eAnimValue_Select = 5,
-    eAnimValue_Vector4 = 15,
-    eAnimValue_DiscreteFloat = 16,
-    eAnimValue_RGB = 20,
-    eAnimValue_CharacterAnim = 21,
-
-    eAnimValue_Unknown = 0xFFFFFFFF
 };
 
 enum ETrackMask
@@ -495,7 +331,7 @@ struct IAnimTrack
 
     //////////////////////////////////////////////////////////////////////////
     virtual EAnimCurveType GetCurveType() = 0;
-    virtual EAnimValue     GetValueType() = 0;
+    virtual AnimValueType     GetValueType() = 0;
 
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
     // This color is used for the editor.
@@ -645,6 +481,9 @@ struct IAnimTrack
     // Only for position tracks, offset all track keys by this amount.
     virtual void OffsetKeyPosition(const Vec3& value) = 0;
 
+    // Used to update the data in tracks after the parent entity has been changed.
+    virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM) = 0;
+
     // Assign active time range for this track.
     virtual void SetTimeRange(const Range& timeRange) = 0;
 
@@ -733,9 +572,9 @@ public:
     {
         SParamInfo()
             : name("")
-            , valueType(eAnimValue_Float)
+            , valueType(kAnimValueDefault)
             , flags(ESupportedParamFlags(0)) {};
-        SParamInfo(const char* _name, CAnimParamType _paramType, EAnimValue _valueType, ESupportedParamFlags _flags)
+        SParamInfo(const char* _name, CAnimParamType _paramType, AnimValueType _valueType, ESupportedParamFlags _flags)
             : name(_name)
             , paramType(_paramType)
             , valueType(_valueType)
@@ -743,7 +582,7 @@ public:
 
         const char* name;           // parameter name.
         CAnimParamType paramType;     // parameter id.
-        EAnimValue valueType;       // value type, defines type of track to use for animating this parameter.
+        AnimValueType valueType;       // value type, defines type of track to use for animating this parameter.
         ESupportedParamFlags flags; // combination of flags from ESupportedParamFlags.
     };
 
@@ -763,7 +602,7 @@ public:
     virtual const char* GetName() = 0;
 
     // Get Type of this node.
-    virtual EAnimNodeType GetType() const = 0;
+    virtual AnimNodeType GetType() const = 0;
 
     // Return Animation Sequence that owns this node.
     virtual IAnimSequence* GetSequence() const = 0;
@@ -800,14 +639,14 @@ public:
 
     // AZ::Entity is bound/handled via their Id over EBuses, as opposed to directly with pointers.
     virtual void SetAzEntityId(const AZ::EntityId& id) = 0;
-    virtual AZ::EntityId GetAzEntityId() = 0;
+    virtual AZ::EntityId GetAzEntityId() const = 0;
 
     // Assign an entities guides to the lookAt nodes
     virtual void SetEntityGuidTarget(const EntityGUID& guid) = 0;
     virtual void SetEntityGuidSource(const EntityGUID& guid) = 0;
 
     // Return movie system that created this node.
-    virtual IMovieSystem*   GetMovieSystem() = 0;
+    virtual IMovieSystem*   GetMovieSystem() const = 0;
 
     //////////////////////////////////////////////////////////////////////////
     // Space position/orientation scale.
@@ -819,10 +658,15 @@ public:
     //! Scale entity node.
     virtual void SetScale(float time, const Vec3& scale) = 0;
 
+    //! Compute and return the offset which brings the current position to the given position
+    virtual Vec3 GetOffsetPosition(const Vec3& position) { return position - GetPos(); }
+
     //! Get current entity position.
     virtual Vec3 GetPos() = 0;
     //! Get current entity rotation.
     virtual Quat GetRotate() = 0;
+    //! Get entity rotation at specified time.
+    virtual Quat GetRotate(float time) = 0;
     //! Get current entity scale.
     virtual Vec3 GetScale() = 0;
 
@@ -868,7 +712,7 @@ public:
 
     // Description:
     //      Returns the params value type
-    virtual EAnimValue GetParamValueType(const CAnimParamType& paramType) const = 0;
+    virtual AnimValueType GetParamValueType(const CAnimParamType& paramType) const = 0;
 
     // Description:
     //      Returns the params value type
@@ -1026,10 +870,10 @@ struct ITrackEventListener
     // </interfuscator:shuffle>
 };
 
-struct IAnimSequenceOwner
+struct IAnimLegacySequenceObject
 {
     // <interfuscator:shuffle>
-    virtual ~IAnimSequenceOwner() {}
+    virtual ~IAnimLegacySequenceObject() {}
     virtual void OnNameChanged() = 0;
     virtual void OnModified() = 0;
     // </interfuscator:shuffle>
@@ -1089,11 +933,11 @@ struct IAnimSequence
     //! Resets the ID to the next available ID - used on sequence loads into levels to resolve ID collisions
     virtual void ResetId() = 0;
 
-    // legacy (sequence entity) owners are connected by pointers. DirectorComopnents are connected by AZ::EntityId
-    virtual void SetOwner(IAnimSequenceOwner* pOwner) = 0;
-    virtual IAnimSequenceOwner* GetOwner() const = 0;
-    virtual void SetOwner(const AZ::EntityId& entityOwnerId) = 0;
-    virtual const AZ::EntityId& GetOwnerId() const = 0;
+    // Legacy sequence objects are connected by pointers. SequenceComponents are connected by AZ::EntityId
+    virtual void SetLegacySequenceObject(IAnimLegacySequenceObject* legacySequenceObject) = 0;
+    virtual IAnimLegacySequenceObject* GetLegacySequenceObject() const = 0;
+    virtual void SetSequenceEntityId(const AZ::EntityId& entityOwnerId) = 0;
+    virtual const AZ::EntityId& GetSequenceEntityId() const = 0;
 
     //! Set the currently active director node.
     virtual void SetActiveDirector(IAnimNode* pDirectorNode) = 0;
@@ -1128,8 +972,8 @@ struct IAnimSequence
     // Description:
     //      Creates a new animation node with specified type.
     // Arguments:
-    //      nodeType - Type of node, one of EAnimNodeType enums.
-    virtual IAnimNode* CreateNode(EAnimNodeType nodeType) = 0;
+    //      nodeType - Type of node, one of AnimNodeType enums.
+    virtual IAnimNode* CreateNode(AnimNodeType nodeType) = 0;
 
     // Description:
     //      Creates a new animation node from serialized node XML.
@@ -1207,7 +1051,7 @@ struct IAnimSequence
     */
     virtual void TimeChanged(float newTime) = 0;
 
-    // Serialize this sequence to XML.
+    //!@deprecated Serialize this sequence to XML - Sequence Components use AZ::Serialization
     virtual void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true, uint32 overrideId = 0, bool bUndo = false) = 0;
 
     // fix up internal pointers after load from Sequence Component
@@ -1246,7 +1090,7 @@ struct IAnimSequence
     virtual void RemoveTrackEventListener(ITrackEventListener* pListener) = 0;
 
     // return the seuqnence type - legacy or new director component
-    virtual ESequenceType GetSequenceType() const = 0;
+    virtual SequenceType GetSequenceType() const = 0;
 
     // </interfuscator:shuffle>
 };
@@ -1302,11 +1146,11 @@ struct IMovieSystem
     //! Loads all nodes and sequences from a specific file (should be called when the level is loaded).
     virtual bool Load(const char* pszFile, const char* pszMission) = 0;
 
-    virtual IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, ESequenceType = eSequenceType_Legacy) = 0;
+    virtual IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, SequenceType = kSequenceTypeDefault, AZ::EntityId entityId = AZ::EntityId()) = 0;
     virtual IAnimSequence* LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty = true) = 0;
     virtual void AddSequence(IAnimSequence* pSequence) = 0;
     virtual void RemoveSequence(IAnimSequence* pSequence) = 0;
-    virtual IAnimSequence* FindSequence(const char* sequence) const = 0;
+    virtual IAnimSequence* FindLegacySequenceByName(const char* sequence) const = 0;
     virtual IAnimSequence* FindSequence(const AZ::EntityId& componentEntitySequenceId) const = 0;
     virtual IAnimSequence* FindSequenceById(uint32 id) const = 0;
     virtual IAnimSequence* GetSequence(int i) const = 0;
@@ -1458,7 +1302,7 @@ struct IMovieSystem
 
     virtual IMovieCallback* GetCallback() = 0;
 
-    // Serialize to XML.
+    //!@deprecated Serialize to XML (for legacy object sequences only - Sequence Components use AZ::Serialization
     virtual void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOldNodes = false, bool bLoadEmpty = true) = 0;
 
     virtual const SCameraParams& GetCameraParams() const = 0;
@@ -1517,12 +1361,12 @@ struct IMovieSystem
     virtual const AZStd::string& GetUserNotificationMsgs() const = 0;
 
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
-    virtual EAnimNodeType GetNodeTypeFromString(const char* pString) const = 0;
+    virtual AnimNodeType GetNodeTypeFromString(const char* pString) const = 0;
     virtual CAnimParamType GetParamTypeFromString(const char* pString) const = 0;
 #endif
 
     // fill in the animNodeType from the xmlNode description (or vice versa)
-    virtual void SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xmlNode, bool bLoading, const uint version, int flags) = 0;
+    virtual void SerializeNodeType(AnimNodeType& animNodeType, XmlNodeRef& xmlNode, bool bLoading, const uint version, int flags) = 0;
 
     // </interfuscator:shuffle>
 };
@@ -1534,7 +1378,7 @@ inline void SAnimContext::Serialize(XmlNodeRef& xmlNode, bool bLoading)
         XmlString name;
         if (xmlNode->getAttr("sequence", name))
         {
-            pSequence = gEnv->pMovieSystem->FindSequence(name.c_str());
+            pSequence = gEnv->pMovieSystem->FindLegacySequenceByName(name.c_str());
         }
         xmlNode->getAttr("dt", dt);
         xmlNode->getAttr("fps", fps);

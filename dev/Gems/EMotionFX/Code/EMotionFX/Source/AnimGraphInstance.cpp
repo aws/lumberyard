@@ -26,14 +26,13 @@
 #include "EventHandler.h"
 #include "EventManager.h"
 #include "EMotionFXManager.h"
-#include "AnimGraphReferenceNode.h"
 #include <MCore/Source/AttributeSettings.h>
 
 
 namespace EMotionFX
 {
     // constructor
-    AnimGraphInstance::AnimGraphInstance(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings, ReferenceInfo* referenceInfo)
+    AnimGraphInstance::AnimGraphInstance(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings)
         : BaseObject()
     {
         // register at the animgraph
@@ -51,12 +50,6 @@ namespace EMotionFX
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime       = false;
 #endif // EMFX_DEVELOPMENT_BUILD
-
-        // copy the reference info settings
-        if (referenceInfo)
-        {
-            mReferenceInfo = *referenceInfo;
-        }
 
         if (initSettings)
         {
@@ -81,32 +74,8 @@ namespace EMotionFX
         CreateParameterValues();
 
         // recursively create the unique datas for all nodes
-        if (referenceInfo == nullptr)
-        {
-            mAnimGraph->GetRootStateMachine()->RecursiveOnUpdateUniqueData(this);
-            mAnimGraph->GetRootStateMachine()->Init(this);
-        }
-        else
-        {
-            referenceInfo->mSourceNode->RecursiveOnUpdateUniqueData(this);
-            referenceInfo->mSourceNode->Init(this);
-
-            // we have to use the parent here, because in some special cases with passthrough nodes, we also need unique data objects of the parent
-            AnimGraphNode* sourceParent = referenceInfo->mSourceNode->GetParentNode();
-            if (sourceParent)
-            {
-                const uint32 numChildNodes = sourceParent->GetNumChildNodes();
-                for (uint32 i = 0; i < numChildNodes; ++i)
-                {
-                    AnimGraphNode* child = sourceParent->GetChildNode(i);
-                    if (child != referenceInfo->mSourceNode && child != referenceInfo->mReferenceNode) // skip the source node as we already initialized that, and skip the reference node as that creates infinite recursion
-                    {
-                        child->RecursiveOnUpdateUniqueData(this);
-                        child->Init(this);
-                    }
-                }
-            }
-        }
+        mAnimGraph->GetRootStateMachine()->RecursiveOnUpdateUniqueData(this);
+        mAnimGraph->GetRootStateMachine()->Init(this);
 
         // initialize the anim graph instance
         Init();
@@ -141,17 +110,7 @@ namespace EMotionFX
         mUniqueDatas.Clear();
         objectDataPool.Unlock();
 
-        // remove the parameters and the remaining event handlers
-        // this needs to be called at the very end of the destructor!
-        if (mReferenceInfo.mParameterSource == nullptr)
-        {
-            RemoveAllParameters(true);
-        }
-        else
-        {
-            RemoveAllParameters(false);
-        }
-
+        RemoveAllParameters(true);
         RemoveAllEventHandlers(true);
 
         // remove all the internal attributes (from node ports etc)
@@ -163,9 +122,9 @@ namespace EMotionFX
 
 
     // create an animgraph instance
-    AnimGraphInstance* AnimGraphInstance::Create(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings, ReferenceInfo* referenceInfo)
+    AnimGraphInstance* AnimGraphInstance::Create(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings)
     {
-        return new AnimGraphInstance(animGraph, actorInstance, motionSet, initSettings, referenceInfo);
+        return new AnimGraphInstance(animGraph, actorInstance, motionSet, initSettings);
     }
 
 
@@ -296,30 +255,14 @@ namespace EMotionFX
     // resize the number of parameters
     void AnimGraphInstance::CreateParameterValues()
     {
-        // if we are not dealing with a reference, or we want unique parameters
-        if (mReferenceInfo.mParameterSource == nullptr)
-        {
-            RemoveAllParameters(true);
-            mParamValues.Resize(mAnimGraph->GetNumParameters());
+        RemoveAllParameters(true);
+        mParamValues.Resize(mAnimGraph->GetNumParameters());
 
-            // init the values
-            const uint32 numParams = mParamValues.GetLength();
-            for (uint32 i = 0; i < numParams; ++i)
-            {
-                mParamValues[i] = mAnimGraph->GetParameter(i)->GetDefaultValue()->Clone();
-            }
-        }
-        else
+        // init the values
+        const uint32 numParams = mParamValues.GetLength();
+        for (uint32 i = 0; i < numParams; ++i)
         {
-            RemoveAllParameters(false); // don't delete them from memory
-            mParamValues.Resize(mReferenceInfo.mParameterSource->GetAnimGraph()->GetNumParameters());
-
-            // init the values
-            const uint32 numParams = mParamValues.GetLength();
-            for (uint32 i = 0; i < numParams; ++i)
-            {
-                mParamValues[i] = mReferenceInfo.mParameterSource->GetParameterValue(i);
-            }
+            mParamValues[i] = mAnimGraph->GetParameter(i)->GetDefaultValue()->Clone();
         }
     }
 
@@ -607,9 +550,9 @@ namespace EMotionFX
 
     void AnimGraphInstance::SetIsOwnedByRuntime(bool isOwnedByRuntime)
     {
-#if defined(EMFX_DEVELOPMENT_BUILD)      
+#if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime = isOwnedByRuntime;
-#endif    
+#endif
     }
 
 
@@ -901,7 +844,7 @@ namespace EMotionFX
     // get the root node
     AnimGraphNode* AnimGraphInstance::GetRootNode() const
     {
-        return (mReferenceInfo.mSourceNode == nullptr) ? mAnimGraph->GetRootStateMachine() : mReferenceInfo.mSourceNode;
+        return mAnimGraph->GetRootStateMachine();
     }
 
 
@@ -1152,18 +1095,6 @@ namespace EMotionFX
     }
 
 
-    bool AnimGraphInstance::GetIsReference() const
-    {
-        return (mReferenceInfo.mSourceNode != nullptr);
-    }
-
-
-    const AnimGraphInstance::ReferenceInfo& AnimGraphInstance::GetReferenceInfo() const
-    {
-        return mReferenceInfo;
-    }
-
-
     void AnimGraphInstance::SetUniqueObjectData(uint32 index, AnimGraphObjectData* data)
     {
         mUniqueDatas[index] = data;
@@ -1235,12 +1166,12 @@ namespace EMotionFX
     }
 
 
-    bool AnimGraphInstance::GetVector3ParameterValue(uint32 paramIndex, MCore::Vector3* outValue)
+    bool AnimGraphInstance::GetVector3ParameterValue(uint32 paramIndex, AZ::Vector3* outValue)
     {
         MCore::AttributeVector3* param = GetParameterValueChecked<MCore::AttributeVector3>(paramIndex);
         if (param)
         {
-            *outValue = param->GetValue();
+            *outValue = AZ::Vector3(param->GetValue());
             return true;
         }
 
@@ -1351,7 +1282,7 @@ namespace EMotionFX
     }
 
 
-    bool AnimGraphInstance::GetVector3ParameterValue(const char* paramName, MCore::Vector3* outValue)
+    bool AnimGraphInstance::GetVector3ParameterValue(const char* paramName, AZ::Vector3* outValue)
     {
         const uint32 index = FindParameterIndex(paramName);
         if (index == MCORE_INVALIDINDEX32)
@@ -1365,7 +1296,7 @@ namespace EMotionFX
             return false;
         }
 
-        *outValue = attrib->GetValue();
+        *outValue = AZ::Vector3(attrib->GetValue());
         return true;
     }
 

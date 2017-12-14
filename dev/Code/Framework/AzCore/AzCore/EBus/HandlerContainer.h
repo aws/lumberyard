@@ -74,8 +74,6 @@ namespace AZ
                 ++m_refCount;
             }
             void release();
-            void lock();
-            void unlock();
 
             BusIdType    m_busId;
             AZStd::atomic_uint m_refCount;

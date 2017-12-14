@@ -48,7 +48,7 @@ public: // member functions
     // ~UiRadioButtonInterface
 
     // UiRadioButtonCommunicationInterface
-    void SetState(bool isOn) override;
+    void SetState(bool isOn, bool sendNotifications) override;
     void SetGroup(AZ::EntityId group) override;
     // ~UiRadioButtonCommunicationInterface
 

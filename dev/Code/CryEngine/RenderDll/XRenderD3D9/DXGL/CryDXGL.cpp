@@ -282,6 +282,8 @@ DXGL_DEBUG_STRING_BUFFER(": leave", g_kLeaveDebugBuffer);
 
 #endif //DXGL_PROFILE_USE_GREMEDY_STRING_MARKER
 
+
+
 DXGL_API void DXGLProfileLabel(const char* szName)
 {
 #if DXGL_PROFILE_USE_GREMEDY_STRING_MARKER && DXGL_EXTENSION_LOADER
@@ -297,10 +299,12 @@ DXGL_API void DXGLProfileLabel(const char* szName)
         {
             glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0, GL_DEBUG_SEVERITY_NOTIFICATION, strlen(szName), szName);
         }
+#if defined(OPENGL_ES)
         else if(glDebugMessageInsertKHR)
         {
             glDebugMessageInsertKHR(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0, GL_DEBUG_SEVERITY_NOTIFICATION, strlen(szName), szName);
         }
+#endif
     }
     //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
@@ -321,10 +325,12 @@ DXGL_API void DXGLProfileLabelPush(const char* szName)
         {
             glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, strlen(szName), szName);
         }
+#if defined(OPENGL_ES)
         else if(glPushDebugGroupKHR)
         {
             glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION, 0, strlen(szName), szName);
         }
+#endif
     }
     //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
@@ -348,10 +354,12 @@ DXGL_API void DXGLProfileLabelPop(const char* szName)
         {
             glPopDebugGroup();
         }
+#if defined(OPENGL_ES)
         else if(glPopDebugGroupKHR)
         {
             glPopDebugGroupKHR();
         }
+#endif
     }
     //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
@@ -377,7 +385,7 @@ inline CCryDXGLDeviceContext* GetDXGLDeviceContext(ID3D11DeviceContext* pDeviceC
 #if !DXGL_FULL_EMULATION
 
 //  Confetti BEGIN: Igor Lobanchikov
-#if defined(ANDROID)
+#if defined(OPENGL_ES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare,
     bool const storeDontCare)
@@ -437,13 +445,13 @@ void DXGLSetStencilDontCareActions(ID3D11DepthStencilView* const rtv,
 
 void DXGLTogglePLS(ID3D11DeviceContext* pDeviceContext, bool const enable)
 {
-    if (GLAD_GL_EXT_shader_pixel_local_storage)
+    if (DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage))
     {
         NCryOpenGL::CContext* pGLContext(GetDXGLDeviceContext(pDeviceContext)->GetGLContext());
         pGLContext->TogglePLS(enable);
     }
 }
-#endif
+#endif // defined(OPENGL_ES)
 
 void DXGLInitializeIHVSpecifix()
 {
@@ -563,25 +571,22 @@ void DXGLIssueFrameFences(ID3D11Device* pDevice)
 
 #endif //!DXGL_FULL_EMULATION
 
-#if defined(DXGL_USE_SDL)
-
-DXGL_API bool DXGLCreateSDLWindow(
+#if !defined(WIN32)
+DXGL_API bool DXGLCreateWindow(
     const char* szTitle,
     uint32 uWidth,
     uint32 uHeight,
     bool bFullScreen,
     HWND* pHandle)
 {
-    return NCryOpenGL::CDevice::CreateSDLWindow(szTitle, uWidth, uHeight, bFullScreen, pHandle);
+    return NCryOpenGL::CDevice::CreateWindow(szTitle, uWidth, uHeight, bFullScreen, pHandle);
 }
 
-DXGL_API void DXGLDestroySDLWindow(HWND kHandle)
+DXGL_API void DXGLDestroyWindow(HWND kHandle)
 {
-    NCryOpenGL::CDevice::DestroySDLWindow(kHandle);
+    NCryOpenGL::CDevice::DestroyWindow(kHandle);
 }
-
-#endif //defined(DXGL_USE_SDL)
-
+#endif // !defined(WIN32)
 
 ////////////////////////////////////////////////////////////////////////////
 //  DxErr Logging and error functions

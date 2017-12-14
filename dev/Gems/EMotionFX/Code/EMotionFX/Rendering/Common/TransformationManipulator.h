@@ -32,7 +32,7 @@ namespace MCommon
         /**
          * The constructor.
          */
-        ManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const MCore::Vector3& oldValue)
+        ManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const AZ::Vector3& oldValue)
         {
             mActorInstance  = actorInstance;
             mOldValueVec    = oldValue;
@@ -49,8 +49,8 @@ namespace MCommon
             mActorInstance  = actorInstance;
             mOldValueQuat   = oldValue;
             mCurrValueQuat  = oldValue;
-            mOldValueVec    = MCore::Vector3(0.0f, 0.0f, 0.0f);
-            mCurrValueVec   = MCore::Vector3(0.0f, 0.0f, 0.0f);
+            mOldValueVec = AZ::Vector3::CreateZero();
+            mCurrValueVec = AZ::Vector3::CreateZero();
         }
 
         /**
@@ -61,7 +61,7 @@ namespace MCommon
         /**
          * Update the actor instance.
          */
-        virtual void Update(const MCore::Vector3& value)        { mCurrValueVec = value; }
+        virtual void Update(const AZ::Vector3& value)           { mCurrValueVec = value; }
         virtual void Update(const MCore::Quaternion& value)     { mCurrValueQuat = value; }
 
         /**
@@ -73,14 +73,14 @@ namespace MCommon
          * Functions to get the current value.
          * @return the position/scale/rotation of the actor instance.
          */
-        virtual MCore::Vector3 GetCurrValueVec()        { return mCurrValueVec; }
+        virtual AZ::Vector3 GetCurrValueVec()           { return mCurrValueVec; }
         virtual MCore::Quaternion GetCurrValueQuat()    { return mCurrValueQuat; }
 
         /**
          * Return the old value.
          * @return the old value.
          */
-        const MCore::Vector3& GetOldValueVec() const        { return mOldValueVec; }
+        const AZ::Vector3& GetOldValueVec() const           { return mOldValueVec; }
         const MCore::Quaternion& GetOldValueQuat() const    { return mOldValueQuat; }
 
         /**
@@ -99,8 +99,8 @@ namespace MCommon
     protected:
         MCore::Quaternion           mOldValueQuat;
         MCore::Quaternion           mCurrValueQuat;
-        MCore::Vector3              mOldValueVec;
-        MCore::Vector3              mCurrValueVec;
+        AZ::Vector3                 mOldValueVec;
+        AZ::Vector3                 mCurrValueVec;
         EMotionFX::ActorInstance*   mActorInstance;
     };
 
@@ -128,8 +128,8 @@ namespace MCommon
             mScalingFactor      = scalingFactor;
             mIsVisible          = isVisible;
             mSelectionLocked    = false;
-            mPosition           = MCore::Vector3(0.0f, 0.0f, 0.0f);
-            mRenderOffset       = MCore::Vector3(0.0f, 0.0f, 0.0f);
+            mPosition           = AZ::Vector3::CreateZero();
+            mRenderOffset       = AZ::Vector3::CreateZero();
             mCallback           = nullptr;
         }
 
@@ -144,7 +144,7 @@ namespace MCommon
         /**
          * Function to init the position of the gizmo.
          */
-        void Init(const MCore::Vector3& position)                       { mPosition = position + mRenderOffset; UpdateBoundingVolumes(); }
+        void Init(const AZ::Vector3& position)                          { mPosition = position + mRenderOffset; UpdateBoundingVolumes(); }
 
         /**
          * Function to set the name of the gizmo.
@@ -186,9 +186,9 @@ namespace MCommon
          * Only affects rendering position of the gizmo, not the actual value it modifies.
          * @param offset The offset position of the gizmo.
          */
-        void SetRenderOffset(const MCore::Vector3& offset)
+        void SetRenderOffset(const AZ::Vector3& offset)
         {
-            MCore::Vector3 oldPos = GetPosition();
+            AZ::Vector3 oldPos = GetPosition();
             mRenderOffset = offset;
             Init(oldPos);
         }
@@ -197,14 +197,14 @@ namespace MCommon
          * Get the position of the gizmo.
          * @return The position of the gizmo.
          */
-        MCore::Vector3 GetPosition() const                              { return mPosition - mRenderOffset; }
+        AZ::Vector3 GetPosition() const                                 { return mPosition - mRenderOffset; }
 
         /**
          * Get the position offset of the gizmo.
          * Only affects rendering position of the gizmo, not the actual value it modifies.
          * @return The offset position of the gizmo.
          */
-        const MCore::Vector3& GetRenderOffset() const                   { return mRenderOffset; }
+        const AZ::Vector3& GetRenderOffset() const                      { return mRenderOffset; }
 
         /**
          * Set the callback.
@@ -274,8 +274,8 @@ namespace MCommon
         }
 
     protected:
-        MCore::Vector3          mPosition;
-        MCore::Vector3          mRenderOffset;
+        AZ::Vector3             mPosition;
+        AZ::Vector3             mRenderOffset;
         MCore::String           mName;
         MCore::String           mTempString;
         uint32                  mMode;

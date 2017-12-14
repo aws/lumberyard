@@ -235,7 +235,7 @@ namespace Audio
 
         if (m_registeredAudioObjects.find(pObject) == m_registeredAudioObjects.end())
         {
-            g_audioImplLogger_nosound.Log(eALT_WARNING, "Called ResetAudioObject on an audio data that has not been registered!");
+            g_audioImplLogger_nosound.Log(eALT_COMMENT, "Called ResetAudioObject on an audio data that isn't registered!");
         }
 
         return eARS_SUCCESS;
@@ -779,6 +779,12 @@ namespace Audio
             g_audioImplLogger_nosound.Log(eALT_WARNING, "Called ResetAudioEventData with null object!");
             return;
         }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    const char* const CAudioSystemImpl_NoSound::GetImplSubPath() const
+    {
+        return s_nosoundImplSubPath;
     }
 
     //////////////////////////////////////////////////////////////////////////

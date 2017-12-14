@@ -18,6 +18,10 @@
 #include "TimeOfDay.h"
 #include <Cry_Geo.h>
 #include <IJobManager_JobDelegator.h>
+#include "MathConversion.h"
+
+#include <AzCore/Math/Plane.h>
+#include <AzCore/Math/Vector2.h>
 
 DECLARE_JOB("CWaterVolume_Render", TCWaterVolume_Render, CWaterVolumeRenderNode::Render_JobEntry);
 
@@ -46,7 +50,7 @@ namespace WaterVolumeRenderNodeUtils
     {
         VertexAccess(const T* pVertices, size_t numVertices)
             : m_pVertices(pVertices)
-            , m_numVertices(numVertices)
+              , m_numVertices(numVertices)
         {
         }
 
@@ -583,11 +587,26 @@ void CWaterVolumeRenderNode::CreateArea(uint64 volumeID, const Vec3* pVertices, 
     Get3DEngine()->RegisterEntity(this, nSID, nSID);
 }
 
+void CWaterVolumeRenderNode::CreateRiver(uint64 volumeID, const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, float uTexCoordBegin, float uTexCoordEnd, const AZ::Vector2& surfUVScale, const AZ::Plane& fogPlane, bool keepSerializationParams, int nSID)
+{
+    PodArray<Vec3> points;
+    points.reserve(verticies.size());
+    for (auto azPoint : verticies)
+    {
+        points.Add(AZVec3ToLYVec3(transform * azPoint));
+    }
+
+    Plane plane = AZPlaneToLyPlane(fogPlane);
+    CreateRiver(volumeID, points.GetElements(), static_cast<unsigned int>(verticies.size()), uTexCoordBegin, uTexCoordEnd, Vec2(surfUVScale.GetX(), surfUVScale.GetY()), plane, keepSerializationParams, nSID);
+}
+
 void CWaterVolumeRenderNode::CreateRiver(uint64 volumeID, const Vec3* pVertices, unsigned int numVertices, float uTexCoordBegin, float uTexCoordEnd, const Vec2& surfUVScale, const Plane& fogPlane, bool keepSerializationParams, int nSID)
 {
-    assert(fabs(fogPlane.n.GetLengthSquared() - 1.0f) < 1e-4 && "CWaterVolumeRenderNode::CreateRiver(...) -- Fog plane normal doesn't have unit length!");
-    assert(fogPlane.n.Dot(Vec3(0, 0, 1)) > 1e-4f && "CWaterVolumeRenderNode::CreateRiver(...) -- Invalid fog plane specified!");
-    if (fogPlane.n.Dot(Vec3(0, 0, 1)) <= 1e-4f)
+    const float precisionTolerance = 1e-2;
+
+    assert(fabs(fogPlane.n.GetLengthSquared() - 1.0f) < precisionTolerance && "CWaterVolumeRenderNode::CreateRiver(...) -- Fog plane normal doesn't have unit length!");
+    assert(fogPlane.n.Dot(Vec3(0, 0, 1)) > precisionTolerance && "CWaterVolumeRenderNode::CreateRiver(...) -- Invalid fog plane specified!");
+    if (fogPlane.n.Dot(Vec3(0, 0, 1)) <= precisionTolerance)
     {
         return;
     }
@@ -731,6 +750,16 @@ void CWaterVolumeRenderNode::SetAreaPhysicsArea(const Vec3* pVertices, unsigned 
     }
 }
 
+void CWaterVolumeRenderNode::SetRiverPhysicsArea(const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, bool keepSerializationParams)
+{
+    PodArray<Vec3> points;
+    points.reserve(verticies.size());
+    for (auto azPoint : verticies)
+    {
+        points.Add(AZVec3ToLYVec3(transform * azPoint));
+    }
+    SetRiverPhysicsArea(points.GetElements(), static_cast<unsigned int>(verticies.size()), keepSerializationParams);
+}
 
 void CWaterVolumeRenderNode::SetRiverPhysicsArea(const Vec3* pVertices, unsigned int numVertices, bool keepSerializationParams)
 {

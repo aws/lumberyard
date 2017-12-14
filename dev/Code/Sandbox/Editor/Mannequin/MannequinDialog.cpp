@@ -2049,8 +2049,8 @@ void CMannequinDialog::PopulateTagList(const CTagDefinition* tagDef)
 //////////////////////////////////////////////////////////////////////////
 void CMannequinDialog::RefreshTagsPanel()
 {
-    m_wndTagsPanel->SetVarBlock(m_tagVars.get(), functor(*this, &CMannequinDialog::OnInternalVariableChange));
-    m_wndTagsPanel->DeleteVars();
+	m_wndTagsPanel->DeleteVars();
+	m_wndTagsPanel->SetVarBlock(m_tagVars.get(), functor(*this, &CMannequinDialog::OnInternalVariableChange));
 }
 
 //////////////////////////////////////////////////////////////////////////

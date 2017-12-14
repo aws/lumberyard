@@ -168,6 +168,18 @@ public: // member functions
     //! Set the pivot and adjust the offsets to stay in same place
     virtual void SetPivotAndAdjustOffsets(AZ::Vector2 pivot) = 0;
 
+    //! Modify left and right offsets relative the element's anchors
+    virtual void SetLocalWidth(float width) = 0;
+
+    //! Get the height of the element based off it's offsets
+    virtual float GetLocalWidth() = 0;
+
+    //! Modify top and bottom offsets relative the element's anchors
+    virtual void SetLocalHeight(float height) = 0;
+
+    //! Get the height of the element based off it's offsets
+    virtual float GetLocalHeight() = 0;
+
 public: // static member data
 
     //! Only one component on a entity can implement the events

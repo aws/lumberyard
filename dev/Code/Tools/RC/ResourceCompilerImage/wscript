@@ -84,9 +84,9 @@ def build(bld):
 
         darwin_lib                  = [ 'PVRTexLib', 'EtcLib' ],
         darwin_libpath              = [ bld.Path('Code/Tools/SDKs/PowerVRTexTool/OSX_x86')],
-        darwin_debug_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Debug')],
-        darwin_release_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Release')],
-        darwin_profile_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Release')],
+        darwin_debug_all_libpath    = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Debug')],
+        darwin_release_all_libpath  = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Release')],
+        darwin_profile_all_libpath  = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Release')],
         
 
         darwin_cflags               = ['-Wno-shift-count-overflow',

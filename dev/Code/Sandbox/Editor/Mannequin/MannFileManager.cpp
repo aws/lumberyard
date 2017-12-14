@@ -76,14 +76,14 @@ public:
     void UpdateState()
     {
         int nIcon = STATUSICON_OK;
-        uint32 attr = CFileUtil::GetAttributes(m_fullFileName.toLatin1().data());
+        uint32 attr = CFileUtil::GetAttributes(m_fullFileName.toUtf8().data());
 
         m_bCheckedOut = false;
         m_bInPak = false;
         m_bReadOnly = false;
 
         // Checked out?
-        if ((attr & SCC_FILE_ATTRIBUTE_MANAGED) && (attr & SCC_FILE_ATTRIBUTE_CHECKEDOUT))
+        if ((attr & SCC_FILE_ATTRIBUTE_CHECKEDOUT))
         {
             m_bCheckedOut = true;
             nIcon = STATUSICON_CHECKEDOUT;

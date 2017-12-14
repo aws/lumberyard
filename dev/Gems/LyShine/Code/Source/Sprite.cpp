@@ -23,7 +23,7 @@ namespace
 
     // Increment this when the Sprite Serialize(TSerialize) function
     // changes to be incompatible with previous data
-    uint32 spriteFileVersionNumber = 1;
+    uint32 spriteFileVersionNumber = 2;
     const char* spriteVersionNumberTag = "versionNumber";
 
     const char* allowedSpriteTextureExtensions[] = {
@@ -60,6 +60,40 @@ namespace
 
         return false;
     }
+
+    //! \brief Reads a Vec2 tuple (as a string) into an AZ::Vector2
+    //!
+    //! Example XML string data: "1.0 2.0"
+    void SerializeAzVector2(TSerialize ser, const char* attributeName, AZ::Vector2& azVec2)
+    {
+        if (ser.IsReading())
+        {
+            string stringVal;
+            ser.Value(attributeName, stringVal);
+            stringVal.replace(',', ' ');
+            char* pEnd = nullptr;
+            float uVal = strtof(stringVal.c_str(), &pEnd);
+            float vVal = strtof(pEnd, nullptr);
+            azVec2.Set(uVal, vVal);
+        }
+        else
+        {
+            Vec2 legacyVec2(azVec2.GetX(), azVec2.GetY());
+            ser.Value(attributeName, legacyVec2);
+        }
+    }
+
+    //! \return The number of child <Cell> tags off the <SpriteSheet> parent tag.
+    int GetNumSpriteSheetCellTags(const XmlNodeRef& root)
+    {
+        int numCellTags = 0;
+        XmlNodeRef spriteSheetTag = root->findChild("SpriteSheet");
+        if (spriteSheetTag)
+        {
+            numCellTags = spriteSheetTag->getChildCount();
+        }
+        return numCellTags;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +101,7 @@ namespace
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CSprite::CSpriteHashMap* CSprite::s_loadedSprites;
+AZStd::string CSprite::s_emptyString;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC MEMBER FUNCTIONS
@@ -75,6 +110,7 @@ CSprite::CSpriteHashMap* CSprite::s_loadedSprites;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 CSprite::CSprite()
     : m_texture(nullptr)
+    , m_numSpriteSheetCellTags(0)
 {
     AddRef();
 }
@@ -121,6 +157,19 @@ void CSprite::SetBorders(Borders borders)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::SetCellBorders(int cellIndex, Borders borders)
+{
+    if (CellIndexWithinRange(cellIndex))
+    {
+        m_spriteSheetCells[cellIndex].borders = borders;
+    }
+    else
+    {
+        SetBorders(borders);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 ITexture* CSprite::GetTexture() const
 {
     // If the sprite is associated with a render target, the sprite does not own the texture.
@@ -135,14 +184,64 @@ ITexture* CSprite::GetTexture() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CSprite::Serialize(TSerialize ser)
 {
-    ser.BeginGroup("Sprite");
+    // When reading, get sprite-sheet info from XML tag data, otherwise get
+    // it from this sprite object directly.
+    const bool hasSpriteSheetCells = ser.IsReading() ? m_numSpriteSheetCellTags > 0 : !GetSpriteSheetCells().empty();
 
-    ser.Value("m_left", m_borders.m_left);
-    ser.Value("m_right", m_borders.m_right);
-    ser.Value("m_top", m_borders.m_top);
-    ser.Value("m_bottom", m_borders.m_bottom);
+    if (!hasSpriteSheetCells && ser.BeginOptionalGroup("Sprite", true))
+    {
+        ser.Value("m_left", m_borders.m_left);
+        ser.Value("m_right", m_borders.m_right);
+        ser.Value("m_top", m_borders.m_top);
+        ser.Value("m_bottom", m_borders.m_bottom);
 
-    ser.EndGroup();
+        ser.EndGroup();
+    }
+
+    if (hasSpriteSheetCells && ser.BeginOptionalGroup("SpriteSheet", true))
+    {
+        const int numSpriteSheetCells = ser.IsReading() ? m_numSpriteSheetCellTags : GetSpriteSheetCells().size();
+        for (int i = 0; i < numSpriteSheetCells; ++i)
+        {
+            ser.BeginOptionalGroup("Cell", true);
+
+            if (ser.IsReading())
+            {
+                m_spriteSheetCells.push_back(SpriteSheetCell());
+            }
+
+            string aliasTemp;
+            if (ser.IsReading())
+            {
+                ser.Value("alias", aliasTemp);
+                m_spriteSheetCells[i].alias = aliasTemp.c_str();
+            }
+            else
+            {
+                aliasTemp = m_spriteSheetCells[i].alias.c_str();
+                ser.Value("alias", aliasTemp);
+            }
+
+            SerializeAzVector2(ser, "topLeft", m_spriteSheetCells[i].uvCellCoords.TopLeft());
+            SerializeAzVector2(ser, "topRight", m_spriteSheetCells[i].uvCellCoords.TopRight());
+            SerializeAzVector2(ser, "bottomRight", m_spriteSheetCells[i].uvCellCoords.BottomRight());
+            SerializeAzVector2(ser, "bottomLeft", m_spriteSheetCells[i].uvCellCoords.BottomLeft());
+
+            if (ser.BeginOptionalGroup("Sprite", true))
+            {
+                ser.Value("m_left", m_spriteSheetCells[i].borders.m_left);
+                ser.Value("m_right", m_spriteSheetCells[i].borders.m_right);
+                ser.Value("m_top", m_spriteSheetCells[i].borders.m_top);
+                ser.Value("m_bottom", m_spriteSheetCells[i].borders.m_bottom);
+
+                ser.EndGroup();
+            }
+
+            ser.EndGroup();
+        }
+
+        ser.EndGroup();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +268,22 @@ bool CSprite::AreBordersZeroWidth() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CSprite::AreCellBordersZeroWidth(int cellIndex) const
+{
+    if (CellIndexWithinRange(cellIndex))
+    {
+        return m_spriteSheetCells[cellIndex].borders.m_left == 0
+               && m_spriteSheetCells[cellIndex].borders.m_right == 1
+               && m_spriteSheetCells[cellIndex].borders.m_top == 0
+               && m_spriteSheetCells[cellIndex].borders.m_bottom == 1;
+    }
+    else
+    {
+        return AreBordersZeroWidth();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::Vector2 CSprite::GetSize() const
 {
     ITexture* texture = GetTexture();
@@ -180,6 +295,163 @@ AZ::Vector2 CSprite::GetSize() const
     {
         return AZ::Vector2(0.0f, 0.0f);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::Vector2 CSprite::GetCellSize(int cellIndex) const
+{
+    AZ::Vector2 textureSize(GetSize());
+
+    if (CellIndexWithinRange(cellIndex))
+    {
+        // Assume top width is same as bottom width
+        const float normalizedCellWidth =
+            m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() -
+            m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX();
+
+        // Similar, assume height of cell is same for left and right sides
+        const float normalizedCellHeight =
+            m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() -
+            m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY();
+
+        textureSize.SetX(textureSize.GetX() * normalizedCellWidth);
+        textureSize.SetY(textureSize.GetY() * normalizedCellHeight);
+    }
+
+    return textureSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+const ISprite::SpriteSheetCellContainer& CSprite::GetSpriteSheetCells() const
+{
+    return m_spriteSheetCells;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::SetSpriteSheetCells(const SpriteSheetCellContainer& cells)
+{
+    m_spriteSheetCells = cells;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::ClearSpriteSheetCells()
+{
+    m_spriteSheetCells.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::AddSpriteSheetCell(const SpriteSheetCell& spriteSheetCell)
+{
+    m_spriteSheetCells.push_back(spriteSheetCell);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::Vector2 CSprite::GetCellUvSize(int cellIndex) const
+{
+    AZ::Vector2 result(1.0f, 1.0f);
+
+    if (CellIndexWithinRange(cellIndex))
+    {
+        result.SetX(m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX());
+        result.SetY(m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY());
+    }
+
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+const UiTransformInterface::RectPoints& CSprite::GetCellUvCoords(int cellIndex) const
+{
+    if (CellIndexWithinRange(cellIndex))
+    {
+        return m_spriteSheetCells[cellIndex].uvCellCoords;
+    }
+
+    static UiTransformInterface::RectPoints rectPoints(0.0f, 1.0f, 0.0f, 1.0f);
+    return rectPoints;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+ISprite::Borders CSprite::GetCellUvBorders(int cellIndex) const
+{
+    if (CellIndexWithinRange(cellIndex))
+    {
+        return m_spriteSheetCells[cellIndex].borders;
+    }
+
+    return m_borders;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+ISprite::Borders CSprite::GetTextureSpaceCellUvBorders(int cellIndex) const
+{
+    Borders textureSpaceBorders(m_borders);
+
+    if (CellIndexWithinRange(cellIndex))
+    {
+        const float cellWidth = GetCellUvSize(cellIndex).GetX();
+        const float cellMinUCoord = GetCellUvCoords(cellIndex).TopLeft().GetX();
+        const float cellNormalizedLeftBorder = GetCellUvBorders(cellIndex).m_left * cellWidth;
+        textureSpaceBorders.m_left = cellNormalizedLeftBorder;
+
+        const float cellMaxUCoord = GetCellUvCoords(cellIndex).TopRight().GetX();
+        const float cellNormalizedRightBorder = GetCellUvBorders(cellIndex).m_right * cellWidth;
+        textureSpaceBorders.m_right = cellNormalizedRightBorder;
+
+        const float cellHeight = GetCellUvSize(cellIndex).GetY();
+        const float cellMinVCoord = GetCellUvCoords(cellIndex).TopLeft().GetY();
+        const float cellNormalizedTopBorder = GetCellUvBorders(cellIndex).m_top * cellHeight;
+        textureSpaceBorders.m_top = cellNormalizedTopBorder;
+
+        const float cellMaxVCoord = GetCellUvCoords(cellIndex).BottomLeft().GetY();
+        const float cellNormalizedBottomBorder = GetCellUvBorders(cellIndex).m_bottom * cellHeight;
+        textureSpaceBorders.m_bottom = cellNormalizedBottomBorder;
+    }
+
+    return textureSpaceBorders;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+const AZStd::string& CSprite::GetCellAlias(int cellIndex) const
+{
+    if (CellIndexWithinRange(cellIndex))
+    {
+        return m_spriteSheetCells[cellIndex].alias;
+    }
+
+    return s_emptyString;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::SetCellAlias(int cellIndex, const AZStd::string& cellAlias)
+{
+    if (CellIndexWithinRange(cellIndex))
+    {
+        m_spriteSheetCells[cellIndex].alias = cellAlias;
+    }
+}
+
+bool CSprite::IsSpriteSheet() const
+{
+    return m_spriteSheetCells.size() > 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+int CSprite::GetCellIndexFromAlias(const AZStd::string& cellAlias) const
+{
+    int result = 0;
+    int indexIter = 0;
+    for (auto spriteCell : m_spriteSheetCells)
+    {
+        if (cellAlias == spriteCell.alias)
+        {
+            result = indexIter;
+            break;
+        }
+        ++indexIter;
+    }
+
+    return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -331,6 +603,12 @@ void CSprite::ReplaceSprite(ISprite** baseSprite, ISprite* newSprite)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CSprite::CellIndexWithinRange(int cellIndex) const
+{
+    return cellIndex >= 0 && cellIndex < m_spriteSheetCells.size();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PRIVATE MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -354,7 +632,8 @@ bool CSprite::LoadFromXmlFile()
 
     uint32 versionNumber = spriteFileVersionNumber;
     ser.Value(spriteVersionNumberTag, versionNumber);
-    if (versionNumber != spriteFileVersionNumber)
+    const bool validVersionNumber = versionNumber >= 1 && versionNumber <= spriteFileVersionNumber;
+    if (!validVersionNumber)
     {
         gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
             m_pathname.c_str(),
@@ -363,6 +642,10 @@ bool CSprite::LoadFromXmlFile()
         return false;
     }
 
+    // The serializer doesn't seem to have good support for parsing a variable
+    // number of tags of the same type, so we count up the children ourselves
+    // before starting serialization.
+    m_numSpriteSheetCellTags = GetNumSpriteSheetCellTags(root);
     Serialize(ser);
 
     return true;

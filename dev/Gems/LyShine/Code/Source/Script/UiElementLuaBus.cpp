@@ -79,6 +79,6 @@ void UiElementLuaProxy::Reflect(AZ::ReflectContext* context)
             ->Method("BusConnect", &UiElementLuaProxy::BusConnect)
             ->Method("IsEnabled", &UiElementLuaProxy::IsEnabled)
             ->Method("SetIsEnabled", &UiElementLuaProxy::SetIsEnabled)
-            ;
+        ;
     }
 }

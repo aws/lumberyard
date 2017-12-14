@@ -21,6 +21,7 @@
 #include "TrackViewNode.h"
 
 class CTrackViewAnimNode;
+enum class AnimValueType;
 
 // Represents a bundle of tracks
 class CTrackViewTrackBundle
@@ -116,6 +117,7 @@ public:
     virtual CTrackViewKeyHandle CreateKey(const float time);
     virtual void SlideKeys(const float time0, const float timeOffset);
     void OffsetKeyPosition(const Vec3& offset);
+    void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM);
 
     // Value getters
     template <class Type>
@@ -135,7 +137,7 @@ public:
 
     // Type getters
     const CAnimParamType& GetParameterType() const { return m_pAnimTrack->GetParameterType(); }
-    EAnimValue GetValueType() const { return m_pAnimTrack->GetValueType(); }
+    AnimValueType GetValueType() const { return m_pAnimTrack->GetValueType(); }
     EAnimCurveType GetCurveType() const { return m_pAnimTrack->GetCurveType(); }
 
     // Mask
@@ -186,6 +188,8 @@ public:
     void OnStartPlayInEditor() override;
     void OnStopPlayInEditor() override;
     //~AzToolsFramework::EditorEntityContextNotificationBus implementation
+
+    IAnimTrack* GetAnimTrack() const { return m_pAnimTrack.get(); }
 
 private:
     CTrackViewKeyHandle GetPrevKey(const float time);

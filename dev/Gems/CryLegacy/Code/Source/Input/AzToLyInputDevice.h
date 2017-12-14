@@ -13,12 +13,12 @@
 
 #include "InputDevice.h"
 
-#include <AzFramework/Input/Buses/Notifications/InputChannelEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputChannelNotificationBus.h>
 #include <AzFramework/Input/Devices/InputDeviceId.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class AzToLyInputDevice : public CInputDevice,
-                          public AzFramework::InputChannelEventNotificationBus::Handler
+                          public AzFramework::InputChannelNotificationBus::Handler
 {
 public:
     AzToLyInputDevice(IInput& input,
@@ -40,7 +40,7 @@ protected:
     int GetDeviceIndex() const override { return m_azFrameworkInputDeviceId.GetIndex(); }
     const char* GetDeviceCommonName() const override { return m_cryInputDeviceDisplayName; }
 
-    // InputChannelEventNotificationBus::Handler
+    // InputChannelNotificationBus::Handler
     void OnInputChannelEvent(const AzFramework::InputChannel& inputChannel,
                              bool& o_hasBeenConsumed) override;
 

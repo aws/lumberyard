@@ -18,6 +18,7 @@
 #include "terrain.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
+#include "Environment/OceanEnvironmentBus.h"
 
 #define TERRAIN_NODE_CHUNK_VERSION 8
 
@@ -64,7 +65,8 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
 
     // set error levels, bounding boxes and some flags
     m_LocalAABB = chunk.boxHeightmap;
-    m_LocalAABB.max.z = max(m_LocalAABB.max.z + TerrainConstants::coloredVegetationMaxSafeHeight, GetTerrain()->GetWaterLevel());
+    // TODO: Figure out why the bounding box includes the ocean height when the ocean is above the terrain.
+    m_LocalAABB.max.z = max(m_LocalAABB.max.z + TerrainConstants::coloredVegetationMaxSafeHeight, OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetTerrain()->GetWaterLevel());
     m_bHasHoles = chunk.bHasHoles;
 
     assert(m_SurfaceTile.GetHeightmap() == nullptr);

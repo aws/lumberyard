@@ -93,34 +93,34 @@ namespace MCore
     // log some info
     void ViewFrustum::Log()
     {
-        Vector3 normal;
+        AZ::Vector3 normal;
         float distance;
 
         LogDetailedInfo("View Frustum:");
 
         normal  = this->mPlanes[FRUSTUMPLANE_LEFT].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_LEFT].GetDist();
-        LogDetailedInfo("Left Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.x, normal.y, normal.z, distance);
+        LogDetailedInfo("Left Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_RIGHT].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_RIGHT].GetDist();
-        LogDetailedInfo("Right Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.x, normal.y, normal.z, distance);
+        LogDetailedInfo("Right Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_TOP].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_TOP].GetDist();
-        LogDetailedInfo("Top Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.x, normal.y, normal.z, distance);
+        LogDetailedInfo("Top Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_BOTTOM].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_BOTTOM].GetDist();
-        LogDetailedInfo("Bottom Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.x, normal.y, normal.z, distance);
+        LogDetailedInfo("Bottom Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_NEAR].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_NEAR].GetDist();
-        LogDetailedInfo("Near Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.x, normal.y, normal.z, distance);
+        LogDetailedInfo("Near Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_FAR].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_FAR].GetDist();
-        LogDetailedInfo("Far Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.x, normal.y, normal.z, distance);
+        LogDetailedInfo("Far Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
     }
 
 
@@ -136,7 +136,7 @@ namespace MCore
 
         // normalize the result and construct the plane equation
         rightPlane.Normalize();
-        this->mPlanes[FRUSTUMPLANE_RIGHT] = PlaneEq(Vector3(rightPlane.GetX(), rightPlane.GetY(), rightPlane.GetZ()), rightPlane.GetW());
+        this->mPlanes[FRUSTUMPLANE_RIGHT] = PlaneEq(AZ::Vector3(rightPlane.GetX(), rightPlane.GetY(), rightPlane.GetZ()), rightPlane.GetW());
 
         // extract the left plane
         AZ::Vector4 leftPlane;
@@ -147,7 +147,7 @@ namespace MCore
 
         // normalize the result and construct the plane equation
         leftPlane.Normalize();
-        this->mPlanes[FRUSTUMPLANE_LEFT] = PlaneEq(Vector3(leftPlane.GetX(), leftPlane.GetY(), leftPlane.GetZ()), leftPlane.GetW());
+        this->mPlanes[FRUSTUMPLANE_LEFT] = PlaneEq(AZ::Vector3(leftPlane.GetX(), leftPlane.GetY(), leftPlane.GetZ()), leftPlane.GetW());
 
         // extract the bottom plane
         AZ::Vector4 bottomPlane;
@@ -158,7 +158,7 @@ namespace MCore
 
         // normalize the result and construct the plane equation
         bottomPlane.Normalize();
-        this->mPlanes[FRUSTUMPLANE_BOTTOM] = PlaneEq(Vector3(bottomPlane.GetX(), bottomPlane.GetY(), bottomPlane.GetZ()), bottomPlane.GetW());
+        this->mPlanes[FRUSTUMPLANE_BOTTOM] = PlaneEq(AZ::Vector3(bottomPlane.GetX(), bottomPlane.GetY(), bottomPlane.GetZ()), bottomPlane.GetW());
 
         // extract the top plane
         AZ::Vector4 topPlane;
@@ -169,7 +169,7 @@ namespace MCore
 
         // normalize the result and construct the plane equation
         topPlane.Normalize();
-        this->mPlanes[FRUSTUMPLANE_TOP] = PlaneEq(Vector3(topPlane.GetX(), topPlane.GetY(), topPlane.GetZ()), topPlane.GetW());
+        this->mPlanes[FRUSTUMPLANE_TOP] = PlaneEq(AZ::Vector3(topPlane.GetX(), topPlane.GetY(), topPlane.GetZ()), topPlane.GetW());
 
         // extract the far plane
         AZ::Vector4 farPlane;
@@ -180,7 +180,7 @@ namespace MCore
 
         // normalize the result and construct the plane equation
         farPlane.Normalize();
-        this->mPlanes[FRUSTUMPLANE_FAR] = PlaneEq(Vector3(farPlane.GetX(), farPlane.GetY(), farPlane.GetZ()), farPlane.GetW());
+        this->mPlanes[FRUSTUMPLANE_FAR] = PlaneEq(AZ::Vector3(farPlane.GetX(), farPlane.GetY(), farPlane.GetZ()), farPlane.GetW());
 
         // extract the near plane
         AZ::Vector4 nearPlane;
@@ -191,6 +191,6 @@ namespace MCore
 
         // normalize the result and construct the plane equation
         nearPlane.Normalize();
-        this->mPlanes[FRUSTUMPLANE_NEAR] = PlaneEq(Vector3(nearPlane.GetX(), nearPlane.GetY(), nearPlane.GetZ()), nearPlane.GetW());
+        this->mPlanes[FRUSTUMPLANE_NEAR] = PlaneEq(AZ::Vector3(nearPlane.GetX(), nearPlane.GetY(), nearPlane.GetZ()), nearPlane.GetW());
     }
 }   // namespace MCore

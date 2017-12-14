@@ -2395,9 +2395,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 5.0f);
-            AZ_TEST_ASSERT(line1Proportion == 1.0f);
-            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+            EXPECT_TRUE(pointDifference == 5.0f);
+            EXPECT_TRUE(line1Proportion == 1.0f);
+            EXPECT_TRUE(line2Proportion == 0.0f);
         }
 
         // line2 halfway over the top of the line1 (overlap, parallel)
@@ -2414,9 +2414,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 3.0f);
-            AZ_TEST_ASSERT(line1Proportion == 0.5f);
-            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+            EXPECT_TRUE(pointDifference == 3.0f);
+            EXPECT_TRUE(line1Proportion == 0.5f);
+            EXPECT_TRUE(line2Proportion == 0.0f);
         }
 
         // line2 over the top of the line1 (inside, parallel)
@@ -2433,9 +2433,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 3.0f);
-            AZ_TEST_ASSERT(line1Proportion == 0.25f);
-            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+            EXPECT_TRUE(pointDifference == 3.0f);
+            EXPECT_TRUE(line1Proportion == 0.25f);
+            EXPECT_TRUE(line2Proportion == 0.0f);
         }
 
         // line2 over the top of the line1 (overlap, skew (cross))
@@ -2452,9 +2452,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 4.0f);
-            AZ_TEST_ASSERT(line1Proportion == 0.5f);
-            AZ_TEST_ASSERT(line2Proportion == 0.5f);
+            EXPECT_TRUE(pointDifference == 4.0f);
+            EXPECT_TRUE(line1Proportion == 0.5f);
+            EXPECT_TRUE(line2Proportion == 0.5f);
         }
 
         // line2 flat diagonal to line1 (no overlap, skew)
@@ -2471,9 +2471,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 2.0f);
-            AZ_TEST_ASSERT(line1Proportion == 1.0f);
-            AZ_TEST_ASSERT(line2Proportion == 1.0f);
+            EXPECT_TRUE(pointDifference == 2.0f);
+            EXPECT_TRUE(line1Proportion == 1.0f);
+            EXPECT_TRUE(line2Proportion == 1.0f);
         }
 
         // line2 perpendicular to line1 (skew, no overlap)
@@ -2490,9 +2490,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 1.0f);
-            AZ_TEST_ASSERT(line1Proportion == 0.5f);
-            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+            EXPECT_TRUE(pointDifference == 1.0f);
+            EXPECT_TRUE(line1Proportion == 0.5f);
+            EXPECT_TRUE(line2Proportion == 0.0f);
         }
 
         // line 1 degenerates to point
@@ -2509,9 +2509,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 2.0f);
-            AZ_TEST_ASSERT(line1Proportion == 0.0f);
-            AZ_TEST_ASSERT(line2Proportion == 0.5f);
+            EXPECT_TRUE(pointDifference == 2.0f);
+            EXPECT_TRUE(line1Proportion == 0.0f);
+            EXPECT_TRUE(line2Proportion == 0.5f);
         }
 
         // line 2 degenerates to point
@@ -2528,9 +2528,9 @@ namespace UnitTest
             Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
             float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 1.0f);
-            AZ_TEST_ASSERT(line1Proportion == 0.5f);
-            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+            EXPECT_TRUE(pointDifference == 1.0f);
+            EXPECT_TRUE(line1Proportion == 0.5f);
+            EXPECT_TRUE(line2Proportion == 0.0f);
         }
 
         // both lines degenerate to points
@@ -2549,9 +2549,9 @@ namespace UnitTest
 
             // (10, 10, 10) - (5, 5, 5) == (5, 5, 5)
             // |(5,5,5)| == sqrt(5*5+5*5+5*5) == sqrt(75)
-            AZ_TEST_ASSERT(pointDifference == std::sqrtf(75.0f));
-            AZ_TEST_ASSERT(line1Proportion == 0.0f);
-            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+            EXPECT_TRUE(pointDifference == std::sqrtf(75.0f));
+            EXPECT_TRUE(line1Proportion == 0.0f);
+            EXPECT_TRUE(line2Proportion == 0.0f);
         }
     }
 
@@ -2569,8 +2569,8 @@ namespace UnitTest
 
             float pointDifference = (lineClosestPoint - point).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 2.0f);
-            AZ_TEST_ASSERT(lineProportion == 0.5f);
+            EXPECT_TRUE(pointDifference == 2.0f);
+            EXPECT_TRUE(lineProportion == 0.5f);
         }
 
         // point same height behind line
@@ -2585,8 +2585,8 @@ namespace UnitTest
 
             float pointDifference = (lineClosestPoint - point).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 2.0f);
-            AZ_TEST_ASSERT(lineProportion == 0.0f);
+            EXPECT_TRUE(pointDifference == 2.0f);
+            EXPECT_TRUE(lineProportion == 0.0f);
         }
 
         // point passed end of line
@@ -2601,8 +2601,8 @@ namespace UnitTest
 
             float pointDifference = (lineClosestPoint - point).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 5.0f);
-            AZ_TEST_ASSERT(lineProportion == 1.0f);
+            EXPECT_TRUE(pointDifference == 5.0f);
+            EXPECT_TRUE(lineProportion == 1.0f);
         }
 
         // point above part way along line
@@ -2617,8 +2617,8 @@ namespace UnitTest
 
             float pointDifference = (lineClosestPoint - point).GetLength();
 
-            AZ_TEST_ASSERT(pointDifference == 1.0f);
-            AZ_TEST_ASSERT(lineProportion == 0.75f);
+            EXPECT_TRUE(pointDifference == 1.0f);
+            EXPECT_TRUE(lineProportion == 0.75f);
         }
     }
 
@@ -2638,27 +2638,27 @@ namespace UnitTest
                 linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    PositionSplineQueryResult posSplineQueryResult = linearSpline.GetNearestAddressPosition(Vector3(7.5f, 2.5f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    PositionSplineQueryResult posSplineQueryResult = linearSpline.GetNearestAddressPosition(Vector3(-1.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-1.0f, 6.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    PositionSplineQueryResult posSplineQueryResult = linearSpline.GetNearestAddressPosition(Vector3(-1.0f, 6.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(2.5f, 6.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    PositionSplineQueryResult posSplineQueryResult = linearSpline.GetNearestAddressPosition(Vector3(2.5f, 6.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
             }
 
@@ -2673,15 +2673,15 @@ namespace UnitTest
                 linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.0f, 2.5f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    PositionSplineQueryResult posSplineQueryResult = linearSpline.GetNearestAddressPosition(Vector3(-2.0f, 2.5f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.0f, 4.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.2f);
+                    PositionSplineQueryResult posSplineQueryResult = linearSpline.GetNearestAddressPosition(Vector3(-2.0f, 4.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.2f);
                 }
             }
         }
@@ -2698,27 +2698,27 @@ namespace UnitTest
                 linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(2.5f, -2.5f, 1.0f), Vector3(0.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(2.5f, -2.5f, 1.0f), Vector3(0.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(2.5f, -10.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(2.5f, -10.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f), Vector3(-1.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(7.5f, 2.5f, 0.0f), Vector3(-1.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, -1.0f), Vector3(1.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(-2.5f, 2.5f, -1.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
             }
 
@@ -2733,17 +2733,17 @@ namespace UnitTest
                 linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, 0.0f), Vector3(0.0f, 0.0f, -1.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(-2.5f, 2.5f, 0.0f), Vector3(0.0f, 0.0f, -1.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 // note: current error case - unexpected result
                 // internally GetNearestAddress treats ray as line segment - direction not respected - should update?
                 //{
-                //    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
-                //    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                //    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                //    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(-2.5f, 2.5f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
+                //    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                //    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 //}
             }
         }
@@ -2761,44 +2761,44 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(7.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(15.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(11.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.2f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.2f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(3.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.6f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.6f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(20.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(-5.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
             }
 
@@ -2814,14 +2814,14 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(17.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByDistance(20.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
             }
         }
@@ -2839,44 +2839,44 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(1.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.6f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.8f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.8f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.2f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.6f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.6f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(1.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(-0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
             }
 
@@ -2892,20 +2892,20 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(1.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.8f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.2f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.2f);
                 }
             }
         }
@@ -2923,27 +2923,27 @@ namespace UnitTest
 
                 {
                     Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByFraction(0.5f));
-                    AZ_TEST_ASSERT(position == Vector3(5.0f, 2.5f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(5.0f, 2.5f, 0.0f));
                 }
 
                 {
                     Vector3 position = linearSpline.GetPosition(SplineAddress());
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = linearSpline.GetPosition(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 5.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 5.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByDistance(4.0f));
-                    AZ_TEST_ASSERT(position == Vector3(4.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(4.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = linearSpline.GetPosition(SplineAddress(3, 0.0f));
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 5.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 5.0f, 0.0f));
                 }
             }
 
@@ -2959,17 +2959,17 @@ namespace UnitTest
 
                 {
                     Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByFraction(0.5f));
-                    AZ_TEST_ASSERT(position == Vector3(5.0f, 5.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(5.0f, 5.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByDistance(20.0f));
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByDistance(18.0f));
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 2.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 2.0f, 0.0f));
                 }
             }
         }
@@ -2987,22 +2987,22 @@ namespace UnitTest
 
                 {
                     Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByFraction(0.5f));
-                    AZ_TEST_ASSERT(normal == Vector3(0.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(normal == Vector3(0.0f, 1.0f, 0.0f));
                 }
 
                 {
                     Vector3 normal = linearSpline.GetNormal(SplineAddress());
-                    AZ_TEST_ASSERT(normal == Vector3(-1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(normal == Vector3(-1.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 normal = linearSpline.GetNormal(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
-                    AZ_TEST_ASSERT(normal == Vector3(1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(normal == Vector3(1.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByDistance(4.0f));
-                    AZ_TEST_ASSERT(normal == Vector3(-1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(normal == Vector3(-1.0f, 0.0f, 0.0f));
                 }
             }
 
@@ -3016,7 +3016,7 @@ namespace UnitTest
                 linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByDistance(4.0f));
-                AZ_TEST_ASSERT(normal == Vector3(1.0f, 0.0f, 0.0f));
+                EXPECT_TRUE(normal == Vector3(1.0f, 0.0f, 0.0f));
             }
 
             {
@@ -3031,12 +3031,12 @@ namespace UnitTest
 
                 {
                     Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByDistance(20.0f));
-                    AZ_TEST_ASSERT(normal == Vector3(0.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(normal == Vector3(0.0f, -1.0f, 0.0f));
                 }
 
                 {
                     Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByFraction(0.8f));
-                    AZ_TEST_ASSERT(normal == Vector3(0.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(normal == Vector3(0.0f, -1.0f, 0.0f));
                 }
             }
         }
@@ -3054,22 +3054,22 @@ namespace UnitTest
 
                 {
                     Vector3 tangent = linearSpline.GetTangent(linearSpline.GetAddressByFraction(0.5f));
-                    AZ_TEST_ASSERT(tangent == Vector3(0.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(tangent == Vector3(0.0f, 1.0f, 0.0f));
                 }
 
                 {
                     Vector3 tangent = linearSpline.GetTangent(SplineAddress());
-                    AZ_TEST_ASSERT(tangent == Vector3(1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(tangent == Vector3(1.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 tangent = linearSpline.GetTangent(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
-                    AZ_TEST_ASSERT(tangent == Vector3(-1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(tangent == Vector3(-1.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 tangent = linearSpline.GetTangent(linearSpline.GetAddressByDistance(4.0f));
-                    AZ_TEST_ASSERT(tangent == Vector3(1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(tangent == Vector3(1.0f, 0.0f, 0.0f));
                 }
             }
 
@@ -3085,12 +3085,12 @@ namespace UnitTest
 
                 {
                     Vector3 tangent = linearSpline.GetTangent(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
-                    AZ_TEST_ASSERT(tangent == Vector3(0.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(tangent == Vector3(0.0f, -1.0f, 0.0f));
                 }
 
                 {
                     Vector3 tangent = linearSpline.GetTangent(linearSpline.GetAddressByDistance(16.0f));
-                    AZ_TEST_ASSERT(tangent == Vector3(0.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(tangent == Vector3(0.0f, -1.0f, 0.0f));
                 }
             }
         }
@@ -3108,22 +3108,22 @@ namespace UnitTest
 
                 {
                     float splineLength = linearSpline.GetSplineLength();
-                    AZ_TEST_ASSERT(splineLength == 15.0f);
+                    EXPECT_TRUE(splineLength == 15.0f);
                 }
 
                 {
                     float segmentLength = linearSpline.GetSegmentLength(0);
-                    AZ_TEST_ASSERT(segmentLength == 5.0f);
+                    EXPECT_TRUE(segmentLength == 5.0f);
                 }
 
                 {
                     float segmentLength = linearSpline.GetSegmentLength(2);
-                    AZ_TEST_ASSERT(segmentLength == 5.0f);
+                    EXPECT_TRUE(segmentLength == 5.0f);
                 }
 
                 {
                     float segmentLength = linearSpline.GetSegmentLength(4);
-                    AZ_TEST_ASSERT(segmentLength == 0.0f);
+                    EXPECT_TRUE(segmentLength == 0.0f);
                 }
             }
 
@@ -3139,17 +3139,17 @@ namespace UnitTest
 
                 {
                     float splineLength = linearSpline.GetSplineLength();
-                    AZ_TEST_ASSERT(splineLength == 14.0f);
+                    EXPECT_TRUE(splineLength == 14.0f);
                 }
 
                 {
                     float segmentLength = linearSpline.GetSegmentLength(0);
-                    AZ_TEST_ASSERT(segmentLength == 2.0f);
+                    EXPECT_TRUE(segmentLength == 2.0f);
                 }
 
                 {
                     float segmentLength = linearSpline.GetSegmentLength(3);
-                    AZ_TEST_ASSERT(segmentLength == 7.0f);
+                    EXPECT_TRUE(segmentLength == 7.0f);
                 }
             }
 
@@ -3165,12 +3165,12 @@ namespace UnitTest
 
                 {
                     float splineLength = linearSpline.GetSplineLength();
-                    AZ_TEST_ASSERT(splineLength == 20.0f);
+                    EXPECT_TRUE(splineLength == 20.0f);
                 }
 
                 {
                     float segmentLength = linearSpline.GetSegmentLength(3);
-                    AZ_TEST_ASSERT(segmentLength == 5.0f);
+                    EXPECT_TRUE(segmentLength == 5.0f);
                 }
             }
 
@@ -3184,12 +3184,12 @@ namespace UnitTest
 
                 {
                     float splineLength = linearSpline.GetSplineLength();
-                    AZ_TEST_ASSERT(splineLength == 20.0f);
+                    EXPECT_TRUE(splineLength == 20.0f);
                 }
 
                 {
                     float segmentLength = linearSpline.GetSegmentLength(1);
-                    AZ_TEST_ASSERT(segmentLength == 10.0f);
+                    EXPECT_TRUE(segmentLength == 10.0f);
                 }
             }
         }
@@ -3208,8 +3208,8 @@ namespace UnitTest
                 AZ::Aabb aabb;
                 linearSpline.GetAabb(aabb);
 
-                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(0.0f, 0.0f, 0.0f)));
-                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(10.0f, 10.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(10.0f, 10.0f, 0.0f)));
             }
 
             {
@@ -3225,8 +3225,8 @@ namespace UnitTest
                 AZ::Aabb aabb;
                 linearSpline.GetAabb(aabb);
 
-                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(0.0f, 0.0f, 0.0f)));
-                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(10.0f, 10.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(10.0f, 10.0f, 0.0f)));
             }
 
             {
@@ -3242,8 +3242,59 @@ namespace UnitTest
                 AZ::Aabb aabb;
                 linearSpline.GetAabb(aabb, translation);
 
-                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(25.0f, 25.0f, 0.0f)));
-                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(35.0f, 35.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(25.0f, 25.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(35.0f, 35.0f, 0.0f)));
+            }
+        }
+
+        void Linear_GetLength()
+        {
+            {
+                LinearSpline spline;
+
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 20.0f, 0.0f));
+
+                auto distance = spline.GetLength(AZ::SplineAddress(1, 0.5f));
+                EXPECT_NEAR(distance, 15.0f, 1e-4);
+
+                distance = spline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(distance, 0.0f, 1e-4);
+
+                distance = spline.GetLength(AZ::SplineAddress(1, 1.0f));
+                EXPECT_NEAR(distance, 20.0f, 1e-4);
+
+                distance = spline.GetLength(AZ::SplineAddress(5, 1.0f));
+                EXPECT_NEAR(distance, spline.GetSplineLength(), 1e-4);
+            }
+
+            {
+                LinearSpline spline;
+
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(20.0f, 20.0f, 10.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(10.0f, 15.0f, -10.0f));
+
+                float length = spline.GetSplineLength();
+
+                for (float t = 0.0f; t <= length; t += 0.5f)
+                {
+                    auto result = spline.GetLength(spline.GetAddressByDistance(t));
+                    EXPECT_NEAR(result, t, 1e-4);
+                }
+            }
+
+            {
+                LinearSpline spline;
+
+                auto result = spline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(result, 0.0f, 1e-4);
+
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                result = spline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(result, 0.0f, 1e-4);
             }
         }
 
@@ -3259,27 +3310,27 @@ namespace UnitTest
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    PositionSplineQueryResult posSplineQueryResult = catmullRomSpline.GetNearestAddressPosition(Vector3(7.5f, 2.5f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    PositionSplineQueryResult posSplineQueryResult = catmullRomSpline.GetNearestAddressPosition(Vector3(-1.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-1.0f, 6.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    PositionSplineQueryResult posSplineQueryResult = catmullRomSpline.GetNearestAddressPosition(Vector3(-1.0f, 6.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(2.5f, 6.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    PositionSplineQueryResult posSplineQueryResult = catmullRomSpline.GetNearestAddressPosition(Vector3(2.5f, 6.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
             }
 
@@ -3294,9 +3345,9 @@ namespace UnitTest
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(5.0f, -2.5f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    PositionSplineQueryResult posSplineQueryResult = catmullRomSpline.GetNearestAddressPosition(Vector3(5.0f, -2.5f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
             }
         }
@@ -3313,27 +3364,27 @@ namespace UnitTest
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(2.5f, -2.5f, 1.0f), Vector3(0.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    RaySplineQueryResult raySplineQueryResult = catmullRomSpline.GetNearestAddressRay(Vector3(2.5f, -2.5f, 1.0f), Vector3(0.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(2.5f, -10.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    RaySplineQueryResult raySplineQueryResult = catmullRomSpline.GetNearestAddressRay(Vector3(2.5f, -10.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f), Vector3(-1.0f, 0.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    RaySplineQueryResult raySplineQueryResult = catmullRomSpline.GetNearestAddressRay(Vector3(7.5f, 2.5f, 0.0f), Vector3(-1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-2.5f, 7.5f, -1.0f), Vector3(1.0f, 0.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    RaySplineQueryResult raySplineQueryResult = catmullRomSpline.GetNearestAddressRay(Vector3(-2.5f, 7.5f, -1.0f), Vector3(1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
             }
 
@@ -3348,9 +3399,9 @@ namespace UnitTest
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, 0.0f), Vector3(0.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    RaySplineQueryResult raySplineQueryResult = catmullRomSpline.GetNearestAddressRay(Vector3(-2.5f, 2.5f, 0.0f), Vector3(0.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
             }
         }
@@ -3394,27 +3445,27 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(20.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     // note: spline length is approx 10.49176
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(5.24588f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(0.5f, splineAddress.m_segmentFraction);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_NEAR(0.5f, splineAddress.m_segmentFraction, 0.0001f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(-10.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
             }
 
@@ -3430,14 +3481,14 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(50.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
             }
         }
@@ -3455,26 +3506,26 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(1.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.75f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.75f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.75f);
                 }
             }
 
@@ -3490,20 +3541,20 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(1.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
             }
         }
@@ -3521,32 +3572,32 @@ namespace UnitTest
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.125f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.83984375f, 10.546875f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(0.83984375f, 10.546875f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.625f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(6.54296875f, 11.171875f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(6.54296875f, 11.171875f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(3, 0.5f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(10.0f, 10.0f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(10.0f, 10.0f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(0, 0.0f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 10.0f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(0.0f, 10.0f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.0f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 10.0f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(0.0f, 10.0f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(2, 0.0f));
-                    AZ_TEST_ASSERT(position == Vector3(10.0f, 10.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(10.0f, 10.0f, 0.0f));
                 }
             }
 
@@ -3562,27 +3613,27 @@ namespace UnitTest
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.125f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.83984375f, 10.546875f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(0.83984375f, 10.546875f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.625f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(6.54296875f, 11.171875f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(6.54296875f, 11.171875f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(0, 0.0f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(0.0f, 0.0f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(3, 1.0f));
-                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                    EXPECT_TRUE(position.IsClose(Vector3(0.0f, 0.0f, 0.0f)));
                 }
 
                 {
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(0, 0.5f));
-                    AZ_TEST_ASSERT(position == Vector3(-1.25f, 5.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(-1.25f, 5.0f, 0.0f));
                 }
             }
         }
@@ -3600,27 +3651,27 @@ namespace UnitTest
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.0f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(-5.0f, 5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(normal.IsClose(Vector3(-5.0f, 5.0f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 1.0f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, 12.5f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.0f, 12.5f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(2, 0.0f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(3, 0.5f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
                 }
             }
 
@@ -3636,12 +3687,12 @@ namespace UnitTest
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
                 }
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(3, 0.5f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
                 }
             }
         }
@@ -3659,27 +3710,27 @@ namespace UnitTest
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 0.0f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 1.0f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 0.5f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(12.5f, 0.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(12.5f, 0.0f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(2, 0.0f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
                 }
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(3, 0.5f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
                 }
             }
 
@@ -3695,17 +3746,17 @@ namespace UnitTest
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(3, 0.5f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(-1.0f, 0.0f, 0.0f)));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(-1.0f, 0.0f, 0.0f)));
                 }
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 0.5f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(1.0f, 0.0f, 0.0f)));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(1.0f, 0.0f, 0.0f)));
                 }
 
                 {
                     Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(3, 1.0f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(-5.0f, 5.0f, 0.0f).GetNormalized()));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(-5.0f, 5.0f, 0.0f).GetNormalized()));
                 }
             }
         }
@@ -3723,27 +3774,27 @@ namespace UnitTest
 
                 {
                     float length = catmullRomSpline.GetSplineLength();
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(10.49176f, length);
+                    EXPECT_NEAR(10.49176f, length, 0.0001f);
                 }
 
                 {
                     float length = catmullRomSpline.GetSegmentLength(0);
-                    AZ_TEST_ASSERT(length == 0.0f);
+                    EXPECT_TRUE(length == 0.0f);
                 }
 
                 {
                     float length = catmullRomSpline.GetSegmentLength(1);
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(10.49176f, length);
+                    EXPECT_NEAR(10.49176f, length, 0.0001f);
                 }
 
                 {
                     float length = catmullRomSpline.GetSegmentLength((size_t)-1);
-                    AZ_TEST_ASSERT(length == 0.0f);
+                    EXPECT_TRUE(length == 0.0f);
                 }
 
                 {
                     float length = catmullRomSpline.GetSegmentLength(10);
-                    AZ_TEST_ASSERT(length == 0.0f);
+                    EXPECT_TRUE(length == 0.0f);
                 }
             }
 
@@ -3759,12 +3810,12 @@ namespace UnitTest
 
                 {
                     float length = catmullRomSpline.GetSplineLength();
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(41.96704, length);
+                    EXPECT_NEAR(41.96704, length, 0.0001f);
                 }
 
                 {
                     float length = catmullRomSpline.GetSegmentLength(3);
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(10.49176f, length);
+                    EXPECT_NEAR(10.49176f, length, 0.0001f);
                 }
             }
         }
@@ -3783,8 +3834,8 @@ namespace UnitTest
                 AZ::Aabb aabb;
                 catmullRomSpline.GetAabb(aabb);
 
-                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(0.0f, 10.0f, 0.0f)));
-                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(10.0f, 11.25f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(0.0f, 10.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(10.0f, 11.25f, 0.0f)));
             }
 
             {
@@ -3800,8 +3851,57 @@ namespace UnitTest
                 AZ::Aabb aabb;
                 catmullRomSpline.GetAabb(aabb);
 
-                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(-1.25f, -1.25f, 0.0f)));
-                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(11.25f, 11.25f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(-1.25f, -1.25f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(11.25f, 11.25f, 0.0f)));
+            }
+        }
+
+        void CatmullRom_GetLength()
+        {
+            {
+                CatmullRomSpline spline;
+
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(20.0f, 20.0f, 10.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(10.0f, 15.0f, -10.0f));
+
+                float length = spline.GetSplineLength();
+
+                for (float t = 0.0f; t <= length; t += 0.5f)
+                {
+                    auto result = spline.GetLength(spline.GetAddressByDistance(t));
+                    EXPECT_NEAR(result, t, 1e-4);
+                }
+
+                auto distance = spline.GetLength(AZ::SplineAddress(3, 0.5f));
+                EXPECT_NEAR(distance, spline.GetSplineLength(), 1e-4);
+
+                distance = spline.GetLength(AZ::SplineAddress(4, 1.0f));
+                EXPECT_NEAR(distance, spline.GetSplineLength(), 1e-4);
+
+                distance = spline.GetLength(AZ::SplineAddress(5, 1.0f));
+                EXPECT_NEAR(distance, spline.GetSplineLength(), 1e-4);
+            }
+
+            {
+                CatmullRomSpline spline;
+
+                auto result = spline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(result, 0.0f, 1e-4);
+
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                result = spline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(result, 0.0f, 1e-4);
+            }
+
+            {
+                CatmullRomSpline spline;
+                spline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                spline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+
+                auto result = spline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(result, 0.0f, 1e-4);
             }
         }
 
@@ -3817,21 +3917,21 @@ namespace UnitTest
                 bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    PositionSplineQueryResult posSplineQueryResult = bezierSpline.GetNearestAddressPosition(Vector3(-1.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(5.0f, 12.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    PositionSplineQueryResult posSplineQueryResult = bezierSpline.GetNearestAddressPosition(Vector3(5.0f, 12.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(12.0f, -1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    PositionSplineQueryResult posSplineQueryResult = bezierSpline.GetNearestAddressPosition(Vector3(12.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
             }
 
@@ -3846,15 +3946,15 @@ namespace UnitTest
                 bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(5.0f, -12.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    PositionSplineQueryResult posSplineQueryResult = bezierSpline.GetNearestAddressPosition(Vector3(5.0f, -12.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(12.0f, 12.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    PositionSplineQueryResult posSplineQueryResult = bezierSpline.GetNearestAddressPosition(Vector3(12.0f, 12.0f, 0.0f));
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(posSplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
             }
         }
@@ -3871,21 +3971,21 @@ namespace UnitTest
                 bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f), Vector3(-1.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    RaySplineQueryResult raySplineQueryResult = bezierSpline.GetNearestAddressRay(Vector3(-1.0f, -1.0f, 0.0f), Vector3(-1.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(5.0f, 12.0f, 0.0f), Vector3(0.0f, -1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    RaySplineQueryResult raySplineQueryResult = bezierSpline.GetNearestAddressRay(Vector3(5.0f, 12.0f, 0.0f), Vector3(0.0f, -1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 1);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(12.0f, -1.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    RaySplineQueryResult raySplineQueryResult = bezierSpline.GetNearestAddressRay(Vector3(12.0f, -1.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 1.0f);
                 }
             }
 
@@ -3900,9 +4000,9 @@ namespace UnitTest
                 bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
 
                 {
-                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(-10.0f, -10.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                    RaySplineQueryResult raySplineQueryResult = bezierSpline.GetNearestAddressRay(Vector3(-10.0f, -10.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
             }
         }
@@ -3920,20 +4020,20 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByDistance(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByDistance(-5.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByDistance(100.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
             }
 
@@ -3949,8 +4049,8 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByDistance(100.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
             }
         }
@@ -3968,32 +4068,32 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(-0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 0);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 0.0f);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(2.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(1.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
-                    AZ_TEST_ASSERT_CLOSE(splineAddress.m_segmentFraction, 0.5f, 0.01f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 1);
+                    EXPECT_FLOAT_EQ(splineAddress.m_segmentFraction, 0.5f);
                 }
             }
 
@@ -4009,14 +4109,14 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(1.0f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.5f);
-                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(0.0f, splineAddress.m_segmentFraction);
+                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
+                    EXPECT_FLOAT_EQ(0.0f, splineAddress.m_segmentFraction);
                 }
             }
         }
@@ -4034,17 +4134,17 @@ namespace UnitTest
 
                 {
                     Vector3 position = bezierSpline.GetPosition(bezierSpline.GetAddressByFraction(1.0f));
-                    AZ_TEST_ASSERT(position == Vector3(10.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(10.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = bezierSpline.GetPosition(SplineAddress());
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = bezierSpline.GetPosition(SplineAddress(bezierSpline.GetSegmentCount() - 1, 1.0f));
-                    AZ_TEST_ASSERT(position == Vector3(10.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(10.0f, 0.0f, 0.0f));
                 }
             }
 
@@ -4060,12 +4160,12 @@ namespace UnitTest
 
                 {
                     Vector3 position = bezierSpline.GetPosition(SplineAddress());
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
                 }
 
                 {
                     Vector3 position = bezierSpline.GetPosition(SplineAddress(bezierSpline.GetSegmentCount() - 1, 1.0f));
-                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
                 }
             }
         }
@@ -4083,7 +4183,7 @@ namespace UnitTest
 
                 {
                     Vector3 normal = bezierSpline.GetNormal(SplineAddress(1, 0.5f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
                 }
             }
 
@@ -4099,7 +4199,7 @@ namespace UnitTest
 
                 {
                     Vector3 normal = bezierSpline.GetNormal(SplineAddress(3, 0.5f));
-                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
                 }
             }
         }
@@ -4117,7 +4217,7 @@ namespace UnitTest
 
                 {
                     Vector3 tangent = bezierSpline.GetTangent(SplineAddress(1, 0.5f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(1.0f, 0.0f, 0.0f)));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(1.0f, 0.0f, 0.0f)));
                 }
             }
 
@@ -4133,12 +4233,12 @@ namespace UnitTest
 
                 {
                     Vector3 tangent = bezierSpline.GetTangent(SplineAddress(3, 0.5f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(-1.0f, 0.0f, 0.0f)));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(-1.0f, 0.0f, 0.0f)));
                 }
 
                 {
                     Vector3 tangent = bezierSpline.GetTangent(SplineAddress(2, 0.5f));
-                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                    EXPECT_TRUE(tangent.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
                 }
             }
         }
@@ -4156,13 +4256,14 @@ namespace UnitTest
 
                 {
                     float splineLength = bezierSpline.GetSplineLength();
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(splineLength, 31.8014f);
+                    EXPECT_NEAR(splineLength, 31.8014f, 0.0001f);
                 }
 
+                // lengths should be exact as shape is symmetrical
                 {
                     float segment0Length = bezierSpline.GetSegmentLength(0);
                     float segment2Length = bezierSpline.GetSegmentLength(2);
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(segment0Length, segment2Length);
+                    EXPECT_FLOAT_EQ(segment0Length, segment2Length);
                 }
             }
 
@@ -4178,13 +4279,13 @@ namespace UnitTest
 
                 {
                     float splineLength = bezierSpline.GetSplineLength();
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(splineLength, 43.40867f);
+                    EXPECT_FLOAT_EQ(splineLength, 43.40867f);
                 }
 
                 {
                     float segment0Length = bezierSpline.GetSegmentLength(0);
                     float segment2Length = bezierSpline.GetSegmentLength(3);
-                    AZ_TEST_ASSERT_FLOAT_CLOSE(segment0Length, segment2Length);
+                    EXPECT_FLOAT_EQ(segment0Length, segment2Length);
                 }
             }
 
@@ -4198,13 +4299,64 @@ namespace UnitTest
 
                 {
                     float splineLength = bezierSpline.GetSplineLength();
-                    AZ_TEST_ASSERT(splineLength == 20.0f);
+                    EXPECT_TRUE(splineLength == 20.0f);
                 }
 
                 {
                     float segmentLength = bezierSpline.GetSegmentLength(1);
-                    AZ_TEST_ASSERT(segmentLength == 10.0f);
+                    EXPECT_TRUE(segmentLength == 10.0f);
                 }
+            }
+        }
+
+        void Bezier_GetLength()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 20.0f, 0.0f));
+
+                auto distance = bezierSpline.GetLength(AZ::SplineAddress(1, 0.5f));
+                EXPECT_NEAR(distance, 15.0f, 1e-4);
+
+                distance = bezierSpline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(distance, 0.0f, 1e-4);
+
+                distance = bezierSpline.GetLength(AZ::SplineAddress(1, 1.0f));
+                EXPECT_NEAR(distance, 20.0f, 1e-4);
+
+                distance = bezierSpline.GetLength(AZ::SplineAddress(5, 1.0f));
+                EXPECT_NEAR(distance, bezierSpline.GetSplineLength(), 1e-4);
+            }
+
+            {
+                BezierSpline bezierSpline;
+
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(20.0f, 20.0f, 10.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 15.0f, -10.0f));
+
+                float length = bezierSpline.GetSplineLength();
+
+                for (float t = 0.0f; t <= length; t += 0.5f)
+                {
+                    auto result = bezierSpline.GetLength(bezierSpline.GetAddressByDistance(t));
+                    EXPECT_NEAR(result, t, 1e-4);
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+
+                auto result = bezierSpline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(result, 0.0f, 1e-4);
+
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                result = bezierSpline.GetLength(AZ::SplineAddress(0, 0.0f));
+                EXPECT_NEAR(result, 0.0f, 1e-4);
             }
         }
 
@@ -4222,8 +4374,8 @@ namespace UnitTest
                 AZ::Aabb aabb;
                 bezierSpline.GetAabb(aabb);
 
-                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(-1.2948f, 0.0f, 0.0f)));
-                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(11.2948f, 11.7677f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(-1.2948f, 0.0f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(11.2948f, 11.7677f, 0.0f)));
             }
 
             {
@@ -4239,73 +4391,90 @@ namespace UnitTest
                 AZ::Aabb aabb;
                 bezierSpline.GetAabb(aabb);
 
-                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(-1.7677f, -1.7677f, 0.0f)));
-                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(11.7677f, 11.7677f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(-1.7677f, -1.7677f, 0.0f)));
+                EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(11.7677f, 11.7677f, 0.0f)));
             }
         }
 
         void Spline_Invalid()
         {
-            LinearSpline linearSpline;
-            CatmullRomSpline catmullRomSpline;
-            BezierSpline bezierSpline;
+            {
+                LinearSpline linearSpline;
 
-            SplineAddress linearAddress1 = linearSpline.GetNearestAddress(Vector3::CreateZero());
-            AZ_TEST_ASSERT(linearAddress1 == SplineAddress());
-            SplineAddress linearAddress2 = linearSpline.GetNearestAddress(Vector3::CreateZero(), Vector3::CreateZero());
-            AZ_TEST_ASSERT(linearAddress2 == SplineAddress());
-            SplineAddress linearAddress3 = linearSpline.GetAddressByDistance(2.0f);
-            AZ_TEST_ASSERT(linearAddress3 == SplineAddress());
-            SplineAddress linearAddress4 = linearSpline.GetAddressByFraction(0.0f);
-            AZ_TEST_ASSERT(linearAddress4 == SplineAddress());
-            Vector3 linearPosition = linearSpline.GetPosition(SplineAddress(0, 0.5f));
-            AZ_TEST_ASSERT(linearPosition == Vector3::CreateZero());
-            Vector3 linearNormal = linearSpline.GetNormal(SplineAddress(1, 0.5f));
-            AZ_TEST_ASSERT(linearNormal == Vector3::CreateAxisX());
-            Vector3 linearTangent = linearSpline.GetTangent(SplineAddress(2, 0.5f));
-            AZ_TEST_ASSERT(linearTangent == Vector3::CreateAxisX());
-            float linearSegmentLength = linearSpline.GetSegmentLength(2);
-            AZ_TEST_ASSERT(linearSegmentLength == 0.0f);
-            float linearSplineLength = linearSpline.GetSplineLength();
-            AZ_TEST_ASSERT(linearSplineLength == 0.0f);
+                PositionSplineQueryResult posSplineQuery = linearSpline.GetNearestAddressPosition(Vector3::CreateZero());
+                EXPECT_TRUE(posSplineQuery.m_splineAddress == SplineAddress());
+                EXPECT_TRUE(posSplineQuery.m_distanceSq == std::numeric_limits<float>::max());
+                RaySplineQueryResult raySplineQuery = linearSpline.GetNearestAddressRay(Vector3::CreateZero(), Vector3::CreateZero());
+                EXPECT_TRUE(raySplineQuery.m_splineAddress == SplineAddress());
+                EXPECT_TRUE(raySplineQuery.m_distanceSq == std::numeric_limits<float>::max());
+                EXPECT_TRUE(raySplineQuery.m_rayDistance == std::numeric_limits<float>::max());
+                SplineAddress linearAddressDistance = linearSpline.GetAddressByDistance(2.0f);
+                EXPECT_TRUE(linearAddressDistance == SplineAddress());
+                SplineAddress linearAddressFraction = linearSpline.GetAddressByFraction(0.0f);
+                EXPECT_TRUE(linearAddressFraction == SplineAddress());
+                Vector3 linearPosition = linearSpline.GetPosition(SplineAddress(0, 0.5f));
+                EXPECT_TRUE(linearPosition == Vector3::CreateZero());
+                Vector3 linearNormal = linearSpline.GetNormal(SplineAddress(1, 0.5f));
+                EXPECT_TRUE(linearNormal == Vector3::CreateAxisX());
+                Vector3 linearTangent = linearSpline.GetTangent(SplineAddress(2, 0.5f));
+                EXPECT_TRUE(linearTangent == Vector3::CreateAxisX());
+                float linearSegmentLength = linearSpline.GetSegmentLength(2);
+                EXPECT_TRUE(linearSegmentLength == 0.0f);
+                float linearSplineLength = linearSpline.GetSplineLength();
+                EXPECT_TRUE(linearSplineLength == 0.0f);
+            }
 
-            SplineAddress catmullRomAddress1 = catmullRomSpline.GetNearestAddress(Vector3::CreateZero());
-            AZ_TEST_ASSERT(catmullRomAddress1 == SplineAddress());
-            SplineAddress catmullRomAddress2 = catmullRomSpline.GetNearestAddress(Vector3::CreateZero(), Vector3::CreateZero());
-            AZ_TEST_ASSERT(catmullRomAddress2 == SplineAddress());
-            SplineAddress catmullRomAddress3 = catmullRomSpline.GetAddressByDistance(2.0f);
-            AZ_TEST_ASSERT(catmullRomAddress3 == SplineAddress());
-            SplineAddress catmullRomAddress4 = catmullRomSpline.GetAddressByFraction(0.0f);
-            AZ_TEST_ASSERT(catmullRomAddress4 == SplineAddress());
-            Vector3 catmullRomPosition = catmullRomSpline.GetPosition(SplineAddress(0, 0.5f));
-            AZ_TEST_ASSERT(catmullRomPosition == Vector3::CreateZero());
-            Vector3 catmullRomNormal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
-            AZ_TEST_ASSERT(catmullRomNormal == Vector3::CreateAxisX());
-            Vector3 catmullRomTangent = catmullRomSpline.GetTangent(SplineAddress(2, 0.5f));
-            AZ_TEST_ASSERT(catmullRomTangent == Vector3::CreateAxisX());
-            float catmullRomSegmentLength = catmullRomSpline.GetSegmentLength(2);
-            AZ_TEST_ASSERT(catmullRomSegmentLength == 0.0f);
-            float catmullRomSplineLength = catmullRomSpline.GetSplineLength();
-            AZ_TEST_ASSERT(catmullRomSplineLength == 0.0f);
+            {
+                CatmullRomSpline catmullRomSpline;
 
-            SplineAddress bezierAddress1 = bezierSpline.GetNearestAddress(Vector3::CreateZero());
-            AZ_TEST_ASSERT(bezierAddress1 == SplineAddress());
-            SplineAddress bezierAddress2 = bezierSpline.GetNearestAddress(Vector3::CreateZero(), Vector3::CreateZero());
-            AZ_TEST_ASSERT(bezierAddress2 == SplineAddress());
-            SplineAddress bezierAddress3 = bezierSpline.GetAddressByDistance(2.0f);
-            AZ_TEST_ASSERT(bezierAddress3 == SplineAddress());
-            SplineAddress bezierAddress4 = bezierSpline.GetAddressByFraction(0.0f);
-            AZ_TEST_ASSERT(bezierAddress4 == SplineAddress());
-            Vector3 bezierPosition = bezierSpline.GetPosition(SplineAddress(0, 0.5f));
-            AZ_TEST_ASSERT(bezierPosition == Vector3::CreateZero());
-            Vector3 bezierNormal = bezierSpline.GetNormal(SplineAddress(1, 0.5f));
-            AZ_TEST_ASSERT(bezierNormal == Vector3::CreateAxisX());
-            Vector3 bezierTangent = bezierSpline.GetTangent(SplineAddress(2, 0.5f));
-            AZ_TEST_ASSERT(bezierTangent == Vector3::CreateAxisX());
-            float bezierSegmentLength = bezierSpline.GetSegmentLength(2);
-            AZ_TEST_ASSERT(bezierSegmentLength == 0.0f);
-            float bezierSplineLength = bezierSpline.GetSplineLength();
-            AZ_TEST_ASSERT(bezierSplineLength == 0.0f);
+                PositionSplineQueryResult posSplineQuery = catmullRomSpline.GetNearestAddressPosition(Vector3::CreateZero());
+                EXPECT_TRUE(posSplineQuery.m_splineAddress == SplineAddress());
+                EXPECT_TRUE(posSplineQuery.m_distanceSq == std::numeric_limits<float>::max());
+                RaySplineQueryResult raySplineQuery = catmullRomSpline.GetNearestAddressRay(Vector3::CreateZero(), Vector3::CreateZero());
+                EXPECT_TRUE(raySplineQuery.m_splineAddress == SplineAddress());
+                EXPECT_TRUE(raySplineQuery.m_distanceSq == std::numeric_limits<float>::max());
+                EXPECT_TRUE(raySplineQuery.m_rayDistance == std::numeric_limits<float>::max());
+                SplineAddress catmullRomAddressDistance = catmullRomSpline.GetAddressByDistance(2.0f);
+                EXPECT_TRUE(catmullRomAddressDistance == SplineAddress());
+                SplineAddress catmullRomAddressFraction = catmullRomSpline.GetAddressByFraction(0.0f);
+                EXPECT_TRUE(catmullRomAddressFraction == SplineAddress());
+                Vector3 catmullRomPosition = catmullRomSpline.GetPosition(SplineAddress(0, 0.5f));
+                EXPECT_TRUE(catmullRomPosition == Vector3::CreateZero());
+                Vector3 catmullRomNormal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
+                EXPECT_TRUE(catmullRomNormal == Vector3::CreateAxisX());
+                Vector3 catmullRomTangent = catmullRomSpline.GetTangent(SplineAddress(2, 0.5f));
+                EXPECT_TRUE(catmullRomTangent == Vector3::CreateAxisX());
+                float catmullRomSegmentLength = catmullRomSpline.GetSegmentLength(2);
+                EXPECT_TRUE(catmullRomSegmentLength == 0.0f);
+                float catmullRomSplineLength = catmullRomSpline.GetSplineLength();
+                EXPECT_TRUE(catmullRomSplineLength == 0.0f);
+            }
+
+            {
+                BezierSpline bezierSpline;
+
+                PositionSplineQueryResult posSplineQuery = bezierSpline.GetNearestAddressPosition(Vector3::CreateZero());
+                EXPECT_TRUE(posSplineQuery.m_splineAddress == SplineAddress());
+                EXPECT_TRUE(posSplineQuery.m_distanceSq == std::numeric_limits<float>::max());
+                RaySplineQueryResult raySplineQuery = bezierSpline.GetNearestAddressRay(Vector3::CreateZero(), Vector3::CreateZero());
+                EXPECT_TRUE(raySplineQuery.m_splineAddress == SplineAddress());
+                EXPECT_TRUE(raySplineQuery.m_distanceSq == std::numeric_limits<float>::max());
+                EXPECT_TRUE(raySplineQuery.m_rayDistance == std::numeric_limits<float>::max());
+                SplineAddress bezierAddressDistance = bezierSpline.GetAddressByDistance(2.0f);
+                EXPECT_TRUE(bezierAddressDistance == SplineAddress());
+                SplineAddress bezierAddressFraction = bezierSpline.GetAddressByFraction(0.0f);
+                EXPECT_TRUE(bezierAddressFraction == SplineAddress());
+                Vector3 bezierPosition = bezierSpline.GetPosition(SplineAddress(0, 0.5f));
+                EXPECT_TRUE(bezierPosition == Vector3::CreateZero());
+                Vector3 bezierNormal = bezierSpline.GetNormal(SplineAddress(1, 0.5f));
+                EXPECT_TRUE(bezierNormal == Vector3::CreateAxisX());
+                Vector3 bezierTangent = bezierSpline.GetTangent(SplineAddress(2, 0.5f));
+                EXPECT_TRUE(bezierTangent == Vector3::CreateAxisX());
+                float bezierSegmentLength = bezierSpline.GetSegmentLength(2);
+                EXPECT_TRUE(bezierSegmentLength == 0.0f);
+                float bezierSplineLength = bezierSpline.GetSplineLength();
+                EXPECT_TRUE(bezierSplineLength == 0.0f);
+            }
         }
 
         void Spline_Set()
@@ -4331,10 +4500,10 @@ namespace UnitTest
             LinearSpline linearSplineSetLValueCopy;
             linearSplineSetLValueCopy.m_vertexContainer.SetVertices(linearSplineSetLValue.GetVertices());
 
-            AZ_TEST_ASSERT(linearSpline.GetVertexCount() == linearSplineSetLValue.GetVertexCount());
-            AZ_TEST_ASSERT(linearSpline.GetVertexCount() == linearSplineSetRValue.GetVertexCount());
-            AZ_TEST_ASSERT(linearSplineSetLValue.GetVertexCount() == linearSplineSetRValue.GetVertexCount());
-            AZ_TEST_ASSERT(linearSplineSetLValueCopy.GetVertexCount() == vertices.size());
+            EXPECT_TRUE(linearSpline.GetVertexCount() == linearSplineSetLValue.GetVertexCount());
+            EXPECT_TRUE(linearSpline.GetVertexCount() == linearSplineSetRValue.GetVertexCount());
+            EXPECT_TRUE(linearSplineSetLValue.GetVertexCount() == linearSplineSetRValue.GetVertexCount());
+            EXPECT_TRUE(linearSplineSetLValueCopy.GetVertexCount() == vertices.size());
 
             BezierSpline bezierSpline;
 
@@ -4353,11 +4522,11 @@ namespace UnitTest
             BezierSpline bezierSplineSetLValueCopy;
             bezierSplineSetLValueCopy.m_vertexContainer.SetVertices(bezierSplineSetLValue.GetVertices());
 
-            AZ_TEST_ASSERT(bezierSpline.GetBezierData().size() == bezierSplineSetLValue.GetBezierData().size());
-            AZ_TEST_ASSERT(bezierSplineSetLValue.GetBezierData().size() == 4);
-            AZ_TEST_ASSERT(bezierSplineSetLValue.GetBezierData().size() == bezierSplineSetRValue.GetBezierData().size());
-            AZ_TEST_ASSERT(bezierSplineSetLValueCopy.GetBezierData().size() == 4);
-            AZ_TEST_ASSERT(bezierSplineSetLValueCopy.GetVertexCount() == vertices.size());
+            EXPECT_TRUE(bezierSpline.GetBezierData().size() == bezierSplineSetLValue.GetBezierData().size());
+            EXPECT_TRUE(bezierSplineSetLValue.GetBezierData().size() == 4);
+            EXPECT_TRUE(bezierSplineSetLValue.GetBezierData().size() == bezierSplineSetRValue.GetBezierData().size());
+            EXPECT_TRUE(bezierSplineSetLValueCopy.GetBezierData().size() == 4);
+            EXPECT_TRUE(bezierSplineSetLValueCopy.GetVertexCount() == vertices.size());
         }
     };
 
@@ -4406,6 +4575,11 @@ namespace UnitTest
         Linear_Aabb();
     }
 
+    TEST_F(MATH_SplineTest, Linear_GetLength)
+    {
+        Linear_GetLength();
+    }
+
     TEST_F(MATH_SplineTest, CatmullRom_Length)
     {
         CatmullRom_Length();
@@ -4451,6 +4625,11 @@ namespace UnitTest
         CatmullRom_Aabb();
     }
 
+    TEST_F(MATH_SplineTest, CatmullRom_GetLength)
+    {
+        CatmullRom_GetLength();
+    }
+
     TEST_F(MATH_SplineTest, Bezier_NearestAddressFromPosition)
     {
         Bezier_NearestAddressFromPosition();
@@ -4494,6 +4673,11 @@ namespace UnitTest
     TEST_F(MATH_SplineTest, Bezier_Aabb)
     {
         Bezier_Aabb();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_GetLength)
+    {
+        Bezier_GetLength();
     }
 
     TEST_F(MATH_SplineTest, Spline_Invalid)
@@ -4861,7 +5045,7 @@ namespace UnitTest
         void SetUp() override
         {
             m_vertexA = Vector3(1.04f, 2.46f, 5.26f);
-            
+
             m_axisB = Vector3(1.0f, 2.0f, 3.0f);
             m_axisD = Vector3(3.0f, -2.0f, 1.0f);
             m_axisB.NormalizeExact();
@@ -5024,7 +5208,7 @@ namespace UnitTest
         Vector3 rayDir = m_boxCenter + m_boxHalfExtentAxis1 * m_boxAxis1 - rayOrigin;
         rayDir.NormalizeExact();
         float t = 0.0f;
-        int hit = Intersect::IntersectRayBox(rayOrigin, rayDir, m_boxCenter, m_boxAxis1, m_boxAxis2, m_boxAxis3, 
+        int hit = Intersect::IntersectRayBox(rayOrigin, rayDir, m_boxCenter, m_boxAxis1, m_boxAxis2, m_boxAxis3,
             m_boxHalfExtentAxis1, m_boxHalfExtentAxis2, m_boxHalfExtentAxis3, t);
         EXPECT_EQ(hit, 1);
     }
@@ -5052,7 +5236,7 @@ namespace UnitTest
 
     TEST_F(MATH_IntersectRayBoxTest, RayOriginInside_ShootToConner)
     {
-        Vector3 rayOrigin = m_boxCenter + 0.5f * m_boxHalfExtentAxis1 * m_boxAxis1 + 
+        Vector3 rayOrigin = m_boxCenter + 0.5f * m_boxHalfExtentAxis1 * m_boxAxis1 +
             0.5f * m_boxHalfExtentAxis2 * m_boxAxis2 + 0.5f * m_boxHalfExtentAxis3 * m_boxAxis3;
         Vector3 rayDir = (m_boxCenter - m_boxHalfExtentAxis1 * m_boxAxis1 -
             m_boxHalfExtentAxis2 * m_boxAxis2 - m_boxHalfExtentAxis3 * m_boxAxis3) - rayOrigin;
@@ -5188,7 +5372,7 @@ namespace UnitTest
                 }
             };
         AZStd::thread threads[8];
-        for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
+        for (size_t threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
         {
             threads[threadIdx] = AZStd::thread(threadFunc);
         }
@@ -5210,7 +5394,7 @@ namespace UnitTest
                 }
             };
         AZStd::thread threads[8];
-        for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
+        for (size_t threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
         {
             threads[threadIdx] = AZStd::thread(threadFunc);
         }
@@ -5240,7 +5424,7 @@ namespace UnitTest
                 }
             };
         AZStd::thread threads[8];
-        for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
+        for (size_t threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
         {
             threads[threadIdx] = AZStd::thread(threadFunc);
         }
@@ -5555,7 +5739,7 @@ namespace UnitTest
         Color almostZeroColor(0.001f, 0.001f, 0.001f, 0.001f);
         EXPECT_FALSE(almostZeroColor.IsZero());
         EXPECT_TRUE(almostZeroColor.IsZero(0.01f));
-        
+
         // Strict equality
         EXPECT_TRUE(color1 == color2);
         EXPECT_FALSE(color1 == color3);
@@ -5824,4 +6008,58 @@ namespace UnitTest
         color2 /= 2.0f;
         EXPECT_TRUE(color2Half.IsClose(color2));
     }
+
+
+    TEST(MATH_Lerp, Test)
+    {
+        // Float
+        EXPECT_EQ(2.5f, AZ::Lerp(2.0f, 4.0f, 0.25f));
+        EXPECT_EQ(6.0f, AZ::Lerp(2.0f, 4.0f, 2.0f));
+
+        // Double
+        EXPECT_EQ(3.5, AZ::Lerp(2.0, 4.0, 0.75));
+        EXPECT_EQ(0.0, AZ::Lerp(2.0, 4.0, -1.0));
+    }
+
+    // note: build fix for VS2013 warning C4723 - potential divide by 0
+    // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-3-c4723
+    // compiler does not detect error handling code and warns about test below
+#if defined(AZ_COMPILER_MSVC) && defined(_MSC_FULL_VER) && (_MSC_FULL_VER <= 180040629)
+    #pragma warning(push)
+    #pragma warning(disable:4723)
+#endif
+    TEST(MATH_LerpInverse, Test)
+    {
+        // Float
+        EXPECT_NEAR(0.25f, AZ::LerpInverse(2.0f, 4.0f, 2.5f), 0.0001f);
+        EXPECT_NEAR(2.0f, AZ::LerpInverse(2.0f, 4.0f, 6.0f), 0.0001f);
+
+        // Double
+        EXPECT_NEAR(0.75, AZ::LerpInverse(2.0, 4.0, 3.5), 0.0001);
+        EXPECT_NEAR(-1.0, AZ::LerpInverse(2.0, 4.0, 0.0), 0.0001);
+
+        // min/max need to be substantially different to return a useful t value
+        // Float
+        const float epsilonF = std::numeric_limits<float>::epsilon();
+        const float doesntMatterF = std::numeric_limits<float>::signaling_NaN();
+        EXPECT_EQ(0.0f, AZ::LerpInverse(2.3f, 2.3f, doesntMatterF));
+        EXPECT_EQ(0.0f, AZ::LerpInverse(0.0f, 0.5f * epsilonF, doesntMatterF));
+        EXPECT_EQ(0.0f, AZ::LerpInverse(0.0f, 5.0f * epsilonF, 0.0f));
+        EXPECT_NEAR(0.4f, AZ::LerpInverse(0.0f, 5.0f * epsilonF, 2.0f * epsilonF), epsilonF);
+        EXPECT_NEAR(0.6f, AZ::LerpInverse(1.0f, 1.0f + 5.0f * epsilonF, 1.0f + 3.0f * epsilonF), epsilonF);
+        EXPECT_NEAR(1.0f, AZ::LerpInverse(1.0f, 1.0f + 5.0f * epsilonF, 1.0f + 5.0f * epsilonF), epsilonF);
+
+        // Double
+        const double epsilonD = std::numeric_limits<double>::epsilon();
+        const double doesntMatterD = std::numeric_limits<double>::signaling_NaN();
+        EXPECT_EQ(0.0, AZ::LerpInverse(2.3, 2.3, doesntMatterD));
+        EXPECT_EQ(0.0, AZ::LerpInverse(0.0, 0.5 * epsilonD, doesntMatterD));
+        EXPECT_EQ(0.0, AZ::LerpInverse(0.0, 5.0 * epsilonD, 0.0));
+        EXPECT_NEAR(0.4, AZ::LerpInverse(0.0, 5.0 * epsilonD, 2.0 * epsilonD), epsilonD);
+        EXPECT_NEAR(0.6, AZ::LerpInverse(1.0, 1.0 + 5.0 * epsilonD, 1.0 + 3.0 * epsilonD), epsilonD);
+        EXPECT_NEAR(1.0, AZ::LerpInverse(1.0, 1.0 + 5.0 * epsilonD, 1.0 + 5.0 * epsilonD), epsilonD);
+    }
+#if defined(AZ_COMPILER_MSVC) && defined(_MSC_FULL_VER) && (_MSC_FULL_VER <= 180040629)
+    #pragma warning(pop)
+#endif
 }

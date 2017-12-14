@@ -45,7 +45,7 @@ function UIObjectiveStatus:OnActivate()
 	if (self.state == 1) then
 		fadeValue = 1;
 	end
-	StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.ActiveFaderID, fadeValue, 0.0);
+	StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.ActiveFaderID, fadeValue, 0.0);
 end
 
 function UIObjectiveStatus:OnDeactivate()
@@ -78,7 +78,7 @@ function UIObjectiveStatus:OnTick(deltaTime, timePoint)
 	if (self.faderTime <= 0) then
 		self.faderTime = 0;
 
-		StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.StateChangeFaderID, 0.0, 0.5);
+		StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.StateChangeFaderID, 0.0, 0.5);
 		self:StartTicking(false);
 	end
 end
@@ -125,7 +125,7 @@ function UIObjectiveStatus:HideHud(enabled)
 	if(enabled) then
 		fadeValue = 0;
 	end
-	StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.AllUIFaderID, fadeValue, 1.0);	
+	StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.AllUIFaderID, fadeValue, 1.0);	
 end
 
 function UIObjectiveStatus:HideStatus(value)
@@ -140,7 +140,7 @@ function UIObjectiveStatus:HideStatus(value)
 		fadeValue = 0;
 	end
 	
-	StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.HiddenFaderID, fadeValue, 1.0);	
+	StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.HiddenFaderID, fadeValue, 1.0);	
 end
 
 function UIObjectiveStatus:SetStatus(value)
@@ -162,8 +162,8 @@ function UIObjectiveStatus:SetStatus(value)
 	end
 	
 	self.fadeTime = self.Properties.FadeTime;
-	StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.ActiveFaderID, fadeValue, self.fadeTime);
-	StarterGameUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.StateChangeFaderID, 1.0, self.fadeTime);
+	StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.ActiveFaderID, fadeValue, self.fadeTime);
+	StarterGameUIUtility.UIFaderControl(self.canvasEntityId, self.Properties.ScreenHookup.StateChangeFaderID, 1.0, self.fadeTime);
 end
 
 function UIObjectiveStatus:OnEventBegin(value)

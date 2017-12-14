@@ -83,9 +83,12 @@ namespace EMStudio
         }
 
         EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
- 
-        AZ_Assert(!animGraphInstance || (animGraphInstance->GetAnimGraph() == GetActiveAnimGraph()), "The currently activated anim graph in the plugin differs from the one the current actor instance uses.");
-
+        if (animGraphInstance && animGraphInstance->GetAnimGraph() != GetActiveAnimGraph())
+        {
+            // The currently activated anim graph in the plugin differs from the one the current actor instance uses.
+            animGraphInstance = nullptr;
+        }
+        
         return animGraphInstance;
     }
 
@@ -245,9 +248,9 @@ namespace EMStudio
     void FileBrowserAttributeWidget::OnFileBrowseButton()
     {
         // choose the filename
-        GetMainWindow()->StopRendering();
+        GetManager()->SetAvoidRendering(true);
         const QString fileName = QFileDialog::getOpenFileName(this, tr("Select a file"), QString(), tr("EMotion FX Motion Files (*.motion);;EMotion FX Skeletal Motion Files (*.motion);;All Files (*)"));
-        GetMainWindow()->StartRendering();
+        GetManager()->SetAvoidRendering(false);
 
         // stop here if the user cancel the dialog
         if (fileName.length() == 0)
@@ -304,27 +307,27 @@ namespace EMStudio
         widget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
         widget->setLayout(hLayout);
 
-        MCore::Vector3  value       = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(0.0f, 0.0f, 0.0f);
-        MCore::Vector3  minValue    = static_cast<MCore::AttributeVector3*>(attributeSettings->GetMinValue())->GetValue();
-        MCore::Vector3  maxValue    = static_cast<MCore::AttributeVector3*>(attributeSettings->GetMaxValue())->GetValue();
+        AZ::Vector3     value = (mFirstAttribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) : AZ::Vector3::CreateZero();
+        AZ::Vector3     minValue = AZ::Vector3(static_cast<MCore::AttributeVector3*>(attributeSettings->GetMinValue())->GetValue());
+        AZ::Vector3     maxValue = AZ::Vector3(static_cast<MCore::AttributeVector3*>(attributeSettings->GetMaxValue())->GetValue());
         float           stepSize    = 0.1f;
 
-        mSpinBoxX->setRange(minValue.x, maxValue.x);
-        mSpinBoxX->setValue(value.x);
+        mSpinBoxX->setRange(minValue.GetX(), maxValue.GetX());
+        mSpinBoxX->setValue(value.GetX());
         mSpinBoxX->setSingleStep(stepSize);
         //  mSpinBoxX->setPrefix("x: ");
         mSpinBoxX->setEnabled(!readOnly);
         mSpinBoxX->setDecimals(4);
 
-        mSpinBoxY->setRange(minValue.y, maxValue.y);
-        mSpinBoxY->setValue(value.y);
+        mSpinBoxY->setRange(minValue.GetY(), maxValue.GetY());
+        mSpinBoxY->setValue(value.GetY());
         mSpinBoxY->setSingleStep(stepSize);
         //  mSpinBoxY->setPrefix("y: ");
         mSpinBoxY->setEnabled(!readOnly);
         mSpinBoxY->setDecimals(4);
 
-        mSpinBoxZ->setRange(minValue.z, maxValue.z);
-        mSpinBoxZ->setValue(value.z);
+        mSpinBoxZ->setRange(minValue.GetZ(), maxValue.GetZ());
+        mSpinBoxZ->setValue(value.GetZ());
         mSpinBoxZ->setSingleStep(stepSize);
         //  mSpinBoxZ->setPrefix("z: ");
         mSpinBoxZ->setEnabled(!readOnly);
@@ -349,21 +352,21 @@ namespace EMStudio
 
     void Vector3AttributeWidget::SetValue(MCore::Attribute* attribute)
     {
-        const MCore::Vector3 value = (attribute) ? static_cast<MCore::AttributeVector3*>(attribute)->GetValue() : MCore::Vector3(0.0f, 0.0f, 0.0f);
+        const AZ::Vector3 value = (attribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(attribute)->GetValue()) : AZ::Vector3::CreateZero();
 
-        if (MCore::Compare<float>::CheckIfIsClose(value.x, mSpinBoxX->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(value.GetX(), mSpinBoxX->value(), 0.000001f) == false)
         {
-            mSpinBoxX->setValue(value.x);
+            mSpinBoxX->setValue(value.GetX());
         }
 
-        if (MCore::Compare<float>::CheckIfIsClose(value.y, mSpinBoxY->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(value.GetY(), mSpinBoxY->value(), 0.000001f) == false)
         {
-            mSpinBoxY->setValue(value.y);
+            mSpinBoxY->setValue(value.GetY());
         }
 
-        if (MCore::Compare<float>::CheckIfIsClose(value.z, mSpinBoxZ->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(value.GetZ(), mSpinBoxZ->value(), 0.000001f) == false)
         {
-            mSpinBoxZ->setValue(value.z);
+            mSpinBoxZ->setValue(value.GetZ());
         }
 
         if (mTransformationGizmo)
@@ -393,14 +396,14 @@ namespace EMStudio
 
     void Vector3AttributeWidget::OnDoubleSpinnerX(double value)
     {
-        MCore::Vector3 curValue = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
-        curValue.x = value;
+        AZ::Vector3 curValue = (mFirstAttribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) : AZ::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
+        curValue.SetX(value);
 
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(curValue);
+            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(AZ::PackedVector3f(curValue));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -426,14 +429,14 @@ namespace EMStudio
 
     void Vector3AttributeWidget::OnDoubleSpinnerY(double value)
     {
-        MCore::Vector3 curValue = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
-        curValue.y = value;
+        AZ::Vector3 curValue = (mFirstAttribute) ? AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) : AZ::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
+        curValue.SetY(value);
 
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(curValue);
+            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(AZ::PackedVector3f(curValue));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -458,14 +461,16 @@ namespace EMStudio
 
     void Vector3AttributeWidget::OnDoubleSpinnerZ(double value)
     {
-        MCore::Vector3 curValue = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
-        curValue.z = value;
+        AZ::Vector3 curValue = (mFirstAttribute) ?
+            AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) :
+            AZ::Vector3(mSpinBoxX->value(), mSpinBoxY->value(), mSpinBoxZ->value());
+        curValue.SetZ(value);
 
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(curValue);
+            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(AZ::PackedVector3f(curValue));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -489,13 +494,13 @@ namespace EMStudio
 
 
     // function to update the attribute
-    void Vector3AttributeWidget::OnUpdateAttribute(const MCore::Vector3& value)
+    void Vector3AttributeWidget::OnUpdateAttribute(const AZ::Vector3& value)
     {
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(value);
+            static_cast<MCore::AttributeVector3*>(mAttributes[i])->SetValue(AZ::PackedVector3f(value));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -506,9 +511,9 @@ namespace EMStudio
         mSpinBoxX->blockSignals(true);
         mSpinBoxY->blockSignals(true);
         mSpinBoxZ->blockSignals(true);
-        mSpinBoxX->setValue(value.x);
-        mSpinBoxY->setValue(value.y);
-        mSpinBoxZ->setValue(value.z);
+        mSpinBoxX->setValue(value.GetX());
+        mSpinBoxY->setValue(value.GetY());
+        mSpinBoxZ->setValue(value.GetZ());
         mSpinBoxY->blockSignals(false);
         mSpinBoxX->blockSignals(false);
         mSpinBoxZ->blockSignals(false);
@@ -540,7 +545,9 @@ namespace EMStudio
         if (mTransformationGizmo == nullptr)
         {
             mTransformationGizmo = (MCommon::TranslateManipulator*)GetManager()->AddTransformationManipulator(new MCommon::TranslateManipulator(70.0f, true));
-            const MCore::Vector3 pos = (mFirstAttribute) ? static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue() : MCore::Vector3(0.0f, 0.0f, 0.0f);
+            const AZ::Vector3 pos = (mFirstAttribute) ?
+                AZ::Vector3(static_cast<MCore::AttributeVector3*>(mFirstAttribute)->GetValue()) :
+                AZ::Vector3::CreateZero();
             mTransformationGizmo->Init(pos);
             mTransformationGizmo->SetCallback(new Callback(pos, this));
             mTransformationGizmo->SetName(mAttributeSettings->GetName());
@@ -599,24 +606,24 @@ namespace EMStudio
 
         EMotionFX::AttributeRotation* value = (mFirstAttribute) ? static_cast<EMotionFX::AttributeRotation*>(mFirstAttribute) : nullptr;
 
-        const MCore::Vector3&   angles      = (value) ? value->GetRotationAngles() : MCore::Vector3(0.0f, 0.0f, 0.0f);
+        const AZ::Vector3&      angles      = (value) ? value->GetRotationAngles() : AZ::Vector3::CreateZero();
         const float             stepSize    = 0.25f;
         const int               order       = (value) ? (int)value->GetRotationOrder() : 0;
 
         mSpinX->setRange(-360.0f, 360.0f);
-        mSpinX->setValue(angles.x);
+        mSpinX->setValue(angles.GetX());
         mSpinX->setSingleStep(stepSize);
         mSpinX->setEnabled(!readOnly);
         mSpinX->setDecimals(2);
 
         mSpinY->setRange(-360.0f, 360.0f);
-        mSpinY->setValue(angles.y);
+        mSpinY->setValue(angles.GetY());
         mSpinY->setSingleStep(stepSize);
         mSpinY->setEnabled(!readOnly);
         mSpinY->setDecimals(2);
 
         mSpinZ->setRange(-360.0f, 360.0f);
-        mSpinZ->setValue(angles.z);
+        mSpinZ->setValue(angles.GetZ());
         mSpinZ->setSingleStep(stepSize);
         mSpinZ->setEnabled(!readOnly);
         mSpinZ->setDecimals(2);
@@ -667,7 +674,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numAttributes; ++i)
         {
             EMotionFX::AttributeRotation* rotation = static_cast<EMotionFX::AttributeRotation*>(mAttributes[i]);
-            rotation->SetRotationAngles(MCore::Vector3(mSpinX->value(), mSpinY->value(), mSpinZ->value()));
+            rotation->SetRotationAngles(AZ::Vector3(mSpinX->value(), mSpinY->value(), mSpinZ->value()));
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -681,21 +688,23 @@ namespace EMStudio
 
     void RotationAttributeWidget::SetValue(MCore::Attribute* attribute)
     {
-        const MCore::Vector3 rotation = (attribute) ? static_cast<EMotionFX::AttributeRotation*>(attribute)->GetRotationAngles() : MCore::Vector3(0.0f, 0.0f, 0.0f);
+        const AZ::Vector3 rotation = (attribute) ?
+            AZ::Vector3(static_cast<EMotionFX::AttributeRotation*>(attribute)->GetRotationAngles()) :
+            AZ::Vector3::CreateZero();
 
-        if (MCore::Compare<float>::CheckIfIsClose(rotation.x, mSpinX->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(rotation.GetX(), mSpinX->value(), 0.000001f) == false)
         {
-            mSpinX->setValue(rotation.x);
+            mSpinX->setValue(rotation.GetX());
         }
 
-        if (MCore::Compare<float>::CheckIfIsClose(rotation.y, mSpinY->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(rotation.GetY(), mSpinY->value(), 0.000001f) == false)
         {
-            mSpinY->setValue(rotation.y);
+            mSpinY->setValue(rotation.GetY());
         }
 
-        if (MCore::Compare<float>::CheckIfIsClose(rotation.z, mSpinZ->value(), 0.000001f) == false)
+        if (MCore::Compare<float>::CheckIfIsClose(rotation.GetZ(), mSpinZ->value(), 0.000001f) == false)
         {
-            mSpinZ->setValue(rotation.z);
+            mSpinZ->setValue(rotation.GetZ());
         }
     }
 
@@ -735,25 +744,25 @@ namespace EMStudio
 
         // convert to degrees
         EMotionFX::AttributeRotation* firstRotAttrib = static_cast<EMotionFX::AttributeRotation*>(mFirstAttribute);
-        MCore::Vector3 degrees;
+        AZ::Vector3 degrees;
         if (mFirstAttribute)
         {
             MCore::Quaternion newValue = value * firstRotAttrib->GetRotationQuaternion();
-            MCore::Vector3 euler = newValue.ToEuler();
-            degrees = MCore::Vector3(MCore::Math::RadiansToDegrees(euler.x), MCore::Math::RadiansToDegrees(euler.y), MCore::Math::RadiansToDegrees(euler.z));
+            AZ::Vector3 euler = newValue.ToEuler();
+            degrees = AZ::Vector3(MCore::Math::RadiansToDegrees(euler.GetX()), MCore::Math::RadiansToDegrees(euler.GetY()), MCore::Math::RadiansToDegrees(euler.GetZ()));
         }
         else
         {
-            degrees.Zero();
+            degrees = AZ::Vector3::CreateZero();
         }
 
         // update the spinbox text
         mSpinX->blockSignals(true);
         mSpinY->blockSignals(true);
         mSpinZ->blockSignals(true);
-        mSpinX->setValue(degrees.x);
-        mSpinY->setValue(degrees.y);
-        mSpinZ->setValue(degrees.z);
+        mSpinX->setValue(degrees.GetX());
+        mSpinY->setValue(degrees.GetY());
+        mSpinZ->setValue(degrees.GetZ());
         mSpinY->blockSignals(false);
         mSpinX->blockSignals(false);
         mSpinZ->blockSignals(false);
@@ -779,7 +788,7 @@ namespace EMStudio
         {
             mTransformationGizmo = (MCommon::RotateManipulator*)GetManager()->AddTransformationManipulator(new MCommon::RotateManipulator(70.0f, true));
             const MCore::Quaternion rot = (mFirstAttribute) ? static_cast<EMotionFX::AttributeRotation*>(mFirstAttribute)->GetRotationQuaternion() : MCore::Quaternion();
-            mTransformationGizmo->Init(MCore::Vector3(0.0f, 0.0f, 0.0f));
+            mTransformationGizmo->Init(AZ::Vector3::CreateZero());
             mTransformationGizmo->SetCallback(new Callback(rot, this));
             mTransformationGizmo->SetName(mAttributeSettings->GetName());
         }
@@ -1519,9 +1528,10 @@ namespace EMStudio
         int column = 0;
 
         // Motion name
-        QLabel* labelMotionName = new QLabel(motionId.c_str());
-        labelMotionName->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        layout->addWidget(labelMotionName, row, column);
+        m_labelMotion = new QLabel(motionId.c_str());
+        m_labelMotion->setObjectName("m_labelMotion");
+        m_labelMotion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        layout->addWidget(m_labelMotion, row, column);
         column++;
 
         // Motion position x
@@ -1606,15 +1616,15 @@ namespace EMStudio
 
         if (m_attribute->IsXCoordinateSetByUser())
         {
-            m_spinboxX->setValue( m_attribute->GetXCoordinate() );
+            m_spinboxX->setValue(m_attribute->GetXCoordinate());
         }
         else
         {
-            m_spinboxX->setValue( computedPosition.GetX() );
+            m_spinboxX->setValue(computedPosition.GetX());
         }
 
         m_spinboxX->blockSignals(false);
-        m_spinboxX->setEnabled( m_attribute->IsXCoordinateSetByUser() || positionsComputed );
+        m_spinboxX->setEnabled(m_attribute->IsXCoordinateSetByUser() || positionsComputed);
 
 
         // Spinbox Y
@@ -1624,27 +1634,38 @@ namespace EMStudio
 
             if (m_attribute->IsYCoordinateSetByUser())
             {
-                m_spinboxY->setValue( m_attribute->GetYCoordinate() );
+                m_spinboxY->setValue(m_attribute->GetYCoordinate());
             }
             else
             {
-                m_spinboxY->setValue( computedPosition.GetY() );
+                m_spinboxY->setValue(computedPosition.GetY());
             }
 
             m_spinboxY->blockSignals(false);
-            m_spinboxY->setEnabled( m_attribute->IsYCoordinateSetByUser() || positionsComputed );
+            m_spinboxY->setEnabled(m_attribute->IsYCoordinateSetByUser() || positionsComputed);
         }
-
 
         // Enable the restore button in case the user manually set any of the.
         const bool enableRestoreButton = m_attribute->IsXCoordinateSetByUser() || m_attribute->IsYCoordinateSetByUser();
-        m_restoreButton->setEnabled(enableRestoreButton);    
+        m_restoreButton->setEnabled(enableRestoreButton);
+
+        // is motion invalid?
+        if (m_attribute->TestFlag(EMotionFX::AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
+        {
+            m_labelMotion->setStyleSheet("#m_labelMotion { border: 1px solid red; }");
+            m_labelMotion->setToolTip("Invalid motion.Select a motion set that contains this motion or add it to the current one.");
+        }
+        else
+        {
+            m_labelMotion->setStyleSheet("#m_labelMotion { border: none; }");
+            m_labelMotion->setToolTip("");
+        }
     }
 
     //-----------------------------------------------------------------------------------------------------------------
 
     BlendSpaceMotionsAttributeWidget::BlendSpaceMotionsAttributeWidget(const MCore::Array<MCore::Attribute*> attributes, MCore::AttributeSettings* attributeSettings,
-            void* customData, bool readOnly, bool creationMode, const MysticQt::AttributeChangedFunction& func)
+        void* customData, bool readOnly, bool creationMode, const MysticQt::AttributeChangedFunction& func)
         : MysticQt::AttributeWidget(attributes, attributeSettings, customData, readOnly, creationMode, func)
         , mAttributeSettings(attributeSettings)
         , mWidget(nullptr)
@@ -1728,8 +1749,8 @@ namespace EMStudio
             return;
         }
         MCore::AttributeArray* arrayAttrib = static_cast<MCore::AttributeArray*>(mAttributes[0]);
- 
-        for (size_t s=0; s < numSelected; ++s)
+
+        for (size_t s = 0; s < numSelected; ++s)
         {
             const AZStd::string& motionId = selectedItems[s].mMotionId;
 
@@ -1791,7 +1812,7 @@ namespace EMStudio
         // Iterate through the arributes back to front and delete the ones with the motion id from the delete button.
         // Note: Normally there should only be once instance as motion ids should be unique within this array.
         const int32 motionCount = arrayAttribute->GetNumAttributes();
-        for (int32 i = motionCount-1; i >= 0; i--)
+        for (int32 i = motionCount - 1; i >= 0; i--)
         {
             AZ_Assert(arrayAttribute->GetAttribute(i)->GetType() == EMotionFX::AttributeBlendSpaceMotion::TYPE_ID, "AttributeBlendSpaceMotion attributes expected.");
             const EMotionFX::AttributeBlendSpaceMotion* attribute = static_cast<EMotionFX::AttributeBlendSpaceMotion*>(arrayAttribute->GetAttribute(i));
@@ -1884,7 +1905,6 @@ namespace EMStudio
                 {
                     attribute->MarkXCoordinateSetByUser(true);
                     attribute->SetXCoordinate(value);
-
                 }
                 if (updateY)
                 {
@@ -1916,7 +1936,7 @@ namespace EMStudio
         EMotionFX::BlendSpaceNode* blendSpaceNode = azdynamic_cast<EMotionFX::BlendSpaceNode*>(object);
         if (blendSpaceNode && animGraphInstance)
         {
-            blendSpaceNode->RestoreMotionCoords(widgetContainer->m_attribute->GetMotionId(), animGraphInstance); 
+            blendSpaceNode->RestoreMotionCoords(widgetContainer->m_attribute->GetMotionId(), animGraphInstance);
             blendSpaceNode->OnUpdateAttributes();
 
             UpdateInterface();
@@ -1927,7 +1947,7 @@ namespace EMStudio
     {
         // Get access to the blend space node.
         EMotionFX::BlendSpaceNode* blendSpaceNode = azdynamic_cast<EMotionFX::BlendSpaceNode*>(mPlugin->GetAttributesWindow()->GetObject());
-        
+
         // Get the anim graph instance in case only exactly one actor instance is selected.
         EMotionFX::AnimGraphInstance* animGraphInstance = GetSingleSelectedAnimGraphInstance();
 
@@ -4123,7 +4143,8 @@ namespace EMStudio
         m_tagSelector->SelectTags(tagStrings);
 
         m_tagSelector->setEnabled(!readOnly);
-        connect(m_tagSelector, &AzQtComponents::TagSelector::TagsChanged, [this]{ OnTagsChanged(); });
+        connect(m_tagSelector, &AzQtComponents::TagSelector::TagsChanged, [this] { OnTagsChanged();
+            });
 
         CreateStandardLayout(m_tagSelector, attributeSettings);
     }

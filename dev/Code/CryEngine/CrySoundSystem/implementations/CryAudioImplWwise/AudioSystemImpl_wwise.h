@@ -138,10 +138,7 @@ namespace Audio
         void DeleteAudioEventData(IATLEventData* const pOldEventData) override;
         void ResetAudioEventData(IATLEventData* const pEventData) override;
 
-        const char* const GetImplSubPath() const override
-        {
-            return sWwiseImplSubPath;
-        }
+        const char* const GetImplSubPath() const override;
         void SetLanguage(const char* const sLanguage) override;
 
         // Below data is only used when INCLUDE_WWISE_IMPL_PRODUCTION_CODE is defined!

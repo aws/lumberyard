@@ -86,7 +86,6 @@ namespace ScriptCanvasEditor
         ////
 
         // SceneNotificationBus
-        void OnItemMouseMoveComplete(const AZ::EntityId& nodeId, const QGraphicsSceneMouseEvent* event) override;
         void OnEntitiesSerialized(GraphCanvas::SceneSerialization& serializationTarget) override;
         void OnEntitiesDeserialized(const GraphCanvas::SceneSerialization& serializationSource) override;
         void OnPreNodeDeleted(const AZ::EntityId& nodeId) override;

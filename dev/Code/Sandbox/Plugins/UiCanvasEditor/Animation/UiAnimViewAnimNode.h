@@ -168,8 +168,8 @@ public:
     // Param
     unsigned int GetParamCount() const;
     CUiAnimParamType GetParamType(unsigned int index) const;
-    char* GetParamName(const CUiAnimParamType& paramType) const;
-    char* GetParamNameForTrack(const CUiAnimParamType& paramType, const IUiAnimTrack* track) const;
+    const char* GetParamName(const CUiAnimParamType& paramType) const;
+    const char* GetParamNameForTrack(const CUiAnimParamType& paramType, const IUiAnimTrack* track) const;
     bool IsParamValid(const CUiAnimParamType& param) const;
     IUiAnimNode::ESupportedParamFlags GetParamFlags(const CUiAnimParamType& paramType) const;
     EUiAnimValue GetParamValueType(const CUiAnimParamType& paramType) const;

@@ -43,4 +43,9 @@ namespace RenderCapabilities
     {
         return true;
     }
+
+    bool SupportsStructuredBuffer(EShaderStage stage)
+    {
+        return true;
+    }
 }

@@ -9,20 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #include "StdAfx.h"
 #include "PersistentDataSystemComparitorComponent.h"
+
 #include "StarterGameUtility.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -92,25 +81,50 @@ namespace StarterGameGem
 					->DataElement(0, &PersistentDataSystemComparitorComponent::m_targetOfMessage, "Message Target", "The message to send at the target when the comparisons are made.")
 
 					->DataElement(AZ::Edit::UIHandlers::ComboBox, &PersistentDataSystemComparitorComponent::m_dataToUse,
-						"Data Type", "Use this data type of information to manipulate.")->
-						EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::String, "String")->
-						EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Number, "Number")->
-						EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Bool, "Bool") 
+						"Data Type", "Use this data type of information to manipulate.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PersistentDataSystemComparitorComponent::MajorPropertyChanged)
+						->EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::String, "String")
+						->EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Number, "Number")
+						->EnumAttribute(PersistentDataSystemComponent::eBasicDataTypes::Bool, "Bool")
+
 					->DataElement(AZ::Edit::UIHandlers::ComboBox, &PersistentDataSystemComparitorComponent::m_comparisonForData,
-						"Use", "What to do with the data.")->
-						EnumAttribute(PersistentDataSystemComponent::eComparison::Equal, "Equal")->
-						EnumAttribute(PersistentDataSystemComponent::eComparison::GreaterThan, "GreaterThan")->
-						EnumAttribute(PersistentDataSystemComponent::eComparison::GreaterThanOrEqual, "GreaterThanOrEqual")->
-						EnumAttribute(PersistentDataSystemComponent::eComparison::LessThan, "LessThan")->
-						EnumAttribute(PersistentDataSystemComponent::eComparison::LessThanOrEqual, "LessThanOrEqual")
-					->ClassElement(AZ::Edit::ClassElements::Group, "Data")
-						->DataElement(0, &PersistentDataSystemComparitorComponent::m_BoolData, "Bool", "True // false.")
-						->DataElement(0, &PersistentDataSystemComparitorComponent::m_stringData, "String", "characters.")
-						->DataElement(0, &PersistentDataSystemComparitorComponent::m_numberData, "Number", "float values.")
+						"Use", "What to do with the data.")
+						->EnumAttribute(PersistentDataSystemComponent::eComparison::Equal, "Equal")
+						->EnumAttribute(PersistentDataSystemComponent::eComparison::GreaterThan, "GreaterThan")
+						->EnumAttribute(PersistentDataSystemComponent::eComparison::GreaterThanOrEqual, "GreaterThanOrEqual")
+						->EnumAttribute(PersistentDataSystemComponent::eComparison::LessThan, "LessThan")
+						->EnumAttribute(PersistentDataSystemComponent::eComparison::LessThanOrEqual, "LessThanOrEqual")
+
+					->DataElement(0, &PersistentDataSystemComparitorComponent::m_BoolData, "Data", "True // false.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &PersistentDataSystemComparitorComponent::IsDataBool)
+					->DataElement(0, &PersistentDataSystemComparitorComponent::m_stringData, "Data", "characters.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &PersistentDataSystemComparitorComponent::IsDataString)
+					->DataElement(0, &PersistentDataSystemComparitorComponent::m_numberData, "Data", "float values.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &PersistentDataSystemComparitorComponent::IsDataNumber)
 					;
 			}
 		}
 	}
+
+    AZ::u32 PersistentDataSystemComparitorComponent::MajorPropertyChanged()
+    {
+        return AZ::Edit::PropertyRefreshLevels::EntireTree;
+    }
+
+    bool PersistentDataSystemComparitorComponent::IsDataBool() const
+    {
+        return m_dataToUse == PersistentDataSystemComponent::eBasicDataTypes::Bool;
+    }
+
+    bool PersistentDataSystemComparitorComponent::IsDataString() const
+    {
+        return m_dataToUse == PersistentDataSystemComponent::eBasicDataTypes::String;
+    }
+
+    bool PersistentDataSystemComparitorComponent::IsDataNumber() const
+    {
+        return m_dataToUse == PersistentDataSystemComponent::eBasicDataTypes::Number;
+    }
 
 	void PersistentDataSystemComparitorComponent::Activate()
 	{
@@ -124,13 +138,12 @@ namespace StarterGameGem
 			PersistentDataSystemComponent* systemPtr = PersistentDataSystemComponent::GetInstance();
 			if (systemPtr != NULL)
 			{
-				systemPtr->RegisterDataChangeCallback(m_keyName, m_callbackMessageID);
+				systemPtr->RegisterDataChangeCallback(m_keyName, m_callbackMessageID.m_channel, m_callbackMessageID.m_actionNameCrc);
 			}
 			else
 			{
 				assert(!"no system");
 			}
-
 
 			AZ::GameplayNotificationBus::MultiHandler::BusConnect(m_callbackMessageID);
 		}
@@ -144,7 +157,7 @@ namespace StarterGameGem
 			PersistentDataSystemComponent* systemPtr = PersistentDataSystemComponent::GetInstance();
 			if (systemPtr != NULL)
 			{
-				systemPtr->UnRegisterDataChangeCallback(m_keyName, m_callbackMessageID);
+				systemPtr->UnRegisterDataChangeCallback(m_keyName, m_callbackMessageID.m_channel, m_callbackMessageID.m_actionNameCrc);
 			}
 			AZ::GameplayNotificationBus::MultiHandler::BusDisconnect(m_callbackMessageID);
 		}

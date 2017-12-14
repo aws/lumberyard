@@ -12,9 +12,9 @@
 
 #include <AzFramework/Input/Devices/InputDevice.h>
 
-#include <AzFramework/Input/Buses/Notifications/InputChannelEventNotificationBus.h>
-#include <AzFramework/Input/Buses/Notifications/InputDeviceEventNotificationBus.h>
-#include <AzFramework/Input/Buses/Notifications/InputTextEventNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputChannelNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputDeviceNotificationBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputTextNotificationBus.h>
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,30 +57,30 @@ namespace AzFramework
     void InputDevice::BroadcastInputChannelEvent(const InputChannel& inputChannel) const
     {
         bool hasBeenConsumed = false;
-        InputChannelEventNotificationBus::Broadcast(
-            &InputChannelEventNotifications::OnInputChannelEvent, inputChannel, hasBeenConsumed);
+        InputChannelNotificationBus::Broadcast(
+            &InputChannelNotifications::OnInputChannelEvent, inputChannel, hasBeenConsumed);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDevice::BroadcastInputTextEvent(const AZStd::string& textUTF8) const
     {
         bool hasBeenConsumed = false;
-        InputTextEventNotificationBus::Broadcast(
-            &InputTextEventNotifications::OnInputTextEvent, textUTF8, hasBeenConsumed);
+        InputTextNotificationBus::Broadcast(
+            &InputTextNotifications::OnInputTextEvent, textUTF8, hasBeenConsumed);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDevice::BroadcastInputDeviceConnectedEvent() const
     {
-        InputDeviceEventNotificationBus::Broadcast(
-            &InputDeviceEventNotifications::OnInputDeviceConnectedEvent, *this);
+        InputDeviceNotificationBus::Broadcast(
+            &InputDeviceNotifications::OnInputDeviceConnectedEvent, *this);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDevice::BroadcastInputDeviceDisconnectedEvent() const
     {
-        InputDeviceEventNotificationBus::Broadcast(
-            &InputDeviceEventNotifications::OnInputDeviceDisonnectedEvent, *this);
+        InputDeviceNotificationBus::Broadcast(
+            &InputDeviceNotifications::OnInputDeviceDisonnectedEvent, *this);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

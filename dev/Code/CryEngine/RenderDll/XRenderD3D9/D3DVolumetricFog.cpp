@@ -812,7 +812,7 @@ void CVolumetricFog::PrepareLightList(TArray<SRenderLight>* envProbes, TArray<SR
                 lightCullInfo.volumeType = vfInternal::tlVolumeOBB;
                 lightShadeInfo.lightType = vfInternal::tlTypeProbe;
                 lightShadeInfo.resIndex = 0xFFFFFFFF;
-                lightShadeInfo.attenuationParams.x = renderLight.m_Color.a;
+                lightShadeInfo.attenuationParams.x = renderLight.m_fProbeAttenuation;
                 // assigning value isn't needed because AttenuationFalloffMax is hard-coded in VolumeLighting.cfi to mitigate sharp transition between probes.
                 //lightShadeInfo.attenuationParams.y = max( renderLight.GetFalloffMax(), 0.001f );
                 lightCullInfo.miscFlag = 0;
@@ -891,26 +891,35 @@ void CVolumetricFog::PrepareLightList(TArray<SRenderLight>* envProbes, TArray<SR
                             float falloff = max(0.0f, min(1.0f, 1.0f + probePos.Dot(-probePos)));
                             const static float AttenuationFalloffMax = 0.2f;
                             falloff = min(1.0f, falloff / max(renderLight.GetFalloffMax(), AttenuationFalloffMax));
-                            float attenuation = falloff * falloff * (3.0f - 2.0f * falloff) * renderLight.m_Color.a;
 
-                            if (volumeSize > maxSizeGlobalEnvProbe0)
-                            {
-                                maxSizeGlobalEnvProbe1 = maxSizeGlobalEnvProbe0;
-                                texGlobalEnvProbe1 = texGlobalEnvProbe0;
-                                colorGlobalEnvProbe1 = colorGlobalEnvProbe0;
-                                attenuationGlobalEnvProbe1 = attenuationGlobalEnvProbe0;
+                            // This globalEnvProbe stuff has not been tested since the introduction of m_fProbeAttenuation
+                            // because the feature is dead at this time; CVolumetricFog::Clear() gets called before m_globalEnvProbeParam0/1
+                            // and m_globalEnvProveTex0/1 are copied to the GPU. I updated the code to use m_fProbeAttenuation as best I could,
+                            // but can't be certain that the final result will be correct if/when globalEnvProbe functionality is restored. (9/21/2017)
 
-                                maxSizeGlobalEnvProbe0 = volumeSize;
-                                texGlobalEnvProbe0 = (CTexture*)renderLight.GetDiffuseCubemap();
-                                colorGlobalEnvProbe0 = Vec3(lightShadeInfo.color);
-                                attenuationGlobalEnvProbe0 = attenuation;
-                            }
-                            else if (volumeSize > maxSizeGlobalEnvProbe1)
+                            float attenuation = falloff * falloff * (3.0f - 2.0f * falloff) * renderLight.m_fProbeAttenuation;
+
+                            if (renderLight.m_fProbeAttenuation > 0)
                             {
-                                maxSizeGlobalEnvProbe1 = volumeSize;
-                                texGlobalEnvProbe1 = (CTexture*)renderLight.GetDiffuseCubemap();
-                                colorGlobalEnvProbe1 = Vec3(lightShadeInfo.color);
-                                attenuationGlobalEnvProbe1 = attenuation;
+                                if (volumeSize > maxSizeGlobalEnvProbe0)
+                                {
+                                    maxSizeGlobalEnvProbe1 = maxSizeGlobalEnvProbe0;
+                                    texGlobalEnvProbe1 = texGlobalEnvProbe0;
+                                    colorGlobalEnvProbe1 = colorGlobalEnvProbe0;
+                                    attenuationGlobalEnvProbe1 = attenuationGlobalEnvProbe0;
+
+                                    maxSizeGlobalEnvProbe0 = volumeSize;
+                                    texGlobalEnvProbe0 = (CTexture*)renderLight.GetDiffuseCubemap();
+                                    colorGlobalEnvProbe0 = Vec3(lightShadeInfo.color);
+                                    attenuationGlobalEnvProbe0 = attenuation;
+                                }
+                                else if (volumeSize > maxSizeGlobalEnvProbe1)
+                                {
+                                    maxSizeGlobalEnvProbe1 = volumeSize;
+                                    texGlobalEnvProbe1 = (CTexture*)renderLight.GetDiffuseCubemap();
+                                    colorGlobalEnvProbe1 = Vec3(lightShadeInfo.color);
+                                    attenuationGlobalEnvProbe1 = attenuation;
+                                }
                             }
                         }
                     }

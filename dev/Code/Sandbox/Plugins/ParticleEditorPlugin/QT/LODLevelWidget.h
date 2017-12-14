@@ -12,6 +12,9 @@ struct SLodInfo;
 class QHBoxLayout;
 class QVBoxLayout;
 class QTreeWidget;
+struct IParticleEffect;
+class CLibraryTreeViewItem;
+class CParticleItem;
 
 class LODTreeWidget
     : public QTreeWidget

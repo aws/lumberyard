@@ -26,7 +26,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-void CStatObj::RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHideMask, const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter)
+void CStatObj::RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHideMask, const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw)
 {
     FUNCTION_PROFILER_3DENGINE;
 
@@ -151,11 +151,11 @@ void CStatObj::RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHid
                         )
                     {
                         PrefetchLine(pRenderObject, 0);
-                        RenderSubObject(pRenderObject, lodValue.LodA(), i, renderTM, passInfo, rendItemSorter);
+                        RenderSubObject(pRenderObject, lodValue.LodA(), i, renderTM, passInfo, rendItemSorter, forceStaticDraw);
                         if (pRenderObjectB)
                         {
                             PrefetchLine(pRenderObjectB, 0);
-                            RenderSubObject(pRenderObjectB, lodValue.LodB(), i, renderTM, passInfo, rendItemSorter);
+                            RenderSubObject(pRenderObjectB, lodValue.LodB(), i, renderTM, passInfo, rendItemSorter, forceStaticDraw);
                         }
                     }
                 }
@@ -175,17 +175,17 @@ void CStatObj::RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHid
     }
     else
     { // draw mesh, don't even try to render childs
-        RenderObjectInternal(pRenderObject, lodValue.LodA(), lodValue.DissolveRefA(), true, passInfo, rendItemSorter);
+        RenderObjectInternal(pRenderObject, lodValue.LodA(), lodValue.DissolveRefA(), true, passInfo, rendItemSorter, forceStaticDraw);
         if (lodValue.DissolveRefB() != 255) // check here since we're passing in A's ref.
         {
-            RenderObjectInternal(pRenderObject, lodValue.LodB(), lodValue.DissolveRefA(), false, passInfo, rendItemSorter);
+            RenderObjectInternal(pRenderObject, lodValue.LodB(), lodValue.DissolveRefA(), false, passInfo, rendItemSorter, forceStaticDraw);
         }
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 void CStatObj::RenderSubObject(CRenderObject* pRenderObject, int nLod,
-    int nSubObjId, const Matrix34A& renderTM, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter)
+    int nSubObjId, const Matrix34A& renderTM, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw)
 {
     const SSubObject& subObj = m_subObjects[nSubObjId];
 
@@ -210,7 +210,7 @@ void CStatObj::RenderSubObject(CRenderObject* pRenderObject, int nLod,
 
     if (subObj.bIdentityMatrix)
     {
-        pStatObj->RenderSubObjectInternal(pRenderObject, nLod, passInfo, rendItemSorter);
+        pStatObj->RenderSubObjectInternal(pRenderObject, nLod, passInfo, rendItemSorter, forceStaticDraw);
     }
     else
     {
@@ -219,12 +219,12 @@ void CStatObj::RenderSubObject(CRenderObject* pRenderObject, int nLod,
         SRenderObjData* pRenderObjectData = pRenderObject->GetObjData();
         pRenderObjectData->m_uniqueObjectId = pRenderObjectData->m_uniqueObjectId + nSubObjId;
 
-        pStatObj->RenderSubObjectInternal(pRenderObject, nLod, passInfo, rendItemSorter);
+        pStatObj->RenderSubObjectInternal(pRenderObject, nLod, passInfo, rendItemSorter, forceStaticDraw);
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void CStatObj::RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter)
+void CStatObj::RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw)
 {
     assert(!(m_nFlags & STATIC_OBJECT_HIDDEN));
     assert(m_nRenderTrisCount);
@@ -238,15 +238,13 @@ void CStatObj::RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, c
     assert(!m_pParentObject || m_pParentObject->m_nLastDrawMainFrameId == passInfo.GetMainFrameID());
 
     assert(!(m_nFlags & STATIC_OBJECT_COMPOUND));
-
-    nLod = CLAMP(nLod, GetMinUsableLod(), (int)m_nMaxUsableLod);
-    assert(nLod < MAX_STATOBJ_LODS_NUM);
-
     // Skip rendering of this suboject if it is marked as deformable
-    if (GetCVars()->e_MergedMeshes == 1 && nLod == 0 && m_isDeformable)
+    if (GetCVars()->e_MergedMeshes == 1 && nLod == 0 && m_isDeformable && !forceStaticDraw)
     {
         return;
     }
+    nLod = CLAMP(nLod, GetMinUsableLod(), (int)m_nMaxUsableLod);
+    assert(nLod < MAX_STATOBJ_LODS_NUM);
 
     // try next lod's if selected one is not ready
     if ((!nLod && m_pRenderMesh && m_pRenderMesh->CanRender()) || !GetCVars()->e_Lods)
@@ -290,21 +288,21 @@ void CStatObj::RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, c
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void CStatObj::RenderObjectInternal(CRenderObject* pRenderObject, int nTargetLod, uint8 uLodDissolveRef, bool dissolveOut, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter)
+void CStatObj::RenderObjectInternal(CRenderObject* pRenderObject, int nTargetLod, uint8 uLodDissolveRef, bool dissolveOut, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, bool forceStaticDraw)
 {
     if (nTargetLod == -1 || uLodDissolveRef == 255)
     {
         return;
     }
 
-    int nLod = CLAMP(nTargetLod, GetMinUsableLod(), (int)m_nMaxUsableLod);
-    assert(nLod < MAX_STATOBJ_LODS_NUM);
-
     // Skip rendering of this suboject if it is marked as deformable
-    if (GetCVars()->e_MergedMeshes == 1 && nTargetLod == 0 && m_isDeformable)
+    if (GetCVars()->e_MergedMeshes == 1 && nTargetLod == 0 && m_isDeformable && !forceStaticDraw)
     {
         return;
     }
+
+    int nLod = CLAMP(nTargetLod, GetMinUsableLod(), (int)m_nMaxUsableLod);
+    assert(nLod < MAX_STATOBJ_LODS_NUM);
 
     pRenderObject = GetRenderer()->EF_DuplicateRO(pRenderObject, passInfo);
 

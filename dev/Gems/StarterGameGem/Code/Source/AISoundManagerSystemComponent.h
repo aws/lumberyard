@@ -9,18 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-/*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -36,10 +24,10 @@ namespace StarterGameGem
 {
     enum SoundTypes
     {
-        RifleHit,               // e.g. laser hitting the ground or a wall
-        WhizzPast,              // when the laser whizzes past your head
-        LauncherExplosion,      // e.g. the grenade exploding
-        GunShot,                // the player's weapon firing
+        ST_RifleHit,               // e.g. laser hitting the ground or a wall
+        ST_WhizzPast,              // when the laser whizzes past your head
+        ST_LauncherExplosion,      // e.g. the grenade exploding
+        ST_GunShot,                // the player's weapon firing
     };
 
     struct SoundProperties
@@ -59,7 +47,7 @@ namespace StarterGameGem
 
         AZ::Vector3 origin = AZ::Vector3::CreateZero();
         float range = 0.0f;
-        int type = SoundTypes::RifleHit;
+        int type = SoundTypes::ST_RifleHit;
 
         // Only used for line sounds (such as 'WhizzPast').
         bool isLineSound = false;   // set in C++

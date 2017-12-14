@@ -1,9 +1,0 @@
-{
-    "NoUberFile":
-    {
-        "Root":
-        [
-            "src/jni/SDLExt_android.c"
-        ]
-    }
-}

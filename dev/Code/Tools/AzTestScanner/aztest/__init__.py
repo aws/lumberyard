@@ -36,8 +36,10 @@ def get_parser():
     p_scan.add_argument('--output-path', required=False, default=DEFAULT_OUTPUT_PATH,
                         help="sets the path for output folders, default is dev/TestResults")
     p_scan.add_argument('--html-report', required=False, action="store_true",
-                        help="if set, HTML report is automatically generated at the end of the scan (use 'report' "
-                             "subcommand to generate the HTML report later)")
+                        help="[DEPRECATED] Enabled by default. html reports will be automatically generated "
+                             "(Use --no-html-report to turn html report generation off)")
+    p_scan.add_argument('--no-html-report', required=False, action="store_true",
+                        help="if set, no HTML report is generated at the end of the scan")
     p_scan.add_argument('--integ', '-i', required=False, action="store_true",
                         help="if set, runs integration tests instead of unit tests")
     p_scan.add_argument('--no-timestamp', required=False, action="store_true",

@@ -16,6 +16,9 @@
 #include "DriverD3D.h"
 #include "D3DPostProcess.h"
 #include "D3DVolumetricFog.h"
+#include "GraphicsPipeline/FurPasses.h"
+
+#include "../Common/Textures/TextureManager.h"
 
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
@@ -480,7 +483,10 @@ void CTiledShading::PrepareLightList(TArray<SRenderLight>& envProbes, TArray<SRe
                 lightCullInfo.volumeType = tlVolumeOBB;
                 lightShadeInfo.lightType = tlTypeProbe;
                 lightShadeInfo.resIndex = 0xFFFFFFFF;
-                lightShadeInfo.attenuationParams = Vec2(renderLight.m_Color.a, max(renderLight.GetFalloffMax(), 0.001f));
+
+                const float uniformAttenuation = renderLight.m_fProbeAttenuation;
+                const float edgeFalloffSmoothness = max(renderLight.GetFalloffMax(), 0.001f);
+                lightShadeInfo.attenuationParams = Vec2(uniformAttenuation, edgeFalloffSmoothness);
 
                 AABB aabb = RotateAABB(AABB(-renderLight.m_ProbeExtents, renderLight.m_ProbeExtents), Matrix33(renderLight.m_ObjMatrix));
                 aabb = RotateAABB(aabb, Matrix33(matView));
@@ -863,10 +869,14 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
     {
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE3];
     }
-    if (CRenderer::CV_r_DeferredShadingSSS)
+
+    bool isRenderingFur = FurPasses::GetInstance().IsRenderingFur();
+    if (CRenderer::CV_r_DeferredShadingSSS || isRenderingFur)
     {
+        // Output diffuse accumulation if SSS is enabled or if there are render items using fur
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
     }
+
     if (CRenderer::CV_r_DeferredShadingAreaLights > 0)
     {
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
@@ -935,17 +945,17 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
             m_diffuseProbeAtlas.texArray->GetShaderResourceView(),
             m_spotTexAtlas.texArray->GetShaderResourceView(),
             CTexture::s_ptexRT_ShadowPool->GetShaderResourceView(),
-            CTexture::s_ptexShadowJitterMap->GetShaderResourceView(),
+            CTextureManager::Instance()->GetDefaultTexture("ShadowJitterMap")->GetShaderResourceView(),
             m_lightCullInfoBuf.GetShaderResourceView(),
             m_clipVolumeInfoBuf.GetShaderResourceView(),
         };
         rd->m_DevMan.BindSRV(eHWSC_Compute, pTiledBaseRes, 16, 8);
 
         CTexture* texClipVolumeIndex = CTexture::s_ptexVelocity;
-        CTexture* pTexCaustics = m_bApplyCaustics ? CTexture::s_ptexSceneTargetR11G11B10F[1] : CTexture::s_ptexBlack;
+        CTexture* pTexCaustics = m_bApplyCaustics ? CTexture::s_ptexSceneTargetR11G11B10F[1] : CTextureManager::Instance()->GetBlackTexture();
 
-        CTexture* ptexGiDiff = CTexture::s_ptexBlack;
-        CTexture* ptexGiSpec = CTexture::s_ptexBlack;
+        CTexture* ptexGiDiff = CTextureManager::Instance()->GetBlackTexture();
+        CTexture* ptexGiSpec = CTextureManager::Instance()->GetBlackTexture();
 
 #if defined(FEATURE_SVO_GI)
         if (CSvoRenderer::GetInstance()->IsActive() && CSvoRenderer::GetInstance()->GetSpecularFinRT())
@@ -955,15 +965,21 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
         }
 #endif
 
+        CTexture* ptexDepth = CTexture::s_ptexZTarget;
+        if (isRenderingFur)
+        {
+            ptexDepth = CTexture::s_ptexFurZTarget;
+        }
+
         D3DShaderResourceView* pDeferredShadingRes[13] = {
-            CTexture::s_ptexZTarget->GetShaderResourceView(),
+            ptexDepth->GetShaderResourceView(),
             CTexture::s_ptexSceneNormalsMap->GetShaderResourceView(),
             CTexture::s_ptexSceneSpecular->GetShaderResourceView(),
             CTexture::s_ptexSceneDiffuse->GetShaderResourceView(),
             CTexture::s_ptexShadowMask->GetShaderResourceView(),
             CTexture::s_ptexSceneNormalsBent->GetShaderResourceView(),
             CTexture::s_ptexHDRTargetScaledTmp[0]->GetShaderResourceView(),
-            CTexture::s_ptexEnvironmentBRDF->GetShaderResourceView(),
+            CTextureManager::Instance()->GetDefaultTexture("EnvironmentBRDF")->GetShaderResourceView(),
             texClipVolumeIndex->GetShaderResourceView(),
             CTexture::s_ptexAOColorBleed->GetShaderResourceView(),
             ptexGiDiff->GetShaderResourceView(),
@@ -1073,8 +1089,8 @@ void CTiledShading::BindForwardShadingResources(CShader*, EHWShaderClass shaderT
 
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
 
-    CTexture* ptexGiDiff = CTexture::s_ptexBlack;
-    CTexture* ptexGiSpec = CTexture::s_ptexBlack;
+    CTexture* ptexGiDiff = CTextureManager::Instance()->GetBlackTexture();
+    CTexture* ptexGiSpec = CTextureManager::Instance()->GetBlackTexture();
     CTexture* ptexRsmCol = NULL;
     CTexture* ptexRsmNor = NULL;
 
@@ -1094,7 +1110,7 @@ void CTiledShading::BindForwardShadingResources(CShader*, EHWShaderClass shaderT
         m_diffuseProbeAtlas.texArray->GetShaderResourceView(),
         m_spotTexAtlas.texArray->GetShaderResourceView(),
         CTexture::s_ptexRT_ShadowPool->GetShaderResourceView(),
-        CTexture::s_ptexShadowJitterMap->GetShaderResourceView(),
+        CTextureManager::Instance()->GetDefaultTexture("ShadowJitterMap")->GetShaderResourceView(),
         m_tileLightIndexBuf.GetShaderResourceView(),
         m_clipVolumeInfoBuf.GetShaderResourceView(),
         ptexGiDiff->GetShaderResourceView(),

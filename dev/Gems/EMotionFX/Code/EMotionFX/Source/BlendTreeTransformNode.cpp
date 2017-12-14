@@ -193,10 +193,10 @@ namespace EMotionFX
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_ROTATE_AMOUNT));
             const float rotateFactor = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_ROTATE_AMOUNT), 0.0f, 1.0f);
-            const MCore::Vector3& minAngles = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_MINROTATE))->GetRotationAngles();
-            const MCore::Vector3& maxAngles = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_MAXROTATE))->GetRotationAngles();
-            const MCore::Vector3 newAngles  = MCore::LinearInterpolate<MCore::Vector3>(minAngles, maxAngles, rotateFactor);
-            outputTransform.mRotation = inputTransform.mRotation * MCore::Quaternion(MCore::Math::DegreesToRadians(newAngles.x), MCore::Math::DegreesToRadians(newAngles.y), MCore::Math::DegreesToRadians(newAngles.z));
+            const AZ::Vector3& minAngles = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_MINROTATE))->GetRotationAngles();
+            const AZ::Vector3& maxAngles = static_cast<AttributeRotation*>(GetAttribute(ATTRIB_MAXROTATE))->GetRotationAngles();
+            const AZ::Vector3 newAngles  = MCore::LinearInterpolate<AZ::Vector3>(minAngles, maxAngles, rotateFactor);
+            outputTransform.mRotation = inputTransform.mRotation * MCore::Quaternion(MCore::Math::DegreesToRadians(newAngles.GetX()), MCore::Math::DegreesToRadians(newAngles.GetY()), MCore::Math::DegreesToRadians(newAngles.GetZ()));
         }
 
         // process the translation
@@ -204,9 +204,9 @@ namespace EMotionFX
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_TRANSLATE_AMOUNT));
             const float factor = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_TRANSLATE_AMOUNT), 0.0f, 1.0f);
-            const MCore::Vector3& minValue = GetAttributeVector3(ATTRIB_MINTRANSLATE)->GetValue();
-            const MCore::Vector3& maxValue = GetAttributeVector3(ATTRIB_MAXTRANSLATE)->GetValue();
-            const MCore::Vector3 newValue  = MCore::LinearInterpolate<MCore::Vector3>(minValue, maxValue, factor);
+            const AZ::Vector3 minValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MINTRANSLATE)->GetValue());
+            const AZ::Vector3 maxValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MAXTRANSLATE)->GetValue());
+            const AZ::Vector3 newValue  = MCore::LinearInterpolate<AZ::Vector3>(minValue, maxValue, factor);
             outputTransform.mPosition = inputTransform.mPosition + newValue;
         }
 
@@ -217,9 +217,9 @@ namespace EMotionFX
             {
                 OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_SCALE_AMOUNT));
                 const float factor = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_SCALE_AMOUNT), 0.0f, 1.0f);
-                const MCore::Vector3& minValue = GetAttributeVector3(ATTRIB_MINSCALE)->GetValue();
-                const MCore::Vector3& maxValue = GetAttributeVector3(ATTRIB_MAXSCALE)->GetValue();
-                const MCore::Vector3 newValue  = MCore::LinearInterpolate<MCore::Vector3>(minValue, maxValue, factor);
+                const AZ::Vector3 minValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MINSCALE)->GetValue());
+                const AZ::Vector3 maxValue = AZ::Vector3(GetAttributeVector3(ATTRIB_MAXSCALE)->GetValue());
+                const AZ::Vector3 newValue  = MCore::LinearInterpolate<AZ::Vector3>(minValue, maxValue, factor);
                 outputTransform.mScale = inputTransform.mScale + newValue;
             }
         )

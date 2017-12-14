@@ -88,7 +88,7 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             // AssetSystemBus
             //////////////////////////////////////////////////////////////////////////
-            void SourceFileRemoved(AZStd::string assetId, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
+            void SourceFileRemoved(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
 
             void PopulateAssets();
             void UpdateAssets();

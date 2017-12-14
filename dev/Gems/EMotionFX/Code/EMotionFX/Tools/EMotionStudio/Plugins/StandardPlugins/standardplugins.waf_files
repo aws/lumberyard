@@ -125,15 +125,6 @@
             "Source/MorphTargetsWindow/PhonemeSelectionWindow.cpp",
             "Source/MorphTargetsWindow/PhonemeSelectionWindow.h"
         ],
-        "EmotionFXTools/Plugins/MotionCompression":
-        [
-            "Source/MotionCompression/KeyframeOptimizationWidget.cpp",
-            "Source/MotionCompression/KeyframeOptimizationWidget.h",
-            "Source/MotionCompression/MotionCompressionPlugin.cpp",
-            "Source/MotionCompression/MotionCompressionPlugin.h",
-            "Source/MotionCompression/WaveletCompressionWidget.cpp",
-            "Source/MotionCompression/WaveletCompressionWidget.h"
-        ],
         "EmotionFXTools/Plugins/MotionEvents":
         [
             "Source/MotionEvents/MotionEventPresetCreateDialog.cpp",
@@ -200,10 +191,6 @@
             "Source/SceneManager/CollisionMeshesSetupWindow.h",
             "Source/SceneManager/MirrorSetupWindow.cpp",
             "Source/SceneManager/MirrorSetupWindow.h",
-            "Source/SceneManager/RetargetMappingWindow.cpp",
-            "Source/SceneManager/RetargetMappingWindow.h",
-            "Source/SceneManager/RetargetSetupWindow.cpp",
-            "Source/SceneManager/RetargetSetupWindow.h",
             "Source/SceneManager/SceneManagerPlugin.cpp",
             "Source/SceneManager/SceneManagerPlugin.h"
         ],

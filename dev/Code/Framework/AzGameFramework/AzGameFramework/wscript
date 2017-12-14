@@ -12,15 +12,6 @@
 
 def build(bld):
 
-    msvc_cxx_flags = [
-        '/W4', # warning level
-    ]
-
-    clang_flags = [
-        '-Werror',  # warnings as errors
-        '-Wall'     # warning level
-    ]
-
     bld.CryEngineStaticLibrary(
         target              = 'AzGameFramework',
         vs_filter           = 'AZ Framework',
@@ -32,18 +23,16 @@ def build(bld):
         includes            = ['..'],
         export_includes     = ['..'],
 
-        win_cxxflags=msvc_cxx_flags,
+        # Compiler Specific
+        msvc_cxxflags       = [
+                               '/W4', # warning level
+                              ],
+
+        clang_cxxflags      = [
+                               '-Werror',  # warnings as errors
+                               '-Wall'     # warning level
+                              ],
+
+        # Platform Specific
         win_features        = ['crcfix'],
-        
-       
-       
-        android_cxxflags=clang_flags,
-
-        ios_cxxflags=clang_flags,
-
-        appletv_cxxflags=clang_flags,
-
-        darwin_cxxflags=clang_flags,
-
-        linux_cxxflags=clang_flags,
     )

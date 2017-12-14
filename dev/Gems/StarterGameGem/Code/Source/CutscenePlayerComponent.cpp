@@ -9,10 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #include "stdafx.h"
 #include "CutscenePlayerComponent.h"
+
 #include "StarterGameUtility.h"
 
 #include <AzCore/Serialization/EditContext.h>
@@ -184,7 +183,7 @@ namespace StarterGameGem
 				if (m_disablePlayer)
 				{
 					AZ::GameplayNotificationBus::Event( 
-						AZ::GameplayNotificationId(GetEntityByTag(AZ::Crc32(m_PlayerTag.c_str())), AZ::Crc32(m_DisablePlayerEventName.c_str()), StarterGameUtility::GetUuid("float")),
+						AZ::GameplayNotificationId(GetEntityByTag(AZ::Crc32(m_PlayerTag.c_str())), AZ::Crc32(m_DisablePlayerEventName.c_str()), StarterGameUtility::GetUuid("float")), 
 						&AZ::GameplayNotificationBus::Events::OnEventBegin, AZStd::any(true));
 				}
 				break;
@@ -227,7 +226,7 @@ namespace StarterGameGem
 		else
 		{
 			// attach listeners!
-			m_sequence = movieSys->FindSequence(m_cutsceneName.c_str());
+			m_sequence = movieSys->FindLegacySequenceByName(m_cutsceneName.c_str());
 			
 			if (m_sequence != NULL)
 			{
@@ -312,7 +311,6 @@ namespace StarterGameGem
 	void CutscenePlayerComponent::SetStopEvent(const char* name)
 	{
 		// possibly change this to only attach when i am playing
-
 		if (m_StopEventName == name)
 			return;
 
@@ -378,45 +376,6 @@ namespace StarterGameGem
 		return m_FinishedEventName;
 	}
 
-    //void CutscenePlayerComponent::ValueChanged(bool resetTimer/* = true*/, bool regenBegin /*= false*/)
-    //{
-    //    AZ::EntityId myID = GetEntityId();
-    //    //AZ_TracePrintf("StarterGame", "CutscenePlayerComponent::ValueChanged to \"%.03f\" on %llu", m_value, (AZ::u64)myID);
-
-    //    AZStd::any paramToBus(m_value);
-
-    //    // send any messages that are relevent for the current state of my value
-    //    {	// changed
-    //        AZ::GameplayNotificationId gameplayId = AZ::GameplayNotificationId(myID, m_valueChangedEventName.c_str(), StarterGameUtility::GetUuid("float"));
-    //        AZ::GameplayNotificationBus::Event(gameplayId, &AZ::GameplayNotificationBus::Events::OnEventBegin, paramToBus);
-    //    }
-
-    //    if (regenStarted)
-    //    {	// regen begin
-    //        AZ::GameplayNotificationId gameplayId = AZ::GameplayNotificationId(myID, m_regenStartEventName.c_str(), StarterGameUtility::GetUuid("float"));
-    //        AZ::GameplayNotificationBus::Event(gameplayId, &AZ::GameplayNotificationBus::Events::OnEventBegin, paramToBus);
-    //    }
-
-    //    if (regenStopped)
-    //    {	// changed
-    //        AZ::GameplayNotificationId gameplayId = AZ::GameplayNotificationId(myID, m_regenEndEventName.c_str(), StarterGameUtility::GetUuid("float"));
-    //        AZ::GameplayNotificationBus::Event(gameplayId, &AZ::GameplayNotificationBus::Events::OnEventBegin, paramToBus);
-    //    }
-
-    //    if (m_value == m_min)
-    //    {
-    //        AZ::GameplayNotificationId gameplayId = AZ::GameplayNotificationId(myID, m_emptyEventName.c_str(), StarterGameUtility::GetUuid("float"));
-    //        AZ::GameplayNotificationBus::Event(gameplayId, &AZ::GameplayNotificationBus::Events::OnEventBegin, paramToBus);
-    //    }
-
-    //    if (m_value == m_max)
-    //    {
-    //        AZ::GameplayNotificationId gameplayId = AZ::GameplayNotificationId(myID, m_fullEventName.c_str(), StarterGameUtility::GetUuid("float"));
-    //        AZ::GameplayNotificationBus::Event(gameplayId, &AZ::GameplayNotificationBus::Events::OnEventBegin, paramToBus);
-    //    }
-    //}
-
-
     void CutscenePlayerComponent::OnEventBegin(const AZStd::any& value)
     {
         float valueAsFloat = 0;
@@ -436,19 +395,6 @@ namespace StarterGameGem
         {
             Stop();
         }
-        
-        //else if (*AZ::GameplayNotificationBus::GetCurrentBusId() == m_GetUsedCapacityEventID)
-        //{
-        //    AZStd::any paramToBus(m_value - m_min);
-        //    AZ::GameplayNotificationId gameplayId = AZ::GameplayNotificationId(valueAsEntityID, m_SendUsedCapacityEventName.c_str(), StarterGameUtility::GetUuid("float"));
-        //    AZ::GameplayNotificationBus::Event(gameplayId, &AZ::GameplayNotificationBus::Events::OnEventBegin, paramToBus);
-        //}
-        //else if (*AZ::GameplayNotificationBus::GetCurrentBusId() == m_GetUnUsedCapacityEventID)
-        //{
-        //    AZStd::any paramToBus(m_max - m_value);
-        //    AZ::GameplayNotificationId gameplayId = AZ::GameplayNotificationId(valueAsEntityID, m_SendUnUsedCapacityEventName.c_str(), StarterGameUtility::GetUuid("float"));
-        //    AZ::GameplayNotificationBus::Event(gameplayId, &AZ::GameplayNotificationBus::Events::OnEventBegin, paramToBus);
-        //}
     }
 
     void CutscenePlayerComponent::OnEventUpdating(const AZStd::any& value)

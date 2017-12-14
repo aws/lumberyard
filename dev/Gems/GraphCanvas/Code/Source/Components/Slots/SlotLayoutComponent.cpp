@@ -56,14 +56,12 @@ namespace GraphCanvas
     
     void SlotLayoutComponent::Activate()
     {
-        RootVisualRequestBus::Handler::BusConnect(GetEntityId());
         VisualRequestBus::Handler::BusConnect(GetEntityId());
     }
     
     void SlotLayoutComponent::Deactivate()
     {
         VisualRequestBus::Handler::BusDisconnect();
-        RootVisualRequestBus::Handler::BusDisconnect();
     }
 
     QGraphicsItem* SlotLayoutComponent::AsGraphicsItem()
@@ -102,17 +100,7 @@ namespace GraphCanvas
         return retVal;
     }
     
-    QGraphicsItem* SlotLayoutComponent::GetRootGraphicsItem()
-    { 
-        return m_layoutWidget;
-    }
-    
-    QGraphicsLayoutItem* SlotLayoutComponent::GetRootGraphicsLayoutItem()
-    {
-        return m_layoutWidget;
-    }
-	
-	void SlotLayoutComponent::SetLayout(QGraphicsLayout* layout)
+    void SlotLayoutComponent::SetLayout(QGraphicsLayout* layout)
     {
         AZ_Error("SlotLayoutComponent", m_layout == nullptr, "Trying to register two layouts to the same layout component");
         

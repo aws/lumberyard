@@ -14,42 +14,10 @@
 #include "StdAfx.h"
 #include "Shadow_Renderer.h"
 #include "RenderView.h"
-#include "CompiledRenderObject.h"
 #include <CryEngineAPI.h>
 
-ENGINE_API int SRendItem::m_RecurseLevel[RT_COMMAND_BUF_COUNT];
+int SRendItem::m_RecurseLevel[RT_COMMAND_BUF_COUNT];
 int SRendItem::m_StartFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
 int SRendItem::m_EndFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
 int SRendItem::m_ShadowsStartRI[RT_COMMAND_BUF_COUNT][MAX_SHADOWMAP_FRUSTUMS];
 int SRendItem::m_ShadowsEndRI[RT_COMMAND_BUF_COUNT][MAX_SHADOWMAP_FRUSTUMS];
-
-CRenderObjectsPools* CRenderObjectImpl::s_pPools;
-
-//=================================================================
-//////////////////////////////////////////////////////////////////////////
-CRenderObjectImpl::~CRenderObjectImpl()
-{
-    if (m_pCompiled)
-    {
-        CCompiledRenderObject::FreeToPool(m_pCompiled);
-        m_pCompiled = nullptr;
-    }
-    if (m_pNextSubObject)
-    {
-        FreeToPool(m_pNextSubObject);
-        m_pNextSubObject = nullptr;
-    }
-}
-
-CRenderObject* CRenderObjectImpl::AllocateFromPool()
-{
-    CRenderObjectImpl* pObject = s_pPools->m_permanentRenderObjectsPool.New();
-    pObject->Init();
-    return pObject;
-}
-
-void CRenderObjectImpl::FreeToPool(CRenderObject* pObj)
-{
-    s_pPools->m_permanentRenderObjectsPool.Delete(static_cast<CRenderObjectImpl*>(pObj));
-}
-

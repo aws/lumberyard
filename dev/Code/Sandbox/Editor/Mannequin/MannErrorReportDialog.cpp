@@ -130,7 +130,7 @@ public:
                 MannUtils::FlagsToTagList(tagList, record.tagStateTo, record.fragmentIDTo, *m_contexts->m_controllerDef, "");
                 return tagList;
             case ColumnType:
-                return QStringList({ tr("None"), tr("Fragment"), tr("Transition") })[record.type];
+                return QStringList({ tr("None"), tr("Fragment"), tr("Transition") }).at(record.type);
             case ColumnText:
                 return record.error;
             case ColumnFile:

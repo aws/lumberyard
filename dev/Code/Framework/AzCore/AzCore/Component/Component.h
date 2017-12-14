@@ -31,6 +31,7 @@ namespace AZ
     class ComponentDescriptor;
 
     typedef AZ::u32 ComponentServiceType;       ///< ID of a user-defined component service. The system uses it to build a dependency tree.
+    using ImmutableEntityVector = AZStd::vector<AZ::Entity const *>;
 
     using ComponentTypeList = AZStd::vector<Uuid>; ///< List of Component class type IDs.
 
@@ -120,6 +121,12 @@ namespace AZ
          * For example, use a TransformConfig with a TransformComponent.
          */
         bool GetConfiguration(AZ::ComponentConfig& outConfig) const;
+
+        /**
+        * Override to conduct per-component or per-slice validation logic during slice asset processing.
+        * @param sliceEntities All entities that belong to the slice that the entity with this component is on.
+        */
+        virtual bool ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/) const { return true; }
 
     protected:
         /**

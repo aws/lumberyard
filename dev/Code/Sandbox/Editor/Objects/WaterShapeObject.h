@@ -18,6 +18,11 @@
 
 #include "ShapeObject.h"
 
+//Forward Declaration
+namespace Water
+{
+    class WaterVolumeConverter;
+}
 
 struct IWaterVolumeRenderNode;
 
@@ -25,6 +30,8 @@ struct IWaterVolumeRenderNode;
 class CWaterShapeObject
     : public CShapeObject
 {
+    friend class Water::WaterVolumeConverter; //For legacy conversion
+
     Q_OBJECT
 public:
     CWaterShapeObject();
@@ -49,14 +56,17 @@ public:
     virtual void SetMinSpec(uint32 nSpec, bool bSetChildren = true);
     virtual void SetMaterialLayersMask(uint32 nLayersMask);
     //void Display( DisplayContext& dc );
-    virtual void Validate(CErrorReport* report)
+    virtual void Validate(IErrorReport* report)
     {
         CBaseObject::Validate(report);
     }
-    virtual void SetHidden(bool bHidden);
+    using CBaseObject::SetHidden;
+    virtual void SetHidden(bool bHidden, uint64 hiddenId = CBaseObject::s_invalidHiddenID, bool bAnimated = false);
     virtual void UpdateVisibility(bool visible);
 
     virtual IRenderNode* GetEngineNode() const { return m_pWVRN; }
+    
+    float GetWaterVolumeDepth() const { return mv_waterVolumeDepth; }
 
 protected:
     virtual bool Init(IEditor* ie, CBaseObject* prev, const QString& file);

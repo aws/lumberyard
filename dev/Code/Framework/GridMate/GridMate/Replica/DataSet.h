@@ -16,11 +16,19 @@
 
 #include <GridMate/Containers/vector.h>
 
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
+
+#include <GridMate/Replica/Replica.h>
 #include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/ReplicaCommon.h>
 #include <GridMate/Replica/Throttles.h>
+#include <GridMate/Replica/ReplicaTarget.h>
 
 #include <GridMate/Serialize/Buffer.h>
+#include <AzCore/std/containers/ring_buffer.h>
 
 
 namespace AzFramework
@@ -33,6 +41,8 @@ namespace GridMate
     class ReplicaChunkDescriptor;
     class ReplicaChunkBase;
     class ReplicaMarshalTaskBase;
+    class ReplicaPeer;
+    class ReplicaTarget;
 
     /**
     * DataSetBase
@@ -49,7 +59,14 @@ namespace GridMate
         float GetMaxIdleTime() const { return m_maxIdleTicks; }
         bool CanSet() const;
         bool IsDefaultValue() const { return m_isDefaultValue; }
-        void MarkNonDefaultValue() { m_isDefaultValue = false; }
+        void MarkAsDefaultValue() { m_isDefaultValue = true; }
+        void MarkAsNonDefaultValue() { m_isDefaultValue = false; }
+        /**
+        * Returns the last updated network time of the DataSet.
+        */
+        unsigned int GetLastUpdateTime() const { return m_lastUpdateTime; }
+
+        AZ::u64 GetRevision() const{ return m_revision; }
 
     protected:
         explicit DataSetBase(const char* debugName);
@@ -61,14 +78,15 @@ namespace GridMate
         virtual void DispatchChangedEvent(const TimeContext& tc) { (void) tc; }
         virtual void SetDirty();
 
-        ReadBuffer GetMarshalData();
+        ReadBuffer GetMarshalData() const;
 
-        float m_maxIdleTicks;
-        WriteBufferDynamic m_streamCache;
-        ReplicaChunkBase* m_replicaChunk; // raw pointer, assuming datasets do not exists without replica chunk
-        unsigned int m_lastUpdateTime;
+        float               m_maxIdleTicks;             //Note: used only if ACK feedback disabled
+        WriteBufferDynamic  m_streamCache;
+        ReplicaChunkBase*   m_replicaChunk;             ///< raw pointer, assuming datasets do not exists without replica chunk
+        unsigned int        m_lastUpdateTime;
 
-        bool m_isDefaultValue;
+        bool                m_isDefaultValue;
+        AZ::u64             m_revision;          ///< Latest revision number; 0 means unset
     };
 
     // This shim is here to temporarily allow support for Pointer type unmarshalling
@@ -106,7 +124,7 @@ namespace GridMate
     /**
         Declares a networked DataSet of type DataType. Optionally pass in a marshaler that
         can write the data to a stream. Otherwise the DataSet will expect to find a
-        ForwardMarshaler specialized on type Type. Optionally pass in a throttler
+        ForwardMarshaler specialized on type DataType. Optionally pass in a throttler
         that can decide when the data has changed enough to send to the downstream proxies.
     **/
     template<typename DataType, typename MarshalerType = Marshaler<DataType>, typename ThrottlerType = BasicThrottle<DataType>>
@@ -116,6 +134,13 @@ namespace GridMate
     public:
         template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&)>
         class BindInterface;
+
+        struct StampedBuffer
+        {
+            AZ::u64                                 m_stamp;  ///< Counter stamp
+            AZStd::shared_ptr<WriteBufferDynamic>   m_buffer; ///< Marshalled value
+        };
+        //AZStd::ring_buffer<StampedBuffer>           m_values;       ///< History of values
 
         /**
             Constructs a DataSet.
@@ -202,11 +227,6 @@ namespace GridMate
         const DataType& Get() const { return m_value; }
 
         /**
-            Returns the last updated network time of the DataSet.
-        **/
-        unsigned int GetLastUpdateTime() const { return m_lastUpdateTime; }
-
-        /**
             Returns the marshaler instance.
         **/
         MarshalerType& GetMarshaler() { return m_marshaler; }
@@ -243,59 +263,102 @@ namespace GridMate
         {
             PrepareDataResult pdr(false, false, false, false);
 
-            bool isDirty = false;
-            if (!IsWithinToleranceThreshold())
+            if (ReplicaTarget::IsAckEnabled())
             {
-                m_isDefaultValue = false;
-
-                isDirty = true;
-                m_idleTicks = 0.f;
-            }
-            else if (m_idleTicks < m_maxIdleTicks)
-            {
-                /*
-                 * This logic sends updates unreliable for some time and then sends reliable update at the end.
-                 * However, this is not necessary in the case of a value that is still a default one,
-                 * since the new proxy event (that occurs prior) is always sent reliably.
-                 */
-                if (!m_isDefaultValue)
+                if (!IsWithinToleranceThreshold())
                 {
-                    isDirty = true;
-                }
-
-                m_idleTicks += 1.f;
-            }
-
-            if (isDirty)
-            {
-                m_throttler.UpdateBaseline(m_value);
-                m_streamCache.Clear();
-                m_streamCache.SetEndianType(endianType);
-                m_streamCache.Write(m_value, m_marshaler);
-
-                if (m_idleTicks >= m_maxIdleTicks)
-                {
-                    pdr.m_isDownstreamReliableDirty = true;
-                }
-                else
-                {
+                    m_isDefaultValue = false;
                     pdr.m_isDownstreamUnreliableDirty = true;
+
+                    m_throttler.UpdateBaseline(m_value);
+                    m_streamCache.Clear();
+                    m_streamCache.SetEndianType(endianType);
+                    m_streamCache.Write(m_value, m_marshaler);
+
+                    if (m_replicaChunk && m_replicaChunk->m_replica)    //If this data set is attached to a replica
+                    {
+                        auto revision = m_replicaChunk->m_replica->GetRevision() + 1;
+                        //m_values.push_back(StampedBuffer{ revision, AZStd::make_shared<WriteBufferDynamic>(m_streamCache) });
+                        AZ_Assert(m_replicaChunk->m_revision <= revision, "Replica Chunk out of sync with replica chnk %d replica+1 %d"
+                            , m_replicaChunk->m_revision, revision);
+                        m_replicaChunk->m_revision = m_revision = revision;
+                    }
+                }
+                else if ((marshalFlags & ReplicaMarshalFlags::ForceDirty)
+                    || (marshalFlags & ReplicaMarshalFlags::OmitUnmodified)
+                    || (m_isDefaultValue && m_streamCache.Size() == 0)
+                    )
+                {
+                    /*
+                     * If the dataset is not dirty but the current operation is forcing dirty then
+                     * we need to prepare the stream cache by writing the current value in,
+                     * otherwise, the marshalling logic will send nothing or an out of date value.
+                     *
+                     * This can occur with NewOwner command, for example.
+                     */
+
+                    m_streamCache.Clear();
+                    m_streamCache.SetEndianType(endianType);
+                    m_streamCache.Write(m_value, m_marshaler);
                 }
             }
-            else if (marshalFlags & ReplicaMarshalFlags::ForceDirty)
+            else
             {
-                /*
-                 * If the dataset is not dirty but the current operation is forcing dirty then
-                 * we need to prepare the stream cache by writing the current value in,
-                 * otherwise, the marshalling logic will send nothing or an out of date value.
-                 *
-                 * This can occur with NewOwner command, for example.
-                 */
+                bool isDirty = false;
+                if (!IsWithinToleranceThreshold())
+                {
+                    m_isDefaultValue = false;
 
-                m_streamCache.Clear();
-                m_streamCache.SetEndianType(endianType);
-                m_streamCache.Write(m_value, m_marshaler);
+                    isDirty = true;
+                    m_idleTicks = 0.f;
+                }
+                else if (m_idleTicks < m_maxIdleTicks)
+                {
+                    /*
+                    * This logic sends updates unreliable for some time and then sends reliable update at the end.
+                    * However, this is not necessary in the case of a value that is still a default one,
+                    * since the new proxy event (that occurs prior) is always sent reliably.
+                    */
+                    if (!m_isDefaultValue)
+                    {
+                        isDirty = true;
+                    }
+
+                    m_idleTicks += 1.f;
+                }
+
+                if (isDirty)
+                {
+                    m_throttler.UpdateBaseline(m_value);
+                    m_streamCache.Clear();
+                    m_streamCache.SetEndianType(endianType);
+                    m_streamCache.Write(m_value, m_marshaler);
+
+                    if (m_idleTicks >= m_maxIdleTicks)
+                    {
+                        pdr.m_isDownstreamReliableDirty = true;
+                    }
+                    else
+                    {
+                        pdr.m_isDownstreamUnreliableDirty = true;
+                    }
+                }
+                else if ((marshalFlags & ReplicaMarshalFlags::ForceDirty) || (marshalFlags & ReplicaMarshalFlags::OmitUnmodified))
+                {
+                    /*
+                    * If the dataset is not dirty but the current operation is forcing dirty then
+                    * we need to prepare the stream cache by writing the current value in,
+                    * otherwise, the marshalling logic will send nothing or an out of date value.
+                    *
+                    * This can occur with NewOwner command, for example.
+                    */
+
+                    m_streamCache.Clear();
+                    m_streamCache.SetEndianType(endianType);
+                    m_streamCache.Write(m_value, m_marshaler);
+                }
             }
+
             return pdr;
         }
 

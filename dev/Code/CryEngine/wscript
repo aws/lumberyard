@@ -15,7 +15,6 @@
 
 
 SUBFOLDERS = [
-        'CryInput',
         'Cry3DEngine',
         'CrySoundSystem',
         'CryAction',

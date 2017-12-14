@@ -33,7 +33,8 @@
 
 #include "RendElements/OpticsFactory.h"
 
-#include "XRenderD3D9/CompiledRenderObject.h"
+#include "XRenderD3D9/GraphicsPipeline/FurBendData.h"
+#include "XRenderD3D9/GraphicsPipeline/FurPasses.h"
 #include "RenderView.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -70,68 +71,9 @@ struct SCompareByLightIds
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-void CRenderer::EF_AddRenderObject(CRenderObject* pRenderObject, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter)
-{
-#ifndef NULL_RENDERER
-    // Submit all valid objects (skip not ready and helper objects), TODO: release helper objects
-    while (pRenderObject)
-    {
-        bool bRecompile = false;
-        if (pRenderObject->m_pCompiled)
-        {
-            CCompiledRenderObject* pCompiled = pRenderObject->m_pCompiled;
-            while (pCompiled)
-            {
-                CRendElementBase* pRenderElement = pCompiled->m_pRenderElement;
-
-                if (pRenderElement && pRenderElement->m_Flags & (FCEF_DIRTY | FCEF_SKINNED | FCEF_UPDATEALWAYS))
-                {
-                    pRenderObject->m_bInstanceDataDirty = false; // In this case everything need to be recompiled, not only instance data.
-                    bRecompile = true;
-                }
-
-                if (CV_r_GraphicsPipeline == 4)
-                {
-                    // Directly add render items to the view.
-                    if (!passInfo.IsShadowPass())
-                    {
-                        passInfo.GetRenderView()->AddRenderItem(pCompiled->m_pRenderElement, pRenderObject, pCompiled, pCompiled->m_shaderItem, pCompiled->m_nRenderList, pCompiled->m_nAfterWater, pCompiled->m_nBatchFlags, passInfo, rendItemSorter);
-                    }
-                    else
-                    {
-                        //EF_AddEf_NotVirtual(pRenderElement, pCompiled->m_shaderItem, pRenderObject, passInfo, pCompiled->m_nRenderList, pCompiled->m_nAfterWater, rendItemSorter,nullptr);
-                        CShader* const __restrict pSH = (CShader*)pCompiled->m_shaderItem.m_pShader;
-                        if (pSH->m_HWTechniques.Num() && pSH->m_HWTechniques[0]->m_nTechnique[TTYPE_SHADOWGEN] >= 0)
-                        {
-                            //Timur, @TODO pCompiled object should be passed for shadows too
-                            //passInfo.GetRenderView()->AddRenderItem(pCompiled->m_pRenderElement, pRenderObject, pCompiled, pCompiled->m_shaderItem, EFSLIST_SHADOW_GEN, SG_SORT_GROUP, FB_GENERAL, passInfo, rendItemSorter);
-                            passInfo.GetRenderView()->AddRenderItem(pCompiled->m_pRenderElement, pRenderObject, nullptr, pCompiled->m_shaderItem, EFSLIST_SHADOW_GEN, SG_SORT_GROUP, FB_GENERAL, passInfo, rendItemSorter);
-                        }
-                    }
-                }
-                else
-                {
-                    EF_AddEf_NotVirtual(pRenderElement, pCompiled->m_shaderItem, pRenderObject, passInfo, pCompiled->m_nRenderList, pCompiled->m_nAfterWater, rendItemSorter, pCompiled);
-                }
-                pCompiled = pCompiled->m_pNext;
-            }
-        }
-        if (bRecompile || pRenderObject->m_bInstanceDataDirty)
-        {
-            m_RP.m_ModifiedObjects[passInfo.ThreadID()].push_back(pRenderObject);
-        }
-
-        pRenderObject = pRenderObject->m_pNextSubObject;
-    }
-#endif
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 static inline void HandleForceFlags(int& nList, int& nAW, uint32& nBatchFlags, const uint32 nShaderFlags, const uint32 nShaderFlags2, CRenderObject* obj)
 {
     // Force rendering in last place
-    // FIXME: If object is permanent this is wrong!
     // branchless
 
     const int32 sort1 = nz2mask(nShaderFlags2 & EF2_FORCE_DRAWLAST);
@@ -232,7 +174,7 @@ static void HandleOldRTMask(CRenderObject* obj)
 
 
 ///////////////////////////////////////////////////////////////////////////////
-void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRenderObject* obj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter, CCompiledRenderObject* pCompiled)
+void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRenderObject* obj, const SRenderingPassInfo& passInfo, int nList, int nAW, const SRendItemSorter& rendItemSorter)
 {
 #ifndef NULL_RENDERER
     int nThreadID = passInfo.ThreadID();
@@ -282,14 +224,14 @@ void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRend
     {
         if (pSH->m_HWTechniques.Num() && pSH->m_HWTechniques[0]->m_nTechnique[TTYPE_SHADOWGEN] >= 0)
         {
-            passInfo.GetRenderView()->AddRenderItem(re, obj, pCompiled, SH, EFSLIST_SHADOW_GEN, SG_SORT_GROUP, FB_GENERAL, passInfo, rendItemSorter);
+            passInfo.GetRenderView()->AddRenderItem(re, obj, SH, EFSLIST_SHADOW_GEN, SG_SORT_GROUP, FB_GENERAL, passInfo, rendItemSorter);
         }
         return;
     }
 
     if (passInfo.IsGPUParticleCubemapPass())
     {
-        passInfo.GetRenderView()->AddRenderItem(re, obj, pCompiled, SH, EFSLIST_GPU_PARTICLE_CUBEMAP_COLLISION, SG_SORT_GROUP, FB_Z, passInfo, rendItemSorter);
+        passInfo.GetRenderView()->AddRenderItem(re, obj, SH, EFSLIST_GPU_PARTICLE_CUBEMAP_COLLISION, SG_SORT_GROUP, FB_Z, passInfo, rendItemSorter);
         return;
     }
 
@@ -310,35 +252,6 @@ void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRend
 
     uint32 nBatchFlags = EF_BatchFlags(SH, obj, re, passInfo);
 
-    bool bCreateCompiledObjects = pCompiled == NULL;
-    // FIXME: Andrey: use compiled pipeline in GBUFFER and Shadow-Gen pass only
-    if (!(nBatchFlags & (FB_Z | FB_ZPREPASS)) && nList != EFSLIST_SHADOW_GEN)
-    {
-        bCreateCompiledObjects = false;
-    }
-
-    if (CRenderer::CV_r_GraphicsPipeline >= 4 && bCreateCompiledObjects)
-    {
-        // Decide if object needs to be compiled.
-        if (re && SH.m_pShader && SH.m_pShaderResources)
-        {
-            if (!obj->m_pCompiled)
-            {
-                // New CRenderObject added
-                m_RP.m_ModifiedObjects[nThreadID].push_back(obj);
-            }
-
-            // Allocate new CompiledRenderObject.
-            pCompiled = CCompiledRenderObject::AllocateFromPool();
-            pCompiled->m_pRenderElement = re;
-            pCompiled->m_shaderItem = SH;
-            pCompiled->m_nRenderList = (uint8)nList;
-
-            pCompiled->m_pNext = obj->m_pCompiled;
-            obj->m_pCompiled = pCompiled;
-        }
-    }
-
     const uint32 nRenderlistsFlags = (FB_PREPROCESS | FB_TRANSPARENT);
     if (nBatchFlags & nRenderlistsFlags)
     {
@@ -349,7 +262,7 @@ void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRend
             // Prevent water usage on non-water specific meshes (it causes reflections updates). Todo: this should be checked in editor side and not allow such usage
             if (eSHType != eST_Water || (eSHType == eST_Water && nList == EFSLIST_WATER))
             {
-                passInfo.GetRenderView()->AddRenderItem(re, obj, pCompiled, SH, EFSLIST_PREPROCESS, 0, nBatchFlags, passInfo, rendItemSorter);
+                passInfo.GetRenderView()->AddRenderItem(re, obj, SH, EFSLIST_PREPROCESS, 0, nBatchFlags, passInfo, rendItemSorter);
             }
         }
 
@@ -383,6 +296,21 @@ void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRend
 
     nList = (nBatchFlags & FB_SKIN) ? EFSLIST_SKIN : nList;
     nList = (nBatchFlags & FB_EYE_OVERLAY) ? EFSLIST_EYE_OVERLAY : nList;
+
+    if (pSH->GetShaderDrawType() == eSHDT_Fur)
+    {
+        nList = FurPasses::GetInstance().GetFurRenderList();
+        nBatchFlags |= FB_FUR | FB_Z;
+
+        // Opacity and emissive cause incorrect fur rendering, as transparency for shell passes
+        // is set up elsewhere. Override the material/objects settings for opacity and emissive.
+        nBatchFlags &= ~FB_TRANSPARENT;
+        pShaderResources->SetStrengthValue(EFTT_EMITTANCE, 0.0f);
+        pShaderResources->SetStrengthValue(EFTT_OPACITY, 1.0f);
+        obj->m_fAlpha = 1.0f;
+
+        FurBendData::Get().SetupObject(*obj, passInfo);
+    }
 
     const uint32 nShaderFlags2 = pSH->m_Flags2;
     const uint32 ObjDecalFlag = obj->m_ObjFlags & FOB_DECAL;
@@ -475,12 +403,7 @@ void CRenderer::EF_AddEf_NotVirtual(CRendElementBase* re, SShaderItem& SH, CRend
 
         // No need to sort opaque passes by water/after water. Ensure always on same list for more coherent sorting
         nAW |= nz2one((nList == EFSLIST_GENERAL) | (nList == EFSLIST_TERRAINLAYER) | (nList == EFSLIST_DECAL));
-        if (pCompiled)
-        {
-            pCompiled->m_nBatchFlags = nBatchFlags;
-            pCompiled->m_nAfterWater = nAW;
-        }
-        m_RP.m_pRenderViews[nThreadID]->AddRenderItem(re, obj, pCompiled, SH, nList, nAW, nBatchFlags, passInfo, rendItemSorter);
+        m_RP.m_pRenderViews[nThreadID]->AddRenderItem(re, obj, SH, nList, nAW, nBatchFlags, passInfo, rendItemSorter);
     }
 #endif
 }
@@ -554,6 +477,11 @@ uint32 CRenderer::EF_BatchFlags(SShaderItem& SH, CRenderObject* pObj, CRendEleme
             nFlags &= ~FB_ZPREPASS;
         }
 
+        if (ObjFlags & FOB_RENDER_TRANS_AFTER_DOF)
+        {
+            nFlags |= FB_TRANSPARENT_AFTER_DOF;
+        }
+
         pObj->m_ObjFlags |= (nFlags & FB_ZPREPASS) ? FOB_ZPREPASS : 0;
 
         if (pTech->m_nTechnique[TTYPE_DEBUG] > 0 && 0 != (ObjFlags & FOB_SELECTED))
@@ -580,19 +508,18 @@ uint32 CRenderer::EF_BatchFlags(SShaderItem& SH, CRenderObject* pObj, CRendEleme
             nFlags |= FB_MULTILAYERS & uMask;
         }
 
-        //if ( ((ObjFlags & (FOB_DECAL)) | DecalFlags) == 0 ) // put the mask below
+        if (pTech->m_nTechnique[TTYPE_MOTIONBLURPASS] > 0 && CV_r_MotionVectors && CV_r_MotionVectorsTransparency)
         {
-            if (pTech->m_nTechnique[TTYPE_MOTIONBLURPASS] > 0 && (ObjFlags & FOB_HAS_PREVMATRIX) && CV_r_MotionVectors)
-            {
-                uint32 uMask = mask_zr_zr(ObjFlags & (FOB_DECAL), DecalFlags);
-                nFlags |= FB_MOTIONBLUR & uMask;
-            }
-        }
+            // Combine material and runtime opacity.
+            const float opacity = pR->GetStrengthValue(EFTT_OPACITY) * fAlpha;
+            const bool isNotADecal = ((ObjFlags & FOB_DECAL) | DecalFlags) == 0;
+            const bool isAboveAlphaThreshold = opacity >= CV_r_MotionVectorsTransparencyAlphaThreshold;
 
-        // apply motion blur to skinned vegetation when it moves (for example breaking trees)
-        if (pTech->m_nTechnique[TTYPE_MOTIONBLURPASS] > 0 && ((ObjFlags & FOB_SKINNED) != 0) && ((ObjFlags & FOB_HAS_PREVMATRIX) != 0) && CV_r_MotionVectors)
-        {
-            nFlags |= FB_MOTIONBLUR;
+            // We do not want to generate motion for decals, since they adhere to surfaces.
+            if (isNotADecal && isAboveAlphaThreshold)
+            {
+                nFlags |= FB_MOTIONBLUR;
+            }
         }
 
         SRenderObjData* pOD = pObj->GetObjData();
@@ -658,56 +585,12 @@ CRenderObject* CRenderer::EF_GetObject_Temp(int nThreadID)
 
     pObj->AssignId(nId);
     pObj->Init();
-    if (pObj->m_pCompiled)
-    {
-        CCompiledRenderObject::FreeToPool(pObj->m_pCompiled);
-        pObj->m_pCompiled = nullptr;
-    }
     return pObj;
-}
-///////////////////////////////////////////////////////////////////////////////
-CRenderObject* CRenderer::EF_GetObject()
-{
-    CRenderObject* pObj = CRenderObjectImpl::AllocateFromPool();
-
-    pObj->m_bPermanent = true;
-    return pObj;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-void CRenderer::EF_FreeObject(CRenderObject* pObj)
-{
-    assert(pObj && pObj->m_bPermanent);
-    CRenderObjectImpl::FreeToPool(pObj);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 CRenderObject* CRenderer::EF_DuplicateRO(CRenderObject* pObj, const SRenderingPassInfo& passInfo)
 {
-    if (pObj->m_bPermanent)
-    {
-        // Clone object and attach to the end of linked list of the source object
-        CRenderObject* pObjNew = CRenderer::EF_GetObject();
-
-        uint32 nId = pObjNew->m_Id;
-        pObjNew->CloneObject(pObj);
-        pObjNew->m_Id = nId;
-
-        // Link duplicated object to the source object
-        pObjNew->m_pNextSubObject = 0;
-
-        // find last object in linked list
-        CRenderObject* pObjLast = pObj;
-        while (pObjLast->m_pNextSubObject)
-        {
-            pObjLast = pObjLast->m_pNextSubObject;
-        }
-
-        pObjLast->m_pNextSubObject = pObjNew;
-
-        return pObjNew;
-    }
-
     CRenderObject* pObjNew = CRenderer::EF_GetObject_Temp(passInfo.ThreadID());
     pObjNew->CloneObject(pObj);
     return pObjNew;

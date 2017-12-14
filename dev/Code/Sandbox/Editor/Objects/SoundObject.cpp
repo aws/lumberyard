@@ -73,14 +73,6 @@ void CSoundObject::SetName(const QString& name)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CSoundObject::SetPos(const Vec3& pos)
-{
-    CBaseObject::SetPos(pos);
-    //if (m_ITag)
-    //m_ITag->SetPos( pos );
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CSoundObject::GetBoundSphere(Vec3& pos, float& radius)
 {
     pos = GetPos();

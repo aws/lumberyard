@@ -16,6 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/function/function_fwd.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityBus.h>
@@ -26,6 +27,7 @@
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
 #include <QtWidgets/QWidget>
+#include <QtGui/QIcon>
 
 #pragma once
 
@@ -56,6 +58,14 @@ namespace AzToolsFramework
     class ComponentEditor;
     class ComponentPaletteWidget;
     struct SourceControlFileInfo;
+
+    namespace AssetBrowser
+    {
+        class ProductAssetBrowserEntry;
+    }
+
+    using ProductCallback = AZStd::function<void(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*)>;
+
     using ComponentEditorVector = AZStd::vector<ComponentEditor*>;
 
     /**
@@ -161,6 +171,7 @@ namespace AzToolsFramework
 
         void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray);
         void BuildSharedComponentUI(SharedComponentArray& sharedComponentArray);
+        bool ComponentMatchesCurrentFilter(SharedComponentInfo& sharedComponentInfo) const;
         ComponentEditor* CreateComponentEditor();
         void UpdateEntityIcon();
         void UpdateEntityDisplay();
@@ -315,6 +326,9 @@ namespace AzToolsFramework
         bool IsDropAllowedForComponentReorder(const QMimeData* mimeData, const QPoint& posGlobal) const;
         bool CreateComponentWithAsset(const AZ::Uuid& componentType, const AZ::Data::AssetId& assetId);
 
+        // given mimedata, filter it down to only the entries that can actually be spawned in this context.
+        void GetCreatableAssetEntriesFromMimeData(const QMimeData* mimeData, ProductCallback callbackFunction) const;
+
         ComponentEditor* GetReorderDropTarget(const QRect& globalRect) const;
         bool ResetDrag(QMouseEvent* event);
         bool UpdateDrag(const QPoint& localPos, Qt::MouseButtons mouseButtons, const QMimeData* mimeData);
@@ -373,6 +387,8 @@ namespace AzToolsFramework
         bool m_shouldScrollToNewComponents;
         bool m_shouldScrollToNewComponentsQueued;
 
+        AZStd::string m_filterString;
+
         // IDs of entities currently bound to this property editor.
         AZStd::vector<AZ::EntityId> m_selectedEntityIds;
 
@@ -384,6 +400,9 @@ namespace AzToolsFramework
         // Temporary buffer to use when calculating a data patch address.
         AZ::DataPatch::AddressType m_dataPatchAddressBuffer;
 
+        QIcon m_emptyIcon;
+        QIcon m_clearIcon;
+
         private slots:
         void OnPropertyRefreshRequired(); // refresh is needed for a property.
         void UpdateContents();
@@ -393,6 +412,10 @@ namespace AzToolsFramework
         void QueueScrollToNewComponent();
         void OnInitiallyActiveChanged(int);
         void BuildEntityIconMenu();
+
+        void OnSearchTextChanged();
+        void ClearSearchFilter();
+
         bool SelectedEntitiesAreFromSameSourceSliceEntity() const;
     };
 

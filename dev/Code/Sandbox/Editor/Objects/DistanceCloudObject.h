@@ -36,7 +36,10 @@ public:
     virtual void EndEditParams(IEditor* ie);
 
     virtual void GetLocalBounds(AABB& box);
+
+    using CBaseObject::SetHidden;
     virtual void SetHidden(bool bHidden);
+
     virtual void UpdateVisibility(bool visible);
     virtual void SetMaterial(CMaterial* mtl);
     virtual void Serialize(CObjectArchive& ar);

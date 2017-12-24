@@ -78,7 +78,7 @@ namespace LmbrCentral
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() { return m_meshAsset; }
 
         //! Invoked in the editor when the user assigns a new asset.
-        void OnAssetPropertyChanged();
+        AZ::u32 OnAssetPropertyChanged();
 
         //! Render the mesh
         void RenderMesh(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo);

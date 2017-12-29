@@ -1380,6 +1380,10 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Activate the game input mode"))
         .SetIcon(EditorProxyStyle::icon("Play"))
         .SetMetricsIdentifier("MainEditor", "ToggleGameMode");
+    am->AddAction(ID_SWITCH_PHYSICS, tr("Enable Physics/AI")).SetShortcut(tr("Ctrl+P")).SetCheckable(true)
+        .SetStatusTip(tr("Enable processing of Physics and AI."))
+        .SetMetricsIdentifier("MainEditor", "TogglePhysicsAndAI")
+        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnSwitchPhysicsUpdate);
     am->AddAction(ID_TERRAIN_COLLISION, tr("Terrain Collision")).SetShortcut(tr("Q")).SetCheckable(true)
         .SetStatusTip(tr("Enable collision of camera with terrain."))
         .SetMetricsIdentifier("MainEditor", "ToggleTerrainCameraCollision")

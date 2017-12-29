@@ -104,6 +104,9 @@ CInfoBar::CInfoBar(QWidget* parent)
 
     connect(ui->m_setVector, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSetVector);
     connect(ui->m_terrainCollision, &QToolButton::clicked, this, &CInfoBar::OnBnClickedTerrainCollision);
+    connect(ui->m_physicsBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedPhysics);
+    connect(ui->m_physSingleStepBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSingleStepPhys);
+    connect(ui->m_physDoStepBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedDoStepPhys);
     connect(ui->m_syncPlayerBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSyncplayer);
     connect(ui->m_gotoPos, &QToolButton::clicked, this, &CInfoBar::OnBnClickedGotoPosition);
     connect(ui->m_speed_01, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSpeed01);
@@ -111,7 +114,19 @@ CInfoBar::CInfoBar(QWidget* parent)
     connect(ui->m_speed_10, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSpeed10);
     connect(ui->m_muteBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedMuteAudio);
     connect(ui->m_vrBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedEnableVR);
-
+        
+    connect(ui->m_terrainCollision, &QAbstractButton::toggled, [this](bool checked) {
+         ui->m_terrainCollision->setToolTip(checked ? tr("Disable Terrain Camera Collision (Q)") : tr("Enable Terrain Camera Collision (Q)"));
+     });
+    connect(ui->m_physicsBtn, &QAbstractButton::toggled, [this](bool checked) {
+        ui->m_physicsBtn->setToolTip(checked ? tr("Disable Physics/AI (Ctrl+P)") : tr("Enable Physics/AI (Ctrl+P)"));
+    });
+    connect(ui->m_physSingleStepBtn, &QAbstractButton::toggled, [this](bool checked) {
+        ui->m_physSingleStepBtn->setToolTip(checked ? tr("Disable Physics/AI Single-step Mode ('<' in Game Mode)") : tr("Enable Physics/AI Single-step Mode ('<' in Game Mode)"));
+    });
+     connect(ui->m_syncPlayerBtn, &QAbstractButton::toggled, [this](bool checked) {
+         ui->m_syncPlayerBtn->setToolTip(checked ? tr("Synchronize Player with Camera") : tr("Move Player and Camera Separately"));
+     });
     connect(this, &CInfoBar::ActionTriggered, MainWindow::instance()->GetActionManager(), &ActionManager::ActionTriggered);
 }
 
@@ -138,9 +153,21 @@ void CInfoBar::OnEditorNotifyEvent(EEditorNotifyEvent event)
     }
     else if (event == eNotify_OnBeginLoad || event == eNotify_OnCloseScene)
     {
+        // make sure AI/Physics is disabled on level load (CE-4229)
+        if (GetIEditor()->GetGameEngine()->GetSimulationMode())
+        {
+            OnBnClickedPhysics();
+        }
+
+        ui->m_physicsBtn->setEnabled(false);
+        ui->m_physSingleStepBtn->setEnabled(false);
+        ui->m_physDoStepBtn->setEnabled(false);
     }
     else if (event == eNotify_OnEndLoad || event == eNotify_OnEndNewScene)
     {
+        ui->m_physicsBtn->setEnabled(true);
+        ui->m_physSingleStepBtn->setEnabled(true);
+        ui->m_physDoStepBtn->setEnabled(true);
     }
     else if (event == eNotify_OnSelectionChange)
     {
@@ -428,6 +455,18 @@ void CInfoBar::IdleUpdate()
             (ui->m_terrainCollision->isChecked() && noCollision))
         {
             ui->m_terrainCollision->setChecked(!noCollision);
+        }
+        bool bPhysics = GetIEditor()->GetGameEngine()->GetSimulationMode();
+        if ((ui->m_physicsBtn->isChecked() && !bPhysics) ||
+            (!ui->m_physicsBtn->isChecked() && bPhysics))
+        {
+            ui->m_physicsBtn->setChecked(bPhysics);
+        }
+
+        bool bSingleStep = (gEnv->pPhysicalWorld->GetPhysVars()->bSingleStepMode != 0);
+        if (ui->m_physSingleStepBtn->isChecked() != bSingleStep)
+        {
+            ui->m_physSingleStepBtn->setChecked(bSingleStep);
         }
 
         bool bSyncPlayer = GetIEditor()->GetGameEngine()->IsSyncPlayerPosition();
@@ -734,6 +773,9 @@ void CInfoBar::OnInitDialog()
     ui->m_posCtrlZ->setEnabled(false);
     ui->m_posCtrlZ->setMaximumWidth(width);
     ui->m_setVector->setEnabled(false);
+    ui->m_physicsBtn->setEnabled(false);
+    ui->m_physSingleStepBtn->setEnabled(false);
+    ui->m_physDoStepBtn->setEnabled(false);
 
     ui->m_moveSpeed->setRange(0.01, 100);
     ui->m_moveSpeed->setSingleStep(0.1);
@@ -790,6 +832,27 @@ void CInfoBar::OnEndVectorUpdate()
 void CInfoBar::OnBnClickedTerrainCollision()
 {
     emit ActionTriggered(ID_TERRAIN_COLLISION);
+}
+void CInfoBar::OnBnClickedPhysics()
+{
+    bool bPhysics = GetIEditor()->GetGameEngine()->GetSimulationMode();
+    ui->m_physicsBtn->setChecked(bPhysics);
+    emit ActionTriggered(ID_SWITCH_PHYSICS);
+
+    if (bPhysics && ui->m_physSingleStepBtn->isChecked())
+    {
+        OnBnClickedSingleStepPhys();
+    }
+}
+
+void CInfoBar::OnBnClickedSingleStepPhys()
+{
+    ui->m_physSingleStepBtn->setChecked(gEnv->pPhysicalWorld->GetPhysVars()->bSingleStepMode ^= 1);
+}
+
+void CInfoBar::OnBnClickedDoStepPhys()
+{
+    gEnv->pPhysicalWorld->GetPhysVars()->bDoStep = 1;
 }
 
 //////////////////////////////////////////////////////////////////////////

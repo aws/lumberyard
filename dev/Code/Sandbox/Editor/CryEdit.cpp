@@ -815,6 +815,7 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_AI_NAVIGATION_ADD_SEED, OnAINavigationAddSeed)
     ON_COMMAND(ID_AI_NAVIGATION_VISUALIZE_ACCESSIBILITY, OnVisualizeNavigationAccessibility)
     ON_COMMAND(ID_LAYER_SELECT, OnLayerSelect)
+    ON_COMMAND(ID_SWITCH_PHYSICS, OnSwitchPhysics)
     ON_COMMAND(ID_GAME_SYNCPLAYER, OnSyncPlayer)
     ON_COMMAND(ID_RESOURCES_REDUCEWORKINGSET, OnResourcesReduceworkingset)
     ON_COMMAND(ID_TOOLS_EQUIPPACKSEDIT, OnToolsEquipPacksEdit)
@@ -5538,6 +5539,32 @@ void CCryEditApp::OnTerrainCollisionUpdate(QAction* action)
     Q_ASSERT(action->isCheckable());
     uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
     action->setChecked(flags & SETTINGS_NOCOLLISION);
+}
+ //////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchPhysics()
+{
+    QWaitCursor wait;
+    uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
+    if (flags & SETTINGS_PHYSICS)
+    {
+        flags &= ~SETTINGS_PHYSICS;
+    }
+    else
+    {
+        flags |= SETTINGS_PHYSICS;
+    }
+    GetIEditor()->GetDisplaySettings()->SetSettings(flags);
+
+    if ((flags & SETTINGS_PHYSICS) == 0)
+    {
+        GetIEditor()->GetGameEngine()->SetSimulationMode(false);
+        GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED, 0, 0);
+    }
+    else
+    {
+        GetIEditor()->GetGameEngine()->SetSimulationMode(true);
+        GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED, 1, 0);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

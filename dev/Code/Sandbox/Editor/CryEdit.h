@@ -356,6 +356,7 @@ public:
     void OnVisualizeNavigationAccessibility();
     void OnVisualizeNavigationAccessibilityUpdate(QAction* action);
     void OnAINavigationDisplayAgent();
+    void OnSwitchPhysics();
     void OnAINavigationDisplayAgentUpdate(QAction* action);
     void OnSwitchPhysicsUpdate(QAction* action);
     void OnSyncPlayer();

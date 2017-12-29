@@ -84,6 +84,9 @@ protected:
     void OnBnClickedSetVector();
     void OnUpdateMoveSpeed();
     void OnBnClickedTerrainCollision();
+    void OnBnClickedPhysics();
+    void OnBnClickedSingleStepPhys();
+    void OnBnClickedDoStepPhys();
     void OnBnClickedMuteAudio();
     void OnBnClickedEnableVR();
     void OnInitDialog();

@@ -237,6 +237,54 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="m_physicsBtn">
+     <property name="toolTip">
+      <string>Enable Physics/AI (Ctrl+P)</string>
+     </property>
+     <property name="text">
+      <string>AI/Physics</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_physSingleStepBtn">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Enable Physics/AI Single-step Mode ('&lt;' in Game Mode)</string>
+     </property>
+     <property name="text">
+      <string>||</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_physDoStepBtn">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Perform a Single Physics/AI Simulation Step ('&gt;' in Game Mode)</string>
+     </property>
+     <property name="text">
+      <string>|&gt;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="m_syncPlayerBtn">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">

@@ -2407,6 +2407,8 @@
 #define IDC_DESIGNER_CUBEEDIT_SUBMATID_COMBO       2802
 #define IDC_DESIGNER_CUBEEDITOR_PAINT              2803
 #define IDC_CMD_DOCUMENTATION                      2804
+#define IDC_SINGLE_STEP_PHYS                       2805
+#define IDC_DO_STEP_PHYS                           2806
 #define IDC_DESIGNER_SUBDIVISION                   2807
 #define IDC_PROXY_PURPOSE                          2808
 #define IDC_DEFORMATION_SLIDER                     2809

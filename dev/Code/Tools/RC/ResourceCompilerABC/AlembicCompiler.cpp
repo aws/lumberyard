@@ -1790,19 +1790,28 @@ bool AlembicCompiler::ComputeVertexHashes(std::vector<uint64>& abcVertexHashes, 
         const Alembic::Abc::UInt32ArraySamplePtr pFrameAbcTexcoordIndices = bHasTexcoords ? frameTexcoordSample.getIndices() : 0;
         const size_t frameNumAbcTexcoordsIndices = bHasTexcoords ? pFrameAbcTexcoordIndices->size() : 0;
 
-        Alembic::AbcGeom::GeometryScope normalGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getNormalsParam().getMetaData());
-        Alembic::AbcGeom::GeometryScope texcoordGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getUVsParam().getMetaData());
+        Alembic::AbcGeom::GeometryScope normalGeoScope = Alembic::AbcGeom::kUnknownScope;
+        Alembic::AbcGeom::GeometryScope texcoordGeoScope = Alembic::AbcGeom::kUnknownScope;
 
-        if (normalGeoScope != Alembic::AbcGeom::kVertexScope && normalGeoScope != Alembic::AbcGeom::kFacevaryingScope)
+        if (bHasNormals)
         {
-            RCLogWarning("  Mesh normal vectors are in an format that's not implemented or illegal. mode:%Iu. Skipped:\n    %s", normalGeoScope, mesh.m_abcMesh.getFullName().c_str());
-            return false;
+            normalGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getNormalsParam().getMetaData());
+
+            if (normalGeoScope != Alembic::AbcGeom::kVertexScope && normalGeoScope != Alembic::AbcGeom::kFacevaryingScope)
+            {
+                RCLogWarning("  Mesh normal vectors are in an format that's not implemented or illegal. mode:%Iu. Skipped:\n    %s", normalGeoScope, mesh.m_abcMesh.getFullName().c_str());
+                return false;
+            }
         }
 
-        if (texcoordGeoScope != Alembic::AbcGeom::kVertexScope && texcoordGeoScope != Alembic::AbcGeom::kFacevaryingScope)
+        if (bHasTexcoords)
         {
-            RCLogWarning("  Mesh uv texture coordinates are in an format that's not implemented or illegal. mode:%Iu. Skipped:\n    %s", texcoordGeoScope, mesh.m_abcMesh.getFullName().c_str());
-            return false;
+            texcoordGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getUVsParam().getMetaData());
+            if (texcoordGeoScope != Alembic::AbcGeom::kVertexScope && texcoordGeoScope != Alembic::AbcGeom::kFacevaryingScope)
+            {
+                RCLogWarning("  Mesh uv texture coordinates are in an format that's not implemented or illegal. mode:%Iu. Skipped:\n    %s", texcoordGeoScope, mesh.m_abcMesh.getFullName().c_str());
+                return false;
+            }
         }
 
         AlembicColorSampleArray frameColors = bHasColors ? AlembicColorSampleArray(mesh.m_colorParamName, meshSchema, index.first) : AlembicColorSampleArray();
@@ -1963,8 +1972,18 @@ bool AlembicCompiler::CompileFullMesh(GeomCache::Mesh& mesh, const size_t curren
     const Alembic::Abc::UInt32ArraySamplePtr pAbcTexcoordIndices = bHasTexcoords ? texcoordSample.getIndices() : 0;
     const size_t numAbcTexcoordsIndices = bHasTexcoords ? pAbcTexcoordIndices->size() : 0;
 
-    Alembic::AbcGeom::GeometryScope normalGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getNormalsParam().getMetaData());
-    Alembic::AbcGeom::GeometryScope texcoordGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getUVsParam().getMetaData());
+    Alembic::AbcGeom::GeometryScope normalGeoScope = Alembic::AbcGeom::kUnknownScope;
+    Alembic::AbcGeom::GeometryScope texcoordGeoScope = Alembic::AbcGeom::kUnknownScope;
+
+    if (bHasNormals)
+    {
+        normalGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getNormalsParam().getMetaData());
+    }
+
+    if (bHasTexcoords)
+    {
+        texcoordGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getUVsParam().getMetaData());
+    }
 
     if (bHasTexcoords && numAbcIndices != numAbcTexcoordsIndices)
     {
@@ -2056,7 +2075,6 @@ bool AlembicCompiler::CompileFullMesh(GeomCache::Mesh& mesh, const size_t curren
                     texcoordsIndex = positionIndex;
                 }
             }
-
 
             const int32_t colorsIndex = colors.getIndex(currentIndexArraysIndex);
 

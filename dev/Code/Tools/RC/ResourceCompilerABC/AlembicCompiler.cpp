@@ -1841,24 +1841,30 @@ bool AlembicCompiler::ComputeVertexHashes(std::vector<uint64>& abcVertexHashes, 
                 int32_t normalIndex = 0;
                 int32_t texcoordsIndex = 0;
 
-                if (bHasNormals && normalGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+                if (bHasNormals)
                 {
-                    normalIndex = (*pFrameAbcNormalIndices)[currentIndexArraysIndex];
-                }
-                else
-                {
-                    AZ_Assert(normalGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement");
-                    normalIndex = positionIndex;
+                    if (normalGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+                    {
+                        normalIndex = (*pFrameAbcNormalIndices)[currentIndexArraysIndex];
+                    }
+                    else
+                    {
+                        AZ_Assert(normalGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement");
+                        normalIndex = positionIndex;
+                    }
                 }
 
-                if (bHasTexcoords && texcoordGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+                if (bHasTexcoords)
                 {
-                    texcoordsIndex = (*pFrameAbcTexcoordIndices)[currentIndexArraysIndex];
-                }
-                else
-                {
-                    AZ_Assert(texcoordGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement.");
-                    texcoordsIndex = positionIndex;
+                    if (texcoordGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+                    {
+                        texcoordsIndex = (*pFrameAbcTexcoordIndices)[currentIndexArraysIndex];
+                    }
+                    else
+                    {
+                        AZ_Assert(texcoordGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement.");
+                        texcoordsIndex = positionIndex;
+                    }
                 }
 
                 const int32_t colorsIndex = frameColors.getIndex(currentIndexArraysIndex);
@@ -2025,24 +2031,30 @@ bool AlembicCompiler::CompileFullMesh(GeomCache::Mesh& mesh, const size_t curren
             int32_t normalIndex = 0;
             int32_t texcoordsIndex = 0;
 
-            if (bHasNormals && normalGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+            if (bHasNormals)
             {
-                normalIndex = (*pAbcNormalIndices)[currentIndexArraysIndex];
-            }
-            else
-            {
-                AZ_Assert(normalGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement");
-                normalIndex = positionIndex;
+                if (normalGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+                {
+                    normalIndex = (*pAbcNormalIndices)[currentIndexArraysIndex];
+                }
+                else
+                {
+                    AZ_Assert(normalGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement");
+                    normalIndex = positionIndex;
+                }
             }
 
-            if (bHasTexcoords && texcoordGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+            if (bHasTexcoords)
             {
-                texcoordsIndex = (*pAbcTexcoordIndices)[currentIndexArraysIndex];
-            }
-            else
-            {
-                AZ_Assert(texcoordGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement.");
-                texcoordsIndex = positionIndex;
+                if (texcoordGeoScope == Alembic::AbcGeom::kFacevaryingScope)
+                {
+                    texcoordsIndex = (*pAbcTexcoordIndices)[currentIndexArraysIndex];
+                }
+                else
+                {
+                    AZ_Assert(texcoordGeoScope == Alembic::AbcGeom::kVertexScope, "If you implement more geoscopes, update this if/else statement.");
+                    texcoordsIndex = positionIndex;
+                }
             }
 
 

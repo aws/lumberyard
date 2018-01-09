@@ -11,6 +11,8 @@
 */
 
 #include <AzCore/Asset/AssetTypeInfoBus.h>
+#include <AzFramework/API/ApplicationAPI.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/ProductThumbnail.h>
 #include <QPixmap>
 
@@ -34,6 +36,35 @@ namespace AzToolsFramework
             AZ::AssetTypeInfoBus::EventResult(iconPath, productKey->GetAssetType(), &AZ::AssetTypeInfo::GetBrowserIcon);
             if (!iconPath.isEmpty())
             {
+                // Use absolute path for the icon if possible
+                AZStd::string iconFullPath;
+                bool pathFound = false;
+                AzToolsFramework::AssetSystemRequestBus::BroadcastResult(pathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, iconPath.toUtf8().constBegin(), iconFullPath);
+                if (!pathFound)
+                {
+                    // Special case:  If the path cannot be resolved, and starts with a relative "Editor/" path and app root is not the engine folder, then use the engine root to
+                    // build an absolute path to it
+                    if (iconPath.startsWith("Editor/"))
+                    {
+                        bool isEngineExternal = false;
+                        AzFramework::ApplicationRequests::Bus::BroadcastResult(isEngineExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
+                        if (isEngineExternal)
+                        {
+                            // For icon paths in external projects that are looking for Editor/, convert the relative icon path to the engine absolute one
+                            AZStd::string engineRootPath;
+                            AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRootPath, &AzFramework::ApplicationRequests::GetEngineRoot);
+                            iconPath = QString(engineRootPath.c_str()) + iconPath;
+                        }
+                    }
+                    else
+                    {
+                        m_state = State::Failed;
+                    }
+                }
+                else
+                {
+                    iconPath = QString(iconFullPath.c_str());
+                }
                 m_pixmap = QPixmap(iconPath).scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);
             }
             else

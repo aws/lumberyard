@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.12.0.0", 
+            "default_value": "1.12.0.1", 
             "description": "Version to embed in final build outputs"
         }, 
         {

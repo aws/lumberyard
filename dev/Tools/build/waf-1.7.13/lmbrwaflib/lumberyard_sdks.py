@@ -334,83 +334,12 @@ def link_aws_sdk_core_after(self):
 @feature('ExternalLyIdentity')
 @before_method('apply_incpaths')
 def copy_external_ly_identity(self):
-    if not os.path.exists(self.bld.CreateRootRelativePath('Code/Tools/LyIdentity/wscript')):
-        if is_win_x64_platform(self):
-            sharedLibraryPath = 'Tools/InternalSDKs/LyIdentity/' + self.bld.BuildPlatformLibraryDirectory(False)
-            self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyIdentity_shared.dll" ]
-
-
-@conf
-def register_ly_identity_as_external(self):
-    if isinstance(self, BuildContext) and (is_win_x64_platform(self) or is_darwin_x64_platform(self)):
-        staticLibraryPath = self.CreateRootRelativePath(
-            'Tools/InternalSDKs/LyIdentity/' + self.BuildPlatformLibraryDirectory(True))
-        sharedLibraryPath = self.CreateRootRelativePath(
-            'Tools/InternalSDKs/LyIdentity/' + self.BuildPlatformLibraryDirectory(False))
-        identityIncludeDir = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity/include')
-
-        if is_win_x64_platform(self):
-            self.read_shlib(
-                name            = 'LyIdentity_shared',
-                export_defines  = ['LINK_LY_IDENTITY_DYNAMICALLY'],
-                export_includes = [identityIncludeDir],
-                paths           = [ sharedLibraryPath ]
-            )
-
-        self.read_stlib(
-            name='LyIdentity_static',
-            export_includes=[identityIncludeDir],
-            paths=[staticLibraryPath]
-        )
-
+    pass
 
 @feature('ExternalLyMetrics')
 @before_method('apply_incpaths')
 def copy_external_ly_metrics(self):
-    if not os.path.exists(self.bld.CreateRootRelativePath('Code/Tools/LyMetrics/wscript')):
-        if is_win_x64_platform(self):
-            sharedLibraryPath = 'Tools/InternalSDKs/LyMetrics/' + self.bld.BuildPlatformLibraryDirectory(False)
-            self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyMetricsShared_shared.dll" ]
-            self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyMetricsProducer_shared.dll" ]
-
-@conf
-def register_ly_metrics_as_external(self):
-    if isinstance(self, BuildContext) and (is_win_x64_platform(self) or is_darwin_x64_platform(self)):
-        staticLibraryPath = self.CreateRootRelativePath(
-            'Tools/InternalSDKs/LyMetrics/' + self.BuildPlatformLibraryDirectory(True))
-        sharedLibraryPath = self.CreateRootRelativePath(
-            'Tools/InternalSDKs/LyMetrics/' + self.BuildPlatformLibraryDirectory(False))
-        metricsSharedIncludeDir = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics/include')
-        metricsProducerIncludeDir = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics/include')
-
-        if is_win_x64_platform(self):
-            self.read_shlib(
-                name            = 'LyMetricsShared_shared',
-                export_defines  = ['LINK_LY_METRICS_DYNAMICALLY'],
-                export_includes = [ metricsSharedIncludeDir ],
-                paths           = [ sharedLibraryPath ]
-            )
-
-        self.read_stlib(
-            name='LyMetricsShared_static',
-            export_includes=[metricsSharedIncludeDir],
-            paths=[staticLibraryPath]
-        )
-
-        if is_win_x64_platform(self):
-            self.read_shlib(
-                name            = 'LyMetricsProducer_shared',
-                export_defines  = ['LINK_LY_METRICS_PRODUCER_DYNAMICALLY'],
-                export_includes = [ metricsProducerIncludeDir ],
-                paths           = [ sharedLibraryPath ]
-            )
-
-        self.read_stlib(
-            name='LyMetricsProducer_static',
-            export_includes=[metricsProducerIncludeDir],
-            paths=[staticLibraryPath]
-        )
-
+    pass
 
 def get_python_home_lib_and_dll(ctx, platform):
     """

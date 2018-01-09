@@ -2030,13 +2030,9 @@ bool CSystem::LaunchAssetProcessor()
 
     const char* appRoot = nullptr;
     AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
-
-    // Get the engine root path
-    const char* engineRoot = nullptr;
-    AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
-    if (engineRoot != nullptr)
+    if (appRoot != nullptr)
     {
-        AZStd::string engineBinFolder = AZStd::string::format("%s%s",engineRoot, BINFOLDER_NAME);
+        AZStd::string engineBinFolder = AZStd::string::format("%s%s", appRoot, BINFOLDER_NAME);
         azstrncpy(workingDir, AZ_ARRAY_SIZE(workingDir), engineBinFolder.c_str(), engineBinFolder.length());
 
         AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s.%s",

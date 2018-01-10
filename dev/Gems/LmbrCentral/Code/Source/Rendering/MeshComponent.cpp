@@ -280,7 +280,7 @@ namespace LmbrCentral
         m_renderOptions.m_attachedToEntityId = id;
     }
 
-    void MeshComponentRenderNode::OnAssetPropertyChanged()
+    AZ::u32 MeshComponentRenderNode::OnAssetPropertyChanged()
     {
         if (HasMesh())
         {
@@ -290,6 +290,7 @@ namespace LmbrCentral
         AZ::Data::AssetBus::Handler::BusDisconnect();
 
         CreateMesh();
+        return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
     }
 
     void MeshComponentRenderNode::RefreshRenderState()

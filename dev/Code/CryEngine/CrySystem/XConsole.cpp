@@ -38,6 +38,8 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzCore/std/string/conversions.h>
 
+#include <LyShine/Bus/UiCursorBus.h>
+
 //#define DEFENCE_CVAR_HASH_LOGGING
 
 static inline void AssertName(const char* szName)
@@ -1034,18 +1036,11 @@ void    CXConsole::ShowConsole(bool show, const int iRequestScrollMax)
 
     if (show && !m_bConsoleActive)
     {
-        AzFramework::InputSystemCursorRequestBus::EventResult(m_previousSystemCursorState,
-                                                              AzFramework::InputDeviceMouse::Id,
-                                                              &AzFramework::InputSystemCursorRequests::GetSystemCursorState);
-        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
-                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
-                                                        AzFramework::SystemCursorState::UnconstrainedAndVisible);
+        EBUS_EVENT(UiCursorBus, IncrementVisibleCounter);
     }
     else if (!show && m_bConsoleActive)
     {
-        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
-                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
-                                                        m_previousSystemCursorState);
+        EBUS_EVENT(UiCursorBus, DecrementVisibleCounter);
     }
 
     SetStatus(show);

@@ -39,6 +39,7 @@
 #include <syslog.h>
 #endif
 
+#include <sys/timeb.h>
 
 // Only accept logging from the main thread.
 #ifdef WIN32
@@ -149,7 +150,8 @@ void CLog::RegisterConsoleVariables()
                 "  3=current+relative time\n"
                 "  4=absolute time in seconds since this mode was started\n"
                 "  5=current time+server time"
-                "  6=current date+current time");
+                "  6=current date+current time"
+                "  7=ISO8601 time formatting");
 
         m_pLogSpamDelay = REGISTER_FLOAT("log_SpamDelay", 0.0f, 0, "Sets the minimum time interval between messages classified as spam");
 
@@ -1008,6 +1010,13 @@ void CLog::LogStringToFile(const char* szString, ELogType logType, bool bAdd, Me
             strftime(sTime, 40, "<%Y-%m-%d %H:%M:%S> ", today);
             tempString = LogStringType(sTime) + tempString;
         }
+        else if (dwCVarState == 7)              // Log_IncludeTime
+        {
+            stack_string timeStr;
+            FormatTimestamp("<%Y-%m-%dT%H:%M:%S:fffzzz> ", timeStr);
+
+            tempString = LogStringType(timeStr.c_str()) + tempString;
+        }
     }
 
     if (tempString.empty() || tempString[tempString.length() - 1] != '\n')
@@ -1440,3 +1449,39 @@ void CLog::LogFlushFile(IConsoleCmdArgs* pArgs)
     }
 }
 #endif
+
+void CLog::FormatTimestamp(const char* format, stack_string& timestamp)
+{
+    char sTime[128];
+    stack_string tmpStr;
+    stack_string formatStr;
+    struct timeb now;
+
+    ftime(&now);
+    struct tm* today = localtime(&now.time);
+    strftime(sTime, sizeof(sTime), format, today);
+
+    timestamp.Format("%s", sTime);
+
+    int pos = timestamp.find("f");
+    if (pos != string::npos)
+    {
+        int count = strspn(&(timestamp.c_str()[pos]), "f");
+
+        formatStr.Format("%%0%iu", count);
+        tmpStr.Format(formatStr.c_str(), now.millitm);
+        timestamp.replace(pos, count, tmpStr.c_str());
+    }
+
+    pos = timestamp.find("z");
+    if (pos != string::npos)
+    {
+        int count = strspn(&(timestamp.c_str()[pos]), "z");
+
+        short timezone = -(now.timezone / 60) + now.dstflag;
+
+        formatStr.Format(now.timezone > 0 ? "-%%0%ii" : "+%%0%ii", count - 1);
+        tmpStr.Format(formatStr.c_str(), timezone);
+        timestamp.replace(pos, count, tmpStr.c_str());
+    }
+}

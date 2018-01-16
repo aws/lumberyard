@@ -1539,6 +1539,38 @@ bool CXConsole::ProcessInput(const AzFramework::InputChannel& inputChannel)
         RemoveInputChar(false);
         return true;
     }
+    // Handle CTRL + V in console
+    else if (channelId == AzFramework::InputDeviceKeyboard::Key::AlphanumericV && isCtrlModifierActive)
+    {
+        if (OpenClipboard(NULL) != 0)
+        {
+            wstring data;
+            const HANDLE wideData = GetClipboardData(CF_UNICODETEXT);
+            if (wideData)
+            {
+                const LPCWSTR pWideData = (LPCWSTR)GlobalLock(wideData);
+                if (pWideData)
+                {
+                    // Note: This conversion is just to make sure we discard malicious or malformed data
+                    Unicode::ConvertSafe<Unicode::eErrorRecovery_Discard>(data, pWideData);
+                    GlobalUnlock(wideData);
+                }
+            }
+            CloseClipboard();
+
+            for (Unicode::CIterator<wstring::const_iterator> it(data.begin(), data.end()); it != data.end(); ++it)
+            {
+                const uint32 cp = *it;
+                if (cp != '\r')
+                {
+                    // Convert UCS code-point into UTF-8 string
+                    char utf8_buf[5];
+                    Unicode::Convert(utf8_buf, cp);
+                    AddInputUTF8(utf8_buf);
+                }
+            }
+        }
+    }
 
 #endif
 

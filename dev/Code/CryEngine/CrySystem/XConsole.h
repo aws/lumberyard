@@ -21,7 +21,6 @@
 #include "Timer.h"
 #include <AzFramework/Components/ConsoleBus.h>
 
-#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <AzFramework/Input/Events/InputTextEventListener.h>
 
@@ -389,7 +388,6 @@ private: // ----------------------------------------------------------
 
     ScrollDir                                               m_sdScrollDir;
 
-    AzFramework::SystemCursorState                              m_previousSystemCursorState;
     bool                                                        m_bConsoleActive;
     bool                                                        m_bActivationKeyEnable;
     bool                                                        m_bIsProcessingGroup;

@@ -33,6 +33,7 @@
 // CVAR names
 const char c_sys_localization_debug[] = "sys_localization_debug";
 const char c_sys_localization_encode[] = "sys_localization_encode";
+const char c_sys_localization_test[] = "sys_localization_test";
 
 enum ELocalizedXmlColumns
 {
@@ -207,6 +208,7 @@ void CLocalizedStringsManager::LocalizationDumpLoadedInfo(IConsoleCmdArgs* pArgs
 CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
     : m_cvarLocalizationDebug(0)
     , m_cvarLocalizationEncode(1)
+    , m_cvarLocalizationTest(0)
     , m_availableLocalizations(0)
 {
     m_pSystem = pSystem;
@@ -237,6 +239,14 @@ CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
         "0: No encoding, store as wide strings\n"
         "1: Huffman encode translated text, saves approx 30% with a small runtime performance cost\n"
         "Default is 1.");
+
+    REGISTER_CVAR2(c_sys_localization_test, &m_cvarLocalizationTest, m_cvarLocalizationTest, VF_CHEAT,
+        "Toggles test mode for localizaiton.\n"
+        "Usage: sys_localization_test [0..2]\n"
+        "0: No test mode, regular token translation\n"
+        "1: Use token name rather than translation\n"
+        "2: Use language name rather than translation\n"
+        "Default is 0 (off).");
 
     REGISTER_COMMAND("LocalizationDumpLoadedInfo", LocalizationDumpLoadedInfo, VF_NULL, "Dump out into about the loaded localization files");
 #endif //#if !defined(_RELEASE)
@@ -1779,6 +1789,20 @@ bool CLocalizedStringsManager::LocalizeLabel(const char* sLabel, string& outLoca
 
             if (entry != NULL)
             {
+                if (m_cvarLocalizationTest != 0)
+                {
+                    if (m_cvarLocalizationTest == 1)
+                    {
+                        outLocalString = sLabel;
+                        return true;
+                    }
+                    else if (m_cvarLocalizationTest == 2)
+                    {
+                        outLocalString = string().Format("@%s", m_pLanguage->sLanguage.c_str());
+                        return true;
+                    }
+                }
+
                 string translatedText = entry->GetTranslatedText(m_pLanguage);
                 if ((bEnglish || translatedText.empty()) && entry->pEditorExtension != NULL)
                 {

@@ -225,7 +225,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     int result = 0;
 
-    AzGameFramework::GameApplication gameApp;
+    AzGameFramework::GameApplication gameApp(&__argc, &__argv);
     {
         CEngineConfig engineCfg;
 

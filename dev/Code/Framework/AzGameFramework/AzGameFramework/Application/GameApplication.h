@@ -27,7 +27,7 @@ namespace AzGameFramework
 
         AZ_CLASS_ALLOCATOR(GameApplication, AZ::SystemAllocator, 0);
 
-        GameApplication();
+        GameApplication(int* argc = nullptr, char*** argv = nullptr);
         ~GameApplication();
 
         void RegisterCoreComponents() override;

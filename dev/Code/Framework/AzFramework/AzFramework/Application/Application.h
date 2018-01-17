@@ -77,7 +77,6 @@ namespace AzFramework
          * see notes in GetArgC() and GetArgV() for details about the arguments.
          */
         Application(int* argc, char*** argv);  ///< recommended:  supply &argc and &argv from void main(...) here.
-        Application(); ///< for backward compatibility.  If you call this, GetArgC and GetArgV will return nullptr.
         ~Application();
 
         /**
@@ -88,7 +87,7 @@ namespace AzFramework
         * and making some assumptions.  Instead, we allow you to pass your args in from void main().
         * Another thing to notice here is that these are non-const pointers to the argc and argv values
         * instead of int, char**, these are int*, char***.  
-        * This is becuase some application layers (such as Qt) actually require that the ArgC and ArgV are modifiable, 
+        * This is because some application layers (such as Qt) actually require that the ArgC and ArgV are modifiable, 
         * as they actually patch them to add/remove command line parameters during initialization.
         * but also to highlight the fact that they are pointers to static memory that must remain relevant throughout the existence
         * of the Application object.

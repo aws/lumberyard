@@ -145,11 +145,6 @@ namespace AzFramework
         }
     }
     
-    Application::Application()
-    : Application(nullptr, nullptr)
-    {
-    }
-    
     Application::Application(int* argc, char*** argv)
         : m_appRootInitialized(false)
     {
@@ -157,7 +152,6 @@ namespace AzFramework
         m_appRoot[0] = '\0';
         m_assetRoot[0] = '\0';
         m_engineRoot[0] = '\0';
-        
 
         if ((argc) && (argv))
         {
@@ -317,11 +311,6 @@ namespace AzFramework
         {
             m_commandLine.Parse(*m_argC, *m_argV);
         }
-        else
-        {
-            m_commandLine.Parse();
-        }
-        
 
         systemEntity->Init();
         systemEntity->Activate();

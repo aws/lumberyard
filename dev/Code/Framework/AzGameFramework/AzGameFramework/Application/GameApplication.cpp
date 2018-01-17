@@ -20,7 +20,8 @@
 
 namespace AzGameFramework
 {
-    GameApplication::GameApplication()
+    GameApplication::GameApplication(int* argc, char ***argv)
+        : Application(argc, argv)
     {
     }
 

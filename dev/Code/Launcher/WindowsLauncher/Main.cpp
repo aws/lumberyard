@@ -360,7 +360,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     char szExeFileName[AZ_MAX_PATH_LEN];
     InitRootDir(szExeFileName, AZ_MAX_PATH_LEN);
     int nRes = 0;
-    AzGameFramework::GameApplication gameApp;
+    AzGameFramework::GameApplication gameApp(&__argc, &__argv);
 
     {
         CEngineConfig engineCfg;

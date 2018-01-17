@@ -290,9 +290,9 @@ static void InitStackTracer(const char* libPath)
 }
 
 //-------------------------------------------------------------------------------------
-int RunGame(const char*) __attribute__ ((noreturn));
+int RunGame(const char*, int, char**) __attribute__ ((noreturn));
 
-int RunGame(const char* commandLine)
+int RunGame(const char* commandLine, int argc = 0, char** argv = nullptr)
 {
     char exePath[ MAX_PATH];
     memset(exePath, 0, sizeof(exePath));
@@ -330,7 +330,7 @@ int RunGame(const char* commandLine)
     char configPath[AZ_MAX_PATH_LEN];
     AzGameFramework::GameApplication::GetGameDescriptorPath(configPath, engineCfg.m_gameFolder);
 
-    AzGameFramework::GameApplication gameApp;
+    AzGameFramework::GameApplication gameApp(&argc, &argv);
     AzGameFramework::GameApplication::StartupParameters gameAppParams;
 #ifdef AZ_MONOLITHIC_BUILD
     gameAppParams.m_createStaticModulesCallback = CreateStaticModules;
@@ -596,7 +596,7 @@ int main(int argc, char** argv)
     *q = 0;
     assert(q - cmdLine == cmdLength);
 
-    int result = RunGame(cmdLine);
+    int result = RunGame(cmdLine, argc, argv);
 
     return result;
 }

@@ -154,6 +154,13 @@ namespace LegacyConversionInternal
             meshComponentId
         };
 
+        AZ::Uuid editorStaticPhysicsComponentId = "{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}";
+        if (physics)
+        {
+            componentsToAdd.push_back("{2D559EB0-F6FE-46E0-9FCE-E8F375177724}"); // rigid body collider (mesh) shape
+            componentsToAdd.push_back(editorStaticPhysicsComponentId);
+        }
+
         AZ::Outcome<AZ::EntityId, LegacyConversionResult> conversionResult = CreateEntityForConversion(entityToConvert, componentsToAdd);
         if (!conversionResult.IsSuccess())
         {

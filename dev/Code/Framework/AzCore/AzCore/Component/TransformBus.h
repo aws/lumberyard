@@ -526,6 +526,12 @@ namespace AZ
         virtual void SetParentRelative(EntityId /*id*/) {}
 
         /**
+        * Searches child entity by name and returns it's ID.
+        * @return Child entity id or empty entity id(if child not found).
+        */
+        virtual AZ::EntityId GetChildByName(const AZStd::string& /*child name*/) { return AZ::EntityId(); };
+
+        /**
          * Returns the entity IDs of the entity's immediate children.
          * @return A vector that contains the entity IDs of the entity's immediate children.
          */

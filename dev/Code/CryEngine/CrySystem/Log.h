@@ -137,6 +137,7 @@ private: // -------------------------------------------------------------------
 
     // will format the message into m_szTemp
     void FormatMessage(const char* szCommand, ...) PRINTF_PARAMS(2, 3);
+    void FormatTimestamp(const char* format, stack_string& timestamp);
 
 #if defined(SUPPORT_LOG_IDENTER)
     void Indent(CLogIndenter* indenter);

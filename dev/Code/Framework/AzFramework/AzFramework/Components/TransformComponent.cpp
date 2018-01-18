@@ -835,6 +835,25 @@ namespace AzFramework
         return scale;
     }
 
+    AZ::EntityId TransformComponent::GetChildByName(const AZStd::string& entityName)
+    {
+        AZStd::vector<AZ::EntityId> children;
+        EBUS_EVENT_ID(GetEntityId(), AZ::TransformHierarchyInformationBus, GatherChildren, children);
+
+        for (AZ::EntityId childId : children)
+        {
+            AZStd::string childName;
+            EBUS_EVENT_RESULT(childName, AZ::ComponentApplicationBus, GetEntityName, childId);
+
+            if (entityName == childName)
+            {
+                return childId;
+            }
+        }
+
+        return AZ::EntityId();
+    }
+
     AZStd::vector<AZ::EntityId> TransformComponent::GetChildren()
     {
         AZStd::vector<AZ::EntityId> children;
@@ -1345,6 +1364,7 @@ namespace AzFramework
                     ->Attribute("Scale", AZ::Edit::Attributes::PropertyScale)
                 ->VirtualProperty("Scale", "GetLocalScale", "SetLocalScale")
                 ->Event("GetWorldScale", &AZ::TransformBus::Events::GetWorldScale)
+                ->Event("GetChildByName", &AZ::TransformBus::Events::GetChildByName)
                 ->Event("GetChildren", &AZ::TransformBus::Events::GetChildren)
                 ->Event("GetAllDescendants", &AZ::TransformBus::Events::GetAllDescendants)
                 ->Event("GetEntityAndAllDescendants", &AZ::TransformBus::Events::GetEntityAndAllDescendants)

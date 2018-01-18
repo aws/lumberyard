@@ -193,7 +193,7 @@ namespace AzFramework
         */
         void SetParentRelative(AZ::EntityId id) override;
 
-
+        AZ::EntityId GetChildByName(const AZStd::string& entityName) override;
         AZStd::vector<AZ::EntityId> GetChildren() override;
         AZStd::vector<AZ::EntityId> GetAllDescendants() override;
         AZStd::vector<AZ::EntityId> GetEntityAndAllDescendants() override;

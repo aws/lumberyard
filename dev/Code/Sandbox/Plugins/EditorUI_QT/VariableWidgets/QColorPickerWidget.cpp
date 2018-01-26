@@ -287,7 +287,7 @@ void QColorPickerWidget::OnHueEditFinished()
     // in ColorDescriptor. Call the following signal to update the color.
     // This signal will eliminate the HSL changes sent back from the 
     // ColorDescriptor
-    emit SignalHueChanged(m_newColor);
+    OnColorChanged(m_newColor);
 }
 
 void QColorPickerWidget::OnHexHueEditFinished()

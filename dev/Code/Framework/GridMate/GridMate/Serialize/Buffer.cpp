@@ -81,6 +81,51 @@ namespace GridMate
         return true;
     }
     //-----------------------------------------------------------------------------
+    //FL[FD-602] Bit marshaller
+    // Duplicate ReadBuffer::ReadRaw to allow reading N bits and trimming unnecessary bits.
+    bool ReadBuffer::ReadRawBits(void* data, PackedSize dataSize)
+    {
+        AZ_Assert((m_read + PackedSize(dataSize)) <= m_length, "Attempting to read beyond buffer length!");
+        if (m_overrun || dataSize > (m_length - m_read))
+        {
+            m_overrun = true;
+            return false;
+        }
+
+        if ((m_startOffset.GetTotalSizeInBits() + m_read.GetTotalSizeInBits()) % CHAR_BIT == 0)
+        {
+            // The easy case - no bit shifting needed to read stored data.
+            memcpy(data, GetRawBytePtr(), dataSize.GetSizeInBytesRoundUp());
+        }
+        else
+        {
+            // The hard case - bit shift each byte of the stored data.
+            for (AZ::u64 i = 0; i < dataSize; ++i)
+            {
+                AZ::u8 combinedValue = static_cast<AZ::u8>(*GetRawBytePtr(i)) >> GetBitOffset();
+
+                if (dataSize.GetBytes() != i || CHAR_BIT - GetBitOffset() < dataSize.GetAdditionalBits())
+                {
+                    AZ::u8 next_byte = static_cast<AZ::u8>(*GetRawBytePtr(i + 1)) & ((1U << GetBitOffset()) - 1U);
+                    combinedValue |= next_byte << (CHAR_BIT - GetBitOffset());
+                }
+
+                AZ::u8* outLocation = reinterpret_cast<AZ::u8*>(data) + i;
+                memcpy(outLocation, &combinedValue, 1);
+            }
+        }
+
+        if (dataSize.GetAdditionalBits())
+        {
+            AZ::u8* pLastByte = reinterpret_cast<AZ::u8*>(data) + dataSize.GetBytes();
+            *pLastByte &= (1U << dataSize.GetAdditionalBits()) - 1U;
+        }
+
+        m_read += dataSize;
+
+        return true;
+    }
+    //-----------------------------------------------------------------------------
     bool ReadBuffer::ReadRawBit(bool& data)
     {
         AZ_Assert(m_read < m_length, "Attempting to read beyond buffer length!");

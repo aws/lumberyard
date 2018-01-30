@@ -1,0 +1,28 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/Marshalers/ContainerMarshaler.h",
+            "Include/Marshalers/FloatMarshaler.h",
+            "Include/Marshalers/IntMarshaler.h",
+            "Include/Marshalers/MarshalerWithDefault.h",
+            "Include/Marshalers/OptimizedMarshal.h",
+            "Include/Marshalers/StringMarshal.h",
+            "Include/Marshalers/StringTableRequestBus.h"
+        ],
+        "Source": [
+            "Source/MarshalersModule.cpp",
+            "Source/MarshalersSystemComponent.cpp",
+            "Source/MarshalersSystemComponent.h",
+            "Source/MarshalerTest.cpp",
+            "Source/MarshalerTest.h",
+            "Source/StringTable.cpp",
+            "Source/StringTable.h"
+        ]
+    }
+}

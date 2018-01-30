@@ -1,0 +1,16 @@
+{
+    "GemFormatVersion": 4,
+    "Uuid": "7cedf2bfc6684bb8a046350371ca261c",
+    "Name": "Marshalers",
+    "DisplayName": "Marshalers",
+    "Version": "0.1.0",
+    "Summary": "A short description of my Gem.",
+    "Tags": ["Untagged"],
+    "LinkType": "Dynamic",
+    "IconPath": "preview.png",
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ]
+}

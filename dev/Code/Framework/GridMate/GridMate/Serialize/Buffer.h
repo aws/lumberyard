@@ -104,6 +104,10 @@ namespace GridMate
         bool ReadRaw(void* data, PackedSize dataSize);
         bool ReadRawBit(bool& data);
 
+        //FL[FD-602] Bit marshaller
+        // Duplicate ReadRaw to allow reading N bits and trimming unnecessary bits.
+        bool ReadRawBits(void* data, PackedSize dataSize);
+
         bool Skip(PackedSize bytes);
 
         ReadBuffer ReadInnerBuffer(PackedSize size)

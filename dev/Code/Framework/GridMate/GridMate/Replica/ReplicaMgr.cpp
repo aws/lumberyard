@@ -932,6 +932,9 @@ namespace GridMate
             ReplicaPeer* pRemote = *iPeer;
             if (!pRemote->IsOrphan())
             {
+                //FL[FD-604] Refactor string compression
+                EBUS_EVENT_ID(GetGridMate(), ReplicaMgrCallbackBus, OnBeforeSendBuffer, pRemote, m_cfg.m_carrier, m_cfg.m_commChannel);
+
                 pRemote->SendBuffer(m_cfg.m_carrier, m_cfg.m_commChannel);
             }
             pRemote->SetNew(false);
@@ -1171,6 +1174,12 @@ namespace GridMate
                 }
 
                 OnDestroyProxy(repId);
+                break;
+            }
+            case Cmd_StringTable:
+            {
+                //FL[FD-604] Refactor string compression
+                EBUS_EVENT_ID(GetGridMate(), ReplicaMgrCallbackBus, UnmarshalStringTable, pFrom->GetId(), rb);
                 break;
             }
             default:

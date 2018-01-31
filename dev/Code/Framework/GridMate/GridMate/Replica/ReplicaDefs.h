@@ -45,6 +45,8 @@ namespace GridMate
         Cmd_NewProxy,       // Notify that a new proxy should be created
         Cmd_DestroyProxy,   // Notify that a proxy should be deleted
         Cmd_NewOwner,       // Notify that this replica has changed owner
+        //FL[FD-425] String marshaling technical debt
+        Cmd_StringTable,    // Notify that new strings have been sent
         Cmd_Heartbeat,      // DEBUG: heartbeat
         Cmd_Count,          // Total number of Ids
 

@@ -531,6 +531,11 @@ namespace GridMate {
         virtual void OnNewPeer(PeerId /*peerId*/, ReplicaManager* /*pMgr*/) {}
         // Sent when a peer is removed
         virtual void OnPeerRemoved(PeerId /*peerId*/, ReplicaManager* /*pMgr*/) {}
+
+        //FL[FD-604] Refactor string compression
+        // Sent when an outgoing packet is ready
+        virtual void OnBeforeSendBuffer(GridMate::ReplicaPeer* /*pPeer*/, GridMate::Carrier* /*pCarrier*/, unsigned char /*commChannel*/) {}
+        virtual void UnmarshalStringTable(PeerId /*peerId*/, ReadBuffer& /*rb*/) {}
     };
     //-----------------------------------------------------------------------------
     typedef AZ::EBus<ReplicaMgrCallbacks> ReplicaMgrCallbackBus;

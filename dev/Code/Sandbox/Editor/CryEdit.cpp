@@ -4100,6 +4100,8 @@ void CCryEditApp::OnEditClone()
 
 void CCryEditApp::OnEditEscape()
 {
+    EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+
     CEditTool* pEditTool = GetIEditor()->GetEditTool();
     // Abort current operation.
     if (pEditTool)

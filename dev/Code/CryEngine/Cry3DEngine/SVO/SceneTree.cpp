@@ -2443,7 +2443,7 @@ void C3DEngine::LoadTISettings(XmlNodeRef pInputNode)
     const char* szXmlNodeName = "Total_Illumination_v2";
 
     // Total illumination
-    if (GetCVars()->e_svoTI_Active >= 0)
+    if (GetCVars()->e_svoTI_Active >= 0 && GetCVars()->e_GI)
     {
         GetCVars()->e_svoTI_Apply =  (int)atof(GetXMLAttribText(pInputNode, szXmlNodeName, "Active", "0"));
 

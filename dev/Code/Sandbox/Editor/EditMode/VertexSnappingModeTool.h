@@ -29,9 +29,9 @@ public:
 
     static void RegisterTool(CRegistrationContext& rc);
 
-    void Display(DisplayContext& dc);
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-
+    void Display(DisplayContext& dc) override;
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) override { return false; }
 protected:
 
     void DrawVertexCubes(DisplayContext& dc, const Matrix34& tm, IStatObj* pStatObj);

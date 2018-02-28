@@ -46,17 +46,18 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // CEditTool implementation.
     //////////////////////////////////////////////////////////////////////////
-    virtual void BeginEditParams(IEditor* ie, int flags) {};
-    virtual void EndEditParams();
-    virtual void Display(struct DisplayContext& dc);
+    virtual void BeginEditParams(IEditor* ie, int flags) override {};
+    virtual void EndEditParams() override;
+    virtual void Display(struct DisplayContext& dc) override;
     virtual void DisplaySelectionPreview(struct DisplayContext& dc);
     virtual void DrawSelectionPreview(struct DisplayContext& dc, CBaseObject* drawObject);
     void DisplayExtraLightInfo(struct DisplayContext& dc);
 
-    virtual bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    virtual bool OnSetCursor(CViewport* vp) { return false; };
+    virtual bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
+    virtual bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) override { return false; }
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
+    virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
+    virtual bool OnSetCursor(CViewport* vp) override { return false; };
 
     virtual void OnManipulatorDrag(CViewport* view, ITransformManipulator* pManipulator, QPoint& p0, QPoint& p1, const Vec3& value) override;
 

@@ -35,17 +35,18 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     // Ovverides from CEditTool
-    virtual void SetUserData(const char* key, void* userData);
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    bool Activate(CEditTool* pPreviousTool);
+    virtual void SetUserData(const char* key, void* userData) override;
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) override { return false; }
+    bool Activate(CEditTool* pPreviousTool) override;
 
-    virtual void BeginEditParams(IEditor* ie, int flags);
-    virtual void EndEditParams();
+    virtual void BeginEditParams(IEditor* ie, int flags) override;
+    virtual void EndEditParams() override;
 
-    virtual void Display(DisplayContext& dc);
-    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) { return false; };
-    virtual bool OnSetCursor(CViewport* vp);
+    virtual void Display(DisplayContext& dc) override;
+    virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
+    virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override { return false; };
+    virtual bool OnSetCursor(CViewport* vp) override;
 
     bool IsUpdateUIPanel() override;
 

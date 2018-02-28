@@ -39,6 +39,8 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) override { return false; }
+
     void OnManipulatorDrag(CViewport* view, ITransformManipulator* pManipulator, QPoint& point0, QPoint& point1, const Vec3& value) override;
 
     // Key down.

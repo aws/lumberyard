@@ -43,6 +43,8 @@ namespace AzFramework
         : public SliceInstantiationResultBus::Handler
     {
     public:
+        virtual ~NetBindingSliceInstantiationHandler();
+
         void InstantiateEntities();
         bool IsInstantiated();
         bool IsBindingComplete();

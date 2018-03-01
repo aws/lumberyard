@@ -45,6 +45,16 @@ namespace AzFramework
         }
     }
 
+    NetBindingSliceInstantiationHandler::~NetBindingSliceInstantiationHandler()
+    {
+        // m_bindRequests in NetBindingSystemImpl could be cleaned before slice instantiation finished
+        if (!IsBindingComplete())
+        {
+            AzFramework::SliceInstantiationResultBus::Handler::BusDisconnect();
+            EBUS_EVENT(GameEntityContextRequestBus, CancelDynamicSliceInstantiation, m_ticket);
+        }
+    }
+
     void NetBindingSliceInstantiationHandler::InstantiateEntities()
     {
         if (m_sliceAssetId.IsValid())

@@ -540,24 +540,31 @@ void    QtViewport::ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir)
 
 void QtViewport::tabletEvent(QTabletEvent* event)
 {
-    bool continueProcessing = true;
+    bool processed = false;
 
     switch (event->type())
     {
+    case QEvent::TabletEnterProximity:
+        processed = true;
+        break;
     case QEvent::TabletPress:
-        continueProcessing = TabletCallback(ETabletEvent::eTabletPress, event->pos(), STabletContext(event->pressure()));
+        processed = TabletCallback(ETabletEvent::eTabletPress, event->pos(), STabletContext(event->pressure()));
         break;
     case QEvent::TabletRelease:
-        continueProcessing = TabletCallback(ETabletEvent::eTabletRelease, event->pos(), STabletContext(event->pressure()));
+        processed = TabletCallback(ETabletEvent::eTabletRelease, event->pos(), STabletContext(event->pressure()));
         break;
     case QEvent::TabletMove:
-        continueProcessing = TabletCallback(ETabletEvent::eTabletMove, event->pos(), STabletContext(event->pressure()));
+        processed = TabletCallback(ETabletEvent::eTabletMove, event->pos(), STabletContext(event->pressure()));
         break;
     }
 
-    if (continueProcessing)
+    if (!processed)
     {
         event->ignore();
+    }
+    else
+    {
+        event->accept();
     }
 }
 
@@ -1425,7 +1432,7 @@ bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const S
     {
         return true;
     }
-
+    PreWidgetRendering();
     //////////////////////////////////////////////////////////////////////////
     // Asks current edit tool to handle tablet callback.
     CEditTool* pEditTool = GetEditTool();
@@ -1449,7 +1456,7 @@ bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const S
             pParentTool = pParentTool->GetParentTool();
         }
     }
-
+    PostWidgetRendering();
     return false;
 }
 //////////////////////////////////////////////////////////////////////////

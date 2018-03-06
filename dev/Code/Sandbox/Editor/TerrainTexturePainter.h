@@ -79,7 +79,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) override { return false; }
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) override;
 
     // Key down.
     bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
@@ -92,7 +92,7 @@ public:
     void GetBrush(CTextureBrush& brush) const { brush = m_brush; };
 
     void Action_Flood();
-    void Action_Paint();
+    void Action_Paint(float pressure = 1.0f);
     void Action_PickLayerId();
 
     //Undo
@@ -105,7 +105,7 @@ public:
 
 
 private:
-    void PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood);
+    void PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood, float pressure = 1.0f);
     CLayer* GetSelectedLayer() const;
     static void Command_Activate();
 
@@ -115,6 +115,8 @@ private:
 
     //! Flag is true if painting mode. Used for Undo.
     bool m_bIsPainting;
+    // disable mouse input when tablet input is active
+    bool m_bInTabletMode = false;
 
     struct CUndoTPElement* m_pTPElem;
 

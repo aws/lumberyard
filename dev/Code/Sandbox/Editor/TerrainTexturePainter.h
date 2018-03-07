@@ -30,7 +30,7 @@ enum ETextureBrushType
 */
 struct CTextureBrush
 {
-    ETextureBrushType       type;                               // Type of this brush.
+    ETextureBrushType                   type;                   // Type of this brush.
     float                               radius;                 // Radius of brush in meters
     float                               colorHardness;          // Opacity of layer color in brush painting
     float                               detailHardness;         // Opacity of detail texture in brush painting
@@ -41,10 +41,15 @@ struct CTextureBrush
     bool                                bMaskByLayerSettings;   //
 
     float                               minRadius;              //
-    float                           maxRadius;                  //
-    ColorF                          m_cFilterColor;         //
+    float                               maxRadius;              //
+    ColorF                              m_cFilterColor;         //
     float                               m_fBrightness;          // used together with m_cFilterColor
-    uint32                          m_dwMaskLayerId;        // 0xffffffff if not used
+    uint32                              m_dwMaskLayerId;        // 0xffffffff if not used
+
+    bool                                bPressureRadius;         // pen pressure controls
+    bool                                bPressureOpacity;
+    bool                                bPressureIntensity;
+    bool                                bPressureBrightness;
 
     CTextureBrush()
     {
@@ -60,6 +65,10 @@ struct CTextureBrush
         m_dwMaskLayerId = 0xffffffff;
         m_cFilterColor = ColorF(1, 1, 1);
         m_fBrightness = 1.0f;
+        bPressureRadius = true;
+        bPressureIntensity = false;
+        bPressureOpacity = false;
+        bPressureBrightness = false;
     }
 };
 

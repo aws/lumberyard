@@ -54,7 +54,6 @@ protected:
 
     // Implementation
 protected:
-
     void ReloadLayers();
 
 protected slots:
@@ -67,6 +66,7 @@ protected slots:
     void GetLayerMaskSettingsFromLayer();
     void OnFloodLayer();
     void OnBnClickedBrushSettolayer();
+    void OnTabletSettings();
 
 private:
     QScopedPointer<Ui::TerrainPainterPanel> m_ui;

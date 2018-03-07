@@ -717,9 +717,9 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
 
     SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.bMaskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
 
-    br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness;
+    br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness * (m_brush.bPressureBrightness ? (1.0f - pressure) : 1.0f);
     br.m_cFilterColor.rgb2srgb();
-    br.fRadius = (m_brush.radius / fTerrainSize) * pressure;
+    br.fRadius = (m_brush.radius / fTerrainSize) * (m_brush.bPressureRadius ? pressure : 1.0f);
     br.color = m_brush.value;
     if (m_brush.bErase)
     {
@@ -730,11 +730,13 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
     {
         float fX = center.y / fTerrainSize;                         // 0..1
         float fY = center.x / fTerrainSize;                         // 0..1
+        float colorHardness = m_brush.colorHardness * (m_brush.bPressureOpacity ? pressure : 1.0f);
+        float detailHardness = m_brush.detailHardness * (m_brush.bPressureIntensity ? pressure : 1.0f);
 
         // change terrain texture
-        if (m_brush.colorHardness > 0.0f)
+        if (colorHardness > 0.0f)
         {
-            br.hardness = m_brush.colorHardness;
+            br.hardness = colorHardness;
 
             CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
 
@@ -750,9 +752,9 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
             }
         }
 
-        if (m_brush.detailHardness > 0.0f)        // we also want to change the detail layer data
+        if (detailHardness > 0.0f)        // we also want to change the detail layer data
         {
-            br.hardness = m_brush.detailHardness;
+            br.hardness = detailHardness;
 
             // get unique layerId
             uint32 dwLayerId = pLayer->GetOrRequestLayerId();

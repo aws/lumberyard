@@ -326,6 +326,20 @@ protected:
     friend class CVegetationMap;
 };
 
+//this is used to modulate certain values of CVegetationObject when used with a drawing tablet
+class CVegetationBrushModulation
+{
+public:
+    float GetDensity() const { return m_density; }
+    void SetDensity(float density) { m_density = density; }
+
+    CVegetationBrushModulation() : m_density(1.0f) {}
+    explicit CVegetationBrushModulation(float density) : m_density(density) {}
+
+private:
+    float m_density;
+};
+
 //////////////////////////////////////////////////////////////////////////
 inline bool CVegetationObject::IsPlaceValid(float height, float slope) const
 {

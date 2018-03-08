@@ -1430,13 +1430,13 @@ bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const S
         return true;
     }
 
-    bool bAltClick = (modifiers & Qt::AltModifier);
     bool bCtrlClick = (modifiers & Qt::ControlModifier);
     bool bShiftClick = (modifiers & Qt::ShiftModifier);
 
     int flags = (bCtrlClick ? MK_CONTROL : 0) |
-        (bShiftClick ? MK_SHIFT : 0)
-        ;
+                (bShiftClick ? MK_SHIFT : 0) |
+                MK_LBUTTON;
+
     PreWidgetRendering();
     //////////////////////////////////////////////////////////////////////////
     // Asks current edit tool to handle tablet callback.

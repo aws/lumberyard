@@ -391,6 +391,7 @@ struct STabletContext
 {
     float m_pressure;           //value between 0.0 and 1.0
 
+    STabletContext() : m_pressure(1.0f) {}
     explicit STabletContext(float pressure) : m_pressure(pressure)
     {}
 };

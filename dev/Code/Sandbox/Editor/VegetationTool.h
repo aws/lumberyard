@@ -39,7 +39,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override;
 
     void OnManipulatorDrag(CViewport* view, ITransformManipulator* pManipulator, QPoint& point0, QPoint& point1, const Vec3& value) override;
 
@@ -63,7 +63,7 @@ public:
     void HideSelectedObjects(bool bHide);
     void RemoveSelectedObjects();
 
-    bool PaintBrush();
+    bool PaintBrush(const STabletContext& tablet);
     void PlaceThing();
     void GetSelectedObjects(std::vector<CVegetationObject*>& objects);
 
@@ -99,10 +99,10 @@ private:
 
     void SetModified(bool bWithBounds = false, const AABB& bounds = AABB());
 
-    // Specific mouse events handlers.
-    bool OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point);
-    bool OnLButtonUp(CViewport* view, UINT nFlags, const QPoint& point);
-    bool OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point);
+    // Specific mouse/.pen events handlers.
+    bool OnDeviceDown(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet);
+    bool OnDeviceUp(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet);
+    bool OnDeviceMove(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet);
 
     void OnPaintBrushFailed();
 
@@ -116,6 +116,7 @@ private:
 
     bool m_bPlaceMode;
     bool m_bPaintingMode;
+    bool m_bTabletMode;
 
     enum OpMode
     {

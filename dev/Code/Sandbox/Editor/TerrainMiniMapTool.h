@@ -41,7 +41,7 @@ public:
     virtual void EndEditParams();
     virtual void Display(DisplayContext& dc);
     virtual bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    virtual bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) override { return false; }
+    virtual bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
 
     virtual void DeleteThis() { delete this; };
     //////////////////////////////////////////////////////////////////////////

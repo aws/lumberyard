@@ -541,20 +541,17 @@ void    QtViewport::ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir)
 void QtViewport::tabletEvent(QTabletEvent* event)
 {
     bool processed = false;
-
+    int flags = event->modifiers();
     switch (event->type())
     {
-    case QEvent::TabletEnterProximity:
-        processed = true;
-        break;
     case QEvent::TabletPress:
-        processed = TabletCallback(ETabletEvent::eTabletPress, event->pos(), STabletContext(event->pressure()));
+        processed = TabletCallback(ETabletEvent::eTabletPress, event->pos(), STabletContext(event->pressure()), event->modifiers());
         break;
     case QEvent::TabletRelease:
-        processed = TabletCallback(ETabletEvent::eTabletRelease, event->pos(), STabletContext(event->pressure()));
+        processed = TabletCallback(ETabletEvent::eTabletRelease, event->pos(), STabletContext(event->pressure()), event->modifiers());
         break;
     case QEvent::TabletMove:
-        processed = TabletCallback(ETabletEvent::eTabletMove, event->pos(), STabletContext(event->pressure()));
+        processed = TabletCallback(ETabletEvent::eTabletMove, event->pos(), STabletContext(event->pressure()), event->modifiers());
         break;
     }
 
@@ -1419,7 +1416,7 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
     return false;
 }
 //////////////////////////////////////////////////////////////////////////
-bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const STabletContext& tabletContext)
+bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, Qt::KeyboardModifiers modifiers)
 {
     //See MouseCallback 
     if (GetIEditor()->IsInGameMode())
@@ -1432,13 +1429,21 @@ bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const S
     {
         return true;
     }
+
+    bool bAltClick = (modifiers & Qt::AltModifier);
+    bool bCtrlClick = (modifiers & Qt::ControlModifier);
+    bool bShiftClick = (modifiers & Qt::ShiftModifier);
+
+    int flags = (bCtrlClick ? MK_CONTROL : 0) |
+        (bShiftClick ? MK_SHIFT : 0)
+        ;
     PreWidgetRendering();
     //////////////////////////////////////////////////////////////////////////
     // Asks current edit tool to handle tablet callback.
     CEditTool* pEditTool = GetEditTool();
     if (pEditTool)
     {
-        if (pEditTool->TabletCallback(this, event, point, tabletContext))
+        if (pEditTool->TabletCallback(this, event, point, tabletContext, flags))
         {
             PostWidgetRendering();
             return true;
@@ -1448,7 +1453,7 @@ bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const S
         CEditTool* pParentTool = pEditTool->GetParentTool();
         while (pParentTool)
         {
-            if (pParentTool->TabletCallback(this, event, point, tabletContext))
+            if (pParentTool->TabletCallback(this, event, point, tabletContext, flags))
             {
                 PostWidgetRendering();
                 return true;

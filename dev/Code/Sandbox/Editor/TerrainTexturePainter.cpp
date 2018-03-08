@@ -532,7 +532,7 @@ bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, Q
 
     return true;
 }
-bool CTerrainTexturePainter::TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext)
+bool CTerrainTexturePainter::TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags)
 {
     if (event == eTabletPress)
         m_bInTabletMode = true;

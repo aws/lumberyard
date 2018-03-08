@@ -103,7 +103,8 @@ public:
     //! @param event Indicate what kind of event occured in viewport.
     //! @param point 2D coordinate in viewport where event occured.
     //! @param tabletContext extra data containing info about pen pressure, tilt,...
-    virtual bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext) = 0;
+    //! @param flags Additional flags (MK_LBUTTON,etc..) or from (MouseEventFlags) specified by viewport when calling callback.
+    virtual bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) = 0;
 
     //! Called when key in viewport is pressed while using this tool.
     //! Returns true if event processed by callback, and all other processing for this event should abort.

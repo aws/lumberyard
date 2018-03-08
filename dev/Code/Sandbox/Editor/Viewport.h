@@ -496,7 +496,7 @@ protected:
 
     // called to process mouse callback inside the viewport.
     virtual bool MouseCallback(EMouseEvent event, const QPoint& point, Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons = Qt::NoButton);
-    virtual bool TabletCallback(ETabletEvent event, const QPoint& point, const STabletContext& tabletContext);
+    virtual bool TabletCallback(ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, Qt::KeyboardModifiers modifiers);
     void ProcessRenderLisneters(DisplayContext& rstDisplayContext);
 
     void tabletEvent(QTabletEvent* event) override;

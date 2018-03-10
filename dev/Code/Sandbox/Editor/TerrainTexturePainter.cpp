@@ -453,6 +453,7 @@ CTerrainTexturePainter::CTerrainTexturePainter()
 
     m_bIsPainting = false;
     m_pTPElem = 0;
+    m_activePressure = 0.0f;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -537,7 +538,10 @@ bool CTerrainTexturePainter::TabletCallback(CViewport* view, ETabletEvent event,
     if (event == eTabletPress)
         m_bInTabletMode = true;
     else if (event == eTabletRelease)
+    {
         m_bInTabletMode = false;
+        m_activePressure = 0.0f;
+    }
 
     bool hitTerrain = false;
     m_pointerPos = view->ViewToWorld(point, &hitTerrain, true);
@@ -545,7 +549,12 @@ bool CTerrainTexturePainter::TabletCallback(CViewport* view, ETabletEvent event,
     {
         if ((m_pointerPos.x >= 0.0f) && (m_pointerPos.y >= 0.0f) && hitTerrain)
         {
+            m_activePressure = tabletContext.m_pressure;
             Action_Paint(tabletContext.m_pressure);
+        }
+        else
+        {
+            m_activePressure = 0.0f;
         }
     }
     return true;
@@ -562,6 +571,11 @@ void CTerrainTexturePainter::Display(DisplayContext& dc)
     }
     dc.DepthTestOff();
     dc.DrawTerrainCircle(m_pointerPos, m_brush.radius, 0.2f);
+    if (m_activePressure != 0.0f && m_brush.bPressureRadius)
+    {
+        dc.SetColor(0, 0, 1 ,1);
+        dc.DrawTerrainCircle(m_pointerPos, m_activePressure * m_brush.radius, 0.2f);
+    }
     dc.DepthTestOn();
 }
 

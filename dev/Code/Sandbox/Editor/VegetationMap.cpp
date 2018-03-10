@@ -1411,7 +1411,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 
         p.x = x;
         p.y = y;
-        float fScale = object->CalcVariableSize();
+        float fScale = object->CalcVariableSize(object->GetSize() * modulate.GetSize());
         float placeRadius = fScale * object->GetObjectSize() * 0.5f;
         // Check if this place is empty.
         if (!CanPlace(object, p, placeRadius))

@@ -7,10 +7,10 @@
     <x>0</x>
     <y>0</y>
     <width>206</width>
-    <height>765</height>
+    <height>855</height>
    </rect>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,1,0,0,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,1,0,0,0,0">
    <item>
     <layout class="QGridLayout" name="gridLayout">
      <property name="spacing">
@@ -527,6 +527,36 @@
      <property name="text">
       <string>Remove duplicated vegetation</string>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Tablet Pen Pressure</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QCheckBox" name="pressureRadius">
+        <property name="text">
+         <string>Radius</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="pressureDensity">
+        <property name="text">
+         <string>Density</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="pressureSize">
+        <property name="text">
+         <string>Size</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>

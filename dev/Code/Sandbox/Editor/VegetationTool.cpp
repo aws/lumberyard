@@ -78,6 +78,12 @@ CVegetationTool::CVegetationTool()
     m_isAffectedByBrushes = false;
     m_instanceLimitMessageActive = false;
 
+    m_bPressureSize = false;
+    m_bPressureDensity = true;
+    m_bPressureRadius = false;
+
+    m_activePenPressure = 0.0f;
+
     SetStatusText("Click to Place or Remove Vegetation");
 }
 
@@ -434,16 +440,19 @@ bool CVegetationTool::TabletCallback(CViewport* view, ETabletEvent event, const 
     if (event == eTabletPress)
     {
         m_bTabletMode = true;
+        m_activePenPressure = tabletContext.m_pressure;
         bProcessed = OnDeviceDown(view, flags, point, tabletContext);
     }
     else if (event == eTabletRelease)
     {
         m_bTabletMode = false;
+        m_activePenPressure = 0.0;
         bProcessed = OnDeviceUp(view, flags, point, tabletContext);
     }
     else if (event == eTabletMove)
     {
         bProcessed = OnDeviceMove(view, flags, point, tabletContext);
+        m_activePenPressure = tabletContext.m_pressure;
     }
 
     GetIEditor()->SetMarkerPosition(m_pointerPos);
@@ -583,6 +592,11 @@ void CVegetationTool::Display(DisplayContext& dc)
         else
         {
             dc.DrawTerrainCircle(m_pointerPos, m_brushRadius, 0.2f);
+            if (m_activePenPressure != 0.0f && m_bPressureRadius)
+            {
+                dc.SetColor(0, 0, 1, 1);
+                dc.DrawTerrainCircle(m_pointerPos, m_activePenPressure * m_brushRadius, 0.2f);
+            }
         }
 
         float col[4] = { 1, 1, 1, 0.8f };
@@ -726,20 +740,27 @@ bool CVegetationTool::PaintBrush(const STabletContext& tablet)
     }
 
     GetSelectedObjects(m_selectedObjects);
+    float brushRadius = m_brushRadius * (m_bPressureRadius ? tablet.m_pressure : 1.0f);
 
-    QRect rc(QPoint(m_pointerPos.x - m_brushRadius, m_pointerPos.y - m_brushRadius), 
-             QSize(m_brushRadius * 2, m_brushRadius * 2));
+    QRect rc(QPoint(m_pointerPos.x - brushRadius, m_pointerPos.y - brushRadius),
+             QSize(brushRadius * 2, brushRadius * 2));
 
     AABB updateRegion;
-    updateRegion.min = m_pointerPos - Vec3(m_brushRadius, m_brushRadius, m_brushRadius);
-    updateRegion.max = m_pointerPos + Vec3(m_brushRadius, m_brushRadius, m_brushRadius);
+    updateRegion.min = m_pointerPos - Vec3(brushRadius, brushRadius, brushRadius);
+    updateRegion.max = m_pointerPos + Vec3(brushRadius, brushRadius, brushRadius);
     bool success = true;
     if (m_bPlaceMode)
     {
         for (int i = 0; i < m_selectedObjects.size(); i++)
         {
             int numInstances = m_selectedObjects[i]->GetNumInstances();
-            success = m_vegetationMap->PaintBrush(rc, true, m_selectedObjects[i], &m_pointerPos, CVegetationBrushModulation(1.0f - tablet.m_pressure));
+            float densityMod = m_bPressureDensity ? 1.0f - tablet.m_pressure : 1.0f;
+            float sizeMod = m_bPressureSize ? tablet.m_pressure : 1.0f;
+            //TODO: get minimum size from ui?
+            if (sizeMod < 0.1)
+                sizeMod = 0.1;
+            CVegetationBrushModulation modulate(densityMod, sizeMod);
+            success = m_vegetationMap->PaintBrush(rc, true, m_selectedObjects[i], &m_pointerPos, modulate);
             // If number of instances changed.
             if (numInstances != m_selectedObjects[i]->GetNumInstances() && m_panel)
             {

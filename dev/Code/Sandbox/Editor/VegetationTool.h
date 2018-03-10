@@ -83,6 +83,15 @@ public:
 
     static void Command_Activate();
 
+    void SetPressureRadius(bool value) { m_bPressureRadius = value; }
+    bool GetPressureRadius() const { return m_bPressureRadius; }
+
+    void SetPressureDensity(bool value) { m_bPressureDensity = value; }
+    bool GetPressureDensity() const { return m_bPressureDensity; }
+
+    void SetPressureSize(bool value) { m_bPressureSize = value; }
+    bool GetPressureSize() const { return m_bPressureSize; }
+
 protected:
     virtual ~CVegetationTool();
     // Delete itself.
@@ -155,6 +164,13 @@ private:
 
     bool m_isAffectedByBrushes;
     bool m_instanceLimitMessageActive;
+
+    //pen settings
+    bool m_bPressureRadius;
+    bool m_bPressureDensity;
+    bool m_bPressureSize;
+
+    float m_activePenPressure;
 };
 
 

@@ -134,6 +134,9 @@ private:
     IRenderer* m_renderer;
     CHeightmap* m_heightmap;
 
+    //current tablet pen pressure
+    float m_activePressure;
+
     static CTextureBrush m_brush;
 
     friend class CUndoTexturePainter;

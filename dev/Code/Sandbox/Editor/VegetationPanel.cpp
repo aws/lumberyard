@@ -764,6 +764,10 @@ void CVegetationPanel::UpdateUI()
         m_ui->paintObjectsButton->setChecked(false);
         GetIEditor()->SetStatusText(tr("Push Paint button to start painting").toLatin1());
     }
+
+    m_ui->pressureRadius->setChecked(m_tool->GetPressureRadius());
+    m_ui->pressureDensity->setChecked(m_tool->GetPressureDensity());
+    m_ui->pressureSize->setChecked(m_tool->GetPressureSize());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -810,6 +814,9 @@ void CVegetationPanel::OnInitDialog()
     connect(m_ui->paintObjectsButton, &QPushButton::clicked, this, &CVegetationPanel::OnPaint);
     connect(m_ui->removeDuplicatedButton, &QPushButton::clicked, this, &CVegetationPanel::OnRemoveDuplVegetation);
 
+    connect(m_ui->pressureDensity, &QCheckBox::clicked, this, &CVegetationPanel::OnTabletSettingsChanged);
+    connect(m_ui->pressureSize, &QCheckBox::clicked, this, &CVegetationPanel::OnTabletSettingsChanged);
+    connect(m_ui->pressureRadius, &QCheckBox::clicked, this, &CVegetationPanel::OnTabletSettingsChanged);
 
     // make sure that all of our buttons and menus have been properly disabled until a selection is made
     ToggleEnabledState(m_enabledOnObjectSelected, false);
@@ -1857,5 +1864,16 @@ void CVegetationPanel::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnTextureLayerChange:
         SendTextureLayersToControls();
         break;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CVegetationPanel::OnTabletSettingsChanged()
+{
+    if (m_tool)
+    {
+        m_tool->SetPressureDensity(m_ui->pressureDensity->checkState() == Qt::CheckState::Checked);
+        m_tool->SetPressureRadius(m_ui->pressureRadius->checkState() == Qt::CheckState::Checked);
+        m_tool->SetPressureSize(m_ui->pressureSize->checkState() == Qt::CheckState::Checked);
     }
 }

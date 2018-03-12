@@ -171,6 +171,8 @@ namespace AzFramework
         AZ::ScriptContext* GetScriptContext() const;
 
         bool IsMaster() const;
+        void SetIsOwningEntityActive(bool isActive);
+        bool IsOwningEntityActive() const;
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // DataSet Functionality
@@ -236,6 +238,8 @@ namespace AzFramework
 
         NetworkedTableMap         m_networkedTable;
         RPCHelperMap              m_rpcHelperMap;
+
+        bool m_isOwnerActivated;
     };
 
     // Typedeffing out the RPC and DataSet definitions.
@@ -298,6 +302,13 @@ namespace AzFramework
 
         // Called from teh Proxy. Will Assign the TableValue to the DataSet that contains the target property        
         void AssignDataSetForProperty(ScriptNetBindingTable::NetworkedTableValue& helper, AZ::ScriptProperty* targetProperty);
+
+        // Called from the Proxy when the script chunk is assigned to ScriptNetBindingTable, and when a new property is registered.
+        // This will initialise NetworkedTableValue with the current property (if there is one already available).
+        // This ensures that we start using proper (not shimmed) properties as soon as they are available (rather than after they have changed at least once).
+        // Without this fix, if property doesn't change after a client connected to the server, the client
+        // will never use the actual property value, and happily use the shimmed property value instead).
+        bool AssignDataSetIfAvailable(const AZStd::string& valueName, ScriptNetBindingTable::NetworkedTableValue& tableValue);
 
         // Only called inside of an assert, checks that the DataSet that the targetProperty is in is the same as the assumedDataSet
         // Used to confirm that we don't get a confusion between master/proxy about which ScriptProperty is assigned to which DataSet.

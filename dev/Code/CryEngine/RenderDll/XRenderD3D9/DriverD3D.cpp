@@ -1496,7 +1496,10 @@ void CD3D9Renderer::RT_BeginFrame()
     }
 
 #if !defined(_RELEASE)
+    m_RP.m_pRNDrawCallsInfoPerNode[m_RP.m_nProcessThreadID].swap(m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[m_RP.m_nProcessThreadID]);
     m_RP.m_pRNDrawCallsInfoPerNode[m_RP.m_nProcessThreadID].clear();
+
+    m_RP.m_pRNDrawCallsInfoPerMesh[m_RP.m_nProcessThreadID].swap(m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[m_RP.m_nProcessThreadID]);
     m_RP.m_pRNDrawCallsInfoPerMesh[m_RP.m_nProcessThreadID].clear();
 #endif
 

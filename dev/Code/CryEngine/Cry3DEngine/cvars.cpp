@@ -90,6 +90,24 @@ void OnVegetationVisibleChange(ICVar* pArgs)
     }
 }
 
+void OnDebugDrawChange(ICVar* pArgs)
+{
+    static bool collectingDrawCalls = false;
+
+    int e_debugDraw = pArgs->GetIVal();
+    if (e_debugDraw >= 24 && e_debugDraw <= 25)
+    {
+        gEnv->pRenderer->CollectDrawCallsInfo(true);
+        gEnv->pRenderer->CollectDrawCallsInfoPerNode(true);
+        collectingDrawCalls = true;
+    }
+    else if (collectingDrawCalls)
+    {
+        gEnv->pRenderer->CollectDrawCallsInfo(false);
+        gEnv->pRenderer->CollectDrawCallsInfoPerNode(false);
+        collectingDrawCalls = false;
+    }
+}
 
 void CVars::Init()
 {
@@ -127,7 +145,7 @@ void CVars::Init()
     DefineConstIntCVar(e_DebugDrawShowOnlyLod, -1, VF_NULL,
         "e_DebugDraw shows only objects showing lod X");
 
-    DefineConstIntCVar(e_DebugDraw, 0, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK,
+    REGISTER_CVAR_CB(e_DebugDraw, 0, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK | CONST_CVAR_FLAGS,
         "Draw helpers with information for each object (same number negative hides the text)\n"
         " 1: Name of the used cgf, polycount, used LOD\n"
         " 2: Color coded polygon count\n"
@@ -151,12 +169,18 @@ void CVars::Init()
         "21: Display animated object distance to camera\n"
         "22: Display object's current LOD vertex count\n"
         "23: Display shadow casters in red\n"
+        "24: Display meshes with no LODs\n"
+        "25: Display meshes with no LODs, meshes with not enough LODs\n"
         "----------------debug draw list values. Any of them enable 2d on-screen listing type info debug. Specific values define the list sorting-----------\n"
         " 100: tri count\n"
         " 101: verts count\n"
         " 102: draw calls\n"
         " 103: texture memory\n"
-        " 104: mesh memory");
+        " 104: mesh memory",
+        OnDebugDrawChange);
+
+    REGISTER_CVAR(e_DebugDrawLodMinTriangles, 200, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK | CONST_CVAR_FLAGS,
+        "Minimum number of triangles (lod 0) to show in LOD debug draw");
 
 #ifndef _RELEASE
     DefineConstIntCVar(e_DebugDrawListSize, 24, VF_DEV_ONLY,    "num objects in the list for e_DebugDraw list infodebug");

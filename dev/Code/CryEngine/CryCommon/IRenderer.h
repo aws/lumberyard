@@ -2009,6 +2009,8 @@ struct IRenderer
 #if !defined(_RELEASE)
     //Get draw call info for frame
     virtual RNDrawcallsMapMesh& GetDrawCallsInfoPerMesh(bool mainThread = true) = 0;
+    virtual RNDrawcallsMapMesh& GetDrawCallsInfoPerMeshPreviousFrame(bool mainThread = true) = 0;
+    virtual RNDrawcallsMapNode& GetDrawCallsInfoPerNodePreviousFrame(bool mainThread = true) = 0;
     virtual int GetDrawCallsPerNode(IRenderNode* pRenderNode) = 0;
     virtual void ForceRemoveNodeFromDrawCallsMap(IRenderNode* pNode) = 0;
 #endif

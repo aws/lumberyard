@@ -188,6 +188,7 @@ struct CVars
     DeclareConstIntCVar(e_ObjFastRegister, 1);
     float e_ViewDistRatioLights;
     DeclareConstIntCVar(e_DebugDraw, 0);
+    int e_DebugDrawLodMinTriangles;		// cvar for min number of triangles in object before displaying lod warnings
     ICVar* e_DebugDrawFilter;
     DeclareConstIntCVar(e_DebugDrawListSize, 16);
     DeclareConstIntCVar(e_DebugDrawListBBoxIndex, 0);

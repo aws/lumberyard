@@ -1244,6 +1244,12 @@ void C3DEngine::PrintDebugInfo(const SRenderingPassInfo& passInfo)
         case 22:
             szMode = "object's current LOD vertex count";
             break;
+        case 24:
+            szMode = "Objects without LODs.\n    name - (triangle count)\n    draw calls - zpass/general/transparent/shadows/misc";
+            break;
+        case 25:
+            szMode = "Objects without LODs (Red). Objects that need more LODs (Blue)\n    name - (triangle count)\n    draw calls - zpass/general/transparent/shadows/misc";
+            break;
 
         default:
             assert(0);

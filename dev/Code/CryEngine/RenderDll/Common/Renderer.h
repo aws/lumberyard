@@ -2495,6 +2495,31 @@ public:
             return m_RP.m_pRNDrawCallsInfoPerMesh[m_RP.m_nProcessThreadID];
         }
     }
+    
+    // Added functionality for retrieving previous frames stats to use this frame
+    virtual RNDrawcallsMapMesh& GetDrawCallsInfoPerMeshPreviousFrame(bool mainThread = true)
+    {
+        if (mainThread)
+        {
+            return m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[m_RP.m_nFillThreadID];
+        }
+        else
+        {
+            return m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[m_RP.m_nProcessThreadID];
+        }
+    }
+    virtual RNDrawcallsMapNode& GetDrawCallsInfoPerNodePreviousFrame(bool mainThread = true)
+    {
+        if (mainThread)
+        {
+            return m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[m_RP.m_nFillThreadID];
+        }
+        else
+        {
+            return m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[m_RP.m_nProcessThreadID];
+        }
+    }
+
     virtual int GetDrawCallsPerNode(IRenderNode* pRenderNode);
 
     //Routine to perform an emergency flush of a particular render node from the stats, as not all render node holders are delay-deleted
@@ -2514,8 +2539,10 @@ public:
     {
         for (int i = 0; i < RT_COMMAND_BUF_COUNT; i++)
         {
-            m_RP.m_pRNDrawCallsInfoPerMesh[ i ].clear();
-            m_RP.m_pRNDrawCallsInfoPerNode[ i ].clear();
+            m_RP.m_pRNDrawCallsInfoPerMesh[i].swap(m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[i]);
+            m_RP.m_pRNDrawCallsInfoPerMesh[i].clear();
+            m_RP.m_pRNDrawCallsInfoPerNode[i].swap(m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[i]);
+            m_RP.m_pRNDrawCallsInfoPerNode[i].clear();
         }
     }
 #endif

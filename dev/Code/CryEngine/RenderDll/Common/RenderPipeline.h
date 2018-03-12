@@ -959,10 +959,13 @@ struct SRenderPipeline
     //===================================================================
     // Drawcall count debug view - per Node - r_stats 6
     std::map< struct IRenderNode*, IRenderer::SDrawCallCountInfo > m_pRNDrawCallsInfoPerNode[RT_COMMAND_BUF_COUNT];
+    std::map< struct IRenderNode*, IRenderer::SDrawCallCountInfo > m_pRNDrawCallsInfoPerNodePreviousFrame[RT_COMMAND_BUF_COUNT];	// Functionality for retrieving previous frames stats to use this frame
 
     //===================================================================
     // Drawcall count debug view - per mesh - perf hud renderBatchStats
     std::map< struct IRenderMesh*, IRenderer::SDrawCallCountInfo > m_pRNDrawCallsInfoPerMesh[RT_COMMAND_BUF_COUNT];
+    std::map< struct IRenderMesh*, IRenderer::SDrawCallCountInfo > m_pRNDrawCallsInfoPerMeshPreviousFrame[RT_COMMAND_BUF_COUNT];	// Functionality for retrieving previous frames stats to use this frame
+
 #endif
 
     //================================================================

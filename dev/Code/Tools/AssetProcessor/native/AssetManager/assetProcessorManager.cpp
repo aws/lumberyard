@@ -2420,13 +2420,39 @@ namespace AssetProcessor
 
     bool AssetProcessorManager::IsIdle()
     {
-        if ((!m_queuedExamination) && (m_filesToExamine.isEmpty()) && (m_activeFiles.isEmpty()) && 
-            !m_processedQueued && m_assetProcessedList.empty() && m_jobsToProcessLater.empty())
+        // 	Modified this function to make it (more) thread-safe. 
+		//	IsIdle() is normally called from the AssetProcessorManager's worker thread only.
+        // 	However, in batch mode, it is also called from the main thread, making m_filesToExamine.isEmpty(), m_activeFiles.isEmpty(), etc. not safe.
+        // 	The solution below is ugly, but avoids locking when IsIdle() is called from the worker, which occurs pretty much constantly, whereas
+        // 	IsIdle() on the main thread is called infrequently, only in batch mode, when OnBecameIdle signal is emitted.
+        bool isIdle = false;
+        if (QThread::currentThread() == thread())
         {
-            return true;
+            // IsIdle is called from the AssetProcessorManager's worker thread
+            if ((!m_queuedExamination) && (m_filesToExamine.isEmpty()) && (m_activeFiles.isEmpty()) && 
+                !m_processedQueued && m_assetProcessedList.empty() && m_jobsToProcessLater.empty())
+            {
+                isIdle = true;
+            }
+        }
+        else
+        {
+            // IsIdle is called from another thread (different than the AssetProcessorManager's worker thread, probably main) - it is not safe to call m_filesToExamine.isEmpty() / m_activeFiles.isEmpty()
+            m_idleMutex.lock();
+            QTimer::singleShot(0, this, [this, &isIdle]()
+            {
+                if ((!m_queuedExamination) && (m_filesToExamine.isEmpty()) && (m_activeFiles.isEmpty()) && 
+                    !m_processedQueued && m_assetProcessedList.empty() && m_jobsToProcessLater.empty())
+                {
+                    isIdle = true;
+                }
+                m_idleWaitable.wakeAll();
+            });
+            m_idleWaitable.wait(&m_idleMutex);
+            m_idleMutex.unlock();
         }
 
-        return false;
+        return isIdle;
     }
 
     bool AssetProcessorManager::HasProcessedCriticalAssets() const

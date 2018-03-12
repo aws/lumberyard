@@ -371,6 +371,11 @@ Q_SIGNALS:
         AZStd::multimap<QString, QString> m_dependsOnSourceToSourceMap; //multimap since different source files can declare dependency on the same file
         AZStd::multimap <AZ::Uuid, QString > m_dependsOnSourceUuidToSourceMap; //multimap since different source files can declare dependency on the same file
         bool m_SourceDependencyInfoNeedsUpdate = false;
+		
+	// Added mutex & wait condition used when IsIdle() is called from a thread different than the asset processor worker.
+    private:
+        QMutex m_idleMutex;
+        QWaitCondition m_idleWaitable;
     };
 } // namespace AssetProcessor
 

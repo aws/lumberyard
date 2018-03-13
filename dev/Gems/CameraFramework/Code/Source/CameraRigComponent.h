@@ -56,5 +56,6 @@ namespace Camera
         AZStd::vector<ICameraLookAtBehavior*> m_lookAtBehaviors;
         AZStd::vector<ICameraTransformBehavior*> m_transformBehaviors;
         AZ::Transform m_initialTransform;
+        int m_tickOrderOffset = 0;///< Allows overriding the default tick order, which may be before or after Lua scripts
     };
 } // Camera

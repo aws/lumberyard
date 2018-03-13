@@ -61,6 +61,8 @@ namespace Camera
 
         m_initialTransform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(m_initialTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+
+        AZ::TickBus::Handler::m_tickOrder = AZ::TICK_DEFAULT + m_tickOrderOffset;
         AZ::TickBus::Handler::BusConnect();
     }
 
@@ -96,6 +98,7 @@ namespace Camera
 
             serializeContext->Class<CameraRigComponent, AZ::Component>()
                 ->Version(1)
+                ->Field("Tick Order Offset", &CameraRigComponent::m_tickOrderOffset)
                 ->Field("Target Acquirers", &CameraRigComponent::m_targetAcquirers)
                 ->Field("Look-at Behaviors", &CameraRigComponent::m_lookAtBehaviors)
                 ->Field("Camera Transform Behaviors", &CameraRigComponent::m_transformBehaviors);
@@ -114,6 +117,8 @@ namespace Camera
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/CameraRig.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-camera-rig.html")
+                    ->DataElement(0, &CameraRigComponent::m_tickOrderOffset, "Tick order offset",
+                        "By default camera rig uses TICK_DEFAULT tick order, which is shared with Lua scripts (and most of the other components). The offset will be added to TICK_DEFAULT, so offset=1 will make the rig tick after scripts, offset=-1 - before scripts")
                     ->DataElement(0, &CameraRigComponent::m_targetAcquirers, "Target acquirers",
                     "A list of behaviors that define how a camera will select a target.  They are executed in order until one succeeds")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

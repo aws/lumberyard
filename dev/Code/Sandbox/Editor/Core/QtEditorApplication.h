@@ -24,6 +24,8 @@
 
 #include <AzCore/UserSettings/UserSettingsProvider.h>
 
+#include <AzCore/std/containers/vector.h>
+
 class QFileInfo;
 typedef QList<QFileInfo> QFileInfoList;
 class QByteArray;
@@ -139,5 +141,7 @@ namespace Editor
         bool m_activatedLocalUserSettings = false;
 
         QScopedPointer<AZ::Entity> m_qtEntity;
+
+        AZStd::vector<AZ::u8> m_rawInputDataBuffer; ///< using AZStd::vector as a growable buffer for storing bytes returned by ::GetRawInputData()
     };
 } // namespace editor

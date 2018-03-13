@@ -370,13 +370,17 @@ namespace Editor
             const UINT rawInputHeaderSize = sizeof(RAWINPUTHEADER);
             GetRawInputData((HRAWINPUT)msg->lParam, RID_INPUT, NULL, &rawInputSize, rawInputHeaderSize);
 
-            LPBYTE rawInputBytes = new BYTE[rawInputSize];
-            CRY_ASSERT(rawInputBytes);
+            // Using AZStd::vector as a growable buffer for storing bytes returned by ::GetRawInputData().
+            // Previously a new array was dynamically allocated here, and never deleted.
+            if (rawInputSize > m_rawInputDataBuffer.size())
+            {
+                m_rawInputDataBuffer.resize_no_construct(rawInputSize);
+            }
 
-            const UINT bytesCopied = GetRawInputData((HRAWINPUT)msg->lParam, RID_INPUT, rawInputBytes, &rawInputSize, rawInputHeaderSize);
+            const UINT bytesCopied = GetRawInputData((HRAWINPUT)msg->lParam, RID_INPUT, m_rawInputDataBuffer.data(), &rawInputSize, rawInputHeaderSize); ///< replaced the rawInputBytes parameter with m_rawInputDataBuffer.data()
             CRY_ASSERT(bytesCopied == rawInputSize);
 
-            RAWINPUT* rawInput = (RAWINPUT*)rawInputBytes;
+            RAWINPUT* rawInput = (RAWINPUT*)m_rawInputDataBuffer.data(); ///< replaced the rawInputBytes parameter with m_rawInputDataBuffer.data()
             CRY_ASSERT(rawInput);
 
             AzFramework::RawInputNotificationBusWin::Broadcast(&AzFramework::RawInputNotificationsWin::OnRawInputEvent, *rawInput);

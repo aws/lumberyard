@@ -35,6 +35,8 @@
 
 #include "CheatProtection.h"
 
+#include <AzCore/std/containers/vector.h>
+
 struct IConsoleCmdArgs;
 class CServerThrottle;
 struct ICryFactoryRegistryImpl;
@@ -1140,6 +1142,8 @@ protected: // -------------------------------------------------------------
     std::vector<IWindowMessageHandler*> m_windowMessageHandlers;
     bool m_initedOSAllocator = false;
     bool m_initedSysAllocator = false;
+
+    AZStd::vector<AZ::u8> m_rawInputDataBuffer; ///< using AZStd::vector as a growable buffer for storing bytes returned by ::GetRawInputData()
 };
 
 /*extern static */ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index);

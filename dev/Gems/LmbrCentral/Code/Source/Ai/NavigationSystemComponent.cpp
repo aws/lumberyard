@@ -25,10 +25,11 @@
 #include <functor.h> // needed in <INavigationSystem.h>
 #include <INavigationSystem.h>
 
-using namespace AZ;
 
 namespace LmbrCentral
 {
+    using namespace AZ;
+
     AZ_CLASS_ALLOCATOR_IMPL(NavRayCastResult, SystemAllocator, 0)
 
     void NavigationSystemComponent::Reflect(ReflectContext* context)

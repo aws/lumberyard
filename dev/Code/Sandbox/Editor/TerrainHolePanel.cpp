@@ -28,6 +28,7 @@ CTerrainHolePanel::CTerrainHolePanel(CTerrainHoleTool* tool, QWidget* pParent /*
     assert(tool != 0);
     m_tool = tool;
 
+
     ui->setupUi(this);
 
     m_radius = ui->radiusSlider;
@@ -46,6 +47,9 @@ CTerrainHolePanel::CTerrainHolePanel(CTerrainHoleTool* tool, QWidget* pParent /*
     m_makeHole = ui->HOLE_MAKE;
     m_makeHole->setChecked(m_tool->GetMakeHole());
     connect(m_makeHole, &QRadioButton::toggled, this, &CTerrainHolePanel::OnHoleMake);
+    connect(ui->pressureRadius, &QCheckBox::stateChanged, this, &CTerrainHolePanel::OnTabletSettingsChanged);
+
+    ui->pressureRadius->setChecked(m_tool->GetPressureRadius());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -71,4 +75,12 @@ void CTerrainHolePanel::OnReleasedcaptureRadius(int value)
 void CTerrainHolePanel::SetMakeHole(bool bEnable)
 {
     m_makeHole->setChecked(bEnable);
+}
+
+void CTerrainHolePanel::OnTabletSettingsChanged()
+{
+    if (m_tool)
+    {
+        m_tool->SetPressureRadius(ui->pressureRadius->checkState() == Qt::CheckState::Checked);
+    }
 }

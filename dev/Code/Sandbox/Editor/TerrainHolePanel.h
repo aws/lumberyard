@@ -49,6 +49,7 @@ public:
 protected:
     void OnHoleMake(bool v);
     void OnReleasedcaptureRadius(int value);
+    void OnTabletSettingsChanged();
 
     QSlider*    m_radius;
     CTerrainHoleTool* m_tool;

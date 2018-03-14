@@ -36,6 +36,10 @@ CTerrainHoleTool::CTerrainHoleTool()
 
     m_pointerPos(0, 0, 0);
 
+    m_bInTabletMode = false;
+    m_bPressureRadius = true;
+    m_activePressure = 0.0f;
+
     GetIEditor()->ClearSelection();
 }
 
@@ -74,6 +78,11 @@ void CTerrainHoleTool::EndEditParams()
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainHoleTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
+    if (m_bInTabletMode)
+    {
+        return false;
+    }
+
     bool bHitTerrain(false);
     Vec3 stPointerPos;
 
@@ -106,6 +115,51 @@ bool CTerrainHoleTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint&
 }
 
 //////////////////////////////////////////////////////////////////////////
+bool CTerrainHoleTool::TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags)
+{
+    if (event == eTabletMove || event == eTabletPress)
+    {
+        m_bInTabletMode = true;
+        m_activePressure = tabletContext.m_pressure;
+    }
+    else if(event == eTabletRelease)
+    {
+        m_bInTabletMode = false;
+        m_activePressure = 0.0f;
+    }
+
+    bool bHitTerrain(false);
+    Vec3 stPointerPos;
+
+    stPointerPos = view->ViewToWorld(point, &bHitTerrain, true);
+
+    // When there is no terrain, the returned position would be 0,0,0 causing
+    // users to often delete the terrain under this position unintentionally.
+    if (bHitTerrain)
+    {
+        m_pointerPos = stPointerPos;
+    }
+
+    if (event == eTabletPress || (event == eTabletMove && (flags & MK_LBUTTON)))
+    {
+        if (!GetIEditor()->IsUndoRecording())
+        {
+            GetIEditor()->BeginUndo();
+        }
+        Modify(tabletContext.m_pressure);
+    }
+    else
+    {
+        if (GetIEditor()->IsUndoRecording())
+        {
+            GetIEditor()->AcceptUndo("Terrain Hole");
+        }
+    }
+
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CTerrainHoleTool::Display(DisplayContext& dc)
 {
     if (dc.flags & DISPLAY_2D)
@@ -123,11 +177,22 @@ void CTerrainHoleTool::Display(DisplayContext& dc)
 
     dc.SetColor(0, 1, 0, 1);
     dc.DrawTerrainCircle(m_pointerPos, m_brushRadius, 0.2f);
+    if (m_bInTabletMode && m_bPressureRadius)
+    {
+        dc.SetColor(0, 0, 1, 1);
+        dc.DrawTerrainCircle(m_pointerPos, m_brushRadius * m_activePressure, 0.2f);
+    }
 
     Vec2i min;
     Vec2i max;
-
-    CalculateHoleArea(min, max);
+    if (m_bInTabletMode && m_bPressureRadius)
+    {
+        CalculateHoleArea(m_activePressure, min, max);
+    }
+    else
+    {
+        CalculateHoleArea(1.0f, min, max);
+    }
 
     if (m_bMakeHole)
     {
@@ -135,7 +200,7 @@ void CTerrainHoleTool::Display(DisplayContext& dc)
     }
     else
     {
-        dc.SetColor(0, 0, 1, 1);
+        dc.SetColor(0, 1, 0, 1);
     }
 
     dc.DrawTerrainRect(min.y * unitSize, min.x * unitSize, max.y * unitSize + unitSize, max.x * unitSize + unitSize, 0.2f);
@@ -187,7 +252,7 @@ bool CTerrainHoleTool::OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, ui
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainHoleTool::Modify()
+void CTerrainHoleTool::Modify(float pressure)
 {
     if (!GetIEditor()->Get3DEngine()->GetITerrain())
     {
@@ -203,7 +268,7 @@ void CTerrainHoleTool::Modify()
     Vec2i min;
     Vec2i max;
 
-    CalculateHoleArea(min, max);
+    CalculateHoleArea(pressure, min, max);
 
     if (
         (max.x - min.x) >= 0
@@ -215,7 +280,7 @@ void CTerrainHoleTool::Modify()
     }
 }
 //////////////////////////////////////////////////////////////////////////
-bool CTerrainHoleTool::CalculateHoleArea(Vec2i& min, Vec2i& max) const
+bool CTerrainHoleTool::CalculateHoleArea(float pressure, Vec2i& min, Vec2i& max) const
 {
     CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     if (!pHeightmap)
@@ -224,11 +289,11 @@ bool CTerrainHoleTool::CalculateHoleArea(Vec2i& min, Vec2i& max) const
     }
 
     int unitSize = pHeightmap->GetUnitSize();
-
-    float fx1 = (m_pointerPos.y - (float)m_brushRadius) / (float)unitSize;
-    float fy1 = (m_pointerPos.x - (float)m_brushRadius) / (float)unitSize;
-    float fx2 = (m_pointerPos.y + (float)m_brushRadius) / (float)unitSize;
-    float fy2 = (m_pointerPos.x + (float)m_brushRadius) / (float)unitSize;
+    float brushRadius = m_brushRadius * (m_bPressureRadius ? pressure : 1.0f);
+    float fx1 = (m_pointerPos.y - (float)brushRadius) / (float)unitSize;
+    float fy1 = (m_pointerPos.x - (float)brushRadius) / (float)unitSize;
+    float fx2 = (m_pointerPos.y + (float)brushRadius) / (float)unitSize;
+    float fy2 = (m_pointerPos.x + (float)brushRadius) / (float)unitSize;
 
     // As the engine interfaces take ints, this loss of precision if expected
     // and needed to correctly predict.

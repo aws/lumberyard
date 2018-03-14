@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>182</width>
-    <height>87</height>
+    <height>138</height>
    </rect>
   </property>
   <layout class="QFormLayout" name="formLayout">
@@ -43,6 +43,22 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Tablet Pen Pressure</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QCheckBox" name="pressureRadius">
+        <property name="text">
+         <string>Radius</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>

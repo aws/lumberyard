@@ -671,6 +671,13 @@ namespace AzFramework
             lua_pop(lua, 1); // remove the OnActivate result
         }
 
+        if (m_netBindingTable)
+        {
+            // Set the flag indicating that the owning entity is active. 
+            // This means that from this point on DataSet OnNewValue can be sent.
+            m_netBindingTable->SetIsOwningEntityActive(true);
+        }
+
         lua_pop(lua, 2); // remove the base property table and base script table
     }
 
@@ -681,6 +688,13 @@ namespace AzFramework
     {
         if (m_table != LUA_NOREF)
         {
+            if (m_netBindingTable)
+            {
+                // Set the flag indicating that the owning entity is no longer active. 
+                // This means that from this point on DataSet OnNewValue should not be sent.
+                m_netBindingTable->SetIsOwningEntityActive(false);
+            }
+
             lua_State* lua = m_context->NativeContext();
             LSV_BEGIN(lua, 0);
 

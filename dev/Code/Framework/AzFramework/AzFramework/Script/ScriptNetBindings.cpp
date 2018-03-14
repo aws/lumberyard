@@ -667,6 +667,7 @@ namespace AzFramework
     }
 
     ScriptNetBindingTable::ScriptNetBindingTable()
+        : m_isOwnerActivated(false)
     {
     }
 
@@ -781,6 +782,16 @@ namespace AzFramework
     bool ScriptNetBindingTable::IsMaster() const
     {
         return (m_replicaChunk != nullptr) ? m_replicaChunk->IsMaster() : true;
+    }
+
+    void ScriptNetBindingTable::SetIsOwningEntityActive(bool isActive)
+    {
+        m_isOwnerActivated = isActive;
+    }
+
+    bool ScriptNetBindingTable::IsOwningEntityActive() const
+    {
+        return m_isOwnerActivated;
     }
 
     bool ScriptNetBindingTable::AssignTableValue(AZ::ScriptDataContext& stackDataContext)
@@ -964,13 +975,51 @@ namespace AzFramework
                 }
             }
             
-            AZStd::pair<NetworkedTableMap::iterator, bool> insertResult = m_networkedTable.insert(NetworkedTableMap::value_type(scriptProperty->m_name,networkedTableValue));            
+            /*
+            1)   Replaced the code block commented out below with a fixed check. 
+                 insertResult.second does not indicate whether or not an item was inserted, 
+                 but whether or not it replaced an already existing, older value.
+
+            2)   Added the code that assigns a dataset if chunk is already available, 
+                 this way we will immediately start using the proper property value rather than the shimmed one 
+                 (which don't get updated until the property on the server changes).
+            */
+
+            /*  Old code:
+            AZStd::pair<NetworkedTableMap::iterator, bool> insertResult = m_networkedTable.insert(NetworkedTableMap::value_type(scriptProperty->m_name, networkedTableValue));
 
             // If we failed to insert the object, we need to destroy the networked table value.
             // To avoid leaking memory
             if (!insertResult.second)
             {
                 networkedTableValue.Destroy();
+            }
+            */
+
+            //  Fixed code:
+            NetworkedTableValue* insertedTableValue = nullptr;
+            auto it = m_networkedTable.find(scriptProperty->m_name);
+            if (it == m_networkedTable.end())
+            {
+                AZStd::pair<NetworkedTableMap::iterator, bool> insertResult = m_networkedTable.insert(NetworkedTableMap::value_type(scriptProperty->m_name, networkedTableValue));
+                insertedTableValue = &(insertResult.first->second);
+            }
+            else
+            {
+                // Property with the same name was already registered, ignore the new one
+                networkedTableValue.Destroy();
+                AZ_Error("ScriptComponent", false, "Duplicated property name '%s', keeping the first one, skipping the new one");
+            }
+
+            if (m_replicaChunk && insertedTableValue)
+            {
+                auto scriptReplicaChunk = static_cast<ScriptComponentReplicaChunk*>(m_replicaChunk.get());
+                scriptReplicaChunk->AssignDataSetIfAvailable(scriptProperty->m_name, *insertedTableValue);
+                AZ_Error("ScriptComponent", insertedTableValue->HasDataSet(), "Unable to bind received ScriptProperty to DataSet.");
+
+                // NOTE: RegisterDataSet(networkTableContext, property) is called by the ScriptComponent when
+                // script properties are constructed (so before activate), therefore we are not calling OnValueChanged() callback,
+                // as nothing can handle it at this stage anyway.
             }
 
             handledProperty = true;             
@@ -1147,6 +1196,7 @@ namespace AzFramework
     {
         m_replicaChunk = chunk;
         m_replicaChunk->SetHandler(this);
+        AssignDataSets();
     }
 
     void ScriptNetBindingTable::UnbindFromNetwork()
@@ -1227,29 +1277,54 @@ namespace AzFramework
 
     void ScriptNetBindingTable::AssignDataSets()
     {
-        if (m_replicaChunk && m_replicaChunk->IsMaster())
+        if (m_replicaChunk)
         {
-            ScriptComponentReplicaChunk* scriptComponentChunk = static_cast<ScriptComponentReplicaChunk*>(m_replicaChunk.get());
-            // Going to do this in two passes, first to do all of the forced ones, then all of the arbitrary ones.
-            for (NetworkedTableMap::value_type& tablePair : m_networkedTable)
+            if (m_replicaChunk->IsMaster())
             {
-                if (tablePair.second.HasForcedDataSetIndex() && !tablePair.second.HasDataSet())
+                ScriptComponentReplicaChunk* scriptComponentChunk = static_cast<ScriptComponentReplicaChunk*>(m_replicaChunk.get());
+                // Going to do this in two passes, first to do all of the forced ones, then all of the arbitrary ones.
+                for (NetworkedTableMap::value_type& tablePair : m_networkedTable)
                 {
-                    if (!scriptComponentChunk->AssignDataSet(tablePair.second))
+                    if (tablePair.second.HasForcedDataSetIndex() && !tablePair.second.HasDataSet())
                     {
-                        // Remove the forced DataSet index since it was invalid.
-                        // Second pass will assign this an arbitrary one.
-                        tablePair.second.SetForcedDataSetIndex(-1);
+                        if (!scriptComponentChunk->AssignDataSet(tablePair.second))
+                        {
+                            // Remove the forced DataSet index since it was invalid.
+                            // Second pass will assign this an arbitrary one.
+                            tablePair.second.SetForcedDataSetIndex(-1);
+                        }
+                    }
+                }
+
+                for (NetworkedTableMap::value_type& tablePair : m_networkedTable)
+                {
+                    // Try to assign everything that doesn't already have a dataset.
+                    if (!tablePair.second.HasDataSet())
+                    {
+                        scriptComponentChunk->AssignDataSet(tablePair.second);
                     }
                 }
             }
-
-            for (NetworkedTableMap::value_type& tablePair : m_networkedTable)
+            else
             {
-                // Try to assign everything that doesn't already have a dataset.
-                if (!tablePair.second.HasDataSet())
+                // If we are a Proxy, try to assign chunks that are already available
+                auto scriptReplicaChunk = static_cast<ScriptComponentReplicaChunk*>(m_replicaChunk.get());
+                for (NetworkedTableMap::value_type& tablePair : m_networkedTable)
                 {
-                    scriptComponentChunk->AssignDataSet(tablePair.second);
+                    if (!tablePair.second.HasDataSet())
+                    {
+                        bool assigned = scriptReplicaChunk->AssignDataSetIfAvailable(tablePair.first, tablePair.second);
+                        if (assigned &&
+                            IsOwningEntityActive() &&
+                            tablePair.second.HasCallback() &&
+                            scriptReplicaChunk->GetReplica())
+                        {
+                            // Entity is already active - send the OnNewValue notification
+                            // NOTE: A more optimal way would be to check if the proper property value is actually different than
+                            // the shimmed one, and only then fire the callback.
+                            tablePair.second.InvokeCallback(m_entityScriptContext, scriptReplicaChunk->GetReplica()->GetMyContext());
+                        }
+                    }
                 }
             }
         }
@@ -1373,6 +1448,28 @@ namespace AzFramework
         }
 
         return assigned;        
+    }
+
+    bool ScriptComponentReplicaChunk::AssignDataSetIfAvailable(const AZStd::string& valueName, ScriptNetBindingTable::NetworkedTableValue& tableValue)
+    {
+        AZ_Error("ScriptComponent", !IsMaster(), "Binding table value to specified DataSet on Master(Master should be making that choice, not responding to a choice).");
+
+        bool assigned = false;
+        if (!IsMaster())
+        {
+            for (int i = 0; i < k_maxScriptableDataSets; ++i)
+            {
+                auto scriptProperty = m_propertyDataSets[i].Get();
+                if (scriptProperty && scriptProperty->m_name == valueName)
+                {
+                    tableValue.RegisterDataSet(&m_propertyDataSets[i]);
+                    assigned = true;
+                    break;
+                }
+            }
+        }
+
+        return assigned;
     }
 
     void ScriptComponentReplicaChunk::AssignDataSetForProperty(ScriptNetBindingTable::NetworkedTableValue& helper, AZ::ScriptProperty* targetProperty)

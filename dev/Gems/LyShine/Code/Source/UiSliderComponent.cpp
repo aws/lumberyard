@@ -101,7 +101,7 @@ void UiSliderComponent::SetValue(float value)
     }
 
     float valueRange = fabsf(m_maxValue - m_minValue);
-    float unitValue = fabsf(m_value - m_minValue) / valueRange;
+    float unitValue = valueRange > 0.0f ? (fabsf(m_value - m_minValue) / valueRange) : 0.0f;
 
     if (m_fillEntity.IsValid())
     {

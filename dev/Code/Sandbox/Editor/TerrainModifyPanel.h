@@ -79,6 +79,8 @@ private:
 protected:
     void OnInitDialog();
     void OnUpdateNumbers();
+    void OnTabletSettingsChanged();
+
     void OnBrushTypeCmd(const QString& brushType);
 
     template<typename Widget, typename Value>

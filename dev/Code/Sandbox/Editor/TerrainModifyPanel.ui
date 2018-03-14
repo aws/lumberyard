@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>220</width>
-    <height>674</height>
+    <height>743</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -40,7 +40,7 @@
         <x>0</x>
         <y>0</y>
         <width>218</width>
-        <height>672</height>
+        <height>741</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -502,6 +502,29 @@
          <property name="checked">
           <bool>true</bool>
          </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>Tablet Pen Pressure</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QCheckBox" name="pressureRadius">
+            <property name="text">
+             <string>Radius</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="pressureHardness">
+            <property name="text">
+             <string>Hardness</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>

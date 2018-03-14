@@ -43,6 +43,11 @@ CTerrainModifyPanel::CTerrainModifyPanel(QWidget* parent /* = nullptr */)
 void CTerrainModifyPanel::SetModifyTool(CTerrainModifyTool* tool)
 {
     m_tool = tool;
+    if (m_tool)
+    {
+        m_ui->pressureRadius->setChecked(m_tool->GetPressureRadius());
+        m_ui->pressureHardness->setChecked(m_tool->GetPressureHardness());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -128,6 +133,9 @@ void CTerrainModifyPanel::OnInitDialog()
 
     connect(m_ui->repositionObjectsCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnRepositionObjects);
     connect(m_ui->repositionVegetationCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnRepositionVegetation);
+
+    connect(m_ui->pressureRadius, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnTabletSettingsChanged);
+    connect(m_ui->pressureHardness, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnTabletSettingsChanged);
 }
 
 void CTerrainModifyPanel::EnsureActiveEditTool()
@@ -288,6 +296,15 @@ void CTerrainModifyPanel::OnUpdateNumbers()
     br.noiseFreq = m_ui->noiseFreqSpin->value();
     br.noiseScale = m_ui->noiseScaleSpin->value();
     m_tool->SetCurBrushParams(br);
+}
+//////////////////////////////////////////////////////////////////////////
+void CTerrainModifyPanel::OnTabletSettingsChanged()
+{
+    if (m_tool)
+    {
+        m_tool->SetPressureRadius(m_ui->pressureRadius->checkState() == Qt::CheckState::Checked);
+        m_tool->SetPressureHardness(m_ui->pressureHardness->checkState() == Qt::CheckState::Checked);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

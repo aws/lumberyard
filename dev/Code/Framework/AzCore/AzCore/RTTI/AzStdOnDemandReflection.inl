@@ -528,6 +528,11 @@ namespace AZ
     {
         using ContainerType = AZStd::unordered_map<Key, MappedType, Hasher, EqualKey, Allocator>;
 
+        static void Insert(ContainerType* thisPtr, Key& key, MappedType& value)
+        {
+            (*thisPtr)[key] = value;
+        }
+
         static void Reflect(ReflectContext* context)
         {
             BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context);
@@ -535,7 +540,11 @@ namespace AZ
             {
                 behaviorContext->Class<ContainerType>()
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
-                    ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn);
+                    ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn)
+                    ->template Method<MappedType&(ContainerType::*)(const Key&)>("at", &ContainerType::at)
+                    ->Method("insert", &Insert)
+                    ->Method("size", [](ContainerType* thisPtr) { return aznumeric_cast<int>(thisPtr->size()); })
+                        ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length);
             }
         }
     };

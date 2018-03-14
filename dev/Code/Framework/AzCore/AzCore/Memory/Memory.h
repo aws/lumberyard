@@ -381,14 +381,16 @@ namespace AZ
             if (!s_allocator)
             {
                 s_allocator = Environment::CreateVariable<Allocator>(AzTypeInfo<Allocator>::Name());
-                if (s_allocator->IsReady()) // already created in a different module
-                {
-                    return;
-                }
             }
             else
             {
                 AZ_Assert(s_allocator->IsReady(), "Allocator '%s' already created!", AzTypeInfo<Allocator>::Name());
+            }
+
+            // already created, do not create again
+            if (s_allocator->IsReady()) 
+            {
+                return;
             }
 
             s_allocator->Create(desc);

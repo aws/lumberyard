@@ -2951,10 +2951,13 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
                 }
             }
 #endif
+            // Add peak number of deferred lights to the debug stats
+            static int s_peakDLights = 0;
+            s_peakDLights = std::max(s_peakDLights, m_nRealLightsNum + m_nDeferredLightsNum);
 
             int nPeakMemMB = (int)(processMemInfo.PeakPagefileUsage >> 20);
             int nVirtMemMB = (int)(processMemInfo.PagefileUsage >> 20);
-            DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "Mem=%d Peak=%d DLights=(%d)", nVirtMemMB, nPeakMemMB, m_nRealLightsNum + m_nDeferredLightsNum);
+            DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "Mem=%d Peak=%d DLights=(%d) DLightsPeak=(%d)", nVirtMemMB, nPeakMemMB, m_nRealLightsNum + m_nDeferredLightsNum, s_peakDLights);
 
             uint32 nShadowFrustums = 0;
             uint32 nShadowAllocs = 0;

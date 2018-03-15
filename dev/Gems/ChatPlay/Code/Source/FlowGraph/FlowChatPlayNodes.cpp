@@ -163,9 +163,9 @@ namespace ChatPlay
         CallbackToken m_callbackToken;
 
         // Cache connection state flags so we can ensure edge-triggered behavior
-        bool m_connectedState;
-        bool m_connectingState;
-        bool m_errorState;
+        bool m_connectedState = false;
+        bool m_connectingState = false;
+        bool m_errorState = false;
 
         // Callback used with IChatChannel
         void OnConnectionStateChange(ConnectionState connectionState);
@@ -291,19 +291,29 @@ namespace ChatPlay
 
         if (m_connectedState != connected)
         {
-            ActivateOutput<bool>(&m_actInfo, OutputPorts::OutputPorts_Connected, connected);
+            if (connected)
+            {
+                ActivateOutput<bool>(&m_actInfo, OutputPorts::OutputPorts_Connected, connected);
+            }
             m_connectedState = connected;
         }
 
         if (m_connectingState != connecting)
         {
-            ActivateOutput<bool>(&m_actInfo, OutputPorts::OutputPorts_Connecting, connecting);
+            if (connecting)
+            {
+                ActivateOutput<bool>(&m_actInfo, OutputPorts::OutputPorts_Connecting, connecting);
+            }
             m_connectingState = connecting;
+
         }
 
         if (m_errorState != error)
         {
-            ActivateOutput<bool>(&m_actInfo, OutputPorts::OutputPorts_Error, error);
+            if (error)
+            {
+                ActivateOutput<bool>(&m_actInfo, OutputPorts::OutputPorts_Error, error);
+            }
             m_errorState = error;
         }
     }
@@ -460,19 +470,9 @@ namespace ChatPlay
             AZStd::string channelId = GetPortString(pActInfo, InputPorts_Channel).c_str();
             AZStd::string keyword = GetPortString(pActInfo, InputPorts_Keyword).c_str();
 
-            bool channelExists = false;
-            ChatPlayRequestBus::BroadcastResult(channelExists, &ChatPlayRequestBus::Events::CreateChannel, m_channelId);
-
-            if (channelExists)
-            {
-                SetChatChannel(channelId);
-                SetKeyword(keyword);
-            }
-            else
-            {
-                ActivateOutput<bool>(&m_actInfo, OutputPorts::OutputPorts_Error, true);
-                CryLogAlways("Warning: ChatPlay is disabled or not available on this platform.");
-            }
+            // Fix for keyword nodes creating an empty channel when they initialise
+            SetChatChannel(channelId);
+            SetKeyword(keyword);
 
             m_signalCount = GetPortInt(pActInfo, InputPorts_Reset);
 
@@ -489,9 +489,10 @@ namespace ChatPlay
 
         case eFE_Activate:
 
+            // Fix for keyword nodes creating an empty channel when they initialise
             // Check if the ChatChannel exists
-            bool channelExists = false;
-            ChatPlayRequestBus::BroadcastResult(channelExists, &ChatPlayRequestBus::Events::CreateChannel, m_channelId);
+            //bool channelExists = false;
+            //ChatPlayRequestBus::BroadcastResult(channelExists, &ChatPlayRequestBus::Events::CreateChannel, m_channelId);
 
             if (IsPortActive(pActInfo, InputPorts_Channel))
             {

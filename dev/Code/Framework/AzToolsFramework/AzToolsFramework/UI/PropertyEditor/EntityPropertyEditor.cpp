@@ -1100,12 +1100,9 @@ namespace AzToolsFramework
     {
         if (m_gui && m_gui->m_collapseComponentsButton)
         {
-            static const char* collapseAllText = "Collapse All";
-            static const char* expandAllText = "Expand All";
-
             m_componentsExpanded = !m_componentsExpanded;
 
-            m_gui->m_collapseComponentsButton->setText(m_componentsExpanded ? collapseAllText : expandAllText);
+            m_gui->m_collapseComponentsButton->setText(m_componentsExpanded ? tr("Collapse All") : tr("Expand All"));
             for (auto componentEditor : m_componentEditors)
             {
                 componentEditor->SetExpanded(m_componentsExpanded);

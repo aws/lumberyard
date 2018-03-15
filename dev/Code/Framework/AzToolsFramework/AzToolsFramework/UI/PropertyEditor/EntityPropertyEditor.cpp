@@ -201,6 +201,7 @@ namespace AzToolsFramework
         setAcceptDrops(true);
 
         m_isAlreadyQueuedRefresh = false;
+        m_componentsExpanded = true;
         m_shouldScrollToNewComponents = false;
         m_shouldScrollToNewComponentsQueued = false;
         m_currentUndoNode = nullptr;
@@ -223,6 +224,7 @@ namespace AzToolsFramework
 
         connect(m_gui->m_entityIcon, &QPushButton::clicked, this, &EntityPropertyEditor::BuildEntityIconMenu);
         connect(m_gui->m_addComponentButton, &QPushButton::clicked, this, &EntityPropertyEditor::OnAddComponent);
+        connect(m_gui->m_collapseComponentsButton, &QPushButton::clicked, this, &EntityPropertyEditor::OnCollapseAllComponents);
         connect(m_gui->m_entitySearchBox, &QLineEdit::textChanged, this, &EntityPropertyEditor::OnSearchTextChanged);
         connect(m_gui->m_buttonClearFilter, &QPushButton::clicked, this, &EntityPropertyEditor::ClearSearchFilter);
 
@@ -255,6 +257,7 @@ namespace AzToolsFramework
         setTabOrder(m_gui->m_entityIdEditor, m_gui->m_entityNameEditor);
         setTabOrder(m_gui->m_entityNameEditor, m_gui->m_initiallyActiveCheckbox);
         setTabOrder(m_gui->m_initiallyActiveCheckbox, m_gui->m_addComponentButton);
+        setTabOrder(m_gui->m_addComponentButton, m_gui->m_collapseComponentsButton);
 
         // the world editor has a fixed id:
 
@@ -454,6 +457,8 @@ namespace AzToolsFramework
         m_gui->m_entityDetailsLabel->setVisible(!hasEntitiesDisplayed);
         m_gui->m_addComponentButton->setEnabled(hasEntitiesDisplayed);
         m_gui->m_addComponentButton->setVisible(hasEntitiesDisplayed);
+        m_gui->m_collapseComponentsButton->setEnabled(hasEntitiesDisplayed);
+        m_gui->m_collapseComponentsButton->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityNameEditor->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityNameLabel->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityIdEditor->setVisible(hasEntitiesDisplayed);
@@ -1091,6 +1096,23 @@ namespace AzToolsFramework
         ShowComponentPalette(m_componentPalette, globalRect.topLeft(), globalRect.size(), serviceFilter);
     }
 
+    void EntityPropertyEditor::OnCollapseAllComponents()
+    {
+        if (m_gui && m_gui->m_collapseComponentsButton)
+        {
+            static const char* collapseAllText = "Collapse All";
+            static const char* expandAllText = "Expand All";
+
+            m_componentsExpanded = !m_componentsExpanded;
+
+            m_gui->m_collapseComponentsButton->setText(m_componentsExpanded ? collapseAllText : expandAllText);
+            for (auto componentEditor : m_componentEditors)
+            {
+                componentEditor->SetExpanded(m_componentsExpanded);
+            }
+        }
+    }
+
     void EntityPropertyEditor::GotSceneSourceControlStatus(SourceControlFileInfo& fileInfo)
     {
         m_sceneIsNew = false;
@@ -1629,6 +1651,11 @@ namespace AzToolsFramework
         connect(m_actionToAddComponents, &QAction::triggered, this, &EntityPropertyEditor::OnAddComponent);
         addAction(m_actionToAddComponents);
 
+        m_actionToCollapseAllComponents = aznew QAction(tr("Collapse All"), this);
+        m_actionToCollapseAllComponents->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+        connect(m_actionToCollapseAllComponents, &QAction::triggered, this, &EntityPropertyEditor::OnCollapseAllComponents);
+        addAction(m_actionToCollapseAllComponents);        
+
         m_actionToDeleteComponents = aznew QAction(tr("Delete component"), this);
         m_actionToDeleteComponents->setShortcut(QKeySequence::Delete);
         m_actionToDeleteComponents->setShortcutContext(Qt::WidgetWithChildrenShortcut);
@@ -1706,6 +1733,7 @@ namespace AzToolsFramework
         bool allowRemove = !m_selectedEntityIds.empty() && !componentsToEdit.empty() && AreComponentsRemovable(componentsToEdit);
 
         m_actionToAddComponents->setEnabled(!m_selectedEntityIds.empty());
+        m_actionToCollapseAllComponents->setEnabled(!m_selectedEntityIds.empty());
         m_actionToDeleteComponents->setEnabled(allowRemove);
         m_actionToCutComponents->setEnabled(allowRemove);
         m_actionToCopyComponents->setEnabled(allowRemove);

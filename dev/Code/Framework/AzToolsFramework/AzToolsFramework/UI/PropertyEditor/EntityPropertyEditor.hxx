@@ -209,6 +209,7 @@ namespace AzToolsFramework
             const AZStd::vector<AZ::ComponentServiceType>& serviceFilter);
 
         QAction* m_actionToAddComponents;
+        QAction* m_actionToCollapseAllComponents;
         QAction* m_actionToDeleteComponents;
         QAction* m_actionToCutComponents;
         QAction* m_actionToCopyComponents;
@@ -403,6 +404,8 @@ namespace AzToolsFramework
         QIcon m_emptyIcon;
         QIcon m_clearIcon;
 
+        bool m_componentsExpanded;
+
         private slots:
         void OnPropertyRefreshRequired(); // refresh is needed for a property.
         void UpdateContents();
@@ -417,6 +420,7 @@ namespace AzToolsFramework
         void ClearSearchFilter();
 
         bool SelectedEntitiesAreFromSameSourceSliceEntity() const;
+        void OnCollapseAllComponents();
     };
 
 }

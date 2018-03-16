@@ -145,17 +145,17 @@ namespace AssetProcessor
 
     bool Builder::Start()
     {
-        // Get the base path for the engine
-        AZStd::string engineRootString;
-        AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRootString, &AzFramework::ApplicationRequests::GetEngineRoot);
+        // Get the app root to locate the builders
+        AZStd::string appRootString;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRootString, &AzFramework::ApplicationRequests::GetAppRoot);
 
-        // Construct the engine's binary folder (BinXXX) path
-        AZStd::string engineBinFolder;
-        AzFramework::StringFunc::Path::Join(engineRootString.c_str(), BINFOLDER_NAME, engineBinFolder);
+        // Construct the projects's binary folder (BinXXX) path
+        AZStd::string projectBinFolder;
+        AzFramework::StringFunc::Path::Join(appRootString.c_str(), BINFOLDER_NAME, projectBinFolder);
 
         // Construct the Builders subfolder path
-        AZStd::string engineBuildersFolder;
-        AzFramework::StringFunc::Path::Join(engineBinFolder.c_str(), s_buildersFolderName, engineBuildersFolder);
+        AZStd::string buildersFolder;
+        AzFramework::StringFunc::Path::Join(projectBinFolder.c_str(), s_buildersFolderName, buildersFolder);
 
         // Construct the full exe for the builder.exe
         const AZStd::string fullExePathString = QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(AssetProcessor::s_assetBuilderRelativePath).toUtf8().constData();
@@ -165,7 +165,7 @@ namespace AssetProcessor
             return false;
         }
 
-        const AZStd::string params = BuildParams("resident", engineBuildersFolder.c_str(), UuidString(), "", "");
+        const AZStd::string params = BuildParams("resident", buildersFolder.c_str(), UuidString(), "", "");
 
         m_processWatcher = LaunchProcess(fullExePathString.c_str(), params);
 

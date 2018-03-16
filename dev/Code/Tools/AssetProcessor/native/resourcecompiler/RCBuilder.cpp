@@ -451,25 +451,10 @@ namespace AssetProcessor
 
     bool InternalRecognizerBasedBuilder::FindRC(QString& systemRootOut, QString& rcAbsolutePathOut)
     {
-        QDir systemRootDir;
-        bool computeRootResult = AssetUtilities::ComputeEngineRoot(systemRootDir);
-        AZ_Assert(computeRootResult, "AssetUtilities::ComputeEngineRoot failed");
+        QDir currentExePath(QCoreApplication::applicationDirPath());
+        systemRootOut = QCoreApplication::applicationDirPath();
+        rcAbsolutePathOut = systemRootOut + QString(LEGACY_RC_RELATIVE_PATH);
 
-        QString testRcPath = systemRootDir.absoluteFilePath(QString(BINFOLDER_NAME LEGACY_RC_RELATIVE_PATH));
-
-        if (AZ::IO::SystemFile::Exists(testRcPath.toUtf8().data()))
-        {
-            systemRootOut = systemRootDir.absolutePath();
-            rcAbsolutePathOut = testRcPath;
-        }
-        else
-        {
-            AZ_Warning(AssetProcessor::ConsoleChannel, false, "Unable to find rc.exe from the engine root (%s).  Attempting to locate in the relative rc subfolder", systemRootDir.absolutePath().toUtf8().data());
-            QDir currentExePath(QCoreApplication::applicationDirPath());
-            systemRootOut = currentExePath.absolutePath();
-            rcAbsolutePathOut = currentExePath.absoluteFilePath(LEGACY_RC_RELATIVE_PATH);
-            
-        }
         return AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data());
     }
 
